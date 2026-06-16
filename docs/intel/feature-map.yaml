@@ -1,0 +1,560 @@
+﻿features:
+  F-001:
+    module: M-001
+    name: Quan ly tai khoan nguoi dung
+    path: docs/modules/M-001-quan-tri-he-thong/_features/F-001-quan-ly-tai-khoan-nguoi-dung
+    slug: quan-ly-tai-khoan-nguoi-dung
+    status: proposed
+  F-002:
+    module: M-001
+    name: Quan ly nhom nguoi dung
+    path: docs/modules/M-001-quan-tri-he-thong/_features/F-002-quan-ly-nhom-nguoi-dung
+    slug: quan-ly-nhom-nguoi-dung
+    status: proposed
+  F-003:
+    module: M-001
+    name: Quan ly don vi
+    path: docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi
+    slug: quan-ly-don-vi
+    status: proposed
+  F-004:
+    module: M-001
+    name: Quan ly tai khoan admin
+    path: docs/modules/M-001-quan-tri-he-thong/_features/F-004-quan-ly-tai-khoan-admin
+    slug: quan-ly-tai-khoan-admin
+    status: proposed
+  F-005:
+    module: M-001
+    name: Quan ly log truy cap
+    path: docs/modules/M-001-quan-tri-he-thong/_features/F-005-quan-ly-log-truy-cap
+    slug: quan-ly-log-truy-cap
+    status: proposed
+  F-006:
+    module: M-001
+    name: Quan ly bieu tuong ban do
+    path: docs/modules/M-001-quan-tri-he-thong/_features/F-006-quan-ly-bieu-tuong-ban-do
+    slug: quan-ly-bieu-tuong-ban-do
+    status: proposed
+  F-007:
+    module: M-001
+    name: Quan ly ket noi lien thong chia du lieu
+    path: docs/modules/M-001-quan-tri-he-thong/_features/F-007-quan-ly-ket-noi-lien-thong-chia-du-lieu
+    slug: quan-ly-ket-noi-lien-thong-chia-du-lieu
+    status: proposed
+  F-008:
+    module: M-002
+    name: QuÃ¡ÂºÂ£n lÃƒÂ½ CÃ¡ÂºÂ£ng biÃ¡Â»Æ’n - TÃ¡ÂºÂ¡o mÃ¡Â»â€ºi
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-008-ql-cb-tao-moi
+    slug: ql-cb-tao-moi
+    status: proposed
+  F-012:
+    module: M-002
+    name: Xem chi tiÃ¡ÂºÂ¿t CÃ¡ÂºÂ£ng biÃ¡Â»Æ’n
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-012-xem-cb
+    slug: xem-cb
+    status: proposed
+  F-013:
+    module: M-002
+    name: QuÃ¡ÂºÂ£n lÃƒÂ½ CÃ¡ÂºÂ£ng biÃ¡Â»Æ’n - LÃ¡Â»â€¹ch sÃ¡Â»Â­
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-013-ql-cb-lich-su
+    slug: ql-cb-lich-su
+    status: proposed
+  F-017:
+    module: M-002
+    name: PhÃƒÂª duyÃ¡Â»â€¡t BÃ¡ÂºÂ¿n cÃ¡ÂºÂ£ng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-017-phe-duyet-bc
+    slug: phe-duyet-bc
+    status: proposed
+  F-018:
+    module: M-002
+    name: Xem chi tiÃ¡ÂºÂ¿t BÃ¡ÂºÂ¿n cÃ¡ÂºÂ£ng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-018-xem-bc
+    slug: xem-bc
+    status: proposed
+  F-019:
+    module: M-002
+    name: QuÃ¡ÂºÂ£n lÃƒÂ½ BÃ¡ÂºÂ¿n cÃ¡ÂºÂ£ng - LÃ¡Â»â€¹ch sÃ¡Â»Â­
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-019-ql-bc-lich-su
+    slug: ql-bc-lich-su
+    status: proposed
+  F-020:
+    module: M-002
+    name: QuÃ¡ÂºÂ£n lÃƒÂ½ CÃ¡ÂºÂ§u cÃ¡ÂºÂ£ng - TÃ¡ÂºÂ¡o mÃ¡Â»â€ºi
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-020-ql-cc-tao-moi
+    slug: ql-cc-tao-moi
+    status: proposed
+  F-024:
+    module: M-002
+    name: Xem chi tiÃ¡ÂºÂ¿t CÃ¡ÂºÂ§u cÃ¡ÂºÂ£ng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-024-xem-cc
+    slug: xem-cc
+    status: proposed
+  F-025:
+    module: M-002
+    name: QuÃ¡ÂºÂ£n lÃƒÂ½ CÃ¡ÂºÂ§u cÃ¡ÂºÂ£ng - LÃ¡Â»â€¹ch sÃ¡Â»Â­
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-025-ql-cc-lich-su
+    slug: ql-cc-lich-su
+    status: proposed
+  F-028:
+    module: M-002
+    name: QuÃ¡ÂºÂ£n lÃƒÂ½ CÃ¡ÂºÂ£ng cÃ¡ÂºÂ¡n - XÃƒÂ³a
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-028-ql-cct-xoa
+    slug: ql-cct-xoa
+    status: proposed
+  F-030:
+    module: M-002
+    name: Xem chi tiÃ¡ÂºÂ¿t CÃ¡ÂºÂ£ng cÃ¡ÂºÂ¡n
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-030-xem-cct
+    slug: xem-cct
+    status: proposed
+  F-031:
+    module: M-002
+    name: QuÃ¡ÂºÂ£n lÃƒÂ½ CÃ¡ÂºÂ£ng cÃ¡ÂºÂ¡n - LÃ¡Â»â€¹ch sÃ¡Â»Â­
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-031-ql-cct-lich-su
+    slug: ql-cct-lich-su
+    status: proposed
+  F-037:
+    module: M-002
+    name: QuÃ¡ÂºÂ£n lÃƒÂ½ VÃƒÂ¹ng nÃ†Â°Ã¡Â»â€ºc - LÃ¡Â»â€¹ch sÃ¡Â»Â­
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-037-ql-vn-lich-su
+    slug: ql-vn-lich-su
+    status: proposed
+  F-038:
+    module: M-003
+    name: Quan ly Luong hang hai - Tao moi
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-038-quan-ly-luong-hang-hai-tao-moi
+    slug: quan-ly-luong-hang-hai-tao-moi
+    status: proposed
+  F-039:
+    module: M-003
+    name: Quan ly Luong hang hai - Cap nhat
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-039-quan-ly-luong-hang-hai-cap-nhat
+    slug: quan-ly-luong-hang-hai-cap-nhat
+    status: proposed
+  F-040:
+    module: M-003
+    name: Quan ly Luong hang hai - Xoa
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-040-quan-ly-luong-hang-hai-xoa
+    slug: quan-ly-luong-hang-hai-xoa
+    status: proposed
+  F-041:
+    module: M-003
+    name: Phe duyet Luong hang hai
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-041-phe-duyet-luong-hang-hai
+    slug: phe-duyet-luong-hang-hai
+    status: proposed
+  F-042:
+    module: M-003
+    name: Xem chi tiet Luong hang hai
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-042-xem-chi-tiet-luong-hang-hai
+    slug: xem-chi-tiet-luong-hang-hai
+    status: proposed
+  F-043:
+    module: M-003
+    name: Quan ly Luong hang hai - Lich su
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-043-quan-ly-luong-hang-hai-lich-su
+    slug: quan-ly-luong-hang-hai-lich-su
+    status: proposed
+  F-044:
+    module: M-003
+    name: Quan ly De/ke - Tao moi
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-044-quan-ly-de-ke-tao-moi
+    slug: quan-ly-de-ke-tao-moi
+    status: proposed
+  F-045:
+    module: M-003
+    name: Quan ly De/ke - Cap nhat
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-045-quan-ly-de-ke-cap-nhat
+    slug: quan-ly-de-ke-cap-nhat
+    status: proposed
+  F-046:
+    module: M-003
+    name: Quan ly De/ke - Xoa
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-046-quan-ly-de-ke-xoa
+    slug: quan-ly-de-ke-xoa
+    status: proposed
+  F-047:
+    module: M-003
+    name: Phe duyet De/ke
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-047-phe-duyet-de-ke
+    slug: phe-duyet-de-ke
+    status: proposed
+  F-048:
+    module: M-003
+    name: Xem chi tiet De/ke
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-048-xem-chi-tiet-de-ke
+    slug: xem-chi-tiet-de-ke
+    status: proposed
+  F-049:
+    module: M-003
+    name: Quan ly De/ke - Lich su
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-049-quan-ly-de-ke-lich-su
+    slug: quan-ly-de-ke-lich-su
+    status: proposed
+  F-050:
+    module: M-003
+    name: Quan ly Co so sua chua, dong tau - Tao moi
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-050-quan-ly-co-so-sua-chua-dong-tau-tao-moi
+    slug: quan-ly-co-so-sua-chua-dong-tau-tao-moi
+    status: proposed
+  F-051:
+    module: M-003
+    name: Quan ly Co so sua chua, dong tau - Cap nhat
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-051-quan-ly-co-so-sua-chua-dong-tau-cap-nhat
+    slug: quan-ly-co-so-sua-chua-dong-tau-cap-nhat
+    status: proposed
+  F-052:
+    module: M-003
+    name: Quan ly Co so sua chua, dong tau - Xoa
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-052-quan-ly-co-so-sua-chua-dong-tau-xoa
+    slug: quan-ly-co-so-sua-chua-dong-tau-xoa
+    status: proposed
+  F-053:
+    module: M-003
+    name: Phe duyet Co so sua chua, dong tau
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-053-phe-duyet-co-so-sua-chua-dong-tau
+    slug: phe-duyet-co-so-sua-chua-dong-tau
+    status: proposed
+  F-054:
+    module: M-003
+    name: Xem chi tiet Co so sua chua, dong tau
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-054-xem-chi-tiet-co-so-sua-chua-dong-tau
+    slug: xem-chi-tiet-co-so-sua-chua-dong-tau
+    status: proposed
+  F-055:
+    module: M-003
+    name: Quan ly Co so sua chua, dong tau - Lich su
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-055-quan-ly-co-so-sua-chua-dong-tau-lich-su
+    slug: quan-ly-co-so-sua-chua-dong-tau-lich-su
+    status: proposed
+  F-056:
+    module: M-003
+    name: Quan ly Tram radar - Tao moi
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-056-quan-ly-tram-radar-tao-moi
+    slug: quan-ly-tram-radar-tao-moi
+    status: proposed
+  F-057:
+    module: M-003
+    name: Quan ly Tram radar - Cap nhat
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-057-quan-ly-tram-radar-cap-nhat
+    slug: quan-ly-tram-radar-cap-nhat
+    status: proposed
+  F-058:
+    module: M-003
+    name: Quan ly Tram radar - Xoa
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-058-quan-ly-tram-radar-xoa
+    slug: quan-ly-tram-radar-xoa
+    status: proposed
+  F-059:
+    module: M-003
+    name: Phe duyet Tram radar
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-059-phe-duyet-tram-radar
+    slug: phe-duyet-tram-radar
+    status: proposed
+  F-060:
+    module: M-003
+    name: Xem chi tiet Tram radar
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-060-xem-chi-tiet-tram-radar
+    slug: xem-chi-tiet-tram-radar
+    status: proposed
+  F-061:
+    module: M-003
+    name: Quan ly Tram radar - Lich su
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-061-quan-ly-tram-radar-lich-su
+    slug: quan-ly-tram-radar-lich-su
+    status: proposed
+  F-062:
+    module: M-003
+    name: Quan ly He thong VTS - Tao moi
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-062-quan-ly-he-thong-vts-tao-moi
+    slug: quan-ly-he-thong-vts-tao-moi
+    status: proposed
+  F-063:
+    module: M-003
+    name: Quan ly He thong VTS - Cap nhat
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-063-quan-ly-he-thong-vts-cap-nhat
+    slug: quan-ly-he-thong-vts-cap-nhat
+    status: proposed
+  F-064:
+    module: M-003
+    name: Quan ly He thong VTS - Xoa
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-064-quan-ly-he-thong-vts-xoa
+    slug: quan-ly-he-thong-vts-xoa
+    status: proposed
+  F-065:
+    module: M-003
+    name: Phe duyet He thong VTS
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-065-phe-duyet-he-thong-vts
+    slug: phe-duyet-he-thong-vts
+    status: proposed
+  F-066:
+    module: M-003
+    name: Xem chi tiet He thong VTS
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-066-xem-chi-tiet-he-thong-vts
+    slug: xem-chi-tiet-he-thong-vts
+    status: proposed
+  F-067:
+    module: M-003
+    name: Quan ly He thong VTS - Lich su
+    path: docs/modules/M-003-quan-ly-hang-hoa/_features/F-067-quan-ly-he-thong-vts-lich-su
+    slug: quan-ly-he-thong-vts-lich-su
+    status: proposed
+  F-068:
+    module: M-004
+    name: "QuÃ¡ÂºÂ£n lÃƒÂ½ Ã„ÂÃƒÂ¨n biÃ¡Â»Æ’n - TÃ¡ÂºÂ¡o mÃ¡Â»â€ºi"
+    path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-068-ql-dn-tao-moi
+    slug: ql-dn-tao-moi
+    status: proposed
+  F-071:
+    module: M-004
+    name: "PhÃƒÂª duyÃ¡Â»â€¡t Ã„ÂÃƒÂ¨n biÃ¡Â»Æ’n"
+    path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-071-phe-duyet-dn
+    slug: phe-duyet-dn
+    status: proposed
+  F-073:
+    module: M-004
+    name: "QuÃ¡ÂºÂ£n lÃƒÂ½ Ã„ÂÃƒÂ¨n biÃ¡Â»Æ’n - LÃ¡Â»â€¹ch sÃ¡Â»Â­"
+    path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-073-ql-dn-lich-su
+    slug: ql-dn-lich-su
+    status: proposed
+  F-074:
+    module: M-004
+    name: QuÃ¡ÂºÂ£n lÃƒÂ½ Phao tiÃƒÂªu - TÃ¡ÂºÂ¡o mÃ¡Â»â€ºi
+    path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-074-ql-pt-tao-moi
+    slug: ql-pt-tao-moi
+    status: proposed
+  F-078:
+    module: M-004
+    name: Xem chi tiÃ¡ÂºÂ¿t Phao tiÃƒÂªu
+    path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-078-xem-pt
+    slug: xem-pt
+    status: proposed
+  F-080:
+    module: M-004
+    name: QuÃ¡ÂºÂ£n lÃƒÂ½ NhÃƒÂ  trÃ¡ÂºÂ¡m phao - TÃ¡ÂºÂ¡o mÃ¡Â»â€ºi
+    path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-080-ql-ntph-tao-moi
+    slug: ql-ntph-tao-moi
+    status: proposed
+  F-084:
+    module: M-004
+    name: Xem chi tiÃ¡ÂºÂ¿t NhÃƒÂ  trÃ¡ÂºÂ¡m phao
+    path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-084-xem-ntph
+    slug: xem-ntph
+    status: proposed
+  F-086:
+    module: M-004
+    name: Quáº£n lÃ½ NhÃ  tráº¡m Ä‘Ã¨n - Táº¡o má»›i
+    path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-086-ql-ntd-tao-moi
+    slug: ql-ntd-tao-moi
+    status: proposed
+  F-089:
+    module: M-004
+    name: PhÃª duyá»‡t NhÃ  tráº¡m Ä‘Ã¨n
+    path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-089-phe-duyet-ntd
+    slug: phe-duyet-ntd
+    status: proposed
+  F-094:
+    module: M-004
+    name: "Quáº£n lÃ½ ÄÃ i TTDH - XÃ³a"
+    path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-094-ql-dtdh-xoa
+    slug: ql-dtdh-xoa
+    status: proposed
+  F-124:
+    module: M-005
+    name: XÃ¡Â»Â­ lÃƒÂ½ tÃƒÂ i sÃ¡ÂºÂ£n KCHT
+    path: docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/_features/F-124-xu-ly-tai-san-kcht
+    slug: xu-ly-tai-san-kcht
+    status: proposed
+  F-127:
+    module: M-005
+    name: PhÃƒÂª duyÃ¡Â»â€¡t biÃ¡ÂºÂ¿n Ã„â€˜Ã¡Â»â„¢ng tÃƒÂ i sÃ¡ÂºÂ£n
+    path: docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/_features/F-127-phe-duyet-bien-dong-tai-san
+    slug: phe-duyet-bien-dong-tai-san
+    status: proposed
+  F-129:
+    module: M-006
+    name: QuÃ¡ÂºÂ£n lÃƒÂ½ thÃƒÂ´ng tin vÃ¡ÂºÂ­n hÃƒÂ nh
+    path: docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_features/F-129-quan-ly-thong-tin-van-hanh
+    slug: quan-ly-thong-tin-van-hanh
+    status: proposed
+  F-131:
+    module: M-006
+    name: QuÃ¡ÂºÂ£n lÃƒÂ½ thÃƒÂ´ng tin sÃ¡Â»Â± cÃ¡Â»â€˜
+    path: docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_features/F-131-quan-ly-thong-tin-su-co
+    slug: quan-ly-thong-tin-su-co
+    status: proposed
+  F-135:
+    module: M-006
+    name: QuÃ¡ÂºÂ£n lÃƒÂ½ vÃ„Æ’n bÃ¡ÂºÂ£n - TÃƒÂ¬m kiÃ¡ÂºÂ¿m
+    path: docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_features/F-135-quan-ly-van-ban-tim-kiem
+    slug: quan-ly-van-ban-tim-kiem
+    status: proposed
+  F-137:
+    module: M-007
+    name: "QuÃ¡ÂºÂ£n lÃƒÂ½ danh mÃ¡Â»Â¥c Ã„â€˜Ã¡Â»â€˜i tÃ†Â°Ã¡Â»Â£ng Ã„â€˜Ã†Â°Ã¡Â»Âng"
+    path: docs/modules/M-007-gis-ban-do/_features/F-137-quan-ly-danh-muc-doi-tuong-duong
+    slug: quan-ly-danh-muc-doi-tuong-duong
+    status: proposed
+  F-140:
+    module: M-007
+    name: Tra cÃ¡Â»Â©u KCHT trÃƒÂªn bÃ¡ÂºÂ£n Ã„â€˜Ã¡Â»â€œ
+    path: docs/modules/M-007-gis-ban-do/_features/F-140-tra-cuu-kcht-tren-ban-do
+    slug: tra-cuu-kcht-tren-ban-do
+    status: proposed
+  F-144:
+    module: M-008
+    name: "Mau so 03: Bao cao tinh hinh quan ly tai san KCHT"
+    path: docs/modules/M-008-bao-cao-thong-ke/_features/F-144-mau-so-03-tinh-hinh-quan-ly-kcht
+    slug: mau-so-03-tinh-hinh-quan-ly-kcht
+    status: proposed
+  F-147:
+    module: M-008
+    name: "Mau so 06: Tong hop danh muc TS KCHTGT de nghi xu ly"
+    path: docs/modules/M-008-bao-cao-thong-ke/_features/F-147-mau-so-06-tong-hop-danh-muc-kchtgt
+    slug: mau-so-06-tong-hop-danh-muc-kchtgt
+    status: proposed
+  F-150:
+    module: M-008
+    name: "Bieu 02-N: Thong ke cau cang"
+    path: docs/modules/M-008-bao-cao-thong-ke/_features/F-150-bieu-02-n-thong-ke-cau-cang
+    slug: bieu-02-n-thong-ke-cau-cang
+    status: proposed
+  F-151:
+    module: M-008
+    name: "Bieu 03-Q/N: Thong ke luong hang hai"
+    path: docs/modules/M-008-bao-cao-thong-ke/_features/F-151-bieu-03-q-n-thong-ke-luong-hang-hai
+    slug: bieu-03-q-n-thong-ke-luong-hang-hai
+    status: proposed
+  F-157:
+    module: M-008
+    name: "Bieu 07B-6T/N: Thong ke phao tieu bao hieu"
+    path: docs/modules/M-008-bao-cao-thong-ke/_features/F-157-bieu-07b-6t-n-thong-ke-phao-tieu-bao-hieu
+    slug: bieu-07b-6t-n-thong-ke-phao-tieu-bao-hieu
+    status: proposed
+  F-160:
+    module: M-008
+    name: "Bieu 10-N: Thong ke he thong de, ke chan song"
+    path: docs/modules/M-008-bao-cao-thong-ke/_features/F-160-bieu-10-n-thong-ke-he-thong-de-ke-chan-song
+    slug: bieu-10-n-thong-ke-he-thong-de-ke-chan-song
+    status: proposed
+  F-163:
+    module: M-008
+    name: "Bieu 16-Q: Thong ke tau bien nuoc ngoai den, roi"
+    path: docs/modules/M-008-bao-cao-thong-ke/_features/F-163-bieu-16-q-thong-ke-tau-bien-nuoc-ngoai
+    slug: bieu-16-q-thong-ke-tau-bien-nuoc-ngoai
+    status: proposed
+  F-166:
+    module: M-008
+    name: "Bieu 12-N: Khoi luong hang hoa theo nam"
+    path: docs/modules/M-008-bao-cao-thong-ke/_features/F-166-bieu-12-n-khoi-luong-hang-hoa-theo-nam
+    slug: bieu-12-n-khoi-luong-hang-hoa-theo-nam
+    status: proposed
+  F-169:
+    module: M-008
+    name: "Bieu 15-T: Khoi luong hang hoa trong khu quan ly"
+    path: docs/modules/M-008-bao-cao-thong-ke/_features/F-169-bieu-15-t-khoi-luong-hang-hoa-trong-khu-quan-ly
+    slug: bieu-15-t-khoi-luong-hang-hoa-trong-khu-quan-ly
+    status: proposed
+  F-172:
+    module: M-008
+    name: "Bieu 23-N: Thong ke tau thuyen hoat dong lai dat"
+    path: docs/modules/M-008-bao-cao-thong-ke/_features/F-172-bieu-23-n-thong-ke-tau-thuyen-lai-dat
+    slug: bieu-23-n-thong-ke-tau-thuyen-lai-dat
+    status: proposed
+  F-176:
+    module: M-008
+    name: "Bieu 07-N: Nang luc thong qua cang bien, thuy noi dia"
+    path: docs/modules/M-008-bao-cao-thong-ke/_features/F-176-bieu-07-n-nang-luc-cang-bien-thuy-noi
+    slug: bieu-07-n-nang-luc-cang-bien-thuy-noi
+    status: proposed
+  F-180:
+    module: M-008
+    name: Bieu Tong hop thong tin chung
+    path: docs/modules/M-008-bao-cao-thong-ke/_features/F-180-bieu-tong-hop-thong-tin-chung
+    slug: bieu-tong-hop-thong-tin-chung
+    status: proposed
+  F-185:
+    module: M-008
+    name: Bieu Tong hop bao tri KCHTGT - Phao tieu
+    path: docs/modules/M-008-bao-cao-thong-ke/_features/F-185-bieu-tong-hop-bao-tri-kchtgt-phao-tieu
+    slug: bieu-tong-hop-bao-tri-kchtgt-phao-tieu
+    status: proposed
+  F-189:
+    module: M-008
+    name: Bao cao tinh hinh hoat dong bao hieu hang hai va de, ke
+    path: docs/modules/M-008-bao-cao-thong-ke/_features/F-189-bao-cao-tinh-hinh-hoat-dong-bao-hieu
+    slug: bao-cao-tinh-hinh-hoat-dong-bao-hieu
+    status: proposed
+  F-190:
+    module: M-009
+    name: "Chia se: KCHTGT Ben cang"
+    path: docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-190-chia-se-kchtgt-ben-cang
+    slug: chia-se-kchtgt-ben-cang
+    status: proposed
+  F-193:
+    module: M-009
+    name: "Chia se: KCHTGT Khu tranh tru bao"
+    path: docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-193-chia-se-kchtgt-khu-tranh-tru-bao
+    slug: chia-se-kchtgt-khu-tranh-tru-bao
+    status: proposed
+  F-196:
+    module: M-009
+    name: "Chia se: KCHTGT Co so sua chua"
+    path: docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-196-chia-se-kchtgt-co-so-sua-chua
+    slug: chia-se-kchtgt-co-so-sua-chua
+    status: proposed
+  F-199:
+    module: M-009
+    name: "Chia se: KCHTGT He thong VTS"
+    path: docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-199-chia-se-kchtgt-he-thong-vts
+    slug: chia-se-kchtgt-he-thong-vts
+    status: proposed
+  F-271:
+    module: M-010
+    name: "Ã„ÂÃ„Æ’ng kÃƒÂ½ tÃƒÂ i khoÃ¡ÂºÂ£n"
+    path: docs/modules/M-010-xac-thuc-phan-quyen/_features/F-271-dang-ky-tai-khoan
+    slug: dang-ky-tai-khoan
+    status: proposed
+  F-274:
+    module: M-010
+    name: QuÃ¡ÂºÂ£n lÃƒÂ½ JWT session
+    path: docs/modules/M-010-xac-thuc-phan-quyen/_features/F-274-quan-ly-jwt-session
+    slug: quan-ly-jwt-session
+    status: proposed
+  F-277:
+    module: M-010
+    name: ChÃƒÂ­nh sÃƒÂ¡ch giÃ¡Â»â€ºi hÃ¡ÂºÂ¡n Ã„â€˜Ã„Æ’ng nhÃ¡ÂºÂ­p sai
+    path: docs/modules/M-010-xac-thuc-phan-quyen/_features/F-277-chinh-sach-gioi-han-dang-nhap-sai
+    slug: chinh-sach-gioi-han-dang-nhap-sai
+    status: proposed
+  F-278:
+    module: M-011
+    name: QuÃ¡ÂºÂ£n lÃƒÂ½ log truy cÃ¡ÂºÂ­p
+    path: docs/modules/M-011-nhat-ky-backup/_features/F-278-quan-ly-log-truy-cap
+    slug: quan-ly-log-truy-cap
+    status: proposed
+  F-280:
+    module: M-011
+    name: Sao lÃ†Â°u CSDL tÃ¡Â»Â± Ã„â€˜Ã¡Â»â„¢ng
+    path: docs/modules/M-011-nhat-ky-backup/_features/F-280-sao-lu-c-sdl-tu-dong
+    slug: sao-lu-c-sdl-tu-dong
+    status: proposed
+  F-282:
+    module: M-011
+    name: GiÃƒÂ¡m sÃƒÂ¡t SIEM
+    path: docs/modules/M-011-nhat-ky-backup/_features/F-282-giam-sat-siem
+    slug: giam-sat-siem
+    status: proposed
+  F-286:
+    module: M-012
+    name: HiÃ¡Â»Æ’n thÃ¡Â»â€¹ hÃ¡ÂºÂ£i Ã„â€˜Ã¡Â»â€œ GIS (S-52)
+    path: docs/modules/M-012-hai-do-gis-integration/_features/F-286-hien-thi-hai-do-gis-s-52
+    slug: hien-thi-hai-do-gis-s-52
+    status: proposed
+  F-289:
+    module: M-012
+    name: "HiÃ¡Â»â€¡u tÃ¡Â»Âa WGS84 GIS"
+    path: docs/modules/M-012-hai-do-gis-integration/_features/F-289-hieu-toa-wgs84-gis
+    slug: hieu-toa-wgs84-gis
+    status: proposed
+last-updated: 2026-06-16T04:55:31Z

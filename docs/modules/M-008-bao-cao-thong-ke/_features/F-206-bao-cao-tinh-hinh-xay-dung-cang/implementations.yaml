@@ -1,0 +1,9 @@
+feature_id: F-206
+module_id: M-008
+slug: bao-cao-tinh-hinh-xay-dung-cang
+
+implementations:
+  primary: ""
+  consumers: []
+
+consumed_by_modules: []

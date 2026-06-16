@@ -1,0 +1,301 @@
+{
+  "version": "1.0",
+  "source": "TKCT_CucHH_KetCauHaTangGiaoThong.docx",
+  "analysis_date": "2026-06-16",
+  "routes": [
+    {
+      "path": "/login",
+      "method": "POST",
+      "role": "all",
+      "module": "M-010"
+    },
+    {
+      "path": "/register",
+      "method": "POST",
+      "role": "all",
+      "module": "M-010"
+    },
+    {
+      "path": "/totp/setup",
+      "method": "POST",
+      "role": "all",
+      "module": "M-010"
+    },
+    {
+      "path": "/totp/verify",
+      "method": "POST",
+      "role": "all",
+      "module": "M-010"
+    },
+    {
+      "path": "/logout",
+      "method": "POST",
+      "role": "all",
+      "module": "M-010"
+    },
+    {
+      "path": "/dashboard",
+      "method": "GET",
+      "role": "admin,leader,specialist,port",
+      "module": "M-001"
+    },
+    {
+      "path": "/admin/users",
+      "method": "GET|POST|PUT|DELETE",
+      "role": "admin",
+      "module": "M-001"
+    },
+    {
+      "path": "/admin/groups",
+      "method": "GET|POST|PUT|DELETE",
+      "role": "admin",
+      "module": "M-001"
+    },
+    {
+      "path": "/admin/organizations",
+      "method": "GET|POST|PUT|DELETE",
+      "role": "admin",
+      "module": "M-001"
+    },
+    {
+      "path": "/admin/logs",
+      "method": "GET",
+      "role": "admin",
+      "module": "M-011"
+    },
+    {
+      "path": "/admin/integration",
+      "method": "GET|POST",
+      "role": "admin",
+      "module": "M-001"
+    },
+    {
+      "path": "/admin/map-icons",
+      "method": "GET|POST|PUT",
+      "role": "admin",
+      "module": "M-001"
+    },
+    {
+      "path": "/kcht/cangbien/list",
+      "method": "GET",
+      "role": "all",
+      "module": "M-002"
+    },
+    {
+      "path": "/kcht/bencang/list",
+      "method": "GET",
+      "role": "specialist,port",
+      "module": "M-002"
+    },
+    {
+      "path": "/kcht/bencang/create",
+      "method": "POST",
+      "role": "specialist,port",
+      "module": "M-002"
+    },
+    {
+      "path": "/kcht/bencang/update",
+      "method": "PUT",
+      "role": "specialist,port",
+      "module": "M-002"
+    },
+    {
+      "path": "/kcht/bencang/approve",
+      "method": "POST",
+      "role": "leader",
+      "module": "M-002"
+    },
+    {
+      "path": "/kcht/caucang/list",
+      "method": "GET",
+      "role": "all",
+      "module": "M-002"
+    },
+    {
+      "path": "/kcht/caucang/create",
+      "method": "POST",
+      "role": "specialist,port",
+      "module": "M-002"
+    },
+    {
+      "path": "/kcht/caucang/approve",
+      "method": "POST",
+      "role": "leader",
+      "module": "M-002"
+    },
+    {
+      "path": "/asset/bencang/list",
+      "method": "GET",
+      "role": "specialist",
+      "module": "M-002"
+    },
+    {
+      "path": "/asset/bencang/approve",
+      "method": "POST",
+      "role": "leader",
+      "module": "M-002"
+    },
+    {
+      "path": "/kcht/vungnuoc/benphao",
+      "method": "GET|POST|PUT",
+      "role": "specialist,port",
+      "module": "M-003"
+    },
+    {
+      "path": "/kcht/vungnuoc/khu-tranh-tru-bao",
+      "method": "GET|POST|PUT",
+      "role": "specialist,port",
+      "module": "M-003"
+    },
+    {
+      "path": "/kcht/vts/list",
+      "method": "GET",
+      "role": "all",
+      "module": "M-003"
+    },
+    {
+      "path": "/kcht/vts/center",
+      "method": "GET|POST|PUT",
+      "role": "specialist",
+      "module": "M-003"
+    },
+    {
+      "path": "/kcht/radar/list",
+      "method": "GET",
+      "role": "all",
+      "module": "M-003"
+    },
+    {
+      "path": "/kcht/baohieu/denbien",
+      "method": "GET|POST|PUT",
+      "role": "specialist",
+      "module": "M-004"
+    },
+    {
+      "path": "/kcht/baohieu/phautieu",
+      "method": "GET|POST|PUT",
+      "role": "specialist",
+      "module": "M-004"
+    },
+    {
+      "path": "/kcht/thongtin/dai-ttdh",
+      "method": "GET|POST|PUT",
+      "role": "specialist",
+      "module": "M-004"
+    },
+    {
+      "path": "/kcht/dienbien/luonghanghai",
+      "method": "GET|POST|PUT",
+      "role": "specialist",
+      "module": "M-005"
+    },
+    {
+      "path": "/kcht/dienbien/deke",
+      "method": "GET|POST|PUT",
+      "role": "specialist",
+      "module": "M-005"
+    },
+    {
+      "path": "/kcht/dienbien/cosasua",
+      "method": "GET|POST|PUT",
+      "role": "specialist",
+      "module": "M-005"
+    },
+    {
+      "path": "/legal/list",
+      "method": "GET",
+      "role": "all",
+      "module": "M-006"
+    },
+    {
+      "path": "/ops/list",
+      "method": "GET",
+      "role": "specialist",
+      "module": "M-006"
+    },
+    {
+      "path": "/maint/list",
+      "method": "GET",
+      "role": "specialist",
+      "module": "M-006"
+    },
+    {
+      "path": "/incident/list",
+      "method": "GET",
+      "role": "specialist",
+      "module": "M-006"
+    },
+    {
+      "path": "/planning/list",
+      "method": "GET",
+      "role": "specialist",
+      "module": "M-006"
+    },
+    {
+      "path": "/gis/map",
+      "method": "GET",
+      "role": "specialist",
+      "module": "M-007"
+    },
+    {
+      "path": "/gis/objects/point",
+      "method": "GET|POST|PUT|DELETE",
+      "role": "specialist",
+      "module": "M-007"
+    },
+    {
+      "path": "/gis/objects/line",
+      "method": "GET|POST|PUT|DELETE",
+      "role": "specialist",
+      "module": "M-007"
+    },
+    {
+      "path": "/gis/objects/area",
+      "method": "GET|POST|PUT|DELETE",
+      "role": "specialist",
+      "module": "M-007"
+    },
+    {
+      "path": "/reports/asset-change",
+      "method": "GET|EXPORT",
+      "role": "specialist",
+      "module": "M-008"
+    },
+    {
+      "path": "/reports/form02",
+      "method": "GET|EXPORT",
+      "role": "specialist",
+      "module": "M-008"
+    },
+    {
+      "path": "/reports/form03",
+      "method": "GET|EXPORT",
+      "role": "specialist",
+      "module": "M-008"
+    },
+    {
+      "path": "/reports/form04",
+      "method": "GET|EXPORT",
+      "role": "specialist",
+      "module": "M-008"
+    },
+    {
+      "path": "/integration/lgsp",
+      "method": "POST",
+      "role": "admin",
+      "module": "M-009"
+    },
+    {
+      "path": "/external/api/connect",
+      "method": "POST",
+      "role": "admin",
+      "module": "M-009"
+    },
+    {
+      "path": "/public/search",
+      "method": "GET",
+      "role": "public",
+      "module": "M-002"
+    }
+  ]
+}

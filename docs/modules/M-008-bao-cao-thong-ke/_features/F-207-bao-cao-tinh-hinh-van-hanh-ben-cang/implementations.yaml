@@ -1,0 +1,9 @@
+feature_id: F-207
+module_id: M-008
+slug: bao-cao-tinh-hinh-van-hanh-ben-cang
+
+implementations:
+  primary: ""
+  consumers: []
+
+consumed_by_modules: []

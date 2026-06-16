@@ -1,0 +1,13 @@
+feature_id: F-277
+module_id: M-010
+slug: chinh-sach-gioi-han-dang-nhap-sai
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: ""
+  consumers: []
+
+# Cross-cutting: features consumed by multiple modules
+consumed_by_modules: []

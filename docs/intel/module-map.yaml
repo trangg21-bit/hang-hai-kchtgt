@@ -1,0 +1,50 @@
+modules:
+  M-001:
+    name: Quản trị hệ thống
+    path: docs/modules/M-001-quan-tri-he-thong
+    slug: quan-tri-he-thong
+  M-002:
+    name: Quản lý tài sản KCHTGT - Cảng & Bến
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben
+    slug: quan-ly-tai-san-kchtgt-cang-ben
+  M-003:
+    name: Quản lý tài sản KCHTGT - Khu nước & VTS
+    path: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts
+    slug: quan-ly-tai-san-kchtgt-khu-nuoc-vts
+  M-004:
+    name: Quản lý tài sản Báo hiệu & Thông tin
+    path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin
+    slug: quan-ly-tai-san-bao-hieu-thong-tin
+  M-005:
+    name: Quản lý biến động tài sản KCHTGT
+    path: docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt
+    slug: quan-ly-bien-dong-tai-san-kchtgt
+  M-006:
+    name: Quản lý văn bản & Thông tin nghiệp vụ
+    path: docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu
+    slug: quan-ly-van-ban-thong-tin-ghiep-vu
+  M-007:
+    name: GIS / Bản đồ
+    path: docs/modules/M-007-gis-ban-do
+    slug: gis-ban-do
+  M-008:
+    name: Báo cáo & Thống kê
+    path: docs/modules/M-008-bao-cao-thong-ke
+    slug: bao-cao-thong-ke
+  M-009:
+    name: Liên thông & Tích hợp dữ liệu
+    path: docs/modules/M-009-lien-thong-tich-hop-du-lieu
+    slug: lien-thong-tich-hop-du-lieu
+  M-010:
+    name: Xác thực & Phân quyền
+    path: docs/modules/M-010-xac-thuc-phan-quyen
+    slug: xac-thuc-phan-quyen
+  M-011:
+    name: Nhật ký & Backup
+    path: docs/modules/M-011-nhat-ky-backup
+    slug: nhat-ky-backup
+  M-012:
+    name: Hải đồ & GIS Integration
+    path: docs/modules/M-012-hai-do-gis-integration
+    slug: hai-do-gis-integration
+schema_version: "1.0"

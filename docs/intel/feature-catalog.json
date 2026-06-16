@@ -1,0 +1,1213 @@
+{
+  "features": [
+    {
+      "acceptance_criteria": [
+        "Tạo mới Cảng biển thành công"
+      ],
+      "consumed_by_modules": [],
+      "description": "Tạo mới Cảng biển",
+      "id": "F-008",
+      "module_id": "M-002",
+      "name": "Quản lý Cảng biển - Tạo mới",
+      "priority": "critical",
+      "slug": "ql-cb-tao-moi",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem chi tiết Cảng biển thành công"
+      ],
+      "consumed_by_modules": [],
+      "description": "Xem chi tiết Cảng biển",
+      "id": "F-012",
+      "module_id": "M-002",
+      "name": "Xem chi tiết Cảng biển",
+      "priority": "critical",
+      "slug": "xem-cb",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Kế hoạch vận hành"
+      ],
+      "business_intent": "Quản lý thông tin vận hành KCHT",
+      "consumed_by_modules": [],
+      "description": "Quản lý thông tin vận hành KCHT",
+      "flow_summary": "Quản lý thông tin vận hành KCHT",
+      "id": "F-129",
+      "module_id": "M-006",
+      "name": "Quản lý thông tin vận hành",
+      "priority": "medium",
+      "slug": "quan-ly-thong-tin-van-hanh",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Tao tai khoan thanh cong",
+        "Cap quyen theo vai tro",
+        "Khoa/mo khoa tai khoan"
+      ],
+      "business_intent": "Quan tri he thong, Lanh dao, Chuyen vien - Tao, sua, xoa, khoa/mo khoa tai khoan",
+      "consumed_by_modules": [],
+      "description": "Quan tri tai khoan: tao, sua, xoa, khoa/mo khoa tai khoan theo vai tro",
+      "flow_summary": "Quan tri he thong, Lanh dao, Chuyen vien - Tao, sua, xoa, khoa/mo khoa tai khoan",
+      "id": "F-001",
+      "module_id": "M-001",
+      "name": "Quan ly tai khoan nguoi dung",
+      "priority": "high",
+      "slug": "quan-ly-tai-khoan-nguoi-dung",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Quan ly toan bo tai khoan admin",
+        "Phan quyen theo muc"
+      ],
+      "business_intent": "Quan tri he thong - Tao, phe duyet, khoa, phan quyen admin",
+      "consumed_by_modules": [],
+      "description": "Quan ly tai khoan admin 3 muc: thuong, su dung, van hanh",
+      "flow_summary": "Quan tri he thong - Tao, phe duyet, khoa, phan quyen admin",
+      "id": "F-004",
+      "module_id": "M-001",
+      "name": "Quan ly tai khoan admin",
+      "priority": "high",
+      "slug": "quan-ly-tai-khoan-admin",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Them/sua/xoa bieu tuong",
+        "Gan bieu tuong cho doi tuong GIS"
+      ],
+      "business_intent": "Quan tri he thong - Quan ly bieu tuong doi tuong GIS tren ban do",
+      "consumed_by_modules": [],
+      "description": "Quan ly bieu tuong doi tuong GIS tren ban do theo tung loai",
+      "flow_summary": "Quan tri he thong - Quan ly bieu tuong doi tuong GIS tren ban do",
+      "id": "F-006",
+      "module_id": "M-001",
+      "name": "Quan ly bieu tuong ban do",
+      "priority": "medium",
+      "slug": "quan-ly-bieu-tuong-ban-do",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Cau hinh ket noi thanh cong",
+        "Xem lich su ket noi",
+        "Cap nhat thong tin ket noi"
+      ],
+      "business_intent": "Quan tri he thong - Cau hinh ket noi LGSP, NDXP, API",
+      "consumed_by_modules": [],
+      "description": "Cau hinh ket noi LGSP, NDXP, API qua HTTPS/TLS, JWT, IP whitelist",
+      "flow_summary": "Quan tri he thong - Cau hinh ket noi LGSP, NDXP, API",
+      "id": "F-007",
+      "module_id": "M-001",
+      "name": "Quan ly ket noi lien thong chia du lieu",
+      "priority": "medium",
+      "slug": "quan-ly-ket-noi-lien-thong-chia-du-lieu",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem lịch sử Cảng biển thành công"
+      ],
+      "consumed_by_modules": [],
+      "description": "Xem lịch sử thay đổi Cảng biển",
+      "id": "F-013",
+      "module_id": "M-002",
+      "name": "Quản lý Cảng biển - Lịch sử",
+      "priority": "high",
+      "slug": "ql-cb-lich-su",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Phê duyệt Bến cảng thành công"
+      ],
+      "consumed_by_modules": [],
+      "description": "Phê duyệt Bến cảng",
+      "id": "F-017",
+      "module_id": "M-002",
+      "name": "Phê duyệt Bến cảng",
+      "priority": "critical",
+      "slug": "phe-duyet-bc",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem chi tiết Bến cảng thành công"
+      ],
+      "consumed_by_modules": [],
+      "description": "Xem chi tiết Bến cảng",
+      "id": "F-018",
+      "module_id": "M-002",
+      "name": "Xem chi tiết Bến cảng",
+      "priority": "critical",
+      "slug": "xem-bc",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Quan ly thong tin don vi",
+        "Phan cap quyen don vi"
+      ],
+      "business_intent": "Quan tri he thong - Quan ly don vi Cuc, Chi cuc, Cang vu, TCT",
+      "consumed_by_modules": [],
+      "description": "Quan ly don vi Cuc, Chi cuc, Cang vu, TCT theo he thung cap phat",
+      "flow_summary": "Quan tri he thong - Quan ly don vi Cuc, Chi cuc, Cang vu, TCT",
+      "id": "F-003",
+      "module_id": "M-001",
+      "name": "Quan ly don vi",
+      "priority": "high",
+      "slug": "quan-ly-don-vi",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Tra cuu duoc 5 nhom log",
+        "Hien thi du 5 truong log"
+      ],
+      "business_intent": "Quan tri he thong - Tra cuu 5 nhom log (truy cap, dang nhap, loi, tai khoan, cau hinh)",
+      "consumed_by_modules": [],
+      "description": "Tra cuu 5 nhom log: truy cap, dang nhap, loi, tai khoan, cau hinh",
+      "flow_summary": "Quan tri he thong - Tra cuu 5 nhom log (truy cap, dang nhap, loi, tai khoan, cau hinh)",
+      "id": "F-005",
+      "module_id": "M-001",
+      "name": "Quan ly log truy cap",
+      "priority": "medium",
+      "slug": "quan-ly-log-truy-cap",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xử lý phải được phê duyệt",
+        "Lãnh đạo phê duyệt xử lý"
+      ],
+      "business_intent": "Xử lý tài sản (xóa, bán, hủy)",
+      "consumed_by_modules": [],
+      "description": "Xử lý tài sản (xóa, bán, hủy)",
+      "flow_summary": "Xử lý tài sản (xóa, bán, hủy)",
+      "id": "F-124",
+      "module_id": "M-005",
+      "name": "Xử lý tài sản KCHT",
+      "priority": "high",
+      "slug": "xu-ly-tai-san-kcht",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Lãnh đạo phê duyệt biến động tài sản"
+      ],
+      "business_intent": "Lãnh đạo phê duyệt biến động tài sản KCHT",
+      "consumed_by_modules": [],
+      "description": "Lãnh đạo phê duyệt biến động tài sản KCHT",
+      "flow_summary": "Lãnh đạo phê duyệt biến động tài sản KCHT",
+      "id": "F-127",
+      "module_id": "M-005",
+      "name": "Phê duyệt biến động tài sản",
+      "priority": "high",
+      "slug": "phe-duyet-bien-dong-tai-san",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem lịch sử Bến cảng thành công"
+      ],
+      "consumed_by_modules": [],
+      "description": "Xem lịch sử thay đổi Bến cảng",
+      "id": "F-019",
+      "module_id": "M-002",
+      "name": "Quản lý Bến cảng - Lịch sử",
+      "priority": "high",
+      "slug": "ql-bc-lich-su",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Tạo mới Cầu cảng thành công"
+      ],
+      "consumed_by_modules": [],
+      "description": "Tạo mới Cầu cảng",
+      "id": "F-020",
+      "module_id": "M-002",
+      "name": "Quản lý Cầu cảng - Tạo mới",
+      "priority": "critical",
+      "slug": "ql-cc-tao-moi",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem chi tiết Cầu cảng thành công"
+      ],
+      "consumed_by_modules": [],
+      "description": "Xem chi tiết Cầu cảng",
+      "id": "F-024",
+      "module_id": "M-002",
+      "name": "Xem chi tiết Cầu cảng",
+      "priority": "critical",
+      "slug": "xem-cc",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hien thi bao cao Mau so 03 thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ],
+      "business_intent": "Chuyen vien - Bao cao Mau so 03: Bao cao tinh hinh quan ly tai san KCHT",
+      "consumed_by_modules": [],
+      "description": "Tinh hinh quan ly tai san KCHT theo mau so 03, xuat PDF/Excel",
+      "flow_summary": "Hien thi bao cao Mau so 03 thanh cong",
+      "id": "F-144",
+      "module_id": "M-008",
+      "name": "Mau so 03: Bao cao tinh hinh quan ly tai san KCHT",
+      "priority": "high",
+      "slug": "mau-so-03-tinh-hinh-quan-ly-kcht",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hien thi bao cao Mau so 06 thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ],
+      "business_intent": "Chuyen vien - Bao cao Mau so 06: Tong hop danh muc TS KCHTGT de nghi xu ly",
+      "consumed_by_modules": [],
+      "description": "Tong hop danh muc TS KCHTGT de nghi xu ly theo mau so 06, xuat PDF/Excel",
+      "flow_summary": "Hien thi bao cao Mau so 06 thanh cong",
+      "id": "F-147",
+      "module_id": "M-008",
+      "name": "Mau so 06: Tong hop danh muc TS KCHTGT de nghi xu ly",
+      "priority": "high",
+      "slug": "mau-so-06-tong-hop-danh-muc-kchtgt",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 02-N thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ],
+      "business_intent": "Chuyen vien - Bao cao Bieu 02-N: Thong ke cau cang",
+      "consumed_by_modules": [],
+      "description": "Thong ke cau cang theo Bieu 02-N, xuat PDF/Excel",
+      "flow_summary": "Hien thi bao cao Bieu 02-N thanh cong",
+      "id": "F-150",
+      "module_id": "M-008",
+      "name": "Bieu 02-N: Thong ke cau cang",
+      "priority": "high",
+      "slug": "bieu-02-n-thong-ke-cau-cang",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem lịch sử Cầu cảng thành công"
+      ],
+      "consumed_by_modules": [],
+      "description": "Xem lịch sử thay đổi Cầu cảng",
+      "id": "F-025",
+      "module_id": "M-002",
+      "name": "Quản lý Cầu cảng - Lịch sử",
+      "priority": "high",
+      "slug": "ql-cc-lich-su",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem chi tiết Cảng cạn thành công"
+      ],
+      "consumed_by_modules": [],
+      "description": "Xem chi tiết Cảng cạn",
+      "id": "F-030",
+      "module_id": "M-002",
+      "name": "Xem chi tiết Cảng cạn",
+      "priority": "critical",
+      "slug": "xem-cct",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Đính kèm biên bản sự cố KCHT",
+        "Theo dõi lịch sự sự cố"
+      ],
+      "business_intent": "Quản lý thông tin sự cố KCHT",
+      "consumed_by_modules": [],
+      "description": "Quản lý thông tin sự cố KCHT",
+      "flow_summary": "Quản lý thông tin sự cố KCHT",
+      "id": "F-131",
+      "module_id": "M-006",
+      "name": "Quản lý thông tin sự cố",
+      "priority": "medium",
+      "slug": "quan-ly-thong-tin-su-co",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Tra cứu theo điều kiện"
+      ],
+      "business_intent": "Tra cứu văn bản pháp lý liên quan KCHT",
+      "consumed_by_modules": [],
+      "description": "Tra cứu văn bản pháp lý liên quan KCHT",
+      "flow_summary": "Tra cứu văn bản pháp lý liên quan KCHT",
+      "id": "F-135",
+      "module_id": "M-006",
+      "name": "Quản lý văn bản - Tìm kiếm",
+      "priority": "low",
+      "slug": "quan-ly-van-ban-tim-kiem",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 04B-N thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ],
+      "business_intent": "Chuyen vien - Bao cao Bieu 04B-N: Thong ke khu chuyen tai, khu neo dau",
+      "consumed_by_modules": [],
+      "description": "Thong ke khu chuyen tai, khu neo dau theo Bieu 04B-N, xuat PDF/Excel",
+      "flow_summary": "Hien thi bao cao Bieu 04B-N thanh cong",
+      "id": "F-153",
+      "module_id": "M-008",
+      "name": "Bieu 04B-N: Thong ke khu chuyen tai, khu neo dau",
+      "priority": "high",
+      "slug": "bieu-04b-n-thong-ke-khu-chuyen-tai",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 07B-6T/N thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ],
+      "business_intent": "Chuyen vien - Bao cao Bieu 07B-6T/N: Thong ke phao tieu bao hieu",
+      "consumed_by_modules": [],
+      "description": "Thong ke phao tieu bao hieu theo Bieu 07B-6T/N, xuat PDF/Excel",
+      "flow_summary": "Hien thi bao cao Bieu 07B-6T/N thanh cong",
+      "id": "F-157",
+      "module_id": "M-008",
+      "name": "Bieu 07B-6T/N: Thong ke phao tieu bao hieu",
+      "priority": "high",
+      "slug": "bieu-07b-6t-n-thong-ke-phao-tieu-bao-hieu",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 10-N thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ],
+      "business_intent": "Chuyen vien - Bao cao Bieu 10-N: Thong ke he thong de, ke chan song",
+      "consumed_by_modules": [],
+      "description": "Thong ke he thong de, ke chan song theo Bieu 10-N, xuat PDF/Excel",
+      "flow_summary": "Hien thi bao cao Bieu 10-N thanh cong",
+      "id": "F-160",
+      "module_id": "M-008",
+      "name": "Bieu 10-N: Thong ke he thong de, ke chan song",
+      "priority": "high",
+      "slug": "bieu-10-n-thong-ke-he-thong-de-ke-chan-song",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem lịch sử Cảng cạn thành công"
+      ],
+      "consumed_by_modules": [],
+      "description": "Xem lịch sử thay đổi Cảng cạn",
+      "flow_summary": "Theo dõi lịch sử thay đổi Cảng cạn",
+      "id": "F-031",
+      "module_id": "M-002",
+      "name": "Quản lý Cảng cạn - Lịch sử",
+      "priority": "high",
+      "slug": "ql-cct-lich-su",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem lịch sử Vùng nước thành công"
+      ],
+      "consumed_by_modules": [],
+      "description": "Xem lịch sử thay đổi Vùng nước",
+      "flow_summary": "Theo dõi lịch sử thay đổi Vùng nước",
+      "id": "F-037",
+      "module_id": "M-002",
+      "name": "Quản lý Vùng nước - Lịch sử",
+      "priority": "high",
+      "slug": "ql-vn-lich-su",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Quản lý đối tượng đường thành công"
+      ],
+      "business_intent": "Quản lý đối tượng đường GIS (luồng, đê/kè)",
+      "consumed_by_modules": [],
+      "description": "Quản lý đối tượng đường GIS (luồng, đê/kè)",
+      "flow_summary": "Quản lý đối tượng đường GIS",
+      "id": "F-137",
+      "module_id": "M-007",
+      "name": "Quản lý danh mục đối tượng đường",
+      "priority": "high",
+      "slug": "quan-ly-danh-muc-doi-tuong-duong",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Tra cứu KCHT trên bản đồ thành công"
+      ],
+      "business_intent": "Tra cứu KCHT trên bản đồ GIS",
+      "consumed_by_modules": [],
+      "description": "Tra cứu KCHT trên bản đồ GIS",
+      "flow_summary": "Tra cứu KCHT trên bản đồ GIS",
+      "id": "F-140",
+      "module_id": "M-007",
+      "name": "Tra cứu KCHT trên bản đồ",
+      "priority": "high",
+      "slug": "tra-cuu-kcht-tren-ban-do",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 17-Q thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ],
+      "business_intent": "Chuyen vien - Bao cao Bieu 17-Q: Thong ke tau bien VN van tai quoc te",
+      "consumed_by_modules": [],
+      "description": "Thong ke tau bien VN van tai quoc te theo Bieu 17-Q, xuat PDF/Excel",
+      "flow_summary": "Hien thi bao cao Bieu 17-Q thanh cong",
+      "id": "F-164",
+      "module_id": "M-008",
+      "name": "Bieu 17-Q: Thong ke tau bien VN van tai quoc te",
+      "priority": "high",
+      "slug": "bieu-17-q-thong-ke-tau-bien-vn-van-tai",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 12-N thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ],
+      "business_intent": "Chuyen vien - Bao cao Bieu 12-N: Khoi luong hang hoa theo nam",
+      "consumed_by_modules": [],
+      "description": "Khoi luong hang hoa theo nam theo Bieu 12-N, xuat PDF/Excel",
+      "flow_summary": "Hien thi bao cao Bieu 12-N thanh cong",
+      "id": "F-166",
+      "module_id": "M-008",
+      "name": "Bieu 12-N: Khoi luong hang hoa theo nam",
+      "priority": "high",
+      "slug": "bieu-12-n-khoi-luong-hang-hoa-theo-nam",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 15-T thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ],
+      "business_intent": "Chuyen vien - Bao cao Bieu 15-T: Khoi luong hang hoa trong khu quan ly",
+      "consumed_by_modules": [],
+      "description": "Khoi luong hang hoa trong khu quan ly theo Bieu 15-T, xuat PDF/Excel",
+      "flow_summary": "Hien thi bao cao Bieu 15-T thanh cong",
+      "id": "F-169",
+      "module_id": "M-008",
+      "name": "Bieu 15-T: Khoi luong hang hoa trong khu quan ly",
+      "priority": "high",
+      "slug": "bieu-15-t-khoi-luong-hang-hoa-trong-khu-quan-ly",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Tạo mới Luồng hàng hải thành công"
+      ],
+      "business_intent": "Cho phép Chuyên viên tạo mới Luồng hàng hải",
+      "consumed_by_modules": [],
+      "description": "Tạo mới Luồng hàng hải",
+      "flow_summary": "Chuyên viên tạo mới Luồng hàng hải, phải được phê duyệt",
+      "id": "F-038",
+      "module_id": "M-003",
+      "name": "Quản lý Luồng hàng hải - Tạo mới",
+      "priority": "critical",
+      "slug": "quan-ly-luong-hang-hai-tao-moi",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem chi tiết Luồng hàng hải thành công"
+      ],
+      "business_intent": "Tất cả roles xem chi tiết, văn bản đính kèm",
+      "consumed_by_modules": [],
+      "description": "Xem chi tiết Luồng hàng hải",
+      "flow_summary": "Tra cứu, xem chi tiết, văn bản đính kèm Luồng hàng hải",
+      "id": "F-042",
+      "module_id": "M-003",
+      "name": "Xem chi tiết Luồng hàng hải",
+      "priority": "critical",
+      "slug": "xem-chi-tiet-luong-hang-hai",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Đăng ký thành công",
+        "Mật khẩu mã hóa client",
+        "Server tạo salt+hash"
+      ],
+      "business_intent": "Đăng ký tài khoản (email/sĐT, mật khẩu hash)",
+      "consumed_by_modules": [],
+      "description": "Đăng ký tài khoản (email/sĐT, mật khẩu hash)",
+      "flow_summary": "Đăng ký tài khoản (email/sĐT, mật khẩu hash)",
+      "id": "F-271",
+      "module_id": "M-010",
+      "name": "Đăng ký tài khoản",
+      "priority": "high",
+      "slug": "dang-ky-tai-khoan",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xác thực JWT mới request",
+        "Auto-refresh",
+        "Auto-logout"
+      ],
+      "business_intent": "JWT, auto-refresh, auto-logout timeout",
+      "consumed_by_modules": [],
+      "description": "JWT, auto-refresh, auto-logout timeout",
+      "flow_summary": "JWT, auto-refresh, auto-logout timeout",
+      "id": "F-274",
+      "module_id": "M-010",
+      "name": "Quản lý JWT session",
+      "priority": "high",
+      "slug": "quan-ly-jwt-session",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hiển thị cảnh báo",
+        "Ngăn chặn cấu",
+        "Tự động vô hiệu hóa"
+      ],
+      "business_intent": "Giới hạn nhập sai + tự động vô hiệu hóa",
+      "consumed_by_modules": [],
+      "description": "Giới hạn nhập sai + tự động vô hiệu hóa",
+      "flow_summary": "Giới hạn nhập sai + tự động vô hiệu hóa",
+      "id": "F-277",
+      "module_id": "M-010",
+      "name": "Chính sách giới hạn đăng nhập sai",
+      "priority": "medium",
+      "slug": "chinh-sach-gioi-han-dang-nhap-sai",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 22-6T/N thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ],
+      "business_intent": "Chuyen vien - Bao cao Bieu 22-6T/N: Thong ke tau bien quoc tich VN",
+      "consumed_by_modules": [],
+      "description": "Thong ke tau bien quoc tich VN theo Bieu 22-6T/N, xuat PDF/Excel",
+      "flow_summary": "Hien thi bao cao Bieu 22-6T/N thanh cong",
+      "id": "F-171",
+      "module_id": "M-008",
+      "name": "Bieu 22-6T/N: Thong ke tau bien quoc tich VN",
+      "priority": "medium",
+      "slug": "bieu-22-6t-n-thong-ke-tau-bien-quoc-tich",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 07-N thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ],
+      "business_intent": "Chuyen vien - Bao cao Bieu 07-N: Nang luc thong qua cang bien, thuy noi dia",
+      "consumed_by_modules": [],
+      "description": "Nang luc thong qua cang bien, thuy noi dia theo Bieu 07-N, xuat PDF/Excel",
+      "flow_summary": "Hien thi bao cao Bieu 07-N thanh cong",
+      "id": "F-176",
+      "module_id": "M-008",
+      "name": "Bieu 07-N: Nang luc thong qua cang bien, thuy noi dia",
+      "priority": "medium",
+      "slug": "bieu-07-n-nang-luc-cang-bien-thuy-noi",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu Tong hop thong tin chung thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ],
+      "business_intent": "Chuyen vien - Bao cao Bieu Tong hop thong tin chung",
+      "consumed_by_modules": [],
+      "description": "Bieu Tong hop thong tin chung, xuat PDF/Excel",
+      "flow_summary": "Hien thi bao cao Bieu Tong hop thong tin chung thanh cong",
+      "id": "F-180",
+      "module_id": "M-008",
+      "name": "Bieu Tong hop thong tin chung",
+      "priority": "medium",
+      "slug": "bieu-tong-hop-thong-tin-chung",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Ghi log 5 nhóm",
+        "Hiển thị 5 trường log"
+      ],
+      "business_intent": "5 nhóm log: truy cập, đăng nhập, lỗi, tài khoản, cấu hình",
+      "consumed_by_modules": [],
+      "description": "5 nhóm log: truy cập, đăng nhập, lỗi, tài khoản, cấu hình",
+      "flow_summary": "5 nhóm log: truy cập, đăng nhập, lỗi, tài khoản, cấu hình",
+      "id": "F-278",
+      "module_id": "M-011",
+      "name": "Quản lý log truy cập",
+      "priority": "medium",
+      "slug": "quan-ly-log-truy-cap",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Sao lưu tự động thành công"
+      ],
+      "business_intent": "Auto-backup CSDL và cấu hình",
+      "consumed_by_modules": [],
+      "description": "Auto-backup CSDL và cấu hình",
+      "flow_summary": "Auto-backup CSDL và cấu hình",
+      "id": "F-280",
+      "module_id": "M-011",
+      "name": "Sao lưu CSDL tự động",
+      "priority": "high",
+      "slug": "sao-lu-c-sdl-tu-dong",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Tạo báo cáo SIEM thành công"
+      ],
+      "business_intent": "Báo cáo SIEM xuất WORD/EXCEL/PDF/HTML/XML",
+      "consumed_by_modules": [],
+      "description": "Báo cáo SIEM xuất WORD/EXCEL/PDF/HTML/XML",
+      "flow_summary": "Báo cáo SIEM xuất WORD/EXCEL/PDF/HTML/XML",
+      "id": "F-283",
+      "module_id": "M-011",
+      "name": "Báo cáo SIEM",
+      "priority": "low",
+      "slug": "bao-cao-siem",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hiển thị S-52 thành công"
+      ],
+      "business_intent": "Hiển thị hải đồ theo tiêu chuẩn S-52",
+      "consumed_by_modules": [],
+      "description": "Hiển thị hải đồ theo tiêu chuẩn S-52",
+      "flow_summary": "Hiển thị hải đồ theo tiêu chuẩn S-52",
+      "id": "F-286",
+      "module_id": "M-012",
+      "name": "Hiển thị hải đồ GIS (S-52)",
+      "priority": "high",
+      "slug": "hien-thi-hai-do-gis-s-52",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hiệu tọa GIS thành công"
+      ],
+      "business_intent": "Chuẩn hóa hiệu tọa WGS84/EPGS:4326",
+      "consumed_by_modules": [],
+      "description": "Chuẩn hóa hiệu tọa WGS84/EPGS:4326",
+      "flow_summary": "Chuẩn hóa hiệu tọa WGS84/EPGS:4326",
+      "id": "F-289",
+      "module_id": "M-012",
+      "name": "Hiệu tọa WGS84 GIS",
+      "priority": "medium",
+      "slug": "hieu-toa-wgs84-gis",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Cập nhật Đè/ken thành công"
+      ],
+      "business_intent": "Cho phép Chuyên viên cập nhật Đè/ken",
+      "consumed_by_modules": [],
+      "description": "Cập nhật Đè/ken",
+      "flow_summary": "Chuyên viên cập nhật Đè/ken, phải được phê duyệt",
+      "id": "F-045",
+      "module_id": "M-003",
+      "name": "Quản lý Đè/ken - Cập nhật",
+      "priority": "critical",
+      "slug": "quan-ly-de-ke-cap-nhat",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem lịch sử Đè/ken thành công"
+      ],
+      "business_intent": "Cho phép Chuyên viên xem lịch sử thay đổi Đè/ken",
+      "consumed_by_modules": [],
+      "description": "Xem lịch sử thay đổi Đè/ken",
+      "flow_summary": "Theo dõi lịch sử thay đổi Đè/ken",
+      "id": "F-049",
+      "module_id": "M-003",
+      "name": "Quản lý Đè/ken - Lịch sử",
+      "priority": "high",
+      "slug": "quan-ly-de-ke-lich-su",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu Tong hop thong tin bao tri KCHTGT thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ],
+      "business_intent": "Chuyen vien - Bao cao Bieu Tong hop thong tin bao tri KCHTGT",
+      "consumed_by_modules": [],
+      "description": "Bieu Tong hop thong tin bao tri KCHTGT, xuat PDF/Excel",
+      "flow_summary": "Hien thi bao cao Bieu Tong hop thong tin bao tri KCHTGT thanh cong",
+      "id": "F-182",
+      "module_id": "M-008",
+      "name": "Bieu Tong hop thong tin bao tri KCHTGT",
+      "priority": "medium",
+      "slug": "bieu-tong-hop-bao-tri-kchtgt",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu Tong hop bao tri KCHTGT - De, ke thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ],
+      "business_intent": "Chuyen vien - Bao cao Bieu Tong hop bao tri KCHTGT - De, ke",
+      "consumed_by_modules": [],
+      "description": "Bieu Tong hop bao tri KCHTGT - De, ke, xuat PDF/Excel",
+      "flow_summary": "Hien thi bao cao Bieu Tong hop bao tri KCHTGT - De, ke thanh cong",
+      "id": "F-187",
+      "module_id": "M-008",
+      "name": "Bieu Tong hop bao tri KCHTGT - De, ke",
+      "priority": "medium",
+      "slug": "bieu-tong-hop-bao-tri-kchtgt-de-ke",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Hien thi bao cao tinh hinh hoat dong bao hieu hang hai va de, ke thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ],
+      "business_intent": "Chuyen vien - Bao cao Bao cao tinh hinh hoat dong bao hieu hang hai va de, ke",
+      "consumed_by_modules": [],
+      "description": "Bao cao tinh hinh hoat dong bao hieu hang hai va de, ke, xuat PDF/Excel",
+      "flow_summary": "Hien thi bao cao tinh hinh hoat dong bao hieu hang hai va de, ke thanh cong",
+      "id": "F-189",
+      "module_id": "M-008",
+      "name": "Bao cao tinh hinh hoat dong bao hieu hang hai va de, ke",
+      "priority": "medium",
+      "slug": "bao-cao-tinh-hinh-hoat-dong-bao-hieu",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem chi tiết Cơ sở sửa chữa, đồng tàu thành công"
+      ],
+      "business_intent": "Tất cả roles xem chi tiết, văn bản đính kèm",
+      "consumed_by_modules": [],
+      "description": "Xem chi tiết Cơ sở sửa chữa, đồng tàu",
+      "flow_summary": "Tra cứu, xem chi tiết, văn bản đính kèm Cơ sở sửa chữa, đồng tàu",
+      "id": "F-054",
+      "module_id": "M-003",
+      "name": "Xem chi tiết Cơ sở sửa chữa, đồng tàu",
+      "priority": "critical",
+      "slug": "xem-chi-tiet-co-so-sua-chua-dong-tau",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem lịch sử Cơ sở sửa chữa, đồng tàu thành công"
+      ],
+      "business_intent": "Cho phép Chuyên viên xem lịch sử thay đổi Cơ sở sửa chữa, đồng tàu",
+      "consumed_by_modules": [],
+      "description": "Xem lịch sử thay đổi Cơ sở sửa chữa, đồng tàu",
+      "flow_summary": "Theo dõi lịch sử thay đổi Cơ sở sửa chữa, đồng tàu",
+      "id": "F-055",
+      "module_id": "M-003",
+      "name": "Quản lý Cơ sở sửa chữa, đồng tàu - Lịch sử",
+      "priority": "high",
+      "slug": "quan-ly-co-so-sua-chua-dong-tau-lich-su",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xóa Trạm radar thành công"
+      ],
+      "business_intent": "Cho phép Chuyên viên xóa Trạm radar",
+      "consumed_by_modules": [],
+      "description": "Xóa Trạm radar",
+      "flow_summary": "Xóa Trạm radar chỉ với dữ liệu đã được phê duyệt",
+      "id": "F-058",
+      "module_id": "M-003",
+      "name": "Quản lý Trạm radar - Xóa",
+      "priority": "high",
+      "slug": "quan-ly-tram-radar-xoa",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem lịch sử Trạm radar thành công"
+      ],
+      "business_intent": "Cho phép Chuyên viên xem lịch sử thay đổi Trạm radar",
+      "consumed_by_modules": [],
+      "description": "Xem lịch sử thay đổi Trạm radar",
+      "flow_summary": "Theo dõi lịch sử thay đổi Trạm radar",
+      "id": "F-061",
+      "module_id": "M-003",
+      "name": "Quản lý Trạm radar - Lịch sử",
+      "priority": "high",
+      "slug": "quan-ly-tram-radar-lich-su",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xóa Hệ thống VTS thành công"
+      ],
+      "business_intent": "Cho phép Chuyên viên xóa Hệ thống VTS",
+      "consumed_by_modules": [],
+      "description": "Xóa Hệ thống VTS",
+      "flow_summary": "Xóa Hệ thống VTS chỉ với dữ liệu đã được phê duyệt",
+      "id": "F-064",
+      "module_id": "M-003",
+      "name": "Quản lý Hệ thống VTS - Xóa",
+      "priority": "high",
+      "slug": "quan-ly-he-thong-vts-xoa",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem lịch sử Hệ thống VTS thành công"
+      ],
+      "business_intent": "Cho phép Chuyên viên xem lịch sử thay đổi Hệ thống VTS",
+      "consumed_by_modules": [],
+      "description": "Xem lịch sử thay đổi Hệ thống VTS",
+      "flow_summary": "Theo dõi lịch sử thay đổi Hệ thống VTS",
+      "id": "F-067",
+      "module_id": "M-003",
+      "name": "Quản lý Hệ thống VTS - Lịch sử",
+      "priority": "high",
+      "slug": "quan-ly-he-thong-vts-lich-su",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Tạo mới Đèn biển thành công"
+      ],
+      "business_intent": "Cho phép Chuyên viên tạo mới Đèn biển",
+      "consumed_by_modules": [],
+      "description": "Tạo mới Đèn biển",
+      "flow_summary": "Chuyên viên tạo mới Đèn biển, phải được phê duyệt",
+      "id": "F-068",
+      "module_id": "M-004",
+      "name": "Quản lý Đèn biển - Tạo mới",
+      "priority": "critical",
+      "slug": "ql-dn-tao-moi",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Phê duyệt Đèn biển thành công"
+      ],
+      "business_intent": "Cho phép Lãnh đạo phê duyệt Đèn biển",
+      "consumed_by_modules": [],
+      "description": "Phê duyệt Đèn biển",
+      "flow_summary": "Phê duyệt Đèn biển theo 2 cấp: phòng -> Cục",
+      "id": "F-071",
+      "module_id": "M-004",
+      "name": "Phê duyệt Đèn biển",
+      "priority": "critical",
+      "slug": "phe-duyet-dn",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem lịch sử Đèn biển thành công"
+      ],
+      "business_intent": "Cho phép Chuyên viên xem lịch sử thay đổi Đèn biển",
+      "consumed_by_modules": [],
+      "description": "Xem lịch sử thay đổi Đèn biển",
+      "flow_summary": "Theo dõi lịch sử thay đổi Đèn biển",
+      "id": "F-073",
+      "module_id": "M-004",
+      "name": "Quản lý Đèn biển - Lịch sử",
+      "priority": "high",
+      "slug": "ql-dn-lich-su",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Tạo mới Phao tiêu thành công"
+      ],
+      "business_intent": "Cho phép Chuyên viên tạo mới Phao tiêu",
+      "consumed_by_modules": [],
+      "description": "Tạo mới Phao tiêu",
+      "flow_summary": "Chuyên viên tạo mới Phao tiêu, phải được phê duyệt",
+      "id": "F-074",
+      "module_id": "M-004",
+      "name": "Quản lý Phao tiêu - Tạo mới",
+      "priority": "critical",
+      "slug": "ql-pt-tao-moi",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem chi tiết Phao tiêu thành công"
+      ],
+      "business_intent": "Tất cả roles xem chi tiết, văn bản đính kèm",
+      "consumed_by_modules": [],
+      "description": "Xem chi tiết Phao tiêu",
+      "flow_summary": "Tra cứu, xem chi tiết, văn bản đính kèm Phao tiêu",
+      "id": "F-078",
+      "module_id": "M-004",
+      "name": "Xem chi tiết Phao tiêu",
+      "priority": "critical",
+      "slug": "xem-pt",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Tạo mới Nhà trạm phao thành công"
+      ],
+      "business_intent": "Cho phép Chuyên viên tạo mới Nhà trạm phao",
+      "consumed_by_modules": [],
+      "description": "Tạo mới Nhà trạm phao",
+      "flow_summary": "Chuyên viên tạo mới Nhà trạm phao, phải được phê duyệt",
+      "id": "F-080",
+      "module_id": "M-004",
+      "name": "Quản lý Nhà trạm phao - Tạo mới",
+      "priority": "critical",
+      "slug": "ql-ntph-tao-moi",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem chi tiết Nhà trạm phao thành công"
+      ],
+      "business_intent": "Tất cả roles xem chi tiết, văn bản đính kèm",
+      "consumed_by_modules": [],
+      "description": "Xem chi tiết Nhà trạm phao",
+      "flow_summary": "Tra cứu, xem chi tiết, văn bản đính kèm Nhà trạm phao",
+      "id": "F-084",
+      "module_id": "M-004",
+      "name": "Xem chi tiết Nhà trạm phao",
+      "priority": "critical",
+      "slug": "xem-ntph",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Tạo mới Nhà trạm đèn thành công"
+      ],
+      "business_intent": "Cho phép Chuyên viên tạo mới Nhà trạm đèn",
+      "consumed_by_modules": [],
+      "description": "Tạo mới Nhà trạm đèn",
+      "flow_summary": "Chuyên viên tạo mới Nhà trạm đèn, phải được phê duyệt",
+      "id": "F-086",
+      "module_id": "M-004",
+      "name": "Quản lý Nhà trạm đèn - Tạo mới",
+      "priority": "critical",
+      "slug": "ql-ntd-tao-moi",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Phê duyệt Nhà trạm đèn thành công"
+      ],
+      "business_intent": "Cho phép Lãnh đạo phê duyệt Nhà trạm đèn",
+      "consumed_by_modules": [],
+      "description": "Phê duyệt Nhà trạm đèn",
+      "flow_summary": "Phê duyệt Nhà trạm đèn theo 2 cấp: phòng -> Cục",
+      "id": "F-089",
+      "module_id": "M-004",
+      "name": "Phê duyệt Nhà trạm đèn",
+      "priority": "critical",
+      "slug": "phe-duyet-ntd",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xóa Đài TTDH thành công"
+      ],
+      "business_intent": "Cho phép Chuyên viên xóa Đài TTDH",
+      "consumed_by_modules": [],
+      "description": "Xóa Đài TTDH",
+      "flow_summary": "Xóa Đài TTDH chỉ với dữ liệu đã được phê duyệt",
+      "id": "F-094",
+      "module_id": "M-004",
+      "name": "Quản lý Đài TTDH - Xóa",
+      "priority": "high",
+      "slug": "ql-dtdh-xoa",
+      "status": "proposed"
+    },
+    {
+      "consumed_by_modules": [],
+      "description": "Chia se thong tin KCHTGT Ben cang qua Truc LGSP",
+      "id": "F-190",
+      "module_id": "M-009",
+      "name": "Chia se: KCHTGT Ben cang",
+      "priority": "critical",
+      "slug": "chia-se-kchtgt-ben-cang",
+      "status": "proposed"
+    },
+    {
+      "consumed_by_modules": [],
+      "description": "Chia se thong tin KCHTGT Co so sua chua qua Truc LGSP",
+      "id": "F-196",
+      "module_id": "M-009",
+      "name": "Chia se: KCHTGT Co so sua chua",
+      "priority": "critical",
+      "slug": "chia-se-kchtgt-co-so-sua-chua",
+      "status": "proposed"
+    },
+    {
+      "consumed_by_modules": [],
+      "description": "Chia se thong tin KCHTGT He thong VTS qua Truc LGSP",
+      "id": "F-199",
+      "module_id": "M-009",
+      "name": "Chia se: KCHTGT He thong VTS",
+      "priority": "critical",
+      "slug": "chia-se-kchtgt-he-thong-vts",
+      "status": "proposed"
+    },
+    {
+      "consumed_by_modules": [],
+      "description": "Chia se thong tin KCHTGT Khu tranh tru bao qua Truc LGSP",
+      "id": "F-193",
+      "module_id": "M-009",
+      "name": "Chia se: KCHTGT Khu tranh tru bao",
+      "priority": "critical",
+      "slug": "chia-se-kchtgt-khu-tranh-tru-bao",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Cap nhat Tram radar thanh cong"
+      ],
+      "business_intent": "Cho phep Chuyen vien cap nhat thong tin tram radar, thay doi duoc duyet 2 cap",
+      "consumed_by_modules": [],
+      "description": "Chuyen vien cap nhat tram radar da co",
+      "flow_summary": "Chuyen vien chon tram -> cap nhat -> luu -> gui duyet -> phe duyet 2 cap -> cap nhat hien thuc",
+      "id": "F-057",
+      "module_id": "M-003",
+      "name": "Quan ly Tram radar - Cap nhat",
+      "priority": "high",
+      "slug": "quan-ly-tram-radar-cap-nhat",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Cap nhat He thong VTS thanh cong"
+      ],
+      "business_intent": "Cho phep Chuyen vien cap nhat thong tin he thong VTS, thay doi duoc duyet 2 cap",
+      "consumed_by_modules": [],
+      "description": "Chuyen vien cap nhat he thong VTS da co",
+      "flow_summary": "Chuyen vien chon VTS -> cap nhat -> luu -> gui duyet -> phe duyet 2 cap -> cap nhat hien thuc",
+      "id": "F-063",
+      "module_id": "M-003",
+      "name": "Quan ly He thong VTS - Cap nhat",
+      "priority": "high",
+      "slug": "quan-ly-he-thong-vts-cap-nhat",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem chi tiet He thong VTS thanh cong"
+      ],
+      "business_intent": "Cho phep tat ca roles xem chi tiet he thong VTS, tra cuu",
+      "consumed_by_modules": [],
+      "description": "Tat ca roles xem chi tiet he thong VTS",
+      "flow_summary": "Chuyen vien tim VTS -> chon -> xem chi tiet -> van ban dinh kem",
+      "id": "F-066",
+      "module_id": "M-003",
+      "name": "Xem chi tiet He thong VTS",
+      "priority": "high",
+      "slug": "xem-chi-tiet-he-thong-vts",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Tao moi Co so sua chua, dong tau thanh cong"
+      ],
+      "business_intent": "Cho phep Chuyen vien tao moi co so sua chua, dong tau moi, du lieu duoc cap phe duyet 2 cap",
+      "consumed_by_modules": [],
+      "description": "Chuyen vien tao moi co so sua chua, dong tau moi vao he thong",
+      "flow_summary": "Chuyen vien nhap du lieu co so -> luu nhap -> gui duyet -> phe duyet 2 cap -> co so hoat dong",
+      "id": "F-050",
+      "module_id": "M-003",
+      "name": "Quan ly Co so sua chua, dong tau - Tao moi",
+      "priority": "high",
+      "slug": "quan-ly-co-so-sua-chua-dong-tau-tao-moi",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Phe duyet Co so sua chua, dong tau thanh cong"
+      ],
+      "business_intent": "Quan ly quy trinh duyet 2 cap cho co so sua chua, dong tau",
+      "consumed_by_modules": [],
+      "description": "Lanh dao phe duyet co so sua chua 2 cap phong->Cuc",
+      "flow_summary": "Chuyen vien gui co so de duyet -> Truong phong -> Truoc Cuc -> phe duyet/tu choi -> hoan thanh",
+      "id": "F-053",
+      "module_id": "M-003",
+      "name": "Phe duyet Co so sua chua, dong tau",
+      "priority": "high",
+      "slug": "phe-duyet-co-so-sua-chua-dong-tau",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Tao moi Tram radar thanh cong"
+      ],
+      "business_intent": "Cho phep Chuyen vien tao moi tram radar moi, du lieu duoc cap phe duyet 2 cap",
+      "consumed_by_modules": [],
+      "description": "Chuyen vien tao moi tram radar moi vao he thong",
+      "flow_summary": "Chuyen vien nhap du lieu tram radar -> luu nhap -> gui duyet -> phe duyet 2 cap -> tram hoat dong",
+      "id": "F-056",
+      "module_id": "M-003",
+      "name": "Quan ly Tram radar - Tao moi",
+      "priority": "high",
+      "slug": "quan-ly-tram-radar-tao-moi",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xoa Co so sua chua, dong tau thanh cong"
+      ],
+      "business_intent": "Cho phep xoa co so sua chua khong con su dung sau khi da duoc phe duyet",
+      "consumed_by_modules": [],
+      "description": "Xoa co so sua chua da duoc phe duyet",
+      "flow_summary": "Chuyen vien chon co so -> nut xoa -> hoiac nhan -> kiem tra da duoc phe duyet -> xoa thanh cong",
+      "id": "F-052",
+      "module_id": "M-003",
+      "name": "Quan ly Co so sua chua, dong tau - Xoa",
+      "priority": "medium",
+      "slug": "quan-ly-co-so-sua-chua-dong-tau-xoa",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Cap nhat Co so sua chua, dong tau thanh cong"
+      ],
+      "business_intent": "Cho phep Chuyen vien cap nhat thong tin co so sua chua, dong tau, thay doi duoc duyet 2 cap",
+      "consumed_by_modules": [],
+      "description": "Chuyen vien cap nhat co so sua chua, dong tau da co",
+      "flow_summary": "Chuyen vien chon co so -> cap nhat -> luu -> gui duyet -> phe duyet 2 cap -> cap nhat hien thuc",
+      "id": "F-051",
+      "module_id": "M-003",
+      "name": "Quan ly Co so sua chua, dong tau - Cap nhat",
+      "priority": "high",
+      "slug": "quan-ly-co-so-sua-chua-dong-tau-cap-nhat",
+      "status": "proposed"
+    },
+    {
+      "acceptance_criteria": [
+        "Xem chi tiet Tram radar thanh cong"
+      ],
+      "business_intent": "Cho phep tat ca roles xem chi tiet tram radar, tra cuu",
+      "consumed_by_modules": [],
+      "description": "Tat ca roles xem chi tiet tram radar",
+      "flow_summary": "Chuyen vien tim tram -> chon -> xem chi tiet -> van ban dinh kem",
+      "id": "F-060",
+      "module_id": "M-003",
+      "name": "Xem chi tiet Tram radar",
+      "priority": "high",
+      "slug": "xem-chi-tiet-tram-radar",
+      "status": "proposed"
+    }
+  ],
+  "multi_role": false,
+  "roles": [],
+  "schema_version": "1.0",
+  "services": []
+}

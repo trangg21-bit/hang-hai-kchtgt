@@ -1,0 +1,9 @@
+feature_id: F-210
+module_id: M-008
+slug: bao-cao-chieu-sau-nuoc-o-cang-bien
+
+implementations:
+  primary: ""
+  consumers: []
+
+consumed_by_modules: []

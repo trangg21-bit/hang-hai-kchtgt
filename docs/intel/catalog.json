@@ -1,0 +1,4979 @@
+{
+  "version": "v2",
+  "generated_at": "2026-06-16T09:58:33Z",
+  "generator": "ai-kit/state-update-rebuild-catalog",
+  "modules": {
+    "M-001": {
+      "id": "M-001",
+      "name": "Quản trị hệ thống",
+      "slug": "quan-tri-he-thong",
+      "status": "in-progress",
+      "version": 1,
+      "feature_count": 7,
+      "aggregate_size_status": "green",
+      "depends_on": [],
+      "path": "docs/modules/M-001-quan-tri-he-thong/",
+      "features": {
+        "F-001": {
+          "id": "F-001",
+          "name": "Quan ly tai khoan nguoi dung",
+          "slug": "quan-ly-tai-khoan-nguoi-dung",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-001-quan-ly-tai-khoan-nguoi-dung/",
+          "confidence": "high"
+        },
+        "F-002": {
+          "id": "F-002",
+          "name": "Quan ly nhom nguoi dung",
+          "slug": "quan-ly-nhom-nguoi-dung",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-002-quan-ly-nhom-nguoi-dung/",
+          "confidence": "high"
+        },
+        "F-003": {
+          "id": "F-003",
+          "name": "Quan ly don vi",
+          "slug": "quan-ly-don-vi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/",
+          "confidence": "high"
+        },
+        "F-004": {
+          "id": "F-004",
+          "name": "Quan ly tai khoan admin",
+          "slug": "quan-ly-tai-khoan-admin",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-004-quan-ly-tai-khoan-admin/",
+          "confidence": "high"
+        },
+        "F-005": {
+          "id": "F-005",
+          "name": "Quan ly log truy cap",
+          "slug": "quan-ly-log-truy-cap",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-005-quan-ly-log-truy-cap/",
+          "confidence": "high"
+        },
+        "F-006": {
+          "id": "F-006",
+          "name": "Quan ly bieu tuong ban do",
+          "slug": "quan-ly-bieu-tuong-ban-do",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-006-quan-ly-bieu-tuong-ban-do/",
+          "confidence": "high"
+        },
+        "F-007": {
+          "id": "F-007",
+          "name": "Quan ly ket noi lien thong chia du lieu",
+          "slug": "quan-ly-ket-noi-lien-thong-chia-du-lieu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-007-quan-ly-ket-noi-lien-thong-chia-du-lieu/",
+          "confidence": "high"
+        }
+      }
+    },
+    "M-002": {
+      "id": "M-002",
+      "name": "Quản lý tài sản KCHTGT - Cảng & Bến",
+      "slug": "quan-ly-tai-san-kchtgt-cang-ben",
+      "status": "in-progress",
+      "version": 1,
+      "feature_count": 30,
+      "aggregate_size_status": "yellow",
+      "depends_on": [],
+      "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/",
+      "features": {
+        "F-008": {
+          "id": "F-008",
+          "name": "Quản lý Cảng biển - Tạo mới",
+          "slug": "ql-cb-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-008-ql-cb-tao-moi/",
+          "confidence": "high"
+        },
+        "F-009": {
+          "id": "F-009",
+          "name": "Quản lý Cảng biển - Cập nhật",
+          "slug": "ql-cb-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-009-ql-cb-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-010": {
+          "id": "F-010",
+          "name": "Quản lý Cảng biển - Xóa",
+          "slug": "ql-cb-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-010-ql-cb-xoa/",
+          "confidence": "high"
+        },
+        "F-011": {
+          "id": "F-011",
+          "name": "Phê duyệt Cảng biển",
+          "slug": "phe-duyet-cb",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-011-phe-duyet-cb/",
+          "confidence": "high"
+        },
+        "F-012": {
+          "id": "F-012",
+          "name": "Xem chi tiết Cảng biển",
+          "slug": "xem-cb",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-012-xem-cb/",
+          "confidence": "high"
+        },
+        "F-013": {
+          "id": "F-013",
+          "name": "Quản lý Cảng biển - Lịch sử",
+          "slug": "ql-cb-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-013-ql-cb-lich-su/",
+          "confidence": "high"
+        },
+        "F-014": {
+          "id": "F-014",
+          "name": "Quản lý Bến cảng - Tạo mới",
+          "slug": "ql-bc-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-014-ql-bc-tao-moi/",
+          "confidence": "high"
+        },
+        "F-015": {
+          "id": "F-015",
+          "name": "Quản lý Bến cảng - Cập nhật",
+          "slug": "ql-bc-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-015-ql-bc-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-016": {
+          "id": "F-016",
+          "name": "Quản lý Bến cảng - Xóa",
+          "slug": "ql-bc-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-016-ql-bc-xoa/",
+          "confidence": "high"
+        },
+        "F-017": {
+          "id": "F-017",
+          "name": "Phê duyệt Bến cảng",
+          "slug": "phe-duyet-bc",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-017-phe-duyet-bc/",
+          "confidence": "high"
+        },
+        "F-018": {
+          "id": "F-018",
+          "name": "Xem chi tiết Bến cảng",
+          "slug": "xem-bc",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-018-xem-bc/",
+          "confidence": "high"
+        },
+        "F-019": {
+          "id": "F-019",
+          "name": "Quản lý Bến cảng - Lịch sử",
+          "slug": "ql-bc-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-019-ql-bc-lich-su/",
+          "confidence": "high"
+        },
+        "F-020": {
+          "id": "F-020",
+          "name": "Quản lý Cầu cảng - Tạo mới",
+          "slug": "ql-cc-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-020-ql-cc-tao-moi/",
+          "confidence": "high"
+        },
+        "F-021": {
+          "id": "F-021",
+          "name": "Quản lý Cầu cảng - Cập nhật",
+          "slug": "ql-cc-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-021-ql-cc-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-022": {
+          "id": "F-022",
+          "name": "Quản lý Cầu cảng - Xóa",
+          "slug": "ql-cc-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-022-ql-cc-xoa/",
+          "confidence": "high"
+        },
+        "F-023": {
+          "id": "F-023",
+          "name": "Phê duyệt Cầu cảng",
+          "slug": "phe-duyet-cc",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-023-phe-duyet-cc/",
+          "confidence": "high"
+        },
+        "F-024": {
+          "id": "F-024",
+          "name": "Xem chi tiết Cầu cảng",
+          "slug": "xem-cc",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-024-xem-cc/",
+          "confidence": "high"
+        },
+        "F-025": {
+          "id": "F-025",
+          "name": "Quản lý Cầu cảng - Lịch sử",
+          "slug": "ql-cc-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-025-ql-cc-lich-su/",
+          "confidence": "high"
+        },
+        "F-026": {
+          "id": "F-026",
+          "name": "Quản lý Cảng cạn - Tạo mới",
+          "slug": "ql-cct-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-026-ql-cct-tao-moi/",
+          "confidence": "high"
+        },
+        "F-027": {
+          "id": "F-027",
+          "name": "Quản lý Cảng cạn - Cập nhật",
+          "slug": "ql-cct-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-027-ql-cct-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-028": {
+          "id": "F-028",
+          "name": "Quản lý Cảng cạn - Xóa",
+          "slug": "ql-cct-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-028-ql-cct-xoa/",
+          "confidence": "high"
+        },
+        "F-029": {
+          "id": "F-029",
+          "name": "Phê duyệt Cảng cạn",
+          "slug": "phe-duyet-cct",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-029-phe-duyet-cct/",
+          "confidence": "high"
+        },
+        "F-030": {
+          "id": "F-030",
+          "name": "Xem chi tiết Cảng cạn",
+          "slug": "xem-cct",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-030-xem-cct/",
+          "confidence": "high"
+        },
+        "F-031": {
+          "id": "F-031",
+          "name": "Quản lý Cảng cạn - Lịch sử",
+          "slug": "ql-cct-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-031-ql-cct-lich-su/",
+          "confidence": "high"
+        },
+        "F-032": {
+          "id": "F-032",
+          "name": "Quản lý Vùng nước - Tạo mới",
+          "slug": "ql-vn-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-032-ql-vn-tao-moi/",
+          "confidence": "high"
+        },
+        "F-033": {
+          "id": "F-033",
+          "name": "Quản lý Vùng nước - Cập nhật",
+          "slug": "ql-vn-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-033-ql-vn-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-034": {
+          "id": "F-034",
+          "name": "Quản lý Vùng nước - Xóa",
+          "slug": "ql-vn-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-034-ql-vn-xoa/",
+          "confidence": "high"
+        },
+        "F-035": {
+          "id": "F-035",
+          "name": "Phê duyệt Vùng nước",
+          "slug": "phe-duyet-vn",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-035-phe-duyet-vn/",
+          "confidence": "high"
+        },
+        "F-036": {
+          "id": "F-036",
+          "name": "Xem chi tiết Vùng nước",
+          "slug": "xem-vn",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-036-xem-vn/",
+          "confidence": "high"
+        },
+        "F-037": {
+          "id": "F-037",
+          "name": "Quản lý Vùng nước - Lịch sử",
+          "slug": "ql-vn-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-037-ql-vn-lich-su/",
+          "confidence": "high"
+        }
+      }
+    },
+    "M-003": {
+      "id": "M-003",
+      "name": "Quản lý tài sản KCHTGT - Khu nước & VTS",
+      "slug": "quan-ly-tai-san-kchtgt-khu-nuoc-vts",
+      "status": "in-progress",
+      "version": 1,
+      "feature_count": 30,
+      "aggregate_size_status": "yellow",
+      "depends_on": [],
+      "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/",
+      "features": {
+        "F-038": {
+          "id": "F-038",
+          "name": "Quan ly Luong hang hai - Tao moi",
+          "slug": "quan-ly-luong-hang-hai-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-038-quan-ly-luong-hang-hai-tao-moi/",
+          "confidence": "high"
+        },
+        "F-039": {
+          "id": "F-039",
+          "name": "Quan ly Luong hang hai - Cap nhat",
+          "slug": "quan-ly-luong-hang-hai-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-039-quan-ly-luong-hang-hai-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-040": {
+          "id": "F-040",
+          "name": "Quan ly Luong hang hai - Xoa",
+          "slug": "quan-ly-luong-hang-hai-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-040-quan-ly-luong-hang-hai-xoa/",
+          "confidence": "high"
+        },
+        "F-041": {
+          "id": "F-041",
+          "name": "Phe duyet Luong hang hai",
+          "slug": "phe-duyet-luong-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-041-phe-duyet-luong-hang-hai/",
+          "confidence": "high"
+        },
+        "F-042": {
+          "id": "F-042",
+          "name": "Xem chi tiet Luong hang hai",
+          "slug": "xem-chi-tiet-luong-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-042-xem-chi-tiet-luong-hang-hai/",
+          "confidence": "high"
+        },
+        "F-043": {
+          "id": "F-043",
+          "name": "Quan ly Luong hang hai - Lich su",
+          "slug": "quan-ly-luong-hang-hai-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-043-quan-ly-luong-hang-hai-lich-su/",
+          "confidence": "high"
+        },
+        "F-044": {
+          "id": "F-044",
+          "name": "Quan ly De/ke - Tao moi",
+          "slug": "quan-ly-de-ke-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-044-quan-ly-de-ke-tao-moi/",
+          "confidence": "high"
+        },
+        "F-045": {
+          "id": "F-045",
+          "name": "Quan ly De/ke - Cap nhat",
+          "slug": "quan-ly-de-ke-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-045-quan-ly-de-ke-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-046": {
+          "id": "F-046",
+          "name": "Quan ly De/ke - Xoa",
+          "slug": "quan-ly-de-ke-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-046-quan-ly-de-ke-xoa/",
+          "confidence": "high"
+        },
+        "F-047": {
+          "id": "F-047",
+          "name": "Phe duyet De/ke",
+          "slug": "phe-duyet-de-ke",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-047-phe-duyet-de-ke/",
+          "confidence": "high"
+        },
+        "F-048": {
+          "id": "F-048",
+          "name": "Xem chi tiet De/ke",
+          "slug": "xem-chi-tiet-de-ke",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-048-xem-chi-tiet-de-ke/",
+          "confidence": "high"
+        },
+        "F-049": {
+          "id": "F-049",
+          "name": "Quan ly De/ke - Lich su",
+          "slug": "quan-ly-de-ke-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-049-quan-ly-de-ke-lich-su/",
+          "confidence": "high"
+        },
+        "F-050": {
+          "id": "F-050",
+          "name": "Quan ly Co so sua chua, dong tau - Tao moi",
+          "slug": "quan-ly-co-so-sua-chua-dong-tau-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-050-quan-ly-co-so-sua-chua-dong-tau-tao-moi/",
+          "confidence": "high"
+        },
+        "F-051": {
+          "id": "F-051",
+          "name": "Quan ly Co so sua chua, dong tau - Cap nhat",
+          "slug": "quan-ly-co-so-sua-chua-dong-tau-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-051-quan-ly-co-so-sua-chua-dong-tau-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-052": {
+          "id": "F-052",
+          "name": "Quan ly Co so sua chua, dong tau - Xoa",
+          "slug": "quan-ly-co-so-sua-chua-dong-tau-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-052-quan-ly-co-so-sua-chua-dong-tau-xoa/",
+          "confidence": "high"
+        },
+        "F-053": {
+          "id": "F-053",
+          "name": "Phe duyet Co so sua chua, dong tau",
+          "slug": "phe-duyet-co-so-sua-chua-dong-tau",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-053-phe-duyet-co-so-sua-chua-dong-tau/",
+          "confidence": "high"
+        },
+        "F-054": {
+          "id": "F-054",
+          "name": "Xem chi tiet Co so sua chua, dong tau",
+          "slug": "xem-chi-tiet-co-so-sua-chua-dong-tau",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-054-xem-chi-tiet-co-so-sua-chua-dong-tau/",
+          "confidence": "high"
+        },
+        "F-055": {
+          "id": "F-055",
+          "name": "Quan ly Co so sua chua, dong tau - Lich su",
+          "slug": "quan-ly-co-so-sua-chua-dong-tau-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-055-quan-ly-co-so-sua-chua-dong-tau-lich-su/",
+          "confidence": "high"
+        },
+        "F-056": {
+          "id": "F-056",
+          "name": "Quan ly Tram radar - Tao moi",
+          "slug": "quan-ly-tram-radar-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-056-quan-ly-tram-radar-tao-moi/",
+          "confidence": "high"
+        },
+        "F-057": {
+          "id": "F-057",
+          "name": "Quan ly Tram radar - Cap nhat",
+          "slug": "quan-ly-tram-radar-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-057-quan-ly-tram-radar-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-058": {
+          "id": "F-058",
+          "name": "Quan ly Tram radar - Xoa",
+          "slug": "quan-ly-tram-radar-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-058-quan-ly-tram-radar-xoa/",
+          "confidence": "high"
+        },
+        "F-059": {
+          "id": "F-059",
+          "name": "Phe duyet Tram radar",
+          "slug": "phe-duyet-tram-radar",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-059-phe-duyet-tram-radar/",
+          "confidence": "high"
+        },
+        "F-060": {
+          "id": "F-060",
+          "name": "Xem chi tiet Tram radar",
+          "slug": "xem-chi-tiet-tram-radar",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-060-xem-chi-tiet-tram-radar/",
+          "confidence": "high"
+        },
+        "F-061": {
+          "id": "F-061",
+          "name": "Quan ly Tram radar - Lich su",
+          "slug": "quan-ly-tram-radar-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-061-quan-ly-tram-radar-lich-su/",
+          "confidence": "high"
+        },
+        "F-062": {
+          "id": "F-062",
+          "name": "Quan ly He thong VTS - Tao moi",
+          "slug": "quan-ly-he-thong-vts-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-062-quan-ly-he-thong-vts-tao-moi/",
+          "confidence": "high"
+        },
+        "F-063": {
+          "id": "F-063",
+          "name": "Quan ly He thong VTS - Cap nhat",
+          "slug": "quan-ly-he-thong-vts-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-063-quan-ly-he-thong-vts-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-064": {
+          "id": "F-064",
+          "name": "Quan ly He thong VTS - Xoa",
+          "slug": "quan-ly-he-thong-vts-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-064-quan-ly-he-thong-vts-xoa/",
+          "confidence": "high"
+        },
+        "F-065": {
+          "id": "F-065",
+          "name": "Phe duyet He thong VTS",
+          "slug": "phe-duyet-he-thong-vts",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-065-phe-duyet-he-thong-vts/",
+          "confidence": "high"
+        },
+        "F-066": {
+          "id": "F-066",
+          "name": "Xem chi tiet He thong VTS",
+          "slug": "xem-chi-tiet-he-thong-vts",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-066-xem-chi-tiet-he-thong-vts/",
+          "confidence": "high"
+        },
+        "F-067": {
+          "id": "F-067",
+          "name": "Quan ly He thong VTS - Lich su",
+          "slug": "quan-ly-he-thong-vts-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/_features/F-067-quan-ly-he-thong-vts-lich-su/",
+          "confidence": "high"
+        }
+      }
+    },
+    "M-004": {
+      "id": "M-004",
+      "name": "Quản lý tài sản Báo hiệu & Thông tin",
+      "slug": "quan-ly-tai-san-bao-hieu-thong-tin",
+      "status": "in-progress",
+      "version": 1,
+      "feature_count": 54,
+      "aggregate_size_status": "red",
+      "depends_on": [],
+      "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/",
+      "features": {
+        "F-068": {
+          "id": "F-068",
+          "name": "Quan ly Den bien - Tao moi",
+          "slug": "quan-ly-den-bien-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-068-quan-ly-den-bien-tao-moi/",
+          "confidence": "high"
+        },
+        "F-069": {
+          "id": "F-069",
+          "name": "Quan ly Den bien - Cap nhat",
+          "slug": "quan-ly-den-bien-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-069-quan-ly-den-bien-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-070": {
+          "id": "F-070",
+          "name": "Quan ly Den bien - Xoa",
+          "slug": "quan-ly-den-bien-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-070-quan-ly-den-bien-xoa/",
+          "confidence": "high"
+        },
+        "F-071": {
+          "id": "F-071",
+          "name": "Phe duyet Den bien",
+          "slug": "phe-duyet-den-bien",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-071-phe-duyet-den-bien/",
+          "confidence": "high"
+        },
+        "F-072": {
+          "id": "F-072",
+          "name": "Xem chi tiet Den bien",
+          "slug": "xem-chi-tiet-den-bien",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-072-xem-chi-tiet-den-bien/",
+          "confidence": "high"
+        },
+        "F-073": {
+          "id": "F-073",
+          "name": "Quan ly Den bien - Lich su",
+          "slug": "quan-ly-den-bien-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-073-quan-ly-den-bien-lich-su/",
+          "confidence": "high"
+        },
+        "F-074": {
+          "id": "F-074",
+          "name": "Quan ly Phao tieu - Tao moi",
+          "slug": "quan-ly-phao-tieu-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-074-quan-ly-phao-tieu-tao-moi/",
+          "confidence": "high"
+        },
+        "F-075": {
+          "id": "F-075",
+          "name": "Quan ly Phao tieu - Cap nhat",
+          "slug": "quan-ly-phao-tieu-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-075-quan-ly-phao-tieu-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-076": {
+          "id": "F-076",
+          "name": "Quan ly Phao tieu - Xoa",
+          "slug": "quan-ly-phao-tieu-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-076-quan-ly-phao-tieu-xoa/",
+          "confidence": "high"
+        },
+        "F-077": {
+          "id": "F-077",
+          "name": "Phe duyet Phao tieu",
+          "slug": "phe-duyet-phao-tieu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-077-phe-duyet-phao-tieu/",
+          "confidence": "high"
+        },
+        "F-078": {
+          "id": "F-078",
+          "name": "Xem chi tiet Phao tieu",
+          "slug": "xem-chi-tiet-phao-tieu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-078-xem-chi-tiet-phao-tieu/",
+          "confidence": "high"
+        },
+        "F-079": {
+          "id": "F-079",
+          "name": "Quan ly Phao tieu - Lich su",
+          "slug": "quan-ly-phao-tieu-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-079-quan-ly-phao-tieu-lich-su/",
+          "confidence": "high"
+        },
+        "F-080": {
+          "id": "F-080",
+          "name": "Quan ly Nha tram phao - Tao moi",
+          "slug": "quan-ly-nha-tram-phao-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-080-quan-ly-nha-tram-phao-tao-moi/",
+          "confidence": "high"
+        },
+        "F-081": {
+          "id": "F-081",
+          "name": "Quan ly Nha tram phao - Cap nhat",
+          "slug": "quan-ly-nha-tram-phao-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-081-quan-ly-nha-tram-phao-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-082": {
+          "id": "F-082",
+          "name": "Quan ly Nha tram phao - Xoa",
+          "slug": "quan-ly-nha-tram-phao-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-082-quan-ly-nha-tram-phao-xoa/",
+          "confidence": "high"
+        },
+        "F-083": {
+          "id": "F-083",
+          "name": "Phe duyet Nha tram phao",
+          "slug": "phe-duyet-nha-tram-phao",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-083-phe-duyet-nha-tram-phao/",
+          "confidence": "high"
+        },
+        "F-084": {
+          "id": "F-084",
+          "name": "Xem chi tiet Nha tram phao",
+          "slug": "xem-chi-tiet-nha-tram-phao",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-084-xem-chi-tiet-nha-tram-phao/",
+          "confidence": "high"
+        },
+        "F-085": {
+          "id": "F-085",
+          "name": "Quan ly Nha tram phao - Lich su",
+          "slug": "quan-ly-nha-tram-phao-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-085-quan-ly-nha-tram-phao-lich-su/",
+          "confidence": "high"
+        },
+        "F-086": {
+          "id": "F-086",
+          "name": "Quan ly Nha tram den - Tao moi",
+          "slug": "quan-ly-nha-tram-den-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-086-quan-ly-nha-tram-den-tao-moi/",
+          "confidence": "high"
+        },
+        "F-087": {
+          "id": "F-087",
+          "name": "Quan ly Nha tram den - Cap nhat",
+          "slug": "quan-ly-nha-tram-den-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-087-quan-ly-nha-tram-den-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-088": {
+          "id": "F-088",
+          "name": "Quan ly Nha tram den - Xoa",
+          "slug": "quan-ly-nha-tram-den-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-088-quan-ly-nha-tram-den-xoa/",
+          "confidence": "high"
+        },
+        "F-089": {
+          "id": "F-089",
+          "name": "Phe duyet Nha tram den",
+          "slug": "phe-duyet-nha-tram-den",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-089-phe-duyet-nha-tram-den/",
+          "confidence": "high"
+        },
+        "F-090": {
+          "id": "F-090",
+          "name": "Xem chi tiet Nha tram den",
+          "slug": "xem-chi-tiet-nha-tram-den",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-090-xem-chi-tiet-nha-tram-den/",
+          "confidence": "high"
+        },
+        "F-091": {
+          "id": "F-091",
+          "name": "Quan ly Nha tram den - Lich su",
+          "slug": "quan-ly-nha-tram-den-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-091-quan-ly-nha-tram-den-lich-su/",
+          "confidence": "high"
+        },
+        "F-092": {
+          "id": "F-092",
+          "name": "Quan ly Dai TTDH - Tao moi",
+          "slug": "quan-ly-dai-ttdh-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-092-quan-ly-dai-ttdh-tao-moi/",
+          "confidence": "high"
+        },
+        "F-093": {
+          "id": "F-093",
+          "name": "Quan ly Dai TTDH - Cap nhat",
+          "slug": "quan-ly-dai-ttdh-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-093-quan-ly-dai-ttdh-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-094": {
+          "id": "F-094",
+          "name": "Quan ly Dai TTDH - Xoa",
+          "slug": "quan-ly-dai-ttdh-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-094-quan-ly-dai-ttdh-xoa/",
+          "confidence": "high"
+        },
+        "F-095": {
+          "id": "F-095",
+          "name": "Phe duyet Dai TTDH",
+          "slug": "phe-duyet-dai-ttdh",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-095-phe-duyet-dai-ttdh/",
+          "confidence": "high"
+        },
+        "F-096": {
+          "id": "F-096",
+          "name": "Xem chi tiet Dai TTDH",
+          "slug": "xem-chi-tiet-dai-ttdh",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-096-xem-chi-tiet-dai-ttdh/",
+          "confidence": "high"
+        },
+        "F-097": {
+          "id": "F-097",
+          "name": "Quan ly Dai TTDH - Lich su",
+          "slug": "quan-ly-dai-ttdh-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-097-quan-ly-dai-ttdh-lich-su/",
+          "confidence": "high"
+        },
+        "F-098": {
+          "id": "F-098",
+          "name": "Quan ly Dai Inmarsat - Tao moi",
+          "slug": "quan-ly-dai-inmarsat-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-098-quan-ly-dai-inmarsat-tao-moi/",
+          "confidence": "high"
+        },
+        "F-099": {
+          "id": "F-099",
+          "name": "Quan ly Dai Inmarsat - Cap nhat",
+          "slug": "quan-ly-dai-inmarsat-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-099-quan-ly-dai-inmarsat-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-100": {
+          "id": "F-100",
+          "name": "Quan ly Dai Inmarsat - Xoa",
+          "slug": "quan-ly-dai-inmarsat-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-100-quan-ly-dai-inmarsat-xoa/",
+          "confidence": "high"
+        },
+        "F-101": {
+          "id": "F-101",
+          "name": "Phe duyet Dai Inmarsat",
+          "slug": "phe-duyet-dai-inmarsat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-101-phe-duyet-dai-inmarsat/",
+          "confidence": "high"
+        },
+        "F-102": {
+          "id": "F-102",
+          "name": "Xem chi tiet Dai Inmarsat",
+          "slug": "xem-chi-tiet-dai-inmarsat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-102-xem-chi-tiet-dai-inmarsat/",
+          "confidence": "high"
+        },
+        "F-103": {
+          "id": "F-103",
+          "name": "Quan ly Dai Inmarsat - Lich su",
+          "slug": "quan-ly-dai-inmarsat-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-103-quan-ly-dai-inmarsat-lich-su/",
+          "confidence": "high"
+        },
+        "F-104": {
+          "id": "F-104",
+          "name": "Quan ly Dai Cospas-Sarsat - Tao moi",
+          "slug": "quan-ly-dai-cospas-sarsat-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-104-quan-ly-dai-cospas-sarsat-tao-moi/",
+          "confidence": "high"
+        },
+        "F-105": {
+          "id": "F-105",
+          "name": "Quan ly Dai Cospas-Sarsat - Cap nhat",
+          "slug": "quan-ly-dai-cospas-sarsat-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-105-quan-ly-dai-cospas-sarsat-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-106": {
+          "id": "F-106",
+          "name": "Quan ly Dai Cospas-Sarsat - Xoa",
+          "slug": "quan-ly-dai-cospas-sarsat-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-106-quan-ly-dai-cospas-sarsat-xoa/",
+          "confidence": "high"
+        },
+        "F-107": {
+          "id": "F-107",
+          "name": "Phe duyet Dai Cospas-Sarsat",
+          "slug": "phe-duyet-dai-cospas-sarsat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-107-phe-duyet-dai-cospas-sarsat/",
+          "confidence": "high"
+        },
+        "F-108": {
+          "id": "F-108",
+          "name": "Xem chi tiet Dai Cospas-Sarsat",
+          "slug": "xem-chi-tiet-dai-cospas-sarsat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-108-xem-chi-tiet-dai-cospas-sarsat/",
+          "confidence": "high"
+        },
+        "F-109": {
+          "id": "F-109",
+          "name": "Quan ly Dai Cospas-Sarsat - Lich su",
+          "slug": "quan-ly-dai-cospas-sarsat-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-109-quan-ly-dai-cospas-sarsat-lich-su/",
+          "confidence": "high"
+        },
+        "F-110": {
+          "id": "F-110",
+          "name": "Quan ly Dai LRIT - Tao moi",
+          "slug": "quan-ly-dai-lrit-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-110-quan-ly-dai-lrit-tao-moi/",
+          "confidence": "high"
+        },
+        "F-111": {
+          "id": "F-111",
+          "name": "Quan ly Dai LRIT - Cap nhat",
+          "slug": "quan-ly-dai-lrit-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-111-quan-ly-dai-lrit-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-112": {
+          "id": "F-112",
+          "name": "Quan ly Dai LRIT - Xoa",
+          "slug": "quan-ly-dai-lrit-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-112-quan-ly-dai-lrit-xoa/",
+          "confidence": "high"
+        },
+        "F-113": {
+          "id": "F-113",
+          "name": "Phe duyet Dai LRIT",
+          "slug": "phe-duyet-dai-lrit",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-113-phe-duyet-dai-lrit/",
+          "confidence": "high"
+        },
+        "F-114": {
+          "id": "F-114",
+          "name": "Xem chi tiet Dai LRIT",
+          "slug": "xem-chi-tiet-dai-lrit",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-114-xem-chi-tiet-dai-lrit/",
+          "confidence": "high"
+        },
+        "F-115": {
+          "id": "F-115",
+          "name": "Quan ly Dai LRIT - Lich su",
+          "slug": "quan-ly-dai-lrit-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-115-quan-ly-dai-lrit-lich-su/",
+          "confidence": "high"
+        },
+        "F-116": {
+          "id": "F-116",
+          "name": "Quan ly Dai TT hang hai HN - Tao moi",
+          "slug": "quan-ly-dai-tt-hang-hai-hn-tao-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-116-quan-ly-dai-tt-hang-hai-hn-tao-moi/",
+          "confidence": "high"
+        },
+        "F-117": {
+          "id": "F-117",
+          "name": "Quan ly Dai TT hang hai HN - Cap nhat",
+          "slug": "quan-ly-dai-tt-hang-hai-hn-cap-nhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-117-quan-ly-dai-tt-hang-hai-hn-cap-nhat/",
+          "confidence": "high"
+        },
+        "F-118": {
+          "id": "F-118",
+          "name": "Quan ly Dai TT hang hai HN - Xoa",
+          "slug": "quan-ly-dai-tt-hang-hai-hn-xoa",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-118-quan-ly-dai-tt-hang-hai-hn-xoa/",
+          "confidence": "high"
+        },
+        "F-119": {
+          "id": "F-119",
+          "name": "Phe duyet Dai TT hang hai HN",
+          "slug": "phe-duyet-dai-tt-hang-hai-hn",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-119-phe-duyet-dai-tt-hang-hai-hn/",
+          "confidence": "high"
+        },
+        "F-120": {
+          "id": "F-120",
+          "name": "Xem chi tiet Dai TT hang hai HN",
+          "slug": "xem-chi-tiet-dai-tt-hang-hai-hn",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-120-xem-chi-tiet-dai-tt-hang-hai-hn/",
+          "confidence": "high"
+        },
+        "F-121": {
+          "id": "F-121",
+          "name": "Quan ly Dai TT hang hai HN - Lich su",
+          "slug": "quan-ly-dai-tt-hang-hai-hn-lich-su",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-121-quan-ly-dai-tt-hang-hai-hn-lich-su/",
+          "confidence": "high"
+        }
+      }
+    },
+    "M-005": {
+      "id": "M-005",
+      "name": "Quản lý biến động tài sản KCHTGT",
+      "slug": "quan-ly-bien-dong-tai-san-kchtgt",
+      "status": "in-progress",
+      "version": 1,
+      "feature_count": 6,
+      "aggregate_size_status": "green",
+      "depends_on": [],
+      "path": "docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/",
+      "features": {
+        "F-122": {
+          "id": "F-122",
+          "name": "Tài sản KCHT tăng",
+          "slug": "tang-tai-san-kcht",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/_features/F-122-tang-tai-san-kcht/",
+          "confidence": "high"
+        },
+        "F-123": {
+          "id": "F-123",
+          "name": "Tài sản KCHT giảm",
+          "slug": "giam-tai-san-kcht",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/_features/F-123-giam-tai-san-kcht/",
+          "confidence": "high"
+        },
+        "F-124": {
+          "id": "F-124",
+          "name": "Xử lý tài sản KCHT",
+          "slug": "xu-ly-tai-san-kcht",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/_features/F-124-xu-ly-tai-san-kcht/",
+          "confidence": "high"
+        },
+        "F-125": {
+          "id": "F-125",
+          "name": "Kiểm kê tài sản KCHT",
+          "slug": "kiem-ke-tai-san-kcht",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/_features/F-125-kiem-ke-tai-san-kcht/",
+          "confidence": "high"
+        },
+        "F-126": {
+          "id": "F-126",
+          "name": "Khai thác tài sản KCHT",
+          "slug": "khai-thac-tai-san-kcht",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/_features/F-126-khai-thac-tai-san-kcht/",
+          "confidence": "high"
+        },
+        "F-127": {
+          "id": "F-127",
+          "name": "Phê duyệt biến động tài sản",
+          "slug": "phe-duyet-bien-dong-tai-san",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/_features/F-127-phe-duyet-bien-dong-tai-san/",
+          "confidence": "high"
+        }
+      }
+    },
+    "M-006": {
+      "id": "M-006",
+      "name": "Quản lý văn bản & Thông tin nghiệp vụ",
+      "slug": "quan-ly-van-ban-thong-tin-ghiep-vu",
+      "status": "in-progress",
+      "version": 1,
+      "feature_count": 8,
+      "aggregate_size_status": "green",
+      "depends_on": [],
+      "path": "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/",
+      "features": {
+        "F-128": {
+          "id": "F-128",
+          "name": "Quản lý văn bản pháp lý",
+          "slug": "quan-ly-van-ban-phap-ly",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_features/F-128-quan-ly-van-ban-phap-ly/",
+          "confidence": "high"
+        },
+        "F-129": {
+          "id": "F-129",
+          "name": "Quản lý thông tin vận hành",
+          "slug": "quan-ly-thong-tin-van-hanh",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_features/F-129-quan-ly-thong-tin-van-hanh/",
+          "confidence": "high"
+        },
+        "F-130": {
+          "id": "F-130",
+          "name": "Quản lý thông tin bảo trì",
+          "slug": "quan-ly-thong-tin-bao-tri",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_features/F-130-quan-ly-thong-tin-bao-tri/",
+          "confidence": "high"
+        },
+        "F-131": {
+          "id": "F-131",
+          "name": "Quản lý thông tin sự cố",
+          "slug": "quan-ly-thong-tin-su-co",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_features/F-131-quan-ly-thong-tin-su-co/",
+          "confidence": "high"
+        },
+        "F-132": {
+          "id": "F-132",
+          "name": "Quản lý quy hoạch bến cảng",
+          "slug": "quan-ly-quy-hoach-ben-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_features/F-132-quan-ly-quy-hoach-ben-cang/",
+          "confidence": "high"
+        },
+        "F-133": {
+          "id": "F-133",
+          "name": "Tra cứu quy hoạch bến cảng",
+          "slug": "tra-cuu-quy-hoach-ben-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_features/F-133-tra-cuu-quy-hoach-ben-cang/",
+          "confidence": "high"
+        },
+        "F-134": {
+          "id": "F-134",
+          "name": "Cập nhật quy hoạch bến cảng",
+          "slug": "cap-nhat-quy-hoach-ben-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_features/F-134-cap-nhat-quy-hoach-ben-cang/",
+          "confidence": "high"
+        },
+        "F-135": {
+          "id": "F-135",
+          "name": "Quản lý văn bản - Tìm kiếm",
+          "slug": "quan-ly-van-ban-tim-kiem",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_features/F-135-quan-ly-van-ban-tim-kiem/",
+          "confidence": "high"
+        }
+      }
+    },
+    "M-007": {
+      "id": "M-007",
+      "name": "GIS / Bản đồ",
+      "slug": "gis-ban-do",
+      "status": "in-progress",
+      "version": 1,
+      "feature_count": 5,
+      "aggregate_size_status": "green",
+      "depends_on": [],
+      "path": "docs/modules/M-007-gis-ban-do/",
+      "features": {
+        "F-136": {
+          "id": "F-136",
+          "name": "Quản lý danh mục đối tượng điểm",
+          "slug": "quan-ly-danh-muc-doi-tuong-diem",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-007-gis-ban-do/_features/F-136-quan-ly-danh-muc-doi-tuong-diem/",
+          "confidence": "high"
+        },
+        "F-137": {
+          "id": "F-137",
+          "name": "Quản lý danh mục đối tượng đường",
+          "slug": "quan-ly-danh-muc-doi-tuong-duong",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-007-gis-ban-do/_features/F-137-quan-ly-danh-muc-doi-tuong-duong/",
+          "confidence": "high"
+        },
+        "F-138": {
+          "id": "F-138",
+          "name": "Quản lý danh mục đối tượng vùng",
+          "slug": "quan-ly-danh-muc-doi-tuong-vung",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-007-gis-ban-do/_features/F-138-quan-ly-danh-muc-doi-tuong-vung/",
+          "confidence": "high"
+        },
+        "F-139": {
+          "id": "F-139",
+          "name": "Quản lý thông tin KCHT trên bản đồ",
+          "slug": "quan-ly-thong-tin-kcht-tren-ban-do",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-007-gis-ban-do/_features/F-139-quan-ly-thong-tin-kcht-tren-ban-do/",
+          "confidence": "high"
+        },
+        "F-140": {
+          "id": "F-140",
+          "name": "Tra cứu KCHT trên bản đồ",
+          "slug": "tra-cuu-kcht-tren-ban-do",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-007-gis-ban-do/_features/F-140-tra-cuu-kcht-tren-ban-do/",
+          "confidence": "high"
+        }
+      }
+    },
+    "M-008": {
+      "id": "M-008",
+      "name": "Báo cáo & Thống kê",
+      "slug": "bao-cao-thong-ke",
+      "status": "in-progress",
+      "version": 1,
+      "feature_count": 81,
+      "aggregate_size_status": "red",
+      "depends_on": [],
+      "path": "docs/modules/M-008-bao-cao-thong-ke/",
+      "features": {
+        "F-141": {
+          "id": "F-141",
+          "name": "Bao cao tang giam tai san",
+          "slug": "bao-cao-tang-giam-tai-san",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-141-bao-cao-tang-giam-tai-san/",
+          "confidence": "high"
+        },
+        "F-142": {
+          "id": "F-142",
+          "name": "Mau B03/CCTT: Thong tin tai chinh tai san KCHT",
+          "slug": "mau-b03-cctt-thong-tin-tai-chinh-kcht",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-142-mau-b03-cctt-thong-tin-tai-chinh-kcht/",
+          "confidence": "high"
+        },
+        "F-143": {
+          "id": "F-143",
+          "name": "Mau so 02: Bao cao ke khai tai san KCHT",
+          "slug": "mau-so-02-bao-cao-ke-khai-kcht",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-143-mau-so-02-bao-cao-ke-khai-kcht/",
+          "confidence": "high"
+        },
+        "F-144": {
+          "id": "F-144",
+          "name": "Mau so 03: Bao cao tinh hinh quan ly tai san KCHT",
+          "slug": "mau-so-03-tinh-hinh-quan-ly-kcht",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-144-mau-so-03-tinh-hinh-quan-ly-kcht/",
+          "confidence": "high"
+        },
+        "F-145": {
+          "id": "F-145",
+          "name": "Mau so 04: Bao cao tinh hinh xu ly tai san KCHT",
+          "slug": "mau-so-04-xu-ly-kcht",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-145-mau-so-04-xu-ly-kcht/",
+          "confidence": "high"
+        },
+        "F-146": {
+          "id": "F-146",
+          "name": "Mau so 05: Bao cao tinh hinh khai thac tai san KCHT",
+          "slug": "mau-so-05-khai-thac-kcht",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-146-mau-so-05-khai-thac-kcht/",
+          "confidence": "high"
+        },
+        "F-147": {
+          "id": "F-147",
+          "name": "Mau so 06: Tong hop danh muc TS KCHTGT de nghi xu ly",
+          "slug": "mau-so-06-tong-hop-danh-muc-kchtgt",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-147-mau-so-06-tong-hop-danh-muc-kchtgt/",
+          "confidence": "high"
+        },
+        "F-148": {
+          "id": "F-148",
+          "name": "Bieu 01-N: Nang luc thong qua ben cang, cau cang",
+          "slug": "bieu-01-n-nang-luc-ben-cang-cau-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-148-bieu-01-n-nang-luc-ben-cang-cau-cang/",
+          "confidence": "high"
+        },
+        "F-149": {
+          "id": "F-149",
+          "name": "Bieu 01B-N: Nang luc thong qua cang bien",
+          "slug": "bieu-01b-n-nang-luc-cang-bien",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-149-bieu-01b-n-nang-luc-cang-bien/",
+          "confidence": "high"
+        },
+        "F-150": {
+          "id": "F-150",
+          "name": "Bieu 02-N: Thong ke cau cang",
+          "slug": "bieu-02-n-thong-ke-cau-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-150-bieu-02-n-thong-ke-cau-cang/",
+          "confidence": "high"
+        },
+        "F-151": {
+          "id": "F-151",
+          "name": "Bieu 03-Q/N: Thong ke luong hang hai",
+          "slug": "bieu-03-q-n-thong-ke-luong-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-151-bieu-03-q-n-thong-ke-luong-hang-hai/",
+          "confidence": "high"
+        },
+        "F-152": {
+          "id": "F-152",
+          "name": "Bieu 04-6T/N: Thong ke vung do/tra hieu, vung quay tro",
+          "slug": "bieu-04-6t-n-thong-ke-vung-do",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-152-bieu-04-6t-n-thong-ke-vung-do/",
+          "confidence": "high"
+        },
+        "F-153": {
+          "id": "F-153",
+          "name": "Bieu 04B-N: Thong ke khu chuyen tai, khu neo dau",
+          "slug": "bieu-04b-n-thong-ke-khu-chuyen-tai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-153-bieu-04b-n-thong-ke-khu-chuyen-tai/",
+          "confidence": "high"
+        },
+        "F-154": {
+          "id": "F-154",
+          "name": "Bieu 05-N: Thong ke ben phao, khu neo dau",
+          "slug": "bieu-05-n-thong-ke-ben-phao",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-154-bieu-05-n-thong-ke-ben-phao/",
+          "confidence": "high"
+        },
+        "F-155": {
+          "id": "F-155",
+          "name": "Bieu 06-N: Thong ke he thong den bien",
+          "slug": "bieu-06-n-thong-ke-he-thong-den-bien",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-155-bieu-06-n-thong-ke-he-thong-den-bien/",
+          "confidence": "high"
+        },
+        "F-156": {
+          "id": "F-156",
+          "name": "Bieu 07-6T/N: Thong ke he thong phao tieu",
+          "slug": "bieu-07-6t-n-thong-ke-he-thong-phao-tieu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-156-bieu-07-6t-n-thong-ke-he-thong-phao-tieu/",
+          "confidence": "high"
+        },
+        "F-157": {
+          "id": "F-157",
+          "name": "Bieu 07B-6T/N: Thong ke phao tieu bao hieu",
+          "slug": "bieu-07b-6t-n-thong-ke-phao-tieu-bao-hieu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-157-bieu-07b-6t-n-thong-ke-phao-tieu-bao-hieu/",
+          "confidence": "high"
+        },
+        "F-158": {
+          "id": "F-158",
+          "name": "Bieu 08-N: Thong ke he thong giam sat VTS",
+          "slug": "bieu-08-n-thong-ke-he-thong-giam-sat-vts",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-158-bieu-08-n-thong-ke-he-thong-giam-sat-vts/",
+          "confidence": "high"
+        },
+        "F-159": {
+          "id": "F-159",
+          "name": "Bieu 09-N: He thong dai thong tin duyen hai",
+          "slug": "bieu-09-n-he-thong-dai-thong-tin-duyen-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-159-bieu-09-n-he-thong-dai-thong-tin-duyen-hai/",
+          "confidence": "high"
+        },
+        "F-160": {
+          "id": "F-160",
+          "name": "Bieu 10-N: Thong ke he thong de, ke chan song",
+          "slug": "bieu-10-n-thong-ke-he-thong-de-ke-chan-song",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-160-bieu-10-n-thong-ke-he-thong-de-ke-chan-song/",
+          "confidence": "high"
+        },
+        "F-161": {
+          "id": "F-161",
+          "name": "Bieu 11-T: Bao cao chi tiet tau bien ra vao cang",
+          "slug": "bieu-11-t-bao-cao-chi-tiet-tau-bien",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-161-bieu-11-t-bao-cao-chi-tiet-tau-bien/",
+          "confidence": "high"
+        },
+        "F-162": {
+          "id": "F-162",
+          "name": "Bieu 11B-T: Bao cao chi tiet phuong tien thuy noi dia",
+          "slug": "bieu-11b-t-phuong-tien-thuy-noi-dia",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-162-bieu-11b-t-phuong-tien-thuy-noi-dia/",
+          "confidence": "high"
+        },
+        "F-163": {
+          "id": "F-163",
+          "name": "Bieu 16-Q: Thong ke tau bien nuoc ngoai den, roi",
+          "slug": "bieu-16-q-thong-ke-tau-bien-nuoc-ngoai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-163-bieu-16-q-thong-ke-tau-bien-nuoc-ngoai/",
+          "confidence": "high"
+        },
+        "F-164": {
+          "id": "F-164",
+          "name": "Bieu 17-Q: Thong ke tau bien VN van tai quoc te",
+          "slug": "bieu-17-q-thong-ke-tau-bien-vn-van-tai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-164-bieu-17-q-thong-ke-tau-bien-vn-van-tai/",
+          "confidence": "high"
+        },
+        "F-165": {
+          "id": "F-165",
+          "name": "Bieu 12-T: Khoi luong hang hoa, hanh khach theo thang",
+          "slug": "bieu-12-t-khoi-luong-hang-hoa-hanh-khach",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-165-bieu-12-t-khoi-luong-hang-hoa-hanh-khach/",
+          "confidence": "high"
+        },
+        "F-166": {
+          "id": "F-166",
+          "name": "Bieu 12-N: Khoi luong hang hoa theo nam",
+          "slug": "bieu-12-n-khoi-luong-hang-hoa-theo-nam",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-166-bieu-12-n-khoi-luong-hang-hoa-theo-nam/",
+          "confidence": "high"
+        },
+        "F-167": {
+          "id": "F-167",
+          "name": "Bieu 13-T: Luot tau thuyen vao roi cang bien",
+          "slug": "bieu-13-t-luot-tau-thuyen-vao-roi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-167-bieu-13-t-luot-tau-thuyen-vao-roi/",
+          "confidence": "high"
+        },
+        "F-168": {
+          "id": "F-168",
+          "name": "Bieu 14-T: Khoi luong hang hoa, hanh khach, luot tau",
+          "slug": "bieu-14-t-khoi-luong-hang-hoa-hanh-khach-luot-tau",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-168-bieu-14-t-khoi-luong-hang-hoa-hanh-khach-luot-tau/",
+          "confidence": "high"
+        },
+        "F-169": {
+          "id": "F-169",
+          "name": "Bieu 15-T: Khoi luong hang hoa trong khu quan ly",
+          "slug": "bieu-15-t-khoi-luong-hang-hoa-trong-khu-quan-ly",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-169-bieu-15-t-khoi-luong-hang-hoa-trong-khu-quan-ly/",
+          "confidence": "high"
+        },
+        "F-170": {
+          "id": "F-170",
+          "name": "Bieu 21-6T/N: Thong ke thuyen vien, hieu",
+          "slug": "bieu-21-6t-n-thong-ke-thuyen-vien-hieu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-170-bieu-21-6t-n-thong-ke-thuyen-vien-hieu/",
+          "confidence": "high"
+        },
+        "F-171": {
+          "id": "F-171",
+          "name": "Bieu 22-6T/N: Thong ke tau bien quoc tich VN",
+          "slug": "bieu-22-6t-n-thong-ke-tau-bien-quoc-tich",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-171-bieu-22-6t-n-thong-ke-tau-bien-quoc-tich/",
+          "confidence": "high"
+        },
+        "F-172": {
+          "id": "F-172",
+          "name": "Bieu 23-N: Thong ke tau thuyen hoat dong lai dat",
+          "slug": "bieu-23-n-thong-ke-tau-thuyen-lai-dat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-172-bieu-23-n-thong-ke-tau-thuyen-lai-dat/",
+          "confidence": "high"
+        },
+        "F-173": {
+          "id": "F-173",
+          "name": "Bieu 31-N: Thong ke co so dong moi, sua chua, pha do tau",
+          "slug": "bieu-31-n-thong-ke-co-so-dong-moi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-173-bieu-31-n-thong-ke-co-so-dong-moi/",
+          "confidence": "high"
+        },
+        "F-174": {
+          "id": "F-174",
+          "name": "Bieu 45-6T/N: Bao cao tong hop hang hoa thong qua cang",
+          "slug": "bieu-45-6t-n-tong-hop-hang-hoa-thong-qua",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-174-bieu-45-6t-n-tong-hop-hang-hoa-thong-qua/",
+          "confidence": "high"
+        },
+        "F-175": {
+          "id": "F-175",
+          "name": "Bieu so 06-N: Nang luc thong qua ben cang thong tu 48",
+          "slug": "bieu-so-06-n-nang-luc-thong-tu-48",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-175-bieu-so-06-n-nang-luc-thong-tu-48/",
+          "confidence": "high"
+        },
+        "F-176": {
+          "id": "F-176",
+          "name": "Bieu 07-N: Nang luc thong qua cang bien, thuy noi dia",
+          "slug": "bieu-07-n-nang-luc-cang-bien-thuy-noi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-176-bieu-07-n-nang-luc-cang-bien-thuy-noi/",
+          "confidence": "high"
+        },
+        "F-177": {
+          "id": "F-177",
+          "name": "Bieu 28-T: Khoi luong hang hoa theo thang",
+          "slug": "bieu-28-t-khoi-luong-hang-hoa-theo-thang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-177-bieu-28-t-khoi-luong-hang-hoa-theo-thang/",
+          "confidence": "high"
+        },
+        "F-178": {
+          "id": "F-178",
+          "name": "Bieu 29-N: Khoi luong hang hoa theo nam",
+          "slug": "bieu-29-n-khoi-luong-hang-hoa-theo-nam",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-178-bieu-29-n-khoi-luong-hang-hoa-theo-nam/",
+          "confidence": "high"
+        },
+        "F-179": {
+          "id": "F-179",
+          "name": "Bieu 33-N: San luong dich vu van tai, doanh nghiep",
+          "slug": "bieu-33-n-san-luong-dich-vu-van-tai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-179-bieu-33-n-san-luong-dich-vu-van-tai/",
+          "confidence": "high"
+        },
+        "F-180": {
+          "id": "F-180",
+          "name": "Bieu Tong hop thong tin chung",
+          "slug": "bieu-tong-hop-thong-tin-chung",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-180-bieu-tong-hop-thong-tin-chung/",
+          "confidence": "high"
+        },
+        "F-181": {
+          "id": "F-181",
+          "name": "Bieu Tong hop thong tin KCHTGT hang hai",
+          "slug": "bieu-tong-hop-thong-tin-kchtgt-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-181-bieu-tong-hop-thong-tin-kchtgt-hang-hai/",
+          "confidence": "high"
+        },
+        "F-182": {
+          "id": "F-182",
+          "name": "Bieu Tong hop thong tin bao tri KCHTGT",
+          "slug": "bieu-tong-hop-bao-tri-kchtgt",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-182-bieu-tong-hop-bao-tri-kchtgt/",
+          "confidence": "high"
+        },
+        "F-183": {
+          "id": "F-183",
+          "name": "Bieu Tong hop bao tri KCHTGT - Cau cang",
+          "slug": "bieu-tong-hop-bao-tri-kchtgt-cau-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-183-bieu-tong-hop-bao-tri-kchtgt-cau-cang/",
+          "confidence": "high"
+        },
+        "F-184": {
+          "id": "F-184",
+          "name": "Bieu Tong hop bao tri KCHTGT - Luong hang hai",
+          "slug": "bieu-tong-hop-bao-tri-kchtgt-luong-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-184-bieu-tong-hop-bao-tri-kchtgt-luong-hang-hai/",
+          "confidence": "high"
+        },
+        "F-185": {
+          "id": "F-185",
+          "name": "Bieu Tong hop bao tri KCHTGT - Phao tieu",
+          "slug": "bieu-tong-hop-bao-tri-kchtgt-phao-tieu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-185-bieu-tong-hop-bao-tri-kchtgt-phao-tieu/",
+          "confidence": "high"
+        },
+        "F-186": {
+          "id": "F-186",
+          "name": "Bieu Tong hop bao tri KCHTGT - Den bien",
+          "slug": "bieu-tong-hop-bao-tri-kchtgt-den-bien",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-186-bieu-tong-hop-bao-tri-kchtgt-den-bien/",
+          "confidence": "high"
+        },
+        "F-187": {
+          "id": "F-187",
+          "name": "Bieu Tong hop bao tri KCHTGT - De, ke",
+          "slug": "bieu-tong-hop-bao-tri-kchtgt-de-ke",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-187-bieu-tong-hop-bao-tri-kchtgt-de-ke/",
+          "confidence": "high"
+        },
+        "F-188": {
+          "id": "F-188",
+          "name": "Bao cao ke khai, tinh hinh quan ly TS KCHTGT hang hai",
+          "slug": "bao-cao-ke-khai-quan-ly-ts-kchtgt",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-188-bao-cao-ke-khai-quan-ly-ts-kchtgt/",
+          "confidence": "high"
+        },
+        "F-189": {
+          "id": "F-189",
+          "name": "Bao cao tinh hinh hoat dong bao hieu hang hai va de, ke",
+          "slug": "bao-cao-tinh-hinh-hoat-dong-bao-hieu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-189-bao-cao-tinh-hinh-hoat-dong-bao-hieu/",
+          "confidence": "high"
+        },
+        "F-190": {
+          "id": "F-190",
+          "name": "Bao cao tong hop tai chinh nam",
+          "slug": "bao-cao-tong-hop-tai-chinh-nam",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-190-bao-cao-tong-hop-tai-chinh-nam/",
+          "confidence": "high"
+        },
+        "F-191": {
+          "id": "F-191",
+          "name": "Bao cao tai chinh thoi luc",
+          "slug": "bao-cao-tai-chinh-thoi-luc",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-191-bao-cao-tai-chinh-thoi-luc/",
+          "confidence": "high"
+        },
+        "F-192": {
+          "id": "F-192",
+          "name": "Bao cao so huu ts kcht",
+          "slug": "bao-cao-so-huu-ts-kcht",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-192-bao-cao-so-huu-ts-kcht/",
+          "confidence": "high"
+        },
+        "F-193": {
+          "id": "F-193",
+          "name": "Bao cao gia tri ts kchtgt",
+          "slug": "bao-cao-gia-tri-ts-kchtgt",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-193-bao-cao-gia-tri-ts-kchtgt/",
+          "confidence": "high"
+        },
+        "F-194": {
+          "id": "F-194",
+          "name": "Bao cao su giam ts kcht",
+          "slug": "bao-cao-su-giam-ts-kcht",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-194-bao-cao-su-giam-ts-kcht/",
+          "confidence": "high"
+        },
+        "F-195": {
+          "id": "F-195",
+          "name": "Bao cao tang them ts kchtgt",
+          "slug": "bao-cao-tang-them-ts-kchtgt",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-195-bao-cao-tang-them-ts-kchtgt/",
+          "confidence": "high"
+        },
+        "F-196": {
+          "id": "F-196",
+          "name": "Bao cao hu moi ts kchtgt",
+          "slug": "bao-cao-hu-moi-ts-kchtgt",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-196-bao-cao-hu-moi-ts-kchtgt/",
+          "confidence": "high"
+        },
+        "F-197": {
+          "id": "F-197",
+          "name": "Bao cao chuyen doi ts kcht",
+          "slug": "bao-cao-chuyen-do-ts-kcht",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-197-bao-cao-chuyen-do-ts-kcht/",
+          "confidence": "high"
+        },
+        "F-198": {
+          "id": "F-198",
+          "name": "Bao cao tinh hinh kiem tra kchtgt",
+          "slug": "bao-cao-tinh-hinh-kiem-tra-kchtgt",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-198-bao-cao-tinh-hinh-kiem-tra-kchtgt/",
+          "confidence": "high"
+        },
+        "F-199": {
+          "id": "F-199",
+          "name": "Bao cao kiem tra an toan hang hai",
+          "slug": "bao-cao-kiem-tra-an-toan-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-199-bao-cao-kiem-tra-an-toan-hang-hai/",
+          "confidence": "high"
+        },
+        "F-200": {
+          "id": "F-200",
+          "name": "Bao cao kiem tra bao hieu hang hai",
+          "slug": "bao-cao-kiem-tra-bao-hieu-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-200-bao-cao-kiem-tra-bao-hieu-hang-hai/",
+          "confidence": "high"
+        },
+        "F-201": {
+          "id": "F-201",
+          "name": "Bao cao tinh hinh dau tu kchtgt",
+          "slug": "bao-cao-tinh-hinh-dau-tu-kchtgt",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-201-bao-cao-tinh-hinh-dau-tu-kchtgt/",
+          "confidence": "high"
+        },
+        "F-202": {
+          "id": "F-202",
+          "name": "Bao cao tinh hinh giai ngan van",
+          "slug": "bao-cao-tinh-hinh-giai-ngan-van",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-202-bao-cao-tinh-hinh-giai-ngan-van/",
+          "confidence": "high"
+        },
+        "F-203": {
+          "id": "F-203",
+          "name": "Bao cao thuc hien ngan sach",
+          "slug": "bao-cao-thuc-hien-ngan-sach",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-203-bao-cao-thuc-hien-ngan-sach/",
+          "confidence": "high"
+        },
+        "F-204": {
+          "id": "F-204",
+          "name": "Bao cao gia tri dau tu theo chu de",
+          "slug": "bao-cao-gia-tri-dau-tu-theo-chu-de",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-204-bao-cao-gia-tri-dau-tu-theo-chu-de/",
+          "confidence": "high"
+        },
+        "F-205": {
+          "id": "F-205",
+          "name": "Bao cao tong hop dau tu quoc te",
+          "slug": "bao-cao-tong-hop-dau-tu-quoc-te",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-205-bao-cao-tong-hop-dau-tu-quoc-te/",
+          "confidence": "high"
+        },
+        "F-206": {
+          "id": "F-206",
+          "name": "Bao cao tinh hinh xay dung cang",
+          "slug": "bao-cao-tinh-hinh-xay-dung-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-206-bao-cao-tinh-hinh-xay-dung-cang/",
+          "confidence": "high"
+        },
+        "F-207": {
+          "id": "F-207",
+          "name": "Bao cao tinh hinh van hanh ben cang",
+          "slug": "bao-cao-tinh-hinh-van-hanh-ben-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-207-bao-cao-tinh-hinh-van-hanh-ben-cang/",
+          "confidence": "high"
+        },
+        "F-208": {
+          "id": "F-208",
+          "name": "Bao cao tinh hinh hoat dong cau cang",
+          "slug": "bao-cao-tinh-hinh-hoat-dong-cau-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-208-bao-cao-tinh-hinh-hoat-dong-cau-cang/",
+          "confidence": "high"
+        },
+        "F-209": {
+          "id": "F-209",
+          "name": "Bao cao hieu qua khai thac kchtgt",
+          "slug": "bao-cao-hieu-qua-khai-thac-kchtgt",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-209-bao-cao-hieu-qua-khai-thac-kchtgt/",
+          "confidence": "high"
+        },
+        "F-210": {
+          "id": "F-210",
+          "name": "Bao cao chieu sau nuoc o cang bien",
+          "slug": "bao-cao-chieu-sau-nuoc-o-cang-bien",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-210-bao-cao-chieu-sau-nuoc-o-cang-bien/",
+          "confidence": "high"
+        },
+        "F-211": {
+          "id": "F-211",
+          "name": "Bao cao tinh hinh ve sinh moi truong",
+          "slug": "bao-cao-tinh-hinh-ve-sinh-moi-truong",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-211-bao-cao-tinh-hinh-ve-sinh-moi-truong/",
+          "confidence": "high"
+        },
+        "F-212": {
+          "id": "F-212",
+          "name": "Bao cao tong hop so lieu du lieu",
+          "slug": "bao-cao-tong-hop-so-lieu-du-lieu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-212-bao-cao-tong-hop-so-lieu-du-lieu/",
+          "confidence": "high"
+        },
+        "F-213": {
+          "id": "F-213",
+          "name": "Bao cao phan tich du lieu bao cao",
+          "slug": "bao-cao-phan-tich-du-lieu-bao-cao",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-213-bao-cao-phan-tich-du-lieu-bao-cao/",
+          "confidence": "high"
+        },
+        "F-214": {
+          "id": "F-214",
+          "name": "Bao cao thong ke theo don vi",
+          "slug": "bao-cao-thong-ke-theo-don-vi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-214-bao-cao-thong-ke-theo-don-vi/",
+          "confidence": "high"
+        },
+        "F-215": {
+          "id": "F-215",
+          "name": "Bao cao thong ke theo vung bien",
+          "slug": "bao-cao-thong-ke-theo-vung-bien",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-215-bao-cao-thong-ke-theo-vung-bien/",
+          "confidence": "high"
+        },
+        "F-216": {
+          "id": "F-216",
+          "name": "Bao cao thong ke theo chuc nang",
+          "slug": "bao-cao-thong-ke-theo-chuc-nang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-216-bao-cao-thong-ke-theo-chuc-nang/",
+          "confidence": "high"
+        },
+        "F-217": {
+          "id": "F-217",
+          "name": "Bao cao doi chieu thong ke noi bo",
+          "slug": "bao-cao-doi-chieu-thong-ke-noi-bo",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-217-bao-cao-doi-chieu-thong-ke-noi-bo/",
+          "confidence": "high"
+        },
+        "F-218": {
+          "id": "F-218",
+          "name": "Bao cao bieu mau quoc te",
+          "slug": "bao-cao-bieu-mau-quoc-te",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-218-bao-cao-bieu-mau-quoc-te/",
+          "confidence": "high"
+        },
+        "F-219": {
+          "id": "F-219",
+          "name": "Bao cao thong ke tich hop he thong",
+          "slug": "bao-cao-thong-ke-tich-hop-he-thong",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-219-bao-cao-thong-ke-tich-hop-he-thong/",
+          "confidence": "high"
+        },
+        "F-220": {
+          "id": "F-220",
+          "name": "Bao cao dieu hanh vts theo thoi gian thuc",
+          "slug": "bao-cao-dieu-hanh-vts-theo-thoi-gian-thuc",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-220-bao-cao-dieu-hanh-vts-theo-thoi-gian-thuc/",
+          "confidence": "high"
+        },
+        "F-221": {
+          "id": "F-221",
+          "name": "Bao cao tong hop van hanh bao hieu",
+          "slug": "bao-cao-tong-hop-van-hanh-bao-hieu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-221-bao-cao-tong-hop-van-hanh-bao-hieu/",
+          "confidence": "high"
+        }
+      }
+    },
+    "M-009": {
+      "id": "M-009",
+      "name": "Liên thông & Tích hợp dữ liệu",
+      "slug": "lien-thong-tich-hop-du-lieu",
+      "status": "in-progress",
+      "version": 1,
+      "feature_count": 81,
+      "aggregate_size_status": "red",
+      "depends_on": [],
+      "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/",
+      "features": {
+        "F-190": {
+          "id": "F-190",
+          "name": "Chia se: KCHTGT Ben cang",
+          "slug": "chia-se-kchtgt-ben-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-190-chia-se-kchtgt-ben-cang/",
+          "confidence": "high"
+        },
+        "F-191": {
+          "id": "F-191",
+          "name": "Chia se: KCHTGT Cau cang",
+          "slug": "chia-se-kchtgt-cau-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-191-chia-se-kchtgt-cau-cang/",
+          "confidence": "high"
+        },
+        "F-192": {
+          "id": "F-192",
+          "name": "Chia se: KCHTGT Ben phao",
+          "slug": "chia-se-kchtgt-ben-phao",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-192-chia-se-kchtgt-ben-phao/",
+          "confidence": "high"
+        },
+        "F-193": {
+          "id": "F-193",
+          "name": "Chia se: KCHTGT Khu tranh tru bao",
+          "slug": "chia-se-kchtgt-khu-tranh-tru-bao",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-193-chia-se-kchtgt-khu-tranh-tru-bao/",
+          "confidence": "high"
+        },
+        "F-194": {
+          "id": "F-194",
+          "name": "Chia se: KCHTGT Khu chuyen tai",
+          "slug": "chia-se-kchtgt-khu-chuyen-tai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-194-chia-se-kchtgt-khu-chuyen-tai/",
+          "confidence": "high"
+        },
+        "F-195": {
+          "id": "F-195",
+          "name": "Chia se: KCHTGT Khu neo dau",
+          "slug": "chia-se-kchtgt-khu-neo-dau",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-195-chia-se-kchtgt-khu-neo-dau/",
+          "confidence": "high"
+        },
+        "F-196": {
+          "id": "F-196",
+          "name": "Chia se: KCHTGT Co so sua chua",
+          "slug": "chia-se-kchtgt-co-so-sua-chua",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-196-chia-se-kchtgt-co-so-sua-chua/",
+          "confidence": "high"
+        },
+        "F-197": {
+          "id": "F-197",
+          "name": "Chia se: KCHTGT Den bien",
+          "slug": "chia-se-kchtgt-den-bien",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-197-chia-se-kchtgt-den-bien/",
+          "confidence": "high"
+        },
+        "F-198": {
+          "id": "F-198",
+          "name": "Chia se: KCHTGT Phao tieu",
+          "slug": "chia-se-kchtgt-phao-tieu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-198-chia-se-kchtgt-phao-tieu/",
+          "confidence": "high"
+        },
+        "F-199": {
+          "id": "F-199",
+          "name": "Chia se: KCHTGT He thong VTS",
+          "slug": "chia-se-kchtgt-he-thong-vts",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-199-chia-se-kchtgt-he-thong-vts/",
+          "confidence": "high"
+        },
+        "F-200": {
+          "id": "F-200",
+          "name": "chia-se-kchtgt-tt-dieu-hanh-vts",
+          "slug": "chia-se-kchtgt-tt-dieu-hanh-vts",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-200-chia-se-kchtgt-tt-dieu-hanh-vts/",
+          "confidence": "high"
+        },
+        "F-201": {
+          "id": "F-201",
+          "name": "chia-se-kchtgt-tram-radar",
+          "slug": "chia-se-kchtgt-tram-radar",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-201-chia-se-kchtgt-tram-radar/",
+          "confidence": "high"
+        },
+        "F-202": {
+          "id": "F-202",
+          "name": "chia-se-kchtgt-he-thong-ais",
+          "slug": "chia-se-kchtgt-he-thong-ais",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-202-chia-se-kchtgt-he-thong-ais/",
+          "confidence": "high"
+        },
+        "F-203": {
+          "id": "F-203",
+          "name": "chia-se-kchtgt-he-thong-cctv",
+          "slug": "chia-se-kchtgt-he-thong-cctv",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-203-chia-se-kchtgt-he-thong-cctv/",
+          "confidence": "high"
+        },
+        "F-204": {
+          "id": "F-204",
+          "name": "chia-se-kchtgt-he-thong-scada",
+          "slug": "chia-se-kchtgt-he-thong-scada",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-204-chia-se-kchtgt-he-thong-scada/",
+          "confidence": "high"
+        },
+        "F-205": {
+          "id": "F-205",
+          "name": "chia-se-kchtgt-he-thong-thong-tin-vhf",
+          "slug": "chia-se-kchtgt-he-thong-thong-tin-vhf",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-205-chia-se-kchtgt-he-thong-thong-tin-vhf/",
+          "confidence": "high"
+        },
+        "F-206": {
+          "id": "F-206",
+          "name": "chia-se-kchtgt-he-thong-truyen-dan",
+          "slug": "chia-se-kchtgt-he-thong-truyen-dan",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-206-chia-se-kchtgt-he-thong-truyen-dan/",
+          "confidence": "high"
+        },
+        "F-207": {
+          "id": "F-207",
+          "name": "chia-se-kchtgt-he-thong-phu-tro-vts",
+          "slug": "chia-se-kchtgt-he-thong-phu-tro-vts",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-207-chia-se-kchtgt-he-thong-phu-tro-vts/",
+          "confidence": "high"
+        },
+        "F-208": {
+          "id": "F-208",
+          "name": "chia-se-kchtgt-de-chan-song-de-chan-cat-ke",
+          "slug": "chia-se-kchtgt-de-chan-song-de-chan-cat-ke",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-208-chia-se-kchtgt-de-chan-song-de-chan-cat-ke/",
+          "confidence": "high"
+        },
+        "F-209": {
+          "id": "F-209",
+          "name": "chia-se-kchtgt-luong-hang-hai",
+          "slug": "chia-se-kchtgt-luong-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-209-chia-se-kchtgt-luong-hang-hai/",
+          "confidence": "high"
+        },
+        "F-210": {
+          "id": "F-210",
+          "name": "chia-se-kchtgt-dai-ttdh",
+          "slug": "chia-se-kchtgt-dai-ttdh",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-210-chia-se-kchtgt-dai-ttdh/",
+          "confidence": "high"
+        },
+        "F-211": {
+          "id": "F-211",
+          "name": "chia-se-kchtgt-dai-inmarsat",
+          "slug": "chia-se-kchtgt-dai-inmarsat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-211-chia-se-kchtgt-dai-inmarsat/",
+          "confidence": "high"
+        },
+        "F-212": {
+          "id": "F-212",
+          "name": "chia-se-kchtgt-dai-cospas-sarsat",
+          "slug": "chia-se-kchtgt-dai-cospas-sarsat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-212-chia-se-kchtgt-dai-cospas-sarsat/",
+          "confidence": "high"
+        },
+        "F-213": {
+          "id": "F-213",
+          "name": "chia-se-kchtgt-dai-lrit",
+          "slug": "chia-se-kchtgt-dai-lrit",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-213-chia-se-kchtgt-dai-lrit/",
+          "confidence": "high"
+        },
+        "F-214": {
+          "id": "F-214",
+          "name": "chia-se-kchtgt-dai-tt-hang-hai-hn",
+          "slug": "chia-se-kchtgt-dai-tt-hang-hai-hn",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-214-chia-se-kchtgt-dai-tt-hang-hai-hn/",
+          "confidence": "high"
+        },
+        "F-215": {
+          "id": "F-215",
+          "name": "chia-se-kchtgt-cang-can",
+          "slug": "chia-se-kchtgt-cang-can",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-215-chia-se-kchtgt-cang-can/",
+          "confidence": "high"
+        },
+        "F-216": {
+          "id": "F-216",
+          "name": "chia-se-kchtgt-trang-thai-hoat-dong-kchtgt-hh",
+          "slug": "chia-se-kchtgt-trang-thai-hoat-dong-kchtgt-hh",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-216-chia-se-kchtgt-trang-thai-hoat-dong-kchtgt-hh/",
+          "confidence": "high"
+        },
+        "F-217": {
+          "id": "F-217",
+          "name": "chia-se-kchtgt-thong-tin-tai-san-kchtgt-hh",
+          "slug": "chia-se-kchtgt-thong-tin-tai-san-kchtgt-hh",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-217-chia-se-kchtgt-thong-tin-tai-san-kchtgt-hh/",
+          "confidence": "high"
+        },
+        "F-218": {
+          "id": "F-218",
+          "name": "chia-se-kchtgt-thong-tin-tong-hop-kchtgt-hang-hai",
+          "slug": "chia-se-kchtgt-thong-tin-tong-hop-kchtgt-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-218-chia-se-kchtgt-thong-tin-tong-hop-kchtgt-hang-hai/",
+          "confidence": "high"
+        },
+        "F-219": {
+          "id": "F-219",
+          "name": "chia-se-kchtgt-thong-tin-bao-tri-kchtgt-hang-hai",
+          "slug": "chia-se-kchtgt-thong-tin-bao-tri-kchtgt-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-219-chia-se-kchtgt-thong-tin-bao-tri-kchtgt-hang-hai/",
+          "confidence": "high"
+        },
+        "F-220": {
+          "id": "F-220",
+          "name": "chia-se-kchtgt-tong-hop-kchtgt-cang-bien",
+          "slug": "chia-se-kchtgt-tong-hop-kchtgt-cang-bien",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-220-chia-se-kchtgt-tong-hop-kchtgt-cang-bien/",
+          "confidence": "high"
+        },
+        "F-221": {
+          "id": "F-221",
+          "name": "chia-se-kchtgt-tong-hop-kchtgt-ben-cang-cau-cang",
+          "slug": "chia-se-kchtgt-tong-hop-kchtgt-ben-cang-cau-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-221-chia-se-kchtgt-tong-hop-kchtgt-ben-cang-cau-cang/",
+          "confidence": "high"
+        },
+        "F-222": {
+          "id": "F-222",
+          "name": "chia-se-kchtgt-tong-hop-kchtgt-luong-hang-hai",
+          "slug": "chia-se-kchtgt-tong-hop-kchtgt-luong-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-222-chia-se-kchtgt-tong-hop-kchtgt-luong-hang-hai/",
+          "confidence": "high"
+        },
+        "F-223": {
+          "id": "F-223",
+          "name": "chia-se-kchtgt-tong-hop-kchtgt-khu-chuyen-tai-khu-neo-dau",
+          "slug": "chia-se-kchtgt-tong-hop-kchtgt-khu-chuyen-tai-khu-neo-dau",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-223-chia-se-kchtgt-tong-hop-kchtgt-khu-chuyen-tai-khu-neo-dau/",
+          "confidence": "high"
+        },
+        "F-224": {
+          "id": "F-224",
+          "name": "chia-se-kchtgt-tong-hop-kchtgt-phao-tieu",
+          "slug": "chia-se-kchtgt-tong-hop-kchtgt-phao-tieu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-224-chia-se-kchtgt-tong-hop-kchtgt-phao-tieu/",
+          "confidence": "high"
+        },
+        "F-225": {
+          "id": "F-225",
+          "name": "chia-se-kchtgt-tong-hop-kchtgt-he-thong-den-bien",
+          "slug": "chia-se-kchtgt-tong-hop-kchtgt-he-thong-den-bien",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-225-chia-se-kchtgt-tong-hop-kchtgt-he-thong-den-bien/",
+          "confidence": "high"
+        },
+        "F-226": {
+          "id": "F-226",
+          "name": "chia-se-kchtgt-tong-hop-kchtgt-he-thong-de-ke",
+          "slug": "chia-se-kchtgt-tong-hop-kchtgt-he-thong-de-ke",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-226-chia-se-kchtgt-tong-hop-kchtgt-he-thong-de-ke/",
+          "confidence": "high"
+        },
+        "F-227": {
+          "id": "F-227",
+          "name": "tich-hop-kchtgt-ben-cang",
+          "slug": "tich-hop-kchtgt-ben-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-227-tich-hop-kchtgt-ben-cang/",
+          "confidence": "high"
+        },
+        "F-228": {
+          "id": "F-228",
+          "name": "tich-hop-kchtgt-cau-cang",
+          "slug": "tich-hop-kchtgt-cau-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-228-tich-hop-kchtgt-cau-cang/",
+          "confidence": "high"
+        },
+        "F-229": {
+          "id": "F-229",
+          "name": "tich-hop-kchtgt-ben-phao",
+          "slug": "tich-hop-kchtgt-ben-phao",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-229-tich-hop-kchtgt-ben-phao/",
+          "confidence": "high"
+        },
+        "F-230": {
+          "id": "F-230",
+          "name": "tich-hop-kchtgt-khu-tr-nh-tr-b-o",
+          "slug": "tich-hop-kchtgt-khu-tr-nh-tr-b-o",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-230-tich-hop-kchtgt-khu-tr-nh-tr-b-o/",
+          "confidence": "high"
+        },
+        "F-231": {
+          "id": "F-231",
+          "name": "tich-hop-kchtgt-khu-chuy-n-tai",
+          "slug": "tich-hop-kchtgt-khu-chuy-n-tai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-231-tich-hop-kchtgt-khu-chuy-n-tai/",
+          "confidence": "high"
+        },
+        "F-232": {
+          "id": "F-232",
+          "name": "tich-hop-kchtgt-khu-neo-dau",
+          "slug": "tich-hop-kchtgt-khu-neo-dau",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-232-tich-hop-kchtgt-khu-neo-dau/",
+          "confidence": "high"
+        },
+        "F-233": {
+          "id": "F-233",
+          "name": "tich-hop-kchtgt-co-so-sua-chua",
+          "slug": "tich-hop-kchtgt-co-so-sua-chua",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-233-tich-hop-kchtgt-co-so-sua-chua/",
+          "confidence": "high"
+        },
+        "F-234": {
+          "id": "F-234",
+          "name": "tich-hop-kchtgt-tt-den-bien",
+          "slug": "tich-hop-kchtgt-tt-den-bien",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-234-tich-hop-kchtgt-tt-den-bien/",
+          "confidence": "high"
+        },
+        "F-235": {
+          "id": "F-235",
+          "name": "tich-hop-kchtgt-tt-phao-tieu",
+          "slug": "tich-hop-kchtgt-tt-phao-tieu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-235-tich-hop-kchtgt-tt-phao-tieu/",
+          "confidence": "high"
+        },
+        "F-236": {
+          "id": "F-236",
+          "name": "tich-hop-kchtgt-he-thong-vts",
+          "slug": "tich-hop-kchtgt-he-thong-vts",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-236-tich-hop-kchtgt-he-thong-vts/",
+          "confidence": "high"
+        },
+        "F-237": {
+          "id": "F-237",
+          "name": "tich-hop-kchtgt-tt-dieu-hanh-vts",
+          "slug": "tich-hop-kchtgt-tt-dieu-hanh-vts",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-237-tich-hop-kchtgt-tt-dieu-hanh-vts/",
+          "confidence": "high"
+        },
+        "F-238": {
+          "id": "F-238",
+          "name": "tich-hop-kchtgt-tram-radar",
+          "slug": "tich-hop-kchtgt-tram-radar",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-238-tich-hop-kchtgt-tram-radar/",
+          "confidence": "high"
+        },
+        "F-239": {
+          "id": "F-239",
+          "name": "tich-hop-kchtgt-he-thong-ais",
+          "slug": "tich-hop-kchtgt-he-thong-ais",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-239-tich-hop-kchtgt-he-thong-ais/",
+          "confidence": "high"
+        },
+        "F-240": {
+          "id": "F-240",
+          "name": "tich-hop-kchtgt-he-thong-cctv",
+          "slug": "tich-hop-kchtgt-he-thong-cctv",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-240-tich-hop-kchtgt-he-thong-cctv/",
+          "confidence": "high"
+        },
+        "F-241": {
+          "id": "F-241",
+          "name": "tich-hop-kchtgt-he-thong-scada",
+          "slug": "tich-hop-kchtgt-he-thong-scada",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-241-tich-hop-kchtgt-he-thong-scada/",
+          "confidence": "high"
+        },
+        "F-242": {
+          "id": "F-242",
+          "name": "tich-hop-kchtgt-he-thong-thong-tin-vhf",
+          "slug": "tich-hop-kchtgt-he-thong-thong-tin-vhf",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-242-tich-hop-kchtgt-he-thong-thong-tin-vhf/",
+          "confidence": "high"
+        },
+        "F-243": {
+          "id": "F-243",
+          "name": "tich-hop-kchtgt-he-thong-truyen-dan",
+          "slug": "tich-hop-kchtgt-he-thong-truyen-dan",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-243-tich-hop-kchtgt-he-thong-truyen-dan/",
+          "confidence": "high"
+        },
+        "F-244": {
+          "id": "F-244",
+          "name": "tich-hop-kchtgt-he-thong-phu-tro-vts",
+          "slug": "tich-hop-kchtgt-he-thong-phu-tro-vts",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-244-tich-hop-kchtgt-he-thong-phu-tro-vts/",
+          "confidence": "high"
+        },
+        "F-245": {
+          "id": "F-245",
+          "name": "tich-hop-kchtgt-de-ke",
+          "slug": "tich-hop-kchtgt-de-ke",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-245-tich-hop-kchtgt-de-ke/",
+          "confidence": "high"
+        },
+        "F-246": {
+          "id": "F-246",
+          "name": "tich-hop-kchtgt-luong-hang-hai",
+          "slug": "tich-hop-kchtgt-luong-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-246-tich-hop-kchtgt-luong-hang-hai/",
+          "confidence": "high"
+        },
+        "F-247": {
+          "id": "F-247",
+          "name": "tich-hop-kchtgt-tt-dai-ttdh",
+          "slug": "tich-hop-kchtgt-tt-dai-ttdh",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-247-tich-hop-kchtgt-tt-dai-ttdh/",
+          "confidence": "high"
+        },
+        "F-248": {
+          "id": "F-248",
+          "name": "tich-hop-kchtgt-tt-dai-inmarsat",
+          "slug": "tich-hop-kchtgt-tt-dai-inmarsat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-248-tich-hop-kchtgt-tt-dai-inmarsat/",
+          "confidence": "high"
+        },
+        "F-249": {
+          "id": "F-249",
+          "name": "tich-hop-kchtgt-tt-dai-cospas-sarsat",
+          "slug": "tich-hop-kchtgt-tt-dai-cospas-sarsat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-249-tich-hop-kchtgt-tt-dai-cospas-sarsat/",
+          "confidence": "high"
+        },
+        "F-250": {
+          "id": "F-250",
+          "name": "tich-hop-kchtgt-tt-dai-lrit",
+          "slug": "tich-hop-kchtgt-tt-dai-lrit",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-250-tich-hop-kchtgt-tt-dai-lrit/",
+          "confidence": "high"
+        },
+        "F-251": {
+          "id": "F-251",
+          "name": "tich-hop-kchtgt-tt-dai-tt-hang-hai-hn",
+          "slug": "tich-hop-kchtgt-tt-dai-tt-hang-hai-hn",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-251-tich-hop-kchtgt-tt-dai-tt-hang-hai-hn/",
+          "confidence": "high"
+        },
+        "F-252": {
+          "id": "F-252",
+          "name": "tich-hop-kchtgt-cang-can",
+          "slug": "tich-hop-kchtgt-cang-can",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-252-tich-hop-kchtgt-cang-can/",
+          "confidence": "high"
+        },
+        "F-253": {
+          "id": "F-253",
+          "name": "tich-hop-kchtgt-mang-hai-do-dien-tu",
+          "slug": "tich-hop-kchtgt-mang-hai-do-dien-tu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-253-tich-hop-kchtgt-mang-hai-do-dien-tu/",
+          "confidence": "high"
+        },
+        "F-254": {
+          "id": "F-254",
+          "name": "tich-hop-kchtgt-tau-bien-ra-vao-cang",
+          "slug": "tich-hop-kchtgt-tau-bien-ra-vao-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-254-tich-hop-kchtgt-tau-bien-ra-vao-cang/",
+          "confidence": "high"
+        },
+        "F-255": {
+          "id": "F-255",
+          "name": "tich-hop-kchtgt-phuong-tien-thuy-noi-dia",
+          "slug": "tich-hop-kchtgt-phuong-tien-thuy-noi-dia",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-255-tich-hop-kchtgt-phuong-tien-thuy-noi-dia/",
+          "confidence": "high"
+        },
+        "F-256": {
+          "id": "F-256",
+          "name": "tich-hop-kchtgt-tau-bien-nuoc-ngoai",
+          "slug": "tich-hop-kchtgt-tau-bien-nuoc-ngoai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-256-tich-hop-kchtgt-tau-bien-nuoc-ngoai/",
+          "confidence": "high"
+        },
+        "F-257": {
+          "id": "F-257",
+          "name": "tich-hop-kchtgt-tau-bien-vn-van-tai-quoc-te",
+          "slug": "tich-hop-kchtgt-tau-bien-vn-van-tai-quoc-te",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-257-tich-hop-kchtgt-tau-bien-vn-van-tai-quoc-te/",
+          "confidence": "high"
+        },
+        "F-258": {
+          "id": "F-258",
+          "name": "tich-hop-kchtgt-khoi-luong-hang-hoa-hanh-khach",
+          "slug": "tich-hop-kchtgt-khoi-luong-hang-hoa-hanh-khach",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-258-tich-hop-kchtgt-khoi-luong-hang-hoa-hanh-khach/",
+          "confidence": "high"
+        },
+        "F-259": {
+          "id": "F-259",
+          "name": "tich-hop-kchtgt-luot-tau-thuyen-vao-roi-cang",
+          "slug": "tich-hop-kchtgt-luot-tau-thuyen-vao-roi-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-259-tich-hop-kchtgt-luot-tau-thuyen-vao-roi-cang/",
+          "confidence": "high"
+        },
+        "F-260": {
+          "id": "F-260",
+          "name": "tich-hop-kchtgt-khoi-luong-hang-hoa-doi-tau-vn",
+          "slug": "tich-hop-kchtgt-khoi-luong-hang-hoa-doi-tau-vn",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-260-tich-hop-kchtgt-khoi-luong-hang-hoa-doi-tau-vn/",
+          "confidence": "high"
+        },
+        "F-261": {
+          "id": "F-261",
+          "name": "tich-hop-kchtgt-khoi-luong-hang-hoa-trong-khu-quan-ly",
+          "slug": "tich-hop-kchtgt-khoi-luong-hang-hoa-trong-khu-quan-ly",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-261-tich-hop-kchtgt-khoi-luong-hang-hoa-trong-khu-quan-ly/",
+          "confidence": "high"
+        },
+        "F-262": {
+          "id": "F-262",
+          "name": "tich-hop-kchtgt-thuyen-vien-hoa-tieu",
+          "slug": "tich-hop-kchtgt-thuyen-vien-hoa-tieu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-262-tich-hop-kchtgt-thuyen-vien-hoa-tieu/",
+          "confidence": "high"
+        },
+        "F-263": {
+          "id": "F-263",
+          "name": "tich-hop-kchtgt-tau-bien-co-quoc-tich-vn",
+          "slug": "tich-hop-kchtgt-tau-bien-co-quoc-tich-vn",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-263-tich-hop-kchtgt-tau-bien-co-quoc-tich-vn/",
+          "confidence": "high"
+        },
+        "F-264": {
+          "id": "F-264",
+          "name": "tich-hop-kchtgt-tau-thuyen-lai-dhat",
+          "slug": "tich-hop-kchtgt-tau-thuyen-lai-dhat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-264-tich-hop-kchtgt-tau-thuyen-lai-dhat/",
+          "confidence": "high"
+        },
+        "F-265": {
+          "id": "F-265",
+          "name": "tich-hop-kchtgt-co-so-dong-moi-sua-chua",
+          "slug": "tich-hop-kchtgt-co-so-dong-moi-sua-chua",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-265-tich-hop-kchtgt-co-so-dong-moi-sua-chua/",
+          "confidence": "high"
+        },
+        "F-266": {
+          "id": "F-266",
+          "name": "tich-hop-kchtgt-nang-luc-thong-qua-ben-cang",
+          "slug": "tich-hop-kchtgt-nang-luc-thong-qua-ben-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-266-tich-hop-kchtgt-nang-luc-thong-qua-ben-cang/",
+          "confidence": "high"
+        },
+        "F-267": {
+          "id": "F-267",
+          "name": "tich-hop-kchtgt-nang-luc-thong-qua-cang",
+          "slug": "tich-hop-kchtgt-nang-luc-thong-qua-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-267-tich-hop-kchtgt-nang-luc-thong-qua-cang/",
+          "confidence": "high"
+        },
+        "F-268": {
+          "id": "F-268",
+          "name": "tich-hop-kchtgt-khoi-luong-hang-hoa-theo-thang",
+          "slug": "tich-hop-kchtgt-khoi-luong-hang-hoa-theo-thang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-268-tich-hop-kchtgt-khoi-luong-hang-hoa-theo-thang/",
+          "confidence": "high"
+        },
+        "F-269": {
+          "id": "F-269",
+          "name": "tich-hop-kchtgt-khoi-luong-hang-hoa-theo-nam",
+          "slug": "tich-hop-kchtgt-khoi-luong-hang-hoa-theo-nam",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-269-tich-hop-kchtgt-khoi-luong-hang-hoa-theo-nam/",
+          "confidence": "high"
+        },
+        "F-270": {
+          "id": "F-270",
+          "name": "tich-hop-kchtgt-san-luong-dich-vu-van-tai",
+          "slug": "tich-hop-kchtgt-san-luong-dich-vu-van-tai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-270-tich-hop-kchtgt-san-luong-dich-vu-van-tai/",
+          "confidence": "high"
+        }
+      }
+    },
+    "M-010": {
+      "id": "M-010",
+      "name": "Xác thực & Phân quyền",
+      "slug": "xac-thuc-phan-quyen",
+      "status": "in-progress",
+      "version": 1,
+      "feature_count": 7,
+      "aggregate_size_status": "green",
+      "depends_on": [],
+      "path": "docs/modules/M-010-xac-thuc-phan-quyen/",
+      "features": {
+        "F-271": {
+          "id": "F-271",
+          "name": "Đăng ký tài khoản",
+          "slug": "dang-ky-tai-khoan",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-010-xac-thuc-phan-quyen/_features/F-271-dang-ky-tai-khoan/",
+          "confidence": "high"
+        },
+        "F-272": {
+          "id": "F-272",
+          "name": "Đăng nhập lần đầu + TOTP setup",
+          "slug": "dang-nhap-lan-dau-totp-setup",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-010-xac-thuc-phan-quyen/_features/F-272-dang-nhap-lan-dau-totp-setup/",
+          "confidence": "high"
+        },
+        "F-273": {
+          "id": "F-273",
+          "name": "Đăng nhập lần tiếp theo + TOTP",
+          "slug": "dang-nhap-lan-tiep-theo-totp",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-010-xac-thuc-phan-quyen/_features/F-273-dang-nhap-lan-tiep-theo-totp/",
+          "confidence": "high"
+        },
+        "F-274": {
+          "id": "F-274",
+          "name": "Quản lý JWT session",
+          "slug": "quan-ly-jwt-session",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-010-xac-thuc-phan-quyen/_features/F-274-quan-ly-jwt-session/",
+          "confidence": "high"
+        },
+        "F-275": {
+          "id": "F-275",
+          "name": "Phân quyền 3 mức",
+          "slug": "phan-quyen-3-muc",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-010-xac-thuc-phan-quyen/_features/F-275-phan-quyen-3-muc/",
+          "confidence": "high"
+        },
+        "F-276": {
+          "id": "F-276",
+          "name": "Chính sách mật khẩu",
+          "slug": "chinh-sach-mat-khau",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-010-xac-thuc-phan-quyen/_features/F-276-chinh-sach-mat-khau/",
+          "confidence": "high"
+        },
+        "F-277": {
+          "id": "F-277",
+          "name": "Chính sách giới hạn đăng nhập sai",
+          "slug": "chinh-sach-gioi-han-dang-nhap-sai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-010-xac-thuc-phan-quyen/_features/F-277-chinh-sach-gioi-han-dang-nhap-sai/",
+          "confidence": "high"
+        }
+      }
+    },
+    "M-011": {
+      "id": "M-011",
+      "name": "Nhật ký & Backup",
+      "slug": "nhat-ky-backup",
+      "status": "in-progress",
+      "version": 1,
+      "feature_count": 6,
+      "aggregate_size_status": "green",
+      "depends_on": [],
+      "path": "docs/modules/M-011-nhat-ky-backup/",
+      "features": {
+        "F-278": {
+          "id": "F-278",
+          "name": "Quản lý log truy cập",
+          "slug": "quan-ly-log-truy-cap",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-011-nhat-ky-backup/_features/F-278-quan-ly-log-truy-cap/",
+          "confidence": "high"
+        },
+        "F-279": {
+          "id": "F-279",
+          "name": "Tra cứu log",
+          "slug": "tra-cuu-log",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-011-nhat-ky-backup/_features/F-279-tra-cuu-log/",
+          "confidence": "high"
+        },
+        "F-280": {
+          "id": "F-280",
+          "name": "Sao lưu CSDL tự động",
+          "slug": "sao-lu-c-sdl-tu-dong",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-011-nhat-ky-backup/_features/F-280-sao-lu-c-sdl-tu-dong/",
+          "confidence": "high"
+        },
+        "F-281": {
+          "id": "F-281",
+          "name": "Phục hồi dữ liệu",
+          "slug": "phuc-hoi-du-lieu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-011-nhat-ky-backup/_features/F-281-phuc-hoi-du-lieu/",
+          "confidence": "high"
+        },
+        "F-282": {
+          "id": "F-282",
+          "name": "Giám sát SIEM",
+          "slug": "giam-sat-siem",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-011-nhat-ky-backup/_features/F-282-giam-sat-siem/",
+          "confidence": "high"
+        },
+        "F-283": {
+          "id": "F-283",
+          "name": "Báo cáo SIEM",
+          "slug": "bao-cao-siem",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-011-nhat-ky-backup/_features/F-283-bao-cao-siem/",
+          "confidence": "high"
+        }
+      }
+    },
+    "M-012": {
+      "id": "M-012",
+      "name": "Hải đồ & GIS Integration",
+      "slug": "hai-do-gis-integration",
+      "status": "in-progress",
+      "version": 1,
+      "feature_count": 6,
+      "aggregate_size_status": "green",
+      "depends_on": [],
+      "path": "docs/modules/M-012-hai-do-gis-integration/",
+      "features": {
+        "F-284": {
+          "id": "F-284",
+          "name": "Tích hợp hải đồ S-57",
+          "slug": "tich-hop-hai-do-s-57",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-012-hai-do-gis-integration/_features/F-284-tich-hop-hai-do-s-57/",
+          "confidence": "high"
+        },
+        "F-285": {
+          "id": "F-285",
+          "name": "Tích hợp hải đồ S-63",
+          "slug": "tich-hop-hai-do-s-63",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-012-hai-do-gis-integration/_features/F-285-tich-hop-hai-do-s-63/",
+          "confidence": "high"
+        },
+        "F-286": {
+          "id": "F-286",
+          "name": "Hiển thị hải đồ GIS (S-52)",
+          "slug": "hien-thi-hai-do-gis-s-52",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-012-hai-do-gis-integration/_features/F-286-hien-thi-hai-do-gis-s-52/",
+          "confidence": "high"
+        },
+        "F-287": {
+          "id": "F-287",
+          "name": "Quản lý lớp dữ liệu GIS",
+          "slug": "quan-ly-lop-du-lieu-gis",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-012-hai-do-gis-integration/_features/F-287-quan-ly-lop-du-lieu-gis/",
+          "confidence": "high"
+        },
+        "F-288": {
+          "id": "F-288",
+          "name": "Tích hợp CSDL không gian",
+          "slug": "tich-hop-csd-khong-gian",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-012-hai-do-gis-integration/_features/F-288-tich-hop-csd-khong-gian/",
+          "confidence": "high"
+        },
+        "F-289": {
+          "id": "F-289",
+          "name": "Hiệu tọa WGS84 GIS",
+          "slug": "hieu-toa-wgs84-gis",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-012-hai-do-gis-integration/_features/F-289-hieu-toa-wgs84-gis/",
+          "confidence": "high"
+        }
+      }
+    }
+  },
+  "checksum": "sha256:43ce43c91725e9329a2e801275af6d4404a22f7c35d09816e0c3edc93b9da116"
+}

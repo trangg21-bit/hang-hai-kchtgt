@@ -1,0 +1,21 @@
+module_id: M-009
+module_name: "Liên thông & Tích hợp dữ liệu"
+type: bounded-context
+slug: lien-thong-tich-hop-du-lieu
+
+# Map logical module → physical implementations across apps/services/libs.
+# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
+implementations:
+  apps: []
+  services: []
+  libs: []
+  packages: []
+
+# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
+stakeholders:
+  business-owner: ""
+  tech-lead: ""
+  qa-lead: ""
+
+# Cross-references
+depends_on: []

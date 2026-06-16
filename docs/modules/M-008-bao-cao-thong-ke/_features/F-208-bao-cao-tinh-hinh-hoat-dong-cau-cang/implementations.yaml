@@ -1,0 +1,9 @@
+feature_id: F-208
+module_id: M-008
+slug: bao-cao-tinh-hinh-hoat-dong-cau-cang
+
+implementations:
+  primary: ""
+  consumers: []
+
+consumed_by_modules: []

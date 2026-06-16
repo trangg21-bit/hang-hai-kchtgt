@@ -1,0 +1,483 @@
+{
+  "module_id": "M-002",
+  "module_name": "Quan ly tai san KCHTGT - Cang & Ben",
+  "description": "Quan ly cang bien (36), ben cang (301), cau cang (614), cang can (14), vung nuoc (77)",
+  "stack": [
+    "Spring Boot 17+",
+    "MSSQL Server 2022",
+    "ReactJS 18+",
+    "Nginx",
+    "MinIO",
+    "GeoServer"
+  ],
+  "actors": [
+    "A-002",
+    "A-003",
+    "A-004"
+  ],
+  "features": [
+    {
+      "id": "F-008",
+      "name": "Quan ly Cang bien - Tao moi",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3368, line ~3367",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Tao moi Cang bien",
+      "business_rules": [
+        "Cang bien phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Cang bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-009",
+      "name": "Quan ly Cang bien - Cap nhat",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3369, line ~3368",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Cap nhat Cang bien",
+      "business_rules": [
+        "Cap nhat Cang bien phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Cang bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-010",
+      "name": "Quan ly Cang bien - Xoa",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3370, line ~3369",
+      "scope": "Chuyen vien - Xoa Cang bien",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Cang bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-011",
+      "name": "Phe duyet Cang bien",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3371, line ~3370",
+      "scope": "Lanh dao - Phe duyet Cang bien",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Cang bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-012",
+      "name": "Xem chi tiet Cang bien",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3367, line ~3366",
+      "scope": "Tat ca roles - Xem chi tiet + van ban dinh kem + lich su",
+      "business_rules": [
+        "Xem chi tiet, van ban dinh kem, tai/xuong, lich su KCHT"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Cang bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-013",
+      "name": "Quan ly Cang bien - Lich su",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "line ~3372",
+      "scope": "Chuyen vien - Xem lich su thay doi KCHT",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Cang bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-014",
+      "name": "Quan ly Ben cang - Tao moi",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3369, line ~3368",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Tao moi Ben cang",
+      "business_rules": [
+        "Ben cang phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Ben cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-015",
+      "name": "Quan ly Ben cang - Cap nhat",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3370, line ~3369",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Cap nhat Ben cang",
+      "business_rules": [
+        "Cap nhat Ben cang phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Ben cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-016",
+      "name": "Quan ly Ben cang - Xoa",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3371, line ~3370",
+      "scope": "Chuyen vien - Xoa Ben cang",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Ben cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-017",
+      "name": "Phe duyet Ben cang",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3372, line ~3371",
+      "scope": "Lanh dao - Phe duyet Ben cang",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Ben cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-018",
+      "name": "Xem chi tiet Ben cang",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3368, line ~3367",
+      "scope": "Tat ca roles - Xem chi tiet + van ban dinh kem + lich su",
+      "business_rules": [
+        "Xem chi tiet, van ban dinh kem, tai/xuong, lich su KCHT"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Ben cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-019",
+      "name": "Quan ly Ben cang - Lich su",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "line ~3373",
+      "scope": "Chuyen vien - Xem lich su thay doi KCHT",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Ben cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-020",
+      "name": "Quan ly Cau cang - Tao moi",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3376, line ~3375",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Tao moi Cau cang",
+      "business_rules": [
+        "Cau cang phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Cau cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-021",
+      "name": "Quan ly Cau cang - Cap nhat",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3377, line ~3376",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Cap nhat Cau cang",
+      "business_rules": [
+        "Cap nhat Cau cang phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Cau cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-022",
+      "name": "Quan ly Cau cang - Xoa",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3378, line ~3377",
+      "scope": "Chuyen vien - Xoa Cau cang",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Cau cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-023",
+      "name": "Phe duyet Cau cang",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3379, line ~3378",
+      "scope": "Lanh dao - Phe duyet Cau cang",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Cau cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-024",
+      "name": "Xem chi tiet Cau cang",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3375, line ~3374",
+      "scope": "Tat ca roles - Xem chi tiet + van ban dinh kem + lich su",
+      "business_rules": [
+        "Xem chi tiet, van ban dinh kem, tai/xuong, lich su KCHT"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Cau cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-025",
+      "name": "Quan ly Cau cang - Lich su",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "line ~3380",
+      "scope": "Chuyen vien - Xem lich su thay doi KCHT",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Cau cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-026",
+      "name": "Quan ly Cang can - Tao moi",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3373, line ~3372",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Tao moi Cang can",
+      "business_rules": [
+        "Cang can phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Cang can thanh cong"
+      ]
+    },
+    {
+      "id": "F-027",
+      "name": "Quan ly Cang can - Cap nhat",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3374, line ~3373",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Cap nhat Cang can",
+      "business_rules": [
+        "Cap nhat Cang can phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Cang can thanh cong"
+      ]
+    },
+    {
+      "id": "F-028",
+      "name": "Quan ly Cang can - Xoa",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3375, line ~3374",
+      "scope": "Chuyen vien - Xoa Cang can",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Cang can thanh cong"
+      ]
+    },
+    {
+      "id": "F-029",
+      "name": "Phe duyet Cang can",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3376, line ~3375",
+      "scope": "Lanh dao - Phe duyet Cang can",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Cang can thanh cong"
+      ]
+    },
+    {
+      "id": "F-030",
+      "name": "Xem chi tiet Cang can",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3372, line ~3371",
+      "scope": "Tat ca roles - Xem chi tiet + van ban dinh kem + lich su",
+      "business_rules": [
+        "Xem chi tiet, van ban dinh kem, tai/xuong, lich su KCHT"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Cang can thanh cong"
+      ]
+    },
+    {
+      "id": "F-031",
+      "name": "Quan ly Cang can - Lich su",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "line ~3377",
+      "scope": "Chuyen vien - Xem lich su thay doi KCHT",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Cang can thanh cong"
+      ]
+    },
+    {
+      "id": "F-032",
+      "name": "Quan ly Vung nuoc - Tao moi",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3397, line ~3396",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Tao moi Vung nuoc",
+      "business_rules": [
+        "Vung nuoc phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Vung nuoc thanh cong"
+      ]
+    },
+    {
+      "id": "F-033",
+      "name": "Quan ly Vung nuoc - Cap nhat",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3398, line ~3397",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Cap nhat Vung nuoc",
+      "business_rules": [
+        "Cap nhat Vung nuoc phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Vung nuoc thanh cong"
+      ]
+    },
+    {
+      "id": "F-034",
+      "name": "Quan ly Vung nuoc - Xoa",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3399, line ~3398",
+      "scope": "Chuyen vien - Xoa Vung nuoc",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Vung nuoc thanh cong"
+      ]
+    },
+    {
+      "id": "F-035",
+      "name": "Phe duyet Vung nuoc",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3400, line ~3399",
+      "scope": "Lanh dao - Phe duyet Vung nuoc",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Vung nuoc thanh cong"
+      ]
+    },
+    {
+      "id": "F-036",
+      "name": "Xem chi tiet Vung nuoc",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3396, line ~3395",
+      "scope": "Tat ca roles - Xem chi tiet + van ban dinh kem + lich su",
+      "business_rules": [
+        "Xem chi tiet, van ban dinh kem, tai/xuong, lich su KCHT"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Vung nuoc thanh cong"
+      ]
+    },
+    {
+      "id": "F-037",
+      "name": "Quan ly Vung nuoc - Lich su",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "line ~3401",
+      "scope": "Chuyen vien - Xem lich su thay doi KCHT",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Vung nuoc thanh cong"
+      ]
+    }
+  ],
+  "cross_references": {
+    "catalog_ref": "docs/intel/catalog.json#M-002",
+    "brief_ref": "docs/intel/doc-brief.md"
+  },
+  "do_d": {
+    "api_contract_complete": false,
+    "entity_schema_defined": false,
+    "business_rules_mapped": true,
+    "test_data_ready": false,
+    "acceptance_criteria_written": true,
+    "priority_assigned": true,
+    "source_traced": true
+  }
+}

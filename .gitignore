@@ -1,0 +1,49 @@
+# ===== AI Engine scratch =====
+.ai-scratch/
+
+# ===== Large binary files (sync via OneDrive instead) =====
+*.pdf
+*.PDF
+*.docx
+*.DOCX
+*.xlsx
+*.XLSX
+*.pptx
+*.zip
+
+# ===== Keep source docs reference but not tracked =====
+# docs/inputs/ tracked separately via OneDrive
+
+# ===== OS files =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ===== Temp files =====
+*.tmp
+*.temp
+*.log
+*.bak
+
+# ===== Node (if frontend added later) =====
+node_modules/
+dist/
+build/
+
+# ===== Java/Maven (if backend added later) =====
+target/
+*.class
+*.jar
+*.war
+
+# ===== Python =====
+__pycache__/
+*.pyc
+.env
+venv/
