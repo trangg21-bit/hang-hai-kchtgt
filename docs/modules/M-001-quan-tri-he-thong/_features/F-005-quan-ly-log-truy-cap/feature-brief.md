@@ -1,17 +1,16 @@
 ---
 id: F-005
-name: "Quan ly log truy cap"
+name: Quan ly log truy cap
 slug: quan-ly-log-truy-cap
 module-id: M-001
-status: proposed
+status: done
 classification: local
 priority: medium
-created: "2026-06-16T04:40:57Z"
-last-updated: "2026-06-16T04:40:57Z"
+created: 2026-06-16T04:40:57Z
+last-updated: 2026-06-17T01:35:44Z
 locked-fields: []
 consumed_by_modules: []
 ---
-
 # Feature: Quan ly log truy cap
 
 ## Description

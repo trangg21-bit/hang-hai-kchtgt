@@ -1,9 +1,0 @@
-feature_id: F-205
-module_id: M-008
-slug: bao-cao-tong-hop-dau-tu-quoc-te
-
-implementations:
-  primary: ""
-  consumers: []
-
-consumed_by_modules: []

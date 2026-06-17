@@ -47,4 +47,36 @@ modules:
     name: Hải đồ & GIS Integration
     path: docs/modules/M-012-hai-do-gis-integration
     slug: hai-do-gis-integration
+  M-013:
+    name: Quản lý Báo hiệu hàng hải
+    path: docs/modules/M-013-quan-ly-bao-hieu-hang-hai
+    slug: quan-ly-bao-hieu-hang-hai
+  M-014:
+    name: Quản lý Nhà trạm
+    path: docs/modules/M-014-quan-ly-nha-tram
+    slug: quan-ly-nha-tram
+  M-015:
+    name: Quản lý Đài thông tin duyên hải
+    path: docs/modules/M-015-quan-ly-dai-thong-tin-duyen-hai
+    slug: quan-ly-dai-thong-tin-duyen-hai
+  M-016:
+    name: Báo cáo & Tổng hợp
+    path: docs/modules/M-016-bao-cao-tong-hop
+    slug: bao-cao-tong-hop
+  M-017:
+    name: Thống kê chuyên đề
+    path: docs/modules/M-017-thong-ke-chuyen-de
+    slug: thong-ke-chuyen-de
+  M-018:
+    name: Chia sẻ dữ liệu KCHTGT
+    path: docs/modules/M-018-chia-se-du-lieu-kchtgt
+    slug: chia-se-du-lieu-kchtgt
+  M-019:
+    name: Tích hợp tài sản & Hệ thống
+    path: docs/modules/M-019-tich-hop-tai-san-he-thong
+    slug: tich-hop-tai-san-he-thong
+  M-020:
+    name: Tích hợp dữ liệu nghiệp vụ
+    path: docs/modules/M-020-tich-hop-du-lieu-nghiep-vu
+    slug: tich-hop-du-lieu-nghiep-vu
 schema_version: "1.0"

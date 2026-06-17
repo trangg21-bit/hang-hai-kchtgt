@@ -1,0 +1,83 @@
+spring:
+  application:
+    name: kchtg-m001-quan-tri-he-thong
+
+  # Default profile (dev with H2)
+  profiles:
+    active: dev
+
+  # JPA / Hibernate
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: false
+
+  # Jackson
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+# ── JWT Configuration ───────────────────────────────────────────
+jwt:
+  secret: ${JWT_SECRET:aXRzLWEtc2VjcmV0LWtleS1mb3Itand0LXRva2VuLWdlbmVyYXRpb24taGFuZ2hhaS1rY2h0Zw==}
+  expiration: 86400000
+
+# ── Encryption Configuration ────────────────────────────────────
+encryption:
+  key: ${ENCRYPTION_KEY:YWJjZGVmZ2hpamtsbW5vcA==}
+
+---
+# ── DEV profile (H2 in-memory) ──────────────────────────────────
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:h2:mem:kchtg_m001;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    show-sql: true
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.hanghai.kchtg: DEBUG
+    org.springframework.security: DEBUG
+
+---
+# ── PROD profile (PostgreSQL) ────────────────────────────────────
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:kchtg_m001}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USER:kchtg}
+    password: ${DB_PASS:kchtg}
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    com.hanghai.kchtg: INFO
+    org.springframework.security: WARN

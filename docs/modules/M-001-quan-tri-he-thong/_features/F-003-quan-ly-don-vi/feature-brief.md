@@ -1,17 +1,16 @@
 ---
 id: F-003
-name: "Quan ly don vi"
+name: Quan ly don vi
 slug: quan-ly-don-vi
 module-id: M-001
-status: proposed
+status: done
 classification: local
 priority: high
-created: "2026-06-16T04:40:53Z"
-last-updated: "2026-06-16T04:40:53Z"
+created: 2026-06-16T04:40:53Z
+last-updated: 2026-06-17T01:35:44Z
 locked-fields: []
 consumed_by_modules: []
 ---
-
 # Feature: Quan ly don vi
 
 ## Description

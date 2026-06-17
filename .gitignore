@@ -1,5 +1,6 @@
 # ===== AI Engine scratch =====
 .ai-scratch/
+.ai-kit/intel.db
 
 # ===== Large binary files (sync via OneDrive instead) =====
 *.pdf

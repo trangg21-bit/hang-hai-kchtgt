@@ -169,19 +169,19 @@
       "path": "/kcht/baohieu/denbien",
       "method": "GET|POST|PUT",
       "role": "specialist",
-      "module": "M-004"
+      "module": "M-013"
     },
     {
       "path": "/kcht/baohieu/phautieu",
       "method": "GET|POST|PUT",
       "role": "specialist",
-      "module": "M-004"
+      "module": "M-013"
     },
     {
       "path": "/kcht/thongtin/dai-ttdh",
       "method": "GET|POST|PUT",
       "role": "specialist",
-      "module": "M-004"
+      "module": "M-015"
     },
     {
       "path": "/kcht/dienbien/luonghanghai",
@@ -259,37 +259,37 @@
       "path": "/reports/asset-change",
       "method": "GET|EXPORT",
       "role": "specialist",
-      "module": "M-008"
+      "module": "M-016"
     },
     {
       "path": "/reports/form02",
       "method": "GET|EXPORT",
       "role": "specialist",
-      "module": "M-008"
+      "module": "M-016"
     },
     {
       "path": "/reports/form03",
       "method": "GET|EXPORT",
       "role": "specialist",
-      "module": "M-008"
+      "module": "M-016"
     },
     {
       "path": "/reports/form04",
       "method": "GET|EXPORT",
       "role": "specialist",
-      "module": "M-008"
+      "module": "M-016"
     },
     {
       "path": "/integration/lgsp",
       "method": "POST",
       "role": "admin",
-      "module": "M-009"
+      "module": "M-018"
     },
     {
       "path": "/external/api/connect",
       "method": "POST",
       "role": "admin",
-      "module": "M-009"
+      "module": "M-018"
     },
     {
       "path": "/public/search",

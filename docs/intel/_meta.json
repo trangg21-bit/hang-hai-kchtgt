@@ -7,16 +7,16 @@
       "version": 1
     },
     "catalog.json": {
-      "content_hash": "sha256:52e83f354c16b958533afdc9cbfa30a17325e803cc10a69ddaea8d64ea0d9184",
-      "last_modified": "2026-06-16T05:08:25Z",
-      "last_producer": "ai-kit/scaffold_feature",
-      "version": 89
+      "content_hash": "sha256:2fa69c9268a5cf3d9e9eb350a89d3c89ac9de212373771e7ac6c0595d1b5aec1",
+      "last_modified": "2026-06-16T15:44:27Z",
+      "last_producer": "ai-kit/scaffold_module",
+      "version": 93
     },
     "docs/intel/catalog.json": {
-      "content_hash": "sha256:e25e8f0963be0763fccba4a002a69405a4015dcd23ceba9ac252590b40e7265a",
-      "last_modified": "2026-06-16T09:58:33Z",
+      "content_hash": "sha256:1d3b67496e2ff14fe304ed86ada7a60d90be187dffd1ba543631743b08407d42",
+      "last_modified": "2026-06-17T01:35:53Z",
       "last_producer": "ai-kit/state-update-rebuild-catalog",
-      "version": 16
+      "version": 20
     },
     "docs/modules/M-001-quan-tri-he-thong/module-brief.md": {
       "content_hash": "sha256:ce53ce131e6126f0e462a00c3706cb51ec87beaa032e6bf01b9154d5d4aaca4d",
@@ -61,10 +61,10 @@
       "version": 1
     },
     "docs/modules/M-008-bao-cao-thong-ke/module-brief.md": {
-      "content_hash": "sha256:929f6c2ebfc2828efa5e1cb83c78a9e2056901bba610e004e1034d5ce9fb8ce2",
-      "last_modified": "2026-06-16T09:58:49Z",
+      "content_hash": "sha256:acb4fea7e54a65e0ddc98a71da38cb57e99446838b1e7cd77ddae35f7e856e70",
+      "last_modified": "2026-06-16T15:29:06Z",
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
-      "version": 2
+      "version": 3
     },
     "docs/modules/M-009-lien-thong-tich-hop-du-lieu/module-brief.md": {
       "content_hash": "sha256:fd889ade637f4d51cba0b55902dd3c85841827c0adcfd46f6497d2047e2f9949",
@@ -103,16 +103,16 @@
       "version": 86
     },
     "module-catalog.json": {
-      "content_hash": "sha256:9b3f896f85780fa14bd0a4d21d1a4919c6bca3a8c43f5df994f653ee99c80005",
-      "last_modified": "2026-06-16T05:08:25Z",
-      "last_producer": "ai-kit/scaffold_feature",
-      "version": 89
+      "content_hash": "sha256:e02289afd456a0807d2e687f3897454a1de647f44c1d21edab16b55d35e3af7b",
+      "last_modified": "2026-06-16T15:44:27Z",
+      "last_producer": "ai-kit/scaffold_module",
+      "version": 93
     },
     "module-map.yaml": {
-      "content_hash": "sha256:21b22f94c89c9566285037671cbf8d288b2da4ccf6ef2e7d3ab170be06543910",
-      "last_modified": "2026-06-16T04:40:29Z",
+      "content_hash": "sha256:54fe63e0da9a36c1f3d32f029b654711fcb2cff1491b38581d17cd2192971bfa",
+      "last_modified": "2026-06-16T15:44:27Z",
       "last_producer": "ai-kit/scaffold_module",
-      "version": 11
+      "version": 15
     }
   },
   "created_at": "2026-06-16T04:38:16Z",

@@ -1,17 +1,16 @@
 ---
 id: F-001
-name: "Quan ly tai khoan nguoi dung"
+name: Quan ly tai khoan nguoi dung
 slug: quan-ly-tai-khoan-nguoi-dung
 module-id: M-001
-status: proposed
+status: done
 classification: local
 priority: high
-created: "2026-06-16T04:40:32Z"
-last-updated: "2026-06-16T04:40:32Z"
+created: 2026-06-16T04:40:32Z
+last-updated: 2026-06-17T01:35:44Z
 locked-fields: []
 consumed_by_modules: []
 ---
-
 # Feature: Quan ly tai khoan nguoi dung
 
 ## Description

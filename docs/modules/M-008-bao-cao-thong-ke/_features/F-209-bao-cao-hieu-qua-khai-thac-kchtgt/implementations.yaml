@@ -1,9 +1,0 @@
-feature_id: F-209
-module_id: M-008
-slug: bao-cao-hieu-qua-khai-thac-kchtgt
-
-implementations:
-  primary: ""
-  consumers: []
-
-consumed_by_modules: []

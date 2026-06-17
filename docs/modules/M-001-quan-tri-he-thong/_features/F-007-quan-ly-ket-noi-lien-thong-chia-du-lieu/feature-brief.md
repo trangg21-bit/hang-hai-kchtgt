@@ -1,17 +1,16 @@
 ---
 id: F-007
-name: "Quan ly ket noi lien thong chia du lieu"
+name: Quan ly ket noi lien thong chia du lieu
 slug: quan-ly-ket-noi-lien-thong-chia-du-lieu
 module-id: M-001
-status: proposed
+status: done
 classification: local
 priority: medium
-created: "2026-06-16T04:40:32Z"
-last-updated: "2026-06-16T04:40:32Z"
+created: 2026-06-16T04:40:32Z
+last-updated: 2026-06-17T01:35:44Z
 locked-fields: []
 consumed_by_modules: []
 ---
-
 # Feature: Quan ly ket noi lien thong chia du lieu
 
 ## Description

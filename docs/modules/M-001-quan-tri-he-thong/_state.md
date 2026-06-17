@@ -2,11 +2,11 @@
 feature-id: M-001
 feature-name: Quản trị hệ thống
 pipeline-type: sdlc
-status: in-progress
+status: done
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
-last-updated: 2026-06-16T05:21:42Z
+last-updated: 2026-06-17T01:35:53Z
 current-stage: engineering-business-analyst
 output-mode: lean
 repo-type: mini

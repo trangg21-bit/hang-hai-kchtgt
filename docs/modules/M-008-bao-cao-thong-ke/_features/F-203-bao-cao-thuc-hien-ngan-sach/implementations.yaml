@@ -1,9 +1,0 @@
-feature_id: F-203
-module_id: M-008
-slug: bao-cao-thuc-hien-ngan-sach
-
-implementations:
-  primary: ""
-  consumers: []
-
-consumed_by_modules: []

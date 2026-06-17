@@ -1,17 +1,16 @@
 ---
 id: F-006
-name: "Quan ly bieu tuong ban do"
+name: Quan ly bieu tuong ban do
 slug: quan-ly-bieu-tuong-ban-do
 module-id: M-001
-status: proposed
+status: done
 classification: local
 priority: medium
-created: "2026-06-16T04:40:32Z"
-last-updated: "2026-06-16T04:40:32Z"
+created: 2026-06-16T04:40:32Z
+last-updated: 2026-06-17T01:35:44Z
 locked-fields: []
 consumed_by_modules: []
 ---
-
 # Feature: Quan ly bieu tuong ban do
 
 ## Description

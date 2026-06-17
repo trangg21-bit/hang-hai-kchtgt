@@ -1,9 +1,0 @@
-feature_id: F-201
-module_id: M-008
-slug: bao-cao-tinh-hinh-dau-tu-kchtgt
-
-implementations:
-  primary: ""
-  consumers: []
-
-consumed_by_modules: []

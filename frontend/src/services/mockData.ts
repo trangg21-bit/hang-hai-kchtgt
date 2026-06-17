@@ -1,0 +1,233 @@
+import type { User } from '../types/user';
+import type { Role } from '../types/role';
+import type { Permission } from '../types/permission';
+
+// ============================================================
+// PERMISSIONS
+// ============================================================
+export const ALL_PERMISSIONS: Permission[] = [
+  // User Management
+  { key: 'user.view', name: 'Xem danh sách người dùng', group: 'user_management', description: 'Xem danh sách và thông tin người dùng' },
+  { key: 'user.create', name: 'Tạo người dùng', group: 'user_management', description: 'Thêm mới tài khoản người dùng' },
+  { key: 'user.edit', name: 'Sửa người dùng', group: 'user_management', description: 'Chỉnh sửa thông tin người dùng' },
+  { key: 'user.delete', name: 'Xóa người dùng', group: 'user_management', description: 'Xóa tài khoản người dùng' },
+  { key: 'user.lock', name: 'Khóa/Mở khóa người dùng', group: 'user_management', description: 'Khóa hoặc mở khóa tài khoản' },
+  { key: 'user.reset_password', name: 'Reset mật khẩu', group: 'user_management', description: 'Đặt lại mật khẩu cho người dùng' },
+
+  // Role Management
+  { key: 'role.view', name: 'Xem danh sách vai trò', group: 'role_management', description: 'Xem danh sách vai trò và phân quyền' },
+  { key: 'role.create', name: 'Tạo vai trò', group: 'role_management', description: 'Tạo mới vai trò' },
+  { key: 'role.edit', name: 'Sửa vai trò', group: 'role_management', description: 'Chỉnh sửa vai trò và phân quyền' },
+  { key: 'role.delete', name: 'Xóa vai trò', group: 'role_management', description: 'Xóa vai trò' },
+
+  // System
+  { key: 'system.settings', name: 'Cấu hình hệ thống', group: 'system', description: 'Quản lý cấu hình hệ thống' },
+  { key: 'system.logs', name: 'Xem nhật ký hệ thống', group: 'system', description: 'Xem nhật ký truy cập và hoạt động' },
+];
+
+// ============================================================
+// ROLES
+// ============================================================
+export const MOCK_ROLES: Role[] = [
+  {
+    id: 'role-001',
+    name: 'Quản trị viên (Super Admin)',
+    description: 'Toàn quyền quản trị hệ thống',
+    permissions: ALL_PERMISSIONS.map(p => p.key),
+    userCount: 2,
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2025-06-01T00:00:00Z',
+  },
+  {
+    id: 'role-002',
+    name: 'Quản trị viên (Admin)',
+    description: 'Quản lý người dùng và xem vai trò',
+    permissions: ['user.view', 'user.create', 'user.edit', 'user.delete', 'user.lock', 'user.reset_password', 'role.view'],
+    userCount: 5,
+    createdAt: '2025-01-15T00:00:00Z',
+    updatedAt: '2025-05-20T00:00:00Z',
+  },
+  {
+    id: 'role-003',
+    name: 'Quản lý người dùng',
+    description: 'Quản lý tài khoản người dùng',
+    permissions: ['user.view', 'user.create', 'user.edit', 'user.lock', 'user.reset_password'],
+    userCount: 12,
+    createdAt: '2025-02-01T00:00:00Z',
+    updatedAt: '2025-04-10T00:00:00Z',
+  },
+  {
+    id: 'role-004',
+    name: 'Người xem (Viewer)',
+    description: 'Chỉ xem thông tin',
+    permissions: ['user.view', 'role.view'],
+    userCount: 8,
+    createdAt: '2025-03-01T00:00:00Z',
+    updatedAt: '2025-03-01T00:00:00Z',
+  },
+];
+
+// ============================================================
+// USERS
+// ============================================================
+export const MOCK_USERS: User[] = [
+  {
+    id: 'user-001',
+    username: 'admin',
+    fullName: 'Nguyễn Văn An',
+    email: 'admin@hh.gov.vn',
+    phone: '0901234567',
+    roleId: 'role-001',
+    roleName: 'Quản trị viên (Super Admin)',
+    status: 'active',
+    lastLoginAt: '2026-06-17T08:30:00Z',
+    createdAt: '2025-01-01T00:00:00Z',
+    updatedAt: '2026-06-15T00:00:00Z',
+  },
+  {
+    id: 'user-002',
+    username: 'tuanla',
+    fullName: 'Lê Anh Tuấn',
+    email: 'tuanla@hh.gov.vn',
+    phone: '0902345678',
+    roleId: 'role-002',
+    roleName: 'Quản trị viên (Admin)',
+    status: 'active',
+    lastLoginAt: '2026-06-17T09:15:00Z',
+    createdAt: '2025-02-10T00:00:00Z',
+    updatedAt: '2026-06-10T00:00:00Z',
+  },
+  {
+    id: 'user-003',
+    username: 'huongnt',
+    fullName: 'Nguyễn Thị Hương',
+    email: 'huongnt@hh.gov.vn',
+    phone: '0903456789',
+    roleId: 'role-003',
+    roleName: 'Quản lý người dùng',
+    status: 'active',
+    lastLoginAt: '2026-06-16T16:45:00Z',
+    createdAt: '2025-03-15T00:00:00Z',
+    updatedAt: '2026-05-20T00:00:00Z',
+  },
+  {
+    id: 'user-004',
+    username: 'minhpd',
+    fullName: 'Phạm Đức Minh',
+    email: 'minhpd@hh.gov.vn',
+    phone: '0904567890',
+    roleId: 'role-003',
+    roleName: 'Quản lý người dùng',
+    status: 'locked',
+    lastLoginAt: '2026-05-01T10:00:00Z',
+    createdAt: '2025-04-01T00:00:00Z',
+    updatedAt: '2026-06-01T00:00:00Z',
+  },
+  {
+    id: 'user-005',
+    username: 'linhnt',
+    fullName: 'Nguyễn Thùy Linh',
+    email: 'linhnt@hh.gov.vn',
+    phone: '0905678901',
+    roleId: 'role-004',
+    roleName: 'Người xem (Viewer)',
+    status: 'inactive',
+    lastLoginAt: '2026-01-15T08:00:00Z',
+    createdAt: '2025-05-20T00:00:00Z',
+    updatedAt: '2026-01-15T00:00:00Z',
+  },
+  {
+    id: 'user-006',
+    username: 'cuongtq',
+    fullName: 'Trần Quốc Cường',
+    email: 'cuongtq@hh.gov.vn',
+    phone: '0906789012',
+    roleId: 'role-004',
+    roleName: 'Người xem (Viewer)',
+    status: 'active',
+    lastLoginAt: '2026-06-16T14:20:00Z',
+    createdAt: '2025-06-10T00:00:00Z',
+    updatedAt: '2026-04-15T00:00:00Z',
+  },
+  {
+    id: 'user-007',
+    username: 'anhbv',
+    fullName: 'Bùi Văn Anh',
+    email: 'anhbv@hh.gov.vn',
+    phone: '0907890123',
+    roleId: 'role-002',
+    roleName: 'Quản trị viên (Admin)',
+    status: 'active',
+    lastLoginAt: '2026-06-17T07:50:00Z',
+    createdAt: '2025-07-05T00:00:00Z',
+    updatedAt: '2026-06-05T00:00:00Z',
+  },
+  {
+    id: 'user-008',
+    username: 'maitt',
+    fullName: 'Trần Thị Mai',
+    email: 'maitt@hh.gov.vn',
+    phone: '0908901234',
+    roleId: 'role-003',
+    roleName: 'Quản lý người dùng',
+    status: 'locked',
+    lastLoginAt: '2026-04-20T11:30:00Z',
+    createdAt: '2025-08-15T00:00:00Z',
+    updatedAt: '2026-06-12T00:00:00Z',
+  },
+  {
+    id: 'user-009',
+    username: 'quanvh',
+    fullName: 'Vũ Hoàng Quân',
+    email: 'quanvh@hh.gov.vn',
+    phone: '0909012345',
+    roleId: 'role-004',
+    roleName: 'Người xem (Viewer)',
+    status: 'active',
+    lastLoginAt: '2026-06-10T09:00:00Z',
+    createdAt: '2025-09-20T00:00:00Z',
+    updatedAt: '2026-02-20T00:00:00Z',
+  },
+  {
+    id: 'user-010',
+    username: 'phuongdt',
+    fullName: 'Đỗ Thanh Phương',
+    email: 'phuongdt@hh.gov.vn',
+    phone: '0910123456',
+    roleId: 'role-003',
+    roleName: 'Quản lý người dùng',
+    status: 'inactive',
+    lastLoginAt: '2025-12-01T08:00:00Z',
+    createdAt: '2025-10-01T00:00:00Z',
+    updatedAt: '2025-12-01T00:00:00Z',
+  },
+  {
+    id: 'user-011',
+    username: 'sonnh',
+    fullName: 'Nguyễn Hồng Sơn',
+    email: 'sonnh@hh.gov.vn',
+    phone: '0911234567',
+    roleId: 'role-002',
+    roleName: 'Quản trị viên (Admin)',
+    status: 'active',
+    lastLoginAt: '2026-06-16T17:00:00Z',
+    createdAt: '2025-11-10T00:00:00Z',
+    updatedAt: '2026-06-01T00:00:00Z',
+  },
+  {
+    id: 'user-012',
+    username: 'hoaipn',
+    fullName: 'Phạm Ngọc Hoài',
+    email: 'hoaipn@hh.gov.vn',
+    phone: '0912345678',
+    roleId: 'role-003',
+    roleName: 'Quản lý người dùng',
+    status: 'active',
+    lastLoginAt: '2026-06-17T10:30:00Z',
+    createdAt: '2026-01-05T00:00:00Z',
+    updatedAt: '2026-05-25T00:00:00Z',
+  },
+];
+
+// Current logged-in user (for permission guard demo)
+export const CURRENT_USER: User = MOCK_USERS[0];
