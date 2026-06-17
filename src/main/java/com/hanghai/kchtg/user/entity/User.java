@@ -13,6 +13,9 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,9 +26,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Tài khoản người dùng hệ thống.
+ * Tai khoan nguoi dung he thong.
  * <p>
- * Kế thừa {@link BaseEntity} để có sẵn {@code id}, {@code createdAt}, {@code updatedAt}.
+ * Ke thua {@link BaseEntity} de co san {@code id}, {@code createdAt}, {@code updatedAt}.
  * </p>
  */
 @Entity
@@ -37,44 +40,52 @@ import java.util.List;
 public class User extends BaseEntity {
 
     /**
-     * Tên đăng nhập — duy nhất, không được trống.
+     * Ten dang nhap â€” duy nhat, khong duoc trong.
      */
+    @NotBlank(message = "Username khong duoc de trong")
+    @Size(min = 3, max = 100, message = "Username tu 3 den 100 ky tu")
     @Column(nullable = false, unique = true, length = 100)
     private String username;
 
     /**
-     * Mật khẩu đã mã hoá (BCrypt).
+     * Mat khau da ma hoa (BCrypt).
      */
+    @NotBlank(message = "Mat khau khong duoc de trong")
+    @Size(min = 8, max = 255, message = "Mat khau tu 8 den 255 ky tu")
     @Column(nullable = false, length = 255)
     private String password;
 
     /**
-     * Địa chỉ email — duy nhất, không được trống.
+     * Dia chi email â€” duy nhat, khong duoc trong.
      */
+    @NotBlank(message = "Email khong duoc de trong")
+    @Email(message = "Email khong hop le")
     @Column(nullable = false, unique = true, length = 150)
     private String email;
 
     /**
-     * Họ và tên đầy đủ.
+     * Ho va ten day du.
      */
+    @Size(max = 200, message = "Ho ten toi da 200 ky tu")
     @Column(length = 200)
     private String fullName;
 
     /**
-     * Số điện thoại liên hệ.
+     * So dien thoai lien he.
      */
+    @Size(max = 20, message = "So dien thoai toi da 20 ky tu")
     @Column(length = 20)
     private String phone;
 
     /**
-     * Vai trò của người dùng (e.g. ROLE_USER, ROLE_ADMIN).
-     * Mã hoá trong JWT token.
+     * Vai trĂ² cua nguoi dung (e.g. ROLE_USER, ROLE_ADMIN).
+     * Ma hoa trong JWT token.
      */
     @Column(length = 50)
     private String role;
 
     /**
-     * Đơn vị tổ chức mà người dùng trực thuộc.
+     * Don vi to chuc ma nguoi dung truc thuoc.
      * Many-to-One relationship with lazy loading.
      */
     @ManyToOne(fetch = FetchType.LAZY)
@@ -82,7 +93,7 @@ public class User extends BaseEntity {
     private OrgUnit orgUnit;
 
     /**
-     * Danh sách nhóm người dùng mà người dùng thuộc về.
+     * Danh sach nhom nguoi dung ma nguoi dung thuoc ve.
      * Many-to-Many relationship mapped through join table.
      */
     @ManyToMany(fetch = FetchType.LAZY)
@@ -94,14 +105,14 @@ public class User extends BaseEntity {
     private List<UserGroup> groups = new ArrayList<>();
 
     /**
-     * Trạng thái tài khoản.
+     * Trang tai tai khoan.
      */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private UserStatus status = UserStatus.ACTIVE;
 
     /**
-     * Thời điểm đăng nhập cuối cùng (có thể {@code null} nếu chưa từng đăng nhập).
+     * Thoi diem dang nhap cuoi cung (co the {@code null} neu chua tung dang nhap).
      */
     @Column
     private LocalDateTime lastLoginAt;

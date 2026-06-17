@@ -45,10 +45,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // REST API — no CSRF needed
+                // REST API â€” no CSRF needed
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // Stateless sessions — no JSESSIONID
+                // Stateless sessions â€” no JSESSIONID
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
@@ -63,7 +63,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                // Disable form/basic login — JWT only
+                // Disable form/basic login â€” JWT only
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
 

@@ -10,6 +10,7 @@ import com.hanghai.kchtg.dataconnection.service.DataConnectionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,12 +39,13 @@ public class DataConnectionController {
         this.service = service;
     }
 
-    // ── CRUD ──────────────────────────────────────────────────────────
+    // Ă¢â€â‚¬Ă¢â€â‚¬ CRUD Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
 
     /**
      * Lists all data connections.
      */
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<List<ConnectionResponse>>> listAll() {
         List<ConnectionResponse> connections = service.listAll();
         return ResponseEntity.ok(ApiResponse.success(connections));
@@ -53,6 +55,7 @@ public class DataConnectionController {
      * Retrieves a single connection by its UUID.
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<ConnectionResponse>> getById(@PathVariable UUID id) {
         ConnectionResponse connection = service.getById(id);
         return ResponseEntity.ok(ApiResponse.success(connection));
@@ -62,6 +65,7 @@ public class DataConnectionController {
      * Creates a new data connection.
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<ConnectionResponse>> create(
             @Valid @RequestBody CreateConnectionRequest request) {
         ConnectionResponse connection = service.create(request);
@@ -74,6 +78,7 @@ public class DataConnectionController {
      * Updates (partial) an existing data connection.
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<ConnectionResponse>> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateConnectionRequest request) {
@@ -85,6 +90,7 @@ public class DataConnectionController {
      * Deletes a data connection.
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity
@@ -92,13 +98,14 @@ public class DataConnectionController {
                 .body(ApiResponse.success("Data connection deleted", null));
     }
 
-    // ── Test ──────────────────────────────────────────────────────────
+    // Ă¢â€â‚¬Ă¢â€â‚¬ Test Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
 
     /**
      * Tests connectivity to the target system for the given connection.
      * Accepts optional overrides for endpoint URL and credentials.
      */
     @PostMapping("/{id}/test")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<TestConnectionResponse>> testConnection(
             @PathVariable UUID id,
             @Valid @RequestBody(required = false) TestConnectionRequest request) {

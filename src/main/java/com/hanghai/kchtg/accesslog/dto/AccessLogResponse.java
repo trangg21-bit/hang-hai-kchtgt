@@ -40,7 +40,7 @@ public class AccessLogResponse {
         this.updatedAt = entity.getUpdatedAt();
     }
 
-    // ── Getters (no setters — response is immutable) ──────────────
+    // â”€â”€ Getters (no setters â€” response is immutable) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     public UUID getId() {
         return id;

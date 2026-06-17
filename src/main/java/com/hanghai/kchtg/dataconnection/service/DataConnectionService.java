@@ -44,7 +44,7 @@ public class DataConnectionService {
         this.encryptionUtil = encryptionUtil;
     }
 
-    // ── CRUD ──────────────────────────────────────────────────────────
+    // â”€â”€ CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Transactional(readOnly = true)
     public List<ConnectionResponse> listAll() {
@@ -130,11 +130,13 @@ public class DataConnectionService {
         if (!repository.existsById(id)) {
             throw new EntityNotFoundException("Data connection not found: id=" + id);
         }
-        repository.deleteById(id);
-        log.info("Deleted data connection: id={}", id);
+        DataConnection entity = repository.findById(id).orElseThrow();
+        entity.softDelete();
+        repository.save(entity);
+        log.info("Soft-deleted data connection: id={}", id);
     }
 
-    // ── Test Connection ───────────────────────────────────────────────
+    // â”€â”€ Test Connection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
      * Performs a connectivity test against the stored (or overridden) endpoint.
@@ -157,7 +159,7 @@ public class DataConnectionService {
         if (type == ConnectionType.DATABASE || type == ConnectionType.FILE) {
             return TestConnectionResponse.builder()
                     .success(true)
-                    .message("Configuration valid — manual connectivity test required for "
+                    .message("Configuration valid â€” manual connectivity test required for "
                              + type.name() + " connections.")
                     .responseTimeMs(0)
                     .build();
@@ -184,7 +186,7 @@ public class DataConnectionService {
             if (status >= 200 && status < 400) {
                 return TestConnectionResponse.builder()
                         .success(true)
-                        .message("Endpoint reachable — HTTP " + status)
+                        .message("Endpoint reachable â€” HTTP " + status)
                         .responseTimeMs(elapsed)
                         .build();
             }
@@ -204,11 +206,11 @@ public class DataConnectionService {
         }
     }
 
-    // ── Internal helpers ──────────────────────────────────────────────
+    // â”€â”€ Internal helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
      * Decrypts the credentials field in-place so the caller sees plain text.
-     * The entity's persisted encrypted value is not affected — the entity
+     * The entity's persisted encrypted value is not affected â€” the entity
      * is still attached to the persistence context so the change is not flushed.
      */
     private void decryptCredentials(DataConnection entity) {

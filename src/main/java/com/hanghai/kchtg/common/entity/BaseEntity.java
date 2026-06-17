@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
+import org.hibernate.annotations.SQLRestriction;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
@@ -28,10 +29,11 @@ import java.util.UUID;
 @Setter
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
+@SQLRestriction("deleted_at IS NULL")
 public abstract class BaseEntity {
 
     /**
-     * Primary key — auto-generated UUID (Hibernate 6 native support).
+     * Primary key â€” auto-generated UUID (Hibernate 6 native support).
      */
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -51,4 +53,18 @@ public abstract class BaseEntity {
     @LastModifiedDate
     @Column(nullable = false)
     private LocalDateTime updatedAt;
+
+    /**
+     * Timestamp when entity is soft-deleted (null = still active).
+     */
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
+    /**
+     * Mark this entity as soft-deleted.
+     */
+    public void softDelete() {
+        this.deletedAt = LocalDateTime.now();
+    }
 }
+

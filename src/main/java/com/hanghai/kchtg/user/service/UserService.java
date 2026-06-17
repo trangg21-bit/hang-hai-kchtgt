@@ -21,13 +21,13 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Service quản lý tài khoản người dùng.
+ * Service quan ly tai khoan nguoi dung.
  * <p>
- * {@code @Transactional} ở class-level để tất cả public method đều
- * chạy trong transaction — tránh {@code LazyInitializationException}
+ * {@code @Transactional} o class-level de tat ca public method deu
+ * chay trong transaction Ă¢â‚¬â€ tranh {@code LazyInitializationException}
  * khi {@code spring.jpa.open-in-view=false}.
- * Read methods dùng {@code findAllWithRelations()} / {@code findByIdWithRelations()}
- * để JOIN FETCH các lazy associations.
+ * Read methods dung {@code findAllWithRelations()} / {@code findByIdWithRelations()}
+ * de JOIN FETCH cĂƒÂ¡c lazy associations.
  * </p>
  */
 @Service
@@ -51,10 +51,10 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // ── Query ───────────────────────────────────────────────────────
+    // Ă¢â€â‚¬Ă¢â€â‚¬ Query Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
 
     /**
-     * Lấy danh sách toàn bộ người dùng (JOIN FETCH orgUnit + groups).
+     * Lay danh sach tong bo nguoi dung (JOIN FETCH orgUnit + groups).
      */
     @Transactional(readOnly = true)
     public List<User> findAll() {
@@ -62,51 +62,51 @@ public class UserService {
     }
 
     /**
-     * Tìm người dùng theo ID (JOIN FETCH orgUnit + groups).
+     * Tim nguoi dung theo ID (JOIN FETCH orgUnit + groups).
      *
-     * @throws EntityNotFoundException nếu không tìm thấy
+     * @throws EntityNotFoundException neu khong tim thay
      */
     @Transactional(readOnly = true)
     public User findById(UUID id) {
         return userRepository.findByIdWithRelations(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nguoi dung voi id: " + id));
     }
 
     /**
-     * Tìm người dùng theo tên đăng nhập (JOIN FETCH orgUnit + groups).
+     * Tim nguoi dung theo ten dang nhap (JOIN FETCH orgUnit + groups).
      *
-     * @throws EntityNotFoundException nếu không tìm thấy
+     * @throws EntityNotFoundException neu khong tim thay
      */
     @Transactional(readOnly = true)
     public User findByUsername(String username) {
         return userRepository.findByUsernameWithRelations(username)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với username: " + username));
+                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nguoi dung voi username: " + username));
     }
 
     /**
-     * Tìm người dùng theo email.
+     * Tim nguoi dung theo email.
      *
-     * @throws EntityNotFoundException nếu không tìm thấy
+     * @throws EntityNotFoundException neu khong tim thay
      */
     @Transactional(readOnly = true)
     public User findByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với email: " + email));
+                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nguoi dung voi email: " + email));
     }
 
-    // ── Mutate ──────────────────────────────────────────────────────
+    // Ă¢â€â‚¬Ă¢â€â‚¬ Mutate Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
 
     /**
-     * Tạo mới người dùng.
+     * Tao moi nguoi dung.
      *
-     * @throws IllegalArgumentException nếu username hoặc email đã tồn tại
+     * @throws IllegalArgumentException neu username hoĂ„Æ’c email da ton tai
      */
     public User create(CreateUserRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new IllegalArgumentException("Username đã tồn tại: " + request.getUsername());
+            throw new IllegalArgumentException("Username da ton tai: " + request.getUsername());
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
+            throw new IllegalArgumentException("Email da ton tai: " + request.getEmail());
         }
 
         User user = new User();
@@ -122,7 +122,7 @@ public class UserService {
         if (request.getOrgUnitId() != null) {
             OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
                     .orElseThrow(() -> new IllegalArgumentException(
-                            "Không tìm thấy đơn vị với id: " + request.getOrgUnitId()));
+                            "Khong tim thay don vi voi id: " + request.getOrgUnitId()));
             user.setOrgUnit(orgUnit);
         }
 
@@ -130,7 +130,7 @@ public class UserService {
         if (request.getGroupIds() != null && !request.getGroupIds().isEmpty()) {
             List<UserGroup> groups = groupRepository.findAllById(request.getGroupIds());
             if (groups.size() != request.getGroupIds().size()) {
-                throw new IllegalArgumentException("Một số nhóm không tồn tại");
+                throw new IllegalArgumentException("Mot so nhom khong ton tai");
             }
             user.setGroups(new ArrayList<>(groups));
         }
@@ -141,17 +141,17 @@ public class UserService {
     }
 
     /**
-     * Cập nhật thông tin người dùng. Chỉ cập nhật những trường được gửi (khác {@code null}).
+     * Cap nhat thong tin nguoi dung. Chi cap nhat nhung truong duoc gui (khac {@code null}).
      *
-     * @throws EntityNotFoundException nếu không tìm thấy người dùng
-     * @throws IllegalArgumentException nếu email mới đã được dùng bởi người dùng khác
+     * @throws EntityNotFoundException neu khong tim thay nguoi dung
+     * @throws IllegalArgumentException neu email moi da duoc dung boi nguoi dung khac
      */
     public User update(UUID id, UpdateUserRequest request) {
         User user = findById(id);
 
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
-                throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
+                throw new IllegalArgumentException("Email da ton tai: " + request.getEmail());
             }
             user.setEmail(request.getEmail());
         }
@@ -172,7 +172,7 @@ public class UserService {
         if (request.getOrgUnitId() != null) {
             OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
                     .orElseThrow(() -> new IllegalArgumentException(
-                            "Không tìm thấy đơn vị với id: " + request.getOrgUnitId()));
+                            "Khong tim thay don vi voi id: " + request.getOrgUnitId()));
             user.setOrgUnit(orgUnit);
         }
         if (request.getGroupIds() != null) {
@@ -188,22 +188,23 @@ public class UserService {
     }
 
     /**
-     * Xoá người dùng.
+     * Xoa nguoi dung (soft delete Ă¢â‚¬â€ dung BaseEntity.softDelete()).
      *
-     * @throws EntityNotFoundException nếu không tìm thấy người dùng
+     * @throws EntityNotFoundException neu khong tim thay nguoi dung
      */
     public void delete(UUID id) {
-        if (!userRepository.existsById(id)) {
-            throw new EntityNotFoundException("Không tìm thấy người dùng với id: " + id);
-        }
-        userRepository.deleteById(id);
-        log.info("Deleted user: {}", id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nguoi dung voi id: " + id));
+        user.softDelete();
+        user.setStatus(UserStatus.DELETED);
+        userRepository.save(user);
+        log.info("Soft-deleted user: {}", id);
     }
 
     /**
-     * Thay đổi trạng thái tài khoản người dùng.
+     * Thay doi trang tai tai khoan nguoi dung.
      *
-     * @throws EntityNotFoundException nếu không tìm thấy người dùng
+     * @throws EntityNotFoundException neu khong tim thay nguoi dung
      */
     public User changeStatus(UUID id, UserStatus status) {
         User user = findById(id);

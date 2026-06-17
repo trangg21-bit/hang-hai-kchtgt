@@ -9,7 +9,7 @@ import lombok.Data;
 
 /**
  * Request body for partially updating an existing {@code DataConnection}.
- * All fields are optional — only supplied fields are applied.
+ * All fields are optional â€” only supplied fields are applied.
  */
 @Data
 public class UpdateConnectionRequest {

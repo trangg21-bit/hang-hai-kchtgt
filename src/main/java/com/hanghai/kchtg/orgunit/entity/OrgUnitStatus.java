@@ -5,5 +5,6 @@ package com.hanghai.kchtg.orgunit.entity;
  */
 public enum OrgUnitStatus {
     ACTIVE,
-    INACTIVE
+    INACTIVE,
+    PENDING_APPROVAL
 }

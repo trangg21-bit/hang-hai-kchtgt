@@ -1,8 +1,11 @@
 package com.hanghai.kchtg.accesslog.repository;
 
 import com.hanghai.kchtg.accesslog.entity.AccessLog;
+import com.hanghai.kchtg.accesslog.entity.AccessLogStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -36,4 +39,20 @@ public interface AccessLogRepository extends JpaRepository<AccessLog, UUID>,
      */
     List<AccessLog> findByCreatedAtBetweenOrderByCreatedAtDesc(
             LocalDateTime from, LocalDateTime to);
+
+    /**
+     * Delete all logs created before the given threshold.
+     */
+    long deleteByCreatedAtBefore(LocalDateTime createdAtBefore);
+
+    /**
+     * Count logs by status within a time range.
+     */
+    long countByStatusAndCreatedAtAfter(AccessLogStatus status, LocalDateTime after);
+
+    /**
+     * Count logs grouped by status in a time range (returns [{status, count}]).
+     */
+    @Query("SELECT a.status, COUNT(a) FROM AccessLog a WHERE a.createdAt BETWEEN :start AND :end GROUP BY a.status")
+    List<Object[]> countByStatusGroupedByStatus(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 }

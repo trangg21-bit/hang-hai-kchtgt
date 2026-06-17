@@ -8,6 +8,7 @@ import com.hanghai.kchtg.group.service.GroupService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,7 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * REST controller cho CRUD quản lý nhóm người dùng.
+ * REST controller cho CRUD quan ly nhom nguoi dung.
  * <p>
  * Base path: {@code /api/groups}
  * </p>
@@ -36,43 +37,48 @@ public class GroupController {
         this.service = service;
     }
 
-    /** GET /api/groups — liệt kê tất cả nhóm. */
+    /** GET /api/groups â€” liet ke tat ca nhom. */
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<List<GroupResponse>>> list() {
         List<GroupResponse> groups = service.findAll();
         return ResponseEntity.ok(ApiResponse.success(groups));
     }
 
-    /** GET /api/groups/{id} — lấy chi tiết một nhóm. */
+    /** GET /api/groups/{id} â€” lay chi tiet mot nhom. */
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<GroupResponse>> get(@PathVariable UUID id) {
         GroupResponse group = service.findById(id);
         return ResponseEntity.ok(ApiResponse.success(group));
     }
 
-    /** POST /api/groups — tạo mới nhóm. Trả về 201 Created. */
+    /** POST /api/groups â€” tao moi nhom. Tra ve 201 Created. */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<GroupResponse>> create(
             @Valid @RequestBody CreateGroupRequest request) {
         GroupResponse group = service.create(request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Nhóm đã được tạo thành công", group));
+                .body(ApiResponse.success("Nhom da duoc tao thanh cong", group));
     }
 
-    /** PUT /api/groups/{id} — cập nhật nhóm. */
+    /** PUT /api/groups/{id} â€” cap nhat nhom. */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<GroupResponse>> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateGroupRequest request) {
         GroupResponse group = service.update(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Nhóm đã được cập nhật thành công", group));
+        return ResponseEntity.ok(ApiResponse.success("Nhom da duoc cap nhat thanh cong", group));
     }
 
-    /** DELETE /api/groups/{id} — xoá nhóm. */
+    /** DELETE /api/groups/{id} â€” xoa nhom. */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         service.delete(id);
-        return ResponseEntity.ok(ApiResponse.success("Nhóm đã được xoá thành công", null));
+        return ResponseEntity.ok(ApiResponse.success("Nhom da duoc xoa thanh cong", null));
     }
 }

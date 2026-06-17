@@ -15,30 +15,30 @@ import java.util.UUID;
 @Data
 public class CreateOrgUnitRequest {
 
-    @NotBlank(message = "Tên đơn vị không được để trống")
-    @Size(max = 200, message = "Tên đơn vị tối đa 200 ký tự")
+    @NotBlank(message = "TĂªn Ä‘Æ¡n vá»‹ khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
+    @Size(max = 200, message = "TĂªn Ä‘Æ¡n vá»‹ tá»‘i Ä‘a 200 kĂ½ tá»±")
     private String name;
 
-    @NotBlank(message = "Mã đơn vị không được để trống")
-    @Size(max = 50, message = "Mã đơn vị tối đa 50 ký tự")
+    @NotBlank(message = "MĂ£ Ä‘Æ¡n vá»‹ khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
+    @Size(max = 50, message = "MĂ£ Ä‘Æ¡n vá»‹ tá»‘i Ä‘a 50 kĂ½ tá»±")
     private String code;
 
     /**
-     * Parent unit ID (nullable — root unit if omitted).
+     * Parent unit ID (nullable â€” root unit if omitted).
      */
     private UUID parentId;
 
-    @NotNull(message = "Loại đơn vị không được để trống")
+    @NotNull(message = "Loáº¡i Ä‘Æ¡n vá»‹ khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
     private OrgUnitType type;
 
-    @Size(max = 500, message = "Địa chỉ tối đa 500 ký tự")
+    @Size(max = 500, message = "Äá»‹a chá»‰ tá»‘i Ä‘a 500 kĂ½ tá»±")
     private String address;
 
-    @Size(max = 20, message = "Số điện thoại tối đa 20 ký tự")
+    @Size(max = 20, message = "Sá»‘ Ä‘iá»‡n thoáº¡i tá»‘i Ä‘a 20 kĂ½ tá»±")
     private String phone;
 
     /**
-     * Status — defaults to {@code ACTIVE} on the service layer if not provided.
+     * Status â€” defaults to {@code ACTIVE} on the service layer if not provided.
      */
     private OrgUnitStatus status;
 }

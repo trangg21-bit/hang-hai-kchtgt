@@ -10,6 +10,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -18,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Nhóm người dùng (User Group) — dùng để gom quyền và phân quyền theo nhóm.
+ * Nhom nguoi dung (User Group) â€” dung de gom quyen vĂ  phan quyen theo nhom.
  */
 @Entity
 @Table(name = "user_groups")
@@ -27,19 +29,23 @@ import java.util.List;
 @NoArgsConstructor
 public class UserGroup extends BaseEntity {
 
-    /** Tên hiển thị của nhóm (bắt buộc). */
+    /** Ten hien thi cua nhom (bat buoc). */
+    @NotBlank(message = "Ten nhom khong duoc de trong")
+    @Size(max = 100, message = "Ten nhom toi da 100 ky tu")
     @Column(nullable = false, length = 150)
     private String name;
 
-    /** Mã định danh duy nhất của nhóm (bắt buộc, unique). */
+    /** Ma dinh danh duy nhat cua nhom (bat buoc, unique). */
+    @NotBlank(message = "Ma nhom khong duoc de trong")
+    @Size(max = 50, message = "Ma nhom toi da 50 ky tu")
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
-    /** Mô tả chi tiết về nhóm. */
+    /** Mo ta chi tiet ve nhom. */
     @Column(length = 500)
     private String description;
 
-    /** Danh sách mã quyền (permission keys) mà nhóm này sở hữu. */
+    /** Danh sach ma quyen (permission keys) ma nhom nay so huu. */
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
             name = "user_group_permissions",
@@ -48,7 +54,7 @@ public class UserGroup extends BaseEntity {
     @Column(name = "permission", nullable = false)
     private List<String> permissions = new ArrayList<>();
 
-    /** Trạng thái: ACTIVE (hoạt động) hoặc INACTIVE (vô hiệu). */
+    /** Trang tai: ACTIVE (hoat dong) hoÄƒc INACTIVE (vo hieu). */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private GroupStatus status = GroupStatus.ACTIVE;

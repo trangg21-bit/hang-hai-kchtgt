@@ -6,5 +6,6 @@ package com.hanghai.kchtg.accesslog.entity;
 public enum AccessLogStatus {
 
     SUCCESS,
-    FAILURE
+    FAILURE,
+    FAILED;
 }

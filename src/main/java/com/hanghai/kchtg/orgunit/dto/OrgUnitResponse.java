@@ -41,13 +41,13 @@ public class OrgUnitResponse {
     private LocalDateTime updatedAt;
 
     /**
-     * Child units — populated by the tree-building service logic.
+     * Child units â€” populated by the tree-building service logic.
      * Omitted from flat list responses.
      */
     private List<OrgUnitResponse> children;
 
     /**
-     * Static factory: map entity → response (without children).
+     * Static factory: map entity â†’ response (without children).
      *
      * @param entity the JPA entity
      * @return response DTO with all scalar fields populated

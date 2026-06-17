@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * DTO trả về thông tin người dùng (không chứa mật khẩu).
+ * DTO tráº£ vá» thĂ´ng tin ngÆ°á»i dĂ¹ng (khĂ´ng chá»©a máº­t kháº©u).
  */
 @Getter
 @Setter
@@ -38,9 +38,9 @@ public class UserResponse {
     private LocalDateTime updatedAt;
 
     /**
-     * Chuyển đổi từ {@link User} entity sang DTO response.
+     * Chuyá»ƒn Ä‘á»•i tá»« {@link User} entity sang DTO response.
      * <p>
-     * Gọi trong transaction để tránh LazyInitializationException.
+     * Gá»i trong transaction Ä‘á»ƒ trĂ¡nh LazyInitializationException.
      * </p>
      */
     public static UserResponse from(User user) {

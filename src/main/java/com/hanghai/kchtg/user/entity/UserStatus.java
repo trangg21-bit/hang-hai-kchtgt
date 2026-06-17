@@ -1,10 +1,11 @@
 package com.hanghai.kchtg.user.entity;
 
 /**
- * Trạng thái tài khoản người dùng.
+ * Tr?ng th?i tài kho?n ng??i d?ng.
  */
 public enum UserStatus {
     ACTIVE,
     INACTIVE,
-    LOCKED
+    LOCKED,
+    DELETED
 }

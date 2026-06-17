@@ -6,6 +6,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -33,12 +35,16 @@ public class OrgUnit extends BaseEntity {
     /**
      * Display name of the organisational unit (max 200 chars).
      */
+    @NotBlank(message = "Ten don vi khong duoc de trong")
+    @Size(max = 200, message = "Ten don vi toi da 200 ky tu")
     @Column(nullable = false, length = 200)
     private String name;
 
     /**
      * Unique business code for the unit (max 50 chars).
      */
+    @NotBlank(message = "Ma don vi khong duoc de trong")
+    @Size(max = 50, message = "Ma don vi toi da 50 ky tu")
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 

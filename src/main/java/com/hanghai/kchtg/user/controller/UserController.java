@@ -9,6 +9,7 @@ import com.hanghai.kchtg.user.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -23,7 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * REST Controller quản lý tài khoản người dùng.
+ * REST Controller quan ly tai khoan nguoi dung.
  * <p>
  * Base path: {@code /api/users}
  * </p>
@@ -39,9 +40,10 @@ public class UserController {
     }
 
     /**
-     * Lấy danh sách toàn bộ người dùng.
+     * Lay danh sach tong bo nguoi dung.
      */
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<List<UserResponse>>> list() {
         List<UserResponse> users = userService.findAll().stream()
                 .map(UserResponse::from)
@@ -50,51 +52,56 @@ public class UserController {
     }
 
     /**
-     * Lấy chi tiết một người dùng theo ID.
+     * Lay chi tiet mot nguoi dung theo ID.
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> getById(@PathVariable UUID id) {
         UserResponse user = UserResponse.from(userService.findById(id));
         return ResponseEntity.ok(ApiResponse.success(user));
     }
 
     /**
-     * Tạo mới người dùng.
+     * Tao moi nguoi dung.
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> create(@Valid @RequestBody CreateUserRequest request) {
         UserResponse user = UserResponse.from(userService.create(request));
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Tạo người dùng thành công", user));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Tao nguoi dung thanh cong", user));
     }
 
     /**
-     * Cập nhật thông tin người dùng.
+     * Cap nhat thong tin nguoi dung.
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateUserRequest request) {
         UserResponse user = UserResponse.from(userService.update(id, request));
-        return ResponseEntity.ok(ApiResponse.success("Cập nhật người dùng thành công", user));
+        return ResponseEntity.ok(ApiResponse.success("Cap nhat nguoi dung thanh cong", user));
     }
 
     /**
-     * Xoá người dùng.
+     * Xoa nguoi dung.
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         userService.delete(id);
-        return ResponseEntity.ok(ApiResponse.success("Xoá người dùng thành công", null));
+        return ResponseEntity.ok(ApiResponse.success("Xoa nguoi dung thanh cong", null));
     }
 
     /**
-     * Thay đổi trạng thái tài khoản người dùng.
+     * Thay doi trang tai tai khoan nguoi dung.
      */
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> changeStatus(
             @PathVariable UUID id,
             @Valid @RequestBody ChangeStatusRequest request) {
         UserResponse user = UserResponse.from(userService.changeStatus(id, request.getStatus()));
-        return ResponseEntity.ok(ApiResponse.success("Thay đổi trạng thái thành công", user));
+        return ResponseEntity.ok(ApiResponse.success("Thay doi trang tai thanh cong", user));
     }
 }

@@ -76,10 +76,10 @@ public class MapIconService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("MapIcon not found with id: " + id);
-        }
-        repository.deleteById(id);
+        MapIcon entity = repository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("MapIcon not found with id: " + id));
+        entity.softDelete();
+        repository.save(entity);
     }
 
     private MapIconResponse toResponse(MapIcon entity) {

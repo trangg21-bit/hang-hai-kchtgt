@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,6 +40,7 @@ public class OrgUnitController {
      * List all units (flat). Add {@code ?parentId=} to filter by parent.
      */
     @GetMapping
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<List<OrgUnitResponse>>> getAll(
             @RequestParam(required = false) UUID parentId) {
         if (parentId != null) {
@@ -49,9 +51,10 @@ public class OrgUnitController {
     }
 
     /**
-     * Full hierarchical tree (root → children recursively).
+     * Full hierarchical tree (root Ă¢â€ â€™ children recursively).
      */
     @GetMapping("/tree")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<List<OrgUnitResponse>>> getTree() {
         return ResponseEntity.ok(ApiResponse.success(service.findTree()));
     }
@@ -60,6 +63,7 @@ public class OrgUnitController {
      * Single unit by ID (flat, no children).
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<OrgUnitResponse>> getById(
             @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.findById(id)));
@@ -69,33 +73,36 @@ public class OrgUnitController {
      * Create a new organisational unit.
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<OrgUnitResponse>> create(
             @Valid @RequestBody CreateOrgUnitRequest request) {
         OrgUnitResponse response = service.create(request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Tạo đơn vị thành công", response));
+                .body(ApiResponse.success("Tao don vi thanh cong", response));
     }
 
     /**
      * Partial update of an existing unit.
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<OrgUnitResponse>> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateOrgUnitRequest request) {
         return ResponseEntity.ok(ApiResponse.success(
-                "Cập nhật đơn vị thành công", service.update(id, request)));
+                "Cap nhat don vi thanh cong", service.update(id, request)));
     }
 
     /**
      * Delete a unit (fails if the unit has children).
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.ok(
-                ApiResponse.success("Xóa đơn vị thành công", null));
+                ApiResponse.success("Xoa don vi thanh cong", null));
     }
 }

@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Service xử lý nghiệp vụ CRUD cho nhóm người dùng.
+ * Service xu ly nghiep vu CRUD cho nhom nguoi dung.
  */
 @Service
 @Transactional
@@ -30,20 +30,20 @@ public class GroupService {
         this.repository = repository;
     }
 
-    // ── CREATE ──────────────────────────────────────────────────────
+    // Ă¢â€â‚¬Ă¢â€â‚¬ CREATE Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
 
     /**
-     * Tạo mới một nhóm người dùng.
+     * Tao moi mot nhom nguoi dung.
      *
-     * @param request DTO chứa thông tin nhóm cần tạo
-     * @return GroupResponse của nhóm vừa tạo
-     * @throws IllegalArgumentException nếu mã code đã tồn tại
+     * @param request DTO chua thong tin nhom can tao
+     * @return GroupResponse cua nhom vua tao
+     * @throws IllegalArgumentException neu ma code da ton tai
      */
     public GroupResponse create(CreateGroupRequest request) {
         log.info("Creating group: code={}, name={}", request.getCode(), request.getName());
 
         if (repository.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Mã nhóm '" + request.getCode() + "' đã tồn tại");
+            throw new IllegalArgumentException("Ma nhom '" + request.getCode() + "' da ton tai");
         }
 
         UserGroup entity = new UserGroup();
@@ -51,17 +51,17 @@ public class GroupService {
         entity.setCode(request.getCode());
         entity.setDescription(request.getDescription());
         entity.setPermissions(request.getPermissions());
-        entity.setStatus(request.getStatus() != null ? request.getStatus() : GroupStatus.ACTIVE);
+        entity.setStatus(request.getStatus() != null ? GroupStatus.valueOf(request.getStatus()) : GroupStatus.ACTIVE);
 
         UserGroup saved = repository.save(entity);
         log.info("Group created: id={}", saved.getId());
         return GroupResponse.from(saved);
     }
 
-    // ── READ ────────────────────────────────────────────────────────
+    // Ă¢â€â‚¬Ă¢â€â‚¬ READ Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
 
     /**
-     * Lấy danh sách tất cả nhóm.
+     * Lay danh sach tat ca nhom.
      */
     @Transactional(readOnly = true)
     public List<GroupResponse> findAll() {
@@ -72,35 +72,35 @@ public class GroupService {
     }
 
     /**
-     * Tìm nhóm theo ID.
+     * Tim nhom theo ID.
      *
-     * @param id UUID của nhóm
+     * @param id UUID cua nhom
      * @return GroupResponse
-     * @throws EntityNotFoundException nếu không tìm thấy
+     * @throws EntityNotFoundException neu khong tim thay
      */
     @Transactional(readOnly = true)
     public GroupResponse findById(UUID id) {
         UserGroup entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhóm với id=" + id));
+                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nhom voi id=" + id));
         return GroupResponse.from(entity);
     }
 
-    // ── UPDATE ──────────────────────────────────────────────────────
+    // Ă¢â€â‚¬Ă¢â€â‚¬ UPDATE Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
 
     /**
-     * Cập nhật thông tin nhóm. Mã code không được thay đổi.
-     * Chỉ cập nhật những trường được gửi (khác {@code null}).
+     * Cap nhat thong tin nhom. Ma code khong duoc thay doi.
+     * Chi cap nhat nhung truong duoc gui (khac {@code null}).
      *
-     * @param id      UUID của nhóm cần cập nhật
-     * @param request DTO chứa các trường có thể cập nhật
-     * @return GroupResponse sau khi cập nhật
-     * @throws EntityNotFoundException nếu không tìm thấy nhóm
+     * @param id      UUID cua nhom can cap nhat
+     * @param request DTO chua cac truong co the cap nhat
+     * @return GroupResponse sau khi cap nhat
+     * @throws EntityNotFoundException neu khong tim thay nhom
      */
     public GroupResponse update(UUID id, UpdateGroupRequest request) {
         log.info("Updating group: id={}", id);
 
         UserGroup entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhóm với id=" + id));
+                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nhom voi id=" + id));
 
         if (request.getName() != null) {
             entity.setName(request.getName());
@@ -112,7 +112,7 @@ public class GroupService {
             entity.setPermissions(request.getPermissions());
         }
         if (request.getStatus() != null) {
-            entity.setStatus(request.getStatus());
+            entity.setStatus(GroupStatus.valueOf(request.getStatus()));
         }
 
         UserGroup saved = repository.save(entity);
@@ -120,22 +120,22 @@ public class GroupService {
         return GroupResponse.from(saved);
     }
 
-    // ── DELETE ──────────────────────────────────────────────────────
+    // Ă¢â€â‚¬Ă¢â€â‚¬ DELETE Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
 
     /**
-     * Xoá nhóm theo ID.
+     * Xoa nhom theo ID (soft delete).
      *
-     * @param id UUID của nhóm cần xoá
-     * @throws EntityNotFoundException nếu không tìm thấy
+     * @param id UUID cua nhom can xoa
+     * @throws EntityNotFoundException neu khong tim thay
      */
     public void delete(UUID id) {
         log.info("Deleting group: id={}", id);
 
-        if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("Không tìm thấy nhóm với id=" + id);
-        }
+        UserGroup entity = repository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nhom voi id=" + id));
 
-        repository.deleteById(id);
-        log.info("Group deleted: id={}", id);
+        entity.softDelete();
+        repository.save(entity);
+        log.info("Soft-deleted group: id={}", id);
     }
 }

@@ -12,4 +12,5 @@ public class TestConnectionResponse {
     boolean success;
     String message;
     long responseTimeMs;
+    int responseCode;
 }

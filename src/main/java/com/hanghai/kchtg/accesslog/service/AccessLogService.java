@@ -21,7 +21,7 @@ import java.util.UUID;
 /**
  * Read-only service for access-log queries.
  * <p>
- * The access-log is an audit artifact — entries are created by a
+ * The access-log is an audit artifact â€” entries are created by a
  * cross-cutting aspect (not implemented here). This service only
  * provides query operations.
  * </p>
@@ -65,7 +65,7 @@ public class AccessLogService {
                 .map(AccessLogResponse::new);
     }
 
-    // ── Private helpers ───────────────────────────────────────────
+    // â”€â”€ Private helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
      * Build a dynamic JPA {@link Specification} from the filter DTO.

@@ -6,6 +6,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -34,9 +36,13 @@ public class MapIcon extends BaseEntity {
         INACTIVE
     }
 
+    @NotBlank(message = "Ten icon khong duoc de trong")
+    @Size(max = 100, message = "Ten icon toi da 100 ky tu")
     @Column(nullable = false, length = 100)
     private String name;
 
+    @NotBlank(message = "Ma icon khong duoc de trong")
+    @Size(max = 50, message = "Ma icon toi da 50 ky tu")
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 

@@ -22,17 +22,17 @@ spring:
       write-dates-as-timestamps: false
     default-property-inclusion: non_null
 
-# ── JWT Configuration ───────────────────────────────────────────
+# -- JWT Configuration ------------------------------------------------
 jwt:
-  secret: ${JWT_SECRET:aXRzLWEtc2VjcmV0LWtleS1mb3Itand0LXRva2VuLWdlbmVyYXRpb24taGFuZ2hhaS1rY2h0Zw==}
+  secret: ${JWT_SECRET}
   expiration: 86400000
 
-# ── Encryption Configuration ────────────────────────────────────
+# -- Encryption Configuration ------------------------------------------------
 encryption:
-  key: ${ENCRYPTION_KEY:YWJjZGVmZ2hpamtsbW5vcA==}
+  key: ${ENCRYPTION_KEY}
 
 ---
-# ── DEV profile (H2 in-memory) ──────────────────────────────────
+# -- DEV profile (H2 in-memory) ------------------------------------------------
 spring:
   config:
     activate:
@@ -59,7 +59,7 @@ logging:
     org.springframework.security: DEBUG
 
 ---
-# ── PROD profile (PostgreSQL) ────────────────────────────────────
+# -- PROD profile (PostgreSQL) ------------------------------------------------
 spring:
   config:
     activate:
