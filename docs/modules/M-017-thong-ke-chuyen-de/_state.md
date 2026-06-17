@@ -1,27 +1,32 @@
 ---
 feature-id: M-017
-feature-name: "Thống kê chuyên đề"
+feature-name: Thống kê chuyên đề
 pipeline-type: sdlc
 status: in-progress
 depends-on: []
 blocked-by: []
-created: "2026-06-16T15:43:53Z"
-last-updated: "2026-06-16T15:43:53Z"
+created: 2026-06-16T15:43:53Z
+last-updated: 2026-06-17T02:09:38Z
 current-stage: engineering-business-analyst
 output-mode: lean
 repo-type: mini
-repo-path: "."
+repo-path: .
 project: ""
 docs-path: docs/modules/M-017-thong-ke-chuyen-de
 intel-path: docs/intel
-stages-queue: ["engineering-system-architect","engineering-technical-lead","engineering-backend-developer-wave-1","engineering-qa-engineer-wave-1","engineering-code-reviewer"]
+stages-queue:
+  - engineering-system-architect
+  - engineering-technical-lead
+  - engineering-backend-developer-wave-1
+  - engineering-qa-engineer-wave-1
+  - engineering-code-reviewer
 completed-stages:
   consulting-intelligence-extractor:
-    verdict: "Ready for BA"
-    completed-at: "2026-06-16T15:43:53Z"
+    verdict: Ready for BA
+    completed-at: 2026-06-16T15:43:53Z
 kpi:
   tokens-total: 0
-  cycle-time-start: "2026-06-16T15:43:53Z"
+  cycle-time-start: 2026-06-16T15:43:53Z
   tokens-by-stage: {}
   tokens-by-feature: {}
 rework-count: {}
@@ -39,8 +44,8 @@ feature-req: |
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
+name: Thống kê chuyên đề
 ---
-
 # Pipeline State: Thống kê chuyên đề
 
 ## Business Goal

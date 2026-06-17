@@ -1,27 +1,32 @@
 ---
 feature-id: M-015
-feature-name: "Quản lý Đài thông tin duyên hải"
+feature-name: Quản lý Đài thông tin duyên hải
 pipeline-type: sdlc
 status: in-progress
 depends-on: []
 blocked-by: []
-created: "2026-06-16T15:42:46Z"
-last-updated: "2026-06-16T15:42:46Z"
+created: 2026-06-16T15:42:46Z
+last-updated: 2026-06-17T02:09:32Z
 current-stage: engineering-business-analyst
 output-mode: lean
 repo-type: mini
-repo-path: "."
+repo-path: .
 project: ""
 docs-path: docs/modules/M-015-quan-ly-dai-thong-tin-duyen-hai
 intel-path: docs/intel
-stages-queue: ["engineering-system-architect","engineering-technical-lead","engineering-backend-developer-wave-1","engineering-qa-engineer-wave-1","engineering-code-reviewer"]
+stages-queue:
+  - engineering-system-architect
+  - engineering-technical-lead
+  - engineering-backend-developer-wave-1
+  - engineering-qa-engineer-wave-1
+  - engineering-code-reviewer
 completed-stages:
   consulting-intelligence-extractor:
-    verdict: "Ready for BA"
-    completed-at: "2026-06-16T15:42:46Z"
+    verdict: Ready for BA
+    completed-at: 2026-06-16T15:42:46Z
 kpi:
   tokens-total: 0
-  cycle-time-start: "2026-06-16T15:42:46Z"
+  cycle-time-start: 2026-06-16T15:42:46Z
   tokens-by-stage: {}
   tokens-by-feature: {}
 rework-count: {}
@@ -39,8 +44,8 @@ feature-req: |
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
+name: Quản lý Đài thông tin duyên hải
 ---
-
 # Pipeline State: Quản lý Đài thông tin duyên hải
 
 ## Business Goal

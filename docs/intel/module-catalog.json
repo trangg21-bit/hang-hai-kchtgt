@@ -204,7 +204,7 @@
       ],
       "id": "M-003",
       "modules_in_scope": [],
-      "name": "Quản lý hàng hóa",
+      "name": "Quản lý tài sản KCHTGT - Khu nước & VTS",
       "primary_service": "",
       "slug": "quan-ly-hang-hoa",
       "status": "in-progress"
@@ -344,26 +344,7 @@
         "F-204",
         "F-205",
         "F-206",
-        "F-207",
-        "F-208",
-        "F-209",
-        "F-210",
-        "F-211",
-        "F-212",
-        "F-213",
-        "F-214",
-        "F-215",
-        "F-216",
-        "F-217",
-        "F-218",
-        "F-219",
-        "F-220",
-        "F-221",
-        "F-222",
-        "F-223",
-        "F-224",
-        "F-225",
-        "F-226"
+        "F-207"
       ],
       "id": "M-018",
       "modules_in_scope": [],
@@ -413,10 +394,9 @@
       "status": "in-progress"
     },
     {
-      "id": "M-017",
-      "name": "Thong Ke Chuyen De",
-      "slug": "thong-ke-chuyen-de",
-      "status": "in-progress",
+      "agent_flags": {},
+      "created_at": "2026-06-16T00:00:00Z",
+      "depends_on": [],
       "feature_ids": [
         "F-148",
         "F-149",
@@ -447,17 +427,17 @@
         "F-175",
         "F-176"
       ],
-      "depends_on": [],
+      "id": "M-017",
       "modules_in_scope": [],
+      "name": "Thống kê chuyên đề",
       "primary_service": "",
-      "agent_flags": {},
-      "created_at": "2026-06-16T00:00:00Z"
+      "slug": "thong-ke-chuyen-de",
+      "status": "in-progress"
     },
     {
-      "id": "M-014",
-      "name": "Quan Ly Nha Tram",
-      "slug": "quan-ly-nha-tram",
-      "status": "in-progress",
+      "agent_flags": {},
+      "created_at": "2026-06-16T00:00:00Z",
+      "depends_on": [],
       "feature_ids": [
         "F-080",
         "F-081",
@@ -472,17 +452,17 @@
         "F-090",
         "F-091"
       ],
-      "depends_on": [],
+      "id": "M-014",
       "modules_in_scope": [],
+      "name": "Quản lý Nhà trạm",
       "primary_service": "",
-      "agent_flags": {},
-      "created_at": "2026-06-16T00:00:00Z"
+      "slug": "quan-ly-nha-tram",
+      "status": "in-progress"
     },
     {
-      "id": "M-016",
-      "name": "Bao Cao Tong Hop",
-      "slug": "bao-cao-tong-hop",
-      "status": "in-progress",
+      "agent_flags": {},
+      "created_at": "2026-06-16T00:00:00Z",
+      "depends_on": [],
       "feature_ids": [
         "F-141",
         "F-142",
@@ -506,17 +486,17 @@
         "F-188",
         "F-189"
       ],
-      "depends_on": [],
+      "id": "M-016",
       "modules_in_scope": [],
+      "name": "Báo cáo & Tổng hợp",
       "primary_service": "",
-      "agent_flags": {},
-      "created_at": "2026-06-16T00:00:00Z"
+      "slug": "bao-cao-tong-hop",
+      "status": "in-progress"
     },
     {
-      "id": "M-015",
-      "name": "Quan Ly Dai Thong Tin Duyen Hai",
-      "slug": "quan-ly-dai-thong-tin-duyen-hai",
-      "status": "in-progress",
+      "agent_flags": {},
+      "created_at": "2026-06-16T00:00:00Z",
+      "depends_on": [],
       "feature_ids": [
         "F-092",
         "F-093",
@@ -549,17 +529,17 @@
         "F-120",
         "F-121"
       ],
-      "depends_on": [],
+      "id": "M-015",
       "modules_in_scope": [],
+      "name": "Quản lý Đài thông tin duyên hải",
       "primary_service": "",
-      "agent_flags": {},
-      "created_at": "2026-06-16T00:00:00Z"
+      "slug": "quan-ly-dai-thong-tin-duyen-hai",
+      "status": "in-progress"
     },
     {
-      "id": "M-020",
-      "name": "Tich Hop Du Lieu Nghiep Vu",
-      "slug": "tich-hop-du-lieu-nghiep-vu",
-      "status": "in-progress",
+      "agent_flags": {},
+      "created_at": "2026-06-16T00:00:00Z",
+      "depends_on": [],
       "feature_ids": [
         "F-254",
         "F-255",
@@ -579,11 +559,44 @@
         "F-269",
         "F-270"
       ],
-      "depends_on": [],
+      "id": "M-020",
       "modules_in_scope": [],
+      "name": "Tích hợp dữ liệu nghiệp vụ",
       "primary_service": "",
+      "slug": "tich-hop-du-lieu-nghiep-vu",
+      "status": "in-progress"
+    },
+    {
       "agent_flags": {},
-      "created_at": "2026-06-16T00:00:00Z"
+      "created_at": "2026-06-17T02:11:31Z",
+      "depends_on": [],
+      "feature_ids": [
+        "F-208",
+        "F-209",
+        "F-210",
+        "F-211",
+        "F-212",
+        "F-213",
+        "F-214",
+        "F-215",
+        "F-216",
+        "F-217",
+        "F-218",
+        "F-219",
+        "F-220",
+        "F-221",
+        "F-222",
+        "F-223",
+        "F-224",
+        "F-225",
+        "F-226"
+      ],
+      "id": "M-021",
+      "modules_in_scope": [],
+      "name": "Chia sẻ dữ liệu KCHTGT - Tổng hợp",
+      "primary_service": "",
+      "slug": "chia-se-du-lieu-kchtgt-tong-hop",
+      "status": "in-progress"
     }
   ],
   "schema_version": "1.0"

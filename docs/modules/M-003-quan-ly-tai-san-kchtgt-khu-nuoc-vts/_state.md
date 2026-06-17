@@ -1,27 +1,32 @@
 ---
 feature-id: M-003
-feature-name: "Quản lý tài sản KCHTGT - Khu nước & VTS"
+feature-name: Quản lý tài sản KCHTGT - Khu nước & VTS
 pipeline-type: sdlc
 status: in-progress
 depends-on: []
 blocked-by: []
-created: "2026-06-16T04:39:13Z"
-last-updated: "2026-06-16T04:39:13Z"
+created: 2026-06-16T04:39:13Z
+last-updated: 2026-06-17T02:09:32Z
 current-stage: engineering-business-analyst
 output-mode: lean
 repo-type: mini
-repo-path: "."
+repo-path: .
 project: ""
 docs-path: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts
 intel-path: docs/intel
-stages-queue: ["engineering-system-architect","engineering-technical-lead","engineering-backend-developer-wave-1","engineering-qa-engineer-wave-1","engineering-code-reviewer"]
+stages-queue:
+  - engineering-system-architect
+  - engineering-technical-lead
+  - engineering-backend-developer-wave-1
+  - engineering-qa-engineer-wave-1
+  - engineering-code-reviewer
 completed-stages:
   consulting-intelligence-extractor:
-    verdict: "Ready for BA"
-    completed-at: "2026-06-16T04:39:13Z"
+    verdict: Ready for BA
+    completed-at: 2026-06-16T04:39:13Z
 kpi:
   tokens-total: 0
-  cycle-time-start: "2026-06-16T04:39:13Z"
+  cycle-time-start: 2026-06-16T04:39:13Z
   tokens-by-stage: {}
   tokens-by-feature: {}
 rework-count: {}
@@ -39,8 +44,8 @@ feature-req: |
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
+name: Quản lý tài sản KCHTGT - Khu nước & VTS
 ---
-
 # Pipeline State: Quản lý tài sản KCHTGT - Khu nước & VTS
 
 ## Business Goal

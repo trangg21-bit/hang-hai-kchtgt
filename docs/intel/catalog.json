@@ -1,13 +1,13 @@
 {
   "version": "v2",
-  "generated_at": "2026-06-17T01:35:53Z",
+  "generated_at": "2026-06-17T02:13:21Z",
   "generator": "ai-kit/state-update-rebuild-catalog",
   "modules": {
     "M-001": {
       "id": "M-001",
       "name": "Quản trị hệ thống",
       "slug": "quan-tri-he-thong",
-      "status": "in-progress",
+      "status": "done",
       "version": 1,
       "feature_count": 7,
       "aggregate_size_status": "green",
@@ -3347,8 +3347,8 @@
       "slug": "chia-se-du-lieu-kchtgt",
       "status": "in-progress",
       "version": 1,
-      "feature_count": 37,
-      "aggregate_size_status": "red",
+      "feature_count": 18,
+      "aggregate_size_status": "yellow",
       "depends_on": [],
       "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/",
       "features": {
@@ -3620,291 +3620,6 @@
           "depends_on": [],
           "consumed_by_modules": [],
           "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-207-chia-se-kchtgt-he-thong-phu-tro-vts/",
-          "confidence": "high"
-        },
-        "F-208": {
-          "id": "F-208",
-          "name": "chia-se-kchtgt-de-chan-song-de-chan-cat-ke",
-          "slug": "chia-se-kchtgt-de-chan-song-de-chan-cat-ke",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-208-chia-se-kchtgt-de-chan-song-de-chan-cat-ke/",
-          "confidence": "high"
-        },
-        "F-209": {
-          "id": "F-209",
-          "name": "chia-se-kchtgt-luong-hang-hai",
-          "slug": "chia-se-kchtgt-luong-hang-hai",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-209-chia-se-kchtgt-luong-hang-hai/",
-          "confidence": "high"
-        },
-        "F-210": {
-          "id": "F-210",
-          "name": "chia-se-kchtgt-dai-ttdh",
-          "slug": "chia-se-kchtgt-dai-ttdh",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-210-chia-se-kchtgt-dai-ttdh/",
-          "confidence": "high"
-        },
-        "F-211": {
-          "id": "F-211",
-          "name": "chia-se-kchtgt-dai-inmarsat",
-          "slug": "chia-se-kchtgt-dai-inmarsat",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-211-chia-se-kchtgt-dai-inmarsat/",
-          "confidence": "high"
-        },
-        "F-212": {
-          "id": "F-212",
-          "name": "chia-se-kchtgt-dai-cospas-sarsat",
-          "slug": "chia-se-kchtgt-dai-cospas-sarsat",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-212-chia-se-kchtgt-dai-cospas-sarsat/",
-          "confidence": "high"
-        },
-        "F-213": {
-          "id": "F-213",
-          "name": "chia-se-kchtgt-dai-lrit",
-          "slug": "chia-se-kchtgt-dai-lrit",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-213-chia-se-kchtgt-dai-lrit/",
-          "confidence": "high"
-        },
-        "F-214": {
-          "id": "F-214",
-          "name": "chia-se-kchtgt-dai-tt-hang-hai-hn",
-          "slug": "chia-se-kchtgt-dai-tt-hang-hai-hn",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-214-chia-se-kchtgt-dai-tt-hang-hai-hn/",
-          "confidence": "high"
-        },
-        "F-215": {
-          "id": "F-215",
-          "name": "chia-se-kchtgt-cang-can",
-          "slug": "chia-se-kchtgt-cang-can",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-215-chia-se-kchtgt-cang-can/",
-          "confidence": "high"
-        },
-        "F-216": {
-          "id": "F-216",
-          "name": "chia-se-kchtgt-trang-thai-hoat-dong-kchtgt-hh",
-          "slug": "chia-se-kchtgt-trang-thai-hoat-dong-kchtgt-hh",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-216-chia-se-kchtgt-trang-thai-hoat-dong-kchtgt-hh/",
-          "confidence": "high"
-        },
-        "F-217": {
-          "id": "F-217",
-          "name": "chia-se-kchtgt-thong-tin-tai-san-kchtgt-hh",
-          "slug": "chia-se-kchtgt-thong-tin-tai-san-kchtgt-hh",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-217-chia-se-kchtgt-thong-tin-tai-san-kchtgt-hh/",
-          "confidence": "high"
-        },
-        "F-218": {
-          "id": "F-218",
-          "name": "chia-se-kchtgt-thong-tin-tong-hop-kchtgt-hang-hai",
-          "slug": "chia-se-kchtgt-thong-tin-tong-hop-kchtgt-hang-hai",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-218-chia-se-kchtgt-thong-tin-tong-hop-kchtgt-hang-hai/",
-          "confidence": "high"
-        },
-        "F-219": {
-          "id": "F-219",
-          "name": "chia-se-kchtgt-thong-tin-bao-tri-kchtgt-hang-hai",
-          "slug": "chia-se-kchtgt-thong-tin-bao-tri-kchtgt-hang-hai",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-219-chia-se-kchtgt-thong-tin-bao-tri-kchtgt-hang-hai/",
-          "confidence": "high"
-        },
-        "F-220": {
-          "id": "F-220",
-          "name": "chia-se-kchtgt-tong-hop-kchtgt-cang-bien",
-          "slug": "chia-se-kchtgt-tong-hop-kchtgt-cang-bien",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-220-chia-se-kchtgt-tong-hop-kchtgt-cang-bien/",
-          "confidence": "high"
-        },
-        "F-221": {
-          "id": "F-221",
-          "name": "chia-se-kchtgt-tong-hop-kchtgt-ben-cang-cau-cang",
-          "slug": "chia-se-kchtgt-tong-hop-kchtgt-ben-cang-cau-cang",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-221-chia-se-kchtgt-tong-hop-kchtgt-ben-cang-cau-cang/",
-          "confidence": "high"
-        },
-        "F-222": {
-          "id": "F-222",
-          "name": "chia-se-kchtgt-tong-hop-kchtgt-luong-hang-hai",
-          "slug": "chia-se-kchtgt-tong-hop-kchtgt-luong-hang-hai",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-222-chia-se-kchtgt-tong-hop-kchtgt-luong-hang-hai/",
-          "confidence": "high"
-        },
-        "F-223": {
-          "id": "F-223",
-          "name": "chia-se-kchtgt-tong-hop-kchtgt-khu-chuyen-tai-khu-neo-dau",
-          "slug": "chia-se-kchtgt-tong-hop-kchtgt-khu-chuyen-tai-khu-neo-dau",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-223-chia-se-kchtgt-tong-hop-kchtgt-khu-chuyen-tai-khu-neo-dau/",
-          "confidence": "high"
-        },
-        "F-224": {
-          "id": "F-224",
-          "name": "chia-se-kchtgt-tong-hop-kchtgt-phao-tieu",
-          "slug": "chia-se-kchtgt-tong-hop-kchtgt-phao-tieu",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-224-chia-se-kchtgt-tong-hop-kchtgt-phao-tieu/",
-          "confidence": "high"
-        },
-        "F-225": {
-          "id": "F-225",
-          "name": "chia-se-kchtgt-tong-hop-kchtgt-he-thong-den-bien",
-          "slug": "chia-se-kchtgt-tong-hop-kchtgt-he-thong-den-bien",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-225-chia-se-kchtgt-tong-hop-kchtgt-he-thong-den-bien/",
-          "confidence": "high"
-        },
-        "F-226": {
-          "id": "F-226",
-          "name": "chia-se-kchtgt-tong-hop-kchtgt-he-thong-de-ke",
-          "slug": "chia-se-kchtgt-tong-hop-kchtgt-he-thong-de-ke",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-018-chia-se-du-lieu-kchtgt/_features/F-226-chia-se-kchtgt-tong-hop-kchtgt-he-thong-de-ke/",
           "confidence": "high"
         }
       }
@@ -4594,7 +4309,305 @@
           "confidence": "high"
         }
       }
+    },
+    "M-021": {
+      "id": "M-021",
+      "name": "Chia sẻ dữ liệu KCHTGT - Tổng hợp",
+      "slug": "chia-se-du-lieu-kchtgt-tong-hop",
+      "status": "in-progress",
+      "version": 1,
+      "feature_count": 19,
+      "aggregate_size_status": "yellow",
+      "depends_on": [],
+      "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/",
+      "features": {
+        "F-208": {
+          "id": "F-208",
+          "name": "chia-se-kchtgt-de-chan-song-de-chan-cat-ke",
+          "slug": "chia-se-kchtgt-de-chan-song-de-chan-cat-ke",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-208-chia-se-kchtgt-de-chan-song-de-chan-cat-ke/",
+          "confidence": "high"
+        },
+        "F-209": {
+          "id": "F-209",
+          "name": "chia-se-kchtgt-luong-hang-hai",
+          "slug": "chia-se-kchtgt-luong-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-209-chia-se-kchtgt-luong-hang-hai/",
+          "confidence": "high"
+        },
+        "F-210": {
+          "id": "F-210",
+          "name": "chia-se-kchtgt-dai-ttdh",
+          "slug": "chia-se-kchtgt-dai-ttdh",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-210-chia-se-kchtgt-dai-ttdh/",
+          "confidence": "high"
+        },
+        "F-211": {
+          "id": "F-211",
+          "name": "chia-se-kchtgt-dai-inmarsat",
+          "slug": "chia-se-kchtgt-dai-inmarsat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-211-chia-se-kchtgt-dai-inmarsat/",
+          "confidence": "high"
+        },
+        "F-212": {
+          "id": "F-212",
+          "name": "chia-se-kchtgt-dai-cospas-sarsat",
+          "slug": "chia-se-kchtgt-dai-cospas-sarsat",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-212-chia-se-kchtgt-dai-cospas-sarsat/",
+          "confidence": "high"
+        },
+        "F-213": {
+          "id": "F-213",
+          "name": "chia-se-kchtgt-dai-lrit",
+          "slug": "chia-se-kchtgt-dai-lrit",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-213-chia-se-kchtgt-dai-lrit/",
+          "confidence": "high"
+        },
+        "F-214": {
+          "id": "F-214",
+          "name": "chia-se-kchtgt-dai-tt-hang-hai-hn",
+          "slug": "chia-se-kchtgt-dai-tt-hang-hai-hn",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-214-chia-se-kchtgt-dai-tt-hang-hai-hn/",
+          "confidence": "high"
+        },
+        "F-215": {
+          "id": "F-215",
+          "name": "chia-se-kchtgt-cang-can",
+          "slug": "chia-se-kchtgt-cang-can",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-215-chia-se-kchtgt-cang-can/",
+          "confidence": "high"
+        },
+        "F-216": {
+          "id": "F-216",
+          "name": "chia-se-kchtgt-trang-thai-hoat-dong-kchtgt-hh",
+          "slug": "chia-se-kchtgt-trang-thai-hoat-dong-kchtgt-hh",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-216-chia-se-kchtgt-trang-thai-hoat-dong-kchtgt-hh/",
+          "confidence": "high"
+        },
+        "F-217": {
+          "id": "F-217",
+          "name": "chia-se-kchtgt-thong-tin-tai-san-kchtgt-hh",
+          "slug": "chia-se-kchtgt-thong-tin-tai-san-kchtgt-hh",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-217-chia-se-kchtgt-thong-tin-tai-san-kchtgt-hh/",
+          "confidence": "high"
+        },
+        "F-218": {
+          "id": "F-218",
+          "name": "chia-se-kchtgt-thong-tin-tong-hop-kchtgt-hang-hai",
+          "slug": "chia-se-kchtgt-thong-tin-tong-hop-kchtgt-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-218-chia-se-kchtgt-thong-tin-tong-hop-kchtgt-hang-hai/",
+          "confidence": "high"
+        },
+        "F-219": {
+          "id": "F-219",
+          "name": "chia-se-kchtgt-thong-tin-bao-tri-kchtgt-hang-hai",
+          "slug": "chia-se-kchtgt-thong-tin-bao-tri-kchtgt-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-219-chia-se-kchtgt-thong-tin-bao-tri-kchtgt-hang-hai/",
+          "confidence": "high"
+        },
+        "F-220": {
+          "id": "F-220",
+          "name": "chia-se-kchtgt-tong-hop-kchtgt-cang-bien",
+          "slug": "chia-se-kchtgt-tong-hop-kchtgt-cang-bien",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-220-chia-se-kchtgt-tong-hop-kchtgt-cang-bien/",
+          "confidence": "high"
+        },
+        "F-221": {
+          "id": "F-221",
+          "name": "chia-se-kchtgt-tong-hop-kchtgt-ben-cang-cau-cang",
+          "slug": "chia-se-kchtgt-tong-hop-kchtgt-ben-cang-cau-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-221-chia-se-kchtgt-tong-hop-kchtgt-ben-cang-cau-cang/",
+          "confidence": "high"
+        },
+        "F-222": {
+          "id": "F-222",
+          "name": "chia-se-kchtgt-tong-hop-kchtgt-luong-hang-hai",
+          "slug": "chia-se-kchtgt-tong-hop-kchtgt-luong-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-222-chia-se-kchtgt-tong-hop-kchtgt-luong-hang-hai/",
+          "confidence": "high"
+        },
+        "F-223": {
+          "id": "F-223",
+          "name": "chia-se-kchtgt-tong-hop-kchtgt-khu-chuyen-tai-khu-neo-dau",
+          "slug": "chia-se-kchtgt-tong-hop-kchtgt-khu-chuyen-tai-khu-neo-dau",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-223-chia-se-kchtgt-tong-hop-kchtgt-khu-chuyen-tai-khu-neo-dau/",
+          "confidence": "high"
+        },
+        "F-224": {
+          "id": "F-224",
+          "name": "chia-se-kchtgt-tong-hop-kchtgt-phao-tieu",
+          "slug": "chia-se-kchtgt-tong-hop-kchtgt-phao-tieu",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-224-chia-se-kchtgt-tong-hop-kchtgt-phao-tieu/",
+          "confidence": "high"
+        },
+        "F-225": {
+          "id": "F-225",
+          "name": "chia-se-kchtgt-tong-hop-kchtgt-he-thong-den-bien",
+          "slug": "chia-se-kchtgt-tong-hop-kchtgt-he-thong-den-bien",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-225-chia-se-kchtgt-tong-hop-kchtgt-he-thong-den-bien/",
+          "confidence": "high"
+        },
+        "F-226": {
+          "id": "F-226",
+          "name": "chia-se-kchtgt-tong-hop-kchtgt-he-thong-de-ke",
+          "slug": "chia-se-kchtgt-tong-hop-kchtgt-he-thong-de-ke",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/_features/F-226-chia-se-kchtgt-tong-hop-kchtgt-he-thong-de-ke/",
+          "confidence": "high"
+        }
+      }
     }
   },
-  "checksum": "sha256:a400286b3980c07d170eceaa62e367cf91cb4873260e0d11d809cbcc7dc2bdd8"
+  "checksum": "sha256:2c2379d832c9f3e41e27d9f8dd9055a7b53c42046c7b3e2ce0978c833e170ecc"
 }

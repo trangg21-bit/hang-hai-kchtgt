@@ -12,6 +12,7 @@ modules:
     path: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts
     slug: quan-ly-tai-san-kchtgt-khu-nuoc-vts
   M-004:
+    deprecated: true
     name: Quản lý tài sản Báo hiệu & Thông tin
     path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin
     slug: quan-ly-tai-san-bao-hieu-thong-tin
@@ -28,10 +29,12 @@ modules:
     path: docs/modules/M-007-gis-ban-do
     slug: gis-ban-do
   M-008:
+    deprecated: true
     name: Báo cáo & Thống kê
     path: docs/modules/M-008-bao-cao-thong-ke
     slug: bao-cao-thong-ke
   M-009:
+    deprecated: true
     name: Liên thông & Tích hợp dữ liệu
     path: docs/modules/M-009-lien-thong-tich-hop-du-lieu
     slug: lien-thong-tich-hop-du-lieu
@@ -79,4 +82,8 @@ modules:
     name: Tích hợp dữ liệu nghiệp vụ
     path: docs/modules/M-020-tich-hop-du-lieu-nghiep-vu
     slug: tich-hop-du-lieu-nghiep-vu
+  M-021:
+    name: Chia sẻ dữ liệu KCHTGT - Tổng hợp
+    path: docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop
+    slug: chia-se-du-lieu-kchtgt-tong-hop
 schema_version: "1.0"

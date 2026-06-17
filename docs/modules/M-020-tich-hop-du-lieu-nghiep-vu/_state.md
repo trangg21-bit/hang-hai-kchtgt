@@ -1,27 +1,32 @@
 ---
 feature-id: M-020
-feature-name: "Tích hợp dữ liệu nghiệp vụ"
+feature-name: Tích hợp dữ liệu nghiệp vụ
 pipeline-type: sdlc
 status: in-progress
 depends-on: []
 blocked-by: []
-created: "2026-06-16T15:44:27Z"
-last-updated: "2026-06-16T15:44:27Z"
+created: 2026-06-16T15:44:27Z
+last-updated: 2026-06-17T02:09:38Z
 current-stage: engineering-business-analyst
 output-mode: lean
 repo-type: mini
-repo-path: "."
+repo-path: .
 project: ""
 docs-path: docs/modules/M-020-tich-hop-du-lieu-nghiep-vu
 intel-path: docs/intel
-stages-queue: ["engineering-system-architect","engineering-technical-lead","engineering-backend-developer-wave-1","engineering-qa-engineer-wave-1","engineering-code-reviewer"]
+stages-queue:
+  - engineering-system-architect
+  - engineering-technical-lead
+  - engineering-backend-developer-wave-1
+  - engineering-qa-engineer-wave-1
+  - engineering-code-reviewer
 completed-stages:
   consulting-intelligence-extractor:
-    verdict: "Ready for BA"
-    completed-at: "2026-06-16T15:44:27Z"
+    verdict: Ready for BA
+    completed-at: 2026-06-16T15:44:27Z
 kpi:
   tokens-total: 0
-  cycle-time-start: "2026-06-16T15:44:27Z"
+  cycle-time-start: 2026-06-16T15:44:27Z
   tokens-by-stage: {}
   tokens-by-feature: {}
 rework-count: {}
@@ -39,8 +44,8 @@ feature-req: |
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
+name: Tích hợp dữ liệu nghiệp vụ
 ---
-
 # Pipeline State: Tích hợp dữ liệu nghiệp vụ
 
 ## Business Goal

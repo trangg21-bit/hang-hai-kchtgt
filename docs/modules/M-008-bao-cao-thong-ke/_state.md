@@ -6,7 +6,7 @@ status: in-progress
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
-last-updated: 2026-06-16T05:21:42Z
+last-updated: 2026-06-17T02:10:15Z
 current-stage: engineering-business-analyst
 output-mode: lean
 repo-type: mini
@@ -44,6 +44,7 @@ feature-req: |
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
+deprecated: true
 ---
 # Pipeline State: Báo cáo & Thống kê
 
