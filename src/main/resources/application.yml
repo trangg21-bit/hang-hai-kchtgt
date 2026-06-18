@@ -24,12 +24,13 @@ spring:
 
 # -- JWT Configuration ------------------------------------------------
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:aXRzLWEtc2VjcmV0LWtleS1mb3Itand0LXRva2VuLWdlbmVyYXRpb24taGFuZ2hhaS1rY2h0Zw==}
   expiration: 86400000
+  mock-token: mock-jwt-token-2026
 
 # -- Encryption Configuration ------------------------------------------------
 encryption:
-  key: ${ENCRYPTION_KEY}
+  key: ${ENCRYPTION_KEY:MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=}
 
 ---
 # -- DEV profile (H2 in-memory) ------------------------------------------------

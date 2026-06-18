@@ -1,4 +1,4 @@
-﻿package com.hanghai.kchtg.security;
+package com.hanghai.kchtg.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -66,7 +66,7 @@ class JwtAuthFilterTest {
         // Act
         jwtAuthFilter.doFilter(request, response, filterChain);
 
-        // Assert â€” SecurityContext should be populated
+        // Assert — SecurityContext should be populated
         assertNotNull(SecurityContextHolder.getContext().getAuthentication());
         assertEquals("john.doe", SecurityContextHolder.getContext().getAuthentication().getName());
 
@@ -79,7 +79,7 @@ class JwtAuthFilterTest {
         // Act
         jwtAuthFilter.doFilter(request, response, filterChain);
 
-        // Assert â€” role should be in authorities
+        // Assert — role should be in authorities
         var auth = SecurityContextHolder.getContext().getAuthentication();
         assertNotNull(auth);
         assertEquals(1, auth.getAuthorities().size());
@@ -88,7 +88,7 @@ class JwtAuthFilterTest {
 
     @Test
     void doFilter_invalidToken_shouldNotSetSecurityContextAndContinue() throws ServletException, IOException {
-        // Arrange â€” invalid JWT throws JwtException
+        // Arrange — invalid JWT throws JwtException
         String invalidToken = "invalid.jwt.token";
         when(request.getHeader("Authorization")).thenReturn("Bearer " + invalidToken);
         when(jwtUtil.extractUsername(invalidToken)).thenThrow(new JwtException("Invalid JWT"));
@@ -98,14 +98,14 @@ class JwtAuthFilterTest {
         // Act
         jwtAuthFilter.doFilter(request, response, filterChain);
 
-        // Assert â€” SecurityContext should be cleared, chain continues
+        // Assert — SecurityContext should be cleared, chain continues
         assertNull(SecurityContextHolder.getContext().getAuthentication());
         verify(filterChain).doFilter(request, response);
     }
 
     @Test
     void doFilter_expiredToken_shouldNotSetSecurityContextAndContinue() throws ServletException, IOException {
-        // Arrange â€” expired token throws JwtException (expired signature)
+        // Arrange — expired token throws JwtException (expired signature)
         var jwtProperties = new JwtProperties();
         jwtProperties.setSecret("dGVzdC1zZWNyZXQta2V5LWZvci1qd3Qtc2lnbmluZw==");
         jwtProperties.setExpiration(1L); // 1ms expiration
@@ -122,7 +122,7 @@ class JwtAuthFilterTest {
         // Act
         jwtAuthFilter.doFilter(request, response, filterChain);
 
-        // Assert â€” should not authenticate, chain continues
+        // Assert — should not authenticate, chain continues
         assertNull(SecurityContextHolder.getContext().getAuthentication());
         verify(filterChain).doFilter(request, response);
     }
@@ -136,7 +136,7 @@ class JwtAuthFilterTest {
         // Act
         jwtAuthFilter.doFilter(request, response, filterChain);
 
-        // Assert â€” no authentication set, chain continues
+        // Assert — no authentication set, chain continues
         assertNull(SecurityContextHolder.getContext().getAuthentication());
         verify(filterChain).doFilter(request, response);
     }
@@ -150,28 +150,28 @@ class JwtAuthFilterTest {
         // Act
         jwtAuthFilter.doFilter(request, response, filterChain);
 
-        // Assert â€” no authentication set, chain continues
+        // Assert — no authentication set, chain continues
         assertNull(SecurityContextHolder.getContext().getAuthentication());
         verify(filterChain).doFilter(request, response);
     }
 
     @Test
     void doFilter_malformedBearerPrefix_shouldContinueChain() throws ServletException, IOException {
-        // Arrange â€” "Basic xxx" is not a Bearer token
+        // Arrange — "Basic xxx" is not a Bearer token
         when(request.getHeader("Authorization")).thenReturn("Basic dXNlcjpwYXNz");
         SecurityContextHolder.clearContext();
 
         // Act
         jwtAuthFilter.doFilter(request, response, filterChain);
 
-        // Assert â€” no authentication set, chain continues
+        // Assert — no authentication set, chain continues
         assertNull(SecurityContextHolder.getContext().getAuthentication());
         verify(filterChain).doFilter(request, response);
     }
 
     @Test
     void doFilter_nullTokenFromExtract_shouldContinueChain() throws ServletException, IOException {
-        // Arrange â€” extractUsername returns null
+        // Arrange — extractUsername returns null
         String token = "some.token.value";
         when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
         when(jwtUtil.extractUsername(token)).thenReturn(null);
@@ -180,7 +180,7 @@ class JwtAuthFilterTest {
         // Act
         jwtAuthFilter.doFilter(request, response, filterChain);
 
-        // Assert â€” no authentication set (null username), chain continues
+        // Assert — no authentication set (null username), chain continues
         assertNull(SecurityContextHolder.getContext().getAuthentication());
         verify(filterChain).doFilter(request, response);
     }
@@ -195,7 +195,7 @@ class JwtAuthFilterTest {
         // Act
         jwtAuthFilter.doFilter(request, response, filterChain);
 
-        // Assert â€” existing authentication preserved
+        // Assert — existing authentication preserved
         assertEquals("existing-user", SecurityContextHolder.getContext().getAuthentication().getName());
         verify(filterChain).doFilter(request, response);
     }

@@ -24,10 +24,10 @@ import java.util.UUID;
  * Service quan ly tai khoan nguoi dung.
  * <p>
  * {@code @Transactional} o class-level de tat ca public method deu
- * chay trong transaction Ă¢â‚¬â€ tranh {@code LazyInitializationException}
+ * chay trong transaction — tranh {@code LazyInitializationException}
  * khi {@code spring.jpa.open-in-view=false}.
  * Read methods dung {@code findAllWithRelations()} / {@code findByIdWithRelations()}
- * de JOIN FETCH cĂƒÂ¡c lazy associations.
+ * de JOIN FETCH các lazy associations.
  * </p>
  */
 @Service
@@ -51,7 +51,7 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // Ă¢â€â‚¬Ă¢â€â‚¬ Query Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
+    // ── Query ───────────────────────────────────────────────────────
 
     /**
      * Lay danh sach tong bo nguoi dung (JOIN FETCH orgUnit + groups).
@@ -94,12 +94,12 @@ public class UserService {
                 .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nguoi dung voi email: " + email));
     }
 
-    // Ă¢â€â‚¬Ă¢â€â‚¬ Mutate Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
+    // ── Mutate ──────────────────────────────────────────────────────
 
     /**
      * Tao moi nguoi dung.
      *
-     * @throws IllegalArgumentException neu username hoĂ„Æ’c email da ton tai
+     * @throws IllegalArgumentException neu username hoăc email da ton tai
      */
     public User create(CreateUserRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -188,7 +188,7 @@ public class UserService {
     }
 
     /**
-     * Xoa nguoi dung (soft delete Ă¢â‚¬â€ dung BaseEntity.softDelete()).
+     * Xoa nguoi dung (soft delete — dung BaseEntity.softDelete()).
      *
      * @throws EntityNotFoundException neu khong tim thay nguoi dung
      */

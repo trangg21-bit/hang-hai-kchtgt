@@ -1,13 +1,13 @@
 package com.hanghai.kchtg.group.entity;
 
 /**
- * Tráº¡ng thĂ¡i thĂ nh viĂªn trong nhĂ³m.
+ * Trạng thái thành viên trong nhóm.
  */
 public enum GroupMemberStatus {
-    /** ThĂ nh viĂªn Ä‘ang hoáº¡t Ä‘á»™ng. */
+    /** Thành viên đang hoạt động. */
     ACTIVE,
-    /** ÄĂ£ rá»i nhĂ³m. */
+    /** Đã rời nhóm. */
     REMOVED,
-    /** Bá»‹ cáº¥m khá»i nhĂ³m. */
+    /** Bị cấm khỏi nhóm. */
     BANNED
 }

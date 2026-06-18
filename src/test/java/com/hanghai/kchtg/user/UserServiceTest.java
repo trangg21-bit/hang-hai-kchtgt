@@ -1,4 +1,4 @@
-﻿package com.hanghai.kchtg.user;
+package com.hanghai.kchtg.user;
 
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;

@@ -1,17 +1,21 @@
 ---
 id: F-136
-name: "Quản lý danh mục đối tượng điểm"
+name: Quản lý danh mục đối tượng điểm
 slug: quan-ly-danh-muc-doi-tuong-diem
 module-id: M-007
-status: proposed
+status: implemented
 classification: local
 priority: high
-created: "2026-06-16T04:41:48Z"
-last-updated: "2026-06-16T04:41:48Z"
+created: 2026-06-16T04:41:48Z
+last-updated: 2026-06-18T04:16:14Z
 locked-fields: []
 consumed_by_modules: []
+current_stage: designer
+close-evidence:
+  evidence: '58 Playwright E2E tests passed'
+  verdict: Pass
+sealed: true
 ---
-
 # Feature: Quản lý danh mục đối tượng điểm
 
 ## Description
@@ -55,3 +59,4 @@ Quản lý đối tượng điểm GIS
 ## Testing Strategy
 
 (populated by qa stage)
+

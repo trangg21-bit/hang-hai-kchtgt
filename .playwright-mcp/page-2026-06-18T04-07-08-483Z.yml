@@ -1,0 +1,187 @@
+- generic [ref=e4]:
+  - complementary [ref=e5]:
+    - generic [ref=e7]:
+      - img "team" [ref=e9]:
+        - img [ref=e10]
+      - menu [ref=e12]:
+        - menuitem "user Quản lý người dùng" [ref=e13] [cursor=pointer]:
+          - img "user" [ref=e14]:
+            - img [ref=e15]
+          - generic: Quản lý người dùng
+        - menuitem "idcard Quản trị viên" [ref=e17] [cursor=pointer]:
+          - img "idcard" [ref=e18]:
+            - img [ref=e19]
+          - generic: Quản trị viên
+        - menuitem "safety Phân quyền" [ref=e21] [cursor=pointer]:
+          - img "safety" [ref=e22]:
+            - img [ref=e23]
+          - generic: Phân quyền
+        - separator [ref=e26]
+        - menuitem "compass GIS • Bản đồ" [ref=e27] [cursor=pointer]:
+          - img "compass" [ref=e28]:
+            - img [ref=e29]
+          - generic: GIS • Bản đồ
+        - separator [ref=e31]
+        - menuitem "setting Cấu hình hệ thống" [disabled] [ref=e32]:
+          - img "setting" [ref=e33]:
+            - img [ref=e34]
+          - generic: Cấu hình hệ thống
+        - menuitem "dashboard Nhật ký hệ thống" [disabled] [ref=e36]:
+          - img "dashboard" [ref=e37]:
+            - img [ref=e38]
+          - generic: Nhật ký hệ thống
+    - img "right" [ref=e41] [cursor=pointer]:
+      - img [ref=e42]
+  - generic [ref=e44]:
+    - banner [ref=e45]:
+      - heading "Tra cứu GIS" [level=5] [ref=e48]
+      - generic [ref=e49] [cursor=pointer]:
+        - generic [ref=e51]:
+          - img "user" [ref=e53]:
+            - img [ref=e54]
+          - superscript [ref=e56]
+        - generic [ref=e58]:
+          - strong [ref=e60]: Nguyễn Văn An
+          - text: Quản trị viên (Super Admin)
+        - img "down" [ref=e62]:
+          - img [ref=e63]
+    - main [ref=e65]:
+      - generic [ref=e67]:
+        - heading "search Tra cứu GIS" [level=5] [ref=e68]:
+          - img "search" [ref=e69]:
+            - img [ref=e70]
+          - text: Tra cứu GIS
+        - generic [ref=e72]:
+          - generic [ref=e73]:
+            - generic [ref=e76]:
+              - generic [ref=e78]:
+                - text: "*"
+                - generic [ref=e79]: Loại tìm kiếm*
+              - generic [ref=e83]:
+                - generic "Văn bản" [ref=e84]:
+                  - text: Văn bản
+                  - combobox "* Loại tìm kiếm*" [ref=e85]
+                - img "down" [ref=e87]:
+                  - img [ref=e88]
+                - img "close-circle" [ref=e91] [cursor=pointer]:
+                  - img [ref=e92]
+            - generic [ref=e96]:
+              - generic "Từ khóa" [ref=e98]: "* Từ khóa"
+              - generic [ref=e102]:
+                - searchbox "* Từ khóa" [ref=e104]
+                - button "search" [ref=e106] [cursor=pointer]:
+                  - img "search" [ref=e108]:
+                    - img [ref=e109]
+          - generic [ref=e111]:
+            - generic [ref=e114]:
+              - generic [ref=e117]:
+                - text: Vĩ độ tâm (centerLat)
+                - img "info-circle" [ref=e118]:
+                  - img [ref=e119]
+              - generic [ref=e122]:
+                - generic [ref=e125]:
+                  - spinbutton "Vĩ độ tâm (centerLat) info-circle" [ref=e126]
+                  - generic:
+                    - button "Increase Value" [ref=e127] [cursor=pointer]:
+                      - img "up" [ref=e128]:
+                        - img [ref=e129]
+                    - button "Decrease Value" [ref=e131] [cursor=pointer]:
+                      - img "down" [ref=e132]:
+                        - img [ref=e133]
+                - generic [ref=e135]:
+                  - generic:
+                    - generic: Dùng cho LOCATION, RADIUS, COORDINATE
+            - generic [ref=e138]:
+              - generic [ref=e141]:
+                - text: Kinh độ tâm (centerLon)
+                - img "info-circle" [ref=e142]:
+                  - img [ref=e143]
+              - generic [ref=e146]:
+                - generic [ref=e149]:
+                  - spinbutton "Kinh độ tâm (centerLon) info-circle" [ref=e150]
+                  - generic:
+                    - button "Increase Value" [ref=e151] [cursor=pointer]:
+                      - img "up" [ref=e152]:
+                        - img [ref=e153]
+                    - button "Decrease Value" [ref=e155] [cursor=pointer]:
+                      - img "down" [ref=e156]:
+                        - img [ref=e157]
+                - generic [ref=e159]:
+                  - generic:
+                    - generic: Dùng cho LOCATION, RADIUS, COORDINATE
+            - generic [ref=e162]:
+              - generic [ref=e165]:
+                - text: Bán kính (m)
+                - img "info-circle" [ref=e166]:
+                  - img [ref=e167]
+              - generic [ref=e170]:
+                - generic [ref=e173]:
+                  - spinbutton "Bán kính (m) info-circle" [ref=e174]
+                  - generic:
+                    - button "Increase Value" [ref=e175] [cursor=pointer]:
+                      - img "up" [ref=e176]:
+                        - img [ref=e177]
+                    - button "Decrease Value" [ref=e179] [cursor=pointer]:
+                      - img "down" [ref=e180]:
+                        - img [ref=e181]
+                - generic [ref=e183]:
+                  - generic:
+                    - generic: Dùng cho RADIUS, 50m ~ 10km
+          - generic [ref=e184]:
+            - generic [ref=e187]:
+              - generic [ref=e190]: Tọa độ / Đa giác (WKT)
+              - textbox "Tọa độ / Đa giác (WKT)" [ref=e194]:
+                - /placeholder: Dùng cho POLYGON, COORDINATE
+            - generic [ref=e197]:
+              - generic [ref=e200]:
+                - text: Loại layer
+                - img "info-circle" [ref=e201]:
+                  - img [ref=e202]
+              - generic [ref=e205]:
+                - textbox "Loại layer info-circle" [ref=e208]:
+                  - /placeholder: POINT,LINE
+                - generic [ref=e209]:
+                  - generic:
+                    - generic: Phân cách bằng dấu phẩy
+            - generic [ref=e211]:
+              - generic [ref=e214]:
+                - generic [ref=e217]: Trang
+                - generic [ref=e221]:
+                  - spinbutton "Trang" [ref=e222]
+                  - generic:
+                    - button "Increase Value" [ref=e223] [cursor=pointer]:
+                      - img "up" [ref=e224]:
+                        - img [ref=e225]
+                    - button "Decrease Value" [ref=e227] [cursor=pointer]:
+                      - img "down" [ref=e228]:
+                        - img [ref=e229]
+              - generic [ref=e233]:
+                - generic [ref=e236]: Số kết quả
+                - generic [ref=e240]:
+                  - spinbutton "Số kết quả" [ref=e241]: "20"
+                  - generic:
+                    - button "Increase Value" [ref=e242] [cursor=pointer]:
+                      - img "up" [ref=e243]:
+                        - img [ref=e244]
+                    - button "Decrease Value" [ref=e246] [cursor=pointer]:
+                      - img "down" [ref=e247]:
+                        - img [ref=e248]
+          - generic [ref=e255]:
+            - button "search Tìm kiếm" [ref=e257] [cursor=pointer]:
+              - img "search" [ref=e259]:
+                - img [ref=e260]
+              - generic [ref=e262]: Tìm kiếm
+            - button "Đặt lại" [ref=e264] [cursor=pointer]:
+              - generic [ref=e265]: Đặt lại
+      - generic [ref=e267]:
+        - generic [ref=e268]:
+          - generic [ref=e270]:
+            - img "history" [ref=e272]:
+              - img [ref=e273]
+            - strong [ref=e277]: Lịch sử tìm kiếm
+          - button "delete Xóa lịch sử" [disabled] [ref=e279]:
+            - generic:
+              - img "delete":
+                - img
+            - generic: Xóa lịch sử
+        - generic [ref=e280]: Chưa có lịch sử tìm kiếm

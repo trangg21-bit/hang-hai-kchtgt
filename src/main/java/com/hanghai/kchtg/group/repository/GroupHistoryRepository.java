@@ -15,18 +15,18 @@ import java.util.UUID;
 public interface GroupHistoryRepository extends JpaRepository<GroupHistory, UUID> {
 
     /**
-     * TĂ¬m táº¥t cáº£ lá»‹ch sá»­ thay Ä‘á»•i cá»§a má»™t nhĂ³m, sáº¯p xáº¿p má»›i nháº¥t trÆ°á»›c.
+     * Tìm tất cả lịch sử thay đổi của một nhóm, sắp xếp mới nhất trước.
      */
     List<GroupHistory> findByUserGroupIdOrderByChangeTimestampDesc(UUID userGroupId);
 
     /**
-     * TĂ¬m lá»‹ch sá»­ trong khoáº£ng thá»i gian.
+     * Tìm lịch sử trong khoảng thời gian.
      */
     List<GroupHistory> findByChangeTimestampBetweenOrderByChangeTimestampDesc(
             LocalDateTime from, LocalDateTime to);
 
     /**
-     * Äáº¿m sá»‘ láº§n thay Ä‘á»•i cá»§a má»™t nhĂ³m.
+     * Đếm số lần thay đổi của một nhóm.
      */
     long countByUserGroupId(UUID userGroupId);
 }

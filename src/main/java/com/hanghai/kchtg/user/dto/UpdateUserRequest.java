@@ -11,8 +11,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * DTO cáº­p nháº­t tĂ i khoáº£n ngÆ°á»i dĂ¹ng â€” má»i trÆ°á»ng Ä‘á»u tuá»³ chá»n,
- * chá»‰ cáº­p nháº­t nhá»¯ng trÆ°á»ng Ä‘Æ°á»£c gá»­i (khĂ¡c {@code null}).
+ * DTO cập nhật tài khoản người dùng — mọi trường đều tuỳ chọn,
+ * chỉ cập nhật những trường được gửi (khác {@code null}).
  */
 @Getter
 @Setter
@@ -20,20 +20,20 @@ import java.util.UUID;
 @AllArgsConstructor
 public class UpdateUserRequest {
 
-    @Size(min = 6, max = 100, message = "Máº­t kháº©u pháº£i tá»« 6 Ä‘áº¿n 100 kĂ½ tá»±")
+    @Size(min = 6, max = 100, message = "Mật khẩu phải từ 6 đến 100 ký tự")
     private String password;
 
-    @Email(message = "Email khĂ´ng Ä‘Ăºng Ä‘á»‹nh dáº¡ng")
-    @Size(max = 150, message = "Email khĂ´ng Ä‘Æ°á»£c vÆ°á»£t quĂ¡ 150 kĂ½ tá»±")
+    @Email(message = "Email không đúng định dạng")
+    @Size(max = 150, message = "Email không được vượt quá 150 ký tự")
     private String email;
 
-    @Size(max = 200, message = "Há» tĂªn khĂ´ng Ä‘Æ°á»£c vÆ°á»£t quĂ¡ 200 kĂ½ tá»±")
+    @Size(max = 200, message = "Họ tên không được vượt quá 200 ký tự")
     private String fullName;
 
-    @Size(max = 20, message = "Sá»‘ Ä‘iá»‡n thoáº¡i khĂ´ng Ä‘Æ°á»£c vÆ°á»£t quĂ¡ 20 kĂ½ tá»±")
+    @Size(max = 20, message = "Số điện thoại không được vượt quá 20 ký tự")
     private String phone;
 
-    @Size(max = 50, message = "Role khĂ´ng Ä‘Æ°á»£c vÆ°á»£t quĂ¡ 50 kĂ½ tá»±")
+    @Size(max = 50, message = "Role không được vượt quá 50 ký tự")
     private String role;
 
     private UUID orgUnitId;

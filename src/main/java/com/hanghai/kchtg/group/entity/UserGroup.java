@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Nhom nguoi dung (User Group) â€” dung de gom quyen vĂ  phan quyen theo nhom.
+ * Nhom nguoi dung (User Group) — dung de gom quyen và phan quyen theo nhom.
  */
 @Entity
 @Table(name = "user_groups")
@@ -54,7 +54,7 @@ public class UserGroup extends BaseEntity {
     @Column(name = "permission", nullable = false)
     private List<String> permissions = new ArrayList<>();
 
-    /** Trang tai: ACTIVE (hoat dong) hoÄƒc INACTIVE (vo hieu). */
+    /** Trang tai: ACTIVE (hoat dong) hoăc INACTIVE (vo hieu). */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private GroupStatus status = GroupStatus.ACTIVE;

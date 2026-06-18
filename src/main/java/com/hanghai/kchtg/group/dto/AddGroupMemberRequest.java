@@ -6,11 +6,11 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 /**
- * Request body cho viá»‡c thĂªm thĂ nh viĂªn vĂ o nhĂ³m.
+ * Request body cho việc thêm thành viên vào nhóm.
  */
 public class AddGroupMemberRequest {
 
-    @NotNull(message = "ID ngÆ°á»i dĂ¹ng khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
+    @NotNull(message = "ID người dùng không được để trống")
     private UUID userId;
 
     private String role = "member";

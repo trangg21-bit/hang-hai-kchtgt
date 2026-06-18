@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
- * REST Controller cho vi?c xu?t vï¿½ xem access logs.
+ * REST Controller cho việc xuất và xem access logs.
  * <p>
  * Base path: {@code /api/logs}
  * </p>
@@ -35,7 +35,7 @@ public class LogExportController {
     }
 
     /**
-     * Export access logs thï¿½nh file CSV.
+     * Export access logs thành file CSV.
      */
     @GetMapping("/export/csv")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
@@ -66,7 +66,7 @@ public class LogExportController {
     }
 
     /**
-     * Ki?m tra c?nh bï¿½o failures ï¿½ s? lu?ng log FAILED trong 30 phï¿½t qua.
+     * Kiểm tra cảnh báo failures - số lượng log FAILED trong 30 phút qua.
      */
     @GetMapping("/alerts/failures")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
@@ -76,7 +76,7 @@ public class LogExportController {
     }
 
     /**
-     * Th?ng kï¿½ logs theo status trong ngï¿½y.
+     * Thống kê logs theo status trong ngày.
      */
     @GetMapping("/stats/daily")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
@@ -85,7 +85,7 @@ public class LogExportController {
     }
 
     /**
-     * T?ng s? log trong h? th?ng.
+     * Tổng số log trong hệ thống.
      */
     @GetMapping("/stats/total")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")

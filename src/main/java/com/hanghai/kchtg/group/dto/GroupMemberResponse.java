@@ -6,7 +6,7 @@ import com.hanghai.kchtg.user.entity.User;
 import java.time.LocalDateTime;
 
 /**
- * DTO tráº£ vá» thĂ´ng tin thĂ nh viĂªn nhĂ³m.
+ * DTO trả về thông tin thành viên nhóm.
  */
 public class GroupMemberResponse {
 

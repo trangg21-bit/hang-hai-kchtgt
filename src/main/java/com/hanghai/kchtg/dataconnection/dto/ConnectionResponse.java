@@ -32,7 +32,7 @@ public class ConnectionResponse {
     LocalDateTime updatedAt;
 
     /**
-     * Factory method: maps entity â†’ response (credentials omitted).
+     * Factory method: maps entity → response (credentials omitted).
      */
     public static ConnectionResponse fromEntity(DataConnection entity) {
         return ConnectionResponse.builder()

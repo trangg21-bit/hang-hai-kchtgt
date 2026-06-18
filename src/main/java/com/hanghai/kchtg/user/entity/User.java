@@ -40,7 +40,7 @@ import java.util.List;
 public class User extends BaseEntity {
 
     /**
-     * Ten dang nhap â€” duy nhat, khong duoc trong.
+     * Ten dang nhap — duy nhat, khong duoc trong.
      */
     @NotBlank(message = "Username khong duoc de trong")
     @Size(min = 3, max = 100, message = "Username tu 3 den 100 ky tu")
@@ -56,7 +56,7 @@ public class User extends BaseEntity {
     private String password;
 
     /**
-     * Dia chi email â€” duy nhat, khong duoc trong.
+     * Dia chi email — duy nhat, khong duoc trong.
      */
     @NotBlank(message = "Email khong duoc de trong")
     @Email(message = "Email khong hop le")
@@ -78,7 +78,7 @@ public class User extends BaseEntity {
     private String phone;
 
     /**
-     * Vai trĂ² cua nguoi dung (e.g. ROLE_USER, ROLE_ADMIN).
+     * Vai trò cua nguoi dung (e.g. ROLE_USER, ROLE_ADMIN).
      * Ma hoa trong JWT token.
      */
     @Column(length = 50)

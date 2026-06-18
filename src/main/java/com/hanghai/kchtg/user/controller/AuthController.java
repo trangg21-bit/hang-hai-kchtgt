@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Authentication controller â€” handles login via JWT.
+ * Authentication controller — handles login via JWT.
  */
 @RestController
 @RequestMapping("/api/auth")

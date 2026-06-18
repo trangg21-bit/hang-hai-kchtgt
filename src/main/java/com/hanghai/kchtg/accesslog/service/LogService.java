@@ -27,10 +27,10 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Service quan ly access logs Ă¢â‚¬â€ bao gom query, xuat CSV, don gan lich su vĂƒÂ  canh bao khi cĂƒÂ³ loi.
+ * Service quan ly access logs — bao gom query, xuat CSV, don gan lich su và canh bao khi có loi.
  * <p>
- * Ket hop logic tĂ¡Â»Â« {@link AccessLogService} (query read-only) vĂƒÂ  cĂƒÂ¡c tinh nang moi:
- * {@code exportToCsv()}, {@code cleanupOldLogs()}, vĂƒÂ  {@code alertOnFailures()}.
+ * Ket hop logic từ {@link AccessLogService} (query read-only) và các tinh nang moi:
+ * {@code exportToCsv()}, {@code cleanupOldLogs()}, và {@code alertOnFailures()}.
  * </p>
  */
 @Service
@@ -68,7 +68,7 @@ public class LogService {
         return accessLogService.findAll(filter, pageable);
     }
 
-    // Ă¢â€â‚¬Ă¢â€â‚¬ CSV Export Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
+    // ── CSV Export ─────────────────────────────────────────────────────
 
     /**
      * Xuat access logs thanh file CSV.
@@ -112,10 +112,10 @@ public class LogService {
         }
     }
 
-    // Ă¢â€â‚¬Ă¢â€â‚¬ Alert on Failures Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
+    // ── Alert on Failures ────────────────────────────────────────────
 
     /**
-     * Kiem tra vĂƒÂ  canh bao neu co quĂƒÂ¡ nhieu log FAILED trong khoang thoi gian gan day.
+     * Kiem tra và canh bao neu co quá nhieu log FAILED trong khoang thoi gian gan day.
      */
     public int alertOnFailures(int threshold) {
         LocalDateTime window = LocalDateTime.now().minusMinutes(30);
@@ -138,13 +138,12 @@ public class LogService {
         return alertOnFailures(100);
     }
 
-    // Ă¢â€â‚¬Ă¢â€â‚¬ Scheduled Cleanup Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
+    // ── Scheduled Cleanup ────────────────────────────────────────────
 
     /**
-     * Xoa cĂƒÂ¡c access logs cu hon retentionDays.
+     * Xoa các access logs cu hon retentionDays.
      * Chay tu dong theo cron schedule (xem {@link com.hanghai.kchtg.common.scheduler.LogCleanupScheduler}).
      */
-    @Scheduled(cron = "")
     @Transactional
     public void cleanupOldLogs() {
         LocalDateTime threshold = LocalDateTime.now().minusDays(retentionDays);
@@ -152,7 +151,7 @@ public class LogService {
         log.info("Cleaned up {} access logs older than {} days", deleted, retentionDays);
     }
 
-    // Ă¢â€â‚¬Ă¢â€â‚¬ Statistics Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
+    // ── Statistics ─────────────────────────────────────────────────────
 
     /**
      * Thong ke so luong logs theo status trong ngay.

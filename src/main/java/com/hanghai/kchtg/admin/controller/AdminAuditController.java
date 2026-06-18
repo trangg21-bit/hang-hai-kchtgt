@@ -56,7 +56,7 @@ public class AdminAuditController {
             @RequestParam(required = false) String action,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("performedAt").descending());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Specification<AdminAuditLog> spec = null;
         if (action != null && !action.isBlank()) {
             final String finalAction = action;
@@ -77,7 +77,7 @@ public class AdminAuditController {
     @GetMapping("/{logId}")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<AdminAuditLog>> getById(@PathVariable UUID logId) {
-        List<AdminAuditLog> all = auditLogRepo.findAll(Sort.by("performedAt").descending());
+        List<AdminAuditLog> all = auditLogRepo.findAll(Sort.by("createdAt").descending());
         AdminAuditLog found = all.stream()
                 .filter(log -> log.getId().equals(logId))
                 .findFirst()

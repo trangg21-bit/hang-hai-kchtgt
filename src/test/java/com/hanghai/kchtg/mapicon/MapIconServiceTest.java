@@ -1,8 +1,8 @@
 package com.hanghai.kchtg.mapicon;
 
 import com.hanghai.kchtg.mapicon.entity.MapIcon;
-import com.hanghai.kchtg.mapicon.entity.IconType;
-import com.hanghai.kchtg.mapicon.entity.IconStatus;
+import com.hanghai.kchtg.mapicon.entity.MapIcon.Category;
+import com.hanghai.kchtg.mapicon.entity.MapIcon.Status;
 import com.hanghai.kchtg.mapicon.repository.MapIconRepository;
 import com.hanghai.kchtg.mapicon.service.MapIconService;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +34,7 @@ class MapIconServiceTest {
         testIcon.setId(1L);
         testIcon.setName("Cảng biển");
         testIcon.setCode("PORT");
-        testIcon.setIconType(IconType.PORT);
+        testIcon.setIconType(Category.PORT);
         testIcon.setColor("#4a90d9");
         testIcon.setSize(32);
         testIcon.setStatus(IconStatus.ACTIVE);
@@ -47,7 +47,7 @@ class MapIconServiceTest {
         var request = new com.hanghai.kchtg.mapicon.dto.CreateMapIconRequest();
         request.setName("Đèn biển");
         request.setCode("LIGHT");
-        request.setIconType(IconType.LIGHT);
+        request.setIconType(Category.LIGHT);
 
         when(mapIconRepository.existsByCode("LIGHT")).thenReturn(false);
         when(mapIconRepository.save(any())).thenReturn(testIcon);
@@ -130,9 +130,9 @@ class MapIconServiceTest {
 
     @Test
     void findByType_shouldReturnMatching() {
-        when(mapIconRepository.findByIconType(IconType.PORT, any(Pageable.class))).thenReturn(new PageImpl<>(List.of(testIcon)));
+        when(mapIconRepository.findByIconType(Category.PORT, any(Pageable.class))).thenReturn(new PageImpl<>(List.of(testIcon)));
 
-        Page<MapIcon> result = mapIconService.findByType(IconType.PORT, PageRequest.of(0, 20));
+        Page<MapIcon> result = mapIconService.findByType(Category.PORT, PageRequest.of(0, 20));
 
         assertEquals(1, result.getTotalElements());
     }

@@ -17,7 +17,7 @@ import java.util.UUID;
 /**
  * Records every user-facing access to the system for audit and traceability.
  * <p>
- * This entity is write-only from the application's perspective â€” the REST API
+ * This entity is write-only from the application's perspective — the REST API
  * only exposes read operations. Log entries are typically created by a
  * cross-cutting aspect or an event-listening component (not implemented here).
  * </p>
@@ -66,7 +66,7 @@ public class AccessLog extends BaseEntity {
     @Column(nullable = false, length = 10)
     private AccessLogStatus status;
 
-    /** Free-text detail â€” stack-trace, request body excerpt, or business context. */
+    /** Free-text detail — stack-trace, request body excerpt, or business context. */
     @Column(columnDefinition = "TEXT")
     private String detail;
 }

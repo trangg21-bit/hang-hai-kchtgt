@@ -1,4 +1,4 @@
-﻿package com.hanghai.kchtg.security;
+package com.hanghai.kchtg.security;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

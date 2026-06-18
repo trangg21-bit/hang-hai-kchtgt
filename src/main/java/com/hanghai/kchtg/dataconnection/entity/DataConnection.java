@@ -19,7 +19,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * Represents an external system data connection (liĂªn thĂ´ng / chia sáº» dá»¯ liá»‡u).
+ * Represents an external system data connection (liên thông / chia sẻ dữ liệu).
  * <p>
  * Stores connection metadata including endpoint, authentication type, encrypted
  * credentials, sync frequency, and operational status.
@@ -43,7 +43,7 @@ public class DataConnection extends BaseEntity {
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
-    /** Descriptive label of the target system (e.g. "Há»‡ thá»‘ng háº£i quan"). */
+    /** Descriptive label of the target system (e.g. "Hệ thống hải quan"). */
     @NotBlank
     @Size(max = 255)
     @Column(nullable = false)

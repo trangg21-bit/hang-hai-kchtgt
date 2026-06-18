@@ -13,10 +13,10 @@
       "version": 94
     },
     "docs/intel/catalog.json": {
-      "content_hash": "sha256:aed014eebc45f7bb30b0d921d280dfacf195d3f56270f1fa6893cfe4ab5fdb5c",
-      "last_modified": "2026-06-17T03:54:32Z",
+      "content_hash": "sha256:f57cca5a28435d5dcf0749b8eaf04ca2140a9fe199568563cc530b0e1b241912",
+      "last_modified": "2026-06-18T04:20:39Z",
       "last_producer": "ai-kit/state-update-rebuild-catalog",
-      "version": 25
+      "version": 31
     },
     "docs/modules/M-001-quan-tri-he-thong/module-brief.md": {
       "content_hash": "sha256:36e913dd80aec0ba586099d2541430bdb83e5897c9aa752f8695df33f6987f5f",
@@ -55,10 +55,10 @@
       "version": 2
     },
     "docs/modules/M-007-gis-ban-do/module-brief.md": {
-      "content_hash": "sha256:2852c78a46549fc82a3cc0629817c64f572b5f93817962fa302e0d2fe10e2de9",
-      "last_modified": "2026-06-16T04:42:54Z",
+      "content_hash": "sha256:c0ca1cf965e02531b91b378b47664e542895e5255490f716cad862edc406f675",
+      "last_modified": "2026-06-18T04:22:54Z",
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
-      "version": 1
+      "version": 6
     },
     "docs/modules/M-008-bao-cao-thong-ke/module-brief.md": {
       "content_hash": "sha256:acb4fea7e54a65e0ddc98a71da38cb57e99446838b1e7cd77ddae35f7e856e70",

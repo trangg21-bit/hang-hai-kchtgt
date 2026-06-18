@@ -27,7 +27,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Service quan ly data connection voi health check, retry policy vĂƒÂ  exponential backoff.
+ * Service quan ly data connection voi health check, retry policy và exponential backoff.
  */
 @Service
 public class ConnectionService {
@@ -53,7 +53,7 @@ public class ConnectionService {
         this.syncLogRepo = syncLogRepo;
     }
 
-    // Ă¢â€â‚¬Ă¢â€â‚¬ CRUD Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
+    // ── CRUD ─────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public List<ConnectionResponse> listAll() {
@@ -124,10 +124,10 @@ public class ConnectionService {
         log.info("Soft-deleted data connection: id={}", id);
     }
 
-    // Ă¢â€â‚¬Ă¢â€â‚¬ Health Check + Retry + Exponential Backoff Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
+    // ── Health Check + Retry + Exponential Backoff ───────────────────
 
     /**
-     * Kiem tra suc khoe ket noi voi retry policy vĂƒÂ  exponential backoff.
+     * Kiem tra suc khoe ket noi voi retry policy và exponential backoff.
      */
     @Transactional
     public ConnectionHealth healthCheck(UUID connectionId) {
@@ -192,7 +192,7 @@ public class ConnectionService {
                 if (status >= 200 && status < 400) {
                     return TestConnectionResponse.builder()
                             .success(true)
-                            .message("Endpoint reachable Ă¢â‚¬â€ HTTP " + status)
+                            .message("Endpoint reachable — HTTP " + status)
                             .responseTimeMs(elapsed)
                             .responseCode(status)
                             .build();
@@ -235,7 +235,7 @@ public class ConnectionService {
         return Math.min(delay, MAX_DELAY_MS);
     }
 
-    // Ă¢â€â‚¬Ă¢â€â‚¬ Health History Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
+    // ── Health History ───────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public List<ConnectionHealth> getHealthHistory(UUID connectionId, int hours) {
@@ -251,7 +251,7 @@ public class ConnectionService {
         return healthRepo.avgLatency(connectionId, LocalDateTime.now().minusDays(7));
     }
 
-    // Ă¢â€â‚¬Ă¢â€â‚¬ Internal Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
+    // ── Internal ──────────────────────────────────────────────────────
 
     private void decryptCredentials(DataConnection entity) {
         String encrypted = entity.getCredentials();

@@ -18,8 +18,8 @@ import lombok.Setter;
 import java.util.UUID;
 
 /**
- * Quan he giua nguoi dung va nhom â€” cho phĂ©p mot nguoi dung thuoc nhieu nhom
- * vĂ  mot nhom cĂ³ nhieu nguoi dung (Many-to-Many thong qua entity join).
+ * Quan he giua nguoi dung va nhom — cho phép mot nguoi dung thuoc nhieu nhom
+ * và mot nhom có nhieu nguoi dung (Many-to-Many thong qua entity join).
  */
 @Entity
 @Table(name = "group_members")
@@ -38,18 +38,18 @@ public class GroupMember extends BaseEntity {
     @JoinColumn(name = "user_group_id", nullable = false)
     private UserGroup userGroup;
 
-    /** Vai trĂ² trong nhom (vĂ­ du: "owner", "admin", "member", "viewer"). */
-    @NotBlank(message = "Vai trĂ² trong nhom khong duoc de trong")
-    @Size(max = 50, message = "Vai trĂ² nhom toi da 50 ky tu")
+    /** Vai trò trong nhom (ví du: "owner", "admin", "member", "viewer"). */
+    @NotBlank(message = "Vai trò trong nhom khong duoc de trong")
+    @Size(max = 50, message = "Vai trò nhom toi da 50 ky tu")
     @Column(nullable = false, length = 30)
     private String role = "member";
 
-    /** Trang tai thanh vien (active hoÄƒc removed). */
+    /** Trang tai thanh vien (active hoăc removed). */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private GroupMemberStatus status = GroupMemberStatus.ACTIVE;
 
-    /** Thoi diem nguoi dung duoc thĂªm vĂ o nhom. */
+    /** Thoi diem nguoi dung duoc thêm vào nhom. */
     @Column(name = "joined_at")
     private java.time.LocalDateTime joinedAt;
 

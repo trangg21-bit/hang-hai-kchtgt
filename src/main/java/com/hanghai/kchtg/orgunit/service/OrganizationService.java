@@ -20,8 +20,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Service quáº£n lĂ½ Ä‘Æ¡n vá»‹ tá»• chá»©c vá»›i tĂ­nh nÄƒng xĂ¢y dá»±ng cĂ¢y tá»• chá»©c
- * vĂ  quy trĂ¬nh phĂª duyá»‡t phĂ¢n cáº¥p (approval workflow).
+ * Service quản lý đơn vị tổ chức với tính năng xây dựng cây tổ chức
+ * và quy trình phê duyệt phân cấp (approval workflow).
  */
 @Service
 @RequiredArgsConstructor
@@ -33,7 +33,7 @@ public class OrganizationService {
     private final OrgUnitRepository orgUnitRepo;
     private final UnitRepository unitRepo;
 
-    // â”€â”€ Queries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Queries ──────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public List<OrgUnitResponse> findAll() {
@@ -43,7 +43,7 @@ public class OrganizationService {
     }
 
     /**
-     * XĂ¢y dá»±ng cĂ¢y tá»• chá»©c Ä‘áº§y Ä‘á»§ tá»« root.
+     * Xây dựng cây tổ chức đầy đủ từ root.
      */
     @Transactional(readOnly = true)
     public List<OrgUnitResponse> buildTree() {
@@ -69,12 +69,12 @@ public class OrganizationService {
     }
 
     /**
-     * Láº¥y toĂ n bá»™ cĂ¢y con cá»§a má»™t Ä‘Æ¡n vá»‹ cá»¥ thá»ƒ.
+     * Lấy toàn bộ cây con của một đơn vị cụ thể.
      */
     @Transactional(readOnly = true)
     public List<OrgUnitResponse> findSubTree(UUID unitId) {
         if (!orgUnitRepo.existsById(unitId)) {
-            throw new EntityNotFoundException("ÄÆ¡n vá»‹ khĂ´ng tá»“n táº¡i: " + unitId);
+            throw new EntityNotFoundException("Đơn vị không tồn tại: " + unitId);
         }
         List<OrgUnit> all = orgUnitRepo.findAll();
         Set<UUID> visited = new HashSet<>();
@@ -97,18 +97,18 @@ public class OrganizationService {
     @Transactional(readOnly = true)
     public OrgUnitResponse findById(UUID id) {
         OrgUnit unit = orgUnitRepo.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("ÄÆ¡n vá»‹ khĂ´ng tá»“n táº¡i: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
         return OrgUnitResponse.from(unit);
     }
 
-    // â”€â”€ Mutations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Mutations ────────────────────────────────────────────────────
 
     /**
-     * Táº¡o má»›i Ä‘Æ¡n vá»‹ vá»›i ghi nháº­n lá»‹ch sá»­.
+     * Tạo mới đơn vị với ghi nhận lịch sử.
      */
     public OrgUnitResponse create(CreateOrgUnitRequest request, UUID operatorId, String operatorName) {
         if (orgUnitRepo.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("MĂ£ Ä‘Æ¡n vá»‹ Ä‘Ă£ tá»“n táº¡i: " + request.getCode());
+            throw new IllegalArgumentException("Mã đơn vị đã tồn tại: " + request.getCode());
         }
 
         OrgUnit unit = OrgUnit.builder()
@@ -124,9 +124,9 @@ public class OrganizationService {
         OrgUnit saved = orgUnitRepo.save(unit);
 
         // Ghi history
-        saveHistory(saved, "CREATED", "Táº¡o má»›i Ä‘Æ¡n vá»‹", operatorId, operatorName);
+        saveHistory(saved, "CREATED", "Tạo mới đơn vị", operatorId, operatorName);
 
-        // TĂ­nh level vĂ  sortOrder
+        // Tính level và sortOrder
         calculateLevelAndSortOrder(saved);
 
         log.info("Created org unit: {} ({})", saved.getCode(), saved.getId());
@@ -134,21 +134,21 @@ public class OrganizationService {
     }
 
     /**
-     * Cáº­p nháº­t Ä‘Æ¡n vá»‹ vá»›i ghi nháº­n lá»‹ch sá»­.
+     * Cập nhật đơn vị với ghi nhận lịch sử.
      */
     public OrgUnitResponse update(UUID id, UpdateOrgUnitRequest request, UUID operatorId, String operatorName) {
         OrgUnit unit = orgUnitRepo.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("ÄÆ¡n vá»‹ khĂ´ng tá»“n táº¡i: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
 
         if (request.getCode() != null && !request.getCode().equals(unit.getCode())) {
             if (orgUnitRepo.existsByCodeAndIdNot(request.getCode(), id)) {
-                throw new IllegalArgumentException("MĂ£ Ä‘Æ¡n vá»‹ Ä‘Ă£ tá»“n táº¡i: " + request.getCode());
+                throw new IllegalArgumentException("Mã đơn vị đã tồn tại: " + request.getCode());
             }
             unit.setCode(request.getCode());
         }
 
         if (request.getParentId() != null && request.getParentId().equals(id)) {
-            throw new IllegalArgumentException("ÄÆ¡n vá»‹ khĂ´ng thá»ƒ lĂ  cha cá»§a chĂ­nh nĂ³");
+            throw new IllegalArgumentException("Đơn vị không thể là cha của chính nó");
         }
 
         if (request.getName() != null) unit.setName(request.getName());
@@ -158,68 +158,68 @@ public class OrganizationService {
         if (request.getStatus() != null) unit.setStatus(request.getStatus());
 
         OrgUnit saved = orgUnitRepo.save(unit);
-        saveHistory(saved, "UPDATED", "Cáº­p nháº­t Ä‘Æ¡n vá»‹", operatorId, operatorName);
+        saveHistory(saved, "UPDATED", "Cập nhật đơn vị", operatorId, operatorName);
 
         log.info("Updated org unit: {} ({})", saved.getCode(), saved.getId());
         return OrgUnitResponse.from(saved);
     }
 
     /**
-     * XĂ³a Ä‘Æ¡n vá»‹ (khĂ´ng cho phĂ©p náº¿u cĂ³ con).
+     * Xóa đơn vị (không cho phép nếu có con).
      */
     public void delete(UUID id, UUID operatorId, String operatorName) {
         if (!orgUnitRepo.existsById(id)) {
-            throw new EntityNotFoundException("ÄÆ¡n vá»‹ khĂ´ng tá»“n táº¡i: " + id);
+            throw new EntityNotFoundException("Đơn vị không tồn tại: " + id);
         }
         OrgUnit unit = orgUnitRepo.findById(id).orElseThrow();
-        String details = String.format("XĂ³a Ä‘Æ¡n vá»‹ '%s' (code: %s)", unit.getName(), unit.getCode());
+        String details = String.format("Xóa đơn vị '%s' (code: %s)", unit.getName(), unit.getCode());
         saveHistory(unit, "DELETED", details, operatorId, operatorName);
         unit.softDelete();
         orgUnitRepo.save(unit);
         log.info("Soft-deleted org unit: {} ({})", unit.getCode(), unit.getId());
     }
 
-    // â”€â”€ Approval Workflow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Approval Workflow ────────────────────────────────────────────
 
     /**
-     * PhĂª duyá»‡t thay Ä‘á»•i cho Ä‘Æ¡n vá»‹ (approval workflow).
+     * Phê duyệt thay đổi cho đơn vị (approval workflow).
      */
     public OrgUnitResponse approve(UUID id, UUID approverId, String approverName, String comments) {
         OrgUnit unit = orgUnitRepo.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("ÄÆ¡n vá»‹ khĂ´ng tá»“n táº¡i: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
 
         if (unit.getStatus() != OrgUnitStatus.PENDING_APPROVAL) {
-            throw new IllegalStateException("ÄÆ¡n vá»‹ khĂ´ng á»Ÿ tráº¡ng thĂ¡i chá» phĂª duyá»‡t");
+            throw new IllegalStateException("Đơn vị không ở trạng thái chờ phê duyệt");
         }
 
         unit.setStatus(OrgUnitStatus.ACTIVE);
         OrgUnit saved = orgUnitRepo.save(unit);
-        saveHistory(saved, "APPROVED", "ÄĂ£ phĂª duyá»‡t bá»Ÿi " + approverName + (comments != null ? ": " + comments : ""),
+        saveHistory(saved, "APPROVED", "Đã phê duyệt bởi " + approverName + (comments != null ? ": " + comments : ""),
                 approverId, approverName);
         log.info("Approved org unit: {} ({})", saved.getCode(), saved.getId());
         return OrgUnitResponse.from(saved);
     }
 
     /**
-     * Tá»« chá»‘i yĂªu cáº§u thay Ä‘á»•i.
+     * Từ chối yêu cầu thay đổi.
      */
     public OrgUnitResponse reject(UUID id, UUID approverId, String approverName, String comments) {
         OrgUnit unit = orgUnitRepo.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("ÄÆ¡n vá»‹ khĂ´ng tá»“n táº¡i: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
 
         if (unit.getStatus() != OrgUnitStatus.PENDING_APPROVAL) {
-            throw new IllegalStateException("ÄÆ¡n vá»‹ khĂ´ng á»Ÿ tráº¡ng thĂ¡i chá» phĂª duyá»‡t");
+            throw new IllegalStateException("Đơn vị không ở trạng thái chờ phê duyệt");
         }
 
         unit.setStatus(OrgUnitStatus.ACTIVE);
         OrgUnit saved = orgUnitRepo.save(unit);
-        saveHistory(saved, "REJECTED", "Tá»« chá»‘i bá»Ÿi " + approverName + (comments != null ? ": " + comments : ""),
+        saveHistory(saved, "REJECTED", "Từ chối bởi " + approverName + (comments != null ? ": " + comments : ""),
                 approverId, approverName);
         log.info("Rejected org unit: {} ({})", saved.getCode(), saved.getId());
         return OrgUnitResponse.from(saved);
     }
 
-    // â”€â”€ Private â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Private ──────────────────────────────────────────────────────
 
     private void saveHistory(OrgUnit unit, String action, String details,
                              UUID performedBy, String performedByName) {
@@ -234,8 +234,8 @@ public class OrganizationService {
             OrgUnit parent = orgUnitRepo.findById(unit.getParentId()).orElse(null);
             int parentLevel = parent != null ? (parent.getParentId() != null ? 1 : 0) : 0;
             long childrenCount = orgUnitRepo.findByParentId(unit.getId()).size();
-            // SortOrder dá»±a trĂªn sá»‘ lÆ°á»£ng con hiá»‡n táº¡i
+            // SortOrder dựa trên số lượng con hiện tại
         }
-        // LÆ°u OrganizationChart (Ä‘Æ¡n giáº£n hĂ³a)
+        // Lưu OrganizationChart (đơn giản hóa)
     }
 }

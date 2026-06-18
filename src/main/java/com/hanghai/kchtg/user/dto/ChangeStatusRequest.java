@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * DTO yĂªu cáº§u thay Ä‘á»•i tráº¡ng thĂ¡i tĂ i khoáº£n.
+ * DTO yêu cầu thay đổi trạng thái tài khoản.
  */
 @Getter
 @Setter
@@ -16,6 +16,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class ChangeStatusRequest {
 
-    @NotNull(message = "Tráº¡ng thĂ¡i khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
+    @NotNull(message = "Trạng thái không được để trống")
     private UserStatus status;
 }
