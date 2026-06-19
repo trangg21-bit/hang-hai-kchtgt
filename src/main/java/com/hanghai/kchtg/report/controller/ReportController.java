@@ -31,8 +31,8 @@ public class ReportController {
         String filename = "baocao_" + request.getReportCode().toLowerCase() + "_" + System.currentTimeMillis();
         boolean isExcel = "EXCEL".equalsIgnoreCase(request.getFormat());
         
-        filename += isExcel ? ".csv" : ".txt";
-        String contentType = isExcel ? "text/csv; charset=UTF-8" : "text/plain; charset=UTF-8";
+        filename += isExcel ? ".xlsx" : ".txt";
+        String contentType = isExcel ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : "text/plain; charset=UTF-8";
 
         HttpHeaders headers = new HttpHeaders();
         headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");

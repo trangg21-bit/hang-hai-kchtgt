@@ -31,7 +31,7 @@ export const reportService = {
 
     if (!filename) {
       const isExcel = request.format === 'EXCEL';
-      const extension = isExcel ? '.csv' : '.txt';
+      const extension = isExcel ? '.xlsx' : '.txt';
       filename = `baocao_${request.reportCode.toLowerCase()}_${Date.now()}${extension}`;
     }
 

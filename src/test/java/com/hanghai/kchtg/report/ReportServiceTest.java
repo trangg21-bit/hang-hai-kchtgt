@@ -141,7 +141,7 @@ public class ReportServiceTest {
     class ExportReport {
 
         @Test
-        @DisplayName("Should generate CSV bytes correctly with UTF-8 BOM")
+        @DisplayName("Should generate Excel bytes correctly in XLSX format")
         void shouldExportReportAsExcel() {
             when(pointObjectRepository.findAll()).thenReturn(Collections.emptyList());
 
@@ -154,10 +154,9 @@ public class ReportServiceTest {
             assertNotNull(excelBytes);
             assertTrue(excelBytes.length > 0);
             
-            String content = new String(excelBytes, java.nio.charset.StandardCharsets.UTF_8);
-            // Verify UTF-8 BOM is present
-            assertTrue(content.startsWith("\uFEFF"));
-            assertTrue(content.contains("Báo cáo tăng giảm tài sản".toUpperCase()));
+            // Verify XLSX ZIP file signature (starts with 'P' 'K' -> 0x50, 0x4B)
+            assertEquals((byte) 0x50, excelBytes[0]);
+            assertEquals((byte) 0x4B, excelBytes[1]);
         }
     }
 }

@@ -51,55 +51,186 @@ public class ReportService {
     public byte[] exportReport(ReportRequest request) {
         ReportResponse preview = generateReportPreview(request);
         boolean isExcel = "EXCEL".equalsIgnoreCase(request.getFormat());
-        
-        StringBuilder sb = new StringBuilder();
-        
-        // Write UTF-8 BOM to support Vietnamese characters in Excel natively
-        sb.append("\uFEFF");
 
-        sb.append(preview.getReportName().toUpperCase()).append("\n");
-        sb.append("Mã báo cáo: ").append(preview.getReportCode()).append("\n");
-        sb.append("Thời gian xuất: ").append(java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"))).append("\n\n");
+        if (isExcel) {
+            try (org.apache.poi.ss.usermodel.Workbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
+                 java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+                
+                org.apache.poi.ss.usermodel.Sheet sheet = workbook.createSheet("Báo cáo");
+                
+                // Styles
+                org.apache.poi.ss.usermodel.CellStyle titleStyle = workbook.createCellStyle();
+                org.apache.poi.ss.usermodel.Font titleFont = workbook.createFont();
+                titleFont.setFontHeightInPoints((short) 16);
+                titleFont.setBold(true);
+                titleFont.setColor(org.apache.poi.ss.usermodel.IndexedColors.ROYAL_BLUE.getIndex());
+                titleStyle.setFont(titleFont);
+                titleStyle.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.CENTER);
 
-        // Write headers
-        for (int i = 0; i < preview.getHeaders().size(); i++) {
-            sb.append(preview.getHeaders().get(i));
-            if (i < preview.getHeaders().size() - 1) {
-                sb.append(isExcel ? "," : "\t");
+                org.apache.poi.ss.usermodel.CellStyle metaStyle = workbook.createCellStyle();
+                org.apache.poi.ss.usermodel.Font metaFont = workbook.createFont();
+                metaFont.setFontHeightInPoints((short) 10);
+                metaFont.setItalic(true);
+                metaStyle.setFont(metaFont);
+
+                org.apache.poi.ss.usermodel.CellStyle headerStyle = workbook.createCellStyle();
+                org.apache.poi.ss.usermodel.Font headerFont = workbook.createFont();
+                headerFont.setFontHeightInPoints((short) 11);
+                headerFont.setBold(true);
+                headerFont.setColor(org.apache.poi.ss.usermodel.IndexedColors.WHITE.getIndex());
+                headerStyle.setFont(headerFont);
+                headerStyle.setFillForegroundColor(org.apache.poi.ss.usermodel.IndexedColors.CORNFLOWER_BLUE.getIndex());
+                headerStyle.setFillPattern(org.apache.poi.ss.usermodel.FillPatternType.SOLID_FOREGROUND);
+                headerStyle.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.CENTER);
+                headerStyle.setVerticalAlignment(org.apache.poi.ss.usermodel.VerticalAlignment.CENTER);
+                setHeaderBorders(headerStyle);
+
+                org.apache.poi.ss.usermodel.CellStyle dataStyle = workbook.createCellStyle();
+                setCellBorders(dataStyle);
+
+                org.apache.poi.ss.usermodel.CellStyle summaryStyle = workbook.createCellStyle();
+                org.apache.poi.ss.usermodel.Font summaryFont = workbook.createFont();
+                summaryFont.setBold(true);
+                summaryStyle.setFont(summaryFont);
+                
+                int rowIdx = 1;
+                
+                // Write title
+                int numCols = Math.max(preview.getHeaders().size(), 1);
+                org.apache.poi.ss.usermodel.Row titleRow = sheet.createRow(rowIdx++);
+                sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(1, 1, 0, numCols - 1));
+                org.apache.poi.ss.usermodel.Cell titleCell = titleRow.createCell(0);
+                titleCell.setCellValue(preview.getReportName().toUpperCase());
+                titleCell.setCellStyle(titleStyle);
+                titleRow.setHeightInPoints(28);
+
+                // Write metadata
+                org.apache.poi.ss.usermodel.Row metaRow1 = sheet.createRow(rowIdx++);
+                org.apache.poi.ss.usermodel.Cell metaCell1 = metaRow1.createCell(0);
+                metaCell1.setCellValue("Mã báo cáo: " + preview.getReportCode());
+                metaCell1.setCellStyle(metaStyle);
+
+                org.apache.poi.ss.usermodel.Row metaRow2 = sheet.createRow(rowIdx++);
+                org.apache.poi.ss.usermodel.Cell metaCell2 = metaRow2.createCell(0);
+                metaCell2.setCellValue("Thời gian xuất: " + java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss")));
+                metaCell2.setCellStyle(metaStyle);
+                
+                rowIdx++; // Blank row
+
+                // Write headers
+                org.apache.poi.ss.usermodel.Row headerRow = sheet.createRow(rowIdx++);
+                headerRow.setHeightInPoints(24);
+                for (int i = 0; i < preview.getHeaders().size(); i++) {
+                    org.apache.poi.ss.usermodel.Cell cell = headerRow.createCell(i);
+                    cell.setCellValue(preview.getHeaders().get(i));
+                    cell.setCellStyle(headerStyle);
+                }
+
+                // Write data rows
+                for (Map<String, Object> rowData : preview.getRows()) {
+                    org.apache.poi.ss.usermodel.Row row = sheet.createRow(rowIdx++);
+                    row.setHeightInPoints(20);
+                    for (int i = 0; i < preview.getHeaders().size(); i++) {
+                        String header = preview.getHeaders().get(i);
+                        Object val = rowData.get(header);
+                        String valStr = val != null ? val.toString() : "";
+                        
+                        org.apache.poi.ss.usermodel.Cell cell = row.createCell(i);
+                        
+                        // Parse numbers if possible to keep them numeric in Excel
+                        if (val instanceof Number) {
+                            cell.setCellValue(((Number) val).doubleValue());
+                        } else {
+                            cell.setCellValue(valStr);
+                        }
+                        cell.setCellStyle(dataStyle);
+                    }
+                }
+
+                // Write summary
+                if (preview.getSummary() != null && !preview.getSummary().isEmpty()) {
+                    rowIdx++; // Blank row
+                    org.apache.poi.ss.usermodel.Row sumTitleRow = sheet.createRow(rowIdx++);
+                    org.apache.poi.ss.usermodel.Cell sumTitleCell = sumTitleRow.createCell(0);
+                    sumTitleCell.setCellValue("TỔNG HỢP / TỔNG CỘNG:");
+                    sumTitleCell.setCellStyle(summaryStyle);
+
+                    for (Map.Entry<String, Object> entry : preview.getSummary().entrySet()) {
+                        org.apache.poi.ss.usermodel.Row sumRow = sheet.createRow(rowIdx++);
+                        org.apache.poi.ss.usermodel.Cell sumCell = sumRow.createCell(0);
+                        sumCell.setCellValue(entry.getKey() + ": " + entry.getValue());
+                        sumCell.setCellStyle(summaryStyle);
+                    }
+                }
+
+                // Auto-fit columns
+                for (int i = 0; i < preview.getHeaders().size(); i++) {
+                    sheet.autoSizeColumn(i);
+                    // Add safety margin
+                    int width = sheet.getColumnWidth(i);
+                    sheet.setColumnWidth(i, (int) (width * 1.25));
+                }
+
+                workbook.write(out);
+                return out.toByteArray();
+            } catch (Exception e) {
+                throw new RuntimeException("Lỗi sinh file Excel", e);
             }
-        }
-        sb.append("\n");
+        } else {
+            // Text format
+            StringBuilder sb = new StringBuilder();
+            sb.append("\uFEFF");
+            sb.append(preview.getReportName().toUpperCase()).append("\n");
+            sb.append("Mã báo cáo: ").append(preview.getReportCode()).append("\n");
+            sb.append("Thời gian xuất: ").append(java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"))).append("\n\n");
 
-        // Write rows
-        for (Map<String, Object> row : preview.getRows()) {
+            // Write headers
             for (int i = 0; i < preview.getHeaders().size(); i++) {
-                String header = preview.getHeaders().get(i);
-                Object val = row.get(header);
-                String valStr = val != null ? val.toString() : "";
-                
-                // Escape commas for CSV/Excel
-                if (isExcel && valStr.contains(",")) {
-                    valStr = "\"" + valStr + "\"";
-                }
-                
-                sb.append(valStr);
+                sb.append(preview.getHeaders().get(i));
                 if (i < preview.getHeaders().size() - 1) {
-                    sb.append(isExcel ? "," : "\t");
+                    sb.append("\t");
                 }
             }
             sb.append("\n");
-        }
 
-        // Write summary
-        if (preview.getSummary() != null && !preview.getSummary().isEmpty()) {
-            sb.append("\n");
-            sb.append("TỔNG HỢP / TỔNG CỘNG:\n");
-            for (Map.Entry<String, Object> entry : preview.getSummary().entrySet()) {
-                sb.append(entry.getKey()).append(isExcel ? "," : ": ").append(entry.getValue()).append("\n");
+            // Write rows
+            for (Map<String, Object> row : preview.getRows()) {
+                for (int i = 0; i < preview.getHeaders().size(); i++) {
+                    String header = preview.getHeaders().get(i);
+                    Object val = row.get(header);
+                    String valStr = val != null ? val.toString() : "";
+                    sb.append(valStr);
+                    if (i < preview.getHeaders().size() - 1) {
+                        sb.append("\t");
+                    }
+                }
+                sb.append("\n");
             }
-        }
 
-        return sb.toString().getBytes(StandardCharsets.UTF_8);
+            // Write summary
+            if (preview.getSummary() != null && !preview.getSummary().isEmpty()) {
+                sb.append("\n");
+                sb.append("TỔNG HỢP / TỔNG CỘNG:\n");
+                for (Map.Entry<String, Object> entry : preview.getSummary().entrySet()) {
+                    sb.append(entry.getKey()).append(": ").append(entry.getValue()).append("\n");
+                }
+            }
+            return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+    }
+
+    private void setHeaderBorders(org.apache.poi.ss.usermodel.CellStyle style) {
+        style.setBorderTop(org.apache.poi.ss.usermodel.BorderStyle.MEDIUM);
+        style.setBorderBottom(org.apache.poi.ss.usermodel.BorderStyle.MEDIUM);
+        style.setBorderLeft(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+        style.setBorderRight(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+    }
+
+    private void setCellBorders(org.apache.poi.ss.usermodel.CellStyle style) {
+        style.setBorderTop(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+        style.setBorderBottom(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+        style.setBorderLeft(org.apache.poi.ss.usermodel.BorderStyle.THIN);
+        style.setBorderRight(org.apache.poi.ss.usermodel.BorderStyle.THIN);
     }
 
     private void generateF141(ReportResponse.ReportResponseBuilder builder, ReportRequest request) {
