@@ -48,3 +48,11 @@ __pycache__/
 *.pyc
 .env
 venv/
+
+# ===== Playwright / MCP =====
+.playwright-mcp/
+test-results/
+playwright-report/
+frontend/playwright-report/
+frontend/test-results/
+
