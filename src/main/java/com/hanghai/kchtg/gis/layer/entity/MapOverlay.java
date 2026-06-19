@@ -18,11 +18,11 @@ import lombok.Setter;
 @Builder
 public class MapOverlay extends BaseEntity {
 
-    @NotBlank(message = "Ten overlay khong duoc de trong")
+    @NotBlank(message = "Tên overlay không được để trống")
     @Column(nullable = false, length = 100)
     private String name;
 
-    @NotBlank(message = "URL khong duoc de trong")
+    @NotBlank(message = "URL không được để trống")
     @Column(nullable = false, length = 500)
     private String url;
 

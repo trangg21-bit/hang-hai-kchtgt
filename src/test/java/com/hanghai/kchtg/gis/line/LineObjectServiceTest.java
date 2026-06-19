@@ -518,7 +518,7 @@ class LineObjectServiceTest {
         }
 
         @Test
-        @DisplayName("Should approve L2: APPROVED_L1 -> APPROVED_L2")
+        @DisplayName("Should approve L2: APPROVED_L1 -> PUBLISHED")
         void approveL2_success() {
             LineObject existing = newLineEntity();
             existing.setStatus(Status.APPROVED_L1);
@@ -530,7 +530,7 @@ class LineObjectServiceTest {
             LineObjectResponse result = service.approveL2(testLine.getId(), "2");
 
             assertNotNull(result);
-            assertEquals(Status.APPROVED_L2, existing.getStatus());
+            assertEquals(Status.PUBLISHED, existing.getStatus());
             verify(repository).save(existing);
             verify(historyRepository).save(any(LineHistory.class));
         }
@@ -565,7 +565,7 @@ class LineObjectServiceTest {
             assertEquals(Status.APPROVED_L1, entity.getStatus());
 
             service.approveL2(testLine.getId(), "200");
-            assertEquals(Status.APPROVED_L2, entity.getStatus());
+            assertEquals(Status.PUBLISHED, entity.getStatus());
 
             verify(repository, times(3)).save(any(LineObject.class));
             verify(historyRepository, times(2)).save(any(LineHistory.class));

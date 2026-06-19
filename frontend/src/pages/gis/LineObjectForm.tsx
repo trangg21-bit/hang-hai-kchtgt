@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Input, InputNumber, Select, message } from 'antd';
+import { Card, Form, Button, Space, Typography, Input, InputNumber, Select, Row, Col, message } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { lineObjectService } from '../../services/lineObjectService';
@@ -111,7 +111,7 @@ export default function LineObjectForm() {
         </Space>
       </Card>
 
-      <Card style={{ maxWidth: 700 }}>
+      <Card style={{ maxWidth: 700, margin: '0 auto' }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           {!isEdit && (
             <FormField
@@ -199,13 +199,36 @@ export default function LineObjectForm() {
             </Col>
             <Col style={{ flex: 1 }}>
               <FormField
-                type="number"
+                type="select"
                 name="categoryId"
-                label="Danh mục ID"
-                min={1}
-                placeholder="Tùy chọn"
+                label="Danh mục"
+                placeholder="Tùy chọn danh mục"
+                options={[
+                  { label: 'Đường bờ biển', value: 1 },
+                  { label: 'Tuyến hàng hải', value: 2 },
+                  { label: 'Đường thủy', value: 3 },
+                  { label: 'Khác', value: 4 },
+                ]}
               />
             </Col>
+          </Row>
+
+          <Row style={{ display: 'flex', gap: 16 }}>
+            <Col style={{ flex: 1 }}>
+              <FormField
+                type="select"
+                name="lineSymbolId"
+                label="Ký hiệu đường"
+                placeholder="Tùy chọn ký hiệu"
+                options={[
+                  { label: 'Symbol Đường bờ biển', value: 1 },
+                  { label: 'Symbol Tuyến hàng hải', value: 2 },
+                  { label: 'Symbol Đường thủy', value: 3 },
+                  { label: 'Symbol Khác', value: 4 },
+                ]}
+              />
+            </Col>
+            <Col style={{ flex: 1 }} />
           </Row>
 
           <Form.Item style={{ marginTop: 24 }}>

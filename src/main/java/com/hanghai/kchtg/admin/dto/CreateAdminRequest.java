@@ -13,14 +13,14 @@ import java.util.UUID;
 @Setter
 public class CreateAdminRequest {
 
-    @NotNull(message = "userId is required")
+    @NotNull(message = "ID người dùng không được để trống")
     private UUID userId;
 
-    @NotNull(message = "role is required")
+    @NotNull(message = "Vai trò không được để trống")
     private AdminRole role;
 
     private List<String> modules;
 
-    @NotNull(message = "status is required")
+    @NotNull(message = "Trạng thái không được để trống")
     private AdminStatus status = AdminStatus.ACTIVE;
 }

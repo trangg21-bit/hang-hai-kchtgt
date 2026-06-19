@@ -9,7 +9,7 @@ test.describe('Đăng nhập', () => {
   test('Đăng nhập thành công với admin/admin123', async ({ page }) => {
     // 1. Vào trang login
     await page.goto('/login');
-    await expect(page.getByRole('heading', { name: /đăng nhập/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /đăng nhập/i })).toBeVisible();
 
     // 2. Fill credentials
     await page.getByLabel('Tài khoản').fill('admin');
@@ -32,7 +32,7 @@ test.describe('Đăng nhập', () => {
     await page.getByRole('button', { name: /đăng nhập/i }).click();
 
     // Verify hiển thị error message
-    await expect(page.locator('.ant-message-error')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.ant-message-error').first()).toBeVisible({ timeout: 5000 });
   });
 
   test('Đăng nhập thất bại — tài khoản không tồn tại', async ({ page }) => {
@@ -43,7 +43,7 @@ test.describe('Đăng nhập', () => {
 
     await page.getByRole('button', { name: /đăng nhập/i }).click();
 
-    await expect(page.locator('.ant-message-error')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.ant-message-error').first()).toBeVisible({ timeout: 5000 });
   });
 
   test('Logout sau khi đăng nhập', async ({ page }) => {

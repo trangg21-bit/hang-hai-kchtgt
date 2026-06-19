@@ -20,8 +20,8 @@ import java.util.UUID;
 @AllArgsConstructor
 public class CreateUserRequest {
 
-    @NotBlank(message = "Username không được để trống")
-    @Size(min = 3, max = 100, message = "Username phải từ 3 đến 100 ký tự")
+    @NotBlank(message = "Tên đăng nhập không được để trống")
+    @Size(min = 3, max = 100, message = "Tên đăng nhập phải từ 3 đến 100 ký tự")
     private String username;
 
     @NotBlank(message = "Mật khẩu không được để trống")
@@ -40,7 +40,7 @@ public class CreateUserRequest {
     private String phone;
 
     /** Vai trò (e.g. ROLE_USER, ROLE_ADMIN). Mặc định là ROLE_USER. */
-    @Size(max = 50, message = "Role không được vượt quá 50 ký tự")
+    @Size(max = 50, message = "Vai trò không được vượt quá 50 ký tự")
     private String role;
 
     private UUID orgUnitId;

@@ -9,8 +9,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.SQLRestriction;
+
 @Entity
 @Table(name = "polygon_objects")
+@SQLRestriction("deleted_at IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -43,13 +46,13 @@ public class PolygonObject extends BaseEntity {
         REJECTED
     }
 
-    @NotBlank(message = "Ten doi tuong khong duoc de trong")
-    @Size(max = 200, message = "Ten toi da 200 ky tu")
+    @NotBlank(message = "Tên đối tượng không được để trống")
+    @Size(max = 200, message = "Tên tối đa 200 ký tự")
     @Column(nullable = false, length = 200)
     private String name;
 
-    @NotBlank(message = "Ma doi tuong khong duoc de trong")
-    @Size(max = 50, message = "Ma toi da 50 ky tu")
+    @NotBlank(message = "Mã đối tượng không được để trống")
+    @Size(max = 50, message = "Mã tối đa 50 ký tự")
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 

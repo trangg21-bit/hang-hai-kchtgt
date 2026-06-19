@@ -112,8 +112,23 @@ export default function MapLayerList() {
     {
       title: 'Mã',
       dataIndex: 'code',
-      width: 100,
-      render: (code: string) => <Tag color="cyan">{code}</Tag>,
+      width: 180,
+      render: (code: string) => (
+        <Tooltip title={code}>
+          <Tag
+            color="cyan"
+            style={{
+              maxWidth: '100%',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              display: 'inline-block',
+              verticalAlign: 'bottom',
+            }}
+          >
+            {code}
+          </Tag>
+        </Tooltip>
+      ),
     },
     {
       title: 'Tên',
@@ -272,7 +287,7 @@ export default function MapLayerList() {
             columns={columns}
             dataSource={dataSource}
             rowKey="id"
-            scroll={{ x: 1300 }}
+            scroll={{ x: 1380 }}
             pagination={{
               current: page,
               pageSize,

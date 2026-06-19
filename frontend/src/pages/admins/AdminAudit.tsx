@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { Form } from 'antd';
 import {
   Card,
   Table,
@@ -113,7 +114,10 @@ export default function AdminAudit() {
       title: 'Mục tiêu',
       dataIndex: 'targetName',
       ellipsis: true,
-      render: (text?: string, record: AdminAuditLog) => text || `${record.targetType}${record.targetId ? ` (${record.targetId})` : ''}`,
+      render: (_: unknown, record: AdminAuditLog) => {
+        const text = record.targetName;
+        return text || `${record.targetType}${record.targetId ? ` (${record.targetId})` : ''}`;
+      },
     },
     {
       title: 'Địa chỉ IP',

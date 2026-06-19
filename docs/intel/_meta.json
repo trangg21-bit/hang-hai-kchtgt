@@ -13,10 +13,10 @@
       "version": 94
     },
     "docs/intel/catalog.json": {
-      "content_hash": "sha256:f57cca5a28435d5dcf0749b8eaf04ca2140a9fe199568563cc530b0e1b241912",
-      "last_modified": "2026-06-18T04:20:39Z",
+      "content_hash": "sha256:d4777e51132f6cfa54818318a3a428b913048e85b7958903c15b4c786fea2d8a",
+      "last_modified": "2026-06-18T04:31:53Z",
       "last_producer": "ai-kit/state-update-rebuild-catalog",
-      "version": 31
+      "version": 32
     },
     "docs/modules/M-001-quan-tri-he-thong/module-brief.md": {
       "content_hash": "sha256:36e913dd80aec0ba586099d2541430bdb83e5897c9aa752f8695df33f6987f5f",

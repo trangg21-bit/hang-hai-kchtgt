@@ -75,7 +75,7 @@ export interface PointObjectFilters {
 export const POINT_OBJECT_TYPE_OPTIONS = [
   { value: PointObject.ObjectType.PORT, label: 'Cảng' },
   { value: PointObject.ObjectType.LIGHTHOUSE, label: 'Đèn biển' },
-  { value: PointObject.ObjectType.BUOY, label: 'Phao标的' },
+  { value: PointObject.ObjectType.BUOY, label: 'Phao tiêu' },
   { value: PointObject.ObjectType.BEACON, label: 'Đèn hiệu' },
   { value: PointObject.ObjectType.OTHER, label: 'Khác' },
 ];

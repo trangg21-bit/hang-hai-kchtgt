@@ -12,20 +12,20 @@ import lombok.NoArgsConstructor;
 @Builder
 public class CreateMapViewRequest {
 
-    @NotBlank(message = "Ten map view khong duoc de trong")
+    @NotBlank(message = "Tên map view không được để trống")
     @Size(max = 100)
     private String name;
 
-    @NotNull(message = "userId khong duoc de trong")
+    @NotNull(message = "ID người dùng không được để trống")
     private Long userId;
 
-    @NotNull(message = "centerLon khong duoc de trong")
+    @NotNull(message = "Kinh độ trung tâm không được để trống")
     private Double centerLon;
 
-    @NotNull(message = "centerLat khong duoc de trong")
+    @NotNull(message = "Vĩ độ trung tâm không được để trống")
     private Double centerLat;
 
-    @NotNull(message = "zoom khong duoc de trong")
+    @NotNull(message = "Tỷ lệ thu phóng không được để trống")
     private Integer zoom;
 
     private String visibleLayers;

@@ -34,26 +34,26 @@ public class AccessLog extends BaseEntity {
     private UUID userId;
 
     /** Login name at the time of the action (denormalised for query convenience). */
-    @NotBlank(message = "Username khong duoc de trong")
-    @Size(max = 100, message = "Username toi da 100 ky tu")
+    @NotBlank(message = "Tên đăng nhập không được để trống")
+    @Size(max = 100, message = "Tên đăng nhập tối đa 100 ký tự")
     @Column(nullable = false, length = 100)
     private String username;
 
     /** Short description of the action (e.g. "LOGIN", "VIEW_REPORT", "CREATE_ORDER"). */
-    @NotBlank(message = "Action khong duoc de trong")
-    @Size(max = 100, message = "Action toi da 100 ky tu")
+    @NotBlank(message = "Hành động không được để trống")
+    @Size(max = 100, message = "Hành động tối đa 100 ký tự")
     @Column(nullable = false, length = 80)
     private String action;
 
     /** Logical module or feature area (e.g. "AUTH", "KCHT", "REPORT"). */
-    @NotBlank(message = "Module khong duoc de trong")
-    @Size(max = 50, message = "Module toi da 50 ky tu")
+    @NotBlank(message = "Phân hệ không được để trống")
+    @Size(max = 50, message = "Phân hệ tối đa 50 ký tự")
     @Column(nullable = false, length = 60)
     private String module;
 
     /** Client IP address captured at the edge. */
-    @NotBlank(message = "IP address khong duoc de trong")
-    @Size(max = 45, message = "IP address toi da 45 ky tu")
+    @NotBlank(message = "Địa chỉ IP không được để trống")
+    @Size(max = 45, message = "Địa chỉ IP tối đa 45 ký tự")
     @Column(name = "ip_address", nullable = false, length = 45)
     private String ipAddress;
 

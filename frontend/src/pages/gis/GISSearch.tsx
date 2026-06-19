@@ -9,6 +9,7 @@ import {
   Select,
   Table,
   Tag,
+  Tooltip,
   Row,
   Col,
   List,
@@ -131,8 +132,23 @@ export default function GISSearch() {
     {
       title: 'Mã',
       dataIndex: 'code',
-      width: 120,
-      render: (code: string) => <Tag color="cyan">{code}</Tag>,
+      width: 180,
+      render: (code: string) => (
+        <Tooltip title={code}>
+          <Tag
+            color="cyan"
+            style={{
+              maxWidth: '100%',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              display: 'inline-block',
+              verticalAlign: 'bottom',
+            }}
+          >
+            {code}
+          </Tag>
+        </Tooltip>
+      ),
     },
     {
       title: 'Layer',

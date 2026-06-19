@@ -71,7 +71,7 @@ public class MapLayerService {
     @Transactional
     public MapLayerResponse create(CreateMapLayerRequest request) {
         if (mapLayerRepository.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Ma layer da ton tai: " + request.getCode());
+            throw new IllegalArgumentException("Mã lớp bản đồ đã tồn tại: " + request.getCode());
         }
 
         MapLayer entity = MapLayer.builder()

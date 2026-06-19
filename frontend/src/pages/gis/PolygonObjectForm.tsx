@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Input, InputNumber, Select, message } from 'antd';
+import { Card, Form, Button, Space, Typography, Input, InputNumber, Select, Row, Col, message } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { polygonObjectService } from '../../services/polygonObjectService';
@@ -111,7 +111,7 @@ export default function PolygonObjectForm() {
         </Space>
       </Card>
 
-      <Card style={{ maxWidth: 700 }}>
+      <Card style={{ maxWidth: 700, margin: '0 auto' }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           {!isEdit && (
             <FormField
@@ -196,20 +196,34 @@ export default function PolygonObjectForm() {
           <Row style={{ display: 'flex', gap: 16 }}>
             <Col style={{ flex: 1 }}>
               <FormField
-                type="number"
+                type="select"
                 name="categoryId"
-                label="Danh mục ID"
-                min={1}
-                placeholder="Tùy chọn"
+                label="Danh mục"
+                placeholder="Tùy chọn danh mục"
+                options={[
+                  { label: 'Vùng nước', value: 1 },
+                  { label: 'Vùng neo đậu', value: 2 },
+                  { label: 'Nơi tránh bão', value: 3 },
+                  { label: 'Khu vực cấm', value: 4 },
+                  { label: 'Khu vực hạn chế', value: 5 },
+                  { label: 'Khác', value: 6 },
+                ]}
               />
             </Col>
             <Col style={{ flex: 1 }}>
               <FormField
-                type="number"
+                type="select"
                 name="fillSymbolId"
-                label="Fill Symbol ID"
-                min={1}
-                placeholder="Tùy chọn"
+                label="Ký hiệu vùng"
+                placeholder="Tùy chọn ký hiệu"
+                options={[
+                  { label: 'Symbol Vùng nước', value: 1 },
+                  { label: 'Symbol Vùng neo đậu', value: 2 },
+                  { label: 'Symbol Nơi tránh bão', value: 3 },
+                  { label: 'Symbol Khu vực cấm', value: 4 },
+                  { label: 'Symbol Khu vực hạn chế', value: 5 },
+                  { label: 'Symbol Khác', value: 6 },
+                ]}
               />
             </Col>
           </Row>

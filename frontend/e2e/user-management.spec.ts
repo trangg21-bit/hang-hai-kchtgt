@@ -14,7 +14,7 @@ import { test, expect } from '@playwright/test';
  *   - test.skip(...) để bỏ qua tạm thời
  */
 
-const BASE_URL = 'http://localhost:5173';
+const BASE_URL = 'http://localhost:3000';
 
 async function setupAuth(page: any): Promise<void> {
   await page.context().addInitScript(() => {

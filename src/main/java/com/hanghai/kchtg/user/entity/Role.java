@@ -26,14 +26,14 @@ import java.util.List;
 public class Role extends BaseEntity {
 
     /** Ten hien thi cua vai trò (ví du: "System Administrator", "Manager"). */
-    @NotBlank(message = "Ten vai trò khong duoc de trong")
-    @Size(max = 100, message = "Ten vai trò toi da 100 ky tu")
+    @NotBlank(message = "Tên vai trò không được để trống")
+    @Size(max = 100, message = "Tên vai trò tối đa 100 ký tự")
     @Column(nullable = false, length = 100)
     private String name;
 
     /** Ma vai trò duy nhat (ví du: "ADMIN", "MANAGER", "VIEWER"). */
-    @NotBlank(message = "Ma vai trò khong duoc de trong")
-    @Size(max = 50, message = "Ma vai trò toi da 50 ky tu")
+    @NotBlank(message = "Mã vai trò không được để trống")
+    @Size(max = 50, message = "Mã vai trò tối đa 50 ký tự")
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 

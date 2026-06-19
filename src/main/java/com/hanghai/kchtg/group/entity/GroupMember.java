@@ -39,8 +39,8 @@ public class GroupMember extends BaseEntity {
     private UserGroup userGroup;
 
     /** Vai trò trong nhom (ví du: "owner", "admin", "member", "viewer"). */
-    @NotBlank(message = "Vai trò trong nhom khong duoc de trong")
-    @Size(max = 50, message = "Vai trò nhom toi da 50 ky tu")
+    @NotBlank(message = "Vai trò trong nhóm không được để trống")
+    @Size(max = 50, message = "Vai trò nhóm tối đa 50 ký tự")
     @Column(nullable = false, length = 30)
     private String role = "member";
 

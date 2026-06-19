@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Input, InputNumber, Select, message } from 'antd';
+import { Card, Form, Button, Space, Typography, Input, InputNumber, Select, Row, Col, message } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { pointObjectService } from '../../services/pointObjectService';
@@ -105,7 +105,7 @@ export default function PointObjectForm() {
         </Space>
       </Card>
 
-      <Card style={{ maxWidth: 700 }}>
+      <Card style={{ maxWidth: 700, margin: '0 auto' }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ status: 'DRAFT' }}>
           {!isEdit && (
             <FormField
@@ -175,20 +175,32 @@ export default function PointObjectForm() {
           <Row style={{ display: 'flex', gap: 16 }}>
             <Col style={{ flex: 1 }}>
               <FormField
-                type="number"
+                type="select"
                 name="categoryId"
-                label="Danh mục ID"
-                min={1}
-                placeholder="Tùy chọn"
+                label="Danh mục"
+                placeholder="Tùy chọn danh mục"
+                options={[
+                  { label: 'Cảng biển', value: 1 },
+                  { label: 'Đèn biển', value: 2 },
+                  { label: 'Phao tiêu', value: 3 },
+                  { label: 'Đèn hiệu', value: 4 },
+                  { label: 'Khác', value: 5 },
+                ]}
               />
             </Col>
             <Col style={{ flex: 1 }}>
               <FormField
-                type="number"
+                type="select"
                 name="iconId"
-                label="Icon ID"
-                min={1}
-                placeholder="Tùy chọn"
+                label="Biểu tượng bản đồ"
+                placeholder="Tùy chọn biểu tượng"
+                options={[
+                  { label: 'Icon Cảng biển', value: 1 },
+                  { label: 'Icon Đèn biển', value: 2 },
+                  { label: 'Icon Phao tiêu', value: 3 },
+                  { label: 'Icon Đèn hiệu', value: 4 },
+                  { label: 'Icon Khác (Default)', value: 5 },
+                ]}
               />
             </Col>
           </Row>

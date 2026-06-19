@@ -14,13 +14,13 @@ import lombok.NoArgsConstructor;
 @Builder
 public class CreateMapLayerRequest {
 
-    @NotBlank(message = "Ten layer khong duoc de trong")
+    @NotBlank(message = "Tên lớp bản đồ không được để trống")
     private String name;
 
-    @NotBlank(message = "Ma layer khong duoc de trong")
+    @NotBlank(message = "Mã lớp bản đồ không được để trống")
     private String code;
 
-    @NotNull(message = "Layer type khong duoc de trong")
+    @NotNull(message = "Loại lớp bản đồ không được để trống")
     private LayerType layerType;
 
     private String source;

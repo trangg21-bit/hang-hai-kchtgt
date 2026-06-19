@@ -103,10 +103,10 @@ public class UserService {
      */
     public User create(CreateUserRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new IllegalArgumentException("Username da ton tai: " + request.getUsername());
+            throw new IllegalArgumentException("Tên đăng nhập đã tồn tại: " + request.getUsername());
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email da ton tai: " + request.getEmail());
+            throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
         }
 
         User user = new User();
@@ -122,7 +122,7 @@ public class UserService {
         if (request.getOrgUnitId() != null) {
             OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
                     .orElseThrow(() -> new IllegalArgumentException(
-                            "Khong tim thay don vi voi id: " + request.getOrgUnitId()));
+                            "Không tìm thấy đơn vị với id: " + request.getOrgUnitId()));
             user.setOrgUnit(orgUnit);
         }
 
@@ -130,7 +130,7 @@ public class UserService {
         if (request.getGroupIds() != null && !request.getGroupIds().isEmpty()) {
             List<UserGroup> groups = groupRepository.findAllById(request.getGroupIds());
             if (groups.size() != request.getGroupIds().size()) {
-                throw new IllegalArgumentException("Mot so nhom khong ton tai");
+                throw new IllegalArgumentException("Một số nhóm không tồn tại");
             }
             user.setGroups(new ArrayList<>(groups));
         }
@@ -151,7 +151,7 @@ public class UserService {
 
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
-                throw new IllegalArgumentException("Email da ton tai: " + request.getEmail());
+                throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
             }
             user.setEmail(request.getEmail());
         }

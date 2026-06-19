@@ -14,19 +14,19 @@ import lombok.NoArgsConstructor;
 @Builder
 public class CreatePolygonObjectRequest {
 
-    @NotBlank(message = "Ten doi tuong khong duoc de trong")
+    @NotBlank(message = "Tên đối tượng không được để trống")
     private String name;
 
-    @NotBlank(message = "Ma doi tuong khong duoc de trong")
+    @NotBlank(message = "Mã đối tượng không được để trống")
     private String code;
 
-    @NotNull(message = "Loai doi tuong khong duoc de trong")
+    @NotNull(message = "Loại đối tượng không được để trống")
     private ObjectType objectType;
 
     private Long categoryId;
     private Long fillSymbolId;
 
-    @NotBlank(message = "Toa do WKT/GeoJSON khong duoc de trong")
+    @NotBlank(message = "Tọa độ WKT/GeoJSON không được để trống")
     private String coordinates;
 
     private String description;

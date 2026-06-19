@@ -25,7 +25,7 @@ public class PointAttachment extends BaseEntity {
     @Column(name = "object_id", nullable = false)
     private String objectId;
 
-    @NotBlank(message = "Ten file khong duoc de trong")
+    @NotBlank(message = "Tên file không được để trống")
     @Column(name = "file_name", nullable = false, length = 255)
     private String fileName;
 

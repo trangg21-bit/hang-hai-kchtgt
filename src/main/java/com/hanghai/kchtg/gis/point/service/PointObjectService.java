@@ -58,7 +58,7 @@ public class PointObjectService {
     @Transactional
     public PointObjectResponse create(CreatePointObjectRequest request) {
         if (repository.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Ma doi tuong da ton tai: " + request.getCode());
+            throw new IllegalArgumentException("Mã đối tượng đã tồn tại: " + request.getCode());
         }
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
@@ -159,7 +159,7 @@ public class PointObjectService {
                     "Chi co the duyet L2 khi status = APPROVED_L1, hien tai: " + entity.getStatus());
         }
 
-        entity.setStatus(Status.APPROVED_L2);
+        entity.setStatus(Status.PUBLISHED);
         entity.setApprovedBy(Long.parseLong(approverId));
         entity.setApprovedDate(java.time.LocalDateTime.now());
         entity = repository.save(entity);
@@ -169,7 +169,7 @@ public class PointObjectService {
                 .objectId(entity.getId().toString())
                 .actionType(PointHistory.ActionType.APPROVE)
                 .previousValue("APPROVED_L1")
-                .newValue("APPROVED_L2")
+                .newValue("PUBLISHED")
                 .reason("Level 2 approval by: " + approverId)
                 .build());
 
@@ -199,10 +199,10 @@ public class PointObjectService {
 
     private void validateCoordinates(Double longitude, Double latitude) {
         if (longitude < -180.0 || longitude > 180.0) {
-            throw new IllegalArgumentException("Kinh do phai trong khoang -180~180 (WGS84)");
+            throw new IllegalArgumentException("Kinh độ phải trong khoảng -180~180 (WGS84)");
         }
         if (latitude < -90.0 || latitude > 90.0) {
-            throw new IllegalArgumentException("Vĩ độ phai trong khoang -90~90 (WGS84)");
+            throw new IllegalArgumentException("Vĩ độ phải trong khoảng -90~90 (WGS84)");
         }
     }
 }

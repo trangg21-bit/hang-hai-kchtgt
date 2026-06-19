@@ -139,8 +139,23 @@ export default function PointObjectList() {
     {
       title: 'Mã',
       dataIndex: 'code',
-      width: 120,
-      render: (code: string) => <Tag color="cyan">{code}</Tag>,
+      width: 180,
+      render: (code: string) => (
+        <Tooltip title={code}>
+          <Tag
+            color="cyan"
+            style={{
+              maxWidth: '100%',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              display: 'inline-block',
+              verticalAlign: 'bottom',
+            }}
+          >
+            {code}
+          </Tag>
+        </Tooltip>
+      ),
     },
     {
       title: 'Tên',
@@ -328,7 +343,7 @@ export default function PointObjectList() {
             columns={columns}
             dataSource={dataSource}
             rowKey="id"
-            scroll={{ x: 1300 }}
+            scroll={{ x: 1360 }}
             pagination={{
               current: page,
               pageSize,

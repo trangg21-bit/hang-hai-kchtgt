@@ -21,7 +21,7 @@ import java.util.List;
 @Builder
 public class MapView extends BaseEntity {
 
-    @NotBlank(message = "Ten map view khong duoc de trong")
+    @NotBlank(message = "Tên map view không được để trống")
     @Column(nullable = false, length = 100)
     private String name;
 

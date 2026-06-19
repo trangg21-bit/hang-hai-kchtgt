@@ -55,7 +55,7 @@ public class SearchService {
 
         long durationMs = System.currentTimeMillis() - startTime;
         if (durationMs > MAX_SEARCH_DURATION_MS) {
-            throw new RuntimeException("Tim kiem qua lau, vui long thu hap pham vi");
+            throw new RuntimeException("Tìm kiếm quá lâu, vui lòng thu hẹp phạm vi");
         }
 
         int page = request.getPage();

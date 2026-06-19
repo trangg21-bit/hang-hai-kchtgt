@@ -62,8 +62,9 @@ test.describe('F-136 Point Objects List Page', () => {
   });
 
   test('should show data table, empty state, or error state', async ({ page }) => {
+    await page.locator('.ant-skeleton').first().waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
     // Either table, error state, or loading skeleton may render
-    const tableVisible = await page.locator('table').isVisible().catch(() => false);
+    const tableVisible = await page.locator('table').first().isVisible().catch(() => false);
     const errorVisible = await page.getByText('Đã xảy ra lỗi').isVisible().catch(() => false);
     const emptyVisible = await page.getByText('Chưa có đối tượng điểm').isVisible().catch(() => false);
     const retryVisible = await page.getByRole('button', { name: 'Thử lại' }).isVisible().catch(() => false);
@@ -71,7 +72,7 @@ test.describe('F-136 Point Objects List Page', () => {
   });
 
   test('pagination should exist when data is present (error state may skip pagination)', async ({ page }) => {
-    await page.waitForTimeout(2000);
+    await page.locator('.ant-skeleton').first().waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
     const paginationVisible = await page.locator('css=.ant-pagination').first().isVisible().catch(() => false);
     const errorOrRetryVisible = await page.getByRole('button', { name: 'Thử lại' }).isVisible().catch(() => false)
       || await page.getByText('Đã xảy ra lỗi').isVisible().catch(() => false)
@@ -90,6 +91,35 @@ test.describe('F-136 Point Objects List Page', () => {
       // Permission may hide the button — that's acceptable
       expect(true).toBeTruthy();
     }
+  });
+
+  test('should successfully create a new point object', async ({ page }) => {
+    await page.goto('/gis/points/create');
+    const uniqueCode = `PT-E2E-${Date.now()}`;
+    await page.locator('#code').fill(uniqueCode);
+    await page.locator('#name').fill('Cảng Hàng Hải E2E Test');
+    
+    await page.locator('#objectType').click();
+    await page.locator('div.ant-select-dropdown:not(.ant-select-dropdown-hidden)').getByText('Cảng', { exact: true }).first().click();
+    await page.waitForTimeout(300);
+
+    await page.locator('#longitude').fill('106.7123');
+    await page.locator('#latitude').fill('20.9123');
+
+    await page.locator('#categoryId').click();
+    await page.locator('div.ant-select-dropdown:not(.ant-select-dropdown-hidden)').getByText('Cảng biển', { exact: true }).first().click();
+    await page.waitForTimeout(300);
+
+    await page.locator('#iconId').click();
+    await page.locator('div.ant-select-dropdown:not(.ant-select-dropdown-hidden)').getByText('Icon Cảng biển', { exact: true }).first().click();
+    await page.waitForTimeout(300);
+
+    await page.locator('#description').fill('Mô tả test E2E cho đối tượng điểm.');
+    await page.getByRole('button', { name: 'Tạo đối tượng' }).click();
+
+    await page.waitForURL(/\/gis\/points/);
+    await expect(page.locator('.ant-table-tbody').first()).toContainText(uniqueCode);
+    await expect(page.locator('.ant-table-tbody').first()).toContainText('Cảng Hàng Hải E2E Test');
   });
 });
 
@@ -128,10 +158,11 @@ test.describe('F-137 Line Objects List Page', () => {
   });
 
   test('pagination should exist when data is present (or error state shown)', async ({ page }) => {
-    await page.waitForTimeout(2000);
+    await page.locator('.ant-skeleton').first().waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
     const paginationVisible = await page.locator('css=.ant-pagination').first().isVisible().catch(() => false);
     const errorOrRetryVisible = await page.getByRole('button', { name: 'Thử lại' }).isVisible().catch(() => false)
-      || await page.getByText('Đã xảy ra lỗi').isVisible().catch(() => false);
+      || await page.getByText('Đã xảy ra lỗi').isVisible().catch(() => false)
+      || await page.getByText('Chưa có').isVisible().catch(() => false);
     expect(paginationVisible || errorOrRetryVisible).toBeTruthy();
   });
 
@@ -144,6 +175,33 @@ test.describe('F-137 Line Objects List Page', () => {
     } else {
       expect(true).toBeTruthy();
     }
+  });
+
+  test('should successfully create a new line object', async ({ page }) => {
+    await page.goto('/gis/lines/create');
+    const uniqueCode = `LN-E2E-${Date.now()}`;
+    await page.locator('#code').fill(uniqueCode);
+    await page.locator('#name').fill('Tuyến Hàng Hải E2E Test');
+    
+    await page.locator('#objectType').click();
+    await page.locator('div.ant-select-dropdown:not(.ant-select-dropdown-hidden)').getByText('Tuyến hàng hải', { exact: true }).first().click();
+    await page.waitForTimeout(300);
+
+    await page.locator('#categoryId').click();
+    await page.locator('div.ant-select-dropdown:not(.ant-select-dropdown-hidden)').getByText('Tuyến hàng hải', { exact: true }).first().click();
+    await page.waitForTimeout(300);
+
+    await page.locator('#lineSymbolId').click();
+    await page.locator('div.ant-select-dropdown:not(.ant-select-dropdown-hidden)').getByText('Symbol Tuyến hàng hải', { exact: true }).first().click();
+    await page.waitForTimeout(300);
+
+    await page.locator('#coordinates').fill('LINESTRING(106.7 21.0, 106.8 21.1)');
+    await page.locator('#description').fill('Mô tả test E2E cho đối tượng đường.');
+    await page.getByRole('button', { name: 'Tạo đối tượng' }).click();
+
+    await page.waitForURL(/\/gis\/lines/);
+    await expect(page.locator('.ant-table-tbody').first()).toContainText(uniqueCode);
+    await expect(page.locator('.ant-table-tbody').first()).toContainText('Tuyến Hàng Hải E2E Test');
   });
 });
 
@@ -181,10 +239,11 @@ test.describe('F-138 Polygon Objects List Pages', () => {
   });
 
   test('pagination should exist when data is present (or error state shown)', async ({ page }) => {
-    await page.waitForTimeout(2000);
+    await page.locator('.ant-skeleton').first().waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
     const paginationVisible = await page.locator('css=.ant-pagination').first().isVisible().catch(() => false);
     const errorOrRetryVisible = await page.getByRole('button', { name: 'Thử lại' }).isVisible().catch(() => false)
-      || await page.getByText('Đã xảy ra lỗi').isVisible().catch(() => false);
+      || await page.getByText('Đã xảy ra lỗi').isVisible().catch(() => false)
+      || await page.getByText('Chưa có').isVisible().catch(() => false);
     expect(paginationVisible || errorOrRetryVisible).toBeTruthy();
   });
 
@@ -197,6 +256,33 @@ test.describe('F-138 Polygon Objects List Pages', () => {
     } else {
       expect(true).toBeTruthy();
     }
+  });
+
+  test('should successfully create a new polygon object', async ({ page }) => {
+    await page.goto('/gis/polygons/create');
+    const uniqueCode = `PL-E2E-${Date.now()}`;
+    await page.locator('#code').fill(uniqueCode);
+    await page.locator('#name').fill('Vùng Neo Đậu E2E Test');
+    
+    await page.locator('#objectType').click();
+    await page.locator('div.ant-select-dropdown:not(.ant-select-dropdown-hidden)').getByText('Vùng nước', { exact: true }).first().click();
+    await page.waitForTimeout(300);
+
+    await page.locator('#categoryId').click();
+    await page.locator('div.ant-select-dropdown:not(.ant-select-dropdown-hidden)').getByText('Vùng neo đậu', { exact: true }).first().click();
+    await page.waitForTimeout(300);
+
+    await page.locator('#fillSymbolId').click();
+    await page.locator('div.ant-select-dropdown:not(.ant-select-dropdown-hidden)').getByText('Symbol Vùng neo đậu', { exact: true }).first().click();
+    await page.waitForTimeout(300);
+
+    await page.locator('#coordinates').fill('POLYGON((106.7 20.8, 106.8 20.8, 106.8 20.9, 106.7 20.9, 106.7 20.8))');
+    await page.locator('#description').fill('Mô tả test E2E cho đối tượng vùng.');
+    await page.getByRole('button', { name: 'Tạo đối tượng' }).click();
+
+    await page.waitForURL(/\/gis\/polygons/);
+    await expect(page.locator('.ant-table-tbody').first()).toContainText(uniqueCode);
+    await expect(page.locator('.ant-table-tbody').first()).toContainText('Vùng Neo Đậu E2E Test');
   });
 });
 
@@ -231,10 +317,11 @@ test.describe('F-139 Map Layers List Page', () => {
   });
 
   test('pagination should exist when data is present (or error state shown)', async ({ page }) => {
-    await page.waitForTimeout(2000);
+    await page.locator('.ant-skeleton').first().waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
     const paginationVisible = await page.locator('css=.ant-pagination').first().isVisible().catch(() => false);
     const errorOrRetryVisible = await page.getByRole('button', { name: 'Thử lại' }).isVisible().catch(() => false)
-      || await page.getByText('Đã xảy ra lỗi').isVisible().catch(() => false);
+      || await page.getByText('Đã xảy ra lỗi').isVisible().catch(() => false)
+      || await page.getByText('Chưa có').isVisible().catch(() => false);
     expect(paginationVisible || errorOrRetryVisible).toBeTruthy();
   });
 
@@ -512,6 +599,7 @@ test.describe('M-007 GIS — Full Integration', () => {
 
   test('GIS search page — history section exists even when empty', async ({ page }) => {
     await page.goto('/gis/search');
+    await page.locator('.ant-skeleton').first().waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
     await expect(page.getByText('Lịch sử tìm kiếm', { exact: true })).toBeVisible();
     const emptyState = page.getByText('Chưa có lịch sử tìm kiếm');
     expect(await emptyState.isVisible()).toBeTruthy();

@@ -20,7 +20,7 @@ public class PolygonAttachment extends BaseEntity {
     @Column(name = "object_id", nullable = false)
     private String objectId;
 
-    @jakarta.validation.constraints.NotBlank(message = "Ten file khong duoc de trong")
+    @jakarta.validation.constraints.NotBlank(message = "Tên file không được để trống")
     @Column(name = "file_name", nullable = false, length = 255)
     private String fileName;
 

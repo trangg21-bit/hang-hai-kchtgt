@@ -21,12 +21,12 @@ public class UpdatePointObjectRequest {
     private Long categoryId;
     private Long iconId;
 
-    @DecimalMin(value = "-180.0", message = "Kinh do phai trong khoang -180~180")
-    @DecimalMax(value = "180.0", message = "Kinh do phai trong khoang -180~180")
+    @DecimalMin(value = "-180.0", message = "Kinh độ phải trong khoảng -180~180")
+    @DecimalMax(value = "180.0", message = "Kinh độ phải trong khoảng -180~180")
     private Double longitude;
 
-    @DecimalMin(value = "-90.0", message = "Vĩ độ phai trong khoang -90~90")
-    @DecimalMax(value = "90.0", message = "Vĩ độ phai trong khoang -90~90")
+    @DecimalMin(value = "-90.0", message = "Vĩ độ phải trong khoảng -90~90")
+    @DecimalMax(value = "90.0", message = "Vĩ độ phải trong khoảng -90~90")
     private Double latitude;
 
     private String description;

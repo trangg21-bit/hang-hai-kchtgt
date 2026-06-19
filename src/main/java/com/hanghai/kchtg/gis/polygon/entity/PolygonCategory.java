@@ -18,13 +18,13 @@ import lombok.Setter;
 @Builder
 public class PolygonCategory extends BaseEntity {
 
-    @NotBlank(message = "Ten danh muc khong duoc de trong")
-    @Size(max = 100, message = "Ten toi da 100 ky tu")
+    @NotBlank(message = "Tên danh mục không được để trống")
+    @Size(max = 100, message = "Tên tối đa 100 ký tự")
     @Column(nullable = false, length = 100)
     private String name;
 
-    @NotBlank(message = "Ma danh muc khong duoc de trong")
-    @Size(max = 50, message = "Ma toi da 50 ky tu")
+    @NotBlank(message = "Mã danh mục không được để trống")
+    @Size(max = 50, message = "Mã tối đa 50 ký tự")
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 

@@ -30,14 +30,14 @@ import java.util.List;
 public class UserGroup extends BaseEntity {
 
     /** Ten hien thi cua nhom (bat buoc). */
-    @NotBlank(message = "Ten nhom khong duoc de trong")
-    @Size(max = 100, message = "Ten nhom toi da 100 ky tu")
+    @NotBlank(message = "Tên nhóm không được để trống")
+    @Size(max = 100, message = "Tên nhóm tối đa 100 ký tự")
     @Column(nullable = false, length = 150)
     private String name;
 
     /** Ma dinh danh duy nhat cua nhom (bat buoc, unique). */
-    @NotBlank(message = "Ma nhom khong duoc de trong")
-    @Size(max = 50, message = "Ma nhom toi da 50 ky tu")
+    @NotBlank(message = "Mã nhóm không được để trống")
+    @Size(max = 50, message = "Mã nhóm tối đa 50 ký tự")
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 

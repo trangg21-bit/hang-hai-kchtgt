@@ -12,14 +12,14 @@ import lombok.NoArgsConstructor;
 @Builder
 public class CreateMapOverlayRequest {
 
-    @NotBlank(message = "Ten overlay khong duoc de trong")
+    @NotBlank(message = "Tên overlay không được để trống")
     @Size(max = 100)
     private String name;
 
-    @NotBlank(message = "URL khong duoc de trong")
+    @NotBlank(message = "URL không được để trống")
     private String url;
 
-    @NotBlank(message = "layerName khong duoc de trong")
+    @NotBlank(message = "Tên lớp không được để trống")
     @Size(max = 100)
     private String layerName;
 

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Input, InputNumber, Select, Switch, message } from 'antd';
+import { Card, Form, Button, Space, Typography, Input, InputNumber, Select, Row, Col, Switch, message } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { mapLayerService } from '../../services/mapLayerService';
@@ -91,7 +91,7 @@ export default function MapLayerForm() {
         </Space>
       </Card>
 
-      <Card style={{ maxWidth: 700 }}>
+      <Card style={{ maxWidth: 700, margin: '0 auto' }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ visible: true, opacity: 1, order: 0 }}>
           {!isEdit && (
             <FormField

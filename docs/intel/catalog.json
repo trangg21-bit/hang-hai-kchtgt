@@ -1,11 +1,11 @@
 {
   "version": "v2",
-  "generated_at": "2026-06-18T04:20:39Z",
+  "generated_at": "2026-06-18T04:31:53Z",
   "generator": "ai-kit/state-update-rebuild-catalog",
   "modules": {
     "M-001": {
       "id": "M-001",
-      "name": "quan-tri-he-thong",
+      "name": "Quản trị hệ thống",
       "slug": "quan-tri-he-thong",
       "status": "done",
       "version": 1,
@@ -1325,7 +1325,7 @@
           "id": "F-137",
           "name": "quan-ly-danh-muc-doi-tuong-duong",
           "slug": "quan-ly-danh-muc-doi-tuong-duong",
-          "status": "proposed",
+          "status": "implemented",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1355,7 +1355,7 @@
           "id": "F-139",
           "name": "quan-ly-thong-tin-kcht-tren-ban-do",
           "slug": "quan-ly-thong-tin-kcht-tren-ban-do",
-          "status": "proposed",
+          "status": "implemented",
           "classification": "local",
           "visibility": [
             "PRIVATE"

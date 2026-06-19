@@ -58,7 +58,7 @@ public class PolygonObjectService {
     @Transactional
     public PolygonObjectResponse create(CreatePolygonObjectRequest request) {
         if (repository.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Ma doi tuong da ton tai: " + request.getCode());
+            throw new IllegalArgumentException("Mã đối tượng đã tồn tại: " + request.getCode());
         }
 
         validateCoordinates(request.getCoordinates());
@@ -163,7 +163,7 @@ public class PolygonObjectService {
                     "Chi co the duyet L2 khi status = APPROVED_L1, hien tai: " + entity.getStatus());
         }
 
-        entity.setStatus(Status.APPROVED_L2);
+        entity.setStatus(Status.PUBLISHED);
         entity.setApprovedBy(Long.parseLong(approverId));
         entity.setApprovedDate(java.time.LocalDateTime.now());
         entity = repository.save(entity);
@@ -173,7 +173,7 @@ public class PolygonObjectService {
                 .objectId(entity.getId().toString())
                 .actionType(PolygonHistory.ActionType.APPROVE)
                 .previousValue("APPROVED_L1")
-                .newValue("APPROVED_L2")
+                .newValue("PUBLISHED")
                 .reason("Level 2 approval by: " + approverId)
                 .build());
 
@@ -205,12 +205,12 @@ public class PolygonObjectService {
 
     private void validateCoordinates(String coordinates) {
         if (coordinates == null || coordinates.trim().isEmpty()) {
-            throw new IllegalArgumentException("Toa do khong duoc de trong");
+            throw new IllegalArgumentException("Tọa độ không được để trống");
         }
         String trimmed = coordinates.trim().toUpperCase();
         if (!(trimmed.startsWith("POLYGON") || trimmed.startsWith("GEOMETRYCOLLECTION")
               || trimmed.startsWith("{") || trimmed.startsWith("["))) {
-            throw new IllegalArgumentException("Toa do phai o dinh dang WKT (POLYGON) hoac GeoJSON");
+            throw new IllegalArgumentException("Tọa độ phải ở định dạng WKT (POLYGON) hoặc GeoJSON");
         }
     }
 }

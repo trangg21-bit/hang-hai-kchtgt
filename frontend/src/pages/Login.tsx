@@ -1,4 +1,4 @@
-﻿import { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, Form, Input, Button, Typography, message, Divider } from 'antd';
 import { UserOutlined, LockOutlined, LoginOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -80,6 +80,7 @@ export default function LoginPage() {
           initialValues={{ username: 'admin', password: 'Admin@123' }}
         >
           <Form.Item
+            label="Tài khoản"
             name="username"
             rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập' }]}
           >
@@ -87,6 +88,7 @@ export default function LoginPage() {
           </Form.Item>
 
           <Form.Item
+            label="Mật khẩu"
             name="password"
             rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }]}
           >

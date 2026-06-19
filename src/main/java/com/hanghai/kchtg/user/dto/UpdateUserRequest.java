@@ -33,7 +33,7 @@ public class UpdateUserRequest {
     @Size(max = 20, message = "Số điện thoại không được vượt quá 20 ký tự")
     private String phone;
 
-    @Size(max = 50, message = "Role không được vượt quá 50 ký tự")
+    @Size(max = 50, message = "Vai trò không được vượt quá 50 ký tự")
     private String role;
 
     private UUID orgUnitId;

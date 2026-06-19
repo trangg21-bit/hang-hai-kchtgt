@@ -13,22 +13,22 @@ import lombok.NoArgsConstructor;
 @Builder
 public class SearchRequest {
 
-    @Size(max = 1000, message = "Tu khoa toi da 1000 ky tu")
+    @Size(max = 1000, message = "Từ khóa tối đa 1000 ký tự")
     private String query;
 
-    @NotNull(message = "Query type khong duoc de trong")
+    @NotNull(message = "Loại tìm kiếm không được để trống")
     private QueryType queryType;
 
     private Double centerLon;
     private Double centerLat;
 
-    @DecimalMin(value = "50.0", message = "Ban kinh toi thieu 50m")
-    @DecimalMax(value = "10000.0", message = "Ban kinh toi da 10km")
+    @DecimalMin(value = "50.0", message = "Bán kính tối thiểu 50m")
+    @DecimalMax(value = "10000.0", message = "Bán kính tối đa 10km")
     private Double radius;
 
     private String coordinates;
 
-    @Size(max = 100, message = "Toi da 100 type")
+    @Size(max = 100, message = "Tối đa 100 loại")
     private String layerTypes;
 
     private String statuses;

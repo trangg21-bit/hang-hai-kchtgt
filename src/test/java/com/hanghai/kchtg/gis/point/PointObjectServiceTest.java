@@ -658,7 +658,7 @@ class PointObjectServiceTest {
         }
 
         @Test
-        @DisplayName("Should approve L2: APPROVED_L1 -> APPROVED_L2")
+        @DisplayName("Should approve L2: APPROVED_L1 -> PUBLISHED")
         void approveL2_success() {
             // Arrange
             PointObject existing = newPointEntity();
@@ -674,7 +674,7 @@ class PointObjectServiceTest {
 
             // Assert
             assertNotNull(result);
-            assertEquals(Status.APPROVED_L2, existing.getStatus());
+            assertEquals(Status.PUBLISHED, existing.getStatus());
             assertEquals(Long.valueOf(2L), existing.getApprovedBy());
             assertNotNull(existing.getApprovedDate());
             verify(repository).save(existing);
@@ -737,7 +737,7 @@ class PointObjectServiceTest {
 
             // Act - L2
             service.approveL2(testPoint.getId(), "200");
-            assertEquals(Status.APPROVED_L2, entity.getStatus());
+            assertEquals(Status.PUBLISHED, entity.getStatus());
 
             // Assert
             verify(repository, times(3)).save(any(PointObject.class));
@@ -811,8 +811,8 @@ class PointObjectServiceTest {
         }
 
         @Test
-        @DisplayName("APPROVED_L1 can transition to APPROVED_L2 via approveL2")
-        void approvedL1ToApprovedL2_success() {
+        @DisplayName("APPROVED_L1 can transition to PUBLISHED via approveL2")
+        void approvedL1ToPublished_success() {
             PointObject entity = newPointEntity();
             entity.setStatus(Status.APPROVED_L1);
 
@@ -821,7 +821,7 @@ class PointObjectServiceTest {
             when(historyRepository.save(any(PointHistory.class))).thenReturn(PointHistory.builder().build());
 
             service.approveL2(testPoint.getId(), "2");
-            assertEquals(Status.APPROVED_L2, entity.getStatus());
+            assertEquals(Status.PUBLISHED, entity.getStatus());
         }
 
         @Test
@@ -838,10 +838,10 @@ class PointObjectServiceTest {
         }
 
         @Test
-        @DisplayName("APPROVED_L2 blocks L1 approval")
-        void approvedL2BlocksL1Approval() {
+        @DisplayName("PUBLISHED blocks L1 approval")
+        void publishedBlocksL1Approval() {
             PointObject entity = newPointEntity();
-            entity.setStatus(Status.APPROVED_L2);
+            entity.setStatus(Status.PUBLISHED);
 
             when(repository.findById(testPoint.getId())).thenReturn(Optional.of(entity));
 
@@ -851,10 +851,10 @@ class PointObjectServiceTest {
         }
 
         @Test
-        @DisplayName("APPROVED_L2 blocks L2 approval")
-        void approvedL2BlocksL2Approval() {
+        @DisplayName("PUBLISHED blocks L2 approval")
+        void publishedBlocksL2Approval() {
             PointObject entity = newPointEntity();
-            entity.setStatus(Status.APPROVED_L2);
+            entity.setStatus(Status.PUBLISHED);
 
             when(repository.findById(testPoint.getId())).thenReturn(Optional.of(entity));
 
