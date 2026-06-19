@@ -1,86 +1,110 @@
 # Tech Lead Plan: F-137 — Quản lý danh mục đối tượng đường
 
-## Context
+> **Feature:** F-137 — Quản lý danh mục đối tượng đường
+> **Module:** M-007 GIS / Bản đồ
+> **Stage:** engineering-technical-lead
+> **Date:** 2026-06-19
 
-Feature F-137 covers the management of GIS line objects (coastlines, shipping routes, waterways).
-Code has been implemented following the standard pattern: Entity extends BaseEntity → Repository extends JpaRepository → Service with CRUD + approval workflow → REST Controller.
-Additional entities: `LineCategory`, `LineAttachment`, `LineHistory`.
+## 1. Feature Summary
 
-## Derived Entity Design
+Quản lý đối tượng đường GIS (luồng, đê/kè, coastline, shipping route) với chuỗi tọa độ WKT, phân loại danh mục, attachments, và workflow phê duyệt đa cấp.
 
-| Entity | Table | Purpose |
-|---|---|---|
-| `LineObject` | `line_objects` | Core line object (coastline, shipping route, waterway) |
-| `LineCategory` | `line_categories` | Category master data for line classification |
-| `LineAttachment` | `line_attachments` | Attached files/metadata for line objects |
-| `LineHistory` | `line_histories` | Audit trail for line object modifications |
+**Codebase:** 10 files
+- `line/entity/`: LineObject, LineCategory, LineAttachment, LineHistory (4 entities)
+- `line/repository/`: LineObjectRepository, LineCategoryRepository, LineHistoryRepository (3 repos)
+- `line/dto/`: CreateLineObjectRequest, UpdateLineObjectRequest, LineObjectResponse (3 DTOs)
+- `line/service/`: LineObjectService (1 service)
+- `line/controller/`: LineObjectController (1 controller)
 
-### LineObject Fields
+## 2. Wave Plan — F-137 Specific Tasks
 
-| Field | Type | Constraints | Notes |
-|---|---|---|---|
-| `id` | UUID | PK | Inherited from BaseEntity |
-| `name` | String(200) | NOT NULL | Ten doi tuong |
-| `code` | String(50) | NOT NULL, UNIQUE | Ma doi tuong |
-| `objectType` | Enum | NOT NULL | COASTLINE, SHIPPING_ROUTE, WATERWAY, OTHER |
-| `categoryId` | Long | NULL | Category reference |
-| `lineSymbolId` | Long | NULL | Map line symbol reference |
-| `coordinates` | TEXT | NOT NULL | WKT (LINESTRING) or GeoJSON |
-| `description` | String(1000) | NULL | Mo ta |
-| `status` | Enum | NOT NULL, default DRAFT | Approval workflow state |
-| `unitId` | Long | NULL | Thuoc don vi |
-| `length` | Double | NULL | Chieu dai (km or m) |
-| `material` | String(100) | NULL | Chat lieu (de/ke) |
-| `yearBuilt` | Integer | NULL | Nam xay dung |
-| `approvalStatus` | Enum | PENDING/APPROVED/REJECTED | Approval status |
-| `approvedBy` | Long | NULL | Nguoi duyiet |
-| `approvedDate` | LocalDateTime | NULL | Ngay duyiet |
+### Wave 1 (Foundation) — Entity + Repository Verification
 
-### LineCategory Fields
+| # | Task ID | Description | Est. Hours | Dependencies | Assignee |
+|---|---------|-------------|------------|--------------|----------|
+| 1.1 | F137-W1-01 | Verify LineObject entity — 15 fields: id, name, code, objectType, categoryId, lineSymbolId, coordinates, description, status, unitId, length, material, yearBuilt, approvalStatus, approvedBy/approvedDate | 1 | — | Dev B |
+| 1.2 | F137-W1-02 | Verify LineCategory entity — 4 fields: name, code, description, sortOrder | 0.5 | — | Dev B |
+| 1.3 | F137-W1-03 | Verify LineAttachment entity — file attachment linked to LineObject | 0.5 | — | Dev B |
+| 1.4 | F137-W1-04 | Verify LineHistory entity — audit trail for LineObject changes | 0.5 | — | Dev B |
+| 1.5 | F137-W1-05 | Review LineObjectRepository — CRUD + findByObjectType + findByStatus + search + length calculation | 2 | F137-W1-01 | Senior Dev |
+| 1.6 | F137-W1-06 | Review LineCategoryRepository — CRUD + findByCode + existsByCode | 1 | F137-W1-02 | Dev B |
+| 1.7 | F137-W1-07 | Verify Flyway V2 migration — line_objects, line_categories tables, spatial index on coordinates | 1.5 | F137-W1-05 | Dev C |
+| 1.8 | F137-W1-08 | Verify BaseEntity inheritance — soft delete (@SQLRestriction), createdAt, updatedAt | 1 | F137-W1-01 | Senior Dev |
 
-| Field | Type | Notes |
-|---|---|---|
-| `id` | UUID | PK |
-| `name` | String(100) | Ten danh muc |
-| `code` | String(50) | Ma danh muc, unique |
-| `description` | String(500) | Mo ta |
-| `sortOrder` | Integer | Thu tu hien thi |
+**Wave 1 F-137 Total: ~8 hours**
 
 ---
 
-## 1. Implementation Tasks
+### Wave 2 (Core) — Service + DTOs + Controller Review
 
-### Backend Tasks (Estimated: 1.5–2 days)
+| # | Task ID | Description | Est. Hours | Dependencies | Assignee |
+|---|---------|-------------|------------|--------------|----------|
+| 2.1 | F137-W2-01 | Review CreateLineObjectRequest — @NotBlank name/code, @NotNull objectType, coordinates TEXT | 1 | F137-W1-01 | Dev B |
+| 2.2 | F137-W2-02 | Review UpdateLineObjectRequest — optional fields, partial update support | 0.5 | F137-W1-01 | Dev B |
+| 2.3 | F137-W2-03 | Review LineObjectResponse — serialization, exclude internal fields | 0.5 | F137-W1-01 | Dev B |
+| 2.4 | F137-W2-04 | Review LineObjectService — CRUD + approval workflow + coordinate string validation | 3 | F137-W1-05 | Dev B |
+| 2.5 | F137-W2-05 | Verify coordinate string validation in Service — WKT format, non-empty linestring | 1 | F137-W2-04 | Dev B |
+| 2.6 | F137-W2-06 | Verify approval workflow in Service — DRAFT→PENDING_APPROVAL transition | 1.5 | F137-W2-04 | Dev B |
+| 2.7 | F137-W2-07 | Review LineObjectController — 9 REST endpoints, ApiResponse<T> wrapper | 2 | F137-W2-04 | Dev B |
+| 2.8 | F137-W2-08 | Verify unique code constraint — Service throws IllegalArgumentException on duplicate | 0.5 | F137-W2-04 | Dev B |
 
-Code has already been written. Task breakdown reflects verification and integration work.
-
-| # | Task | File Path | Complexity | Status |
-|---|---|---|---|---|
-| 1.1 | Entity: `LineObject.java` — validation, enum types, WKT coordinate format | `src/main/java/com/hanghai/kchtg/gis/line/entity/LineObject.java` | Medium | ✅ Written |
-| 1.2 | Entity: `LineCategory.java` | `src/main/java/com/hanghai/kchtg/gis/line/entity/LineCategory.java` | Low | ✅ Written |
-| 1.3 | Entity: `LineAttachment.java` | `src/main/java/com/hanghai/kchtg/gis/line/entity/LineAttachment.java` | Low | ✅ Written |
-| 1.4 | Entity: `LineHistory.java` | `src/main/java/com/hanghai/kchtg/gis/line/entity/LineHistory.java` | Low | ✅ Written |
-| 1.5 | Repository: `LineObjectRepository.java` — CRUD + search | `src/main/java/com/hanghai/kchtg/gis/line/repository/LineObjectRepository.java` | Medium | ✅ Written |
-| 1.6 | DTOs: `CreateLineObjectRequest`, `UpdateLineObjectRequest`, `LineObjectResponse` | `src/main/java/com/hanghai/kchtg/gis/line/dto/` | Low | ✅ Written |
-| 1.7 | Service: `LineObjectService.java` — CRUD + approval + WKT validation | `src/main/java/com/hanghai/kchtg/gis/line/service/LineObjectService.java` | Medium | ✅ Written |
-| 1.8 | Controller: `LineObjectController.java` — 9 REST endpoints | `src/main/java/com/hanghai/kchtg/gis/line/controller/LineObjectController.java` | Medium | ✅ Written |
-
-### Verification Tasks
-
-| # | Task | Complexity |
-|---|---|---|
-| 1.9 | Verify WKT coordinate format validation (LINESTRING/GeoJSON) | Low |
-| 1.10 | Verify approval workflow state transitions | Medium |
-| 1.11 | Verify LineCategory relationship to LineObject | Low |
-| 1.12 | Verify unique code constraint | Low |
-| 1.13 | Verify soft delete pattern | Low |
+**Wave 2 F-137 Total: ~10.5 hours**
 
 ---
 
-## 2. API Routes
+### Wave 3 (Advanced) — Integration with Other Features
+
+| # | Task ID | Description | Est. Hours | Dependencies | Assignee |
+|---|---------|-------------|------------|--------------|----------|
+| 3.1 | F137-W3-01 | Verify Line search integration — F-140 SearchService uses LineObjectRepository | 1 | F137-W2-07 | Dev C |
+| 3.2 | F137-W3-02 | Verify Layer line type — F-139 MapLayer uses LineObject for layerType=LINE | 0.5 | F137-W2-07 | Dev C |
+| 3.3 | F137-W3-03 | Add approveL1()/approveL2() methods — current gap in approval workflow | 2 | F137-W2-04 | Senior Dev |
+
+**Wave 3 F-137 Total: ~3.5 hours**
+
+---
+
+### Wave 4 (QA) — Unit Tests for F-137
+
+| # | Task ID | Description | Est. Hours | Dependencies | Assignee |
+|---|---------|-------------|------------|--------------|----------|
+| 4.1 | F137-W4-01 | Unit test LineObjectService — create/update/delete/findById (4 tests) | 2 | F137-W2-07 | QA B |
+| 4.2 | F137-W4-02 | Unit test LineObjectService — findByObjectType, findByStatus, search (3 tests) | 2 | F137-W4-01 | QA B |
+| 4.3 | F137-W4-03 | Unit test LineObjectService — submitForApproval, coordinate string validation (3 tests) | 2 | F137-W4-01 | QA B |
+| 4.4 | F137-W4-04 | Unit test LineObjectController — all 9 REST endpoints with ApiResponse wrapper | 3 | F137-W4-01 | QA B |
+| 4.5 | F137-W4-05 | Integration test — Flyway migration, unique constraint, check constraints | 2 | F137-W4-01 | QA A |
+| 4.6 | F137-W4-06 | Edge-case tests — duplicate code rejection, invalid coordinate string, null name | 1.5 | F137-W4-01 | QA B |
+
+**Wave 4 F-137 Total: ~12.5 hours**
+
+---
+
+### Wave 5 (Integration) — E2E + Security for F-137
+
+| # | Task ID | Description | Est. Hours | Dependencies | Assignee |
+|---|---------|-------------|------------|--------------|----------|
+| 5.1 | F137-W5-01 | E2E: Full approval flow — Create Line → Submit → Approve L1 → Approve L2 → Publish | 2.5 | F137-W4-06 | QA A |
+| 5.2 | F137-W5-02 | Security: @PreAuthorize on approve endpoints — ADMIN only | 1.5 | F137-W5-01 | Senior Dev |
+
+**Wave 5 F-137 Total: ~4 hours**
+
+---
+
+## 3. Total Estimated Effort for F-137
+
+| Wave | Description | Hours |
+|------|-------------|-------|
+| Wave 1 | Entity + Repository Verification | 8 |
+| Wave 2 | Service + DTOs + Controller Review | 10.5 |
+| Wave 3 | Integration with Other Features | 3.5 |
+| Wave 4 | Unit Tests | 12.5 |
+| Wave 5 | E2E + Security | 4 |
+| **Total** | **F-137** | **38.5 hours** |
+
+## 4. API Routes
 
 | Method | Path | Handler | Auth |
-|---|---|---|---|
+|--------|------|---------|------|
 | GET | `/api/line-objects` | `LineObjectController.findAll()` | auth |
 | GET | `/api/line-objects/{id}` | `LineObjectController.findById()` | auth |
 | GET | `/api/line-objects/type/{objectType}` | `LineObjectController.findByObjectType()` | auth |
@@ -91,148 +115,28 @@ Code has already been written. Task breakdown reflects verification and integrat
 | DELETE | `/api/line-objects/{id}` | `LineObjectController.delete()` | auth |
 | POST | `/api/line-objects/{id}/submit-approval` | `LineObjectController.submitForApproval()` | auth |
 
----
-
-## 3. Component Structure
-
-```
-src/main/java/com/hanghai/kchtg/gis/line/
-├── entity/
-│   ├── LineObject.java             ← Core entity (LINESTRING coordinates)
-│   ├── LineCategory.java           ← Category master data
-│   ├── LineAttachment.java         ← Attachment metadata
-│   └── LineHistory.java            ← Audit history
-├── repository/
-│   └── LineObjectRepository.java   ← JpaRepository + search queries
-├── dto/
-│   ├── CreateLineObjectRequest.java
-│   ├── UpdateLineObjectRequest.java
-│   └── LineObjectResponse.java
-├── service/
-│   └── LineObjectService.java      ← CRUD + approval + WKT validation
-└── controller/
-    └── LineObjectController.java   ← 9 REST endpoints
-```
-
----
-
-## 4. Database Schema (Flyway Migrations)
-
-### V1__F-137_init_line_objects.sql
-
-```sql
-CREATE TABLE line_objects (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name NVARCHAR(200) NOT NULL,
-    code VARCHAR(50) NOT NULL UNIQUE,
-    object_type VARCHAR(30) NOT NULL CHECK (object_type IN ('COASTLINE', 'SHIPPING_ROUTE', 'WATERWAY', 'OTHER')),
-    category_id BIGINT NULL,
-    line_symbol_id BIGINT NULL,
-    coordinates TEXT NOT NULL,
-    description TEXT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'PENDING_APPROVAL', 'APPROVED_L1', 'APPROVED_L2', 'PUBLISHED', 'REJECTED', 'DELETED')),
-    unit_id BIGINT NULL,
-    length DOUBLE PRECISION NULL,
-    material VARCHAR(100) NULL,
-    year_built INT NULL,
-    approval_status VARCHAR(20) DEFAULT 'PENDING',
-    approved_by BIGINT NULL,
-    approved_date TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL
-);
-
-CREATE INDEX idx_line_objects_object_type ON line_objects(object_type);
-CREATE INDEX idx_line_objects_status ON line_objects(status);
-CREATE INDEX idx_line_objects_unit_id ON line_objects(unit_id);
-CREATE INDEX idx_line_objects_name ON line_objects(name);
-
-CREATE TABLE line_categories (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name NVARCHAR(100) NOT NULL,
-    code VARCHAR(50) NOT NULL UNIQUE,
-    description TEXT NULL,
-    sort_order INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL
-);
-```
-
----
-
-## 5. Business Rules Implementation
-
-| Rule | Implementation |
-|---|---|
-| BR-GIS-010: WKT coordinate format | `validateCoordinates()` — accepts LINESTRING/POLYGON/GeoJSON |
-| BR-GIS-011: Unique code | `existsByCode()` + Service validation |
-| BR-GIS-012: Approval workflow | `submitForApproval()` — DRAFT→PENDING_APPROVAL |
-| BR-GIS-013: Soft delete | `delete()` — status=DELETED + softDelete() |
-| BR-GIS-014: Category reference | `categoryId` FK to line_categories |
-
----
-
-## 6. Estimated Complexity
-
-| Area | Complexity | Notes |
-|---|---|---|
-| Entity + DTOs | Low | Standard JPA + Lombok |
-| Repository (CRUD + search) | Medium | Standard JPQL queries |
-| Service (CRUD + approval + WKT) | Medium | WKT format validation |
-| Controller | Low | Standard REST |
-| **Overall** | **Medium** | Coordinate format validation |
-
----
-
-## 7. Wave Plan
-
-**Single wave** — code is complete. Wave focuses on verification and QA handoff.
-
-| Wave | Tasks | Deliverable |
-|---|---|---|
-| Wave 1 | Verify entities, DTOs, Service, Controller + DB migration + integration test | Feature ready for QA |
-
----
-
-## 8. Dependencies
+## 5. Dependencies
 
 | Feature | Dependency | Type |
-|---|---|---|
-| F-137 → M-001 | `BaseEntity`, `ApiResponse<T>` | Hard |
+|---------|------------|------|
+| F-137 → M-001 | `BaseEntity` (common module) | Hard |
+| F-137 → M-001 | `ApiResponse<T>` (common module) | Hard |
 | F-140 | Depends on F-137 for line search results | Soft |
-| F-139 | Depends on F-137 for layer type="LINE" | Soft |
+| F-139 | Depends on F-137 for layer type=LINE | Soft |
 
----
+## 6. Business Rules
 
-## 9. QA Strategy
+| Rule ID | Rule | Implementation |
+|---------|------|----------------|
+| BR-GIS-011 | Unique code | `LineObjectRepository.existsByCode()` + Service throws `IllegalArgumentException` |
+| BR-GIS-012 | Coordinate string validation | `validateCoordinates()` — WKT LineString format, non-empty |
+| BR-GIS-013 | Approval workflow | `submitForApproval()` — DRAFT→PENDING_APPROVAL, approvalStatus=PENDING |
+| BR-GIS-014 | Soft delete | `delete()` — status=DELETED + `entity.softDelete()` (BaseEntity) |
+| BR-GIS-015 | CRUD validation | `@Valid` on DTO fields, `@NotBlank`, `@Size` constraints |
 
-| Test Type | Scope |
-|---|---|
-| Unit: Service | CRUD, approval workflow, WKT coordinate validation |
-| Unit: Repository | JPQL search, unique code check |
-| Integration: Controller | All 9 endpoints, WKT format validation |
-| Integration: DB | Flyway migration, check constraints, unique constraint |
-| E2E: Full flow | Create → Submit Approval → Published |
-| Edge: WKT validation | Invalid format rejected (not LINESTRING/GeoJSON) |
+## 7. Open Items / TODOs
 
----
-
-## 10. Risk Assessment
-
-| Risk | Impact | Likelihood | Mitigation |
-|---|---|---|---|
-| WKT format validation incomplete | Medium | Medium | Validate against GeoJSON spec, not just prefix |
-| No pagination on list endpoints | Medium | Medium | Add Pageable to Repository + Controller |
-| Missing LineAttachment/LineHistory service layer | Medium | High | These entities exist but no CRUD service — TODO |
-| Missing Spring Security | Medium | Medium | Add `@PreAuthorize` annotations |
-
----
-
-## 11. Open Items / TODOs
-
-1. **LineAttachment/LineHistory service** — Entities exist but no service/controller for them
-2. **Add pagination** to `findAll()` and `search()`
-3. **Spring Security** — Add method-level security for approval
-4. **WKT/GeoJSON parser** — Consider using JTS library for proper geometry validation
+1. **Approve L1/L2 endpoints** — Service has APPROVED_L1/APPROVED_L2 status but no methods to transition there (Wave 3)
+2. **Add pagination** to `findAll()` and `search()` — currently returns all records
+3. **Spring Security** — Add method-level security for approval actions (Wave 5)
+4. **Length calculation** — Verify automatic length calculation from coordinates string
