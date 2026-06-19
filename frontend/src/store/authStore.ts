@@ -15,12 +15,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: true,
   token: 'mock-jwt-token-2026',
 
-  login: async (_username: string, _password: string) => {
-    // Mock login — set the current user
+  login: async (username: string, _password: string, token: string) => {
     set({
       user: CURRENT_USER,
       isAuthenticated: true,
-      token: 'mock-jwt-token-' + Date.now(),
+      token,
     });
   },
 

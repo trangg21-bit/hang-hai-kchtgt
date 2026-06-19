@@ -16,27 +16,28 @@ import java.util.UUID;
 public interface RoleRepository extends JpaRepository<Role, UUID> {
 
     /**
-     * TĂ¬m role theo mĂ£ code duy nháº¥t.
+     * Tìm role theo mã code duy nhất.
      */
     Optional<Role> findByCode(String code);
 
     /**
-     * Kiá»ƒm tra tá»“n táº¡i theo code.
+     * Kiểm tra tồn tại theo code.
      */
     boolean existsByCode(String code);
 
     /**
-     * TĂ¬m táº¥t cáº£ role Ä‘ang hoáº¡t Ä‘á»™ng.
+     * Tìm tất cả role đang hoạt động.
      */
     List<Role> findByStatus(RoleStatus status);
 
     /**
-     * TĂ¬m role cĂ³ chá»©a permission cá»¥ thá»ƒ.
+     * Tìm role có chứa permission cụ thể.
      */
-    List<Role> findByPermissionsContaining(String permission);
+    @org.springframework.data.jpa.repository.Query(value = "SELECT * FROM app_roles WHERE permissions LIKE %:permission%", nativeQuery = true)
+    List<Role> findByPermissionsContaining(@org.springframework.data.repository.query.Param("permission") String permission);
 
     /**
-     * Kiá»ƒm tra code cĂ³ tá»“n táº¡i ngoĂ i ID nĂ y (dĂ¹ng khi update).
+     * Kiểm tra code có tồn tại ngoài ID này (dùng khi update).
      */
     boolean existsByCodeAndIdNot(String code, UUID id);
 }

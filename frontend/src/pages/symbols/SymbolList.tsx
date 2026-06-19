@@ -108,8 +108,23 @@ export default function SymbolList() {
     {
       title: 'Mã ký hiệu',
       dataIndex: 'code',
-      width: 100,
-      render: (code: string) => <Tag color="cyan">{code}</Tag>,
+      width: 180,
+      render: (code: string) => (
+        <Tooltip title={code}>
+          <Tag
+            color="cyan"
+            style={{
+              maxWidth: '100%',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              display: 'inline-block',
+              verticalAlign: 'bottom',
+            }}
+          >
+            {code}
+          </Tag>
+        </Tooltip>
+      ),
     },
     {
       title: 'Tên',
@@ -264,7 +279,7 @@ export default function SymbolList() {
             columns={columns}
             dataSource={dataSource}
             rowKey="id"
-            scroll={{ x: 1100 }}
+            scroll={{ x: 1180 }}
             pagination={{
               current: page,
               pageSize,

@@ -1,0 +1,98 @@
+- generic [ref=e4]:
+  - complementary [ref=e5]:
+    - generic [ref=e7]:
+      - img "team" [ref=e9]:
+        - img [ref=e10]
+      - menu [ref=e12]:
+        - menuitem "user Quản lý người dùng" [ref=e13] [cursor=pointer]:
+          - img "user" [ref=e14]:
+            - img [ref=e15]
+          - generic: Quản lý người dùng
+        - menuitem "idcard Quản trị viên" [ref=e17] [cursor=pointer]:
+          - img "idcard" [ref=e18]:
+            - img [ref=e19]
+          - generic: Quản trị viên
+        - menuitem "safety Phân quyền" [ref=e21] [cursor=pointer]:
+          - img "safety" [ref=e22]:
+            - img [ref=e23]
+          - generic: Phân quyền
+        - separator [ref=e26]
+        - menuitem "compass GIS • Bản đồ" [ref=e27] [cursor=pointer]:
+          - img "compass" [ref=e28]:
+            - img [ref=e29]
+          - generic: GIS • Bản đồ
+        - separator [ref=e31]
+        - menuitem "setting Cấu hình hệ thống" [disabled] [ref=e32]:
+          - img "setting" [ref=e33]:
+            - img [ref=e34]
+          - generic: Cấu hình hệ thống
+        - menuitem "dashboard Nhật ký hệ thống" [disabled] [ref=e36]:
+          - img "dashboard" [ref=e37]:
+            - img [ref=e38]
+          - generic: Nhật ký hệ thống
+    - img "right" [ref=e41] [cursor=pointer]:
+      - img [ref=e42]
+  - generic [ref=e44]:
+    - banner [ref=e45]:
+      - heading "Đối tượng điểm" [level=5] [ref=e48]
+      - generic [ref=e49] [cursor=pointer]:
+        - generic [ref=e51]:
+          - img "user" [ref=e53]:
+            - img [ref=e54]
+          - superscript [ref=e56]
+        - generic [ref=e58]:
+          - strong [ref=e60]: Nguyễn Văn An
+          - text: Quản trị viên (Super Admin)
+        - img "down" [ref=e62]:
+          - img [ref=e63]
+    - main [ref=e65]:
+      - generic [ref=e68]:
+        - generic [ref=e70]:
+          - generic [ref=e72]:
+            - generic [ref=e73]:
+              - img "search" [ref=e75]:
+                - img [ref=e76]
+              - searchbox "Tìm theo tên, mã..." [ref=e78]
+            - button "search" [ref=e80] [cursor=pointer]:
+              - img "search" [ref=e82]:
+                - img [ref=e83]
+          - generic [ref=e86] [cursor=pointer]:
+            - generic [ref=e87]:
+              - generic: Loại đối tượng
+              - combobox [ref=e88]
+            - img "down" [ref=e90]:
+              - img [ref=e91]
+          - generic [ref=e94] [cursor=pointer]:
+            - generic [ref=e95]:
+              - generic: Trạng thái
+              - combobox [ref=e96]
+            - img "down" [ref=e98]:
+              - img [ref=e99]
+        - button "reload" [ref=e104] [cursor=pointer]:
+          - img "reload" [ref=e106]:
+            - img [ref=e107]
+      - generic [ref=e113]:
+        - generic [ref=e126]:
+          - heading [level=3] [ref=e127]
+          - list
+        - generic [ref=e132]:
+          - heading [level=3] [ref=e133]
+          - list
+        - generic [ref=e138]:
+          - heading [level=3] [ref=e139]
+          - list
+        - generic [ref=e144]:
+          - heading [level=3] [ref=e145]
+          - list
+        - generic [ref=e150]:
+          - heading [level=3] [ref=e151]
+          - list
+        - generic [ref=e156]:
+          - heading [level=3] [ref=e157]
+          - list
+        - generic [ref=e162]:
+          - heading [level=3] [ref=e163]
+          - list
+        - generic [ref=e168]:
+          - heading [level=3] [ref=e169]
+          - list

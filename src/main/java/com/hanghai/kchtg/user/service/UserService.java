@@ -24,10 +24,10 @@ import java.util.UUID;
  * Service quan ly tai khoan nguoi dung.
  * <p>
  * {@code @Transactional} o class-level de tat ca public method deu
- * chay trong transaction Ă¢â‚¬â€ tranh {@code LazyInitializationException}
+ * chay trong transaction — tranh {@code LazyInitializationException}
  * khi {@code spring.jpa.open-in-view=false}.
  * Read methods dung {@code findAllWithRelations()} / {@code findByIdWithRelations()}
- * de JOIN FETCH cĂƒÂ¡c lazy associations.
+ * de JOIN FETCH các lazy associations.
  * </p>
  */
 @Service
@@ -51,7 +51,7 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // Ă¢â€â‚¬Ă¢â€â‚¬ Query Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
+    // ── Query ───────────────────────────────────────────────────────
 
     /**
      * Lay danh sach tong bo nguoi dung (JOIN FETCH orgUnit + groups).
@@ -94,19 +94,19 @@ public class UserService {
                 .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nguoi dung voi email: " + email));
     }
 
-    // Ă¢â€â‚¬Ă¢â€â‚¬ Mutate Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
+    // ── Mutate ──────────────────────────────────────────────────────
 
     /**
      * Tao moi nguoi dung.
      *
-     * @throws IllegalArgumentException neu username hoĂ„Æ’c email da ton tai
+     * @throws IllegalArgumentException neu username hoăc email da ton tai
      */
     public User create(CreateUserRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new IllegalArgumentException("Username da ton tai: " + request.getUsername());
+            throw new IllegalArgumentException("Tên đăng nhập đã tồn tại: " + request.getUsername());
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email da ton tai: " + request.getEmail());
+            throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
         }
 
         User user = new User();
@@ -122,7 +122,7 @@ public class UserService {
         if (request.getOrgUnitId() != null) {
             OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
                     .orElseThrow(() -> new IllegalArgumentException(
-                            "Khong tim thay don vi voi id: " + request.getOrgUnitId()));
+                            "Không tìm thấy đơn vị với id: " + request.getOrgUnitId()));
             user.setOrgUnit(orgUnit);
         }
 
@@ -130,7 +130,7 @@ public class UserService {
         if (request.getGroupIds() != null && !request.getGroupIds().isEmpty()) {
             List<UserGroup> groups = groupRepository.findAllById(request.getGroupIds());
             if (groups.size() != request.getGroupIds().size()) {
-                throw new IllegalArgumentException("Mot so nhom khong ton tai");
+                throw new IllegalArgumentException("Một số nhóm không tồn tại");
             }
             user.setGroups(new ArrayList<>(groups));
         }
@@ -151,7 +151,7 @@ public class UserService {
 
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
-                throw new IllegalArgumentException("Email da ton tai: " + request.getEmail());
+                throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
             }
             user.setEmail(request.getEmail());
         }
@@ -188,7 +188,7 @@ public class UserService {
     }
 
     /**
-     * Xoa nguoi dung (soft delete Ă¢â‚¬â€ dung BaseEntity.softDelete()).
+     * Xoa nguoi dung (soft delete — dung BaseEntity.softDelete()).
      *
      * @throws EntityNotFoundException neu khong tim thay nguoi dung
      */

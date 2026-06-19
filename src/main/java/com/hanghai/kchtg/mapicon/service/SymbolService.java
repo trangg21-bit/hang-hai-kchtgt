@@ -19,7 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
- * Service quáº£n lĂ½ biá»ƒu tÆ°á»£ng báº£n Ä‘á»“ vá»›i SVG validation vĂ  GeoServer SLD generation.
+ * Service quản lý biểu tượng bản đồ với SVG validation và GeoServer SLD generation.
  */
 @Service
 public class SymbolService {
@@ -40,7 +40,7 @@ public class SymbolService {
         this.mapIconRepo = mapIconRepo;
     }
 
-    // â”€â”€ CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── CRUD ─────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public List<MapIcon> findAll() {
@@ -58,7 +58,7 @@ public class SymbolService {
         return mapIconRepo.findByCategory(category);
     }
 
-    // â”€â”€ SVG Validation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── SVG Validation ───────────────────────────────────────────────
 
     public void validateSvgContent(String svgContent) {
         if (svgContent == null || svgContent.isBlank()) {
@@ -95,7 +95,7 @@ public class SymbolService {
         }
     }
 
-    // â”€â”€ GeoServer SLD Generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── GeoServer SLD Generation ──────────────────────────────────────
 
     @Transactional(readOnly = true)
     public String generateSLD(UUID symbolId, String featureType) {
@@ -143,7 +143,7 @@ public class SymbolService {
         return result;
     }
 
-    // â”€â”€ Usage Tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Usage Tracking ───────────────────────────────────────────────
 
     @Transactional
     public SymbolUsage recordUsage(UUID symbolId, UUID objectId, String objectType, UUID usedBy) {

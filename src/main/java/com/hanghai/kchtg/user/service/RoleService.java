@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Service quan ly vai trĂƒÂ² (Role) trong he thong.
+ * Service quan ly vai trò (Role) trong he thong.
  */
 @Service
 @Transactional
@@ -37,13 +37,13 @@ public class RoleService {
     @Transactional(readOnly = true)
     public Role findById(UUID id) {
         return roleRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay vai trĂƒÂ² voi id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy vai trò với id: " + id));
     }
 
     @Transactional(readOnly = true)
     public Role findByCode(String code) {
         return roleRepository.findByCode(code)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay vai trĂƒÂ² voi code: " + code));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy vai trò với mã: " + code));
     }
 
     @Transactional(readOnly = true)
@@ -52,13 +52,13 @@ public class RoleService {
     }
 
     /**
-     * Tao moi vai trĂƒÂ².
+     * Tao moi vai trò.
      *
      * @throws IllegalArgumentException neu code da ton tai
      */
     public Role create(CreateRoleRequest request) {
         if (roleRepository.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Code vai trĂƒÂ² da ton tai: " + request.getCode());
+            throw new IllegalArgumentException("Mã vai trò đã tồn tại: " + request.getCode());
         }
 
         Role role = new Role();
@@ -75,7 +75,7 @@ public class RoleService {
     }
 
     /**
-     * Cap nhat vai trĂƒÂ².
+     * Cap nhat vai trò.
      *
      * @throws EntityNotFoundException neu khong tim thay role
      * @throws IllegalArgumentException neu code moi da duoc dung
@@ -88,7 +88,7 @@ public class RoleService {
         }
         if (request.getCode() != null && !request.getCode().equals(role.getCode())) {
             if (roleRepository.existsByCodeAndIdNot(request.getCode(), id)) {
-                throw new IllegalArgumentException("Code vai trĂƒÂ² da ton tai: " + request.getCode());
+                throw new IllegalArgumentException("Mã vai trò đã tồn tại: " + request.getCode());
             }
             role.setCode(request.getCode());
         }
@@ -105,7 +105,7 @@ public class RoleService {
     }
 
     /**
-     * Xoa vai trĂƒÂ² (soft delete Ă¢â‚¬â€ dung BaseEntity.softDelete()).
+     * Xoa vai trò (soft delete — dung BaseEntity.softDelete()).
      *
      * @throws EntityNotFoundException neu khong tim thay role
      */
@@ -124,7 +124,7 @@ public class RoleService {
     @Transactional(readOnly = true)
     public void updateUserCount(UUID id) {
         Role role = findById(id);
-        // Ă„ÂĂ¡ÂºÂ¿m users cĂƒÂ³ role nĂƒÂ y
+        // Đếm users có role này
         long count = 0;
         // Trong thuc te se dung UserRepository.countByRole()
         role.setUserCount((int) count);

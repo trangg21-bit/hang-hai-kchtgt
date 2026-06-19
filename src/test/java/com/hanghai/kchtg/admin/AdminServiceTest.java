@@ -1,8 +1,17 @@
 package com.hanghai.kchtg.admin;
 
-import com.hanghai.kchtg.admin.model.SystemConfig;
-import com.hanghai.kchtg.admin.repository.SystemConfigRepository;
+import com.hanghai.kchtg.admin.entity.AdminAccount;
+import com.hanghai.kchtg.admin.entity.AdminAuditLog;
+import com.hanghai.kchtg.admin.entity.AdminPermission;
+import com.hanghai.kchtg.admin.entity.AdminRecoveryToken;
+import com.hanghai.kchtg.admin.entity.AdminStatus;
+import com.hanghai.kchtg.admin.repository.AdminAccountRepository;
+import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
+import com.hanghai.kchtg.admin.repository.AdminPermissionRepository;
+import com.hanghai.kchtg.admin.repository.AdminRecoveryTokenRepository;
 import com.hanghai.kchtg.admin.service.AdminService;
+import com.hanghai.kchtg.user.entity.User;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -22,169 +31,196 @@ import static org.mockito.Mockito.*;
 class AdminServiceTest {
 
     @Mock
-    private SystemConfigRepository configRepository;
+    private AdminAccountRepository adminRepo;
+    @Mock
+    private AdminAuditLogRepository auditLogRepo;
+    @Mock
+    private AdminPermissionRepository permRepo;
+    @Mock
+    private AdminRecoveryTokenRepository recoveryTokenRepo;
+    @Mock
+    private EntityManager entityManager;
 
     @InjectMocks
     private AdminService adminService;
 
-    private SystemConfig testConfig;
+    private AdminAccount testAdmin;
+    private User testUser;
 
     @BeforeEach
     void setUp() {
-        testConfig = new SystemConfig();
-        testConfig.setId(UUID.randomUUID());
-        testConfig.setKey("app.name");
-        testConfig.setValue("Hang Hai MTIS");
-        testConfig.setCategory("general");
-        testConfig.setDescription("Application display name");
-        testConfig.setIsSystem(true);
+        testUser = new User();
+        testUser.setId(UUID.randomUUID());
+        testUser.setUsername("superadmin");
+
+        testAdmin = new AdminAccount();
+        testAdmin.setId(UUID.randomUUID());
+        testAdmin.setUser(testUser);
+        testAdmin.setStatus(AdminStatus.ACTIVE);
+        testAdmin.setUser(testUser);
     }
 
     @Nested
-    @DisplayName("System Config")
-    class ConfigTests {
+    @DisplayName("Find Admin")
+    class FindTests {
 
         @Test
-        @DisplayName("Should get config by key")
-        void getConfigByKey_success() {
-            when(configRepository.findByKey("app.name")).thenReturn(Optional.of(testConfig));
+        @DisplayName("Should find admin by ID")
+        void findById_success() {
+            when(adminRepo.findById(testAdmin.getId())).thenReturn(Optional.of(testAdmin));
 
-            Optional<SystemConfig> found = adminService.getConfigByKey("app.name");
-            assertTrue(found.isPresent());
-            assertEquals("Hang Hai MTIS", found.get().getValue());
+            AdminAccount found = adminService.findById(testAdmin.getId());
+            assertNotNull(found);
+            assertEquals(testUser.getUsername(), found.getUser().getUsername());
         }
 
         @Test
-        @DisplayName("Should return default when key not found")
-        void getConfigByKey_notFound_returnsDefault() {
-            when(configRepository.findByKey("app.unknown")).thenReturn(Optional.empty());
+        @DisplayName("Should throw when admin not found")
+        void findById_notFound_throws() {
+            when(adminRepo.findById(any(UUID.class))).thenReturn(Optional.empty());
 
-            String value = adminService.getConfigValueByKey("app.unknown", "default-value");
-            assertEquals("default-value", value);
+            assertThrows(jakarta.persistence.EntityNotFoundException.class, () ->
+                    adminService.findById(UUID.randomUUID()));
         }
 
         @Test
-        @DisplayName("Should set config value")
-        void setConfig_success() {
-            when(configRepository.findByKey("app.name")).thenReturn(Optional.of(testConfig));
+        @DisplayName("Should find all admins")
+        void findAll_success() {
+            when(adminRepo.findAll()).thenReturn(Arrays.asList(testAdmin));
 
-            SystemConfig updated = adminService.setConfig("app.name", "New Name");
-            assertEquals("New Name", updated.getValue());
-            verify(configRepository).save(any(SystemConfig.class));
-        }
-
-        @Test
-        @DisplayName("Should create new config when key doesn't exist")
-        void createConfig_success() {
-            when(configRepository.findByKey("app.newkey")).thenReturn(Optional.empty());
-            when(configRepository.save(any(SystemConfig.class))).thenAnswer(inv -> {
-                SystemConfig c = inv.getArgument(0);
-                c.setId(UUID.randomUUID());
-                return c;
-            });
-
-            SystemConfig created = adminService.setConfig("app.newkey", "new-value");
-            assertNotNull(created);
-            assertNotNull(created.getId());
-        }
-
-        @Test
-        @DisplayName("Should get all configs by category")
-        void getConfigsByCategory_success() {
-            when(configRepository.findByCategory("general"))
-                    .thenReturn(Arrays.asList(testConfig));
-
-            List<SystemConfig> configs = adminService.getConfigsByCategory("general");
-            assertEquals(1, configs.size());
-        }
-
-        @Test
-        @DisplayName("Should get all system configs")
-        void getAllConfigs_success() {
-            when(configRepository.findAll()).thenReturn(Arrays.asList(testConfig));
-
-            List<SystemConfig> all = adminService.getAllConfigs();
-            assertEquals(1, all.size());
-        }
-
-        @Test
-        @DisplayName("Should delete system config")
-        void deleteConfig_success() {
-            when(configRepository.findByKey("app.name")).thenReturn(Optional.of(testConfig));
-
-            adminService.deleteConfig("app.name");
-            verify(configRepository).delete(testConfig);
-        }
-
-        @Test
-        @DisplayName("Should prevent deleting system config")
-        void deleteSystemConfig_throwsException() {
-            when(configRepository.findByKey("app.name")).thenReturn(Optional.of(testConfig));
-
-            assertThrows(IllegalStateException.class, () ->
-                    adminService.deleteConfig("app.name"));
+            List<AdminAccount> result = adminService.findAll();
+            assertEquals(1, result.size());
         }
     }
 
     @Nested
-    @DisplayName("System Health")
-    class HealthTests {
+    @DisplayName("MFA Reset")
+    class MfaTests {
 
         @Test
-        @DisplayName("Should return system health status")
-        void getHealthStatus_success() {
-            Map<String, Object> health = adminService.getHealthStatus();
-            assertNotNull(health);
-            assertTrue(health.containsKey("status"));
+        @DisplayName("Should request MFA reset")
+        void requestMfaReset_success() {
+            when(adminRepo.findByUserId(testAdmin.getId())).thenReturn(Optional.of(testAdmin));
+            doNothing().when(recoveryTokenRepo).deleteByAdminId(testAdmin.getId());
+            when(recoveryTokenRepo.save(any(AdminRecoveryToken.class))).thenAnswer(inv -> inv.getArgument(0));
+
+            AdminRecoveryToken token = adminService.requestMfaReset(testAdmin.getId(), UUID.randomUUID(), "System");
+
+            assertNotNull(token);
+            verify(recoveryTokenRepo).save(any(AdminRecoveryToken.class));
         }
 
         @Test
-        @DisplayName("Should get system metrics")
-        void getMetrics_success() {
-            Map<String, Object> metrics = adminService.getSystemMetrics();
-            assertNotNull(metrics);
+        @DisplayName("Should validate and use recovery token")
+        void resetMfaWithToken_success() {
+            AdminRecoveryToken token = AdminRecoveryToken.create(testAdmin.getId(), "test-token-123");
+            when(recoveryTokenRepo.findByTokenAndUsedFalse("test-token-123")).thenReturn(Optional.of(token));
+            when(adminRepo.findByUserId(testAdmin.getId())).thenReturn(Optional.of(testAdmin));
+            when(auditLogRepo.save(any(AdminAuditLog.class))).thenReturn(null);
+
+            assertTrue(adminService.resetMfaWithToken("test-token-123", testAdmin.getId()));
+            assertTrue(token.isUsed());
+        }
+
+        @Test
+        @DisplayName("Should reject invalid token")
+        void resetMfaWithToken_invalid() {
+            when(recoveryTokenRepo.findByTokenAndUsedFalse("bad-token")).thenReturn(Optional.empty());
+
+            assertFalse(adminService.resetMfaWithToken("bad-token", testAdmin.getId()));
         }
     }
 
     @Nested
-    @DisplayName("System Maintenance")
-    class MaintenanceTests {
+    @DisplayName("Permissions")
+    class PermissionTests {
 
         @Test
-        @DisplayName("Should clear cache successfully")
-        void clearCache_success() {
-            adminService.clearSystemCache();
-            verify(configRepository, atLeastOnce()).findAll();
+        @DisplayName("Should grant permission to admin")
+        void grantPermission_success() {
+            when(adminRepo.findByUserId(testAdmin.getId())).thenReturn(Optional.of(testAdmin));
+            when(permRepo.findByAdminIdAndModuleId(any(UUID.class), anyString())).thenReturn(Collections.emptyList());
+            when(permRepo.save(any(AdminPermission.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(auditLogRepo.save(any(AdminAuditLog.class))).thenReturn(null);
+
+            AdminPermission result = adminService.grantPermission(testAdmin.getId(), "M-001", List.of("user.view", "user.create"));
+
+            assertNotNull(result);
+            verify(permRepo).save(any(AdminPermission.class));
         }
 
         @Test
-        @DisplayName("Should generate system report")
-        void generateReport_success() {
-            Map<String, Object> report = adminService.generateSystemReport();
-            assertNotNull(report);
+        @DisplayName("Should revoke permission from admin")
+        void revokePermission_success() {
+            when(adminRepo.findByUserId(testAdmin.getId())).thenReturn(Optional.of(testAdmin));
+            when(permRepo.findByAdminIdAndModuleId(any(UUID.class), anyString())).thenReturn(Collections.emptyList());
+            when(auditLogRepo.save(any(AdminAuditLog.class))).thenReturn(null);
+
+            assertDoesNotThrow(() -> adminService.revokePermission(testAdmin.getId(), "M-001"));
+            verify(auditLogRepo).save(any(AdminAuditLog.class));
+        }
+
+        @Test
+        @DisplayName("Should get admin permissions")
+        void getPermissions_success() {
+            when(permRepo.findByAdminId(testAdmin.getId())).thenReturn(Collections.emptyList());
+
+            List<AdminPermission> perms = adminService.getPermissions(testAdmin.getId());
+            assertEquals(0, perms.size());
         }
     }
 
     @Nested
-    @DisplayName("Batch Operations")
-    class BatchTests {
+    @DisplayName("Lock/Unlock")
+    class LockUnlockTests {
 
         @Test
-        @DisplayName("Should set multiple configs in a transaction")
-        void setConfigs_batch() {
-            Map<String, String> configs = new HashMap<>();
-            configs.put("app.name", "Test App");
-            configs.put("app.version", "1.0.0");
+        @DisplayName("Should lock admin account")
+        void lockAdmin_success() {
+            when(adminRepo.findById(testAdmin.getId())).thenReturn(Optional.of(testAdmin));
+            when(adminRepo.save(any(AdminAccount.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(auditLogRepo.save(any(AdminAuditLog.class))).thenReturn(null);
 
-            when(configRepository.findByKey(anyString())).thenReturn(Optional.empty());
-            when(configRepository.save(any(SystemConfig.class))).thenAnswer(inv -> {
-                SystemConfig c = inv.getArgument(0);
-                c.setId(UUID.randomUUID());
-                return c;
-            });
+            AdminAccount locked = adminService.lockAdmin(testAdmin.getId(), "Suspicious activity");
 
-            Map<String, SystemConfig> result = adminService.setConfigs(configs);
-            assertEquals(2, result.size());
+            assertEquals(AdminStatus.LOCKED, locked.getStatus());
+            verify(adminRepo).save(any(AdminAccount.class));
+        }
+
+        @Test
+        @DisplayName("Should unlock admin account")
+        void unlockAdmin_success() {
+            when(adminRepo.findById(testAdmin.getId())).thenReturn(Optional.of(testAdmin));
+            when(adminRepo.save(any(AdminAccount.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(auditLogRepo.save(any(AdminAuditLog.class))).thenReturn(null);
+
+            AdminAccount unlocked = adminService.unlockAdmin(testAdmin.getId(), "Access restored");
+
+            assertEquals(AdminStatus.ACTIVE, unlocked.getStatus());
+            verify(adminRepo).save(any(AdminAccount.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("Audit Logs")
+    class AuditTests {
+
+        @Test
+        @DisplayName("Should find audit logs for admin")
+        void findAuditLogs_success() {
+            when(auditLogRepo.findByAdminIdOrderByCreatedAtDesc(testAdmin.getId())).thenReturn(Collections.emptyList());
+
+            List<AdminAuditLog> logs = adminService.findAuditLogs(testAdmin.getId(), 0, 10);
+            assertEquals(0, logs.size());
+        }
+
+        @Test
+        @DisplayName("Should find all audit logs")
+        void findAllAuditLogs_success() {
+            when(auditLogRepo.findAll(any(org.springframework.data.domain.Sort.class))).thenReturn(Collections.emptyList());
+
+            List<AdminAuditLog> logs = adminService.findAllAuditLogs();
+            assertEquals(0, logs.size());
         }
     }
 }

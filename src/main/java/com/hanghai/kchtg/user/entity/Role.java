@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Vai trĂ² (Role) trong he thong â€” dung de nhom permissions va gĂ¡n cho nguoi dung.
+ * Vai trò (Role) trong he thong — dung de nhom permissions va gán cho nguoi dung.
  */
 @Entity
 @Table(name = "app_roles")
@@ -25,32 +25,32 @@ import java.util.List;
 @NoArgsConstructor
 public class Role extends BaseEntity {
 
-    /** Ten hien thi cua vai trĂ² (vĂ­ du: "System Administrator", "Manager"). */
-    @NotBlank(message = "Ten vai trĂ² khong duoc de trong")
-    @Size(max = 100, message = "Ten vai trĂ² toi da 100 ky tu")
+    /** Ten hien thi cua vai trò (ví du: "System Administrator", "Manager"). */
+    @NotBlank(message = "Tên vai trò không được để trống")
+    @Size(max = 100, message = "Tên vai trò tối đa 100 ký tự")
     @Column(nullable = false, length = 100)
     private String name;
 
-    /** Ma vai trĂ² duy nhat (vĂ­ du: "ADMIN", "MANAGER", "VIEWER"). */
-    @NotBlank(message = "Ma vai trĂ² khong duoc de trong")
-    @Size(max = 50, message = "Ma vai trĂ² toi da 50 ky tu")
+    /** Ma vai trò duy nhat (ví du: "ADMIN", "MANAGER", "VIEWER"). */
+    @NotBlank(message = "Mã vai trò không được để trống")
+    @Size(max = 50, message = "Mã vai trò tối đa 50 ký tự")
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
-    /** Mo ta chi tiet ve vai trĂ². */
+    /** Mo ta chi tiet ve vai trò. */
     @Column(length = 500)
     private String description;
 
-    /** Danh sach cĂ¡c permission keys ma vai trĂ² nay so huu. */
+    /** Danh sach các permission keys ma vai trò nay so huu. */
     @Column(columnDefinition = "TEXT")
     private List<String> permissions = new ArrayList<>();
 
-    /** Trang tai vai trĂ². */
+    /** Trang tai vai trò. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private RoleStatus status = RoleStatus.ACTIVE;
 
-    /** So luong nguoi dung dang cĂ³ vai trĂ² nay. */
+    /** So luong nguoi dung dang có vai trò nay. */
     @Column(nullable = false)
     private int userCount = 0;
 }

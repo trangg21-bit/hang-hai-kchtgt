@@ -9,9 +9,9 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * DTO tráº£ vá» khi truy váº¥n thĂ´ng tin nhĂ³m ngÆ°á»i dĂ¹ng.
+ * DTO trả về khi truy vấn thông tin nhóm người dùng.
  * <p>
- * Sá»­ dá»¥ng {@code @Value} (immutable) Ä‘á»ƒ pháº£n chiáº¿u triáº¿t lĂ½ cá»§a {@code ApiResponse}.
+ * Sử dụng {@code @Value} (immutable) để phản chiếu triết lý của {@code ApiResponse}.
  * </p>
  */
 @Value
@@ -27,7 +27,7 @@ public class GroupResponse {
     LocalDateTime updatedAt;
 
     /**
-     * Map tá»« entity sang response DTO.
+     * Map từ entity sang response DTO.
      */
     public static GroupResponse from(UserGroup entity) {
         return new GroupResponse(

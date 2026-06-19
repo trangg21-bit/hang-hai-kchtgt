@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Admin account management â€” SYSTEM_ADMIN only.
+ * Admin account management — SYSTEM_ADMIN only.
  * <p>
  * Base path: {@code /api/admin-accounts}
  * </p>

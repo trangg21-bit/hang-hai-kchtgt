@@ -23,6 +23,29 @@ export const ALL_PERMISSIONS: Permission[] = [
   // System
   { key: 'system.settings', name: 'Cấu hình hệ thống', group: 'system', description: 'Quản lý cấu hình hệ thống' },
   { key: 'system.logs', name: 'Xem nhật ký hệ thống', group: 'system', description: 'Xem nhật ký truy cập và hoạt động' },
+
+  // GIS / Bản đồ
+  { key: 'gis.point.create', name: 'Tạo đối tượng điểm', group: 'gis', description: 'Thêm mới đối tượng điểm GIS' },
+  { key: 'gis.point.edit', name: 'Sửa đối tượng điểm', group: 'gis', description: 'Chỉnh sửa đối tượng điểm GIS' },
+  { key: 'gis.point.delete', name: 'Xóa đối tượng điểm', group: 'gis', description: 'Xóa đối tượng điểm GIS' },
+  { key: 'gis.point.submit', name: 'Gửi duyệt đối tượng điểm', group: 'gis', description: 'Gửi duyệt đối tượng điểm GIS' },
+  { key: 'gis.point.approve-l2', name: 'Phê duyệt đối tượng điểm', group: 'gis', description: 'Phê duyệt cấp 2 đối tượng điểm GIS' },
+
+  { key: 'gis.line.create', name: 'Tạo đối tượng đường', group: 'gis', description: 'Thêm mới đối tượng đường GIS' },
+  { key: 'gis.line.edit', name: 'Sửa đối tượng đường', group: 'gis', description: 'Chỉnh sửa đối tượng đường GIS' },
+  { key: 'gis.line.delete', name: 'Xóa đối tượng đường', group: 'gis', description: 'Xóa đối tượng đường GIS' },
+  { key: 'gis.line.submit', name: 'Gửi duyệt đối tượng đường', group: 'gis', description: 'Gửi duyệt đối tượng đường GIS' },
+  { key: 'gis.line.approve-l2', name: 'Phê duyệt đối tượng đường', group: 'gis', description: 'Phê duyệt cấp 2 đối tượng đường GIS' },
+
+  { key: 'gis.polygon.create', name: 'Tạo đối tượng vùng', group: 'gis', description: 'Thêm mới đối tượng vùng GIS' },
+  { key: 'gis.polygon.edit', name: 'Sửa đối tượng vùng', group: 'gis', description: 'Chỉnh sửa đối tượng vùng GIS' },
+  { key: 'gis.polygon.delete', name: 'Xóa đối tượng vùng', group: 'gis', description: 'Xóa đối tượng vùng GIS' },
+  { key: 'gis.polygon.submit', name: 'Gửi duyệt đối tượng vùng', group: 'gis', description: 'Gửi duyệt đối tượng vùng GIS' },
+  { key: 'gis.polygon.approve-l2', name: 'Phê duyệt đối tượng vùng', group: 'gis', description: 'Phê duyệt cấp 2 đối tượng vùng GIS' },
+
+  { key: 'gis.layer.create', name: 'Tạo lớp bản đồ', group: 'gis', description: 'Thêm mới lớp bản đồ GIS' },
+  { key: 'gis.layer.edit', name: 'Sửa lớp bản đồ', group: 'gis', description: 'Chỉnh sửa lớp bản đồ GIS' },
+  { key: 'gis.layer.delete', name: 'Xóa lớp bản đồ', group: 'gis', description: 'Xóa lớp bản đồ GIS' },
 ];
 
 // ============================================================

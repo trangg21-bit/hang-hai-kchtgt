@@ -32,7 +32,7 @@ public class OrgUnitService {
 
     private final OrgUnitRepository repo;
 
-    // â”€â”€ Queries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Queries ──────────────────────────────────────────────────────
 
     /**
      * Flat list of all units (no tree nesting).
@@ -51,7 +51,7 @@ public class OrgUnitService {
     public List<OrgUnitResponse> findTree() {
         List<OrgUnit> all = repo.findAll();
 
-        // Build a lookup: parentId â†’ list of children
+        // Build a lookup: parentId → list of children
         Map<UUID, List<OrgUnit>> childrenMap = all.stream()
                 .filter(u -> u.getParentId() != null)
                 .collect(Collectors.groupingBy(OrgUnit::getParentId));
@@ -95,11 +95,11 @@ public class OrgUnitService {
     public OrgUnitResponse findById(UUID id) {
         OrgUnit unit = repo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "ÄÆ¡n vá»‹ khĂ´ng tá»“n táº¡i: " + id));
+                        "Đơn vị không tồn tại: " + id));
         return OrgUnitResponse.from(unit);
     }
 
-    // â”€â”€ Mutations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Mutations ────────────────────────────────────────────────────
 
     /**
      * Create a new unit. Defaults status to {@code ACTIVE} if not provided.
@@ -110,11 +110,11 @@ public class OrgUnitService {
     public OrgUnitResponse create(CreateOrgUnitRequest request) {
         if (repo.existsByCode(request.getCode())) {
             throw new IllegalArgumentException(
-                    "MĂ£ Ä‘Æ¡n vá»‹ Ä‘Ă£ tá»“n táº¡i: " + request.getCode());
+                    "Mã đơn vị đã tồn tại: " + request.getCode());
         }
         if (request.getParentId() != null && !repo.existsById(request.getParentId())) {
             throw new EntityNotFoundException(
-                    "ÄÆ¡n vá»‹ cha khĂ´ng tá»“n táº¡i: " + request.getParentId());
+                    "Đơn vị cha không tồn tại: " + request.getParentId());
         }
 
         OrgUnit unit = OrgUnit.builder()
@@ -141,13 +141,13 @@ public class OrgUnitService {
     public OrgUnitResponse update(UUID id, UpdateOrgUnitRequest request) {
         OrgUnit unit = repo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "ÄÆ¡n vá»‹ khĂ´ng tá»“n táº¡i: " + id));
+                        "Đơn vị không tồn tại: " + id));
 
         if (request.getCode() != null
                 && !request.getCode().equals(unit.getCode())) {
             if (repo.existsByCodeAndIdNot(request.getCode(), id)) {
                 throw new IllegalArgumentException(
-                        "MĂ£ Ä‘Æ¡n vá»‹ Ä‘Ă£ tá»“n táº¡i: " + request.getCode());
+                        "Mã đơn vị đã tồn tại: " + request.getCode());
             }
             unit.setCode(request.getCode());
         }
@@ -155,11 +155,11 @@ public class OrgUnitService {
         if (request.getParentId() != null) {
             if (request.getParentId().equals(id)) {
                 throw new IllegalArgumentException(
-                        "ÄÆ¡n vá»‹ khĂ´ng thá»ƒ lĂ  cha cá»§a chĂ­nh nĂ³");
+                        "Đơn vị không thể là cha của chính nó");
             }
             if (!repo.existsById(request.getParentId())) {
                 throw new EntityNotFoundException(
-                        "ÄÆ¡n vá»‹ cha khĂ´ng tá»“n táº¡i: " + request.getParentId());
+                        "Đơn vị cha không tồn tại: " + request.getParentId());
             }
             unit.setParentId(request.getParentId());
         }
@@ -192,12 +192,12 @@ public class OrgUnitService {
     public void delete(UUID id) {
         if (!repo.existsById(id)) {
             throw new EntityNotFoundException(
-                    "ÄÆ¡n vá»‹ khĂ´ng tá»“n táº¡i: " + id);
+                    "Đơn vị không tồn tại: " + id);
         }
         if (!repo.findByParentId(id).isEmpty()) {
             throw new IllegalArgumentException(
-                    "KhĂ´ng thá»ƒ xĂ³a Ä‘Æ¡n vá»‹ cĂ³ Ä‘Æ¡n vá»‹ con. "
-                            + "Vui lĂ²ng xĂ³a hoáº·c di chuyá»ƒn cĂ¡c Ä‘Æ¡n vá»‹ con trÆ°á»›c.");
+                    "Không thể xóa đơn vị có đơn vị con. "
+                            + "Vui lòng xóa hoặc di chuyển các đơn vị con trước.");
         }
         OrgUnit unit = repo.findById(id).orElseThrow();
         unit.softDelete();

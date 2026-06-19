@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * DTO yĂªu cáº§u Ä‘áº·t láº¡i máº­t kháº©u ngÆ°á»i dĂ¹ng.
+ * DTO yêu cầu đặt lại mật khẩu người dùng.
  */
 @Getter
 @Setter
@@ -16,7 +16,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class ResetPasswordRequest {
 
-    @NotBlank(message = "Máº­t kháº©u má»›i khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
-    @Size(min = 8, message = "Máº­t kháº©u má»›i pháº£i cĂ³ Ă­t nháº¥t 8 kĂ½ tá»±")
+    @NotBlank(message = "Mật khẩu mới không được để trống")
+    @Size(min = 8, message = "Mật khẩu mới phải có ít nhất 8 ký tự")
     private String newPassword;
 }

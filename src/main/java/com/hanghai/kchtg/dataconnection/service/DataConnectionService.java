@@ -44,7 +44,7 @@ public class DataConnectionService {
         this.encryptionUtil = encryptionUtil;
     }
 
-    // â”€â”€ CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── CRUD ──────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public List<ConnectionResponse> listAll() {
@@ -136,7 +136,7 @@ public class DataConnectionService {
         log.info("Soft-deleted data connection: id={}", id);
     }
 
-    // â”€â”€ Test Connection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Test Connection ───────────────────────────────────────────────
 
     /**
      * Performs a connectivity test against the stored (or overridden) endpoint.
@@ -159,7 +159,7 @@ public class DataConnectionService {
         if (type == ConnectionType.DATABASE || type == ConnectionType.FILE) {
             return TestConnectionResponse.builder()
                     .success(true)
-                    .message("Configuration valid â€” manual connectivity test required for "
+                    .message("Configuration valid — manual connectivity test required for "
                              + type.name() + " connections.")
                     .responseTimeMs(0)
                     .build();
@@ -186,7 +186,7 @@ public class DataConnectionService {
             if (status >= 200 && status < 400) {
                 return TestConnectionResponse.builder()
                         .success(true)
-                        .message("Endpoint reachable â€” HTTP " + status)
+                        .message("Endpoint reachable — HTTP " + status)
                         .responseTimeMs(elapsed)
                         .build();
             }
@@ -206,11 +206,11 @@ public class DataConnectionService {
         }
     }
 
-    // â”€â”€ Internal helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Internal helpers ──────────────────────────────────────────────
 
     /**
      * Decrypts the credentials field in-place so the caller sees plain text.
-     * The entity's persisted encrypted value is not affected â€” the entity
+     * The entity's persisted encrypted value is not affected — the entity
      * is still attached to the persistence context so the change is not flushed.
      */
     private void decryptCredentials(DataConnection entity) {

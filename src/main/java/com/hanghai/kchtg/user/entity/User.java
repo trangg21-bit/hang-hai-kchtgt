@@ -40,45 +40,45 @@ import java.util.List;
 public class User extends BaseEntity {
 
     /**
-     * Ten dang nhap â€” duy nhat, khong duoc trong.
+     * Ten dang nhap — duy nhat, khong duoc trong.
      */
-    @NotBlank(message = "Username khong duoc de trong")
-    @Size(min = 3, max = 100, message = "Username tu 3 den 100 ky tu")
+    @NotBlank(message = "Tên đăng nhập không được để trống")
+    @Size(min = 3, max = 100, message = "Tên đăng nhập từ 3 đến 100 ký tự")
     @Column(nullable = false, unique = true, length = 100)
     private String username;
 
     /**
      * Mat khau da ma hoa (BCrypt).
      */
-    @NotBlank(message = "Mat khau khong duoc de trong")
-    @Size(min = 8, max = 255, message = "Mat khau tu 8 den 255 ky tu")
+    @NotBlank(message = "Mật khẩu không được để trống")
+    @Size(min = 8, max = 255, message = "Mật khẩu từ 8 đến 255 ký tự")
     @Column(nullable = false, length = 255)
     private String password;
 
     /**
-     * Dia chi email â€” duy nhat, khong duoc trong.
+     * Dia chi email — duy nhat, khong duoc trong.
      */
-    @NotBlank(message = "Email khong duoc de trong")
-    @Email(message = "Email khong hop le")
+    @NotBlank(message = "Email không được để trống")
+    @Email(message = "Email không hợp lệ")
     @Column(nullable = false, unique = true, length = 150)
     private String email;
 
     /**
      * Ho va ten day du.
      */
-    @Size(max = 200, message = "Ho ten toi da 200 ky tu")
+    @Size(max = 200, message = "Họ tên tối đa 200 ký tự")
     @Column(length = 200)
     private String fullName;
 
     /**
      * So dien thoai lien he.
      */
-    @Size(max = 20, message = "So dien thoai toi da 20 ky tu")
+    @Size(max = 20, message = "Số điện thoại tối đa 20 ký tự")
     @Column(length = 20)
     private String phone;
 
     /**
-     * Vai trĂ² cua nguoi dung (e.g. ROLE_USER, ROLE_ADMIN).
+     * Vai trò cua nguoi dung (e.g. ROLE_USER, ROLE_ADMIN).
      * Ma hoa trong JWT token.
      */
     @Column(length = 50)

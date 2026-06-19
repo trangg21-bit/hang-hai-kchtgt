@@ -17,7 +17,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * REST Controller quáº£n lĂ½ vai trĂ² (Role).
+ * REST Controller quản lý vai trò (Role).
  * <p>
  * Base path: {@code /api/roles}
  * </p>
@@ -65,7 +65,7 @@ public class RoleController {
     public ResponseEntity<ApiResponse<RoleResponse>> create(@Valid @RequestBody CreateRoleRequest request) {
         RoleResponse role = RoleResponse.from(roleService.create(request));
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Táº¡o vai trĂ² thĂ nh cĂ´ng", role));
+                .body(ApiResponse.success("Tạo vai trò thành công", role));
     }
 
     @PutMapping("/{id}")
@@ -74,13 +74,13 @@ public class RoleController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateRoleRequest request) {
         RoleResponse role = RoleResponse.from(roleService.update(id, request));
-        return ResponseEntity.ok(ApiResponse.success("Cáº­p nháº­t vai trĂ² thĂ nh cĂ´ng", role));
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật vai trò thành công", role));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         roleService.delete(id);
-        return ResponseEntity.ok(ApiResponse.success("XĂ³a vai trĂ² thĂ nh cĂ´ng", null));
+        return ResponseEntity.ok(ApiResponse.success("Xóa vai trò thành công", null));
     }
 }

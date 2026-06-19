@@ -19,11 +19,11 @@ import java.util.Map;
  * <p>
  * Covered:
  * <ul>
- *   <li>{@code @Valid} request-body validation â†’ 400</li>
- *   <li>{@code @Validated} path-variable / query-param validation â†’ 400</li>
- *   <li>JPA entity not found â†’ 404</li>
- *   <li>Illegal arguments â†’ 400</li>
- *   <li>Unhandled exceptions â†’ 500 (message hidden in production by
+ *   <li>{@code @Valid} request-body validation → 400</li>
+ *   <li>{@code @Validated} path-variable / query-param validation → 400</li>
+ *   <li>JPA entity not found → 404</li>
+ *   <li>Illegal arguments → 400</li>
+ *   <li>Unhandled exceptions → 500 (message hidden in production by
  *       {@code application.yml + logging}</li>
  * </ul>
  */
@@ -34,7 +34,7 @@ public class GlobalExceptionHandler {
 
     /**
      * Handles {@code @Valid} failures on {@code @RequestBody} parameters.
-     * Returns a map of field â†’ error message.
+     * Returns a map of field → error message.
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleMethodArgumentNotValid(
@@ -73,7 +73,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles JPA {@code EntityNotFoundException} â€” typically thrown by
+     * Handles JPA {@code EntityNotFoundException} — typically thrown by
      * {@code getReferenceById()} when the entity does not exist.
      */
     @ExceptionHandler(jakarta.persistence.EntityNotFoundException.class)

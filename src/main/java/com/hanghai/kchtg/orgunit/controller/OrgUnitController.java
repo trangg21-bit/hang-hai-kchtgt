@@ -51,7 +51,7 @@ public class OrgUnitController {
     }
 
     /**
-     * Full hierarchical tree (root Ă¢â€ â€™ children recursively).
+     * Full hierarchical tree (root → children recursively).
      */
     @GetMapping("/tree")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
