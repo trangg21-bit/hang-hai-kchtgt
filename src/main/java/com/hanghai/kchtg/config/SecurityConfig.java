@@ -59,8 +59,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
-                        .requestMatchers("/api/**").permitAll()
-                        .anyRequest().permitAll()
+                        .requestMatchers("/api/point-objects/**").permitAll()
+                        .requestMatchers("/api/line-objects/**").permitAll()
+                        .requestMatchers("/api/polygon-objects/**").permitAll()
+                        .requestMatchers("/api/map-layers/**").permitAll()
+                        .requestMatchers("/api/search/**").permitAll()
+                        .anyRequest().authenticated()
                 )
 
                 // Disable form/basic login — JWT only

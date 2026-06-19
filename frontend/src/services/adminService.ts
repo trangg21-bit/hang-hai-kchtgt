@@ -176,21 +176,16 @@ export const adminService = {
 
   /**
    * POST /api/admin-accounts
-   * Note: Backend expects { userId, role, modules, status }.
-   * The frontend CreateAdminPayload uses username/password/fullName which
-   * must be mapped to a backend-compatible request. For now we create
-   * a user first via userService or pass userId if known.
+   * Now: Backend CreateAdminWithUserRequest expects { username, password, fullName, email, phone, role }.
    */
   async create(payload: CreateAdminPayload): Promise<Admin> {
-    // Build backend-compatible body:
-    // AdminAccountController expects UUID userId + AdminRole role.
-    // Since frontend creates via username/password/fullName, we send what the backend
-    // can accept. In a full integration the flow would be: createUser -> assignAdmin.
     const resp = await api.post("/admin-accounts", {
-      userId: "00000000-0000-0000-0000-000000000000",
+      username: payload.username,
+      password: payload.password,
+      fullName: payload.fullName,
+      email: payload.email,
+      phone: payload.phone,
       role: payload.roleId,
-      modules: [],
-      status: "ACTIVE",
     });
     const item: any = extractData(resp);
 

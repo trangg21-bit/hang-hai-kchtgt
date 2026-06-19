@@ -18,6 +18,7 @@ export const roleService = {
     let result: Role[] = items.map((item) => ({
       id: item.id ?? '',
       name: item.name ?? '',
+      code: item.code ?? '',
       description: item.description ?? '',
       permissions: item.permissions ?? [],
       userCount: item.userCount ?? 0,
@@ -52,6 +53,7 @@ export const roleService = {
       data: {
         id: item.id ?? '',
         name: item.name ?? '',
+        code: item.code ?? '',
         description: item.description ?? '',
         permissions: item.permissions ?? [],
         userCount: item.userCount ?? 0,
@@ -69,7 +71,12 @@ export const roleService = {
    * POST /api/roles
    */
   async create(payload: CreateRolePayload): Promise<ApiResponse<Role>> {
-    const resp = await api.post('/roles', payload);
+    const resp = await api.post('/roles', {
+      name: payload.name,
+      code: payload.code,
+      description: payload.description,
+      permissions: payload.permissions,
+    });
     const item: any = extractData(resp);
 
     return {
@@ -77,6 +84,7 @@ export const roleService = {
       data: {
         id: item.id ?? '',
         name: item.name ?? payload.name,
+        code: item.code ?? payload.code,
         description: item.description ?? payload.description,
         permissions: item.permissions ?? payload.permissions,
         userCount: 0,
@@ -101,6 +109,7 @@ export const roleService = {
       data: {
         id: item.id ?? id,
         name: item.name ?? payload.name ?? '',
+        code: item.code ?? payload.code ?? '',
         description: item.description ?? payload.description ?? '',
         permissions: item.permissions ?? payload.permissions ?? [],
         userCount: item.userCount ?? 0,

@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.admin.controller;
 
 import com.hanghai.kchtg.admin.dto.AdminResponse;
-import com.hanghai.kchtg.admin.dto.CreateAdminRequest;
+import com.hanghai.kchtg.admin.dto.CreateAdminWithUserRequest;
 import com.hanghai.kchtg.admin.dto.UpdateAdminRequest;
 import com.hanghai.kchtg.admin.service.AdminAccountService;
 import com.hanghai.kchtg.common.dto.ApiResponse;
@@ -56,7 +56,7 @@ public class AdminAccountController {
     @PostMapping
     @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<AdminResponse>> create(
-            @Valid @RequestBody CreateAdminRequest request) {
+            @Valid @RequestBody CreateAdminWithUserRequest request) {
         AdminResponse created = service.create(request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("AdminAccount created", created));

@@ -74,6 +74,7 @@ export const MOCK_ROLES: Role[] = [
   {
     id: 'role-001',
     name: 'Quản trị viên (Super Admin)',
+    code: 'super_admin',
     description: 'Toàn quyền quản trị hệ thống',
     permissions: ALL_PERMISSIONS.map(p => p.key),
     userCount: 2,
@@ -83,6 +84,7 @@ export const MOCK_ROLES: Role[] = [
   {
     id: 'role-002',
     name: 'Quản trị viên (Admin)',
+    code: 'admin',
     description: 'Quản lý người dùng và xem vai trò',
     permissions: ['user.view', 'user.create', 'user.edit', 'user.delete', 'user.lock', 'user.reset_password', 'role.view'],
     userCount: 5,
@@ -92,6 +94,7 @@ export const MOCK_ROLES: Role[] = [
   {
     id: 'role-003',
     name: 'Quản lý người dùng',
+    code: 'user_manager',
     description: 'Quản lý tài khoản người dùng',
     permissions: ['user.view', 'user.create', 'user.edit', 'user.lock', 'user.reset_password'],
     userCount: 12,
@@ -101,6 +104,7 @@ export const MOCK_ROLES: Role[] = [
   {
     id: 'role-004',
     name: 'Người xem (Viewer)',
+    code: 'viewer',
     description: 'Chỉ xem thông tin',
     permissions: ['user.view', 'role.view'],
     userCount: 8,
