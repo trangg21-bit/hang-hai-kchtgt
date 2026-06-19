@@ -18,6 +18,7 @@ import LoginPage from './pages/Login';
 import AdminList from './pages/admins/AdminList';
 import AdminForm from './pages/admins/AdminForm';
 import AdminAudit from './pages/admins/AdminAudit';
+import ReportsPage from './pages/ReportsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -86,6 +87,9 @@ export default function App() {
                 <Route path="/gis/layers/:id/edit" element={<MapLayerForm />} />
 
                 <Route path="/gis/search" element={<GISSearch />} />
+
+                {/* Reports & Statistics */}
+                <Route path="/reports" element={<ReportsPage />} />
               </Route>
             </Routes>
           </BrowserRouter>
