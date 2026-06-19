@@ -253,10 +253,10 @@ public class ReportService {
             row.put("STT", stt++);
             row.put("Mã tài sản", p.getCode());
             row.put("Tên tài sản", p.getName());
-            row.put("Loại đối tượng", p.getObjectType() != null ? p.getObjectType().toString() : "ĐIỂM");
+            row.put("Loại đối tượng", p.getObjectType() != null ? mapObjectType(p.getObjectType().name()) : "Cảng biển");
             row.put("Kinh độ", p.getLongitude());
             row.put("Vĩ độ", p.getLatitude());
-            row.put("Trạng thái", p.getStatus() != null ? p.getStatus().toString() : "DRAFT");
+            row.put("Trạng thái", p.getStatus() != null ? mapStatus(p.getStatus().name()) : "Nháp");
             row.put("Ngày tạo", p.getCreatedAt() != null ? p.getCreatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "");
             rows.add(row);
         }
@@ -313,7 +313,7 @@ public class ReportService {
             int lengthIndicator = coords != null ? coords.length() : 0;
             row.put("Độ dài WKT", lengthIndicator > 0 ? lengthIndicator + " ký tự" : "Chưa xác định");
             
-            row.put("Trạng thái", l.getStatus() != null ? l.getStatus().toString() : "DRAFT");
+            row.put("Trạng thái", l.getStatus() != null ? mapStatus(l.getStatus().name()) : "Nháp");
             row.put("Ngày cập nhật", l.getUpdatedAt() != null ? l.getUpdatedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "");
             rows.add(row);
         }
@@ -322,5 +322,31 @@ public class ReportService {
         summary.put("Tổng số tuyến luồng thống kê", rows.size());
 
         builder.headers(headers).rows(rows).summary(summary);
+    }
+
+    private String mapStatus(String statusStr) {
+        if (statusStr == null) return "Nháp";
+        switch (statusStr.toUpperCase()) {
+            case "DRAFT": return "Nháp";
+            case "PENDING_APPROVAL": return "Chờ duyệt";
+            case "APPROVED_L1": return "Đã duyệt L1";
+            case "APPROVED_L2": return "Đã duyệt L2";
+            case "PUBLISHED": return "Đã công bố";
+            case "REJECTED": return "Từ chối";
+            case "DELETED": return "Đã xóa";
+            default: return statusStr;
+        }
+    }
+
+    private String mapObjectType(String typeStr) {
+        if (typeStr == null) return "ĐIỂM";
+        switch (typeStr.toUpperCase()) {
+            case "PORT": return "Cảng biển";
+            case "LIGHTHOUSE": return "Hải đăng";
+            case "BUOY": return "Phao tiêu";
+            case "BEACON": return "Tiêu dẫn";
+            case "OTHER": return "Khác";
+            default: return typeStr;
+        }
     }
 }
