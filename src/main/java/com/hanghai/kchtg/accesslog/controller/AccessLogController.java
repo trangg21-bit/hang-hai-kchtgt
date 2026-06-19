@@ -23,10 +23,10 @@ import java.util.UUID;
  * <p>
  * Endpoints:
  * <ul>
- *   <li>{@code GET /api/access-logs} â€” paginated list with optional filters</li>
- *   <li>{@code GET /api/access-logs/{id}} â€” single entry by ID</li>
+ *   <li>{@code GET /api/access-logs} — paginated list with optional filters</li>
+ *   <li>{@code GET /api/access-logs/{id}} — single entry by ID</li>
  * </ul>
- * No create, update, or delete operations are exposed â€” the access-log is
+ * No create, update, or delete operations are exposed — the access-log is
  * an audit artifact populated by a cross-cutting aspect.
  * </p>
  */
@@ -49,7 +49,7 @@ public class AccessLogController {
      * </p>
      *
      * @param filter   optional query parameters: userId, module, from, to
-     * @param pageable pagination (page, size, sort) â€” defaults to page 0, size 20,
+     * @param pageable pagination (page, size, sort) — defaults to page 0, size 20,
      *                 sorted by createdAt descending
      * @return paginated list of access-log entries
      */

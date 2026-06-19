@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * DTO táº¡o má»›i tĂ i khoáº£n ngÆ°á»i dĂ¹ng.
+ * DTO tạo mới tài khoản người dùng.
  */
 @Getter
 @Setter
@@ -20,27 +20,27 @@ import java.util.UUID;
 @AllArgsConstructor
 public class CreateUserRequest {
 
-    @NotBlank(message = "Username khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
-    @Size(min = 3, max = 100, message = "Username pháº£i tá»« 3 Ä‘áº¿n 100 kĂ½ tá»±")
+    @NotBlank(message = "Tên đăng nhập không được để trống")
+    @Size(min = 3, max = 100, message = "Tên đăng nhập phải từ 3 đến 100 ký tự")
     private String username;
 
-    @NotBlank(message = "Máº­t kháº©u khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
-    @Size(min = 6, max = 100, message = "Máº­t kháº©u pháº£i tá»« 6 Ä‘áº¿n 100 kĂ½ tá»±")
+    @NotBlank(message = "Mật khẩu không được để trống")
+    @Size(min = 6, max = 100, message = "Mật khẩu phải từ 6 đến 100 ký tự")
     private String password;
 
-    @NotBlank(message = "Email khĂ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng")
-    @Email(message = "Email khĂ´ng Ä‘Ăºng Ä‘á»‹nh dáº¡ng")
-    @Size(max = 150, message = "Email khĂ´ng Ä‘Æ°á»£c vÆ°á»£t quĂ¡ 150 kĂ½ tá»±")
+    @NotBlank(message = "Email không được để trống")
+    @Email(message = "Email không đúng định dạng")
+    @Size(max = 150, message = "Email không được vượt quá 150 ký tự")
     private String email;
 
-    @Size(max = 200, message = "Há» tĂªn khĂ´ng Ä‘Æ°á»£c vÆ°á»£t quĂ¡ 200 kĂ½ tá»±")
+    @Size(max = 200, message = "Họ tên không được vượt quá 200 ký tự")
     private String fullName;
 
-    @Size(max = 20, message = "Sá»‘ Ä‘iá»‡n thoáº¡i khĂ´ng Ä‘Æ°á»£c vÆ°á»£t quĂ¡ 20 kĂ½ tá»±")
+    @Size(max = 20, message = "Số điện thoại không được vượt quá 20 ký tự")
     private String phone;
 
-    /** Vai trĂ² (e.g. ROLE_USER, ROLE_ADMIN). Máº·c Ä‘á»‹nh lĂ  ROLE_USER. */
-    @Size(max = 50, message = "Role khĂ´ng Ä‘Æ°á»£c vÆ°á»£t quĂ¡ 50 kĂ½ tá»±")
+    /** Vai trò (e.g. ROLE_USER, ROLE_ADMIN). Mặc định là ROLE_USER. */
+    @Size(max = 50, message = "Vai trò không được vượt quá 50 ký tự")
     private String role;
 
     private UUID orgUnitId;

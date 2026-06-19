@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,8 +32,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
+    private static final String MOCK_TOKEN_PREFIX = "mock-";
 
     private final JwtUtil jwtUtil;
+
+    @Value("${jwt.mock-token:#{null}}")
+    private String mockToken;
 
     public JwtAuthFilter(JwtUtil jwtUtil) {
         this.jwtUtil = jwtUtil;
@@ -46,6 +51,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String token = extractToken(request);
 
         if (token != null) {
+            // Dev mode: accept mock token
+            if (mockToken != null && mockToken.equals(token)) {
+                log.debug("Dev mock token accepted for: {}", request.getRequestURI());
+                SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken("admin", null, List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"))));
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             try {
                 String username = jwtUtil.extractUsername(token);
                 String role = jwtUtil.extractRole(token);

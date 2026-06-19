@@ -5,10 +5,19 @@ import viVN from 'antd/locale/vi_VN';
 import AppLayout from './components/AppLayout';
 import UsersPage from './pages/UsersPage';
 import RolesPage from './pages/RolesPage';
-import LoginPage from './pages/LoginPage';
+import PointObjectList from './pages/gis/PointObjectList';
+import PointObjectForm from './pages/gis/PointObjectForm';
+import LineObjectList from './pages/gis/LineObjectList';
+import LineObjectForm from './pages/gis/LineObjectForm';
+import PolygonObjectList from './pages/gis/PolygonObjectList';
+import PolygonObjectForm from './pages/gis/PolygonObjectForm';
+import MapLayerList from './pages/gis/MapLayerList';
+import MapLayerForm from './pages/gis/MapLayerForm';
+import GISSearch from './pages/gis/GISSearch';
+import LoginPage from './pages/Login';
 import AdminList from './pages/admins/AdminList';
-import GroupList from './pages/groups/GroupList';
-import UnitList from './pages/organizations/UnitList';
+import AdminForm from './pages/admins/AdminForm';
+import AdminAudit from './pages/admins/AdminAudit';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,14 +50,42 @@ export default function App() {
         <AntApp>
           <BrowserRouter>
             <Routes>
+              {/* Login — outside layout */}
               <Route path="/login" element={<LoginPage />} />
+
+              {/* Protected routes — inside layout */}
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Navigate to="/users" replace />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/roles" element={<RolesPage />} />
-                <Route path="/admin" element={<AdminList />} />
-                <Route path="/groups" element={<GroupList />} />
-                <Route path="/organizations" element={<UnitList />} />
+
+                {/* Admin — Quản trị viên */}
+                <Route path="/admins" element={<AdminList />} />
+                <Route path="/admins/create" element={<AdminForm />} />
+                <Route path="/admins/:id/edit" element={<AdminForm />} />
+                <Route path="/admins/:id/audit" element={<AdminAudit />} />
+
+                {/* GIS - Bản đồ */}
+                <Route path="/gis/points" element={<PointObjectList />} />
+                <Route path="/gis/points/create" element={<PointObjectForm />} />
+                <Route path="/gis/points/:id/edit" element={<PointObjectForm />} />
+                <Route path="/gis/points/:id" element={<PointObjectForm />} />
+
+                <Route path="/gis/lines" element={<LineObjectList />} />
+                <Route path="/gis/lines/create" element={<LineObjectForm />} />
+                <Route path="/gis/lines/:id/edit" element={<LineObjectForm />} />
+                <Route path="/gis/lines/:id" element={<LineObjectForm />} />
+
+                <Route path="/gis/polygons" element={<PolygonObjectList />} />
+                <Route path="/gis/polygons/create" element={<PolygonObjectForm />} />
+                <Route path="/gis/polygons/:id/edit" element={<PolygonObjectForm />} />
+                <Route path="/gis/polygons/:id" element={<PolygonObjectForm />} />
+
+                <Route path="/gis/layers" element={<MapLayerList />} />
+                <Route path="/gis/layers/create" element={<MapLayerForm />} />
+                <Route path="/gis/layers/:id/edit" element={<MapLayerForm />} />
+
+                <Route path="/gis/search" element={<GISSearch />} />
               </Route>
             </Routes>
           </BrowserRouter>

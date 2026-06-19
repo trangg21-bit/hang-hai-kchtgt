@@ -37,7 +37,7 @@ public class GroupController {
         this.service = service;
     }
 
-    /** GET /api/groups â€” liet ke tat ca nhom. */
+    /** GET /api/groups — liet ke tat ca nhom. */
     @GetMapping
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<List<GroupResponse>>> list() {
@@ -45,7 +45,7 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success(groups));
     }
 
-    /** GET /api/groups/{id} â€” lay chi tiet mot nhom. */
+    /** GET /api/groups/{id} — lay chi tiet mot nhom. */
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<GroupResponse>> get(@PathVariable UUID id) {
@@ -53,7 +53,7 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success(group));
     }
 
-    /** POST /api/groups â€” tao moi nhom. Tra ve 201 Created. */
+    /** POST /api/groups — tao moi nhom. Tra ve 201 Created. */
     @PostMapping
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<GroupResponse>> create(
@@ -64,7 +64,7 @@ public class GroupController {
                 .body(ApiResponse.success("Nhom da duoc tao thanh cong", group));
     }
 
-    /** PUT /api/groups/{id} â€” cap nhat nhom. */
+    /** PUT /api/groups/{id} — cap nhat nhom. */
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<GroupResponse>> update(
@@ -74,7 +74,7 @@ public class GroupController {
         return ResponseEntity.ok(ApiResponse.success("Nhom da duoc cap nhat thanh cong", group));
     }
 
-    /** DELETE /api/groups/{id} â€” xoa nhom. */
+    /** DELETE /api/groups/{id} — xoa nhom. */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {

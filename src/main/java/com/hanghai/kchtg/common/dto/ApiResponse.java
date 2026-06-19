@@ -28,7 +28,7 @@ public class ApiResponse<T> {
         this.timestamp = timestamp;
     }
 
-    // â”€â”€ Accessors (no setters â€” response is immutable) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Accessors (no setters — response is immutable) ──────────────
 
     public boolean isSuccess() {
         return success;
@@ -46,7 +46,7 @@ public class ApiResponse<T> {
         return timestamp;
     }
 
-    // â”€â”€ Static factory methods â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Static factory methods ─────────────────────────────────────
 
     /**
      * 200 OK with payload.

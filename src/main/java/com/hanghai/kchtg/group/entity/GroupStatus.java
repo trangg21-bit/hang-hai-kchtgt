@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.group.entity;
 
 /**
- * Tráº¡ng thĂ¡i cá»§a nhĂ³m ngÆ°á»i dĂ¹ng.
+ * Trạng thái của nhóm người dùng.
  */
 public enum GroupStatus {
     ACTIVE,

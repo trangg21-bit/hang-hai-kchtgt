@@ -9,25 +9,25 @@ import java.util.UUID;
 
 /**
  * Request body for partial update of an existing organisational unit.
- * All fields are optional â€” only non-null fields are applied.
+ * All fields are optional — only non-null fields are applied.
  */
 @Data
 public class UpdateOrgUnitRequest {
 
-    @Size(max = 200, message = "TĂªn Ä‘Æ¡n vá»‹ tá»‘i Ä‘a 200 kĂ½ tá»±")
+    @Size(max = 200, message = "Tên đơn vị tối đa 200 ký tự")
     private String name;
 
-    @Size(max = 50, message = "MĂ£ Ä‘Æ¡n vá»‹ tá»‘i Ä‘a 50 kĂ½ tá»±")
+    @Size(max = 50, message = "Mã đơn vị tối đa 50 ký tự")
     private String code;
 
     private UUID parentId;
 
     private OrgUnitType type;
 
-    @Size(max = 500, message = "Äá»‹a chá»‰ tá»‘i Ä‘a 500 kĂ½ tá»±")
+    @Size(max = 500, message = "Địa chỉ tối đa 500 ký tự")
     private String address;
 
-    @Size(max = 20, message = "Sá»‘ Ä‘iá»‡n thoáº¡i tá»‘i Ä‘a 20 kĂ½ tá»±")
+    @Size(max = 20, message = "Số điện thoại tối đa 20 ký tự")
     private String phone;
 
     private OrgUnitStatus status;

@@ -20,13 +20,13 @@ import java.util.UUID;
 public interface UnitRepository extends JpaRepository<OrgUnit, UUID> {
 
     /**
-     * T́m t?t c? các node g?c (không có don v? cha).
+     * Tìm tất cả các node gốc (không có đơn vị cha).
      */
     @Query("SELECT u FROM OrgUnit u WHERE u.parentId IS NULL")
     List<OrgUnit> findAllRoots();
 
     /**
-     * T́m tr?c ti?p t?t c? con c?a m?t don v? c? th?.
+     * Tìm trực tiếp tất cả con của một đơn vị cụ thể.
      */
     @Query("SELECT u FROM OrgUnit u WHERE u.parentId = :unitId")
     List<OrgUnit> findAllChildren(@Param("unitId") UUID unitId);

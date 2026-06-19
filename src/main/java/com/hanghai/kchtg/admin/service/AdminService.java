@@ -23,8 +23,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Service quáº£n lĂ½ tĂ i khoáº£n admin vá»›i tĂ­nh nÄƒng MFA reset,
- * audit log management vĂ  phĂ¢n quyá»n module.
+ * Service quản lý tài khoản admin với tính năng MFA reset,
+ * audit log management và phân quyền module.
  */
 @Service
 @RequiredArgsConstructor
@@ -39,7 +39,7 @@ public class AdminService {
     private final AdminRecoveryTokenRepository recoveryTokenRepo;
     private final EntityManager entityManager;
 
-    // â”€â”€ Query â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Query ────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public List<AdminAccount> findAll() {
@@ -66,19 +66,19 @@ public class AdminService {
         return auditLogRepo.findAll(Sort.by("createdAt").descending());
     }
 
-    // â”€â”€ MFA Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── MFA Reset ────────────────────────────────────────────────────
 
     /**
-     * Táº¡o yĂªu cáº§u khĂ´i phá»¥c MFA cho admin â€” táº¡o recovery token.
+     * Tạo yêu cầu khôi phục MFA cho admin — tạo recovery token.
      */
     public AdminRecoveryToken requestMfaReset(UUID adminId, UUID requestBy, String requestByName) {
         AdminAccount admin = adminRepo.findByUserId(adminId)
                 .orElseThrow(() -> new EntityNotFoundException("Admin account not found for userId: " + adminId));
 
-        // XĂ³a cĂ¡c token cÅ© chÆ°a dĂ¹ng
+        // Xóa các token cũ chưa dùng
         recoveryTokenRepo.deleteByAdminId(adminId);
 
-        // Táº¡o token má»›i
+        // Tạo token mới
         String token = UUID.randomUUID().toString().replace("-", "");
         AdminRecoveryToken recoveryToken = AdminRecoveryToken.create(adminId, token);
         recoveryTokenRepo.save(recoveryToken);
@@ -86,15 +86,15 @@ public class AdminService {
         // Ghi audit log
         auditLogRepo.save(AdminAuditLog.create(
                 admin.getId(), "MFA Reset Requested", "MFA",
-                "YĂªu cáº§u khĂ´i phá»¥c MFA cho userId: " + adminId,
-                "Bá»Ÿi: " + requestByName, "0.0.0.0", "System"));
+                "Yêu cầu khôi phục MFA cho userId: " + adminId,
+                "Bởi: " + requestByName, "0.0.0.0", "System"));
 
         log.info("MFA reset requested for adminId: {}", adminId);
         return recoveryToken;
     }
 
     /**
-     * XĂ¡c thá»±c recovery token vĂ  hoĂ n táº¥t MFA reset.
+     * Xác thực recovery token và hoàn tất MFA reset.
      */
     @Transactional
     public boolean resetMfaWithToken(String token, UUID adminId) {
@@ -112,11 +112,11 @@ public class AdminService {
             return false;
         }
 
-        // ÄĂ¡nh dáº¥u Ä‘Ă£ dĂ¹ng
+        // Đánh dấu đã dùng
         recoveryToken.setUsed(true);
         recoveryTokenRepo.save(recoveryToken);
 
-        // XĂ³a token sau khi dĂ¹ng
+        // Xóa token sau khi dùng
         recoveryTokenRepo.delete(recoveryToken);
 
         // Ghi audit log
@@ -124,8 +124,8 @@ public class AdminService {
         if (admin != null) {
             auditLogRepo.save(AdminAuditLog.create(
                     admin.getId(), admin.getUser().getUsername(),
-                    "MFA_RESET", "MFA Ä‘Ă£ Ä‘Æ°á»£c khĂ´i phá»¥c thĂ nh cĂ´ng",
-                    "Sá»­ dá»¥ng recovery token", "0.0.0.0", "System"));
+                    "MFA_RESET", "MFA đã được khôi phục thành công",
+                    "Sử dụng recovery token", "0.0.0.0", "System"));
         }
 
         log.info("MFA reset completed for adminId: {}", adminId);
@@ -140,8 +140,8 @@ public class AdminService {
         AdminAccount admin = adminRepo.findByUserId(adminId)
                 .orElseThrow(() -> new EntityNotFoundException("Admin account not found: " + adminId));
 
-        // Reset MFA secret/key vá» null (disable MFA)
-        // Trong thá»±c táº¿ sáº½ cáº§n thĂªm field mfaSecret vĂ o AdminAccount/User
+        // Reset MFA secret/key về null (disable MFA)
+        // Trong thực tế sẽ cần thêm field mfaSecret vào AdminAccount/User
 
         auditLogRepo.save(AdminAuditLog.create(
                 superAdminId, superAdminName,
@@ -152,17 +152,17 @@ public class AdminService {
         return admin;
     }
 
-    // â”€â”€ Permissions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Permissions ──────────────────────────────────────────────────
 
     /**
-     * Cáº¥p permissions cho admin theo module.
+     * Cấp permissions cho admin theo module.
      */
     @Transactional
     public AdminPermission grantPermission(UUID adminId, String moduleId, List<String> permissions) {
         AdminAccount admin = adminRepo.findByUserId(adminId)
                 .orElseThrow(() -> new EntityNotFoundException("Admin account not found: " + adminId));
 
-        // XĂ³a permissions cÅ© cá»§a module nĂ y
+        // Xóa permissions cũ của module này
         List<AdminPermission> existing = permRepo.findByAdminIdAndModuleId(adminId, moduleId);
         existing.forEach(permRepo::delete);
 
@@ -179,7 +179,7 @@ public class AdminService {
     }
 
     /**
-     * Thu há»“i permissions cá»§a admin theo module.
+     * Thu hồi permissions của admin theo module.
      */
     @Transactional
     public void revokePermission(UUID adminId, String moduleId) {
@@ -196,7 +196,7 @@ public class AdminService {
     }
 
     /**
-     * Láº¥y táº¥t cáº£ permissions cá»§a admin.
+     * Lấy tất cả permissions của admin.
      */
     @Transactional(readOnly = true)
     public List<AdminPermission> getPermissions(UUID adminId) {
@@ -204,14 +204,14 @@ public class AdminService {
     }
 
     /**
-     * Kiá»ƒm tra admin cĂ³ permission cá»¥ thá»ƒ trong module khĂ´ng.
+     * Kiểm tra admin có permission cụ thể trong module không.
      */
     @Transactional(readOnly = true)
     public boolean hasPermission(UUID adminId, String moduleId, String permission) {
         return permRepo.hasPermission(adminId, moduleId, permission);
     }
 
-    // â”€â”€ Lock/Unlock Admin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Lock/Unlock Admin ────────────────────────────────────────────
 
     @Transactional
     public AdminAccount lockAdmin(UUID adminId, String reason) {

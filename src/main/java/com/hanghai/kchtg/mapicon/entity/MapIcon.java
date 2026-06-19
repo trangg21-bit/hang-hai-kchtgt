@@ -36,13 +36,13 @@ public class MapIcon extends BaseEntity {
         INACTIVE
     }
 
-    @NotBlank(message = "Ten icon khong duoc de trong")
-    @Size(max = 100, message = "Ten icon toi da 100 ky tu")
+    @NotBlank(message = "Tên icon không được để trống")
+    @Size(max = 100, message = "Tên icon tối đa 100 ký tự")
     @Column(nullable = false, length = 100)
     private String name;
 
-    @NotBlank(message = "Ma icon khong duoc de trong")
-    @Size(max = 50, message = "Ma icon toi da 50 ky tu")
+    @NotBlank(message = "Mã icon không được để trống")
+    @Size(max = 50, message = "Mã icon tối đa 50 ký tự")
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 

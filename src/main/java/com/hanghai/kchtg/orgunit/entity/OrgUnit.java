@@ -35,16 +35,16 @@ public class OrgUnit extends BaseEntity {
     /**
      * Display name of the organisational unit (max 200 chars).
      */
-    @NotBlank(message = "Ten don vi khong duoc de trong")
-    @Size(max = 200, message = "Ten don vi toi da 200 ky tu")
+    @NotBlank(message = "Tên đơn vị không được để trống")
+    @Size(max = 200, message = "Tên đơn vị tối đa 200 ký tự")
     @Column(nullable = false, length = 200)
     private String name;
 
     /**
      * Unique business code for the unit (max 50 chars).
      */
-    @NotBlank(message = "Ma don vi khong duoc de trong")
-    @Size(max = 50, message = "Ma don vi toi da 50 ky tu")
+    @NotBlank(message = "Mã đơn vị không được để trống")
+    @Size(max = 50, message = "Mã đơn vị tối đa 50 ký tự")
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 

@@ -15,9 +15,9 @@ import lombok.Setter;
 @AllArgsConstructor
 public class LoginRequest {
 
-    @NotBlank(message = "Username must not be blank")
+    @NotBlank(message = "Tên đăng nhập không được để trống")
     private String username;
 
-    @NotBlank(message = "Password must not be blank")
+    @NotBlank(message = "Mật khẩu không được để trống")
     private String password;
 }

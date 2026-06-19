@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * DTO tráº£ vá» khi query role.
+ * DTO trả về khi query role.
  */
 public class RoleResponse {
 

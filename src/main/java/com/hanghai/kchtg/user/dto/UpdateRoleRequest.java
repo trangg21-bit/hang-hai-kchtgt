@@ -5,18 +5,18 @@ import jakarta.validation.constraints.Size;
 import java.util.List;
 
 /**
- * Request body cho viá»‡c cáº­p nháº­t Role.
- * Táº¥t cáº£ cĂ¡c trÆ°á»ng Ä‘á»u optional â€” chá»‰ nhá»¯ng trÆ°á»ng khĂ¡c null sáº½ Ä‘Æ°á»£c cáº­p nháº­t.
+ * Request body cho việc cập nhật Role.
+ * Tất cả các trường đều optional — chỉ những trường khác null sẽ được cập nhật.
  */
 public class UpdateRoleRequest {
 
-    @Size(max = 100, message = "TĂªn vai trĂ² tá»‘i Ä‘a 100 kĂ½ tá»±")
+    @Size(max = 100, message = "Tên vai trò tối đa 100 ký tự")
     private String name;
 
-    @Size(max = 50, message = "Code vai trĂ² tá»‘i Ä‘a 50 kĂ½ tá»±")
+    @Size(max = 50, message = "Code vai trò tối đa 50 ký tự")
     private String code;
 
-    @Size(max = 500, message = "MĂ´ táº£ tá»‘i Ä‘a 500 kĂ½ tá»±")
+    @Size(max = 500, message = "Mô tả tối đa 500 ký tự")
     private String description;
 
     private List<String> permissions;

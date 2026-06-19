@@ -43,7 +43,7 @@ public class UserGroupService {
         this.groupHistoryRepository = groupHistoryRepository;
     }
 
-    // Ă¢â€â‚¬Ă¢â€â‚¬ Query Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
+    // ── Query ───────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public List<UserGroup> findAll() {
@@ -53,13 +53,13 @@ public class UserGroupService {
     @Transactional(readOnly = true)
     public UserGroup findById(UUID id) {
         return groupRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nhom voi id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhóm với id: " + id));
     }
 
     @Transactional(readOnly = true)
     public UserGroup findByCode(String code) {
         return groupRepository.findByCode(code)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nhom voi code: " + code));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhóm với mã: " + code));
     }
 
     @Transactional(readOnly = true)
@@ -67,14 +67,14 @@ public class UserGroupService {
         return groupMemberRepository.findByGroupId(groupId, GroupMemberStatus.ACTIVE);
     }
 
-    // Ă¢â€â‚¬Ă¢â€â‚¬ Mutate Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
+    // ── Mutate ──────────────────────────────────────────────────────
 
     /**
      * Tao moi nhom.
      */
     public UserGroup create(CreateGroupRequest request, UUID operatorId, String operatorName) {
         if (groupRepository.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Code nhom da ton tai: " + request.getCode());
+            throw new IllegalArgumentException("Mã nhóm đã tồn tại: " + request.getCode());
         }
 
         UserGroup group = new UserGroup();
@@ -148,7 +148,7 @@ public class UserGroupService {
         Optional<GroupMember> existing = groupMemberRepository
                 .findByUserIdAndUserGroupId(request.getUserId(), groupId);
         if (existing.isPresent()) {
-            throw new IllegalArgumentException("Nguoi dung da la thanh vien cua nhom nay");
+            throw new IllegalArgumentException("Người dùng đã là thành viên của nhóm này");
         }
 
         GroupMember member = GroupMember.create(null, group, request.getRole(), operatorId);
@@ -161,11 +161,11 @@ public class UserGroupService {
     }
 
     /**
-     * RĂ¡Â»Âi nhom (remove member).
+     * Rời nhom (remove member).
      */
     public void removeMember(UUID memberId, UUID operatorId, String operatorName) {
         GroupMember member = groupMemberRepository.findById(memberId)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay membership voi id: " + memberId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy membership với id: " + memberId));
         member.setStatus(GroupMemberStatus.REMOVED);
         groupMemberRepository.save(member);
 
@@ -176,7 +176,7 @@ public class UserGroupService {
                 operatorId, operatorName);
     }
 
-    // Ă¢â€â‚¬Ă¢â€â‚¬ Private Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬Ă¢â€â‚¬
+    // ── Private ─────────────────────────────────────────────────────
 
     private void saveHistory(UUID userGroupId, String name, String code,
                              String action, String details, UUID changedBy, String changedByName) {

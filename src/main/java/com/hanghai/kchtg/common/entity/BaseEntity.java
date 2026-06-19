@@ -33,7 +33,7 @@ import java.util.UUID;
 public abstract class BaseEntity {
 
     /**
-     * Primary key â€” auto-generated UUID (Hibernate 6 native support).
+     * Primary key — auto-generated UUID (Hibernate 6 native support).
      */
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

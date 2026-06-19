@@ -22,6 +22,8 @@ import {
   SettingOutlined,
   SafetyOutlined,
   DownOutlined,
+  CompassOutlined,
+  IdcardOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import type { MenuProps } from 'antd';
@@ -36,9 +38,50 @@ const menuItems: MenuProps['items'] = [
     label: 'Quản lý người dùng',
   },
   {
+    key: '/admins',
+    icon: <IdcardOutlined />,
+    label: 'Quản trị viên',
+  },
+  {
     key: '/roles',
     icon: <SafetyOutlined />,
     label: 'Phân quyền',
+  },
+  {
+    type: 'divider' as const,
+  },
+  {
+    key: 'gis',
+    icon: <CompassOutlined />,
+    label: 'GIS • Bản đồ',
+    children: [
+      {
+        key: '/gis/points',
+        label: 'Đối tượng điểm',
+      },
+      {
+        key: '/gis/lines',
+        label: 'Đối tượng đường',
+      },
+      {
+        key: '/gis/polygons',
+        label: 'Đối tượng vùng',
+      },
+      {
+        key: '/gis/layers',
+        label: 'Lớp bản đồ',
+      },
+      {
+        type: 'divider' as const,
+      },
+      {
+        key: '/gis/search',
+        label: 'Tra cứu GIS',
+      },
+    ],
+  },
+  {
+    type: 'divider' as const,
   },
   {
     key: '/settings',
@@ -56,7 +99,13 @@ const menuItems: MenuProps['items'] = [
 
 const pageTitles: Record<string, string> = {
   '/users': 'Quản lý người dùng',
+  '/admins': 'Quản trị viên',
   '/roles': 'Phân quyền',
+  '/gis/points': 'Đối tượng điểm',
+  '/gis/lines': 'Đối tượng đường',
+  '/gis/polygons': 'Đối tượng vùng',
+  '/gis/layers': 'Lớp bản đồ',
+  '/gis/search': 'Tra cứu GIS',
   '/settings': 'Cấu hình hệ thống',
   '/logs': 'Nhật ký hệ thống',
 };
@@ -100,7 +149,16 @@ export default function AppLayout() {
     }
   };
 
-  const selectedKey = '/' + location.pathname.split('/')[1];
+  // Match top-level section: extract first two path segments for GIS submenus
+  const pathSegments = location.pathname.split('/').filter(Boolean);
+  let selectedKey: string;
+  if (pathSegments[0] === 'gis') {
+    // For GIS, select the deepest valid key: /gis/points, /gis/lines, etc.
+    const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
+    selectedKey = deepKey;
+  } else {
+    selectedKey = '/' + pathSegments[0];
+  }
 
   const sidebarContent = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>

@@ -11,8 +11,8 @@ import lombok.Setter;
 import java.util.UUID;
 
 /**
- * Lá»‹ch sá»­ thay Ä‘á»•i cá»§a nhĂ³m â€” ghi láº¡i má»i thao tĂ¡c CREATE / UPDATE / DELETE
- * Ä‘á»ƒ phá»¥c vá»¥ viá»‡c audit vĂ  khĂ´i phá»¥c náº¿u cáº§n.
+ * Lịch sử thay đổi của nhóm — ghi lại mọi thao tác CREATE / UPDATE / DELETE
+ * để phục vụ việc audit và khôi phục nếu cần.
  */
 @Entity
 @Table(name = "group_history")
@@ -21,35 +21,35 @@ import java.util.UUID;
 @NoArgsConstructor
 public class GroupHistory extends BaseEntity {
 
-    /** ID cá»§a nhĂ³m bá»‹ thay Ä‘á»•i. */
+    /** ID của nhóm bị thay đổi. */
     @Column(name = "user_group_id", nullable = false)
     private UUID userGroupId;
 
-    /** TĂªn nhĂ³m táº¡i thá»i Ä‘iá»ƒm thay Ä‘á»•i. */
+    /** Tên nhóm tại thời điểm thay đổi. */
     @Column(length = 150)
     private String groupName;
 
-    /** MĂ£ code cá»§a nhĂ³m táº¡i thá»i Ä‘iá»ƒm thay Ä‘á»•i. */
+    /** Mã code của nhóm tại thời điểm thay đổi. */
     @Column(length = 50)
     private String groupCode;
 
-    /** HĂ nh Ä‘á»™ng Ä‘Ă£ thá»±c hiá»‡n: CREATED, UPDATED, DELETED. */
+    /** Hành động đã thực hiện: CREATED, UPDATED, DELETED. */
     @Column(nullable = false, length = 20)
     private String action;
 
-    /** Ná»™i dung chi tiáº¿t cá»§a thay Ä‘á»•i (JSON hoáº·c mĂ´ táº£ text). */
+    /** Nội dung chi tiết của thay đổi (JSON hoặc mô tả text). */
     @Column(columnDefinition = "TEXT")
     private String details;
 
-    /** NgÆ°á»i thá»±c hiá»‡n thay Ä‘á»•i. */
+    /** Người thực hiện thay đổi. */
     @Column(name = "changed_by", nullable = false)
     private UUID changedBy;
 
-    /** TĂªn ngÆ°á»i thá»±c hiá»‡n (denormalized cho query nhanh). */
+    /** Tên người thực hiện (denormalized cho query nhanh). */
     @Column(length = 100)
     private String changedByName;
 
-    /** Timestamp táº¡o record (khĂ¡c vá»›i createdAt cá»§a BaseEntity). */
+    /** Timestamp tạo record (khác với createdAt của BaseEntity). */
     @Column(name = "change_timestamp", nullable = false)
     private java.time.LocalDateTime changeTimestamp;
 

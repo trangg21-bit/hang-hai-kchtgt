@@ -16,29 +16,29 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID> {
 
     /**
-     * TĂ¬m ngÆ°á»i dĂ¹ng theo tĂªn Ä‘Äƒng nháº­p.
+     * Tìm người dùng theo tên đăng nhập.
      */
     Optional<User> findByUsername(String username);
 
     /**
-     * TĂ¬m ngÆ°á»i dĂ¹ng theo email.
+     * Tìm người dùng theo email.
      */
     Optional<User> findByEmail(String email);
 
     /**
-     * Kiá»ƒm tra tá»“n táº¡i tĂªn Ä‘Äƒng nháº­p.
+     * Kiểm tra tồn tại tên đăng nhập.
      */
     boolean existsByUsername(String username);
 
     /**
-     * Kiá»ƒm tra tá»“n táº¡i email.
+     * Kiểm tra tồn tại email.
      */
     boolean existsByEmail(String email);
 
     /**
-     * TĂ¬m táº¥t cáº£ ngÆ°á»i dĂ¹ng vá»›i JOIN FETCH Ä‘á»ƒ trĂ¡nh LazyInitializationException.
-     * VĂ¬ {@code spring.jpa.open-in-view=false}, lazy associations pháº£i
-     * Ä‘Æ°á»£c fetch trong transaction.
+     * Tìm tất cả người dùng với JOIN FETCH để tránh LazyInitializationException.
+     * Vì {@code spring.jpa.open-in-view=false}, lazy associations phải
+     * được fetch trong transaction.
      */
     @Query("SELECT DISTINCT u FROM User u "
          + "LEFT JOIN FETCH u.orgUnit "
@@ -46,7 +46,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<User> findAllWithRelations();
 
     /**
-     * TĂ¬m ngÆ°á»i dĂ¹ng theo ID vá»›i JOIN FETCH Ä‘á»ƒ trĂ¡nh LazyInitializationException.
+     * Tìm người dùng theo ID với JOIN FETCH để tránh LazyInitializationException.
      */
     @Query("SELECT u FROM User u "
          + "LEFT JOIN FETCH u.orgUnit "
@@ -55,7 +55,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByIdWithRelations(UUID id);
 
     /**
-     * TĂ¬m ngÆ°á»i dĂ¹ng theo username vá»›i JOIN FETCH Ä‘á»ƒ trĂ¡nh LazyInitializationException.
+     * Tìm người dùng theo username với JOIN FETCH để tránh LazyInitializationException.
      */
     @Query("SELECT u FROM User u "
          + "LEFT JOIN FETCH u.orgUnit "

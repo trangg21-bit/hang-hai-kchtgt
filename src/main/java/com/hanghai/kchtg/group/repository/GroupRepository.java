@@ -14,12 +14,12 @@ import java.util.UUID;
 public interface GroupRepository extends JpaRepository<UserGroup, UUID> {
 
     /**
-     * TĂ¬m nhĂ³m theo mĂ£ code (unique).
+     * Tìm nhóm theo mã code (unique).
      */
     Optional<UserGroup> findByCode(String code);
 
     /**
-     * Kiá»ƒm tra xem mĂ£ code Ä‘Ă£ tá»“n táº¡i chÆ°a.
+     * Kiểm tra xem mã code đã tồn tại chưa.
      */
     boolean existsByCode(String code);
 }
