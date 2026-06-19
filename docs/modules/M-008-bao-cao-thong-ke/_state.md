@@ -2,12 +2,12 @@
 feature-id: M-008
 feature-name: Báo cáo & Thống kê
 pipeline-type: sdlc
-status: in-progress
+status: done
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
-last-updated: 2026-06-17T02:10:15Z
-current-stage: engineering-business-analyst
+last-updated: 2026-06-19T14:14:00Z
+current-stage: closed
 output-mode: lean
 repo-type: mini
 repo-path: .
