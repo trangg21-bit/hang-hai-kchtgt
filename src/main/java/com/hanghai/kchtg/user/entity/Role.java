@@ -1,10 +1,14 @@
 package com.hanghai.kchtg.user.entity;
 
 import com.hanghai.kchtg.common.entity.BaseEntity;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -41,8 +45,10 @@ public class Role extends BaseEntity {
     @Column(length = 500)
     private String description;
 
-    /** Danh sach cĂ¡c permission keys ma vai trĂ² nay so huu. */
-    @Column(columnDefinition = "TEXT")
+    /** Danh sách các permission keys mà vai trò này sở hữu. */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "role_permissions", joinColumns = @JoinColumn(name = "role_id"))
+    @Column(name = "permission")
     private List<String> permissions = new ArrayList<>();
 
     /** Trang tai vai trĂ². */

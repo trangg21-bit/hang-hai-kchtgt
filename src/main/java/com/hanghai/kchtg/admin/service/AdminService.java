@@ -54,7 +54,7 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public List<AdminAuditLog> findAuditLogs(UUID adminId, int page, int size) {
-        return auditLogRepo.findByAdminIdOrderByPerformedAtDesc(adminId)
+        return auditLogRepo.findByAdminIdOrderByCreatedAtDesc(adminId)
                 .stream()
                 .skip((long) page * size)
                 .limit(size)
@@ -63,7 +63,7 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public List<AdminAuditLog> findAllAuditLogs() {
-        return auditLogRepo.findAll(Sort.by("performedAt").descending());
+        return auditLogRepo.findAll(Sort.by("createdAt").descending());
     }
 
     // â”€â”€ MFA Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

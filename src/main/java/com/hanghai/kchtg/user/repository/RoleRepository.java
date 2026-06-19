@@ -3,6 +3,8 @@ package com.hanghai.kchtg.user.repository;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.RoleStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -31,9 +33,10 @@ public interface RoleRepository extends JpaRepository<Role, UUID> {
     List<Role> findByStatus(RoleStatus status);
 
     /**
-     * TĂ¬m role cĂ³ chá»©a permission cá»¥ thá»ƒ.
+     * Tìm role có chứa permission cụ thể.
      */
-    List<Role> findByPermissionsContaining(String permission);
+    @Query("SELECT r FROM Role r WHERE :permission MEMBER OF r.permissions")
+    List<Role> findByPermissionsContaining(@Param("permission") String permission);
 
     /**
      * Kiá»ƒm tra code cĂ³ tá»“n táº¡i ngoĂ i ID nĂ y (dĂ¹ng khi update).

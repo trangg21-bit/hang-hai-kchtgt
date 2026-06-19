@@ -14,7 +14,7 @@ import java.util.UUID;
 public interface AdminAuditLogRepository extends JpaRepository<AdminAuditLog, UUID>,
         JpaSpecificationExecutor<AdminAuditLog> {
 
-    List<AdminAuditLog> findByAdminIdOrderByPerformedAtDesc(UUID adminId);
+    List<AdminAuditLog> findByAdminIdOrderByCreatedAtDesc(UUID adminId);
 
-    List<AdminAuditLog> findByPerformedByOrderByPerformedAtDesc(UUID performedBy);
+    List<AdminAuditLog> findAllByOrderByCreatedAtDesc();
 }

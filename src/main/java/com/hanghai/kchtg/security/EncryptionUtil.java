@@ -35,7 +35,7 @@ public class EncryptionUtil {
      * @param base64Key Base64-encoded 256-bit key (32 bytes decoded)
      * @throws IllegalArgumentException if the key is not 32 bytes after decoding
      */
-    public EncryptionUtil(@Value("") String base64Key) {
+    public EncryptionUtil(@Value("${encryption.key}") String base64Key) {
         byte[] keyBytes = Base64.getDecoder().decode(base64Key);
         if (keyBytes.length != 32) {
             throw new IllegalArgumentException(

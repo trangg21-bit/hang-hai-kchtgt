@@ -1,0 +1,407 @@
+﻿[WebServer] 
+[WebServer] > frontend@0.0.0 dev
+[WebServer] > vite
+[WebServer] 
+[WebServer] 
+[WebServer]   VITE v8.0.16  ready in 242 ms
+[WebServer] 
+[WebServer]   ➜  Local:   http://localhost:3000/
+[WebServer]   ➜  Network: use --host to expose
+
+Running 14 tests using 1 worker
+
+  x   1 [chromium] › e2e\admin-account.spec.ts:12:3 › Quản lý tài khoản admin › Hiển thị danh sách admin (2.9s)
+  x   2 [chromium] › e2e\admin-account.spec.ts:17:3 › Quản lý tài khoản admin › Tạo mới admin account (11.9s)
+  x   3 [chromium] › e2e\admin-account.spec.ts:28:3 › Quản lý tài khoản admin › Sửa admin account (12.0s)
+  x   4 [chromium] › e2e\group-management.spec.ts:12:3 › Quản lý nhóm › Hiển thị danh sách nhóm (2.4s)
+  x   5 [chromium] › e2e\group-management.spec.ts:17:3 › Quản lý nhóm › Tạo mới nhóm (11.7s)
+  x   6 [chromium] › e2e\group-management.spec.ts:36:3 › Quản lý nhóm › Sửa thông tin nhóm (11.8s)
+  x   7 [chromium] › e2e\group-management.spec.ts:47:3 › Quản lý nhóm › Xóa nhóm (11.8s)
+  x   8 [chromium] › e2e\org-unit.spec.ts:12:3 › Quản lý đơn vị › Hiển thị danh sách đơn vị (2.6s)
+  x   9 [chromium] › e2e\org-unit.spec.ts:17:3 › Quản lý đơn vị › Tạo mới đơn vị (11.9s)
+  x  10 [chromium] › e2e\org-unit.spec.ts:28:3 › Quản lý đơn vị › Sửa đơn vị (11.8s)
+[WebServer] 7:51:50 PM [vite] (client) hmr update /src/pages/admins/AdminList.tsx
+  ok 11 [chromium] › e2e\role-management.spec.ts:12:3 › Quản lý vai trò (Role) › Hiển thị danh sách vai trò (2.4s)
+  x  12 [chromium] › e2e\role-management.spec.ts:17:3 › Quản lý vai trò (Role) › Tạo mới vai trò (11.2s)
+[WebServer] 7:52:12 PM [vite] (client) hmr update /src/pages/admins/AdminList.tsx
+  x  13 [chromium] › e2e\role-management.spec.ts:30:3 › Quản lý vai trò (Role) › Sửa vai trò (11.3s)
+  x  14 [chromium] › e2e\role-management.spec.ts:41:3 › Quản lý vai trò (Role) › Xóa vai trò (11.8s)
+
+
+  1) [chromium] › e2e\admin-account.spec.ts:12:3 › Quản lý tài khoản admin › Hiển thị danh sách admin 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('table')
+    Expected: visible
+    Error: strict mode violation: getByRole('table') resolved to 2 elements:
+        1) <table>…</table> aka getByRole('table').filter({ hasText: /^#Họ và tênTên đăng nhậpEmailVai tròTrạng tháiĐăng nhập cuốiThao tác$/ })
+        2) <table>…</table> aka getByRole('table').filter({ hasText: '#Họ và tênTên đăng nhậpEmailVai tròTrạng tháiĐăng nhập cuốiThao tác1Nguyễn Văn' })
+
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for getByRole('table')
+
+
+      12 |   test('Hiển thị danh sách admin', async ({ page }) => {
+      13 |     await page.goto('/admin');
+    > 14 |     await expect(page.getByRole('table')).toBeVisible();
+         |                                           ^
+      15 |   });
+      16 |
+      17 |   test('Tạo mới admin account', async ({ page }) => {
+        at C:\Users\trangtt1\hang-hai-kchtgt\frontend\e2e\admin-account.spec.ts:14:43
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\admin-account-Quản-lý-tài--71fb7-in-Hiển-thị-danh-sách-admin-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\admin-account-Quản-lý-tài--71fb7-in-Hiển-thị-danh-sách-admin-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\admin-account-Quản-lý-tài--71fb7-in-Hiển-thị-danh-sách-admin-chromium\error-context.md
+
+  2) [chromium] › e2e\admin-account.spec.ts:17:3 › Quản lý tài khoản admin › Tạo mới admin account ─
+
+    TimeoutError: locator.click: Timeout 10000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: /thêm/i })
+
+
+      17 |   test('Tạo mới admin account', async ({ page }) => {
+      18 |     await page.goto('/admin');
+    > 19 |     await page.getByRole('button', { name: /thêm/i }).click();
+         |                                                       ^
+      20 |
+      21 |     await page.getByLabel('Tên đăng nhập').fill('e2e_admin');
+      22 |     await page.getByLabel('Mật khẩu').fill('Pass123456');
+        at C:\Users\trangtt1\hang-hai-kchtgt\frontend\e2e\admin-account.spec.ts:19:55
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\admin-account-Quản-lý-tài-khoản-admin-Tạo-mới-admin-account-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\admin-account-Quản-lý-tài-khoản-admin-Tạo-mới-admin-account-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\admin-account-Quản-lý-tài-khoản-admin-Tạo-mới-admin-account-chromium\error-context.md
+
+  3) [chromium] › e2e\admin-account.spec.ts:28:3 › Quản lý tài khoản admin › Sửa admin account ─────
+
+    TimeoutError: locator.click: Timeout 10000ms exceeded.
+    Call log:
+      - waiting for locator('tr').first().getByRole('button', { name: /sửa/i })
+
+
+      29 |     await page.goto('/admin');
+      30 |     const firstRow = page.locator('tr').first();
+    > 31 |     await firstRow.getByRole('button', { name: /sửa/i }).click();
+         |                                                          ^
+      32 |
+      33 |     await page.getByRole('button', { name: /lưu/i }).click();
+      34 |
+        at C:\Users\trangtt1\hang-hai-kchtgt\frontend\e2e\admin-account.spec.ts:31:58
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\admin-account-Quản-lý-tài-khoản-admin-Sửa-admin-account-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\admin-account-Quản-lý-tài-khoản-admin-Sửa-admin-account-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\admin-account-Quản-lý-tài-khoản-admin-Sửa-admin-account-chromium\error-context.md
+
+  4) [chromium] › e2e\group-management.spec.ts:12:3 › Quản lý nhóm › Hiển thị danh sách nhóm ───────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('table')
+    Expected: visible
+    Error: strict mode violation: getByRole('table') resolved to 2 elements:
+        1) <table>…</table> aka getByRole('table').filter({ hasText: /^#Tên nhómMô tảThành viênTrạng tháiCập nhật cuốiThao tác$/ })
+        2) <table>…</table> aka getByRole('table').filter({ hasText: '#Tên nhómMô tảThành viênTrạng tháiCập nhật cuốiThao tác1Nhóm Quản trị viênNhóm' })
+
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for getByRole('table')
+
+
+      12 |   test('Hiển thị danh sách nhóm', async ({ page }) => {
+      13 |     await page.goto('/groups');
+    > 14 |     await expect(page.getByRole('table')).toBeVisible();
+         |                                           ^
+      15 |   });
+      16 |
+      17 |   test('Tạo mới nhóm', async ({ page }) => {
+        at C:\Users\trangtt1\hang-hai-kchtgt\frontend\e2e\group-management.spec.ts:14:43
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\group-management-Quản-lý-nhóm-Hiển-thị-danh-sách-nhóm-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\group-management-Quản-lý-nhóm-Hiển-thị-danh-sách-nhóm-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\group-management-Quản-lý-nhóm-Hiển-thị-danh-sách-nhóm-chromium\error-context.md
+
+  5) [chromium] › e2e\group-management.spec.ts:17:3 › Quản lý nhóm › Tạo mới nhóm ──────────────────
+
+    TimeoutError: locator.click: Timeout 10000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: /thêm/i })
+
+
+      20 |
+      21 |     // Click create button
+    > 22 |     await page.getByRole('button', { name: /thêm/i }).click();
+         |                                                       ^
+      23 |
+      24 |     // Fill form
+      25 |     await page.getByLabel('Tên nhóm').fill('Nhóm E2E Test');
+        at C:\Users\trangtt1\hang-hai-kchtgt\frontend\e2e\group-management.spec.ts:22:55
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\group-management-Quản-lý-nhóm-Tạo-mới-nhóm-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\group-management-Quản-lý-nhóm-Tạo-mới-nhóm-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\group-management-Quản-lý-nhóm-Tạo-mới-nhóm-chromium\error-context.md
+
+  6) [chromium] › e2e\group-management.spec.ts:36:3 › Quản lý nhóm › Sửa thông tin nhóm ────────────
+
+    TimeoutError: locator.click: Timeout 10000ms exceeded.
+    Call log:
+      - waiting for locator('tr').first().getByRole('button', { name: /sửa/i })
+
+
+      37 |     await page.goto('/groups');
+      38 |     const firstRow = page.locator('tr').first();
+    > 39 |     await firstRow.getByRole('button', { name: /sửa/i }).click();
+         |                                                          ^
+      40 |
+      41 |     await page.getByLabel('Mô tả').fill('Updated E2E test group');
+      42 |     await page.getByRole('button', { name: /lưu/i }).click();
+        at C:\Users\trangtt1\hang-hai-kchtgt\frontend\e2e\group-management.spec.ts:39:58
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\group-management-Quản-lý-nhóm-Sửa-thông-tin-nhóm-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\group-management-Quản-lý-nhóm-Sửa-thông-tin-nhóm-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\group-management-Quản-lý-nhóm-Sửa-thông-tin-nhóm-chromium\error-context.md
+
+  7) [chromium] › e2e\group-management.spec.ts:47:3 › Quản lý nhóm › Xóa nhóm ──────────────────────
+
+    TimeoutError: locator.click: Timeout 10000ms exceeded.
+    Call log:
+      - waiting for locator('tr').first().getByRole('button', { name: /xóa/i })
+
+
+      48 |     await page.goto('/groups');
+      49 |     const firstRow = page.locator('tr').first();
+    > 50 |     await firstRow.getByRole('button', { name: /xóa/i }).click();
+         |                                                          ^
+      51 |     await page.getByRole('button', { name: /xóa/i }).click();
+      52 |
+      53 |     await expect(page.locator('.ant-message-success')).toBeVisible({ timeout: 5000 });
+        at C:\Users\trangtt1\hang-hai-kchtgt\frontend\e2e\group-management.spec.ts:50:58
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\group-management-Quản-lý-nhóm-Xóa-nhóm-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\group-management-Quản-lý-nhóm-Xóa-nhóm-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\group-management-Quản-lý-nhóm-Xóa-nhóm-chromium\error-context.md
+
+  8) [chromium] › e2e\org-unit.spec.ts:12:3 › Quản lý đơn vị › Hiển thị danh sách đơn vị ───────────
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('table')
+    Expected: visible
+    Error: strict mode violation: getByRole('table') resolved to 2 elements:
+        1) <table>…</table> aka getByRole('table').filter({ hasText: /^#Tên đơn vịCấpĐơn vị chaTrụ sởTrưởng đơn vịTr\. tháiCập nhậtThao tác$/ })
+        2) <table>…</table> aka getByRole('table').filter({ hasText: '#Tên đơn vịCấpĐơn vị chaTrụ sởTrưởng đơn vịTr. tháiCập nhậtThao tác1Cơ quan Đầu' })
+
+    Call log:
+      - Expect "toBeVisible" with timeout 5000ms
+      - waiting for getByRole('table')
+
+
+      12 |   test('Hiển thị danh sách đơn vị', async ({ page }) => {
+      13 |     await page.goto('/organizations');
+    > 14 |     await expect(page.getByRole('table')).toBeVisible();
+         |                                           ^
+      15 |   });
+      16 |
+      17 |   test('Tạo mới đơn vị', async ({ page }) => {
+        at C:\Users\trangtt1\hang-hai-kchtgt\frontend\e2e\org-unit.spec.ts:14:43
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\org-unit-Quản-lý-đơn-vị-Hiển-thị-danh-sách-đơn-vị-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\org-unit-Quản-lý-đơn-vị-Hiển-thị-danh-sách-đơn-vị-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\org-unit-Quản-lý-đơn-vị-Hiển-thị-danh-sách-đơn-vị-chromium\error-context.md
+
+  9) [chromium] › e2e\org-unit.spec.ts:17:3 › Quản lý đơn vị › Tạo mới đơn vị ──────────────────────
+
+    TimeoutError: locator.click: Timeout 10000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: /thêm/i })
+
+
+      17 |   test('Tạo mới đơn vị', async ({ page }) => {
+      18 |     await page.goto('/organizations');
+    > 19 |     await page.getByRole('button', { name: /thêm/i }).click();
+         |                                                       ^
+      20 |
+      21 |     await page.getByLabel('Tên đơn vị').fill('Phòng E2E Test');
+      22 |     await page.getByLabel('Mã đơn vị').fill('E2E_DEPT');
+        at C:\Users\trangtt1\hang-hai-kchtgt\frontend\e2e\org-unit.spec.ts:19:55
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\org-unit-Quản-lý-đơn-vị-Tạo-mới-đơn-vị-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\org-unit-Quản-lý-đơn-vị-Tạo-mới-đơn-vị-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\org-unit-Quản-lý-đơn-vị-Tạo-mới-đơn-vị-chromium\error-context.md
+
+  10) [chromium] › e2e\org-unit.spec.ts:28:3 › Quản lý đơn vị › Sửa đơn vị ─────────────────────────
+
+    TimeoutError: locator.click: Timeout 10000ms exceeded.
+    Call log:
+      - waiting for locator('tr').first().getByRole('button', { name: /sửa/i })
+
+
+      29 |     await page.goto('/organizations');
+      30 |     const firstRow = page.locator('tr').first();
+    > 31 |     await firstRow.getByRole('button', { name: /sửa/i }).click();
+         |                                                          ^
+      32 |
+      33 |     await page.getByLabel('Tên đơn vị').fill('Updated E2E Dept');
+      34 |     await page.getByRole('button', { name: /lưu/i }).click();
+        at C:\Users\trangtt1\hang-hai-kchtgt\frontend\e2e\org-unit.spec.ts:31:58
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\org-unit-Quản-lý-đơn-vị-Sửa-đơn-vị-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\org-unit-Quản-lý-đơn-vị-Sửa-đơn-vị-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\org-unit-Quản-lý-đơn-vị-Sửa-đơn-vị-chromium\error-context.md
+
+  11) [chromium] › e2e\role-management.spec.ts:17:3 › Quản lý vai trò (Role) › Tạo mới vai trò ─────
+
+    TimeoutError: locator.fill: Timeout 10000ms exceeded.
+    Call log:
+      - waiting for getByLabel('Tài khoản')
+
+
+      4 |   test.beforeEach(async ({ page }) => {
+      5 |     await page.goto('/login');
+    > 6 |     await page.getByLabel('Tài khoản').fill('admin');
+        |                                        ^
+      7 |     await page.getByLabel('Mật khẩu').fill('admin123');
+      8 |     await page.getByRole('button', { name: /đăng nhập/i }).click();
+      9 |     await page.waitForURL(/\/users/);
+        at C:\Users\trangtt1\hang-hai-kchtgt\frontend\e2e\role-management.spec.ts:6:40
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\role-management-Quản-lý-vai-trò-Role-Tạo-mới-vai-trò-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\role-management-Quản-lý-vai-trò-Role-Tạo-mới-vai-trò-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\role-management-Quản-lý-vai-trò-Role-Tạo-mới-vai-trò-chromium\error-context.md
+
+  12) [chromium] › e2e\role-management.spec.ts:30:3 › Quản lý vai trò (Role) › Sửa vai trò ─────────
+
+    TimeoutError: locator.fill: Timeout 10000ms exceeded.
+    Call log:
+      - waiting for getByLabel('Tài khoản')
+
+
+      4 |   test.beforeEach(async ({ page }) => {
+      5 |     await page.goto('/login');
+    > 6 |     await page.getByLabel('Tài khoản').fill('admin');
+        |                                        ^
+      7 |     await page.getByLabel('Mật khẩu').fill('admin123');
+      8 |     await page.getByRole('button', { name: /đăng nhập/i }).click();
+      9 |     await page.waitForURL(/\/users/);
+        at C:\Users\trangtt1\hang-hai-kchtgt\frontend\e2e\role-management.spec.ts:6:40
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\role-management-Quản-lý-vai-trò-Role-Sửa-vai-trò-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\role-management-Quản-lý-vai-trò-Role-Sửa-vai-trò-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\role-management-Quản-lý-vai-trò-Role-Sửa-vai-trò-chromium\error-context.md
+
+  13) [chromium] › e2e\role-management.spec.ts:41:3 › Quản lý vai trò (Role) › Xóa vai trò ─────────
+
+    TimeoutError: locator.click: Timeout 10000ms exceeded.
+    Call log:
+      - waiting for locator('tr').first().getByRole('button', { name: /xóa/i })
+
+
+      42 |     await page.goto('/roles');
+      43 |     const firstRow = page.locator('tr').first();
+    > 44 |     await firstRow.getByRole('button', { name: /xóa/i }).click();
+         |                                                          ^
+      45 |     await page.getByRole('button', { name: /xóa/i }).click();
+      46 |
+      47 |     await expect(page.locator('.ant-message-success')).toBeVisible({ timeout: 5000 });
+        at C:\Users\trangtt1\hang-hai-kchtgt\frontend\e2e\role-management.spec.ts:44:58
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\role-management-Quản-lý-vai-trò-Role-Xóa-vai-trò-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\role-management-Quản-lý-vai-trò-Role-Xóa-vai-trò-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\role-management-Quản-lý-vai-trò-Role-Xóa-vai-trò-chromium\error-context.md
+
+  13 failed
+    [chromium] › e2e\admin-account.spec.ts:12:3 › Quản lý tài khoản admin › Hiển thị danh sách admin 
+    [chromium] › e2e\admin-account.spec.ts:17:3 › Quản lý tài khoản admin › Tạo mới admin account ──
+    [chromium] › e2e\admin-account.spec.ts:28:3 › Quản lý tài khoản admin › Sửa admin account ──────
+    [chromium] › e2e\group-management.spec.ts:12:3 › Quản lý nhóm › Hiển thị danh sách nhóm ────────
+    [chromium] › e2e\group-management.spec.ts:17:3 › Quản lý nhóm › Tạo mới nhóm ───────────────────
+    [chromium] › e2e\group-management.spec.ts:36:3 › Quản lý nhóm › Sửa thông tin nhóm ─────────────
+    [chromium] › e2e\group-management.spec.ts:47:3 › Quản lý nhóm › Xóa nhóm ───────────────────────
+    [chromium] › e2e\org-unit.spec.ts:12:3 › Quản lý đơn vị › Hiển thị danh sách đơn vị ────────────
+    [chromium] › e2e\org-unit.spec.ts:17:3 › Quản lý đơn vị › Tạo mới đơn vị ───────────────────────
+    [chromium] › e2e\org-unit.spec.ts:28:3 › Quản lý đơn vị › Sửa đơn vị ───────────────────────────
+    [chromium] › e2e\role-management.spec.ts:17:3 › Quản lý vai trò (Role) › Tạo mới vai trò ───────
+    [chromium] › e2e\role-management.spec.ts:30:3 › Quản lý vai trò (Role) › Sửa vai trò ───────────
+    [chromium] › e2e\role-management.spec.ts:41:3 › Quản lý vai trò (Role) › Xóa vai trò ───────────
+  1 passed (2.3m)

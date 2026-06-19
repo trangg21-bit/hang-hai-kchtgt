@@ -5,6 +5,10 @@ import viVN from 'antd/locale/vi_VN';
 import AppLayout from './components/AppLayout';
 import UsersPage from './pages/UsersPage';
 import RolesPage from './pages/RolesPage';
+import LoginPage from './pages/LoginPage';
+import AdminList from './pages/admins/AdminList';
+import GroupList from './pages/groups/GroupList';
+import UnitList from './pages/organizations/UnitList';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,10 +41,14 @@ export default function App() {
         <AntApp>
           <BrowserRouter>
             <Routes>
+              <Route path="/login" element={<LoginPage />} />
               <Route element={<AppLayout />}>
                 <Route path="/" element={<Navigate to="/users" replace />} />
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/roles" element={<RolesPage />} />
+                <Route path="/admin" element={<AdminList />} />
+                <Route path="/groups" element={<GroupList />} />
+                <Route path="/organizations" element={<UnitList />} />
               </Route>
             </Routes>
           </BrowserRouter>

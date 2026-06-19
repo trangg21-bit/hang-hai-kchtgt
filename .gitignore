@@ -48,3 +48,6 @@ __pycache__/
 *.pyc
 .env
 venv/
+
+# ===== Playwright E2E auth state =====
+frontend/e2e/.auth/

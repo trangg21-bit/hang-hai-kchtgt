@@ -1,4 +1,5 @@
-import { Table, TableProps, Button, Space, Tooltip, Tag } from 'antd';
+import { Table, Button, Space, Tooltip, Tag } from 'antd';
+import type { TableProps } from 'antd';
 import { EditOutlined, DeleteOutlined, LoadingOutlined } from '@ant-design/icons';
 import type { ReactNode } from 'react';
 

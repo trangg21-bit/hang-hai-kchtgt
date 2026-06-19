@@ -22,11 +22,13 @@ public interface UnitRepository extends JpaRepository<OrgUnit, UUID> {
     /**
      * T́m t?t c? các node g?c (không có don v? cha).
      */
+    @Query("SELECT u FROM OrgUnit u WHERE u.parentId IS NULL")
     List<OrgUnit> findAllRoots();
 
     /**
      * T́m tr?c ti?p t?t c? con c?a m?t don v? c? th?.
      */
+    @Query("SELECT u FROM OrgUnit u WHERE u.parentId = :unitId")
     List<OrgUnit> findAllChildren(@Param("unitId") UUID unitId);
 
     /**

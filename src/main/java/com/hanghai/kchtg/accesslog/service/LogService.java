@@ -144,7 +144,7 @@ public class LogService {
      * Xoa cĂƒÂ¡c access logs cu hon retentionDays.
      * Chay tu dong theo cron schedule (xem {@link com.hanghai.kchtg.common.scheduler.LogCleanupScheduler}).
      */
-    @Scheduled(cron = "")
+    @Scheduled(cron = "0 0 2 * * ?")
     @Transactional
     public void cleanupOldLogs() {
         LocalDateTime threshold = LocalDateTime.now().minusDays(retentionDays);

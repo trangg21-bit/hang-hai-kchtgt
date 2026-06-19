@@ -20,6 +20,25 @@ export const ALL_PERMISSIONS: Permission[] = [
   { key: 'role.edit', name: 'Sửa vai trò', group: 'role_management', description: 'Chỉnh sửa vai trò và phân quyền' },
   { key: 'role.delete', name: 'Xóa vai trò', group: 'role_management', description: 'Xóa vai trò' },
 
+  // Admin Management
+  { key: 'admin.view', name: 'Xem danh sách quản trị viên', group: 'admin_management', description: 'Xem danh sách và thông tin quản trị viên' },
+  { key: 'admin.create', name: 'Tạo quản trị viên', group: 'admin_management', description: 'Thêm mới tài khoản quản trị viên' },
+  { key: 'admin.edit', name: 'Sửa quản trị viên', group: 'admin_management', description: 'Chỉnh sửa thông tin quản trị viên' },
+  { key: 'admin.delete', name: 'Xóa quản trị viên', group: 'admin_management', description: 'Xóa tài khoản quản trị viên' },
+  { key: 'admin.lock', name: 'Khóa/Mở khóa quản trị viên', group: 'admin_management', description: 'Khóa hoặc mở khóa quản trị viên' },
+
+  // Group Management
+  { key: 'group.view', name: 'Xem danh sách nhóm', group: 'group_management', description: 'Xem danh sách và thông tin nhóm' },
+  { key: 'group.create', name: 'Tạo nhóm', group: 'group_management', description: 'Thêm mới nhóm người dùng' },
+  { key: 'group.edit', name: 'Sửa nhóm', group: 'group_management', description: 'Chỉnh sửa thông tin nhóm' },
+  { key: 'group.delete', name: 'Xóa nhóm', group: 'group_management', description: 'Xóa nhóm người dùng' },
+
+  // Organization Management
+  { key: 'org.view', name: 'Xem danh sách đơn vị', group: 'org_management', description: 'Xem danh sách và thông tin đơn vị' },
+  { key: 'org.create', name: 'Tạo đơn vị', group: 'org_management', description: 'Thêm mới đơn vị hành chính' },
+  { key: 'org.edit', name: 'Sửa đơn vị', group: 'org_management', description: 'Chỉnh sửa thông tin đơn vị' },
+  { key: 'org.delete', name: 'Xóa đơn vị', group: 'org_management', description: 'Xóa đơn vị hành chính' },
+
   // System
   { key: 'system.settings', name: 'Cấu hình hệ thống', group: 'system', description: 'Quản lý cấu hình hệ thống' },
   { key: 'system.logs', name: 'Xem nhật ký hệ thống', group: 'system', description: 'Xem nhật ký truy cập và hoạt động' },
