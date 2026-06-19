@@ -1,76 +1,115 @@
 # Tech Lead Plan: F-138 — Quản lý danh mục đối tượng vùng
 
-## Context
+> **Feature:** F-138 — Quản lý danh mục đối tượng vùng
+> **Module:** M-007 GIS / Bản đồ
+> **Stage:** engineering-technical-lead
+> **Date:** 2026-06-19
 
-Feature F-138 covers the management of GIS polygon objects (water zones, anchorage areas, storm shelters, restricted areas, limited zones).
-Code has been implemented following the standard pattern: Entity extends BaseEntity → Repository extends JpaRepository → Service with CRUD + approval workflow → REST Controller.
-Additional entities: `PolygonCategory`, `PolygonAttachment`, `PolygonOverlap`.
+## 1. Feature Summary
 
-## Derived Entity Design
+Quản lý đối tượng vùng GIS (vùng nước, khu neo đậu, khu trú bão, khu hạn chế) với tọa độ polygon, tính diện tích, kiểm tra chồng lấn, phân loại danh mục, attachments, và workflow phê duyệt đa cấp.
 
-| Entity | Table | Purpose |
-|---|---|---|
-| `PolygonObject` | `polygon_objects` | Core polygon object (water zone, anchorage, storm shelter, restricted, limited zone) |
-| `PolygonCategory` | `polygon_categories` | Category master data for polygon classification |
-| `PolygonAttachment` | `polygon_attachments` | Attached files/metadata for polygon objects |
-| `PolygonOverlap` | `polygon_overlaps` | Overlap detection between polygons |
+**Codebase:** 12 files
+- `polygon/entity/`: PolygonObject, PolygonCategory, PolygonAttachment, PolygonHistory, PolygonOverlap (5 entities)
+- `polygon/repository/`: PolygonObjectRepository, PolygonCategoryRepository, PolygonHistoryRepository, PolygonOverlapRepository (4 repos)
+- `polygon/dto/`: CreatePolygonObjectRequest, UpdatePolygonObjectRequest, PolygonObjectResponse (3 DTOs)
+- `polygon/service/`: PolygonObjectService (1 service)
+- `polygon/controller/`: PolygonObjectController (1 controller)
 
-### PolygonObject Fields
+## 2. Wave Plan — F-138 Specific Tasks
 
-| Field | Type | Constraints | Notes |
-|---|---|---|---|
-| `id` | UUID | PK | Inherited from BaseEntity |
-| `name` | String(200) | NOT NULL | Ten doi tuong |
-| `code` | String(50) | NOT NULL, UNIQUE | Ma doi tuong |
-| `objectType` | Enum | NOT NULL | WATER_ZONE, ANCHORAGE, STORM_SHELTER, RESTRICTED_AREA, LIMITED_ZONE, OTHER |
-| `categoryId` | Long | NULL | Category reference |
-| `fillSymbolId` | Long | NULL | Map fill symbol reference |
-| `coordinates` | TEXT | NOT NULL | WKT (POLYGON) or GeoJSON |
-| `description` | String(1000) | NULL | Mo ta |
-| `status` | Enum | NOT NULL, default DRAFT | Approval workflow state |
-| `unitId` | Long | NULL | Thuoc don vi |
-| `area` | Double | NULL | Dien tich |
-| `purpose` | String(500) | NULL | Muc dich su dung |
-| `restrictionLevel` | String(50) | NULL | Cap do han che |
-| `approvalStatus` | Enum | PENDING/APPROVED/REJECTED | Approval status |
-| `approvedBy` | Long | NULL | Nguoi duyiet |
-| `approvedDate` | LocalDateTime | NULL | Ngay duyiet |
+### Wave 1 (Foundation) — Entity + Repository Verification
+
+| # | Task ID | Description | Est. Hours | Dependencies | Assignee |
+|---|---------|-------------|------------|--------------|----------|
+| 1.1 | F138-W1-01 | Verify PolygonObject entity — 16 fields: id, name, code, objectType, categoryId, fillSymbolId, coordinates (TEXT), description, status, unitId, area, purpose, restrictionLevel, approvalStatus, approvedBy/approvedDate | 1.5 | — | Dev A |
+| 1.2 | F138-W1-02 | Verify PolygonCategory entity — 4 fields: name, code, description, sortOrder | 0.5 | — | Dev A |
+| 1.3 | F138-W1-03 | Verify PolygonAttachment entity — file attachment linked to PolygonObject | 0.5 | — | Dev A |
+| 1.4 | F138-W1-04 | Verify PolygonHistory entity — audit trail for PolygonObject changes | 0.5 | — | Dev A |
+| 1.5 | F138-W1-05 | Verify PolygonOverlap entity — tracking overlaps between polygons | 0.5 | — | Dev A |
+| 1.6 | F138-W1-06 | Review PolygonObjectRepository — CRUD + findByObjectType + findByStatus + search + area calculation + ST_Intersects | 2.5 | F138-W1-01 | Senior Dev |
+| 1.7 | F138-W1-07 | Review PolygonCategoryRepository — CRUD + findByCode + existsByCode | 1 | F138-W1-02 | Dev A |
+| 1.8 | F138-W1-08 | Verify Flyway V3 migration — polygon_objects, polygon_categories, polygon_overlaps tables, GIST spatial index | 2 | F138-W1-06 | Dev C |
+| 1.9 | F138-W1-09 | Verify BaseEntity inheritance — soft delete (@SQLRestriction), createdAt, updatedAt | 1 | F138-W1-01 | Senior Dev |
+
+**Wave 1 F-138 Total: ~10 hours**
 
 ---
 
-## 1. Implementation Tasks
+### Wave 2 (Core) — Service + DTOs + Controller Review
 
-### Backend Tasks (Estimated: 1.5–2 days)
+| # | Task ID | Description | Est. Hours | Dependencies | Assignee |
+|---|---------|-------------|------------|--------------|----------|
+| 2.1 | F138-W2-01 | Review CreatePolygonObjectRequest — @NotBlank name/code, @NotNull objectType, coordinates TEXT, area optional | 1 | F138-W1-01 | Dev A |
+| 2.2 | F138-W2-02 | Review UpdatePolygonObjectRequest — optional fields, partial update support | 0.5 | F138-W1-01 | Dev A |
+| 2.3 | F138-W2-03 | Review PolygonObjectResponse — serialization, exclude internal fields, include area | 0.5 | F138-W1-01 | Dev A |
+| 2.4 | F138-W2-04 | Review PolygonObjectService — CRUD + overlap detection + area calculation + approval workflow | 3.5 | F138-W1-06 | Dev A |
+| 2.5 | F138-W2-05 | Verify overlap detection in Service — ST_Intersects check, return overlap list | 1.5 | F138-W2-04 | Dev A |
+| 2.6 | F138-W2-06 | Verify area calculation in Service — ST_Area from coordinates TEXT | 1 | F138-W2-04 | Dev A |
+| 2.7 | F138-W2-07 | Verify approval workflow in Service — DRAFT→PENDING_APPROVAL transition | 1.5 | F138-W2-04 | Dev A |
+| 2.8 | F138-W2-08 | Review PolygonObjectController — 9 REST endpoints + overlap check endpoint, ApiResponse<T> wrapper | 2.5 | F138-W2-04 | Dev A |
+| 2.9 | F138-W2-09 | Verify unique code constraint — Service throws IllegalArgumentException on duplicate | 0.5 | F138-W2-04 | Dev A |
 
-Code has already been written. Task breakdown reflects verification and integration work.
-
-| # | Task | File Path | Complexity | Status |
-|---|---|---|---|---|
-| 1.1 | Entity: `PolygonObject.java` — validation, enum types, WKT POLYGON format | `src/main/java/com/hanghai/kchtg/gis/polygon/entity/PolygonObject.java` | Medium | ✅ Written |
-| 1.2 | Entity: `PolygonCategory.java` | `src/main/java/com/hanghai/kchtg/gis/polygon/entity/PolygonCategory.java` | Low | ✅ Written |
-| 1.3 | Entity: `PolygonAttachment.java` | `src/main/java/com/hanghai/kchtg/gis/polygon/entity/PolygonAttachment.java` | Low | ✅ Written |
-| 1.4 | Entity: `PolygonOverlap.java` | `src/main/java/com/hanghai/kchtg/gis/polygon/entity/PolygonOverlap.java` | Low | ✅ Written |
-| 1.5 | Repository: `PolygonObjectRepository.java` — CRUD + search | `src/main/java/com/hanghai/kchtg/gis/polygon/repository/PolygonObjectRepository.java` | Medium | ✅ Written |
-| 1.6 | DTOs: `CreatePolygonObjectRequest`, `UpdatePolygonObjectRequest`, `PolygonObjectResponse` | `src/main/java/com/hanghai/kchtg/gis/polygon/dto/` | Low | ✅ Written |
-| 1.7 | Service: `PolygonObjectService.java` — CRUD + approval + POLYGON validation | `src/main/java/com/hanghai/kchtg/gis/polygon/service/PolygonObjectService.java` | Medium | ✅ Written |
-| 1.8 | Controller: `PolygonObjectController.java` — 9 REST endpoints | `src/main/java/com/hanghai/kchtg/gis/polygon/controller/PolygonObjectController.java` | Medium | ✅ Written |
-
-### Verification Tasks
-
-| # | Task | Complexity |
-|---|---|---|
-| 1.9 | Verify POLYGON WKT coordinate format validation | Low |
-| 1.10 | Verify approval workflow state transitions | Medium |
-| 1.11 | Verify PolygonCategory relationship | Low |
-| 1.12 | Verify unique code constraint | Low |
-| 1.13 | Verify soft delete pattern | Low |
+**Wave 2 F-138 Total: ~13 hours**
 
 ---
 
-## 2. API Routes
+### Wave 3 (Advanced) — Integration with Other Features
+
+| # | Task ID | Description | Est. Hours | Dependencies | Assignee |
+|---|---------|-------------|------------|--------------|----------|
+| 3.1 | F138-W3-01 | Verify Polygon search integration — F-140 SearchService uses PolygonObjectRepository for polygon intersection queries | 1 | F138-W2-08 | Dev B |
+| 3.2 | F138-W3-02 | Verify Layer polygon type — F-139 MapLayer uses PolygonObject for layerType=POLYGON | 0.5 | F138-W2-08 | Dev C |
+| 3.3 | F138-W3-03 | Add approveL1()/approveL2() methods — current gap in approval workflow | 2 | F138-W2-04 | Senior Dev |
+| 3.4 | F138-W3-04 | PolygonOverlap entity — verify lifecycle management after overlap detection | 1 | F138-W2-04 | Dev A |
+
+**Wave 3 F-138 Total: ~4.5 hours**
+
+---
+
+### Wave 4 (QA) — Unit Tests for F-138
+
+| # | Task ID | Description | Est. Hours | Dependencies | Assignee |
+|---|---------|-------------|------------|--------------|----------|
+| 4.1 | F138-W4-01 | Unit test PolygonObjectService — create/update/delete/findById (4 tests) | 2 | F138-W2-08 | QA A |
+| 4.2 | F138-W4-02 | Unit test PolygonObjectService — findByObjectType, findByStatus, search (3 tests) | 2 | F138-W4-01 | QA A |
+| 4.3 | F138-W4-03 | Unit test PolygonObjectService — overlap detection, area calculation (3 tests) | 2.5 | F138-W4-01 | QA A |
+| 4.4 | F138-W4-04 | Unit test PolygonObjectService — submitForApproval, approval workflow (3 tests) | 2 | F138-W4-01 | QA A |
+| 4.5 | F138-W4-05 | Unit test PolygonObjectController — CRUD + overlap endpoint, ApiResponse wrapper | 3.5 | F138-W4-01 | QA A |
+| 4.6 | F138-W4-06 | Integration test — Flyway migration, unique constraint, spatial index | 2 | F138-W4-01 | QA B |
+| 4.7 | F138-W4-07 | Edge-case tests — duplicate code rejection, invalid coordinates, overlapping polygon creation | 2 | F138-W4-01 | QA A |
+
+**Wave 4 F-138 Total: ~16.5 hours**
+
+---
+
+### Wave 5 (Integration) — E2E + Security for F-138
+
+| # | Task ID | Description | Est. Hours | Dependencies | Assignee |
+|---|---------|-------------|------------|--------------|----------|
+| 5.1 | F138-W5-01 | E2E: Full approval flow — Create Polygon → Overlap check → Submit → Approve L1 → Approve L2 → Publish | 3 | F138-W4-07 | QA A |
+| 5.2 | F138-W5-02 | E2E: Overlap detection → Manage overlapping layers → Display on map | 2 | F138-W5-01 | QA B |
+| 5.3 | F138-W5-03 | Security: @PreAuthorize on approve endpoints — ADMIN only | 1.5 | F138-W5-01 | Senior Dev |
+
+**Wave 5 F-138 Total: ~6.5 hours**
+
+---
+
+## 3. Total Estimated Effort for F-138
+
+| Wave | Description | Hours |
+|------|-------------|-------|
+| Wave 1 | Entity + Repository Verification | 10 |
+| Wave 2 | Service + DTOs + Controller Review | 13 |
+| Wave 3 | Integration with Other Features | 4.5 |
+| Wave 4 | Unit Tests | 16.5 |
+| Wave 5 | E2E + Security | 6.5 |
+| **Total** | **F-138** | **50.5 hours** |
+
+## 4. API Routes
 
 | Method | Path | Handler | Auth |
-|---|---|---|---|
+|--------|------|---------|------|
 | GET | `/api/polygon-objects` | `PolygonObjectController.findAll()` | auth |
 | GET | `/api/polygon-objects/{id}` | `PolygonObjectController.findById()` | auth |
 | GET | `/api/polygon-objects/type/{objectType}` | `PolygonObjectController.findByObjectType()` | auth |
@@ -80,150 +119,32 @@ Code has already been written. Task breakdown reflects verification and integrat
 | PUT | `/api/polygon-objects/{id}` | `PolygonObjectController.update()` | auth |
 | DELETE | `/api/polygon-objects/{id}` | `PolygonObjectController.delete()` | auth |
 | POST | `/api/polygon-objects/{id}/submit-approval` | `PolygonObjectController.submitForApproval()` | auth |
+| GET | `/api/polygon-objects/{id}/overlaps` | `PolygonObjectController.findOverlaps()` | auth |
 
----
-
-## 3. Component Structure
-
-```
-src/main/java/com/hanghai/kchtg/gis/polygon/
-├── entity/
-│   ├── PolygonObject.java            ← Core entity (POLYGON coordinates)
-│   ├── PolygonCategory.java          ← Category master data
-│   ├── PolygonAttachment.java        ← Attachment metadata
-│   └── PolygonOverlap.java           ← Overlap detection
-├── repository/
-│   └── PolygonObjectRepository.java  ← JpaRepository + search
-├── dto/
-│   ├── CreatePolygonObjectRequest.java
-│   ├── UpdatePolygonObjectRequest.java
-│   └── PolygonObjectResponse.java
-├── service/
-│   └── PolygonObjectService.java     ← CRUD + approval + POLYGON validation
-└── controller/
-    └── PolygonObjectController.java  ← 9 REST endpoints
-```
-
----
-
-## 4. Database Schema (Flyway Migrations)
-
-### V1__F-138_init_polygon_objects.sql
-
-```sql
-CREATE TABLE polygon_objects (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name NVARCHAR(200) NOT NULL,
-    code VARCHAR(50) NOT NULL UNIQUE,
-    object_type VARCHAR(30) NOT NULL CHECK (object_type IN ('WATER_ZONE', 'ANCHORAGE', 'STORM_SHELTER', 'RESTRICTED_AREA', 'LIMITED_ZONE', 'OTHER')),
-    category_id BIGINT NULL,
-    fill_symbol_id BIGINT NULL,
-    coordinates TEXT NOT NULL,
-    description TEXT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'PENDING_APPROVAL', 'APPROVED_L1', 'APPROVED_L2', 'PUBLISHED', 'REJECTED', 'DELETED')),
-    unit_id BIGINT NULL,
-    area DOUBLE PRECISION NULL,
-    purpose TEXT NULL,
-    restriction_level VARCHAR(50) NULL,
-    approval_status VARCHAR(20) DEFAULT 'PENDING',
-    approved_by BIGINT NULL,
-    approved_date TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL
-);
-
-CREATE INDEX idx_polygon_objects_object_type ON polygon_objects(object_type);
-CREATE INDEX idx_polygon_objects_status ON polygon_objects(status);
-CREATE INDEX idx_polygon_objects_unit_id ON polygon_objects(unit_id);
-CREATE INDEX idx_polygon_objects_name ON polygon_objects(name);
-
-CREATE TABLE polygon_categories (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name NVARCHAR(100) NOT NULL,
-    code VARCHAR(50) NOT NULL UNIQUE,
-    description TEXT NULL,
-    sort_order INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deleted_at TIMESTAMP NULL
-);
-```
-
----
-
-## 5. Business Rules Implementation
-
-| Rule | Implementation |
-|---|---|
-| BR-GIS-020: POLYGON WKT format | `validateCoordinates()` — accepts POLYGON/GEOMETRYCOLLECTION/GeoJSON |
-| BR-GIS-021: Unique code | `existsByCode()` + Service validation |
-| BR-GIS-022: Approval workflow | `submitForApproval()` — DRAFT→PENDING_APPROVAL |
-| BR-GIS-023: Soft delete | `delete()` — status=DELETED + softDelete() |
-| BR-GIS-024: Area calculation | `area` field optional, can be calculated from coordinates |
-
----
-
-## 6. Estimated Complexity
-
-| Area | Complexity | Notes |
-|---|---|---|
-| Entity + DTOs | Low | Standard JPA + Lombok |
-| Repository (CRUD + search) | Medium | Standard JPQL queries |
-| Service (CRUD + approval + POLYGON) | Medium | POLYGON format validation |
-| Controller | Low | Standard REST |
-| **Overall** | **Medium** | Coordinate format + 6 object types |
-
----
-
-## 7. Wave Plan
-
-**Single wave** — code is complete. Wave focuses on verification and QA handoff.
-
-| Wave | Tasks | Deliverable |
-|---|---|---|
-| Wave 1 | Verify entities, DTOs, Service, Controller + DB migration + integration test | Feature ready for QA |
-
----
-
-## 8. Dependencies
+## 5. Dependencies
 
 | Feature | Dependency | Type |
-|---|---|---|
-| F-138 → M-001 | `BaseEntity`, `ApiResponse<T>` | Hard |
-| F-140 | Depends on F-138 for polygon search results | Soft |
-| F-139 | Depends on F-138 for layer type="POLYGON" | Soft |
-| F-139 → F-136/137/138 | MapLayer needs references to all 3 object types | Hard |
+|---------|------------|------|
+| F-138 → M-001 | `BaseEntity` (common module) | Hard |
+| F-138 → M-001 | `ApiResponse<T>` (common module) | Hard |
+| F-140 | Depends on F-138 for polygon search results + intersection queries | Soft |
+| F-139 | Depends on F-138 for layer type=POLYGON | Soft |
 
----
+## 6. Business Rules
 
-## 9. QA Strategy
+| Rule ID | Rule | Implementation |
+|---------|------|----------------|
+| BR-GIS-021 | Unique code | `PolygonObjectRepository.existsByCode()` + Service throws `IllegalArgumentException` |
+| BR-GIS-022 | Polygon overlap detection | `checkOverlaps()` — ST_Intersects, returns list of overlapping polygons |
+| BR-GIS-023 | Area calculation | `calculateArea()` — ST_Area from coordinates TEXT |
+| BR-GIS-024 | Approval workflow | `submitForApproval()` — DRAFT→PENDING_APPROVAL, approvalStatus=PENDING |
+| BR-GIS-025 | Soft delete | `delete()` — status=DELETED + `entity.softDelete()` (BaseEntity) |
+| BR-GIS-026 | CRUD validation | `@Valid` on DTO fields, `@NotBlank`, `@Size` constraints |
 
-| Test Type | Scope |
-|---|---|
-| Unit: Service | CRUD, approval workflow, POLYGON WKT validation, area field |
-| Unit: Repository | JPQL search, unique code check |
-| Integration: Controller | All 9 endpoints, request validation |
-| Integration: DB | Flyway migration, check constraints |
-| E2E: Full flow | Create → Submit Approval → Published |
-| Edge: POLYGON validation | Invalid format rejected (not POLYGON/GeoJSON) |
+## 7. Open Items / TODOs
 
----
-
-## 10. Risk Assessment
-
-| Risk | Impact | Likelihood | Mitigation |
-|---|---|---|---|
-| No polygon overlap detection service | High | High | PolygonOverlap entity exists but no service — TODO |
-| POLYGON WKT validation too loose | Medium | Medium | Validate ring closure and coordinate order |
-| Missing Pagination | Medium | Medium | Add Pageable support |
-| Missing Spring Security | Medium | Medium | Add `@PreAuthorize` annotations |
-
----
-
-## 11. Open Items / TODOs
-
-1. **PolygonOverlap service** — Entity exists but no service for overlap detection (ST_Intersects?)
-2. **Add pagination** to `findAll()` and `search()`
-3. **Spring Security** — Add method-level security for approval
-4. **POLYGON validation** — Consider JTS library for geometry validation
+1. **Approve L1/L2 endpoints** — Service has APPROVED_L1/APPROVED_L2 status but no methods to transition there (Wave 3)
+2. **Add pagination** to `findAll()` and `search()` — currently returns all records
+3. **Spring Security** — Add method-level security for approval actions (Wave 5)
+4. **PostGIS ST_Intersects** — Verify spatial overlap function available in target DB
+5. **PolygonOverlap lifecycle** — Determine when to auto-create/delete overlap records
