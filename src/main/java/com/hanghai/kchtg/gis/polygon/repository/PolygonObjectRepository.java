@@ -3,6 +3,8 @@ package com.hanghai.kchtg.gis.polygon.repository;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ObjectType;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.Status;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,6 +24,10 @@ public interface PolygonObjectRepository extends JpaRepository<PolygonObject, UU
     List<PolygonObject> findByObjectType(ObjectType objectType);
 
     List<PolygonObject> findByStatus(Status status);
+
+    Page<PolygonObject> findByStatus(Status status, Pageable pageable);
+
+    Page<PolygonObject> findByObjectTypeAndStatus(ObjectType objectType, Status status, Pageable pageable);
 
     List<PolygonObject> findByNameContainingIgnoreCase(String name);
 

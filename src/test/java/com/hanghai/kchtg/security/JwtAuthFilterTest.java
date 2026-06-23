@@ -9,6 +9,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.quality.Strictness;
+import org.mockito.junit.jupiter.MockitoSettings;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import jakarta.servlet.FilterChain;
@@ -24,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class JwtAuthFilterTest {
 
     @Mock
@@ -48,7 +51,7 @@ class JwtAuthFilterTest {
     void setUp() {
         // Generate a real JWT token for testing
         var jwtProperties = new JwtProperties();
-        jwtProperties.setSecret("dGVzdC1zZWNyZXQta2V5LWZvci1qd3Qtc2lnbmluZw==");
+        jwtProperties.setSecret("dGVzdC1zZWNyZXQta2V5LWZvci1qd3Qtc2lnbmluZy1qd3Qtc2lnbmluZy1rZXk=");
         jwtProperties.setExpiration(3600000L);
         JwtUtil realJwtUtil = new JwtUtil(jwtProperties);
 
@@ -59,6 +62,7 @@ class JwtAuthFilterTest {
         Claims claims = realJwtUtil.validateToken(validToken);
         when(jwtUtil.extractUsername(validToken)).thenReturn(claims.getSubject());
         when(jwtUtil.extractRole(validToken)).thenReturn(claims.get("role", String.class));
+        when(request.getHeader("Authorization")).thenReturn(validBearerToken);
     }
 
     @Test
@@ -104,10 +108,10 @@ class JwtAuthFilterTest {
     }
 
     @Test
-    void doFilter_expiredToken_shouldNotSetSecurityContextAndContinue() throws ServletException, IOException {
+    void doFilter_expiredToken_shouldNotSetSecurityContextAndContinue() throws Exception {
         // Arrange — expired token throws JwtException (expired signature)
         var jwtProperties = new JwtProperties();
-        jwtProperties.setSecret("dGVzdC1zZWNyZXQta2V5LWZvci1qd3Qtc2lnbmluZw==");
+        jwtProperties.setSecret("dGVzdC1zZWNyZXQta2V5LWZvci1qd3Qtc2lnbmluZy1qd3Qtc2lnbmluZy1rZXk=");
         jwtProperties.setExpiration(1L); // 1ms expiration
         JwtUtil shortLived = new JwtUtil(jwtProperties);
 

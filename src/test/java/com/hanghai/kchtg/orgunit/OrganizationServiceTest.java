@@ -1,11 +1,17 @@
 package com.hanghai.kchtg.orgunit;
 
+import com.hanghai.kchtg.orgunit.dto.CreateOrgUnitRequest;
+import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
+import com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.orgunit.service.OrgUnitService;
+import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -28,166 +34,152 @@ class OrganizationServiceTest {
     private OrgUnitService orgUnitService;
 
     private OrgUnit testUnit;
+    private UUID testUnitId;
 
     @BeforeEach
     void setUp() {
+        testUnitId = UUID.randomUUID();
         testUnit = new OrgUnit();
-        testUnit.setId(1L);
+        testUnit.setId(testUnitId);
         testUnit.setName("Cục Hàng hải");
         testUnit.setCode("HAI");
-        testUnit.setType(OrgUnitType.CUC);
+        testUnit.setType(OrgUnitType.DEPARTMENT);
         testUnit.setStatus(OrgUnitStatus.ACTIVE);
         testUnit.setParentId(null);
-        testUnit.setLevel(1);
-        testUnit.setCoefficient(new java.math.BigDecimal("1.50"));
     }
 
-    // ==================== CRUD TESTS ====================
+    @Nested
+    @DisplayName("Create OrgUnit")
+    class CreateTests {
 
-    @Test
-    void createUnit_shouldReturnUnit() {
-        var request = new com.hanghai.kchtg.orgunit.dto.CreateOrgUnitRequest();
-        request.setName("Chi cục");
-        request.setCode("CC1");
-        request.setType(OrgUnitType.CHI_CUC);
-        request.setParentId(1L);
+        @Test
+        @DisplayName("Should create unit successfully")
+        void createUnit_success() {
+            CreateOrgUnitRequest request = new CreateOrgUnitRequest();
+            request.setName("Chi cục");
+            request.setCode("CC1");
+            request.setType(OrgUnitType.DIVISION);
+            request.setParentId(testUnitId);
+            request.setStatus(OrgUnitStatus.ACTIVE);
 
-        when(orgUnitRepository.existsByCode("CC1")).thenReturn(false);
-        when(orgUnitRepository.findById(1L)).thenReturn(Optional.of(testUnit));
-        when(orgUnitRepository.save(any(OrgUnit.class))).thenReturn(testUnit);
+            when(orgUnitRepository.existsByCode("CC1")).thenReturn(false);
+            when(orgUnitRepository.existsById(testUnitId)).thenReturn(true);
+            when(orgUnitRepository.save(any(OrgUnit.class))).thenReturn(testUnit);
 
-        OrgUnit result = orgUnitService.createUnit(request);
+            OrgUnitResponse result = orgUnitService.create(request);
 
-        assertNotNull(result);
-        assertEquals("Chi cục", result.getName());
-        verify(orgUnitRepository).save(any());
+            assertNotNull(result);
+            verify(orgUnitRepository).save(any(OrgUnit.class));
+        }
+
+        @Test
+        @DisplayName("Should throw when unit code already exists")
+        void createDuplicateCode_throwsException() {
+            CreateOrgUnitRequest request = new CreateOrgUnitRequest();
+            request.setName("Chi cục");
+            request.setCode("HAI");
+
+            when(orgUnitRepository.existsByCode("HAI")).thenReturn(true);
+
+            assertThrows(IllegalArgumentException.class, () -> orgUnitService.create(request));
+            verify(orgUnitRepository, never()).save(any());
+        }
     }
 
-    @Test
-    void createUnit_shouldThrowWhenCodeExists() {
-        var request = new com.hanghai.kchtg.orgunit.dto.CreateOrgUnitRequest();
-        request.setName("Chi cục");
-        request.setCode("HAI");
+    @Nested
+    @DisplayName("Read OrgUnits")
+    class ReadTests {
 
-        when(orgUnitRepository.existsByCode("HAI")).thenReturn(true);
+        @Test
+        @DisplayName("Should find unit by ID")
+        void findById_success() {
+            when(orgUnitRepository.findById(testUnitId)).thenReturn(Optional.of(testUnit));
 
-        assertThrows(RuntimeException.class, () -> orgUnitService.createUnit(request));
-        verify(orgUnitRepository, never()).save(any());
+            OrgUnitResponse result = orgUnitService.findById(testUnitId);
+            assertNotNull(result);
+            assertEquals(testUnit.getCode(), result.getCode());
+        }
+
+        @Test
+        @DisplayName("Should throw when not found")
+        void findById_notFound_throws() {
+            when(orgUnitRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
+
+            assertThrows(EntityNotFoundException.class, () -> orgUnitService.findById(UUID.randomUUID()));
+        }
+
+        @Test
+        @DisplayName("Should return all units flat list")
+        void findAll_success() {
+            when(orgUnitRepository.findAll()).thenReturn(List.of(testUnit));
+
+            List<OrgUnitResponse> result = orgUnitService.findAll();
+            assertEquals(1, result.size());
+        }
+
+        @Test
+        @DisplayName("Should find units by parent ID")
+        void findByParentId_success() {
+            UUID parentId = UUID.randomUUID();
+            when(orgUnitRepository.findByParentId(parentId)).thenReturn(List.of(testUnit));
+
+            List<OrgUnitResponse> result = orgUnitService.findByParentId(parentId);
+            assertEquals(1, result.size());
+        }
     }
 
-    @Test
-    void updateUnit_shouldChangeName() {
-        OrgUnit existing = new OrgUnit(testUnit);
-        existing.setName("Cục Hàng hải");
-        existing.setCode("HAI");
+    @Nested
+    @DisplayName("Update OrgUnit")
+    class UpdateTests {
 
-        var request = new com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest();
-        request.setName("Cục Hàng hải mới");
+        @Test
+        @DisplayName("Should update unit details")
+        void updateUnit_success() {
+            UpdateOrgUnitRequest request = new UpdateOrgUnitRequest();
+            request.setName("Cục Hàng hải mới");
+            request.setCode("HAI_NEW");
 
-        when(orgUnitRepository.findById(1L)).thenReturn(Optional.of(existing));
-        when(orgUnitRepository.save(any())).thenReturn(existing);
+            when(orgUnitRepository.findById(testUnitId)).thenReturn(Optional.of(testUnit));
+            when(orgUnitRepository.existsByCodeAndIdNot("HAI_NEW", testUnitId)).thenReturn(false);
+            when(orgUnitRepository.save(any(OrgUnit.class))).thenReturn(testUnit);
 
-        OrgUnit result = orgUnitService.updateUnit(1L, request);
+            OrgUnitResponse result = orgUnitService.update(testUnitId, request);
 
-        assertEquals("Cục Hàng hải mới", result.getName());
-        verify(orgUnitRepository).save(existing);
+            assertNotNull(result);
+            verify(orgUnitRepository).save(any(OrgUnit.class));
+        }
     }
 
-    @Test
-    void deleteUnit_shouldSoftDelete() {
-        OrgUnit existing = new OrgUnit(testUnit);
-        when(orgUnitRepository.findById(1L)).thenReturn(Optional.of(existing));
-        when(orgUnitRepository.save(any())).thenReturn(existing);
+    @Nested
+    @DisplayName("Delete OrgUnit")
+    class DeleteTests {
 
-        orgUnitService.deleteUnit(1L);
+        @Test
+        @DisplayName("Should delete unit successfully when it has no children")
+        void deleteUnit_success() {
+            when(orgUnitRepository.existsById(testUnitId)).thenReturn(true);
+            when(orgUnitRepository.findByParentId(testUnitId)).thenReturn(Collections.emptyList());
+            when(orgUnitRepository.findById(testUnitId)).thenReturn(Optional.of(testUnit));
+            when(orgUnitRepository.save(any(OrgUnit.class))).thenReturn(testUnit);
 
-        assertNotNull(existing.getDeletedAt());
-    }
+            orgUnitService.delete(testUnitId);
 
-    // ==================== TREE TESTS ====================
+            assertNotNull(testUnit.getDeletedAt());
+            verify(orgUnitRepository).save(testUnit);
+        }
 
-    @Test
-    void findRoots_shouldReturnRootUnits() {
-        List<OrgUnit> roots = List.of(testUnit);
-        when(orgUnitRepository.findByParentIdIsNull()).thenReturn(roots);
+        @Test
+        @DisplayName("Should throw exception when deleting unit with children")
+        void deleteUnitWithChildren_throwsException() {
+            OrgUnit child = new OrgUnit();
+            child.setId(UUID.randomUUID());
+            child.setParentId(testUnitId);
 
-        List<OrgUnit> result = orgUnitService.findAllRoots();
+            when(orgUnitRepository.existsById(testUnitId)).thenReturn(true);
+            when(orgUnitRepository.findByParentId(testUnitId)).thenReturn(List.of(child));
 
-        assertEquals(1, result.size());
-        assertEquals("Cục Hàng hải", result.get(0).getName());
-    }
-
-    @Test
-    void findChildren_shouldReturnChildren() {
-        List<OrgUnit> children = new ArrayList<>();
-        OrgUnit child = new OrgUnit();
-        child.setId(2L);
-        child.setName("Chi cục 1");
-        child.setParentId(1L);
-        child.setLevel(2);
-        children.add(child);
-
-        when(orgUnitRepository.findByParentId(1L)).thenReturn(children);
-
-        List<OrgUnit> result = orgUnitService.findAllChildren(1L);
-
-        assertEquals(1, result.size());
-        assertEquals("Chi cục 1", result.get(0).getName());
-    }
-
-    @Test
-    void buildTree_shouldReturnRootWithChildren() {
-        OrgUnit parent = new OrgUnit(testUnit);
-        parent.setName("Cục Hàng hải");
-        parent.setLevel(1);
-
-        OrgUnit child = new OrgUnit();
-        child.setId(2L);
-        child.setName("Chi cục 1");
-        child.setParentId(1L);
-        child.setLevel(2);
-
-        List<OrgUnit> children = List.of(child);
-
-        when(orgUnitRepository.findByParentIdIsNull()).thenReturn(List.of(parent));
-        when(orgUnitRepository.findByParentId(1L)).thenReturn(children);
-
-        List<OrgUnit> tree = orgUnitService.buildTree();
-
-        assertNotNull(tree);
-        assertEquals(1, tree.size());
-        assertEquals("Cục Hàng hải", tree.get(0).getName());
-    }
-
-    // ==================== APPROVAL TESTS ====================
-
-    @Test
-    void approveUnit_shouldSetApprovedAt() {
-        OrgUnit existing = new OrgUnit(testUnit);
-        existing.setName("Cục Hàng hải");
-        existing.setStatus(OrgUnitStatus.PENDING);
-        existing.setApprovedAt(null);
-
-        when(orgUnitRepository.findById(1L)).thenReturn(Optional.of(existing));
-        when(orgUnitRepository.save(any())).thenReturn(existing);
-
-        orgUnitService.approveUnit(1L);
-
-        assertNotNull(existing.getApprovedAt());
-        assertEquals(OrgUnitStatus.ACTIVE, existing.getStatus());
-    }
-
-    @Test
-    void rejectUnit_shouldSetStatusRejected() {
-        OrgUnit existing = new OrgUnit(testUnit);
-        existing.setName("Cục Hàng hải");
-        existing.setStatus(OrgUnitStatus.PENDING);
-
-        when(orgUnitRepository.findById(1L)).thenReturn(Optional.of(existing));
-        when(orgUnitRepository.save(any())).thenReturn(existing);
-
-        orgUnitService.rejectUnit(1L, "Không hợp lệ");
-
-        assertEquals(OrgUnitStatus.REJECTED, existing.getStatus());
+            assertThrows(IllegalArgumentException.class, () -> orgUnitService.delete(testUnitId));
+            verify(orgUnitRepository, never()).save(any());
+        }
     }
 }

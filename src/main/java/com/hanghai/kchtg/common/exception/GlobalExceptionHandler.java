@@ -101,6 +101,31 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles UnauthorizedIntegrationException when pre-shared token is invalid or missing.
+     */
+    @ExceptionHandler(UnauthorizedIntegrationException.class)
+    public ResponseEntity<ApiResponse<String>> handleUnauthorizedIntegration(
+            UnauthorizedIntegrationException ex) {
+        log.debug("Unauthorized integration token access: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    /**
+     * Rethrows Spring Security access/authorization exceptions so that the
+     * security filter chain (ExceptionTranslationFilter) can handle them (e.g.
+     * returning 401 Unauthorized or 403 Forbidden).
+     */
+    @ExceptionHandler({
+        org.springframework.security.access.AccessDeniedException.class,
+        org.springframework.security.authorization.AuthorizationDeniedException.class
+    })
+    public void handleAccessDenied(Exception ex) throws Exception {
+        throw ex;
+    }
+
+    /**
      * Catch-all for any exception not handled by the specialised handlers above.
      * Logs the full stack-trace at WARN level and returns 500.
      */

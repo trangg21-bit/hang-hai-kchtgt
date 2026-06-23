@@ -94,7 +94,7 @@ export default function ConnectionForm() {
         </Space>
       </Card>
 
-      <Card style={{ maxWidth: 700 }}>
+      <Card style={{ maxWidth: 700, margin: '0 auto' }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={initialData}>
           <FormField
             type="text"

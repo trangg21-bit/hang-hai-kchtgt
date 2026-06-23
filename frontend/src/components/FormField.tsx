@@ -74,7 +74,7 @@ export default function FormField(props: FormFieldProps) {
     rules.unshift({ required: true, message: `Vui lòng nhập ${label.toLowerCase()}` });
   }
 
-  const fieldProps: Record<string, unknown> = { disabled, placeholder: props.placeholder };
+  const fieldProps: Record<string, unknown> = { name, disabled, placeholder: props.placeholder };
 
   // Type-specific field props
   switch (type) {
@@ -162,7 +162,7 @@ export default function FormField(props: FormFieldProps) {
       case 'password':
         return <Input.Password {...fieldProps} placeholder={props.placeholder} />;
       case 'email':
-        return <Input.Email {...fieldProps} placeholder={props.placeholder} />;
+        return <Input {...fieldProps} type="email" placeholder={props.placeholder} />;
       default:
         return (
           <Input
@@ -184,7 +184,7 @@ export default function FormField(props: FormFieldProps) {
         ...rules,
         // Validate phone if type is phone
         ...(type === 'phone'
-          ? [{ pattern: /^0\d{9,10}$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]
+          ? [{ pattern: /^(0\d{9,10})?$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]
           : []),
         // Validate email if type is email
         ...(type === 'email'

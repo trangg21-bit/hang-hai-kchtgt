@@ -93,7 +93,7 @@ export default function SymbolPreview() {
       </Card>
 
       {/* Details */}
-      <Card style={{ maxWidth: 700 }}>
+      <Card style={{ maxWidth: 700, marginInline: 'auto' }}>
         <Descriptions bordered column={2} size="small">
           <Descriptions.Item label="Mã ký hiệu">{symbol.code}</Descriptions.Item>
           <Descriptions.Item label="Giá trị">{symbol.value || '—'}</Descriptions.Item>
@@ -136,7 +136,7 @@ export default function SymbolPreview() {
         </Descriptions>
       </Card>
 
-      <Card style={{ marginTop: 16 }}>
+      <Card style={{ marginTop: 16, maxWidth: 700, marginInline: 'auto' }}>
         <Button type="primary" onClick={() => navigate('/symbols')}>
           Quay lại danh sách
         </Button>

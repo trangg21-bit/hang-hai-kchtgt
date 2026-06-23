@@ -55,7 +55,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (mockToken != null && mockToken.equals(token)) {
                 log.debug("Dev mock token accepted for: {}", request.getRequestURI());
                 SecurityContextHolder.getContext().setAuthentication(
-                    new UsernamePasswordAuthenticationToken("admin", null, List.of(new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"))));
+                    new UsernamePasswordAuthenticationToken("admin", null, List.of(
+                        new SimpleGrantedAuthority("ROLE_SUPER_ADMIN"),
+                        new SimpleGrantedAuthority("ROLE_ADMIN"),
+                        new SimpleGrantedAuthority("ROLE_SYSTEM_ADMIN")
+                    )));
                 filterChain.doFilter(request, response);
                 return;
             }

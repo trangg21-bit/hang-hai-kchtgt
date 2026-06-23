@@ -13,10 +13,10 @@
       "version": 94
     },
     "docs/intel/catalog.json": {
-      "content_hash": "sha256:d4777e51132f6cfa54818318a3a428b913048e85b7958903c15b4c786fea2d8a",
-      "last_modified": "2026-06-18T04:31:53Z",
+      "content_hash": "sha256:a63d7bd83ee6d761cc31976d6245c2b39c48732bf018c1fd3d0808e8b19b76d2",
+      "last_modified": "2026-06-23T02:54:26Z",
       "last_producer": "ai-kit/state-update-rebuild-catalog",
-      "version": 32
+      "version": 34
     },
     "docs/modules/M-001-quan-tri-he-thong/module-brief.md": {
       "content_hash": "sha256:36e913dd80aec0ba586099d2541430bdb83e5897c9aa752f8695df33f6987f5f",
@@ -67,10 +67,10 @@
       "version": 3
     },
     "docs/modules/M-009-lien-thong-tich-hop-du-lieu/module-brief.md": {
-      "content_hash": "sha256:fd889ade637f4d51cba0b55902dd3c85841827c0adcfd46f6497d2047e2f9949",
-      "last_modified": "2026-06-16T05:21:20Z",
+      "content_hash": "sha256:c910080e1690d75073297ec58d392b17091aeef166727b4229a4176aacf84257",
+      "last_modified": "2026-06-23T03:02:00Z",
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
-      "version": 6
+      "version": 9
     },
     "docs/modules/M-010-xac-thuc-phan-quyen/module-brief.md": {
       "content_hash": "sha256:6cd01dd2848dd7b0d544fc215d3166f585609e7d011334a7733ba53aeb56d850",

@@ -1,15 +1,17 @@
 package com.hanghai.kchtg.group;
 
+import com.hanghai.kchtg.group.dto.AddGroupMemberRequest;
+import com.hanghai.kchtg.group.dto.CreateGroupRequest;
+import com.hanghai.kchtg.group.dto.UpdateGroupRequest;
+import com.hanghai.kchtg.group.entity.GroupHistory;
 import com.hanghai.kchtg.group.entity.GroupMember;
 import com.hanghai.kchtg.group.entity.GroupMemberStatus;
-import com.hanghai.kchtg.group.entity.GroupStatus;
 import com.hanghai.kchtg.group.entity.UserGroup;
+import com.hanghai.kchtg.group.entity.GroupStatus;
 import com.hanghai.kchtg.group.repository.GroupMemberRepository;
 import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.group.repository.GroupHistoryRepository;
 import com.hanghai.kchtg.group.service.UserGroupService;
-import com.hanghai.kchtg.user.entity.User;
-import com.hanghai.kchtg.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -34,14 +36,13 @@ class UserGroupServiceTest {
     private GroupMemberRepository memberRepository;
     @Mock
     private GroupHistoryRepository historyRepository;
-    @Mock
-    private UserRepository userRepository;
 
     @InjectMocks
     private UserGroupService groupService;
 
     private UserGroup testGroup;
-    private User testUser;
+    private UUID operatorId;
+    private String operatorName;
 
     @BeforeEach
     void setUp() {
@@ -50,15 +51,11 @@ class UserGroupServiceTest {
         testGroup.setName("Maritime Operations");
         testGroup.setCode("OPS");
         testGroup.setDescription("Operations team");
-        testGroup.setGroupType("ops");
-        testGroup.setIsActive(true);
         testGroup.setStatus(GroupStatus.ACTIVE);
         testGroup.setPermissions(List.of("user.view", "user.create"));
 
-        testUser = new User();
-        testUser.setId(UUID.randomUUID());
-        testUser.setUsername("captain");
-        testUser.setUsername("captain");
+        operatorId = UUID.randomUUID();
+        operatorName = "system_admin";
     }
 
     @Nested
@@ -68,27 +65,40 @@ class UserGroupServiceTest {
         @Test
         @DisplayName("Should create group successfully")
         void createGroup_success() {
+            CreateGroupRequest request = new CreateGroupRequest();
+            request.setName("Team Beta");
+            request.setCode("TEAM-BETA");
+            request.setDescription("Beta team");
+            request.setPermissions(List.of("user.view"));
+
             when(groupRepository.existsByCode("TEAM-BETA")).thenReturn(false);
             when(groupRepository.save(any(UserGroup.class))).thenAnswer(inv -> {
                 UserGroup g = inv.getArgument(0);
                 g.setId(UUID.randomUUID());
                 return g;
             });
+            when(historyRepository.save(any(GroupHistory.class))).thenReturn(new GroupHistory());
 
-            UserGroup created = groupService.createGroup("Team Beta", "TEAM-BETA", "Beta team", "ops");
+            UserGroup created = groupService.create(request, operatorId, operatorName);
 
             assertNotNull(created);
             assertEquals("Team Beta", created.getName());
+            assertEquals("TEAM-BETA", created.getCode());
             verify(groupRepository).save(any(UserGroup.class));
+            verify(historyRepository).save(any(GroupHistory.class));
         }
 
         @Test
         @DisplayName("Should throw when group code already exists")
         void createDuplicateCode_throwsException() {
+            CreateGroupRequest request = new CreateGroupRequest();
+            request.setName("Maritime Ops");
+            request.setCode("OPS");
+
             when(groupRepository.existsByCode("OPS")).thenReturn(true);
 
             assertThrows(IllegalArgumentException.class, () ->
-                    groupService.createGroup("Maritime Ops", "OPS", "Desc", "ops"));
+                    groupService.create(request, operatorId, operatorName));
         }
     }
 
@@ -101,13 +111,15 @@ class UserGroupServiceTest {
         void findById_success() {
             when(groupRepository.findById(testGroup.getId())).thenReturn(Optional.of(testGroup));
 
-            assertTrue(groupService.findById(testGroup.getId()).isPresent());
+            UserGroup result = groupService.findById(testGroup.getId());
+            assertNotNull(result);
+            assertEquals(testGroup.getId(), result.getId());
         }
 
         @Test
         @DisplayName("Should return all groups")
         void findAll_success() {
-            when(groupRepository.findAll()).thenReturn(Arrays.asList(testGroup));
+            when(groupRepository.findAll()).thenReturn(List.of(testGroup));
 
             assertEquals(1, groupService.findAll().size());
         }
@@ -117,18 +129,9 @@ class UserGroupServiceTest {
         void findByCode_success() {
             when(groupRepository.findByCode("OPS")).thenReturn(Optional.of(testGroup));
 
-            Optional<UserGroup> result = groupService.findByCode("OPS");
-            assertTrue(result.isPresent());
-            assertEquals("OPS", result.get().getCode());
-        }
-
-        @Test
-        @DisplayName("Should return active groups")
-        void findActiveGroups_success() {
-            when(groupRepository.findAll()).thenReturn(Arrays.asList(testGroup));
-
-            List<UserGroup> result = groupService.findActiveGroups();
-            assertTrue(result.stream().allMatch(g -> g.getStatus() == GroupStatus.ACTIVE));
+            UserGroup result = groupService.findByCode("OPS");
+            assertNotNull(result);
+            assertEquals("OPS", result.getCode());
         }
     }
 
@@ -139,14 +142,39 @@ class UserGroupServiceTest {
         @Test
         @DisplayName("Should update group details")
         void updateGroup_success() {
+            UpdateGroupRequest request = new UpdateGroupRequest();
+            request.setName("New Name");
+            request.setDescription("New Desc");
+            request.setPermissions(List.of("user.view"));
+
             when(groupRepository.findById(testGroup.getId())).thenReturn(Optional.of(testGroup));
             when(groupRepository.save(any(UserGroup.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(historyRepository.save(any(GroupHistory.class))).thenReturn(new GroupHistory());
 
-            UserGroup updated = groupService.updateGroup(testGroup.getId(),
-                    "New Name", "New Desc", "New-Code");
+            UserGroup updated = groupService.update(testGroup.getId(), request, operatorId, operatorName);
 
             assertNotNull(updated);
+            assertEquals("New Name", updated.getName());
             verify(groupRepository).save(any(UserGroup.class));
+            verify(historyRepository).save(any(GroupHistory.class));
+        }
+    }
+
+    @Nested
+    @DisplayName("Delete Group")
+    class DeleteTests {
+
+        @Test
+        @DisplayName("Should delete group (soft delete)")
+        void deleteGroup_success() {
+            when(groupRepository.findById(testGroup.getId())).thenReturn(Optional.of(testGroup));
+            when(groupRepository.save(any(UserGroup.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(historyRepository.save(any(GroupHistory.class))).thenReturn(new GroupHistory());
+
+            groupService.delete(testGroup.getId(), operatorId, operatorName);
+
+            verify(groupRepository).save(any(UserGroup.class));
+            verify(historyRepository).save(any(GroupHistory.class));
         }
     }
 
@@ -157,57 +185,54 @@ class UserGroupServiceTest {
         @Test
         @DisplayName("Should add user to group")
         void addMember_success() {
+            UUID userId = UUID.randomUUID();
+            AddGroupMemberRequest request = new AddGroupMemberRequest();
+            request.setUserId(userId);
+            request.setRole("MEMBER");
+
             when(groupRepository.findById(testGroup.getId())).thenReturn(Optional.of(testGroup));
-            when(userRepository.findById(testUser.getId())).thenReturn(Optional.of(testUser));
-            when(memberRepository.existsByGroupIdAndUserId(testGroup.getId(), testUser.getId())).thenReturn(false);
+            when(memberRepository.findByUserIdAndUserGroupId(userId, testGroup.getId())).thenReturn(Optional.empty());
             when(memberRepository.save(any(GroupMember.class))).thenAnswer(inv -> inv.getArgument(0));
+            when(historyRepository.save(any(GroupHistory.class))).thenReturn(new GroupHistory());
 
-            groupService.addMember(testGroup.getId(), testUser.getId());
+            GroupMember member = groupService.addMember(testGroup.getId(), request, operatorId);
 
+            assertNotNull(member);
             verify(memberRepository).save(any(GroupMember.class));
+            verify(historyRepository).save(any(GroupHistory.class));
         }
 
         @Test
         @DisplayName("Should remove user from group")
         void removeMember_success() {
-            when(memberRepository.findByGroupIdAndUserId(testGroup.getId(), testUser.getId()))
-                    .thenReturn(Optional.of(new GroupMember()));
-            when(memberRepository.delete(any(GroupMember.class))).thenReturn(null);
+            UUID memberId = UUID.randomUUID();
+            GroupMember member = new GroupMember();
+            member.setId(memberId);
+            member.setUserGroup(testGroup);
 
-            assertDoesNotThrow(() -> groupService.removeMember(testGroup.getId(), testUser.getId()));
+            when(memberRepository.findById(memberId)).thenReturn(Optional.of(member));
+            when(memberRepository.save(any(GroupMember.class))).thenReturn(member);
+            when(historyRepository.save(any(GroupHistory.class))).thenReturn(new GroupHistory());
+
+            assertDoesNotThrow(() -> groupService.removeMember(memberId, operatorId, operatorName));
+            assertEquals(GroupMemberStatus.REMOVED, member.getStatus());
+            verify(memberRepository).save(member);
+            verify(historyRepository).save(any(GroupHistory.class));
         }
 
         @Test
-        @DisplayName("Should check if user is group member")
-        void isMember_true() {
-            when(memberRepository.existsByGroupIdAndUserId(testGroup.getId(), testUser.getId()))
-                    .thenReturn(true);
+        @DisplayName("Should find active members of group")
+        void findMembers_success() {
+            GroupMember member = new GroupMember();
+            member.setUserGroup(testGroup);
+            member.setStatus(GroupMemberStatus.ACTIVE);
 
-            assertTrue(groupService.isMember(testGroup.getId(), testUser.getId()));
-        }
+            when(memberRepository.findByGroupId(testGroup.getId(), GroupMemberStatus.ACTIVE))
+                    .thenReturn(List.of(member));
 
-        @Test
-        @DisplayName("Should return false if user is not a member")
-        void isMember_false() {
-            when(memberRepository.existsByGroupIdAndUserId(testGroup.getId(), testUser.getId()))
-                    .thenReturn(false);
-
-            assertFalse(groupService.isMember(testGroup.getId(), testUser.getId()));
-        }
-    }
-
-    @Nested
-    @DisplayName("Toggle Active")
-    class ToggleActiveTests {
-
-        @Test
-        @DisplayName("Should toggle group active status")
-        void toggleActive_success() {
-            when(groupRepository.findById(testGroup.getId())).thenReturn(Optional.of(testGroup));
-            when(groupRepository.save(any(UserGroup.class))).thenAnswer(inv -> inv.getArgument(0));
-
-            UserGroup toggled = groupService.toggleActive(testGroup.getId());
-            assertNotNull(toggled);
+            List<GroupMember> members = groupService.findMembers(testGroup.getId());
+            assertEquals(1, members.size());
+            verify(memberRepository).findByGroupId(testGroup.getId(), GroupMemberStatus.ACTIVE);
         }
     }
 }

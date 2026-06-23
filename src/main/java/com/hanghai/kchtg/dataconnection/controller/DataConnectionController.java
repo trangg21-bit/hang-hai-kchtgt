@@ -6,44 +6,39 @@ import com.hanghai.kchtg.dataconnection.dto.CreateConnectionRequest;
 import com.hanghai.kchtg.dataconnection.dto.TestConnectionRequest;
 import com.hanghai.kchtg.dataconnection.dto.TestConnectionResponse;
 import com.hanghai.kchtg.dataconnection.dto.UpdateConnectionRequest;
-import com.hanghai.kchtg.dataconnection.service.DataConnectionService;
+import com.hanghai.kchtg.dataconnection.entity.ConnectionHealth;
+import com.hanghai.kchtg.dataconnection.entity.SyncLog;
+import com.hanghai.kchtg.dataconnection.repository.SyncLogRepository;
+import com.hanghai.kchtg.dataconnection.service.ConnectionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
  * REST controller for {@code /api/data-connections}.
- * <p>
- * Provides full CRUD plus a connectivity-test endpoint.
- * </p>
+ * Provides CRUD, health check history, sync logs, and test endpoints.
  */
 @RestController
 @RequestMapping("/api/data-connections")
 public class DataConnectionController {
 
-    private final DataConnectionService service;
+    private final ConnectionService service;
+    private final SyncLogRepository syncLogRepository;
 
-    public DataConnectionController(DataConnectionService service) {
+    public DataConnectionController(ConnectionService service, SyncLogRepository syncLogRepository) {
         this.service = service;
+        this.syncLogRepository = syncLogRepository;
     }
 
     // ── CRUD ──────────────────────────────────────────────────────────
 
-    /**
-     * Lists all data connections.
-     */
     @GetMapping
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<List<ConnectionResponse>>> listAll() {
@@ -51,9 +46,6 @@ public class DataConnectionController {
         return ResponseEntity.ok(ApiResponse.success(connections));
     }
 
-    /**
-     * Retrieves a single connection by its UUID.
-     */
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<ConnectionResponse>> getById(@PathVariable UUID id) {
@@ -61,9 +53,6 @@ public class DataConnectionController {
         return ResponseEntity.ok(ApiResponse.success(connection));
     }
 
-    /**
-     * Creates a new data connection.
-     */
     @PostMapping
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<ConnectionResponse>> create(
@@ -74,9 +63,6 @@ public class DataConnectionController {
                 .body(ApiResponse.success("Data connection created", connection));
     }
 
-    /**
-     * Updates (partial) an existing data connection.
-     */
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<ConnectionResponse>> update(
@@ -86,9 +72,6 @@ public class DataConnectionController {
         return ResponseEntity.ok(ApiResponse.success("Data connection updated", connection));
     }
 
-    /**
-     * Deletes a data connection.
-     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
@@ -98,19 +81,69 @@ public class DataConnectionController {
                 .body(ApiResponse.success("Data connection deleted", null));
     }
 
-    // ── Test ──────────────────────────────────────────────────────────
+    // ── Health Check ──────────────────────────────────────────────────
 
-    /**
-     * Tests connectivity to the target system for the given connection.
-     * Accepts optional overrides for endpoint URL and credentials.
-     */
+    @PostMapping("/{id}/health")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    public ResponseEntity<ApiResponse<ConnectionHealth>> runHealthCheck(@PathVariable UUID id) {
+        ConnectionHealth health = service.healthCheck(id);
+        return ResponseEntity.ok(ApiResponse.success("Health check completed", health));
+    }
+
+    @GetMapping("/{id}/health")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    public ResponseEntity<ApiResponse<List<ConnectionHealth>>> getHealthHistory(
+            @PathVariable UUID id,
+            @RequestParam(defaultValue = "24") int hours) {
+        List<ConnectionHealth> history = service.getHealthHistory(id, hours);
+        return ResponseEntity.ok(ApiResponse.success(history));
+    }
+
+    @GetMapping("/summary")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getHealthSummary() {
+        List<ConnectionResponse> list = service.listAll();
+        long total = list.size();
+        long healthy = list.stream().filter(c -> c.getStatus() != null && "ACTIVE".equalsIgnoreCase(c.getStatus().name())).count();
+        long down = list.stream().filter(c -> c.getStatus() != null && "ERROR".equalsIgnoreCase(c.getStatus().name())).count();
+        long unknown = total - healthy - down;
+
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("total", total);
+        summary.put("healthy", healthy);
+        summary.put("degraded", 0);
+        summary.put("down", down);
+        summary.put("unknown", unknown);
+        summary.put("avgUptime", total > 0 ? 100.0 * healthy / total : 100.0);
+
+        return ResponseEntity.ok(ApiResponse.success(summary));
+    }
+
+    // ── Sync History Logs ─────────────────────────────────────────────
+
+    @GetMapping("/{id}/sync-log")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    public ResponseEntity<ApiResponse<List<SyncLog>>> getSyncHistory(@PathVariable UUID id) {
+        List<SyncLog> logs = syncLogRepository.findByConnectionIdOrderByStartTimeDesc(id);
+        return ResponseEntity.ok(ApiResponse.success(logs));
+    }
+
+    // ── Test Connection (Sanity check) ────────────────────────────────
+
     @PostMapping("/{id}/test")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<TestConnectionResponse>> testConnection(
             @PathVariable UUID id,
             @Valid @RequestBody(required = false) TestConnectionRequest request) {
         TestConnectionRequest overrides = request != null ? request : new TestConnectionRequest();
-        TestConnectionResponse result = service.testConnection(id, overrides);
+        
+        // Use ConnectionService for checking
+        ConnectionHealth health = service.healthCheck(id);
+        TestConnectionResponse result = TestConnectionResponse.builder()
+                .success(health.getErrorMessage() == null)
+                .message(health.getErrorMessage() != null ? health.getErrorMessage() : "Endpoint reachable")
+                .responseTimeMs(health.getLatencyMs() != null ? health.getLatencyMs().longValue() : 0L)
+                .build();
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

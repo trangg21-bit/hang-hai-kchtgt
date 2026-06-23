@@ -178,8 +178,6 @@ class PolygonObjectControllerTest {
         @Test
         @DisplayName("DELETE removes polygon with 200")
         void delete_returns200() {
-            when(service.delete(any(UUID.class))).thenReturn(null);
-
             ResponseEntity<ApiResponse<Void>> response = controller.delete(UUID.randomUUID());
 
             assertEquals(HttpStatus.OK, response.getStatusCode());
@@ -196,8 +194,6 @@ class PolygonObjectControllerTest {
         @Test
         @DisplayName("POST /submit-approval returns 200")
         void submitForApproval_returns200() {
-            when(service.submitForApproval(any(UUID.class))).thenReturn(null);
-
             ResponseEntity<ApiResponse<Void>> response =
                     controller.submitForApproval(UUID.randomUUID());
 

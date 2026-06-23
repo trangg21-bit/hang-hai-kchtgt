@@ -126,7 +126,7 @@ export default function SymbolForm() {
         </Space>
       </Card>
 
-      <Card style={{ maxWidth: 700 }}>
+      <Card style={{ maxWidth: 700, margin: '0 auto' }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ status: 'active', ...initialData }}>
           {!isEdit && (
             <FormField

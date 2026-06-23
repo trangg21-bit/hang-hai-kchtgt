@@ -46,6 +46,30 @@ export const ALL_PERMISSIONS: Permission[] = [
   { key: 'gis.layer.create', name: 'Tạo lớp bản đồ', group: 'gis', description: 'Thêm mới lớp bản đồ GIS' },
   { key: 'gis.layer.edit', name: 'Sửa lớp bản đồ', group: 'gis', description: 'Chỉnh sửa lớp bản đồ GIS' },
   { key: 'gis.layer.delete', name: 'Xóa lớp bản đồ', group: 'gis', description: 'Xóa lớp bản đồ GIS' },
+
+  // Data Connections
+  { key: 'connection.view', name: 'Xem kết nối', group: 'connection', description: 'Xem danh sách kết nối' },
+  { key: 'connection.create', name: 'Tạo kết nối', group: 'connection', description: 'Tạo kết nối dữ liệu' },
+  { key: 'connection.edit', name: 'Sửa kết nối', group: 'connection', description: 'Sửa kết nối dữ liệu' },
+  { key: 'connection.delete', name: 'Xóa kết nối', group: 'connection', description: 'Xóa kết nối dữ liệu' },
+
+  // Org Unit Management
+  { key: 'org.view', name: 'Xem đơn vị', group: 'org_management', description: 'Xem danh sách và sơ đồ đơn vị' },
+  { key: 'org.create', name: 'Tạo đơn vị', group: 'org_management', description: 'Thêm mới đơn vị' },
+  { key: 'org.edit', name: 'Sửa đơn vị', group: 'org_management', description: 'Sửa thông tin đơn vị' },
+  { key: 'org.delete', name: 'Xóa đơn vị', group: 'org_management', description: 'Xóa đơn vị' },
+
+  // Admin Account Management
+  { key: 'admin.view', name: 'Xem quản trị viên', group: 'admin_management', description: 'Xem danh sách quản trị viên' },
+  { key: 'admin.create', name: 'Tạo quản trị viên', group: 'admin_management', description: 'Thêm mới tài khoản quản trị viên' },
+  { key: 'admin.edit', name: 'Sửa quản trị viên', group: 'admin_management', description: 'Chỉnh sửa tài khoản quản trị viên' },
+  { key: 'admin.delete', name: 'Xóa quản trị viên', group: 'admin_management', description: 'Xóa tài khoản quản trị viên' },
+
+  // Group Management
+  { key: 'group.view', name: 'Xem nhóm', group: 'group_management', description: 'Xem danh sách nhóm' },
+  { key: 'group.create', name: 'Tạo nhóm', group: 'group_management', description: 'Tạo mới nhóm' },
+  { key: 'group.edit', name: 'Sửa nhóm', group: 'group_management', description: 'Sửa thông tin nhóm' },
+  { key: 'group.delete', name: 'Xóa nhóm', group: 'group_management', description: 'Xóa nhóm' },
 ];
 
 // ============================================================

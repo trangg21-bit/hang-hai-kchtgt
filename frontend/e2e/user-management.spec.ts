@@ -23,6 +23,7 @@ async function setupAuth(page: any): Promise<void> {
   });
   await page.goto(BASE_URL);
   await page.waitForURL(/\/users/, { timeout: 10_000 });
+  await expect(page.locator('tr.ant-table-row').first()).toBeVisible({ timeout: 10_000 });
 }
 
 // ============================================================
@@ -121,8 +122,8 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
 
     // Ant Design Form validation shows error messages
     // Required fields: username, password, fullName, email, roleId
-    const errorMessages = page.locator('.ant-form-item-explain-error');
-    const errorCount = await errorMessages.count();
+    await expect(page.locator('.ant-form-item-explain-error').first()).toBeVisible({ timeout: 5000 });
+    const errorCount = await page.locator('.ant-form-item-explain-error').count();
     expect(errorCount).toBeGreaterThan(0);
   });
 
@@ -180,32 +181,13 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
     const lastRow = rows.last();
     await lastRow.scrollIntoViewIfNeeded();
 
-    // Find delete button by tooltip
-    const deleteBtn = lastRow.locator('button[title="Xóa"]');
-    
-    if (await deleteBtn.count() > 0) {
-      await deleteBtn.click({ timeout: 10_000 });
-    } else {
-      // Fallback: find delete action in table cell
-      const deleteIconBtn = lastRow.locator('button:has(svg svg[fill="red"]), button.ant-btn-link.danger').first();
-      await deleteIconBtn.click({ timeout: 10_000 });
-    }
+    await lastRow.locator('.anticon-delete').click({ timeout: 10_000 });
 
     // Ant Design Modal.confirm should appear
     await expect(page.locator('.ant-modal-confirm-title')).toHaveText('Xác nhận xóa người dùng', { timeout: 5000 });
 
     // Click "Xóa" (danger button)
-    const confirmDeleteBtn = page.locator('.ant-modal-confirm-btns .ant-btn-dangerous:has-text("Xóa"), .ant-modal-confirm-btns button:has-text("Xóa").ant-btn').first();
-    
-    if (await confirmDeleteBtn.count() > 0) {
-      await confirmDeleteBtn.click({ timeout: 10_000 });
-    } else {
-      // Fallback: find the danger button in confirm modal
-      const dangerBtn = page.locator('.ant-modal-confirm-btns .ant-btn-dangerous').first();
-      if (await dangerBtn.count() > 0) {
-        await dangerBtn.click({ timeout: 10_000 });
-      }
-    }
+    await page.locator('.ant-modal-confirm-btns button:has-text("Xóa")').first().click({ timeout: 10_000 });
 
     // Wait for mutation (mock delay 500ms)
     await page.waitForTimeout(1500);
@@ -285,7 +267,7 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
     await expect(pagination).toBeVisible({ timeout: 5000 });
 
     // Verify pagination total text
-    const totalText = page.locator('span:has-text("người dùng"), .ant-pagination-total-text');
+    const totalText = page.locator('.ant-pagination-total-text');
     await expect(totalText).toBeVisible({ timeout: 5000 });
 
     // Next page if available

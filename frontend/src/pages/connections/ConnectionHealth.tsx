@@ -27,6 +27,7 @@ import { connectionService } from '../../services/connectionService';
 import type { ConnectionHealth } from '../../services/connectionService';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import ErrorState from '../../components/ErrorState';
+import EmptyState from '../../components/EmptyState';
 import toast from '../../components/ToastNotification';
 
 const STATUS_MAP: Record<string, { color: string; label: string; icon: React.ReactNode }> = {

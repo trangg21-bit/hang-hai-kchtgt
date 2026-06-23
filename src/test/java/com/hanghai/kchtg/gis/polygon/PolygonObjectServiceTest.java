@@ -45,7 +45,6 @@ class PolygonObjectServiceTest {
     @BeforeEach
     void setUp() {
         testPolygon = PolygonObject.builder()
-                .id(UUID.randomUUID())
                 .name("Port Zone A")
                 .code("POLY-001")
                 .objectType(ObjectType.WATER_ZONE)
@@ -59,9 +58,32 @@ class PolygonObjectServiceTest {
                 .purpose("Port operations")
                 .restrictionLevel("Medium")
                 .approvalStatus(ApprovalStatus.PENDING)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
                 .build();
+        testPolygon.setId(UUID.randomUUID());
+        testPolygon.setCreatedAt(LocalDateTime.now());
+        testPolygon.setUpdatedAt(LocalDateTime.now());
+    }
+
+    private PolygonObject clonePolygon(PolygonObject original) {
+        PolygonObject copy = PolygonObject.builder()
+                .name(original.getName())
+                .code(original.getCode())
+                .objectType(original.getObjectType())
+                .categoryId(original.getCategoryId())
+                .fillSymbolId(original.getFillSymbolId())
+                .coordinates(original.getCoordinates())
+                .description(original.getDescription())
+                .status(original.getStatus())
+                .unitId(original.getUnitId())
+                .area(original.getArea())
+                .purpose(original.getPurpose())
+                .restrictionLevel(original.getRestrictionLevel())
+                .approvalStatus(original.getApprovalStatus())
+                .build();
+        copy.setId(original.getId());
+        copy.setCreatedAt(original.getCreatedAt());
+        copy.setUpdatedAt(original.getUpdatedAt());
+        return copy;
     }
 
     // ==================== CREATE TESTS ====================
@@ -208,7 +230,7 @@ class PolygonObjectServiceTest {
                     .build();
 
             when(repository.existsByCode("POLY-AREA")).thenReturn(false);
-            when(repository.save(any(PolygonObject.class))).thenReturn(testPolygon);
+            when(repository.save(any(PolygonObject.class))).thenAnswer(inv -> inv.getArgument(0));
 
             PolygonObjectResponse result = service.create(request);
 
@@ -294,7 +316,7 @@ class PolygonObjectServiceTest {
         @Test
         @DisplayName("Should update polygon name and purpose")
         void update_nameAndPurpose_success() {
-            PolygonObject existing = new PolygonObject(testPolygon);
+            PolygonObject existing = clonePolygon(testPolygon);
 
             UpdatePolygonObjectRequest request = UpdatePolygonObjectRequest.builder()
                     .name("Updated Zone")
@@ -313,7 +335,7 @@ class PolygonObjectServiceTest {
         @Test
         @DisplayName("Should update coordinates with WKT validation")
         void update_coordinates_validated() {
-            PolygonObject existing = new PolygonObject(testPolygon);
+            PolygonObject existing = clonePolygon(testPolygon);
 
             UpdatePolygonObjectRequest request = UpdatePolygonObjectRequest.builder()
                     .coordinates("POLYGON ((0 0, 10 0, 10 10, 0 10, 0 0))")
@@ -330,7 +352,7 @@ class PolygonObjectServiceTest {
         @Test
         @DisplayName("Should throw when updating with invalid WKT")
         void update_invalidCoordinates_throws() {
-            PolygonObject existing = new PolygonObject(testPolygon);
+            PolygonObject existing = clonePolygon(testPolygon);
 
             UpdatePolygonObjectRequest request = UpdatePolygonObjectRequest.builder()
                     .coordinates("INVALID_WKT")
@@ -358,7 +380,7 @@ class PolygonObjectServiceTest {
         @Test
         @DisplayName("Should update area and restriction level")
         void update_areaAndRestriction_success() {
-            PolygonObject existing = new PolygonObject(testPolygon);
+            PolygonObject existing = clonePolygon(testPolygon);
 
             UpdatePolygonObjectRequest request = UpdatePolygonObjectRequest.builder()
                     .area(200000.0)
@@ -384,7 +406,7 @@ class PolygonObjectServiceTest {
         @Test
         @DisplayName("Should soft delete polygon object")
         void delete_success() {
-            PolygonObject existing = new PolygonObject(testPolygon);
+            PolygonObject existing = clonePolygon(testPolygon);
             existing.setStatus(Status.DRAFT);
 
             when(repository.findById(testPolygon.getId())).thenReturn(Optional.of(existing));
@@ -415,7 +437,7 @@ class PolygonObjectServiceTest {
         @Test
         @DisplayName("Should submit for approval")
         void submitForApproval_success() {
-            PolygonObject existing = new PolygonObject(testPolygon);
+            PolygonObject existing = clonePolygon(testPolygon);
             existing.setStatus(Status.DRAFT);
 
             when(repository.findById(testPolygon.getId())).thenReturn(Optional.of(existing));
@@ -429,7 +451,7 @@ class PolygonObjectServiceTest {
         @Test
         @DisplayName("Should approve L1: PENDING -> APPROVED_L1")
         void approveL1_success() {
-            PolygonObject existing = new PolygonObject(testPolygon);
+            PolygonObject existing = clonePolygon(testPolygon);
             existing.setStatus(Status.PENDING_APPROVAL);
             existing.setApprovalStatus(ApprovalStatus.PENDING);
 
@@ -449,7 +471,7 @@ class PolygonObjectServiceTest {
         @Test
         @DisplayName("Should throw L1 when not PENDING_APPROVAL")
         void approveL1_wrongStatus_throws() {
-            PolygonObject existing = new PolygonObject(testPolygon);
+            PolygonObject existing = clonePolygon(testPolygon);
             existing.setStatus(Status.DRAFT);
 
             when(repository.findById(testPolygon.getId())).thenReturn(Optional.of(existing));
@@ -462,7 +484,7 @@ class PolygonObjectServiceTest {
         @Test
         @DisplayName("Should approve L2: APPROVED_L1 -> PUBLISHED")
         void approveL2_success() {
-            PolygonObject existing = new PolygonObject(testPolygon);
+            PolygonObject existing = clonePolygon(testPolygon);
             existing.setStatus(Status.APPROVED_L1);
 
             when(repository.findById(testPolygon.getId())).thenReturn(Optional.of(existing));
@@ -480,7 +502,7 @@ class PolygonObjectServiceTest {
         @Test
         @DisplayName("Should throw L2 when not APPROVED_L1")
         void approveL2_wrongStatus_throws() {
-            PolygonObject existing = new PolygonObject(testPolygon);
+            PolygonObject existing = clonePolygon(testPolygon);
             existing.setStatus(Status.PENDING_APPROVAL);
 
             when(repository.findById(testPolygon.getId())).thenReturn(Optional.of(existing));
@@ -493,7 +515,7 @@ class PolygonObjectServiceTest {
         @Test
         @DisplayName("Full approval chain: DRAFT -> PENDING -> L1 -> L2")
         void fullApprovalChain_success() {
-            PolygonObject entity = new PolygonObject(testPolygon);
+            PolygonObject entity = clonePolygon(testPolygon);
             entity.setStatus(Status.DRAFT);
 
             when(repository.findById(entity.getId())).thenReturn(Optional.of(entity));

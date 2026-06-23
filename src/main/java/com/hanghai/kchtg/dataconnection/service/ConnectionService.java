@@ -185,6 +185,10 @@ public class ConnectionService {
                 conn.setRequestMethod("HEAD");
                 conn.setConnectTimeout(10_000);
                 conn.setReadTimeout(10_000);
+                if (entity.getAuthType() == AuthType.TOKEN && entity.getCredentials() != null && !entity.getCredentials().isBlank()) {
+                    conn.setRequestProperty("X-Integration-Token", entity.getCredentials().trim());
+                    conn.setRequestProperty("Authorization", "Bearer " + entity.getCredentials().trim());
+                }
                 int status = conn.getResponseCode();
                 long elapsed = System.currentTimeMillis() - start;
                 conn.disconnect();

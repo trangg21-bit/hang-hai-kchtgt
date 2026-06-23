@@ -11,16 +11,24 @@ import com.hanghai.kchtg.gis.polygon.repository.PolygonCategoryRepository;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.dataconnection.entity.DataConnection;
+import com.hanghai.kchtg.dataconnection.repository.DataConnectionRepository;
+import com.hanghai.kchtg.dataconnection.enums.AuthType;
+import com.hanghai.kchtg.dataconnection.enums.ConnectionStatus;
+import com.hanghai.kchtg.dataconnection.enums.ConnectionType;
+import com.hanghai.kchtg.dataconnection.enums.SyncFrequency;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.stream.Stream;
 
 @Component
+@Profile("dev")
 @RequiredArgsConstructor
 @Slf4j
 public class DataSeeder implements CommandLineRunner {
@@ -30,6 +38,7 @@ public class DataSeeder implements CommandLineRunner {
     private final PolygonCategoryRepository polygonCategoryRepo;
     private final MapIconRepository mapIconRepo;
     private final UserRepository userRepo;
+    private final DataConnectionRepository connectionRepo;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -41,6 +50,7 @@ public class DataSeeder implements CommandLineRunner {
         seedPolygonCategories();
         seedMapIcons();
         seedUsers();
+        seedDataConnections();
         
         log.info("✅ Data seeding completed successfully!");
     }
@@ -152,5 +162,38 @@ public class DataSeeder implements CommandLineRunner {
         
         userRepo.save(admin);
         log.info("✅ Seeded admin user successfully");
+    }
+
+    private void seedDataConnections() {
+        if (connectionRepo.count() > 0) {
+            log.info("⏭️ Data connections already exist, skipping...");
+            return;
+        }
+
+        log.info("📦 Seeding DataConnections...");
+
+        DataConnection conn1 = new DataConnection();
+        conn1.setName("API Dữ liệu Hàng hải");
+        conn1.setCode("CONN_MARITIME_API");
+        conn1.setTargetSystem("Maritime Authority");
+        conn1.setConnectionType(ConnectionType.REST);
+        conn1.setEndpointUrl("http://localhost:8080/api/v1/integration/share/points");
+        conn1.setAuthType(AuthType.TOKEN);
+        conn1.setCredentials("integration-secret-token-2026");
+        conn1.setSyncFrequency(SyncFrequency.MANUAL);
+        conn1.setStatus(ConnectionStatus.ACTIVE);
+
+        DataConnection conn2 = new DataConnection();
+        conn2.setName("API Khí tượng Thủy văn");
+        conn2.setCode("CONN_METEO_API");
+        conn2.setTargetSystem("Hydrometeorological Center");
+        conn2.setConnectionType(ConnectionType.REST);
+        conn2.setEndpointUrl("https://api.meteo-vietnam.gov.vn/v1");
+        conn2.setAuthType(AuthType.TOKEN);
+        conn2.setSyncFrequency(SyncFrequency.HOURLY);
+        conn2.setStatus(ConnectionStatus.INACTIVE);
+
+        connectionRepo.saveAll(List.of(conn1, conn2));
+        log.info("✅ Seeded 2 DataConnections");
     }
 }

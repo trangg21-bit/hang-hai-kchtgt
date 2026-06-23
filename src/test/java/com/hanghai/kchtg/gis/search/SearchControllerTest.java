@@ -59,7 +59,7 @@ class SearchControllerTest {
                 .queryType(QueryType.TEXT)
                 .queryText("Port")
                 .resultCount(5)
-                .durationMs(100)
+                .durationMs(100L)
                 .executedAt(LocalDateTime.now().minusHours(1))
                 .build();
     }
@@ -240,8 +240,6 @@ class SearchControllerTest {
         @Test
         @DisplayName("DELETE /api/search/history clears history with 200")
         void clearHistory_returns200() {
-            when(searchService.clearSearchHistory(0L)).thenReturn(null);
-
             ResponseEntity<ApiResponse<Void>> response = controller.clearSearchHistory();
 
             assertEquals(200, response.getStatusCode().value());
@@ -254,8 +252,8 @@ class SearchControllerTest {
         @Test
         @DisplayName("DELETE /api/search/history propagates service exceptions")
         void clearHistory_propagatesExceptions() {
-            when(searchService.clearSearchHistory(0L))
-                    .thenThrow(new RuntimeException("Clear failed"));
+            doThrow(new RuntimeException("Clear failed"))
+                    .when(searchService).clearSearchHistory(0L);
 
             assertThrows(RuntimeException.class, () -> controller.clearSearchHistory());
         }

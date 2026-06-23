@@ -35,6 +35,8 @@ encryption:
 ---
 # -- DEV profile (H2 in-memory) ------------------------------------------------
 spring:
+  main:
+    allow-bean-definition-overriding: true
   config:
     activate:
       on-profile: dev

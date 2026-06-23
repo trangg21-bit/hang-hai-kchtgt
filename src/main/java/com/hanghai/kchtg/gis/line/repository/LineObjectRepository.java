@@ -3,6 +3,8 @@ package com.hanghai.kchtg.gis.line.repository;
 import com.hanghai.kchtg.gis.line.entity.LineObject;
 import com.hanghai.kchtg.gis.line.entity.LineObject.ObjectType;
 import com.hanghai.kchtg.gis.line.entity.LineObject.Status;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,6 +24,10 @@ public interface LineObjectRepository extends JpaRepository<LineObject, UUID> {
     List<LineObject> findByObjectType(ObjectType objectType);
 
     List<LineObject> findByStatus(Status status);
+
+    Page<LineObject> findByStatus(Status status, Pageable pageable);
+
+    Page<LineObject> findByObjectTypeAndStatus(ObjectType objectType, Status status, Pageable pageable);
 
     List<LineObject> findByNameContainingIgnoreCase(String name);
 

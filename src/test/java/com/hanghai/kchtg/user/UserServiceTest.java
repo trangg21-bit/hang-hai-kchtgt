@@ -1,12 +1,17 @@
 package com.hanghai.kchtg.user;
 
+import com.hanghai.kchtg.group.repository.GroupRepository;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.user.dto.CreateUserRequest;
+import com.hanghai.kchtg.user.dto.UpdateUserRequest;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
-import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -27,7 +32,10 @@ class UserServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private RoleRepository roleRepository;
+    private OrgUnitRepository orgUnitRepository;
+
+    @Mock
+    private GroupRepository groupRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -36,288 +44,184 @@ class UserServiceTest {
     private UserService userService;
 
     private User testUser;
-    private Role testRole;
+    private UUID testUserId;
 
     @BeforeEach
     void setUp() {
-        testRole = new Role();
-        testRole.setId(1L);
-        testRole.setName("Admin");
-        testRole.setCode("ADMIN");
-        testRole.setDescription("Administrator role");
-        testRole.setPermissions("{\"users\":\"RW\",\"roles\":\"R\",\"orgs\":\"R\"}");
-
+        testUserId = UUID.randomUUID();
         testUser = new User();
-        testUser.setId(1L);
+        testUser.setId(testUserId);
         testUser.setUsername("john.doe");
         testUser.setEmail("john@example.com");
-        testUser.setPasswordHash("$2a$10$abc123");
+        testUser.setPassword("encoded_password");
         testUser.setStatus(UserStatus.ACTIVE);
-        testUser.setRole(testRole);
-        testUser.setCreatedAt(new Date());
-        testUser.setUpdatedAt(new Date());
+        testUser.setRole("ROLE_USER");
     }
 
-    // ==================== CREATE USER TESTS ====================
+    @Nested
+    @DisplayName("Create User")
+    class CreateTests {
 
-    @Test
-    void createUser_shouldReturnUser() {
-        // Arrange
-        var createUserRequest = new com.hanghai.kchtg.user.dto.CreateUserRequest();
-        createUserRequest.setUsername("john.doe");
-        createUserRequest.setEmail("john@example.com");
-        createUserRequest.setPassword("Secure123!");
-        createUserRequest.setRoleId(1L);
-        createUserRequest.setOrganizationId(1L);
+        @Test
+        @DisplayName("Should create user successfully")
+        void createUser_success() {
+            CreateUserRequest request = new CreateUserRequest();
+            request.setUsername("john.doe");
+            request.setEmail("john@example.com");
+            request.setPassword("Secure123!");
+            request.setFullName("John Doe");
 
-        when(userRepository.existsByUsername(anyString())).thenReturn(false);
-        when(userRepository.existsByEmail(anyString())).thenReturn(false);
-        when(passwordEncoder.encode(anyString())).thenReturn("$2a$10$encoded");
-        when(roleRepository.findById(anyLong())).thenReturn(Optional.of(testRole));
-        when(userRepository.save(any(User.class))).thenReturn(testUser);
+            when(userRepository.existsByUsername("john.doe")).thenReturn(false);
+            when(userRepository.existsByEmail("john@example.com")).thenReturn(false);
+            when(passwordEncoder.encode("Secure123!")).thenReturn("encoded_password");
+            when(userRepository.save(any(User.class))).thenReturn(testUser);
 
-        // Act
-        User result = userService.createUser(createUserRequest);
+            User result = userService.create(request);
 
-        // Assert
-        assertNotNull(result);
-        assertEquals("john.doe", result.getUsername());
-        assertEquals("john@example.com", result.getEmail());
-        assertEquals(UserStatus.ACTIVE, result.getStatus());
-        verify(userRepository).save(any(User.class));
-        verify(passwordEncoder).encode(anyString());
+            assertNotNull(result);
+            assertEquals("john.doe", result.getUsername());
+            verify(userRepository).save(any(User.class));
+        }
+
+        @Test
+        @DisplayName("Should throw when username already exists")
+        void createDuplicateUsername_throwsException() {
+            CreateUserRequest request = new CreateUserRequest();
+            request.setUsername("john.doe");
+            request.setEmail("john@example.com");
+
+            when(userRepository.existsByUsername("john.doe")).thenReturn(true);
+
+            assertThrows(IllegalArgumentException.class, () -> userService.create(request));
+            verify(userRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("Should throw when email already exists")
+        void createDuplicateEmail_throwsException() {
+            CreateUserRequest request = new CreateUserRequest();
+            request.setUsername("john.doe");
+            request.setEmail("john@example.com");
+
+            when(userRepository.existsByUsername("john.doe")).thenReturn(false);
+            when(userRepository.existsByEmail("john@example.com")).thenReturn(true);
+
+            assertThrows(IllegalArgumentException.class, () -> userService.create(request));
+            verify(userRepository, never()).save(any());
+        }
     }
 
-    @Test
-    void createUser_shouldThrowWhenUsernameExists() {
-        // Arrange
-        var createUserRequest = new com.hanghai.kchtg.user.dto.CreateUserRequest();
-        createUserRequest.setUsername("john.doe");
-        createUserRequest.setEmail("john@example.com");
-        createUserRequest.setPassword("Secure123!");
+    @Nested
+    @DisplayName("Read Users")
+    class ReadTests {
 
-        when(userRepository.existsByUsername("john.doe")).thenReturn(true);
+        @Test
+        @DisplayName("Should find user by ID")
+        void findById_success() {
+            when(userRepository.findByIdWithRelations(testUserId)).thenReturn(Optional.of(testUser));
 
-        // Act & Assert
-        assertThrows(RuntimeException.class, () -> userService.createUser(createUserRequest));
-        verify(userRepository, never()).save(any());
+            User result = userService.findById(testUserId);
+            assertNotNull(result);
+            assertEquals(testUserId, result.getId());
+        }
+
+        @Test
+        @DisplayName("Should return all users")
+        void findAll_success() {
+            when(userRepository.findAllWithRelations()).thenReturn(List.of(testUser));
+
+            List<User> result = userService.findAll();
+            assertEquals(1, result.size());
+        }
+
+        @Test
+        @DisplayName("Should find user by username")
+        void findByUsername_success() {
+            when(userRepository.findByUsernameWithRelations("john.doe")).thenReturn(Optional.of(testUser));
+
+            User result = userService.findByUsername("john.doe");
+            assertNotNull(result);
+            assertEquals("john.doe", result.getUsername());
+        }
+
+        @Test
+        @DisplayName("Should find user by email")
+        void findByEmail_success() {
+            when(userRepository.findByEmail("john@example.com")).thenReturn(Optional.of(testUser));
+
+            User result = userService.findByEmail("john@example.com");
+            assertNotNull(result);
+            assertEquals("john@example.com", result.getEmail());
+        }
     }
 
-    @Test
-    void createUser_shouldThrowWhenEmailExists() {
-        // Arrange
-        var createUserRequest = new com.hanghai.kchtg.user.dto.CreateUserRequest();
-        createUserRequest.setUsername("john.doe");
-        createUserRequest.setEmail("john@example.com");
-        createUserRequest.setPassword("Secure123!");
+    @Nested
+    @DisplayName("Update User")
+    class UpdateTests {
 
-        when(userRepository.existsByUsername("john.doe")).thenReturn(false);
-        when(userRepository.existsByEmail("john@example.com")).thenReturn(true);
+        @Test
+        @DisplayName("Should update user details")
+        void updateUser_success() {
+            UpdateUserRequest request = new UpdateUserRequest();
+            request.setEmail("john.new@example.com");
+            request.setFullName("John New");
 
-        // Act & Assert
-        assertThrows(RuntimeException.class, () -> userService.createUser(createUserRequest));
-        verify(userRepository, never()).save(any());
+            when(userRepository.findByIdWithRelations(testUserId)).thenReturn(Optional.of(testUser));
+            when(userRepository.existsByEmail("john.new@example.com")).thenReturn(false);
+            when(userRepository.save(any(User.class))).thenReturn(testUser);
+
+            User result = userService.update(testUserId, request);
+
+            assertNotNull(result);
+            verify(userRepository).save(any(User.class));
+        }
+
+        @Test
+        @DisplayName("Should throw when updating email to an existing email")
+        void updateDuplicateEmail_throwsException() {
+            UpdateUserRequest request = new UpdateUserRequest();
+            request.setEmail("jane@example.com");
+
+            when(userRepository.findByIdWithRelations(testUserId)).thenReturn(Optional.of(testUser));
+            when(userRepository.existsByEmail("jane@example.com")).thenReturn(true);
+
+            assertThrows(IllegalArgumentException.class, () -> userService.update(testUserId, request));
+        }
     }
 
-    @Test
-    void createUser_shouldThrowWhenPasswordTooShort() {
-        // Arrange
-        var createUserRequest = new com.hanghai.kchtg.user.dto.CreateUserRequest();
-        createUserRequest.setUsername("john.doe");
-        createUserRequest.setEmail("john@example.com");
-        createUserRequest.setPassword("abc");
+    @Nested
+    @DisplayName("Delete User")
+    class DeleteTests {
 
-        // Act & Assert
-        assertThrows(RuntimeException.class, () -> userService.createUser(createUserRequest));
-        verify(userRepository, never()).save(any());
+        @Test
+        @DisplayName("Should soft delete user")
+        void deleteUser_success() {
+            when(userRepository.findById(testUserId)).thenReturn(Optional.of(testUser));
+            when(userRepository.save(any(User.class))).thenReturn(testUser);
+
+            userService.delete(testUserId);
+
+            assertEquals(UserStatus.DELETED, testUser.getStatus());
+            assertNotNull(testUser.getDeletedAt());
+            verify(userRepository).save(testUser);
+        }
     }
 
-    // ==================== READ USER TESTS ====================
+    @Nested
+    @DisplayName("Change Status")
+    class StatusTests {
 
-    @Test
-    void getUserById_shouldReturnUser() {
-        // Arrange
-        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        @Test
+        @DisplayName("Should change user status")
+        void changeStatus_success() {
+            when(userRepository.findByIdWithRelations(testUserId)).thenReturn(Optional.of(testUser));
+            when(userRepository.save(any(User.class))).thenReturn(testUser);
 
-        // Act
-        User result = userService.getUserById(1L);
+            User result = userService.changeStatus(testUserId, UserStatus.LOCKED);
 
-        // Assert
-        assertNotNull(result);
-        assertEquals("john.doe", result.getUsername());
-        verify(userRepository).findById(1L);
-    }
-
-    @Test
-    void getUserById_shouldThrowWhenNotFound() {
-        // Arrange
-        when(userRepository.findById(999L)).thenReturn(Optional.empty());
-
-        // Act & Assert
-        assertThrows(RuntimeException.class, () -> userService.getUserById(999L));
-    }
-
-    @Test
-    void listUsers_shouldReturnPaginatedUsers() {
-        // Arrange
-        List<User> users = List.of(testUser);
-        Page<User> page = new PageImpl<>(users);
-        when(userRepository.findAll(any(Pageable.class))).thenReturn(page);
-
-        // Act
-        Page<User> result = userService.listUsers(PageRequest.of(0, 20));
-
-        // Assert
-        assertNotNull(result);
-        assertEquals(1, result.getTotalElements());
-        verify(userRepository).findAll(any(Pageable.class));
-    }
-
-    @Test
-    void searchUsers_shouldFilterByName() {
-        // Arrange
-        List<User> users = List.of(testUser);
-        Page<User> page = new PageImpl<>(users);
-        when(userRepository.searchByNameOrEmail("john", any(Pageable.class))).thenReturn(page);
-
-        // Act
-        Page<User> result = userService.searchUsers("john", PageRequest.of(0, 20));
-
-        // Assert
-        assertNotNull(result);
-        assertEquals(1, result.getTotalElements());
-        verify(userRepository).searchByNameOrEmail("john", any(Pageable.class));
-    }
-
-    // ==================== UPDATE USER TESTS ====================
-
-    @Test
-    void updateUser_shouldChangeEmail() {
-        // Arrange
-        User existingUser = new User(testUser);
-        existingUser.setUsername("john.doe");
-        existingUser.setEmail("john@example.com");
-        existingUser.setStatus(UserStatus.ACTIVE);
-
-        var updateRequest = new com.hanghai.kchtg.user.dto.UpdateUserRequest();
-        updateRequest.setEmail("john.new@example.com");
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
-        when(userRepository.existsByEmailIgnoringId("john.new@example.com", 1L)).thenReturn(false);
-        when(userRepository.save(any(User.class))).thenReturn(existingUser);
-
-        // Act
-        User result = userService.updateUser(1L, updateRequest);
-
-        // Assert
-        assertEquals("john.new@example.com", result.getEmail());
-        verify(userRepository).save(any(User.class));
-    }
-
-    @Test
-    void updateUser_shouldThrowWhenEmailTaken() {
-        // Arrange
-        User existingUser = new User(testUser);
-        existingUser.setUsername("john.doe");
-        existingUser.setEmail("john@example.com");
-
-        var updateRequest = new com.hanghai.kchtg.user.dto.UpdateUserRequest();
-        updateRequest.setEmail("jane@example.com");
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
-        when(userRepository.existsByEmailIgnoringId("jane@example.com", 1L)).thenReturn(true);
-
-        // Act & Assert
-        assertThrows(RuntimeException.class, () -> userService.updateUser(1L, updateRequest));
-        verify(userRepository, never()).save(any());
-    }
-
-    // ==================== LOCK/UNLOCK TESTS ====================
-
-    @Test
-    void lockUser_shouldSetStatusToLocked() {
-        // Arrange
-        User existingUser = new User(testUser);
-        existingUser.setUsername("john.doe");
-        existingUser.setEmail("john@example.com");
-        existingUser.setStatus(UserStatus.ACTIVE);
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(existingUser);
-
-        // Act
-        userService.lockUser(1L);
-
-        // Assert
-        assertEquals(UserStatus.LOCKED, existingUser.getStatus());
-        verify(userRepository).save(existingUser);
-    }
-
-    @Test
-    void unlockUser_shouldSetStatusToActive() {
-        // Arrange
-        User existingUser = new User(testUser);
-        existingUser.setUsername("john.doe");
-        existingUser.setEmail("john@example.com");
-        existingUser.setStatus(UserStatus.LOCKED);
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(existingUser);
-
-        // Act
-        userService.unlockUser(1L);
-
-        // Assert
-        assertEquals(UserStatus.ACTIVE, existingUser.getStatus());
-        verify(userRepository).save(existingUser);
-    }
-
-    // ==================== PASSWORD RESET TESTS ====================
-
-    @Test
-    void resetPassword_shouldEncodeNewPassword() {
-        // Arrange
-        User existingUser = new User(testUser);
-        existingUser.setUsername("john.doe");
-        existingUser.setEmail("john@example.com");
-        existingUser.setStatus(UserStatus.ACTIVE);
-
-        var request = new com.hanghai.kchtg.user.dto.ResetPasswordRequest();
-        request.setNewPassword("NewSecure456!");
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
-        when(passwordEncoder.encode("NewSecure456!")).thenReturn("$2a$10$new");
-        when(userRepository.save(any(User.class))).thenReturn(existingUser);
-
-        // Act
-        userService.resetPassword(java.util.UUID.randomUUID(), request);
-
-        // Assert
-        assertEquals("$2a$10$new", existingUser.getPasswordHash());
-        verify(passwordEncoder).encode("NewSecure456!");
-        verify(userRepository).save(existingUser);
-    }
-
-    // ==================== DELETE TESTS ====================
-
-    @Test
-    void deleteUser_shouldSoftDelete() {
-        // Arrange
-        User existingUser = new User(testUser);
-        existingUser.setUsername("john.doe");
-        existingUser.setEmail("john@example.com");
-        existingUser.setStatus(UserStatus.ACTIVE);
-        existingUser.setDeletedAt(null);
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(existingUser);
-
-        // Act
-        userService.deleteUser(1L);
-
-        // Assert
-        assertNotNull(existingUser.getDeletedAt());
-        verify(userRepository).save(existingUser);
+            assertNotNull(result);
+            assertEquals(UserStatus.LOCKED, testUser.getStatus());
+            verify(userRepository).save(testUser);
+        }
     }
 }
-

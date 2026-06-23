@@ -84,7 +84,7 @@ export default function AdminForm() {
         </Space>
       </Card>
 
-      <Card style={{ maxWidth: 700 }}>
+      <Card style={{ maxWidth: 700, margin: '0 auto' }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ ...isEdit ? { status: 'active' } : {} }}>
           {!isEdit && (
             <FormField

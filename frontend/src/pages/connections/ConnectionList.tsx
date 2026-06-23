@@ -11,6 +11,7 @@ import {
   Select,
   Tooltip,
   Progress,
+  Modal,
 } from 'antd';
 import {
   PlusOutlined,
@@ -115,7 +116,7 @@ export default function ConnectionList() {
   );
 
   const columns = [
-    { title: '#', width: 60, render: (_, __, idx: number) => (page - 1) * pageSize + idx + 1 },
+    { title: '#', width: 60, render: (_: unknown, __: unknown, idx: number) => (page - 1) * pageSize + idx + 1 },
     {
       title: 'Tên',
       dataIndex: 'name',
@@ -285,9 +286,9 @@ export default function ConnectionList() {
               current: page,
               pageSize,
               total,
-              onChange: (p) => setPage(p),
+              onChange: (p: number) => setPage(p),
               showSizeChanger: true,
-              showTotal: (t) => `Tổng ${t} kết nối`,
+              showTotal: (t: number) => `Tổng ${t} kết nối`,
               pageSizeOptions: ['10', '20', '50'],
             }}
           />

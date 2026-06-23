@@ -7,16 +7,19 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.mockito.quality.Strictness;
+import org.mockito.junit.jupiter.MockitoSettings;
+
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class JwtUtilTest {
 
     @Mock
     private JwtProperties jwtProperties;
 
-    @InjectMocks
     private JwtUtil jwtUtil;
 
     private String testUsername = "john.doe";
@@ -24,8 +27,9 @@ class JwtUtilTest {
 
     @BeforeEach
     void setUp() {
-        when(jwtProperties.getSecret()).thenReturn("dGVzdC1zZWNyZXQta2V5LWZvci1qd3Qtc2lnbmluZw==");
+        when(jwtProperties.getSecret()).thenReturn("dGVzdC1zZWNyZXQta2V5LWZvci1qd3Qtc2lnbmluZy1qd3Qtc2lnbmluZy1rZXk=");
         when(jwtProperties.getExpiration()).thenReturn(3600000L);
+        jwtUtil = new JwtUtil(jwtProperties);
     }
 
     @Test

@@ -3,6 +3,8 @@ package com.hanghai.kchtg.gis.point.repository;
 import com.hanghai.kchtg.gis.point.entity.PointObject;
 import com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType;
 import com.hanghai.kchtg.gis.point.entity.PointObject.Status;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,6 +24,10 @@ public interface PointObjectRepository extends JpaRepository<PointObject, UUID> 
     List<PointObject> findByObjectType(ObjectType objectType);
 
     List<PointObject> findByStatus(Status status);
+
+    Page<PointObject> findByStatus(Status status, Pageable pageable);
+
+    Page<PointObject> findByObjectTypeAndStatus(ObjectType objectType, Status status, Pageable pageable);
 
     List<PointObject> findByNameContainingIgnoreCase(String name);
 

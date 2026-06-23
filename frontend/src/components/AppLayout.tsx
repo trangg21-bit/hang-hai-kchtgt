@@ -24,6 +24,7 @@ import {
   DownOutlined,
   CompassOutlined,
   IdcardOutlined,
+  ApiOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import type { MenuProps } from 'antd';
@@ -36,6 +37,16 @@ const menuItems: MenuProps['items'] = [
     key: '/users',
     icon: <UserOutlined />,
     label: 'Quản lý người dùng',
+  },
+  {
+    key: '/organizations',
+    icon: <TeamOutlined />,
+    label: 'Quản lý đơn vị',
+  },
+  {
+    key: '/groups',
+    icon: <TeamOutlined />,
+    label: 'Quản lý nhóm',
   },
   {
     key: '/admins',
@@ -84,6 +95,14 @@ const menuItems: MenuProps['items'] = [
     type: 'divider' as const,
   },
   {
+    key: '/connections',
+    icon: <ApiOutlined />,
+    label: 'Liên thông dữ liệu',
+  },
+  {
+    type: 'divider' as const,
+  },
+  {
     key: '/settings',
     icon: <SettingOutlined />,
     label: 'Cấu hình hệ thống',
@@ -99,6 +118,8 @@ const menuItems: MenuProps['items'] = [
 
 const pageTitles: Record<string, string> = {
   '/users': 'Quản lý người dùng',
+  '/organizations': 'Quản lý đơn vị',
+  '/groups': 'Quản lý nhóm',
   '/admins': 'Quản trị viên',
   '/roles': 'Phân quyền',
   '/gis/points': 'Đối tượng điểm',
@@ -106,6 +127,7 @@ const pageTitles: Record<string, string> = {
   '/gis/polygons': 'Đối tượng vùng',
   '/gis/layers': 'Lớp bản đồ',
   '/gis/search': 'Tra cứu GIS',
+  '/connections': 'Liên thông dữ liệu',
   '/settings': 'Cấu hình hệ thống',
   '/logs': 'Nhật ký hệ thống',
 };

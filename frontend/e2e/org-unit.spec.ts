@@ -11,7 +11,7 @@ test.describe('Quản lý đơn vị', () => {
 
   test('Hiển thị danh sách đơn vị', async ({ page }) => {
     await page.goto('/organizations');
-    await expect(page.getByRole('table')).toBeVisible();
+    await expect(page.getByRole('table').first()).toBeVisible();
   });
 
   test('Tạo mới đơn vị', async ({ page }) => {
@@ -27,10 +27,13 @@ test.describe('Quản lý đơn vị', () => {
 
   test('Sửa đơn vị', async ({ page }) => {
     await page.goto('/organizations');
-    const firstRow = page.locator('tr').first();
-    await firstRow.getByRole('button', { name: /sửa/i }).click();
+    await page.locator('.anticon-edit').first().click();
 
-    await page.getByLabel('Tên đơn vị').fill('Updated E2E Dept');
+    // Wait for the form to load existing data
+    const nameInput = page.getByLabel('Tên đơn vị');
+    await expect(nameInput).toHaveValue('Cơ quan Đầu não', { timeout: 5000 });
+
+    await nameInput.fill('Updated E2E Dept');
     await page.getByRole('button', { name: /lưu/i }).click();
 
     await expect(page.locator('.ant-message-success')).toBeVisible({ timeout: 5000 });

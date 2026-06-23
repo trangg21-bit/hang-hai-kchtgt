@@ -457,9 +457,9 @@ export default function UsersPage() {
                     { pattern: /^[a-z0-9_]+$/, message: 'Chỉ chứa chữ thường, số và dấu gạch dưới' },
                   ]}
                 >
-                  <Input placeholder="vd: nguyenvana" autoComplete="off" />
+                  <Input name="username" placeholder="vd: nguyenvana" autoComplete="off" />
                 </Form.Item>
-
+ 
                 <Form.Item
                   name="password"
                   label="Mật khẩu"
@@ -472,19 +472,19 @@ export default function UsersPage() {
                     },
                   ]}
                 >
-                  <Input.Password placeholder="Ít nhất 6 ký tự" autoComplete="new-password" />
+                  <Input.Password name="password" placeholder="Ít nhất 6 ký tự" autoComplete="new-password" />
                 </Form.Item>
               </>
             )}
-
+ 
             <Form.Item
               name="fullName"
               label="Họ và tên"
               rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}
             >
-              <Input placeholder="Nguyễn Văn A" />
+              <Input name="fullName" placeholder="Nguyễn Văn A" />
             </Form.Item>
-
+ 
             <Row gutter={16}>
               <Col xs={24} md={12}>
                 <Form.Item
@@ -495,17 +495,17 @@ export default function UsersPage() {
                     { type: 'email', message: 'Email không hợp lệ' },
                   ]}
                 >
-                  <Input placeholder="email@example.com" />
+                  <Input name="email" placeholder="email@example.com" />
                 </Form.Item>
               </Col>
-
+ 
               <Col xs={24} md={12}>
                 <Form.Item
                   name="phone"
                   label="Số điện thoại"
                   rules={[{ pattern: /^0\d{9,10}$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]}
                 >
-                  <Input placeholder="0901234567" />
+                  <Input name="phone" placeholder="0901234567" />
                 </Form.Item>
               </Col>
             </Row>

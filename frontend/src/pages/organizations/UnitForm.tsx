@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Input, Select } from 'antd';
+import { Card, Form, Button, Space, Typography, Input, Select, Row, Col } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { organizationService } from '../../services/organizationService';
@@ -37,6 +37,7 @@ export default function UnitForm() {
           const data = await organizationService.getById(id!);
           setInitialData({
             name: data.name,
+            code: (data as any).code || 'ORG_' + id,
             parentOrgId: data.parentOrgId,
             description: data.description,
             address: data.address,
@@ -46,6 +47,7 @@ export default function UnitForm() {
           });
           form.setFieldsValue({
             name: data.name,
+            code: (data as any).code || 'ORG_' + id,
             parentOrgId: data.parentOrgId,
             description: data.description,
             address: data.address,
@@ -96,8 +98,8 @@ export default function UnitForm() {
       }
 
       navigate('/organizations');
-    } catch {
-      // validation error
+    } catch (err) {
+      console.error("Submit error:", err);
     } finally {
       setSubmitting(false);
     }
@@ -116,14 +118,22 @@ export default function UnitForm() {
         </Space>
       </Card>
 
-      <Card style={{ maxWidth: 700 }}>
-        <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ status: 'active', ...initialData }}>
+      <Card style={{ maxWidth: 700, margin: '0 auto' }}>
+        <Form form={form} layout="vertical" onFinish={handleSubmit} onFinishFailed={(info) => console.error("Form validation failed:", info)} initialValues={{ status: 'active', ...initialData }}>
           <FormField
             type="text"
             name="name"
             label="Tên đơn vị"
             required
             placeholder="VD: Phòng CNTT"
+          />
+
+          <FormField
+            type="text"
+            name="code"
+            label="Mã đơn vị"
+            required
+            placeholder="VD: PHONG_CNTT"
           />
 
           <FormField
@@ -182,7 +192,7 @@ export default function UnitForm() {
           <Form.Item style={{ marginTop: 24 }}>
             <Space>
               <Button type="primary" htmlType="submit" loading={submitting}>
-                {isEdit ? 'Cập nhật' : 'Tạo đơn vị'}
+                Lưu
               </Button>
               <Button onClick={() => navigate(-1)}>Hủy</Button>
             </Space>

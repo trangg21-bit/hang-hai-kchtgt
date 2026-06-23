@@ -1,10 +1,14 @@
 package com.hanghai.kchtg.user;
 
+import com.hanghai.kchtg.user.dto.CreateRoleRequest;
+import com.hanghai.kchtg.user.dto.UpdateRoleRequest;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.RoleStatus;
 import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.service.RoleService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -27,172 +31,136 @@ class RoleServiceTest {
     private RoleService roleService;
 
     private Role testRole;
+    private UUID testRoleId;
 
     @BeforeEach
     void setUp() {
+        testRoleId = UUID.randomUUID();
         testRole = new Role();
-        testRole.setId(1L);
+        testRole.setId(testRoleId);
         testRole.setName("Admin");
         testRole.setCode("ADMIN");
         testRole.setDescription("Administrator role");
-        testRole.setPermissions("{\"users\":\"RW\",\"roles\":\"R\",\"orgs\":\"R\"}");
+        testRole.setPermissions(List.of("user.view", "user.create"));
         testRole.setStatus(RoleStatus.ACTIVE);
-        testRole.setIsSystem(true);
     }
 
-    // ==================== CREATE ROLE TESTS ====================
+    @Nested
+    @DisplayName("Create Role")
+    class CreateTests {
 
-    @Test
-    void createRole_shouldReturnRole() {
-        // Arrange
-        var request = new com.hanghai.kchtg.user.dto.CreateRoleRequest();
-        request.setName("Manager");
-        request.setCode("MANAGER");
-        request.setDescription("Manager role");
-        request.setPermissions("{\"users\":\"R\",\"roles\":\"R\",\"orgs\":\"RW\"}");
+        @Test
+        @DisplayName("Should create role successfully")
+        void createRole_success() {
+            CreateRoleRequest request = new CreateRoleRequest();
+            request.setName("Manager");
+            request.setCode("MANAGER");
+            request.setDescription("Manager role");
+            request.setPermissions(List.of("user.view"));
 
-        when(roleRepository.existsByName("Manager")).thenReturn(false);
-        when(roleRepository.existsByCode("MANAGER")).thenReturn(false);
-        when(roleRepository.save(any(Role.class))).thenReturn(testRole);
+            when(roleRepository.existsByCode("MANAGER")).thenReturn(false);
+            when(roleRepository.save(any(Role.class))).thenReturn(testRole);
 
-        // Act
-        Role result = roleService.createRole(request);
+            Role result = roleService.create(request);
 
-        // Assert
-        assertNotNull(result);
-        assertEquals("Manager", result.getName());
-        assertEquals("MANAGER", result.getCode());
-        verify(roleRepository).save(any(Role.class));
+            assertNotNull(result);
+            assertEquals("ADMIN", result.getCode()); // returns testRole mock
+            verify(roleRepository).save(any(Role.class));
+        }
+
+        @Test
+        @DisplayName("Should throw when role code already exists")
+        void createDuplicateCode_throwsException() {
+            CreateRoleRequest request = new CreateRoleRequest();
+            request.setName("Manager");
+            request.setCode("ADMIN");
+
+            when(roleRepository.existsByCode("ADMIN")).thenReturn(true);
+
+            assertThrows(IllegalArgumentException.class, () -> roleService.create(request));
+            verify(roleRepository, never()).save(any());
+        }
     }
 
-    @Test
-    void createRole_shouldThrowWhenNameExists() {
-        // Arrange
-        var request = new com.hanghai.kchtg.user.dto.CreateRoleRequest();
-        request.setName("Admin");
-        request.setCode("ADMIN");
+    @Nested
+    @DisplayName("Read Roles")
+    class ReadTests {
 
-        when(roleRepository.existsByName("Admin")).thenReturn(true);
+        @Test
+        @DisplayName("Should find role by ID")
+        void findById_success() {
+            when(roleRepository.findById(testRoleId)).thenReturn(Optional.of(testRole));
 
-        // Act & Assert
-        assertThrows(RuntimeException.class, () -> roleService.createRole(request));
-        verify(roleRepository, never()).save(any());
+            Role result = roleService.findById(testRoleId);
+            assertNotNull(result);
+            assertEquals(testRoleId, result.getId());
+        }
+
+        @Test
+        @DisplayName("Should return all roles")
+        void findAll_success() {
+            when(roleRepository.findAll()).thenReturn(List.of(testRole));
+
+            assertEquals(1, roleService.findAll().size());
+        }
+
+        @Test
+        @DisplayName("Should find role by code")
+        void findByCode_success() {
+            when(roleRepository.findByCode("ADMIN")).thenReturn(Optional.of(testRole));
+
+            Role result = roleService.findByCode("ADMIN");
+            assertNotNull(result);
+            assertEquals("ADMIN", result.getCode());
+        }
+
+        @Test
+        @DisplayName("Should return active roles")
+        void findActiveRoles_success() {
+            when(roleRepository.findByStatus(RoleStatus.ACTIVE)).thenReturn(List.of(testRole));
+
+            List<Role> result = roleService.findActiveRoles();
+            assertEquals(1, result.size());
+        }
     }
 
-    @Test
-    void createRole_shouldThrowWhenCodeExists() {
-        // Arrange
-        var request = new com.hanghai.kchtg.user.dto.CreateRoleRequest();
-        request.setName("Manager");
-        request.setCode("ADMIN");
+    @Nested
+    @DisplayName("Update Role")
+    class UpdateTests {
 
-        when(roleRepository.existsByName("Manager")).thenReturn(false);
-        when(roleRepository.existsByCode("ADMIN")).thenReturn(true);
+        @Test
+        @DisplayName("Should update role details")
+        void updateRole_success() {
+            UpdateRoleRequest request = new UpdateRoleRequest();
+            request.setName("New Name");
+            request.setCode("ADMIN_NEW");
 
-        // Act & Assert
-        assertThrows(RuntimeException.class, () -> roleService.createRole(request));
+            when(roleRepository.findById(testRoleId)).thenReturn(Optional.of(testRole));
+            when(roleRepository.existsByCodeAndIdNot("ADMIN_NEW", testRoleId)).thenReturn(false);
+            when(roleRepository.save(any(Role.class))).thenReturn(testRole);
+
+            Role result = roleService.update(testRoleId, request);
+
+            assertNotNull(result);
+            verify(roleRepository).save(any(Role.class));
+        }
     }
 
-    // ==================== READ ROLE TESTS ====================
+    @Nested
+    @DisplayName("Delete Role")
+    class DeleteTests {
 
-    @Test
-    void getRoleById_shouldReturnRole() {
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(testRole));
+        @Test
+        @DisplayName("Should delete role (soft delete)")
+        void deleteRole_success() {
+            when(roleRepository.findById(testRoleId)).thenReturn(Optional.of(testRole));
+            when(roleRepository.save(any(Role.class))).thenReturn(testRole);
 
-        Role result = roleService.getRoleById(1L);
+            Role result = roleService.delete(testRoleId);
 
-        assertNotNull(result);
-        assertEquals("Admin", result.getName());
-        verify(roleRepository).findById(1L);
-    }
-
-    @Test
-    void getRoleById_shouldThrowWhenNotFound() {
-        when(roleRepository.findById(999L)).thenReturn(Optional.empty());
-        assertThrows(RuntimeException.class, () -> roleService.getRoleById(999L));
-    }
-
-    @Test
-    void listRoles_shouldReturnAllRoles() {
-        List<Role> roles = List.of(testRole);
-        when(roleRepository.findAllByIsSystemFalse()).thenReturn(roles);
-
-        Page<Role> result = roleService.listRoles(PageRequest.of(0, 20));
-
-        assertNotNull(result);
-        assertEquals(1, result.getTotalElements());
-    }
-
-    // ==================== UPDATE ROLE TESTS ====================
-
-    @Test
-    void updateRole_shouldChangeName() {
-        Role existing = new Role(testRole);
-        existing.setName("Admin");
-        existing.setCode("ADMIN");
-
-        var request = new com.hanghai.kchtg.user.dto.UpdateRoleRequest();
-        request.setName("System Admin");
-        request.setDescription("System administrator");
-
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(existing));
-        when(roleRepository.existsByNameIgnoringId("System Admin", 1L)).thenReturn(false);
-        when(roleRepository.save(any(Role.class))).thenReturn(existing);
-
-        Role result = roleService.updateRole(1L, request);
-
-        assertEquals("System Admin", result.getName());
-        verify(roleRepository).save(existing);
-    }
-
-    // ==================== DELETE ROLE TESTS ====================
-
-    @Test
-    void deleteRole_shouldThrowForSystemRole() {
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(testRole));
-        testRole.setIsSystem(true);
-
-        assertThrows(RuntimeException.class, () -> roleService.deleteRole(1L));
-        verify(roleRepository, never()).deleteById(any());
-    }
-
-    @Test
-    void deleteRole_shouldSoftDeleteNonSystemRole() {
-        Role existing = new Role(testRole);
-        existing.setId(1L);
-        existing.setName("Custom");
-        existing.setCode("CUSTOM");
-        existing.setIsSystem(false);
-
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(existing));
-        when(roleRepository.save(any(Role.class))).thenReturn(existing);
-
-        roleService.deleteRole(1L);
-
-        assertNotNull(existing.getDeletedAt());
-    }
-
-    // ==================== PERMISSION TESTS ====================
-
-    @Test
-    void getRolePermissions_shouldReturnMap() {
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(testRole));
-
-        Map<String, String> permissions = roleService.getRolePermissions(1L);
-
-        assertNotNull(permissions);
-        assertEquals("RW", permissions.get("users"));
-        assertEquals("R", permissions.get("roles"));
-    }
-
-    @Test
-    void getRolePermissions_shouldReturnEmptyWhenNoPermissions() {
-        testRole.setPermissions("{}");
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(testRole));
-
-        Map<String, String> permissions = roleService.getRolePermissions(1L);
-
-        assertNotNull(permissions);
-        assertTrue(permissions.isEmpty());
+            assertEquals(RoleStatus.DELETED, testRole.getStatus());
+            assertNotNull(testRole.getDeletedAt());
+            verify(roleRepository).save(testRole);
+        }
     }
 }

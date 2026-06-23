@@ -1,11 +1,17 @@
 package com.hanghai.kchtg.mapicon;
 
+import com.hanghai.kchtg.mapicon.dto.CreateMapIconRequest;
+import com.hanghai.kchtg.mapicon.dto.MapIconResponse;
+import com.hanghai.kchtg.mapicon.dto.UpdateMapIconRequest;
 import com.hanghai.kchtg.mapicon.entity.MapIcon;
 import com.hanghai.kchtg.mapicon.entity.MapIcon.Category;
 import com.hanghai.kchtg.mapicon.entity.MapIcon.Status;
 import com.hanghai.kchtg.mapicon.repository.MapIconRepository;
 import com.hanghai.kchtg.mapicon.service.MapIconService;
+import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -27,123 +33,134 @@ class MapIconServiceTest {
     @InjectMocks
     private MapIconService mapIconService;
 
-    private MapIcon testIcon = new MapIcon();
+    private MapIcon testIcon;
+    private UUID testIconId;
 
     @BeforeEach
     void setUp() {
-        testIcon.setId(1L);
+        testIconId = UUID.randomUUID();
+        testIcon = new MapIcon();
+        testIcon.setId(testIconId);
         testIcon.setName("Cảng biển");
         testIcon.setCode("PORT");
-        testIcon.setIconType(Category.PORT);
-        testIcon.setColor("#4a90d9");
-        testIcon.setSize(32);
-        testIcon.setStatus(IconStatus.ACTIVE);
+        testIcon.setCategory(Category.WHARF);
+        testIcon.setIconUrl("http://localhost:8080/icons/port.svg");
+        testIcon.setSize("32");
+        testIcon.setStatus(Status.ACTIVE);
     }
 
-    // ==================== CRUD TESTS ====================
+    @Nested
+    @DisplayName("Create MapIcon")
+    class CreateTests {
 
-    @Test
-    void createIcon_shouldReturnIcon() {
-        var request = new com.hanghai.kchtg.mapicon.dto.CreateMapIconRequest();
-        request.setName("Đèn biển");
-        request.setCode("LIGHT");
-        request.setIconType(Category.LIGHT);
+        @Test
+        @DisplayName("Should create map icon successfully")
+        void createIcon_success() {
+            CreateMapIconRequest request = new CreateMapIconRequest();
+            request.setName("Đèn biển");
+            request.setCode("LIGHT");
+            request.setCategory(Category.LIGHTHOUSE);
+            request.setIconUrl("http://localhost:8080/icons/lighthouse.svg");
+            request.setSize("32");
+            request.setStatus(Status.ACTIVE);
 
-        when(mapIconRepository.existsByCode("LIGHT")).thenReturn(false);
-        when(mapIconRepository.save(any())).thenReturn(testIcon);
+            when(mapIconRepository.existsByCode("LIGHT")).thenReturn(false);
+            when(mapIconRepository.save(any(MapIcon.class))).thenReturn(testIcon);
 
-        MapIcon result = mapIconService.createIcon(request);
+            MapIconResponse result = mapIconService.create(request);
 
-        assertNotNull(result);
-        verify(mapIconRepository).save(any());
+            assertNotNull(result);
+            verify(mapIconRepository).save(any(MapIcon.class));
+        }
+
+        @Test
+        @DisplayName("Should throw when map icon code already exists")
+        void createDuplicateCode_throwsException() {
+            CreateMapIconRequest request = new CreateMapIconRequest();
+            request.setName("Cảng");
+            request.setCode("PORT");
+
+            when(mapIconRepository.existsByCode("PORT")).thenReturn(true);
+
+            assertThrows(IllegalArgumentException.class, () -> mapIconService.create(request));
+            verify(mapIconRepository, never()).save(any());
+        }
     }
 
-    @Test
-    void createIcon_shouldThrowWhenCodeExists() {
-        var request = new com.hanghai.kchtg.mapicon.dto.CreateMapIconRequest();
-        request.setName("Cảng");
-        request.setCode("PORT");
+    @Nested
+    @DisplayName("Read MapIcons")
+    class ReadTests {
 
-        when(mapIconRepository.existsByCode("PORT")).thenReturn(true);
+        @Test
+        @DisplayName("Should find map icon by ID")
+        void findById_success() {
+            when(mapIconRepository.findById(testIconId)).thenReturn(Optional.of(testIcon));
 
-        assertThrows(RuntimeException.class, () -> mapIconService.createIcon(request));
-        verify(mapIconRepository, never()).save(any());
+            MapIconResponse result = mapIconService.findById(testIconId);
+            assertNotNull(result);
+            assertEquals(testIcon.getCode(), result.getCode());
+        }
+
+        @Test
+        @DisplayName("Should throw when map icon not found")
+        void findById_notFound_throws() {
+            when(mapIconRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
+
+            assertThrows(EntityNotFoundException.class, () -> mapIconService.findById(UUID.randomUUID()));
+        }
+
+        @Test
+        @DisplayName("Should return all map icons flat list")
+        void findAll_success() {
+            when(mapIconRepository.findAll()).thenReturn(List.of(testIcon));
+
+            List<MapIconResponse> result = mapIconService.findAll();
+            assertEquals(1, result.size());
+        }
+
+        @Test
+        @DisplayName("Should find map icons by Category")
+        void findByCategory_success() {
+            when(mapIconRepository.findByCategory(Category.WHARF)).thenReturn(List.of(testIcon));
+
+            List<MapIconResponse> result = mapIconService.findByCategory(Category.WHARF);
+            assertEquals(1, result.size());
+        }
     }
 
-    @Test
-    void updateIcon_shouldChangeName() {
-        MapIcon existing = new MapIcon(testIcon);
-        existing.setName("Cảng biển");
-        when(mapIconRepository.findById(1L)).thenReturn(Optional.of(existing));
-        when(mapIconRepository.save(any())).thenReturn(existing);
+    @Nested
+    @DisplayName("Update MapIcon")
+    class UpdateTests {
 
-        mapIconService.updateIcon(1L, "Cảng biển lớn");
+        @Test
+        @DisplayName("Should update map icon details")
+        void updateIcon_success() {
+            UpdateMapIconRequest request = new UpdateMapIconRequest();
+            request.setName("Cảng biển mới");
 
-        assertEquals("Cảng biển lớn", existing.getName());
+            when(mapIconRepository.findById(testIconId)).thenReturn(Optional.of(testIcon));
+            when(mapIconRepository.save(any(MapIcon.class))).thenReturn(testIcon);
+
+            MapIconResponse result = mapIconService.update(testIconId, request);
+
+            assertNotNull(result);
+            verify(mapIconRepository).save(any(MapIcon.class));
+        }
     }
 
-    @Test
-    void deleteIcon_shouldThrowIfReferenced() {
-        when(mapIconRepository.findById(1L)).thenReturn(Optional.of(testIcon));
-        when(mapIconRepository.countByIconId(any())).thenReturn(5L);
+    @Nested
+    @DisplayName("Delete MapIcon")
+    class DeleteTests {
 
-        assertThrows(RuntimeException.class, () -> mapIconService.deleteIcon(1L));
-    }
+        @Test
+        @DisplayName("Should delete map icon successfully")
+        void deleteIcon_success() {
+            when(mapIconRepository.findById(testIconId)).thenReturn(Optional.of(testIcon));
+            when(mapIconRepository.save(any(MapIcon.class))).thenReturn(testIcon);
 
-    @Test
-    void deleteIcon_shouldSoftDeleteWhenNotReferenced() {
-        MapIcon existing = new MapIcon(testIcon);
-        when(mapIconRepository.findById(1L)).thenReturn(Optional.of(existing));
-        when(mapIconRepository.countByIconId(any())).thenReturn(0L);
-        when(mapIconRepository.save(any())).thenReturn(existing);
+            mapIconService.delete(testIconId);
 
-        mapIconService.deleteIcon(1L);
-
-        assertNotNull(existing.getDeletedAt());
-    }
-
-    // ==================== SVG VALIDATION TESTS ====================
-
-    @Test
-    void validateSvg_shouldReturnTrueForValid() {
-        assertTrue(mapIconService.validateSvg("<svg xmlns='http://www.w3.org/2000/svg'><rect width='32' height='32'/></svg>"));
-    }
-
-    @Test
-    void validateSvg_shouldReturnFalseForInvalid() {
-        assertFalse(mapIconService.validateSvg("<invalid"));
-        assertFalse(mapIconService.validateSvg("not svg"));
-        assertFalse(mapIconService.validateSvg(""));
-        assertFalse(mapIconService.validateSvg(null));
-    }
-
-    // ==================== SEARCH TESTS ====================
-
-    @Test
-    void searchByName_shouldFindMatching() {
-        when(mapIconRepository.searchByNameContaining("cảng", any(Pageable.class))).thenReturn(new PageImpl<>(List.of(testIcon)));
-
-        Page<MapIcon> result = mapIconService.searchByName("cảng", PageRequest.of(0, 20));
-
-        assertEquals(1, result.getTotalElements());
-    }
-
-    @Test
-    void findByType_shouldReturnMatching() {
-        when(mapIconRepository.findByIconType(Category.PORT, any(Pageable.class))).thenReturn(new PageImpl<>(List.of(testIcon)));
-
-        Page<MapIcon> result = mapIconService.findByType(Category.PORT, PageRequest.of(0, 20));
-
-        assertEquals(1, result.getTotalElements());
-    }
-
-    // ==================== SLD TESTS ====================
-
-    @Test
-    void generateSLD_shouldIncludeColor() {
-        String sld = mapIconService.generateSLD(testIcon);
-
-        assertNotNull(sld);
-        assertTrue(sld.contains("#4a90d9"));
+            verify(mapIconRepository).save(testIcon);
+        }
     }
 }

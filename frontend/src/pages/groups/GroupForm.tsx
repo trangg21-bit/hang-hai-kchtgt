@@ -102,7 +102,7 @@ export default function GroupForm() {
       </Card>
 
       {/* Form */}
-      <Card style={{ maxWidth: 700 }}>
+      <Card style={{ maxWidth: 700, margin: '0 auto' }}>
         <Form
           form={form}
           layout="vertical"
