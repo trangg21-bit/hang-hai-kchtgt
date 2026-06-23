@@ -1,5 +1,5 @@
-import api from './api';
-import type { PaginatedResponse } from '../types/common';
+﻿import api from "./api";
+import type { PaginatedResponse } from "../types/common";
 
 // ============================================================
 // Types
@@ -7,9 +7,11 @@ import type { PaginatedResponse } from '../types/common';
 export interface Group {
   id: string;
   name: string;
+  code?: string;
   description?: string;
-  memberCount: number;
-  status: 'active' | 'locked' | 'inactive';
+  permissions?: string[];
+  memberCount?: number;
+  status: "active" | "locked" | "inactive";
   createdAt: string;
   updatedAt: string;
 }
@@ -20,25 +22,34 @@ export interface GroupMember {
   fullName: string;
   username: string;
   email: string;
-  role: 'admin' | 'member' | 'viewer';
+  groupId: string;
+  groupName: string;
+  role: "admin" | "member" | "viewer";
+  status: string;
   joinedAt: string;
+  createdAt: string;
 }
 
 export interface CreateGroupPayload {
   name: string;
+  code?: string;
   description?: string;
+  permissions?: string[];
+  status?: "active" | "locked" | "inactive";
   memberIds?: string[];
 }
 
 export interface UpdateGroupPayload {
   name?: string;
+  code?: string;
   description?: string;
-  status?: 'active' | 'locked' | 'inactive';
+  permissions?: string[];
+  status?: "active" | "locked" | "inactive";
 }
 
 export interface AddMemberPayload {
   userId: string;
-  role: 'admin' | 'member' | 'viewer';
+  role: "admin" | "member" | "viewer";
 }
 
 export interface GroupFilters {
@@ -47,126 +58,215 @@ export interface GroupFilters {
 }
 
 // ============================================================
-// Service
+// API Response normalizer
 // ============================================================
-const delay = (ms = 500) => new Promise((resolve) => setTimeout(resolve, ms + Math.random() * 300));
+function extractData<T>(response: any): T {
+  return response.data?.data ?? response.data;
+}
 
-let groups: Group[] = [
-  { id: 'grp-001', name: 'Nhóm Quản trị viên', description: 'Nhóm quản trị hệ thống', memberCount: 5, status: 'active', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2026-06-01T00:00:00Z' },
-  { id: 'grp-002', name: 'Nhóm Phát triển', description: 'Nhóm phát triển ứng dụng', memberCount: 12, status: 'active', createdAt: '2025-02-15T00:00:00Z', updatedAt: '2026-05-20T00:00:00Z' },
-  { id: 'grp-003', name: 'Nhóm Kiểm thử', description: 'Nhóm QA và kiểm thử', memberCount: 8, status: 'active', createdAt: '2025-03-10T00:00:00Z', updatedAt: '2026-04-15T00:00:00Z' },
-  { id: 'grp-004', name: 'Nhóm Vận hành', description: 'Nhóm vận hành hệ thống', memberCount: 3, status: 'locked', createdAt: '2025-04-01T00:00:00Z', updatedAt: '2026-06-10T00:00:00Z' },
-];
-
-let groupMembers: GroupMember[] = [
-  { id: 'gm-001', userId: 'user-001', fullName: 'Nguyễn Văn An', username: 'admin', email: 'admin@hh.gov.vn', role: 'admin', joinedAt: '2025-01-01T00:00:00Z' },
-  { id: 'gm-002', userId: 'user-007', fullName: 'Bùi Văn Anh', username: 'anhbv', email: 'anhbv@hh.gov.vn', role: 'member', joinedAt: '2025-01-15T00:00:00Z' },
-  { id: 'gm-003', userId: 'user-011', fullName: 'Nguyễn Hồng Sơn', username: 'sonnh', email: 'sonnh@hh.gov.vn', role: 'member', joinedAt: '2025-02-01T00:00:00Z' },
-  { id: 'gm-004', userId: 'user-002', fullName: 'Lê Anh Tuấn', username: 'tuanla', email: 'tuanla@hh.gov.vn', role: 'admin', joinedAt: '2025-02-10T00:00:00Z' },
-  { id: 'gm-005', userId: 'user-003', fullName: 'Nguyễn Thị Hương', username: 'huongnt', email: 'huongnt@hh.gov.vn', role: 'member', joinedAt: '2025-03-01T00:00:00Z' },
-  { id: 'gm-006', userId: 'user-012', fullName: 'Phạm Ngọc Hoài', username: 'hoaipn', email: 'hoaipn@hh.gov.vn', role: 'member', joinedAt: '2026-01-05T00:00:00Z' },
-  { id: 'gm-007', userId: 'user-006', fullName: 'Trần Quốc Cường', username: 'cuongtq', email: 'cuongtq@hh.gov.vn', role: 'viewer', joinedAt: '2025-06-10T00:00:00Z' },
-  { id: 'gm-008', userId: 'user-009', fullName: 'Vũ Hoàng Quân', username: 'quanvh', email: 'quanvh@hh.gov.vn', role: 'viewer', joinedAt: '2025-09-20T00:00:00Z' },
-  { id: 'gm-009', userId: 'user-010', fullName: 'Đỗ Thanh Phương', username: 'phuongdt', email: 'phuongdt@hh.gov.vn', role: 'admin', joinedAt: '2025-10-01T00:00:00Z' },
-  { id: 'gm-010', userId: 'user-008', fullName: 'Trần Thị Mai', username: 'maitt', email: 'maitt@hh.gov.vn', role: 'member', joinedAt: '2025-08-15T00:00:00Z' },
-];
+// ============================================================
+// Service -- real API calls
+// ============================================================
 
 export const groupService = {
-  async list(params?: { page?: number; pageSize?: number; search?: string; status?: string }): Promise<PaginatedResponse<Group>> {
-    await delay();
+  /**
+   * GET /api/groups
+   * Note: Backend returns flat list (no pagination endpoint).
+   * Frontend applies pagination client-side.
+   */
+  async list(
+    params?: { page?: number; pageSize?: number; search?: string; status?: string }
+  ): Promise<PaginatedResponse<Group>> {
+    const resp = await api.get("/groups");
+    const items: any[] = extractData(resp) ?? [];
 
-    let filtered = [...groups];
+    let filtered: any[] = [...items];
 
     if (params?.search) {
       const q = params.search.toLowerCase();
-      filtered = filtered.filter((g) => g.name.toLowerCase().includes(q) || (g.description || '').toLowerCase().includes(q));
+      filtered = filtered.filter(
+        (g) =>
+          g.name.toLowerCase().includes(q) ||
+          (g.description || "").toLowerCase().includes(q)
+      );
     }
     if (params?.status) {
-      filtered = filtered.filter((g) => g.status === params.status);
+      filtered = filtered.filter(
+        (g) => g.status?.toLowerCase() === params.status?.toLowerCase()
+      );
     }
 
     const page = params?.page || 1;
     const pageSize = params?.pageSize || 10;
     const start = (page - 1) * pageSize;
 
+    // Map backend DTO -> frontend Group interface
+    const data: Group[] = filtered
+      .slice(start, start + pageSize)
+      .map((item) => ({
+        id: item.id ?? "",
+        name: item.name ?? "",
+        code: item.code,
+        description: item.description,
+        permissions: item.permissions,
+        memberCount: undefined, // backend does not return memberCount
+        status: (item.status?.toLowerCase() as Group["status"]) ?? "active",
+        createdAt: item.createdAt
+          ? new Date(item.createdAt).toISOString()
+          : "",
+        updatedAt: item.updatedAt
+          ? new Date(item.updatedAt).toISOString()
+          : "",
+      }));
+
     return {
-      data: filtered.slice(start, start + pageSize),
+      data,
       total: filtered.length,
       page,
       pageSize,
     };
   },
 
+  /**
+   * GET /api/groups/:id
+   */
   async getById(id: string): Promise<Group> {
-    await delay(300);
-    const group = groups.find((g) => g.id === id);
-    if (!group) throw new Error('Nhóm không tồn tại');
-    return group;
+    const resp = await api.get(`/groups/${id}`);
+    const item: any = extractData(resp);
+    if (!item) throw new Error("NhÃ³m khÃ´ng tá»“n táº¡i");
+
+    return {
+      id: item.id ?? "",
+      name: item.name ?? "",
+      code: item.code,
+      description: item.description,
+      permissions: item.permissions,
+      memberCount: undefined,
+      status: (item.status?.toLowerCase() as Group["status"]) ?? "active",
+      createdAt: item.createdAt
+        ? new Date(item.createdAt).toISOString()
+        : "",
+      updatedAt: item.updatedAt
+        ? new Date(item.updatedAt).toISOString()
+        : "",
+    };
   },
 
+  /**
+   * POST /api/groups
+   */
   async create(payload: CreateGroupPayload): Promise<Group> {
-    await delay(700);
-    const newGroup: Group = {
-      id: `grp-${Date.now()}`,
+    const resp = await api.post("/groups", {
       name: payload.name,
+      code: payload.code ?? payload.name.substring(0, 10).replace(/\s+/g, "_").toLowerCase(),
       description: payload.description,
-      memberCount: payload.memberIds?.length || 0,
-      status: 'active',
+      permissions: payload.permissions,
+      status: payload.status ?? "active",
+    });
+    const item: any = extractData(resp);
+
+    return {
+      id: item.id ?? "",
+      name: item.name ?? payload.name,
+      code: item.code,
+      description: item.description,
+      permissions: item.permissions,
+      memberCount: 0,
+      status: "active",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    groups.unshift(newGroup);
-    return newGroup;
   },
 
+  /**
+   * PUT /api/groups/:id
+   */
   async update(id: string, payload: UpdateGroupPayload): Promise<Group> {
-    await delay(500);
-    const idx = groups.findIndex((g) => g.id === id);
-    if (idx === -1) throw new Error('Nhóm không tồn tại');
+    const resp = await api.put(`/groups/${id}`, {
+      name: payload.name,
+      code: payload.code,
+      description: payload.description,
+      permissions: payload.permissions,
+      status: payload.status,
+    });
+    const item: any = extractData(resp);
 
-    groups[idx] = { ...groups[idx], ...payload, updatedAt: new Date().toISOString() };
-    return groups[idx];
+    return {
+      id: item.id ?? id,
+      name: item.name ?? payload.name ?? "",
+      code: item.code,
+      description: item.description ?? payload.description,
+      permissions: item.permissions ?? payload.permissions,
+      memberCount: undefined,
+      status:
+        (payload.status ?? item.status?.toLowerCase()) as Group["status"] ??
+        "active",
+      createdAt: item.createdAt
+        ? new Date(item.createdAt).toISOString()
+        : "",
+      updatedAt: item.updatedAt
+        ? new Date(item.updatedAt).toISOString()
+        : "",
+    };
   },
 
+  /**
+   * DELETE /api/groups/:id
+   */
   async delete(id: string): Promise<void> {
-    await delay(400);
-    const idx = groups.findIndex((g) => g.id === id);
-    if (idx === -1) throw new Error('Nhóm không tồn tại');
-    groups = groups.filter((g) => g.id !== id);
+    await api.delete(`/groups/${id}`);
   },
 
   // --- Members ---
+  /**
+   * GET /api/groups/:id/members
+   * Note: GroupMembers endpoint may need backend implementation.
+   * Falls back to empty array.
+   */
   async getMembers(groupId: string): Promise<GroupMember[]> {
-    await delay(300);
-    // Return all members as mock (real would filter by groupId)
-    return [...groupMembers];
-  },
-
-  async addMember(groupId: string, payload: AddMemberPayload): Promise<void> {
-    await delay(500);
-    const member = groupMembers.find((m) => m.userId === payload.userId);
-    if (member) {
-      member.role = payload.role;
-    } else {
-      groupMembers.push({
-        id: `gm-${Date.now()}`,
-        userId: payload.userId,
-        fullName: 'Người dùng mới',
-        username: 'newuser',
-        email: 'new@hh.gov.vn',
-        role: payload.role,
-        joinedAt: new Date().toISOString(),
-      });
+    try {
+      const resp = await api.get(`/groups/${groupId}/members`);
+      const items: any[] = extractData(resp) ?? [];
+      return items.map((item) => ({
+        id: item.id ?? "",
+        userId: item.userId ?? "",
+        fullName: item.fullName ?? "",
+        username: item.username ?? "",
+        email: "", // backend does not return email in GroupMemberResponse
+        groupId: item.groupId ?? groupId,
+        groupName: item.groupName ?? "",
+        role: (item.role as GroupMember["role"]) ?? "member",
+        status: item.status ?? "active",
+        joinedAt: item.joinedAt
+          ? new Date(item.joinedAt).toISOString()
+          : "",
+        createdAt: item.createdAt
+          ? new Date(item.createdAt).toISOString()
+          : "",
+      }));
+    } catch {
+      // Group members endpoint may not be implemented yet
+      return [];
     }
-    // Update member count
-    const group = groups.find((g) => g.id === groupId);
-    if (group) group.memberCount = groupMembers.length;
   },
 
+  /**
+   * POST /api/groups/:id/members
+   */
+  async addMember(
+    groupId: string,
+    payload: AddMemberPayload
+  ): Promise<void> {
+    await api.post(`/groups/${groupId}/members`, {
+      userId: payload.userId,
+      role: payload.role,
+    });
+  },
+
+  /**
+   * DELETE /api/groups/:id/members/:userId
+   */
   async removeMember(groupId: string, userId: string): Promise<void> {
-    await delay(300);
-    groupMembers = groupMembers.filter((m) => m.userId !== userId);
-    const group = groups.find((g) => g.id === groupId);
-    if (group) group.memberCount = groupMembers.length;
+    await api.delete(`/groups/${groupId}/members/${userId}`);
   },
 };

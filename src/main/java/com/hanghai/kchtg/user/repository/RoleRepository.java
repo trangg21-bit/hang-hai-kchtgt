@@ -3,6 +3,8 @@ package com.hanghai.kchtg.user.repository;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.RoleStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -16,28 +18,28 @@ import java.util.UUID;
 public interface RoleRepository extends JpaRepository<Role, UUID> {
 
     /**
-     * Tìm role theo mã code duy nhất.
+     * TĂ¬m role theo mĂ£ code duy nháº¥t.
      */
     Optional<Role> findByCode(String code);
 
     /**
-     * Kiểm tra tồn tại theo code.
+     * Kiá»ƒm tra tá»“n táº¡i theo code.
      */
     boolean existsByCode(String code);
 
     /**
-     * Tìm tất cả role đang hoạt động.
+     * TĂ¬m táº¥t cáº£ role Ä‘ang hoáº¡t Ä‘á»™ng.
      */
     List<Role> findByStatus(RoleStatus status);
 
     /**
      * Tìm role có chứa permission cụ thể.
      */
-    @org.springframework.data.jpa.repository.Query(value = "SELECT * FROM app_roles WHERE permissions LIKE %:permission%", nativeQuery = true)
-    List<Role> findByPermissionsContaining(@org.springframework.data.repository.query.Param("permission") String permission);
+    @Query("SELECT r FROM Role r WHERE :permission MEMBER OF r.permissions")
+    List<Role> findByPermissionsContaining(@Param("permission") String permission);
 
     /**
-     * Kiểm tra code có tồn tại ngoài ID này (dùng khi update).
+     * Kiá»ƒm tra code cĂ³ tá»“n táº¡i ngoĂ i ID nĂ y (dĂ¹ng khi update).
      */
     boolean existsByCodeAndIdNot(String code, UUID id);
 }

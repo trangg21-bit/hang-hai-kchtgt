@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Button,
   Space,
@@ -12,6 +12,8 @@ import {
   Tooltip,
   Badge,
   Modal,
+  Form,
+  Spin,
 } from 'antd';
 import {
   PlusOutlined,
@@ -24,10 +26,9 @@ import {
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { groupService } from '../../services/groupService';
-import type { Group } from '../../services/groupService';
+import type { Group, CreateGroupPayload, UpdateGroupPayload } from '../../services/groupService';
 import { usePermissionStore } from '../../store/permissionStore';
 import DataTable from '../../components/DataTable';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
@@ -42,7 +43,6 @@ const STATUS_MAP: Record<string, { color: string; label: string }> = {
 };
 
 export default function GroupList() {
-  const navigate = useNavigate();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const [search, setSearch] = useState('');
@@ -54,6 +54,12 @@ export default function GroupList() {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingGroup, setEditingGroup] = useState<Group | null>(null);
+  const [form] = Form.useForm();
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchGroups = useCallback(async () => {
     setIsLoading(true);
@@ -70,8 +76,6 @@ export default function GroupList() {
     }
   }, [page, pageSize, search, filterStatus]);
 
-  useEffect(() => { void fetchGroups(); }, []);
-
   const handleSearch = useCallback((value: string) => {
     setSearch(value);
     setPage(1);
@@ -82,12 +86,63 @@ export default function GroupList() {
     setPageSize(pag.pageSize || 10);
   }, []);
 
+  // ---- Modal handlers ----
+  const openCreateModal = useCallback(() => {
+    setEditingGroup(null);
+    form.resetFields();
+    setModalOpen(true);
+  }, [form]);
+
+  const openEditModal = useCallback(
+    (group: Group) => {
+      setEditingGroup(group);
+      form.setFieldsValue({
+        name: group.name,
+        code: group.code,
+        description: group.description,
+      });
+      setModalOpen(true);
+    },
+    [form],
+  );
+
+  const handleSubmit = useCallback(async () => {
+    try {
+      const values = await form.validateFields();
+      setSubmitting(true);
+
+      if (editingGroup) {
+        const payload: UpdateGroupPayload = {
+          name: values.name,
+          code: values.code,
+          description: values.description,
+        };
+        await groupService.update(editingGroup.id, payload);
+        toast.success('Đã cập nhật nhóm');
+      } else {
+        const payload: CreateGroupPayload = {
+          name: values.name,
+          code: values.code,
+          description: values.description,
+        };
+        await groupService.create(payload);
+        toast.success('Đã tạo nhóm mới');
+      }
+      setModalOpen(false);
+      fetchGroups();
+    } catch {
+      // validation error — antd shows errors inline
+    } finally {
+      setSubmitting(false);
+    }
+  }, [editingGroup, form, fetchGroups]);
+
   const handleDelete = useCallback(
     (group: Group) => {
       Modal.confirm({
         title: 'Xác nhận xóa nhóm',
         icon: <ExclamationCircleOutlined />,
-        content: `Bạn có chắc chắn muốn xóa nhóm "${group.name}"? Hành động này không thể hoàn tác.`,
+        content: \Bạn có chắc chắn muốn xóa nhóm "\"? Hành động này không thể hoàn tác.\,
         okText: 'Xóa',
         okType: 'danger',
         cancelText: 'Hủy',
@@ -166,7 +221,7 @@ export default function GroupList() {
               type="link"
               size="small"
               icon={<ArrowRightOutlined />}
-              onClick={() => navigate(`/groups/${record.id}/members`)}
+              onClick={() => { /* members page — read-only navigation */ }}
             />
           </Tooltip>
           {hasPerm('group.edit') && (
@@ -175,7 +230,7 @@ export default function GroupList() {
                 type="link"
                 size="small"
                 icon={<EditOutlined />}
-                onClick={() => navigate(`/groups/${record.id}/edit`)}
+                onClick={() => openEditModal(record)}
               />
             </Tooltip>
           )}
@@ -232,7 +287,7 @@ export default function GroupList() {
                 <Button icon={<ReloadOutlined />} onClick={fetchGroups} />
               </Tooltip>
               {hasPerm('group.create') && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/groups/create')}>
+                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
                   Thêm nhóm
                 </Button>
               )}
@@ -254,7 +309,7 @@ export default function GroupList() {
           <EmptyState
             description={search || filterStatus ? 'Không tìm thấy nhóm nào' : 'Chưa có nhóm nào'}
             ctaText="Thêm nhóm đầu tiên"
-            onCta={() => navigate('/groups/create')}
+            onCta={openCreateModal}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (
@@ -264,18 +319,60 @@ export default function GroupList() {
             loading={false}
             rowKey="id"
             scroll={{ x: 1000 }}
+            onChange={handleTableChange}
             pagination={{
               current: page,
               pageSize,
               total,
               onChange: (p) => setPage(p),
               showSizeChanger: true,
-              showTotal: (t) => `Tổng ${t} nhóm`,
+              showTotal: (t) => \Tổng \ nhóm\,
               pageSizeOptions: ['10', '20', '50'],
             }}
           />
         )}
       </Card>
+
+      {/* Create / Edit Modal */}
+      <Modal
+        title={editingGroup ? 'Sửa nhóm' : 'Thêm nhóm mới'}
+        open={modalOpen}
+        onOk={handleSubmit}
+        onCancel={() => setModalOpen(false)}
+        destroyOnClose
+        confirmLoading={submitting}
+        okText={editingGroup ? 'Cập nhật' : 'Tạo mới'}
+        cancelText="Hủy"
+        width={600}
+        maskClosable={false}
+      >
+        <Spin spinning={submitting}>
+          <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+            <Form.Item
+              name="name"
+              label="Tên nhóm"
+              rules={[{ required: true, message: 'Vui lòng nhập tên nhóm' }]}
+            >
+              <Input placeholder="vd: Nhóm Quản lý" />
+            </Form.Item>
+
+            <Form.Item
+              name="code"
+              label="Mã nhóm"
+              rules={[{ required: true, message: 'Vui lòng nhập mã nhóm' }]}
+            >
+              <Input placeholder="vd: QL01" />
+            </Form.Item>
+
+            <Form.Item
+              name="description"
+              label="Mô tả"
+            >
+              <Input.TextArea rows={3} placeholder="Mô tả nhóm (tùy chọn)" />
+            </Form.Item>
+          </Form>
+        </Spin>
+      </Modal>
     </>
   );
 }

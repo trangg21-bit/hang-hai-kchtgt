@@ -24,6 +24,7 @@ import {
   DownOutlined,
   CompassOutlined,
   IdcardOutlined,
+  BarChartOutlined,
   ApiOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
@@ -95,6 +96,14 @@ const menuItems: MenuProps['items'] = [
     type: 'divider' as const,
   },
   {
+    key: '/reports',
+    icon: <BarChartOutlined />,
+    label: 'Báo cáo & Thống kê',
+  },
+  {
+    type: 'divider' as const,
+  },
+  {
     key: '/connections',
     icon: <ApiOutlined />,
     label: 'Liên thông dữ liệu',
@@ -128,6 +137,7 @@ const pageTitles: Record<string, string> = {
   '/gis/layers': 'Lớp bản đồ',
   '/gis/search': 'Tra cứu GIS',
   '/connections': 'Liên thông dữ liệu',
+  '/reports': 'Báo cáo & Thống kê',
   '/settings': 'Cấu hình hệ thống',
   '/logs': 'Nhật ký hệ thống',
 };

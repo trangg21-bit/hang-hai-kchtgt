@@ -18,6 +18,8 @@ import LoginPage from './pages/Login';
 import AdminList from './pages/admins/AdminList';
 import AdminForm from './pages/admins/AdminForm';
 import AdminAudit from './pages/admins/AdminAudit';
+import ReportList from './pages/reports/ReportList';
+import ReportViewer from './pages/reports/ReportViewer';
 import ConnectionList from './pages/connections/ConnectionList';
 import ConnectionForm from './pages/connections/ConnectionForm';
 import ConnectionHealth from './pages/connections/ConnectionHealth';
@@ -113,6 +115,11 @@ export default function App() {
                 <Route path="/connections/create" element={<ConnectionForm />} />
                 <Route path="/connections/:id/edit" element={<ConnectionForm />} />
                 <Route path="/connections/:id/health" element={<ConnectionHealth />} />
+
+
+                {/* Reports & Statistics */}
+                <Route path="/reports" element={<ReportList />} />
+                <Route path="/reports/:code" element={<ReportViewer />} />
               </Route>
             </Routes>
           </BrowserRouter>

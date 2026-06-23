@@ -1,0 +1,40 @@
+# ============================================================
+# Stage 1: Build with Maven + JDK 21
+# ============================================================
+FROM maven:3.9-eclipse-temurin-21 AS build
+
+WORKDIR /build
+
+# Copy Maven POM first for dependency caching
+COPY pom.xml .
+RUN mvn dependency:go-offline -B
+
+# Copy source code and build
+COPY src ./src
+RUN mvn package -DskipTests -B
+
+# ============================================================
+# Stage 2: Runtime with JRE 21
+# ============================================================
+FROM eclipse-temurin:21-jre AS run
+
+WORKDIR /app
+
+# Install curl for healthcheck (JRE image has no curl/wget by default)
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the built JAR from build stage
+COPY --from=build /build/target/*.jar app.jar
+
+# Expose backend port
+EXPOSE 8080
+
+# Use dev profile for H2 in-memory database
+ENV SPRING_PROFILES_ACTIVE=dev
+
+# Health check — verify Spring Boot is listening
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD curl -s -o /dev/null http://localhost:8080/ || exit 1
+
+ENTRYPOINT ["java", "-jar", "app.jar"]

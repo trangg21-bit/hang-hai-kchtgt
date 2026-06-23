@@ -16,7 +16,7 @@ test.describe('Quản lý nhóm', () => {
 
   test('Tạo mới nhóm', async ({ page }) => {
     await page.goto('/groups');
-    await page.getByRole('button', { name: /thêm nhóm/i }).click();
+    await page.getByRole('button', { name: /thêm/i }).click();
 
     await page.getByLabel('Tên nhóm').fill('Nhóm E2E Test');
     await page.getByLabel('Mô tả').fill('Test group for E2E');
@@ -28,10 +28,13 @@ test.describe('Quản lý nhóm', () => {
 
   test('Sửa thông tin nhóm', async ({ page }) => {
     await page.goto('/groups');
-    await page.locator('.anticon-edit').first().click();
+    const firstRow = page.locator('.ant-table-row').first();
+    await expect(firstRow).toBeVisible({ timeout: 5000 });
+    
+    await firstRow.locator('.anticon-edit').click();
 
-    const nameInput = page.getByLabel('Tên nhóm');
-    await expect(nameInput).toHaveValue('Nhóm Quản trị viên', { timeout: 5000 });
+    // Wait for the form to load initial data
+    await expect(page.locator('#name')).not.toHaveValue('');
 
     await page.getByLabel('Mô tả').fill('Updated E2E test group');
     await page.getByRole('button', { name: /cập nhật/i }).click();
@@ -41,8 +44,11 @@ test.describe('Quản lý nhóm', () => {
 
   test('Xóa nhóm', async ({ page }) => {
     await page.goto('/groups');
-    await page.locator('.anticon-delete').first().click();
-    await page.locator('.ant-modal-confirm-btns button:has-text("Xóa")').click();
+    const firstRow = page.locator('.ant-table-row').first();
+    await expect(firstRow).toBeVisible({ timeout: 5000 });
+    
+    await firstRow.locator('.anticon-delete').click();
+    await page.getByRole('button', { name: /xóa/i }).click();
 
     await expect(page.locator('.ant-message-success')).toBeVisible({ timeout: 5000 });
   });

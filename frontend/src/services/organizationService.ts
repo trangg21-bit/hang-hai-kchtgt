@@ -1,5 +1,5 @@
-import api from './api';
-import type { PaginatedResponse } from '../types/common';
+﻿import api from "./api";
+import type { PaginatedResponse } from "../types/common";
 
 // ============================================================
 // Types
@@ -7,14 +7,16 @@ import type { PaginatedResponse } from '../types/common';
 export interface Organization {
   id: string;
   name: string;
-  parentOrgId?: string;
+  code?: string;
+  parentId?: string;
   parentOrgName?: string;
-  level: number;
+  level?: number;
   description?: string;
   address?: string;
+  phone?: string;
   contactPerson?: string;
   contactPhone?: string;
-  status: 'active' | 'locked' | 'inactive';
+  status: "active" | "locked" | "inactive";
   childCount: number;
   createdAt: string;
   updatedAt: string;
@@ -22,58 +24,195 @@ export interface Organization {
 
 export interface CreateOrganizationPayload {
   name: string;
-  parentOrgId?: string;
+  code?: string;
+  parentId?: string;
   description?: string;
   address?: string;
+  phone?: string;
   contactPerson?: string;
   contactPhone?: string;
 }
 
 export interface UpdateOrganizationPayload {
   name?: string;
+  code?: string;
+  parentId?: string;
   description?: string;
   address?: string;
+  phone?: string;
   contactPerson?: string;
   contactPhone?: string;
-  status?: 'active' | 'locked' | 'inactive';
+  status?: "active" | "locked" | "inactive";
 }
 
 export interface OrgFilters {
   search?: string;
   status?: string;
   level?: number;
+  parentId?: string;
 }
 
 // ============================================================
-// Service
+// API Response normalizer
 // ============================================================
-const delay = (ms = 500) => new Promise((resolve) => setTimeout(resolve, ms + Math.random() * 300));
+function extractData<T>(response: any): T {
+  return response.data?.data ?? response.data;
+}
 
-let organizations: Organization[] = [
-  { id: 'org-001', name: 'Cơ quan Đầu não', level: 1, description: 'Cơ quan đầu não', status: 'active', childCount: 3, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2026-06-01T00:00:00Z' },
-  { id: 'org-002', name: 'Vụ Công nghệ', parentOrgId: 'org-001', parentOrgName: 'Cơ quan Đầu não', level: 2, description: 'Vụ phụ trách công nghệ', status: 'active', childCount: 2, createdAt: '2025-01-15T00:00:00Z', updatedAt: '2026-05-20T00:00:00Z' },
-  { id: 'org-003', name: 'Vụ Nghiệp vụ', parentOrgId: 'org-001', parentOrgName: 'Cơ quan Đầu não', level: 2, description: 'Vụ phụ trách nghiệp vụ', status: 'active', childCount: 0, createdAt: '2025-02-01T00:00:00Z', updatedAt: '2026-04-15T00:00:00Z' },
-  { id: 'org-004', name: 'Vụ Tài chính', parentOrgId: 'org-001', parentOrgName: 'Cơ quan Đầu não', level: 2, description: 'Vụ phụ trách tài chính', status: 'locked', childCount: 0, createdAt: '2025-02-15T00:00:00Z', updatedAt: '2026-06-10T00:00:00Z' },
-  { id: 'org-005', name: 'Phòng CNTT', parentOrgId: 'org-002', parentOrgName: 'Vụ Công nghệ', level: 3, description: 'Phòng kỹ thuật', status: 'active', childCount: 0, createdAt: '2025-03-01T00:00:00Z', updatedAt: '2026-03-20T00:00:00Z' },
-  { id: 'org-006', name: 'Phòng An ninh', parentOrgId: 'org-002', parentOrgName: 'Vụ Công nghệ', level: 3, description: 'Phòng an ninh mạng', status: 'active', childCount: 0, createdAt: '2025-03-15T00:00:00Z', updatedAt: '2026-05-10T00:00:00Z' },
-  { id: 'org-007', name: 'Chi nhánh miền Bắc', parentOrgId: 'org-001', parentOrgName: 'Cơ quan Đầu não', level: 2, description: 'Chi nhánh phía Bắc', status: 'active', childCount: 0, createdAt: '2025-04-01T00:00:00Z', updatedAt: '2026-02-28T00:00:00Z' },
-];
+// ============================================================
+// Service -- real API calls
+// ============================================================
+
+/**
+ * Compute derived fields that the backend does not return in flat list responses.
+ * The backend OrgUnitResponse has: id, name, code, parentId, type, address, phone, status, createdAt, updatedAt, children.
+ * The frontend Organization adds: parentOrgName, level, childCount, contactPerson, contactPhone.
+ */
+function mapOrgUnit(
+  item: any,
+  orgMap: Map<string, Organization>
+): Organization {
+  // Compute parentOrgName from flat list
+  const parentOrgName = item.parentId
+    ? orgMap.get(item.parentId)?.name
+    : undefined;
+
+  // Compute level: root (no parentId) = 1, else parent.level + 1
+  let level = 1;
+  if (item.parentId) {
+    const parent = orgMap.get(item.parentId);
+    if (parent && parent.level !== undefined) {
+      level = parent.level + 1;
+    }
+  }
+
+  // Compute childCount from flat list
+  let childCount = 0;
+  if (item.children && Array.isArray(item.children)) {
+    childCount = item.children.length;
+  }
+
+  return {
+    id: item.id ?? "",
+    name: item.name ?? "",
+    code: item.code,
+    parentId: item.parentId ? String(item.parentId) : undefined,
+    parentOrgName,
+    level,
+    description: undefined, // backend doesn't have description in OrgUnitResponse
+    address: item.address,
+    phone: item.phone,
+    contactPerson: undefined,
+    contactPhone: item.phone,
+    status: (item.status?.toLowerCase() as Organization["status"]) ?? "active",
+    childCount,
+    createdAt: item.createdAt
+      ? new Date(item.createdAt).toISOString()
+      : "",
+    updatedAt: item.updatedAt
+      ? new Date(item.updatedAt).toISOString()
+      : "",
+  };
+}
 
 export const organizationService = {
-  async list(params?: { page?: number; pageSize?: number; search?: string; status?: string }): Promise<PaginatedResponse<Organization>> {
-    await delay();
+  /**
+   * GET /api/org-units
+   * Note: Backend returns flat list (no pagination endpoint).
+   * Frontend applies pagination client-side.
+   */
+  async list(
+    params?: { page?: number; pageSize?: number; search?: string; status?: string }
+  ): Promise<PaginatedResponse<Organization>> {
+    const resp = await api.get("/org-units", {
+      params: params?.parentId ? { parentId: params.parentId } : undefined,
+    });
+    const items: any[] = extractData(resp) ?? [];
 
-    let filtered = [...organizations];
+    // Build flat list first for parent lookups
+    const flatList = items.map((item) => ({
+      ...item,
+      // Map to frontend Organization type
+      id: item.id ?? "",
+      name: item.name ?? "",
+      code: item.code,
+      parentId: item.parentId ? String(item.parentId) : undefined,
+      status: (item.status?.toLowerCase() as Organization["status"]) ?? "active",
+    }));
+
+    // Build parent name lookup map
+    const orgMap = new Map<string, Organization>();
+    flatList.forEach((item) => {
+      orgMap.set(item.id, {
+        id: item.id,
+        name: item.name,
+        code: item.code,
+        parentId: item.parentId,
+        parentOrgName: undefined,
+        level: 1, // placeholder
+        description: undefined,
+        address: item.address,
+        phone: item.phone,
+        contactPerson: undefined,
+        contactPhone: item.phone,
+        status: item.status as Organization["status"],
+        childCount: 0, // placeholder
+        createdAt: "",
+        updatedAt: "",
+      });
+    });
+
+    // Now compute parentOrgName and level
+    const data: Organization[] = flatList.map((item) => {
+      let level = 1;
+      let parentOrgName: string | undefined;
+      if (item.parentId) {
+        const parent = orgMap.get(item.parentId);
+        if (parent) {
+          level = parent.level !== undefined ? parent.level + 1 : 2;
+          parentOrgName = parent.name;
+        }
+      }
+
+      // Compute childCount
+      const childCount = flatList.filter(
+        (o) => o.parentId === item.id
+      ).length;
+
+      return {
+        id: item.id,
+        name: item.name,
+        code: item.code,
+        parentId: item.parentId,
+        parentOrgName,
+        level,
+        description: undefined,
+        address: item.address,
+        phone: item.phone,
+        contactPerson: undefined,
+        contactPhone: item.phone,
+        status: item.status as Organization["status"],
+        childCount,
+        createdAt: "",
+        updatedAt: "",
+      };
+    });
+
+    // Apply filters
+    let filtered: Organization[] = [...data];
 
     if (params?.search) {
       const q = params.search.toLowerCase();
-      filtered = filtered.filter((o) => o.name.toLowerCase().includes(q) || (o.description || '').toLowerCase().includes(q));
+      filtered = filtered.filter(
+        (o) =>
+          o.name.toLowerCase().includes(q) ||
+          (o.description || "").toLowerCase().includes(q)
+      );
     }
     if (params?.status) {
-      filtered = filtered.filter((o) => o.status === params.status);
-    }
-    if (params?.level) {
-      filtered = filtered.filter((o) => o.level === params.level);
+      filtered = filtered.filter(
+        (o) => o.status.toLowerCase() === params.status?.toLowerCase()
+      );
     }
 
     const page = params?.page || 1;
@@ -88,69 +227,265 @@ export const organizationService = {
     };
   },
 
+  /**
+   * GET /api/org-units/:id
+   */
   async getById(id: string): Promise<Organization> {
-    await delay(300);
-    const org = organizations.find((o) => o.id === id);
-    if (!org) throw new Error('Đơn vị không tồn tại');
-    return org;
+    const resp = await api.get(`/org-units/${id}`);
+    const item: any = extractData(resp);
+    if (!item) throw new Error("ÄÆ¡n vá»‹ khÃ´ng tá»“n táº¡i");
+
+    return {
+      id: item.id ?? "",
+      name: item.name ?? "",
+      code: item.code,
+      parentId: item.parentId ? String(item.parentId) : undefined,
+      parentOrgName: undefined,
+      level: undefined,
+      description: undefined,
+      address: item.address,
+      phone: item.phone,
+      contactPerson: undefined,
+      contactPhone: item.phone,
+      status: (item.status?.toLowerCase() as Organization["status"]) ?? "active",
+      childCount: 0,
+      createdAt: item.createdAt
+        ? new Date(item.createdAt).toISOString()
+        : "",
+      updatedAt: item.updatedAt
+        ? new Date(item.updatedAt).toISOString()
+        : "",
+    };
   },
 
+  /**
+   * GET /api/org-units/tree
+   * Returns hierarchical tree with children populated.
+   */
   async getTree(): Promise<Organization[]> {
-    await delay(400);
-    // Return flat list, caller should organize into tree
-    return [...organizations];
+    const resp = await api.get("/org-units/tree");
+    const items: any[] = extractData(resp) ?? [];
+
+    if (!Array.isArray(items)) return [];
+
+    // Build a flat map first for parent lookups
+    const orgMap = new Map<string, Organization>();
+    const flatList = items.map((item) => ({
+      ...item,
+      id: item.id ?? "",
+      name: item.name ?? "",
+      code: item.code,
+      parentId: item.parentId ? String(item.parentId) : undefined,
+      status: (item.status?.toLowerCase() as Organization["status"]) ?? "active",
+    }));
+
+    flatList.forEach((item) => {
+      orgMap.set(item.id, {
+        id: item.id,
+        name: item.name,
+        code: item.code,
+        parentId: item.parentId,
+        parentOrgName: undefined,
+        level: 1,
+        description: undefined,
+        address: item.address,
+        phone: item.phone,
+        contactPerson: undefined,
+        contactPhone: item.phone,
+        status: item.status as Organization["status"],
+        childCount: 0,
+        createdAt: "",
+        updatedAt: "",
+      });
+    });
+
+    // Compute parentOrgName and level
+    const enrichedList: Organization[] = flatList.map((item) => {
+      let level = 1;
+      let parentOrgName: string | undefined;
+      if (item.parentId) {
+        const parent = orgMap.get(item.parentId);
+        if (parent) {
+          level = parent.level !== undefined ? parent.level + 1 : 2;
+          parentOrgName = parent.name;
+        }
+      }
+
+      const childCount = flatList.filter(
+        (o) => o.parentId === item.id
+      ).length;
+
+      return {
+        ...item,
+        parentOrgName,
+        level,
+        childCount,
+        createdAt: item.createdAt
+          ? new Date(item.createdAt).toISOString()
+          : "",
+        updatedAt: item.updatedAt
+          ? new Date(item.updatedAt).toISOString()
+          : "",
+      };
+    });
+
+    // Build tree from flat list
+    const result: Organization[] = [];
+    const rootIds = new Set<string>();
+    enrichedList.forEach((org) => {
+      if (!org.parentId) {
+        rootIds.add(org.id);
+      }
+    });
+
+    enrichedList.forEach((org) => {
+      const orgWithChildren: Organization = { ...org };
+      // Find direct children
+      const children = enrichedList.filter(
+        (o) => o.parentId === org.id
+      );
+      if (children.length > 0) {
+        orgWithChildren.childCount = children.length;
+      }
+      if (rootIds.has(org.id)) {
+        result.push(orgWithChildren);
+      }
+    });
+
+    return result;
   },
 
+  /**
+   * GET /api/org-units?parentId=:id
+   * Fetches direct children of a parent unit.
+   */
   async getChildren(parentId: string): Promise<Organization[]> {
-    await delay(300);
-    return organizations.filter((o) => o.parentOrgId === parentId);
+    const resp = await api.get("/org-units", {
+      params: { parentId },
+    });
+    const items: any[] = extractData(resp) ?? [];
+
+    const orgMap = new Map<string, Organization>();
+    const flatList = items.map((item) => {
+      const org: Organization = {
+        id: item.id ?? "",
+        name: item.name ?? "",
+        code: item.code,
+        parentId: item.parentId ? String(item.parentId) : undefined,
+        parentOrgName: "",
+        level: undefined,
+        description: undefined,
+        address: item.address,
+        phone: item.phone,
+        contactPerson: undefined,
+        contactPhone: item.phone,
+        status: (item.status?.toLowerCase() as Organization["status"]) ?? "active",
+        childCount: 0,
+        createdAt: item.createdAt
+          ? new Date(item.createdAt).toISOString()
+          : "",
+        updatedAt: item.updatedAt
+          ? new Date(item.updatedAt).toISOString()
+          : "",
+      };
+      orgMap.set(item.id ?? "", org);
+      return org;
+    });
+
+    // Compute parentOrgName
+    flatList.forEach((org) => {
+      if (org.parentId) {
+        const parent = orgMap.get(org.parentId);
+        if (parent) org.parentOrgName = parent.name;
+      }
+    });
+
+    return flatList;
   },
 
-  async create(payload: CreateOrganizationPayload): Promise<Organization> {
-    await delay(700);
-    const parentOrg = organizations.find((o) => o.id === payload.parentOrgId);
-    const newOrg: Organization = {
-      id: `org-${Date.now()}`,
+  /**
+   * POST /api/org-units
+   */
+  async create(
+    payload: CreateOrganizationPayload
+  ): Promise<Organization> {
+    const resp = await api.post("/org-units", {
       name: payload.name,
-      parentOrgId: payload.parentOrgId,
-      parentOrgName: parentOrg?.name,
-      level: parentOrg ? parentOrg.level + 1 : 1,
-      description: payload.description,
+      code:
+        payload.code ??
+        payload.name.substring(0, 10).replace(/\s+/g, "_").toLowerCase(),
+      parentId: payload.parentId,
       address: payload.address,
+      phone: payload.phone ?? payload.contactPhone,
+      status: "ACTIVE",
+    });
+    const item: any = extractData(resp);
+
+    return {
+      id: item.id ?? "",
+      name: item.name ?? payload.name,
+      code: item.code,
+      parentId: payload.parentId,
+      parentOrgName: undefined,
+      level: undefined,
+      description: undefined,
+      address: item.address ?? payload.address,
+      phone: item.phone ?? payload.phone,
       contactPerson: payload.contactPerson,
-      contactPhone: payload.contactPhone,
-      status: 'active',
+      contactPhone: payload.contactPhone ?? payload.phone,
+      status: "active",
       childCount: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    organizations.push(newOrg);
-    // Update parent childCount
-    if (parentOrg) parentOrg.childCount += 1;
-    return newOrg;
   },
 
-  async update(id: string, payload: UpdateOrganizationPayload): Promise<Organization> {
-    await delay(500);
-    const idx = organizations.findIndex((o) => o.id === id);
-    if (idx === -1) throw new Error('Đơn vị không tồn tại');
+  /**
+   * PUT /api/org-units/:id
+   */
+  async update(
+    id: string,
+    payload: UpdateOrganizationPayload
+  ): Promise<Organization> {
+    const resp = await api.put(`/org-units/${id}`, {
+      name: payload.name,
+      code: payload.code,
+      parentId: payload.parentId,
+      address: payload.address,
+      phone: payload.phone ?? payload.contactPhone,
+      status: payload.status?.toUpperCase(),
+    });
+    const item: any = extractData(resp);
 
-    organizations[idx] = { ...organizations[idx], ...payload, updatedAt: new Date().toISOString() };
-    return organizations[idx];
+    return {
+      id: item.id ?? id,
+      name: item.name ?? payload.name ?? "",
+      code: item.code,
+      parentId: payload.parentId,
+      parentOrgName: undefined,
+      level: undefined,
+      description: undefined,
+      address: item.address ?? payload.address,
+      phone: item.phone ?? payload.phone,
+      contactPerson: payload.contactPerson,
+      contactPhone: payload.contactPhone ?? payload.phone,
+      status:
+        (payload.status ?? item.status?.toLowerCase()) as Organization["status"] ??
+        "active",
+      childCount: 0,
+      createdAt: item.createdAt
+        ? new Date(item.createdAt).toISOString()
+        : "",
+      updatedAt: item.updatedAt
+        ? new Date(item.updatedAt).toISOString()
+        : "",
+    };
   },
 
+  /**
+   * DELETE /api/org-units/:id
+   */
   async delete(id: string): Promise<void> {
-    await delay(400);
-    const idx = organizations.findIndex((o) => o.id === id);
-    if (idx === -1) throw new Error('Đơn vị không tồn tại');
-
-    const org = organizations[idx];
-    organizations = organizations.filter((o) => o.id !== id);
-
-    // Decrement parent childCount
-    if (org.parentOrgId) {
-      const parent = organizations.find((o) => o.id === org.parentOrgId);
-      if (parent) parent.childCount = Math.max(0, parent.childCount - 1);
-    }
+    await api.delete(`/org-units/${id}`);
   },
 };

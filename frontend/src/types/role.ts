@@ -1,6 +1,7 @@
 export interface Role {
   id: string;
   name: string;
+  code: string;
   description: string;
   permissions: string[];
   userCount: number;
@@ -10,12 +11,14 @@ export interface Role {
 
 export interface CreateRolePayload {
   name: string;
+  code: string;
   description: string;
   permissions: string[];
 }
 
 export interface UpdateRolePayload {
   name?: string;
+  code?: string;
   description?: string;
   permissions?: string[];
 }

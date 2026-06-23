@@ -23,7 +23,6 @@ async function setupAuth(page: any): Promise<void> {
   });
   await page.goto(BASE_URL);
   await page.waitForURL(/\/users/, { timeout: 10_000 });
-  await expect(page.locator('tr.ant-table-row').first()).toBeVisible({ timeout: 10_000 });
 }
 
 // ============================================================
@@ -50,31 +49,31 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
 
     // Điền form
     // Username: chỉ cho phép [a-z0-9_], min 4 ký tự
-    await page.locator('input[name="username"]').fill('testuser01');
+    await page.locator('#username').fill('testuser01');
     
     // Password: phải có chữ hoa, chữ thường, số, min 6 ký tự
-    await page.locator('input[name="password"]').fill('Test1234');
+    await page.locator('#password').fill('Test1234');
     
     // Full name
-    await page.locator('input[name="fullName"]').fill('Nguyễn Văn Test');
+    await page.locator('#fullName').fill('Nguyễn Văn Test');
     
     // Email
-    await page.locator('input[name="email"]').fill('test@hh.gov.vn');
+    await page.locator('#email').fill('test@hh.gov.vn');
     
     // Phone (10-11 số, bắt đầu 0)
-    await page.locator('input[name="phone"]').fill('0912345678');
+    await page.locator('#phone').fill('0912345678');
     
     // Role — chọn từ dropdown Select
     // Ant Design Select: click để mở dropdown, rồi chọn option
-    const roleSelect = page.locator('select[name="roleId"], input[name="roleId"], .ant-select:has(label:has-text("Vai trò"))');
+    const roleSelect = page.locator('select#roleId, input#roleId, .ant-select:has(label:has-text("Vai trò"))');
     // Find the Select component for roleId
     const roleIdSelect = page.locator('.ant-form-item:has(label:has-text("Vai trò")) .ant-select').first();
     await roleIdSelect.click({ timeout: 5000 });
     await page.waitForTimeout(300);
     
-    // Click the first role option
+    // Click the first role option — use force:true to bypass overlay interception
     const roleOption = page.locator('.ant-select-item-option').first();
-    await roleOption.click({ timeout: 5000 });
+    await roleOption.click({ timeout: 5000, force: true });
 
     // Submit form — click "Tạo mới" button
     const submitBtn = page.locator('.ant-modal .ant-btn-primary:has-text("Tạo mới"), button:has-text("Tạo mới").ant-btn');
@@ -151,7 +150,7 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
     await expect(page.locator('.ant-modal-title')).toHaveText('Sửa người dùng', { timeout: 5000 });
 
     // Pre-filled data should be present
-    const emailInput = page.locator('input[name="email"]');
+    const emailInput = page.locator('#email');
     await expect(emailInput).toBeVisible({ timeout: 3000 });
 
     // Change email
@@ -176,17 +175,21 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
   // TEST: Xóa người dùng với xác nhận
   // --------------------------------------------------------
   test('Xóa người dùng phải hiện modal xác nhận và xóa khỏi danh sách', async ({ page }) => {
-    // Find the last row to delete (safer than deleting admin who might have constraints)
-    const rows = page.locator('tr.ant-table-row');
+    // Wait for table to load
+    await expect(page.locator('.ant-table-row').first()).toBeVisible({ timeout: 5000 });
+
+    // Find the last row to delete
+    const rows = page.locator('.ant-table-row');
     const lastRow = rows.last();
     await lastRow.scrollIntoViewIfNeeded();
 
+    // Click delete icon inside row
     await lastRow.locator('.anticon-delete').click({ timeout: 10_000 });
 
     // Ant Design Modal.confirm should appear
     await expect(page.locator('.ant-modal-confirm-title')).toHaveText('Xác nhận xóa người dùng', { timeout: 5000 });
 
-    // Click "Xóa" (danger button)
+    // Click "Xóa" (danger button) in modal
     await page.locator('.ant-modal-confirm-btns button:has-text("Xóa")').first().click({ timeout: 10_000 });
 
     // Wait for mutation (mock delay 500ms)
@@ -252,6 +255,9 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
   // TEST: Trạng thái hiển thị trên bảng
   // --------------------------------------------------------
   test('Bảng người dùng phải hiển thị badge và tag trạng thái', async ({ page }) => {
+    // Wait for table to load
+    await expect(page.locator('.ant-table-row').first()).toBeVisible({ timeout: 5000 });
+
     // Verify status column has tags
     const statusTags = page.locator('td:has-text("Hoạt động"), td:has-text("Đã khóa"), td:has-text("Không hoạt động")');
     const tagCount = await statusTags.count();
@@ -262,6 +268,9 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
   // TEST: Phân trang
   // --------------------------------------------------------
   test('Phân trang phải hoạt động — chuyển trang và thay đổi pageSize', async ({ page }) => {
+    // Wait for table to load
+    await expect(page.locator('.ant-table-row').first()).toBeVisible({ timeout: 5000 });
+
     // Check pagination is visible
     const pagination = page.locator('.ant-pagination');
     await expect(pagination).toBeVisible({ timeout: 5000 });

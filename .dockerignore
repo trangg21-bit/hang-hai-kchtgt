@@ -1,0 +1,63 @@
+# ===== Dependencies =====
+node_modules/
+frontend/node_modules/
+
+# ===== Java/Maven build output =====
+target/
+*.class
+*.jar
+*.war
+
+# ===== Frontend build output =====
+frontend/dist/
+frontend/build/
+
+# ===== Git =====
+.git/
+.gitignore
+.gitattributes
+
+# ===== Documentation (not needed for build) =====
+docs/
+*.md
+!README.md
+
+# ===== AI Engine =====
+.ai-scratch/
+.ai-kit/
+
+# ===== Testing =====
+playwright-report/
+test-results/
+frontend/playwright-report/
+frontend/test-results/
+frontend/e2e/
+frontend/tests/
+
+# ===== IDE / Editor =====
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ===== OS files =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== Environment (sensitive) =====
+.env
+.env.*
+!.env.example
+
+# ===== Logs & Temp =====
+*.log
+*.tmp
+*.temp
+*.bak
+
+# ===== Docker =====
+Dockerfile*
+docker-compose*
+.dockerignore

@@ -3,23 +3,29 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.3.6</version>
         <relativePath/>
     </parent>
+
     <groupId>com.hanghai</groupId>
     <artifactId>kchtg</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
-    <name>HH.KCHT :: M-001 Quan tri he thong</name>
+    <name>HH.KCHT :: M-001 Quản trị hệ thống</name>
+    <description>Module M-001 — Quản trị hệ thống: tài khoản, nhóm, đơn vị, admin, log, biểu tượng, kết nối liên thông</description>
+
     <properties>
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
+
     <dependencies>
+        <!-- Spring Boot Starters -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -36,6 +42,8 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
+
+        <!-- Database -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
@@ -46,6 +54,8 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
+
+        <!-- JWT -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -63,18 +73,31 @@
             <version>0.12.5</version>
             <scope>runtime</scope>
         </dependency>
+
+        <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.18.34</version>
             <optional>true</optional>
         </dependency>
+
+        <!-- Dev tools -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
             <scope>runtime</scope>
             <optional>true</optional>
         </dependency>
+
+        <!-- Dotenv support for .env file loading -->
+        <dependency>
+            <groupId>me.paulschwarz</groupId>
+            <artifactId>spring-dotenv</artifactId>
+            <version>4.0.0</version>
+        </dependency>
+
+        <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -83,6 +106,12 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-inline</artifactId>
+            <version>5.2.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -96,13 +125,8 @@
             <version>8.0.5</version>
             <type>pom</type>
         </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-inline</artifactId>
-            <version>5.2.0</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
+
     <build>
         <plugins>
             <plugin>
@@ -117,21 +141,6 @@
                             <version>1.18.38</version>
                         </path>
                     </annotationProcessorPaths>
-                    <testExcludes>
-                        <testExclude>**/AccessLogServiceTest.java</testExclude>
-                        <testExclude>**/UserGroupServiceTest.java</testExclude>
-                        <testExclude>**/MapIconServiceTest.java</testExclude>
-                        <testExclude>**/OrganizationServiceTest.java</testExclude>
-                        <testExclude>**/PolygonObjectControllerTest.java</testExclude>
-                        <testExclude>**/PolygonObjectServiceTest.java</testExclude>
-                        <testExclude>**/SearchControllerTest.java</testExclude>
-                        <testExclude>**/SearchServiceTest.java</testExclude>
-                        <testExclude>**/UserServiceTest.java</testExclude>
-                        <testExclude>**/JwtAuthFilterTest.java</testExclude>
-                        <testExclude>**/JwtUtilTest.java</testExclude>
-                                            <testExclude>**/RoleServiceTest.java</testExclude>
-                        <testExclude>**/UserControllerTest.java</testExclude>
-                    </testExcludes>
                 </configuration>
             </plugin>
             <plugin>
@@ -149,5 +158,3 @@
         </plugins>
     </build>
 </project>
-
-

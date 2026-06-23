@@ -15,4 +15,6 @@ public interface AdminAuditLogRepository extends JpaRepository<AdminAuditLog, UU
         JpaSpecificationExecutor<AdminAuditLog> {
 
     List<AdminAuditLog> findByAdminIdOrderByCreatedAtDesc(UUID adminId);
+
+    List<AdminAuditLog> findAllByOrderByCreatedAtDesc();
 }

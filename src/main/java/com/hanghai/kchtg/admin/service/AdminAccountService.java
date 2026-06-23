@@ -1,15 +1,19 @@
 package com.hanghai.kchtg.admin.service;
 
 import com.hanghai.kchtg.admin.dto.AdminResponse;
-import com.hanghai.kchtg.admin.dto.CreateAdminRequest;
+import com.hanghai.kchtg.admin.dto.CreateAdminWithUserRequest;
 import com.hanghai.kchtg.admin.dto.UpdateAdminRequest;
 import com.hanghai.kchtg.admin.entity.AdminAccount;
+import com.hanghai.kchtg.admin.entity.AdminRole;
 import com.hanghai.kchtg.admin.entity.AdminStatus;
 import com.hanghai.kchtg.admin.repository.AdminAccountRepository;
 import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.entity.UserStatus;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,9 +27,11 @@ public class AdminAccountService {
 
     private final AdminAccountRepository repository;
     private final EntityManager entityManager;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public List<AdminResponse> findAll() {
-        return repository.findAll().stream()
+        return repository.findAllWithUser().stream()
                 .map(AdminResponse::from)
                 .toList();
     }
@@ -43,18 +49,63 @@ public class AdminAccountService {
     }
 
     @Transactional
-    public AdminResponse create(CreateAdminRequest request) {
-        if (repository.existsByUserId(request.getUserId())) {
-            throw new IllegalArgumentException("AdminAccount already exists for userId: " + request.getUserId());
+    public AdminResponse create(CreateAdminWithUserRequest request) {
+        // 1. Tạo User mới trong app_users
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setEmail(request.getEmail());
+        user.setFullName(request.getFullName());
+        user.setPhone(request.getPhone());
+        // Map admin role string to user role (with ROLE_ prefix for Spring Security)
+        String roleKey = request.getRole().toUpperCase();
+        switch (roleKey) {
+            case "SYSTEM_ADMIN":
+            case "SUPER_ADMIN":
+                user.setRole("ROLE_SYSTEM_ADMIN");
+                break;
+            case "ADMIN":
+            case "ADMINISTRATOR":
+                user.setRole("ROLE_ADMIN");
+                break;
+            case "VIEWER":
+                user.setRole("ROLE_VIEWER");
+                break;
+            case "USER":
+                user.setRole("ROLE_USER");
+                break;
+            default:
+                user.setRole("ROLE_USER");
+                break;
         }
+        user.setStatus(UserStatus.ACTIVE);
+        User savedUser = userRepository.save(user);
 
-        User user = entityManager.getReference(User.class, request.getUserId());
-
+        // 2. Tạo AdminAccount liên kết với User vừa tạo
         AdminAccount entity = new AdminAccount();
-        entity.setUser(user);
-        entity.setRole(request.getRole());
-        entity.setModules(request.getModules() != null ? request.getModules() : List.of());
-        entity.setStatus(request.getStatus() != null ? request.getStatus() : AdminStatus.ACTIVE);
+        entity.setUser(savedUser);
+        // Map admin role string to AdminRole enum
+        switch (roleKey) {
+            case "SYSTEM_ADMIN":
+            case "SUPER_ADMIN":
+                entity.setRole(AdminRole.SUPER_ADMIN);
+                break;
+            case "ADMIN":
+            case "ADMINISTRATOR":
+                entity.setRole(AdminRole.MODULE_ADMIN);
+                break;
+            case "VIEWER":
+                entity.setRole(AdminRole.VIEWER);
+                break;
+            case "USER":
+                entity.setRole(AdminRole.VIEWER);
+                break;
+            default:
+                entity.setRole(AdminRole.VIEWER);
+                break;
+        }
+        entity.setModules(List.of());
+        entity.setStatus(AdminStatus.ACTIVE);
 
         AdminAccount saved = repository.save(entity);
         return AdminResponse.from(saved);

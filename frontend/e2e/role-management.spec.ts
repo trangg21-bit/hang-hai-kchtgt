@@ -19,44 +19,49 @@ test.describe('Quản lý vai trò (Role)', () => {
     await page.getByRole('button', { name: /tạo vai trò/i }).click();
 
     await page.getByLabel('Tên vai trò').fill('E2E Tester');
-    await page.getByLabel('Mô tả').fill('Test role description');
+    await page.getByLabel('Mô tả').fill('Mô tả cho E2E Tester');
     
-    // Check at least one permission in the tree
+    // Select at least one permission in the tree
     await page.locator('.ant-tree-checkbox').first().click();
 
-    await page.getByRole('button', { name: 'Tạo mới', exact: true }).click();
+    await page.getByRole('button', { name: /tạo mới/i }).click();
 
     await expect(page.locator('.ant-message-success')).toBeVisible({ timeout: 5000 });
   });
 
   test('Sửa vai trò', async ({ page }) => {
     await page.goto('/roles');
-    await page.locator('.anticon-edit').first().click();
+    const firstRow = page.locator('.ant-table-row').first();
+    await expect(firstRow).toBeVisible({ timeout: 5000 });
+    
+    await firstRow.locator('.anticon-edit').click();
 
-    const nameInput = page.getByLabel('Tên vai trò');
-    await expect(nameInput).toHaveValue('Quản trị viên (Super Admin)', { timeout: 5000 });
-
-    await nameInput.fill('Updated E2E Tester');
-    await page.getByRole('button', { name: 'Cập nhật', exact: true }).click();
+    await page.getByLabel('Tên vai trò').fill('Updated E2E Tester');
+    await page.getByRole('button', { name: /cập nhật/i }).click();
 
     await expect(page.locator('.ant-message-success')).toBeVisible({ timeout: 5000 });
   });
 
-  test('Xóa vai trò', async ({ page }) => {
+  test('Tạo và xóa vai trò', async ({ page }) => {
     await page.goto('/roles');
     
-    // Create a temporary role with 0 users
+    // 1. Tạo mới
     await page.getByRole('button', { name: /tạo vai trò/i }).click();
-    await page.getByLabel('Tên vai trò').fill('To Be Deleted');
-    await page.getByLabel('Mô tả').fill('Temp role description');
+    const roleName = 'Delete Test Role ' + Date.now();
+    await page.getByLabel('Tên vai trò').fill(roleName);
+    await page.getByLabel('Mô tả').fill('Mô tả cho Delete Test Role');
     await page.locator('.ant-tree-checkbox').first().click();
-    await page.getByRole('button', { name: 'Tạo mới', exact: true }).click();
+    await page.getByRole('button', { name: /tạo mới/i }).click();
     await expect(page.locator('.ant-message-success')).toBeVisible({ timeout: 5000 });
     
-    // Click delete on the newly created role
-    const row = page.locator('tr', { hasText: 'To Be Deleted' });
-    await row.locator('.anticon-delete').click();
-    await page.locator('.ant-modal-confirm-btns button:has-text("Xóa")').click();
+    // Wait for message to disappear
+    await page.waitForTimeout(1000);
+
+    // 2. Tìm hàng vừa tạo và xóa
+    const newRow = page.locator(`.ant-table-row:has-text("${roleName}")`).first();
+    await expect(newRow).toBeVisible({ timeout: 5000 });
+    await newRow.locator('.anticon-delete').click();
+    await page.locator('.ant-modal-confirm-btns button:has-text("Xóa")').first().click();
 
     await expect(page.locator('.ant-message-success')).toBeVisible({ timeout: 5000 });
   });

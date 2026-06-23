@@ -252,8 +252,7 @@ class SearchControllerTest {
         @Test
         @DisplayName("DELETE /api/search/history propagates service exceptions")
         void clearHistory_propagatesExceptions() {
-            doThrow(new RuntimeException("Clear failed"))
-                    .when(searchService).clearSearchHistory(0L);
+            doThrow(new RuntimeException("Clear failed")).when(searchService).clearSearchHistory(0L);
 
             assertThrows(RuntimeException.class, () -> controller.clearSearchHistory());
         }

@@ -55,8 +55,8 @@ test.describe('Đăng nhập', () => {
     await page.waitForURL(/\/users/);
 
     // Logout
-    await page.locator('.ant-dropdown-trigger').first().click();
-    await page.locator('.ant-dropdown-menu-item:has-text("Đăng xuất")').click();
+    await page.locator('css=.ant-avatar').click();
+    await page.getByText('Đăng xuất').click();
     await page.waitForURL(/\/login/);
   });
 });

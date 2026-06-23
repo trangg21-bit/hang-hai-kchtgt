@@ -35,7 +35,14 @@ api.interceptors.response.use(
       localStorage.removeItem('auth_token');
       window.location.href = '/login';
     } else if (error.response?.status === 403) {
-      message.error('Bạn không có quyền thực hiện hành động này.');
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        message.error('Vui lòng đăng nhập để tiếp tục.');
+        localStorage.removeItem('auth_token');
+        window.location.href = '/login';
+      } else {
+        message.error('Bạn không có quyền thực hiện hành động này.');
+      }
     } else if (error.response?.status >= 500) {
       message.error('Lỗi máy chủ. Vui lòng thử lại sau.');
     } else {

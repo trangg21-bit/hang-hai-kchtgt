@@ -693,6 +693,7 @@ class SearchServiceTest {
                     .build();
             q1.setId(UUID.randomUUID());
             q1.setCreatedAt(LocalDateTime.now());
+
             SearchQuery q2 = SearchQuery.builder()
                     .userId(1L).queryType(QueryType.TEXT)
                     .queryText("Q2").resultCount(2).durationMs(20L)
@@ -718,6 +719,7 @@ class SearchServiceTest {
                     .build();
             q1.setId(UUID.randomUUID());
             q1.setCreatedAt(LocalDateTime.now());
+
             SearchQuery q2 = SearchQuery.builder()
                     .userId(1L)
                     .queryType(QueryType.TEXT).queryText("Q2")

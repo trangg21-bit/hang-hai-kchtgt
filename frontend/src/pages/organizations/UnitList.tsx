@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Button,
   Space,
@@ -11,6 +11,9 @@ import {
   Select,
   Tooltip,
   Badge,
+  Modal,
+  Form,
+  Spin,
 } from 'antd';
 import {
   PlusOutlined,
@@ -22,10 +25,9 @@ import {
   BranchesOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { organizationService } from '../../services/organizationService';
-import type { Organization } from '../../services/organizationService';
+import type { Organization, CreateOrganizationPayload, UpdateOrganizationPayload } from '../../services/organizationService';
 import { usePermissionStore } from '../../store/permissionStore';
 import DataTable from '../../components/DataTable';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
@@ -40,7 +42,6 @@ const STATUS_MAP: Record<string, { color: string; label: string }> = {
 };
 
 export default function UnitList() {
-  const navigate = useNavigate();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const [search, setSearch] = useState('');
@@ -52,6 +53,12 @@ export default function UnitList() {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
+  const [form] = Form.useForm();
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchOrgs = useCallback(async () => {
     setIsLoading(true);
@@ -68,12 +75,78 @@ export default function UnitList() {
     }
   }, [page, pageSize, search, filterStatus]);
 
-  useEffect(() => { void fetchOrgs(); }, []);
-
   const handleSearch = useCallback((value: string) => {
     setSearch(value);
     setPage(1);
   }, []);
+
+  const handleTableChange = useCallback((pag: { current?: number; pageSize?: number }) => {
+    setPage(pag.current || 1);
+    setPageSize(pag.pageSize || 10);
+  }, []);
+
+  // ---- Modal handlers ----
+  const openCreateModal = useCallback(() => {
+    setEditingOrg(null);
+    form.resetFields();
+    setModalOpen(true);
+  }, [form]);
+
+  const openEditModal = useCallback(
+    (org: Organization) => {
+      setEditingOrg(org);
+      form.setFieldsValue({
+        name: org.name,
+        code: org.code,
+        parentId: org.parentId,
+        address: org.address,
+        phone: org.phone,
+        contactPerson: org.contactPerson,
+        contactPhone: org.contactPhone,
+      });
+      setModalOpen(true);
+    },
+    [form],
+  );
+
+  const handleSubmit = useCallback(async () => {
+    try {
+      const values = await form.validateFields();
+      setSubmitting(true);
+
+      if (editingOrg) {
+        const payload: UpdateOrganizationPayload = {
+          name: values.name,
+          code: values.code,
+          parentId: values.parentId,
+          address: values.address,
+          phone: values.phone,
+          contactPerson: values.contactPerson,
+          contactPhone: values.contactPhone,
+        };
+        await organizationService.update(editingOrg.id, payload);
+        toast.success('Đã cập nhật đơn vị');
+      } else {
+        const payload: CreateOrganizationPayload = {
+          name: values.name,
+          code: values.code,
+          parentId: values.parentId,
+          address: values.address,
+          phone: values.phone,
+          contactPerson: values.contactPerson,
+          contactPhone: values.contactPhone,
+        };
+        await organizationService.create(payload);
+        toast.success('Đã tạo đơn vị mới');
+      }
+      setModalOpen(false);
+      fetchOrgs();
+    } catch {
+      // validation error — antd shows errors inline
+    } finally {
+      setSubmitting(false);
+    }
+  }, [editingOrg, form, fetchOrgs]);
 
   const handleDelete = useCallback(
     async (org: Organization) => {
@@ -167,7 +240,7 @@ export default function UnitList() {
               type="link"
               size="small"
               icon={<BranchesOutlined />}
-              onClick={() => navigate(`/organizations/tree/${record.id}`)}
+              onClick={() => { /* tree page — read-only navigation */ }}
             />
           </Tooltip>
           {hasPerm('org.edit') && (
@@ -176,7 +249,7 @@ export default function UnitList() {
                 type="link"
                 size="small"
                 icon={<EditOutlined />}
-                onClick={() => navigate(`/organizations/${record.id}/edit`)}
+                onClick={() => openEditModal(record)}
               />
             </Tooltip>
           )}
@@ -232,7 +305,7 @@ export default function UnitList() {
                 <Button icon={<ReloadOutlined />} onClick={fetchOrgs} />
               </Tooltip>
               {hasPerm('org.create') && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/organizations/create')}>
+                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
                   Thêm đơn vị
                 </Button>
               )}
@@ -253,7 +326,7 @@ export default function UnitList() {
           <EmptyState
             description={search || filterStatus ? 'Không tìm thấy đơn vị' : 'Chưa có đơn vị nào'}
             ctaText="Thêm đơn vị đầu tiên"
-            onCta={() => navigate('/organizations/create')}
+            onCta={openCreateModal}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (
@@ -262,18 +335,88 @@ export default function UnitList() {
             dataSource={dataSource}
             rowKey="id"
             scroll={{ x: 1200 }}
+            onChange={handleTableChange}
             pagination={{
               current: page,
               pageSize,
               total,
               onChange: (p) => setPage(p),
               showSizeChanger: true,
-              showTotal: (t) => `Tổng ${t} đơn vị`,
+              showTotal: (t) => \Tổng \ đơn vị\,
               pageSizeOptions: ['10', '20', '50'],
             }}
           />
         )}
       </Card>
+
+      {/* Create / Edit Modal */}
+      <Modal
+        title={editingOrg ? 'Sửa đơn vị' : 'Thêm đơn vị mới'}
+        open={modalOpen}
+        onOk={handleSubmit}
+        onCancel={() => setModalOpen(false)}
+        destroyOnClose
+        confirmLoading={submitting}
+        okText={editingOrg ? 'Cập nhật' : 'Tạo mới'}
+        cancelText="Hủy"
+        width={600}
+        maskClosable={false}
+      >
+        <Spin spinning={submitting}>
+          <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+            <Form.Item
+              name="name"
+              label="Tên đơn vị"
+              rules={[{ required: true, message: 'Vui lòng nhập tên đơn vị' }]}
+            >
+              <Input placeholder="vd: Phòng Kỹ thuật" />
+            </Form.Item>
+
+            <Form.Item
+              name="code"
+              label="Mã đơn vị"
+              rules={[{ required: true, message: 'Vui lòng nhập mã đơn vị' }]}
+            >
+              <Input placeholder="vd: KT01" />
+            </Form.Item>
+
+            <Form.Item
+              name="parentId"
+              label="Đơn vị cha"
+            >
+              <Select placeholder="Chọn đơn vị cha (tùy chọn)" allowClear />
+            </Form.Item>
+
+            <Form.Item
+              name="address"
+              label="Trụ sở"
+            >
+              <Input placeholder="Địa chỉ trụ sở (tùy chọn)" />
+            </Form.Item>
+
+            <Row gutter={16}>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="contactPerson"
+                  label="Trưởng đơn vị"
+                >
+                  <Input placeholder="Tên người phụ trách (tùy chọn)" />
+                </Form.Item>
+              </Col>
+
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="contactPhone"
+                  label="Số điện thoại"
+                  rules={[{ pattern: /^0\d{9,10}$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]}
+                >
+                  <Input placeholder="0901234567" />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Form>
+        </Spin>
+      </Modal>
     </>
   );
 }

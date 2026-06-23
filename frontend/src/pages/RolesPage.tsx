@@ -85,6 +85,7 @@ export default function RolesPage() {
       setCheckedKeys(role.permissions);
       form.setFieldsValue({
         name: role.name,
+        code: role.code,
         description: role.description,
         permissions: role.permissions,
       });
@@ -111,6 +112,7 @@ export default function RolesPage() {
       if (editingRole) {
         const payload: UpdateRolePayload = {
           name: values.name,
+          code: values.code,
           description: values.description,
           permissions: checkedKeys,
         };
@@ -118,6 +120,7 @@ export default function RolesPage() {
       } else {
         const payload: CreateRolePayload = {
           name: values.name,
+          code: values.code,
           description: values.description,
           permissions: checkedKeys,
         };
@@ -334,6 +337,17 @@ export default function RolesPage() {
               rules={[{ required: true, message: 'Vui lòng nhập tên vai trò' }]}
             >
               <Input placeholder="vd: Quản trị viên" />
+            </Form.Item>
+
+            <Form.Item
+              name="code"
+              label="Mã vai trò"
+              rules={[
+                { required: true, message: 'Vui lòng nhập mã vai trò' },
+                { pattern: /^[a-z0-9_]+$/, message: 'Chỉ chứa chữ thường, số và dấu gạch dưới' },
+              ]}
+            >
+              <Input placeholder="vd: senior_admin" />
             </Form.Item>
 
             <Form.Item

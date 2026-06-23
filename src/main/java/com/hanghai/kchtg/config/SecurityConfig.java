@@ -61,6 +61,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/point-objects/**").permitAll()
+                        .requestMatchers("/api/line-objects/**").permitAll()
+                        .requestMatchers("/api/polygon-objects/**").permitAll()
+                        .requestMatchers("/api/map-layers/**").permitAll()
+                        .requestMatchers("/api/search/**").permitAll()
                         .requestMatchers("/api/v1/integration/share/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().authenticated()
