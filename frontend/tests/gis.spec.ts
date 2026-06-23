@@ -118,6 +118,7 @@ test.describe('F-136 Point Objects List Page', () => {
     await page.getByRole('button', { name: 'Tạo đối tượng' }).click();
 
     await page.waitForURL(/\/gis\/points/);
+    await page.locator('.ant-skeleton').first().waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
     await expect(page.locator('.ant-table-tbody').first()).toContainText(uniqueCode);
     await expect(page.locator('.ant-table-tbody').first()).toContainText('Cảng Hàng Hải E2E Test');
   });
@@ -200,6 +201,7 @@ test.describe('F-137 Line Objects List Page', () => {
     await page.getByRole('button', { name: 'Tạo đối tượng' }).click();
 
     await page.waitForURL(/\/gis\/lines/);
+    await page.locator('.ant-skeleton').first().waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
     await expect(page.locator('.ant-table-tbody').first()).toContainText(uniqueCode);
     await expect(page.locator('.ant-table-tbody').first()).toContainText('Tuyến Hàng Hải E2E Test');
   });
@@ -281,6 +283,7 @@ test.describe('F-138 Polygon Objects List Pages', () => {
     await page.getByRole('button', { name: 'Tạo đối tượng' }).click();
 
     await page.waitForURL(/\/gis\/polygons/);
+    await page.locator('.ant-skeleton').first().waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
     await expect(page.locator('.ant-table-tbody').first()).toContainText(uniqueCode);
     await expect(page.locator('.ant-table-tbody').first()).toContainText('Vùng Neo Đậu E2E Test');
   });

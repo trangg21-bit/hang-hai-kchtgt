@@ -18,7 +18,17 @@ import LoginPage from './pages/Login';
 import AdminList from './pages/admins/AdminList';
 import AdminForm from './pages/admins/AdminForm';
 import AdminAudit from './pages/admins/AdminAudit';
-import ReportsPage from './pages/ReportsPage';
+import ReportList from './pages/reports/ReportList';
+import ReportViewer from './pages/reports/ReportViewer';
+import ConnectionList from './pages/connections/ConnectionList';
+import ConnectionForm from './pages/connections/ConnectionForm';
+import ConnectionHealth from './pages/connections/ConnectionHealth';
+import UnitList from './pages/organizations/UnitList';
+import UnitForm from './pages/organizations/UnitForm';
+import UnitTree from './pages/organizations/UnitTree';
+import GroupList from './pages/groups/GroupList';
+import GroupForm from './pages/groups/GroupForm';
+import GroupMembers from './pages/groups/GroupMembers';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -60,6 +70,18 @@ export default function App() {
                 <Route path="/users" element={<UsersPage />} />
                 <Route path="/roles" element={<RolesPage />} />
 
+                {/* Organization — Đơn vị */}
+                <Route path="/organizations" element={<UnitList />} />
+                <Route path="/organizations/create" element={<UnitForm />} />
+                <Route path="/organizations/:id/edit" element={<UnitForm />} />
+                <Route path="/organizations/tree/:id" element={<UnitTree />} />
+
+                {/* Groups — Nhóm */}
+                <Route path="/groups" element={<GroupList />} />
+                <Route path="/groups/create" element={<GroupForm />} />
+                <Route path="/groups/:id/edit" element={<GroupForm />} />
+                <Route path="/groups/:id/members" element={<GroupMembers />} />
+
                 {/* Admin — Quản trị viên */}
                 <Route path="/admins" element={<AdminList />} />
                 <Route path="/admins/create" element={<AdminForm />} />
@@ -88,8 +110,15 @@ export default function App() {
 
                 <Route path="/gis/search" element={<GISSearch />} />
 
+                {/* Connections — Liên thông & tích hợp dữ liệu */}
+                <Route path="/connections" element={<ConnectionList />} />
+                <Route path="/connections/create" element={<ConnectionForm />} />
+                <Route path="/connections/:id/edit" element={<ConnectionForm />} />
+                <Route path="/connections/:id/health" element={<ConnectionHealth />} />
+
                 {/* Reports & Statistics */}
-                <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/reports" element={<ReportList />} />
+                <Route path="/reports/:code" element={<ReportViewer />} />
               </Route>
             </Routes>
           </BrowserRouter>

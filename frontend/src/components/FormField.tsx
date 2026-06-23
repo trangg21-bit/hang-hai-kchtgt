@@ -162,7 +162,7 @@ export default function FormField(props: FormFieldProps) {
       case 'password':
         return <Input.Password {...fieldProps} placeholder={props.placeholder} />;
       case 'email':
-        return <Input.Email {...fieldProps} placeholder={props.placeholder} />;
+        return <Input type="email" {...fieldProps} placeholder={props.placeholder} />;
       default:
         return (
           <Input
