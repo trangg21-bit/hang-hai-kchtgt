@@ -11,7 +11,7 @@ test.describe('Quản lý đơn vị', () => {
 
   test('Hiển thị danh sách đơn vị', async ({ page }) => {
     await page.goto('/organizations');
-    await expect(page.getByRole('table')).toBeVisible();
+    await expect(page.getByRole('table').first()).toBeVisible();
   });
 
   test('Tạo mới đơn vị', async ({ page }) => {
@@ -19,19 +19,23 @@ test.describe('Quản lý đơn vị', () => {
     await page.getByRole('button', { name: /thêm/i }).click();
 
     await page.getByLabel('Tên đơn vị').fill('Phòng E2E Test');
-    await page.getByLabel('Mã đơn vị').fill('E2E_DEPT');
-    await page.getByRole('button', { name: /lưu/i }).click();
+    await page.getByRole('button', { name: /tạo đơn vị/i }).click();
 
     await expect(page.locator('.ant-message-success')).toBeVisible({ timeout: 5000 });
   });
 
   test('Sửa đơn vị', async ({ page }) => {
     await page.goto('/organizations');
-    const firstRow = page.locator('tr').first();
-    await firstRow.getByRole('button', { name: /sửa/i }).click();
+    const firstRow = page.locator('.ant-table-row').first();
+    await expect(firstRow).toBeVisible({ timeout: 5000 });
+    
+    await firstRow.locator('.anticon-edit').click();
+
+    // Wait for the form to load initial data
+    await expect(page.locator('#name')).not.toHaveValue('');
 
     await page.getByLabel('Tên đơn vị').fill('Updated E2E Dept');
-    await page.getByRole('button', { name: /lưu/i }).click();
+    await page.getByRole('button', { name: /cập nhật/i }).click();
 
     await expect(page.locator('.ant-message-success')).toBeVisible({ timeout: 5000 });
   });

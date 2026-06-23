@@ -21,23 +21,28 @@ export const ALL_PERMISSIONS: Permission[] = [
   { key: 'role.delete', name: 'Xóa vai trò', group: 'role_management', description: 'Xóa vai trò' },
 
   // Admin Management
-  { key: 'admin.view', name: 'Xem danh sách quản trị viên', group: 'admin_management', description: 'Xem danh sách và thông tin quản trị viên' },
-  { key: 'admin.create', name: 'Tạo quản trị viên', group: 'admin_management', description: 'Thêm mới tài khoản quản trị viên' },
-  { key: 'admin.edit', name: 'Sửa quản trị viên', group: 'admin_management', description: 'Chỉnh sửa thông tin quản trị viên' },
-  { key: 'admin.delete', name: 'Xóa quản trị viên', group: 'admin_management', description: 'Xóa tài khoản quản trị viên' },
-  { key: 'admin.lock', name: 'Khóa/Mở khóa quản trị viên', group: 'admin_management', description: 'Khóa hoặc mở khóa quản trị viên' },
+  { key: 'admin.view', name: 'Xem danh sách admin', group: 'admin_management', description: 'Xem danh sách quản trị viên' },
+  { key: 'admin.create', name: 'Tạo admin', group: 'admin_management', description: 'Tạo mới tài khoản quản trị viên' },
+  { key: 'admin.edit', name: 'Sửa admin', group: 'admin_management', description: 'Chỉnh sửa thông tin quản trị viên' },
+  { key: 'admin.delete', name: 'Xóa admin', group: 'admin_management', description: 'Xóa tài khoản quản trị viên' },
 
   // Group Management
-  { key: 'group.view', name: 'Xem danh sách nhóm', group: 'group_management', description: 'Xem danh sách và thông tin nhóm' },
-  { key: 'group.create', name: 'Tạo nhóm', group: 'group_management', description: 'Thêm mới nhóm người dùng' },
+  { key: 'group.view', name: 'Xem danh sách nhóm', group: 'group_management', description: 'Xem danh sách nhóm người dùng' },
+  { key: 'group.create', name: 'Tạo nhóm', group: 'group_management', description: 'Tạo mới nhóm người dùng' },
   { key: 'group.edit', name: 'Sửa nhóm', group: 'group_management', description: 'Chỉnh sửa thông tin nhóm' },
   { key: 'group.delete', name: 'Xóa nhóm', group: 'group_management', description: 'Xóa nhóm người dùng' },
 
-  // Organization Management
-  { key: 'org.view', name: 'Xem danh sách đơn vị', group: 'org_management', description: 'Xem danh sách và thông tin đơn vị' },
-  { key: 'org.create', name: 'Tạo đơn vị', group: 'org_management', description: 'Thêm mới đơn vị hành chính' },
+  // Organization Unit Management
+  { key: 'org.view', name: 'Xem danh sách đơn vị', group: 'org_management', description: 'Xem danh sách đơn vị tổ chức' },
+  { key: 'org.create', name: 'Tạo đơn vị', group: 'org_management', description: 'Tạo mới đơn vị tổ chức' },
   { key: 'org.edit', name: 'Sửa đơn vị', group: 'org_management', description: 'Chỉnh sửa thông tin đơn vị' },
-  { key: 'org.delete', name: 'Xóa đơn vị', group: 'org_management', description: 'Xóa đơn vị hành chính' },
+  { key: 'org.delete', name: 'Xóa đơn vị', group: 'org_management', description: 'Xóa đơn vị tổ chức' },
+
+  // Connection Management
+  { key: 'connection.view', name: 'Xem danh sách kết nối', group: 'connection_management', description: 'Xem danh sách kết nối hệ thống' },
+  { key: 'connection.create', name: 'Tạo kết nối', group: 'connection_management', description: 'Tạo mới kết nối hệ thống' },
+  { key: 'connection.edit', name: 'Sửa kết nối', group: 'connection_management', description: 'Chỉnh sửa kết nối hệ thống' },
+  { key: 'connection.delete', name: 'Xóa kết nối', group: 'connection_management', description: 'Xóa kết nối hệ thống' },
 
   // System
   { key: 'system.settings', name: 'Cấu hình hệ thống', group: 'system', description: 'Quản lý cấu hình hệ thống' },

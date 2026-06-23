@@ -11,43 +11,43 @@ test.describe('Quản lý nhóm', () => {
 
   test('Hiển thị danh sách nhóm', async ({ page }) => {
     await page.goto('/groups');
-    await expect(page.getByRole('table')).toBeVisible();
+    await expect(page.getByRole('table').first()).toBeVisible();
   });
 
   test('Tạo mới nhóm', async ({ page }) => {
-    // Navigate to groups
     await page.goto('/groups');
-
-    // Click create button
     await page.getByRole('button', { name: /thêm/i }).click();
 
-    // Fill form
     await page.getByLabel('Tên nhóm').fill('Nhóm E2E Test');
-    await page.getByLabel('Mã nhóm').fill('E2E_TEST');
     await page.getByLabel('Mô tả').fill('Test group for E2E');
 
-    // Submit
-    await page.getByRole('button', { name: /lưu/i }).click();
+    await page.getByRole('button', { name: /tạo nhóm/i }).click();
 
-    // Verify success
     await expect(page.locator('.ant-message-success')).toBeVisible({ timeout: 5000 });
   });
 
   test('Sửa thông tin nhóm', async ({ page }) => {
     await page.goto('/groups');
-    const firstRow = page.locator('tr').first();
-    await firstRow.getByRole('button', { name: /sửa/i }).click();
+    const firstRow = page.locator('.ant-table-row').first();
+    await expect(firstRow).toBeVisible({ timeout: 5000 });
+    
+    await firstRow.locator('.anticon-edit').click();
+
+    // Wait for the form to load initial data
+    await expect(page.locator('#name')).not.toHaveValue('');
 
     await page.getByLabel('Mô tả').fill('Updated E2E test group');
-    await page.getByRole('button', { name: /lưu/i }).click();
+    await page.getByRole('button', { name: /cập nhật/i }).click();
 
     await expect(page.locator('.ant-message-success')).toBeVisible({ timeout: 5000 });
   });
 
   test('Xóa nhóm', async ({ page }) => {
     await page.goto('/groups');
-    const firstRow = page.locator('tr').first();
-    await firstRow.getByRole('button', { name: /xóa/i }).click();
+    const firstRow = page.locator('.ant-table-row').first();
+    await expect(firstRow).toBeVisible({ timeout: 5000 });
+    
+    await firstRow.locator('.anticon-delete').click();
     await page.getByRole('button', { name: /xóa/i }).click();
 
     await expect(page.locator('.ant-message-success')).toBeVisible({ timeout: 5000 });

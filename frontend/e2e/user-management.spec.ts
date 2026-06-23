@@ -49,24 +49,25 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
 
     // Điền form
     // Username: chỉ cho phép [a-z0-9_], min 4 ký tự
-    await page.getByPlaceholder('vd: nguyenvana').fill('testuser01');
+    await page.locator('#username').fill('testuser01');
     
     // Password: phải có chữ hoa, chữ thường, số, min 6 ký tự
-    await page.getByPlaceholder('Ít nhất 6 ký tự').fill('Test1234');
+    await page.locator('#password').fill('Test1234');
     
     // Full name
-    await page.getByPlaceholder('Nguyễn Văn A').fill('Nguyễn Văn Test');
+    await page.locator('#fullName').fill('Nguyễn Văn Test');
     
     // Email
-    await page.getByPlaceholder('email@example.com').fill('test@hh.gov.vn');
+    await page.locator('#email').fill('test@hh.gov.vn');
     
     // Phone (10-11 số, bắt đầu 0)
-    await page.getByPlaceholder('0901234567').fill('0912345678');
+    await page.locator('#phone').fill('0912345678');
     
     // Role — chọn từ dropdown Select
     // Ant Design Select: click để mở dropdown, rồi chọn option
-    // Find the Select component for roleId by its label
-    const roleIdSelect = page.locator('.ant-form-item:has-text("Vai trò") .ant-select').first();
+    const roleSelect = page.locator('select#roleId, input#roleId, .ant-select:has(label:has-text("Vai trò"))');
+    // Find the Select component for roleId
+    const roleIdSelect = page.locator('.ant-form-item:has(label:has-text("Vai trò")) .ant-select').first();
     await roleIdSelect.click({ timeout: 5000 });
     await page.waitForTimeout(300);
     
@@ -120,19 +121,9 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
 
     // Ant Design Form validation shows error messages
     // Required fields: username, password, fullName, email, roleId
-    // Errors render as red text under each input with class containing 'explain' (may be CSS-var obfuscated)
-    // Use getByText to find the first validation error text
-    // Common Ant Design validation messages:
-    const errorPatterns = ['Vui lòng nhập', 'Ít nhất 6 ký tự', 'Không hợp lệ', 'Vui lòng chọn'];
-    let found = false;
-    for (const pattern of errorPatterns) {
-      const count = await page.getByText(pattern).count();
-      if (count > 0) {
-        found = true;
-        break;
-      }
-    }
-    expect(found).toBeTruthy();
+    await expect(page.locator('.ant-form-item-explain-error').first()).toBeVisible({ timeout: 5000 });
+    const errorCount = await page.locator('.ant-form-item-explain-error').count();
+    expect(errorCount).toBeGreaterThan(0);
   });
 
   // --------------------------------------------------------
@@ -159,7 +150,7 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
     await expect(page.locator('.ant-modal-title')).toHaveText('Sửa người dùng', { timeout: 5000 });
 
     // Pre-filled data should be present
-    const emailInput = page.getByPlaceholder('email@example.com');
+    const emailInput = page.locator('#email');
     await expect(emailInput).toBeVisible({ timeout: 3000 });
 
     // Change email
@@ -184,47 +175,22 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
   // TEST: Xóa người dùng với xác nhận
   // --------------------------------------------------------
   test('Xóa người dùng phải hiện modal xác nhận và xóa khỏi danh sách', async ({ page }) => {
-    // Find the last row to delete (safer than deleting admin who might have constraints)
-    const rows = page.locator('tr.ant-table-row');
+    // Wait for table to load
+    await expect(page.locator('.ant-table-row').first()).toBeVisible({ timeout: 5000 });
+
+    // Find the last row to delete
+    const rows = page.locator('.ant-table-row');
     const lastRow = rows.last();
     await lastRow.scrollIntoViewIfNeeded();
 
-    // Find delete button — Ant Design Button with DeleteOutlined icon wrapped in Tooltip "Xóa"
-    // The tooltip has title="Xóa" but the button itself has no title attribute.
-    // We find it by looking for the delete icon (trash) button in the last row's actions cell.
-    const deleteIconBtn = lastRow.locator('svg[data-icon="delete"], button.ant-btn:has(svg), .ant-table-row-action').last();
-    
-    if (await deleteIconBtn.count() > 0) {
-      await deleteIconBtn.click({ timeout: 10_000 });
-    } else {
-      // Fallback: find the last button in the actions column (usually delete is the last action)
-      const actionsBtns = lastRow.locator('td:last-child button.ant-btn').last();
-      if (await actionsBtns.count() > 0) {
-        await actionsBtns.click({ timeout: 10_000 });
-      } else {
-        // Final fallback: click any button in the last cell
-        const anyBtn = lastRow.locator('td:last-child button').last();
-        if (await anyBtn.count() > 0) {
-          await anyBtn.click({ timeout: 10_000 });
-        }
-      }
-    }
+    // Click delete icon inside row
+    await lastRow.locator('.anticon-delete').click({ timeout: 10_000 });
 
     // Ant Design Modal.confirm should appear
     await expect(page.locator('.ant-modal-confirm-title')).toHaveText('Xác nhận xóa người dùng', { timeout: 5000 });
 
-    // Click "Xóa" (danger button)
-    const confirmDeleteBtn = page.locator('.ant-modal-confirm-btns .ant-btn-dangerous:has-text("Xóa"), .ant-modal-confirm-btns button:has-text("Xóa").ant-btn').first();
-    
-    if (await confirmDeleteBtn.count() > 0) {
-      await confirmDeleteBtn.click({ timeout: 10_000 });
-    } else {
-      // Fallback: find the danger button in confirm modal
-      const dangerBtn = page.locator('.ant-modal-confirm-btns .ant-btn-dangerous').first();
-      if (await dangerBtn.count() > 0) {
-        await dangerBtn.click({ timeout: 10_000 });
-      }
-    }
+    // Click "Xóa" (danger button) in modal
+    await page.locator('.ant-modal-confirm-btns button:has-text("Xóa")').first().click({ timeout: 10_000 });
 
     // Wait for mutation (mock delay 500ms)
     await page.waitForTimeout(1500);
@@ -289,26 +255,28 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
   // TEST: Trạng thái hiển thị trên bảng
   // --------------------------------------------------------
   test('Bảng người dùng phải hiển thị badge và tag trạng thái', async ({ page }) => {
-    // Wait for table data to load
-    await page.waitForSelector('.ant-table-tbody', { timeout: 10_000 });
-    await page.waitForTimeout(500);
-    
-    // Verify table has data rows — use broader selector since Ant Design may CSS-var-override classes
-    const rows = page.locator('.ant-table-tbody tr');
-    const rowCount = await rows.count();
-    expect(rowCount).toBeGreaterThan(0);
+    // Wait for table to load
+    await expect(page.locator('.ant-table-row').first()).toBeVisible({ timeout: 5000 });
+
+    // Verify status column has tags
+    const statusTags = page.locator('td:has-text("Hoạt động"), td:has-text("Đã khóa"), td:has-text("Không hoạt động")');
+    const tagCount = await statusTags.count();
+    expect(tagCount).toBeGreaterThan(0);
   });
 
   // --------------------------------------------------------
   // TEST: Phân trang
   // --------------------------------------------------------
   test('Phân trang phải hoạt động — chuyển trang và thay đổi pageSize', async ({ page }) => {
+    // Wait for table to load
+    await expect(page.locator('.ant-table-row').first()).toBeVisible({ timeout: 5000 });
+
     // Check pagination is visible
     const pagination = page.locator('.ant-pagination');
     await expect(pagination).toBeVisible({ timeout: 5000 });
 
-    // Verify pagination total text — use specific selector for pagination total
-    const totalText = page.locator('li.ant-pagination-total-text');
+    // Verify pagination total text
+    const totalText = page.locator('.ant-pagination-total-text');
     await expect(totalText).toBeVisible({ timeout: 5000 });
 
     // Next page if available

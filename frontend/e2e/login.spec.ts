@@ -55,7 +55,8 @@ test.describe('Đăng nhập', () => {
     await page.waitForURL(/\/users/);
 
     // Logout
-    await page.getByRole('button', { name: /đăng xuất/i, exact: false }).click();
+    await page.locator('css=.ant-avatar').click();
+    await page.getByText('Đăng xuất').click();
     await page.waitForURL(/\/login/);
   });
 });

@@ -26,6 +26,7 @@ import dayjs from 'dayjs';
 import { connectionService } from '../../services/connectionService';
 import type { ConnectionHealth } from '../../services/connectionService';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
+import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
 
