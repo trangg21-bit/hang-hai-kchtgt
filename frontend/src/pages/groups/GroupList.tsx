@@ -142,7 +142,7 @@ export default function GroupList() {
       Modal.confirm({
         title: 'Xác nhận xóa nhóm',
         icon: <ExclamationCircleOutlined />,
-        content: \Bạn có chắc chắn muốn xóa nhóm "\"? Hành động này không thể hoàn tác.\,
+        content: `Bạn có chắc chắn muốn xóa nhóm "${group.name}"? Hành động này không thể hoàn tác.`,
         okText: 'Xóa',
         okType: 'danger',
         cancelText: 'Hủy',
@@ -326,7 +326,7 @@ export default function GroupList() {
               total,
               onChange: (p) => setPage(p),
               showSizeChanger: true,
-              showTotal: (t) => \Tổng \ nhóm\,
+              showTotal: (t) => `Tổng ${t} nhóm`,
               pageSizeOptions: ['10', '20', '50'],
             }}
           />

@@ -146,7 +146,7 @@ export default function AdminList() {
       Modal.confirm({
         title: 'Xác nhận xóa quản trị viên',
         icon: <ExclamationCircleOutlined />,
-        content: \Bạn có chắc chắn muốn xóa "\"? Hành động này không thể hoàn tác.\,
+        content: `Bạn có chắc chắn muốn xóa "${admin.fullName || admin.username}"? Hành động này không thể hoàn tác.`,
         okText: 'Xóa',
         okType: 'danger',
         cancelText: 'Hủy',
@@ -328,7 +328,7 @@ export default function AdminList() {
               total,
               onChange: (p) => setPage(p),
               showSizeChanger: true,
-              showTotal: (t) => \Tổng \ quản trị viên\,
+              showTotal: (t) => `Tổng ${t} quản trị viên`,
               pageSizeOptions: ['10', '20', '50'],
             }}
           />

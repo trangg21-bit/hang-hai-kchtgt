@@ -342,7 +342,7 @@ export default function UnitList() {
               total,
               onChange: (p) => setPage(p),
               showSizeChanger: true,
-              showTotal: (t) => \Tổng \ đơn vị\,
+              showTotal: (t) => `Tổng ${t} đơn vị`,
               pageSizeOptions: ['10', '20', '50'],
             }}
           />

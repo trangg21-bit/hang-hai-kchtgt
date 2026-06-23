@@ -8,6 +8,7 @@ import com.hanghai.kchtg.dataconnection.dto.UpdateConnectionRequest;
 import com.hanghai.kchtg.dataconnection.entity.ConnectionHealth;
 import com.hanghai.kchtg.dataconnection.entity.DataConnection;
 import com.hanghai.kchtg.dataconnection.entity.SyncLog;
+import com.hanghai.kchtg.dataconnection.enums.AuthType;
 import com.hanghai.kchtg.dataconnection.enums.ConnectionStatus;
 import com.hanghai.kchtg.dataconnection.enums.ConnectionType;
 import com.hanghai.kchtg.dataconnection.repository.ConnectionHealthRepository;
