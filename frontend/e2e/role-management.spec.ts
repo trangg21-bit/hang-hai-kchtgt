@@ -19,6 +19,7 @@ test.describe('Quản lý vai trò (Role)', () => {
     await page.getByRole('button', { name: /tạo vai trò/i }).click();
 
     await page.getByLabel('Tên vai trò').fill('E2E Tester');
+    await page.getByLabel('Mã vai trò').fill('e2e_tester_' + Date.now());
     await page.getByLabel('Mô tả').fill('Mô tả cho E2E Tester');
     
     // Select at least one permission in the tree
@@ -49,6 +50,7 @@ test.describe('Quản lý vai trò (Role)', () => {
     await page.getByRole('button', { name: /tạo vai trò/i }).click();
     const roleName = 'Delete Test Role ' + Date.now();
     await page.getByLabel('Tên vai trò').fill(roleName);
+    await page.getByLabel('Mã vai trò').fill('del_role_' + Date.now());
     await page.getByLabel('Mô tả').fill('Mô tả cho Delete Test Role');
     await page.locator('.ant-tree-checkbox').first().click();
     await page.getByRole('button', { name: /tạo mới/i }).click();

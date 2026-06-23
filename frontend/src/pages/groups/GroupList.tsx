@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Button,
   Space,
@@ -75,6 +75,10 @@ export default function GroupList() {
       setIsLoading(false);
     }
   }, [page, pageSize, search, filterStatus]);
+
+  useEffect(() => {
+    fetchGroups();
+  }, [fetchGroups]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);

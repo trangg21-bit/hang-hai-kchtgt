@@ -1,4 +1,4 @@
-﻿import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
@@ -11,7 +11,7 @@ const __dirname = dirname(__filename);
  * UI mode: npm run e2e-ui
  */
 export default defineConfig({
-  testDir: './e2e',
+  testDir: '.',
   testMatch: '**/*.spec.ts',
   timeout: 30000,
   expect: {

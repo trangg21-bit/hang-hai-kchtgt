@@ -1,10 +1,10 @@
 INSERT INTO app_users (id, username, password, email, full_name, phone, role, status, created_at, updated_at)
 VALUES
-  (RANDOM_UUID(), 'admin',   '$2a$10$CfYFdy1Kf1/6WrAmHWW/lOXrvXQ1vDNEhWze5Vc276FMNwxhByIGW', 'admin@hh.gov.vn',   'Nguyen Van An',  '0912345678', 'ROLE_SYSTEM_ADMIN', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (RANDOM_UUID(), 'trantmai', '$2a$10$CfYFdy1Kf1/6WrAmHWW/lOXrvXQ1vDNEhWze5Vc276FMNwxhByIGW', 'trantmai@hh.gov.vn', 'Tran Thi Mai',   '0912345679', 'ROLE_ADMIN',        'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (RANDOM_UUID(), 'leantuan', '$2a$10$CfYFdy1Kf1/6WrAmHWW/lOXrvXQ1vDNEhWze5Vc276FMNwxhByIGW', 'leantuan@hh.gov.vn', 'Le Anh Tuan',    '0912345680', 'ROLE_ADMIN',        'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (RANDOM_UUID(), 'phamdm',   '$2a$10$CfYFdy1Kf1/6WrAmHWW/lOXrvXQ1vDNEhWze5Vc276FMNwxhByIGW', 'phamdm@hh.gov.vn',   'Pham Duc Minh',  '0912345681', 'ROLE_USER',         'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (RANDOM_UUID(), 'buivanh',  '$2a$10$CfYFdy1Kf1/6WrAmHWW/lOXrvXQ1vDNEhWze5Vc276FMNwxhByIGW', 'buivanh@hh.gov.vn',  'Bui Van Anh',    '0912345682', 'ROLE_VIEWER',       'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (RANDOM_UUID(), 'admin',   '$2a$10$eOMdO1.kRTS150bCD7dh2.JegLn8.srSS9.fqT2KvtD4vqC/gM1za', 'admin@hh.gov.vn',   'Nguyen Van An',  '0912345678', 'ROLE_SYSTEM_ADMIN', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (RANDOM_UUID(), 'trantmai', '$2a$10$eOMdO1.kRTS150bCD7dh2.JegLn8.srSS9.fqT2KvtD4vqC/gM1za', 'trantmai@hh.gov.vn', 'Tran Thi Mai',   '0912345679', 'ROLE_ADMIN',        'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (RANDOM_UUID(), 'leantuan', '$2a$10$eOMdO1.kRTS150bCD7dh2.JegLn8.srSS9.fqT2KvtD4vqC/gM1za', 'leantuan@hh.gov.vn', 'Le Anh Tuan',    '0912345680', 'ROLE_ADMIN',        'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (RANDOM_UUID(), 'phamdm',   '$2a$10$eOMdO1.kRTS150bCD7dh2.JegLn8.srSS9.fqT2KvtD4vqC/gM1za', 'phamdm@hh.gov.vn',   'Pham Duc Minh',  '0912345681', 'ROLE_USER',         'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (RANDOM_UUID(), 'buivanh',  '$2a$10$eOMdO1.kRTS150bCD7dh2.JegLn8.srSS9.fqT2KvtD4vqC/gM1za', 'buivanh@hh.gov.vn',  'Bui Van Anh',    '0912345682', 'ROLE_VIEWER',       'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 INSERT INTO app_roles (id, name, code, description, status, user_count, created_at, updated_at)
 VALUES

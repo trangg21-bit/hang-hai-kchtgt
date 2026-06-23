@@ -1,4 +1,4 @@
-﻿import api from "./api";
+import api from "./api";
 import type { PaginatedResponse } from "../types/common";
 
 // ============================================================
@@ -161,7 +161,7 @@ export const groupService = {
       code: payload.code ?? payload.name.substring(0, 10).replace(/\s+/g, "_").toLowerCase(),
       description: payload.description,
       permissions: payload.permissions,
-      status: payload.status ?? "active",
+      status: (payload.status ?? "active").toUpperCase(),
     });
     const item: any = extractData(resp);
 
@@ -187,7 +187,7 @@ export const groupService = {
       code: payload.code,
       description: payload.description,
       permissions: payload.permissions,
-      status: payload.status,
+      status: payload.status?.toUpperCase(),
     });
     const item: any = extractData(resp);
 

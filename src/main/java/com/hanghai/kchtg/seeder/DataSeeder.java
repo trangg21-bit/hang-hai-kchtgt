@@ -17,6 +17,17 @@ import com.hanghai.kchtg.dataconnection.enums.AuthType;
 import com.hanghai.kchtg.dataconnection.enums.ConnectionStatus;
 import com.hanghai.kchtg.dataconnection.enums.ConnectionType;
 import com.hanghai.kchtg.dataconnection.enums.SyncFrequency;
+import com.hanghai.kchtg.admin.entity.AdminAccount;
+import com.hanghai.kchtg.admin.entity.AdminRole;
+import com.hanghai.kchtg.admin.entity.AdminStatus;
+import com.hanghai.kchtg.admin.repository.AdminAccountRepository;
+import com.hanghai.kchtg.group.entity.UserGroup;
+import com.hanghai.kchtg.group.entity.GroupStatus;
+import com.hanghai.kchtg.group.repository.GroupRepository;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
+import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
+import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +50,9 @@ public class DataSeeder implements CommandLineRunner {
     private final MapIconRepository mapIconRepo;
     private final UserRepository userRepo;
     private final DataConnectionRepository connectionRepo;
+    private final AdminAccountRepository adminAccountRepo;
+    private final GroupRepository groupRepo;
+    private final OrgUnitRepository orgUnitRepo;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -50,6 +64,9 @@ public class DataSeeder implements CommandLineRunner {
         seedPolygonCategories();
         seedMapIcons();
         seedUsers();
+        seedAdminAccounts();
+        seedUserGroups();
+        seedOrgUnits();
         seedDataConnections();
         
         log.info("✅ Data seeding completed successfully!");
@@ -195,5 +212,67 @@ public class DataSeeder implements CommandLineRunner {
 
         connectionRepo.saveAll(List.of(conn1, conn2));
         log.info("✅ Seeded 2 DataConnections");
+    }
+
+    private void seedAdminAccounts() {
+        if (adminAccountRepo.count() > 0) {
+            log.info("⏭️ Admin accounts already exist, skipping...");
+            return;
+        }
+
+        log.info("📦 Seeding AdminAccounts for default users...");
+        userRepo.findAll().forEach(user -> {
+            String role = user.getRole();
+            if ("ROLE_SUPER_ADMIN".equals(role) || "ROLE_SYSTEM_ADMIN".equals(role)) {
+                AdminAccount admin = new AdminAccount();
+                admin.setUser(user);
+                admin.setRole(AdminRole.SUPER_ADMIN);
+                admin.setStatus(AdminStatus.ACTIVE);
+                admin.setModules(List.of());
+                adminAccountRepo.save(admin);
+            } else if ("ROLE_ADMIN".equals(role)) {
+                AdminAccount admin = new AdminAccount();
+                admin.setUser(user);
+                admin.setRole(AdminRole.MODULE_ADMIN);
+                admin.setStatus(AdminStatus.ACTIVE);
+                admin.setModules(List.of());
+                adminAccountRepo.save(admin);
+            }
+        });
+        log.info("✅ Seeded {} AdminAccounts", adminAccountRepo.count());
+    }
+
+    private void seedUserGroups() {
+        if (groupRepo.count() > 0) {
+            log.info("⏭️ User groups already exist, skipping...");
+            return;
+        }
+        log.info("📦 Seeding UserGroups...");
+        UserGroup g1 = new UserGroup();
+        g1.setName("Nhóm Quản Trị Viên");
+        g1.setCode("GRP_ADMINS");
+        g1.setDescription("Nhóm dành cho các quản trị viên hệ thống");
+        g1.setStatus(GroupStatus.ACTIVE);
+        g1.setPermissions(List.of("users:read", "users:create", "users:update", "roles:read"));
+        groupRepo.save(g1);
+        log.info("✅ Seeded {} UserGroups", groupRepo.count());
+    }
+
+    private void seedOrgUnits() {
+        if (orgUnitRepo.count() > 0) {
+            log.info("⏭️ Org units already exist, skipping...");
+            return;
+        }
+        log.info("📦 Seeding OrgUnits...");
+        OrgUnit u1 = OrgUnit.builder()
+                .name("Tổng Cục Đường Bộ")
+                .code("ORG_TCDb")
+                .type(OrgUnitType.DEPARTMENT)
+                .address("Hà Nội")
+                .phone("0241234567")
+                .status(OrgUnitStatus.ACTIVE)
+                .build();
+        orgUnitRepo.save(u1);
+        log.info("✅ Seeded {} OrgUnits", orgUnitRepo.count());
     }
 }

@@ -1,4 +1,4 @@
-﻿import api from "./api";
+import api from "./api";
 import type { PaginatedResponse } from "../types/common";
 
 // ============================================================
@@ -415,6 +415,7 @@ export const organizationService = {
         payload.code ??
         payload.name.substring(0, 10).replace(/\s+/g, "_").toLowerCase(),
       parentId: payload.parentId,
+      type: "DEPARTMENT",
       address: payload.address,
       phone: payload.phone ?? payload.contactPhone,
       status: "ACTIVE",

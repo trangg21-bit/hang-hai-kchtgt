@@ -19,9 +19,10 @@ test.describe('Quản lý nhóm', () => {
     await page.getByRole('button', { name: /thêm/i }).click();
 
     await page.getByLabel('Tên nhóm').fill('Nhóm E2E Test');
+    await page.locator('#code').fill('grp_e2e_' + Date.now());
     await page.getByLabel('Mô tả').fill('Test group for E2E');
 
-    await page.getByRole('button', { name: /tạo nhóm/i }).click();
+    await page.getByRole('button', { name: /tạo mới/i }).click();
 
     await expect(page.locator('.ant-message-success')).toBeVisible({ timeout: 5000 });
   });

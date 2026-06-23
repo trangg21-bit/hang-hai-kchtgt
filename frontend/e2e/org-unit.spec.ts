@@ -19,7 +19,8 @@ test.describe('Quản lý đơn vị', () => {
     await page.getByRole('button', { name: /thêm/i }).click();
 
     await page.getByLabel('Tên đơn vị').fill('Phòng E2E Test');
-    await page.getByRole('button', { name: /tạo đơn vị/i }).click();
+    await page.locator('#code').fill('e2e_org_' + Date.now());
+    await page.getByRole('button', { name: /tạo mới/i }).click();
 
     await expect(page.locator('.ant-message-success')).toBeVisible({ timeout: 5000 });
   });

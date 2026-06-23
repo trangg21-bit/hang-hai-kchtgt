@@ -1,4 +1,4 @@
-﻿import api from "./api";
+import api from "./api";
 import type { PaginatedResponse } from "../types/common";
 import type { Status } from "../types/common";
 
@@ -124,9 +124,9 @@ export const adminService = {
       .map((item) => ({
         id: item.id ?? String(item.userId),
         username: item.username ?? "",
-        fullName: "", // backend does not return fullName in AdminResponse
-        email: "", // backend does not return email in AdminResponse
-        phone: undefined, // backend does not return phone in AdminResponse
+        fullName: item.fullName ?? "",
+        email: item.email ?? "",
+        phone: item.phone,
         roleId: item.role ?? "",
         roleName: item.role ?? "",
         status: (item.status?.toLowerCase() as Status) ?? "active",
@@ -158,9 +158,9 @@ export const adminService = {
     return {
       id: item.id ?? String(item.userId),
       username: item.username ?? "",
-      fullName: "",
-      email: "",
-      phone: undefined,
+      fullName: item.fullName ?? "",
+      email: item.email ?? "",
+      phone: item.phone,
       roleId: item.role ?? "",
       roleName: item.role ?? "",
       status: (item.status?.toLowerCase() as Status) ?? "active",

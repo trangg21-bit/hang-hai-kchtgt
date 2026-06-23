@@ -47,9 +47,10 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
     // Modal phải mở với tiêu đề "Thêm người dùng mới"
     await expect(page.locator('.ant-modal-title')).toHaveText('Thêm người dùng mới', { timeout: 5000 });
 
+    const rand = Date.now();
     // Điền form
     // Username: chỉ cho phép [a-z0-9_], min 4 ký tự
-    await page.locator('#username').fill('testuser01');
+    await page.locator('#username').fill('testuser' + rand);
     
     // Password: phải có chữ hoa, chữ thường, số, min 6 ký tự
     await page.locator('#password').fill('Test1234');
@@ -58,7 +59,7 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
     await page.locator('#fullName').fill('Nguyễn Văn Test');
     
     // Email
-    await page.locator('#email').fill('test@hh.gov.vn');
+    await page.locator('#email').fill('test_' + rand + '@hh.gov.vn');
     
     // Phone (10-11 số, bắt đầu 0)
     await page.locator('#phone').fill('0912345678');

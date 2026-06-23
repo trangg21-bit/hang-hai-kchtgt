@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Button,
   Space,
@@ -74,6 +74,10 @@ export default function AdminList() {
       setIsLoading(false);
     }
   }, [page, pageSize, search, filterStatus, filterRoleId]);
+
+  useEffect(() => {
+    fetchAdmins();
+  }, [fetchAdmins]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);

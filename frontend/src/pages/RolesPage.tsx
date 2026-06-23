@@ -344,7 +344,7 @@ export default function RolesPage() {
               label="Mã vai trò"
               rules={[
                 { required: true, message: 'Vui lòng nhập mã vai trò' },
-                { pattern: /^[a-z0-9_]+$/, message: 'Chỉ chứa chữ thường, số và dấu gạch dưới' },
+                { pattern: /^[a-zA-Z0-9_]+$/, message: 'Chỉ chứa chữ, số và dấu gạch dưới' },
               ]}
             >
               <Input placeholder="vd: senior_admin" />
