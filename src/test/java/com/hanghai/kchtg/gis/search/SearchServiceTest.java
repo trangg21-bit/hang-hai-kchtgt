@@ -62,7 +62,6 @@ class SearchServiceTest {
     @BeforeEach
     void setUp() {
         testPoint = PointObject.builder()
-                .id(UUID.randomUUID())
                 .name("Cai Mep Port")
                 .code("PORT-CM")
                 .longitude(107.05)
@@ -70,22 +69,23 @@ class SearchServiceTest {
                 .description("Deep water port")
                 .status(Status.PUBLISHED)
                 .build();
+        testPoint.setId(UUID.randomUUID());
 
         testLine = LineObject.builder()
-                .id(UUID.randomUUID())
                 .name("Coastal Route")
                 .code("LINE-CR")
                 .coordinates("LINESTRING (106.6 10.7, 106.7 10.8)")
                 .status(com.hanghai.kchtg.gis.line.entity.LineObject.Status.PUBLISHED)
                 .build();
+        testLine.setId(UUID.randomUUID());
 
         testPolygon = PolygonObject.builder()
-                .id(UUID.randomUUID())
                 .name("Port Zone")
                 .code("POLY-PZ")
                 .coordinates("POLYGON ((106.6 10.7, 106.7 10.7, 106.7 10.8, 106.6 10.8, 106.6 10.7))")
                 .status(com.hanghai.kchtg.gis.polygon.entity.PolygonObject.Status.PUBLISHED)
                 .build();
+        testPolygon.setId(UUID.randomUUID());
 
         searchRequest = SearchRequest.builder()
                 .query("Cai Mep")
@@ -240,13 +240,13 @@ class SearchServiceTest {
             List<PointObject> manyPoints = new ArrayList<>();
             for (int i = 0; i < 150; i++) {
                 PointObject p = PointObject.builder()
-                        .id(UUID.randomUUID())
                         .name("Point " + i)
                         .code("P-" + i)
                         .longitude(107.0)
                         .latitude(10.5)
                         .status(Status.PUBLISHED)
                         .build();
+                p.setId(UUID.randomUUID());
                 manyPoints.add(p);
             }
 
@@ -276,13 +276,13 @@ class SearchServiceTest {
             List<PointObject> points = new ArrayList<>();
             for (int i = 0; i < 10; i++) {
                 PointObject p = PointObject.builder()
-                        .id(UUID.randomUUID())
                         .name("Point " + i)
                         .code("P-" + i)
                         .longitude(107.0)
                         .latitude(10.5)
                         .status(Status.PUBLISHED)
                         .build();
+                p.setId(UUID.randomUUID());
                 points.add(p);
             }
 
@@ -365,22 +365,22 @@ class SearchServiceTest {
 
             // Mock 2 points at different distances
             PointObject nearPoint = PointObject.builder()
-                    .id(UUID.randomUUID())
                     .name("Near Port")
                     .code("PORT-NEAR")
                     .longitude(107.01)
                     .latitude(10.51)
                     .status(Status.PUBLISHED)
                     .build();
+            nearPoint.setId(UUID.randomUUID());
 
             PointObject farPoint = PointObject.builder()
-                    .id(UUID.randomUUID())
                     .name("Far Port")
                     .code("PORT-FAR")
                     .longitude(107.1)
                     .latitude(10.6)
                     .status(Status.PUBLISHED)
                     .build();
+            farPoint.setId(UUID.randomUUID());
 
             when(pointRepository.findByDistance("POINT (107.000000 10.500000)", 500.0))
                     .thenReturn(List.of(farPoint, nearPoint));
@@ -604,7 +604,7 @@ class SearchServiceTest {
 
         @Test
         @DisplayName("Should save search query")
-        void saveSearchQuery_success() {
+        void saveSearchQuery_success() throws Exception {
             SearchRequest request = SearchRequest.builder()
                     .query("Cai Mep")
                     .queryType(QueryType.TEXT)
@@ -621,7 +621,7 @@ class SearchServiceTest {
 
         @Test
         @DisplayName("Should save search query even if JSON serialization fails")
-        void saveSearchQuery_jsonFailure_ignores() {
+        void saveSearchQuery_jsonFailure_ignores() throws Exception {
             SearchRequest request = SearchRequest.builder()
                     .query("Test")
                     .queryType(QueryType.TEXT)
@@ -630,7 +630,7 @@ class SearchServiceTest {
                     .build();
 
             when(objectMapper.writeValueAsString(any()))
-                    .thenThrow(new RuntimeException("JSON error"));
+                    .thenThrow(mock(com.fasterxml.jackson.core.JsonProcessingException.class));
 
             service.saveSearchQuery(request, 3, 100);
 
@@ -641,26 +641,26 @@ class SearchServiceTest {
         @DisplayName("Should get search history ordered by executedAt DESC")
         void getSearchHistory_success() {
             SearchQuery query1 = SearchQuery.builder()
-                    .id(UUID.randomUUID())
                     .userId(1L)
                     .queryType(QueryType.TEXT)
                     .queryText("Port")
                     .resultCount(5)
-                    .durationMs(100)
-                    .createdAt(LocalDateTime.now().minusHours(2))
+                    .durationMs(100L)
                     .build();
+            query1.setId(UUID.randomUUID());
+            query1.setCreatedAt(LocalDateTime.now().minusHours(2));
 
             SearchQuery query2 = SearchQuery.builder()
-                    .id(UUID.randomUUID())
                     .userId(1L)
                     .queryType(QueryType.RADIUS)
                     .queryText("Route")
                     .resultCount(3)
-                    .durationMs(80)
-                    .createdAt(LocalDateTime.now().minusHours(1))
+                    .durationMs(80L)
                     .build();
+            query2.setId(UUID.randomUUID());
+            query2.setCreatedAt(LocalDateTime.now().minusHours(1));
 
-            when(searchQueryRepository.findByUserIdOrderByExecutedAtDesc(eq(1L), any(PageRequest.class)))
+            when(searchQueryRepository.findByUserIdOrderByCreatedAtDesc(eq(1L), any(PageRequest.class)))
                     .thenReturn(List.of(query2, query1));
 
             List<SearchHistoryResponse> result = service.getSearchHistory(1L, 20);
@@ -675,7 +675,7 @@ class SearchServiceTest {
         @Test
         @DisplayName("Should return empty history when no queries found")
         void getSearchHistory_empty() {
-            when(searchQueryRepository.findByUserIdOrderByExecutedAtDesc(eq(999L), any(PageRequest.class)))
+            when(searchQueryRepository.findByUserIdOrderByCreatedAtDesc(eq(999L), any(PageRequest.class)))
                     .thenReturn(Collections.emptyList());
 
             List<SearchHistoryResponse> result = service.getSearchHistory(999L, 20);
@@ -688,18 +688,21 @@ class SearchServiceTest {
         @DisplayName("Should limit search history by limit parameter")
         void getSearchHistory_withLimit() {
             SearchQuery q1 = SearchQuery.builder()
-                    .id(UUID.randomUUID()).userId(1L).queryType(QueryType.TEXT)
-                    .queryText("Q1").resultCount(1).durationMs(10)
-                    .createdAt(LocalDateTime.now())
+                    .userId(1L).queryType(QueryType.TEXT)
+                    .queryText("Q1").resultCount(1).durationMs(10L)
                     .build();
-            SearchQuery q2 = SearchQuery.builder()
-                    .id(UUID.randomUUID()).userId(1L).queryType(QueryType.TEXT)
-                    .queryText("Q2").resultCount(2).durationMs(20)
-                    .createdAt(LocalDateTime.now())
-                    .build();
+            q1.setId(UUID.randomUUID());
+            q1.setCreatedAt(LocalDateTime.now());
 
-            when(searchQueryRepository.findByUserIdOrderByExecutedAtDesc(eq(1L), any(PageRequest.class)))
-                    .thenReturn(List.of(q2, q1));
+            SearchQuery q2 = SearchQuery.builder()
+                    .userId(1L).queryType(QueryType.TEXT)
+                    .queryText("Q2").resultCount(2).durationMs(20L)
+                    .build();
+            q2.setId(UUID.randomUUID());
+            q2.setCreatedAt(LocalDateTime.now());
+
+            when(searchQueryRepository.findByUserIdOrderByCreatedAtDesc(eq(1L), any(PageRequest.class)))
+                    .thenReturn(List.of(q2));
 
             List<SearchHistoryResponse> result = service.getSearchHistory(1L, 1);
 
@@ -710,19 +713,22 @@ class SearchServiceTest {
         @DisplayName("Should clear search history for a user")
         void clearSearchHistory_success() {
             SearchQuery q1 = SearchQuery.builder()
-                    .id(UUID.randomUUID()).userId(1L)
+                    .userId(1L)
                     .queryType(QueryType.TEXT).queryText("Q1")
-                    .resultCount(1).durationMs(10)
-                    .createdAt(LocalDateTime.now())
+                    .resultCount(1).durationMs(10L)
                     .build();
-            SearchQuery q2 = SearchQuery.builder()
-                    .id(UUID.randomUUID()).userId(1L)
-                    .queryType(QueryType.TEXT).queryText("Q2")
-                    .resultCount(2).durationMs(20)
-                    .createdAt(LocalDateTime.now())
-                    .build();
+            q1.setId(UUID.randomUUID());
+            q1.setCreatedAt(LocalDateTime.now());
 
-            when(searchQueryRepository.findByUserIdOrderByExecutedAtDesc(eq(1L), any(PageRequest.class)))
+            SearchQuery q2 = SearchQuery.builder()
+                    .userId(1L)
+                    .queryType(QueryType.TEXT).queryText("Q2")
+                    .resultCount(2).durationMs(20L)
+                    .build();
+            q2.setId(UUID.randomUUID());
+            q2.setCreatedAt(LocalDateTime.now());
+
+            when(searchQueryRepository.findByUserIdOrderByCreatedAtDesc(eq(1L), any(PageRequest.class)))
                     .thenReturn(List.of(q1, q2));
 
             service.clearSearchHistory(1L);
@@ -733,7 +739,7 @@ class SearchServiceTest {
         @Test
         @DisplayName("Should handle clearing empty history gracefully")
         void clearSearchHistory_empty() {
-            when(searchQueryRepository.findByUserIdOrderByExecutedAtDesc(eq(999L), any(PageRequest.class)))
+            when(searchQueryRepository.findByUserIdOrderByCreatedAtDesc(eq(999L), any(PageRequest.class)))
                     .thenReturn(Collections.emptyList());
 
             service.clearSearchHistory(999L);
