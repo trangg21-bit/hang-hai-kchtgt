@@ -100,14 +100,10 @@
                         <testExclude>**/UserGroupServiceTest.java</testExclude>
                         <testExclude>**/MapIconServiceTest.java</testExclude>
                         <testExclude>**/OrganizationServiceTest.java</testExclude>
-                        <testExclude>**/PolygonObjectControllerTest.java</testExclude>
-                        <testExclude>**/PolygonObjectServiceTest.java</testExclude>
-                        <testExclude>**/SearchControllerTest.java</testExclude>
-                        <testExclude>**/SearchServiceTest.java</testExclude>
                         <testExclude>**/UserServiceTest.java</testExclude>
                         <testExclude>**/JwtAuthFilterTest.java</testExclude>
                         <testExclude>**/JwtUtilTest.java</testExclude>
-                                            <testExclude>**/RoleServiceTest.java</testExclude>
+                                             <testExclude>**/RoleServiceTest.java</testExclude>
                         <testExclude>**/UserControllerTest.java</testExclude>
                     </testExcludes>
                 </configuration>
