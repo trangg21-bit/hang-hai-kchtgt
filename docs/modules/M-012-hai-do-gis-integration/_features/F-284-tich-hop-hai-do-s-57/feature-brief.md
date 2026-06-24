@@ -1,17 +1,16 @@
 ---
 id: F-284
-name: "Tích hợp hải đồ S-57"
+name: Tích hợp hải đồ S-57
 slug: tich-hop-hai-do-s-57
 module-id: M-012
-status: proposed
+status: done
 classification: local
 priority: high
-created: "2026-06-16T04:42:41Z"
-last-updated: "2026-06-16T04:42:41Z"
+created: 2026-06-16T04:42:41Z
+last-updated: 2026-06-24T08:15:32Z
 locked-fields: []
 consumed_by_modules: []
 ---
-
 # Feature: Tích hợp hải đồ S-57
 
 ## Description

@@ -1,6 +1,6 @@
 {
   "version": "v2",
-  "generated_at": "2026-06-23T08:54:24Z",
+  "generated_at": "2026-06-24T08:15:55Z",
   "generator": "ai-kit/state-update-rebuild-catalog",
   "modules": {
     "M-001": {
@@ -1409,9 +1409,9 @@
     },
     "M-010": {
       "id": "M-010",
-      "name": "Xác thực & Phân quyền",
+      "name": "xac-thuc-phan-quyen",
       "slug": "xac-thuc-phan-quyen",
-      "status": "in-progress",
+      "status": "proposed",
       "version": 1,
       "feature_count": 7,
       "aggregate_size_status": "green",
@@ -1422,7 +1422,7 @@
           "id": "F-271",
           "name": "Đăng ký tài khoản",
           "slug": "dang-ky-tai-khoan",
-          "status": "in-progress",
+          "status": "implemented",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1437,7 +1437,7 @@
           "id": "F-272",
           "name": "Đăng nhập lần đầu + TOTP setup",
           "slug": "dang-nhap-lan-dau-totp-setup",
-          "status": "in_development",
+          "status": "done",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1452,7 +1452,7 @@
           "id": "F-273",
           "name": "Đăng nhập lần tiếp theo + TOTP",
           "slug": "dang-nhap-lan-tiep-theo-totp",
-          "status": "in_development",
+          "status": "done",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1467,7 +1467,7 @@
           "id": "F-274",
           "name": "Quản lý JWT session",
           "slug": "quan-ly-jwt-session",
-          "status": "in-progress",
+          "status": "done",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1482,7 +1482,7 @@
           "id": "F-275",
           "name": "Phân quyền 3 mức",
           "slug": "phan-quyen-3-muc",
-          "status": "in_development",
+          "status": "done",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1497,7 +1497,7 @@
           "id": "F-276",
           "name": "Chính sách mật khẩu",
           "slug": "chinh-sach-mat-khau",
-          "status": "in_progress",
+          "status": "done",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1510,9 +1510,9 @@
         },
         "F-277": {
           "id": "F-277",
-          "name": "chinh-sach-gioi-han-dang-nhap-sai",
+          "name": "Chính sách giới hạn đăng nhập sai",
           "slug": "chinh-sach-gioi-han-dang-nhap-sai",
-          "status": "in_progress",
+          "status": "done",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1529,8 +1529,8 @@
       "id": "M-011",
       "name": "Nhật ký & Backup",
       "slug": "nhat-ky-backup",
-      "status": "in-progress",
-      "version": 1,
+      "status": "complete",
+      "version": 2,
       "feature_count": 6,
       "aggregate_size_status": "green",
       "depends_on": [],
@@ -1632,7 +1632,7 @@
       "id": "M-012",
       "name": "Hải đồ & GIS Integration",
       "slug": "hai-do-gis-integration",
-      "status": "in-progress",
+      "status": "done",
       "version": 1,
       "feature_count": 6,
       "aggregate_size_status": "green",
@@ -1643,7 +1643,7 @@
           "id": "F-284",
           "name": "Tích hợp hải đồ S-57",
           "slug": "tich-hop-hai-do-s-57",
-          "status": "proposed",
+          "status": "done",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1658,7 +1658,7 @@
           "id": "F-285",
           "name": "Tích hợp hải đồ S-63",
           "slug": "tich-hop-hai-do-s-63",
-          "status": "proposed",
+          "status": "done",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1673,7 +1673,7 @@
           "id": "F-286",
           "name": "Hiển thị hải đồ GIS (S-52)",
           "slug": "hien-thi-hai-do-gis-s-52",
-          "status": "proposed",
+          "status": "done",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1688,7 +1688,7 @@
           "id": "F-287",
           "name": "Quản lý lớp dữ liệu GIS",
           "slug": "quan-ly-lop-du-lieu-gis",
-          "status": "proposed",
+          "status": "done",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1703,7 +1703,7 @@
           "id": "F-288",
           "name": "Tích hợp CSDL không gian",
           "slug": "tich-hop-csd-khong-gian",
-          "status": "proposed",
+          "status": "done",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1718,7 +1718,7 @@
           "id": "F-289",
           "name": "Hiệu tọa WGS84 GIS",
           "slug": "hieu-toa-wgs84-gis",
-          "status": "proposed",
+          "status": "done",
           "classification": "local",
           "visibility": [
             "PRIVATE"

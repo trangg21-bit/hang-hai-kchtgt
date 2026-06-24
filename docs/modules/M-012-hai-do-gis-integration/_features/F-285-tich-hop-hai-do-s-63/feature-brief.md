@@ -1,17 +1,16 @@
 ---
 id: F-285
-name: "Tích hợp hải đồ S-63"
+name: Tích hợp hải đồ S-63
 slug: tich-hop-hai-do-s-63
 module-id: M-012
-status: proposed
+status: done
 classification: local
 priority: high
-created: "2026-06-16T04:42:41Z"
-last-updated: "2026-06-16T04:42:41Z"
+created: 2026-06-16T04:42:41Z
+last-updated: 2026-06-24T08:15:36Z
 locked-fields: []
 consumed_by_modules: []
 ---
-
 # Feature: Tích hợp hải đồ S-63
 
 ## Description

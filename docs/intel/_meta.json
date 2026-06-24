@@ -13,10 +13,10 @@
       "version": 95
     },
     "docs/intel/catalog.json": {
-      "content_hash": "sha256:317f80027f7c7ecbd4ecd9713c7c73d1b156f53ce0eb16b96229b63313b33346",
-      "last_modified": "2026-06-23T08:54:24Z",
+      "content_hash": "sha256:04eb3819d74ab789beff356fae4bcb0f2db69db5115c243df2d386d97dd7e9ce",
+      "last_modified": "2026-06-24T08:15:55Z",
       "last_producer": "ai-kit/state-update-rebuild-catalog",
-      "version": 40
+      "version": 45
     },
     "docs/modules/M-001-quan-tri-he-thong/module-brief.md": {
       "content_hash": "sha256:36e913dd80aec0ba586099d2541430bdb83e5897c9aa752f8695df33f6987f5f",
@@ -85,10 +85,10 @@
       "version": 3
     },
     "docs/modules/M-012-hai-do-gis-integration/module-brief.md": {
-      "content_hash": "sha256:9e690a015f3cdf7d341d82ea6c3428de8f5099649931a48fef8c09d5918da8b2",
-      "last_modified": "2026-06-16T05:21:20Z",
+      "content_hash": "sha256:205810b854d428abc902b64ea34299e786b0a683d14203c79ed2ae9e5ea54680",
+      "last_modified": "2026-06-24T08:15:55Z",
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
-      "version": 2
+      "version": 6
     },
     "docs/modules/M-013-quan-ly-bao-hieu-hang-hai/module-brief.md": {
       "content_hash": "sha256:3ab669b083fba65487fe9caf2e739293c096eb442713e067a4b48d21be999ddb",

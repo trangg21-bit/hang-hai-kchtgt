@@ -1,17 +1,16 @@
 ---
 id: F-286
-name: "Hiển thị hải đồ GIS (S-52)"
+name: Hiển thị hải đồ GIS (S-52)
 slug: hien-thi-hai-do-gis-s-52
 module-id: M-012
-status: proposed
+status: done
 classification: local
 priority: high
-created: "2026-06-16T04:42:41Z"
-last-updated: "2026-06-16T04:42:41Z"
+created: 2026-06-16T04:42:41Z
+last-updated: 2026-06-24T08:15:36Z
 locked-fields: []
 consumed_by_modules: []
 ---
-
 # Feature: Hiển thị hải đồ GIS (S-52)
 
 ## Description

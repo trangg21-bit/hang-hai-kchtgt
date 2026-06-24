@@ -1,17 +1,16 @@
 ---
 id: F-287
-name: "Quản lý lớp dữ liệu GIS"
+name: Quản lý lớp dữ liệu GIS
 slug: quan-ly-lop-du-lieu-gis
 module-id: M-012
-status: proposed
+status: done
 classification: local
 priority: medium
-created: "2026-06-16T04:42:41Z"
-last-updated: "2026-06-16T04:42:41Z"
+created: 2026-06-16T04:42:41Z
+last-updated: 2026-06-24T08:15:36Z
 locked-fields: []
 consumed_by_modules: []
 ---
-
 # Feature: Quản lý lớp dữ liệu GIS
 
 ## Description

@@ -1,17 +1,16 @@
 ---
 id: F-289
-name: "Hiệu tọa WGS84 GIS"
+name: Hiệu tọa WGS84 GIS
 slug: hieu-toa-wgs84-gis
 module-id: M-012
-status: proposed
+status: done
 classification: local
 priority: medium
-created: "2026-06-16T04:42:41Z"
-last-updated: "2026-06-16T04:42:41Z"
+created: 2026-06-16T04:42:41Z
+last-updated: 2026-06-24T08:15:37Z
 locked-fields: []
 consumed_by_modules: []
 ---
-
 # Feature: Hiệu tọa WGS84 GIS
 
 ## Description
