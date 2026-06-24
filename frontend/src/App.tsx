@@ -29,6 +29,7 @@ import UnitTree from './pages/organizations/UnitTree';
 import GroupList from './pages/groups/GroupList';
 import GroupForm from './pages/groups/GroupForm';
 import GroupMembers from './pages/groups/GroupMembers';
+import LogsPage from './pages/LogsPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -120,6 +121,9 @@ export default function App() {
                 {/* Reports & Statistics */}
                 <Route path="/reports" element={<ReportList />} />
                 <Route path="/reports/:code" element={<ReportViewer />} />
+
+                {/* Nhật ký & Backup */}
+                <Route path="/logs" element={<LogsPage />} />
               </Route>
             </Routes>
           </BrowserRouter>

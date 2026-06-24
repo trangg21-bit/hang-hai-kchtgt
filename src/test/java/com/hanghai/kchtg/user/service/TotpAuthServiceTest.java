@@ -131,7 +131,7 @@ class TotpAuthServiceTest {
         // Generate a valid TOTP code for the secret using GoogleAuthenticator
         com.warrenstrange.googleauth.GoogleAuthenticator gat = new com.warrenstrange.googleauth.GoogleAuthenticator();
         int validCodeInt = gat.getTotpPassword(secret);
-        String validCode = String.valueOf(validCodeInt);
+        String validCode = String.format("%06d", validCodeInt);
 
         when(userRepository.findById(testUserId)).thenReturn(Optional.of(testUser));
 

@@ -37,4 +37,10 @@ public interface LoginAuditLogRepository extends JpaRepository<LoginAuditLog, UU
      * Xoa log cu (garbage collection) - giu lai toi da 90 ngay.
      */
     void deleteByAttemptedAtBefore(LocalDateTime cutoff);
+
+    long countByAttemptedAtAfter(LocalDateTime since);
+
+    long countByResultAndAttemptedAtAfter(LoginAttemptResult result, LocalDateTime since);
+
+    long countByResult(LoginAttemptResult result);
 }

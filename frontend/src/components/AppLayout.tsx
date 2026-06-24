@@ -121,7 +121,6 @@ const menuItems: MenuProps['items'] = [
     key: '/logs',
     icon: <DashboardOutlined />,
     label: 'Nhật ký hệ thống',
-    disabled: true,
   },
 ];
 

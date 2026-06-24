@@ -52,4 +52,14 @@ public interface AccessLogRepository extends JpaRepository<AccessLog, UUID>,
      */
     @Query("SELECT a.status, COUNT(a) FROM AccessLog a WHERE a.createdAt BETWEEN :start AND :end GROUP BY a.status")
     List<Object[]> countByStatusGroupedByStatus(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    /**
+     * Count logs created after a specific time.
+     */
+    long countByCreatedAtAfter(LocalDateTime since);
+
+    /**
+     * Count logs by status.
+     */
+    long countByStatus(AccessLogStatus status);
 }

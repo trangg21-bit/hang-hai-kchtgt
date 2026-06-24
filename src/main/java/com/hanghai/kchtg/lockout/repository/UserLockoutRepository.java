@@ -36,6 +36,12 @@ public interface UserLockoutRepository extends JpaRepository<User, UUID> {
     List<User> findByLockedUntilNotNullAndLockedUntilBefore(@Param("now") LocalDateTime now);
 
     /**
+     * Count users with an active lockout.
+     */
+    @Query("SELECT COUNT(u) FROM User u WHERE u.accountLockedUntil IS NOT NULL AND u.accountLockedUntil > :now")
+    long countActiveLockouts(@Param("now") LocalDateTime now);
+
+    /**
      * Find all users by username for lockout lookup.
      */
     Optional<User> findByUsername(String username);
