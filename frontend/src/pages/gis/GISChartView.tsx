@@ -30,6 +30,7 @@ import {
 import { chartService } from '../../services/chartService';
 import type { ChartCell, ChartFeature } from '../../services/chartService';
 import toast from '../../components/ToastNotification';
+import EmptyState from '../../components/EmptyState';
 
 declare global {
   interface Window {
