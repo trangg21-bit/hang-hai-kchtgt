@@ -90,6 +90,17 @@ const menuItems: MenuProps['items'] = [
         key: '/gis/search',
         label: 'Tra cứu GIS',
       },
+      {
+        type: 'divider' as const,
+      },
+      {
+        key: '/gis/map',
+        label: 'Bản đồ Hải đồ (S-57/S-63)',
+      },
+      {
+        key: '/gis/permits',
+        label: 'Giấy phép S-63',
+      },
     ],
   },
   {
@@ -135,6 +146,8 @@ const pageTitles: Record<string, string> = {
   '/gis/polygons': 'Đối tượng vùng',
   '/gis/layers': 'Lớp bản đồ',
   '/gis/search': 'Tra cứu GIS',
+  '/gis/map': 'Bản đồ Hải đồ (S-57/S-63)',
+  '/gis/permits': 'Giấy phép S-63',
   '/connections': 'Liên thông dữ liệu',
   '/reports': 'Báo cáo & Thống kê',
   '/settings': 'Cấu hình hệ thống',

@@ -14,6 +14,8 @@ import PolygonObjectForm from './pages/gis/PolygonObjectForm';
 import MapLayerList from './pages/gis/MapLayerList';
 import MapLayerForm from './pages/gis/MapLayerForm';
 import GISSearch from './pages/gis/GISSearch';
+import GISChartView from './pages/gis/GISChartView';
+import S63PermitsPage from './pages/gis/S63PermitsPage';
 import LoginPage from './pages/Login';
 import AdminList from './pages/admins/AdminList';
 import AdminForm from './pages/admins/AdminForm';
@@ -110,6 +112,8 @@ export default function App() {
                 <Route path="/gis/layers/:id/edit" element={<MapLayerForm />} />
 
                 <Route path="/gis/search" element={<GISSearch />} />
+                <Route path="/gis/map" element={<GISChartView />} />
+                <Route path="/gis/permits" element={<S63PermitsPage />} />
 
                 {/* Connections — Liên thông & tích hợp dữ liệu */}
                 <Route path="/connections" element={<ConnectionList />} />
