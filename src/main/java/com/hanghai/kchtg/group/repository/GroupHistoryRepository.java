@@ -2,8 +2,6 @@ package com.hanghai.kchtg.group.repository;
 
 import com.hanghai.kchtg.group.entity.GroupHistory;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -11,7 +9,6 @@ import java.util.UUID;
 /**
  * Repository cho entity {@link GroupHistory}.
  */
-@Repository
 public interface GroupHistoryRepository extends JpaRepository<GroupHistory, UUID> {
 
     /**

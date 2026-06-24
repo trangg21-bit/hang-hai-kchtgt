@@ -15,8 +15,8 @@ import lombok.Setter;
 import java.util.UUID;
 
 /**
- * Thu vi?n bi?u tu?ng b?n d? — luu tr? metadata c?a các file bi?u tu?ng
- * (SVG, PNG, GeoServer SLD) du?c upload vào h? th?ng.
+ * Thư viện biểu tượng bản đồ - lưu trữ metadata của các file biểu tượng
+ * (SVG, PNG, GeoServer SLD) được upload vào hệ thống.
  */
 @Entity
 @Table(name = "symbol_library")
@@ -27,32 +27,32 @@ import java.util.UUID;
 @Builder
 public class SymbolLibrary extends BaseEntity {
 
-    /** Tên hi?n th? c?a symbol (ví d?: "Phao bi?n lo?i A"). */
+    /** Tên hiển thị của symbol (ví dụ: "Phao biển loại A"). */
     @Column(nullable = false, length = 200)
     private String name;
 
-    /** Mă code duy nh?t c?a symbol. */
+    /** Mã code duy nhất của symbol. */
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
-    /** Đ?nh d?ng file (SVG, PNG, SLD). */
+    /** Định dạng file (SVG, PNG, SLD). */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private SymbolFormat format;
 
-    /** Tên file g?c (ví d?: buoy-a.svg). */
+    /** Tên file gốc (ví dụ: buoy-a.svg). */
     @Column(name = "file_name", nullable = false, length = 255)
     private String fileName;
 
-    /** Kích thu?c file (bytes). */
+    /** Kích thước file (bytes). */
     @Column(name = "file_size", nullable = false)
     private long fileSize;
 
-    /** Đu?ng d?n luu file trong h? th?ng. */
+    /** Đường dẫn lưu file trong hệ thống. */
     @Column(name = "file_path", nullable = false, length = 1024)
     private String filePath;
 
-    /** ID ngu?i upload symbol. */
+    /** ID người upload symbol. */
     @Column(name = "uploaded_by", nullable = false)
     private UUID uploadedBy;
 
@@ -60,16 +60,16 @@ public class SymbolLibrary extends BaseEntity {
     @Column(name = "uploaded_at", nullable = false)
     private java.time.LocalDateTime uploadedAt;
 
-    /** Mô t? chi ti?t v? symbol. */
+    /** Mô tả chi tiết vỏ symbol. */
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    /** Đu?ng d?n SLD trong GeoServer (n?u d?nh d?ng là SLD). */
+    /** Đường dẫn SLD trong GeoServer (nếu đểnh đểng là SLD). */
     @Column(name = "sld_path", length = 500)
     private String sldPath;
 
     /**
-     * Đ?nh d?ng file bi?u tu?ng.
+     * Định dạng file biểu tượng.
      */
     public enum SymbolFormat {
         SVG,

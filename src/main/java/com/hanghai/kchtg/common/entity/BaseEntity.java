@@ -33,7 +33,7 @@ import java.util.UUID;
 public abstract class BaseEntity {
 
     /**
-     * Primary key — auto-generated UUID (Hibernate 6 native support).
+     * Primary key - auto-generated UUID (Hibernate 6 native support).
      */
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -67,4 +67,3 @@ public abstract class BaseEntity {
         this.deletedAt = LocalDateTime.now();
     }
 }
-

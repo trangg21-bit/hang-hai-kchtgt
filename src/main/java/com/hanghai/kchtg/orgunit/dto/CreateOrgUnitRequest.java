@@ -24,7 +24,7 @@ public class CreateOrgUnitRequest {
     private String code;
 
     /**
-     * Parent unit ID (nullable — root unit if omitted).
+     * Parent unit ID (nullable - root unit if omitted).
      */
     private UUID parentId;
 
@@ -38,7 +38,7 @@ public class CreateOrgUnitRequest {
     private String phone;
 
     /**
-     * Status — defaults to {@code ACTIVE} on the service layer if not provided.
+     * Status - defaults to {@code ACTIVE} on the service layer if not provided.
      */
     private OrgUnitStatus status;
 }

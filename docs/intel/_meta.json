@@ -7,16 +7,16 @@
       "version": 1
     },
     "catalog.json": {
-      "content_hash": "sha256:5029835b03108ca3ab2fde7810bb2cc7627b892db337e0027735e114e3966dbe",
-      "last_modified": "2026-06-17T02:11:31Z",
+      "content_hash": "sha256:87c97d46f176e60da3d61d43f3a1fb8f12b2b433374d8a1969e1f94235ee99c7",
+      "last_modified": "2026-06-23T08:05:33Z",
       "last_producer": "ai-kit/scaffold_module",
-      "version": 94
+      "version": 95
     },
     "docs/intel/catalog.json": {
-      "content_hash": "sha256:a63d7bd83ee6d761cc31976d6245c2b39c48732bf018c1fd3d0808e8b19b76d2",
-      "last_modified": "2026-06-23T02:54:26Z",
+      "content_hash": "sha256:317f80027f7c7ecbd4ecd9713c7c73d1b156f53ce0eb16b96229b63313b33346",
+      "last_modified": "2026-06-23T08:54:24Z",
       "last_producer": "ai-kit/state-update-rebuild-catalog",
-      "version": 34
+      "version": 40
     },
     "docs/modules/M-001-quan-tri-he-thong/module-brief.md": {
       "content_hash": "sha256:36e913dd80aec0ba586099d2541430bdb83e5897c9aa752f8695df33f6987f5f",
@@ -73,10 +73,10 @@
       "version": 9
     },
     "docs/modules/M-010-xac-thuc-phan-quyen/module-brief.md": {
-      "content_hash": "sha256:6cd01dd2848dd7b0d544fc215d3166f585609e7d011334a7733ba53aeb56d850",
-      "last_modified": "2026-06-16T05:21:20Z",
+      "content_hash": "sha256:a44daa8360b3ea215d15b82609455cc1961b988dec57299bf6f3e8b5fa91c82a",
+      "last_modified": "2026-06-23T08:24:54Z",
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
-      "version": 2
+      "version": 8
     },
     "docs/modules/M-011-nhat-ky-backup/module-brief.md": {
       "content_hash": "sha256:15721b5242268291cf4386dcccb6a1983106dcaca54728558316e91e901fa851",
@@ -139,16 +139,16 @@
       "version": 86
     },
     "module-catalog.json": {
-      "content_hash": "sha256:724c615a66cc3fb123e12a2e697cfc5b531645fde0d639353c1b7a699798b99c",
-      "last_modified": "2026-06-17T02:11:31Z",
+      "content_hash": "sha256:76825cda23a327d748e326dc5c08edf23f38560c05f32c523a85cf37bd8374cc",
+      "last_modified": "2026-06-23T08:05:33Z",
       "last_producer": "ai-kit/scaffold_module",
-      "version": 94
+      "version": 95
     },
     "module-map.yaml": {
-      "content_hash": "sha256:ff6219aea37516b2dfdd2f03f94a8a0afd5b13d9d1f8a9ce18013d9108c27640",
-      "last_modified": "2026-06-17T02:11:31Z",
+      "content_hash": "sha256:ac634e658d74d2c4948aec9418c2d0dfe4df4727c9d7718003fa4ae126bccef5",
+      "last_modified": "2026-06-23T08:05:33Z",
       "last_producer": "ai-kit/scaffold_module",
-      "version": 16
+      "version": 17
     }
   },
   "created_at": "2026-06-16T04:38:16Z",

@@ -1,15 +1,16 @@
 ---
 id: F-271
-name: "Đăng ký tài khoản"
+name: Đăng ký tài khoản
 slug: dang-ky-tai-khoan
 module-id: M-010
-status: proposed
+status: implemented
 classification: local
 priority: high
-created: "2026-06-16T04:42:05Z"
-last-updated: "2026-06-16T04:42:05Z"
+created: 2026-06-16T04:42:05Z
+last-updated: 2026-06-23T11:30:06Z
 locked-fields: []
 consumed_by_modules: []
+stage: qa
 ---
 
 # Feature: Đăng ký tài khoản
@@ -43,7 +44,7 @@ consumed_by_modules: []
 ## Roles + Permissions
 
 | Role | Level | Notes |
-|---|---|---|
+| ---- | ----- | ----- |
 
 ## Entities
 
@@ -51,8 +52,8 @@ consumed_by_modules: []
 
 ## Business Rules
 
-| ID | Rule | Applies-to | Source |
-|---|---|---|---|
+| ID  | Rule | Applies-to | Source |
+| --- | ---- | ---------- | ------ |
 
 ## Testing Strategy
 

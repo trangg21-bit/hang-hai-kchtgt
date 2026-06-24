@@ -41,7 +41,7 @@ public class OrgUnitResponse {
     private LocalDateTime updatedAt;
 
     /**
-     * Child units — populated by the tree-building service logic.
+     * Child units - populated by the tree-building service logic.
      * Omitted from flat list responses.
      */
     private List<OrgUnitResponse> children;

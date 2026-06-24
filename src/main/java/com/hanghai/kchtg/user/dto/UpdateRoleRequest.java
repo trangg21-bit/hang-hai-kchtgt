@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * Request body cho việc cập nhật Role.
- * Tất cả các trường đều optional — chỉ những trường khác null sẽ được cập nhật.
+ * Tất cả các trường đều optional - chỉ những trường khác null sẽ được cập nhật.
  */
 public class UpdateRoleRequest {
 

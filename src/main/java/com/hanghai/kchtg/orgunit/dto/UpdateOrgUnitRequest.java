@@ -9,7 +9,7 @@ import java.util.UUID;
 
 /**
  * Request body for partial update of an existing organisational unit.
- * All fields are optional — only non-null fields are applied.
+ * All fields are optional - only non-null fields are applied.
  */
 @Data
 public class UpdateOrgUnitRequest {

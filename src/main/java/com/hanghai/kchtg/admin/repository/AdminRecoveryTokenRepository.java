@@ -5,8 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -15,40 +13,39 @@ import java.util.UUID;
 /**
  * Repository cho entity {@link AdminRecoveryToken}.
  */
-@Repository
 public interface AdminRecoveryTokenRepository extends JpaRepository<AdminRecoveryToken, UUID> {
 
     /**
-     * T́m token chua s? d?ng theo token string.
+     * T́m token chua sử dụng theo token string.
      */
     Optional<AdminRecoveryToken> findByTokenAndUsedFalse(String token);
 
     /**
-     * T́m t?t c? token chua s? d?ng c?a m?t admin.
+     * Tìm tất cả token chưa sử dụng của một admin.
      */
     List<AdminRecoveryToken> findByAdminIdAndUsedFalse(UUID adminId);
 
     /**
-     * Ki?m tra token c̣n h?n.
+     * Kiểm tra token còn hạn.
      */
     boolean existsByTokenAndUsedFalseAndExpiresAtAfter(String token, LocalDateTime now);
 
     /**
-     * Xóa token dă s? d?ng.
+     * Xóa token đã sử dụng.
      */
     @Modifying
     @Query("DELETE FROM AdminRecoveryToken t WHERE t.used = true")
     int deleteUsedTokens();
 
     /**
-     * Xóa token h?t h?n.
+     * Xóa token hết hạn.
      */
     @Modifying
     @Query("DELETE FROM AdminRecoveryToken t WHERE t.expiresAt < :now")
     int deleteExpiredTokens(@Param("now") LocalDateTime now);
 
     /**
-     * Xóa t?t c? token c?a m?t admin.
+     * Xóa tất cả token của một admin.
      */
     void deleteByAdminId(UUID adminId);
 }

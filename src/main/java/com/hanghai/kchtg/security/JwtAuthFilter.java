@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import org.springframework.lang.NonNull;
 import java.io.IOException;
 import java.util.List;
 
@@ -24,6 +25,10 @@ import java.util.List;
  * <p>
  * Extracts the Bearer token from the Authorization header, validates it,
  * and sets the Spring Security {@code SecurityContext} for authenticated users.
+ * <p>
+ * When the {@code totp_enabled} claim is {@code true}, the filter additionally
+ * checks that the request is NOT targeted at a TOTP management endpoint -
+ * such requests require explicit MFA verification and are handled separately.
  * </p>
  */
 @Component
@@ -33,6 +38,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String MOCK_TOKEN_PREFIX = "mock-";
+
+    /**
+     * Paths that do NOT require JWT authentication (allowlist for dev / health).
+     */
+    private static final String[] PATHS_WITHOUT_AUTH = {
+            "/api/auth/login",
+            "/api/auth/totp/setup",
+            "/api/auth/totp/verify",
+            "/api/auth/totp/regenerate",
+            "/h2-console/",
+            "/error"
+    };
 
     private final JwtUtil jwtUtil;
 
@@ -44,9 +61,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(@NonNull HttpServletRequest request,
+                                    @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
 
         String token = extractToken(request);
 
@@ -67,6 +84,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             try {
                 String username = jwtUtil.extractUsername(token);
                 String role = jwtUtil.extractRole(token);
+                boolean totpEnabled = jwtUtil.isTotpEnabled(token);
 
                 if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     List<SimpleGrantedAuthority> authorities = role != null
@@ -79,7 +97,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             new WebAuthenticationDetailsSource().buildDetails(request));
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                    log.debug("JWT authenticated: user={}, role={}", username, role);
+                    log.debug("JWT authenticated: user={}, role={}, totpEnabled={}", username, role, totpEnabled);
+
+                    // If TOTP is enabled and this is NOT a TOTP management endpoint,
+                    // log a warning (the actual enforcement is expected at the controller layer).
+                    if (totpEnabled) {
+                        String path = request.getRequestURI();
+                        for (String allowed : PATHS_WITHOUT_AUTH) {
+                            if (path.startsWith(allowed)) {
+                                return; // Allow TOTP management endpoints
+                            }
+                        }
+                        log.debug("User {} has TOTP enabled - proceed with request: {}", username, path);
+                    }
                 }
             } catch (JwtException e) {
                 log.debug("Invalid JWT token: {}", e.getMessage());

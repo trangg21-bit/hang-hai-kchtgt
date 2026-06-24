@@ -11,7 +11,7 @@ import lombok.Setter;
 import java.util.UUID;
 
 /**
- * Lịch sử thay đổi của nhóm — ghi lại mọi thao tác CREATE / UPDATE / DELETE
+ * Lịch sử thay đổi của nhóm - ghi lại mọi thao tác CREATE / UPDATE / DELETE
  * để phục vụ việc audit và khôi phục nếu cần.
  */
 @Entity

@@ -40,7 +40,7 @@ public class IntegrationShareController {
     }
 
     // ══════════════════════════════════════════════════════════════
-    //  Wave 0 — generic endpoints with pagination
+    //  Wave 0 - generic endpoints with pagination
     // ══════════════════════════════════════════════════════════════
 
     @GetMapping("/points")
@@ -65,11 +65,11 @@ public class IntegrationShareController {
     }
 
     // ══════════════════════════════════════════════════════════════
-    //  Wave 1 — filtered endpoints by objectType with pagination
+    //  Wave 1 - filtered endpoints by objectType with pagination
     // ══════════════════════════════════════════════════════════════
 
     /**
-     * GET /points/ports — Pier/Dock (Bến cảng) — PointObject with ObjectType=PORT.
+     * GET /points/ports - Pier/Dock (Bến cảng) - PointObject with ObjectType=PORT.
      */
     @GetMapping("/points/ports")
     public ResponseEntity<ApiResponse<Page<PierDto>>> sharePointsPorts(
@@ -81,7 +81,7 @@ public class IntegrationShareController {
     }
 
     /**
-     * GET /points/buoys — Buoy berth (Bến phao) — PointObject with ObjectType=BUOY.
+     * GET /points/buoys - Buoy berth (Bến phao) - PointObject with ObjectType=BUOY.
      */
     @GetMapping("/points/buoys")
     public ResponseEntity<ApiResponse<Page<BuoyBerthDto>>> sharePointsBuoys(
@@ -93,7 +93,7 @@ public class IntegrationShareController {
     }
 
     /**
-     * GET /points/beacons — Beacon (Đèn biển) — PointObject with ObjectType=BEACON.
+     * GET /points/beacons - Beacon (Đèn biển) - PointObject with ObjectType=BEACON.
      */
     @GetMapping("/points/beacons")
     public ResponseEntity<ApiResponse<Page<BeaconDto>>> sharePointsBeacons(
@@ -105,7 +105,7 @@ public class IntegrationShareController {
     }
 
     /**
-     * GET /lines/waterways — Bridge (Cầu cảng) — LineObject with ObjectType=WATERWAY.
+     * GET /lines/waterways - Bridge (Cầu cảng) - LineObject with ObjectType=WATERWAY.
      */
     @GetMapping("/lines/waterways")
     public ResponseEntity<ApiResponse<Page<BridgeDto>>> shareLinesWaterways(
@@ -117,7 +117,7 @@ public class IntegrationShareController {
     }
 
     /**
-     * GET /lines/shipping-routes — Transport route (Chuyển tải) — LineObject with ObjectType=SHIPPING_ROUTE.
+     * GET /lines/shipping-routes - Transport route (Chuyển tải) - LineObject with ObjectType=SHIPPING_ROUTE.
      */
     @GetMapping("/lines/shipping-routes")
     public ResponseEntity<ApiResponse<Page<TransportRouteDto>>> shareLinesShippingRoutes(
@@ -129,7 +129,7 @@ public class IntegrationShareController {
     }
 
     /**
-     * GET /polygons/anchorage — Anchorage area (Khu neo đậu) — PolygonObject with ObjectType=ANCHORAGE.
+     * GET /polygons/anchorage - Anchorage area (Khu neo đậu) - PolygonObject with ObjectType=ANCHORAGE.
      */
     @GetMapping("/polygons/anchorage")
     public ResponseEntity<ApiResponse<Page<AnchorageDto>>> sharePolygonsAnchorage(
@@ -141,7 +141,7 @@ public class IntegrationShareController {
     }
 
     /**
-     * GET /polygons/storm-shelter — Storm shelter zone (Khu tránh bão) — PolygonObject with ObjectType=STORM_SHELTER.
+     * GET /polygons/storm-shelter - Storm shelter zone (Khu tránh bão) - PolygonObject with ObjectType=STORM_SHELTER.
      */
     @GetMapping("/polygons/storm-shelter")
     public ResponseEntity<ApiResponse<Page<StormShelterDto>>> sharePolygonsStormShelter(
@@ -153,11 +153,11 @@ public class IntegrationShareController {
     }
 
     // ══════════════════════════════════════════════════════════════
-    //  Wave 2 — New endpoints (F-196, F-198, F-199) with pagination
+    //  Wave 2 - New endpoints (F-196, F-198, F-199) with pagination
     // ══════════════════════════════════════════════════════════════
 
     /**
-     * GET /points/repair-facilities — Repair facility (Cơ sở sửa chữa) — PointObject with ObjectType=OTHER.
+     * GET /points/repair-facilities - Repair facility (Cơ sở sửa chữa) - PointObject with ObjectType=OTHER.
      */
     @GetMapping("/points/repair-facilities")
     public ResponseEntity<ApiResponse<Page<RepairFacilityDto>>> sharePointsRepairFacilities(
@@ -169,7 +169,7 @@ public class IntegrationShareController {
     }
 
     /**
-     * GET /points/buoy-markers — Buoy marker (Phao tiêu) — PointObject with ObjectType=BUOY.
+     * GET /points/buoy-markers - Buoy marker (Phao tiêu) - PointObject with ObjectType=BUOY.
      */
     @GetMapping("/points/buoy-markers")
     public ResponseEntity<ApiResponse<Page<BuoyMarkerDto>>> sharePointsBuoyMarkers(
@@ -181,7 +181,7 @@ public class IntegrationShareController {
     }
 
     /**
-     * GET /points/vts-systems — VTS system (Hệ thống VTS) — PointObject with ObjectType=PORT.
+     * GET /points/vts-systems - VTS system (Hệ thống VTS) - PointObject with ObjectType=PORT.
      */
     @GetMapping("/points/vts-systems")
     public ResponseEntity<ApiResponse<Page<VtsSystemDto>>> sharePointsVtsSystems(

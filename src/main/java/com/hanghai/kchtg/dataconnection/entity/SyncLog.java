@@ -13,7 +13,7 @@ import lombok.Setter;
 import java.util.UUID;
 
 /**
- * Nh?t kư d?ng b? d? li?u — ghi l?i m?i l?n sync gi?a các h? th?ng liên thông.
+ * Nhật ký đồng bộ dữ liệu - ghi lại mọi lần sync giữa các hệ thống liên thông.
  */
 @Entity
 @Table(name = "sync_logs")
@@ -22,33 +22,33 @@ import java.util.UUID;
 @NoArgsConstructor
 public class SyncLog extends BaseEntity {
 
-    /** ID c?a data connection du?c d?ng b?. */
+    /** ID của data connection được đồng bộ. */
     @Column(name = "connection_id", nullable = false)
     private UUID connectionId;
 
-    /** Th?i gian b?t d?u d?ng b?. */
+    /** Thời gian bắt đầu đồng bộ. */
     @Column(name = "start_time", nullable = false)
     private java.time.LocalDateTime startTime;
 
-    /** Th?i gian k?t thúc d?ng b? (null n?u dang ch?y). */
+    /** Thời gian kết thúc đồng bộ (null nếu đang chạy). */
     @Column(name = "end_time")
     private java.time.LocalDateTime endTime;
 
-    /** S? record dă x? lư thành công. */
+    /** Số record đã xử lý thành công. */
     @Column(name = "records_processed", nullable = false)
     private int recordsProcessed = 0;
 
-    /** S? record x? lư th?t b?i. */
+    /** Số record xử lý thất bại. */
     @Column(name = "records_failed", nullable = false)
     private int recordsFailed = 0;
 
-    /** Tr?ng thái d?ng b?. */
+    /** Trạng thái đồng bộ. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private SyncStatus status;
 
     /**
-     * Tr?ng thái d?ng b?.
+     * Trạng thái đồng bộ.
      */
     public enum SyncStatus {
         PENDING,
@@ -59,7 +59,7 @@ public class SyncLog extends BaseEntity {
     }
 
     /**
-     * T?o m?i SyncLog v?i tr?ng thái PENDING.
+     * Tạo mới SyncLog vỏi trạng thái PENDING.
      */
     public static SyncLog createPending(UUID connectionId) {
         SyncLog log = new SyncLog();
@@ -70,7 +70,7 @@ public class SyncLog extends BaseEntity {
     }
 
     /**
-     * Hoàn t?t sync log.
+     * Hoàn tất sync log.
      */
     public void complete(int processed, int failed) {
         this.endTime = java.time.LocalDateTime.now();
@@ -80,7 +80,7 @@ public class SyncLog extends BaseEntity {
     }
 
     /**
-     * Đánh d?u sync th?t b?i.
+     * Đánh dấu sync thất bại.
      */
     public void fail(String reason) {
         this.endTime = java.time.LocalDateTime.now();

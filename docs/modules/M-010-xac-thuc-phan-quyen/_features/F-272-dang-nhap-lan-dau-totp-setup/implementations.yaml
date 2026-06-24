@@ -1,6 +1,7 @@
 feature_id: F-272
 module_id: M-010
 slug: dang-nhap-lan-dau-totp-setup
+stage: tech-lead
 
 # Map logical feature → physical code locations.
 # Primary owner = service that implements feature's main flow.

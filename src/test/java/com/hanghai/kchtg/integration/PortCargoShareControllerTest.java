@@ -92,7 +92,7 @@ class PortCargoShareControllerTest {
     }
 
     @Test
-    @DisplayName("GET /ports/status — should return port status page")
+    @DisplayName("GET /ports/status - should return port status page")
     void getPortStatuses_success() throws Exception {
         PortStatus status = PortStatus.builder()
                 .portCode("PIER-HPH-001")
@@ -115,7 +115,7 @@ class PortCargoShareControllerTest {
     }
 
     @Test
-    @DisplayName("GET /assets/status — should return summary metrics")
+    @DisplayName("GET /assets/status - should return summary metrics")
     void getAssetStatus_success() throws Exception {
         mockMvc.perform(get("/api/v1/integration/share/assets/status")
                         .header("X-Integration-Token", VALID_TOKEN)
@@ -126,7 +126,7 @@ class PortCargoShareControllerTest {
     }
 
     @Test
-    @DisplayName("GET /info/comprehensive — should return comprehensive system stats")
+    @DisplayName("GET /info/comprehensive - should return comprehensive system stats")
     void getComprehensiveInfo_success() throws Exception {
         DataConnection conn = new DataConnection();
         conn.setName("Test connection");
@@ -142,7 +142,7 @@ class PortCargoShareControllerTest {
     }
 
     @Test
-    @DisplayName("GET /ports/cargo-total — should return annual aggregates")
+    @DisplayName("GET /ports/cargo-total - should return annual aggregates")
     void getPortCargoTotal_success() throws Exception {
         CargoAggregate aggregate = CargoAggregate.builder()
                 .portCode("PIER-HPH-001")
@@ -164,7 +164,7 @@ class PortCargoShareControllerTest {
     }
 
     @Test
-    @DisplayName("GET /cargo/summary — should return custom cargo aggregates")
+    @DisplayName("GET /cargo/summary - should return custom cargo aggregates")
     void getCargoSummary_success() throws Exception {
         CargoAggregate aggregate = CargoAggregate.builder()
                 .portCode("PIER-HPH-001")

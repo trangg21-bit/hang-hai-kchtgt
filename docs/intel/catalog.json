@@ -1,6 +1,6 @@
 {
   "version": "v2",
-  "generated_at": "2026-06-23T02:54:26Z",
+  "generated_at": "2026-06-23T08:54:24Z",
   "generator": "ai-kit/state-update-rebuild-catalog",
   "modules": {
     "M-001": {
@@ -1297,9 +1297,9 @@
     },
     "M-007": {
       "id": "M-007",
-      "name": "GIS / Bản đồ",
+      "name": "gis-ban-do",
       "slug": "gis-ban-do",
-      "status": "done",
+      "status": "proposed",
       "version": 1,
       "feature_count": 5,
       "aggregate_size_status": "green",
@@ -1422,7 +1422,7 @@
           "id": "F-271",
           "name": "Đăng ký tài khoản",
           "slug": "dang-ky-tai-khoan",
-          "status": "proposed",
+          "status": "in-progress",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1437,7 +1437,7 @@
           "id": "F-272",
           "name": "Đăng nhập lần đầu + TOTP setup",
           "slug": "dang-nhap-lan-dau-totp-setup",
-          "status": "proposed",
+          "status": "in_development",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1452,7 +1452,7 @@
           "id": "F-273",
           "name": "Đăng nhập lần tiếp theo + TOTP",
           "slug": "dang-nhap-lan-tiep-theo-totp",
-          "status": "proposed",
+          "status": "in_development",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1467,7 +1467,7 @@
           "id": "F-274",
           "name": "Quản lý JWT session",
           "slug": "quan-ly-jwt-session",
-          "status": "proposed",
+          "status": "in-progress",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1482,7 +1482,7 @@
           "id": "F-275",
           "name": "Phân quyền 3 mức",
           "slug": "phan-quyen-3-muc",
-          "status": "proposed",
+          "status": "in_development",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1497,7 +1497,7 @@
           "id": "F-276",
           "name": "Chính sách mật khẩu",
           "slug": "chinh-sach-mat-khau",
-          "status": "proposed",
+          "status": "in_progress",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1510,9 +1510,9 @@
         },
         "F-277": {
           "id": "F-277",
-          "name": "Chính sách giới hạn đăng nhập sai",
+          "name": "chinh-sach-gioi-han-dang-nhap-sai",
           "slug": "chinh-sach-gioi-han-dang-nhap-sai",
-          "status": "proposed",
+          "status": "in_progress",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -4607,7 +4607,19 @@
           "confidence": "high"
         }
       }
+    },
+    "M-999": {
+      "id": "M-999",
+      "name": "Test",
+      "slug": "test-write",
+      "status": "in-progress",
+      "version": 1,
+      "feature_count": 0,
+      "aggregate_size_status": "green",
+      "depends_on": [],
+      "path": "docs/modules/M-999-test-write/",
+      "features": {}
     }
   },
-  "checksum": "sha256:2c2379d832c9f3e41e27d9f8dd9055a7b53c42046c7b3e2ce0978c833e170ecc"
+  "checksum": "sha256:60ca54a5df5e14577d3314fa7cb0c59b7dd09d0e9f91908fc20be9edc40d179f"
 }

@@ -43,79 +43,79 @@
     status: proposed
   F-008:
     module: M-002
-    name: QuÃ¡ÂºÂ£n lÃƒÂ½ CÃ¡ÂºÂ£ng biÃ¡Â»Æ’n - TÃ¡ÂºÂ¡o mÃ¡Â»â€ºi
+    name: Quản lý Cảng biển - Tạo mới
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-008-ql-cb-tao-moi
     slug: ql-cb-tao-moi
     status: proposed
   F-012:
     module: M-002
-    name: Xem chi tiÃ¡ÂºÂ¿t CÃ¡ÂºÂ£ng biÃ¡Â»Æ’n
+    name: Xem chi tiết Cảng biển
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-012-xem-cb
     slug: xem-cb
     status: proposed
   F-013:
     module: M-002
-    name: QuÃ¡ÂºÂ£n lÃƒÂ½ CÃ¡ÂºÂ£ng biÃ¡Â»Æ’n - LÃ¡Â»â€¹ch sÃ¡Â»Â­
+    name: Quản lý Cảng biển - Lịch sử
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-013-ql-cb-lich-su
     slug: ql-cb-lich-su
     status: proposed
   F-017:
     module: M-002
-    name: PhÃƒÂª duyÃ¡Â»â€¡t BÃ¡ÂºÂ¿n cÃ¡ÂºÂ£ng
+    name: Phê duyệt Bến cảng
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-017-phe-duyet-bc
     slug: phe-duyet-bc
     status: proposed
   F-018:
     module: M-002
-    name: Xem chi tiÃ¡ÂºÂ¿t BÃ¡ÂºÂ¿n cÃ¡ÂºÂ£ng
+    name: Xem chi tiết Bến cảng
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-018-xem-bc
     slug: xem-bc
     status: proposed
   F-019:
     module: M-002
-    name: QuÃ¡ÂºÂ£n lÃƒÂ½ BÃ¡ÂºÂ¿n cÃ¡ÂºÂ£ng - LÃ¡Â»â€¹ch sÃ¡Â»Â­
+    name: Quản lý Bến cảng - Lịch sử
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-019-ql-bc-lich-su
     slug: ql-bc-lich-su
     status: proposed
   F-020:
     module: M-002
-    name: QuÃ¡ÂºÂ£n lÃƒÂ½ CÃ¡ÂºÂ§u cÃ¡ÂºÂ£ng - TÃ¡ÂºÂ¡o mÃ¡Â»â€ºi
+    name: Quản lý Cầu cảng - Tạo mới
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-020-ql-cc-tao-moi
     slug: ql-cc-tao-moi
     status: proposed
   F-024:
     module: M-002
-    name: Xem chi tiÃ¡ÂºÂ¿t CÃ¡ÂºÂ§u cÃ¡ÂºÂ£ng
+    name: Xem chi tiết Cầu cảng
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-024-xem-cc
     slug: xem-cc
     status: proposed
   F-025:
     module: M-002
-    name: QuÃ¡ÂºÂ£n lÃƒÂ½ CÃ¡ÂºÂ§u cÃ¡ÂºÂ£ng - LÃ¡Â»â€¹ch sÃ¡Â»Â­
+    name: Quản lý Cầu cảng - Lịch sử
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-025-ql-cc-lich-su
     slug: ql-cc-lich-su
     status: proposed
   F-028:
     module: M-002
-    name: QuÃ¡ÂºÂ£n lÃƒÂ½ CÃ¡ÂºÂ£ng cÃ¡ÂºÂ¡n - XÃƒÂ³a
+    name: Quản lý Cảng cạn - Xóa
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-028-ql-cct-xoa
     slug: ql-cct-xoa
     status: proposed
   F-030:
     module: M-002
-    name: Xem chi tiÃ¡ÂºÂ¿t CÃ¡ÂºÂ£ng cÃ¡ÂºÂ¡n
+    name: Xem chi tiết Cảng cạn
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-030-xem-cct
     slug: xem-cct
     status: proposed
   F-031:
     module: M-002
-    name: QuÃ¡ÂºÂ£n lÃƒÂ½ CÃ¡ÂºÂ£ng cÃ¡ÂºÂ¡n - LÃ¡Â»â€¹ch sÃ¡Â»Â­
+    name: Quản lý Cảng cạn - Lịch sử
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-031-ql-cct-lich-su
     slug: ql-cct-lich-su
     status: proposed
   F-037:
     module: M-002
-    name: QuÃ¡ÂºÂ£n lÃƒÂ½ VÃƒÂ¹ng nÃ†Â°Ã¡Â»â€ºc - LÃ¡Â»â€¹ch sÃ¡Â»Â­
+    name: Quản lý Vùng nước - Lịch sử
     path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-037-ql-vn-lich-su
     slug: ql-vn-lich-su
     status: proposed
@@ -301,103 +301,103 @@
     status: proposed
   F-068:
     module: M-004
-    name: "QuÃ¡ÂºÂ£n lÃƒÂ½ Ã„ÂÃƒÂ¨n biÃ¡Â»Æ’n - TÃ¡ÂºÂ¡o mÃ¡Â»â€ºi"
+    name: "Quản lý Đèn biển - Tạo mới"
     path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-068-ql-dn-tao-moi
     slug: ql-dn-tao-moi
     status: proposed
   F-071:
     module: M-004
-    name: "PhÃƒÂª duyÃ¡Â»â€¡t Ã„ÂÃƒÂ¨n biÃ¡Â»Æ’n"
+    name: "Phê duyệt Đèn biển"
     path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-071-phe-duyet-dn
     slug: phe-duyet-dn
     status: proposed
   F-073:
     module: M-004
-    name: "QuÃ¡ÂºÂ£n lÃƒÂ½ Ã„ÂÃƒÂ¨n biÃ¡Â»Æ’n - LÃ¡Â»â€¹ch sÃ¡Â»Â­"
+    name: "Quản lý Đèn biển - Lịch sử"
     path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-073-ql-dn-lich-su
     slug: ql-dn-lich-su
     status: proposed
   F-074:
     module: M-004
-    name: QuÃ¡ÂºÂ£n lÃƒÂ½ Phao tiÃƒÂªu - TÃ¡ÂºÂ¡o mÃ¡Â»â€ºi
+    name: Quản lý Phao tiêu - Tạo mới
     path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-074-ql-pt-tao-moi
     slug: ql-pt-tao-moi
     status: proposed
   F-078:
     module: M-004
-    name: Xem chi tiÃ¡ÂºÂ¿t Phao tiÃƒÂªu
+    name: Xem chi tiết Phao tiêu
     path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-078-xem-pt
     slug: xem-pt
     status: proposed
   F-080:
     module: M-004
-    name: QuÃ¡ÂºÂ£n lÃƒÂ½ NhÃƒÂ  trÃ¡ÂºÂ¡m phao - TÃ¡ÂºÂ¡o mÃ¡Â»â€ºi
+    name: Quản lý Nhà trạm phao - Tạo mới
     path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-080-ql-ntph-tao-moi
     slug: ql-ntph-tao-moi
     status: proposed
   F-084:
     module: M-004
-    name: Xem chi tiÃ¡ÂºÂ¿t NhÃƒÂ  trÃ¡ÂºÂ¡m phao
+    name: Xem chi tiết Nhà trạm phao
     path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-084-xem-ntph
     slug: xem-ntph
     status: proposed
   F-086:
     module: M-004
-    name: Quáº£n lÃ½ NhÃ  tráº¡m Ä‘Ã¨n - Táº¡o má»›i
+    name: Quản lý Nhà trạm đèn - Tạo mới
     path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-086-ql-ntd-tao-moi
     slug: ql-ntd-tao-moi
     status: proposed
   F-089:
     module: M-004
-    name: PhÃª duyá»‡t NhÃ  tráº¡m Ä‘Ã¨n
+    name: Phê duyệt Nhà trạm đèn
     path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-089-phe-duyet-ntd
     slug: phe-duyet-ntd
     status: proposed
   F-094:
     module: M-004
-    name: "Quáº£n lÃ½ ÄÃ i TTDH - XÃ³a"
+    name: "Quản lý Đài TTDH - Xóa"
     path: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/_features/F-094-ql-dtdh-xoa
     slug: ql-dtdh-xoa
     status: proposed
   F-124:
     module: M-005
-    name: XÃ¡Â»Â­ lÃƒÂ½ tÃƒÂ i sÃ¡ÂºÂ£n KCHT
+    name: Xử lý tài sản KCHT
     path: docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/_features/F-124-xu-ly-tai-san-kcht
     slug: xu-ly-tai-san-kcht
     status: proposed
   F-127:
     module: M-005
-    name: PhÃƒÂª duyÃ¡Â»â€¡t biÃ¡ÂºÂ¿n Ã„â€˜Ã¡Â»â„¢ng tÃƒÂ i sÃ¡ÂºÂ£n
+    name: Phê duyệt biến động tài sản
     path: docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/_features/F-127-phe-duyet-bien-dong-tai-san
     slug: phe-duyet-bien-dong-tai-san
     status: proposed
   F-129:
     module: M-006
-    name: QuÃ¡ÂºÂ£n lÃƒÂ½ thÃƒÂ´ng tin vÃ¡ÂºÂ­n hÃƒÂ nh
+    name: Quản lý thông tin vận hành
     path: docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_features/F-129-quan-ly-thong-tin-van-hanh
     slug: quan-ly-thong-tin-van-hanh
     status: proposed
   F-131:
     module: M-006
-    name: QuÃ¡ÂºÂ£n lÃƒÂ½ thÃƒÂ´ng tin sÃ¡Â»Â± cÃ¡Â»â€˜
+    name: Quản lý thông tin sự cố
     path: docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_features/F-131-quan-ly-thong-tin-su-co
     slug: quan-ly-thong-tin-su-co
     status: proposed
   F-135:
     module: M-006
-    name: QuÃ¡ÂºÂ£n lÃƒÂ½ vÃ„Æ’n bÃ¡ÂºÂ£n - TÃƒÂ¬m kiÃ¡ÂºÂ¿m
+    name: Quản lý văn bản - Tìm kiếm
     path: docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/_features/F-135-quan-ly-van-ban-tim-kiem
     slug: quan-ly-van-ban-tim-kiem
     status: proposed
   F-137:
     module: M-007
-    name: "QuÃ¡ÂºÂ£n lÃƒÂ½ danh mÃ¡Â»Â¥c Ã„â€˜Ã¡Â»â€˜i tÃ†Â°Ã¡Â»Â£ng Ã„â€˜Ã†Â°Ã¡Â»Âng"
+    name: "Quản lý danh mục đối tượng đường"
     path: docs/modules/M-007-gis-ban-do/_features/F-137-quan-ly-danh-muc-doi-tuong-duong
     slug: quan-ly-danh-muc-doi-tuong-duong
     status: proposed
   F-140:
     module: M-007
-    name: Tra cÃ¡Â»Â©u KCHT trÃƒÂªn bÃ¡ÂºÂ£n Ã„â€˜Ã¡Â»â€œ
+    name: Tra cứu KCHT trên bản đồ
     path: docs/modules/M-007-gis-ban-do/_features/F-140-tra-cuu-kcht-tren-ban-do
     slug: tra-cuu-kcht-tren-ban-do
     status: proposed
@@ -511,49 +511,49 @@
     status: proposed
   F-271:
     module: M-010
-    name: "Ã„ÂÃ„Æ’ng kÃƒÂ½ tÃƒÂ i khoÃ¡ÂºÂ£n"
+    name: "Đăng ký tài khoản"
     path: docs/modules/M-010-xac-thuc-phan-quyen/_features/F-271-dang-ky-tai-khoan
     slug: dang-ky-tai-khoan
     status: proposed
   F-274:
     module: M-010
-    name: QuÃ¡ÂºÂ£n lÃƒÂ½ JWT session
+    name: Quản lý JWT session
     path: docs/modules/M-010-xac-thuc-phan-quyen/_features/F-274-quan-ly-jwt-session
     slug: quan-ly-jwt-session
     status: proposed
   F-277:
     module: M-010
-    name: ChÃƒÂ­nh sÃƒÂ¡ch giÃ¡Â»â€ºi hÃ¡ÂºÂ¡n Ã„â€˜Ã„Æ’ng nhÃ¡ÂºÂ­p sai
+    name: Chính sách giới hạn đăng nhập sai
     path: docs/modules/M-010-xac-thuc-phan-quyen/_features/F-277-chinh-sach-gioi-han-dang-nhap-sai
     slug: chinh-sach-gioi-han-dang-nhap-sai
     status: proposed
   F-278:
     module: M-011
-    name: QuÃ¡ÂºÂ£n lÃƒÂ½ log truy cÃ¡ÂºÂ­p
+    name: Quản lý log truy cập
     path: docs/modules/M-011-nhat-ky-backup/_features/F-278-quan-ly-log-truy-cap
     slug: quan-ly-log-truy-cap
     status: proposed
   F-280:
     module: M-011
-    name: Sao lÃ†Â°u CSDL tÃ¡Â»Â± Ã„â€˜Ã¡Â»â„¢ng
+    name: Sao lưu CSDL tự động
     path: docs/modules/M-011-nhat-ky-backup/_features/F-280-sao-lu-c-sdl-tu-dong
     slug: sao-lu-c-sdl-tu-dong
     status: proposed
   F-282:
     module: M-011
-    name: GiÃƒÂ¡m sÃƒÂ¡t SIEM
+    name: Giám sát SIEM
     path: docs/modules/M-011-nhat-ky-backup/_features/F-282-giam-sat-siem
     slug: giam-sat-siem
     status: proposed
   F-286:
     module: M-012
-    name: HiÃ¡Â»Æ’n thÃ¡Â»â€¹ hÃ¡ÂºÂ£i Ã„â€˜Ã¡Â»â€œ GIS (S-52)
+    name: Hiển thị hải đồ GIS (S-52)
     path: docs/modules/M-012-hai-do-gis-integration/_features/F-286-hien-thi-hai-do-gis-s-52
     slug: hien-thi-hai-do-gis-s-52
     status: proposed
   F-289:
     module: M-012
-    name: "HiÃ¡Â»â€¡u tÃ¡Â»Âa WGS84 GIS"
+    name: "Hiệu tọa WGS84 GIS"
     path: docs/modules/M-012-hai-do-gis-integration/_features/F-289-hieu-toa-wgs84-gis
     slug: hieu-toa-wgs84-gis
     status: proposed

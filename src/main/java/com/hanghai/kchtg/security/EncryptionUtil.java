@@ -48,7 +48,7 @@ public class EncryptionUtil {
     @PostConstruct
     public void validateKey() {
         if (secretKey == null) {
-            throw new IllegalStateException("Encryption key was not initialised — ensure encryption.key (ENCRYPTION_KEY env var) is set.");
+            throw new IllegalStateException("Encryption key was not initialised - ensure encryption.key (ENCRYPTION_KEY env var) is set.");
         }
     }
 

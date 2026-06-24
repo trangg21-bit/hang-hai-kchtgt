@@ -14,7 +14,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * Token dung cho tinh nang "Quên mat khau" — nguoi dung nhan token qua email
+ * Token dung cho tinh nang "Quên mat khau" - nguoi dung nhan token qua email
  * de dat lai mat khau. Token có thoi han 1 gio và chỉ su dung duoc mot lan.
  */
 @Entity
@@ -29,7 +29,7 @@ public class PasswordResetToken extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false, referencedColumnName = "id")
     private User user;
 
-    /** Ma token duy nhat — dung làm URL hoăc key khi nguoi dung click link dat lai. */
+    /** Ma token duy nhat - dung làm URL hoăc key khi nguoi dung click link dat lai. */
     @Column(nullable = false, unique = true, length = 255)
     private String token;
 

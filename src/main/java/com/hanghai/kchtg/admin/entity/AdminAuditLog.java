@@ -11,8 +11,8 @@ import lombok.Setter;
 import java.util.UUID;
 
 /**
- * Nh?t kư ho?t d?ng c?a admin — ghi l?i toàn b? thao tác qu?n tr?
- * d? ph?c v? audit trail và forensic analysis.
+ * Nhật ký hoạt động của admin - ghi lại toàn bộ thao tác quản trị
+ * để phục vụ audit trail và forensic analysis.
  */
 @Entity
 @Table(name = "admin_audit_logs")
@@ -21,36 +21,36 @@ import java.util.UUID;
 @NoArgsConstructor
 public class AdminAuditLog extends BaseEntity {
 
-    /** ID c?a admin th?c hi?n thao tác. */
+    /** ID của admin thực hiện thao tác. */
     @Column(name = "admin_id", nullable = false)
     private UUID adminId;
 
-    /** Tên dang nh?p c?a admin (denormalized). */
+    /** Tên đăng nhập của admin (denormalized). */
     @Column(nullable = false, length = 100)
     private String adminName;
 
-    /** Hành d?ng dă th?c hi?n: CREATE, UPDATE, DELETE, LOGIN, LOGOUT, MFA_RESET, PERMISSION_CHANGE. */
+    /** Hành động đã thực hiện: CREATE, UPDATE, DELETE, LOGIN, LOGOUT, MFA_RESET, PERMISSION_CHANGE. */
     @Column(nullable = false, length = 50)
     private String action;
 
-    /** Đ?i tu?ng b? tác d?ng (ví d?: "User-abc123", "Role-DEF456"). */
+    /** Đối tượng bị tác động (ví dụ: "User-abc123", "Role-DEF456"). */
     @Column(length = 150)
     private String target;
 
-    /** Chi ti?t JSON c?a hành d?ng (tru?c/sau khi thay d?i). */
+    /** Chi tiết JSON của hành động (trước/sau khi thay đổi). */
     @Column(columnDefinition = "TEXT")
     private String details;
 
-    /** Đ?a ch? IP c?a admin. */
+    /** Địa chỉ IP của admin. */
     @Column(name = "ip_addr", length = 45)
     private String ipAddr;
 
-    /** User-Agent c?a tŕnh duy?t. */
+    /** User-Agent của trình duyệt. */
     @Column(name = "user_agent", length = 500)
     private String userAgent;
 
     /**
-     * T?o m?i AdminAuditLog.
+     * Tạo mới AdminAuditLog.
      */
     public static AdminAuditLog create(UUID adminId, String adminName, String action,
                                        String target, String details, String ipAddr,

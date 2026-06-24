@@ -21,13 +21,13 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Service quan ly tai khoan nguoi dung.
+ * Service quản lý tài khoản người dùng.
  * <p>
- * {@code @Transactional} o class-level de tat ca public method deu
- * chay trong transaction — tranh {@code LazyInitializationException}
+ * {@code @Transactional} ở class-level để tất cả public method đều
+ * chạy trong transaction - tránh {@code LazyInitializationException}
  * khi {@code spring.jpa.open-in-view=false}.
- * Read methods dung {@code findAllWithRelations()} / {@code findByIdWithRelations()}
- * de JOIN FETCH các lazy associations.
+ * Read methods dùng {@code findAllWithRelations()} / {@code findByIdWithRelations()}
+ * để JOIN FETCH các lazy associations.
  * </p>
  */
 @Service
@@ -51,10 +51,10 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // ── Query ───────────────────────────────────────────────────────
+    // =========================================================================
 
     /**
-     * Lay danh sach tong bo nguoi dung (JOIN FETCH orgUnit + groups).
+     * Lấy danh sách toàn bộ người dùng (JOIN FETCH orgUnit + groups).
      */
     @Transactional(readOnly = true)
     public List<User> findAll() {
@@ -62,44 +62,44 @@ public class UserService {
     }
 
     /**
-     * Tim nguoi dung theo ID (JOIN FETCH orgUnit + groups).
+     * Tìm người dùng theo ID (JOIN FETCH orgUnit + groups).
      *
-     * @throws EntityNotFoundException neu khong tim thay
+     * @throws EntityNotFoundException nếu không tìm thấy
      */
     @Transactional(readOnly = true)
     public User findById(UUID id) {
         return userRepository.findByIdWithRelations(id)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nguoi dung voi id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với id: " + id));
     }
 
     /**
-     * Tim nguoi dung theo ten dang nhap (JOIN FETCH orgUnit + groups).
+     * Tìm người dùng theo tên đăng nhập (JOIN FETCH orgUnit + groups).
      *
-     * @throws EntityNotFoundException neu khong tim thay
+     * @throws EntityNotFoundException nếu không tìm thấy
      */
     @Transactional(readOnly = true)
     public User findByUsername(String username) {
         return userRepository.findByUsernameWithRelations(username)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nguoi dung voi username: " + username));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với username: " + username));
     }
 
     /**
-     * Tim nguoi dung theo email.
+     * Tìm người dùng theo email.
      *
-     * @throws EntityNotFoundException neu khong tim thay
+     * @throws EntityNotFoundException nếu không tìm thấy
      */
     @Transactional(readOnly = true)
     public User findByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nguoi dung voi email: " + email));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với email: " + email));
     }
 
-    // ── Mutate ──────────────────────────────────────────────────────
+    // =========================================================================
 
     /**
-     * Tao moi nguoi dung.
+     * Tạo mới người dùng.
      *
-     * @throws IllegalArgumentException neu username hoăc email da ton tai
+     * @throws IllegalArgumentException nếu username hoặc email đã tồn tại
      */
     public User create(CreateUserRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -141,10 +141,10 @@ public class UserService {
     }
 
     /**
-     * Cap nhat thong tin nguoi dung. Chi cap nhat nhung truong duoc gui (khac {@code null}).
+     * Cập nhật thông tin người dùng. Chỉ cập nhật những trường được gửi (khác {@code null}).
      *
-     * @throws EntityNotFoundException neu khong tim thay nguoi dung
-     * @throws IllegalArgumentException neu email moi da duoc dung boi nguoi dung khac
+     * @throws EntityNotFoundException nếu không tìm thấy người dùng
+     * @throws IllegalArgumentException nếu email mới đã được dùng bởi người dùng khác
      */
     public User update(UUID id, UpdateUserRequest request) {
         User user = findById(id);
@@ -172,7 +172,7 @@ public class UserService {
         if (request.getOrgUnitId() != null) {
             OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
                     .orElseThrow(() -> new IllegalArgumentException(
-                            "Khong tim thay don vi voi id: " + request.getOrgUnitId()));
+                            "Không tìm thấy đơn vị với id: " + request.getOrgUnitId()));
             user.setOrgUnit(orgUnit);
         }
         if (request.getGroupIds() != null) {
@@ -188,13 +188,13 @@ public class UserService {
     }
 
     /**
-     * Xoa nguoi dung (soft delete — dung BaseEntity.softDelete()).
+     * Xóa người dùng (soft delete - dùng BaseEntity.softDelete()).
      *
-     * @throws EntityNotFoundException neu khong tim thay nguoi dung
+     * @throws EntityNotFoundException nếu không tìm thấy người dùng
      */
     public void delete(UUID id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nguoi dung voi id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với id: " + id));
         user.softDelete();
         user.setStatus(UserStatus.DELETED);
         userRepository.save(user);
@@ -202,9 +202,9 @@ public class UserService {
     }
 
     /**
-     * Thay doi trang tai tai khoan nguoi dung.
+     * Thay đổi trạng thái tài khoản người dùng.
      *
-     * @throws EntityNotFoundException neu khong tim thay nguoi dung
+     * @throws EntityNotFoundException nếu không tìm thấy người dùng
      */
     public User changeStatus(UUID id, UserStatus status) {
         User user = findById(id);

@@ -76,7 +76,7 @@ public class SearchService {
     }
 
     // ========================================================================
-    // TEXT SEARCH — JPA @Query with LIKE predicate, case-insensitive
+    // TEXT SEARCH - JPA @Query with LIKE predicate, case-insensitive
     // ========================================================================
 
     private List<SearchResultItem> searchByText(SearchRequest request) {
@@ -130,7 +130,7 @@ public class SearchService {
     }
 
     // ========================================================================
-    // LOCATION SEARCH — nearest object within 500m using Spring Data Spatial
+    // LOCATION SEARCH - nearest object within 500m using Spring Data Spatial
     // ========================================================================
 
     private List<SearchResultItem> searchByLocation(SearchRequest request) {
@@ -166,7 +166,7 @@ public class SearchService {
     }
 
     // ========================================================================
-    // RADIUS SEARCH — spatial query with center point + radius
+    // RADIUS SEARCH - spatial query with center point + radius
     // ========================================================================
 
     private List<SearchResultItem> searchByRadius(SearchRequest request) {
@@ -203,7 +203,7 @@ public class SearchService {
     }
 
     // ========================================================================
-    // POLYGON SEARCH — spatial query with Intersects / Polygon WKT
+    // POLYGON SEARCH - spatial query with Intersects / Polygon WKT
     // Uses WKT-based filtering on name/code fields + bounding-box envelope
     // ========================================================================
 
@@ -302,7 +302,7 @@ public class SearchService {
     }
 
     // ========================================================================
-    // COORDINATE SEARCH — find nearest object by lat/lon input
+    // COORDINATE SEARCH - find nearest object by lat/lon input
     // ========================================================================
 
     private List<SearchResultItem> searchByCoordinate(SearchRequest request) {
@@ -344,7 +344,7 @@ public class SearchService {
     }
 
     // ========================================================================
-    // SEARCH HISTORY — save, retrieve, clear
+    // SEARCH HISTORY - save, retrieve, clear
     // ========================================================================
 
     @Transactional
@@ -353,7 +353,7 @@ public class SearchService {
         try {
             queryParamsJson = objectMapper.writeValueAsString(request);
         } catch (JsonProcessingException e) {
-            // Ignore — queryParams is optional
+            // Ignore - queryParams is optional
         }
 
         SearchQuery query = SearchQuery.builder()

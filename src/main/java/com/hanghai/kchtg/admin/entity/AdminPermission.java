@@ -17,8 +17,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Phân quy?n chi ti?t cho tài kho?n admin — m?i admin du?c c?p permissions
- * theo t?ng module, cho phép ki?m soát granular access.
+ * Phân quyền chi tiết cho tài khoản admin - mỗi admin được cấp permissions
+ * theo từng module, cho phép kiểm soát granular access.
  */
 @Entity
 @Table(name = "admin_permissions")
@@ -27,15 +27,15 @@ import java.util.UUID;
 @NoArgsConstructor
 public class AdminPermission extends BaseEntity {
 
-    /** ID c?a admin account du?c c?p quy?n. */
+    /** ID của admin account được cấp quyền. */
     @Column(name = "admin_id", nullable = false)
     private UUID adminId;
 
-    /** Mă module du?c c?p quy?n (ví d?: "USER", "ROLE", "GROUP", "ORGUNIT", "ADMIN"). */
+    /** Mã module được cấp quyền (ví dụ: "USER", "ROLE", "GROUP", "ORGUNIT", "ADMIN"). */
     @Column(nullable = false, length = 50)
     private String moduleId;
 
-    /** Danh sách các permission keys (ví d?: "READ", "WRITE", "DELETE", "APPROVE"). */
+    /** Danh sách các permission keys (ví dụ: "READ", "WRITE", "DELETE", "APPROVE"). */
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "admin_permission_keys",
             joinColumns = @JoinColumn(name = "admin_permission_id"))
@@ -43,7 +43,7 @@ public class AdminPermission extends BaseEntity {
     private List<String> permissions = new ArrayList<>();
 
     /**
-     * T?o m?i AdminPermission cho m?t admin và m?t module c? th?.
+     * Tạo mới AdminPermission cho một admin và một module cụ thể.
      */
     public static AdminPermission create(UUID adminId, String moduleId, List<String> permissions) {
         AdminPermission perm = new AdminPermission();

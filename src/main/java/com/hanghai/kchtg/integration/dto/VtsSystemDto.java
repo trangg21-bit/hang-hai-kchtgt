@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * DTO for VTS system (Hệ thống VTS) — mapped to PointObject with ObjectType=PORT.
+ * DTO for VTS system (Hệ thống VTS) - mapped to PointObject with ObjectType=PORT.
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

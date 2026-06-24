@@ -6,7 +6,7 @@
 
 ---
 
-## 1. TEST DATA â€” Users & Auth
+## 1. TEST DATA — Users & Auth
 
 | Field | Value | Ghi chu |
 |---|---|---|
@@ -20,7 +20,7 @@
 | password_min_length | 8 | Estimated |
 | password_complexity | Upper+Lower+Digit+Special | Estimated |
 
-## 2. TEST DATA â€” KCHTGT Objects
+## 2. TEST DATA — KCHTGT Objects
 
 ### Cang bien (36 objects)
 | Field | Example |
@@ -67,7 +67,7 @@
 | latitude | 20.5000 |
 | longitude | 106.8000 |
 
-## 3. TEST DATA â€” Reports
+## 3. TEST DATA — Reports
 
 | Report | Format | Source |
 |---|---|---|
@@ -77,7 +77,7 @@
 | Bieu 01-N | PDF/Excel | Nang luc thong qua |
 | Bieu 06-N | PDF/Excel | Thong ke den bien |
 
-## 4. TEST DATA â€” Integration
+## 4. TEST DATA — Integration
 
 | Endpoint | Type | Source |
 |---|---|---|
@@ -86,7 +86,7 @@
 | TCT BDTa | API/VPN | 2 TCT |
 | VISHIPEL | API/VPN | CTHHH |
 
-## 5. TEST DATA â€” GIS
+## 5. TEST DATA — GIS
 
 | Field | Value | Ghi chu |
 |---|---|---|

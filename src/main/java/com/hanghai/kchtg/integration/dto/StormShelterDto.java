@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * DTO for Storm shelter zone (Khu tránh bão) — mapped to PolygonObject with ObjectType=STORM_SHELTER.
+ * DTO for Storm shelter zone (Khu tránh bão) - mapped to PolygonObject with ObjectType=STORM_SHELTER.
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

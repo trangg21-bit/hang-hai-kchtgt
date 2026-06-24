@@ -86,4 +86,8 @@ modules:
     name: Chia sẻ dữ liệu KCHTGT - Tổng hợp
     path: docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop
     slug: chia-se-du-lieu-kchtgt-tong-hop
+  M-999:
+    name: Test
+    path: docs/modules/M-999-test-write
+    slug: test-write
 schema_version: "1.0"

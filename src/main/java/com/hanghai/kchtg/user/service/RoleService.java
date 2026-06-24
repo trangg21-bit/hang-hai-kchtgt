@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Service quan ly vai trò (Role) trong he thong.
+ * Service quản lý vai trò (Role) trong hệ thống.
  */
 @Service
 @Transactional
@@ -52,9 +52,9 @@ public class RoleService {
     }
 
     /**
-     * Tao moi vai trò.
+     * Tạo mới vai trò.
      *
-     * @throws IllegalArgumentException neu code da ton tai
+     * @throws IllegalArgumentException nếu code đã tồn tại
      */
     public Role create(CreateRoleRequest request) {
         if (roleRepository.existsByCode(request.getCode())) {
@@ -75,10 +75,10 @@ public class RoleService {
     }
 
     /**
-     * Cap nhat vai trò.
+     * Cập nhật vai trò.
      *
-     * @throws EntityNotFoundException neu khong tim thay role
-     * @throws IllegalArgumentException neu code moi da duoc dung
+     * @throws EntityNotFoundException nếu không tìm thấy role
+     * @throws IllegalArgumentException nếu code mới đã được dùng
      */
     public Role update(UUID id, UpdateRoleRequest request) {
         Role role = findById(id);
@@ -105,9 +105,9 @@ public class RoleService {
     }
 
     /**
-     * Xoa vai trò (soft delete — dung BaseEntity.softDelete()).
+     * Xóa vai trò (soft delete - dùng BaseEntity.softDelete()).
      *
-     * @throws EntityNotFoundException neu khong tim thay role
+     * @throws EntityNotFoundException nếu không tìm thấy role
      */
     public Role delete(UUID id) {
         Role role = findById(id);
@@ -119,14 +119,14 @@ public class RoleService {
     }
 
     /**
-     * Cap nhat so luong nguoi dung cua role.
+     * Cập nhật số lượng người dùng của role.
      */
     @Transactional(readOnly = true)
     public void updateUserCount(UUID id) {
         Role role = findById(id);
         // Đếm users có role này
         long count = 0;
-        // Trong thuc te se dung UserRepository.countByRole()
+        // Trong thực tế sẽ dùng UserRepository.countByRole()
         role.setUserCount((int) count);
         roleRepository.save(role);
     }

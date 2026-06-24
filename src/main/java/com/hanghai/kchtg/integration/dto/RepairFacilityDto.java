@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * DTO for Repair facility (Cơ sở sửa chữa) — mapped to PointObject with ObjectType=OTHER.
+ * DTO for Repair facility (Cơ sở sửa chữa) - mapped to PointObject with ObjectType=OTHER.
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

@@ -4,19 +4,16 @@ import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Repository m? r?ng cho entity {@link OrgUnit} v?i các phuong th?c truy v?n cây t? ch?c.
+ * Repository mở rộng cho entity {@link OrgUnit} với các phương thức truy vấn cây tổ chức.
  * <p>
- * Cung c?p các query method d? xây d?ng cây don v? t? ch?c phân c?p,
- * bao g?m t́m node g?c, t́m t?t c? node con c?a m?t node, và truy v?n toàn b? cây.
+ * Cung cấp các query method để xây dựng cây đơn vị tổ chức phân cấp,
+ * bao gồm tìm node gốc, tìm tất cả node con của một node, và truy vấn toàn bộ cây.
  * </p>
  */
-@Repository
 public interface UnitRepository extends JpaRepository<OrgUnit, UUID> {
 
     /**
@@ -32,8 +29,8 @@ public interface UnitRepository extends JpaRepository<OrgUnit, UUID> {
     List<OrgUnit> findAllChildren(@Param("unitId") UUID unitId);
 
     /**
-     * Truy v?n toàn b? cây t? ch?c thông qua SELF-JOIN d? quy.
-     * S? d?ng {@code WITH RECURSIVE CTE} d? l?y toàn b? cây t? m?t node g?c.
+     * Truy vỏn toàn bộ cây tổ chức thông qua SELF-JOIN đệ quy.
+     * Sử dụng {@code WITH RECURSIVE CTE} để lấy toàn bộ cây từ một node gốc.
      */
     @Query(value = """
         WITH RECURSIVE org_tree AS (
@@ -50,7 +47,7 @@ public interface UnitRepository extends JpaRepository<OrgUnit, UUID> {
     List<Object[]> findTree(@Param("rootId") UUID rootId);
 
     /**
-     * Đ?m s? don v? con tr?c ti?p c?a m?t don v?.
+     * Đếm số đơn vị con trực tiếp của một đơn vị.
      */
     long countByParentIdIsNull();
 }

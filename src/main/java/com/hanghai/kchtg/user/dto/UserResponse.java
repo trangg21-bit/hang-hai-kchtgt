@@ -40,7 +40,7 @@ public class UserResponse {
     /**
      * Chuyển đổi từ {@link User} entity sang DTO response.
      * <p>
-     * Gọi trong transaction để tránh LazyInitializationException.
+     * Gửi trong transaction để tránh LazyInitializationException.
      * </p>
      */
     public static UserResponse from(User user) {

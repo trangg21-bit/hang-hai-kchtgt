@@ -4,12 +4,8 @@ import com.hanghai.kchtg.integration.entity.PortStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.util.Optional;
 import java.util.UUID;
-
-@Repository
 public interface PortStatusRepository extends JpaRepository<PortStatus, UUID> {
 
     Optional<PortStatus> findByPortCode(String portCode);

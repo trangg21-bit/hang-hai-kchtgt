@@ -5,8 +5,6 @@ import com.hanghai.kchtg.user.entity.RoleStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,21 +12,20 @@ import java.util.UUID;
 /**
  * Repository cho entity {@link Role}.
  */
-@Repository
 public interface RoleRepository extends JpaRepository<Role, UUID> {
 
     /**
-     * TĂ¬m role theo mĂ£ code duy nháº¥t.
+     * Tìm role theo mã code duy nhất.
      */
     Optional<Role> findByCode(String code);
 
     /**
-     * Kiá»ƒm tra tá»“n táº¡i theo code.
+     * Kiểm tra tồn tại theo code.
      */
     boolean existsByCode(String code);
 
     /**
-     * TĂ¬m táº¥t cáº£ role Ä‘ang hoáº¡t Ä‘á»™ng.
+     * Tìm tất cả role đang hoạt động.
      */
     List<Role> findByStatus(RoleStatus status);
 
@@ -39,7 +36,7 @@ public interface RoleRepository extends JpaRepository<Role, UUID> {
     List<Role> findByPermissionsContaining(@Param("permission") String permission);
 
     /**
-     * Kiá»ƒm tra code cĂ³ tá»“n táº¡i ngoĂ i ID nĂ y (dĂ¹ng khi update).
+     * Kiểm tra code có tồn tại ngoài ID này (dùng khi update).
      */
     boolean existsByCodeAndIdNot(String code, UUID id);
 }

@@ -11,8 +11,8 @@ import lombok.Setter;
 import java.util.UUID;
 
 /**
- * S?c kh?e k?t n?i d? li?u — ghi l?i k?t qu? health check d?nh k?
- * cho m?i data connection (tr?ng thái HTTP, d? tr?, l?i).
+ * Sức khỏe kết nối dữ liệu - ghi lại kết quả health check định kỳ
+ * cho mọi data connection (trạng thái HTTP, độ trễ, lỗi).
  */
 @Entity
 @Table(name = "connection_health")
@@ -21,28 +21,28 @@ import java.util.UUID;
 @NoArgsConstructor
 public class ConnectionHealth extends BaseEntity {
 
-    /** ID c?a data connection du?c ki?m tra. */
+    /** ID của data connection được kiểm tra. */
     @Column(name = "connection_id", nullable = false)
     private UUID connectionId;
 
-    /** Mă HTTP status tr? v? (200, 500, timeout, etc.). */
+    /** Mã HTTP status trả về (200, 500, timeout, etc.). */
     @Column(name = "status_code")
     private Integer statusCode;
 
-    /** Đ? tr? c?a k?t n?i (ms). */
+    /** Độ trễ của kết nối (ms). */
     @Column(name = "latency_ms")
     private Long latencyMs;
 
-    /** Th?i di?m ki?m tra. */
+    /** Thời điểm kiểm tra. */
     @Column(name = "checked_at", nullable = false)
     private java.time.LocalDateTime checkedAt;
 
-    /** Thông báo l?i (n?u có). */
+    /** Thông báo lỗi (nếu có). */
     @Column(name = "error_message", length = 500)
     private String errorMessage;
 
     /**
-     * T?o m?i ConnectionHealth.
+     * Tạo mới ConnectionHealth.
      */
     public static ConnectionHealth create(UUID connectionId, int statusCode, long latencyMs,
                                            String errorMessage) {

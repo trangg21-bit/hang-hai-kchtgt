@@ -18,7 +18,7 @@ import lombok.Setter;
 import java.util.UUID;
 
 /**
- * Quan he giua nguoi dung va nhom — cho phép mot nguoi dung thuoc nhieu nhom
+ * Quan he giua nguoi dung va nhom - cho phép mot nguoi dung thuoc nhieu nhom
  * và mot nhom có nhieu nguoi dung (Many-to-Many thong qua entity join).
  */
 @Entity

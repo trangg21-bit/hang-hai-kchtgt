@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * DTO for Buoy marker (Phao tiêu) — mapped to PointObject with ObjectType=BUOY.
+ * DTO for Buoy marker (Phao tiêu) - mapped to PointObject with ObjectType=BUOY.
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

@@ -69,7 +69,7 @@ public class AdminService {
     // ── MFA Reset ────────────────────────────────────────────────────
 
     /**
-     * Tạo yêu cầu khôi phục MFA cho admin — tạo recovery token.
+     * Tạo yêu cầu khôi phục MFA cho admin - tạo recovery token.
      */
     public AdminRecoveryToken requestMfaReset(UUID adminId, UUID requestBy, String requestByName) {
         AdminAccount admin = adminRepo.findByUserId(adminId)

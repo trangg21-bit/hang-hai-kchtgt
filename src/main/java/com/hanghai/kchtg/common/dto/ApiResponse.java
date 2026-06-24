@@ -28,7 +28,7 @@ public class ApiResponse<T> {
         this.timestamp = timestamp;
     }
 
-    // ── Accessors (no setters — response is immutable) ──────────────
+    // ── Accessors (no setters - response is immutable) ──────────────
 
     public boolean isSuccess() {
         return success;

@@ -6,7 +6,7 @@ import java.util.UUID;
 /**
  * Request DTO for filtering access-log entries in the list endpoint.
  * <p>
- * All fields are optional — only supplied criteria are applied.
+ * All fields are optional - only supplied criteria are applied.
  * </p>
  */
 public class AccessLogFilterRequest {

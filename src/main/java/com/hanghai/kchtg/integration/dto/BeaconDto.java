@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * DTO for Beacon (Đèn biển) — mapped to PointObject with ObjectType=BEACON.
+ * DTO for Beacon (Đèn biển) - mapped to PointObject with ObjectType=BEACON.
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

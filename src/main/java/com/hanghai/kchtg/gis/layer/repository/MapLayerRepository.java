@@ -4,13 +4,9 @@ import com.hanghai.kchtg.gis.layer.entity.MapLayer;
 import com.hanghai.kchtg.gis.layer.entity.MapLayer.LayerType;
 import com.hanghai.kchtg.gis.layer.entity.MapLayer.Status;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-@Repository
 public interface MapLayerRepository extends JpaRepository<MapLayer, UUID> {
 
     Optional<MapLayer> findByCode(String code);

@@ -74,7 +74,7 @@ public class IntegrationSyncService {
 
         try {
             log.info("Starting integration sync for connection id={}, url={}", connectionId, urlStr);
-            // SSRF mitigation: validate URL scheme — only allow http: and https:
+            // SSRF mitigation: validate URL scheme - only allow http: and https:
             URL url = validateUrl(urlStr);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");

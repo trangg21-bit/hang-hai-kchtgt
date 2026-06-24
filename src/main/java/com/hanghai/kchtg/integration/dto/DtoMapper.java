@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 public final class DtoMapper {
 
     private DtoMapper() {
-        // utility class — no instantiation
+        // utility class - no instantiation
     }
 
     // ── PointObject → DTOs ────────────────────────────────────────
@@ -71,7 +71,7 @@ public final class DtoMapper {
     }
 
     /**
-     * Maps PointObjects for VTS — uses PORT type since VTS is a port-related facility.
+     * Maps PointObjects for VTS - uses PORT type since VTS is a port-related facility.
      */
     public static List<VtsSystemDto> toVtsSystemDtos(List<PointObject> points) {
         return points.stream()

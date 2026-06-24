@@ -95,7 +95,7 @@ Logging               | Informative log messages for start/end/skip.
 
 Issues Found:
 
-- M-12 [Medium - Vietnamese character encoding]: The source file contains garbled Vietnamese characters (e.g., "BÃ¡ÂºÂ¿n cÃ¡ÂºÂ£ng HÃ¡ÂºÂ£i PhÃƒÂ²ng" instead of "Ben caang Hai Phong"), indicating UTF-8 encoding issues. This could cause display problems or search issues for seed data in non-UTF-8 environments. Verify the file encoding is UTF-8 BOM or UTF-8 without BOM.
+- M-12 [Medium - Vietnamese character encoding]: The source file contains garbled Vietnamese characters (e.g., "Bến cảng Hải Phòng" instead of "Ben caang Hai Phong"), indicating UTF-8 encoding issues. This could cause display problems or search issues for seed data in non-UTF-8 environments. Verify the file encoding is UTF-8 BOM or UTF-8 without BOM.
 - L-05 [Low - Seed data in memory only (H2)]: Since the dev profile uses H2 in-memory, seed data is lost on restart. This is acceptable for dev but should be documented.
 
 ### 2.6 Test Layer

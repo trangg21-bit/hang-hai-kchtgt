@@ -597,6 +597,18 @@
       "primary_service": "",
       "slug": "chia-se-du-lieu-kchtgt-tong-hop",
       "status": "in-progress"
+    },
+    {
+      "agent_flags": {},
+      "created_at": "2026-06-23T08:05:33Z",
+      "depends_on": [],
+      "feature_ids": [],
+      "id": "M-999",
+      "modules_in_scope": [],
+      "name": "Test",
+      "primary_service": "",
+      "slug": "test-write",
+      "status": "in-progress"
     }
   ],
   "schema_version": "1.0"

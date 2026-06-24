@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * DTO for Bridge (Cầu cảng) — mapped to LineObject with ObjectType=WATERWAY.
+ * DTO for Bridge (Cầu cảng) - mapped to LineObject with ObjectType=WATERWAY.
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

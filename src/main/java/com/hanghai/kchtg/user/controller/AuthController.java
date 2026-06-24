@@ -1,11 +1,16 @@
 package com.hanghai.kchtg.user.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.security.JwtUtil;
+import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.user.dto.LoginRequest;
 import com.hanghai.kchtg.user.dto.LoginResponse;
+import com.hanghai.kchtg.user.dto.MfaChallengeResponse;
+import com.hanghai.kchtg.user.dto.TotpLoginRequest;
+import com.hanghai.kchtg.user.dto.TwoFactorLoginResponse;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.user.service.TotpAuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,8 +21,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Optional;
+
 /**
- * Authentication controller — handles login via JWT.
+ * Authentication controller - handles login via JWT with 2-phase MFA (TOTP).
+ * <p>
+ * <b>POST /api/auth/login</b> - Phase 1: authenticate credentials, get MFA challenge.<br>
+ * <b>POST /api/auth/login/totp</b> - Phase 2: verify TOTP, get dual JWT.
+ * </p>
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -27,40 +40,90 @@ public class AuthController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil;
+    private final TokenService tokenService;
+    private final TotpAuthService totpAuthService;
 
     public AuthController(UserRepository userRepository,
                           PasswordEncoder passwordEncoder,
-                          JwtUtil jwtUtil) {
+                          TokenService tokenService,
+                          TotpAuthService totpAuthService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jwtUtil = jwtUtil;
+        this.tokenService = tokenService;
+        this.totpAuthService = totpAuthService;
     }
 
     /**
-     * Authenticates a user by username/password and returns a JWT token.
+     * Phase 1 - Authenticate credentials.
+     * <p>
+     * If user has TOTP enabled, returns {@code MfaChallengeResponse} (client must
+     * proceed to phase 2).  If TOTP is not enabled, returns {@code LoginResponse}
+     * with JWT directly.
+     * </p>
      *
      * @param request login credentials
-     * @return JWT token and user info
+     * @param httpRequest for IP / User-Agent logging
+     * @return MfaChallengeResponse or LoginResponse depending on TOTP status
      */
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid username or password"));
+    public ResponseEntity<ApiResponse<?>> login(@Valid @RequestBody LoginRequest request,
+                                                HttpServletRequest httpRequest) {
+        try {
+            // Resolve identifier: prefer 'identifier' field, fall back to 'username'
+            String identifier = (request.getIdentifier() != null && !request.getIdentifier().isBlank())
+                    ? request.getIdentifier()
+                    : request.getUsername();
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new IllegalArgumentException("Invalid username or password");
+            MfaChallengeResponse challenge = totpAuthService.authenticateCredentials(
+                    identifier, request.getPassword(), httpRequest);
+
+            if (!challenge.isTotpRequired()) {
+                // User does NOT have TOTP enabled - proceed with single-phase login
+                User user = userRepository.findById(challenge.getUserId())
+                        .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+                // Update last login
+                user.setLastLoginAt(LocalDateTime.now());
+                userRepository.save(user);
+
+                String role = user.getRole() != null ? user.getRole() : "ROLE_USER";
+                String token = tokenService.createAccessToken(user.getUsername(), role);
+
+                LoginResponse response = LoginResponse.of(token, user.getUsername(),
+                        user.getFullName(), role);
+                log.info("User logged in (no TOTP): {}", user.getUsername());
+                return ResponseEntity.ok(ApiResponse.success("Login successful", response));
+            }
+
+            // =========================================================================
+            log.info("MFA challenge issued for user: {}", identifier);
+            return ResponseEntity.ok(ApiResponse.success("MFA required", challenge));
+
+        } catch (IllegalArgumentException e) {
+            log.warn("Login failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
+    }
 
-        if (user.getStatus() == com.hanghai.kchtg.user.entity.UserStatus.LOCKED) {
-            throw new IllegalArgumentException("Account is locked");
+    /**
+     * Phase 2 - Verify TOTP code and return dual JWT tokens.
+     *
+     * @param request userId + totpCode
+     * @param httpRequest for IP / User-Agent logging
+     * @return TwoFactorLoginResponse with access_token + refresh_token
+     */
+    @PostMapping("/login/totp")
+    public ResponseEntity<ApiResponse<TwoFactorLoginResponse>> loginTotp(
+            @Valid @RequestBody TotpLoginRequest request,
+            HttpServletRequest httpRequest) {
+        try {
+            TwoFactorLoginResponse response = totpAuthService.verifyTotp(request, httpRequest);
+            log.info("2FA login successful for user ID: {}", request.getUserId());
+            return ResponseEntity.ok(ApiResponse.success("2FA login successful", response));
+
+        } catch (IllegalArgumentException e) {
+            log.warn("2FA login failed: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
-
-        String role = user.getRole() != null ? user.getRole() : "ROLE_USER";
-        String token = jwtUtil.generateToken(user.getUsername(), role);
-
-        LoginResponse response = LoginResponse.of(token, user.getUsername(), user.getFullName(), role);
-        log.info("User logged in: {}", user.getUsername());
-        return ResponseEntity.ok(ApiResponse.success("Login successful", response));
     }
 }

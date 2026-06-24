@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Nhom nguoi dung (User Group) — dung de gom quyen và phan quyen theo nhom.
+ * Nhom nguoi dung (User Group) - dung de gom quyen và phan quyen theo nhom.
  */
 @Entity
 @Table(name = "user_groups")

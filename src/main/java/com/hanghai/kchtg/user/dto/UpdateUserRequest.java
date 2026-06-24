@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * DTO cập nhật tài khoản người dùng — mọi trường đều tuỳ chọn,
+ * DTO cập nhật tài khoản người dùng - mọi trường đều tuỳ chọn,
  * chỉ cập nhật những trường được gửi (khác {@code null}).
  */
 @Getter

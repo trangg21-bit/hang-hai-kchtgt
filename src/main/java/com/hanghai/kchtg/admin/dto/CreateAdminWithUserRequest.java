@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * Request body để tạo mới một quản trị viên — bao gồm cả tạo User mới.
+ * Request body để tạo mới một quản trị viên - bao gồm cả tạo User mới.
  */
 @Getter
 @Setter

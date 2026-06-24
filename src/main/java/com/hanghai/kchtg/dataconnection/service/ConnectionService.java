@@ -197,7 +197,7 @@ public class ConnectionService {
                 if (status >= 200 && status < 400) {
                     return TestConnectionResponse.builder()
                             .success(true)
-                            .message("Endpoint reachable — HTTP " + status)
+                            .message("Endpoint reachable - HTTP " + status)
                             .responseTimeMs(elapsed)
                             .responseCode(status)
                             .build();

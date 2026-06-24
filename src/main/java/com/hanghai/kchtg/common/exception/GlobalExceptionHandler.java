@@ -73,7 +73,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles JPA {@code EntityNotFoundException} — typically thrown by
+     * Handles JPA {@code EntityNotFoundException} - typically thrown by
      * {@code getReferenceById()} when the entity does not exist.
      */
     @ExceptionHandler(jakarta.persistence.EntityNotFoundException.class)

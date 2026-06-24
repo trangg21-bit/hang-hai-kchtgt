@@ -1,11 +1,12 @@
 package com.hanghai.kchtg.user.entity;
 
 /**
- * Tr?ng th?i tài kho?n ng??i d?ng.
+ * Trang thai tai khoan nguoi dung.
  */
 public enum UserStatus {
     ACTIVE,
     INACTIVE,
     LOCKED,
-    DELETED
+    DELETED,
+    PENDING_VERIFICATION
 }

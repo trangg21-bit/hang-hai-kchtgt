@@ -11,11 +11,11 @@ import lombok.Setter;
 import java.util.UUID;
 
 /**
- * So d? t? ch?c chi ti?t — b? sung thông tin th? b?c và v? trí x?p h?ng
- * cho m?i don v? trong cây t? ch?c.
+ * Sơ đồ tổ chức chi tiết - bổ sung thông tin thứ bậc và vị trí xếp hạng
+ * cho mọi đơn vị trong cây tổ chức.
  * <p>
- * Entity này song song v?i {@link OrgUnit} nhung cung c?p thêm metadata
- * cho các tính nang hi?n th? cây t? ch?c và tính nang phê duy?t phân c?p.
+ * Entity này song song với {@link OrgUnit} nhưng cung cấp thêm metadata
+ * cho các tính năng hiển thị cây tổ chức và tính năng phê duyệt phân cấp.
  * </p>
  */
 @Entity
@@ -25,36 +25,36 @@ import java.util.UUID;
 @NoArgsConstructor
 public class OrganizationChart extends BaseEntity {
 
-    /** ID c?a don v? t? ch?c. */
+    /** ID của đơn vị tổ chức. */
     @Column(name = "unit_id", nullable = false, unique = true)
     private UUID unitId;
 
-    /** ID c?a don v? cha trong cây t? ch?c (nullable n?u là g?c). */
+    /** ID của đơn vị cha trong cây tổ chức (nullable nếu là gốc). */
     @Column(name = "parent_id")
     private UUID parentId;
 
-    /** Đ? sâu c?a don v? trong cây (root = 0). */
+    /** Độ sâu của đơn vị trong cây (root = 0). */
     @Column(nullable = false)
     private int level;
 
-    /** Th? t? hi?n th? trong cùng c?p (sort order). */
+    /** Thứ tự hiển thị trong cùng cấp (sort order). */
     @Column(nullable = false)
     private int sortOrder;
 
     /**
-     * T?o m?i OrganizationChart v?i level và sortOrder t? d?ng.
+     * Tạo mới OrganizationChart vỏi level và sortOrder tự động.
      */
     public static OrganizationChart create(UUID unitId, UUID parentId, int sortOrder) {
         OrganizationChart chart = new OrganizationChart();
         chart.setUnitId(unitId);
         chart.setParentId(parentId);
-        chart.setLevel(parentId != null ? 0 : 0); // du?c tính l?i b?i service
+        chart.setLevel(parentId != null ? 0 : 0); // được tính lại bởi service
         chart.setSortOrder(sortOrder);
         return chart;
     }
 
     /**
-     * Tính level d?a vào parent.
+     * Tính level dựa vào parent.
      */
     public void recalculateLevel(int parentLevel) {
         this.level = parentLevel + 1;

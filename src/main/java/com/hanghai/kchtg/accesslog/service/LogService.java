@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Service quan ly access logs — bao gom query, xuat CSV, don gan lich su và canh bao khi có loi.
+ * Service quan ly access logs - bao gom query, xuat CSV, don gan lich su và canh bao khi có loi.
  * <p>
  * Ket hop logic từ {@link AccessLogService} (query read-only) và các tinh nang moi:
  * {@code exportToCsv()}, {@code cleanupOldLogs()}, và {@code alertOnFailures()}.
@@ -68,7 +68,7 @@ public class LogService {
         return accessLogService.findAll(filter, pageable);
     }
 
-    // ── CSV Export ─────────────────────────────────────────────────────
+    // =========================================================================
 
     /**
      * Xuat access logs thanh file CSV.
@@ -112,7 +112,7 @@ public class LogService {
         }
     }
 
-    // ── Alert on Failures ────────────────────────────────────────────
+    // =========================================================================
 
     /**
      * Kiem tra và canh bao neu co quá nhieu log FAILED trong khoang thoi gian gan day.
@@ -138,7 +138,7 @@ public class LogService {
         return alertOnFailures(100);
     }
 
-    // ── Scheduled Cleanup ────────────────────────────────────────────
+    // =========================================================================
 
     /**
      * Xoa các access logs cu hon retentionDays.
@@ -151,7 +151,7 @@ public class LogService {
         log.info("Cleaned up {} access logs older than {} days", deleted, retentionDays);
     }
 
-    // ── Statistics ─────────────────────────────────────────────────────
+    // =========================================================================
 
     /**
      * Thong ke so luong logs theo status trong ngay.

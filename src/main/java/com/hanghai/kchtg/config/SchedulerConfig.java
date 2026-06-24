@@ -8,10 +8,10 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 /**
- * C?u h́nh scheduler cho các scheduled task c?a h? th?ng.
+ * Cấu hình scheduler cho các scheduled task của hệ thống.
  * <p>
- * B?t {@code @EnableScheduling} d? kích ho?t các phuong th?c
- * du?c annotate {@code @Scheduled} trong các component.
+ * Bật {@code @EnableScheduling} để kích hoạt các phương thức
+ * được annotate {@code @Scheduled} trong các component.
  * </p>
  */
 @Configuration

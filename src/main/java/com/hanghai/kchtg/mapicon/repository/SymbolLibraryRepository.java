@@ -4,8 +4,6 @@ import com.hanghai.kchtg.mapicon.entity.SymbolLibrary;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -13,7 +11,6 @@ import java.util.UUID;
 /**
  * Repository cho entity {@link SymbolLibrary}.
  */
-@Repository
 public interface SymbolLibraryRepository extends JpaRepository<SymbolLibrary, UUID> {
 
     /**
@@ -22,12 +19,12 @@ public interface SymbolLibraryRepository extends JpaRepository<SymbolLibrary, UU
     Optional<SymbolLibrary> findByCode(String code);
 
     /**
-     * T́m symbol theo d?nh d?ng.
+     * T́m symbol theo đểnh đểng.
      */
     List<SymbolLibrary> findByFormat(SymbolLibrary.SymbolFormat format);
 
     /**
-     * T́m symbol du?c upload b?i m?t ngu?i dùng c? th?.
+     * T́m symbol được upload bịi một người dùng cụ thể.
      */
     List<SymbolLibrary> findByUploadedByOrderByUploadedAtDesc(UUID uploadedBy);
 
@@ -38,17 +35,17 @@ public interface SymbolLibraryRepository extends JpaRepository<SymbolLibrary, UU
     List<SymbolLibrary> searchByName(@Param("name") String name);
 
     /**
-     * Ki?m tra code dă t?n t?i.
+     * Kiểm tra code đã tồn tại.
      */
     boolean existsByCode(String code);
 
     /**
-     * Ki?m tra code dă t?n t?i ngoài ID này.
+     * Kiểm tra code đã tồn tại ngoài ID này.
      */
     boolean existsByCodeAndIdNot(String code, UUID id);
 
     /**
-     * Đ?m s? symbol theo d?nh d?ng.
+     * Đếm số symbol theo đểnh đểng.
      */
     long countByFormat(SymbolLibrary.SymbolFormat format);
 

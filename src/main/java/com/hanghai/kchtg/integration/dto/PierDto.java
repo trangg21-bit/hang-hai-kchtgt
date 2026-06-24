@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * DTO for Pier/Dock (Bến cảng) — mapped to PointObject with ObjectType=PORT.
+ * DTO for Pier/Dock (Bến cảng) - mapped to PointObject with ObjectType=PORT.
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

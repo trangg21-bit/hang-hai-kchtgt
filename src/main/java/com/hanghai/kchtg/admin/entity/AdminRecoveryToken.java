@@ -12,8 +12,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Token khôi ph?c MFA cho admin — khi admin b? m?t thi?t b? 2FA
- * có th? yêu c?u token khôi ph?c (ph?i du?c approve b?i super-admin).
+ * Token khôi phục MFA cho admin - khi admin bị một thiết bị 2FA
+ * có thể yêu cầu token khôi phục (phải được approve bởi super-admin).
  */
 @Entity
 @Table(name = "admin_recovery_tokens")
@@ -22,24 +22,24 @@ import java.util.UUID;
 @NoArgsConstructor
 public class AdminRecoveryToken extends BaseEntity {
 
-    /** ID c?a admin yêu c?u khôi ph?c MFA. */
+    /** ID của admin yêu cầu khôi phục MFA. */
     @Column(name = "admin_id", nullable = false)
     private UUID adminId;
 
-    /** Mă token duy nh?t — dùng d? xác minh và khôi ph?c 2FA. */
+    /** Mã token duy nhất - dùng để xác minh và khôi phục 2FA. */
     @Column(nullable = false, unique = true, length = 255)
     private String token;
 
-    /** Th?i di?m h?t h?n c?a token (thu?ng 1 gi? sau khi t?o). */
+    /** Thời điểm hết hạn của token (thường 1 giờ sau khi tạo). */
     @Column(nullable = false)
     private LocalDateTime expiresAt;
 
-    /** Cho bi?t token dă du?c s? d?ng d? khôi ph?c hay chua. */
+    /** Cho biết token đã được sử dụng để khôi phục hay chưa. */
     @Column(nullable = false)
     private boolean used = false;
 
     /**
-     * T?o m?i AdminRecoveryToken v?i th?i h?n m?c d?nh 1 gi?.
+     * Tạo mới AdminRecoveryToken với thời hạn mặc định 1 giờ.
      */
     public static AdminRecoveryToken create(UUID adminId, String token) {
         AdminRecoveryToken recoveryToken = new AdminRecoveryToken();
@@ -51,7 +51,7 @@ public class AdminRecoveryToken extends BaseEntity {
     }
 
     /**
-     * Ki?m tra token c̣n h?n hay không.
+     * Kiểm tra token còn hạn hay không.
      */
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(expiresAt);

@@ -6,8 +6,12 @@ slug: quan-ly-jwt-session
 # Primary owner = service that implements feature's main flow.
 # Consumers = services/apps that read or invoke this feature.
 implementations:
-  primary: ""
-  consumers: []
+  primary: "com.hanghai.kchtg.security"
+  consumers:
+    - "com.hanghai.kchtg.user.controller.AuthController"
+    - "com.hanghai.kchtg.config.SecurityConfig"
+    - "com.hanghai.kchtg.user.service.UserService"
 
 # Cross-cutting: features consumed by multiple modules
-consumed_by_modules: []
+consumed_by_modules:
+  - "M-010"

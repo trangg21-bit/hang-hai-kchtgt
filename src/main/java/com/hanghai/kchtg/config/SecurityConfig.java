@@ -5,8 +5,10 @@ import com.hanghai.kchtg.security.JwtProperties;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -36,21 +38,25 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 @EnableConfigurationProperties(JwtProperties.class)
+@EnableCaching
+@EnableScheduling
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final com.hanghai.kchtg.security.filter.CookieRefreshTokenFilter cookieRefreshTokenFilter;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter, com.hanghai.kchtg.security.filter.CookieRefreshTokenFilter cookieRefreshTokenFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.cookieRefreshTokenFilter = cookieRefreshTokenFilter;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // REST API — no CSRF needed
+                // =========================================================================
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // Stateless sessions — no JSESSIONID
+                // =========================================================================
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
@@ -61,6 +67,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/api/auth/password-policy").permitAll()
                         .requestMatchers("/api/point-objects/**").permitAll()
                         .requestMatchers("/api/line-objects/**").permitAll()
                         .requestMatchers("/api/polygon-objects/**").permitAll()
@@ -71,11 +78,12 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
 
-                // Disable form/basic login — JWT only
+                // Disable form/basic login - JWT only
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
 
                 // Insert JWT filter before the standard authentication filter
+                .addFilterBefore(cookieRefreshTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

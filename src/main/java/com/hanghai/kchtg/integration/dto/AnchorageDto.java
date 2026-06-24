@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * DTO for Anchorage area (Khu neo đậu) — mapped to PolygonObject with ObjectType=ANCHORAGE.
+ * DTO for Anchorage area (Khu neo đậu) - mapped to PolygonObject with ObjectType=ANCHORAGE.
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

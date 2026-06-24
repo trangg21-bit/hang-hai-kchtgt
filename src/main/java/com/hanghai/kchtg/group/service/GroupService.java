@@ -89,7 +89,7 @@ public class GroupService {
 
     /**
      * Cap nhat thong tin nhom. Ma code khong duoc thay doi.
-     * Chi cap nhat nhung truong duoc gui (khac {@code null}).
+     * Chi cap nhat nhưng truong duoc gui (khac {@code null}).
      *
      * @param id      UUID cua nhom can cap nhat
      * @param request DTO chua cac truong co the cap nhat

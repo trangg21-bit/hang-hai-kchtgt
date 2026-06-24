@@ -159,7 +159,7 @@ public class DataConnectionService {
         if (type == ConnectionType.DATABASE || type == ConnectionType.FILE) {
             return TestConnectionResponse.builder()
                     .success(true)
-                    .message("Configuration valid — manual connectivity test required for "
+                    .message("Configuration valid - manual connectivity test required for "
                              + type.name() + " connections.")
                     .responseTimeMs(0)
                     .build();
@@ -186,7 +186,7 @@ public class DataConnectionService {
             if (status >= 200 && status < 400) {
                 return TestConnectionResponse.builder()
                         .success(true)
-                        .message("Endpoint reachable — HTTP " + status)
+                        .message("Endpoint reachable - HTTP " + status)
                         .responseTimeMs(elapsed)
                         .build();
             }
@@ -210,7 +210,7 @@ public class DataConnectionService {
 
     /**
      * Decrypts the credentials field in-place so the caller sees plain text.
-     * The entity's persisted encrypted value is not affected — the entity
+     * The entity's persisted encrypted value is not affected - the entity
      * is still attached to the persistence context so the change is not flushed.
      */
     private void decryptCredentials(DataConnection entity) {

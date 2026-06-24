@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Vai trĂ² (Role) trong he thong â€” dung de nhom permissions va gĂ¡n cho nguoi dung.
+ * Vai trò (Role) trong hệ thống - dùng để nhóm permissions và gán cho người dùng.
  */
 @Entity
 @Table(name = "app_roles")
@@ -29,19 +29,19 @@ import java.util.List;
 @NoArgsConstructor
 public class Role extends BaseEntity {
 
-    /** Ten hien thi cua vai trĂ² (vĂ­ du: "System Administrator", "Manager"). */
-    @NotBlank(message = "Ten vai trĂ² khong duoc de trong")
-    @Size(max = 100, message = "Ten vai trĂ² toi da 100 ky tu")
+    /** Tên hiển thị của vai trò (ví dụ: "System Administrator", "Manager"). */
+    @NotBlank(message = "Tên vai trò không được để trống")
+    @Size(max = 100, message = "Tên vai trò tối đa 100 ký tự")
     @Column(nullable = false, length = 100)
     private String name;
 
-    /** Ma vai trĂ² duy nhat (vĂ­ du: "ADMIN", "MANAGER", "VIEWER"). */
-    @NotBlank(message = "Ma vai trĂ² khong duoc de trong")
-    @Size(max = 50, message = "Ma vai trĂ² toi da 50 ky tu")
+    /** Mã vai trò duy nhất (ví dụ: "ADMIN", "MANAGER", "VIEWER"). */
+    @NotBlank(message = "Mã vai trò không được để trống")
+    @Size(max = 50, message = "Mã vai trò tối đa 50 ký tự")
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
-    /** Mo ta chi tiet ve vai trĂ². */
+    /** Mô tả chi tiết về vai trò. */
     @Column(length = 500)
     private String description;
 
@@ -51,12 +51,12 @@ public class Role extends BaseEntity {
     @Column(name = "permission")
     private List<String> permissions = new ArrayList<>();
 
-    /** Trang tai vai trĂ². */
+    /** Trạng thái vai trò. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private RoleStatus status = RoleStatus.ACTIVE;
 
-    /** So luong nguoi dung dang cĂ³ vai trĂ² nay. */
+    /** Số lượng người dùng đang có vai trò này. */
     @Column(nullable = false)
     private int userCount = 0;
 }

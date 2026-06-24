@@ -11,8 +11,8 @@ import lombok.Setter;
 import java.util.UUID;
 
 /**
- * L?ch s? s? d?ng bi?u tu?ng b?n d? — ghi l?i m?i l?n symbol du?c g?n
- * vào m?t d?i tu?ng (object) trong h? th?ng.
+ * Lịch sử sử dụng biểu tượng bản đồ - ghi lại mọi lần symbol được gắn
+ * vào một đối tượng (object) trong hệ thống.
  */
 @Entity
 @Table(name = "symbol_usages")
@@ -21,28 +21,28 @@ import java.util.UUID;
 @NoArgsConstructor
 public class SymbolUsage extends BaseEntity {
 
-    /** ID c?a symbol (map_icon) du?c s? d?ng. */
+    /** ID của symbol (map_icon) được sử dụng. */
     @Column(name = "symbol_id", nullable = false)
     private UUID symbolId;
 
-    /** ID c?a d?i tu?ng mà symbol du?c g?n vào (ví d?: navigation_point, hazard, etc.). */
+    /** ID của đối tượng mà symbol được gắn vào (ví dụ: navigation_point, hazard, etc.). */
     @Column(name = "object_id", nullable = false)
     private UUID objectId;
 
-    /** Lo?i d?i tu?ng (ví d?: "NAVIGATION_POINT", "HAZARD", "WAYPOINT"). */
+    /** Loại đối tượng (ví dụ: "NAVIGATION_POINT", "HAZARD", "WAYPOINT"). */
     @Column(name = "object_type", nullable = false, length = 50)
     private String objectType;
 
-    /** Th?i di?m symbol du?c g?n vào d?i tu?ng. */
+    /** Thời điểm symbol được gắn vào đối tượng. */
     @Column(name = "used_at", nullable = false)
     private java.time.LocalDateTime usedAt;
 
-    /** ID ngu?i dùng th?c hi?n vi?c g?n symbol. */
+    /** ID người dùng thực hiện việc gắn symbol. */
     @Column(name = "used_by", nullable = false)
     private UUID usedBy;
 
     /**
-     * T?o m?i SymbolUsage.
+     * Tạo mới SymbolUsage.
      */
     public static SymbolUsage create(UUID symbolId, UUID objectId, String objectType,
                                      UUID usedBy) {

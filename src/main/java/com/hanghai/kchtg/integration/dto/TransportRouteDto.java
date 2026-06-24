@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * DTO for Transport route (Chuyển tải) — mapped to LineObject with ObjectType=SHIPPING_ROUTE.
+ * DTO for Transport route (Chuyển tải) - mapped to LineObject with ObjectType=SHIPPING_ROUTE.
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
