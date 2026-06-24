@@ -249,9 +249,8 @@ export default function GISChartView() {
   }, [leafletLoaded, features, renderChartFeatures]);
 
   // 6. Coordinate Calibration Form Submission
-  const handleCalibrate = useCallback(async () => {
+  const handleCalibrate = useCallback(async (values: any) => {
     try {
-      const values = await calibrationForm.validateFields();
       setCalibrating(true);
       
       const payload = {
@@ -269,42 +268,46 @@ export default function GISChartView() {
         toast.success('Đã hiệu chỉnh tọa độ thành công sang WGS84');
         
         // Render Marker on Map
-        const L = window.L;
-        if (L && mapRef.current) {
-          if (calibratorMarkerRef.current) {
-            mapRef.current.removeLayer(calibratorMarkerRef.current);
-          }
-          
-          calibratorMarkerRef.current = L.marker([result.latitude, result.longitude], {
-            icon: L.icon({
-              iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-              iconSize: [25, 41],
-              iconAnchor: [12, 41],
-              popupAnchor: [1, -34],
-              shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-              shadowSize: [41, 41],
+        try {
+          const L = window.L;
+          if (L && mapRef.current) {
+            if (calibratorMarkerRef.current) {
+              mapRef.current.removeLayer(calibratorMarkerRef.current);
+            }
+            
+            calibratorMarkerRef.current = L.marker([result.latitude, result.longitude], {
+              icon: L.icon({
+                iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+                shadowSize: [41, 41],
+              })
             })
-          })
-            .addTo(mapRef.current)
-            .bindPopup(`
-              <strong>Tọa độ hiệu chỉnh (WGS84)</strong><br/>
-              Kinh độ: ${result.longitude.toFixed(6)}°<br/>
-              Vĩ độ: ${result.latitude.toFixed(6)}°<br/>
-              Gốc: ${values.systemType} [X: ${values.coord1}, Y: ${values.coord2}]
-            `)
-            .openPopup();
+              .addTo(mapRef.current)
+              .bindPopup(`
+                <strong>Tọa độ hiệu chỉnh (WGS84)</strong><br/>
+                Kinh độ: ${result.longitude.toFixed(6)}°<br/>
+                Vĩ độ: ${result.latitude.toFixed(6)}°<br/>
+                Gốc: ${values.systemType} [X: ${values.coord1}, Y: ${values.coord2}]
+              `)
+              .openPopup();
 
-          mapRef.current.setView([result.latitude, result.longitude], 13);
+            mapRef.current.setView([result.latitude, result.longitude], 13);
+          }
+        } catch (mapErr) {
+          console.error('Lỗi vẽ marker bản đồ:', mapErr);
         }
       } else {
         toast.error(result.errorMessage || 'Tọa độ không hợp lệ');
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Hiệu chỉnh thất bại');
+      console.error('Lỗi hiệu chuẩn tọa độ:', err);
     } finally {
       setCalibrating(false);
     }
-  }, [calibrationForm]);
+  }, []);
 
   // 7. File uploads for importing
   const handleUploadS57 = async (options: any) => {
