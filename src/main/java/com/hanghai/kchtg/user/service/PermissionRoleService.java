@@ -205,11 +205,12 @@ public class PermissionRoleService {
 
         if (!role.getPermissions().contains(permission.getCode())) {
             role.getPermissions().add(permission.getCode());
+            Role saved = roleRepository.save(role);
+            log.info("Assigned permission {} to role {} ({})", permission.getCode(), role.getCode(), role.getId());
+            return saved;
         }
 
-        Role saved = roleRepository.save(role);
-        log.info("Assigned permission {} to role {} ({})", permission.getCode(), role.getCode(), role.getId());
-        return saved;
+        return role;
     }
 
     /**
@@ -229,11 +230,12 @@ public class PermissionRoleService {
 
         if (!role.getPermissions().contains(permissionCode)) {
             role.getPermissions().add(permissionCode);
+            Role saved = roleRepository.save(role);
+            log.info("Assigned permission {} to role {} ({})", permissionCode, role.getCode(), role.getId());
+            return saved;
         }
 
-        Role saved = roleRepository.save(role);
-        log.info("Assigned permission {} to role {} ({})", permissionCode, role.getCode(), role.getId());
-        return saved;
+        return role;
     }
 
     /**

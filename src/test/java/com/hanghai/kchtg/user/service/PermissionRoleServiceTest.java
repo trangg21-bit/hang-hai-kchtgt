@@ -179,11 +179,16 @@ class PermissionRoleServiceTest {
     void assignPermission_shouldSkipIfAlreadyPresent() {
         when(roleRepository.save(any(Role.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        service.assignPermission(adminRole, testPermission);
+        Permission newPermission = new Permission();
+        newPermission.setCode("new:permission");
+        newPermission.setResource("new");
+        newPermission.setAction("permission");
+
+        service.assignPermission(adminRole, newPermission);
         verify(roleRepository, times(1)).save(any());
 
         // Call again - should not duplicate
-        service.assignPermission(adminRole, testPermission);
+        service.assignPermission(adminRole, newPermission);
         verify(roleRepository, times(1)).save(any());
     }
 
@@ -232,8 +237,10 @@ class PermissionRoleServiceTest {
 
     @Test
     void removePermission_shouldThrowWhenNotAssigned() {
+        Permission unassignedPerm = new Permission();
+        unassignedPerm.setCode("manhien:write");
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> service.removePermission(userRole, testPermission));
+                () -> service.removePermission(userRole, unassignedPerm));
         assertTrue(ex.getMessage().contains("không được gán"));
     }
 
@@ -266,7 +273,7 @@ class PermissionRoleServiceTest {
 
     @Test
     void isSuperAdmin_shouldReturnFalseForNull() {
-        assertFalse(service.isSuperAdmin(null));
+        assertFalse(service.isSuperAdmin((String) null));
         assertFalse(service.isSuperAdmin((Role) null));
     }
 

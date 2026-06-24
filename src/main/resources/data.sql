@@ -8,11 +8,11 @@ VALUES
 
 INSERT INTO app_roles (id, name, code, description, status, user_count, created_at, updated_at)
 VALUES
-  (RANDOM_UUID(), 'Quản trị viên (Super Admin)', 'SYSTEM_ADMIN',  'Admin cao nhat he thong',                    'ACTIVE', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (RANDOM_UUID(), 'Quản trị viên (Admin)',      'ADMIN',         'Quan tri vien Cuc/Cang vu/Chi cuc',          'ACTIVE', 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (RANDOM_UUID(), 'Quản lý người dùng',         'MANAGER',       'Chuyen vien quan ly du lieu',                'ACTIVE', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (RANDOM_UUID(), 'Nguoi dung',         'USER',          'Nguoi dung co ban (doanh nghiep)',           'ACTIVE', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  (RANDOM_UUID(), 'Người xem (Viewer)',          'VIEWER',        'Chi xem, khong sua',                         'ACTIVE', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  (RANDOM_UUID(), 'Quản trị viên (Super Admin)', 'SYSTEM_ADMIN',  'Admin cao nhất hệ thống',                    'ACTIVE', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (RANDOM_UUID(), 'Quản trị viên (Admin)',      'ADMIN',         'Quản trị viên Cục/Cảng vụ/Chi cục',          'ACTIVE', 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (RANDOM_UUID(), 'Quản lý người dùng',         'MANAGER',       'Chuyên viên quản lý dữ liệu',                'ACTIVE', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (RANDOM_UUID(), 'Người dùng',                 'USER',          'Người dùng cơ bản (doanh nghiệp)',           'ACTIVE', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  (RANDOM_UUID(), 'Người xem (Viewer)',         'VIEWER',        'Chỉ xem, không sửa',                         'ACTIVE', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 INSERT INTO role_permissions (role_id, permission)
 SELECT id, perm FROM app_roles CROSS JOIN (
