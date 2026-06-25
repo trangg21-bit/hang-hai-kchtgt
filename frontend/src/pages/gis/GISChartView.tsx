@@ -38,6 +38,77 @@ declare global {
   }
 }
 
+const CELL_COORDINATES: Record<string, [number, number]> = {
+  'HP': [20.80, 106.70],     // Hải Phòng
+  'HG': [20.95, 107.15],     // Hạ Long
+  'HL': [17.90, 106.40],     // Hòn La
+  'HTH': [10.00, 104.00],    // Hòn Thơm
+  'DNA': [16.10, 108.20],    // Đà Nẵng
+  'DQ': [15.40, 108.80],     // Dung Quất
+  'KHA': [12.20, 109.20],    // Khánh Hòa
+  'CLO': [18.80, 105.70],    // Cửa Lò
+  'CM': [9.20, 104.90],      // Cà Mau
+  'CVI': [16.90, 107.20],    // Cửa Việt
+  'CGI': [17.70, 106.50],    // Cửa Gianh
+  'CHO': [18.70, 105.80],    // Cửa Hội
+  'DDI': [20.50, 106.60],    // Diêm Điền
+  'LM': [16.10, 108.15],     // Liên Chiểu
+  'NGS': [19.30, 105.80],    // Nghi Sơn
+  'SKY': [21.00, 106.40],    // Sông Kinh Thầy
+  'THA': [16.55, 107.65],    // Thuận An
+  'VA': [18.10, 106.30],     // Vũng Áng
+  'VG': [10.40, 107.10],     // Vũng Tàu / Gành Rái
+  'V24CD': [8.70, 106.60],   // Côn Đảo
+  'V24DM': [20.50, 106.60],  // Diêm Điền
+  'V24DN': [16.10, 108.20],  // Đà Nẵng
+  'V24GG': [9.20, 105.40],   // Gành Hào
+  'V24HT': [10.40, 104.50],  // Hà Tiên
+  'V24NC': [19.30, 105.80],  // Nghi Sơn
+  'V24NT': [12.20, 109.20],  // Nha Trang
+  'V24QN': [13.70, 109.25],  // Quy Nhơn
+  'V24SD': [9.00, 104.80],   // Sông Đốc
+  'V24SG': [10.70, 106.70],  // Sài Gòn
+  'V24SH': [9.50, 106.30],   // Sông Hậu
+  'V24SR': [20.90, 106.80],  // Sông Rút
+  'V24ST': [9.60, 106.00],   // Sóc Trăng
+  'V24TV': [9.70, 106.30],   // Trà Vinh
+  'V24VR': [12.90, 109.40]   // Vũng Rô
+};
+
+function getCenterByCellName(cellName: string): [number, number] | null {
+  if (!cellName) return null;
+  const cleanName = cellName.toUpperCase().trim();
+  
+  if (CELL_COORDINATES[cleanName]) {
+    return CELL_COORDINATES[cleanName];
+  }
+  
+  const keys = Object.keys(CELL_COORDINATES).sort((a, b) => b.length - a.length);
+  for (const prefix of keys) {
+    if (cleanName.startsWith(prefix) || cleanName.includes(prefix)) {
+      const baseCenter = CELL_COORDINATES[prefix];
+      // Tách phần số cuối cùng của cell name (ví dụ: 'V24DN003' -> 3) để tạo ra độ lệch nhỏ (offset)
+      // Giúp các mảnh hải đồ cùng khu vực không bị xếp đè khít lên nhau và bản đồ có thể di chuyển (flyTo) khi chuyển đổi
+      const numberMatch = cleanName.match(/\d+$/);
+      if (numberMatch) {
+        const num = parseInt(numberMatch[0], 10);
+        const latOffset = ((num % 3) - 1) * 0.05; // lệch vĩ độ
+        const lonOffset = (Math.floor(num / 3) - 1) * 0.05; // lệch kinh độ
+        return [baseCenter[0] + latOffset, baseCenter[1] + lonOffset];
+      }
+      return baseCenter;
+    }
+  }
+  
+  let hash = 0;
+  for (let i = 0; i < cleanName.length; i++) {
+    hash = cleanName.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const lat = 10.0 + (Math.abs(hash) % 100) * 0.1;
+  const lon = 105.0 + (Math.abs(hash >> 8) % 40) * 0.1;
+  return [lat, lon];
+}
+
 export default function GISChartView() {
   const [loading, setLoading] = useState(false);
   const [cells, setCells] = useState<ChartCell[]>([]);
@@ -65,14 +136,25 @@ export default function GISChartView() {
       return;
     }
 
+    let script = document.querySelector('script[src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"]') as HTMLScriptElement;
+    if (script) {
+      const handleLoad = () => setLeafletLoaded(true);
+      script.addEventListener('load', handleLoad);
+      return () => {
+        script.removeEventListener('load', handleLoad);
+      };
+    }
+
     // Load Leaflet CSS
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    document.head.appendChild(link);
+    if (!document.querySelector('link[href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
 
     // Load Leaflet JS
-    const script = document.createElement('script');
+    script = document.createElement('script');
     script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
     script.async = true;
     script.onload = () => {
@@ -80,9 +162,7 @@ export default function GISChartView() {
     };
     document.body.appendChild(script);
 
-    return () => {
-      // Clean up script tags if needed
-    };
+    return () => {};
   }, []);
 
   // 2. Fetch Chart Cells
@@ -110,15 +190,16 @@ export default function GISChartView() {
     if (!leafletLoaded || !mapContainerRef.current || mapRef.current) return;
 
     const L = window.L;
-    // Create map centered on Hai Phong / East Sea area
-    const map = L.map(mapContainerRef.current).setView([20.6669, 106.8123], 11);
+    // Create map centered on Vietnam (incorporating East Sea / Sovereignty area)
+    const map = L.map(mapContainerRef.current).setView([16.0, 108.0], 6);
     mapRef.current = map;
 
-    // Standard tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      attribution: '© OpenStreetMap contributors',
+    // Use Google Maps tile layer with Vietnamese localization (hl=vi, gl=vn)
+    L.tileLayer('https://mt1.google.com/vt/lyrs=m&hl=vi&gl=vn&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      attribution: '© Google Maps',
     }).addTo(map);
+
 
     // Feature group for vector charts
     geoJsonGroupRef.current = L.featureGroup().addTo(map);
@@ -136,8 +217,62 @@ export default function GISChartView() {
     const L = window.L;
     if (!L || !mapRef.current || !geoJsonGroupRef.current) return;
 
+    // Ensure map size is updated before drawing/projecting
+    mapRef.current.invalidateSize();
+
     // Clear previous vector layers
     geoJsonGroupRef.current.clearLayers();
+
+    // Render the chart cell marker using a map/chart folded icon
+    const activeCell = cells.find((c) => c.id === selectedCellId);
+    if (activeCell) {
+      const center = (activeCell.latitude !== undefined && activeCell.latitude !== null &&
+                     activeCell.longitude !== undefined && activeCell.longitude !== null)
+        ? [activeCell.latitude, activeCell.longitude] as [number, number]
+        : getCenterByCellName(activeCell.cellName);
+      if (center) {
+        const scaleVal = activeCell.scale || 25000;
+        const chartIcon = L.divIcon({
+          html: `
+            <div style="
+              background-color: #1890ff; 
+              color: white; 
+              border: 2px solid white; 
+              border-radius: 50%; 
+              width: 32px; 
+              height: 32px; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center; 
+              box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            ">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+                <line x1="9" y1="3" x2="9" y2="18"/>
+                <line x1="15" y1="6" x2="15" y2="21"/>
+              </svg>
+            </div>
+          `,
+          className: 'custom-chart-marker',
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+          popupAnchor: [0, -16],
+        });
+
+        const markerLayer = L.marker(center, { icon: chartIcon });
+        markerLayer.bindPopup(`
+          <div style="font-family: sans-serif; font-size: 12px; min-width: 180px;">
+            <strong style="color: #1890ff; font-size: 13px;">Hải đồ: ${activeCell.cellName}</strong><br/>
+            <hr style="margin: 6px 0; border: none; border-top: 1px solid #eee;" />
+            <strong>Nhà sản xuất:</strong> ${activeCell.producer || 'VMS-N'}<br/>
+            <strong>Tỷ lệ:</strong> 1:${scaleVal}<br/>
+            <strong>Tọa độ tâm:</strong> ${center[0].toFixed(4)}°, ${center[1].toFixed(4)}°<br/>
+            <strong>Trạng thái:</strong> <span style="color: green; font-weight: bold;">Hoạt động</span>
+          </div>
+        `);
+        geoJsonGroupRef.current.addLayer(markerLayer);
+      }
+    }
 
     if (features.length === 0) return;
 
@@ -242,9 +377,31 @@ export default function GISChartView() {
     })();
   }, [selectedCellId, palette]);
 
+  // Center and zoom map on cell selection with smooth panning/flying instead of instant jump
   useEffect(() => {
-    if (leafletLoaded && features.length > 0) {
-      renderChartFeatures();
+    if (!leafletLoaded || !mapRef.current || !selectedCellId || cells.length === 0) return;
+
+    const activeCell = cells.find((c) => c.id === selectedCellId);
+    if (activeCell) {
+      const center = (activeCell.latitude !== undefined && activeCell.latitude !== null &&
+                     activeCell.longitude !== undefined && activeCell.longitude !== null)
+        ? [activeCell.latitude, activeCell.longitude] as [number, number]
+        : getCenterByCellName(activeCell.cellName);
+      if (center) {
+        mapRef.current.flyTo(center, 12, {
+          animate: true,
+          duration: 1.5, // 1.5 seconds smooth gliding transition
+        });
+      }
+    }
+  }, [selectedCellId, cells, leafletLoaded]);
+
+  useEffect(() => {
+    if (leafletLoaded && mapRef.current) {
+      const timer = setTimeout(() => {
+        renderChartFeatures();
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [leafletLoaded, features, renderChartFeatures]);
 
@@ -358,7 +515,7 @@ export default function GISChartView() {
                 <Button size="small" icon={<ReloadOutlined />} onClick={fetchCells} />
               </Space>
             }
-            bodyStyle={{ padding: 0 }}
+            styles={{ body: { padding: 0 } }}
           >
             {/* The Map Div */}
             <div
@@ -384,7 +541,7 @@ export default function GISChartView() {
                 key: '1',
                 label: 'Hải đồ & Lớp',
                 children: (
-                  <Card bordered={false}>
+                  <Card variant="borderless">
                     <Form layout="vertical">
                       <Form.Item label="Chọn Hải đồ hoạt động">
                         <Select
@@ -420,7 +577,7 @@ export default function GISChartView() {
                 key: '2',
                 label: 'Hiệu chỉnh tọa độ',
                 children: (
-                  <Card bordered={false}>
+                  <Card variant="borderless">
                     <Form form={calibrationForm} layout="vertical" onFinish={handleCalibrate} initialValues={{ systemType: 'VN2000', dx: 0, dy: 0 }}>
                       <Form.Item name="systemType" label="Hệ tọa độ nguồn" rules={[{ required: true }]}>
                         <Radio.Group style={{ width: '100%' }}>
@@ -509,7 +666,7 @@ export default function GISChartView() {
                 key: '3',
                 label: 'Nhập hải đồ',
                 children: (
-                  <Card bordered={false}>
+                  <Card variant="borderless">
                     <Space direction="vertical" style={{ width: '100%' }} size="middle">
                       <Card size="small" title="Nhập hải đồ thường (S-57)" style={{ width: '100%' }}>
                         <Typography.Paragraph type="secondary" style={{ fontSize: '13px' }}>

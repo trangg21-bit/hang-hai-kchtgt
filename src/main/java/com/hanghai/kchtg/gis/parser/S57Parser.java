@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @Component
 public class S57Parser {
@@ -118,41 +119,6 @@ public class S57Parser {
     }
 
     private void generateSampleFeatures(ParsedCellData cellData) {
-        // Generate realistic S-57 objects (Points, Lines, Polygons)
-        // POINT: Special Purpose Buoy (BOYSPP)
-        cellData.features.add(ChartFeature.builder()
-                .featureName("Phao báo hiệu số 1")
-                .featureCode("BOYSPP")
-                .geometryType(ChartFeature.GeometryType.POINT)
-                .coordinates("POINT(106.6297 10.7769)")
-                .attributesJson("{\"COLOUR\":\"[3,4]\",\"CATSPM\":\"1\",\"VALSOU\":\"12.5\"}")
-                .build());
-
-        // POINT: Lighthouse (LIGHTS)
-        cellData.features.add(ChartFeature.builder()
-                .featureName("Hải đăng Hòn Dấu")
-                .featureCode("LIGHTS")
-                .geometryType(ChartFeature.GeometryType.POINT)
-                .coordinates("POINT(106.8123 20.6669)")
-                .attributesJson("{\"COLOUR\":\"[1]\",\"LITCHR\":\"1\",\"VALSOU\":\"40.0\"}")
-                .build());
-
-        // LINE: Depth Contour (DEPCNT)
-        cellData.features.add(ChartFeature.builder()
-                .featureName("Đường đẳng sâu 10m")
-                .featureCode("DEPCNT")
-                .geometryType(ChartFeature.GeometryType.LINE)
-                .coordinates("LINESTRING(106.6200 10.7700, 106.6300 10.7800, 106.6400 10.7900)")
-                .attributesJson("{\"VALDCO\":\"10.0\"}")
-                .build());
-
-        // POLYGON: Anchorage Area (ACHARE)
-        cellData.features.add(ChartFeature.builder()
-                .featureName("Khu neo đậu Hải Phòng")
-                .featureCode("ACHARE")
-                .geometryType(ChartFeature.GeometryType.POLYGON)
-                .coordinates("POLYGON((106.8000 20.6500, 106.8200 20.6500, 106.8200 20.6700, 106.8000 20.6700, 106.8000 20.6500))")
-                .attributesJson("{\"RESTRN\":\"[1]\",\"STATUS\":\"1\"}")
-                .build());
+        // Temporarily disabled mock features generation
     }
 }
