@@ -53,6 +53,11 @@ public class ChartIntegrationService {
         cell.setIsEncrypted(false);
         cell.setStatus(ChartCell.Status.ACTIVE);
 
+        // Resolve and save coordinates
+        double[] coords = calculateCenterCoordinate(parsedData.cellName);
+        cell.setLatitude(coords[0]);
+        cell.setLongitude(coords[1]);
+
         ChartCell savedCell = cellRepository.save(cell);
 
         // Delete old features if updating existing cell
@@ -99,6 +104,11 @@ public class ChartIntegrationService {
         cell.setReleaseDate(parsedData.releaseDate);
         cell.setIsEncrypted(true);
         cell.setStatus(ChartCell.Status.ACTIVE);
+
+        // Resolve and save coordinates
+        double[] coords = calculateCenterCoordinate(parsedData.cellName);
+        cell.setLatitude(coords[0]);
+        cell.setLongitude(coords[1]);
 
         ChartCell savedCell = cellRepository.save(cell);
 
@@ -215,5 +225,88 @@ public class ChartIntegrationService {
         layer.setStatus(MapLayer.Status.ACTIVE);
 
         mapLayerRepository.save(layer);
+    }
+
+    private static final Map<String, double[]> CELL_COORDINATES = new HashMap<>();
+    static {
+        CELL_COORDINATES.put("HP", new double[]{20.80, 106.70});     // Hải Phòng
+        CELL_COORDINATES.put("HG", new double[]{20.95, 107.15});     // Hạ Long
+        CELL_COORDINATES.put("HL", new double[]{17.90, 106.40});     // Hòn La
+        CELL_COORDINATES.put("HTH", new double[]{10.00, 104.00});    // Hòn Thơm
+        CELL_COORDINATES.put("DNA", new double[]{16.10, 108.20});    // Đà Nẵng
+        CELL_COORDINATES.put("DQ", new double[]{15.40, 108.80});     // Dung Quất
+        CELL_COORDINATES.put("KHA", new double[]{12.20, 109.20});    // Khánh Hòa
+        CELL_COORDINATES.put("CLO", new double[]{18.80, 105.70});    // Cửa Lò
+        CELL_COORDINATES.put("CM", new double[]{9.20, 104.90});      // Cà Mau
+        CELL_COORDINATES.put("CVI", new double[]{16.90, 107.20});    // Cửa Việt
+        CELL_COORDINATES.put("CGI", new double[]{17.70, 106.50});    // Cửa Gianh
+        CELL_COORDINATES.put("CHO", new double[]{18.70, 105.80});    // Cửa Hội
+        CELL_COORDINATES.put("DDI", new double[]{20.50, 106.60});    // Diêm Điền
+        CELL_COORDINATES.put("LM", new double[]{16.10, 108.15});     // Liên Chiểu
+        CELL_COORDINATES.put("NGS", new double[]{19.30, 105.80});    // Nghi Sơn
+        CELL_COORDINATES.put("SKY", new double[]{21.00, 106.40});    // Sông Kinh Thầy
+        CELL_COORDINATES.put("THA", new double[]{16.55, 107.65});    // Thuận An
+        CELL_COORDINATES.put("VA", new double[]{18.10, 106.30});     // Vũng Áng
+        CELL_COORDINATES.put("VG", new double[]{10.40, 107.10});     // Vũng Tàu / Gành Rái
+        CELL_COORDINATES.put("V24CD", new double[]{8.70, 106.60});   // Côn Đảo
+        CELL_COORDINATES.put("V24DM", new double[]{20.50, 106.60});  // Diêm Điền
+        CELL_COORDINATES.put("V24DN", new double[]{16.10, 108.20});  // Đà Nẵng
+        CELL_COORDINATES.put("V24GG", new double[]{9.20, 105.40});   // Gành Hào
+        CELL_COORDINATES.put("V24HT", new double[]{10.40, 104.50});  // Hà Tiên
+        CELL_COORDINATES.put("V24NC", new double[]{19.30, 105.80});  // Nghi Sơn
+        CELL_COORDINATES.put("V24NT", new double[]{12.20, 109.20});  // Nha Trang
+        CELL_COORDINATES.put("V24QN", new double[]{13.70, 109.25});  // Quy Nhơn
+        CELL_COORDINATES.put("V24SD", new double[]{9.00, 104.80});   // Sông Đốc
+        CELL_COORDINATES.put("V24SG", new double[]{10.70, 106.70});  // Sài Gòn
+        CELL_COORDINATES.put("V24SH", new double[]{9.50, 106.30});   // Sông Hậu
+        CELL_COORDINATES.put("V24SR", new double[]{20.90, 106.80});  // Sông Rút
+        CELL_COORDINATES.put("V24ST", new double[]{9.60, 106.00});   // Sóc Trăng
+        CELL_COORDINATES.put("V24TV", new double[]{9.70, 106.30});   // Trà Vinh
+        CELL_COORDINATES.put("V24VR", new double[]{12.90, 109.40});  // Vũng Rô
+    }
+
+    private double[] calculateCenterCoordinate(String cellName) {
+        if (cellName == null || cellName.trim().isEmpty()) {
+            return new double[]{16.0, 108.0}; // Fallback: Vietnam center
+        }
+        String cleanName = cellName.toUpperCase().trim();
+
+        // Direct exact match
+        if (CELL_COORDINATES.containsKey(cleanName)) {
+            return CELL_COORDINATES.get(cleanName);
+        }
+
+        // Prefix match (longest prefix first)
+        List<String> keys = new ArrayList<>(CELL_COORDINATES.keySet());
+        keys.sort((a, b) -> b.length() - a.length());
+        for (String prefix : keys) {
+            if (cleanName.startsWith(prefix) || cleanName.contains(prefix)) {
+                double[] baseCenter = CELL_COORDINATES.get(prefix);
+                
+                // Add the trailing digit offset exactly like the frontend
+                java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\d+$");
+                java.util.regex.Matcher matcher = pattern.matcher(cleanName);
+                if (matcher.find()) {
+                    try {
+                        int num = Integer.parseInt(matcher.group());
+                        double latOffset = ((num % 3) - 1) * 0.05;
+                        double lonOffset = ((num / 3) - 1) * 0.05;
+                        return new double[]{baseCenter[0] + latOffset, baseCenter[1] + lonOffset};
+                    } catch (NumberFormatException e) {
+                        // ignore
+                    }
+                }
+                return baseCenter.clone();
+            }
+        }
+
+        // Fallback hash logic
+        int hash = 0;
+        for (int i = 0; i < cleanName.length(); i++) {
+            hash = cleanName.charAt(i) + ((hash << 5) - hash);
+        }
+        double lat = 10.0 + (Math.abs(hash) % 100) * 0.1;
+        double lon = 105.0 + (Math.abs(hash >> 8) % 40) * 0.1;
+        return new double[]{lat, lon};
     }
 }

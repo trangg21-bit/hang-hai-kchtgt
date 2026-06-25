@@ -10,6 +10,8 @@ export interface ChartCell {
   releaseDate?: string;
   isEncrypted: boolean;
   status: 'ACTIVE' | 'INACTIVE';
+  latitude?: number;
+  longitude?: number;
   createdAt: string;
   updatedAt: string;
 }
