@@ -268,8 +268,7 @@ export default function AppLayout() {
           placement="left"
           open={mobileDrawerOpen}
           onClose={() => setMobileDrawerOpen(false)}
-          width={260}
-          styles={{ body: { padding: 0 } }}
+          styles={{ body: { padding: 0 }, wrapper: { width: 260 } }}
         >
           {sidebarContent}
         </Drawer>
