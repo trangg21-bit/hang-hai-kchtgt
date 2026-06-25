@@ -79,10 +79,10 @@
       "version": 8
     },
     "docs/modules/M-011-nhat-ky-backup/module-brief.md": {
-      "content_hash": "sha256:15721b5242268291cf4386dcccb6a1983106dcaca54728558316e91e901fa851",
-      "last_modified": "2026-06-16T05:21:20Z",
+      "content_hash": "sha256:94c4930e34085e831faf6c49ec8b749ce2d2625f6daf6e9730abfbac070e55f3",
+      "last_modified": "2026-06-25T01:23:25Z",
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
-      "version": 3
+      "version": 5
     },
     "docs/modules/M-012-hai-do-gis-integration/module-brief.md": {
       "content_hash": "sha256:205810b854d428abc902b64ea34299e786b0a683d14203c79ed2ae9e5ea54680",
