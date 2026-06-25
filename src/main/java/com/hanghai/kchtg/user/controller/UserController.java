@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.user.controller;
 
+import com.hanghai.kchtg.accesslog.annotation.AuditLog;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.user.dto.ChangeStatusRequest;
 import com.hanghai.kchtg.user.dto.CreateUserRequest;
@@ -65,6 +66,7 @@ public class UserController {
      * Tạo mới người dùng.
      */
     @PostMapping
+    @AuditLog(module = "USER", action = "CREATE_USER")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> create(@Valid @RequestBody CreateUserRequest request) {
         UserResponse user = UserResponse.from(userService.create(request));
@@ -75,6 +77,7 @@ public class UserController {
      * Cập nhật thông tin người dùng.
      */
     @PutMapping("/{id}")
+    @AuditLog(module = "USER", action = "UPDATE_USER")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> update(
             @PathVariable UUID id,
@@ -87,6 +90,7 @@ public class UserController {
      * Xóa người dùng.
      */
     @DeleteMapping("/{id}")
+    @AuditLog(module = "USER", action = "DELETE_USER")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         userService.delete(id);
@@ -97,6 +101,7 @@ public class UserController {
      * Thay đổi trạng thái tài khoản người dùng.
      */
     @PatchMapping("/{id}/status")
+    @AuditLog(module = "USER", action = "CHANGE_USER_STATUS")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<UserResponse>> changeStatus(
             @PathVariable UUID id,

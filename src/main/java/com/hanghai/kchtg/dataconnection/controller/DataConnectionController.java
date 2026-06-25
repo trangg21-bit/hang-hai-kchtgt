@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.dataconnection.controller;
 
+import com.hanghai.kchtg.accesslog.annotation.AuditLog;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.dataconnection.dto.ConnectionResponse;
 import com.hanghai.kchtg.dataconnection.dto.CreateConnectionRequest;
@@ -54,6 +55,7 @@ public class DataConnectionController {
     }
 
     @PostMapping
+    @AuditLog(module = "CONNECTION", action = "CREATE_CONNECTION")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<ConnectionResponse>> create(
             @Valid @RequestBody CreateConnectionRequest request) {
@@ -64,6 +66,7 @@ public class DataConnectionController {
     }
 
     @PutMapping("/{id}")
+    @AuditLog(module = "CONNECTION", action = "UPDATE_CONNECTION")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<ConnectionResponse>> update(
             @PathVariable UUID id,
@@ -73,6 +76,7 @@ public class DataConnectionController {
     }
 
     @DeleteMapping("/{id}")
+    @AuditLog(module = "CONNECTION", action = "DELETE_CONNECTION")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         service.delete(id);
@@ -84,6 +88,7 @@ public class DataConnectionController {
     // ── Health Check ──────────────────────────────────────────────────
 
     @PostMapping("/{id}/health")
+    @AuditLog(module = "CONNECTION", action = "RUN_HEALTH_CHECK")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<ConnectionHealth>> runHealthCheck(@PathVariable UUID id) {
         ConnectionHealth health = service.healthCheck(id);
@@ -131,6 +136,7 @@ public class DataConnectionController {
     // ── Test Connection (Sanity check) ────────────────────────────────
 
     @PostMapping("/{id}/test")
+    @AuditLog(module = "CONNECTION", action = "TEST_CONNECTION")
     @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<TestConnectionResponse>> testConnection(
             @PathVariable UUID id,

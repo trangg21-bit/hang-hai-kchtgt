@@ -6,10 +6,67 @@ slug: nhat-ky-backup
 # Map logical module → physical implementations across apps/services/libs.
 # Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
 implementations:
-  apps: []
+  apps:
+    - path: "src/main/java/com/hanghai/kchtg"
+      type: spring-boot-app
+      description: "Main application containing M-011 audit & backup bounded context"
   services: []
   libs: []
-  packages: []
+  packages:
+    - name: "accesslog"
+      path: "src/main/java/com/hanghai/kchtg/accesslog"
+      files:
+        - "controller/AccessLogController.java"
+        - "controller/LogExportController.java"
+        - "service/AccessLogService.java"
+        - "service/LogService.java"
+        - "repository/AccessLogRepository.java"
+        - "entity/AccessLog.java"
+        - "entity/AccessLogStatus.java"
+        - "dto/AccessLogResponse.java"
+        - "dto/AccessLogFilterRequest.java"
+      description: "Access log management & search (F-278, F-279)"
+      status: implemented
+    - name: "backup"
+      path: "src/main/java/com/hanghai/kchtg/backup"
+      files:
+        - "controller/BackupController.java"
+        - "service/BackupService.java"
+        - "repository/DatabaseBackupRepository.java"
+        - "entity/DatabaseBackup.java"
+        - "dto/BackupResponse.java"
+      description: "Database backup & restore (F-280, F-281)"
+      status: implemented
+    - name: "siem"
+      path: "src/main/java/com/hanghai/kchtg/siem"
+      files:
+        - "controller/SiemController.java"
+        - "service/SiemService.java"
+        - "dto/SiemMetricsResponse.java"
+      description: "SIEM monitoring & reporting (F-282, F-283)"
+      status: implemented
+    - name: "accesslog-tests"
+      path: "src/test/java/com/hanghai/kchtg/accesslog"
+      files:
+        - "controller/AccessLogControllerTest.java"
+        - "controller/LogExportControllerTest.java"
+        - "service/AccessLogServiceTest.java"
+        - "service/LogServiceTest.java"
+        - "interceptor/AccessLogInterceptorTest.java"
+      description: "Unit tests for access log module"
+      status: implemented
+    - name: "backup-tests"
+      path: "src/test/java/com/hanghai/kchtg/backup"
+      files:
+        - "service/BackupServiceTest.java"
+      description: "Unit tests for backup module"
+      status: implemented
+    - name: "siem-tests"
+      path: "src/test/java/com/hanghai/kchtg/siem"
+      files:
+        - "service/SiemServiceTest.java"
+      description: "Unit tests for SIEM module"
+      status: implemented
 
 # Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
 stakeholders:

@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.user.controller;
 
+import com.hanghai.kchtg.accesslog.annotation.AuditLog;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.user.dto.LoginRequest;
@@ -66,6 +67,7 @@ public class AuthController {
      * @return MfaChallengeResponse or LoginResponse depending on TOTP status
      */
     @PostMapping("/login")
+    @AuditLog(module = "AUTH", action = "LOGIN")
     public ResponseEntity<ApiResponse<?>> login(@Valid @RequestBody LoginRequest request,
                                                 HttpServletRequest httpRequest) {
         try {
@@ -113,6 +115,7 @@ public class AuthController {
      * @return TwoFactorLoginResponse with access_token + refresh_token
      */
     @PostMapping("/login/totp")
+    @AuditLog(module = "AUTH", action = "LOGIN_TOTP")
     public ResponseEntity<ApiResponse<TwoFactorLoginResponse>> loginTotp(
             @Valid @RequestBody TotpLoginRequest request,
             HttpServletRequest httpRequest) {
