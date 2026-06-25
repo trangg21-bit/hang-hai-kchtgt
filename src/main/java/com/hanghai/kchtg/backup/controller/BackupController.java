@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.backup.controller;
 
+import com.hanghai.kchtg.accesslog.annotation.AuditLog;
 import com.hanghai.kchtg.backup.dto.BackupResponse;
 import com.hanghai.kchtg.backup.entity.DatabaseBackup;
 import com.hanghai.kchtg.backup.service.BackupService;
@@ -27,6 +28,7 @@ public class BackupController {
      * POST /api/backups - manually trigger a database backup.
      */
     @PostMapping
+    @AuditLog(module = "BACKUP", action = "CREATE_BACKUP")
     public ResponseEntity<ApiResponse<BackupResponse>> createBackup() {
         DatabaseBackup backup = backupService.performBackup(DatabaseBackup.BackupType.MANUAL);
         BackupResponse response = new BackupResponse(backup);
@@ -52,6 +54,7 @@ public class BackupController {
      * POST /api/backups/{id}/restore - restore database from a backup.
      */
     @PostMapping("/{id}/restore")
+    @AuditLog(module = "BACKUP", action = "RESTORE_BACKUP")
     public ResponseEntity<ApiResponse<String>> restore(@PathVariable UUID id) {
         try {
             backupService.restoreBackup(id);

@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.report.controller;
 
+import com.hanghai.kchtg.accesslog.annotation.AuditLog;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.report.dto.ReportRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
@@ -19,12 +20,14 @@ public class ReportController {
     private final ReportService reportService;
 
     @PostMapping("/preview")
+    @AuditLog(module = "REPORT", action = "PREVIEW_REPORT")
     public ResponseEntity<ApiResponse<ReportResponse>> getReportPreview(@Valid @RequestBody ReportRequest request) {
         ReportResponse preview = reportService.generateReportPreview(request);
         return ResponseEntity.ok(ApiResponse.success(preview));
     }
 
     @PostMapping("/export")
+    @AuditLog(module = "REPORT", action = "EXPORT_REPORT")
     public ResponseEntity<byte[]> exportReport(@Valid @RequestBody ReportRequest request) {
         byte[] data = reportService.exportReport(request);
         
