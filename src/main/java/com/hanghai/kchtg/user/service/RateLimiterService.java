@@ -22,8 +22,8 @@ public class RateLimiterService {
 
     private static final Logger log = LoggerFactory.getLogger(RateLimiterService.class);
     private static final String KEY_PREFIX = "lockout:attempts:";
-    
-    private final StringRedisTemplate redisTemplate;
+
+    private StringRedisTemplate redisTemplate;
     private final int maxAttempts;
     private final int windowMinutes;
 
@@ -45,35 +45,26 @@ public class RateLimiterService {
 
     /**
      * Check if the given identifier has exceeded the rate limit.
-     *
-     * @throws RateLimitExceededException if the limit is exceeded
      */
     public void checkLimit(String identifier) {
-        if (redisTemplate != null) {
+        if (redisTemplate == null) {
+            useInMemory(identifier, true);
+            return;
+        }
+        try {
             String key = KEY_PREFIX + identifier;
             Object value = redisTemplate.opsForValue().get(key);
-            int current = value != null ? Integer.parseInt(value.toString()) : 0;
+            int current = (value != null && !value.toString().isEmpty()) ? Integer.parseInt(value.toString()) : 0;
             if (current >= maxAttempts) {
                 Long expire = redisTemplate.getExpire(key, TimeUnit.SECONDS);
                 long retryAfter = (expire != null && expire > 0) ? expire : (windowMinutes * 60L);
                 throw new RateLimitExceededException("Rate limit exceeded for " + identifier, retryAfter);
             }
             increment(identifier);
-        } else {
-            Instant now = Instant.now();
-            List<Instant> attempts = inMemoryAttempts.computeIfAbsent(identifier, k -> new ArrayList<>());
-            synchronized (attempts) {
-                attempts.removeIf(t -> t.isBefore(now.minusSeconds(windowMinutes * 60L)));
-                if (attempts.size() >= maxAttempts) {
-                    long retryAfter = 60L;
-                    if (!attempts.isEmpty()) {
-                        long elapsed = now.getEpochSecond() - attempts.get(0).getEpochSecond();
-                        retryAfter = Math.max(1, (windowMinutes * 60L) - elapsed);
-                    }
-                    throw new RateLimitExceededException("Rate limit exceeded for " + identifier, retryAfter);
-                }
-                attempts.add(now);
-            }
+        } catch (Exception e) {
+            log.debug("Redis not available (NoOp proxy), using in-memory rate limiter");
+            redisTemplate = null;
+            useInMemory(identifier, true);
         }
     }
 
@@ -81,18 +72,17 @@ public class RateLimiterService {
      * Count recent attempts for an identifier within the window.
      */
     public int countAttempts(String identifier) {
-        if (redisTemplate != null) {
+        if (redisTemplate == null) {
+            return useInMemoryCount(identifier);
+        }
+        try {
             String key = KEY_PREFIX + identifier;
             Object value = redisTemplate.opsForValue().get(key);
-            return value != null ? Integer.parseInt(value.toString()) : 0;
-        } else {
-            Instant now = Instant.now();
-            List<Instant> attempts = inMemoryAttempts.get(identifier);
-            if (attempts == null) return 0;
-            synchronized (attempts) {
-                attempts.removeIf(t -> t.isBefore(now.minusSeconds(windowMinutes * 60L)));
-                return attempts.size();
-            }
+            return (value != null && !value.toString().isEmpty()) ? Integer.parseInt(value.toString()) : 0;
+        } catch (Exception e) {
+            log.debug("Redis not available for count, using in-memory");
+            redisTemplate = null;
+            return useInMemoryCount(identifier);
         }
     }
 
@@ -100,17 +90,18 @@ public class RateLimiterService {
      * Increment the attempt counter for an identifier.
      */
     public void increment(String identifier) {
-        if (redisTemplate != null) {
+        if (redisTemplate == null) {
+            useInMemory(identifier, false);
+            return;
+        }
+        try {
             String key = KEY_PREFIX + identifier;
             redisTemplate.opsForValue().increment(key);
             redisTemplate.expire(key, windowMinutes, TimeUnit.MINUTES);
-        } else {
-            Instant now = Instant.now();
-            List<Instant> attempts = inMemoryAttempts.computeIfAbsent(identifier, k -> new ArrayList<>());
-            synchronized (attempts) {
-                attempts.removeIf(t -> t.isBefore(now.minusSeconds(windowMinutes * 60L)));
-                attempts.add(now);
-            }
+        } catch (Exception e) {
+            log.debug("Redis not available for increment, using in-memory fallback");
+            redisTemplate = null;
+            useInMemory(identifier, false);
         }
     }
 
@@ -118,10 +109,16 @@ public class RateLimiterService {
      * Reset the attempt counter for an identifier.
      */
     public void reset(String identifier) {
-        if (redisTemplate != null) {
+        if (redisTemplate == null) {
+            inMemoryAttempts.remove(identifier);
+            return;
+        }
+        try {
             String key = KEY_PREFIX + identifier;
             redisTemplate.delete(key);
-        } else {
+        } catch (Exception e) {
+            log.debug("Redis not available for reset, using in-memory");
+            redisTemplate = null;
             inMemoryAttempts.remove(identifier);
         }
     }
@@ -142,20 +139,62 @@ public class RateLimiterService {
      * Get retry after seconds for an identifier.
      */
     public long getRetryAfterSeconds(String identifier) {
-        if (redisTemplate != null) {
+        if (redisTemplate == null) {
+            return useInMemoryRetryAfter(identifier);
+        }
+        try {
             String key = KEY_PREFIX + identifier;
             Long expire = redisTemplate.getExpire(key, TimeUnit.SECONDS);
             return (expire != null && expire > 0) ? expire : 0L;
-        } else {
-            Instant now = Instant.now();
-            List<Instant> attempts = inMemoryAttempts.get(identifier);
-            if (attempts == null || attempts.size() < maxAttempts) return 0L;
-            synchronized (attempts) {
-                attempts.removeIf(t -> t.isBefore(now.minusSeconds(windowMinutes * 60L)));
-                if (attempts.size() < maxAttempts) return 0L;
-                long elapsed = now.getEpochSecond() - attempts.get(0).getEpochSecond();
-                return Math.max(1, (windowMinutes * 60L) - elapsed);
+        } catch (Exception e) {
+            log.debug("Redis not available, using in-memory");
+            redisTemplate = null;
+            return useInMemoryRetryAfter(identifier);
+        }
+    }
+
+    /**
+     * In-memory rate limiter fallback.
+     * @param increment if true, add an attempt to the list
+     */
+    private void useInMemory(String identifier, boolean increment) {
+        Instant now = Instant.now();
+        List<Instant> attempts = inMemoryAttempts.computeIfAbsent(identifier, k -> new ArrayList<>());
+        synchronized (attempts) {
+            attempts.removeIf(t -> t.isBefore(now.minusSeconds(windowMinutes * 60L)));
+            if (increment) {
+                if (attempts.size() >= maxAttempts) {
+                    long retryAfter = 60L;
+                    if (!attempts.isEmpty()) {
+                        long elapsed = now.getEpochSecond() - attempts.get(0).getEpochSecond();
+                        retryAfter = Math.max(1, (windowMinutes * 60L) - elapsed);
+                    }
+                    throw new RateLimitExceededException("Rate limit exceeded for " + identifier, retryAfter);
+                }
+                attempts.add(now);
             }
+        }
+    }
+
+    private int useInMemoryCount(String identifier) {
+        Instant now = Instant.now();
+        List<Instant> attempts = inMemoryAttempts.get(identifier);
+        if (attempts == null) return 0;
+        synchronized (attempts) {
+            attempts.removeIf(t -> t.isBefore(now.minusSeconds(windowMinutes * 60L)));
+            return attempts.size();
+        }
+    }
+
+    private long useInMemoryRetryAfter(String identifier) {
+        Instant now = Instant.now();
+        List<Instant> attempts = inMemoryAttempts.get(identifier);
+        if (attempts == null || attempts.size() < maxAttempts) return 0L;
+        synchronized (attempts) {
+            attempts.removeIf(t -> t.isBefore(now.minusSeconds(windowMinutes * 60L)));
+            if (attempts.size() < maxAttempts) return 0L;
+            long elapsed = now.getEpochSecond() - attempts.get(0).getEpochSecond();
+            return Math.max(1, (windowMinutes * 60L) - elapsed);
         }
     }
 }

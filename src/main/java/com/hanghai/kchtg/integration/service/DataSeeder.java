@@ -21,7 +21,7 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Component("integrationDataSeeder")
-@Profile("dev")
+@Profile("local")
 public class DataSeeder implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);

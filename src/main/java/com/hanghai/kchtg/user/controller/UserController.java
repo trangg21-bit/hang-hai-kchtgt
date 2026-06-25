@@ -6,6 +6,7 @@ import com.hanghai.kchtg.user.dto.ChangeStatusRequest;
 import com.hanghai.kchtg.user.dto.CreateUserRequest;
 import com.hanghai.kchtg.user.dto.UpdateUserRequest;
 import com.hanghai.kchtg.user.dto.UserResponse;
+import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -108,5 +109,27 @@ public class UserController {
             @Valid @RequestBody ChangeStatusRequest request) {
         UserResponse user = UserResponse.from(userService.changeStatus(id, request.getStatus()));
         return ResponseEntity.ok(ApiResponse.success("Thay đổi trạng thái thành công", user));
+    }
+
+    /**
+     * Khoá tài khoản người dùng.
+     */
+    @PostMapping("/{id}/lock")
+    @AuditLog(module = "USER", action = "LOCK_USER")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    public ResponseEntity<ApiResponse<UserResponse>> lockUser(@PathVariable UUID id) {
+        UserResponse user = UserResponse.from(userService.changeStatus(id, UserStatus.LOCKED));
+        return ResponseEntity.ok(ApiResponse.success("Khóa tài khoản thành công", user));
+    }
+
+    /**
+     * Mở khóa tài khoản người dùng.
+     */
+    @PostMapping("/{id}/unlock")
+    @AuditLog(module = "USER", action = "UNLOCK_USER")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    public ResponseEntity<ApiResponse<UserResponse>> unlockUser(@PathVariable UUID id) {
+        UserResponse user = UserResponse.from(userService.changeStatus(id, UserStatus.ACTIVE));
+        return ResponseEntity.ok(ApiResponse.success("Mở khóa tài khoản thành công", user));
     }
 }

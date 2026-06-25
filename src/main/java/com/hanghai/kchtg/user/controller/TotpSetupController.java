@@ -19,9 +19,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
@@ -64,6 +66,23 @@ public class TotpSetupController {
         this.passwordEncoder = passwordEncoder;
         this.auditLogRepository = auditLogRepository;
         this.rateLimiter = rateLimiter;
+    }
+
+    /**
+     * GET /api/auth/totp/setup - generates a new TOTP secret and returns QR code (first-time setup flow).
+     * Accepts userId as a request parameter. Returns 400 if userId is missing.
+     */
+    @GetMapping("/setup")
+    public ResponseEntity<ApiResponse<TotpSetupResponseDTO>> setupGet(
+            @RequestParam(value = "userId", required = false) String userId) {
+        if (userId == null || userId.isBlank()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("userId is required"));
+        }
+
+        // Delegate to the same setup logic as POST
+        TotpSetupRequestDTO request = new TotpSetupRequestDTO();
+        request.setUserId(userId);
+        return setup(request);
     }
 
     /**

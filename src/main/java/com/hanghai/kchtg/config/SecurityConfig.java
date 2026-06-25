@@ -74,6 +74,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/map-layers/**").permitAll()
                         .requestMatchers("/api/search/**").permitAll()
                         .requestMatchers("/api/v1/integration/share/**").permitAll()
+                        // Registration and TOTP setup must be public so new users can register and first-time users can setup MFA
+                        .requestMatchers("/api/register").permitAll()
+                        .requestMatchers("/api/auth/register/**").permitAll()
+                        .requestMatchers("/api/auth/totp/**").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().authenticated()
                 )

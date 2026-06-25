@@ -30,11 +30,11 @@ import lombok.Setter;
     name = "permissions",
     uniqueConstraints = {
         @UniqueConstraint(name = "uk_permission_code", columnNames = "code"),
-        @UniqueConstraint(name = "uk_permission_feature_action", columnNames = {"feature", "action"})
+        @UniqueConstraint(name = "uk_permission_feature_action", columnNames = {"resource", "action"})
     },
     indexes = {
         @Index(name = "idx_permission_code", columnList = "code"),
-        @Index(name = "idx_permission_feature_action", columnList = "feature,action")
+        @Index(name = "idx_permission_feature_action", columnList = "resource,action")
     }
 )
 @Getter

@@ -39,7 +39,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 @Component
-@Profile("dev")
+@Profile("local")
 @RequiredArgsConstructor
 @Slf4j
 public class DataSeeder implements CommandLineRunner {

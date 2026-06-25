@@ -4,7 +4,7 @@ spring:
 
   # Default profile (dev with H2)
   profiles:
-    active: dev
+    active: local
 
   # JPA / Hibernate
   jpa:
