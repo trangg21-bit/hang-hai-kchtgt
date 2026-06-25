@@ -168,8 +168,8 @@ class PasswordPolicyServiceTest {
         assertFalse(response.isRequireLowercase());
         assertTrue(response.isRequireDigit());
         assertTrue(response.isRequireSpecialChar());
-        assertEquals("2026-06-24T", response.getCreatedAt().substring(0, 11));
-        assertEquals("2026-06-24T", response.getUpdatedAt().substring(0, 11));
+        assertEquals(now.toString().substring(0, 11), response.getCreatedAt().substring(0, 11));
+        assertEquals(now.toString().substring(0, 11), response.getUpdatedAt().substring(0, 11));
     }
 
     @Test
