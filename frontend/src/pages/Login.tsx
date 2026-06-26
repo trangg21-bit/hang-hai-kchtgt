@@ -77,7 +77,7 @@ export default function LoginPage() {
           layout="vertical"
           onFinish={handleSubmit}
           size="large"
-          initialValues={{ username: 'admin', password: 'Admin@123' }}
+          initialValues={{ username: 'admin', password: 'admin123' }}
         >
           <Form.Item
             label="Tài khoản"

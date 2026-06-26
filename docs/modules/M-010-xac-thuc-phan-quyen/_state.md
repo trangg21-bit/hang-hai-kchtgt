@@ -1,8 +1,4 @@
 ---
-current-stage: completed
-last-updated: 2026-06-24T13:00:00Z
----
-﻿---
 feature-id: M-010
 feature-name: Xác thực & Phân quyền
 pipeline-type: sdlc
@@ -10,8 +6,8 @@ status: done
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
-last-updated: 2026-06-24T13:00:00Z
-current-stage: completed
+last-updated: 2026-06-25T09:19:43Z
+current-stage: closed
 output-mode: lean
 repo-type: mini
 repo-path: .
@@ -83,11 +79,11 @@ MFA TOTP, JWT, ACL 3-mức, Session, mật khẩu, giới hạn đăng nhập
 
 ## Current Stage
 
-**completed** — Module M-010 is fully developed, tested, reviewed, and completed.
+**closed** — Module M-010 has been closed. All features implemented, tested, reviewed.
 
 ## Next Action
 
-Ready for release and handoff. Run deployment tools or notify stakeholders.
+Module is sealed and ready for release.
 
 ## Active Blockers
 
