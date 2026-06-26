@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LogService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.accesslog.service</a> &gt; <span class="el_source">LogService.java</span></div><h1>LogService.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.accesslog.service;
+
+import com.hanghai.kchtg.accesslog.entity.AccessLog;
+import com.hanghai.kchtg.accesslog.entity.AccessLogStatus;
+import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.criteria.Predicate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Value;
+
+import java.io.BufferedWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Service quan ly access logs - bao gom query, xuat CSV, don gan lich su và canh bao khi có loi.
+ * &lt;p&gt;
+ * Ket hop logic từ {@link AccessLogService} (query read-only) và các tinh nang moi:
+ * {@code exportToCsv()}, {@code cleanupOldLogs()}, và {@code alertOnFailures()}.
+ * &lt;/p&gt;
+ */
+@Service
+public class LogService {
+
+<span class="nc" id="L39">    private static final Logger log = LoggerFactory.getLogger(LogService.class);</span>
+
+    private final AccessLogService accessLogService;
+    private final AccessLogRepository repository;
+    private final int retentionDays;
+    private final String exportDir;
+
+    public LogService(AccessLogService accessLogService,
+                      AccessLogRepository repository,
+                      @Value(&quot;${cron.access-log.cleanup:}&quot;) String cleanupSchedule,
+<span class="nc" id="L49">                      @Value(&quot;${export.dir:./logs}&quot;) String exportDir) {</span>
+<span class="nc" id="L50">        this.accessLogService = accessLogService;</span>
+<span class="nc" id="L51">        this.repository = repository;</span>
+<span class="nc" id="L52">        this.retentionDays = 90;</span>
+<span class="nc" id="L53">        this.exportDir = exportDir;</span>
+<span class="nc" id="L54">    }</span>
+
+    /**
+     * Tim mot log entry duy nhat.
+     */
+    public com.hanghai.kchtg.accesslog.dto.AccessLogResponse findById(UUID id) {
+<span class="nc" id="L60">        return accessLogService.findById(id);</span>
+    }
+
+    /**
+     * List logs voi filter + pagination.
+     */
+    public Page&lt;com.hanghai.kchtg.accesslog.dto.AccessLogResponse&gt; findAll(
+            com.hanghai.kchtg.accesslog.dto.AccessLogFilterRequest filter, Pageable pageable) {
+<span class="nc" id="L68">        return accessLogService.findAll(filter, pageable);</span>
+    }
+
+    // =========================================================================
+
+    /**
+     * Xuat access logs thanh file CSV.
+     *
+     * @param filter   bo loc (co the null)
+     * @param pageable pagination
+     * @return duong dan file CSV da duoc tao
+     */
+    @Transactional(readOnly = true)
+    public String exportToCsv(com.hanghai.kchtg.accesslog.dto.AccessLogFilterRequest filter, Pageable pageable) {
+<span class="nc" id="L82">        Page&lt;com.hanghai.kchtg.accesslog.dto.AccessLogResponse&gt; page = findAll(filter, pageable);</span>
+
+<span class="nc" id="L84">        String fileName = &quot;access_logs_&quot; + LocalDate.now() + &quot;.csv&quot;;</span>
+<span class="nc" id="L85">        Path filePath = Path.of(exportDir, fileName);</span>
+
+        try {
+<span class="nc" id="L88">            Files.createDirectories(filePath.getParent());</span>
+<span class="nc" id="L89">            try (BufferedWriter writer = Files.newBufferedWriter(filePath)) {</span>
+                // Header
+<span class="nc" id="L91">                writer.write(&quot;ID,Username,Action,Module,IP Address,User Agent,Status,Detail,CreatedAt\n&quot;);</span>
+
+                // Data rows
+<span class="nc bnc" id="L94" title="All 2 branches missed.">                for (var entry : page.getContent()) {</span>
+<span class="nc" id="L95">                    writer.write(String.format(&quot;\&quot;%s\&quot;,\&quot;%s\&quot;,\&quot;%s\&quot;,\&quot;%s\&quot;,\&quot;%s\&quot;,\&quot;%s\&quot;,\&quot;%s\&quot;,\&quot;%s\&quot;,\&quot;%s\&quot;\n&quot;,</span>
+<span class="nc" id="L96">                            entry.getId(),</span>
+<span class="nc" id="L97">                            entry.getUsername(),</span>
+<span class="nc" id="L98">                            entry.getAction(),</span>
+<span class="nc" id="L99">                            entry.getModule(),</span>
+<span class="nc" id="L100">                            entry.getIpAddress(),</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">                            entry.getUserAgent() != null ? entry.getUserAgent().replace(&quot;\&quot;&quot;, &quot;\&quot;\&quot;&quot;) : &quot;&quot;,</span>
+<span class="nc" id="L102">                            entry.getStatus(),</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">                            entry.getDetail() != null ? entry.getDetail().replace(&quot;\&quot;&quot;, &quot;\&quot;\&quot;&quot;) : &quot;&quot;,</span>
+<span class="nc" id="L104">                            entry.getCreatedAt()));</span>
+<span class="nc" id="L105">                }</span>
+            }
+<span class="nc" id="L107">            log.info(&quot;CSV export completed: {} ({} rows)&quot;, fileName, page.getTotalElements());</span>
+<span class="nc" id="L108">            return filePath.toString();</span>
+<span class="nc" id="L109">        } catch (Exception e) {</span>
+<span class="nc" id="L110">            log.error(&quot;CSV export failed: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L111">            throw new RuntimeException(&quot;Xuat CSV that bai: &quot; + e.getMessage(), e);</span>
+        }
+    }
+
+    // =========================================================================
+
+    /**
+     * Kiem tra và canh bao neu co quá nhieu log FAILED trong khoang thoi gian gan day.
+     */
+    public int alertOnFailures(int threshold) {
+<span class="nc" id="L121">        LocalDateTime window = LocalDateTime.now().minusMinutes(30);</span>
+<span class="nc" id="L122">        long failureCount = repository.countByStatusAndCreatedAtAfter(AccessLogStatus.FAILED, window);</span>
+
+<span class="nc bnc" id="L124" title="All 2 branches missed.">        if (failureCount &gt;= threshold) {</span>
+<span class="nc" id="L125">            log.warn(&quot;ALERT: {} failures detected in the last 30 minutes (threshold: {})&quot;,</span>
+<span class="nc" id="L126">                    failureCount, threshold);</span>
+            // TODO: trigger notification (email, Slack, etc.)
+        }
+
+<span class="nc" id="L130">        return (int) failureCount;</span>
+    }
+
+    /**
+     * Alias voi threshold mac dinh (100 failures/30min).
+     */
+    @Transactional(readOnly = true)
+    public int checkFailureAlerts() {
+<span class="nc" id="L138">        return alertOnFailures(100);</span>
+    }
+
+    // =========================================================================
+
+    /**
+     * Xoa các access logs cu hon retentionDays.
+     * Chay tu dong theo cron schedule (xem {@link com.hanghai.kchtg.common.scheduler.LogCleanupScheduler}).
+     */
+    @Transactional
+    public void cleanupOldLogs() {
+<span class="nc" id="L149">        LocalDateTime threshold = LocalDateTime.now().minusDays(retentionDays);</span>
+<span class="nc" id="L150">        long deleted = repository.deleteByCreatedAtBefore(threshold);</span>
+<span class="nc" id="L151">        log.info(&quot;Cleaned up {} access logs older than {} days&quot;, deleted, retentionDays);</span>
+<span class="nc" id="L152">    }</span>
+
+    // =========================================================================
+
+    /**
+     * Thong ke so luong logs theo status trong ngay.
+     */
+    @Transactional(readOnly = true)
+    public List&lt;Object[]&gt; getDailyStats() {
+<span class="nc" id="L161">        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();</span>
+<span class="nc" id="L162">        LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);</span>
+<span class="nc" id="L163">        return repository.countByStatusGroupedByStatus(startOfDay, endOfDay);</span>
+    }
+
+    /**
+     * Tong so logs trong he thong.
+     */
+    @Transactional(readOnly = true)
+    public long getTotalCount() {
+<span class="nc" id="L171">        return repository.count();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

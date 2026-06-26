@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Permission.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.user.entity</a> &gt; <span class="el_source">Permission.java</span></div><h1>Permission.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.user.entity;
+
+import com.hanghai.kchtg.common.entity.BaseEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+/**
+ * Permission (quyền hạn) trong hệ thống phân quyền 3 mức (RBAC 3-tier).
+ * &lt;p&gt;
+ * Mã permission tuân thủ định dạng {@code {feature}:{operation}}, ví dụ:
+ * {@code manhien:read}, {@code manhien:write}, {@code manhien:approve}.
+ * &lt;/p&gt;
+ *
+ * @see &lt;a href=&quot;https://en.wikipedia.org/wiki/Role-based_access_control&quot;&gt;RBAC&lt;/a&gt;
+ */
+@Entity
+@Table(
+    name = &quot;permissions&quot;,
+    uniqueConstraints = {
+        @UniqueConstraint(name = &quot;uk_permission_code&quot;, columnNames = &quot;code&quot;),
+        @UniqueConstraint(name = &quot;uk_permission_feature_action&quot;, columnNames = {&quot;resource&quot;, &quot;action&quot;})
+    },
+    indexes = {
+        @Index(name = &quot;idx_permission_code&quot;, columnList = &quot;code&quot;),
+        @Index(name = &quot;idx_permission_feature_action&quot;, columnList = &quot;resource,action&quot;)
+    }
+)
+@Getter
+@Setter
+@NoArgsConstructor
+public class Permission extends BaseEntity {
+
+    // =========================================================================
+
+    /** Mã quyền hạn duy nhất, định dạng {@code feature:action}.
+     *  Ví dụ: {@code manhien:read}, {@code baocao:write}, {@code danhmuc:approve}. */
+    @NotBlank(message = &quot;Mã quyền hạn không được để trống&quot;)
+    @Pattern(
+        regexp = &quot;^[a-z][a-z0-9]*:[a-z][a-z0-9]*$&quot;,
+        message = &quot;Mã quyền hạn phải theo định dạng {feature}:{action} (chữ thường, không dấu, ký tự hợp lệ)&quot;
+    )
+    @Size(max = 100, message = &quot;Mã quyền hạn tối đa 100 ký tự&quot;)
+    @Column(nullable = false, unique = true, length = 100)
+    private String code;
+
+    /** Tên hiển thị của quyền hạn (ví dụ: &quot;Xem danh sách mặt hàng&quot;, &quot;Chỉnh sửa báo cáo&quot;). */
+    @NotBlank(message = &quot;Tên quyền hạn không được để trống&quot;)
+    @Size(max = 200, message = &quot;Tên quyền hạn tối đa 200 ký tự&quot;)
+    @Column(nullable = false, length = 200)
+    private String name;
+
+    /** Mô tả chi tiết về quyền hạn này. */
+    @Column(length = 500)
+    private String description;
+
+    /** Nhóm chức năng / module mà quyền này thuộc về.
+     *  Ví dụ: {@code manhien}, {@code baocao}, {@code quanly}. */
+    @NotBlank(message = &quot;Resource (feature) không được để trống&quot;)
+    @Size(max = 50, message = &quot;Resource tối đa 50 ký tự&quot;)
+    @Column(nullable = false, length = 50)
+    private String resource;
+
+    /** Hành động được phép trên resource.
+     *  Ví dụ: {@code read}, {@code write}, {@code approve}, {@code delete}, {@code export}. */
+    @NotBlank(message = &quot;Action không được để trống&quot;)
+    @Size(max = 30, message = &quot;Action tối đa 30 ký tự&quot;)
+    @Column(nullable = false, length = 30)
+    private String action;
+
+    // =========================================================================
+
+    /** Vai trò mặc định mà permission này được gán cho (nullable).
+     *  Nếu null, permission được gán tự do qua Role.permissions list. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = &quot;role_id&quot;)
+    private Role role;
+
+    // =========================================================================
+
+    /**
+     * Trích xuất resource (feature) từ {@link #getCode()}.
+     * Ví dụ: &quot;manhien:read&quot; -&gt; &quot;manhien&quot;
+     */
+    public String getResource() {
+<span class="nc bnc" id="L97" title="All 4 branches missed.">        if (resource != null &amp;&amp; !resource.isEmpty()) {</span>
+<span class="nc" id="L98">            return resource;</span>
+        }
+        // Fallback: parse from code
+<span class="nc" id="L101">        String code = getCode();</span>
+<span class="nc bnc" id="L102" title="All 4 branches missed.">        if (code != null &amp;&amp; code.contains(&quot;:&quot;)) {</span>
+<span class="nc" id="L103">            return code.split(&quot;:&quot;)[0];</span>
+        }
+<span class="nc" id="L105">        return code;</span>
+    }
+
+    /**
+     * Trích xuất action (operation) từ {@link #getCode()}.
+     * Ví dụ: &quot;manhien:read&quot; -&gt; &quot;read&quot;
+     */
+    public String getAction() {
+<span class="nc bnc" id="L113" title="All 4 branches missed.">        if (action != null &amp;&amp; !action.isEmpty()) {</span>
+<span class="nc" id="L114">            return action;</span>
+        }
+        // Fallback: parse from code
+<span class="nc" id="L117">        String code = getCode();</span>
+<span class="nc bnc" id="L118" title="All 4 branches missed.">        if (code != null &amp;&amp; code.contains(&quot;:&quot;)) {</span>
+<span class="nc" id="L119">            return code.split(&quot;:&quot;)[1];</span>
+        }
+<span class="nc" id="L121">        return code;</span>
+    }
+
+    /**
+     * Kiểm tra permission này cho phép action cụ thể trên resource.
+     */
+    public boolean permits(String requiredResource, String requiredAction) {
+<span class="nc bnc" id="L128" title="All 2 branches missed.">        return requiredResource.equals(this.resource)</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">                &amp;&amp; requiredAction.equals(this.action);</span>
+    }
+
+    /**
+     * Tạo permission code từ resource và action.
+     */
+    public static String createCode(String resource, String action) {
+<span class="nc" id="L136">        return resource + &quot;:&quot; + action;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

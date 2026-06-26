@@ -1,21 +1,66 @@
 ---
 id: F-048
-name: Xem chi tiet De/ke
+name: Xem chi tiết Đê/kè
 slug: xem-chi-tiet-de-ke
-module: M-003
+module-id: M-003
 status: proposed
+classification: local
+priority: high
+created: 2026-06-26T00:00:00Z
+last-updated: 2026-06-26T00:00:00Z
+locked-fields: []
+consumed_by_modules: []
 ---
-
-# Xem chi tiet De/ke
+# Feature: Xem chi tiết Đê/kè
 
 ## Description
-Tat ca roles - Xem chi tiet
+Tất cả các vai trò trong hệ thống có quyền xem chi tiết thông tin của từng bản ghi đê/kè, bao gồm toàn bộ dữ liệu nhập liệu, thông tin phê duyệt theo từng cấp, lịch sử thay đổi và các văn bản đính kèm liên quan.
 
 ## Business Intent
-Tra cuu, xem chi tiet, van ban dinh kem
+Cho phép người dùng tra cứu, xem xét và nắm bắt đầy đủ thông tin về các công trình đê/kè tại khu nước VTS, hỗ trợ ra quyết định quản lý, lập báo cáo và theo dõi tiến độ công tác bảo trì công trình hạ tầng hàng hải một cách minh bạch và kịp thời.
 
 ## Flow Summary
-Tat ca roles - Xem chi tiet
+Người dùng truy cập danh sách đê/kè, chọn bản ghi cần xem chi tiết hoặc tìm kiếm theo tiêu chí (tên công trình, vị trí, loại đê/kè). Hệ thống hiển thị đầy đủ thông tin chi tiết của bản ghi bao gồm các trường dữ liệu nhập liệu, thông tin người tạo, trạng thái phê duyệt theo từng cấp với tên người phê duyệt và ngày giờ, lịch sử thay đổi và các văn bản đính kèm (nếu có).
 
 ## Acceptance Criteria
-- Xem chi tiet De/ke thanh cong
+- Tất cả vai trò đều có thể xem chi tiết bản ghi đê/kè
+- Giao diện hiển thị đầy đủ thông tin: dữ liệu nhập, người tạo, trạng thái phê duyệt, lịch sử
+- Có thể tra cứu bản ghi theo tên, vị trí, loại công trình và trạng thái
+- Hiển thị văn bản đính kèm nếu có (file upload)
+- Thông tin phê duyệt cấp 1 và cấp 2 được hiển thị riêng biệt với người phê duyệt và ngày giờ
+
+## In Scope
+- Danh sách đê/kè với bộ lọc và tìm kiếm
+- Trang chi tiết hiển thị toàn bộ thông tin bản ghi
+- Hiển thị thông tin phê duyệt theo từng cấp
+- Hiển thị lịch sử thay đổi của bản ghi
+- Tải xuống và xem các văn bản đính kèm
+- Phân quyền xem dựa trên vai trò của người dùng
+
+## Out of Scope
+- Tạo mới, cập nhật, xóa bản ghi đê/kè
+- Phê duyệt bản ghi đê/kè
+- Xuất báo cáo tổng hợp thống kê
+- In ấn bản ghi đê/kè
+
+## Roles + Permissions
+| Role | Permissions |
+|------|-------------|
+| Chuyên viên | Xem chi tiết bản ghi của mình, Xem tất cả |
+| Trưởng phòng | Xem chi tiết mọi bản ghi, Xem bản ghi cấp phòng |
+| Cục trưởng | Xem chi tiết mọi bản ghi |
+| Admin | Xem chi tiết mọi bản ghi, Quản lý hệ thống |
+
+## Entities
+- **DeKe**: id, tenCongTrinh, viTri, loaiDeKe, chieuDai, namXayDung, vatLieu, dienTich, doUng, trangThai, NguoiTao, ngayTao, nguoiCapNhat, ngayCapNhat, pheDuyetC1, nguoiPheDuyetC1, pheDuyetC2, nguoiPheDuyetC2, vanBanDinhKem
+- **VanBanDinhKem**: id, deKeId, tenFile, duongDan, kichThuoc, nguoiTaiLen, ngayTaiLen
+
+## Business Rules
+1. Tất cả vai trò đều có quyền đọc (view) các bản ghi đê/kè
+2. Thông tin phê duyệt chỉ hiển thị cho người dùng có quyền xem (trưởng phòng, cục trưởng)
+3. Văn bản đính kèm chỉ hiển thị khi có file được upload lên hệ thống
+4. Lịch sử thay đổi hiển thị cho tất cả các vai trò nhưng chỉ cho phép chỉnh sửa bởi chuyên viên và admin
+5. Dữ liệu hiển thị phải được đồng bộ với trạng thái phê duyệt hiện tại
+
+## Testing Strategy
+Kiểm thử hiển thị thông tin chi tiết cho các vai trò khác nhau (chuyên viên, trưởng phòng, cục trưởng, admin). Kiểm thử tìm kiếm và lọc theo tên, vị trí, loại công trình, trạng thái. Kiểm thử hiển thị văn bản đính kèm và tải xuống. Kiểm thử tính nhất quán của dữ liệu hiển thị với cơ sở dữ liệu.

@@ -1,39 +1,37 @@
 ---
-status: proposed
-last-updated: 2026-06-17T03:23:15Z
----
----
 id: F-001
-name: Quan ly tai khoan nguoi dung
+name: Quản lý tài khoản người dùng
 slug: quan-ly-tai-khoan-nguoi-dung
 module-id: M-001
-status: done
+status: proposed
 classification: local
 priority: high
-created: 2026-06-16T04:40:32Z
-last-updated: 2026-06-17T01:35:44Z
+created: 2026-06-26T00:00:00Z
+last-updated: 2026-06-26T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quan ly tai khoan nguoi dung
+# Feature: Quản lý tài khoản người dùng
 
 ## Description
 
-Quan tri tai khoan: tao, sua, xoa, khoa/mo khoa tai khoan theo vai tro
+Quản lý toàn bộ vòng đời tài khoản người dùng trong hệ thống, bao gồm tạo mới, chỉnh sửa thông tin, xóa mềm, khóa/mở khóa tài khoản và phân quyền theo vai trò (RBAC — Role-Based Access Control). Tính năng cung cấp giao diện quản lý tập trung cho tất cả người dùng hệ thống.
 
 ## Business Intent
 
-Quan tri he thong, Lanh dao, Chuyen vien - Tao, sua, xoa, khoa/mo khoa tai khoan
+Hệ thống cần cơ chế quản lý tài khoản người dùng an toàn và linh hoạt, cho phép các vai trò Quản trị hệ thống, Lãnh đạo và Chuyên viên thực hiện đầy đủ các thao tác tạo, sửa, xóa, khóa/mở khóa tài khoản theo quy trình nghiệp vụ được thiết định.
 
 ## Flow Summary
 
-Quan tri he thong, Lanh dao, Chuyen vien - Tao, sua, xoa, khoa/mo khoa tai khoan
+Quản trị hệ thống hoặc Lãnh đạo truy cập vào module Quản lý tài khoản từ sidebar chính → chọn thao tác tạo mới hoặc chỉnh sửa tài khoản hiện có → hệ thống xác thực quyền và kiểm tra tính hợp lệ của dữ liệu đầu vào (email unique, mật khẩu mạnh) → thực hiện thao tác CRUD → ghi nhận log audit → hiển thị thông báo thành công hoặc lỗi qua toast notification. Quy trình bao gồm: (1) tạo tài khoản với thông tin cơ bản và gán vai trò; (2) chỉnh sửa thông tin cá nhân hoặc phân quyền; (3) xóa mềm (không xóa cứng khi có dữ liệu liên quan); (4) khóa/mở khóa để ngăn/tiếp tục truy cập; (5) reset mật khẩu bằng admin hoặc tự động gửi link.
 
 ## Acceptance Criteria
 
-- Tao tai khoan thanh cong
-- Cap quyen theo vai tro
-- Khoa/mo khoa tai khoan
+- Tạo tài khoản người dùng mới thành công với đầy đủ thông tin (tên, email, mật khẩu, vai trò, đơn vị) và mật khẩu đáp ứng yêu cầu bảo mật (tối thiểu 8 ký tự, có chữ hoa, chữ thường, số)
+- Phân quyền theo vai trò RBAC chính xác: mỗi vai trò (Admin, Lãnh đạo, Cán bộ, Cá nhân) chỉ có quyền truy cập phù hợp với phân cấp được quy định
+- Khóa/Mở khóa tài khoản thành công: tài khoản bị khóa không thể đăng nhập, tài khoản mở khóa có thể đăng nhập lại bình thường
+- Tìm kiếm và lọc danh sách người dùng theo tên, email, vai trò, trạng thái với kết quả phân trang chính xác
+- Xóa mềm tài khoản không thành công khi tài khoản còn dữ liệu nghiệp vụ liên quan (phanhien, bao cao)
 
 ## In Scope
 

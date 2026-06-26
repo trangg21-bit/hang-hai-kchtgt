@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CreateRoleRequest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.user.dto</a> &gt; <span class="el_source">CreateRoleRequest.java</span></div><h1>CreateRoleRequest.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.user.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+import java.util.List;
+
+/**
+ * Request body cho việc tạo mới Role.
+ */
+<span class="nc" id="L11">public class CreateRoleRequest {</span>
+
+    @NotBlank(message = &quot;Tên vai trò không được để trống&quot;)
+    @Size(max = 100, message = &quot;Tên vai trò tối đa 100 ký tự&quot;)
+    private String name;
+
+    @NotBlank(message = &quot;Code vai trò không được để trống&quot;)
+    @Size(max = 50, message = &quot;Code vai trò tối đa 50 ký tự&quot;)
+    private String code;
+
+    @Size(max = 500, message = &quot;Mô tả tối đa 500 ký tự&quot;)
+    private String description;
+
+    private List&lt;String&gt; permissions;
+
+<span class="nc" id="L26">    public String getName() { return name; }</span>
+<span class="nc" id="L27">    public void setName(String name) { this.name = name; }</span>
+<span class="nc" id="L28">    public String getCode() { return code; }</span>
+<span class="nc" id="L29">    public void setCode(String code) { this.code = code; }</span>
+<span class="nc" id="L30">    public String getDescription() { return description; }</span>
+<span class="nc" id="L31">    public void setDescription(String description) { this.description = description; }</span>
+<span class="nc" id="L32">    public List&lt;String&gt; getPermissions() { return permissions; }</span>
+<span class="nc" id="L33">    public void setPermissions(List&lt;String&gt; permissions) { this.permissions = permissions; }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PointObjectService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.gis.point.service</a> &gt; <span class="el_source">PointObjectService.java</span></div><h1>PointObjectService.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.gis.point.service;
+
+import com.hanghai.kchtg.gis.point.dto.CreatePointObjectRequest;
+import com.hanghai.kchtg.gis.point.dto.PointObjectResponse;
+import com.hanghai.kchtg.gis.point.dto.UpdatePointObjectRequest;
+import com.hanghai.kchtg.gis.point.entity.PointObject;
+import com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType;
+import com.hanghai.kchtg.gis.point.entity.PointObject.Status;
+import com.hanghai.kchtg.gis.point.entity.PointHistory;
+import com.hanghai.kchtg.gis.point.repository.PointHistoryRepository;
+import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class PointObjectService {
+
+    private final PointObjectRepository repository;
+    private final PointHistoryRepository historyRepository;
+
+    public List&lt;PointObjectResponse&gt; findAll() {
+<span class="nc" id="L29">        return repository.findAll().stream()</span>
+<span class="nc" id="L30">                .map(this::toResponse)</span>
+<span class="nc" id="L31">                .toList();</span>
+    }
+
+    public PointObjectResponse findById(UUID id) {
+<span class="nc" id="L35">        PointObject entity = repository.findById(id)</span>
+<span class="nc" id="L36">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;PointObject not found with id: &quot; + id));</span>
+<span class="nc" id="L37">        return toResponse(entity);</span>
+    }
+
+    public List&lt;PointObjectResponse&gt; findByObjectType(ObjectType objectType) {
+<span class="nc" id="L41">        return repository.findByObjectType(objectType).stream()</span>
+<span class="nc" id="L42">                .map(this::toResponse)</span>
+<span class="nc" id="L43">                .toList();</span>
+    }
+
+    public List&lt;PointObjectResponse&gt; findByStatus(Status status) {
+<span class="nc" id="L47">        return repository.findByStatus(status).stream()</span>
+<span class="nc" id="L48">                .map(this::toResponse)</span>
+<span class="nc" id="L49">                .toList();</span>
+    }
+
+    public List&lt;PointObjectResponse&gt; search(String name, String code, ObjectType objectType, Status status) {
+<span class="nc" id="L53">        return repository.searchFiltered(name, code, objectType, status).stream()</span>
+<span class="nc" id="L54">                .map(this::toResponse)</span>
+<span class="nc" id="L55">                .toList();</span>
+    }
+
+    @Transactional
+    public PointObjectResponse create(CreatePointObjectRequest request) {
+<span class="nc bnc" id="L60" title="All 2 branches missed.">        if (repository.existsByCode(request.getCode())) {</span>
+<span class="nc" id="L61">            throw new IllegalArgumentException(&quot;Mã đối tượng đã tồn tại: &quot; + request.getCode());</span>
+        }
+
+<span class="nc" id="L64">        validateCoordinates(request.getLongitude(), request.getLatitude());</span>
+
+<span class="nc" id="L66">        PointObject entity = PointObject.builder()</span>
+<span class="nc" id="L67">                .name(request.getName())</span>
+<span class="nc" id="L68">                .code(request.getCode())</span>
+<span class="nc" id="L69">                .objectType(request.getObjectType())</span>
+<span class="nc" id="L70">                .categoryId(request.getCategoryId())</span>
+<span class="nc" id="L71">                .iconId(request.getIconId())</span>
+<span class="nc" id="L72">                .longitude(request.getLongitude())</span>
+<span class="nc" id="L73">                .latitude(request.getLatitude())</span>
+<span class="nc" id="L74">                .description(request.getDescription())</span>
+<span class="nc" id="L75">                .status(request.getStatus())</span>
+<span class="nc" id="L76">                .unitId(request.getUnitId())</span>
+<span class="nc" id="L77">                .build();</span>
+
+<span class="nc" id="L79">        entity = repository.save(entity);</span>
+<span class="nc" id="L80">        return toResponse(entity);</span>
+    }
+
+    @Transactional
+    public PointObjectResponse update(UUID id, UpdatePointObjectRequest request) {
+<span class="nc" id="L85">        PointObject entity = repository.findById(id)</span>
+<span class="nc" id="L86">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;PointObject not found with id: &quot; + id));</span>
+
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (request.getName() != null) entity.setName(request.getName());</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        if (request.getCode() != null) entity.setCode(request.getCode());</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">        if (request.getObjectType() != null) entity.setObjectType(request.getObjectType());</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">        if (request.getCategoryId() != null) entity.setCategoryId(request.getCategoryId());</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">        if (request.getIconId() != null) entity.setIconId(request.getIconId());</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        if (request.getLongitude() != null) {</span>
+<span class="nc" id="L94">            validateCoordinates(request.getLongitude(), request.getLatitude());</span>
+<span class="nc" id="L95">            entity.setLongitude(request.getLongitude());</span>
+<span class="nc" id="L96">            entity.setLatitude(request.getLatitude());</span>
+        }
+<span class="nc bnc" id="L98" title="All 2 branches missed.">        if (request.getDescription() != null) entity.setDescription(request.getDescription());</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">        if (request.getStatus() != null) entity.setStatus(request.getStatus());</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">        if (request.getUnitId() != null) entity.setUnitId(request.getUnitId());</span>
+
+<span class="nc" id="L102">        entity = repository.save(entity);</span>
+<span class="nc" id="L103">        return toResponse(entity);</span>
+    }
+
+    @Transactional
+    public void delete(UUID id) {
+<span class="nc" id="L108">        PointObject entity = repository.findById(id)</span>
+<span class="nc" id="L109">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;PointObject not found with id: &quot; + id));</span>
+<span class="nc" id="L110">        entity.setStatus(Status.DELETED);</span>
+<span class="nc" id="L111">        entity.softDelete();</span>
+<span class="nc" id="L112">        repository.save(entity);</span>
+<span class="nc" id="L113">    }</span>
+
+    @Transactional
+    public void submitForApproval(UUID id) {
+<span class="nc" id="L117">        PointObject entity = repository.findById(id)</span>
+<span class="nc" id="L118">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;PointObject not found with id: &quot; + id));</span>
+<span class="nc" id="L119">        entity.setStatus(Status.PENDING_APPROVAL);</span>
+<span class="nc" id="L120">        entity.setApprovalStatus(com.hanghai.kchtg.gis.point.entity.PointObject.ApprovalStatus.PENDING);</span>
+<span class="nc" id="L121">        repository.save(entity);</span>
+<span class="nc" id="L122">    }</span>
+
+    @Transactional
+    public PointObjectResponse approveL1(UUID id, String approverId) {
+<span class="nc" id="L126">        PointObject entity = repository.findById(id)</span>
+<span class="nc" id="L127">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;PointObject not found with id: &quot; + id));</span>
+
+<span class="nc bnc" id="L129" title="All 2 branches missed.">        if (entity.getStatus() != Status.PENDING_APPROVAL) {</span>
+<span class="nc" id="L130">            throw new IllegalStateException(</span>
+<span class="nc" id="L131">                    &quot;Chi co the duyet L1 khi status = PENDING_APPROVAL, hien tai: &quot; + entity.getStatus());</span>
+        }
+
+<span class="nc" id="L134">        entity.setStatus(Status.APPROVED_L1);</span>
+<span class="nc" id="L135">        entity.setApprovalStatus(com.hanghai.kchtg.gis.point.entity.PointObject.ApprovalStatus.APPROVED);</span>
+<span class="nc" id="L136">        entity.setApprovedBy(Long.parseLong(approverId));</span>
+<span class="nc" id="L137">        entity.setApprovedDate(java.time.LocalDateTime.now());</span>
+<span class="nc" id="L138">        entity = repository.save(entity);</span>
+
+        // Log history
+<span class="nc" id="L141">        historyRepository.save(PointHistory.builder()</span>
+<span class="nc" id="L142">                .objectId(entity.getId().toString())</span>
+<span class="nc" id="L143">                .actionType(PointHistory.ActionType.APPROVE)</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">                .previousValue(entity.getStatus() == null ? &quot;null&quot; : entity.getStatus().toString())</span>
+<span class="nc" id="L145">                .newValue(&quot;APPROVED_L1&quot;)</span>
+<span class="nc" id="L146">                .reason(&quot;Level 1 approval by: &quot; + approverId)</span>
+<span class="nc" id="L147">                .build());</span>
+
+<span class="nc" id="L149">        return toResponse(entity);</span>
+    }
+
+    @Transactional
+    public PointObjectResponse approveL2(UUID id, String approverId) {
+<span class="nc" id="L154">        PointObject entity = repository.findById(id)</span>
+<span class="nc" id="L155">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;PointObject not found with id: &quot; + id));</span>
+
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        if (entity.getStatus() != Status.APPROVED_L1) {</span>
+<span class="nc" id="L158">            throw new IllegalStateException(</span>
+<span class="nc" id="L159">                    &quot;Chi co the duyet L2 khi status = APPROVED_L1, hien tai: &quot; + entity.getStatus());</span>
+        }
+
+<span class="nc" id="L162">        entity.setStatus(Status.PUBLISHED);</span>
+<span class="nc" id="L163">        entity.setApprovedBy(Long.parseLong(approverId));</span>
+<span class="nc" id="L164">        entity.setApprovedDate(java.time.LocalDateTime.now());</span>
+<span class="nc" id="L165">        entity = repository.save(entity);</span>
+
+        // Log history
+<span class="nc" id="L168">        historyRepository.save(PointHistory.builder()</span>
+<span class="nc" id="L169">                .objectId(entity.getId().toString())</span>
+<span class="nc" id="L170">                .actionType(PointHistory.ActionType.APPROVE)</span>
+<span class="nc" id="L171">                .previousValue(&quot;APPROVED_L1&quot;)</span>
+<span class="nc" id="L172">                .newValue(&quot;PUBLISHED&quot;)</span>
+<span class="nc" id="L173">                .reason(&quot;Level 2 approval by: &quot; + approverId)</span>
+<span class="nc" id="L174">                .build());</span>
+
+<span class="nc" id="L176">        return toResponse(entity);</span>
+    }
+
+    private PointObjectResponse toResponse(PointObject entity) {
+<span class="nc" id="L180">        return PointObjectResponse.builder()</span>
+<span class="nc" id="L181">                .id(entity.getId())</span>
+<span class="nc" id="L182">                .name(entity.getName())</span>
+<span class="nc" id="L183">                .code(entity.getCode())</span>
+<span class="nc" id="L184">                .objectType(entity.getObjectType())</span>
+<span class="nc" id="L185">                .categoryId(entity.getCategoryId())</span>
+<span class="nc" id="L186">                .iconId(entity.getIconId())</span>
+<span class="nc" id="L187">                .longitude(entity.getLongitude())</span>
+<span class="nc" id="L188">                .latitude(entity.getLatitude())</span>
+<span class="nc" id="L189">                .description(entity.getDescription())</span>
+<span class="nc" id="L190">                .status(entity.getStatus())</span>
+<span class="nc" id="L191">                .unitId(entity.getUnitId())</span>
+<span class="nc" id="L192">                .approvalStatus(entity.getApprovalStatus())</span>
+<span class="nc" id="L193">                .approvedBy(entity.getApprovedBy())</span>
+<span class="nc" id="L194">                .approvedDate(entity.getApprovedDate())</span>
+<span class="nc" id="L195">                .createdAt(entity.getCreatedAt())</span>
+<span class="nc" id="L196">                .updatedAt(entity.getUpdatedAt())</span>
+<span class="nc" id="L197">                .build();</span>
+    }
+
+    private void validateCoordinates(Double longitude, Double latitude) {
+<span class="nc bnc" id="L201" title="All 4 branches missed.">        if (longitude &lt; -180.0 || longitude &gt; 180.0) {</span>
+<span class="nc" id="L202">            throw new IllegalArgumentException(&quot;Kinh độ phải trong khoảng -180~180 (WGS84)&quot;);</span>
+        }
+<span class="nc bnc" id="L204" title="All 4 branches missed.">        if (latitude &lt; -90.0 || latitude &gt; 90.0) {</span>
+<span class="nc" id="L205">            throw new IllegalArgumentException(&quot;Vĩ độ phải trong khoảng -90~90 (WGS84)&quot;);</span>
+        }
+<span class="nc" id="L207">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

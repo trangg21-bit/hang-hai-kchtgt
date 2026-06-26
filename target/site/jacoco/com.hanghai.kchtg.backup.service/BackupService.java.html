@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BackupService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.backup.service</a> &gt; <span class="el_source">BackupService.java</span></div><h1>BackupService.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.backup.service;
+
+import com.hanghai.kchtg.backup.entity.DatabaseBackup;
+import com.hanghai.kchtg.backup.repository.DatabaseBackupRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.io.File;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+
+@Service
+@RequiredArgsConstructor
+<span class="nc" id="L23">@Slf4j</span>
+public class BackupService {
+
+    private final DatabaseBackupRepository backupRepository;
+    private final JdbcTemplate jdbcTemplate;
+
+    @Value(&quot;${spring.datasource.url}&quot;)
+    private String datasourceUrl;
+
+    @Value(&quot;${spring.datasource.username:}&quot;)
+    private String datasourceUsername;
+
+    @Value(&quot;${spring.datasource.password:}&quot;)
+    private String datasourcePassword;
+
+    @Value(&quot;${backup.dir:./backups}&quot;)
+    private String backupDir;
+
+    @Value(&quot;${backup.retention-count:10}&quot;)
+    private int retentionCount;
+
+    /**
+     * Triggers a database backup.
+     *
+     * @param type manual or automatic
+     * @return the created backup record
+     */
+    @Transactional
+    public DatabaseBackup performBackup(DatabaseBackup.BackupType type) {
+<span class="nc" id="L52">        log.info(&quot;Starting database backup process ({})&quot;, type);</span>
+        
+<span class="nc" id="L54">        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern(&quot;yyyyMMdd_HHmmss&quot;));</span>
+<span class="nc bnc" id="L55" title="All 2 branches missed.">        String suffix = datasourceUrl.contains(&quot;:h2:&quot;) ? &quot;.sql&quot; : &quot;.dump&quot;;</span>
+<span class="nc" id="L56">        String filename = &quot;db_backup_&quot; + timestamp + suffix;</span>
+        
+<span class="nc" id="L58">        Path dirPath = Path.of(backupDir);</span>
+<span class="nc" id="L59">        Path filePath = dirPath.resolve(filename);</span>
+        
+<span class="nc" id="L61">        DatabaseBackup record = new DatabaseBackup();</span>
+<span class="nc" id="L62">        record.setFilename(filename);</span>
+<span class="nc" id="L63">        record.setFilePath(filePath.toAbsolutePath().toString());</span>
+<span class="nc" id="L64">        record.setBackupType(type);</span>
+<span class="nc" id="L65">        record.setFileSize(0L); // Temporary</span>
+<span class="nc" id="L66">        record.setStatus(DatabaseBackup.BackupStatus.FAILED); // Fail by default</span>
+
+        try {
+<span class="nc" id="L69">            Files.createDirectories(dirPath);</span>
+            
+<span class="nc bnc" id="L71" title="All 2 branches missed.">            if (datasourceUrl.contains(&quot;:h2:&quot;)) {</span>
+<span class="nc" id="L72">                backupH2(filePath.toAbsolutePath().toString());</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">            } else if (datasourceUrl.contains(&quot;:postgresql:&quot;)) {</span>
+<span class="nc" id="L74">                backupPostgres(filePath.toAbsolutePath().toString());</span>
+            } else {
+<span class="nc" id="L76">                throw new UnsupportedOperationException(&quot;Database dialect not supported for backups: &quot; + datasourceUrl);</span>
+            }
+            
+            // Success
+<span class="nc" id="L80">            File file = filePath.toFile();</span>
+<span class="nc" id="L81">            record.setFileSize(file.length());</span>
+<span class="nc" id="L82">            record.setStatus(DatabaseBackup.BackupStatus.SUCCESS);</span>
+<span class="nc" id="L83">            log.info(&quot;Backup successfully completed: {} ({} bytes)&quot;, filename, record.getFileSize());</span>
+            
+<span class="nc" id="L85">        } catch (Exception e) {</span>
+<span class="nc" id="L86">            log.error(&quot;Backup failed: {}&quot;, e.getMessage(), e);</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">            record.setErrorDetail(e.getMessage() != null ? e.getMessage() : e.toString());</span>
+<span class="nc" id="L88">        }</span>
+
+<span class="nc" id="L90">        DatabaseBackup saved = backupRepository.save(record);</span>
+        
+        // Retain only latest backups
+<span class="nc" id="L93">        cleanupOldBackupFiles();</span>
+        
+<span class="nc" id="L95">        return saved;</span>
+    }
+
+    /**
+     * Restore database from a backup record.
+     *
+     * @param id the backup ID
+     */
+    @Transactional
+    public void restoreBackup(UUID id) {
+<span class="nc" id="L105">        DatabaseBackup record = backupRepository.findById(id)</span>
+<span class="nc" id="L106">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Backup record not found: &quot; + id));</span>
+
+<span class="nc bnc" id="L108" title="All 2 branches missed.">        if (record.getStatus() != DatabaseBackup.BackupStatus.SUCCESS) {</span>
+<span class="nc" id="L109">            throw new IllegalArgumentException(&quot;Cannot restore from a failed backup.&quot;);</span>
+        }
+
+<span class="nc" id="L112">        log.info(&quot;Restoring database from backup: {}&quot;, record.getFilename());</span>
+        
+        try {
+<span class="nc" id="L115">            Path path = Path.of(record.getFilePath());</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">            if (!Files.exists(path)) {</span>
+<span class="nc" id="L117">                throw new IllegalArgumentException(&quot;Backup file does not exist on disk: &quot; + record.getFilePath());</span>
+            }
+
+<span class="nc bnc" id="L120" title="All 2 branches missed.">            if (datasourceUrl.contains(&quot;:h2:&quot;)) {</span>
+<span class="nc" id="L121">                restoreH2(path.toAbsolutePath().toString());</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">            } else if (datasourceUrl.contains(&quot;:postgresql:&quot;)) {</span>
+<span class="nc" id="L123">                restorePostgres(path.toAbsolutePath().toString());</span>
+            } else {
+<span class="nc" id="L125">                throw new UnsupportedOperationException(&quot;Database dialect not supported for restores: &quot; + datasourceUrl);</span>
+            }
+<span class="nc" id="L127">            log.info(&quot;Database restore successfully completed from: {}&quot;, record.getFilename());</span>
+            
+<span class="nc" id="L129">        } catch (Exception e) {</span>
+<span class="nc" id="L130">            log.error(&quot;Database restore failed: {}&quot;, e.getMessage(), e);</span>
+<span class="nc" id="L131">            throw new RuntimeException(&quot;Restore failed: &quot; + e.getMessage(), e);</span>
+<span class="nc" id="L132">        }</span>
+<span class="nc" id="L133">    }</span>
+
+    /**
+     * Retrieve all backup records.
+     */
+    public List&lt;DatabaseBackup&gt; getAllBackups() {
+<span class="nc" id="L139">        return backupRepository.findAllByOrderByCreatedAtDesc();</span>
+    }
+
+    // =========================================================================
+    // Backup Strategies
+    // =========================================================================
+
+    private void backupH2(String filePath) {
+        // H2 script to dump the in-memory database to file
+<span class="nc" id="L148">        jdbcTemplate.execute(&quot;SCRIPT TO '&quot; + filePath + &quot;'&quot;);</span>
+<span class="nc" id="L149">    }</span>
+
+    private void restoreH2(String filePath) {
+        // H2 runscript to drop everything and reload data
+<span class="nc" id="L153">        jdbcTemplate.execute(&quot;RUNSCRIPT FROM '&quot; + filePath + &quot;'&quot;);</span>
+<span class="nc" id="L154">    }</span>
+
+    private void backupPostgres(String filePath) throws Exception {
+<span class="nc" id="L157">        Map&lt;String, String&gt; db = parseJdbcUrl(datasourceUrl);</span>
+<span class="nc" id="L158">        ProcessBuilder pb = new ProcessBuilder(</span>
+                &quot;pg_dump&quot;,
+<span class="nc" id="L160">                &quot;-h&quot;, db.get(&quot;host&quot;),</span>
+<span class="nc" id="L161">                &quot;-p&quot;, db.get(&quot;port&quot;),</span>
+                &quot;-U&quot;, datasourceUsername,
+                &quot;-F&quot;, &quot;c&quot;,
+                &quot;-b&quot;,
+                &quot;-v&quot;,
+                &quot;-f&quot;, filePath,
+<span class="nc" id="L167">                db.get(&quot;dbName&quot;)</span>
+        );
+<span class="nc" id="L169">        pb.environment().put(&quot;PGPASSWORD&quot;, datasourcePassword);</span>
+<span class="nc" id="L170">        Process p = pb.start();</span>
+<span class="nc" id="L171">        int exitCode = p.waitFor();</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">        if (exitCode != 0) {</span>
+<span class="nc" id="L173">            String errors = new String(p.getErrorStream().readAllBytes());</span>
+<span class="nc" id="L174">            throw new RuntimeException(&quot;pg_dump process failed: &quot; + errors);</span>
+        }
+<span class="nc" id="L176">    }</span>
+
+    private void restorePostgres(String filePath) throws Exception {
+<span class="nc" id="L179">        Map&lt;String, String&gt; db = parseJdbcUrl(datasourceUrl);</span>
+<span class="nc" id="L180">        ProcessBuilder pb = new ProcessBuilder(</span>
+                &quot;pg_restore&quot;,
+<span class="nc" id="L182">                &quot;-h&quot;, db.get(&quot;host&quot;),</span>
+<span class="nc" id="L183">                &quot;-p&quot;, db.get(&quot;port&quot;),</span>
+                &quot;-U&quot;, datasourceUsername,
+<span class="nc" id="L185">                &quot;-d&quot;, db.get(&quot;dbName&quot;),</span>
+                &quot;-c&quot;,
+                &quot;-v&quot;,
+                filePath
+        );
+<span class="nc" id="L190">        pb.environment().put(&quot;PGPASSWORD&quot;, datasourcePassword);</span>
+<span class="nc" id="L191">        Process p = pb.start();</span>
+<span class="nc" id="L192">        int exitCode = p.waitFor();</span>
+<span class="nc bnc" id="L193" title="All 2 branches missed.">        if (exitCode != 0) {</span>
+<span class="nc" id="L194">            String errors = new String(p.getErrorStream().readAllBytes());</span>
+<span class="nc" id="L195">            throw new RuntimeException(&quot;pg_restore process failed: &quot; + errors);</span>
+        }
+<span class="nc" id="L197">    }</span>
+
+    // =========================================================================
+    // Helpers
+    // =========================================================================
+
+    private Map&lt;String, String&gt; parseJdbcUrl(String url) {
+<span class="nc" id="L204">        Map&lt;String, String&gt; result = new HashMap&lt;&gt;();</span>
+        try {
+<span class="nc" id="L206">            String clean = url.substring(5); // remove 'jdbc:'</span>
+<span class="nc" id="L207">            URI uri = new URI(clean);</span>
+<span class="nc" id="L208">            result.put(&quot;host&quot;, uri.getHost());</span>
+<span class="nc bnc" id="L209" title="All 2 branches missed.">            result.put(&quot;port&quot;, String.valueOf(uri.getPort() == -1 ? 5432 : uri.getPort()));</span>
+<span class="nc" id="L210">            result.put(&quot;dbName&quot;, uri.getPath().substring(1));</span>
+<span class="nc" id="L211">        } catch (Exception e) {</span>
+<span class="nc" id="L212">            result.put(&quot;host&quot;, &quot;localhost&quot;);</span>
+<span class="nc" id="L213">            result.put(&quot;port&quot;, &quot;5432&quot;);</span>
+<span class="nc" id="L214">            result.put(&quot;dbName&quot;, &quot;kchtg_m001&quot;);</span>
+<span class="nc" id="L215">        }</span>
+<span class="nc" id="L216">        return result;</span>
+    }
+
+    private void cleanupOldBackupFiles() {
+        try {
+<span class="nc" id="L221">            List&lt;DatabaseBackup&gt; successBackups = backupRepository.findAll().stream()</span>
+<span class="nc bnc" id="L222" title="All 2 branches missed.">                    .filter(b -&gt; b.getStatus() == DatabaseBackup.BackupStatus.SUCCESS)</span>
+<span class="nc" id="L223">                    .sorted(Comparator.comparing(DatabaseBackup::getCreatedAt).reversed())</span>
+<span class="nc" id="L224">                    .toList();</span>
+
+<span class="nc bnc" id="L226" title="All 2 branches missed.">            if (successBackups.size() &gt; retentionCount) {</span>
+<span class="nc bnc" id="L227" title="All 2 branches missed.">                for (int i = retentionCount; i &lt; successBackups.size(); i++) {</span>
+<span class="nc" id="L228">                    DatabaseBackup oldBackup = successBackups.get(i);</span>
+<span class="nc" id="L229">                    File file = new File(oldBackup.getFilePath());</span>
+<span class="nc bnc" id="L230" title="All 4 branches missed.">                    if (file.exists() &amp;&amp; file.delete()) {</span>
+<span class="nc" id="L231">                        log.info(&quot;Deleted old backup file from disk: {}&quot;, oldBackup.getFilename());</span>
+                    }
+<span class="nc" id="L233">                    backupRepository.delete(oldBackup);</span>
+                }
+            }
+<span class="nc" id="L236">        } catch (Exception e) {</span>
+<span class="nc" id="L237">            log.error(&quot;Failed to clean up old backup files&quot;, e);</span>
+<span class="nc" id="L238">        }</span>
+<span class="nc" id="L239">    }</span>
+
+    /**
+     * Auto backup cron: Weekly on Sunday at midnight (0 0 0 * * SUN)
+     */
+    @Scheduled(cron = &quot;${cron.database-backup:0 0 0 * * SUN}&quot;)
+    public void scheduledBackup() {
+<span class="nc" id="L246">        log.info(&quot;Triggering scheduled weekly backup...&quot;);</span>
+<span class="nc" id="L247">        performBackup(DatabaseBackup.BackupType.AUTOMATIC);</span>
+<span class="nc" id="L248">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

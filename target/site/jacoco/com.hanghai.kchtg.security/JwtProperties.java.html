@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JwtProperties.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.security</a> &gt; <span class="el_source">JwtProperties.java</span></div><h1>JwtProperties.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.security;
+
+import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+import java.util.Base64;
+
+/**
+ * Properties cho JWT - cap nhat F-273 (dual-token access/refresh).
+ * &lt;p&gt;
+ * Cach y: {@code jwt},  {@code jwt.access-token-expiration},
+ * {@code jwt.refresh-token-expiration}.
+ * &lt;/p&gt;
+ */
+@ConfigurationProperties(prefix = &quot;jwt&quot;)
+<span class="nc" id="L18">public class JwtProperties {</span>
+
+<span class="nc" id="L20">    private static final Logger log = LoggerFactory.getLogger(JwtProperties.class);</span>
+
+    /**
+     * Base64-encoded HMAC-SHA256 secret key (toi thie 256 bits).
+     */
+    private String secret;
+
+    /**
+     * Token expiration in milliseconds (default 24 hours = 86_400_000 ms).
+     * Dung cho legacy single-token flow.
+     */
+<span class="nc" id="L31">    private long expiration = 86_400_000L;</span>
+
+    /**
+     * Access token expiration (dual-token) - default 15 phut = 900_000 ms.
+     */
+<span class="nc" id="L36">    private long accessTokenExpiration = 900_000L;</span>
+
+    /**
+     * Refresh token expiration (dual-token) - default 7 ngay = 604_800_000 ms.
+     */
+<span class="nc" id="L41">    private long refreshTokenExpiration = 604_800_000L;</span>
+
+    @PostConstruct
+    public void validate() {
+<span class="nc bnc" id="L45" title="All 4 branches missed.">        if (secret == null || secret.isBlank()) {</span>
+<span class="nc" id="L46">            throw new IllegalStateException(&quot;JWT secret phai duoc set qua jwt.secret property &quot;</span>
+                    + &quot;(vi du: bien moi truong JWT_SECRET). &quot;
+                    + &quot;Hardcoded fallback da duoc loai bo de bao mat.&quot;);
+        }
+        try {
+<span class="nc" id="L51">            byte[] keyBytes = Base64.getDecoder().decode(secret);</span>
+<span class="nc bnc" id="L52" title="All 2 branches missed.">            if (keyBytes.length &lt; 32) {</span>
+<span class="nc" id="L53">                throw new IllegalStateException(&quot;JWT secret phai decode duoc 32 bytes (256 bits) tro len. &quot;</span>
+                        + &quot;Nhan duoc &quot; + keyBytes.length + &quot; bytes.&quot;);
+            }
+<span class="nc" id="L56">            log.info(&quot;JWT secret validated successfully ({} bits)&quot;, keyBytes.length * 8);</span>
+<span class="nc" id="L57">        } catch (Exception e) {</span>
+<span class="nc" id="L58">            throw new IllegalStateException(&quot;JWT secret khong hop le (decode bi loi): &quot; + e.getMessage(), e);</span>
+<span class="nc" id="L59">        }</span>
+<span class="nc" id="L60">    }</span>
+
+    // =========================================================================
+
+    public String getSecret() {
+<span class="nc" id="L65">        return secret;</span>
+    }
+
+    public void setSecret(String secret) {
+<span class="nc" id="L69">        this.secret = secret;</span>
+<span class="nc" id="L70">    }</span>
+
+    public long getExpiration() {
+<span class="nc" id="L73">        return expiration;</span>
+    }
+
+    public void setExpiration(long expiration) {
+<span class="nc" id="L77">        this.expiration = expiration;</span>
+<span class="nc" id="L78">    }</span>
+
+    /**
+     * Alias cho getExpiration - legacy access token expiry.
+     */
+    public long getAccessExpiration() {
+<span class="nc" id="L84">        return expiration;</span>
+    }
+
+    public void setAccessExpiration(long accessExpiration) {
+<span class="nc" id="L88">        this.expiration = accessExpiration;</span>
+<span class="nc" id="L89">    }</span>
+
+    public long getRefreshExpiration() {
+<span class="nc" id="L92">        return refreshTokenExpiration;</span>
+    }
+
+    public void setRefreshExpiration(long refreshExpiration) {
+<span class="nc" id="L96">        this.refreshTokenExpiration = refreshExpiration;</span>
+<span class="nc" id="L97">    }</span>
+
+    // =========================================================================
+
+    public long getAccessTokenExpiration() {
+<span class="nc" id="L102">        return accessTokenExpiration;</span>
+    }
+
+    public void setAccessTokenExpiration(long accessTokenExpiration) {
+<span class="nc" id="L106">        this.accessTokenExpiration = accessTokenExpiration;</span>
+<span class="nc" id="L107">    }</span>
+
+    public long getRefreshTokenExpiration() {
+<span class="nc" id="L110">        return refreshTokenExpiration;</span>
+    }
+
+    public void setRefreshTokenExpiration(long refreshTokenExpiration) {
+<span class="nc" id="L114">        this.refreshTokenExpiration = refreshTokenExpiration;</span>
+<span class="nc" id="L115">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

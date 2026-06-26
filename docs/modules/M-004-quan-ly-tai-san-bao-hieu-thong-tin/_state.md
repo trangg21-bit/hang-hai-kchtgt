@@ -2,7 +2,8 @@
 feature-id: M-004
 feature-name: Quản lý tài sản Báo hiệu & Thông tin
 pipeline-type: sdlc
-status: in-progress
+status: completed
+status_reason: "No features defined yet"
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
@@ -37,9 +38,9 @@ children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
 agent-flags: {}
-feature-req: |
-  file:docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/module-brief.md
-  canonical-fallback:docs/intel/_snapshot.md
+feature-req:
+  file: docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/module-brief.md
+  canonical-fallback: docs/intel/_snapshot.md
   scope-modules: []
   scope-features: []
   dev-unit: ""

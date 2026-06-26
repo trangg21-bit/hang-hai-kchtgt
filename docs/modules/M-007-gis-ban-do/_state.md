@@ -61,9 +61,9 @@ children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
 agent-flags: {}
-feature-req: |
-  file:docs/modules/M-007-gis-ban-do/module-brief.md
-  canonical-fallback:docs/intel/_snapshot.md
+feature-req:
+  file: docs/modules/M-007-gis-ban-do/module-brief.md
+  canonical-fallback: docs/intel/_snapshot.md
   scope-modules: []
   scope-features: []
   dev-unit: ""

@@ -32,9 +32,9 @@ children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
 agent-flags: {}
-feature-req: |
-  file:docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/module-brief.md
-  canonical-fallback:docs/intel/_snapshot.md
+feature-req:
+  file: docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/module-brief.md
+  canonical-fallback: docs/intel/_snapshot.md
   scope-modules: []
   scope-features: []
   dev-unit: ""

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SchedulerConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.config</a> &gt; <span class="el_source">SchedulerConfig.java</span></div><h1>SchedulerConfig.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+
+/**
+ * Cấu hình scheduler cho các scheduled task của hệ thống.
+ * &lt;p&gt;
+ * Bật {@code @EnableScheduling} để kích hoạt các phương thức
+ * được annotate {@code @Scheduled} trong các component.
+ * &lt;/p&gt;
+ */
+@Configuration
+@EnableScheduling
+<span class="nc" id="L19">public class SchedulerConfig {</span>
+
+    /**
+     * Task scheduler cho các scheduled jobs (cleanup, health check, sync).
+     */
+    @Bean
+    public TaskScheduler taskScheduler() {
+<span class="nc" id="L26">        ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();</span>
+<span class="nc" id="L27">        scheduler.setPoolSize(5);</span>
+<span class="nc" id="L28">        scheduler.setThreadNamePrefix(&quot;scheduler-&quot;);</span>
+<span class="nc" id="L29">        scheduler.setWaitForTasksToCompleteOnShutdown(true);</span>
+<span class="nc" id="L30">        scheduler.setAwaitTerminationSeconds(60);</span>
+<span class="nc" id="L31">        return scheduler;</span>
+    }
+
+    /**
+     * Task executor cho các concurrent tasks.
+     */
+    @Bean
+    public ThreadPoolTaskExecutor taskExecutor() {
+<span class="nc" id="L39">        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();</span>
+<span class="nc" id="L40">        executor.setCorePoolSize(4);</span>
+<span class="nc" id="L41">        executor.setMaxPoolSize(10);</span>
+<span class="nc" id="L42">        executor.setThreadNamePrefix(&quot;task-exec-&quot;);</span>
+<span class="nc" id="L43">        executor.setWaitForTasksToCompleteOnShutdown(true);</span>
+<span class="nc" id="L44">        executor.setAwaitTerminationSeconds(30);</span>
+<span class="nc" id="L45">        return executor;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

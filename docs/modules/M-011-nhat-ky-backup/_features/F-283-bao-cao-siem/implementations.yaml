@@ -6,8 +6,20 @@ slug: bao-cao-siem
 # Primary owner = service that implements feature's main flow.
 # Consumers = services/apps that read or invoke this feature.
 implementations:
-  primary: ""
-  consumers: []
+  primary: "com.hanghai.kchtg.siem.service.SiemReportService"
+  consumers:
+    - "com.hanghai.kchtg.siem.controller.SiemController"
+    - "com.hanghai.kchtg.siem.service.SiemService" # metrics data used by report generation
 
 # Cross-cutting: features consumed by multiple modules
 consumed_by_modules: []
+
+# Code-review verdict
+verdict: Pass
+verdict-date: "2026-06-26T02:35:00Z"
+test-results:
+  service-tests: 10
+  controller-tests: 8
+  total: 18
+  failures: 0
+  errors: 0

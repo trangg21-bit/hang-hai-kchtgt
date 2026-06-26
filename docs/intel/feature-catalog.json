@@ -1,1 +1,7 @@
-TEST
+{
+  "schema_version": "1.0",
+  "multi_role": false,
+  "roles": [],
+  "services": [],
+  "features": []
+}

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PortOperation.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.report.entity</a> &gt; <span class="el_source">PortOperation.java</span></div><h1>PortOperation.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.report.entity;
+
+import com.hanghai.kchtg.common.entity.BaseEntity;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+
+/**
+ * Port operation entity for F-103: Báo cáo khánh tác cảng.
+ * Records vessel arrival/departure and cargo handling operations at ports.
+ */
+@Entity
+@Table(name = &quot;port_operations&quot;)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class PortOperation extends BaseEntity {
+
+<span class="fc" id="L26">    public enum OperationType {</span>
+<span class="fc" id="L27">        BOC,</span>
+<span class="fc" id="L28">        DONG</span>
+    }
+
+    @Column(name = &quot;port_code&quot;, nullable = false, length = 50)
+    private String portCode;
+
+    @Column(name = &quot;arrival_time&quot;, nullable = false)
+    private LocalDateTime arrivalTime;
+
+    @Column(name = &quot;departure_time&quot;)
+    private LocalDateTime departureTime;
+
+    @Column(name = &quot;cargo_quantity&quot;)
+    private Long cargoQuantity;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = &quot;operation_type&quot;, nullable = false, length = 10)
+    private OperationType operationType;
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

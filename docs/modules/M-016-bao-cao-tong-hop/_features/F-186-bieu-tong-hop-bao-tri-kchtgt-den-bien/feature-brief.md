@@ -7,52 +7,73 @@ status: proposed
 classification: local
 priority: medium
 created: "2026-06-16T04:42:49Z"
-last-updated: "2026-06-16T04:42:49Z"
+last-updated: "2026-06-26T00:00:00Z"
 locked-fields: []
 consumed_by_modules: []
 ---
-
 # Feature: Bieu Tong hop bao tri KCHTGT - Den bien
 
 ## Description
 
-Bieu Tong hop bao tri KCHTGT - Den bien, xuat PDF/Excel
+Hien thi bao cao Bieu Tong hop bao tri KCHTGT - Den bien, bao gom thong tin tong hop ve hoat dong bao tri den bien theo don vi, tinh trang, chi phi, ke hoach va tieu doan, xuat PDF/Excel de bao cao so quan.
 
 ## Business Intent
 
-Chuyen vien - Bao cao Bieu Tong hop bao tri KCHTGT - Den bien
+Ho tro ban quan ly theo doi cac hoat dong bao tri den bien KCHTGT theo don vi, tinh trang, lam co so de quy hoach ke hoach bao tri den bien, phan bo nguon luc va bao cao so quan theo dinh ky.
 
 ## Flow Summary
 
-Hien thi bao cao Bieu Tong hop bao tri KCHTGT - Den bien thanh cong
+Chuyen vien chon thoi ky bao cao, don vi quan ly, he thong lay du lieu bao tri den bien tu CSDL, hien thi theo Bieu Tong hop bao tri KCHTGT - Den bien, chuyen vien xac nhan du lieu, kiem tra so lieu va xuat bao cao PDF/Excel.
 
 ## Acceptance Criteria
 
-- Hien thi bao cao Bieu Tong hop bao tri KCHTGT - Den bien thanh cong
-- Xuat PDF/Excel thanh cong
+1. Hien thi bao cao Tong hop bao tri KCHTGT - Den bien voi du lieu chinh xac theo don vi
+2. Bao cao hien thi du tinh trang bao tri, chi phi, ke hoach cho moi den bien
+3. Xuat PDF/Excel thanh cong voi dinh dang Bieu Tong hop bao tri KCHTGT - Den bien
 
 ## In Scope
 
-(populated by ba stage)
+- Hien thi tong hop hoat dong bao tri den bien theo don vi, tinh trang
+- Xuat bao cao PDF/Excel theo dinh dang Bieu Tong hop bao tri KCHTGT - Den bien
+- Loc theo don vi, tinh trang, ke hoach bao tri
+- Hien thi chi phi va ke hoach bao tri den bien
 
 ## Out of Scope
 
-(populated by ba stage)
+- Cap nhap chi tiet ke hoach bao tri den bien
+- Tinh toan chi phi thuc te
+- Bao cao chi tieu nang cao theo den bien rieng
 
 ## Roles + Permissions
 
-| Role | Level | Notes |
-|---|---|---|
+| Role | Permissions |
+|------|-------------|
+| User | Xem bao cao tong hop bao tri den bien |
+| Admin | Xem, Xuat, Xac nhan bao cao tong hop |
+
+## API Endpoints
+
+- `GET /api/v1/reports/summary-maintenance-lighthouses` — Lay bao cao tong hop bao tri den bien theo thoi ky
+- `GET /api/v1/reports/summary-maintenance-lighthouses/export-pdf` — Xuat bao cao dang PDF
+- `GET /api/v1/reports/summary-maintenance-lighthouses/export-excel` — Xuat bao cao dang Excel
+
+## Architecture Notes
+
+Su dung REST API GET /api/v1/reports/summary-maintenance-lighthouses de lay du lieu bao tri den bien tu CSDL NavigationAid voi truong aidType='lighthouse'. Tich hop Apache POI de xuat Excel va iText de xuat PDF. Du lieu duoc loc theo loai thiet bi den bien, gom nhom theo don vi quan ly, tinh trang (ke hoach, dang thuc hien, hoan thanh, qua han). Chi phi bao tri duoc tinh theo don vi VND.
 
 ## Entities
 
-(populated by ba/sa stage)
+- **LighthouseMaintenance**: id, lighthouseCode, lighthouseName, maintenanceType, status[scheduled/in-progress/completed/overdue], cost, plannedDate, completedDate, department
+- **LighthouseMaintenanceReport**: id, reportPeriod, totalLighthouses, underMaintenance, completedCount, totalCost, generatedBy, generatedAt
 
 ## Business Rules
 
-| ID | Rule | Applies-to | Source |
-|---|---|---|---|
+1. Bao cao bao gom toan bo den bien KCHTGT trong don vi doan thoi gian chon
+2. Tinh trang bao tri duoc phan loai: ke hoach, dang thuc hien, hoan thanh, qua han
+3. Bao cao hien thi chi phi bao tri theo don vi
+4. So lieu duoc cap nhat duoi 24h sau thao tac thay doi
+5. Ban quan ly can xac nhan truoc khi xuat bao cao chinh thuc
 
 ## Testing Strategy
 
-(populated by qa stage)
+Test don vi cho logic gom hoat dong bao tri den bien theo don vi, tinh trang. Test tich hop de xac nhan du lieu tu CSDL va xuat file PDF/Excel. Test E2E quy trinh chon thoi ky, hien thi, xac nhan, xuat bao cao Bieu Tong hop bao tri KCHTGT - Den bien.

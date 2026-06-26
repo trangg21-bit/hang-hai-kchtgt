@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ChartCell.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.gis.entity</a> &gt; <span class="el_source">ChartCell.java</span></div><h1>ChartCell.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.gis.entity;
+
+import com.hanghai.kchtg.common.entity.BaseEntity;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
+
+import java.time.LocalDate;
+
+@Entity
+@Table(name = &quot;enc_cells&quot;)
+@SQLRestriction(&quot;deleted_at IS NULL&quot;)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ChartCell extends BaseEntity {
+
+<span class="nc" id="L22">    public enum Status {</span>
+<span class="nc" id="L23">        ACTIVE,</span>
+<span class="nc" id="L24">        INACTIVE</span>
+    }
+
+    @NotBlank(message = &quot;Tên cell không được để trống&quot;)
+    @Size(max = 100, message = &quot;Tên cell tối đa 100 ký tự&quot;)
+    @Column(name = &quot;cell_name&quot;, nullable = false, unique = true, length = 100)
+    private String cellName;
+
+    @Size(max = 100, message = &quot;Tên nhà sản xuất tối đa 100 ký tự&quot;)
+    @Column(length = 100)
+    private String producer;
+
+    @Column
+    private Integer edition;
+
+    @Column
+    private Integer scale;
+
+    @Column(name = &quot;update_number&quot;)
+    private Integer updateNumber;
+
+    @Column(name = &quot;release_date&quot;)
+    private LocalDate releaseDate;
+
+    @Column(name = &quot;is_encrypted&quot;, nullable = false)
+    @Builder.Default
+    private Boolean isEncrypted = false;
+
+    @Column(name = &quot;latitude&quot;)
+    private Double latitude;
+
+    @Column(name = &quot;longitude&quot;)
+    private Double longitude;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private Status status = Status.ACTIVE;
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

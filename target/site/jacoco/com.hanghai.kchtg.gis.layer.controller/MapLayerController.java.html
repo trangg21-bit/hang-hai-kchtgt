@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MapLayerController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.gis.layer.controller</a> &gt; <span class="el_source">MapLayerController.java</span></div><h1>MapLayerController.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.gis.layer.controller;
+
+import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.gis.layer.dto.CreateMapLayerRequest;
+import com.hanghai.kchtg.gis.layer.dto.CreateMapOverlayRequest;
+import com.hanghai.kchtg.gis.layer.dto.CreateMapViewRequest;
+import com.hanghai.kchtg.gis.layer.dto.CreateMapStyleRequest;
+import com.hanghai.kchtg.gis.layer.dto.MapLayerResponse;
+import com.hanghai.kchtg.gis.layer.dto.MapOverlayResponse;
+import com.hanghai.kchtg.gis.layer.dto.MapStyleResponse;
+import com.hanghai.kchtg.gis.layer.dto.MapViewResponse;
+import com.hanghai.kchtg.gis.layer.dto.UpdateMapLayerRequest;
+import com.hanghai.kchtg.gis.layer.dto.UpdateMapOverlayRequest;
+import com.hanghai.kchtg.gis.layer.dto.UpdateMapViewRequest;
+import com.hanghai.kchtg.gis.layer.dto.UpdateMapStyleRequest;
+import com.hanghai.kchtg.gis.layer.entity.MapLayer.LayerType;
+import com.hanghai.kchtg.gis.layer.service.MapLayerService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping(&quot;/api/map-layers&quot;)
+@RequiredArgsConstructor
+public class MapLayerController {
+
+    private final MapLayerService service;
+
+    // ========================================================================
+    // MapLayer endpoints
+    // ========================================================================
+
+    @GetMapping
+    public ResponseEntity&lt;ApiResponse&lt;List&lt;MapLayerResponse&gt;&gt;&gt; findAll() {
+<span class="nc" id="L40">        return ResponseEntity.ok(ApiResponse.success(service.findAll()));</span>
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;MapLayerResponse&gt;&gt; findById(@PathVariable UUID id) {
+<span class="nc" id="L45">        return ResponseEntity.ok(ApiResponse.success(service.findById(id)));</span>
+    }
+
+    @GetMapping(&quot;/type/{layerType}&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;List&lt;MapLayerResponse&gt;&gt;&gt; findByLayerType(
+            @PathVariable LayerType layerType) {
+<span class="nc" id="L51">        return ResponseEntity.ok(ApiResponse.success(service.findByLayerType(layerType)));</span>
+    }
+
+    @GetMapping(&quot;/visible&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;List&lt;MapLayerResponse&gt;&gt;&gt; findVisibleLayers() {
+<span class="nc" id="L56">        return ResponseEntity.ok(ApiResponse.success(service.findVisibleLayers()));</span>
+    }
+
+    @PostMapping
+    public ResponseEntity&lt;ApiResponse&lt;MapLayerResponse&gt;&gt; create(
+            @Valid @RequestBody CreateMapLayerRequest request) {
+<span class="nc" id="L62">        MapLayerResponse response = service.create(request);</span>
+<span class="nc" id="L63">        return ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="nc" id="L64">                .body(ApiResponse.success(&quot;MapLayer created successfully&quot;, response));</span>
+    }
+
+    @PutMapping(&quot;/{id}&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;MapLayerResponse&gt;&gt; update(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateMapLayerRequest request) {
+<span class="nc" id="L71">        return ResponseEntity.ok(</span>
+<span class="nc" id="L72">                ApiResponse.success(&quot;MapLayer updated successfully&quot;, service.update(id, request)));</span>
+    }
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;Void&gt;&gt; delete(@PathVariable UUID id) {
+<span class="nc" id="L77">        service.delete(id);</span>
+<span class="nc" id="L78">        return ResponseEntity.ok(ApiResponse.success(&quot;MapLayer deleted successfully&quot;, null));</span>
+    }
+
+    // ========================================================================
+    // MapView endpoints
+    // ========================================================================
+
+    @GetMapping(&quot;/map-views&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;List&lt;MapViewResponse&gt;&gt;&gt; findAllMapViews() {
+<span class="nc" id="L87">        return ResponseEntity.ok(ApiResponse.success(service.findAllMapViews()));</span>
+    }
+
+    @GetMapping(&quot;/map-views/{id}&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;MapViewResponse&gt;&gt; findMapViewById(@PathVariable UUID id) {
+<span class="nc" id="L92">        return ResponseEntity.ok(ApiResponse.success(service.findMapViewById(id)));</span>
+    }
+
+    @GetMapping(&quot;/map-views/user/{userId}&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;List&lt;MapViewResponse&gt;&gt;&gt; findMapViewsByUserId(
+            @PathVariable Long userId) {
+<span class="nc" id="L98">        return ResponseEntity.ok(ApiResponse.success(service.findMapViewsByUserId(userId)));</span>
+    }
+
+    @PostMapping(&quot;/map-views&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;MapViewResponse&gt;&gt; createMapView(
+            @Valid @RequestBody CreateMapViewRequest request) {
+<span class="nc" id="L104">        MapViewResponse response = service.createMapView(request);</span>
+<span class="nc" id="L105">        return ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="nc" id="L106">                .body(ApiResponse.success(&quot;MapView created successfully&quot;, response));</span>
+    }
+
+    @PutMapping(&quot;/map-views/{id}&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;MapViewResponse&gt;&gt; updateMapView(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateMapViewRequest request) {
+<span class="nc" id="L113">        return ResponseEntity.ok(</span>
+<span class="nc" id="L114">                ApiResponse.success(&quot;MapView updated successfully&quot;, service.updateMapView(id, request)));</span>
+    }
+
+    @DeleteMapping(&quot;/map-views/{id}&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;Void&gt;&gt; deleteMapView(@PathVariable UUID id) {
+<span class="nc" id="L119">        service.deleteMapView(id);</span>
+<span class="nc" id="L120">        return ResponseEntity.ok(ApiResponse.success(&quot;MapView deleted successfully&quot;, null));</span>
+    }
+
+    // ========================================================================
+    // MapOverlay endpoints
+    // ========================================================================
+
+    @GetMapping(&quot;/overlays&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;List&lt;MapOverlayResponse&gt;&gt;&gt; findAllOverlays() {
+<span class="nc" id="L129">        return ResponseEntity.ok(ApiResponse.success(service.findAllOverlays()));</span>
+    }
+
+    @GetMapping(&quot;/overlays/{id}&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;MapOverlayResponse&gt;&gt; findOverlayById(@PathVariable UUID id) {
+<span class="nc" id="L134">        return ResponseEntity.ok(ApiResponse.success(service.findOverlayById(id)));</span>
+    }
+
+    @GetMapping(&quot;/overlays/layer/{layerName}&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;List&lt;MapOverlayResponse&gt;&gt;&gt; findOverlaysByLayerName(
+            @PathVariable String layerName) {
+<span class="nc" id="L140">        return ResponseEntity.ok(ApiResponse.success(service.findOverlaysByLayerName(layerName)));</span>
+    }
+
+    @GetMapping(&quot;/overlays/visible&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;List&lt;MapOverlayResponse&gt;&gt;&gt; findVisibleOverlays() {
+<span class="nc" id="L145">        return ResponseEntity.ok(ApiResponse.success(service.findVisibleOverlays()));</span>
+    }
+
+    @PostMapping(&quot;/overlays&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;MapOverlayResponse&gt;&gt; createOverlay(
+            @Valid @RequestBody CreateMapOverlayRequest request) {
+<span class="nc" id="L151">        MapOverlayResponse response = service.createOverlay(request);</span>
+<span class="nc" id="L152">        return ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="nc" id="L153">                .body(ApiResponse.success(&quot;MapOverlay created successfully&quot;, response));</span>
+    }
+
+    @PutMapping(&quot;/overlays/{id}&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;MapOverlayResponse&gt;&gt; updateOverlay(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateMapOverlayRequest request) {
+<span class="nc" id="L160">        return ResponseEntity.ok(</span>
+<span class="nc" id="L161">                ApiResponse.success(&quot;MapOverlay updated successfully&quot;, service.updateOverlay(id, request)));</span>
+    }
+
+    @DeleteMapping(&quot;/overlays/{id}&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;Void&gt;&gt; deleteOverlay(@PathVariable UUID id) {
+<span class="nc" id="L166">        service.deleteOverlay(id);</span>
+<span class="nc" id="L167">        return ResponseEntity.ok(ApiResponse.success(&quot;MapOverlay deleted successfully&quot;, null));</span>
+    }
+
+    // ========================================================================
+    // MapStyle endpoints
+    // ========================================================================
+
+    @GetMapping(&quot;/styles&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;List&lt;MapStyleResponse&gt;&gt;&gt; findAllStyles() {
+<span class="nc" id="L176">        return ResponseEntity.ok(ApiResponse.success(service.findAllStyles()));</span>
+    }
+
+    @GetMapping(&quot;/styles/{id}&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;MapStyleResponse&gt;&gt; findStyleById(@PathVariable UUID id) {
+<span class="nc" id="L181">        return ResponseEntity.ok(ApiResponse.success(service.findStyleById(id)));</span>
+    }
+
+    @GetMapping(&quot;/styles/layer/{layerId}&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;List&lt;MapStyleResponse&gt;&gt;&gt; findStylesByLayerId(
+            @PathVariable String layerId) {
+<span class="nc" id="L187">        return ResponseEntity.ok(ApiResponse.success(service.findStylesByLayerId(layerId)));</span>
+    }
+
+    @PostMapping(&quot;/styles&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;MapStyleResponse&gt;&gt; createStyle(
+            @Valid @RequestBody CreateMapStyleRequest request) {
+<span class="nc" id="L193">        MapStyleResponse response = service.createStyle(request);</span>
+<span class="nc" id="L194">        return ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="nc" id="L195">                .body(ApiResponse.success(&quot;MapStyle created successfully&quot;, response));</span>
+    }
+
+    @PutMapping(&quot;/styles/{id}&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;MapStyleResponse&gt;&gt; updateStyle(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateMapStyleRequest request) {
+<span class="nc" id="L202">        return ResponseEntity.ok(</span>
+<span class="nc" id="L203">                ApiResponse.success(&quot;MapStyle updated successfully&quot;, service.updateStyle(id, request)));</span>
+    }
+
+    @DeleteMapping(&quot;/styles/{id}&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;Void&gt;&gt; deleteStyle(@PathVariable UUID id) {
+<span class="nc" id="L208">        service.deleteStyle(id);</span>
+<span class="nc" id="L209">        return ResponseEntity.ok(ApiResponse.success(&quot;MapStyle deleted successfully&quot;, null));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

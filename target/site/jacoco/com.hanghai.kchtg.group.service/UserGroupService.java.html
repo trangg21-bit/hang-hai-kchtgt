@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserGroupService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.group.service</a> &gt; <span class="el_source">UserGroupService.java</span></div><h1>UserGroupService.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.group.service;
+
+import com.hanghai.kchtg.group.dto.AddGroupMemberRequest;
+import com.hanghai.kchtg.group.dto.CreateGroupRequest;
+import com.hanghai.kchtg.group.dto.UpdateGroupRequest;
+import com.hanghai.kchtg.group.entity.GroupHistory;
+import com.hanghai.kchtg.group.entity.GroupMember;
+import com.hanghai.kchtg.group.entity.GroupMemberStatus;
+import com.hanghai.kchtg.group.entity.UserGroup;
+import com.hanghai.kchtg.group.entity.GroupStatus;
+import com.hanghai.kchtg.group.repository.GroupMemberRepository;
+import com.hanghai.kchtg.group.repository.GroupRepository;
+import com.hanghai.kchtg.group.repository.GroupHistoryRepository;
+import jakarta.persistence.EntityNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+/**
+ * Service quan ly nhom nguoi dung (User Group).
+ */
+@Service
+@Transactional
+public class UserGroupService {
+
+<span class="nc" id="L32">    private static final Logger log = LoggerFactory.getLogger(UserGroupService.class);</span>
+
+    private final GroupRepository groupRepository;
+    private final GroupMemberRepository groupMemberRepository;
+    private final GroupHistoryRepository groupHistoryRepository;
+
+    public UserGroupService(GroupRepository groupRepository,
+                            GroupMemberRepository groupMemberRepository,
+<span class="nc" id="L40">                            GroupHistoryRepository groupHistoryRepository) {</span>
+<span class="nc" id="L41">        this.groupRepository = groupRepository;</span>
+<span class="nc" id="L42">        this.groupMemberRepository = groupMemberRepository;</span>
+<span class="nc" id="L43">        this.groupHistoryRepository = groupHistoryRepository;</span>
+<span class="nc" id="L44">    }</span>
+
+    // ── Query ───────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List&lt;UserGroup&gt; findAll() {
+<span class="nc" id="L50">        return groupRepository.findAll();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public UserGroup findById(UUID id) {
+<span class="nc" id="L55">        return groupRepository.findById(id)</span>
+<span class="nc" id="L56">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Không tìm thấy nhóm với id: &quot; + id));</span>
+    }
+
+    @Transactional(readOnly = true)
+    public UserGroup findByCode(String code) {
+<span class="nc" id="L61">        return groupRepository.findByCode(code)</span>
+<span class="nc" id="L62">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Không tìm thấy nhóm với mã: &quot; + code));</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;GroupMember&gt; findMembers(UUID groupId) {
+<span class="nc" id="L67">        return groupMemberRepository.findByGroupId(groupId, GroupMemberStatus.ACTIVE);</span>
+    }
+
+    // ── Mutate ──────────────────────────────────────────────────────
+
+    /**
+     * Tao moi nhom.
+     */
+    public UserGroup create(CreateGroupRequest request, UUID operatorId, String operatorName) {
+<span class="nc bnc" id="L76" title="All 2 branches missed.">        if (groupRepository.existsByCode(request.getCode())) {</span>
+<span class="nc" id="L77">            throw new IllegalArgumentException(&quot;Mã nhóm đã tồn tại: &quot; + request.getCode());</span>
+        }
+
+<span class="nc" id="L80">        UserGroup group = new UserGroup();</span>
+<span class="nc" id="L81">        group.setName(request.getName());</span>
+<span class="nc" id="L82">        group.setCode(request.getCode());</span>
+<span class="nc" id="L83">        group.setDescription(request.getDescription());</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">        group.setPermissions(request.getPermissions() != null ? new ArrayList&lt;&gt;(request.getPermissions()) : new ArrayList&lt;&gt;());</span>
+<span class="nc" id="L85">        group.setStatus(GroupStatus.ACTIVE);</span>
+
+<span class="nc" id="L87">        UserGroup saved = groupRepository.save(group);</span>
+
+        // Ghi lich su
+<span class="nc" id="L90">        saveHistory(saved.getId(), saved.getName(), saved.getCode(), &quot;CREATED&quot;,</span>
+                null, operatorId, operatorName);
+
+<span class="nc" id="L93">        log.info(&quot;Created group: {} ({})&quot;, saved.getCode(), saved.getId());</span>
+<span class="nc" id="L94">        return saved;</span>
+    }
+
+    /**
+     * Cap nhat thong tin nhom.
+     */
+    public UserGroup update(UUID id, UpdateGroupRequest request, UUID operatorId, String operatorName) {
+<span class="nc" id="L101">        UserGroup group = findById(id);</span>
+<span class="nc" id="L102">        StringBuilder details = new StringBuilder();</span>
+
+<span class="nc bnc" id="L104" title="All 4 branches missed.">        if (request.getName() != null &amp;&amp; !request.getName().equals(group.getName())) {</span>
+<span class="nc" id="L105">            details.append(&quot;Ten: &quot;).append(group.getName()).append(&quot; -&gt; &quot;).append(request.getName()).append(&quot;; &quot;);</span>
+<span class="nc" id="L106">            group.setName(request.getName());</span>
+        }
+<span class="nc bnc" id="L108" title="All 4 branches missed.">        if (request.getDescription() != null &amp;&amp; !request.getDescription().equals(group.getDescription())) {</span>
+<span class="nc" id="L109">            details.append(&quot;Mo da thay doi; &quot;);</span>
+<span class="nc" id="L110">            group.setDescription(request.getDescription());</span>
+        }
+<span class="nc bnc" id="L112" title="All 2 branches missed.">        if (request.getPermissions() != null) {</span>
+<span class="nc" id="L113">            group.setPermissions(new ArrayList&lt;&gt;(request.getPermissions()));</span>
+<span class="nc" id="L114">            details.append(&quot;Danh sach quyen da cap nhat; &quot;);</span>
+        }
+
+<span class="nc" id="L117">        UserGroup saved = groupRepository.save(group);</span>
+
+<span class="nc bnc" id="L119" title="All 2 branches missed.">        if (details.length() &gt; 0) {</span>
+<span class="nc" id="L120">            saveHistory(saved.getId(), saved.getName(), saved.getCode(), &quot;UPDATED&quot;,</span>
+<span class="nc" id="L121">                    details.toString(), operatorId, operatorName);</span>
+        }
+
+<span class="nc" id="L124">        log.info(&quot;Updated group: {} ({})&quot;, saved.getCode(), saved.getId());</span>
+<span class="nc" id="L125">        return saved;</span>
+    }
+
+    /**
+     * Xoa nhom (soft delete).
+     */
+    public void delete(UUID id, UUID operatorId, String operatorName) {
+<span class="nc" id="L132">        UserGroup group = findById(id);</span>
+<span class="nc" id="L133">        String details = String.format(&quot;Xoa nhom '%s' (code: %s)&quot;, group.getName(), group.getCode());</span>
+<span class="nc" id="L134">        saveHistory(group.getId(), group.getName(), group.getCode(), &quot;DELETED&quot;,</span>
+                details, operatorId, operatorName);
+<span class="nc" id="L136">        group.softDelete();</span>
+<span class="nc" id="L137">        groupRepository.save(group);</span>
+<span class="nc" id="L138">        log.info(&quot;Soft-deleted group: {} ({})&quot;, group.getCode(), group.getId());</span>
+<span class="nc" id="L139">    }</span>
+
+    /**
+     * Them thanh vien vao nhom.
+     */
+    public GroupMember addMember(UUID groupId, AddGroupMemberRequest request, UUID operatorId) {
+<span class="nc" id="L145">        UserGroup group = findById(groupId);</span>
+
+        // Kiem tra membership da ton tai
+<span class="nc" id="L148">        Optional&lt;GroupMember&gt; existing = groupMemberRepository</span>
+<span class="nc" id="L149">                .findByUserIdAndUserGroupId(request.getUserId(), groupId);</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">        if (existing.isPresent()) {</span>
+<span class="nc" id="L151">            throw new IllegalArgumentException(&quot;Người dùng đã là thành viên của nhóm này&quot;);</span>
+        }
+
+<span class="nc" id="L154">        GroupMember member = GroupMember.create(null, group, request.getRole(), operatorId);</span>
+<span class="nc" id="L155">        GroupMember saved = groupMemberRepository.save(member);</span>
+
+<span class="nc" id="L157">        saveHistory(groupId, group.getName(), group.getCode(),</span>
+<span class="nc" id="L158">                &quot;MEMBER_ADDED&quot;, &quot;Da them user &quot; + request.getUserId(), operatorId, null);</span>
+
+<span class="nc" id="L160">        return saved;</span>
+    }
+
+    /**
+     * Rời nhom (remove member).
+     */
+    public void removeMember(UUID memberId, UUID operatorId, String operatorName) {
+<span class="nc" id="L167">        GroupMember member = groupMemberRepository.findById(memberId)</span>
+<span class="nc" id="L168">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Không tìm thấy membership với id: &quot; + memberId));</span>
+<span class="nc" id="L169">        member.setStatus(GroupMemberStatus.REMOVED);</span>
+<span class="nc" id="L170">        groupMemberRepository.save(member);</span>
+
+<span class="nc" id="L172">        saveHistory(member.getUserGroup().getId(),</span>
+<span class="nc" id="L173">                member.getUserGroup().getName(),</span>
+<span class="nc" id="L174">                member.getUserGroup().getCode(),</span>
+                &quot;MEMBER_REMOVED&quot;, &quot;Da roi nhom boi &quot; + operatorName,
+                operatorId, operatorName);
+<span class="nc" id="L177">    }</span>
+
+    // ── Private ─────────────────────────────────────────────────────
+
+    private void saveHistory(UUID userGroupId, String name, String code,
+                             String action, String details, UUID changedBy, String changedByName) {
+<span class="nc" id="L183">        GroupHistory history = GroupHistory.create(userGroupId, action, details, changedBy, changedByName);</span>
+<span class="nc" id="L184">        history.setGroupName(name);</span>
+<span class="nc" id="L185">        history.setGroupCode(code);</span>
+<span class="nc" id="L186">        groupHistoryRepository.save(history);</span>
+<span class="nc" id="L187">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

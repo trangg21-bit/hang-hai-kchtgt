@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AdminPermission.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.admin.entity</a> &gt; <span class="el_source">AdminPermission.java</span></div><h1>AdminPermission.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.admin.entity;
+
+import com.hanghai.kchtg.common.entity.BaseEntity;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Phân quyền chi tiết cho tài khoản admin - mỗi admin được cấp permissions
+ * theo từng module, cho phép kiểm soát granular access.
+ */
+@Entity
+@Table(name = &quot;admin_permissions&quot;)
+@Getter
+@Setter
+@NoArgsConstructor
+public class AdminPermission extends BaseEntity {
+
+    /** ID của admin account được cấp quyền. */
+    @Column(name = &quot;admin_id&quot;, nullable = false)
+    private UUID adminId;
+
+    /** Mã module được cấp quyền (ví dụ: &quot;USER&quot;, &quot;ROLE&quot;, &quot;GROUP&quot;, &quot;ORGUNIT&quot;, &quot;ADMIN&quot;). */
+    @Column(nullable = false, length = 50)
+    private String moduleId;
+
+    /** Danh sách các permission keys (ví dụ: &quot;READ&quot;, &quot;WRITE&quot;, &quot;DELETE&quot;, &quot;APPROVE&quot;). */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = &quot;admin_permission_keys&quot;,
+            joinColumns = @JoinColumn(name = &quot;admin_permission_id&quot;))
+    @Column(name = &quot;permission&quot;)
+    private List&lt;String&gt; permissions = new ArrayList&lt;&gt;();
+
+    /**
+     * Tạo mới AdminPermission cho một admin và một module cụ thể.
+     */
+    public static AdminPermission create(UUID adminId, String moduleId, List&lt;String&gt; permissions) {
+<span class="nc" id="L49">        AdminPermission perm = new AdminPermission();</span>
+<span class="nc" id="L50">        perm.setAdminId(adminId);</span>
+<span class="nc" id="L51">        perm.setModuleId(moduleId);</span>
+<span class="nc bnc" id="L52" title="All 2 branches missed.">        perm.setPermissions(permissions != null ? new ArrayList&lt;&gt;(permissions) : new ArrayList&lt;&gt;());</span>
+<span class="nc" id="L53">        return perm;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

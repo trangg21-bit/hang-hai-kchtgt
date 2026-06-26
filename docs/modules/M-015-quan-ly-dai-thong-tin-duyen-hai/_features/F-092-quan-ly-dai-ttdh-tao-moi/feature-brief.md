@@ -1,21 +1,71 @@
 ---
 id: F-092
-name: Quan ly Dai TTDH - Tao moi
+name: Quản lý Đại TTDH - Tạo mới
 slug: quan-ly-dai-ttdh-tao-moi
-module: M-015
+module-id: M-015
 status: proposed
+classification: local
+priority: high
+created: 2026-06-26T00:00:00Z
+last-updated: 2026-06-26T00:00:00Z
+locked-fields: []
+consumed_by_modules: []
 ---
-
-# Quan ly Dai TTDH - Tao moi
+# Feature: Quản lý Đại TTDH - Tạo mới
 
 ## Description
-Chuyen vien - Tao moi Dai TTDH
+Cho phép Chuyên viên đăng ký và tạo mới một Đại Thông tin Duyên Hải (VTS station) vào hệ thống với đầy đủ thông tin kỹ thuật và vị trí địa lý. Giao diện nhập liệu bao gồm các trường bắt buộc như mã đại, tên đại, tọa độ, tần số hoạt động và trạng thái thiết bị, đảm bảo dữ liệu đầu vào được chuẩn hóa trước khi gửi yêu cầu phê duyệt.
 
 ## Business Intent
-Dai TTDH phai duoc phe duyet
+Đại TTDH mới phải được tạo và lưu trữ trong hệ thống để quản lý tập trung, đồng thời phải trải qua quy trình phê duyệt hai cấp (Phòng → Cục) trước khi chính thức hoạt động, đảm bảo mọi thông tin kỹ thuật đều được kiểm duyệt chặt chẽ.
 
 ## Flow Summary
-Chuyen vien - Tao moi Dai TTDH
+Chuyên viên đăng nhập hệ thống, truy cập menu Quản lý Đại TTDH, chọn chức năng Tạo mới, điền đầy đủ thông tin vào biểu mẫu (mã đại, tên đại, tọa độ GPS, dải tần, công suất phát, loại thiết bị, địa chỉ sở tại, liên hệ quản lý), hệ thống validate dữ liệu đầu vào, sau đó tạo bản ghi ở trạng thái "Chờ phê duyệt" và thông báo cho lãnh đạo cấp Phòng xem xét.
 
 ## Acceptance Criteria
-- Tao moi Dai TTDH thanh cong
+- Chuyên viên có thể tạo thành công một bản ghi Đại TTDH mới với đầy đủ thông tin bắt buộc
+- Hệ thống kiểm tra validate các trường bắt buộc và cảnh báo lỗi cụ thể khi thiếu/thông tin không hợp lệ
+- Bản ghi được lưu ở trạng thái "Chờ phê duyệt" (pending) sau khi tạo
+- Thông báo phê duyệt được gửi tự động đến lãnh đạo cấp Phòng qua hệ thống
+- Dữ liệu được lưu vào cơ sở dữ liệu với đầy đủ metadata (người tạo, thời gian tạo, phiên bản)
+
+## In Scope
+- Biểu mẫu tạo mới Đại TTDH với các trường thông tin kỹ thuật
+- Validate dữ liệu đầu vào (kiểu dữ liệu, khoảng giá trị, trường bắt buộc)
+- Tự động chuyển trạng thái bản ghi sang "Chờ phê duyệt"
+- Gửi thông báo phê duyệt đến lãnh đạo cấp Phòng
+- Lưu lịch tạo mới vào bảng audit trail
+
+## Out of Scope
+- Quy trình phê duyệt (thuộc F-095)
+- Chỉnh sửa bản ghi sau khi tạo (thuộc F-093)
+- Xóa bản ghi (thuộc F-094)
+- Tích hợp API với hệ thống VTS bên ngoài
+- Import hàng loạt từ file Excel/CSV
+
+## Roles + Permissions
+| Role | Permissions |
+|------|-------------|
+| Chuyên viên | Tạo mới, Xem chi tiết |
+| Trưởng phòng | Phê duyệt / Từ chối |
+| Trưởng cục | Phê duyệt cấp 2 |
+| Admin | Quản lý hệ thống |
+
+## Architecture Notes
+Bản ghi Đại TTDH được lưu vào bảng `coastal_station_vts` với trạng thái `status = 'pending'`. Quy trình phê duyệt dùng state machine chuyển trạng thái từ `pending` → `approved` hoặc `rejected`. Tích hợp với module NotificationService để gửi thông báo tự động.
+
+## Entities
+- **CoastalStationVTS**: id, station_code, station_name, latitude, longitude, frequency_band, transmit_power, equipment_type, location_address, contact_person, contact_phone, status, created_by, created_at, updated_at
+
+## Business Rules
+1. Mã đại phải là duy nhất trong toàn hệ thống, không được trùng lặp
+2. Tất cả các trường bắt buộc (mã đại, tên đại, tọa độ, tần số) phải được điền đầy đủ
+3. Tọa độ GPS phải nằm trong phạm vi lãnh hải Việt Nam (kinh độ 102°-110°, vĩ độ 8°-24°)
+4. Bản ghi mới luôn ở trạng thái "Chờ phê duyệt" và không thể chỉnh sửa trực tiếp
+5. Chỉ Chuyên viên mới có quyền tạo mới; các role khác chỉ xem hoặc phê duyệt
+
+## Testing Strategy
+- Test unit: validate các trường đầu vào, kiểm tra duy nhất mã đại
+- Test integration: tạo mới bản ghi qua REST API, xác nhận trạng thái pending
+- Test workflow: kiểm tra flow phê duyệt từ Phòng đến Cục sau khi tạo
+- Test UI: biểu mẫu tạo mới với các validation messages

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuditLog.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.common.entity</a> &gt; <span class="el_source">AuditLog.java</span></div><h1>AuditLog.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.common.entity;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+
+/**
+ * Audit log entity for tracking security-relevant events (including TOTP operations).
+ */
+@Entity
+@Table(name = &quot;audit_log&quot;)
+@Getter
+@Setter
+<span class="nc" id="L20">public class AuditLog extends BaseEntity {</span>
+
+    /**
+     * The user ID associated with this audit event.
+     */
+    @Column(name = &quot;user_id&quot;, length = 36)
+    private String userId;
+
+    /**
+     * The action performed (e.g. {@code TOTP_SETUP_INITIATED}, {@code TOTP_VERIFY_SUCCESS}).
+     */
+    @Column(name = &quot;action&quot;, nullable = false, length = 100)
+    private String action;
+
+    /**
+     * Free-form detail about the event.
+     */
+    @Column(name = &quot;detail&quot;, length = 500)
+    private String detail;
+
+    /**
+     * Optional structured metadata (JSON).
+     */
+    @Column(name = &quot;metadata&quot;, columnDefinition = &quot;TEXT&quot;)
+    private String metadata;
+
+    /**
+     * IP address of the requester (if available).
+     */
+    @Column(name = &quot;ip_address&quot;, length = 45)
+    private String ipAddress;
+
+    // NOTE: createdAt/updatedAt are inherited from {@link BaseEntity} via JPA auditing.
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

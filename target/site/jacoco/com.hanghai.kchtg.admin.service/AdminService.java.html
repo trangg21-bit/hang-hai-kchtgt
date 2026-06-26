@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AdminService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.admin.service</a> &gt; <span class="el_source">AdminService.java</span></div><h1>AdminService.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.admin.service;
+
+import com.hanghai.kchtg.admin.entity.AdminAccount;
+import com.hanghai.kchtg.admin.entity.AdminAuditLog;
+import com.hanghai.kchtg.admin.entity.AdminPermission;
+import com.hanghai.kchtg.admin.entity.AdminRecoveryToken;
+import com.hanghai.kchtg.admin.entity.AdminStatus;
+import com.hanghai.kchtg.admin.repository.AdminAccountRepository;
+import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
+import com.hanghai.kchtg.admin.repository.AdminPermissionRepository;
+import com.hanghai.kchtg.admin.repository.AdminRecoveryTokenRepository;
+import com.hanghai.kchtg.user.entity.User;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * Service quản lý tài khoản admin với tính năng MFA reset,
+ * audit log management và phân quyền module.
+ */
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class AdminService {
+
+<span class="nc" id="L34">    private static final Logger log = LoggerFactory.getLogger(AdminService.class);</span>
+
+    private final AdminAccountRepository adminRepo;
+    private final AdminAuditLogRepository auditLogRepo;
+    private final AdminPermissionRepository permRepo;
+    private final AdminRecoveryTokenRepository recoveryTokenRepo;
+    private final EntityManager entityManager;
+
+    // ── Query ────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List&lt;AdminAccount&gt; findAll() {
+<span class="nc" id="L46">        return adminRepo.findAll();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public AdminAccount findById(UUID id) {
+<span class="nc" id="L51">        return adminRepo.findById(id)</span>
+<span class="nc" id="L52">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Admin account not found: &quot; + id));</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;AdminAuditLog&gt; findAuditLogs(UUID adminId, int page, int size) {
+<span class="nc" id="L57">        return auditLogRepo.findByAdminIdOrderByCreatedAtDesc(adminId)</span>
+<span class="nc" id="L58">                .stream()</span>
+<span class="nc" id="L59">                .skip((long) page * size)</span>
+<span class="nc" id="L60">                .limit(size)</span>
+<span class="nc" id="L61">                .collect(Collectors.toList());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;AdminAuditLog&gt; findAllAuditLogs() {
+<span class="nc" id="L66">        return auditLogRepo.findAll(Sort.by(&quot;createdAt&quot;).descending());</span>
+    }
+
+    // ── MFA Reset ────────────────────────────────────────────────────
+
+    /**
+     * Tạo yêu cầu khôi phục MFA cho admin - tạo recovery token.
+     */
+    public AdminRecoveryToken requestMfaReset(UUID adminId, UUID requestBy, String requestByName) {
+<span class="nc" id="L75">        AdminAccount admin = adminRepo.findByUserId(adminId)</span>
+<span class="nc" id="L76">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Admin account not found for userId: &quot; + adminId));</span>
+
+        // Xóa các token cũ chưa dùng
+<span class="nc" id="L79">        recoveryTokenRepo.deleteByAdminId(adminId);</span>
+
+        // Tạo token mới
+<span class="nc" id="L82">        String token = UUID.randomUUID().toString().replace(&quot;-&quot;, &quot;&quot;);</span>
+<span class="nc" id="L83">        AdminRecoveryToken recoveryToken = AdminRecoveryToken.create(adminId, token);</span>
+<span class="nc" id="L84">        recoveryTokenRepo.save(recoveryToken);</span>
+
+        // Ghi audit log
+<span class="nc" id="L87">        auditLogRepo.save(AdminAuditLog.create(</span>
+<span class="nc" id="L88">                admin.getId(), &quot;MFA Reset Requested&quot;, &quot;MFA&quot;,</span>
+                &quot;Yêu cầu khôi phục MFA cho userId: &quot; + adminId,
+                &quot;Bởi: &quot; + requestByName, &quot;0.0.0.0&quot;, &quot;System&quot;));
+
+<span class="nc" id="L92">        log.info(&quot;MFA reset requested for adminId: {}&quot;, adminId);</span>
+<span class="nc" id="L93">        return recoveryToken;</span>
+    }
+
+    /**
+     * Xác thực recovery token và hoàn tất MFA reset.
+     */
+    @Transactional
+    public boolean resetMfaWithToken(String token, UUID adminId) {
+<span class="nc" id="L101">        Optional&lt;AdminRecoveryToken&gt; tokenOpt = recoveryTokenRepo.findByTokenAndUsedFalse(token);</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">        if (tokenOpt.isEmpty()) {</span>
+<span class="nc" id="L103">            return false;</span>
+        }
+
+<span class="nc" id="L106">        AdminRecoveryToken recoveryToken = tokenOpt.get();</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">        if (recoveryToken.isExpired()) {</span>
+<span class="nc" id="L108">            return false;</span>
+        }
+
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        if (!recoveryToken.getAdminId().equals(adminId)) {</span>
+<span class="nc" id="L112">            return false;</span>
+        }
+
+        // Đánh dấu đã dùng
+<span class="nc" id="L116">        recoveryToken.setUsed(true);</span>
+<span class="nc" id="L117">        recoveryTokenRepo.save(recoveryToken);</span>
+
+        // Xóa token sau khi dùng
+<span class="nc" id="L120">        recoveryTokenRepo.delete(recoveryToken);</span>
+
+        // Ghi audit log
+<span class="nc" id="L123">        AdminAccount admin = adminRepo.findByUserId(adminId).orElse(null);</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">        if (admin != null) {</span>
+<span class="nc" id="L125">            auditLogRepo.save(AdminAuditLog.create(</span>
+<span class="nc" id="L126">                    admin.getId(), admin.getUser().getUsername(),</span>
+                    &quot;MFA_RESET&quot;, &quot;MFA đã được khôi phục thành công&quot;,
+                    &quot;Sử dụng recovery token&quot;, &quot;0.0.0.0&quot;, &quot;System&quot;));
+        }
+
+<span class="nc" id="L131">        log.info(&quot;MFA reset completed for adminId: {}&quot;, adminId);</span>
+<span class="nc" id="L132">        return true;</span>
+    }
+
+    /**
+     * Super-admin approve MFA reset request.
+     */
+    @Transactional
+    public AdminAccount approveMfaReset(UUID adminId, UUID superAdminId, String superAdminName) {
+<span class="nc" id="L140">        AdminAccount admin = adminRepo.findByUserId(adminId)</span>
+<span class="nc" id="L141">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Admin account not found: &quot; + adminId));</span>
+
+        // Reset MFA secret/key về null (disable MFA)
+        // Trong thực tế sẽ cần thêm field mfaSecret vào AdminAccount/User
+
+<span class="nc" id="L146">        auditLogRepo.save(AdminAuditLog.create(</span>
+                superAdminId, superAdminName,
+                &quot;MFA_APPROVED&quot;, &quot;Approve MFA reset cho userId: &quot; + adminId,
+                null, &quot;0.0.0.0&quot;, &quot;System&quot;));
+
+<span class="nc" id="L151">        log.info(&quot;MFA reset approved for adminId: {} by {}&quot;, adminId, superAdminName);</span>
+<span class="nc" id="L152">        return admin;</span>
+    }
+
+    // ── Permissions ──────────────────────────────────────────────────
+
+    /**
+     * Cấp permissions cho admin theo module.
+     */
+    @Transactional
+    public AdminPermission grantPermission(UUID adminId, String moduleId, List&lt;String&gt; permissions) {
+<span class="nc" id="L162">        AdminAccount admin = adminRepo.findByUserId(adminId)</span>
+<span class="nc" id="L163">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Admin account not found: &quot; + adminId));</span>
+
+        // Xóa permissions cũ của module này
+<span class="nc" id="L166">        List&lt;AdminPermission&gt; existing = permRepo.findByAdminIdAndModuleId(adminId, moduleId);</span>
+<span class="nc" id="L167">        existing.forEach(permRepo::delete);</span>
+
+<span class="nc" id="L169">        AdminPermission newPerm = AdminPermission.create(adminId, moduleId, permissions);</span>
+<span class="nc" id="L170">        AdminPermission saved = permRepo.save(newPerm);</span>
+
+<span class="nc" id="L172">        auditLogRepo.save(AdminAuditLog.create(</span>
+<span class="nc" id="L173">                admin.getId(), admin.getUser().getUsername(),</span>
+                &quot;PERMISSION_GRANT&quot;, &quot;Module: &quot; + moduleId,
+<span class="nc bnc" id="L175" title="All 2 branches missed.">                permissions != null ? String.join(&quot;, &quot;, permissions) : null,</span>
+                &quot;0.0.0.0&quot;, &quot;System&quot;));
+
+<span class="nc" id="L178">        return saved;</span>
+    }
+
+    /**
+     * Thu hồi permissions của admin theo module.
+     */
+    @Transactional
+    public void revokePermission(UUID adminId, String moduleId) {
+<span class="nc" id="L186">        AdminAccount admin = adminRepo.findByUserId(adminId)</span>
+<span class="nc" id="L187">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Admin account not found: &quot; + adminId));</span>
+
+<span class="nc" id="L189">        List&lt;AdminPermission&gt; existing = permRepo.findByAdminIdAndModuleId(adminId, moduleId);</span>
+<span class="nc" id="L190">        existing.forEach(permRepo::delete);</span>
+
+<span class="nc" id="L192">        auditLogRepo.save(AdminAuditLog.create(</span>
+<span class="nc" id="L193">                admin.getId(), admin.getUser().getUsername(),</span>
+                &quot;PERMISSION_REVOKE&quot;, &quot;Module: &quot; + moduleId,
+                null, &quot;0.0.0.0&quot;, &quot;System&quot;));
+<span class="nc" id="L196">    }</span>
+
+    /**
+     * Lấy tất cả permissions của admin.
+     */
+    @Transactional(readOnly = true)
+    public List&lt;AdminPermission&gt; getPermissions(UUID adminId) {
+<span class="nc" id="L203">        return permRepo.findByAdminId(adminId);</span>
+    }
+
+    /**
+     * Kiểm tra admin có permission cụ thể trong module không.
+     */
+    @Transactional(readOnly = true)
+    public boolean hasPermission(UUID adminId, String moduleId, String permission) {
+<span class="nc" id="L211">        return permRepo.hasPermission(adminId, moduleId, permission);</span>
+    }
+
+    // ── Lock/Unlock Admin ────────────────────────────────────────────
+
+    @Transactional
+    public AdminAccount lockAdmin(UUID adminId, String reason) {
+<span class="nc" id="L218">        AdminAccount admin = findById(adminId);</span>
+<span class="nc" id="L219">        admin.setStatus(AdminStatus.LOCKED);</span>
+<span class="nc" id="L220">        AdminAccount saved = adminRepo.save(admin);</span>
+
+<span class="nc" id="L222">        auditLogRepo.save(AdminAuditLog.create(</span>
+<span class="nc" id="L223">                admin.getId(), admin.getUser().getUsername(),</span>
+                &quot;LOCKED&quot;, &quot;Admin account locked&quot;,
+                reason, &quot;0.0.0.0&quot;, &quot;System&quot;));
+
+<span class="nc" id="L227">        log.info(&quot;Locked admin account: {}&quot;, adminId);</span>
+<span class="nc" id="L228">        return saved;</span>
+    }
+
+    @Transactional
+    public AdminAccount unlockAdmin(UUID adminId, String reason) {
+<span class="nc" id="L233">        AdminAccount admin = findById(adminId);</span>
+<span class="nc" id="L234">        admin.setStatus(AdminStatus.ACTIVE);</span>
+<span class="nc" id="L235">        AdminAccount saved = adminRepo.save(admin);</span>
+
+<span class="nc" id="L237">        auditLogRepo.save(AdminAuditLog.create(</span>
+<span class="nc" id="L238">                admin.getId(), admin.getUser().getUsername(),</span>
+                &quot;UNLOCKED&quot;, &quot;Admin account unlocked&quot;,
+                reason, &quot;0.0.0.0&quot;, &quot;System&quot;));
+
+<span class="nc" id="L242">        log.info(&quot;Unlocked admin account: {}&quot;, adminId);</span>
+<span class="nc" id="L243">        return saved;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

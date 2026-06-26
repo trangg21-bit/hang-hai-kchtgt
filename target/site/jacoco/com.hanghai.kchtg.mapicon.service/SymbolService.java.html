@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SymbolService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.mapicon.service</a> &gt; <span class="el_source">SymbolService.java</span></div><h1>SymbolService.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.mapicon.service;
+
+import com.hanghai.kchtg.mapicon.entity.MapIcon;
+import com.hanghai.kchtg.mapicon.entity.SymbolLibrary;
+import com.hanghai.kchtg.mapicon.entity.SymbolUsage;
+import com.hanghai.kchtg.mapicon.repository.MapIconRepository;
+import com.hanghai.kchtg.mapicon.repository.SymbolLibraryRepository;
+import com.hanghai.kchtg.mapicon.repository.SymbolUsageRepository;
+import jakarta.persistence.EntityNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+
+/**
+ * Service quản lý biểu tượng bản đồ với SVG validation và GeoServer SLD generation.
+ */
+@Service
+public class SymbolService {
+
+<span class="nc" id="L27">    private static final Logger log = LoggerFactory.getLogger(SymbolService.class);</span>
+    private static final int MAX_SVG_SIZE = 50_000;
+    private static final int MAX_PNG_SIZE = 100_000;
+
+    private final SymbolLibraryRepository libraryRepo;
+    private final SymbolUsageRepository usageRepo;
+    private final MapIconRepository mapIconRepo;
+
+    public SymbolService(SymbolLibraryRepository libraryRepo,
+                         SymbolUsageRepository usageRepo,
+<span class="nc" id="L37">                         MapIconRepository mapIconRepo) {</span>
+<span class="nc" id="L38">        this.libraryRepo = libraryRepo;</span>
+<span class="nc" id="L39">        this.usageRepo = usageRepo;</span>
+<span class="nc" id="L40">        this.mapIconRepo = mapIconRepo;</span>
+<span class="nc" id="L41">    }</span>
+
+    // ── CRUD ─────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List&lt;MapIcon&gt; findAll() {
+<span class="nc" id="L47">        return mapIconRepo.findAll();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public MapIcon findById(UUID id) {
+<span class="nc" id="L52">        return mapIconRepo.findById(id)</span>
+<span class="nc" id="L53">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Map icon not found: &quot; + id));</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;MapIcon&gt; findByCategory(MapIcon.Category category) {
+<span class="nc" id="L58">        return mapIconRepo.findByCategory(category);</span>
+    }
+
+    // ── SVG Validation ───────────────────────────────────────────────
+
+    public void validateSvgContent(String svgContent) {
+<span class="nc bnc" id="L64" title="All 4 branches missed.">        if (svgContent == null || svgContent.isBlank()) {</span>
+<span class="nc" id="L65">            throw new IllegalArgumentException(&quot;SVG content cannot be empty&quot;);</span>
+        }
+<span class="nc bnc" id="L67" title="All 2 branches missed.">        if (svgContent.length() &gt; MAX_SVG_SIZE) {</span>
+<span class="nc" id="L68">            throw new IllegalArgumentException(&quot;SVG file too large: &quot; + svgContent.length()</span>
+                    + &quot; bytes (max: &quot; + MAX_SVG_SIZE + &quot;)&quot;);
+        }
+        try {
+<span class="nc" id="L72">            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();</span>
+<span class="nc" id="L73">            factory.setFeature(&quot;http://apache.org/xml/features/disallow-doctype-decl&quot;, true);</span>
+<span class="nc" id="L74">            factory.setFeature(&quot;http://xml.org/sax/features/external-general-entities&quot;, false);</span>
+<span class="nc" id="L75">            factory.setFeature(&quot;http://xml.org/sax/features/external-parameter-entities&quot;, false);</span>
+<span class="nc" id="L76">            factory.setNamespaceAware(true);</span>
+<span class="nc" id="L77">            DocumentBuilder builder = factory.newDocumentBuilder();</span>
+<span class="nc" id="L78">            ByteArrayInputStream stream = new ByteArrayInputStream(</span>
+<span class="nc" id="L79">                    svgContent.getBytes(StandardCharsets.UTF_8));</span>
+<span class="nc" id="L80">            builder.parse(stream);</span>
+<span class="nc" id="L81">        } catch (Exception e) {</span>
+<span class="nc" id="L82">            throw new IllegalArgumentException(&quot;Invalid SVG content: &quot; + e.getMessage());</span>
+<span class="nc" id="L83">        }</span>
+<span class="nc" id="L84">    }</span>
+
+    public void validateUpload(String fileName, long fileSize, String contentType) {
+<span class="nc" id="L87">        String ext = getExtension(fileName);</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (!Arrays.asList(&quot;svg&quot;, &quot;png&quot;, &quot;sld&quot;).contains(ext.toLowerCase())) {</span>
+<span class="nc" id="L89">            throw new IllegalArgumentException(&quot;Unsupported format: &quot; + ext);</span>
+        }
+<span class="nc bnc" id="L91" title="All 2 branches missed.">        long maxSize = &quot;svg&quot;.equals(ext.toLowerCase()) ? MAX_SVG_SIZE</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">                : &quot;png&quot;.equals(ext.toLowerCase()) ? MAX_PNG_SIZE : 10_000;</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        if (fileSize &gt; maxSize) {</span>
+<span class="nc" id="L94">            throw new IllegalArgumentException(&quot;File too large: &quot; + fileSize + &quot; bytes (max: &quot; + maxSize + &quot;)&quot;);</span>
+        }
+<span class="nc" id="L96">    }</span>
+
+    // ── GeoServer SLD Generation ──────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public String generateSLD(UUID symbolId, String featureType) {
+<span class="nc" id="L102">        SymbolLibrary symbol = libraryRepo.findById(symbolId)</span>
+<span class="nc" id="L103">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Symbol not found: &quot; + symbolId));</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">        if (symbol.getFormat() != SymbolLibrary.SymbolFormat.SLD) {</span>
+<span class="nc" id="L105">            throw new IllegalArgumentException(&quot;SLD generation only available for SLD format symbols&quot;);</span>
+        }
+<span class="nc" id="L107">        return String.format(&quot;&quot;&quot;</span>
+                &lt;?xml version=\&quot;1.0\&quot; encoding=\&quot;UTF-8\&quot;?&gt;
+                &lt;StyledLayerDescriptor xmlns=\&quot;http://www.opengis.net/sld\&quot; version=\&quot;1.1.0\&quot;&gt;
+                  &lt;NamedLayer&gt;
+                    &lt;Name&gt;%s&lt;/Name&gt;
+                    &lt;UserStyle&gt;
+                      &lt;Title&gt;%s&lt;/Title&gt;
+                      &lt;FeatureTypeStyle&gt;
+                        &lt;Rule&gt;
+                          &lt;PointSymbolizer&gt;
+                            &lt;Graphic&gt;
+                              &lt;Mark&gt;&lt;WellKnownName&gt;shape://dot&lt;/WellKnownName&gt;
+                              &lt;Fill&gt;&lt;CssParameter name=\&quot;fill\&quot;&gt;#FF0000&lt;/CssParameter&gt;&lt;/Fill&gt;
+                              &lt;/Mark&gt;
+                              &lt;Size&gt;6&lt;/Size&gt;
+                            &lt;/Graphic&gt;
+                          &lt;/PointSymbolizer&gt;
+                        &lt;/Rule&gt;
+                      &lt;/FeatureTypeStyle&gt;
+                    &lt;/UserStyle&gt;
+                  &lt;/NamedLayer&gt;
+                &lt;/StyledLayerDescriptor&gt;
+<span class="nc" id="L129">                &quot;&quot;&quot;, symbol.getCode(), symbol.getName());</span>
+    }
+
+    public Map&lt;String, Object&gt; testSLDWithGeoServer(UUID symbolId, String geoServerUrl) {
+<span class="nc" id="L133">        String sld = generateSLD(symbolId, &quot;map_icons&quot;);</span>
+<span class="nc" id="L134">        Map&lt;String, Object&gt; result = new HashMap&lt;&gt;();</span>
+        try {
+<span class="nc" id="L136">            result.put(&quot;success&quot;, true);</span>
+<span class="nc" id="L137">            result.put(&quot;message&quot;, &quot;SLD validation passed&quot;);</span>
+<span class="nc" id="L138">            result.put(&quot;sld&quot;, sld);</span>
+<span class="nc" id="L139">        } catch (Exception e) {</span>
+<span class="nc" id="L140">            result.put(&quot;success&quot;, false);</span>
+<span class="nc" id="L141">            result.put(&quot;message&quot;, &quot;SLD validation failed: &quot; + e.getMessage());</span>
+<span class="nc" id="L142">        }</span>
+<span class="nc" id="L143">        return result;</span>
+    }
+
+    // ── Usage Tracking ───────────────────────────────────────────────
+
+    @Transactional
+    public SymbolUsage recordUsage(UUID symbolId, UUID objectId, String objectType, UUID usedBy) {
+<span class="nc" id="L150">        SymbolLibrary symbol = libraryRepo.findById(symbolId)</span>
+<span class="nc" id="L151">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Symbol not found: &quot; + symbolId));</span>
+<span class="nc" id="L152">        SymbolUsage usage = SymbolUsage.create(symbolId, objectId, objectType, usedBy);</span>
+<span class="nc" id="L153">        return usageRepo.save(usage);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;SymbolUsage&gt; getUsageHistory(UUID symbolId) {
+<span class="nc" id="L158">        return usageRepo.findBySymbolIdOrderByUsedAtDesc(symbolId);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public long getUsageCount(UUID symbolId) {
+<span class="nc" id="L163">        return usageRepo.countBySymbolId(symbolId);</span>
+    }
+
+    private String getExtension(String fileName) {
+<span class="nc" id="L167">        int dot = fileName.lastIndexOf('.');</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">        return dot &gt; 0 ? fileName.substring(dot + 1) : &quot;&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

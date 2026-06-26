@@ -1,0 +1,107 @@
+{
+  "entry": {
+    "aggregate_size_status": "green",
+    "depends_on": [],
+    "feature_count": 6,
+    "features": {
+      "F-284": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-284",
+        "name": "Tích hợp hải đồ S-57",
+        "path": "docs/modules/M-012-hai-do-gis-integration/_features/F-284-tich-hop-hai-do-s-57/",
+        "slug": "tich-hop-hai-do-s-57",
+        "status": "done",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-285": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-285",
+        "name": "Tích hợp hải đồ S-63",
+        "path": "docs/modules/M-012-hai-do-gis-integration/_features/F-285-tich-hop-hai-do-s-63/",
+        "slug": "tich-hop-hai-do-s-63",
+        "status": "done",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-286": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-286",
+        "name": "Hiển thị hải đồ GIS (S-52)",
+        "path": "docs/modules/M-012-hai-do-gis-integration/_features/F-286-hien-thi-hai-do-gis-s-52/",
+        "slug": "hien-thi-hai-do-gis-s-52",
+        "status": "done",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-287": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-287",
+        "name": "Quản lý lớp dữ liệu GIS",
+        "path": "docs/modules/M-012-hai-do-gis-integration/_features/F-287-quan-ly-lop-du-lieu-gis/",
+        "slug": "quan-ly-lop-du-lieu-gis",
+        "status": "done",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-288": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-288",
+        "name": "Tích hợp CSDL không gian",
+        "path": "docs/modules/M-012-hai-do-gis-integration/_features/F-288-tich-hop-csd-khong-gian/",
+        "slug": "tich-hop-csd-khong-gian",
+        "status": "done",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-289": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-289",
+        "name": "Hiệu tọa WGS84 GIS",
+        "path": "docs/modules/M-012-hai-do-gis-integration/_features/F-289-hieu-toa-wgs84-gis/",
+        "slug": "hieu-toa-wgs84-gis",
+        "status": "done",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      }
+    },
+    "id": "M-012",
+    "name": "Hải đồ & GIS Integration",
+    "path": "docs/modules/M-012-hai-do-gis-integration/",
+    "slug": "hai-do-gis-integration",
+    "status": "done",
+    "version": 1
+  },
+  "module_id": "M-012",
+  "schema_version": "1.0"
+}

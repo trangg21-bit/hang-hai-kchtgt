@@ -12,6 +12,7 @@ import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject;
 import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
 import com.hanghai.kchtg.integration.dto.AssetStatusDto;
+import com.hanghai.kchtg.integration.dto.CargoInventoryDto;
 import com.hanghai.kchtg.integration.dto.ComprehensiveInfoDto;
 import com.hanghai.kchtg.integration.dto.MaintenanceInfoDto;
 import com.hanghai.kchtg.integration.entity.CargoAggregate;
@@ -217,12 +218,12 @@ public class PortCargoShareController {
     }
 
     /**
-     * GET /ports/berth-wharf-summary (F-220) -> Summarizes port capacities.
+     * GET /ports/berth-wharf-summary (F-220) -> Returns cargo aggregate categories.
      */
     @GetMapping("/ports/berth-wharf-summary")
-    public ResponseEntity<ApiResponse<Page<PortStatus>>> getBerthWharfSummary(
+    public ResponseEntity<ApiResponse<Page<CargoAggregate>>> getBerthWharfSummary(
             @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
-        Page<PortStatus> page = portStatusRepository.findAll(pageable);
+        Page<CargoAggregate> page = cargoAggregateRepository.findAll(pageable);
         return ResponseEntity.ok(ApiResponse.success(page));
     }
 
@@ -293,13 +294,46 @@ public class PortCargoShareController {
     }
 
     /**
-     * GET /break-seas/summary (F-226) -> Summarizes storm shelters.
+     * GET /break-seas/summary (F-227) -> Summarizes storm shelters.
      */
     @GetMapping("/break-seas/summary")
     public ResponseEntity<ApiResponse<Page<PolygonObject>>> getBreakSeasSummary(
             @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
         Page<PolygonObject> page = polygonRepository.findByObjectTypeAndStatus(
                 PolygonObject.ObjectType.STORM_SHELTER, PolygonObject.Status.PUBLISHED, pageable);
+        return ResponseEntity.ok(ApiResponse.success(page));
+    }
+
+    /**
+     * GET /cargo/inventory (F-226) -> Returns paginated cargo inventory check results.
+     * Implements the feature "chieu-kiem-hang-hoa" (cargo inventory check) for sharing
+     * aggregated cargo data through the integration bus.
+     */
+    @GetMapping("/cargo/inventory")
+    public ResponseEntity<ApiResponse<Page<CargoInventoryDto>>> getCargoInventory(
+            @PageableDefault(size = 20, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        List<CargoAggregate> all = cargoAggregateRepository.findAll();
+
+        List<CargoInventoryDto> inventoryList = all.stream()
+                .map(c -> CargoInventoryDto.builder()
+                        .id(c.getId() != null ? c.getId().toString() : null)
+                        .cargoName(c.getPortCode())
+                        .quantity(c.getVesselCount() != null ? Long.valueOf(c.getVesselCount()) : 0L)
+                        .unit("vessels")
+                        .lastCheckedAt(c.getPeriodEnd())
+                        .status(c.getPeriodType())
+                        .build())
+                .collect(Collectors.toList());
+
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), inventoryList.size());
+        Page<CargoInventoryDto> page = new PageImpl<>(
+                start <= end ? inventoryList.subList(start, end) : Collections.emptyList(),
+                pageable,
+                inventoryList.size()
+        );
+
         return ResponseEntity.ok(ApiResponse.success(page));
     }
 }

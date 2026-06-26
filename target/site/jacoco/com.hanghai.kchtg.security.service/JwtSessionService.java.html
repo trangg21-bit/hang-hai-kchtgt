@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JwtSessionService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.security.service</a> &gt; <span class="el_source">JwtSessionService.java</span></div><h1>JwtSessionService.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.security.service;
+
+import com.hanghai.kchtg.security.entity.JwtSessionEntity;
+import com.hanghai.kchtg.security.entity.JwtSessionEntity.SessionStatus;
+import com.hanghai.kchtg.security.repository.JwtSessionRepository;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+/**
+ * Core service for JWT session management (F-274).
+ */
+@Service
+public class JwtSessionService {
+
+<span class="nc" id="L33">    private static final Logger log = LoggerFactory.getLogger(JwtSessionService.class);</span>
+    private static final int SALT_LENGTH = 16; // 128-bit salt
+
+    private final JwtSessionRepository sessionRepository;
+    private final UserRepository userRepository;
+    private final com.hanghai.kchtg.security.JwtUtil jwtUtil;
+    private final CacheManager cacheManager;
+<span class="nc" id="L40">    private final SecureRandom secureRandom = new SecureRandom();</span>
+
+    public JwtSessionService(JwtSessionRepository sessionRepository,
+                             UserRepository userRepository,
+                             com.hanghai.kchtg.security.JwtUtil jwtUtil,
+<span class="nc" id="L45">                             CacheManager cacheManager) {</span>
+<span class="nc" id="L46">        this.sessionRepository = sessionRepository;</span>
+<span class="nc" id="L47">        this.userRepository = userRepository;</span>
+<span class="nc" id="L48">        this.jwtUtil = jwtUtil;</span>
+<span class="nc" id="L49">        this.cacheManager = cacheManager;</span>
+<span class="nc" id="L50">    }</span>
+
+    /**
+     * Create a new JwtSession record after successful login.
+     */
+    public RefreshTokenPair createSession(User user, String sessionId,
+                                          String refreshTokenValue,
+                                          String userAgent, String ipAddress,
+                                          String deviceFingerprint,
+                                          LocalDateTime expiresAt) {
+<span class="nc" id="L60">        String userIdStr = user.getId().toString();</span>
+
+        // 1. Generate salt
+<span class="nc" id="L63">        byte[] saltBytes = new byte[SALT_LENGTH];</span>
+<span class="nc" id="L64">        secureRandom.nextBytes(saltBytes);</span>
+<span class="nc" id="L65">        String salt = Base64.getEncoder().encodeToString(saltBytes);</span>
+
+        // 2. Compute SHA-512 hash of (refreshToken + salt)
+<span class="nc" id="L68">        String hash = sha512Hex(refreshTokenValue + &quot;:&quot; + salt);</span>
+
+        // 3. Determine role level
+<span class="nc" id="L71">        int roleLevel = resolveRoleLevel(user.getRole());</span>
+
+        // 4. Build and persist session
+<span class="nc" id="L74">        JwtSessionEntity session = new JwtSessionEntity();</span>
+<span class="nc" id="L75">        session.setUser(user);</span>
+<span class="nc" id="L76">        session.setUserId(userIdStr);</span>
+<span class="nc" id="L77">        session.setUsername(user.getUsername());</span>
+<span class="nc" id="L78">        session.setRoleLevel(roleLevel);</span>
+<span class="nc" id="L79">        session.setRefreshTokenHash(hash);</span>
+<span class="nc" id="L80">        session.setRefreshTokenSalt(salt);</span>
+<span class="nc" id="L81">        session.setSessionId(sessionId);</span>
+<span class="nc" id="L82">        session.setUserAgent(userAgent);</span>
+<span class="nc" id="L83">        session.setIpAddress(ipAddress);</span>
+<span class="nc" id="L84">        session.setDeviceFingerprint(deviceFingerprint);</span>
+<span class="nc" id="L85">        session.setExpiresAt(expiresAt);</span>
+<span class="nc" id="L86">        session.setLastUsedAt(LocalDateTime.now());</span>
+<span class="nc" id="L87">        session.setIsRevoked(false);</span>
+<span class="nc" id="L88">        session.setStatus(SessionStatus.ACTIVE);</span>
+
+<span class="nc" id="L90">        sessionRepository.save(session);</span>
+
+<span class="nc" id="L92">        log.info(&quot;JWT session created: userId={}, sessionId={}, expiresAt={}&quot;,</span>
+                userIdStr, sessionId, expiresAt);
+
+<span class="nc" id="L95">        return new RefreshTokenPair(refreshTokenValue, hash);</span>
+    }
+
+    /**
+     * Find session by refresh token hash (reuse detection lookup).
+     */
+    public Optional&lt;JwtSessionEntity&gt; findByRefreshTokenHash(String hash) {
+<span class="nc" id="L102">        return sessionRepository.findByRefreshTokenHash(hash);</span>
+    }
+
+    /**
+     * Find session by session ID.
+     */
+    public Optional&lt;JwtSessionEntity&gt; findBySessionId(String sessionId) {
+<span class="nc" id="L109">        return sessionRepository.findBySessionId(sessionId);</span>
+    }
+
+    /**
+     * Find all active (non-revoked) sessions for a user.
+     */
+    public List&lt;JwtSessionEntity&gt; findActiveByUserId(String userId) {
+<span class="nc" id="L116">        return sessionRepository.findByUserIdAndIsRevokedFalse(userId);</span>
+    }
+
+    /**
+     * Find all active (non-revoked) sessions for a User entity.
+     */
+    public List&lt;JwtSessionEntity&gt; findActiveByUserId(User user) {
+<span class="nc" id="L123">        return findActiveByUserId(user.getId().toString());</span>
+    }
+
+    /**
+     * Validate a refresh token against the stored hash.
+     */
+    @Transactional
+    public Optional&lt;JwtSessionEntity&gt; validateRefreshToken(String refreshTokenValue) {
+<span class="nc bnc" id="L131" title="All 4 branches missed.">        if (refreshTokenValue == null || refreshTokenValue.isBlank()) {</span>
+<span class="nc" id="L132">            log.debug(&quot;Empty refresh token provided&quot;);</span>
+<span class="nc" id="L133">            return Optional.empty();</span>
+        }
+
+        Claims claims;
+        try {
+<span class="nc" id="L138">            claims = jwtUtil.validateToken(refreshTokenValue);</span>
+<span class="nc" id="L139">        } catch (JwtException | IllegalArgumentException e) {</span>
+<span class="nc" id="L140">            log.debug(&quot;Invalid refresh token signature/format: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L141">            return Optional.empty();</span>
+<span class="nc" id="L142">        }</span>
+
+<span class="nc" id="L144">        String jti = claims.getId();</span>
+<span class="nc bnc" id="L145" title="All 2 branches missed.">        if (jti == null) {</span>
+<span class="nc" id="L146">            log.debug(&quot;Refresh token missing JTI claim&quot;);</span>
+<span class="nc" id="L147">            return Optional.empty();</span>
+        }
+
+<span class="nc" id="L150">        Optional&lt;JwtSessionEntity&gt; sessionOpt = sessionRepository.findBySessionId(jti);</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">        if (sessionOpt.isEmpty()) {</span>
+<span class="nc" id="L152">            log.debug(&quot;No session found in DB for JTI: {}&quot;, jti);</span>
+<span class="nc" id="L153">            return Optional.empty();</span>
+        }
+
+<span class="nc" id="L156">        JwtSessionEntity session = sessionOpt.get();</span>
+
+        // Check expiration
+<span class="nc bnc" id="L159" title="All 2 branches missed.">        if (session.getExpiresAt().isBefore(LocalDateTime.now())) {</span>
+<span class="nc" id="L160">            log.warn(&quot;Refresh token expired: sessionId={}, userId={}&quot;,</span>
+<span class="nc" id="L161">                    session.getSessionId(), session.getUserId());</span>
+<span class="nc" id="L162">            session.revoke(&quot;EXPIRED&quot;, null);</span>
+<span class="nc" id="L163">            sessionRepository.save(session);</span>
+<span class="nc" id="L164">            Cache cache = cacheManager.getCache(&quot;jwtRevocation&quot;);</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">            if (cache != null) {</span>
+<span class="nc" id="L166">                cache.put(jti, true);</span>
+            }
+<span class="nc" id="L168">            return Optional.empty();</span>
+        }
+
+        // Verify salted hash
+<span class="nc" id="L172">        String computedHash = sha512Hex(refreshTokenValue + &quot;:&quot; + session.getRefreshTokenSalt());</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">        if (!computedHash.equals(session.getRefreshTokenHash())) {</span>
+<span class="nc" id="L174">            log.warn(&quot;Salted hash mismatch for session: {}&quot;, jti);</span>
+<span class="nc" id="L175">            return Optional.empty();</span>
+        }
+
+        // Check revocation (reuse detection)
+<span class="nc bnc" id="L179" title="All 2 branches missed.">        if (Boolean.TRUE.equals(session.getIsRevoked())) {</span>
+<span class="nc" id="L180">            log.warn(&quot;Refresh token reuse detected: sessionId={}, userId={}. Revoking all sessions.&quot;,</span>
+<span class="nc" id="L181">                    session.getSessionId(), session.getUserId());</span>
+<span class="nc" id="L182">            revokeAllSessions(session.getUserId(), &quot;REUSE_DETECTED&quot;);</span>
+<span class="nc" id="L183">            return Optional.empty();</span>
+        }
+
+        // Touch lastUsedAt
+<span class="nc" id="L187">        session.touch();</span>
+<span class="nc" id="L188">        sessionRepository.save(session);</span>
+
+<span class="nc" id="L190">        log.debug(&quot;Refresh token validated successfully: sessionId={}, userId={}&quot;,</span>
+<span class="nc" id="L191">                session.getSessionId(), session.getUserId());</span>
+
+<span class="nc" id="L193">        return Optional.of(session);</span>
+    }
+
+    /**
+     * Revoke a session by JTI (JWT ID).
+     */
+    @Transactional
+    public boolean revokeSession(String jti, String userId, String reason) {
+<span class="nc" id="L201">        Optional&lt;JwtSessionEntity&gt; sessionOpt = sessionRepository.findBySessionId(jti);</span>
+
+<span class="nc bnc" id="L203" title="All 2 branches missed.">        if (sessionOpt.isEmpty()) {</span>
+<span class="nc" id="L204">            log.warn(&quot;Session not found for revocation: jti={}, userId={}&quot;, jti, userId);</span>
+<span class="nc" id="L205">            return false;</span>
+        }
+
+<span class="nc" id="L208">        JwtSessionEntity session = sessionOpt.get();</span>
+<span class="nc bnc" id="L209" title="All 2 branches missed.">        session.revoke(reason, userId != null ? UUID.fromString(userId) : null);</span>
+<span class="nc" id="L210">        sessionRepository.save(session);</span>
+
+<span class="nc" id="L212">        Cache cache = cacheManager.getCache(&quot;jwtRevocation&quot;);</span>
+<span class="nc bnc" id="L213" title="All 2 branches missed.">        if (cache != null) {</span>
+<span class="nc" id="L214">            cache.put(jti, true);</span>
+        }
+
+<span class="nc" id="L217">        log.info(&quot;Session revoked: sessionId={}, userId={}, reason={}&quot;,</span>
+<span class="nc" id="L218">                session.getSessionId(), session.getUserId(), reason);</span>
+<span class="nc" id="L219">        return true;</span>
+    }
+
+    /**
+     * Revoke all sessions for a user.
+     */
+    @Transactional
+    public int revokeAllSessions(String userId, String reason) {
+<span class="nc" id="L227">        List&lt;JwtSessionEntity&gt; activeSessions = sessionRepository.findByUserIdAndIsRevokedFalse(userId);</span>
+<span class="nc" id="L228">        int count = sessionRepository.revokeAllByUserId(userId);</span>
+
+<span class="nc" id="L230">        Cache cache = cacheManager.getCache(&quot;jwtRevocation&quot;);</span>
+<span class="nc bnc" id="L231" title="All 2 branches missed.">        if (cache != null) {</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">            for (JwtSessionEntity session : activeSessions) {</span>
+<span class="nc" id="L233">                cache.put(session.getSessionId(), true);</span>
+<span class="nc" id="L234">            }</span>
+        }
+
+<span class="nc" id="L237">        log.info(&quot;All sessions revoked for userId={}, reason={}, count={}&quot;, userId, reason, count);</span>
+<span class="nc" id="L238">        return count;</span>
+    }
+
+    /**
+     * Find all expired sessions that have not yet been revoked.
+     */
+    public List&lt;JwtSessionEntity&gt; findExpiredSessions() {
+<span class="nc" id="L245">        return sessionRepository.findExpiredSessions(LocalDateTime.now());</span>
+    }
+
+    /**
+     * Cleanup expired sessions.
+     */
+    @Transactional
+    public int cleanupExpired() {
+<span class="nc" id="L253">        LocalDateTime now = LocalDateTime.now();</span>
+<span class="nc" id="L254">        List&lt;JwtSessionEntity&gt; expired = sessionRepository.findExpiredSessions(now);</span>
+
+<span class="nc" id="L256">        int count = 0;</span>
+<span class="nc bnc" id="L257" title="All 2 branches missed.">        for (JwtSessionEntity session : expired) {</span>
+<span class="nc" id="L258">            session.setStatus(SessionStatus.EXPIRED);</span>
+<span class="nc" id="L259">            session.setIsRevoked(true);</span>
+<span class="nc" id="L260">            session.setRevokedAt(now);</span>
+<span class="nc" id="L261">            sessionRepository.save(session);</span>
+<span class="nc" id="L262">            count++;</span>
+<span class="nc" id="L263">        }</span>
+
+<span class="nc bnc" id="L265" title="All 2 branches missed.">        if (count &gt; 0) {</span>
+<span class="nc" id="L266">            log.info(&quot;Cleaned up {} expired JWT sessions&quot;, count);</span>
+        }
+
+<span class="nc" id="L269">        return count;</span>
+    }
+
+    /**
+     * Compute SHA-512 hex digest of input string.
+     */
+    private String sha512Hex(String input) {
+        try {
+<span class="nc" id="L277">            MessageDigest digest = MessageDigest.getInstance(&quot;SHA-512&quot;);</span>
+<span class="nc" id="L278">            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));</span>
+<span class="nc" id="L279">            return bytesToHex(hash);</span>
+<span class="nc" id="L280">        } catch (NoSuchAlgorithmException e) {</span>
+<span class="nc" id="L281">            throw new IllegalStateException(&quot;SHA-512 algorithm not available&quot;, e);</span>
+        }
+    }
+
+    /**
+     * Hash a refresh token value using its stored salt from the session.
+     */
+    String hashRefreshToken(String refreshTokenValue) {
+        try {
+<span class="nc" id="L290">            MessageDigest digest = MessageDigest.getInstance(&quot;SHA-512&quot;);</span>
+<span class="nc" id="L291">            byte[] hash = digest.digest(refreshTokenValue.getBytes(StandardCharsets.UTF_8));</span>
+<span class="nc" id="L292">            return bytesToHex(hash);</span>
+<span class="nc" id="L293">        } catch (NoSuchAlgorithmException e) {</span>
+<span class="nc" id="L294">            throw new IllegalStateException(&quot;SHA-512 algorithm not available&quot;, e);</span>
+        }
+    }
+
+    /**
+     * Convert byte array to hex string.
+     */
+    private String bytesToHex(byte[] bytes) {
+<span class="nc" id="L302">        StringBuilder sb = new StringBuilder(bytes.length * 2);</span>
+<span class="nc bnc" id="L303" title="All 2 branches missed.">        for (byte b : bytes) {</span>
+<span class="nc" id="L304">            sb.append(String.format(&quot;%02x&quot;, b));</span>
+        }
+<span class="nc" id="L306">        return sb.toString();</span>
+    }
+
+    /**
+     * Map Spring Security role to numeric level.
+     */
+    private int resolveRoleLevel(String role) {
+<span class="nc bnc" id="L313" title="All 2 branches missed.">        if (role == null) return 1;</span>
+<span class="nc" id="L314">        String upper = role.toUpperCase();</span>
+<span class="nc bnc" id="L315" title="All 2 branches missed.">        if (upper.startsWith(&quot;SUPER_ADMIN&quot;)) return 3;</span>
+<span class="nc bnc" id="L316" title="All 2 branches missed.">        if (upper.startsWith(&quot;ADMIN&quot;))       return 2;</span>
+<span class="nc" id="L317">        return 1;</span>
+    }
+
+    /**
+     * Pair of (plaintext refresh token, hashed version).
+     */
+<span class="nc" id="L323">    public record RefreshTokenPair(String token, String hash) {}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

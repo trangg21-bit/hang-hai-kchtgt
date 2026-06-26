@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TotpEnrollSession.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.security.totp.dto</a> &gt; <span class="el_source">TotpEnrollSession.java</span></div><h1>TotpEnrollSession.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.security.totp.dto;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.util.Map;
+
+/**
+ * Session record for TOTP enrollment stored in Redis.
+ * &lt;p&gt;
+ * Serialises to/from JSON for Redis storage.
+ * &lt;/p&gt;
+ */
+public class TotpEnrollSession {
+
+    private String sessionId;
+    private String userId;
+    private String rawSecret;
+    private String hashedSecret;
+    private String otpAuthUrl;
+    private long createdAt;
+
+<span class="nc" id="L25">    public TotpEnrollSession() {</span>
+<span class="nc" id="L26">        this.createdAt = System.currentTimeMillis();</span>
+<span class="nc" id="L27">    }</span>
+
+    @JsonCreator
+    public TotpEnrollSession(
+            @JsonProperty(&quot;sessionId&quot;) String sessionId,
+            @JsonProperty(&quot;userId&quot;) String userId,
+            @JsonProperty(&quot;rawSecret&quot;) String rawSecret,
+            @JsonProperty(&quot;hashedSecret&quot;) String hashedSecret,
+            @JsonProperty(&quot;otpAuthUrl&quot;) String otpAuthUrl,
+<span class="nc" id="L36">            @JsonProperty(&quot;createdAt&quot;) long createdAt) {</span>
+<span class="nc" id="L37">        this.sessionId = sessionId;</span>
+<span class="nc" id="L38">        this.userId = userId;</span>
+<span class="nc" id="L39">        this.rawSecret = rawSecret;</span>
+<span class="nc" id="L40">        this.hashedSecret = hashedSecret;</span>
+<span class="nc" id="L41">        this.otpAuthUrl = otpAuthUrl;</span>
+<span class="nc" id="L42">        this.createdAt = createdAt;</span>
+<span class="nc" id="L43">    }</span>
+
+    public String getSessionId() {
+<span class="nc" id="L46">        return sessionId;</span>
+    }
+
+    public void setSessionId(String sessionId) {
+<span class="nc" id="L50">        this.sessionId = sessionId;</span>
+<span class="nc" id="L51">    }</span>
+
+    public String getUserId() {
+<span class="nc" id="L54">        return userId;</span>
+    }
+
+    public void setUserId(String userId) {
+<span class="nc" id="L58">        this.userId = userId;</span>
+<span class="nc" id="L59">    }</span>
+
+    public String getRawSecret() {
+<span class="nc" id="L62">        return rawSecret;</span>
+    }
+
+    public void setRawSecret(String rawSecret) {
+<span class="nc" id="L66">        this.rawSecret = rawSecret;</span>
+<span class="nc" id="L67">    }</span>
+
+    public String getHashedSecret() {
+<span class="nc" id="L70">        return hashedSecret;</span>
+    }
+
+    public void setHashedSecret(String hashedSecret) {
+<span class="nc" id="L74">        this.hashedSecret = hashedSecret;</span>
+<span class="nc" id="L75">    }</span>
+
+    public String getOtpAuthUrl() {
+<span class="nc" id="L78">        return otpAuthUrl;</span>
+    }
+
+    public void setOtpAuthUrl(String otpAuthUrl) {
+<span class="nc" id="L82">        this.otpAuthUrl = otpAuthUrl;</span>
+<span class="nc" id="L83">    }</span>
+
+    public long getCreatedAt() {
+<span class="nc" id="L86">        return createdAt;</span>
+    }
+
+    /**
+     * Serialises this session to a JSON string using Jackson.
+     */
+    public String toJson() {
+        try {
+<span class="nc" id="L94">            ObjectMapper mapper = new ObjectMapper();</span>
+<span class="nc" id="L95">            return mapper.writeValueAsString(this);</span>
+<span class="nc" id="L96">        } catch (Exception e) {</span>
+<span class="nc" id="L97">            throw new RuntimeException(&quot;Failed to serialise TOTP enrollment session&quot;, e);</span>
+        }
+    }
+
+    /**
+     * Deserialises a JSON string into a {@link TotpEnrollSession}.
+     */
+    public static TotpEnrollSession fromJson(String json) {
+        try {
+<span class="nc" id="L106">            ObjectMapper mapper = new ObjectMapper();</span>
+<span class="nc" id="L107">            return mapper.readValue(json, TotpEnrollSession.class);</span>
+<span class="nc" id="L108">        } catch (Exception e) {</span>
+<span class="nc" id="L109">            throw new RuntimeException(&quot;Failed to deserialise TOTP enrollment session&quot;, e);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

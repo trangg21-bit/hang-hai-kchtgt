@@ -1,0 +1,33 @@
+# Created at 2026-06-26T02:33:51.074
+Corrupted channel by directly writing to native stream in forked JVM 1. Stream 'FATAL ERROR in native method: processing of -javaagent failed, processJavaStart failed'.
+
+# Created at 2026-06-26T02:33:51.078
+Corrupted channel by directly writing to native stream in forked JVM 1. Stream 'Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)'.
+
+# Created at 2026-06-26T02:33:51.079
+Corrupted channel by directly writing to native stream in forked JVM 1. Stream 'V  [libjvm.dylib+0x67ef8c]  NativeStackPrinter::print_stack(outputStream*, char*, int, unsigned char*&, bool, int)+0x14'.
+
+# Created at 2026-06-26T02:33:51.080
+Corrupted channel by directly writing to native stream in forked JVM 1. Stream 'V  [libjvm.dylib+0x3df708]  JavaThread::print_jni_stack()+0xac'.
+
+# Created at 2026-06-26T02:33:51.081
+Corrupted channel by directly writing to native stream in forked JVM 1. Stream 'V  [libjvm.dylib+0x434f74]  jni_FatalError+0x7c'.
+
+# Created at 2026-06-26T02:33:51.082
+Corrupted channel by directly writing to native stream in forked JVM 1. Stream 'V  [libjvm.dylib+0x55e1c0]  JvmtiExport::post_vm_initialized()+0x190'.
+
+# Created at 2026-06-26T02:33:51.083
+Corrupted channel by directly writing to native stream in forked JVM 1. Stream 'V  [libjvm.dylib+0x87a138]  Threads::create_vm(JavaVMInitArgs*, bool*)+0x748'.
+
+# Created at 2026-06-26T02:33:51.084
+Corrupted channel by directly writing to native stream in forked JVM 1. Stream 'V  [libjvm.dylib+0x44cb70]  JNI_CreateJavaVM+0x74'.
+
+# Created at 2026-06-26T02:33:51.085
+Corrupted channel by directly writing to native stream in forked JVM 1. Stream 'C  [libjli.dylib+0x55d8]  JavaMain+0x100'.
+
+# Created at 2026-06-26T02:33:51.086
+Corrupted channel by directly writing to native stream in forked JVM 1. Stream 'C  [libjli.dylib+0x8534]  ThreadJavaMain+0xc'.
+
+# Created at 2026-06-26T02:33:51.663
+Corrupted channel by directly writing to native stream in forked JVM 1. Stream 'C  [libsystem_pthread.dylib+0x6c08]  _pthread_start+0x88'.
+

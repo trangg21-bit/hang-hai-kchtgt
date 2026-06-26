@@ -32,9 +32,9 @@ children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
 agent-flags: {}
-feature-req: |
-  file:docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/module-brief.md
-  canonical-fallback:docs/intel/_snapshot.md
+feature-req:
+  file: docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop/module-brief.md
+  canonical-fallback: docs/intel/_snapshot.md
   scope-modules: []
   scope-features: []
   dev-unit: ""

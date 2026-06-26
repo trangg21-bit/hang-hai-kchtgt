@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CreateGroupRequest.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.group.dto</a> &gt; <span class="el_source">CreateGroupRequest.java</span></div><h1>CreateGroupRequest.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.group.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+import java.util.List;
+
+/**
+ * Request body cho việc tạo mới UserGroup.
+ */
+<span class="nc" id="L11">public class CreateGroupRequest {</span>
+
+    @NotBlank(message = &quot;Tên nhóm không được để trống&quot;)
+    @Size(max = 150, message = &quot;Tên nhóm tối đa 150 ký tự&quot;)
+    private String name;
+
+    @NotBlank(message = &quot;Code nhóm không được để trống&quot;)
+    @Size(max = 50, message = &quot;Code nhóm tối đa 50 ký tự&quot;)
+    private String code;
+
+    @Size(max = 500, message = &quot;Mô tả tối đa 500 ký tự&quot;)
+    private String description;
+
+    private List&lt;String&gt; permissions;
+    private String status;
+
+<span class="nc" id="L27">    public String getName() { return name; }</span>
+<span class="nc" id="L28">    public void setName(String name) { this.name = name; }</span>
+<span class="nc" id="L29">    public String getCode() { return code; }</span>
+<span class="nc" id="L30">    public void setCode(String code) { this.code = code; }</span>
+<span class="nc" id="L31">    public String getDescription() { return description; }</span>
+<span class="nc" id="L32">    public void setDescription(String description) { this.description = description; }</span>
+<span class="nc" id="L33">    public List&lt;String&gt; getPermissions() { return permissions; }</span>
+<span class="nc" id="L34">    public void setPermissions(List&lt;String&gt; permissions) { this.permissions = permissions; }</span>
+<span class="nc" id="L35">    public String getStatus() { return status; }</span>
+<span class="nc" id="L36">    public void setStatus(String status) { this.status = status; }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

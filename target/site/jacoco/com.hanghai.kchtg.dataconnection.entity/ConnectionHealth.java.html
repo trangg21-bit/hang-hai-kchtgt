@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ConnectionHealth.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.dataconnection.entity</a> &gt; <span class="el_source">ConnectionHealth.java</span></div><h1>ConnectionHealth.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.dataconnection.entity;
+
+import com.hanghai.kchtg.common.entity.BaseEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.UUID;
+
+/**
+ * Sức khỏe kết nối dữ liệu - ghi lại kết quả health check định kỳ
+ * cho mọi data connection (trạng thái HTTP, độ trễ, lỗi).
+ */
+@Entity
+@Table(name = &quot;connection_health&quot;)
+@Getter
+@Setter
+@NoArgsConstructor
+public class ConnectionHealth extends BaseEntity {
+
+    /** ID của data connection được kiểm tra. */
+    @Column(name = &quot;connection_id&quot;, nullable = false)
+    private UUID connectionId;
+
+    /** Mã HTTP status trả về (200, 500, timeout, etc.). */
+    @Column(name = &quot;status_code&quot;)
+    private Integer statusCode;
+
+    /** Độ trễ của kết nối (ms). */
+    @Column(name = &quot;latency_ms&quot;)
+    private Long latencyMs;
+
+    /** Thời điểm kiểm tra. */
+    @Column(name = &quot;checked_at&quot;, nullable = false)
+    private java.time.LocalDateTime checkedAt;
+
+    /** Thông báo lỗi (nếu có). */
+    @Column(name = &quot;error_message&quot;, length = 500)
+    private String errorMessage;
+
+    /**
+     * Tạo mới ConnectionHealth.
+     */
+    public static ConnectionHealth create(UUID connectionId, int statusCode, long latencyMs,
+                                           String errorMessage) {
+<span class="nc" id="L49">        ConnectionHealth health = new ConnectionHealth();</span>
+<span class="nc" id="L50">        health.setConnectionId(connectionId);</span>
+<span class="nc" id="L51">        health.setStatusCode(statusCode);</span>
+<span class="nc" id="L52">        health.setLatencyMs(latencyMs);</span>
+<span class="nc" id="L53">        health.setErrorMessage(errorMessage);</span>
+<span class="nc" id="L54">        health.setCheckedAt(java.time.LocalDateTime.now());</span>
+<span class="nc" id="L55">        return health;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

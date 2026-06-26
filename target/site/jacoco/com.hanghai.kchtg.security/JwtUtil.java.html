@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JwtUtil.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.security</a> &gt; <span class="el_source">JwtUtil.java</span></div><h1>JwtUtil.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.security;
+
+import com.hanghai.kchtg.security.service.TokenClaimsBuilder;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.RoleRepository;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.SecretKey;
+import java.util.Base64;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Utility for generating and validating JWT tokens using HMAC-SHA256.
+ * Supports:
+ * - Legacy single-token flow.
+ * - Dual-token (access/refresh) flow.
+ */
+@Component
+public class JwtUtil {
+
+    private final JwtProperties jwtProperties;
+    private final SecretKey signingKey;
+    private final RoleRepository roleRepository;
+
+<span class="nc" id="L31">    public JwtUtil(JwtProperties jwtProperties, RoleRepository roleRepository) {</span>
+<span class="nc" id="L32">        this.jwtProperties = jwtProperties;</span>
+<span class="nc" id="L33">        this.roleRepository = roleRepository;</span>
+<span class="nc" id="L34">        byte[] keyBytes = Base64.getDecoder().decode(jwtProperties.getSecret());</span>
+<span class="nc" id="L35">        this.signingKey = Keys.hmacShaKeyFor(keyBytes);</span>
+<span class="nc" id="L36">    }</span>
+
+    // =========================================================================
+    //  SINGLE-TOKEN METHODS (legacy - backward-compatible)
+    // =========================================================================
+
+    /**
+     * Sinh JWT token don (legacy) cho username va role.
+     */
+    public String generateToken(String username, String role) {
+<span class="nc" id="L46">        Date now = new Date();</span>
+<span class="nc" id="L47">        Date expiry = new Date(now.getTime() + jwtProperties.getExpiration());</span>
+
+<span class="nc" id="L49">        return Jwts.builder()</span>
+<span class="nc" id="L50">                .subject(username)</span>
+<span class="nc" id="L51">                .claim(&quot;role&quot;, role)</span>
+<span class="nc" id="L52">                .issuedAt(now)</span>
+<span class="nc" id="L53">                .expiration(expiry)</span>
+<span class="nc" id="L54">                .signWith(signingKey)</span>
+<span class="nc" id="L55">                .compact();</span>
+    }
+
+    /**
+     * Generates a signed JWT token with TOTP/MFA status claim.
+     */
+    public String generateTokenWithMfa(String username, String role, boolean totpEnabled) {
+<span class="nc" id="L62">        Date now = new Date();</span>
+<span class="nc" id="L63">        Date expiry = new Date(now.getTime() + jwtProperties.getAccessTokenExpiration());</span>
+
+<span class="nc" id="L65">        return Jwts.builder()</span>
+<span class="nc" id="L66">                .subject(username)</span>
+<span class="nc" id="L67">                .claim(&quot;role&quot;, role)</span>
+<span class="nc" id="L68">                .claim(&quot;totp_enabled&quot;, totpEnabled)</span>
+<span class="nc" id="L69">                .issuedAt(now)</span>
+<span class="nc" id="L70">                .expiration(expiry)</span>
+<span class="nc" id="L71">                .signWith(signingKey)</span>
+<span class="nc" id="L72">                .compact();</span>
+    }
+
+    /**
+     * Sinh refresh token (legacy) voi role va type claim.
+     */
+    public String generateRefreshToken(String username, String role) {
+<span class="nc" id="L79">        Date now = new Date();</span>
+<span class="nc" id="L80">        Date expiry = new Date(now.getTime() + jwtProperties.getRefreshExpiration());</span>
+
+<span class="nc" id="L82">        return Jwts.builder()</span>
+<span class="nc" id="L83">                .subject(username)</span>
+<span class="nc" id="L84">                .claim(&quot;role&quot;, role)</span>
+<span class="nc" id="L85">                .claim(&quot;type&quot;, &quot;refresh&quot;)</span>
+<span class="nc" id="L86">                .issuedAt(now)</span>
+<span class="nc" id="L87">                .expiration(expiry)</span>
+<span class="nc" id="L88">                .signWith(signingKey)</span>
+<span class="nc" id="L89">                .compact();</span>
+    }
+
+    // =========================================================================
+    //  DUAL-TOKEN METHODS (F-273 Wave 1)
+    // =========================================================================
+
+    /**
+     * Sinh access token cho User voi dual-token claims.
+     * &lt;p&gt;
+     * Claims: sub (username), jti (UUID), role, role_level, totp_enabled.
+     * Thoi gian het han: {@code jwt.access-token-expiration} (default 15 phut).
+     * &lt;/p&gt;
+     */
+    public String generateAccessToken(User user) {
+<span class="nc" id="L104">        Date now = new Date();</span>
+<span class="nc" id="L105">        Date expiry = new Date(now.getTime() + jwtProperties.getAccessTokenExpiration());</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        String role = user.getRole() != null ? user.getRole() : &quot;ROLE_USER&quot;;</span>
+<span class="nc" id="L107">        List&lt;String&gt; permissions = new java.util.ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">        if (user.getRole() != null) {</span>
+<span class="nc" id="L109">            String roleCode = user.getRole();</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">            if (roleCode.startsWith(&quot;ROLE_&quot;)) {</span>
+<span class="nc" id="L111">                roleCode = roleCode.substring(5);</span>
+            }
+<span class="nc" id="L113">            roleRepository.findByCode(roleCode).ifPresent(r -&gt; {</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">                if (r.getPermissions() != null) {</span>
+<span class="nc" id="L115">                    permissions.addAll(r.getPermissions());</span>
+                }
+<span class="nc" id="L117">            });</span>
+        }
+
+<span class="nc" id="L120">        Map&lt;String, Object&gt; claims = TokenClaimsBuilder.builder()</span>
+<span class="nc" id="L121">                .subject(user.getUsername())</span>
+<span class="nc" id="L122">                .jti(java.util.UUID.randomUUID().toString())</span>
+<span class="nc" id="L123">                .userId(user.getId().toString())</span>
+<span class="nc" id="L124">                .roles(List.of(role))</span>
+<span class="nc" id="L125">                .permissions(permissions)</span>
+<span class="nc" id="L126">                .claim(&quot;role_level&quot;, resolveRoleLevel(role))</span>
+<span class="nc" id="L127">                .claim(&quot;totp_enabled&quot;, Boolean.TRUE.equals(user.getTotpEnabled()))</span>
+<span class="nc" id="L128">                .build();</span>
+
+<span class="nc" id="L130">        return Jwts.builder()</span>
+<span class="nc" id="L131">                .claims(claims)</span>
+<span class="nc" id="L132">                .issuedAt(now)</span>
+<span class="nc" id="L133">                .expiration(expiry)</span>
+<span class="nc" id="L134">                .signWith(signingKey)</span>
+<span class="nc" id="L135">                .compact();</span>
+    }
+
+    /**
+     * Sinh refresh token cho User voi dual-token claims.
+     * &lt;p&gt;
+     * Claims: sub (username), jti (UUID), user_id (UUID string), type=refresh.
+     * Thoi gian het han: {@code jwt.refresh-token-expiration} (default 7 ngay).
+     * &lt;/p&gt;
+     */
+    public String generateRefreshToken(User user) {
+<span class="nc" id="L146">        Date now = new Date();</span>
+<span class="nc" id="L147">        Date expiry = new Date(now.getTime() + jwtProperties.getRefreshTokenExpiration());</span>
+
+<span class="nc" id="L149">        return Jwts.builder()</span>
+<span class="nc" id="L150">                .subject(user.getUsername())</span>
+<span class="nc" id="L151">                .id(java.util.UUID.randomUUID().toString())</span>
+<span class="nc" id="L152">                .claim(&quot;user_id&quot;, user.getId().toString())</span>
+<span class="nc" id="L153">                .claim(&quot;type&quot;, &quot;refresh&quot;)</span>
+<span class="nc" id="L154">                .issuedAt(now)</span>
+<span class="nc" id="L155">                .expiration(expiry)</span>
+<span class="nc" id="L156">                .signWith(signingKey)</span>
+<span class="nc" id="L157">                .compact();</span>
+    }
+
+    // =========================================================================
+    //  SHARED UTILITIES
+    // =========================================================================
+
+    /**
+     * Parse va validate JWT, tra ve claims.
+     *
+     * @throws JwtException neu token khong hop le hoac het han
+     */
+    public Claims validateToken(String token) {
+<span class="nc" id="L170">        return Jwts.parser()</span>
+<span class="nc" id="L171">                .verifyWith(signingKey)</span>
+<span class="nc" id="L172">                .build()</span>
+<span class="nc" id="L173">                .parseSignedClaims(token)</span>
+<span class="nc" id="L174">                .getPayload();</span>
+    }
+
+    /**
+     * Lay username (subject) tu JWT.
+     */
+    public String extractUsername(String token) {
+<span class="nc" id="L181">        return validateToken(token).getSubject();</span>
+    }
+
+    /**
+     * Lay role claim tu JWT.
+     */
+    public String extractRole(String token) {
+<span class="nc" id="L188">        return validateToken(token).get(&quot;role&quot;, String.class);</span>
+    }
+
+    /**
+     * Lay TOTP enabled claim tu JWT.
+     */
+    public boolean isTotpEnabled(String token) {
+<span class="nc" id="L195">        Claims claims = validateToken(token);</span>
+<span class="nc" id="L196">        Object totpEnabled = claims.get(&quot;totp_enabled&quot;);</span>
+<span class="nc bnc" id="L197" title="All 2 branches missed.">        if (totpEnabled instanceof Boolean) {</span>
+<span class="nc" id="L198">            return (Boolean) totpEnabled;</span>
+        }
+<span class="nc" id="L200">        return false;</span>
+    }
+
+    /**
+     * Kiem tra token co phai refresh token khong.
+     */
+    public boolean isRefreshToken(String token) {
+<span class="nc" id="L207">        Claims claims = validateToken(token);</span>
+<span class="nc" id="L208">        Object type = claims.get(&quot;type&quot;);</span>
+<span class="nc" id="L209">        return &quot;refresh&quot;.equals(type);</span>
+    }
+
+    /**
+     * Map Spring Security role de numeric level cho RBAC.
+     * &lt;ul&gt;
+     *   &lt;li&gt;SUPER_ADMIN -&gt; 4&lt;/li&gt;
+     *   &lt;li&gt;ADMIN       -&gt; 3&lt;/li&gt;
+     *   &lt;li&gt;SUPPORT     -&gt; 2&lt;/li&gt;
+     *   &lt;li&gt;other       -&gt; 1&lt;/li&gt;
+     * &lt;/ul&gt;
+     */
+    private int resolveRoleLevel(String role) {
+<span class="nc bnc" id="L222" title="All 2 branches missed.">        if (role == null) return 1;</span>
+<span class="nc" id="L223">        String upper = role.toUpperCase();</span>
+<span class="nc bnc" id="L224" title="All 2 branches missed.">        if (upper.startsWith(&quot;SUPER_ADMIN&quot;)) return 4;</span>
+<span class="nc bnc" id="L225" title="All 2 branches missed.">        if (upper.startsWith(&quot;ADMIN&quot;))       return 3;</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">        if (upper.startsWith(&quot;SUPPORT&quot;))     return 2;</span>
+<span class="nc" id="L227">        return 1;</span>
+    }
+
+    /**
+     * Expose JwtProperties de service-layer tinh toan expiry.
+     */
+    public JwtProperties getJwtProperties() {
+<span class="nc" id="L234">        return jwtProperties;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

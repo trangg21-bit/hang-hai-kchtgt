@@ -86,16 +86,16 @@ children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
 agent-flags: {}
-feature-req: |
-  file:docs/modules/M-009-lien-thong-tich-hop-du-lieu/module-brief.md
-  canonical-fallback:docs/intel/_snapshot.md
+feature-req:
+  file: docs/modules/M-009-lien-thong-tich-hop-du-lieu/module-brief.md
+  canonical-fallback: docs/intel/_snapshot.md
   scope-modules: []
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
 metrics:
   features-in-scope: 81
-deprecated: true
+deprecated: false
 sealed-evidence:
   closed-by: close-module
   closed-at: 2026-06-23T09:33:00Z
@@ -103,8 +103,8 @@ sealed-evidence:
   qa_wave6_pass_rate: "100%"
   total_test_cases: 262
   security_fixes:
-    - S-01: @EnableMethodSecurity(prePostEnabled=true)
-    - S-02: validateUrl() blocks file:/gopher:/ftp: schemes
+    - S-01: "@EnableMethodSecurity(prePostEnabled=true)"
+    - S-02: "validateUrl() blocks file:/gopher:/ftp: schemes"
   deferred:
     features: []
     issues: []

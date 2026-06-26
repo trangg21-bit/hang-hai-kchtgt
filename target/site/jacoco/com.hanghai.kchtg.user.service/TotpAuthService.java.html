@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TotpAuthService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.user.service</a> &gt; <span class="el_source">TotpAuthService.java</span></div><h1>TotpAuthService.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.user.service;
+
+import com.hanghai.kchtg.security.service.TokenService;
+import com.hanghai.kchtg.security.TotpValidator;
+import com.hanghai.kchtg.user.dto.MfaChallengeResponse;
+import com.hanghai.kchtg.user.dto.TotpLoginRequest;
+import com.hanghai.kchtg.user.dto.TwoFactorLoginResponse;
+import com.hanghai.kchtg.user.entity.LoginAttemptResult;
+import com.hanghai.kchtg.user.entity.LoginAttemptType;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.entity.UserStatus;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+/**
+ * Điều phối (Orchestrator) 2 bước đăng nhập với TOTP (F-273 Wave 1).
+ * &lt;p&gt;
+ * &lt;b&gt;Giai đoạn 1 (Phase 1)&lt;/b&gt; - {@link #authenticateCredentials(String, String, HttpServletRequest)}:
+ * xác thực username + password, trả về MfaChallengeResponse (yêu cầu TOTP hay không).&lt;br&gt;
+ * &lt;b&gt;Giai đoạn 2 (Phase 2)&lt;/b&gt; - {@link #verifyTotp(TotpLoginRequest, HttpServletRequest)}:
+ * xác thực code TOTP, trả về access+refresh JWT.
+ * &lt;/p&gt;
+ * &lt;p&gt;
+ * &quot;Always-compute&quot; chống dò tìm tài khoản: luôn chạy {@code passwordEncoder.matches()}
+ * (với dummy hash) nếu user không tồn tại, để tránh rò rỉ (leak) thông tin user.
+ * &lt;/p&gt;
+ */
+@Service
+public class TotpAuthService {
+
+<span class="nc" id="L39">    private static final Logger log = LoggerFactory.getLogger(TotpAuthService.class);</span>
+
+    /** Ngưỡng thất bại TOTP trước khi khóa tài khoản */
+    private static final int MAX_TOTP_ATTEMPTS = 5;
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final TotpValidator totpValidator;
+    private final TokenService tokenService;
+    private final LoginAuditLogService auditLogService;
+
+    public TotpAuthService(UserRepository userRepository,
+                           PasswordEncoder passwordEncoder,
+                           TotpValidator totpValidator,
+                           TokenService tokenService,
+<span class="nc" id="L54">                           LoginAuditLogService auditLogService) {</span>
+<span class="nc" id="L55">        this.userRepository = userRepository;</span>
+<span class="nc" id="L56">        this.passwordEncoder = passwordEncoder;</span>
+<span class="nc" id="L57">        this.totpValidator = totpValidator;</span>
+<span class="nc" id="L58">        this.tokenService = tokenService;</span>
+<span class="nc" id="L59">        this.auditLogService = auditLogService;</span>
+<span class="nc" id="L60">    }</span>
+
+    // =========================================================================
+
+    /**
+     * Giai đoạn 1: Xác thực username + password.
+     * &lt;p&gt;
+     * Nếu thành công: kiểm tra TOTP - nếu user đã kích hoạt (enable) TOTP thì trả về
+     * MfaChallengeResponse (yêu cầu mã 2 yếu tố). Nếu chưa kích hoạt thì trả về
+     * MfaChallengeResponse với totpRequired=false (bỏ qua bước TOTP, client
+     * có thể trả về JWT từ session - phase 1.5 nếu cần).
+     * &lt;/p&gt;
+     *
+     * @param username tên đăng nhập
+     * @param password mật khẩu
+     * @param request  HttpServletRequest để log IP + User-Agent
+     * @return MfaChallengeResponse
+     * @throws IllegalArgumentException nếu sai tài khoản/mật khẩu, tài khoản bị khóa, ...
+     */
+    @Transactional
+    public MfaChallengeResponse authenticateCredentials(String username, String password,
+                                                        HttpServletRequest request) {
+
+        // =========================================================================
+        // =========================================================================
+<span class="nc" id="L85">        User user = userRepository.findByUsernameOrEmail(username)</span>
+<span class="nc" id="L86">                .orElse(null);</span>
+
+        // Luôn chạy password check để tránh timing leak
+        // Nếu user = null, dùng dummy hash
+<span class="nc bnc" id="L90" title="All 2 branches missed.">        String passwordToCheck = user != null ? user.getPassword() : &quot;$2a$dummy$never&quot;;</span>
+<span class="nc" id="L91">        passwordEncoder.matches(password, passwordToCheck);</span>
+
+        // =========================================================================
+<span class="nc bnc" id="L94" title="All 2 branches missed.">        if (user == null) {</span>
+<span class="nc" id="L95">            auditLogService.logAttempt(null, username, LoginAttemptType.CREDENTIALS,</span>
+                    LoginAttemptResult.FAIL, &quot;User not found&quot;, request);
+<span class="nc" id="L97">            throw new IllegalArgumentException(&quot;Invalid username or password&quot;);</span>
+        }
+
+        // =========================================================================
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        if (user.getStatus() == UserStatus.LOCKED) {</span>
+<span class="nc" id="L102">            auditLogService.logAttempt(user.getId(), user.getUsername(),</span>
+                    LoginAttemptType.CREDENTIALS, LoginAttemptResult.FAIL,
+                    &quot;Account locked&quot;, request);
+<span class="nc" id="L105">            throw new IllegalArgumentException(&quot;Account is locked&quot;);</span>
+        }
+
+<span class="nc bnc" id="L108" title="All 2 branches missed.">        if (user.getAccountLockedUntil() != null</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">                &amp;&amp; LocalDateTime.now().isBefore(user.getAccountLockedUntil())) {</span>
+<span class="nc" id="L110">            auditLogService.logAttempt(user.getId(), user.getUsername(),</span>
+                    LoginAttemptType.CREDENTIALS, LoginAttemptResult.FAIL,
+<span class="nc" id="L112">                    &quot;Account locked until &quot; + user.getAccountLockedUntil(), request);</span>
+<span class="nc" id="L113">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L114">                    &quot;Account is locked until &quot; + user.getAccountLockedUntil().toString());</span>
+        }
+
+        // =========================================================================
+<span class="nc bnc" id="L118" title="All 2 branches missed.">        if (!passwordEncoder.matches(password, user.getPassword())) {</span>
+            // Tăng failedLoginCount
+<span class="nc" id="L120">            user.setFailedLoginCount(user.getFailedLoginCount() + 1);</span>
+<span class="nc" id="L121">            userRepository.save(user);</span>
+
+<span class="nc" id="L123">            auditLogService.logAttempt(user.getId(), user.getUsername(),</span>
+                    LoginAttemptType.CREDENTIALS, LoginAttemptResult.FAIL,
+<span class="nc" id="L125">                    &quot;Invalid password (attempt &quot; + user.getFailedLoginCount() + &quot;)&quot;, request);</span>
+
+<span class="nc" id="L127">            throw new IllegalArgumentException(&quot;Invalid username or password&quot;);</span>
+        }
+
+        // =========================================================================
+<span class="nc" id="L131">        user.setFailedLoginCount(0);</span>
+
+        // =========================================================================
+<span class="nc bnc" id="L134" title="All 2 branches missed.">        if (Boolean.TRUE.equals(user.getTotpEnabled())) {</span>
+            // Yêu cầu phase 2 (mã TOTP)
+<span class="nc" id="L136">            MfaChallengeResponse response = MfaChallengeResponse.requireChallenge(user.getId());</span>
+<span class="nc" id="L137">            auditLogService.logAttempt(user.getId(), user.getUsername(),</span>
+                    LoginAttemptType.CREDENTIALS, LoginAttemptResult.SUCCESS,
+                    null, request);
+<span class="nc" id="L140">            return response;</span>
+        }
+
+        // =========================================================================
+        // Client có thể gọi endpoint login/totp với totpRequired=false để lấy JWT
+<span class="nc" id="L145">        MfaChallengeResponse response = MfaChallengeResponse.skipChallenge(user.getId());</span>
+<span class="nc" id="L146">        auditLogService.logAttempt(user.getId(), user.getUsername(),</span>
+                LoginAttemptType.CREDENTIALS, LoginAttemptResult.SUCCESS,
+                null, request);
+<span class="nc" id="L149">        return response;</span>
+    }
+
+    // =========================================================================
+
+    /**
+     * Giai đoạn 2: Xác thực mã TOTP, trả về dual JWT (access + refresh).
+     *
+     * @param request DTO chứa userId + totpCode
+     * @param requestHttp HttpServletRequest để log IP + User-Agent
+     * @return TwoFactorLoginResponse với access_token + refresh_token
+     * @throws IllegalArgumentException nếu sai TOTP, tài khoản bị khóa, ...
+     */
+    @Transactional
+    public TwoFactorLoginResponse verifyTotp(TotpLoginRequest request,
+                                              HttpServletRequest requestHttp) {
+
+<span class="nc" id="L166">        UUID userId = request.getUserId();</span>
+<span class="nc" id="L167">        String totpCode = request.getTotpCode();</span>
+
+<span class="nc" id="L169">        User user = userRepository.findById(userId)</span>
+<span class="nc" id="L170">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;Invalid user ID&quot;));</span>
+
+        // =========================================================================
+<span class="nc bnc" id="L173" title="All 2 branches missed.">        if (user.getStatus() == UserStatus.LOCKED) {</span>
+<span class="nc" id="L174">            auditLogService.logAttempt(user.getId(), user.getUsername(),</span>
+                    LoginAttemptType.TOTP, LoginAttemptResult.FAIL,
+                    &quot;Account locked&quot;, requestHttp);
+<span class="nc" id="L177">            throw new IllegalArgumentException(&quot;Account is locked&quot;);</span>
+        }
+
+<span class="nc bnc" id="L180" title="All 2 branches missed.">        if (user.getAccountLockedUntil() != null</span>
+<span class="nc bnc" id="L181" title="All 2 branches missed.">                &amp;&amp; LocalDateTime.now().isBefore(user.getAccountLockedUntil())) {</span>
+<span class="nc" id="L182">            auditLogService.logAttempt(user.getId(), user.getUsername(),</span>
+                    LoginAttemptType.TOTP, LoginAttemptResult.FAIL,
+<span class="nc" id="L184">                    &quot;Account locked until &quot; + user.getAccountLockedUntil(), requestHttp);</span>
+<span class="nc" id="L185">            throw new IllegalArgumentException(</span>
+<span class="nc" id="L186">                    &quot;Account is locked until &quot; + user.getAccountLockedUntil().toString());</span>
+        }
+
+        // =========================================================================
+<span class="nc bnc" id="L190" title="All 2 branches missed.">        if (!Boolean.TRUE.equals(user.getTotpEnabled())) {</span>
+<span class="nc" id="L191">            auditLogService.logAttempt(user.getId(), user.getUsername(),</span>
+                    LoginAttemptType.TOTP, LoginAttemptResult.FAIL,
+                    &quot;TOTP not enabled for this account&quot;, requestHttp);
+<span class="nc" id="L194">            throw new IllegalArgumentException(&quot;TOTP is not enabled for this account&quot;);</span>
+        }
+
+        // =========================================================================
+<span class="nc bnc" id="L198" title="All 4 branches missed.">        if (totpCode == null || totpCode.length() != 6) {</span>
+<span class="nc" id="L199">            auditLogService.logAttempt(user.getId(), user.getUsername(),</span>
+                    LoginAttemptType.TOTP, LoginAttemptResult.FAIL,
+                    &quot;Invalid TOTP code format&quot;, requestHttp);
+<span class="nc" id="L202">            throw new IllegalArgumentException(&quot;Invalid TOTP code&quot;);</span>
+        }
+
+<span class="nc" id="L205">        boolean totpValid = totpValidator.isValid(user.getTotpSecret(), totpCode);</span>
+
+<span class="nc bnc" id="L207" title="All 2 branches missed.">        if (!totpValid) {</span>
+            // Tăng failedTotpCount
+<span class="nc" id="L209">            int newCount = user.getFailedTotpCount() + 1;</span>
+<span class="nc" id="L210">            user.setFailedTotpCount(newCount);</span>
+
+            // Nếu đạt ngưỡng -&gt; khóa tài khoản 15 phút
+<span class="nc bnc" id="L213" title="All 2 branches missed.">            if (newCount &gt;= MAX_TOTP_ATTEMPTS) {</span>
+<span class="nc" id="L214">                user.setAccountLockedUntil(LocalDateTime.now().plusMinutes(15));</span>
+            }
+
+<span class="nc" id="L217">            userRepository.save(user);</span>
+
+<span class="nc" id="L219">            auditLogService.logAttempt(user.getId(), user.getUsername(),</span>
+                    LoginAttemptType.TOTP, LoginAttemptResult.FAIL,
+                    &quot;Invalid TOTP (attempt &quot; + newCount + &quot;/&quot; + MAX_TOTP_ATTEMPTS + &quot;)&quot;, requestHttp);
+
+<span class="nc" id="L223">            throw new IllegalArgumentException(&quot;Invalid TOTP code&quot;);</span>
+        }
+
+        // =========================================================================
+<span class="nc" id="L227">        user.setFailedTotpCount(0);</span>
+<span class="nc" id="L228">        user.setLastTotpCode(totpCode);</span>
+<span class="nc" id="L229">        user.setTotpVerifiedAt(LocalDateTime.now());</span>
+<span class="nc" id="L230">        user.setLastLoginAt(LocalDateTime.now());</span>
+        // Xóa khóa (lock) nếu có (user đã xác thực thành công)
+<span class="nc" id="L232">        user.setAccountLockedUntil(null);</span>
+<span class="nc" id="L233">        userRepository.save(user);</span>
+
+        // =========================================================================
+<span class="nc" id="L236">        String accessToken = tokenService.createAccessToken(user);</span>
+<span class="nc" id="L237">        String refreshToken = tokenService.createRefreshToken(user);</span>
+
+<span class="nc" id="L239">        TwoFactorLoginResponse.UserInfo userInfo = new TwoFactorLoginResponse.UserInfo();</span>
+<span class="nc" id="L240">        userInfo.setId(user.getId());</span>
+<span class="nc" id="L241">        userInfo.setUsername(user.getUsername());</span>
+<span class="nc" id="L242">        userInfo.setFullName(user.getFullName());</span>
+<span class="nc" id="L243">        userInfo.setEmail(user.getEmail());</span>
+<span class="nc bnc" id="L244" title="All 2 branches missed.">        userInfo.setRole(user.getRole() != null ? user.getRole() : &quot;ROLE_USER&quot;);</span>
+<span class="nc" id="L245">        userInfo.setTotpEnabled(Boolean.TRUE.equals(user.getTotpEnabled()));</span>
+
+<span class="nc" id="L247">        TwoFactorLoginResponse response = new TwoFactorLoginResponse();</span>
+<span class="nc" id="L248">        response.setAccessToken(accessToken);</span>
+<span class="nc" id="L249">        response.setRefreshToken(refreshToken);</span>
+<span class="nc" id="L250">        response.setTokenType(&quot;Bearer&quot;);</span>
+<span class="nc" id="L251">        response.setUser(userInfo);</span>
+<span class="nc" id="L252">        response.setAccessTokenExpiresIn(tokenService.getAccessTokenExpiration());</span>
+<span class="nc" id="L253">        response.setRefreshTokenExpiresIn(tokenService.getRefreshTokenExpiration());</span>
+
+<span class="nc" id="L255">        auditLogService.logAttempt(user.getId(), user.getUsername(),</span>
+                LoginAttemptType.TOTP, LoginAttemptResult.SUCCESS,
+                null, requestHttp);
+
+<span class="nc" id="L259">        log.info(&quot;User logged in with 2FA: {} (userId={})&quot;, user.getUsername(), userId);</span>
+<span class="nc" id="L260">        return response;</span>
+    }
+
+    /**
+     * Refresh token endpoint - dùng refresh token để lấy access token mới.
+     *
+     * @param refreshToken JWT refresh token
+     * @param requestHttp HttpServletRequest để log IP
+     * @return JWT access token mới
+     */
+    @Transactional
+    public String refreshToken(String refreshToken, HttpServletRequest requestHttp) {
+        try {
+<span class="nc" id="L273">            var claims = tokenService.validateToken(refreshToken);</span>
+            // Check token type claim
+<span class="nc" id="L275">            String type = claims.get(&quot;type&quot;, String.class);</span>
+<span class="nc bnc" id="L276" title="All 2 branches missed.">            if (!&quot;refresh&quot;.equals(type)) {</span>
+<span class="nc" id="L277">                throw new IllegalArgumentException(&quot;Invalid token type - not a refresh token&quot;);</span>
+            }
+
+<span class="nc" id="L280">            String username = claims.getSubject();</span>
+<span class="nc" id="L281">            String userIdStr = claims.get(&quot;user_id&quot;, String.class);</span>
+<span class="nc" id="L282">            UUID userId = UUID.fromString(userIdStr);</span>
+
+<span class="nc" id="L284">            User user = userRepository.findById(userId)</span>
+<span class="nc" id="L285">                    .orElseThrow(() -&gt; new IllegalArgumentException(&quot;User not found&quot;));</span>
+
+<span class="nc bnc" id="L287" title="All 2 branches missed.">            if (user.getStatus() == UserStatus.LOCKED) {</span>
+<span class="nc" id="L288">                throw new IllegalArgumentException(&quot;Account is locked&quot;);</span>
+            }
+
+<span class="nc" id="L291">            String newAccessToken = tokenService.createAccessToken(user);</span>
+<span class="nc" id="L292">            auditLogService.logAttempt(user.getId(), user.getUsername(),</span>
+                    LoginAttemptType.CREDENTIALS, LoginAttemptResult.SUCCESS,
+                    &quot;Token refresh&quot;, requestHttp);
+<span class="nc" id="L295">            return newAccessToken;</span>
+
+<span class="nc" id="L297">        } catch (Exception e) {</span>
+<span class="nc" id="L298">            auditLogService.logAttempt(null, &quot;unknown&quot;, LoginAttemptType.CREDENTIALS,</span>
+<span class="nc" id="L299">                    LoginAttemptResult.FAIL, &quot;Token refresh failed: &quot; + e.getMessage(), requestHttp);</span>
+<span class="nc" id="L300">            throw new IllegalArgumentException(&quot;Invalid or expired refresh token&quot;);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

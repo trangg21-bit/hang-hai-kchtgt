@@ -37,14 +37,14 @@ children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
 agent-flags: {}
-feature-req: |
-  file:docs/modules/M-008-bao-cao-thong-ke/module-brief.md
-  canonical-fallback:docs/intel/_snapshot.md
+feature-req:
+  file: docs/modules/M-008-bao-cao-thong-ke/module-brief.md
+  canonical-fallback: docs/intel/_snapshot.md
   scope-modules: []
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
-deprecated: true
+deprecated: false
 ---
 # Pipeline State: Báo cáo & Thống kê
 

@@ -59,7 +59,14 @@ public enum ReportType {
     F186_BAO_TRI_DEN_BIEN("F-186", "Biểu tổng hợp bảo trì KCHTGT - Đèn biển"),
     F187_BAO_TRI_DE_KE("F-187", "Biểu tổng hợp bảo trì KCHTGT - Đê, kè"),
     F188_KE_KHAI_QUAN_LY_TS("F-188", "Báo cáo kê khai, tình hình quản lý TS KCHTGT hàng hải"),
-    F189_HOAT_DONG_BAO_HIEU_DE_KE("F-189", "Báo cáo tình hình hoạt động báo hiệu hàng hải và đê, kè");
+    F189_HOAT_DONG_BAO_HIEU_DE_KE("F-189", "Báo cáo tình hình hoạt động báo hiệu hàng hải và đê, kè"),
+
+    // Wave 7 — F-101 to F-105
+    F101_THUY_VAN("F-101", "Báo cáo tổng hợp thủy văn"),
+    F102_BIEU_THONG_KE("F-102", "Biểu thống kê hàng hải"),
+    F103_KHANH_TAC("F-103", "Báo cáo khánh tác cảng"),
+    F104_HANG_HOA_XNK("F-104", "Báo cáo hàng hóa XNK"),
+    F105_BIEU_DO_TRAO_DOI_THUONG_MAI("F-105", "Biểu đồ trao đổi thương mại");
 
     private final String code;
     private final String name;

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CookieConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.security.config</a> &gt; <span class="el_source">CookieConfig.java</span></div><h1>CookieConfig.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.security.config;
+
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+
+/**
+ * Cookie configuration and helper methods for JWT session management (F-274).
+ */
+@Configuration
+<span class="nc" id="L13">public class CookieConfig {</span>
+
+    public static final String REFRESH_TOKEN_COOKIE_NAME = &quot;refreshToken&quot;;
+
+    @Value(&quot;${jwt.refresh-token-expiration:604800000}&quot;)
+    private long refreshExpirationMs;
+
+    /**
+     * Sets the HTTP-Only Secure refresh token cookie.
+     */
+    public void setRefreshTokenCookie(HttpServletResponse response, String token) {
+<span class="nc" id="L24">        ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, token)</span>
+<span class="nc" id="L25">                .httpOnly(true)</span>
+<span class="nc" id="L26">                .secure(false) // Set to true in production with HTTPS</span>
+<span class="nc" id="L27">                .sameSite(&quot;Lax&quot;)</span>
+<span class="nc" id="L28">                .path(&quot;/api/auth&quot;)</span>
+<span class="nc" id="L29">                .maxAge(refreshExpirationMs / 1000)</span>
+<span class="nc" id="L30">                .build();</span>
+<span class="nc" id="L31">        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());</span>
+<span class="nc" id="L32">    }</span>
+
+    /**
+     * Clears the refresh token cookie (on logout/revocation).
+     */
+    public void clearRefreshTokenCookie(HttpServletResponse response) {
+<span class="nc" id="L38">        ResponseCookie cookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, &quot;&quot;)</span>
+<span class="nc" id="L39">                .httpOnly(true)</span>
+<span class="nc" id="L40">                .secure(false)</span>
+<span class="nc" id="L41">                .sameSite(&quot;Lax&quot;)</span>
+<span class="nc" id="L42">                .path(&quot;/api/auth&quot;)</span>
+<span class="nc" id="L43">                .maxAge(0)</span>
+<span class="nc" id="L44">                .build();</span>
+<span class="nc" id="L45">        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());</span>
+<span class="nc" id="L46">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

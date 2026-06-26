@@ -142,16 +142,18 @@ class PortCargoShareControllerTest {
     }
 
     @Test
-    @DisplayName("GET /ports/cargo-total - should return annual aggregates")
-    void getPortCargoTotal_success() throws Exception {
+    @DisplayName("GET /ports/cargo-total (F-217) - should return port cargo aggregates with pagination")
+    void getPortCargoTotal_F217_success() throws Exception {
         CargoAggregate aggregate = CargoAggregate.builder()
                 .portCode("PIER-HPH-001")
                 .periodType("ANNUAL")
                 .periodStart(LocalDate.of(2025, 1, 1))
                 .periodEnd(LocalDate.of(2025, 12, 31))
                 .totalTons(BigDecimal.valueOf(1000.0))
+                .totalTeus(BigDecimal.valueOf(50.0))
+                .vesselCount(10)
                 .build();
-        when(cargoRepository.findByPeriodType(eq("ANNUAL"), any(Pageable.class)))
+        when(cargoRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(aggregate)));
 
         mockMvc.perform(get("/api/v1/integration/share/ports/cargo-total")
@@ -160,7 +162,32 @@ class PortCargoShareControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].portCode").value("PIER-HPH-001"))
-                .andExpect(jsonPath("$.data.content[0].periodType").value("ANNUAL"));
+                .andExpect(jsonPath("$.data.content[0].totalTons").value(1000.0))
+                .andExpect(jsonPath("$.data.content[0].totalTeus").value(50.0))
+                .andExpect(jsonPath("$.data.totalElements").value(1));
+    }
+
+    @Test
+    @DisplayName("GET /ports/cargo-total (F-217) - should filter by portCode")
+    void getPortCargoTotal_F217_filterByPortCode() throws Exception {
+        CargoAggregate aggregate = CargoAggregate.builder()
+                .portCode("PIER-DAD-002")
+                .periodType("MONTHLY")
+                .periodStart(LocalDate.of(2026, 5, 1))
+                .periodEnd(LocalDate.of(2026, 5, 31))
+                .totalTons(BigDecimal.valueOf(250.0))
+                .build();
+        when(cargoRepository.findByPortCode(eq("PIER-DAD-002"), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(aggregate)));
+
+        mockMvc.perform(get("/api/v1/integration/share/ports/cargo-total")
+                        .param("portCode", "PIER-DAD-002")
+                        .header("X-Integration-Token", VALID_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].portCode").value("PIER-DAD-002"))
+                .andExpect(jsonPath("$.data.totalElements").value(1));
     }
 
     @Test
@@ -186,5 +213,106 @@ class PortCargoShareControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].portCode").value("PIER-HPH-001"))
                 .andExpect(jsonPath("$.data.content[0].periodType").value("MONTHLY"));
+    }
+
+    @Test
+    @DisplayName("GET /cargo/inventory (F-226) - should return paginated cargo inventory with valid token")
+    void getCargoInventory_F226_success() throws Exception {
+        CargoAggregate aggregate = CargoAggregate.builder()
+                .portCode("PIER-HPH-001")
+                .periodType("ANNUAL")
+                .periodStart(LocalDate.of(2026, 1, 1))
+                .periodEnd(LocalDate.of(2026, 6, 30))
+                .totalTons(BigDecimal.valueOf(5000.0))
+                .vesselCount(25)
+                .build();
+        when(cargoRepository.findAll()).thenReturn(List.of(aggregate));
+
+        mockMvc.perform(get("/api/v1/integration/share/cargo/inventory")
+                        .header("X-Integration-Token", VALID_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].cargoName").value("PIER-HPH-001"))
+                .andExpect(jsonPath("$.data.content[0].quantity").value(25))
+                .andExpect(jsonPath("$.data.content[0].unit").value("vessels"))
+                .andExpect(jsonPath("$.data.content[0].status").value("ANNUAL"))
+                .andExpect(jsonPath("$.data.totalElements").value(1));
+    }
+
+    @Test
+    @DisplayName("GET /cargo/inventory (F-226) - should return empty page when no cargo data exists")
+    void getCargoInventory_F226_emptyPage() throws Exception {
+        when(cargoRepository.findAll()).thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/api/v1/integration/share/cargo/inventory")
+                        .header("X-Integration-Token", VALID_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.totalElements").value(0))
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.content").isEmpty());
+    }
+
+    @Test
+    @DisplayName("GET /cargo/inventory (F-226) - should return 401 when token is missing")
+    void getCargoInventory_F226_unauthorized() throws Exception {
+        when(cargoRepository.findAll()).thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/api/v1/integration/share/cargo/inventory")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @DisplayName("GET /ports/berth-wharf-summary (F-220) - should return cargo aggregates page")
+    void getBerthWharfSummary_F220_success() throws Exception {
+        CargoAggregate aggregate = CargoAggregate.builder()
+                .portCode("PIER-HPH-001")
+                .periodType("ANNUAL")
+                .periodStart(LocalDate.of(2025, 1, 1))
+                .periodEnd(LocalDate.of(2025, 12, 31))
+                .totalTons(BigDecimal.valueOf(1500.0))
+                .totalTeus(BigDecimal.valueOf(75.0))
+                .vesselCount(30)
+                .build();
+        when(cargoRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(aggregate)));
+
+        mockMvc.perform(get("/api/v1/integration/share/ports/berth-wharf-summary")
+                        .header("X-Integration-Token", VALID_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].portCode").value("PIER-HPH-001"))
+                .andExpect(jsonPath("$.data.content[0].periodType").value("ANNUAL"))
+                .andExpect(jsonPath("$.data.totalElements").value(1));
+    }
+
+    @Test
+    @DisplayName("GET /ports/berth-wharf-summary (F-220) - should return empty page when no cargo data")
+    void getBerthWharfSummary_F220_emptyPage() throws Exception {
+        when(cargoRepository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.emptyList()));
+
+        mockMvc.perform(get("/api/v1/integration/share/ports/berth-wharf-summary")
+                        .header("X-Integration-Token", VALID_TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.totalElements").value(0))
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.content").isEmpty());
+    }
+
+    @Test
+    @DisplayName("GET /ports/berth-wharf-summary (F-220) - should return 401 when token is missing")
+    void getBerthWharfSummary_F220_unauthorized() throws Exception {
+        mockMvc.perform(get("/api/v1/integration/share/ports/berth-wharf-summary")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
     }
 }

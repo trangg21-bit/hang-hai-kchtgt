@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataSeeder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.integration.service</a> &gt; <span class="el_source">DataSeeder.java</span></div><h1>DataSeeder.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.integration.service;
+
+import com.hanghai.kchtg.gis.line.entity.LineObject;
+import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
+import com.hanghai.kchtg.gis.point.entity.PointObject;
+import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
+import com.hanghai.kchtg.gis.polygon.entity.PolygonObject;
+import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
+import com.hanghai.kchtg.integration.entity.CargoAggregate;
+import com.hanghai.kchtg.integration.entity.PortStatus;
+import com.hanghai.kchtg.integration.repository.CargoAggregateRepository;
+import com.hanghai.kchtg.integration.repository.PortStatusRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Component;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.UUID;
+
+@Component(&quot;integrationDataSeeder&quot;)
+@Profile(&quot;local&quot;)
+public class DataSeeder implements CommandLineRunner {
+
+<span class="nc" id="L27">    private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);</span>
+
+    private final PointObjectRepository pointRepository;
+    private final LineObjectRepository lineRepository;
+    private final PolygonObjectRepository polygonRepository;
+    private final PortStatusRepository portStatusRepository;
+    private final CargoAggregateRepository cargoRepository;
+
+    public DataSeeder(PointObjectRepository pointRepository,
+                      LineObjectRepository lineRepository,
+                      PolygonObjectRepository polygonRepository,
+                      PortStatusRepository portStatusRepository,
+<span class="nc" id="L39">                      CargoAggregateRepository cargoRepository) {</span>
+<span class="nc" id="L40">        this.pointRepository = pointRepository;</span>
+<span class="nc" id="L41">        this.lineRepository = lineRepository;</span>
+<span class="nc" id="L42">        this.polygonRepository = polygonRepository;</span>
+<span class="nc" id="L43">        this.portStatusRepository = portStatusRepository;</span>
+<span class="nc" id="L44">        this.cargoRepository = cargoRepository;</span>
+<span class="nc" id="L45">    }</span>
+
+    @Override
+    public void run(String... args) {
+<span class="nc" id="L49">        seed();</span>
+<span class="nc" id="L50">    }</span>
+
+    public void seed() {
+<span class="nc bnc" id="L53" title="All 6 branches missed.">        if (pointRepository.count() &gt; 0 || lineRepository.count() &gt; 0 || polygonRepository.count() &gt; 0) {</span>
+<span class="nc" id="L54">            log.info(&quot;Seed data already exists - skipping.&quot;);</span>
+<span class="nc" id="L55">            return;</span>
+        }
+
+<span class="nc" id="L58">        log.info(&quot;Seeding Wave-1 KCHTGT chart data...&quot;);</span>
+
+<span class="nc" id="L60">        PointObject pier = PointObject.builder()</span>
+<span class="nc" id="L61">                .code(&quot;PIER-HPH-001&quot;)</span>
+<span class="nc" id="L62">                .name(&quot;Bến cảng Hải Phòng&quot;)</span>
+<span class="nc" id="L63">                .objectType(PointObject.ObjectType.PORT)</span>
+<span class="nc" id="L64">                .latitude(20.8449)</span>
+<span class="nc" id="L65">                .longitude(106.6881)</span>
+<span class="nc" id="L66">                .description(&quot;Bến cảng nước sâu chính tại Hải Phòng&quot;)</span>
+<span class="nc" id="L67">                .status(PointObject.Status.PUBLISHED)</span>
+<span class="nc" id="L68">                .approvalStatus(PointObject.ApprovalStatus.APPROVED)</span>
+<span class="nc" id="L69">                .build();</span>
+<span class="nc" id="L70">        pointRepository.save(pier);</span>
+
+<span class="nc" id="L72">        LineObject bridge = LineObject.builder()</span>
+<span class="nc" id="L73">                .code(&quot;BRG-DNG-001&quot;)</span>
+<span class="nc" id="L74">                .name(&quot;Cầu Đà Nẵng&quot;)</span>
+<span class="nc" id="L75">                .objectType(LineObject.ObjectType.WATERWAY)</span>
+<span class="nc" id="L76">                .coordinates(&quot;LINESTRING(108.2022 16.0544, 108.2296 16.0630)&quot;)</span>
+<span class="nc" id="L77">                .description(&quot;Tuyến cầu qua cửa sông Đà Nẵng&quot;)</span>
+<span class="nc" id="L78">                .status(LineObject.Status.PUBLISHED)</span>
+<span class="nc" id="L79">                .approvalStatus(LineObject.ApprovalStatus.APPROVED)</span>
+<span class="nc" id="L80">                .build();</span>
+<span class="nc" id="L81">        lineRepository.save(bridge);</span>
+
+<span class="nc" id="L83">        PointObject buoyBerth = PointObject.builder()</span>
+<span class="nc" id="L84">                .code(&quot;BUOY-BTH-001&quot;)</span>
+<span class="nc" id="L85">                .name(&quot;Bến phao số 1&quot;)</span>
+<span class="nc" id="L86">                .objectType(PointObject.ObjectType.BUOY)</span>
+<span class="nc" id="L87">                .latitude(10.7769)</span>
+<span class="nc" id="L88">                .longitude(106.7004)</span>
+<span class="nc" id="L89">                .description(&quot;Phao tiêu tại bến cảng Nha Trang&quot;)</span>
+<span class="nc" id="L90">                .status(PointObject.Status.PUBLISHED)</span>
+<span class="nc" id="L91">                .approvalStatus(PointObject.ApprovalStatus.APPROVED)</span>
+<span class="nc" id="L92">                .build();</span>
+<span class="nc" id="L93">        pointRepository.save(buoyBerth);</span>
+
+<span class="nc" id="L95">        PointObject buoyMarker = PointObject.builder()</span>
+<span class="nc" id="L96">                .code(&quot;BUOY-MKR-001&quot;)</span>
+<span class="nc" id="L97">                .name(&quot;Phao tiêu số 15&quot;)</span>
+<span class="nc" id="L98">                .objectType(PointObject.ObjectType.BUOY)</span>
+<span class="nc" id="L99">                .latitude(21.1710)</span>
+<span class="nc" id="L100">                .longitude(107.1541)</span>
+<span class="nc" id="L101">                .description(&quot;Phao tiêu kênh chính vịnh Hạ Long&quot;)</span>
+<span class="nc" id="L102">                .status(PointObject.Status.PUBLISHED)</span>
+<span class="nc" id="L103">                .approvalStatus(PointObject.ApprovalStatus.APPROVED)</span>
+<span class="nc" id="L104">                .build();</span>
+<span class="nc" id="L105">        pointRepository.save(buoyMarker);</span>
+
+<span class="nc" id="L107">        PolygonObject stormShelter = PolygonObject.builder()</span>
+<span class="nc" id="L108">                .code(&quot;STORM-QLG-001&quot;)</span>
+<span class="nc" id="L109">                .name(&quot;Khu tránh bão vịnh Hạ Long&quot;)</span>
+<span class="nc" id="L110">                .objectType(PolygonObject.ObjectType.STORM_SHELTER)</span>
+<span class="nc" id="L111">                .coordinates(&quot;POLYGON((107.10 20.90, 107.20 20.90, 107.20 21.00, 107.10 21.00, 107.10 20.90))&quot;)</span>
+<span class="nc" id="L112">                .description(&quot;Khu neo tránh bão tại vịnh Hạ Long&quot;)</span>
+<span class="nc" id="L113">                .status(PolygonObject.Status.PUBLISHED)</span>
+<span class="nc" id="L114">                .approvalStatus(PolygonObject.ApprovalStatus.APPROVED)</span>
+<span class="nc" id="L115">                .build();</span>
+<span class="nc" id="L116">        polygonRepository.save(stormShelter);</span>
+
+<span class="nc" id="L118">        LineObject transportRoute = LineObject.builder()</span>
+<span class="nc" id="L119">                .code(&quot;ROUTE-HPH-DAD-001&quot;)</span>
+<span class="nc" id="L120">                .name(&quot;Tuyến chuyển tải Hải Phòng Đà Nẵng&quot;)</span>
+<span class="nc" id="L121">                .objectType(LineObject.ObjectType.SHIPPING_ROUTE)</span>
+<span class="nc" id="L122">                .coordinates(&quot;LINESTRING(106.6881 20.8449, 108.2022 16.0544)&quot;)</span>
+<span class="nc" id="L123">                .description(&quot;Tuyến chuyển tải giữa cảng Hải Phòng và Đà Nẵng&quot;)</span>
+<span class="nc" id="L124">                .status(LineObject.Status.PUBLISHED)</span>
+<span class="nc" id="L125">                .approvalStatus(LineObject.ApprovalStatus.APPROVED)</span>
+<span class="nc" id="L126">                .build();</span>
+<span class="nc" id="L127">        lineRepository.save(transportRoute);</span>
+
+<span class="nc" id="L129">        PolygonObject anchorage = PolygonObject.builder()</span>
+<span class="nc" id="L130">                .code(&quot;ANCH-HPH-001&quot;)</span>
+<span class="nc" id="L131">                .name(&quot;Khu neo đậu Hải Phòng&quot;)</span>
+<span class="nc" id="L132">                .objectType(PolygonObject.ObjectType.ANCHORAGE)</span>
+<span class="nc" id="L133">                .coordinates(&quot;POLYGON((106.65 20.82, 106.72 20.82, 106.72 20.87, 106.65 20.87, 106.65 20.82))&quot;)</span>
+<span class="nc" id="L134">                .description(&quot;Khu vực neo đậu tàu biển tại cảng Hải Phòng&quot;)</span>
+<span class="nc" id="L135">                .status(PolygonObject.Status.PUBLISHED)</span>
+<span class="nc" id="L136">                .approvalStatus(PolygonObject.ApprovalStatus.APPROVED)</span>
+<span class="nc" id="L137">                .build();</span>
+<span class="nc" id="L138">        polygonRepository.save(anchorage);</span>
+
+<span class="nc" id="L140">        PointObject repairFacility = PointObject.builder()</span>
+<span class="nc" id="L141">                .code(&quot;REPAIR-HPH-001&quot;)</span>
+<span class="nc" id="L142">                .name(&quot;Cơ sở sửa chữa Hải Phòng&quot;)</span>
+<span class="nc" id="L143">                .objectType(PointObject.ObjectType.OTHER)</span>
+<span class="nc" id="L144">                .latitude(20.8500)</span>
+<span class="nc" id="L145">                .longitude(106.6800)</span>
+<span class="nc" id="L146">                .description(&quot;Xưởng sửa chữa tàu biển tại Hải Phòng&quot;)</span>
+<span class="nc" id="L147">                .status(PointObject.Status.PUBLISHED)</span>
+<span class="nc" id="L148">                .approvalStatus(PointObject.ApprovalStatus.APPROVED)</span>
+<span class="nc" id="L149">                .build();</span>
+<span class="nc" id="L150">        pointRepository.save(repairFacility);</span>
+
+<span class="nc" id="L152">        PointObject beacon = PointObject.builder()</span>
+<span class="nc" id="L153">                .code(&quot;BEACON-DAD-001&quot;)</span>
+<span class="nc" id="L154">                .name(&quot;Đèn biển Đà Nẵng&quot;)</span>
+<span class="nc" id="L155">                .objectType(PointObject.ObjectType.BEACON)</span>
+<span class="nc" id="L156">                .latitude(16.0470)</span>
+<span class="nc" id="L157">                .longitude(108.2200)</span>
+<span class="nc" id="L158">                .description(&quot;Đèn biển dẫn đường vào cảng Đà Nẵng&quot;)</span>
+<span class="nc" id="L159">                .status(PointObject.Status.PUBLISHED)</span>
+<span class="nc" id="L160">                .approvalStatus(PointObject.ApprovalStatus.APPROVED)</span>
+<span class="nc" id="L161">                .build();</span>
+<span class="nc" id="L162">        pointRepository.save(beacon);</span>
+
+<span class="nc" id="L164">        PointObject vtsSystem = PointObject.builder()</span>
+<span class="nc" id="L165">                .code(&quot;VTS-HPH-001&quot;)</span>
+<span class="nc" id="L166">                .name(&quot;Hệ thống VTS Hải Phòng&quot;)</span>
+<span class="nc" id="L167">                .objectType(PointObject.ObjectType.PORT)</span>
+<span class="nc" id="L168">                .latitude(20.8550)</span>
+<span class="nc" id="L169">                .longitude(106.6900)</span>
+<span class="nc" id="L170">                .description(&quot;Trung tâm giám sát VTS tại cảng Hải Phòng&quot;)</span>
+<span class="nc" id="L171">                .status(PointObject.Status.PUBLISHED)</span>
+<span class="nc" id="L172">                .approvalStatus(PointObject.ApprovalStatus.APPROVED)</span>
+<span class="nc" id="L173">                .build();</span>
+<span class="nc" id="L174">        pointRepository.save(vtsSystem);</span>
+
+<span class="nc" id="L176">        log.info(&quot;Seeding Wave-3 Port and Cargo aggregate data...&quot;);</span>
+
+<span class="nc" id="L178">        PortStatus hpStatus = PortStatus.builder()</span>
+<span class="nc" id="L179">                .portCode(&quot;PIER-HPH-001&quot;)</span>
+<span class="nc" id="L180">                .portName(&quot;Cảng Hải Phòng&quot;)</span>
+<span class="nc" id="L181">                .berthCount(15)</span>
+<span class="nc" id="L182">                .operationalStatus(&quot;ACTIVE&quot;)</span>
+<span class="nc" id="L183">                .currentCapacityTons(10000000.0)</span>
+<span class="nc" id="L184">                .build();</span>
+<span class="nc" id="L185">        portStatusRepository.save(hpStatus);</span>
+
+<span class="nc" id="L187">        PortStatus dnStatus = PortStatus.builder()</span>
+<span class="nc" id="L188">                .portCode(&quot;BEACON-DAD-001&quot;)</span>
+<span class="nc" id="L189">                .portName(&quot;Cảng Đà Nẵng&quot;)</span>
+<span class="nc" id="L190">                .berthCount(8)</span>
+<span class="nc" id="L191">                .operationalStatus(&quot;ACTIVE&quot;)</span>
+<span class="nc" id="L192">                .currentCapacityTons(5000000.0)</span>
+<span class="nc" id="L193">                .build();</span>
+<span class="nc" id="L194">        portStatusRepository.save(dnStatus);</span>
+
+<span class="nc" id="L196">        CargoAggregate hpAnnual = CargoAggregate.builder()</span>
+<span class="nc" id="L197">                .portCode(&quot;PIER-HPH-001&quot;)</span>
+<span class="nc" id="L198">                .periodType(&quot;ANNUAL&quot;)</span>
+<span class="nc" id="L199">                .periodStart(LocalDate.of(2025, 1, 1))</span>
+<span class="nc" id="L200">                .periodEnd(LocalDate.of(2025, 12, 31))</span>
+<span class="nc" id="L201">                .totalTons(BigDecimal.valueOf(8000000.00))</span>
+<span class="nc" id="L202">                .totalTeus(BigDecimal.valueOf(450000.00))</span>
+<span class="nc" id="L203">                .vesselCount(1200)</span>
+<span class="nc" id="L204">                .build();</span>
+<span class="nc" id="L205">        cargoRepository.save(hpAnnual);</span>
+
+<span class="nc" id="L207">        CargoAggregate hpMonthly = CargoAggregate.builder()</span>
+<span class="nc" id="L208">                .portCode(&quot;PIER-HPH-001&quot;)</span>
+<span class="nc" id="L209">                .periodType(&quot;MONTHLY&quot;)</span>
+<span class="nc" id="L210">                .periodStart(LocalDate.of(2026, 5, 1))</span>
+<span class="nc" id="L211">                .periodEnd(LocalDate.of(2026, 5, 31))</span>
+<span class="nc" id="L212">                .totalTons(BigDecimal.valueOf(750000.00))</span>
+<span class="nc" id="L213">                .totalTeus(BigDecimal.valueOf(42000.00))</span>
+<span class="nc" id="L214">                .vesselCount(110)</span>
+<span class="nc" id="L215">                .build();</span>
+<span class="nc" id="L216">        cargoRepository.save(hpMonthly);</span>
+
+<span class="nc" id="L218">        CargoAggregate dnAnnual = CargoAggregate.builder()</span>
+<span class="nc" id="L219">                .portCode(&quot;BEACON-DAD-001&quot;)</span>
+<span class="nc" id="L220">                .periodType(&quot;ANNUAL&quot;)</span>
+<span class="nc" id="L221">                .periodStart(LocalDate.of(2025, 1, 1))</span>
+<span class="nc" id="L222">                .periodEnd(LocalDate.of(2025, 12, 31))</span>
+<span class="nc" id="L223">                .totalTons(BigDecimal.valueOf(3500000.00))</span>
+<span class="nc" id="L224">                .totalTeus(BigDecimal.valueOf(180000.00))</span>
+<span class="nc" id="L225">                .vesselCount(600)</span>
+<span class="nc" id="L226">                .build();</span>
+<span class="nc" id="L227">        cargoRepository.save(dnAnnual);</span>
+
+<span class="nc" id="L229">        log.info(&quot;Wave-1 &amp; Wave-3 seed complete: {} points, {} lines, {} polygons, {} port statuses, {} cargo aggregates&quot;,</span>
+<span class="nc" id="L230">                pointRepository.count(), lineRepository.count(), polygonRepository.count(),</span>
+<span class="nc" id="L231">                portStatusRepository.count(), cargoRepository.count());</span>
+<span class="nc" id="L232">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

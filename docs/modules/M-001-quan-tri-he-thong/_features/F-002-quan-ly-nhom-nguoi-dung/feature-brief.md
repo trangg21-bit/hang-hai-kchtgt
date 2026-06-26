@@ -1,38 +1,36 @@
 ---
-status: proposed
-last-updated: 2026-06-17T03:23:15Z
----
----
 id: F-002
-name: Quan ly nhom nguoi dung
+name: Quản lý nhóm người dùng
 slug: quan-ly-nhom-nguoi-dung
 module-id: M-001
-status: done
+status: proposed
 classification: local
 priority: high
-created: 2026-06-16T04:40:32Z
-last-updated: 2026-06-17T01:35:44Z
+created: 2026-06-26T00:00:00Z
+last-updated: 2026-06-26T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quan ly nhom nguoi dung
+# Feature: Quản lý nhóm người dùng
 
 ## Description
 
-Quan ly nhom nguoi dung: tao, sua, xoa nhom, gan thanh vien
+Quản lý tập trung các nhóm người dùng trong hệ thống, cho phép tạo mới, chỉnh sửa, xóa các nhóm theo loại (department/project/custom), quản lý thành viên nhóm (thêm/xóa), và sao chép nhóm để tạo nhanh các nhóm có cấu trúc tương tự. Tính năng hỗ trợ tra cứu, tìm kiếm và phân trang danh sách nhóm với các bộ lọc thông minh.
 
 ## Business Intent
 
-Quan tri he thong - Tao/sua/xoa nhom, gan thanh vien
+Quản trị hệ thống cần cơ chế phân nhóm người dùng linh hoạt để tổ chức cán bộ theo đơn vị, dự án hoặc nhóm công việc đặc thù, giúp tối ưu hóa việc gán quyền, chia sẻ dữ liệu và phối hợp nghiệp vụ giữa các thành viên trong cùng nhóm.
 
 ## Flow Summary
 
-Quan tri he thong - Tao/sua/xoa nhom, gan thanh vien
+Quản trị hệ thống truy cập module Quản lý nhóm từ sidebar → chọn tạo nhóm mới hoặc quản lý nhóm hiện có → điền thông tin nhóm (tên, mã, loại nhóm, mô tả) → hệ thống kiểm tra tên nhóm unique → tạo nhóm thành công → thêm/xóa thành viên từ danh sách người dùng hệ thống → hệ thống ghi nhận lịch sử thay đổi nhóm → hiển thị danh sách nhóm với khả năng lọc theo tên, loại nhóm, số lượng thành viên và phân trang. Quy trình mở rộng bao gồm: sao chép nhóm để tạo nhanh nhóm tương tự, xem chi tiết thành viên từng nhóm, và quản lý quyền hạn của thành viên trong nhóm (roleInGroup).
 
 ## Acceptance Criteria
 
-- Tao/sua/xoa nhom thanh cong
-- Gan thanh vien vao nhom
+- Tạo/sửa/xóa nhóm thành công với tên nhóm unique trong hệ thống, nhóm chỉ có thể xóa khi không còn thành viên
+- Thêm/Xóa người dùng vào khỏi nhóm chính xác, người dùng có thể thuộc nhiều nhóm cùng lúc, ghi nhận lịch sử thay đổi thành viên
+- Sao chép nhóm (duplicate) thành công để tạo nhanh nhóm có cấu trúc tương tự với toàn bộ thành viên gốc
+- Tìm kiếm và lọc danh sách nhóm theo tên, loại nhóm, số lượng thành viên với kết quả phân trang chính xác
 
 ## In Scope
 

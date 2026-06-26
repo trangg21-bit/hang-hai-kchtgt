@@ -1,38 +1,35 @@
 ---
-status: proposed
-last-updated: 2026-06-17T03:23:16Z
----
----
 id: F-004
-name: Quan ly tai khoan admin
+name: Quản lý tài khoản admin
 slug: quan-ly-tai-khoan-admin
 module-id: M-001
-status: done
+status: proposed
 classification: local
 priority: high
-created: 2026-06-16T04:40:32Z
-last-updated: 2026-06-17T01:35:44Z
+created: 2026-06-26T00:00:00Z
+last-updated: 2026-06-26T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quan ly tai khoan admin
+# Feature: Quản lý tài khoản admin
 
 ## Description
 
-Quan ly tai khoan admin 3 muc: thuong, su dung, van hanh
+Quản lý tài khoản admin chuyên dụng với 3 cấp độ: Super Admin (toàn quyền hệ thống), System Admin (quản lý module cụ thể) và Security Admin (chỉ xem audit log và bảo mật). Tính năng bao gồm tạo, chỉnh sửa, khóa/mở khóa, phân quyền theo module, kích hoạt MFA và duy trì audit trail toàn bộ hoạt động admin.
 
 ## Business Intent
 
-Quan tri he thong - Tao, phe duyet, khoa, phan quyen admin
+Hệ thống yêu cầu cơ chế quản lý tài khoản đặc quyền (admin) an toàn và minh bạch, đảm bảo nguyên tắcleast privilege — mỗi admin chỉ được phân quyền đúng phạm vi công việc, mọi thao tác đều được ghi nhận audit log và yêu cầu xác thực đa yếu tố (MFA/2FA) để ngăn chặn truy cập trái phép.
 
 ## Flow Summary
 
-Quan tri he thong - Tao, phe duyet, khoa, phan quyen admin
+Super Admin hoặc Security Admin truy cập module Quản lý tài khoản admin từ sidebar → chọn tạo tài khoản admin mới hoặc quản lý tài khoản hiện có → chọn loại admin (Super Admin/System Admin/Security Admin), điền thông tin và chỉ định module access (với System Admin) → hệ thống yêu cầu xác thực MFA cho admin mới → tài khoản được tạo và ghi nhận vào audit trail → các thao tác chỉnh sửa, khóa/mở khóa hoặc xóa tài khoản admin đều cần xác nhận 2 lớp (2FA + Super Admin approval) → hệ thống ghi nhận toàn bộ thay đổi vào admin audit log → hiển thị danh sách admin với lọc theo tên, module, trạng thái và phân trang.
 
 ## Acceptance Criteria
 
-- Quan ly toan bo tai khoan admin
-- Phan quyen theo muc
+- Tạo/sửa/xóa tài khoản admin với đúng phân cấp (Super Admin > System Admin > Security Admin), tài khoản admin phải được kích hoạt MFA bắt buộc trước khi sử dụng
+- Phân quyền admin theo module chính xác: Super Admin có toàn quyền hệ thống, System Admin chỉ quản lý module được chỉ định, Security Admin chỉ xem audit log và bảo mật
+- Khóa/mở khóa tài khoản admin thành công: admin bị khóa không thể đăng nhập, cần 2 admin khác xác nhận mở khóa (nguyên tắc 2 người)
 
 ## In Scope
 

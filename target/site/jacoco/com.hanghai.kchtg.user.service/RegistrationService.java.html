@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RegistrationService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.user.service</a> &gt; <span class="el_source">RegistrationService.java</span></div><h1>RegistrationService.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.user.service;
+
+import com.hanghai.kchtg.security.ClientEncryptionService;
+import com.hanghai.kchtg.user.dto.RegisterAccountRequest;
+import com.hanghai.kchtg.user.dto.RegisterResponse;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.entity.UserStatus;
+import com.hanghai.kchtg.user.exception.DuplicateResourceException;
+import com.hanghai.kchtg.user.exception.ValidationException;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+/**
+ * Core service for account registration.
+ * &lt;p&gt;
+ * Orchestrates: validation -&gt;’ dedup -&gt;’ encryption -&gt;’ password hashing -&gt;’ entity creation
+ * -&gt;’ token generation -&gt;’ notification -&gt;’ audit.
+ * &lt;/p&gt;
+ */
+@Service
+public class RegistrationService {
+
+<span class="nc" id="L32">    private static final Logger log = LoggerFactory.getLogger(RegistrationService.class);</span>
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final PasswordPolicyValidator passwordPolicyValidator;
+    private final ClientEncryptionService clientEncryptionService;
+    private final VerificationTokenService verificationTokenService;
+    private final NotificationService notificationService;
+    private final AccountRegistrationAuditService auditService;
+    private final RateLimiterService rateLimiterService;
+
+    public RegistrationService(UserRepository userRepository,
+                               PasswordEncoder passwordEncoder,
+                               PasswordPolicyValidator passwordPolicyValidator,
+                               ClientEncryptionService clientEncryptionService,
+                               VerificationTokenService verificationTokenService,
+                               NotificationService notificationService,
+                               AccountRegistrationAuditService auditService,
+<span class="nc" id="L50">                               RateLimiterService rateLimiterService) {</span>
+<span class="nc" id="L51">        this.userRepository = userRepository;</span>
+<span class="nc" id="L52">        this.passwordEncoder = passwordEncoder;</span>
+<span class="nc" id="L53">        this.passwordPolicyValidator = passwordPolicyValidator;</span>
+<span class="nc" id="L54">        this.clientEncryptionService = clientEncryptionService;</span>
+<span class="nc" id="L55">        this.verificationTokenService = verificationTokenService;</span>
+<span class="nc" id="L56">        this.notificationService = notificationService;</span>
+<span class="nc" id="L57">        this.auditService = auditService;</span>
+<span class="nc" id="L58">        this.rateLimiterService = rateLimiterService;</span>
+<span class="nc" id="L59">    }</span>
+
+    /**
+     * Registers a new account.
+     *
+     * @param request registration request (password may be RSA-encrypted)
+     * @param ipAddress client IP address
+     * @param userAgent client user-agent
+     * @return registration response with user info and status
+     */
+    @Transactional
+    public RegisterResponse register(RegisterAccountRequest request,
+                                     String ipAddress,
+                                     String userAgent) {
+<span class="nc" id="L73">        long startTime = System.currentTimeMillis();</span>
+<span class="nc" id="L74">        String identifier = resolveIdentifier(request);</span>
+
+        // 1. Rate limit check
+<span class="nc" id="L77">        rateLimiterService.checkLimit(identifier);</span>
+
+        try {
+            // 2. Validate input
+<span class="nc" id="L81">            validateRequest(request);</span>
+
+            // 3. Dedup check
+<span class="nc" id="L84">            checkDuplicate(request);</span>
+
+            // 4. Decrypt password if RSA-encrypted
+<span class="nc" id="L87">            String plainPassword = decryptPasswordIfNeeded(request.getPassword());</span>
+
+            // 5. Password policy validation
+<span class="nc" id="L90">            passwordPolicyValidator.validate(plainPassword);</span>
+
+            // 6. Create user entity
+<span class="nc" id="L93">            User user = createUser(request, plainPassword);</span>
+
+            // 7. Persist user
+<span class="nc" id="L96">            user = userRepository.save(user);</span>
+
+            // 8. Generate verification token
+<span class="nc" id="L99">            String plainToken = verificationTokenService.generateToken(user.getId(), user.getEmail(), user.getFullName());</span>
+
+            // 9. Send verification email
+<span class="nc" id="L102">            notificationService.sendVerificationEmail(user.getEmail(), plainToken, user.getFullName());</span>
+
+            // 10. Audit log
+<span class="nc" id="L105">            long duration = System.currentTimeMillis() - startTime;</span>
+<span class="nc" id="L106">            auditService.logSuccess(user.getId(), identifier, &quot;REGISTER_SUCCESS&quot;, duration, ipAddress, userAgent);</span>
+
+            // 11. Reset rate limit on success
+<span class="nc" id="L109">            rateLimiterService.reset(identifier);</span>
+
+<span class="nc" id="L111">            return buildResponse(user);</span>
+
+<span class="nc" id="L113">        } catch (com.hanghai.kchtg.user.exception.RateLimitExceededException e) {</span>
+            // Audit rate-limit event
+<span class="nc" id="L115">            long duration = System.currentTimeMillis() - startTime;</span>
+<span class="nc" id="L116">            auditService.logFailure(null, identifier, &quot;RATE_LIMITED&quot;, e.getMessage(), ipAddress, userAgent);</span>
+<span class="nc" id="L117">            throw e;</span>
+
+<span class="nc" id="L119">        } catch (com.hanghai.kchtg.user.exception.RegistrationException e) {</span>
+<span class="nc" id="L120">            long duration = System.currentTimeMillis() - startTime;</span>
+<span class="nc" id="L121">            auditService.logFailure(null, identifier, &quot;REGISTER_FAILURE&quot;, e.getMessage(), ipAddress, userAgent);</span>
+<span class="nc" id="L122">            throw e;</span>
+
+<span class="nc" id="L124">        } catch (Exception e) {</span>
+<span class="nc" id="L125">            log.error(&quot;Unexpected error during registration for identifier={}&quot;, identifier, e);</span>
+<span class="nc" id="L126">            long duration = System.currentTimeMillis() - startTime;</span>
+<span class="nc" id="L127">            auditService.logFailure(null, identifier, &quot;REGISTER_FAILURE&quot;,</span>
+<span class="nc" id="L128">                    &quot;Internal server error: &quot; + e.getMessage(), ipAddress, userAgent);</span>
+<span class="nc" id="L129">            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, &quot;Lỗi đăng ký tài khoản&quot;);</span>
+        }
+    }
+
+    private String resolveIdentifier(RegisterAccountRequest request) {
+<span class="nc bnc" id="L134" title="All 4 branches missed.">        if (request.getEmail() != null &amp;&amp; !request.getEmail().isBlank()) {</span>
+<span class="nc" id="L135">            return request.getEmail();</span>
+        }
+<span class="nc bnc" id="L137" title="All 2 branches missed.">        return request.getPhone() != null ? request.getPhone() : &quot;unknown&quot;;</span>
+    }
+
+    private void validateRequest(RegisterAccountRequest request) {
+<span class="nc bnc" id="L141" title="All 4 branches missed.">        if (request.getUsername() == null || request.getUsername().isBlank()) {</span>
+<span class="nc" id="L142">            throw new ValidationException(&quot;Tên đăng nhập không được để trống&quot;);</span>
+        }
+<span class="nc bnc" id="L144" title="All 4 branches missed.">        if (request.getPassword() == null || request.getPassword().isBlank()) {</span>
+<span class="nc" id="L145">            throw new ValidationException(&quot;Mật khẩu không được để trống&quot;);</span>
+        }
+<span class="nc" id="L147">    }</span>
+
+    private void checkDuplicate(RegisterAccountRequest request) {
+<span class="nc bnc" id="L150" title="All 2 branches missed.">        if (userRepository.existsByUsername(request.getUsername())) {</span>
+<span class="nc" id="L151">            throw new DuplicateResourceException(&quot;tên đăng nhập&quot;, request.getUsername());</span>
+        }
+<span class="nc bnc" id="L153" title="All 2 branches missed.">        if (userRepository.existsByEmail(request.getEmail())) {</span>
+<span class="nc" id="L154">            throw new DuplicateResourceException(&quot;email&quot;, request.getEmail());</span>
+        }
+<span class="nc bnc" id="L156" title="All 4 branches missed.">        if (request.getPhone() != null &amp;&amp; !request.getPhone().isBlank()</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">                &amp;&amp; userRepository.existsByPhone(request.getPhone())) {</span>
+<span class="nc" id="L158">            throw new DuplicateResourceException(&quot;số điện thoại&quot;, request.getPhone());</span>
+        }
+<span class="nc" id="L160">    }</span>
+
+    private String decryptPasswordIfNeeded(String encryptedPassword) {
+<span class="nc bnc" id="L163" title="All 4 branches missed.">        if (clientEncryptionService.isEnabled() &amp;&amp; isBase64Url(encryptedPassword)) {</span>
+            try {
+<span class="nc" id="L165">                String decrypted = clientEncryptionService.decrypt(encryptedPassword);</span>
+<span class="nc bnc" id="L166" title="All 4 branches missed.">                if (decrypted != null &amp;&amp; !decrypted.isBlank()) {</span>
+<span class="nc" id="L167">                    return decrypted;</span>
+                }
+<span class="nc" id="L169">            } catch (Exception e) {</span>
+<span class="nc" id="L170">                log.debug(&quot;Password was not RSA-encrypted, using as-is&quot;);</span>
+<span class="nc" id="L171">            }</span>
+        }
+<span class="nc" id="L173">        return encryptedPassword;</span>
+    }
+
+    private boolean isBase64Url(String s) {
+<span class="nc bnc" id="L177" title="All 4 branches missed.">        if (s == null || s.length() &lt; 16) return false;</span>
+        try {
+<span class="nc" id="L179">            java.util.Base64.getUrlDecoder().decode(s);</span>
+<span class="nc" id="L180">            return true;</span>
+<span class="nc" id="L181">        } catch (Exception e) {</span>
+<span class="nc" id="L182">            return false;</span>
+        }
+    }
+
+    private User createUser(RegisterAccountRequest request, String plainPassword) {
+<span class="nc" id="L187">        User user = new User();</span>
+<span class="nc" id="L188">        user.setUsername(request.getUsername());</span>
+<span class="nc" id="L189">        user.setPassword(passwordEncoder.encode(plainPassword));</span>
+<span class="nc" id="L190">        user.setEmail(request.getEmail());</span>
+<span class="nc" id="L191">        user.setFullName(request.getFullName());</span>
+<span class="nc" id="L192">        user.setPhone(request.getPhone());</span>
+<span class="nc bnc" id="L193" title="All 2 branches missed.">        user.setRole(request.getRole() != null ? request.getRole() : &quot;ROLE_USER&quot;);</span>
+<span class="nc" id="L194">        user.setStatus(UserStatus.PENDING_VERIFICATION);</span>
+<span class="nc" id="L195">        return user;</span>
+    }
+
+    private RegisterResponse buildResponse(User user) {
+<span class="nc" id="L199">        RegisterResponse response = new RegisterResponse();</span>
+<span class="nc" id="L200">        response.setId(user.getId());</span>
+<span class="nc" id="L201">        response.setUsername(user.getUsername());</span>
+<span class="nc" id="L202">        response.setEmail(user.getEmail());</span>
+<span class="nc" id="L203">        response.setFullName(user.getFullName());</span>
+<span class="nc" id="L204">        response.setPhone(user.getPhone());</span>
+<span class="nc" id="L205">        response.setRole(user.getRole());</span>
+<span class="nc" id="L206">        response.setStatus(user.getStatus().name());</span>
+<span class="nc" id="L207">        response.setMessage(&quot;Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản.&quot;);</span>
+<span class="nc" id="L208">        return response;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

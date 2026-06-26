@@ -1,38 +1,35 @@
 ---
-status: proposed
-last-updated: 2026-06-17T03:23:17Z
----
----
 id: F-005
-name: Quan ly log truy cap
+name: Quản lý log truy cập
 slug: quan-ly-log-truy-cap
 module-id: M-001
-status: done
+status: proposed
 classification: local
 priority: medium
-created: 2026-06-16T04:40:57Z
-last-updated: 2026-06-17T01:35:44Z
+created: 2026-06-26T00:00:00Z
+last-updated: 2026-06-26T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quan ly log truy cap
+# Feature: Quản lý log truy cập
 
 ## Description
 
-Tra cuu 5 nhom log: truy cap, dang nhap, loi, tai khoan, cau hinh
+Tra cứu, quản lý và phân tích 5 nhóm log hệ thống: log truy cập, đăng nhập, lỗi, tài khoản và cấu hình. Tính năng hỗ trợ lọc theo thời gian, người dùng, hành động, kết quả; xuất log ra CSV; xem thống kê aggregate; và tự động xóa log cũ theo retention policy (mặc định 90 ngày).
 
 ## Business Intent
 
-Quan tri he thong - Tra cuu 5 nhom log (truy cap, dang nhap, loi, tai khoan, cau hinh)
+Quản trị hệ thống và bảo mật cần khả năng giám sát, tra cứu và phân tích toàn bộ hoạt động hệ thống thông qua log truy cập — phục vụ nghiệp vụ kiểm toán, phát hiện bất thường, xử lý sự cố và tuân thủ các quy định bảo mật về lưu trữ và truy xuất nhật ký hoạt động.
 
 ## Flow Summary
 
-Quan tri he thong - Tra cuu 5 nhom log (truy cap, dang nhap, loi, tai khoan, cau hinh)
+Admin hoặc Security Admin truy cập module Quản lý log truy cập từ sidebar → chọn nhóm log cần xem (truy cập, đăng nhập, lỗi, tài khoản, cấu hình) → áp dụng bộ lọc (thời gian, người dùng, hành động, trạng thái) → hệ thống truy vấn log từ bảng AccessLog với chỉ số trên (userId, createdAt) và (action, createdAt) → hiển thị danh sách log phân trang với thông tin chi tiết (user agent, request path, response code, duration) → cho phép xuất log ra CSV (tối đa 10.000 rows/lần) hoặc xem báo cáo thống kê aggregate (tổng truy cập, số người dùng unique, tỷ lệ thành công, thời gian phản hồi trung bình). Quy trình bao gồm: (1) tra cứu log theo thời gian và đối tượng; (2) lọc nâng cao theo hành động và kết quả; (3) xuất CSV cho báo cáo; (4) xem thống kê aggregate hàng ngày/tháng; (5) tự động cleanup log cũ theo retention policy. Cảnh báo tự động khi ≥5 lần đăng nhập thất bại trong 1 giờ.
 
 ## Acceptance Criteria
 
-- Tra cuu duoc 5 nhom log
-- Hien thi du 5 truong log
+- Tra cứu được đầy đủ 5 nhóm log (truy cập, đăng nhập, lỗi, tài khoản, cấu hình) với thông tin đủ 5 trường chính (userId, action, targetResource, responseCode, createdAt)
+- Lọc và tìm kiếm log theo thời gian, người dùng, hành động, kết quả với kết quả phân trang chính xác
+- Xuất log ra file CSV đúng định dạng, giới hạn tối đa 10.000 rows/lần, dữ liệu không bị mất mát
 
 ## In Scope
 

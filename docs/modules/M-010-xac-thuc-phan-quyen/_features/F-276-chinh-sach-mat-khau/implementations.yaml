@@ -1,13 +1,17 @@
 feature_id: F-276
 module_id: M-010
 slug: chinh-sach-mat-khau
+stage: done
 
 # Map logical feature → physical code locations.
 # Primary owner = service that implements feature's main flow.
 # Consumers = services/apps that read or invoke this feature.
 implementations:
-  primary: ""
-  consumers: []
+  primary: "com.hanghai.kchtg.user.service.PasswordPolicyService"
+  consumers:
+    - "com.hanghai.kchtg.user.controller.PasswordController"
+    - "com.hanghai.kchtg.admin.controller.PasswordPolicyAdminController"
+    - "com.hanghai.kchtg.user.controller.RegistrationController"
 
 # Cross-cutting: features consumed by multiple modules
 consumed_by_modules: []

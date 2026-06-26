@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ConnectionService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.dataconnection.service</a> &gt; <span class="el_source">ConnectionService.java</span></div><h1>ConnectionService.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.dataconnection.service;
+
+import com.hanghai.kchtg.dataconnection.dto.ConnectionResponse;
+import com.hanghai.kchtg.dataconnection.dto.CreateConnectionRequest;
+import com.hanghai.kchtg.dataconnection.dto.TestConnectionRequest;
+import com.hanghai.kchtg.dataconnection.dto.TestConnectionResponse;
+import com.hanghai.kchtg.dataconnection.dto.UpdateConnectionRequest;
+import com.hanghai.kchtg.dataconnection.entity.ConnectionHealth;
+import com.hanghai.kchtg.dataconnection.entity.DataConnection;
+import com.hanghai.kchtg.dataconnection.entity.SyncLog;
+import com.hanghai.kchtg.dataconnection.enums.AuthType;
+import com.hanghai.kchtg.dataconnection.enums.ConnectionStatus;
+import com.hanghai.kchtg.dataconnection.enums.ConnectionType;
+import com.hanghai.kchtg.dataconnection.repository.ConnectionHealthRepository;
+import com.hanghai.kchtg.dataconnection.repository.DataConnectionRepository;
+import com.hanghai.kchtg.dataconnection.repository.SyncLogRepository;
+import com.hanghai.kchtg.security.EncryptionUtil;
+import jakarta.persistence.EntityNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * Service quan ly data connection voi health check, retry policy và exponential backoff.
+ */
+@Service
+public class ConnectionService {
+
+<span class="nc" id="L36">    private static final Logger log = LoggerFactory.getLogger(ConnectionService.class);</span>
+
+    private static final int MAX_RETRIES = 3;
+    private static final long BASE_DELAY_MS = 1000;
+    private static final long MAX_DELAY_MS = 30000;
+
+    private final DataConnectionRepository repo;
+    private final EncryptionUtil encryptionUtil;
+    private final ConnectionHealthRepository healthRepo;
+    private final SyncLogRepository syncLogRepo;
+
+    public ConnectionService(DataConnectionRepository repo,
+                             EncryptionUtil encryptionUtil,
+                             ConnectionHealthRepository healthRepo,
+<span class="nc" id="L50">                             SyncLogRepository syncLogRepo) {</span>
+<span class="nc" id="L51">        this.repo = repo;</span>
+<span class="nc" id="L52">        this.encryptionUtil = encryptionUtil;</span>
+<span class="nc" id="L53">        this.healthRepo = healthRepo;</span>
+<span class="nc" id="L54">        this.syncLogRepo = syncLogRepo;</span>
+<span class="nc" id="L55">    }</span>
+
+    // ── CRUD ─────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List&lt;ConnectionResponse&gt; listAll() {
+<span class="nc" id="L61">        return repo.findAll().stream()</span>
+<span class="nc" id="L62">                .peek(this::decryptCredentials)</span>
+<span class="nc" id="L63">                .map(ConnectionResponse::fromEntity)</span>
+<span class="nc" id="L64">                .collect(Collectors.toList());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public ConnectionResponse getById(UUID id) {
+<span class="nc" id="L69">        DataConnection entity = repo.findById(id)</span>
+<span class="nc" id="L70">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Data connection not found: id=&quot; + id));</span>
+<span class="nc" id="L71">        decryptCredentials(entity);</span>
+<span class="nc" id="L72">        return ConnectionResponse.fromEntity(entity);</span>
+    }
+
+    public ConnectionResponse create(CreateConnectionRequest request) {
+<span class="nc bnc" id="L76" title="All 2 branches missed.">        if (repo.existsByCode(request.getCode())) {</span>
+<span class="nc" id="L77">            throw new IllegalArgumentException(&quot;Connection code already exists: &quot; + request.getCode());</span>
+        }
+<span class="nc" id="L79">        DataConnection entity = new DataConnection();</span>
+<span class="nc" id="L80">        entity.setName(request.getName());</span>
+<span class="nc" id="L81">        entity.setCode(request.getCode());</span>
+<span class="nc" id="L82">        entity.setTargetSystem(request.getTargetSystem());</span>
+<span class="nc" id="L83">        entity.setConnectionType(request.getConnectionType());</span>
+<span class="nc" id="L84">        entity.setEndpointUrl(request.getEndpointUrl());</span>
+<span class="nc" id="L85">        entity.setAuthType(request.getAuthType());</span>
+<span class="nc" id="L86">        entity.setCredentials(encryptionUtil.encrypt(request.getCredentials()));</span>
+<span class="nc" id="L87">        entity.setSyncFrequency(request.getSyncFrequency());</span>
+<span class="nc" id="L88">        entity.setStatus(ConnectionStatus.INACTIVE);</span>
+<span class="nc" id="L89">        DataConnection saved = repo.save(entity);</span>
+<span class="nc" id="L90">        log.info(&quot;Created data connection: id={}, code={}&quot;, saved.getId(), saved.getCode());</span>
+<span class="nc" id="L91">        decryptCredentials(saved);</span>
+<span class="nc" id="L92">        return ConnectionResponse.fromEntity(saved);</span>
+    }
+
+    public ConnectionResponse update(UUID id, UpdateConnectionRequest request) {
+<span class="nc" id="L96">        DataConnection entity = repo.findById(id)</span>
+<span class="nc" id="L97">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Data connection not found: id=&quot; + id));</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">        if (request.getName() != null) entity.setName(request.getName());</span>
+<span class="nc bnc" id="L99" title="All 4 branches missed.">        if (request.getCode() != null &amp;&amp; !request.getCode().equals(entity.getCode())) {</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">            if (repo.existsByCode(request.getCode())) {</span>
+<span class="nc" id="L101">                throw new IllegalArgumentException(&quot;Connection code already exists: &quot; + request.getCode());</span>
+            }
+<span class="nc" id="L103">            entity.setCode(request.getCode());</span>
+        }
+<span class="nc bnc" id="L105" title="All 2 branches missed.">        if (request.getTargetSystem() != null) entity.setTargetSystem(request.getTargetSystem());</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        if (request.getConnectionType() != null) entity.setConnectionType(request.getConnectionType());</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">        if (request.getEndpointUrl() != null) entity.setEndpointUrl(request.getEndpointUrl());</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">        if (request.getAuthType() != null) entity.setAuthType(request.getAuthType());</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">        if (request.getCredentials() != null) entity.setCredentials(encryptionUtil.encrypt(request.getCredentials()));</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">        if (request.getSyncFrequency() != null) entity.setSyncFrequency(request.getSyncFrequency());</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        if (request.getStatus() != null) entity.setStatus(request.getStatus());</span>
+<span class="nc" id="L112">        DataConnection saved = repo.save(entity);</span>
+<span class="nc" id="L113">        log.info(&quot;Updated data connection: id={}, code={}&quot;, saved.getId(), saved.getCode());</span>
+<span class="nc" id="L114">        decryptCredentials(saved);</span>
+<span class="nc" id="L115">        return ConnectionResponse.fromEntity(saved);</span>
+    }
+
+    public void delete(UUID id) {
+<span class="nc bnc" id="L119" title="All 2 branches missed.">        if (!repo.existsById(id)) {</span>
+<span class="nc" id="L120">            throw new EntityNotFoundException(&quot;Data connection not found: id=&quot; + id);</span>
+        }
+<span class="nc" id="L122">        DataConnection entity = repo.findById(id).orElseThrow();</span>
+<span class="nc" id="L123">        entity.softDelete();</span>
+<span class="nc" id="L124">        repo.save(entity);</span>
+<span class="nc" id="L125">        log.info(&quot;Soft-deleted data connection: id={}&quot;, id);</span>
+<span class="nc" id="L126">    }</span>
+
+    // ── Health Check + Retry + Exponential Backoff ───────────────────
+
+    /**
+     * Kiem tra suc khoe ket noi voi retry policy và exponential backoff.
+     */
+    @Transactional
+    public ConnectionHealth healthCheck(UUID connectionId) {
+<span class="nc" id="L135">        DataConnection entity = repo.findById(connectionId)</span>
+<span class="nc" id="L136">                .orElseThrow(() -&gt; new EntityNotFoundException(&quot;Data connection not found: id=&quot; + connectionId));</span>
+
+<span class="nc" id="L138">        TestConnectionResponse result = testConnectionWithRetry(entity);</span>
+        ConnectionHealth health;
+
+<span class="nc bnc" id="L141" title="All 2 branches missed.">        if (result.isSuccess()) {</span>
+<span class="nc" id="L142">            health = ConnectionHealth.create(connectionId, result.getResponseCode(), result.getResponseTimeMs(), null);</span>
+<span class="nc" id="L143">            entity.setStatus(ConnectionStatus.ACTIVE);</span>
+        } else {
+<span class="nc" id="L145">            health = ConnectionHealth.create(connectionId, result.getResponseCode(), result.getResponseTimeMs(), result.getMessage());</span>
+<span class="nc" id="L146">            entity.setStatus(ConnectionStatus.ERROR);</span>
+        }
+
+<span class="nc" id="L149">        repo.save(entity);</span>
+<span class="nc" id="L150">        healthRepo.save(health);</span>
+<span class="nc" id="L151">        log.info(&quot;Health check for {}: status={}, latency={}ms&quot;,</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">                connectionId, result.isSuccess() ? &quot;OK&quot; : &quot;FAIL&quot;, result.getResponseTimeMs());</span>
+<span class="nc" id="L153">        return health;</span>
+    }
+
+    /**
+     * Test connection voi retry policy (max 3 attempts, exponential backoff).
+     */
+    private TestConnectionResponse testConnectionWithRetry(DataConnection entity) {
+<span class="nc" id="L160">        String url = entity.getEndpointUrl();</span>
+<span class="nc" id="L161">        ConnectionType type = entity.getConnectionType();</span>
+
+<span class="nc bnc" id="L163" title="All 4 branches missed.">        if (type == ConnectionType.DATABASE || type == ConnectionType.FILE) {</span>
+<span class="nc" id="L164">            return TestConnectionResponse.builder()</span>
+<span class="nc" id="L165">                    .success(true)</span>
+<span class="nc" id="L166">                    .message(&quot;Configuration valid&quot;)</span>
+<span class="nc" id="L167">                    .responseTimeMs(0L)</span>
+<span class="nc" id="L168">                    .responseCode(200)</span>
+<span class="nc" id="L169">                    .build();</span>
+        }
+
+<span class="nc bnc" id="L172" title="All 4 branches missed.">        if (url == null || url.isBlank()) {</span>
+<span class="nc" id="L173">            return TestConnectionResponse.builder()</span>
+<span class="nc" id="L174">                    .success(false)</span>
+<span class="nc" id="L175">                    .message(&quot;No endpoint URL configured.&quot;)</span>
+<span class="nc" id="L176">                    .responseTimeMs(0L)</span>
+<span class="nc" id="L177">                    .responseCode(0)</span>
+<span class="nc" id="L178">                    .build();</span>
+        }
+
+<span class="nc" id="L181">        UUID connId = entity.getId();</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">        for (int attempt = 1; attempt &lt;= MAX_RETRIES; attempt++) {</span>
+<span class="nc" id="L183">            long start = System.currentTimeMillis();</span>
+            try {
+<span class="nc" id="L185">                HttpURLConnection conn = (HttpURLConnection) URI.create(url).toURL().openConnection();</span>
+<span class="nc" id="L186">                conn.setRequestMethod(&quot;HEAD&quot;);</span>
+<span class="nc" id="L187">                conn.setConnectTimeout(10_000);</span>
+<span class="nc" id="L188">                conn.setReadTimeout(10_000);</span>
+<span class="nc bnc" id="L189" title="All 6 branches missed.">                if (entity.getAuthType() == AuthType.TOKEN &amp;&amp; entity.getCredentials() != null &amp;&amp; !entity.getCredentials().isBlank()) {</span>
+<span class="nc" id="L190">                    conn.setRequestProperty(&quot;X-Integration-Token&quot;, entity.getCredentials().trim());</span>
+<span class="nc" id="L191">                    conn.setRequestProperty(&quot;Authorization&quot;, &quot;Bearer &quot; + entity.getCredentials().trim());</span>
+                }
+<span class="nc" id="L193">                int status = conn.getResponseCode();</span>
+<span class="nc" id="L194">                long elapsed = System.currentTimeMillis() - start;</span>
+<span class="nc" id="L195">                conn.disconnect();</span>
+
+<span class="nc bnc" id="L197" title="All 4 branches missed.">                if (status &gt;= 200 &amp;&amp; status &lt; 400) {</span>
+<span class="nc" id="L198">                    return TestConnectionResponse.builder()</span>
+<span class="nc" id="L199">                            .success(true)</span>
+<span class="nc" id="L200">                            .message(&quot;Endpoint reachable - HTTP &quot; + status)</span>
+<span class="nc" id="L201">                            .responseTimeMs(elapsed)</span>
+<span class="nc" id="L202">                            .responseCode(status)</span>
+<span class="nc" id="L203">                            .build();</span>
+                }
+<span class="nc" id="L205">                return TestConnectionResponse.builder()</span>
+<span class="nc" id="L206">                        .success(false)</span>
+<span class="nc" id="L207">                        .message(&quot;Endpoint returned HTTP &quot; + status)</span>
+<span class="nc" id="L208">                        .responseTimeMs(elapsed)</span>
+<span class="nc" id="L209">                        .responseCode(status)</span>
+<span class="nc" id="L210">                        .build();</span>
+<span class="nc" id="L211">            } catch (Exception e) {</span>
+<span class="nc" id="L212">                long elapsed = System.currentTimeMillis() - start;</span>
+<span class="nc" id="L213">                log.warn(&quot;Health check attempt {} for {}: {}&quot;, attempt, connId, e.getMessage());</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">                if (attempt &lt; MAX_RETRIES) {</span>
+                    try {
+<span class="nc" id="L216">                        long delay = calculateBackoff(attempt);</span>
+<span class="nc" id="L217">                        log.info(&quot;Retrying in {}ms (attempt {}/{})&quot;, delay, attempt + 1, MAX_RETRIES);</span>
+<span class="nc" id="L218">                        Thread.sleep(delay);</span>
+<span class="nc" id="L219">                    } catch (InterruptedException ie) {</span>
+<span class="nc" id="L220">                        Thread.currentThread().interrupt();</span>
+<span class="nc" id="L221">                        break;</span>
+<span class="nc" id="L222">                    }</span>
+                }
+            }
+        }
+
+<span class="nc" id="L227">        return TestConnectionResponse.builder()</span>
+<span class="nc" id="L228">                .success(false)</span>
+<span class="nc" id="L229">                .message(&quot;Health check failed after &quot; + MAX_RETRIES + &quot; retries&quot;)</span>
+<span class="nc" id="L230">                .responseTimeMs(0L)</span>
+<span class="nc" id="L231">                .responseCode(0)</span>
+<span class="nc" id="L232">                .build();</span>
+    }
+
+    /**
+     * Calculate exponential backoff delay.
+     */
+    private long calculateBackoff(int attempt) {
+<span class="nc" id="L239">        long delay = BASE_DELAY_MS * (1L &lt;&lt; (attempt - 1)); // 1x, 2x, 4x</span>
+<span class="nc" id="L240">        return Math.min(delay, MAX_DELAY_MS);</span>
+    }
+
+    // ── Health History ───────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List&lt;ConnectionHealth&gt; getHealthHistory(UUID connectionId, int hours) {
+<span class="nc" id="L247">        LocalDateTime since = LocalDateTime.now().minusHours(hours);</span>
+<span class="nc" id="L248">        return healthRepo.findByConnectionIdOrderByCheckedAtDesc(connectionId)</span>
+<span class="nc" id="L249">                .stream()</span>
+<span class="nc" id="L250">                .filter(h -&gt; h.getCheckedAt().isAfter(since))</span>
+<span class="nc" id="L251">                .collect(Collectors.toList());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public Double getAvgLatency(UUID connectionId) {
+<span class="nc" id="L256">        return healthRepo.avgLatency(connectionId, LocalDateTime.now().minusDays(7));</span>
+    }
+
+    // ── Internal ──────────────────────────────────────────────────────
+
+    private void decryptCredentials(DataConnection entity) {
+<span class="nc" id="L262">        String encrypted = entity.getCredentials();</span>
+<span class="nc bnc" id="L263" title="All 4 branches missed.">        if (encrypted != null &amp;&amp; !encrypted.isEmpty()) {</span>
+<span class="nc" id="L264">            String decrypted = encryptionUtil.decrypt(encrypted);</span>
+<span class="nc" id="L265">            entity.setCredentials(decrypted);</span>
+        }
+<span class="nc" id="L267">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

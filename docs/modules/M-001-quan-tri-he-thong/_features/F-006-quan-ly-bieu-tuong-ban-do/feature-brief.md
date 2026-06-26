@@ -1,38 +1,35 @@
 ---
-status: proposed
-last-updated: 2026-06-17T03:23:17Z
----
----
 id: F-006
-name: Quan ly bieu tuong ban do
+name: Quản lý biểu tượng bản đồ
 slug: quan-ly-bieu-tuong-ban-do
 module-id: M-001
-status: done
+status: proposed
 classification: local
 priority: medium
-created: 2026-06-16T04:40:32Z
-last-updated: 2026-06-17T01:35:44Z
+created: 2026-06-26T00:00:00Z
+last-updated: 2026-06-26T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quan ly bieu tuong ban do
+# Feature: Quản lý biểu tượng bản đồ
 
 ## Description
 
-Quan ly bieu tuong doi tuong GIS tren ban do theo tung loai
+Quản lý thư viện biểu tượng đối tượng GIS trên bản đồ theo từng loại (cầu, cảng, đèn biển, phao tiêu...), bao gồm tạo mới, chỉnh sửa, xóa, import/export biểu tượng SVG/PNG, preview trong GeoServer WMS và phân loại biểu tượng theo đối tượng địa lý với hỗ trợ tùy chỉnh màu sắc, kích thước và hình dáng.
 
 ## Business Intent
 
-Quan tri he thong - Quan ly bieu tuong doi tuong GIS tren ban do
+Hệ thống GIS cần cơ chế quản lý biểu tượng bản đồ chuẩn hóa, cho phép cán bộ kỹ thuật và chuyên viên tạo, duy trì và phân loại biểu tượng trực quan — phục vụ việc hiển thị chính xác các đối tượng địa lý (cơ sở hạ tầng biển, công trình giao thông) trên bản đồ điện tử, đảm bảo tính nhất quán về hình ảnh và màu sắc theo tiêu chuẩn kỹ thuật.
 
 ## Flow Summary
 
-Quan tri he thong - Quan ly bieu tuong doi tuong GIS tren ban do
+Chuyên viên hoặc Admin truy cập module Quản lý biểu tượng bản đồ từ sidebar → chọn tạo biểu tượng mới hoặc quản lý biểu tượng hiện có → điền thông tin (tên, mã biểu tượng unique, loại, màu sắc hex, kích thước, hình dáng) → upload dữ liệu SVG (tối đa 10KB) hoặc PNG (tối đa 500KB) → hệ thống validate SVG (XML validity) và màu sắc (hex code chuẩn WGS84) → biểu tượng được lưu và hiển thị preview trong bản đồ GIS (GeoServer WMS) → cho phép import/export hàng loạt biểu tượng (SVG/PNG) → hiển thị danh sách biểu tượng với lọc theo tên, loại, màu sắc và phân trang.
 
 ## Acceptance Criteria
 
-- Them/sua/xoa bieu tuong
-- Gan bieu tuong cho doi tuong GIS
+- Thêm/sửa/xóa biểu tượng bản đồ thành công với mã biểu tượng unique, dữ liệu SVG/PNG hợp lệ và kích thước trong giới hạn (SVG ≤10KB, PNG ≤500KB, kích thước 8-128px)
+- Gán biểu tượng cho đối tượng GIS và preview trong bản đồ GeoServer WMS chính xác
+- Import/export biểu tượng hàng loạt thành công với validate định dạng SVG/XML
 
 ## In Scope
 

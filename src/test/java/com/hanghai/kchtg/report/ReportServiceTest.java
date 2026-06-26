@@ -8,7 +8,14 @@ import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
 import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
 import com.hanghai.kchtg.report.dto.ReportRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
+import com.hanghai.kchtg.report.entity.CargoTransaction;
+import com.hanghai.kchtg.report.entity.PortOperation;
+import com.hanghai.kchtg.report.entity.TideData;
+import com.hanghai.kchtg.report.repository.CargoTransactionRepository;
+import com.hanghai.kchtg.report.repository.PortOperationRepository;
+import com.hanghai.kchtg.report.repository.TideDataRepository;
 import com.hanghai.kchtg.report.service.ReportService;
+import com.hanghai.kchtg.trade.repository.TradeFlowRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -31,6 +38,10 @@ public class ReportServiceTest {
     private PolygonObjectRepository polygonObjectRepository;
     private MapLayerRepository mapLayerRepository;
     private UserRepository userRepository;
+    private TradeFlowRepository tradeFlowRepository;
+    private TideDataRepository tideDataRepository;
+    private PortOperationRepository portOperationRepository;
+    private CargoTransactionRepository cargoTransactionRepository;
 
     private ReportService reportService;
 
@@ -41,13 +52,21 @@ public class ReportServiceTest {
         polygonObjectRepository = Mockito.mock(PolygonObjectRepository.class);
         mapLayerRepository = Mockito.mock(MapLayerRepository.class);
         userRepository = Mockito.mock(UserRepository.class);
+        tradeFlowRepository = Mockito.mock(TradeFlowRepository.class);
+        tideDataRepository = Mockito.mock(TideDataRepository.class);
+        portOperationRepository = Mockito.mock(PortOperationRepository.class);
+        cargoTransactionRepository = Mockito.mock(CargoTransactionRepository.class);
 
         reportService = new ReportService(
                 pointObjectRepository,
                 lineObjectRepository,
                 polygonObjectRepository,
                 mapLayerRepository,
-                userRepository
+                userRepository,
+                tradeFlowRepository,
+                tideDataRepository,
+                portOperationRepository,
+                cargoTransactionRepository
         );
     }
 
@@ -429,6 +448,8 @@ public class ReportServiceTest {
             line.setName("Kè bảo vệ số 1");
             when(lineObjectRepository.findAll()).thenReturn(Collections.singletonList(line));
 
+            when(tradeFlowRepository.findAll()).thenReturn(Collections.emptyList());
+
             String[] codes = {"F-182", "F-183", "F-184", "F-185", "F-186", "F-187", "F-188", "F-189"};
             for (String code : codes) {
                 ReportRequest request = ReportRequest.builder().reportCode(code).format("PREVIEW").build();
@@ -438,6 +459,127 @@ public class ReportServiceTest {
                 assertFalse(response.getHeaders().isEmpty(), "Headers should not be empty for " + code);
                 assertFalse(response.getRows().isEmpty(), "Rows should not be empty for " + code);
             }
+
+            // F-105 uses tradeFlowRepository which needs its own mock data
+            com.hanghai.kchtg.trade.entity.TradeFlow tf = new com.hanghai.kchtg.trade.entity.TradeFlow();
+            tf.setSourcePort("Cảng Hải Phòng");
+            tf.setDestPort("Cảng Quảng Ninh");
+            tf.setCargoType("Hàng rời");
+            tf.setQuantity(new java.math.BigDecimal("5000"));
+            tf.setPeriod("Theo tháng");
+            when(tradeFlowRepository.findAll()).thenReturn(Collections.singletonList(tf));
+
+            ReportRequest f105Request = ReportRequest.builder().reportCode("F-105").format("PREVIEW").build();
+            ReportResponse f105Response = reportService.generateReportPreview(f105Request);
+            assertNotNull(f105Response, "Response should not be null for F-105");
+            assertEquals("F-105", f105Response.getReportCode());
+            assertFalse(f105Response.getHeaders().isEmpty(), "Headers should not be empty for F-105");
+            assertFalse(f105Response.getRows().isEmpty(), "Rows should not be empty for F-105");
+        }
+    }
+
+    @Nested
+    @DisplayName("Wave 7 Reports Generation (F-101 to F-104)")
+    class Wave7Reports {
+
+        @Test
+        @DisplayName("F-101: Should generate thuy van report with tide data")
+        void shouldGenerateF101ThuyVanReport() {
+            TideData tide = TideData.builder()
+                    .stationCode("STN-001")
+                    .waterLevel(3.5)
+                    .flowRate(120.0)
+                    .tideLevel(2.8)
+                    .recordedAt(java.time.LocalDateTime.of(2026, 6, 20, 8, 30))
+                    .build();
+            when(tideDataRepository.findAll()).thenReturn(Collections.singletonList(tide));
+
+            ReportRequest request = ReportRequest.builder().reportCode("F-101").format("PREVIEW").build();
+            ReportResponse response = reportService.generateReportPreview(request);
+
+            assertNotNull(response);
+            assertEquals("F-101", response.getReportCode());
+            assertTrue(response.getHeaders().contains("Mã trạm"));
+            assertTrue(response.getHeaders().contains("Mực nước (m)"));
+            assertTrue(response.getHeaders().contains("Lưu lượng (m³/s)"));
+            assertTrue(response.getHeaders().contains("Thủy triều (m)"));
+            assertEquals(1, response.getRows().size());
+            assertEquals("STN-001", response.getRows().get(0).get("Mã trạm"));
+            assertNotNull(response.getSummary().get("Tổng số ghi nhận thủy văn"));
+        }
+
+        @Test
+        @DisplayName("F-102: Should generate chart statistics report with GIS aggregation")
+        void shouldGenerateF102ChartStatisticsReport() {
+            when(pointObjectRepository.count()).thenReturn(15L);
+            when(lineObjectRepository.count()).thenReturn(8L);
+            when(polygonObjectRepository.count()).thenReturn(5L);
+            when(mapLayerRepository.count()).thenReturn(3L);
+
+            ReportRequest request = ReportRequest.builder().reportCode("F-102").format("PREVIEW").build();
+            ReportResponse response = reportService.generateReportPreview(request);
+
+            assertNotNull(response);
+            assertEquals("F-102", response.getReportCode());
+            assertTrue(response.getHeaders().contains("Nhóm đối tượng GIS"));
+            assertTrue(response.getHeaders().contains("Số lượng"));
+            assertEquals(4, response.getRows().size());
+            assertEquals(15L, response.getRows().get(0).get("Số lượng"));
+            assertEquals(8L, response.getRows().get(1).get("Số lượng"));
+        }
+
+        @Test
+        @DisplayName("F-103: Should generate port operations report")
+        void shouldGenerateF103PortOperationsReport() {
+            PortOperation op = PortOperation.builder()
+                    .portCode("HP-PORT-01")
+                    .arrivalTime(java.time.LocalDateTime.of(2026, 6, 20, 6, 0))
+                    .departureTime(java.time.LocalDateTime.of(2026, 6, 20, 18, 0))
+                    .cargoQuantity(5000L)
+                    .operationType(PortOperation.OperationType.BOC)
+                    .build();
+            when(portOperationRepository.findAll()).thenReturn(Collections.singletonList(op));
+
+            ReportRequest request = ReportRequest.builder().reportCode("F-103").format("PREVIEW").build();
+            ReportResponse response = reportService.generateReportPreview(request);
+
+            assertNotNull(response);
+            assertEquals("F-103", response.getReportCode());
+            assertTrue(response.getHeaders().contains("Mã cảng"));
+            assertTrue(response.getHeaders().contains("Thời gian đến"));
+            assertTrue(response.getHeaders().contains("Lượng hàng (Tấn)"));
+            assertTrue(response.getHeaders().contains("Loại hoạt động"));
+            assertEquals(1, response.getRows().size());
+            assertEquals("HP-PORT-01", response.getRows().get(0).get("Mã cảng"));
+            assertEquals("Bọc hàng", response.getRows().get(0).get("Loại hoạt động"));
+            assertNotNull(response.getSummary().get("Tổng số hoạt động cảng"));
+        }
+
+        @Test
+        @DisplayName("F-104: Should generate cargo import/export report")
+        void shouldGenerateF104CargoXNKReport() {
+            CargoTransaction ct = CargoTransaction.builder()
+                    .portCode("HP-PORT-01")
+                    .cargoType("Hàng rời khô")
+                    .transactionType(CargoTransaction.TransactionType.EXPORT)
+                    .quantity(3500L)
+                    .transactionDate(java.time.LocalDate.of(2026, 6, 20))
+                    .build();
+            when(cargoTransactionRepository.findAll()).thenReturn(Collections.singletonList(ct));
+
+            ReportRequest request = ReportRequest.builder().reportCode("F-104").format("PREVIEW").build();
+            ReportResponse response = reportService.generateReportPreview(request);
+
+            assertNotNull(response);
+            assertEquals("F-104", response.getReportCode());
+            assertTrue(response.getHeaders().contains("Mã cảng"));
+            assertTrue(response.getHeaders().contains("Loại hàng hóa"));
+            assertTrue(response.getHeaders().contains("Hướng giao dịch"));
+            assertTrue(response.getHeaders().contains("Số lượng (Tấn)"));
+            assertEquals(1, response.getRows().size());
+            assertEquals("HP-PORT-01", response.getRows().get(0).get("Mã cảng"));
+            assertEquals("Xuất khẩu", response.getRows().get(0).get("Hướng giao dịch"));
+            assertNotNull(response.getSummary().get("Tổng xuất khẩu (Tấn)"));
         }
     }
 

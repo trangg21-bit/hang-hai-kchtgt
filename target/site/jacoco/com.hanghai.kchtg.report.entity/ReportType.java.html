@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReportType.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.report.entity</a> &gt; <span class="el_source">ReportType.java</span></div><h1>ReportType.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.report.entity;
+
+<span class="fc" id="L3">public enum ReportType {</span>
+<span class="fc" id="L4">    F141_TANG_GIAM_TAI_SAN(&quot;F-141&quot;, &quot;Báo cáo tăng giảm tài sản&quot;),</span>
+<span class="fc" id="L5">    F180_TONG_HOP_THONG_TIN_CHUNG(&quot;F-180&quot;, &quot;Biểu tổng hợp thông tin chung&quot;),</span>
+<span class="fc" id="L6">    F151_THONG_KE_LUONG_HANG_HAI(&quot;F-151&quot;, &quot;Biểu 03-Q/N: Thống kê luồng hàng hải&quot;),</span>
+<span class="fc" id="L7">    F142_CCTT_TAI_CHINH_TS(&quot;F-142&quot;, &quot;Thông tin tài chính tài sản KCHT&quot;),</span>
+<span class="fc" id="L8">    F143_KE_KHAI_TS(&quot;F-143&quot;, &quot;Báo cáo kê khai tài sản KCHT&quot;),</span>
+<span class="fc" id="L9">    F144_QUAN_LY_TS(&quot;F-144&quot;, &quot;Báo cáo tình hình quản lý tài sản KCHT&quot;),</span>
+<span class="fc" id="L10">    F145_XU_LY_TS(&quot;F-145&quot;, &quot;Báo cáo tình hình xử lý tài sản KCHT&quot;),</span>
+<span class="fc" id="L11">    F146_KHAI_THAC_TS(&quot;F-146&quot;, &quot;Báo cáo tình hình khai thác tài sản KCHT&quot;),</span>
+<span class="fc" id="L12">    F147_DANH_MUC_TS_DE_NGHI_XU_LY(&quot;F-147&quot;, &quot;Tổng hợp danh mục TS KCHTGT đề nghị xử lý&quot;),</span>
+<span class="fc" id="L13">    F181_TONG_HOP_TS_HANG_HAI(&quot;F-181&quot;, &quot;Biểu tổng hợp thông tin KCHTGT hàng hải&quot;),</span>
+    
+    // Wave 2
+<span class="fc" id="L16">    F148_CANG_CAU_NANG_LUC(&quot;F-148&quot;, &quot;Biểu 01-N: Năng lực thông qua bến cảng, cầu cảng&quot;),</span>
+<span class="fc" id="L17">    F149_CANG_BIEN_NANG_LUC(&quot;F-149&quot;, &quot;Biểu 01B-N: Năng lực thông qua cảng biển&quot;),</span>
+<span class="fc" id="L18">    F150_THONG_KE_CAU_CANG(&quot;F-150&quot;, &quot;Biểu 02-N: Thống kê cầu cảng&quot;),</span>
+<span class="fc" id="L19">    F152_VUNG_HOA_TIEU(&quot;F-152&quot;, &quot;Biểu 04-6T/N: Thống kê vùng đón/trả hoa tiêu, vùng quay trở&quot;),</span>
+<span class="fc" id="L20">    F153_KHU_CHUYEN_TAI(&quot;F-153&quot;, &quot;Biểu 04B-N: Thống kê khu chuyển tải, khu neo đậu&quot;),</span>
+<span class="fc" id="L21">    F154_BEN_PHAO_NEO_DAU(&quot;F-154&quot;, &quot;Biểu 05-N: Thống kê bến phao, khu neo đậu&quot;),</span>
+<span class="fc" id="L22">    F155_HE_THONG_DEN_BIEN(&quot;F-155&quot;, &quot;Biểu 06-N: Thống kê hệ thống đèn biển&quot;),</span>
+<span class="fc" id="L23">    F156_HE_THONG_PHAO_TIEU(&quot;F-156&quot;, &quot;Biểu 07-6T/N: Thống kê hệ thống phao tiêu&quot;),</span>
+<span class="fc" id="L24">    F157_PHAO_TIEU_BAO_HIEU(&quot;F-157&quot;, &quot;Biểu 07B-6T/N: Thống kê phao tiêu báo hiệu&quot;),</span>
+<span class="fc" id="L25">    F158_HE_THONG_VTS(&quot;F-158&quot;, &quot;Biểu 08-N: Thống kê hệ thống giám sát VTS&quot;),</span>
+<span class="fc" id="L26">    F159_THONG_TIN_DUYEN_HAI(&quot;F-159&quot;, &quot;Biểu 09-N: Hệ thống đài thông tin duyên hải&quot;),</span>
+<span class="fc" id="L27">    F160_DE_KE_CHAN_SONG(&quot;F-160&quot;, &quot;Biểu 10-N: Thống kê hệ thống đê, kè chắn sóng&quot;),</span>
+
+    // Wave 3
+<span class="fc" id="L30">    F161_TAU_BIEN_RA_VAO(&quot;F-161&quot;, &quot;Biểu 11-T: Báo cáo chi tiết tàu biển ra vào cảng&quot;),</span>
+<span class="fc" id="L31">    F162_PHUONG_TIEN_THUY_NOI_DIA(&quot;F-162&quot;, &quot;Biểu 11B-T: Báo cáo chi tiết phương tiện thủy nội địa&quot;),</span>
+<span class="fc" id="L32">    F163_TAU_BIEN_NUOC_NGOAI(&quot;F-163&quot;, &quot;Biểu 16-Q: Thống kê tàu biển nước ngoài đến, rời&quot;),</span>
+<span class="fc" id="L33">    F164_TAU_BIEN_VN_QUOC_TE(&quot;F-164&quot;, &quot;Biểu 17-Q: Thống kê tàu biển VN vận tải quốc tế&quot;),</span>
+<span class="fc" id="L34">    F167_LUOT_TAU_VAO_ROI(&quot;F-167&quot;, &quot;Biểu 13-T: Lượt tàu thuyền vào rời cảng biển&quot;),</span>
+<span class="fc" id="L35">    F171_TAU_BIEN_QUOC_TICH_VN(&quot;F-171&quot;, &quot;Biểu 22-6T/N: Thống kê tàu biển quốc tịch VN&quot;),</span>
+<span class="fc" id="L36">    F172_TAU_THUYEN_LAI_DAT(&quot;F-172&quot;, &quot;Biểu 23-N: Thống kê tàu thuyền hoạt động lai dắt&quot;),</span>
+<span class="fc" id="L37">    F173_CO_SO_DONG_MOI_TAU(&quot;F-173&quot;, &quot;Biểu 31-N: Thống kê cơ sở đóng mới, sửa chữa, phá dỡ tàu&quot;),</span>
+
+    // Wave 4
+<span class="fc" id="L40">    F165_KHOI_LUONG_HANG_HOA_THANG(&quot;F-165&quot;, &quot;Biểu 12-T: Khối lượng hàng hóa, hành khách theo tháng&quot;),</span>
+<span class="fc" id="L41">    F166_KHOI_LUONG_HANG_HOA_NAM(&quot;F-166&quot;, &quot;Biểu 12-N: Khối lượng hàng hóa theo năm&quot;),</span>
+<span class="fc" id="L42">    F168_HANG_KHACH_LUOT_TAU(&quot;F-168&quot;, &quot;Biểu 14-T: Khối lượng hàng hóa, hành khách, lượt tàu&quot;),</span>
+<span class="fc" id="L43">    F169_HANG_HOA_KHU_QUAN_LY(&quot;F-169&quot;, &quot;Biểu 15-T: Khối lượng hàng hóa trong khu quản lý&quot;),</span>
+<span class="fc" id="L44">    F174_TONG_HOP_HANG_HOA(&quot;F-174&quot;, &quot;Biểu 45-6T/N: Báo cáo tổng hợp hàng hóa thông qua cảng&quot;),</span>
+<span class="fc" id="L45">    F177_KHOI_LUONG_THANG(&quot;F-177&quot;, &quot;Biểu 28-T: Khối lượng hàng hóa theo tháng&quot;),</span>
+<span class="fc" id="L46">    F178_KHOI_LUONG_NAM(&quot;F-178&quot;, &quot;Biểu 29-N: Khối lượng hàng hóa theo năm&quot;),</span>
+
+    // Wave 5
+<span class="fc" id="L49">    F170_THUYEN_VIEN_HIEU(&quot;F-170&quot;, &quot;Biểu 21-6T/N: Thống kê thuyền viên, hiệu&quot;),</span>
+<span class="fc" id="L50">    F175_NANG_LUC_BEN_CANG_T48(&quot;F-175&quot;, &quot;Biểu số 06-N: Năng lực thông qua bến cảng (Thông tư 48)&quot;),</span>
+<span class="fc" id="L51">    F176_NANG_LUC_CANG_BIEN_THUY(&quot;F-176&quot;, &quot;Biểu 07-N: Năng lực thông qua cảng biển, thủy nội địa&quot;),</span>
+<span class="fc" id="L52">    F179_DOANH_NGHIEP_VAN_TAI(&quot;F-179&quot;, &quot;Biểu 33-N: Sản lượng dịch vụ vận tải, doanh nghiệp&quot;),</span>
+
+    // Wave 6
+<span class="fc" id="L55">    F182_BAO_TRI_KCHTGT(&quot;F-182&quot;, &quot;Biểu tổng hợp thông tin bảo trì KCHTGT&quot;),</span>
+<span class="fc" id="L56">    F183_BAO_TRI_CAU_CANG(&quot;F-183&quot;, &quot;Biểu tổng hợp bảo trì KCHTGT - Cầu cảng&quot;),</span>
+<span class="fc" id="L57">    F184_BAO_TRI_LUONG(&quot;F-184&quot;, &quot;Biểu tổng hợp bảo trì KCHTGT - Luồng hàng hải&quot;),</span>
+<span class="fc" id="L58">    F185_BAO_TRI_PHAO_TIEU(&quot;F-185&quot;, &quot;Biểu tổng hợp bảo trì KCHTGT - Phao tiêu&quot;),</span>
+<span class="fc" id="L59">    F186_BAO_TRI_DEN_BIEN(&quot;F-186&quot;, &quot;Biểu tổng hợp bảo trì KCHTGT - Đèn biển&quot;),</span>
+<span class="fc" id="L60">    F187_BAO_TRI_DE_KE(&quot;F-187&quot;, &quot;Biểu tổng hợp bảo trì KCHTGT - Đê, kè&quot;),</span>
+<span class="fc" id="L61">    F188_KE_KHAI_QUAN_LY_TS(&quot;F-188&quot;, &quot;Báo cáo kê khai, tình hình quản lý TS KCHTGT hàng hải&quot;),</span>
+<span class="fc" id="L62">    F189_HOAT_DONG_BAO_HIEU_DE_KE(&quot;F-189&quot;, &quot;Báo cáo tình hình hoạt động báo hiệu hàng hải và đê, kè&quot;),</span>
+
+    // Wave 7 — F-101 to F-105
+<span class="fc" id="L65">    F101_THUY_VAN(&quot;F-101&quot;, &quot;Báo cáo tổng hợp thủy văn&quot;),</span>
+<span class="fc" id="L66">    F102_BIEU_THONG_KE(&quot;F-102&quot;, &quot;Biểu thống kê hàng hải&quot;),</span>
+<span class="fc" id="L67">    F103_KHANH_TAC(&quot;F-103&quot;, &quot;Báo cáo khánh tác cảng&quot;),</span>
+<span class="fc" id="L68">    F104_HANG_HOA_XNK(&quot;F-104&quot;, &quot;Báo cáo hàng hóa XNK&quot;),</span>
+<span class="fc" id="L69">    F105_BIEU_DO_TRAO_DOI_THUONG_MAI(&quot;F-105&quot;, &quot;Biểu đồ trao đổi thương mại&quot;);</span>
+
+    private final String code;
+    private final String name;
+
+<span class="fc" id="L74">    ReportType(String code, String name) {</span>
+<span class="fc" id="L75">        this.code = code;</span>
+<span class="fc" id="L76">        this.name = name;</span>
+<span class="fc" id="L77">    }</span>
+
+    public String getCode() {
+<span class="fc" id="L80">        return code;</span>
+    }
+
+    public String getName() {
+<span class="fc" id="L84">        return name;</span>
+    }
+
+    public static ReportType fromCode(String code) {
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">        for (ReportType type : values()) {</span>
+<span class="fc bfc" id="L89" title="All 2 branches covered.">            if (type.getCode().equalsIgnoreCase(code)) {</span>
+<span class="fc" id="L90">                return type;</span>
+            }
+        }
+<span class="nc" id="L93">        throw new IllegalArgumentException(&quot;Mã báo cáo không hợp lệ: &quot; + code);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

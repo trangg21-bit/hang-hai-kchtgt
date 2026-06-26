@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TokenClaimsBuilder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.security.service</a> &gt; <span class="el_source">TokenClaimsBuilder.java</span></div><h1>TokenClaimsBuilder.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.security.service;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Fluent builder for JWT claims (F-274).
+ */
+<span class="nc" id="L10">public class TokenClaimsBuilder {</span>
+<span class="nc" id="L11">    private final Map&lt;String, Object&gt; claims = new HashMap&lt;&gt;();</span>
+
+    public static TokenClaimsBuilder builder() {
+<span class="nc" id="L14">        return new TokenClaimsBuilder();</span>
+    }
+
+    public TokenClaimsBuilder subject(String subject) {
+<span class="nc" id="L18">        claims.put(&quot;sub&quot;, subject);</span>
+<span class="nc" id="L19">        return this;</span>
+    }
+
+    public TokenClaimsBuilder jti(String jti) {
+<span class="nc" id="L23">        claims.put(&quot;jti&quot;, jti);</span>
+<span class="nc" id="L24">        return this;</span>
+    }
+
+    public TokenClaimsBuilder userId(String userId) {
+<span class="nc" id="L28">        claims.put(&quot;user_id&quot;, userId);</span>
+<span class="nc" id="L29">        return this;</span>
+    }
+
+    public TokenClaimsBuilder roles(List&lt;String&gt; roles) {
+<span class="nc" id="L33">        claims.put(&quot;roles&quot;, roles);</span>
+<span class="nc" id="L34">        return this;</span>
+    }
+
+    public TokenClaimsBuilder permissions(List&lt;String&gt; permissions) {
+<span class="nc" id="L38">        claims.put(&quot;permissions&quot;, permissions);</span>
+<span class="nc" id="L39">        return this;</span>
+    }
+
+    public TokenClaimsBuilder claim(String key, Object value) {
+<span class="nc" id="L43">        claims.put(key, value);</span>
+<span class="nc" id="L44">        return this;</span>
+    }
+
+    public Map&lt;String, Object&gt; build() {
+<span class="nc" id="L48">        return claims;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

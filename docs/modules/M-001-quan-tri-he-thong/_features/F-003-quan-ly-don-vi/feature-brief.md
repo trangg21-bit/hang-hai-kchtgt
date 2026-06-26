@@ -1,38 +1,35 @@
 ---
-status: proposed
-last-updated: 2026-06-17T03:23:16Z
----
----
 id: F-003
-name: Quan ly don vi
+name: Quản lý đơn vị
 slug: quan-ly-don-vi
 module-id: M-001
-status: done
+status: proposed
 classification: local
 priority: high
-created: 2026-06-16T04:40:53Z
-last-updated: 2026-06-17T01:35:44Z
+created: 2026-06-26T00:00:00Z
+last-updated: 2026-06-26T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quan ly don vi
+# Feature: Quản lý đơn vị
 
 ## Description
 
-Quan ly don vi Cuc, Chi cuc, Cang vu, TCT theo he thung cap phat
+Quản lý tổ chức đơn vị phân cấp của hệ thống (Cục, Chi cục, Cảng vụ, Trung tâm) bao gồm tạo mới, chỉnh sửa, xóa mềm, phê duyệt/chấp thuận đơn vị và xây dựng cây cấu trúc tổ chức. Đơn vị có thể phân cấp cha/con với hệ số (coefficient) phục vụ nghiệp vụ tính toán và báo cáo.
 
 ## Business Intent
 
-Quan tri he thong - Quan ly don vi Cuc, Chi cuc, Cang vu, TCT
+Hệ thống cần quản lý cấu trúc tổ chức đơn vị một cách có hệ thống, cho phép cán bộ quản trị tạo mới và duy trì thông tin các đơn vị trực thuộc, đảm bảo việc phân quyền và chia sẻ dữ liệu theo đúng cấu trúc phân cấp tổ chức hiện hành.
 
 ## Flow Summary
 
-Quan tri he thong - Quan ly don vi Cuc, Chi cuc, Cang vu, TCT
+Quản trị hệ thống truy cập module Quản lý đơn vị từ sidebar → chọn tạo đơn vị mới hoặc quản lý đơn vị hiện có → điền thông tin (tên, mã đơn vị unique, loại đơn vị, địa chỉ, hệ số coefficient, mô tả) → nếu là đơn vị mới hoặc có thay đổi quan trọng → yêu cầu phê duyệt theo workflow (pending → approved/rejected) → Lãnh đạo duyệt hoặc từ chối → đơn vị được kích hoạt chính thức → hiển thị cây cấu trúc phân cấp với khả năng mở rộng từng nhánh. Quy trình bao gồm: (1) tạo đơn vị với mã duy nhất trong hệ thống; (2) chỉnh sửa thông tin đơn vị (tên, mã, loại, hệ số, địa chỉ); (3) phê duyệt/chấp thuận đơn vị mới hoặc thay đổi; (4) xóa mềm đơn vị (không xóa nếu có cán bộ/đối tượng liên quan); (5) xem cây tổ chức phân cấp với hỗ trợ mở rộng/thu gọn các nhánh.
 
 ## Acceptance Criteria
 
-- Quan ly thong tin don vi
-- Phan cap quyen don vi
+- Tạo/chỉnh sửa/xóa đơn vị thành công với mã đơn vị unique trong hệ thống và hệ số hợp lệ (> 0, tối đa 2 chữ số thập phân)
+- Phê duyệt/từ chối đơn vị theo workflow chính xác, chỉ Admin mới có quyền phê duyệt, trạng thái thay đổi đúng quy trình (pending → approved/rejected)
+- Xây dựng cây cấu trúc phân cấp đơn vị cha/con chính xác với hỗ trợ mở rộng, thu gọn và truy vấn theo path
 
 ## In Scope
 

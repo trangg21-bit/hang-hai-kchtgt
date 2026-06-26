@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TradeFlowController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.trade.controller</a> &gt; <span class="el_source">TradeFlowController.java</span></div><h1>TradeFlowController.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.trade.controller;
+
+import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.trade.dto.TradeFlowChartResponse;
+import com.hanghai.kchtg.trade.entity.TradeFlow;
+import com.hanghai.kchtg.trade.service.TradeFlowService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * REST controller for F-105 Biểu đồ trao đổi thương mại.
+ *
+ * Endpoints:
+ *   GET /api/v1/trade-flows           — list all trade flow records
+ *   GET /api/v1/trade-flows/{id}      — get a single trade flow
+ *   GET /api/v1/trade-flows/charts    — chart-ready data (Sankey, heatmap, bar)
+ */
+@RestController
+@RequestMapping(&quot;/api/v1/trade-flows&quot;)
+@RequiredArgsConstructor
+public class TradeFlowController {
+
+    private final TradeFlowService tradeFlowService;
+
+    /**
+     * GET /api/v1/trade-flows
+     * Returns all trade flow records, optionally filtered by period.
+     */
+    @GetMapping
+    public ResponseEntity&lt;ApiResponse&lt;List&lt;TradeFlow&gt;&gt;&gt; listTradeFlows(
+            @RequestParam(name = &quot;period&quot;, required = false) String period) {
+<span class="nc" id="L35">        List&lt;TradeFlow&gt; flows = tradeFlowService.findAll(period);</span>
+<span class="nc" id="L36">        return ResponseEntity.ok(ApiResponse.success(flows));</span>
+    }
+
+    /**
+     * GET /api/v1/trade-flows/charts
+     * Returns chart-ready data for F-105 (Sankey links + nodes, heatmap, bar).
+     */
+    @GetMapping(&quot;/charts&quot;)
+    public ResponseEntity&lt;ApiResponse&lt;TradeFlowChartResponse&gt;&gt; getChartData(
+            @RequestParam(name = &quot;period&quot;, required = false) String period) {
+<span class="nc" id="L46">        TradeFlowChartResponse chart = tradeFlowService.buildChartData(period);</span>
+<span class="nc" id="L47">        return ResponseEntity.ok(ApiResponse.success(chart));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

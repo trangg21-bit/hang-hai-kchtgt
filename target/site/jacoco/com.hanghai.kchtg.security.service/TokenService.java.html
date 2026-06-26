@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TokenService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.security.service</a> &gt; <span class="el_source">TokenService.java</span></div><h1>TokenService.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.security.service;
+
+import com.hanghai.kchtg.security.JwtUtil;
+import com.hanghai.kchtg.user.entity.User;
+import io.jsonwebtoken.Claims;
+import org.springframework.stereotype.Service;
+
+/**
+ * Main service wrapping access and refresh token lifecycle actions (F-274).
+ */
+@Service
+public class TokenService {
+    private final JwtUtil jwtUtil;
+    private final TokenValidationService validationService;
+
+<span class="nc" id="L16">    public TokenService(JwtUtil jwtUtil, TokenValidationService validationService) {</span>
+<span class="nc" id="L17">        this.jwtUtil = jwtUtil;</span>
+<span class="nc" id="L18">        this.validationService = validationService;</span>
+<span class="nc" id="L19">    }</span>
+
+    /**
+     * Create access token for user.
+     */
+    public String createAccessToken(User user) {
+<span class="nc" id="L25">        return jwtUtil.generateAccessToken(user);</span>
+    }
+
+    public String createAccessToken(String username, String role) {
+<span class="nc" id="L29">        return jwtUtil.generateToken(username, role);</span>
+    }
+
+    /**
+     * Create refresh token for user.
+     */
+    public String createRefreshToken(User user) {
+<span class="nc" id="L36">        return jwtUtil.generateRefreshToken(user);</span>
+    }
+
+    /**
+     * Validate and retrieve claims from token.
+     */
+    public Claims validateToken(String token) {
+<span class="nc" id="L43">        return validationService.getClaims(token);</span>
+    }
+
+    /**
+     * Helper check if token is valid.
+     */
+    public boolean isTokenValid(String token) {
+<span class="nc" id="L50">        return validationService.isValid(token);</span>
+    }
+
+    public long getAccessTokenExpiration() {
+<span class="nc" id="L54">        return jwtUtil.getJwtProperties().getAccessTokenExpiration();</span>
+    }
+
+    public long getRefreshTokenExpiration() {
+<span class="nc" id="L58">        return jwtUtil.getJwtProperties().getRefreshTokenExpiration();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

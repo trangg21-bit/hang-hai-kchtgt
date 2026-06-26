@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SiemReportResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.siem.dto</a> &gt; <span class="el_source">SiemReportResponse.java</span></div><h1>SiemReportResponse.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.siem.dto;
+
+import com.hanghai.kchtg.siem.entity.SiemReport;
+import lombok.Getter;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+/**
+ * DTO returned to the caller for a generated SIEM report.
+ * Never exposes the raw content bytes over the API.
+ */
+@Getter
+public class SiemReportResponse {
+
+    private final UUID id;
+    private final String format;
+    private final String status;
+    private final int version;
+    private final long fileSizeBytes;
+    private final String createdBy;
+    private final LocalDateTime generatedAt;
+    private final boolean scheduled;
+    private final String contentType;
+
+    public static SiemReportResponse fromEntity(SiemReport report) {
+<span class="fc" id="L27">        return new SiemReportResponse(</span>
+<span class="fc" id="L28">                report.getId(),</span>
+<span class="fc" id="L29">                report.getFormat(),</span>
+<span class="fc" id="L30">                report.getStatus().name(),</span>
+<span class="fc" id="L31">                report.getVersion(),</span>
+<span class="fc" id="L32">                report.getFileSizeBytes(),</span>
+<span class="fc" id="L33">                report.getCreatedBy(),</span>
+<span class="fc" id="L34">                report.getGeneratedAt(),</span>
+<span class="fc" id="L35">                report.isScheduled(),</span>
+<span class="fc" id="L36">                report.getContentType()</span>
+        );
+    }
+
+    public SiemReportResponse(UUID id, String format, String status, int version,
+                              long fileSizeBytes, String createdBy, LocalDateTime generatedAt,
+<span class="fc" id="L42">                              boolean scheduled, String contentType) {</span>
+<span class="fc" id="L43">        this.id = id;</span>
+<span class="fc" id="L44">        this.format = format;</span>
+<span class="fc" id="L45">        this.status = status;</span>
+<span class="fc" id="L46">        this.version = version;</span>
+<span class="fc" id="L47">        this.fileSizeBytes = fileSizeBytes;</span>
+<span class="fc" id="L48">        this.createdBy = createdBy;</span>
+<span class="fc" id="L49">        this.generatedAt = generatedAt;</span>
+<span class="fc" id="L50">        this.scheduled = scheduled;</span>
+<span class="fc" id="L51">        this.contentType = contentType;</span>
+<span class="fc" id="L52">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

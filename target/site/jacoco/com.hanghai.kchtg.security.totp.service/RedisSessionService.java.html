@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RedisSessionService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.security.totp.service</a> &gt; <span class="el_source">RedisSessionService.java</span></div><h1>RedisSessionService.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.security.totp.service;
+
+import com.hanghai.kchtg.security.totp.dto.TotpEnrollSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Redis-backed session management for TOTP enrollment.
+ * &lt;p&gt;
+ * Stores enrollment sessions with a 300-second (5-minute) TTL so that
+ * a user must scan the QR code and verify within a reasonable window.
+ * &lt;/p&gt;
+ */
+@Service
+public class RedisSessionService {
+
+<span class="nc" id="L23">    private static final Logger log = LoggerFactory.getLogger(RedisSessionService.class);</span>
+
+    private static final String KEY_PREFIX = &quot;totp:enroll:&quot;;
+<span class="nc" id="L26">    private static final Duration SESSION_TTL = Duration.ofSeconds(300);</span>
+
+    private final StringRedisTemplate redisTemplate;
+
+<span class="nc" id="L30">    public RedisSessionService(StringRedisTemplate redisTemplate) {</span>
+<span class="nc" id="L31">        this.redisTemplate = redisTemplate;</span>
+<span class="nc" id="L32">    }</span>
+
+    /**
+     * Creates an enrollment session and stores it in Redis.
+     *
+     * @param userId the user identifier
+     * @param session the enrollment session record
+     * @return the session ID (also the Redis key suffix)
+     */
+    public String createSession(String userId, TotpEnrollSession session) {
+<span class="nc" id="L42">        String key = KEY_PREFIX + userId;</span>
+<span class="nc" id="L43">        String sessionId = UUID.randomUUID().toString();</span>
+<span class="nc" id="L44">        session.setSessionId(sessionId);</span>
+
+        try {
+<span class="nc" id="L47">            redisTemplate.opsForValue().set(key, session.toJson(), SESSION_TTL);</span>
+<span class="nc" id="L48">            log.debug(&quot;Created TOTP enrollment session for user {}&quot;, userId);</span>
+<span class="nc" id="L49">            return sessionId;</span>
+<span class="nc" id="L50">        } catch (Exception e) {</span>
+<span class="nc" id="L51">            log.error(&quot;Failed to store session in Redis: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L52">            throw new RuntimeException(&quot;Failed to create enrollment session&quot;, e);</span>
+        }
+    }
+
+    /**
+     * Retrieves an enrollment session for a user.
+     *
+     * @param userId the user identifier
+     * @return the session record, or {@code null} if not found or expired
+     */
+    public TotpEnrollSession getSession(String userId) {
+<span class="nc" id="L63">        String key = KEY_PREFIX + userId;</span>
+
+        try {
+<span class="nc" id="L66">            String json = redisTemplate.opsForValue().get(key);</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">            if (json == null) {</span>
+<span class="nc" id="L68">                return null;</span>
+            }
+<span class="nc" id="L70">            return TotpEnrollSession.fromJson(json);</span>
+<span class="nc" id="L71">        } catch (Exception e) {</span>
+<span class="nc" id="L72">            log.error(&quot;Failed to retrieve session from Redis: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L73">            return null;</span>
+        }
+    }
+
+    /**
+     * Deletes an enrollment session for a user (e.g. after successful verification or expiration).
+     *
+     * @param userId the user identifier
+     */
+    public void deleteSession(String userId) {
+<span class="nc" id="L83">        String key = KEY_PREFIX + userId;</span>
+
+        try {
+<span class="nc" id="L86">            redisTemplate.delete(key);</span>
+<span class="nc" id="L87">            log.debug(&quot;Deleted TOTP enrollment session for user {}&quot;, userId);</span>
+<span class="nc" id="L88">        } catch (Exception e) {</span>
+<span class="nc" id="L89">            log.error(&quot;Failed to delete session from Redis: {}&quot;, e.getMessage());</span>
+<span class="nc" id="L90">        }</span>
+<span class="nc" id="L91">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,39 +1,35 @@
 ---
-status: proposed
-last-updated: 2026-06-17T03:23:18Z
----
----
 id: F-007
-name: Quan ly ket noi lien thong chia du lieu
+name: Quản lý kết nối liên thông chia sẻ dữ liệu
 slug: quan-ly-ket-noi-lien-thong-chia-du-lieu
 module-id: M-001
-status: done
+status: proposed
 classification: local
 priority: medium
-created: 2026-06-16T04:40:32Z
-last-updated: 2026-06-17T01:35:44Z
+created: 2026-06-26T00:00:00Z
+last-updated: 2026-06-26T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quan ly ket noi lien thong chia du lieu
+# Feature: Quản lý kết nối liên thông chia sẻ dữ liệu
 
 ## Description
 
-Cau hinh ket noi LGSP, NDXP, API qua HTTPS/TLS, JWT, IP whitelist
+Cấu hình và quản lý các kết nối liên thông chia sẻ dữ liệu với các hệ thống bên ngoài (LGSP, NDXP, API bên thứ ba) qua giao thức HTTPS/TLS với các phương thức xác thực (API Key JWT, IP whitelist). Tính năng bao gồm tạo, chỉnh sửa, xóa kết nối; health check tự động mỗi 5 phút; quản lý sync log; import/export cấu hình và cảnh báo khi sync failure ≥10%.
 
 ## Business Intent
 
-Quan tri he thong - Cau hinh ket noi LGSP, NDXP, API
+Quản trị hệ thống cần cơ chế quản lý tập trung các kết nối liên thông với các hệ thống bên ngoài, đảm bảo an toàn bảo mật (mã hóa API Key AES-256, HTTPS bắt buộc), giám sát sức khỏe kết nối liên tục và duy trì lịch sử đồng bộ dữ liệu — phục vụ nghiệp vụ chia sẻ dữ liệu liên ngành giữa các cơ quan quản lý nhà nước.
 
 ## Flow Summary
 
-Quan tri he thong - Cau hinh ket noi LGSP, NDXP, API
+Admin truy cập module Quản lý kết nối liên thông từ sidebar → chọn tạo kết nối mới hoặc quản lý kết nối hiện có → điền thông tin (tên, mã kết nối, loại kết nối, endpoint URL HTTPS, phương thức xác thực, cấu hình bổ sung) → hệ thống validate URL (HTTPS bắt buộc trừ localhost) và mã hóa API Key/API Secret bằng AES-256-GCM trước khi lưu → kết nối được tạo và bắt đầu health check tự động mỗi 5 phút với timeout 10 giây, retry policy exponential backoff (1s → 2s → 4s) tối đa 3 lần → hiển thị danh sách kết nối với trạng thái sức khỏe (healthy/degraded/down) và khả năng lọc theo tên, loại, trạng thái. Quy trình bao gồm: (1) tạo kết nối với endpoint HTTPS và xác thực; (2) health check tự động + thủ công; (3) xem lịch sử sync log (thời gian, số record, thành công/thất bại); (4) import/export cấu hình kết nối (JSON/YAML); (5) cảnh báo khi sync failure ≥10% hoặc health check thất bại liên tiếp.
 
 ## Acceptance Criteria
 
-- Cau hinh ket noi thanh cong
-- Xem lich su ket noi
-- Cap nhat thong tin ket noi
+- Cấu hình kết nối liên thông thành công với endpoint HTTPS (trừ localhost), API Key được mã hóa AES-256-GCM trước khi lưu
+- Health check tự động chạy mỗi 5 phút, timeout 10 giây, retry policy exponential backoff đúng như cấu hình
+- Xem và xuất lịch sử sync log chính xác, cảnh báo tự động khi tỷ lệ sync failure ≥10%
 
 ## In Scope
 

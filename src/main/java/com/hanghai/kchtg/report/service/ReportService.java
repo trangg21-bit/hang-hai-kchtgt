@@ -6,9 +6,18 @@ import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
 import com.hanghai.kchtg.gis.point.entity.PointObject;
 import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
 import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
+import com.hanghai.kchtg.report.dto.ChartDataResponse;
 import com.hanghai.kchtg.report.dto.ReportRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
+import com.hanghai.kchtg.report.entity.CargoTransaction;
+import com.hanghai.kchtg.report.entity.PortOperation;
 import com.hanghai.kchtg.report.entity.ReportType;
+import com.hanghai.kchtg.report.entity.TideData;
+import com.hanghai.kchtg.report.repository.CargoTransactionRepository;
+import com.hanghai.kchtg.report.repository.PortOperationRepository;
+import com.hanghai.kchtg.report.repository.TideDataRepository;
+import com.hanghai.kchtg.trade.entity.TradeFlow;
+import com.hanghai.kchtg.trade.repository.TradeFlowRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,6 +35,10 @@ public class ReportService {
     private final PolygonObjectRepository polygonObjectRepository;
     private final MapLayerRepository mapLayerRepository;
     private final UserRepository userRepository;
+    private final TradeFlowRepository tradeFlowRepository;
+    private final TideDataRepository tideDataRepository;
+    private final PortOperationRepository portOperationRepository;
+    private final CargoTransactionRepository cargoTransactionRepository;
 
     public ReportResponse generateReportPreview(ReportRequest request) {
         ReportType type = ReportType.fromCode(request.getReportCode());
@@ -180,6 +193,21 @@ public class ReportService {
                 break;
             case F189_HOAT_DONG_BAO_HIEU_DE_KE:
                 generateF189(builder, request);
+                break;
+            case F101_THUY_VAN:
+                generateF101(builder);
+                break;
+            case F102_BIEU_THONG_KE:
+                generateF102(builder);
+                break;
+            case F103_KHANH_TAC:
+                generateF103(builder, request);
+                break;
+            case F104_HANG_HOA_XNK:
+                generateF104(builder, request);
+                break;
+            case F105_BIEU_DO_TRAO_DOI_THUONG_MAI:
+                generateF105(builder);
                 break;
         }
 
@@ -1278,6 +1306,169 @@ public class ReportService {
             rows.add(row);
         }
         builder.headers(headers).rows(rows).summary(new HashMap<>());
+    }
+
+    private void generateF105(ReportResponse.ReportResponseBuilder builder) {
+        List<String> headers = Arrays.asList("STT", "Cảng nguồn", "Cảng đích", "Loại hàng hóa", "Khối lượng (Tấn)", "Chu kỳ");
+        List<Map<String, Object>> rows = new ArrayList<>();
+
+        List<TradeFlow> flows = tradeFlowRepository.findAll();
+        int stt = 1;
+
+        for (TradeFlow f : flows) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("STT", stt++);
+            row.put("Cảng nguồn", f.getSourcePort());
+            row.put("Cảng đích", f.getDestPort());
+            row.put("Loại hàng hóa", f.getCargoType());
+            row.put("Khối lượng (Tấn)", f.getQuantity());
+            row.put("Chu kỳ", f.getPeriod());
+            rows.add(row);
+        }
+
+        long totalCount = flows.size();
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("Tổng số lượt trao đổi", totalCount);
+
+        builder.headers(headers).rows(rows).summary(summary);
+    }
+
+    private void generateF101(ReportResponse.ReportResponseBuilder builder) {
+        List<String> headers = Arrays.asList("STT", "Mã trạm", "Mực nước (m)", "Lưu lượng (m³/s)", "Thủy triều (m)", "Thời gian đo");
+        List<Map<String, Object>> rows = new ArrayList<>();
+
+        List<TideData> tides = tideDataRepository.findAll();
+        int stt = 1;
+
+        for (TideData t : tides) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("STT", stt++);
+            row.put("Mã trạm", t.getStationCode());
+            row.put("Mực nước (m)", t.getWaterLevel());
+            row.put("Lưu lượng (m³/s)", t.getFlowRate());
+            row.put("Thủy triều (m)", t.getTideLevel());
+            row.put("Thời gian đo", t.getRecordedAt() != null ? t.getRecordedAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "");
+            rows.add(row);
+        }
+
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("Tổng số ghi nhận thủy văn", rows.size());
+        builder.headers(headers).rows(rows).summary(summary);
+    }
+
+    private void generateF102(ReportResponse.ReportResponseBuilder builder) {
+        // Aggregate GIS entity counts into chart-ready format
+        long pointsCount = pointObjectRepository.count();
+        long linesCount = lineObjectRepository.count();
+        long polygonsCount = polygonObjectRepository.count();
+        long layersCount = mapLayerRepository.count();
+
+        // Use ChartDataResponse to structure chart data
+        ChartDataResponse chartData = ChartDataResponse.builder()
+                .categories(Arrays.asList("Điểm (Point)", "Đường (Line)", "Vùng (Polygon)", "Lớp bản đồ"))
+                .series(List.of(
+                        Map.of("giá trị", pointsCount),
+                        Map.of("giá trị", linesCount),
+                        Map.of("giá trị", polygonsCount),
+                        Map.of("giá trị", layersCount)
+                ))
+                .chartType("bar")
+                .build();
+
+        // Also build a tabular ReportResponse for export compatibility
+        List<String> headers = Arrays.asList("STT", "Nhóm đối tượng GIS", "Số lượng", "Loại biểu đồ");
+        List<Map<String, Object>> rows = new ArrayList<>();
+        rows.add(buildF102Row(1, "Đối tượng điểm (Point Objects)", pointsCount, "Cột"));
+        rows.add(buildF102Row(2, "Đối tượng đường (Line Objects)", linesCount, "Đường"));
+        rows.add(buildF102Row(3, "Đối tượng vùng (Polygon Objects)", polygonsCount, "Cột"));
+        rows.add(buildF102Row(4, "Lớp bản đồ cấu hình", layersCount, "Tròn"));
+
+        builder.headers(headers).rows(rows).summary(new HashMap<>());
+    }
+
+    private Map<String, Object> buildF102Row(int stt, String group, long count, String chartType) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("STT", stt);
+        row.put("Nhóm đối tượng GIS", group);
+        row.put("Số lượng", count);
+        row.put("Loại biểu đồ", chartType);
+        return row;
+    }
+
+    private void generateF103(ReportResponse.ReportResponseBuilder builder, ReportRequest request) {
+        List<String> headers = Arrays.asList("STT", "Mã cảng", "Thời gian đến", "Thời gian rời", "Lượng hàng (Tấn)", "Loại hoạt động");
+        List<Map<String, Object>> rows = new ArrayList<>();
+
+        List<PortOperation> operations = portOperationRepository.findAll();
+        int stt = 1;
+
+        for (PortOperation op : operations) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("STT", stt++);
+            row.put("Mã cảng", op.getPortCode());
+            row.put("Thời gian đến", op.getArrivalTime() != null ? op.getArrivalTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "");
+            row.put("Thời gian rời", op.getDepartureTime() != null ? op.getDepartureTime().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "");
+            row.put("Lượng hàng (Tấn)", op.getCargoQuantity());
+            row.put("Loại hoạt động", op.getOperationType() != null ? mapOperationType(op.getOperationType()) : "Khác");
+            rows.add(row);
+        }
+
+        long totalCargo = operations.stream().mapToLong(op -> op.getCargoQuantity() != null ? op.getCargoQuantity() : 0L).sum();
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("Tổng số hoạt động cảng", rows.size());
+        summary.put("Tổng lượng hàng thông qua (Tấn)", totalCargo);
+        builder.headers(headers).rows(rows).summary(summary);
+    }
+
+    private String mapOperationType(PortOperation.OperationType type) {
+        if (type == null) return "Khác";
+        switch (type) {
+            case BOC: return "Bọc hàng";
+            case DONG: return "Dòng hàng";
+            default: return type.name();
+        }
+    }
+
+    private void generateF104(ReportResponse.ReportResponseBuilder builder, ReportRequest request) {
+        List<String> headers = Arrays.asList("STT", "Mã cảng", "Loại hàng hóa", "Hướng giao dịch", "Số lượng (Tấn)", "Ngày giao dịch");
+        List<Map<String, Object>> rows = new ArrayList<>();
+
+        List<CargoTransaction> transactions = cargoTransactionRepository.findAll();
+        int stt = 1;
+
+        for (CargoTransaction ct : transactions) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("STT", stt++);
+            row.put("Mã cảng", ct.getPortCode());
+            row.put("Loại hàng hóa", ct.getCargoType());
+            row.put("Hướng giao dịch", mapTransactionType(ct.getTransactionType()));
+            row.put("Số lượng (Tấn)", ct.getQuantity());
+            row.put("Ngày giao dịch", ct.getTransactionDate() != null ? ct.getTransactionDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "");
+            rows.add(row);
+        }
+
+        long exportTotal = transactions.stream()
+                .filter(t -> t.getTransactionType() == CargoTransaction.TransactionType.EXPORT)
+                .mapToLong(t -> t.getQuantity() != null ? t.getQuantity() : 0L)
+                .sum();
+        long importTotal = transactions.stream()
+                .filter(t -> t.getTransactionType() == CargoTransaction.TransactionType.IMPORT)
+                .mapToLong(t -> t.getQuantity() != null ? t.getQuantity() : 0L)
+                .sum();
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("Tổng số giao dịch", rows.size());
+        summary.put("Tổng xuất khẩu (Tấn)", exportTotal);
+        summary.put("Tổng nhập khẩu (Tấn)", importTotal);
+        builder.headers(headers).rows(rows).summary(summary);
+    }
+
+    private String mapTransactionType(CargoTransaction.TransactionType type) {
+        if (type == null) return "Khác";
+        switch (type) {
+            case EXPORT: return "Xuất khẩu";
+            case IMPORT: return "Nhập khẩu";
+            default: return type.name();
+        }
     }
 
     private String mapStatus(String statusStr) {

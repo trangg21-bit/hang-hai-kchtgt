@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ChartIntegrationService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.gis.service</a> &gt; <span class="el_source">ChartIntegrationService.java</span></div><h1>ChartIntegrationService.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.gis.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hanghai.kchtg.gis.entity.ChartCell;
+import com.hanghai.kchtg.gis.entity.ChartFeature;
+import com.hanghai.kchtg.gis.entity.S63Permit;
+import com.hanghai.kchtg.gis.layer.entity.MapLayer;
+import com.hanghai.kchtg.gis.layer.repository.MapLayerRepository;
+import com.hanghai.kchtg.gis.parser.S57Parser;
+import com.hanghai.kchtg.gis.parser.S63Decryptor;
+import com.hanghai.kchtg.gis.repository.ChartCellRepository;
+import com.hanghai.kchtg.gis.repository.ChartFeatureRepository;
+import com.hanghai.kchtg.gis.repository.S63PermitRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.*;
+
+@Service
+@RequiredArgsConstructor
+<span class="nc" id="L25">@Slf4j</span>
+public class ChartIntegrationService {
+
+    private final ChartCellRepository cellRepository;
+    private final ChartFeatureRepository featureRepository;
+    private final S63PermitRepository permitRepository;
+    private final MapLayerRepository mapLayerRepository;
+    private final S57Parser s57Parser;
+    private final S63Decryptor s63Decryptor;
+    private final S52StyleService s52StyleService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
+     * Imports a standard S-57 chart cell (.000).
+     */
+    @Transactional
+    public ChartCell importS57(byte[] fileBytes, String filename) throws IOException {
+<span class="nc" id="L42">        S57Parser.ParsedCellData parsedData = s57Parser.parse(fileBytes, filename);</span>
+
+        // Save cell metadata
+<span class="nc" id="L45">        ChartCell cell = cellRepository.findByCellName(parsedData.cellName)</span>
+<span class="nc" id="L46">                .orElse(new ChartCell());</span>
+<span class="nc" id="L47">        cell.setCellName(parsedData.cellName);</span>
+<span class="nc" id="L48">        cell.setProducer(parsedData.producer);</span>
+<span class="nc" id="L49">        cell.setEdition(parsedData.edition);</span>
+<span class="nc" id="L50">        cell.setScale(parsedData.scale);</span>
+<span class="nc" id="L51">        cell.setUpdateNumber(parsedData.updateNumber);</span>
+<span class="nc" id="L52">        cell.setReleaseDate(parsedData.releaseDate);</span>
+<span class="nc" id="L53">        cell.setIsEncrypted(false);</span>
+<span class="nc" id="L54">        cell.setStatus(ChartCell.Status.ACTIVE);</span>
+
+        // Resolve and save coordinates
+<span class="nc" id="L57">        double[] coords = calculateCenterCoordinate(parsedData.cellName);</span>
+<span class="nc" id="L58">        cell.setLatitude(coords[0]);</span>
+<span class="nc" id="L59">        cell.setLongitude(coords[1]);</span>
+
+<span class="nc" id="L61">        ChartCell savedCell = cellRepository.save(cell);</span>
+
+        // Delete old features if updating existing cell
+<span class="nc" id="L64">        List&lt;ChartFeature&gt; oldFeatures = featureRepository.findByCellId(savedCell.getId());</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">        if (!oldFeatures.isEmpty()) {</span>
+<span class="nc" id="L66">            featureRepository.deleteAll(oldFeatures);</span>
+        }
+
+        // Save features
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        for (ChartFeature feature : parsedData.features) {</span>
+<span class="nc" id="L71">            feature.setCellId(savedCell.getId());</span>
+<span class="nc" id="L72">            featureRepository.save(feature);</span>
+<span class="nc" id="L73">        }</span>
+
+        // Automatically create or update a corresponding MapLayer entry
+<span class="nc" id="L76">        syncToMapLayers(savedCell);</span>
+
+<span class="nc" id="L78">        return savedCell;</span>
+    }
+
+    /**
+     * Imports an encrypted S-63 secured chart cell (.000).
+     * Decrypts using Blowfish key matching the registered Cell Permit.
+     */
+    @Transactional
+    public ChartCell importS63(byte[] fileBytes, String filename) throws IOException {
+<span class="nc" id="L87">        String cellName = filename.replace(&quot;.000&quot;, &quot;&quot;).toUpperCase();</span>
+        
+<span class="nc" id="L89">        S63Permit permit = permitRepository.findByCellName(cellName)</span>
+<span class="nc" id="L90">                .orElseThrow(() -&gt; new IOException(&quot;Không tìm thấy giấy phép Cell Permit S-63 cho Cell: &quot; + cellName + &quot;. Vui lòng đăng ký permit trước.&quot;));</span>
+
+<span class="nc" id="L92">        byte[] decryptedBytes = s63Decryptor.decrypt(fileBytes, permit);</span>
+
+<span class="nc" id="L94">        S57Parser.ParsedCellData parsedData = s57Parser.parse(decryptedBytes, filename);</span>
+
+        // Save cell metadata
+<span class="nc" id="L97">        ChartCell cell = cellRepository.findByCellName(parsedData.cellName)</span>
+<span class="nc" id="L98">                .orElse(new ChartCell());</span>
+<span class="nc" id="L99">        cell.setCellName(parsedData.cellName);</span>
+<span class="nc" id="L100">        cell.setProducer(parsedData.producer);</span>
+<span class="nc" id="L101">        cell.setEdition(parsedData.edition);</span>
+<span class="nc" id="L102">        cell.setScale(parsedData.scale);</span>
+<span class="nc" id="L103">        cell.setUpdateNumber(parsedData.updateNumber);</span>
+<span class="nc" id="L104">        cell.setReleaseDate(parsedData.releaseDate);</span>
+<span class="nc" id="L105">        cell.setIsEncrypted(true);</span>
+<span class="nc" id="L106">        cell.setStatus(ChartCell.Status.ACTIVE);</span>
+
+        // Resolve and save coordinates
+<span class="nc" id="L109">        double[] coords = calculateCenterCoordinate(parsedData.cellName);</span>
+<span class="nc" id="L110">        cell.setLatitude(coords[0]);</span>
+<span class="nc" id="L111">        cell.setLongitude(coords[1]);</span>
+
+<span class="nc" id="L113">        ChartCell savedCell = cellRepository.save(cell);</span>
+
+        // Delete old features if updating
+<span class="nc" id="L116">        List&lt;ChartFeature&gt; oldFeatures = featureRepository.findByCellId(savedCell.getId());</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">        if (!oldFeatures.isEmpty()) {</span>
+<span class="nc" id="L118">            featureRepository.deleteAll(oldFeatures);</span>
+        }
+
+        // Save features
+<span class="nc bnc" id="L122" title="All 2 branches missed.">        for (ChartFeature feature : parsedData.features) {</span>
+<span class="nc" id="L123">            feature.setCellId(savedCell.getId());</span>
+<span class="nc" id="L124">            featureRepository.save(feature);</span>
+<span class="nc" id="L125">        }</span>
+
+<span class="nc" id="L127">        syncToMapLayers(savedCell);</span>
+
+<span class="nc" id="L129">        return savedCell;</span>
+    }
+
+    /**
+     * Registers an S-63 Cell Permit.
+     */
+    @Transactional
+    public S63Permit registerPermit(String cellName, String permitKey, String expiryDateStr) {
+<span class="nc" id="L137">        String cleanCellName = cellName.toUpperCase().trim();</span>
+<span class="nc" id="L138">        S63Permit permit = permitRepository.findByCellName(cleanCellName)</span>
+<span class="nc" id="L139">                .orElse(new S63Permit());</span>
+<span class="nc" id="L140">        permit.setCellName(cleanCellName);</span>
+<span class="nc" id="L141">        permit.setPermitKey(permitKey.trim());</span>
+<span class="nc" id="L142">        permit.setExpiryDate(java.time.LocalDate.parse(expiryDateStr.trim()));</span>
+<span class="nc" id="L143">        permit.setActive(true);</span>
+
+<span class="nc" id="L145">        return permitRepository.save(permit);</span>
+    }
+
+    /**
+     * Lists all registered permits.
+     */
+    public List&lt;S63Permit&gt; getAllPermits() {
+<span class="nc" id="L152">        return permitRepository.findAll();</span>
+    }
+
+    /**
+     * Deletes a permit by ID.
+     */
+    @Transactional
+    public void deletePermit(UUID id) {
+<span class="nc" id="L160">        permitRepository.deleteById(id);</span>
+<span class="nc" id="L161">    }</span>
+
+    /**
+     * Lists all imported chart cells.
+     */
+    public List&lt;ChartCell&gt; getAllCells() {
+<span class="nc" id="L167">        return cellRepository.findAll();</span>
+    }
+
+    /**
+     * Lists features in a cell.
+     */
+    public List&lt;ChartFeature&gt; getFeatures(UUID cellId) {
+<span class="nc" id="L174">        return featureRepository.findByCellId(cellId);</span>
+    }
+
+    /**
+     * Gets features for a cell fully styled with S-52 guidelines.
+     */
+    public List&lt;Map&lt;String, Object&gt;&gt; getS52StyledFeatures(UUID cellId, String palette) {
+<span class="nc" id="L181">        List&lt;ChartFeature&gt; features = featureRepository.findByCellId(cellId);</span>
+<span class="nc" id="L182">        List&lt;Map&lt;String, Object&gt;&gt; result = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L184" title="All 2 branches missed.">        for (ChartFeature f : features) {</span>
+<span class="nc" id="L185">            S52StyleService.S52Style style = s52StyleService.getStyle(f, palette);</span>
+<span class="nc" id="L186">            Map&lt;String, Object&gt; featureMap = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L187">            featureMap.put(&quot;id&quot;, f.getId());</span>
+<span class="nc" id="L188">            featureMap.put(&quot;featureName&quot;, f.getFeatureName());</span>
+<span class="nc" id="L189">            featureMap.put(&quot;featureCode&quot;, f.getFeatureCode());</span>
+<span class="nc" id="L190">            featureMap.put(&quot;geometryType&quot;, f.getGeometryType().name());</span>
+<span class="nc" id="L191">            featureMap.put(&quot;coordinates&quot;, f.getCoordinates());</span>
+            
+            try {
+<span class="nc" id="L194">                featureMap.put(&quot;attributes&quot;, objectMapper.readValue(f.getAttributesJson(), Map.class));</span>
+<span class="nc" id="L195">            } catch (Exception e) {</span>
+<span class="nc" id="L196">                featureMap.put(&quot;attributes&quot;, new HashMap&lt;&gt;());</span>
+<span class="nc" id="L197">            }</span>
+
+<span class="nc" id="L199">            Map&lt;String, Object&gt; styleMap = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L200">            styleMap.put(&quot;fillColor&quot;, style.fillColor);</span>
+<span class="nc" id="L201">            styleMap.put(&quot;strokeColor&quot;, style.strokeColor);</span>
+<span class="nc" id="L202">            styleMap.put(&quot;strokeWidth&quot;, style.strokeWidth);</span>
+<span class="nc" id="L203">            styleMap.put(&quot;strokeDashArray&quot;, style.strokeDashArray);</span>
+<span class="nc" id="L204">            styleMap.put(&quot;iconSymbol&quot;, style.iconSymbol);</span>
+<span class="nc" id="L205">            styleMap.put(&quot;fillOpacity&quot;, style.fillOpacity);</span>
+
+<span class="nc" id="L207">            featureMap.put(&quot;s52Style&quot;, styleMap);</span>
+<span class="nc" id="L208">            result.add(featureMap);</span>
+<span class="nc" id="L209">        }</span>
+
+<span class="nc" id="L211">        return result;</span>
+    }
+
+    private void syncToMapLayers(ChartCell cell) {
+<span class="nc" id="L215">        String code = &quot;CHART-&quot; + cell.getCellName();</span>
+<span class="nc" id="L216">        MapLayer layer = mapLayerRepository.findByCode(code)</span>
+<span class="nc" id="L217">                .orElse(new MapLayer());</span>
+<span class="nc bnc" id="L218" title="All 2 branches missed.">        layer.setName(&quot;Hải đồ &quot; + cell.getCellName() + (cell.getIsEncrypted() ? &quot; (S-63)&quot; : &quot; (S-57)&quot;));</span>
+<span class="nc" id="L219">        layer.setCode(code);</span>
+<span class="nc" id="L220">        layer.setLayerType(MapLayer.LayerType.OVERLAY);</span>
+<span class="nc" id="L221">        layer.setSource(&quot;/api/gis/charts/cells/&quot; + cell.getId() + &quot;/s52-styled&quot;);</span>
+<span class="nc" id="L222">        layer.setVisible(true);</span>
+<span class="nc" id="L223">        layer.setOpacity(0.8);</span>
+<span class="nc" id="L224">        layer.setOrder(100); // Higher order so overlays load on top of point/line maps</span>
+<span class="nc" id="L225">        layer.setStatus(MapLayer.Status.ACTIVE);</span>
+
+<span class="nc" id="L227">        mapLayerRepository.save(layer);</span>
+<span class="nc" id="L228">    }</span>
+
+<span class="nc" id="L230">    private static final Map&lt;String, double[]&gt; CELL_COORDINATES = new HashMap&lt;&gt;();</span>
+    static {
+<span class="nc" id="L232">        CELL_COORDINATES.put(&quot;HP&quot;, new double[]{20.80, 106.70});     // Hải Phòng</span>
+<span class="nc" id="L233">        CELL_COORDINATES.put(&quot;HG&quot;, new double[]{20.95, 107.15});     // Hạ Long</span>
+<span class="nc" id="L234">        CELL_COORDINATES.put(&quot;HL&quot;, new double[]{17.90, 106.40});     // Hòn La</span>
+<span class="nc" id="L235">        CELL_COORDINATES.put(&quot;HTH&quot;, new double[]{10.00, 104.00});    // Hòn Thơm</span>
+<span class="nc" id="L236">        CELL_COORDINATES.put(&quot;DNA&quot;, new double[]{16.10, 108.20});    // Đà Nẵng</span>
+<span class="nc" id="L237">        CELL_COORDINATES.put(&quot;DQ&quot;, new double[]{15.40, 108.80});     // Dung Quất</span>
+<span class="nc" id="L238">        CELL_COORDINATES.put(&quot;KHA&quot;, new double[]{12.20, 109.20});    // Khánh Hòa</span>
+<span class="nc" id="L239">        CELL_COORDINATES.put(&quot;CLO&quot;, new double[]{18.80, 105.70});    // Cửa Lò</span>
+<span class="nc" id="L240">        CELL_COORDINATES.put(&quot;CM&quot;, new double[]{9.20, 104.90});      // Cà Mau</span>
+<span class="nc" id="L241">        CELL_COORDINATES.put(&quot;CVI&quot;, new double[]{16.90, 107.20});    // Cửa Việt</span>
+<span class="nc" id="L242">        CELL_COORDINATES.put(&quot;CGI&quot;, new double[]{17.70, 106.50});    // Cửa Gianh</span>
+<span class="nc" id="L243">        CELL_COORDINATES.put(&quot;CHO&quot;, new double[]{18.70, 105.80});    // Cửa Hội</span>
+<span class="nc" id="L244">        CELL_COORDINATES.put(&quot;DDI&quot;, new double[]{20.50, 106.60});    // Diêm Điền</span>
+<span class="nc" id="L245">        CELL_COORDINATES.put(&quot;LM&quot;, new double[]{16.10, 108.15});     // Liên Chiểu</span>
+<span class="nc" id="L246">        CELL_COORDINATES.put(&quot;NGS&quot;, new double[]{19.30, 105.80});    // Nghi Sơn</span>
+<span class="nc" id="L247">        CELL_COORDINATES.put(&quot;SKY&quot;, new double[]{21.00, 106.40});    // Sông Kinh Thầy</span>
+<span class="nc" id="L248">        CELL_COORDINATES.put(&quot;THA&quot;, new double[]{16.55, 107.65});    // Thuận An</span>
+<span class="nc" id="L249">        CELL_COORDINATES.put(&quot;VA&quot;, new double[]{18.10, 106.30});     // Vũng Áng</span>
+<span class="nc" id="L250">        CELL_COORDINATES.put(&quot;VG&quot;, new double[]{10.40, 107.10});     // Vũng Tàu / Gành Rái</span>
+<span class="nc" id="L251">        CELL_COORDINATES.put(&quot;V24CD&quot;, new double[]{8.70, 106.60});   // Côn Đảo</span>
+<span class="nc" id="L252">        CELL_COORDINATES.put(&quot;V24DM&quot;, new double[]{20.50, 106.60});  // Diêm Điền</span>
+<span class="nc" id="L253">        CELL_COORDINATES.put(&quot;V24DN&quot;, new double[]{16.10, 108.20});  // Đà Nẵng</span>
+<span class="nc" id="L254">        CELL_COORDINATES.put(&quot;V24GG&quot;, new double[]{9.20, 105.40});   // Gành Hào</span>
+<span class="nc" id="L255">        CELL_COORDINATES.put(&quot;V24HT&quot;, new double[]{10.40, 104.50});  // Hà Tiên</span>
+<span class="nc" id="L256">        CELL_COORDINATES.put(&quot;V24NC&quot;, new double[]{19.30, 105.80});  // Nghi Sơn</span>
+<span class="nc" id="L257">        CELL_COORDINATES.put(&quot;V24NT&quot;, new double[]{12.20, 109.20});  // Nha Trang</span>
+<span class="nc" id="L258">        CELL_COORDINATES.put(&quot;V24QN&quot;, new double[]{13.70, 109.25});  // Quy Nhơn</span>
+<span class="nc" id="L259">        CELL_COORDINATES.put(&quot;V24SD&quot;, new double[]{9.00, 104.80});   // Sông Đốc</span>
+<span class="nc" id="L260">        CELL_COORDINATES.put(&quot;V24SG&quot;, new double[]{10.70, 106.70});  // Sài Gòn</span>
+<span class="nc" id="L261">        CELL_COORDINATES.put(&quot;V24SH&quot;, new double[]{9.50, 106.30});   // Sông Hậu</span>
+<span class="nc" id="L262">        CELL_COORDINATES.put(&quot;V24SR&quot;, new double[]{20.90, 106.80});  // Sông Rút</span>
+<span class="nc" id="L263">        CELL_COORDINATES.put(&quot;V24ST&quot;, new double[]{9.60, 106.00});   // Sóc Trăng</span>
+<span class="nc" id="L264">        CELL_COORDINATES.put(&quot;V24TV&quot;, new double[]{9.70, 106.30});   // Trà Vinh</span>
+<span class="nc" id="L265">        CELL_COORDINATES.put(&quot;V24VR&quot;, new double[]{12.90, 109.40});  // Vũng Rô</span>
+<span class="nc" id="L266">    }</span>
+
+    private double[] calculateCenterCoordinate(String cellName) {
+<span class="nc bnc" id="L269" title="All 4 branches missed.">        if (cellName == null || cellName.trim().isEmpty()) {</span>
+<span class="nc" id="L270">            return new double[]{16.0, 108.0}; // Fallback: Vietnam center</span>
+        }
+<span class="nc" id="L272">        String cleanName = cellName.toUpperCase().trim();</span>
+
+        // Direct exact match
+<span class="nc bnc" id="L275" title="All 2 branches missed.">        if (CELL_COORDINATES.containsKey(cleanName)) {</span>
+<span class="nc" id="L276">            return CELL_COORDINATES.get(cleanName);</span>
+        }
+
+        // Prefix match (longest prefix first)
+<span class="nc" id="L280">        List&lt;String&gt; keys = new ArrayList&lt;&gt;(CELL_COORDINATES.keySet());</span>
+<span class="nc" id="L281">        keys.sort((a, b) -&gt; b.length() - a.length());</span>
+<span class="nc bnc" id="L282" title="All 2 branches missed.">        for (String prefix : keys) {</span>
+<span class="nc bnc" id="L283" title="All 4 branches missed.">            if (cleanName.startsWith(prefix) || cleanName.contains(prefix)) {</span>
+<span class="nc" id="L284">                double[] baseCenter = CELL_COORDINATES.get(prefix);</span>
+                
+                // Add the trailing digit offset exactly like the frontend
+<span class="nc" id="L287">                java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(&quot;\\d+$&quot;);</span>
+<span class="nc" id="L288">                java.util.regex.Matcher matcher = pattern.matcher(cleanName);</span>
+<span class="nc bnc" id="L289" title="All 2 branches missed.">                if (matcher.find()) {</span>
+                    try {
+<span class="nc" id="L291">                        int num = Integer.parseInt(matcher.group());</span>
+<span class="nc" id="L292">                        double latOffset = ((num % 3) - 1) * 0.05;</span>
+<span class="nc" id="L293">                        double lonOffset = ((num / 3) - 1) * 0.05;</span>
+<span class="nc" id="L294">                        return new double[]{baseCenter[0] + latOffset, baseCenter[1] + lonOffset};</span>
+<span class="nc" id="L295">                    } catch (NumberFormatException e) {</span>
+                        // ignore
+                    }
+                }
+<span class="nc" id="L299">                return baseCenter.clone();</span>
+            }
+<span class="nc" id="L301">        }</span>
+
+        // Fallback hash logic
+<span class="nc" id="L304">        int hash = 0;</span>
+<span class="nc bnc" id="L305" title="All 2 branches missed.">        for (int i = 0; i &lt; cleanName.length(); i++) {</span>
+<span class="nc" id="L306">            hash = cleanName.charAt(i) + ((hash &lt;&lt; 5) - hash);</span>
+        }
+<span class="nc" id="L308">        double lat = 10.0 + (Math.abs(hash) % 100) * 0.1;</span>
+<span class="nc" id="L309">        double lon = 105.0 + (Math.abs(hash &gt;&gt; 8) % 40) * 0.1;</span>
+<span class="nc" id="L310">        return new double[]{lat, lon};</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

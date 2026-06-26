@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>IntegrationSyncJob.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.integration.entity</a> &gt; <span class="el_source">IntegrationSyncJob.java</span></div><h1>IntegrationSyncJob.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.integration.entity;
+
+import com.hanghai.kchtg.common.entity.BaseEntity;
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.time.LocalDateTime;
+
+/**
+ * Tracks synchronization jobs executed for physical infrastructure data ingestion.
+ */
+@Entity
+@Table(name = &quot;kchtgt_integration_sync_job&quot;)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class IntegrationSyncJob extends BaseEntity {
+
+    @Column(name = &quot;feature_code&quot;, nullable = false, length = 50)
+    private String featureCode;
+
+    @Column(name = &quot;source_url&quot;, length = 1000)
+    private String sourceUrl;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = &quot;status&quot;, nullable = false, length = 50)
+    private SyncStatus status;
+
+    @Column(name = &quot;records_total&quot;)
+    private Integer recordsTotal;
+
+    @Column(name = &quot;records_success&quot;)
+    private Integer recordsSuccess;
+
+    @Column(name = &quot;records_failed&quot;)
+    private Integer recordsFailed;
+
+    @Column(name = &quot;error_message&quot;, length = 4000)
+    private String errorMessage;
+
+    @Column(name = &quot;started_at&quot;)
+    private LocalDateTime startedAt;
+
+    @Column(name = &quot;completed_at&quot;)
+    private LocalDateTime completedAt;
+
+    @Column(name = &quot;retry_count&quot;)
+    private Integer retryCount;
+
+<span class="nc" id="L52">    public enum SyncStatus {</span>
+<span class="nc" id="L53">        PENDING, RUNNING, COMPLETED, FAILED</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

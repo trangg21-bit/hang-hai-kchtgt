@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MapLayer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.gis.layer.entity</a> &gt; <span class="el_source">MapLayer.java</span></div><h1>MapLayer.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.gis.layer.entity;
+
+import com.hanghai.kchtg.common.entity.BaseEntity;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import org.hibernate.annotations.SQLRestriction;
+
+@Entity
+@Table(name = &quot;map_layers&quot;)
+@SQLRestriction(&quot;deleted_at IS NULL&quot;)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class MapLayer extends BaseEntity {
+
+<span class="nc" id="L24">    public enum LayerType {</span>
+<span class="nc" id="L25">        POINT,</span>
+<span class="nc" id="L26">        LINE,</span>
+<span class="nc" id="L27">        POLYGON,</span>
+<span class="nc" id="L28">        BASEMAP,</span>
+<span class="nc" id="L29">        OVERLAY</span>
+    }
+
+<span class="nc" id="L32">    public enum Status {</span>
+<span class="nc" id="L33">        ACTIVE,</span>
+<span class="nc" id="L34">        INACTIVE</span>
+    }
+
+    @NotBlank(message = &quot;Tên lớp bản đồ không được để trống&quot;)
+    @Size(max = 100, message = &quot;Tên tối đa 100 ký tự&quot;)
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @NotBlank(message = &quot;Mã lớp bản đồ không được để trống&quot;)
+    @Size(max = 50, message = &quot;Mã tối đa 50 ký tự&quot;)
+    @Column(nullable = false, unique = true, length = 50)
+    private String code;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private LayerType layerType;
+
+    @Column(length = 200)
+    private String source;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean visible = false;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Double opacity = 1.0;
+
+    @Column(name = &quot;sort_order&quot;, nullable = false)
+    @Builder.Default
+    private Integer order = 0;
+
+    @Column(name = &quot;style_config&quot;, columnDefinition = &quot;TEXT&quot;)
+    private String styleConfig;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    @Builder.Default
+    private Status status = Status.ACTIVE;
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

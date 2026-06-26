@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="vi"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GroupResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">HH.KCHT :: M-001 Quản trị hệ thống</a> &gt; <a href="index.source.html" class="el_package">com.hanghai.kchtg.group.dto</a> &gt; <span class="el_source">GroupResponse.java</span></div><h1>GroupResponse.java</h1><pre class="source lang-java linenums">package com.hanghai.kchtg.group.dto;
+
+import com.hanghai.kchtg.group.entity.GroupStatus;
+import com.hanghai.kchtg.group.entity.UserGroup;
+import lombok.Value;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * DTO trả về khi truy vấn thông tin nhóm người dùng.
+ * &lt;p&gt;
+ * Sử dụng {@code @Value} (immutable) để phản chiếu triết lý của {@code ApiResponse}.
+ * &lt;/p&gt;
+ */
+@Value
+public class GroupResponse {
+
+    UUID id;
+    String name;
+    String code;
+    String description;
+    List&lt;String&gt; permissions;
+    GroupStatus status;
+    LocalDateTime createdAt;
+    LocalDateTime updatedAt;
+
+    /**
+     * Map từ entity sang response DTO.
+     */
+    public static GroupResponse from(UserGroup entity) {
+<span class="nc" id="L33">        return new GroupResponse(</span>
+<span class="nc" id="L34">                entity.getId(),</span>
+<span class="nc" id="L35">                entity.getName(),</span>
+<span class="nc" id="L36">                entity.getCode(),</span>
+<span class="nc" id="L37">                entity.getDescription(),</span>
+<span class="nc" id="L38">                entity.getPermissions(),</span>
+<span class="nc" id="L39">                entity.getStatus(),</span>
+<span class="nc" id="L40">                entity.getCreatedAt(),</span>
+<span class="nc" id="L41">                entity.getUpdatedAt()</span>
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
