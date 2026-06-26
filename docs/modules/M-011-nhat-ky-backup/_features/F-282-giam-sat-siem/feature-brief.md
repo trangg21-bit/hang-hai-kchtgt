@@ -1,17 +1,16 @@
 ---
 id: F-282
-name: "Giám sát SIEM"
+name: Giám sát SIEM
 slug: giam-sat-siem
 module-id: M-011
-status: proposed
+status: implemented
 classification: local
 priority: medium
-created: "2026-06-16T04:42:24Z"
-last-updated: "2026-06-16T04:42:24Z"
+created: 2026-06-16T04:42:24Z
+last-updated: 2026-06-25T09:24:17Z
 locked-fields: []
 consumed_by_modules: []
 ---
-
 # Feature: Giám sát SIEM
 
 ## Description

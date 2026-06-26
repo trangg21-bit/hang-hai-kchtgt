@@ -9,10 +9,10 @@ flow-summary: Phục hồi dữ liệu <= 8 giờ
 acceptance-criteria:
   - Phục hồi thành công trong <= 8 giờ
 priority: high
-status: proposed
+status: implemented
 confidence: high
+last-updated: 2026-06-25T09:24:35Z
 ---
-
 # F-281: Phục hồi dữ liệu
 
 ## Description

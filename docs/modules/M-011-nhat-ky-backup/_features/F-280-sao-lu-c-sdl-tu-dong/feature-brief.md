@@ -1,17 +1,16 @@
 ---
 id: F-280
-name: "Sao lưu CSDL tự động"
+name: Sao lưu CSDL tự động
 slug: sao-lu-c-sdl-tu-dong
 module-id: M-011
-status: proposed
+status: implemented
 classification: local
 priority: high
-created: "2026-06-16T04:42:24Z"
-last-updated: "2026-06-16T04:42:24Z"
+created: 2026-06-16T04:42:24Z
+last-updated: 2026-06-25T09:24:17Z
 locked-fields: []
 consumed_by_modules: []
 ---
-
 # Feature: Sao lưu CSDL tự động
 
 ## Description
