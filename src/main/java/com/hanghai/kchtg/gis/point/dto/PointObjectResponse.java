@@ -1,8 +1,8 @@
 package com.hanghai.kchtg.gis.point.dto;
 
+import com.hanghai.kchtg.gis.point.entity.PointObject.ApprovalStatus;
 import com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType;
 import com.hanghai.kchtg.gis.point.entity.PointObject.Status;
-import com.hanghai.kchtg.gis.point.entity.PointObject.ApprovalStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

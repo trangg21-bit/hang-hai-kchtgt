@@ -3,11 +3,11 @@ package com.hanghai.kchtg.gis.point;
 import com.hanghai.kchtg.gis.point.dto.CreatePointObjectRequest;
 import com.hanghai.kchtg.gis.point.dto.PointObjectResponse;
 import com.hanghai.kchtg.gis.point.dto.UpdatePointObjectRequest;
+import com.hanghai.kchtg.gis.point.entity.PointHistory;
 import com.hanghai.kchtg.gis.point.entity.PointObject;
 import com.hanghai.kchtg.gis.point.entity.PointObject.ApprovalStatus;
 import com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType;
 import com.hanghai.kchtg.gis.point.entity.PointObject.Status;
-import com.hanghai.kchtg.gis.point.entity.PointHistory;
 import com.hanghai.kchtg.gis.point.repository.PointHistoryRepository;
 import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
 import com.hanghai.kchtg.gis.point.service.PointObjectService;
@@ -22,7 +22,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;

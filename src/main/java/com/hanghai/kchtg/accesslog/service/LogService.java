@@ -1,20 +1,14 @@
 package com.hanghai.kchtg.accesslog.service;
 
-import com.hanghai.kchtg.accesslog.entity.AccessLog;
 import com.hanghai.kchtg.accesslog.entity.AccessLogStatus;
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.persistence.criteria.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.io.BufferedWriter;
 import java.nio.file.Files;
@@ -22,7 +16,6 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 

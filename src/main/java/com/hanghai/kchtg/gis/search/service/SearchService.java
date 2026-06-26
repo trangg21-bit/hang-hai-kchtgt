@@ -3,20 +3,18 @@ package com.hanghai.kchtg.gis.search.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.gis.line.entity.LineObject;
-import com.hanghai.kchtg.gis.polygon.entity.PolygonObject;
+import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
 import com.hanghai.kchtg.gis.point.entity.PointObject;
 import com.hanghai.kchtg.gis.point.entity.PointObject.Status;
+import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
+import com.hanghai.kchtg.gis.polygon.entity.PolygonObject;
+import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
 import com.hanghai.kchtg.gis.search.dto.SearchHistoryResponse;
 import com.hanghai.kchtg.gis.search.dto.SearchRequest;
 import com.hanghai.kchtg.gis.search.dto.SearchResponse;
 import com.hanghai.kchtg.gis.search.dto.SearchResponse.SearchResultItem;
 import com.hanghai.kchtg.gis.search.entity.SearchQuery;
-import com.hanghai.kchtg.gis.search.entity.SearchQuery.QueryType;
 import com.hanghai.kchtg.gis.search.repository.SearchQueryRepository;
-import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
-import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
-import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -25,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor

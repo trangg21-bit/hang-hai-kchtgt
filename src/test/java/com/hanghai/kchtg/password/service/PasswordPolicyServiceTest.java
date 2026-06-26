@@ -3,7 +3,6 @@ package com.hanghai.kchtg.password.service;
 import com.hanghai.kchtg.password.dto.PasswordPolicyResponse;
 import com.hanghai.kchtg.password.entity.PasswordPolicy;
 import com.hanghai.kchtg.password.repository.PasswordPolicyRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

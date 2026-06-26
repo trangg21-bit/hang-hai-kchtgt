@@ -1,8 +1,12 @@
 package com.hanghai.kchtg.nhatram.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+
 import java.time.LocalDate;
 
 @Entity
@@ -16,7 +20,7 @@ import java.time.LocalDate;
 public class NhaTramPhao extends BaseNhaTram {
     @Enumerated(EnumType.STRING)
     private BuoyType type;
-    
+
     private String color;
     private String shape;
     private String lightCharacteristic;

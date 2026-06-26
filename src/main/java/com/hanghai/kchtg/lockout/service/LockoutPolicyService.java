@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.lockout.service;
 
-import com.hanghai.kchtg.lockout.entity.LockoutPolicy;
 import com.hanghai.kchtg.lockout.dto.LockoutPolicyResponse;
+import com.hanghai.kchtg.lockout.entity.LockoutPolicy;
 import com.hanghai.kchtg.lockout.repository.LockoutPolicyRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,7 +1,9 @@
 package com.hanghai.kchtg.report.service;
 
 import com.hanghai.kchtg.report.dto.ReportRequest;
-import com.hanghai.kchtg.report.entity.*;
+import com.hanghai.kchtg.report.entity.ReportEntity;
+import com.hanghai.kchtg.report.entity.ReportStatus;
+import com.hanghai.kchtg.report.entity.ReportType;
 import com.hanghai.kchtg.report.repository.ReportEntityRepository;
 import com.hanghai.kchtg.report.repository.ReportRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -15,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * Service core cho quản lý báo cáo M-016 (Báo cáo & Tổng hợp).

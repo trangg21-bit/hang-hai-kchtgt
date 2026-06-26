@@ -2,7 +2,8 @@ package com.hanghai.kchtg.gis.line.dto;
 
 import com.hanghai.kchtg.gis.line.entity.LineObject.ObjectType;
 import com.hanghai.kchtg.gis.line.entity.LineObject.Status;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.integration;
 
-import com.hanghai.kchtg.integration.controller.PortCargoIntegrationController;
 import com.hanghai.kchtg.integration.entity.IntegrationSyncJob;
 import com.hanghai.kchtg.integration.service.PortCargoIntegrationService;
 import com.hanghai.kchtg.security.JwtUtil;

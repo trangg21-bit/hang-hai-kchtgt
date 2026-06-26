@@ -2,11 +2,7 @@ package com.hanghai.kchtg.dataconnection.controller;
 
 import com.hanghai.kchtg.accesslog.annotation.AuditLog;
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.dataconnection.dto.ConnectionResponse;
-import com.hanghai.kchtg.dataconnection.dto.CreateConnectionRequest;
-import com.hanghai.kchtg.dataconnection.dto.TestConnectionRequest;
-import com.hanghai.kchtg.dataconnection.dto.TestConnectionResponse;
-import com.hanghai.kchtg.dataconnection.dto.UpdateConnectionRequest;
+import com.hanghai.kchtg.dataconnection.dto.*;
 import com.hanghai.kchtg.dataconnection.entity.ConnectionHealth;
 import com.hanghai.kchtg.dataconnection.entity.SyncLog;
 import com.hanghai.kchtg.dataconnection.repository.SyncLogRepository;
@@ -142,7 +138,7 @@ public class DataConnectionController {
             @PathVariable UUID id,
             @Valid @RequestBody(required = false) TestConnectionRequest request) {
         TestConnectionRequest overrides = request != null ? request : new TestConnectionRequest();
-        
+
         // Use ConnectionService for checking
         ConnectionHealth health = service.healthCheck(id);
         TestConnectionResponse result = TestConnectionResponse.builder()

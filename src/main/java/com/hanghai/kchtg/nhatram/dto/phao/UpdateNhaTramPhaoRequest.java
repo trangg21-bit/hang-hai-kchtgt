@@ -1,8 +1,13 @@
 package com.hanghai.kchtg.nhatram.dto.phao;
 
 import com.hanghai.kchtg.nhatram.entity.BuoyType;
-import jakarta.validation.constraints.*;
-import lombok.*;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 

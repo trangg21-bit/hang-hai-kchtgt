@@ -1,7 +1,9 @@
 package com.hanghai.kchtg.tai;
 
 import com.hanghai.kchtg.tai.dto.history.TaiHistoryResponse;
-import com.hanghai.kchtg.tai.entity.*;
+import com.hanghai.kchtg.tai.entity.TaiHistory;
+import com.hanghai.kchtg.tai.entity.TaiHistoryActionType;
+import com.hanghai.kchtg.tai.entity.TaiType;
 import com.hanghai.kchtg.tai.repository.TaiHistoryRepository;
 import com.hanghai.kchtg.tai.service.TaiHistoryService;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,9 +22,10 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class TaiHistoryServiceTest {

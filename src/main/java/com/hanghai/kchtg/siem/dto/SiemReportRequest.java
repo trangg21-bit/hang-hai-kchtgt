@@ -3,8 +3,6 @@ package com.hanghai.kchtg.siem.dto;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.UUID;
-
 /**
  * Request payload for triggering a new SIEM report.
  */

@@ -1,8 +1,8 @@
 package com.hanghai.kchtg.gis.line.dto;
 
+import com.hanghai.kchtg.gis.line.entity.LineObject.ApprovalStatus;
 import com.hanghai.kchtg.gis.line.entity.LineObject.ObjectType;
 import com.hanghai.kchtg.gis.line.entity.LineObject.Status;
-import com.hanghai.kchtg.gis.line.entity.LineObject.ApprovalStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

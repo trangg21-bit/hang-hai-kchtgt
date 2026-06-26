@@ -3,11 +3,7 @@ package com.hanghai.kchtg.user.controller;
 import com.hanghai.kchtg.accesslog.annotation.AuditLog;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.security.service.TokenService;
-import com.hanghai.kchtg.user.dto.LoginRequest;
-import com.hanghai.kchtg.user.dto.LoginResponse;
-import com.hanghai.kchtg.user.dto.MfaChallengeResponse;
-import com.hanghai.kchtg.user.dto.TotpLoginRequest;
-import com.hanghai.kchtg.user.dto.TwoFactorLoginResponse;
+import com.hanghai.kchtg.user.dto.*;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.user.service.TotpAuthService;
@@ -23,8 +19,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * Authentication controller - handles login via JWT with 2-phase MFA (TOTP).

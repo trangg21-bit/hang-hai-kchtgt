@@ -25,7 +25,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("LogExportController Unit Tests")
@@ -67,7 +68,7 @@ class LogExportControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getHeaders().getFirst("Content-Disposition").contains("test_export.csv"));
-        
+
         verify(logService).exportToCsv(any(AccessLogFilterRequest.class), any(Pageable.class));
     }
 
@@ -82,7 +83,7 @@ class LogExportControllerTest {
         assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
         assertEquals(5, response.getBody().getData());
-        
+
         verify(logService).checkFailureAlerts();
     }
 
@@ -98,7 +99,7 @@ class LogExportControllerTest {
         assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
         assertEquals(1, response.getBody().getData().size());
-        
+
         verify(logService).getDailyStats();
     }
 
@@ -113,7 +114,7 @@ class LogExportControllerTest {
         assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
         assertEquals(500L, response.getBody().getData());
-        
+
         verify(logService).getTotalCount();
     }
 }

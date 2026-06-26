@@ -21,12 +21,16 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("LogService Unit Tests")
@@ -87,7 +91,7 @@ class LogServiceTest {
         Pageable pageable = PageRequest.of(0, 20);
         AccessLogFilterRequest filter = new AccessLogFilterRequest();
         Page<AccessLogResponse> mockPage = new PageImpl<>(Collections.singletonList(new AccessLogResponse(sampleLog)));
-        
+
         when(accessLogService.findAll(filter, pageable)).thenReturn(mockPage);
 
         Page<AccessLogResponse> response = logService.findAll(filter, pageable);
@@ -103,7 +107,7 @@ class LogServiceTest {
         Pageable pageable = PageRequest.of(0, 20);
         AccessLogFilterRequest filter = new AccessLogFilterRequest();
         Page<AccessLogResponse> mockPage = new PageImpl<>(Collections.singletonList(new AccessLogResponse(sampleLog)));
-        
+
         when(accessLogService.findAll(filter, pageable)).thenReturn(mockPage);
 
         String filePath = logService.exportToCsv(filter, pageable);

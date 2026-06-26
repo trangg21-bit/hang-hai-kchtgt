@@ -1,10 +1,6 @@
 package com.hanghai.kchtg.dataconnection.service;
 
-import com.hanghai.kchtg.dataconnection.dto.ConnectionResponse;
-import com.hanghai.kchtg.dataconnection.dto.CreateConnectionRequest;
-import com.hanghai.kchtg.dataconnection.dto.TestConnectionRequest;
-import com.hanghai.kchtg.dataconnection.dto.TestConnectionResponse;
-import com.hanghai.kchtg.dataconnection.dto.UpdateConnectionRequest;
+import com.hanghai.kchtg.dataconnection.dto.*;
 import com.hanghai.kchtg.dataconnection.entity.DataConnection;
 import com.hanghai.kchtg.dataconnection.enums.ConnectionStatus;
 import com.hanghai.kchtg.dataconnection.enums.ConnectionType;
@@ -18,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.net.HttpURLConnection;
 import java.net.URI;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 

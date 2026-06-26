@@ -1,6 +1,9 @@
 package com.hanghai.kchtg.statistics.dto;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Filter parameters for paginated queries on statistics forms.

@@ -1,8 +1,8 @@
 package com.hanghai.kchtg.gis.polygon.dto;
 
+import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ApprovalStatus;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ObjectType;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.Status;
-import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ApprovalStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

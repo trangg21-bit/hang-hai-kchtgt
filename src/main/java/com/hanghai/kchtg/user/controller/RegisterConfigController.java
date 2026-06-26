@@ -1,10 +1,10 @@
 package com.hanghai.kchtg.user.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.security.ClientEncryptionService;
 import com.hanghai.kchtg.user.dto.RegisterConfigResponse;
 import com.hanghai.kchtg.user.service.PasswordPolicyValidator;
 import com.hanghai.kchtg.user.service.RateLimiterService;
-import com.hanghai.kchtg.security.ClientEncryptionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;

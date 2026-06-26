@@ -1,25 +1,22 @@
 package com.hanghai.kchtg.admin.service;
 
-import com.hanghai.kchtg.admin.entity.AdminAccount;
-import com.hanghai.kchtg.admin.entity.AdminAuditLog;
-import com.hanghai.kchtg.admin.entity.AdminPermission;
-import com.hanghai.kchtg.admin.entity.AdminRecoveryToken;
-import com.hanghai.kchtg.admin.entity.AdminStatus;
+import com.hanghai.kchtg.admin.entity.*;
 import com.hanghai.kchtg.admin.repository.AdminAccountRepository;
 import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import com.hanghai.kchtg.admin.repository.AdminPermissionRepository;
 import com.hanghai.kchtg.admin.repository.AdminRecoveryTokenRepository;
-import com.hanghai.kchtg.user.entity.User;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**

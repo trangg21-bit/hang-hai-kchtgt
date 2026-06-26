@@ -1,13 +1,17 @@
 package com.hanghai.kchtg.tai;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.tai.dto.inmarsat.CreateTaiInmarsatRequest;
 import com.hanghai.kchtg.tai.dto.inmarsat.TaiInmarsatResponse;
 import com.hanghai.kchtg.tai.dto.inmarsat.UpdateTaiInmarsatRequest;
 import com.hanghai.kchtg.tai.entity.*;
-import com.hanghai.kchtg.tai.repository.TaiRepository;
 import com.hanghai.kchtg.tai.repository.TaiHistoryRepository;
 import com.hanghai.kchtg.tai.repository.TaiInmarsatRepository;
-import com.hanghai.kchtg.tai.service.*;
+import com.hanghai.kchtg.tai.repository.TaiRepository;
+import com.hanghai.kchtg.tai.service.PointObjectSyncService;
+import com.hanghai.kchtg.tai.service.TaiHistoryService;
+import com.hanghai.kchtg.tai.service.TaiInmarsatService;
+import com.hanghai.kchtg.tai.service.TaiNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,8 +20,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.List;
@@ -25,7 +27,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)

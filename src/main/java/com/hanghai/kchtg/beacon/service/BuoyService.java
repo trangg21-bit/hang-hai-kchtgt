@@ -2,9 +2,9 @@ package com.hanghai.kchtg.beacon.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hanghai.kchtg.beacon.dto.buoy.BuoyResponse;
 import com.hanghai.kchtg.beacon.dto.buoy.CreateBuoyRequest;
 import com.hanghai.kchtg.beacon.dto.buoy.UpdateBuoyRequest;
-import com.hanghai.kchtg.beacon.dto.buoy.BuoyResponse;
 import com.hanghai.kchtg.beacon.entity.*;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
@@ -16,11 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Service for Buoy CRUD + approval workflow (F-074 to F-077).

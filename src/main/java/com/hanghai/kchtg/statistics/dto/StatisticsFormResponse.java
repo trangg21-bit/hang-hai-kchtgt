@@ -1,10 +1,13 @@
 package com.hanghai.kchtg.statistics.dto;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.Instant;
+import java.time.LocalDate;
 
 /**
  * Response DTO for a statistics form, containing full metadata plus

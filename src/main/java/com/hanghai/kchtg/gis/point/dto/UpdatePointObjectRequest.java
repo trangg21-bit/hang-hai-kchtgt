@@ -2,8 +2,8 @@ package com.hanghai.kchtg.gis.point.dto;
 
 import com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType;
 import com.hanghai.kchtg.gis.point.entity.PointObject.Status;
-import com.hanghai.kchtg.gis.point.entity.PointObject.ApprovalStatus;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

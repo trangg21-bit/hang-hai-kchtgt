@@ -2,13 +2,9 @@ package com.hanghai.kchtg.gis.layer.entity;
 
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
 
 @Entity

@@ -2,7 +2,10 @@ package com.hanghai.kchtg.tai.dto.history;
 
 import com.hanghai.kchtg.tai.entity.TaiHistoryActionType;
 import com.hanghai.kchtg.tai.entity.TaiType;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.UUID;
