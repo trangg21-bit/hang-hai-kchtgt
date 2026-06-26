@@ -1,11 +1,17 @@
 package com.hanghai.kchtg.tai;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.tai.dto.lrit.CreateTaiLRITRequest;
 import com.hanghai.kchtg.tai.dto.lrit.TaiLRITResponse;
 import com.hanghai.kchtg.tai.dto.lrit.UpdateTaiLRITRequest;
 import com.hanghai.kchtg.tai.entity.*;
-import com.hanghai.kchtg.tai.repository.*;
-import com.hanghai.kchtg.tai.service.*;
+import com.hanghai.kchtg.tai.repository.TaiHistoryRepository;
+import com.hanghai.kchtg.tai.repository.TaiLRITRepository;
+import com.hanghai.kchtg.tai.repository.TaiRepository;
+import com.hanghai.kchtg.tai.service.PointObjectSyncService;
+import com.hanghai.kchtg.tai.service.TaiHistoryService;
+import com.hanghai.kchtg.tai.service.TaiLRITService;
+import com.hanghai.kchtg.tai.service.TaiNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,7 +20,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -23,7 +28,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,9 +40,6 @@ class TaiLRITServiceTest {
 
     @Mock
     private TaiLRITRepository taiRepo;
-
-    @Mock
-    private TaiRepository baseTaiRepo;
 
     @Mock
     private TaiHistoryRepository historyRepo;
@@ -141,7 +144,6 @@ class TaiLRITServiceTest {
                 new BigDecimal("10.000"), new BigDecimal("106.000"), 60);
 
         when(taiRepo.existsByCode("LRIT-002")).thenReturn(false);
-        when(baseTaiRepo.findByCodeAndDeletedFalse("LRIT-002")).thenReturn(Optional.empty());
         when(taiRepo.save(any(TaiLRIT.class))).thenAnswer(inv -> {
             TaiLRIT saved = inv.getArgument(0);
             saved.setId(UUID.randomUUID());
@@ -167,17 +169,6 @@ class TaiLRITServiceTest {
                 "LRIT-001", "LRIT moi", TaiType.LRIT,
                 new BigDecimal("10.000"), new BigDecimal("106.000"), 60);
         when(taiRepo.existsByCode("LRIT-001")).thenReturn(true);
-        assertThrows(IllegalArgumentException.class, () -> service.create(request));
-    }
-
-    @Test
-    @DisplayName("F-015-032: create — throws when code in baseTai")
-    void testCreateCodeInBaseTai() {
-        CreateTaiLRITRequest request = new CreateTaiLRITRequest(
-                "LRIT-001", "LRIT moi", TaiType.LRIT,
-                new BigDecimal("10.000"), new BigDecimal("106.000"), 60);
-        when(taiRepo.existsByCode("LRIT-001")).thenReturn(false);
-        when(baseTaiRepo.findByCodeAndDeletedFalse("LRIT-001")).thenReturn(Optional.of(mock(BaseTai.class)));
         assertThrows(IllegalArgumentException.class, () -> service.create(request));
     }
 

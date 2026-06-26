@@ -3,7 +3,10 @@ package com.hanghai.kchtg.nhatram.dto.den;
 import com.hanghai.kchtg.nhatram.entity.BeaconLightType;
 import com.hanghai.kchtg.nhatram.entity.NhaTramApprovalStatus;
 import com.hanghai.kchtg.nhatram.entity.NhaTramStatus;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

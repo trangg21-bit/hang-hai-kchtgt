@@ -5,7 +5,6 @@ import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
-import com.hanghai.kchtg.orgunit.entity.OrganizationChart;
 import com.hanghai.kchtg.orgunit.entity.UnitHistory;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.orgunit.repository.UnitRepository;

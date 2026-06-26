@@ -2,9 +2,12 @@ package com.hanghai.kchtg.gis.search;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.gis.line.entity.LineObject;
-import com.hanghai.kchtg.gis.polygon.entity.PolygonObject;
+import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
 import com.hanghai.kchtg.gis.point.entity.PointObject;
 import com.hanghai.kchtg.gis.point.entity.PointObject.Status;
+import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
+import com.hanghai.kchtg.gis.polygon.entity.PolygonObject;
+import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
 import com.hanghai.kchtg.gis.search.dto.SearchHistoryResponse;
 import com.hanghai.kchtg.gis.search.dto.SearchRequest;
 import com.hanghai.kchtg.gis.search.dto.SearchResponse;
@@ -12,9 +15,6 @@ import com.hanghai.kchtg.gis.search.entity.SearchQuery;
 import com.hanghai.kchtg.gis.search.entity.SearchQuery.QueryType;
 import com.hanghai.kchtg.gis.search.repository.SearchQueryRepository;
 import com.hanghai.kchtg.gis.search.service.SearchService;
-import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
-import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
-import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -24,10 +24,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;

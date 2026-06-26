@@ -1,7 +1,11 @@
 package com.hanghai.kchtg.tai.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -21,7 +25,6 @@ public class TaiHistory {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Enumerated(EnumType.STRING)
     @Column(length = 50)
     private String entityName;
 

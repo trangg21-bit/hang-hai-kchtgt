@@ -5,10 +5,9 @@ import com.hanghai.kchtg.user.dto.RegisterAccountRequest;
 import com.hanghai.kchtg.user.dto.RegisterResponse;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
-import com.hanghai.kchtg.user.exception.DuplicateResourceException;
+import com.hanghai.kchtg.user.exception.RateLimitExceededException;
 import com.hanghai.kchtg.user.exception.RegistrationException;
 import com.hanghai.kchtg.user.exception.ValidationException;
-import com.hanghai.kchtg.user.exception.RateLimitExceededException;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,22 +21,11 @@ import org.mockito.quality.Strictness;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.doNothing;
-
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)

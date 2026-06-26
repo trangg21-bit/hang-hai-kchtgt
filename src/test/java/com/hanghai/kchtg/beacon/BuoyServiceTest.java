@@ -22,10 +22,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -432,7 +436,7 @@ class BuoyServiceTest {
                     .type(BuoyType.SPECIAL)
                     .build();
 
-            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, 
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                     () -> service.update(testId, request));
             assertEquals("Loại phao tiêu không thể thay đổi khi đã được phê duyệt.", ex.getMessage());
             verify(buoyRepo, never()).save(any());

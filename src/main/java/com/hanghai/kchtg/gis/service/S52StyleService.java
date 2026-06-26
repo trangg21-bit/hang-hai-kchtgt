@@ -3,9 +3,6 @@ package com.hanghai.kchtg.gis.service;
 import com.hanghai.kchtg.gis.entity.ChartFeature;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @Service
 public class S52StyleService {
 
@@ -24,7 +21,7 @@ public class S52StyleService {
      */
     public S52Style getStyle(ChartFeature feature, String palette) {
         S52Style style = new S52Style();
-        
+
         // Defaults
         style.fillColor = "#808080";
         style.strokeColor = "#000000";

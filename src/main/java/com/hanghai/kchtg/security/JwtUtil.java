@@ -31,7 +31,7 @@ public class JwtUtil {
     public JwtUtil(JwtProperties jwtProperties, RoleRepository roleRepository) {
         this.jwtProperties = jwtProperties;
         this.roleRepository = roleRepository;
-        byte[] keyBytes = Base64.getDecoder().decode(jwtProperties.getSecret());
+        byte[] keyBytes = Base64.getUrlDecoder().decode(jwtProperties.getSecret());
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 

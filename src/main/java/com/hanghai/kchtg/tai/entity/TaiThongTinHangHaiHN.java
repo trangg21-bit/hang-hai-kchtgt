@@ -1,8 +1,10 @@
 package com.hanghai.kchtg.tai.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+
 import java.math.BigDecimal;
 
 @Entity

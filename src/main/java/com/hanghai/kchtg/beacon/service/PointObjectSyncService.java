@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
  * On approveL2, upserts into point_objects table.
  * On soft delete, hides the point (does NOT delete per BR-070-05).
  */
-@Service
+@Service("beaconPointObjectSyncService")
 public class PointObjectSyncService {
 
     /**

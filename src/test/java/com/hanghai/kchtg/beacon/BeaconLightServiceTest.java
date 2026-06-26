@@ -1,8 +1,8 @@
 package com.hanghai.kchtg.beacon;
 
+import com.hanghai.kchtg.beacon.dto.beacon_light.BeaconLightResponse;
 import com.hanghai.kchtg.beacon.dto.beacon_light.CreateBeaconLightRequest;
 import com.hanghai.kchtg.beacon.dto.beacon_light.UpdateBeaconLightRequest;
-import com.hanghai.kchtg.beacon.dto.beacon_light.BeaconLightResponse;
 import com.hanghai.kchtg.beacon.entity.*;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
@@ -23,10 +23,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -465,7 +469,7 @@ class BeaconLightServiceTest {
                     .type(BeaconLightType.LIGHTHOUSE)
                     .build();
 
-            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, 
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                     () -> service.update(testId, request));
             assertEquals("Loại đèn biển không thể thay đổi khi đèn biển đã được phê duyệt.", ex.getMessage());
             verify(beaconLightRepo, never()).save(any());

@@ -3,19 +3,34 @@ module_name: "Thống kê chuyên đề"
 type: bounded-context
 slug: thong-ke-chuyen-de
 
-# Map logical module → physical implementations across apps/services/libs.
-# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
 implementations:
-  apps: []
+  apps:
+    - path: "src/main/java/com/hanghai/kchtg"
+      type: spring-boot-app
+      description: "Main application containing M-017 thong ke chuyen de bounded context"
   services: []
   libs: []
-  packages: []
+  packages:
+    - name: "statistics-core"
+      path: "src/main/java/com/hanghai/kchtg/statistics"
+      description: "Core statistics (F-148 to F-176)"
+      status: implemented
+    - name: "statistics-approval"
+      path: "src/main/java/com/hanghai/kchtg/statistics"
+      description: "Form approval workflow (F-148 to F-176)"
+      status: implemented
+    - name: "statistics-services"
+      path: "src/main/java/com/hanghai/kchtg/statistics"
+      description: "Specialized services: PortThroughput, CargoVolume, ShipMovement"
+      status: implemented
+    - name: "statistics-tests"
+      path: "src/test/java/com/hanghai/kchtg/statistics"
+      description: "Unit tests for statistics module"
+      status: implemented
 
-# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
 stakeholders:
   business-owner: ""
   tech-lead: ""
   qa-lead: ""
 
-# Cross-references
 depends_on: []

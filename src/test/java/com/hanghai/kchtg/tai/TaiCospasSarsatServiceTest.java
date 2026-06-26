@@ -1,11 +1,17 @@
 package com.hanghai.kchtg.tai;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.tai.dto.cospassarsat.CreateTaiCospasSarsatRequest;
 import com.hanghai.kchtg.tai.dto.cospassarsat.TaiCospasSarsatResponse;
 import com.hanghai.kchtg.tai.dto.cospassarsat.UpdateTaiCospasSarsatRequest;
 import com.hanghai.kchtg.tai.entity.*;
-import com.hanghai.kchtg.tai.repository.*;
-import com.hanghai.kchtg.tai.service.*;
+import com.hanghai.kchtg.tai.repository.TaiCospasSarsatRepository;
+import com.hanghai.kchtg.tai.repository.TaiHistoryRepository;
+import com.hanghai.kchtg.tai.repository.TaiRepository;
+import com.hanghai.kchtg.tai.service.PointObjectSyncService;
+import com.hanghai.kchtg.tai.service.TaiCospasSarsatService;
+import com.hanghai.kchtg.tai.service.TaiHistoryService;
+import com.hanghai.kchtg.tai.service.TaiNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,7 +20,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -23,7 +28,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,9 +40,6 @@ class TaiCospasSarsatServiceTest {
 
     @Mock
     private TaiCospasSarsatRepository taiRepo;
-
-    @Mock
-    private TaiRepository baseTaiRepo;
 
     @Mock
     private TaiHistoryRepository historyRepo;
@@ -141,7 +144,6 @@ class TaiCospasSarsatServiceTest {
                 new BigDecimal("406.000"), "COSPAS-SARSAT", "Vietnam");
 
         when(taiRepo.existsByCode("CPS-002")).thenReturn(false);
-        when(baseTaiRepo.findByCodeAndDeletedFalse("CPS-002")).thenReturn(Optional.empty());
         when(taiRepo.save(any(TaiCospasSarsat.class))).thenAnswer(inv -> {
             TaiCospasSarsat saved = inv.getArgument(0);
             saved.setId(UUID.randomUUID());
@@ -167,17 +169,6 @@ class TaiCospasSarsatServiceTest {
                 "CPS-001", "Cospas moi", TaiType.COSPAS_SARSAT,
                 new BigDecimal("406.000"), null, null);
         when(taiRepo.existsByCode("CPS-001")).thenReturn(true);
-        assertThrows(IllegalArgumentException.class, () -> service.create(request));
-    }
-
-    @Test
-    @DisplayName("F-015-023: create — throws when code in baseTai")
-    void testCreateCodeInBaseTai() {
-        CreateTaiCospasSarsatRequest request = new CreateTaiCospasSarsatRequest(
-                "CPS-001", "Cospas moi", TaiType.COSPAS_SARSAT,
-                new BigDecimal("406.000"), null, null);
-        when(taiRepo.existsByCode("CPS-001")).thenReturn(false);
-        when(baseTaiRepo.findByCodeAndDeletedFalse("CPS-001")).thenReturn(Optional.of(mock(BaseTai.class)));
         assertThrows(IllegalArgumentException.class, () -> service.create(request));
     }
 

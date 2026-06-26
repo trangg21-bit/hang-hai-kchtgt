@@ -1,7 +1,10 @@
 package com.hanghai.kchtg.gis.search.dto;
 
 import com.hanghai.kchtg.gis.search.entity.SearchQuery.QueryType;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

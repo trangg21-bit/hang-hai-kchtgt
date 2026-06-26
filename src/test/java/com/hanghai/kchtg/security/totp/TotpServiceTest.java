@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.security.totp;
 
 import com.hanghai.kchtg.security.totp.service.TotpService;
-import com.hanghai.kchtg.security.totp.util.TotpSecretHasher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

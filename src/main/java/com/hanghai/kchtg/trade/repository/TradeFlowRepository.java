@@ -2,6 +2,7 @@ package com.hanghai.kchtg.trade.repository;
 
 import com.hanghai.kchtg.trade.entity.TradeFlow;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -25,8 +26,10 @@ public interface TradeFlowRepository extends JpaRepository<TradeFlow, Long> {
     List<TradeFlow> findBySourcePortAndDestPort(String sourcePort, String destPort);
 
     /** Count distinct source ports */
+    @Query("SELECT COUNT(DISTINCT t.sourcePort) FROM TradeFlow t")
     long countDistinctSourcePort();
 
     /** Count distinct destination ports */
+    @Query("SELECT COUNT(DISTINCT t.destPort) FROM TradeFlow t")
     long countDistinctDestPort();
 }

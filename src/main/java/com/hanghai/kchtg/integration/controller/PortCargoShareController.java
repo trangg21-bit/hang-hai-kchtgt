@@ -19,7 +19,10 @@ import com.hanghai.kchtg.integration.entity.CargoAggregate;
 import com.hanghai.kchtg.integration.entity.PortStatus;
 import com.hanghai.kchtg.integration.repository.CargoAggregateRepository;
 import com.hanghai.kchtg.integration.repository.PortStatusRepository;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -235,7 +238,7 @@ public class PortCargoShareController {
             @RequestParam(required = false) String portCode,
             @RequestParam(required = false) String periodType,
             @PageableDefault(size = 20, sort = "periodStart", direction = Sort.Direction.DESC) Pageable pageable) {
-        
+
         Page<CargoAggregate> page;
         if (portCode != null && !portCode.isBlank() && periodType != null && !periodType.isBlank()) {
             page = cargoAggregateRepository.findByPortCodeAndPeriodType(portCode, periodType, pageable);

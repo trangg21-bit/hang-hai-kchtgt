@@ -1,42 +1,41 @@
 package com.hanghai.kchtg.seeder;
 
-import com.hanghai.kchtg.mapicon.entity.MapIcon;
-import com.hanghai.kchtg.mapicon.repository.MapIconRepository;
+import com.hanghai.kchtg.admin.entity.AdminAccount;
+import com.hanghai.kchtg.admin.entity.AdminRole;
+import com.hanghai.kchtg.admin.entity.AdminStatus;
+import com.hanghai.kchtg.admin.repository.AdminAccountRepository;
+import com.hanghai.kchtg.dataconnection.entity.DataConnection;
+import com.hanghai.kchtg.dataconnection.enums.AuthType;
+import com.hanghai.kchtg.dataconnection.enums.ConnectionStatus;
+import com.hanghai.kchtg.dataconnection.enums.ConnectionType;
+import com.hanghai.kchtg.dataconnection.enums.SyncFrequency;
+import com.hanghai.kchtg.dataconnection.repository.DataConnectionRepository;
 import com.hanghai.kchtg.gis.line.entity.LineCategory;
 import com.hanghai.kchtg.gis.line.repository.LineCategoryRepository;
 import com.hanghai.kchtg.gis.point.entity.ObjectCategory;
 import com.hanghai.kchtg.gis.point.repository.ObjectCategoryRepository;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonCategory;
 import com.hanghai.kchtg.gis.polygon.repository.PolygonCategoryRepository;
-import com.hanghai.kchtg.user.entity.User;
-import com.hanghai.kchtg.user.entity.UserStatus;
-import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.dataconnection.entity.DataConnection;
-import com.hanghai.kchtg.dataconnection.repository.DataConnectionRepository;
-import com.hanghai.kchtg.dataconnection.enums.AuthType;
-import com.hanghai.kchtg.dataconnection.enums.ConnectionStatus;
-import com.hanghai.kchtg.dataconnection.enums.ConnectionType;
-import com.hanghai.kchtg.dataconnection.enums.SyncFrequency;
-import com.hanghai.kchtg.admin.entity.AdminAccount;
-import com.hanghai.kchtg.admin.entity.AdminRole;
-import com.hanghai.kchtg.admin.entity.AdminStatus;
-import com.hanghai.kchtg.admin.repository.AdminAccountRepository;
-import com.hanghai.kchtg.group.entity.UserGroup;
 import com.hanghai.kchtg.group.entity.GroupStatus;
+import com.hanghai.kchtg.group.entity.UserGroup;
 import com.hanghai.kchtg.group.repository.GroupRepository;
+import com.hanghai.kchtg.mapicon.entity.MapIcon;
+import com.hanghai.kchtg.mapicon.repository.MapIconRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.entity.UserStatus;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.stream.Stream;
 
 @Component
 @Profile("local")
@@ -58,7 +57,7 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     public void run(String... args) {
         log.info("🌱 Starting data seeding...");
-        
+
         seedObjectCategories();
         seedLineCategories();
         seedPolygonCategories();
@@ -68,7 +67,7 @@ public class DataSeeder implements CommandLineRunner {
         seedUserGroups();
         seedOrgUnits();
         seedDataConnections();
-        
+
         log.info("✅ Data seeding completed successfully!");
     }
 
@@ -77,9 +76,9 @@ public class DataSeeder implements CommandLineRunner {
             log.info("⏭️ Object categories already exist, skipping...");
             return;
         }
-        
+
         log.info("📦 Seeding ObjectCategories...");
-        
+
         List<ObjectCategory> categories = List.of(
             ObjectCategory.builder().code("CAT_PORT").name("Cảng biển").description("Cảng biển chính và phụ").sortOrder(1).build(),
             ObjectCategory.builder().code("CAT_LIGHTHOUSE").name("Đèn biển").description("Đèn biển, hải đăng").sortOrder(2).build(),
@@ -87,7 +86,7 @@ public class DataSeeder implements CommandLineRunner {
             ObjectCategory.builder().code("CAT_BEACON").name("Đèn hiệu").description("Đèn hiệu hàng hải").sortOrder(4).build(),
             ObjectCategory.builder().code("CAT_OTHER").name("Khác").description("Đối tượng khác thuộc loại Point").sortOrder(5).build()
         );
-        
+
         objectCategoryRepo.saveAll(categories);
         log.info("✅ Seeded {} ObjectCategories", categories.size());
     }
@@ -97,16 +96,16 @@ public class DataSeeder implements CommandLineRunner {
             log.info("⏭️ Line categories already exist, skipping...");
             return;
         }
-        
+
         log.info("📦 Seeding LineCategories...");
-        
+
         List<LineCategory> categories = List.of(
             LineCategory.builder().code("CAT_COASTLINE").name("Đường bờ biển").description("Đường bờ biển tự nhiên hoặc nhân tạo").sortOrder(1).build(),
             LineCategory.builder().code("CAT_SHIPPING_ROUTE").name("Tuyến hàng hải").description("Tuyến đường hàng hải được quy hoạch").sortOrder(2).build(),
             LineCategory.builder().code("CAT_WATERWAY").name("Đường thủy").description("Đường thủy nội địa hoặc ven biển").sortOrder(3).build(),
             LineCategory.builder().code("CAT_OTHER").name("Khác").description("Đường line khác").sortOrder(4).build()
         );
-        
+
         lineCategoryRepo.saveAll(categories);
         log.info("✅ Seeded {} LineCategories", categories.size());
     }
@@ -116,9 +115,9 @@ public class DataSeeder implements CommandLineRunner {
             log.info("⏭️ Polygon categories already exist, skipping...");
             return;
         }
-        
+
         log.info("📦 Seeding PolygonCategories...");
-        
+
         List<PolygonCategory> categories = List.of(
             PolygonCategory.builder().code("CAT_WATER_ZONE").name("Vùng nước").description("Khu vực vùng nước").sortOrder(1).build(),
             PolygonCategory.builder().code("CAT_ANCHORAGE").name("Vùng neo đậu").description("Khu vực neo đậu tàu thuyền").sortOrder(2).build(),
@@ -127,7 +126,7 @@ public class DataSeeder implements CommandLineRunner {
             PolygonCategory.builder().code("CAT_LIMITED").name("Khu vực hạn chế").description("Khu vực hạn chế hoạt động").sortOrder(5).build(),
             PolygonCategory.builder().code("CAT_OTHER").name("Khác").description("Polygon khác").sortOrder(6).build()
         );
-        
+
         polygonCategoryRepo.saveAll(categories);
         log.info("✅ Seeded {} PolygonCategories", categories.size());
     }
@@ -137,9 +136,9 @@ public class DataSeeder implements CommandLineRunner {
             log.info("⏭️ Map icons already exist, skipping...");
             return;
         }
-        
+
         log.info("📦 Seeding MapIcons...");
-        
+
         List<MapIcon> icons = List.of(
             MapIcon.builder().code("ICON_PORT").name("Cảng biển").category(MapIcon.Category.WHARF).iconUrl("/icons/port.png").status(MapIcon.Status.ACTIVE).build(),
             MapIcon.builder().code("ICON_LIGHTHOUSE").name("Đèn biển").category(MapIcon.Category.LIGHTHOUSE).iconUrl("/icons/lighthouse.png").status(MapIcon.Status.ACTIVE).build(),
@@ -157,7 +156,7 @@ public class DataSeeder implements CommandLineRunner {
             MapIcon.builder().code("ICON_LIMITED").name("Khu vực hạn chế").category(MapIcon.Category.OTHER).iconUrl("/icons/limited.png").status(MapIcon.Status.ACTIVE).build(),
             MapIcon.builder().code("ICON_DEFAULT_POLY").name("Khác (POLYGON)").category(MapIcon.Category.OTHER).iconUrl("/icons/poly_default.png").status(MapIcon.Status.ACTIVE).build()
         );
-        
+
         mapIconRepo.saveAll(icons);
         log.info("✅ Seeded {} MapIcons", icons.size());
     }
@@ -167,7 +166,7 @@ public class DataSeeder implements CommandLineRunner {
             log.info("⏭️ Users already exist, skipping...");
             return;
         }
-        
+
         log.info("📦 Seeding default admin user...");
         User admin = new User();
         admin.setUsername("admin");
@@ -176,7 +175,7 @@ public class DataSeeder implements CommandLineRunner {
         admin.setFullName("System Administrator");
         admin.setRole("ROLE_SUPER_ADMIN");
         admin.setStatus(UserStatus.ACTIVE);
-        
+
         userRepo.save(admin);
         log.info("✅ Seeded admin user successfully");
     }

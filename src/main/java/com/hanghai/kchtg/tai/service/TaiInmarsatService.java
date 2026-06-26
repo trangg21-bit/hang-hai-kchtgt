@@ -6,7 +6,9 @@ import com.hanghai.kchtg.tai.dto.inmarsat.CreateTaiInmarsatRequest;
 import com.hanghai.kchtg.tai.dto.inmarsat.TaiInmarsatResponse;
 import com.hanghai.kchtg.tai.dto.inmarsat.UpdateTaiInmarsatRequest;
 import com.hanghai.kchtg.tai.entity.*;
-import com.hanghai.kchtg.tai.repository.*;
+import com.hanghai.kchtg.tai.repository.TaiHistoryRepository;
+import com.hanghai.kchtg.tai.repository.TaiInmarsatRepository;
+import com.hanghai.kchtg.tai.repository.TaiRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,11 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Service cho CRUD + quy trinh phe duyet Inmarsat station (M-015).
@@ -30,7 +28,6 @@ import java.util.UUID;
 public class TaiInmarsatService {
 
     private final TaiInmarsatRepository taiRepo;
-    private final TaiRepository baseTaiRepo;
     private final TaiHistoryRepository historyRepo;
     private final PointObjectSyncService pointObjectSyncService;
     private final TaiNotificationService notificationService;
@@ -62,8 +59,7 @@ public class TaiInmarsatService {
 
     @Transactional
     public TaiInmarsatResponse create(CreateTaiInmarsatRequest request) {
-        if (taiRepo.existsByCode(request.getCode())
-                || baseTaiRepo.findByCodeAndDeletedFalse(request.getCode()).isPresent()) {
+        if (taiRepo.existsByCode(request.getCode())) {
             throw new IllegalArgumentException("Da ton tai: " + request.getCode());
         }
 

@@ -1,18 +1,7 @@
 package com.hanghai.kchtg.gis.layer.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.gis.layer.dto.CreateMapLayerRequest;
-import com.hanghai.kchtg.gis.layer.dto.CreateMapOverlayRequest;
-import com.hanghai.kchtg.gis.layer.dto.CreateMapViewRequest;
-import com.hanghai.kchtg.gis.layer.dto.CreateMapStyleRequest;
-import com.hanghai.kchtg.gis.layer.dto.MapLayerResponse;
-import com.hanghai.kchtg.gis.layer.dto.MapOverlayResponse;
-import com.hanghai.kchtg.gis.layer.dto.MapStyleResponse;
-import com.hanghai.kchtg.gis.layer.dto.MapViewResponse;
-import com.hanghai.kchtg.gis.layer.dto.UpdateMapLayerRequest;
-import com.hanghai.kchtg.gis.layer.dto.UpdateMapOverlayRequest;
-import com.hanghai.kchtg.gis.layer.dto.UpdateMapViewRequest;
-import com.hanghai.kchtg.gis.layer.dto.UpdateMapStyleRequest;
+import com.hanghai.kchtg.gis.layer.dto.*;
 import com.hanghai.kchtg.gis.layer.entity.MapLayer.LayerType;
 import com.hanghai.kchtg.gis.layer.service.MapLayerService;
 import jakarta.validation.Valid;

@@ -5,7 +5,6 @@ import com.hanghai.kchtg.tai.dto.cospassarsat.CreateTaiCospasSarsatRequest;
 import com.hanghai.kchtg.tai.dto.cospassarsat.TaiCospasSarsatResponse;
 import com.hanghai.kchtg.tai.dto.cospassarsat.UpdateTaiCospasSarsatRequest;
 import com.hanghai.kchtg.tai.entity.TaiStatus;
-import com.hanghai.kchtg.tai.repository.TaiRepository;
 import com.hanghai.kchtg.tai.service.TaiCospasSarsatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +29,6 @@ import java.util.UUID;
 public class TaiCospasSarsatController {
 
     private final TaiCospasSarsatService service;
-    private final TaiRepository taiRepository;
 
     @PostMapping
     @PreAuthorize("hasRole('ROLE_DAI_TTDH_CREATE')")

@@ -3,7 +3,10 @@ package com.hanghai.kchtg.report.dto;
 import com.hanghai.kchtg.report.entity.ReportFormat;
 import com.hanghai.kchtg.report.entity.ReportStatus;
 import com.hanghai.kchtg.report.entity.ReportType;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;

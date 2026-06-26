@@ -2,7 +2,8 @@ package com.hanghai.kchtg.gis.polygon.dto;
 
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ObjectType;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.Status;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

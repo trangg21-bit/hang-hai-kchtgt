@@ -1,14 +1,19 @@
 package com.hanghai.kchtg.report;
 
-import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import com.hanghai.kchtg.report.controller.ReportController;
 import com.hanghai.kchtg.report.dto.ReportRequest;
-import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.report.entity.ReportEntity;
 import com.hanghai.kchtg.report.entity.ReportFormat;
 import com.hanghai.kchtg.report.entity.ReportStatus;
 import com.hanghai.kchtg.report.entity.ReportType;
 import com.hanghai.kchtg.report.service.ReportService;
+import com.hanghai.kchtg.security.JwtUtil;
+import com.hanghai.kchtg.security.service.JwtSessionService;
+import com.hanghai.kchtg.security.service.TokenService;
+import com.hanghai.kchtg.security.service.TokenValidationService;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.user.service.PermissionRoleService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -19,20 +24,20 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
-import static org.mockito.ArgumentMatchers.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.hamcrest.Matchers.containsString;
 
 @WebMvcTest(ReportController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -46,28 +51,28 @@ class ReportControllerTest {
     private ReportService reportService;
 
     @MockBean
-    private com.hanghai.kchtg.accesslog.repository.AccessLogRepository accessLogRepository;
+    private AccessLogRepository accessLogRepository;
 
     @MockBean
-    private com.hanghai.kchtg.user.repository.UserRepository userRepository;
+    private UserRepository userRepository;
 
     @MockBean
-    private com.hanghai.kchtg.security.service.TokenService tokenService;
+    private TokenService tokenService;
 
     @MockBean
-    private com.hanghai.kchtg.security.service.JwtSessionService jwtSessionService;
+    private JwtSessionService jwtSessionService;
 
     @MockBean
-    private com.hanghai.kchtg.security.service.TokenValidationService tokenValidationService;
+    private TokenValidationService tokenValidationService;
 
     @MockBean
-    private com.hanghai.kchtg.security.JwtUtil jwtUtil;
+    private JwtUtil jwtUtil;
 
     @MockBean
-    private com.hanghai.kchtg.user.service.PermissionRoleService permissionRoleService;
+    private PermissionRoleService permissionRoleService;
 
     @MockBean
-    private org.springframework.data.jpa.mapping.JpaMetamodelMappingContext jpaMetamodelMappingContext;
+    private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     private ReportEntity buildEntity(String code, ReportType type, ReportStatus status) {
         return ReportEntity.builder()

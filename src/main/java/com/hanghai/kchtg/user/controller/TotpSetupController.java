@@ -1,30 +1,25 @@
 package com.hanghai.kchtg.user.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.common.entity.AuditLog;
+import com.hanghai.kchtg.common.entity.AuditLogRepository;
+import com.hanghai.kchtg.security.totp.dto.TotpEnrollSession;
 import com.hanghai.kchtg.security.totp.service.QRGenerationService;
 import com.hanghai.kchtg.security.totp.service.RedisSessionService;
+import com.hanghai.kchtg.security.totp.service.TotpRateLimiter;
 import com.hanghai.kchtg.security.totp.service.TotpService;
-import com.hanghai.kchtg.security.totp.dto.TotpEnrollSession;
 import com.hanghai.kchtg.user.dto.TotpSetupRequestDTO;
 import com.hanghai.kchtg.user.dto.TotpSetupResponseDTO;
 import com.hanghai.kchtg.user.dto.TotpVerifyRequestDTO;
 import com.hanghai.kchtg.user.dto.TotpVerifyResponseDTO;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.common.entity.AuditLog;
-import com.hanghai.kchtg.common.entity.AuditLogRepository;
-import com.hanghai.kchtg.security.totp.service.TotpRateLimiter;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.Optional;

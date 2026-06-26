@@ -27,7 +27,8 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AccessLogController Unit Tests")
@@ -45,7 +46,7 @@ class AccessLogControllerTest {
     @BeforeEach
     void setUp() {
         logId = UUID.randomUUID();
-        
+
         AccessLog logEntity = new AccessLog();
         logEntity.setId(logId);
         logEntity.setUserId(UUID.randomUUID());
@@ -67,7 +68,7 @@ class AccessLogControllerTest {
     void list_ShouldReturnOk() {
         Pageable pageable = PageRequest.of(0, 20);
         Page<AccessLogResponse> page = new PageImpl<>(Collections.singletonList(sampleResponse), pageable, 1);
-        
+
         AccessLogFilterRequest filter = new AccessLogFilterRequest();
         when(service.findAll(any(AccessLogFilterRequest.class), eq(pageable))).thenReturn(page);
 
@@ -78,7 +79,7 @@ class AccessLogControllerTest {
         assertTrue(response.getBody().isSuccess());
         assertEquals(1, response.getBody().getData().getTotalElements());
         assertEquals("testuser", response.getBody().getData().getContent().get(0).getUsername());
-        
+
         verify(service).findAll(any(AccessLogFilterRequest.class), eq(pageable));
     }
 
@@ -94,7 +95,7 @@ class AccessLogControllerTest {
         assertTrue(response.getBody().isSuccess());
         assertEquals(logId, response.getBody().getData().getId());
         assertEquals("testuser", response.getBody().getData().getUsername());
-        
+
         verify(service).findById(logId);
     }
 }

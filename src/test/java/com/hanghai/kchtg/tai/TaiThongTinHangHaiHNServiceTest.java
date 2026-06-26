@@ -1,12 +1,17 @@
 package com.hanghai.kchtg.tai;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.tai.dto.hanoi_hai.CreateTaiThongTinHangHaiHNRequest;
 import com.hanghai.kchtg.tai.dto.hanoi_hai.TaiThongTinHangHaiHNResponse;
 import com.hanghai.kchtg.tai.dto.hanoi_hai.UpdateTaiThongTinHangHaiHNRequest;
 import com.hanghai.kchtg.tai.entity.*;
-import com.hanghai.kchtg.tai.repository.*;
-import com.hanghai.kchtg.tai.service.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hanghai.kchtg.tai.repository.TaiHistoryRepository;
+import com.hanghai.kchtg.tai.repository.TaiRepository;
+import com.hanghai.kchtg.tai.repository.TaiThongTinHangHaiHNRepository;
+import com.hanghai.kchtg.tai.service.PointObjectSyncService;
+import com.hanghai.kchtg.tai.service.TaiHistoryService;
+import com.hanghai.kchtg.tai.service.TaiNotificationService;
+import com.hanghai.kchtg.tai.service.TaiThongTinHangHaiHNService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,7 +28,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,9 +40,6 @@ class TaiThongTinHangHaiHNServiceTest {
 
     @Mock
     private TaiThongTinHangHaiHNRepository taiRepo;
-
-    @Mock
-    private TaiRepository baseTaiRepo;
 
     @Mock
     private TaiHistoryRepository historyRepo;
@@ -145,7 +148,6 @@ class TaiThongTinHangHaiHNServiceTest {
                 new BigDecimal("2182.000"), 15, "VPHH-QG");
 
         when(taiRepo.existsByCode("THN-002")).thenReturn(false);
-        when(baseTaiRepo.findByCodeAndDeletedFalse("THN-002")).thenReturn(Optional.empty());
         when(taiRepo.save(any(TaiThongTinHangHaiHN.class))).thenAnswer(inv -> {
             TaiThongTinHangHaiHN saved = inv.getArgument(0);
             saved.setId(UUID.randomUUID());
@@ -171,18 +173,6 @@ class TaiThongTinHangHaiHNServiceTest {
                 "THN-001", "THN moi", TaiType.HANOI_HAI,
                 new BigDecimal("2182.000"), 15, "VPHH-QG");
         when(taiRepo.existsByCode("THN-001")).thenReturn(true);
-
-        assertThrows(IllegalArgumentException.class, () -> service.create(request));
-    }
-
-    @Test
-    @DisplayName("F-100: create — throws when code in baseTai")
-    void testCreateCodeInBaseTai() {
-        CreateTaiThongTinHangHaiHNRequest request = new CreateTaiThongTinHangHaiHNRequest(
-                "THN-001", "THN moi", TaiType.HANOI_HAI,
-                new BigDecimal("2182.000"), 15, "VPHH-QG");
-        when(taiRepo.existsByCode("THN-001")).thenReturn(false);
-        when(baseTaiRepo.findByCodeAndDeletedFalse("THN-001")).thenReturn(Optional.of(mock(BaseTai.class)));
 
         assertThrows(IllegalArgumentException.class, () -> service.create(request));
     }

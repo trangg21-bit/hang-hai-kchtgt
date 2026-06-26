@@ -2,7 +2,10 @@ package com.hanghai.kchtg.beacon.dto.history;
 
 import com.hanghai.kchtg.beacon.entity.BeaconHistoryActionType;
 import com.hanghai.kchtg.beacon.entity.BeaconType;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

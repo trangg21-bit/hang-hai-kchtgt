@@ -5,7 +5,6 @@ import com.hanghai.kchtg.tai.dto.lrit.CreateTaiLRITRequest;
 import com.hanghai.kchtg.tai.dto.lrit.TaiLRITResponse;
 import com.hanghai.kchtg.tai.dto.lrit.UpdateTaiLRITRequest;
 import com.hanghai.kchtg.tai.entity.TaiStatus;
-import com.hanghai.kchtg.tai.repository.TaiRepository;
 import com.hanghai.kchtg.tai.service.TaiLRITService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +29,6 @@ import java.util.UUID;
 public class TaiLRITController {
 
     private final TaiLRITService service;
-    private final TaiRepository taiRepository;
 
     @PostMapping
     @PreAuthorize("hasRole('ROLE_DAI_TTDH_CREATE')")

@@ -48,7 +48,7 @@ public class JwtProperties {
                     + "Hardcoded fallback da duoc loai bo de bao mat.");
         }
         try {
-            byte[] keyBytes = Base64.getDecoder().decode(secret);
+            byte[] keyBytes = Base64.getUrlDecoder().decode(secret);
             if (keyBytes.length < 32) {
                 throw new IllegalStateException("JWT secret phai decode duoc 32 bytes (256 bits) tro len. "
                         + "Nhan duoc " + keyBytes.length + " bytes.");

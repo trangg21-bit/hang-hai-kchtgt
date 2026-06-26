@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
@@ -85,7 +84,7 @@ public class ChartIntegrationService {
     @Transactional
     public ChartCell importS63(byte[] fileBytes, String filename) throws IOException {
         String cellName = filename.replace(".000", "").toUpperCase();
-        
+
         S63Permit permit = permitRepository.findByCellName(cellName)
                 .orElseThrow(() -> new IOException("Không tìm thấy giấy phép Cell Permit S-63 cho Cell: " + cellName + ". Vui lòng đăng ký permit trước."));
 
@@ -189,7 +188,7 @@ public class ChartIntegrationService {
             featureMap.put("featureCode", f.getFeatureCode());
             featureMap.put("geometryType", f.getGeometryType().name());
             featureMap.put("coordinates", f.getCoordinates());
-            
+
             try {
                 featureMap.put("attributes", objectMapper.readValue(f.getAttributesJson(), Map.class));
             } catch (Exception e) {
@@ -282,7 +281,7 @@ public class ChartIntegrationService {
         for (String prefix : keys) {
             if (cleanName.startsWith(prefix) || cleanName.contains(prefix)) {
                 double[] baseCenter = CELL_COORDINATES.get(prefix);
-                
+
                 // Add the trailing digit offset exactly like the frontend
                 java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\d+$");
                 java.util.regex.Matcher matcher = pattern.matcher(cleanName);

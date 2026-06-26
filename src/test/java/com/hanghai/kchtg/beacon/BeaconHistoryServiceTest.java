@@ -1,7 +1,9 @@
 package com.hanghai.kchtg.beacon;
 
 import com.hanghai.kchtg.beacon.dto.history.BeaconHistoryResponse;
-import com.hanghai.kchtg.beacon.entity.*;
+import com.hanghai.kchtg.beacon.entity.BeaconHistory;
+import com.hanghai.kchtg.beacon.entity.BeaconHistoryActionType;
+import com.hanghai.kchtg.beacon.entity.BeaconType;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
 import com.hanghai.kchtg.beacon.service.BeaconHistoryService;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,11 +19,14 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class BeaconHistoryServiceTest {

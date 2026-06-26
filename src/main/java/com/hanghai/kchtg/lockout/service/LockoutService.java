@@ -1,12 +1,11 @@
 package com.hanghai.kchtg.lockout.service;
 
-import com.hanghai.kchtg.lockout.dto.LockoutPolicyResponse;
 import com.hanghai.kchtg.lockout.dto.enums.LockoutStatus;
 import com.hanghai.kchtg.lockout.entity.LockoutPolicy;
 import com.hanghai.kchtg.lockout.repository.LockoutPolicyRepository;
-import com.hanghai.kchtg.user.entity.LoginAuditLog;
 import com.hanghai.kchtg.user.entity.LoginAttemptResult;
 import com.hanghai.kchtg.user.entity.LoginAttemptType;
+import com.hanghai.kchtg.user.entity.LoginAuditLog;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.LoginAuditLogRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;

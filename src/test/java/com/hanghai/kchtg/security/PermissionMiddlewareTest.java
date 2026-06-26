@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.security;
 
-import com.hanghai.kchtg.user.service.PermissionRoleService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hanghai.kchtg.user.service.PermissionRoleService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletOutputStream;
@@ -23,7 +23,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -155,7 +155,7 @@ class PermissionMiddlewareTest {
 
         verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
         verify(filterChain, never()).doFilter(request, response);
-        
+
         String responseBody = baos.toString();
         assertTrue(responseBody.contains("users:read"));
     }

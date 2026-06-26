@@ -5,7 +5,6 @@ import com.hanghai.kchtg.tai.dto.inmarsat.CreateTaiInmarsatRequest;
 import com.hanghai.kchtg.tai.dto.inmarsat.TaiInmarsatResponse;
 import com.hanghai.kchtg.tai.dto.inmarsat.UpdateTaiInmarsatRequest;
 import com.hanghai.kchtg.tai.entity.TaiStatus;
-import com.hanghai.kchtg.tai.repository.TaiRepository;
 import com.hanghai.kchtg.tai.service.TaiInmarsatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +29,6 @@ import java.util.UUID;
 public class TaiInmarsatController {
 
     private final TaiInmarsatService service;
-    private final TaiRepository taiRepository;
 
     @PostMapping
     @PreAuthorize("hasRole('ROLE_DAI_TTDH_CREATE')")

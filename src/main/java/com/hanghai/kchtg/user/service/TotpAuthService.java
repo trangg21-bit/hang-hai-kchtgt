@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.user.service;
 
-import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.security.TotpValidator;
+import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.user.dto.MfaChallengeResponse;
 import com.hanghai.kchtg.user.dto.TotpLoginRequest;
 import com.hanghai.kchtg.user.dto.TwoFactorLoginResponse;
@@ -11,11 +11,11 @@ import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

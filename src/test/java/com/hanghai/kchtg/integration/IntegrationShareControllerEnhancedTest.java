@@ -7,7 +7,6 @@ import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject;
 import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
 import com.hanghai.kchtg.security.JwtUtil;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;

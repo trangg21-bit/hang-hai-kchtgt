@@ -5,7 +5,6 @@ import com.hanghai.kchtg.tai.dto.hanoi_hai.CreateTaiThongTinHangHaiHNRequest;
 import com.hanghai.kchtg.tai.dto.hanoi_hai.TaiThongTinHangHaiHNResponse;
 import com.hanghai.kchtg.tai.dto.hanoi_hai.UpdateTaiThongTinHangHaiHNRequest;
 import com.hanghai.kchtg.tai.entity.TaiStatus;
-import com.hanghai.kchtg.tai.repository.TaiRepository;
 import com.hanghai.kchtg.tai.service.TaiThongTinHangHaiHNService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +29,6 @@ import java.util.UUID;
 public class TaiThongTinHangHaiHNController {
 
     private final TaiThongTinHangHaiHNService service;
-    private final TaiRepository taiRepository;
 
     @PostMapping
     @PreAuthorize("hasRole('ROLE_DAI_TTDH_CREATE')")

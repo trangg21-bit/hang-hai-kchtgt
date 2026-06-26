@@ -2,8 +2,11 @@ package com.hanghai.kchtg.report.dto;
 
 import com.hanghai.kchtg.report.entity.ReportFormat;
 import com.hanghai.kchtg.report.entity.ReportType;
-import jakarta.validation.constraints.*;
-import lombok.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.util.Map;

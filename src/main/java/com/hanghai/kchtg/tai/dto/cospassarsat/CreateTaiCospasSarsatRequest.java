@@ -2,7 +2,10 @@ package com.hanghai.kchtg.tai.dto.cospassarsat;
 
 import com.hanghai.kchtg.tai.entity.TaiType;
 import jakarta.validation.constraints.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 

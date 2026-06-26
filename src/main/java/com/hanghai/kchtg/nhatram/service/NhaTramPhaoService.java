@@ -6,8 +6,8 @@ import com.hanghai.kchtg.nhatram.dto.phao.CreateNhaTramPhaoRequest;
 import com.hanghai.kchtg.nhatram.dto.phao.NhaTramPhaoResponse;
 import com.hanghai.kchtg.nhatram.dto.phao.UpdateNhaTramPhaoRequest;
 import com.hanghai.kchtg.nhatram.entity.*;
-import com.hanghai.kchtg.nhatram.repository.NhaTramHistoryRepository;
 import com.hanghai.kchtg.nhatram.repository.NhaTramDenRepository;
+import com.hanghai.kchtg.nhatram.repository.NhaTramHistoryRepository;
 import com.hanghai.kchtg.nhatram.repository.NhaTramPhaoRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -16,11 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Service cho CRUD + quy trinh phe duyet nha tram phao (F-080 den F-085).

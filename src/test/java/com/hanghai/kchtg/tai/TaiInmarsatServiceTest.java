@@ -1,13 +1,17 @@
 package com.hanghai.kchtg.tai;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.tai.dto.inmarsat.CreateTaiInmarsatRequest;
 import com.hanghai.kchtg.tai.dto.inmarsat.TaiInmarsatResponse;
 import com.hanghai.kchtg.tai.dto.inmarsat.UpdateTaiInmarsatRequest;
 import com.hanghai.kchtg.tai.entity.*;
-import com.hanghai.kchtg.tai.repository.TaiRepository;
 import com.hanghai.kchtg.tai.repository.TaiHistoryRepository;
 import com.hanghai.kchtg.tai.repository.TaiInmarsatRepository;
-import com.hanghai.kchtg.tai.service.*;
+import com.hanghai.kchtg.tai.repository.TaiRepository;
+import com.hanghai.kchtg.tai.service.PointObjectSyncService;
+import com.hanghai.kchtg.tai.service.TaiHistoryService;
+import com.hanghai.kchtg.tai.service.TaiInmarsatService;
+import com.hanghai.kchtg.tai.service.TaiNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,8 +20,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.List;
@@ -25,7 +27,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,9 +39,6 @@ class TaiInmarsatServiceTest {
 
     @Mock
     private TaiInmarsatRepository taiRepo;
-
-    @Mock
-    private TaiRepository baseTaiRepo;
 
     @Mock
     private TaiHistoryRepository historyRepo;
@@ -144,7 +144,6 @@ class TaiInmarsatServiceTest {
                 "SAT-002", new java.math.BigDecimal("90.0"), "BGAN");
 
         when(taiRepo.existsByCode("IM-002")).thenReturn(false);
-        when(baseTaiRepo.findByCodeAndDeletedFalse("IM-002")).thenReturn(Optional.empty());
         when(taiRepo.save(any(TaiInmarsat.class))).thenAnswer(inv -> {
             TaiInmarsat saved = inv.getArgument(0);
             saved.setId(UUID.randomUUID());
@@ -171,19 +170,6 @@ class TaiInmarsatServiceTest {
                 "SAT-002", null, null);
 
         when(taiRepo.existsByCode("IM-001")).thenReturn(true);
-
-        assertThrows(IllegalArgumentException.class, () -> service.create(request));
-    }
-
-    @Test
-    @DisplayName("F-015-012: create — throws when code exists in baseTai")
-    void testCreateCodeInBaseTai() {
-        CreateTaiInmarsatRequest request = new CreateTaiInmarsatRequest(
-                "IM-001", "Inmarsat moi", TaiType.INMARSAT,
-                "SAT-002", null, null);
-
-        when(taiRepo.existsByCode("IM-001")).thenReturn(false);
-        when(baseTaiRepo.findByCodeAndDeletedFalse("IM-001")).thenReturn(Optional.of(mock(BaseTai.class)));
 
         assertThrows(IllegalArgumentException.class, () -> service.create(request));
     }

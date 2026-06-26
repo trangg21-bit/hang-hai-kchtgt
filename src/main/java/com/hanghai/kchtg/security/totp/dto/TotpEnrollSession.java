@@ -2,10 +2,7 @@ package com.hanghai.kchtg.security.totp.dto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.util.Map;
 
 /**
  * Session record for TOTP enrollment stored in Redis.

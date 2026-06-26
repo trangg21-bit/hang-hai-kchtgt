@@ -2,7 +2,6 @@ package com.hanghai.kchtg.siem.controller;
 
 import com.hanghai.kchtg.siem.dto.SiemReportRequest;
 import com.hanghai.kchtg.siem.dto.SiemReportResponse;
-import com.hanghai.kchtg.siem.entity.SiemReport;
 import com.hanghai.kchtg.siem.entity.SiemReportStatus;
 import com.hanghai.kchtg.siem.service.SiemReportService;
 import com.hanghai.kchtg.siem.service.SiemService;
@@ -20,10 +19,10 @@ import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 

@@ -1,10 +1,17 @@
 package com.hanghai.kchtg.nhatram;
 
+import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import com.hanghai.kchtg.nhatram.controller.NhaTramHistoryController;
 import com.hanghai.kchtg.nhatram.dto.history.NhaTramHistoryResponse;
 import com.hanghai.kchtg.nhatram.entity.NhaTramHistoryActionType;
 import com.hanghai.kchtg.nhatram.entity.NhaTramType;
 import com.hanghai.kchtg.nhatram.service.NhaTramHistoryService;
+import com.hanghai.kchtg.security.JwtUtil;
+import com.hanghai.kchtg.security.service.JwtSessionService;
+import com.hanghai.kchtg.security.service.TokenService;
+import com.hanghai.kchtg.security.service.TokenValidationService;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.user.service.PermissionRoleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,13 +19,16 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
+import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(NhaTramHistoryController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -31,28 +41,28 @@ class NhaTramHistoryControllerTest {
     private NhaTramHistoryService historyService;
 
     @MockBean
-    private com.hanghai.kchtg.accesslog.repository.AccessLogRepository accessLogRepository;
+    private AccessLogRepository accessLogRepository;
 
     @MockBean
-    private com.hanghai.kchtg.user.repository.UserRepository userRepository;
+    private UserRepository userRepository;
 
     @MockBean
-    private com.hanghai.kchtg.security.service.TokenService tokenService;
+    private TokenService tokenService;
 
     @MockBean
-    private com.hanghai.kchtg.security.service.JwtSessionService jwtSessionService;
+    private JwtSessionService jwtSessionService;
 
     @MockBean
-    private com.hanghai.kchtg.security.service.TokenValidationService tokenValidationService;
+    private TokenValidationService tokenValidationService;
 
     @MockBean
-    private com.hanghai.kchtg.security.JwtUtil jwtUtil;
+    private JwtUtil jwtUtil;
 
     @MockBean
-    private com.hanghai.kchtg.user.service.PermissionRoleService permissionRoleService;
+    private PermissionRoleService permissionRoleService;
 
     @MockBean
-    private org.springframework.data.jpa.mapping.JpaMetamodelMappingContext jpaMetamodelMappingContext;
+    private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
     @DisplayName("GET /api/v1/nhatram/history — returns paginated history for PHAO")

@@ -1,11 +1,6 @@
 package com.hanghai.kchtg.siem.entity;
 
-import com.hanghai.kchtg.siem.entity.SiemReportStatus;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -24,6 +19,8 @@ import java.util.UUID;
 public class SiemReport {
 
     /** Unique report identifier. */
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     /** Export format: WORD / EXCEL / PDF / HTML / XML. */

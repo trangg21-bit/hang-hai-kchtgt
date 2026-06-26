@@ -2,7 +2,6 @@ package com.hanghai.kchtg.user.service;
 
 import com.hanghai.kchtg.user.entity.VerificationToken;
 import com.hanghai.kchtg.user.repository.VerificationTokenRepository;
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;

@@ -2,7 +2,10 @@ package com.hanghai.kchtg.nhatram.dto.den;
 
 import com.hanghai.kchtg.nhatram.entity.BeaconLightType;
 import jakarta.validation.constraints.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 

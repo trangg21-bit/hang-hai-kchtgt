@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
  * Khi approveL2, upsert vao point_objects table.
  * Khi xoa mem, gianh diem (KHONG XOA theo BR-070-05).
  */
-@Service
+@Service("nhatramPointObjectSyncService")
 public class PointObjectSyncService {
 
     /**

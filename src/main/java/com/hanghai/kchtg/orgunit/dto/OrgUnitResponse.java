@@ -4,11 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.List;

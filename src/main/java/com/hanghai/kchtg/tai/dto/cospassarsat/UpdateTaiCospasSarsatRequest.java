@@ -1,7 +1,12 @@
 package com.hanghai.kchtg.tai.dto.cospassarsat;
 
-import jakarta.validation.constraints.*;
-import lombok.*;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.UUID;
