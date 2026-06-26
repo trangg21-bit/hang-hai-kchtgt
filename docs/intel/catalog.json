@@ -1,6 +1,6 @@
 {
   "version": "v2",
-  "generated_at": "2026-06-26T02:54:27Z",
+  "generated_at": "2026-06-26T06:33:43Z",
   "generator": "ai-kit/state-update-rebuild-catalog",
   "modules": {
     "M-001": {
@@ -16,7 +16,7 @@
       "features": {
         "F-001": {
           "id": "F-001",
-          "name": "quan-ly-tai-khoan-nguoi-dung",
+          "name": "Quản lý tài khoản người dùng",
           "slug": "quan-ly-tai-khoan-nguoi-dung",
           "status": "proposed",
           "classification": "local",
@@ -31,7 +31,7 @@
         },
         "F-002": {
           "id": "F-002",
-          "name": "quan-ly-nhom-nguoi-dung",
+          "name": "Quản lý nhóm người dùng",
           "slug": "quan-ly-nhom-nguoi-dung",
           "status": "proposed",
           "classification": "local",
@@ -46,7 +46,7 @@
         },
         "F-003": {
           "id": "F-003",
-          "name": "quan-ly-don-vi",
+          "name": "Quản lý đơn vị",
           "slug": "quan-ly-don-vi",
           "status": "proposed",
           "classification": "local",
@@ -61,7 +61,7 @@
         },
         "F-004": {
           "id": "F-004",
-          "name": "quan-ly-tai-khoan-admin",
+          "name": "Quản lý tài khoản admin",
           "slug": "quan-ly-tai-khoan-admin",
           "status": "proposed",
           "classification": "local",
@@ -76,7 +76,7 @@
         },
         "F-005": {
           "id": "F-005",
-          "name": "quan-ly-log-truy-cap",
+          "name": "Quản lý log truy cập",
           "slug": "quan-ly-log-truy-cap",
           "status": "proposed",
           "classification": "local",
@@ -91,7 +91,7 @@
         },
         "F-006": {
           "id": "F-006",
-          "name": "quan-ly-bieu-tuong-ban-do",
+          "name": "Quản lý biểu tượng bản đồ",
           "slug": "quan-ly-bieu-tuong-ban-do",
           "status": "proposed",
           "classification": "local",
@@ -106,7 +106,7 @@
         },
         "F-007": {
           "id": "F-007",
-          "name": "quan-ly-ket-noi-lien-thong-chia-du-lieu",
+          "name": "Quản lý kết nối liên thông chia sẻ dữ liệu",
           "slug": "quan-ly-ket-noi-lien-thong-chia-du-lieu",
           "status": "proposed",
           "classification": "local",
@@ -597,7 +597,7 @@
       "features": {
         "F-038": {
           "id": "F-038",
-          "name": "Quan ly Luong hang hai - Tao moi",
+          "name": "Quản lý Lượng hàng hải - Tạo mới",
           "slug": "quan-ly-luong-hang-hai-tao-moi",
           "status": "proposed",
           "classification": "local",
@@ -612,7 +612,7 @@
         },
         "F-039": {
           "id": "F-039",
-          "name": "Quan ly Luong hang hai - Cap nhat",
+          "name": "Quản lý Lượng hàng hải - Cập nhật",
           "slug": "quan-ly-luong-hang-hai-cap-nhat",
           "status": "proposed",
           "classification": "local",
@@ -627,7 +627,7 @@
         },
         "F-040": {
           "id": "F-040",
-          "name": "Quan ly Luong hang hai - Xoa",
+          "name": "Quản lý Lượng hàng hải - Xóa",
           "slug": "quan-ly-luong-hang-hai-xoa",
           "status": "proposed",
           "classification": "local",
@@ -642,7 +642,7 @@
         },
         "F-041": {
           "id": "F-041",
-          "name": "Phe duyet Luong hang hai",
+          "name": "Phê duyệt Lượng hàng hải",
           "slug": "phe-duyet-luong-hang-hai",
           "status": "proposed",
           "classification": "local",
@@ -657,7 +657,7 @@
         },
         "F-042": {
           "id": "F-042",
-          "name": "Xem chi tiet Luong hang hai",
+          "name": "Xem chi tiết Lượng hàng hải",
           "slug": "xem-chi-tiet-luong-hang-hai",
           "status": "proposed",
           "classification": "local",
@@ -672,7 +672,7 @@
         },
         "F-043": {
           "id": "F-043",
-          "name": "Quan ly Luong hang hai - Lich su",
+          "name": "Quản lý Lượng hàng hải - Lịch sử",
           "slug": "quan-ly-luong-hang-hai-lich-su",
           "status": "proposed",
           "classification": "local",
@@ -687,7 +687,7 @@
         },
         "F-044": {
           "id": "F-044",
-          "name": "Quan ly De/ke - Tao moi",
+          "name": "Quản lý Đê/kè - Tạo mới",
           "slug": "quan-ly-de-ke-tao-moi",
           "status": "proposed",
           "classification": "local",
@@ -702,7 +702,7 @@
         },
         "F-045": {
           "id": "F-045",
-          "name": "Quan ly De/ke - Cap nhat",
+          "name": "Quản lý Đê/kè - Cập nhật",
           "slug": "quan-ly-de-ke-cap-nhat",
           "status": "proposed",
           "classification": "local",
@@ -717,7 +717,7 @@
         },
         "F-046": {
           "id": "F-046",
-          "name": "Quan ly De/ke - Xoa",
+          "name": "Quản lý Đê/kè - Xóa",
           "slug": "quan-ly-de-ke-xoa",
           "status": "proposed",
           "classification": "local",
@@ -732,7 +732,7 @@
         },
         "F-047": {
           "id": "F-047",
-          "name": "Phe duyet De/ke",
+          "name": "Phê duyệt Đê/kè",
           "slug": "phe-duyet-de-ke",
           "status": "proposed",
           "classification": "local",
@@ -747,7 +747,7 @@
         },
         "F-048": {
           "id": "F-048",
-          "name": "Xem chi tiet De/ke",
+          "name": "Xem chi tiết Đê/kè",
           "slug": "xem-chi-tiet-de-ke",
           "status": "proposed",
           "classification": "local",
@@ -762,7 +762,7 @@
         },
         "F-049": {
           "id": "F-049",
-          "name": "Quan ly De/ke - Lich su",
+          "name": "Quản lý Đê/kè - Lịch sử",
           "slug": "quan-ly-de-ke-lich-su",
           "status": "proposed",
           "classification": "local",
@@ -777,7 +777,7 @@
         },
         "F-050": {
           "id": "F-050",
-          "name": "Quan ly Co so sua chua, dong tau - Tao moi",
+          "name": "Quản lý Cơ sở sửa chữa, đóng tàu - Tạo mới",
           "slug": "quan-ly-co-so-sua-chua-dong-tau-tao-moi",
           "status": "proposed",
           "classification": "local",
@@ -792,7 +792,7 @@
         },
         "F-051": {
           "id": "F-051",
-          "name": "Quan ly Co so sua chua, dong tau - Cap nhat",
+          "name": "Quản lý Cơ sở sửa chữa, đóng tàu - Cập nhật",
           "slug": "quan-ly-co-so-sua-chua-dong-tau-cap-nhat",
           "status": "proposed",
           "classification": "local",
@@ -807,7 +807,7 @@
         },
         "F-052": {
           "id": "F-052",
-          "name": "Quan ly Co so sua chua, dong tau - Xoa",
+          "name": "Quản lý Cơ sở sửa chữa, đóng tàu - Xóa",
           "slug": "quan-ly-co-so-sua-chua-dong-tau-xoa",
           "status": "proposed",
           "classification": "local",
@@ -822,7 +822,7 @@
         },
         "F-053": {
           "id": "F-053",
-          "name": "Phe duyet Co so sua chua, dong tau",
+          "name": "Phê duyệt Cơ sở sửa chữa, đóng tàu",
           "slug": "phe-duyet-co-so-sua-chua-dong-tau",
           "status": "proposed",
           "classification": "local",
@@ -837,7 +837,7 @@
         },
         "F-054": {
           "id": "F-054",
-          "name": "Xem chi tiet Co so sua chua, dong tau",
+          "name": "Xem chi tiết Cơ sở sửa chữa, đóng tàu",
           "slug": "xem-chi-tiet-co-so-sua-chua-dong-tau",
           "status": "proposed",
           "classification": "local",
@@ -852,7 +852,7 @@
         },
         "F-055": {
           "id": "F-055",
-          "name": "Quan ly Co so sua chua, dong tau - Lich su",
+          "name": "Quản lý Cơ sở sửa chữa, đóng tàu - Lịch sử",
           "slug": "quan-ly-co-so-sua-chua-dong-tau-lich-su",
           "status": "proposed",
           "classification": "local",
@@ -867,7 +867,7 @@
         },
         "F-056": {
           "id": "F-056",
-          "name": "Quan ly Tram radar - Tao moi",
+          "name": "Quản lý Trạm radar - Tạo mới",
           "slug": "quan-ly-tram-radar-tao-moi",
           "status": "proposed",
           "classification": "local",
@@ -882,7 +882,7 @@
         },
         "F-057": {
           "id": "F-057",
-          "name": "Quan ly Tram radar - Cap nhat",
+          "name": "Quản lý Trạm radar - Cập nhật",
           "slug": "quan-ly-tram-radar-cap-nhat",
           "status": "proposed",
           "classification": "local",
@@ -897,7 +897,7 @@
         },
         "F-058": {
           "id": "F-058",
-          "name": "Quan ly Tram radar - Xoa",
+          "name": "Quản lý Trạm radar - Xóa",
           "slug": "quan-ly-tram-radar-xoa",
           "status": "proposed",
           "classification": "local",
@@ -912,7 +912,7 @@
         },
         "F-059": {
           "id": "F-059",
-          "name": "Phe duyet Tram radar",
+          "name": "Phê duyệt Trạm radar",
           "slug": "phe-duyet-tram-radar",
           "status": "proposed",
           "classification": "local",
@@ -927,7 +927,7 @@
         },
         "F-060": {
           "id": "F-060",
-          "name": "Xem chi tiet Tram radar",
+          "name": "Xem chi tiết Trạm radar",
           "slug": "xem-chi-tiet-tram-radar",
           "status": "proposed",
           "classification": "local",
@@ -942,7 +942,7 @@
         },
         "F-061": {
           "id": "F-061",
-          "name": "Quan ly Tram radar - Lich su",
+          "name": "Quản lý Trạm radar - Lịch sử",
           "slug": "quan-ly-tram-radar-lich-su",
           "status": "proposed",
           "classification": "local",
@@ -957,7 +957,7 @@
         },
         "F-062": {
           "id": "F-062",
-          "name": "Quan ly He thong VTS - Tao moi",
+          "name": "Quản lý Hệ thống VTS - Tạo mới",
           "slug": "quan-ly-he-thong-vts-tao-moi",
           "status": "proposed",
           "classification": "local",
@@ -972,7 +972,7 @@
         },
         "F-063": {
           "id": "F-063",
-          "name": "Quan ly He thong VTS - Cap nhat",
+          "name": "Quản lý Hệ thống VTS - Cập nhật",
           "slug": "quan-ly-he-thong-vts-cap-nhat",
           "status": "proposed",
           "classification": "local",
@@ -987,7 +987,7 @@
         },
         "F-064": {
           "id": "F-064",
-          "name": "Quan ly He thong VTS - Xoa",
+          "name": "Quản lý Hệ thống VTS - Xóa",
           "slug": "quan-ly-he-thong-vts-xoa",
           "status": "proposed",
           "classification": "local",
@@ -1002,7 +1002,7 @@
         },
         "F-065": {
           "id": "F-065",
-          "name": "Phe duyet He thong VTS",
+          "name": "Phê duyệt Hệ thống VTS",
           "slug": "phe-duyet-he-thong-vts",
           "status": "proposed",
           "classification": "local",
@@ -1017,7 +1017,7 @@
         },
         "F-066": {
           "id": "F-066",
-          "name": "Xem chi tiet He thong VTS",
+          "name": "Xem chi tiết Hệ thống VTS",
           "slug": "xem-chi-tiet-he-thong-vts",
           "status": "proposed",
           "classification": "local",
@@ -1032,7 +1032,7 @@
         },
         "F-067": {
           "id": "F-067",
-          "name": "Quan ly He thong VTS - Lich su",
+          "name": "Quản lý Hệ thống VTS - Lịch sử",
           "slug": "quan-ly-he-thong-vts-lich-su",
           "status": "proposed",
           "classification": "local",
@@ -1051,7 +1051,7 @@
       "id": "M-004",
       "name": "Quản lý tài sản Báo hiệu & Thông tin",
       "slug": "quan-ly-tai-san-bao-hieu-thong-tin",
-      "status": "in-progress",
+      "status": "completed",
       "version": 1,
       "feature_count": 0,
       "aggregate_size_status": "green",
@@ -1072,7 +1072,7 @@
       "features": {
         "F-122": {
           "id": "F-122",
-          "name": "Tài sản KCHT tăng",
+          "name": "Tăng tài sản KCHT",
           "slug": "tang-tai-san-kcht",
           "status": "proposed",
           "classification": "local",
@@ -1087,7 +1087,7 @@
         },
         "F-123": {
           "id": "F-123",
-          "name": "Tài sản KCHT giảm",
+          "name": "Giảm tài sản KCHT",
           "slug": "giam-tai-san-kcht",
           "status": "proposed",
           "classification": "local",
@@ -1310,7 +1310,7 @@
           "id": "F-136",
           "name": "Quản lý danh mục đối tượng điểm",
           "slug": "quan-ly-danh-muc-doi-tuong-diem",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1323,9 +1323,9 @@
         },
         "F-137": {
           "id": "F-137",
-          "name": "quan-ly-danh-muc-doi-tuong-duong",
+          "name": "Quản lý danh mục đối tượng đường",
           "slug": "quan-ly-danh-muc-doi-tuong-duong",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1340,7 +1340,7 @@
           "id": "F-138",
           "name": "Quản lý danh mục đối tượng vùng",
           "slug": "quan-ly-danh-muc-doi-tuong-vung",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1353,9 +1353,9 @@
         },
         "F-139": {
           "id": "F-139",
-          "name": "quan-ly-thong-tin-kcht-tren-ban-do",
+          "name": "Quản lý thông tin KCHT trên bản đồ",
           "slug": "quan-ly-thong-tin-kcht-tren-ban-do",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1370,7 +1370,7 @@
           "id": "F-140",
           "name": "Tra cứu KCHT trên bản đồ",
           "slug": "tra-cuu-kcht-tren-ban-do",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -1389,7 +1389,7 @@
       "slug": "bao-cao-thong-ke",
       "status": "done",
       "version": 1,
-      "feature_count": 49,
+      "feature_count": 54,
       "aggregate_size_status": "red",
       "depends_on": [
         {
@@ -1401,6 +1401,81 @@
       ],
       "path": "docs/modules/M-008-bao-cao-thong-ke/",
       "features": {
+        "F-101": {
+          "id": "F-101",
+          "name": "Báo cáo tổng hợp thủy văn",
+          "slug": "bao-cao-tong-hop-thuy-van",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-101-bao-cao-tong-hop-thuy-van/",
+          "confidence": "high"
+        },
+        "F-102": {
+          "id": "F-102",
+          "name": "Biểu thống kê hàng hải",
+          "slug": "bieu-thong-ke-hang-hai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-102-bieu-thong-ke-hang-hai/",
+          "confidence": "high"
+        },
+        "F-103": {
+          "id": "F-103",
+          "name": "Báo cáo khánh tác cảng",
+          "slug": "bao-cao-khanh-tac-cang",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-103-bao-cao-khanh-tac-cang/",
+          "confidence": "high"
+        },
+        "F-104": {
+          "id": "F-104",
+          "name": "Báo cáo hàng hóa xuất nhập khẩu",
+          "slug": "bao-cao-hang-hoa-xuat-nhap-khau",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-104-bao-cao-hang-hoa-xuat-nhap-khau/",
+          "confidence": "high"
+        },
+        "F-105": {
+          "id": "F-105",
+          "name": "Biểu đồ trao đổi thương mại",
+          "slug": "bieu-do-trao-doi-thuong-mai",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-105-bieu-do-trao-doi-thuong-mai/",
+          "confidence": "high"
+        },
         "F-141": {
           "id": "F-141",
           "name": "bao-cao-tang-giam-tai-san",
@@ -2140,15 +2215,406 @@
     },
     "M-009": {
       "id": "M-009",
-      "name": "lien-thong-tich-hop-du-lieu",
+      "name": "Liên thông & Tích hợp dữ liệu",
       "slug": "lien-thong-tich-hop-du-lieu",
-      "status": "proposed",
-      "version": 1,
-      "feature_count": 0,
-      "aggregate_size_status": "green",
+      "status": "done",
+      "version": 6,
+      "feature_count": 26,
+      "aggregate_size_status": "yellow",
       "depends_on": [],
       "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/",
-      "features": {}
+      "features": {
+        "F-193": {
+          "id": "F-193",
+          "name": "chia-se-kchtgt-khu-tranh-bao",
+          "slug": "chia-se-kchtgt-khu-tranh-bao",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-193-chia-se-kchtgt-khu-tranh-bao/",
+          "confidence": "high"
+        },
+        "F-194": {
+          "id": "F-194",
+          "name": "chia-se-kchtgt-khu-chuyen-tai",
+          "slug": "chia-se-kchtgt-khu-chuyen-tai",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-194-chia-se-kchtgt-khu-chuyen-tai/",
+          "confidence": "high"
+        },
+        "F-195": {
+          "id": "F-195",
+          "name": "chia-se-kchtgt-khu-neo-dau",
+          "slug": "chia-se-kchtgt-khu-neo-dau",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-195-chia-se-kchtgt-khu-neo-dau/",
+          "confidence": "high"
+        },
+        "F-196": {
+          "id": "F-196",
+          "name": "co-so-sua-chua",
+          "slug": "co-so-sua-chua",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-196-co-so-sua-chua/",
+          "confidence": "high"
+        },
+        "F-197": {
+          "id": "F-197",
+          "name": "den-bien",
+          "slug": "den-bien",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-197-den-bien/",
+          "confidence": "high"
+        },
+        "F-198": {
+          "id": "F-198",
+          "name": "phao-tieu",
+          "slug": "phao-tieu",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-198-phao-tieu/",
+          "confidence": "high"
+        },
+        "F-199": {
+          "id": "F-199",
+          "name": "he-thong-vts",
+          "slug": "he-thong-vts",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-199-he-thong-vts/",
+          "confidence": "high"
+        },
+        "F-200": {
+          "id": "F-200",
+          "name": "chia-se-du-lieu",
+          "slug": "chia-se-du-lieu",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-200-chia-se-du-lieu/",
+          "confidence": "high"
+        },
+        "F-201": {
+          "id": "F-201",
+          "name": "chia-se-du-lieu",
+          "slug": "chia-se-du-lieu",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-201-chia-se-du-lieu/",
+          "confidence": "high"
+        },
+        "F-202": {
+          "id": "F-202",
+          "name": "chia-se-du-lieu",
+          "slug": "chia-se-du-lieu",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-202-chia-se-du-lieu/",
+          "confidence": "high"
+        },
+        "F-203": {
+          "id": "F-203",
+          "name": "chia-se-du-lieu",
+          "slug": "chia-se-du-lieu",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-203-chia-se-du-lieu/",
+          "confidence": "high"
+        },
+        "F-204": {
+          "id": "F-204",
+          "name": "chia-se-du-lieu",
+          "slug": "chia-se-du-lieu",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-204-chia-se-du-lieu/",
+          "confidence": "high"
+        },
+        "F-205": {
+          "id": "F-205",
+          "name": "chia-se-du-lieu",
+          "slug": "chia-se-du-lieu",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-205-chia-se-du-lieu/",
+          "confidence": "high"
+        },
+        "F-206": {
+          "id": "F-206",
+          "name": "chia-se-du-lieu",
+          "slug": "chia-se-du-lieu",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-206-chia-se-du-lieu/",
+          "confidence": "high"
+        },
+        "F-207": {
+          "id": "F-207",
+          "name": "chia-se-du-lieu",
+          "slug": "chia-se-du-lieu",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-207-chia-se-du-lieu/",
+          "confidence": "high"
+        },
+        "F-215": {
+          "id": "F-215",
+          "name": "tinh-trang-khanh-tac-cang",
+          "slug": "tinh-trang-khanh-tac-cang",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-215-tinh-trang-khanh-tac-cang/",
+          "confidence": "high"
+        },
+        "F-216": {
+          "id": "F-216",
+          "name": "tinh-trang-khanh-tac-bien",
+          "slug": "tinh-trang-khanh-tac-bien",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-216-tinh-trang-khanh-tac-bien/",
+          "confidence": "high"
+        },
+        "F-217": {
+          "id": "F-217",
+          "name": "thong-ke-hang-hai-cua-cang",
+          "slug": "thong-ke-hang-hai-cua-cang",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-217-thong-ke-hang-hai-cua-cang/",
+          "confidence": "high"
+        },
+        "F-219": {
+          "id": "F-219",
+          "name": "thong-ke-van-chuyen-quoc-te",
+          "slug": "thong-ke-van-chuyen-quoc-te",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-219-thong-ke-van-chuyen-quoc-te/",
+          "confidence": "high"
+        },
+        "F-220": {
+          "id": "F-220",
+          "name": "danh-muc-hang-hoa",
+          "slug": "danh-muc-hang-hoa",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-220-danh-muc-hang-hoa/",
+          "confidence": "high"
+        },
+        "F-221": {
+          "id": "F-221",
+          "name": "hang-hoa-theo-khong-vung",
+          "slug": "hang-hoa-theo-khong-vung",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-221-hang-hoa-theo-khong-vung/",
+          "confidence": "high"
+        },
+        "F-222": {
+          "id": "F-222",
+          "name": "hang-hoa-theo-loai",
+          "slug": "hang-hoa-theo-loai",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-222-hang-hoa-theo-loai/",
+          "confidence": "high"
+        },
+        "F-223": {
+          "id": "F-223",
+          "name": "hang-hoa-theo-don-vi",
+          "slug": "hang-hoa-theo-don-vi",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-223-hang-hoa-theo-don-vi/",
+          "confidence": "high"
+        },
+        "F-224": {
+          "id": "F-224",
+          "name": "kich-co-hang-hoa",
+          "slug": "kich-co-hang-hoa",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-224-kich-co-hang-hoa/",
+          "confidence": "high"
+        },
+        "F-225": {
+          "id": "F-225",
+          "name": "hang-hoa-theo-don-vi-kich-co",
+          "slug": "hang-hoa-theo-don-vi-kich-co",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-225-hang-hoa-theo-don-vi-kich-co/",
+          "confidence": "high"
+        },
+        "F-226": {
+          "id": "F-226",
+          "name": "chieu-kiem-hang-hoa",
+          "slug": "chieu-kiem-hang-hoa",
+          "status": "implemented",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-226-chieu-kiem-hang-hoa/",
+          "confidence": "high"
+        }
+      }
     },
     "M-010": {
       "id": "M-010",
@@ -2165,7 +2631,7 @@
           "id": "F-271",
           "name": "Đăng ký tài khoản",
           "slug": "dang-ky-tai-khoan",
-          "status": "done",
+          "status": "implemented",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2274,7 +2740,7 @@
       "slug": "nhat-ky-backup",
       "status": "done",
       "version": 2,
-      "feature_count": 6,
+      "feature_count": 8,
       "aggregate_size_status": "green",
       "depends_on": [],
       "path": "docs/modules/M-011-nhat-ky-backup/",
@@ -2313,7 +2779,7 @@
           "id": "F-280",
           "name": "Sao lưu CSDL tự động",
           "slug": "sao-lu-c-sdl-tu-dong",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2328,7 +2794,7 @@
           "id": "F-281",
           "name": "Phục hồi dữ liệu",
           "slug": "phuc-hoi-du-lieu",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2343,7 +2809,7 @@
           "id": "F-282",
           "name": "Giám sát SIEM",
           "slug": "giam-sat-siem",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2358,7 +2824,7 @@
           "id": "F-283",
           "name": "Báo cáo SIEM",
           "slug": "bao-cao-siem",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2367,6 +2833,36 @@
           "depends_on": [],
           "consumed_by_modules": [],
           "path": "docs/modules/M-011-nhat-ky-backup/_features/F-283-bao-cao-siem/",
+          "confidence": "high"
+        },
+        "F-284": {
+          "id": "F-284",
+          "name": "Lịch sử backup",
+          "slug": "lich-su-backup",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-011-nhat-ky-backup/_features/F-284-lich-su-backup/",
+          "confidence": "high"
+        },
+        "F-285": {
+          "id": "F-285",
+          "name": "Cấu hình backup",
+          "slug": "cau-hinh-backup",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-011-nhat-ky-backup/_features/F-285-cau-hinh-backup/",
           "confidence": "high"
         }
       }
@@ -2487,9 +2983,9 @@
       "features": {
         "F-068": {
           "id": "F-068",
-          "name": "Quan ly Den bien - Tao moi",
+          "name": "Quản lý Đèn biển - Tạo mới",
           "slug": "quan-ly-den-bien-tao-moi",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2502,9 +2998,9 @@
         },
         "F-069": {
           "id": "F-069",
-          "name": "Quan ly Den bien - Cap nhat",
+          "name": "Quản lý Đèn biển - Cập nhật",
           "slug": "quan-ly-den-bien-cap-nhat",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2517,9 +3013,9 @@
         },
         "F-070": {
           "id": "F-070",
-          "name": "Quan ly Den bien - Xoa",
+          "name": "Quản lý Đèn biển - Xóa",
           "slug": "quan-ly-den-bien-xoa",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2532,9 +3028,9 @@
         },
         "F-071": {
           "id": "F-071",
-          "name": "Phe duyet Den bien",
+          "name": "Phê duyệt Đèn biển",
           "slug": "phe-duyet-den-bien",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2547,9 +3043,9 @@
         },
         "F-072": {
           "id": "F-072",
-          "name": "Xem chi tiet Den bien",
+          "name": "Xem chi tiết Đèn biển",
           "slug": "xem-chi-tiet-den-bien",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2562,9 +3058,9 @@
         },
         "F-073": {
           "id": "F-073",
-          "name": "Quan ly Den bien - Lich su",
+          "name": "Quản lý Đèn biển - Lịch sử",
           "slug": "quan-ly-den-bien-lich-su",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2577,9 +3073,9 @@
         },
         "F-074": {
           "id": "F-074",
-          "name": "Quan ly Phao tieu - Tao moi",
+          "name": "Quản lý Phao tiêu - Tạo mới",
           "slug": "quan-ly-phao-tieu-tao-moi",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2592,9 +3088,9 @@
         },
         "F-075": {
           "id": "F-075",
-          "name": "Quan ly Phao tieu - Cap nhat",
+          "name": "Quản lý Phao tiêu - Cập nhật",
           "slug": "quan-ly-phao-tieu-cap-nhat",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2607,9 +3103,9 @@
         },
         "F-076": {
           "id": "F-076",
-          "name": "Quan ly Phao tieu - Xoa",
+          "name": "Quản lý Phao tiêu - Xóa",
           "slug": "quan-ly-phao-tieu-xoa",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2622,9 +3118,9 @@
         },
         "F-077": {
           "id": "F-077",
-          "name": "Phe duyet Phao tieu",
+          "name": "Phê duyệt Phao tiêu",
           "slug": "phe-duyet-phao-tieu",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2637,9 +3133,9 @@
         },
         "F-078": {
           "id": "F-078",
-          "name": "Xem chi tiet Phao tieu",
+          "name": "Xem chi tiết Phao tiêu",
           "slug": "xem-chi-tiet-phao-tieu",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2652,9 +3148,9 @@
         },
         "F-079": {
           "id": "F-079",
-          "name": "Quan ly Phao tieu - Lich su",
+          "name": "Quản lý Phao tiêu - Lịch sử",
           "slug": "quan-ly-phao-tieu-lich-su",
-          "status": "implemented",
+          "status": "proposed",
           "classification": "local",
           "visibility": [
             "PRIVATE"
@@ -2671,7 +3167,7 @@
       "id": "M-014",
       "name": "Quản lý Nhà trạm",
       "slug": "quan-ly-nha-tram",
-      "status": "in-progress",
+      "status": "done",
       "version": 1,
       "feature_count": 12,
       "aggregate_size_status": "green",
@@ -2680,7 +3176,7 @@
       "features": {
         "F-080": {
           "id": "F-080",
-          "name": "Quan ly Nha tram phao - Tao moi",
+          "name": "Tạo mới Nhà trạm phao",
           "slug": "quan-ly-nha-tram-phao-tao-moi",
           "status": "proposed",
           "classification": "local",
@@ -2695,7 +3191,7 @@
         },
         "F-081": {
           "id": "F-081",
-          "name": "Quan ly Nha tram phao - Cap nhat",
+          "name": "Cập nhật Nhà trạm phao",
           "slug": "quan-ly-nha-tram-phao-cap-nhat",
           "status": "proposed",
           "classification": "local",
@@ -2710,7 +3206,7 @@
         },
         "F-082": {
           "id": "F-082",
-          "name": "Quan ly Nha tram phao - Xoa",
+          "name": "Xóa Nhà trạm phao",
           "slug": "quan-ly-nha-tram-phao-xoa",
           "status": "proposed",
           "classification": "local",
@@ -2725,7 +3221,7 @@
         },
         "F-083": {
           "id": "F-083",
-          "name": "Phe duyet Nha tram phao",
+          "name": "Phê duyệt Nhà trạm phao",
           "slug": "phe-duyet-nha-tram-phao",
           "status": "proposed",
           "classification": "local",
@@ -2740,7 +3236,7 @@
         },
         "F-084": {
           "id": "F-084",
-          "name": "Xem chi tiet Nha tram phao",
+          "name": "Xem chi tiết Nhà trạm phao",
           "slug": "xem-chi-tiet-nha-tram-phao",
           "status": "proposed",
           "classification": "local",
@@ -2755,7 +3251,7 @@
         },
         "F-085": {
           "id": "F-085",
-          "name": "Quan ly Nha tram phao - Lich su",
+          "name": "Quản lý lịch sử Nhà trạm phao",
           "slug": "quan-ly-nha-tram-phao-lich-su",
           "status": "proposed",
           "classification": "local",
@@ -2770,7 +3266,7 @@
         },
         "F-086": {
           "id": "F-086",
-          "name": "Quan ly Nha tram den - Tao moi",
+          "name": "Tạo mới Nhà trạm đèn",
           "slug": "quan-ly-nha-tram-den-tao-moi",
           "status": "proposed",
           "classification": "local",
@@ -2785,7 +3281,7 @@
         },
         "F-087": {
           "id": "F-087",
-          "name": "Quan ly Nha tram den - Cap nhat",
+          "name": "Cập nhật Nhà trạm đèn",
           "slug": "quan-ly-nha-tram-den-cap-nhat",
           "status": "proposed",
           "classification": "local",
@@ -2800,7 +3296,7 @@
         },
         "F-088": {
           "id": "F-088",
-          "name": "Quan ly Nha tram den - Xoa",
+          "name": "Xóa Nhà trạm đèn",
           "slug": "quan-ly-nha-tram-den-xoa",
           "status": "proposed",
           "classification": "local",
@@ -2815,7 +3311,7 @@
         },
         "F-089": {
           "id": "F-089",
-          "name": "Phe duyet Nha tram den",
+          "name": "Phê duyệt Nhà trạm đèn",
           "slug": "phe-duyet-nha-tram-den",
           "status": "proposed",
           "classification": "local",
@@ -2830,7 +3326,7 @@
         },
         "F-090": {
           "id": "F-090",
-          "name": "Xem chi tiet Nha tram den",
+          "name": "Xem chi tiết Nhà trạm đèn",
           "slug": "xem-chi-tiet-nha-tram-den",
           "status": "proposed",
           "classification": "local",
@@ -2845,7 +3341,7 @@
         },
         "F-091": {
           "id": "F-091",
-          "name": "Quan ly Nha tram den - Lich su",
+          "name": "Quản lý lịch sử Nhà trạm đèn",
           "slug": "quan-ly-nha-tram-den-lich-su",
           "status": "proposed",
           "classification": "local",
@@ -2873,7 +3369,7 @@
       "features": {
         "F-092": {
           "id": "F-092",
-          "name": "Quan ly Dai TTDH - Tao moi",
+          "name": "Quản lý Đại TTDH - Tạo mới",
           "slug": "quan-ly-dai-ttdh-tao-moi",
           "status": "proposed",
           "classification": "local",
@@ -2888,7 +3384,7 @@
         },
         "F-093": {
           "id": "F-093",
-          "name": "Quan ly Dai TTDH - Cap nhat",
+          "name": "Quản lý Đại TTDH - Cập nhật",
           "slug": "quan-ly-dai-ttdh-cap-nhat",
           "status": "proposed",
           "classification": "local",
@@ -2903,7 +3399,7 @@
         },
         "F-094": {
           "id": "F-094",
-          "name": "Quan ly Dai TTDH - Xoa",
+          "name": "Quản lý Đại TTDH - Xóa",
           "slug": "quan-ly-dai-ttdh-xoa",
           "status": "proposed",
           "classification": "local",
@@ -2918,7 +3414,7 @@
         },
         "F-095": {
           "id": "F-095",
-          "name": "Phe duyet Dai TTDH",
+          "name": "Phê duyệt Đại TTDH",
           "slug": "phe-duyet-dai-ttdh",
           "status": "proposed",
           "classification": "local",
@@ -2933,7 +3429,7 @@
         },
         "F-096": {
           "id": "F-096",
-          "name": "Xem chi tiet Dai TTDH",
+          "name": "Xem chi tiết Đại TTDH",
           "slug": "xem-chi-tiet-dai-ttdh",
           "status": "proposed",
           "classification": "local",
@@ -2948,7 +3444,7 @@
         },
         "F-097": {
           "id": "F-097",
-          "name": "Quan ly Dai TTDH - Lich su",
+          "name": "Quản lý Đại TTDH - Lịch sử",
           "slug": "quan-ly-dai-ttdh-lich-su",
           "status": "proposed",
           "classification": "local",
@@ -2963,7 +3459,7 @@
         },
         "F-098": {
           "id": "F-098",
-          "name": "Quan ly Dai Inmarsat - Tao moi",
+          "name": "Quản lý Đại Inmarsat - Tạo mới",
           "slug": "quan-ly-dai-inmarsat-tao-moi",
           "status": "proposed",
           "classification": "local",
@@ -2978,7 +3474,7 @@
         },
         "F-099": {
           "id": "F-099",
-          "name": "Quan ly Dai Inmarsat - Cap nhat",
+          "name": "Quản lý Đại Inmarsat - Cập nhật",
           "slug": "quan-ly-dai-inmarsat-cap-nhat",
           "status": "proposed",
           "classification": "local",
@@ -2993,7 +3489,7 @@
         },
         "F-100": {
           "id": "F-100",
-          "name": "Quan ly Dai Inmarsat - Xoa",
+          "name": "Quản lý Đại Inmarsat - Xóa",
           "slug": "quan-ly-dai-inmarsat-xoa",
           "status": "proposed",
           "classification": "local",
@@ -3008,7 +3504,7 @@
         },
         "F-101": {
           "id": "F-101",
-          "name": "Phe duyet Dai Inmarsat",
+          "name": "Phê duyệt Đại Inmarsat",
           "slug": "phe-duyet-dai-inmarsat",
           "status": "proposed",
           "classification": "local",
@@ -3023,7 +3519,7 @@
         },
         "F-102": {
           "id": "F-102",
-          "name": "Xem chi tiet Dai Inmarsat",
+          "name": "Xem chi tiết Đại Inmarsat",
           "slug": "xem-chi-tiet-dai-inmarsat",
           "status": "proposed",
           "classification": "local",
@@ -3038,7 +3534,7 @@
         },
         "F-103": {
           "id": "F-103",
-          "name": "Quan ly Dai Inmarsat - Lich su",
+          "name": "Quản lý Đại Inmarsat - Lịch sử",
           "slug": "quan-ly-dai-inmarsat-lich-su",
           "status": "proposed",
           "classification": "local",
@@ -3053,7 +3549,7 @@
         },
         "F-104": {
           "id": "F-104",
-          "name": "Quan ly Dai Cospas-Sarsat - Tao moi",
+          "name": "Quản lý Đại Cospas-Sarsat - Tạo mới",
           "slug": "quan-ly-dai-cospas-sarsat-tao-moi",
           "status": "proposed",
           "classification": "local",
@@ -3068,7 +3564,7 @@
         },
         "F-105": {
           "id": "F-105",
-          "name": "Quan ly Dai Cospas-Sarsat - Cap nhat",
+          "name": "Quản lý Đại Cospas-Sarsat - Cập nhật",
           "slug": "quan-ly-dai-cospas-sarsat-cap-nhat",
           "status": "proposed",
           "classification": "local",
@@ -3083,7 +3579,7 @@
         },
         "F-106": {
           "id": "F-106",
-          "name": "Quan ly Dai Cospas-Sarsat - Xoa",
+          "name": "Quản lý Đại Cospas-Sarsat - Xóa",
           "slug": "quan-ly-dai-cospas-sarsat-xoa",
           "status": "proposed",
           "classification": "local",
@@ -3098,7 +3594,7 @@
         },
         "F-107": {
           "id": "F-107",
-          "name": "Phe duyet Dai Cospas-Sarsat",
+          "name": "Phê duyệt Đại Cospas-Sarsat",
           "slug": "phe-duyet-dai-cospas-sarsat",
           "status": "proposed",
           "classification": "local",
@@ -3113,7 +3609,7 @@
         },
         "F-108": {
           "id": "F-108",
-          "name": "Xem chi tiet Dai Cospas-Sarsat",
+          "name": "Xem chi tiết Đại Cospas-Sarsat",
           "slug": "xem-chi-tiet-dai-cospas-sarsat",
           "status": "proposed",
           "classification": "local",
@@ -3128,7 +3624,7 @@
         },
         "F-109": {
           "id": "F-109",
-          "name": "Quan ly Dai Cospas-Sarsat - Lich su",
+          "name": "Quản lý Đại Cospas-Sarsat - Lịch sử",
           "slug": "quan-ly-dai-cospas-sarsat-lich-su",
           "status": "proposed",
           "classification": "local",
@@ -3143,7 +3639,7 @@
         },
         "F-110": {
           "id": "F-110",
-          "name": "Quan ly Dai LRIT - Tao moi",
+          "name": "Quản lý Đại LRIT - Tạo mới",
           "slug": "quan-ly-dai-lrit-tao-moi",
           "status": "proposed",
           "classification": "local",
@@ -3158,7 +3654,7 @@
         },
         "F-111": {
           "id": "F-111",
-          "name": "Quan ly Dai LRIT - Cap nhat",
+          "name": "Quản lý Đại LRIT - Cập nhật",
           "slug": "quan-ly-dai-lrit-cap-nhat",
           "status": "proposed",
           "classification": "local",
@@ -3173,7 +3669,7 @@
         },
         "F-112": {
           "id": "F-112",
-          "name": "Quan ly Dai LRIT - Xoa",
+          "name": "Quản lý Đại LRIT - Xóa",
           "slug": "quan-ly-dai-lrit-xoa",
           "status": "proposed",
           "classification": "local",
@@ -3188,7 +3684,7 @@
         },
         "F-113": {
           "id": "F-113",
-          "name": "Phe duyet Dai LRIT",
+          "name": "Phê duyệt Đại LRIT",
           "slug": "phe-duyet-dai-lrit",
           "status": "proposed",
           "classification": "local",
@@ -3203,7 +3699,7 @@
         },
         "F-114": {
           "id": "F-114",
-          "name": "Xem chi tiet Dai LRIT",
+          "name": "Xem chi tiết Đại LRIT",
           "slug": "xem-chi-tiet-dai-lrit",
           "status": "proposed",
           "classification": "local",
@@ -3218,7 +3714,7 @@
         },
         "F-115": {
           "id": "F-115",
-          "name": "Quan ly Dai LRIT - Lich su",
+          "name": "Quản lý Đại LRIT - Lịch sử",
           "slug": "quan-ly-dai-lrit-lich-su",
           "status": "proposed",
           "classification": "local",
@@ -3233,7 +3729,7 @@
         },
         "F-116": {
           "id": "F-116",
-          "name": "Quan ly Dai TT hang hai HN - Tao moi",
+          "name": "Quản lý Đại TT Hàng Hải HN - Tạo mới",
           "slug": "quan-ly-dai-tt-hang-hai-hn-tao-moi",
           "status": "proposed",
           "classification": "local",
@@ -3248,7 +3744,7 @@
         },
         "F-117": {
           "id": "F-117",
-          "name": "Quan ly Dai TT hang hai HN - Cap nhat",
+          "name": "Quản lý Đại TT Hàng Hải HN - Cập nhật",
           "slug": "quan-ly-dai-tt-hang-hai-hn-cap-nhat",
           "status": "proposed",
           "classification": "local",
@@ -3263,7 +3759,7 @@
         },
         "F-118": {
           "id": "F-118",
-          "name": "Quan ly Dai TT hang hai HN - Xoa",
+          "name": "Quản lý Đại TT Hàng Hải HN - Xóa",
           "slug": "quan-ly-dai-tt-hang-hai-hn-xoa",
           "status": "proposed",
           "classification": "local",
@@ -3278,7 +3774,7 @@
         },
         "F-119": {
           "id": "F-119",
-          "name": "Phe duyet Dai TT hang hai HN",
+          "name": "Phê duyệt Đại TT Hàng Hải HN",
           "slug": "phe-duyet-dai-tt-hang-hai-hn",
           "status": "proposed",
           "classification": "local",
@@ -3293,7 +3789,7 @@
         },
         "F-120": {
           "id": "F-120",
-          "name": "Xem chi tiet Dai TT hang hai HN",
+          "name": "Xem chi tiết Đại TT Hàng Hải HN",
           "slug": "xem-chi-tiet-dai-tt-hang-hai-hn",
           "status": "proposed",
           "classification": "local",
@@ -3308,7 +3804,7 @@
         },
         "F-121": {
           "id": "F-121",
-          "name": "Quan ly Dai TT hang hai HN - Lich su",
+          "name": "Quản lý Đại TT Hàng Hải HN - Lịch sử",
           "slug": "quan-ly-dai-tt-hang-hai-hn-lich-su",
           "status": "proposed",
           "classification": "local",
@@ -4097,7 +4593,7 @@
       "features": {
         "F-190": {
           "id": "F-190",
-          "name": "Chia se: KCHTGT Ben cang",
+          "name": "Chia se KCHTGT Ben cang",
           "slug": "chia-se-kchtgt-ben-cang",
           "status": "proposed",
           "classification": "local",
@@ -4112,7 +4608,7 @@
         },
         "F-191": {
           "id": "F-191",
-          "name": "Chia se: KCHTGT Cau cang",
+          "name": "Chia se KCHTGT Cau cang",
           "slug": "chia-se-kchtgt-cau-cang",
           "status": "proposed",
           "classification": "local",
@@ -4127,7 +4623,7 @@
         },
         "F-192": {
           "id": "F-192",
-          "name": "Chia se: KCHTGT Ben phao",
+          "name": "Chia se KCHTGT Ben phao",
           "slug": "chia-se-kchtgt-ben-phao",
           "status": "proposed",
           "classification": "local",
@@ -4142,7 +4638,7 @@
         },
         "F-193": {
           "id": "F-193",
-          "name": "Chia se: KCHTGT Khu tranh tru bao",
+          "name": "Chia se KCHTGT Khu tranh tru bao",
           "slug": "chia-se-kchtgt-khu-tranh-tru-bao",
           "status": "proposed",
           "classification": "local",
@@ -4157,7 +4653,7 @@
         },
         "F-194": {
           "id": "F-194",
-          "name": "Chia se: KCHTGT Khu chuyen tai",
+          "name": "Chia se KCHTGT Khu chuyen tai",
           "slug": "chia-se-kchtgt-khu-chuyen-tai",
           "status": "proposed",
           "classification": "local",
@@ -4172,7 +4668,7 @@
         },
         "F-195": {
           "id": "F-195",
-          "name": "Chia se: KCHTGT Khu neo dau",
+          "name": "Chia se KCHTGT Khu neo dau",
           "slug": "chia-se-kchtgt-khu-neo-dau",
           "status": "proposed",
           "classification": "local",
@@ -4187,7 +4683,7 @@
         },
         "F-196": {
           "id": "F-196",
-          "name": "Chia se: KCHTGT Co so sua chua",
+          "name": "Chia se KCHTGT Co so sua chua",
           "slug": "chia-se-kchtgt-co-so-sua-chua",
           "status": "proposed",
           "classification": "local",
@@ -4202,7 +4698,7 @@
         },
         "F-197": {
           "id": "F-197",
-          "name": "Chia se: KCHTGT Den bien",
+          "name": "Chia se KCHTGT Den bien",
           "slug": "chia-se-kchtgt-den-bien",
           "status": "proposed",
           "classification": "local",
@@ -4217,7 +4713,7 @@
         },
         "F-198": {
           "id": "F-198",
-          "name": "Chia se: KCHTGT Phao tieu",
+          "name": "Chia se KCHTGT Phao tieu",
           "slug": "chia-se-kchtgt-phao-tieu",
           "status": "proposed",
           "classification": "local",
@@ -4232,7 +4728,7 @@
         },
         "F-199": {
           "id": "F-199",
-          "name": "Chia se: KCHTGT He thong VTS",
+          "name": "Chia se KCHTGT He thong VTS",
           "slug": "chia-se-kchtgt-he-thong-vts",
           "status": "proposed",
           "classification": "local",
@@ -4247,7 +4743,7 @@
         },
         "F-200": {
           "id": "F-200",
-          "name": "chia-se-kchtgt-tt-dieu-hanh-vts",
+          "name": "Chia sẻ KCHTGT thông tin điều hành VTS",
           "slug": "chia-se-kchtgt-tt-dieu-hanh-vts",
           "status": "proposed",
           "classification": "local",
@@ -4262,7 +4758,7 @@
         },
         "F-201": {
           "id": "F-201",
-          "name": "chia-se-kchtgt-tram-radar",
+          "name": "Chia sẻ KCHTGT Trạm Radar",
           "slug": "chia-se-kchtgt-tram-radar",
           "status": "proposed",
           "classification": "local",
@@ -4277,7 +4773,7 @@
         },
         "F-202": {
           "id": "F-202",
-          "name": "chia-se-kchtgt-he-thong-ais",
+          "name": "Chia sẻ KCHTGT Hệ thống AIS",
           "slug": "chia-se-kchtgt-he-thong-ais",
           "status": "proposed",
           "classification": "local",
@@ -4292,7 +4788,7 @@
         },
         "F-203": {
           "id": "F-203",
-          "name": "chia-se-kchtgt-he-thong-cctv",
+          "name": "Chia sẻ KCHTGT Hệ thống CCTV",
           "slug": "chia-se-kchtgt-he-thong-cctv",
           "status": "proposed",
           "classification": "local",
@@ -4307,7 +4803,7 @@
         },
         "F-204": {
           "id": "F-204",
-          "name": "chia-se-kchtgt-he-thong-scada",
+          "name": "Chia sẻ KCHTGT Hệ thống SCADA",
           "slug": "chia-se-kchtgt-he-thong-scada",
           "status": "proposed",
           "classification": "local",
@@ -4322,7 +4818,7 @@
         },
         "F-205": {
           "id": "F-205",
-          "name": "chia-se-kchtgt-he-thong-thong-tin-vhf",
+          "name": "Chia sẻ KCHTGT Hệ thống thông tin VHF",
           "slug": "chia-se-kchtgt-he-thong-thong-tin-vhf",
           "status": "proposed",
           "classification": "local",
@@ -4337,7 +4833,7 @@
         },
         "F-206": {
           "id": "F-206",
-          "name": "chia-se-kchtgt-he-thong-truyen-dan",
+          "name": "Chia sẻ KCHTGT Hệ thống truyền dẫn",
           "slug": "chia-se-kchtgt-he-thong-truyen-dan",
           "status": "proposed",
           "classification": "local",
@@ -4352,7 +4848,7 @@
         },
         "F-207": {
           "id": "F-207",
-          "name": "chia-se-kchtgt-he-thong-phu-tro-vts",
+          "name": "Chia sẻ KCHTGT Hệ thống phụ trợ VTS",
           "slug": "chia-se-kchtgt-he-thong-phu-tro-vts",
           "status": "proposed",
           "classification": "local",
@@ -4380,7 +4876,7 @@
       "features": {
         "F-227": {
           "id": "F-227",
-          "name": "tich-hop-kchtgt-ben-cang",
+          "name": "Tích hợp KCHTGT Bến cảng",
           "slug": "tich-hop-kchtgt-ben-cang",
           "status": "proposed",
           "classification": "local",
@@ -4395,7 +4891,7 @@
         },
         "F-228": {
           "id": "F-228",
-          "name": "tich-hop-kchtgt-cau-cang",
+          "name": "Tích hợp KCHTGT Cầu cảng",
           "slug": "tich-hop-kchtgt-cau-cang",
           "status": "proposed",
           "classification": "local",
@@ -4410,7 +4906,7 @@
         },
         "F-229": {
           "id": "F-229",
-          "name": "tich-hop-kchtgt-ben-phao",
+          "name": "Tích hợp KCHTGT Biển phao",
           "slug": "tich-hop-kchtgt-ben-phao",
           "status": "proposed",
           "classification": "local",
@@ -4425,7 +4921,7 @@
         },
         "F-230": {
           "id": "F-230",
-          "name": "tich-hop-kchtgt-khu-tr-nh-tr-b-o",
+          "name": "Tích hợp KCHTGT Khu tránh trú bão",
           "slug": "tich-hop-kchtgt-khu-tr-nh-tr-b-o",
           "status": "proposed",
           "classification": "local",
@@ -4440,7 +4936,7 @@
         },
         "F-231": {
           "id": "F-231",
-          "name": "tich-hop-kchtgt-khu-chuy-n-tai",
+          "name": "Tích hợp KCHTGT Khu chuyển tai",
           "slug": "tich-hop-kchtgt-khu-chuy-n-tai",
           "status": "proposed",
           "classification": "local",
@@ -4455,7 +4951,7 @@
         },
         "F-232": {
           "id": "F-232",
-          "name": "tich-hop-kchtgt-khu-neo-dau",
+          "name": "Tích hợp KCHTGT Khu neo đậu",
           "slug": "tich-hop-kchtgt-khu-neo-dau",
           "status": "proposed",
           "classification": "local",
@@ -4470,7 +4966,7 @@
         },
         "F-233": {
           "id": "F-233",
-          "name": "tich-hop-kchtgt-co-so-sua-chua",
+          "name": "Tích hợp KCHTGT Cơ sở sửa chữa",
           "slug": "tich-hop-kchtgt-co-so-sua-chua",
           "status": "proposed",
           "classification": "local",
@@ -4485,7 +4981,7 @@
         },
         "F-234": {
           "id": "F-234",
-          "name": "tich-hop-kchtgt-tt-den-bien",
+          "name": "Tích hợp KCHTGT Tin đèn biển",
           "slug": "tich-hop-kchtgt-tt-den-bien",
           "status": "proposed",
           "classification": "local",
@@ -4500,7 +4996,7 @@
         },
         "F-235": {
           "id": "F-235",
-          "name": "tich-hop-kchtgt-tt-phao-tieu",
+          "name": "Tích hợp KCHTGT Tin phao tiêu",
           "slug": "tich-hop-kchtgt-tt-phao-tieu",
           "status": "proposed",
           "classification": "local",
@@ -4515,7 +5011,7 @@
         },
         "F-236": {
           "id": "F-236",
-          "name": "tich-hop-kchtgt-he-thong-vts",
+          "name": "Tích hợp KCHTGT Hệ thống VTS",
           "slug": "tich-hop-kchtgt-he-thong-vts",
           "status": "proposed",
           "classification": "local",
@@ -4530,7 +5026,7 @@
         },
         "F-237": {
           "id": "F-237",
-          "name": "tich-hop-kchtgt-tt-dieu-hanh-vts",
+          "name": "Tích hợp KCHTGT Tin điều hành VTS",
           "slug": "tich-hop-kchtgt-tt-dieu-hanh-vts",
           "status": "proposed",
           "classification": "local",
@@ -4545,7 +5041,7 @@
         },
         "F-238": {
           "id": "F-238",
-          "name": "tich-hop-kchtgt-tram-radar",
+          "name": "Tích hợp KCHTGT Trạm Radar",
           "slug": "tich-hop-kchtgt-tram-radar",
           "status": "proposed",
           "classification": "local",
@@ -4560,7 +5056,7 @@
         },
         "F-239": {
           "id": "F-239",
-          "name": "tich-hop-kchtgt-he-thong-ais",
+          "name": "Tích hợp KCHTGT Hệ thống AIS",
           "slug": "tich-hop-kchtgt-he-thong-ais",
           "status": "proposed",
           "classification": "local",
@@ -4575,7 +5071,7 @@
         },
         "F-240": {
           "id": "F-240",
-          "name": "tich-hop-kchtgt-he-thong-cctv",
+          "name": "Tích hợp KCHTGT Hệ thống CCTV",
           "slug": "tich-hop-kchtgt-he-thong-cctv",
           "status": "proposed",
           "classification": "local",
@@ -4590,7 +5086,7 @@
         },
         "F-241": {
           "id": "F-241",
-          "name": "tich-hop-kchtgt-he-thong-scada",
+          "name": "Tích hợp KCHTGT Hệ thống SCADA",
           "slug": "tich-hop-kchtgt-he-thong-scada",
           "status": "proposed",
           "classification": "local",
@@ -4605,7 +5101,7 @@
         },
         "F-242": {
           "id": "F-242",
-          "name": "tich-hop-kchtgt-he-thong-thong-tin-vhf",
+          "name": "Tích hợp KCHTGT Hệ thống thông tin VHF",
           "slug": "tich-hop-kchtgt-he-thong-thong-tin-vhf",
           "status": "proposed",
           "classification": "local",
@@ -4620,7 +5116,7 @@
         },
         "F-243": {
           "id": "F-243",
-          "name": "tich-hop-kchtgt-he-thong-truyen-dan",
+          "name": "Tích hợp KCHTGT Hệ thống truyền dẫn",
           "slug": "tich-hop-kchtgt-he-thong-truyen-dan",
           "status": "proposed",
           "classification": "local",
@@ -4635,7 +5131,7 @@
         },
         "F-244": {
           "id": "F-244",
-          "name": "tich-hop-kchtgt-he-thong-phu-tro-vts",
+          "name": "Tích hợp KCHTGT Hệ thống phụ trợ VTS",
           "slug": "tich-hop-kchtgt-he-thong-phu-tro-vts",
           "status": "proposed",
           "classification": "local",
@@ -4650,7 +5146,7 @@
         },
         "F-245": {
           "id": "F-245",
-          "name": "tich-hop-kchtgt-de-ke",
+          "name": "Tích hợp KCHTGT Đê/kê",
           "slug": "tich-hop-kchtgt-de-ke",
           "status": "proposed",
           "classification": "local",
@@ -4665,7 +5161,7 @@
         },
         "F-246": {
           "id": "F-246",
-          "name": "tich-hop-kchtgt-luong-hang-hai",
+          "name": "Tích hợp KCHTGT Lượng hàng hải",
           "slug": "tich-hop-kchtgt-luong-hang-hai",
           "status": "proposed",
           "classification": "local",
@@ -4680,7 +5176,7 @@
         },
         "F-247": {
           "id": "F-247",
-          "name": "tich-hop-kchtgt-tt-dai-ttdh",
+          "name": "Tích hợp KCHTGT Tin đài TTDH",
           "slug": "tich-hop-kchtgt-tt-dai-ttdh",
           "status": "proposed",
           "classification": "local",
@@ -4695,7 +5191,7 @@
         },
         "F-248": {
           "id": "F-248",
-          "name": "tich-hop-kchtgt-tt-dai-inmarsat",
+          "name": "Tích hợp KCHTGT Tin đài Inmarsat",
           "slug": "tich-hop-kchtgt-tt-dai-inmarsat",
           "status": "proposed",
           "classification": "local",
@@ -4710,7 +5206,7 @@
         },
         "F-249": {
           "id": "F-249",
-          "name": "tich-hop-kchtgt-tt-dai-cospas-sarsat",
+          "name": "Tích hợp KCHTGT Tin đài Cospas-Sarsat",
           "slug": "tich-hop-kchtgt-tt-dai-cospas-sarsat",
           "status": "proposed",
           "classification": "local",
@@ -4725,7 +5221,7 @@
         },
         "F-250": {
           "id": "F-250",
-          "name": "tich-hop-kchtgt-tt-dai-lrit",
+          "name": "Tích hợp KCHTGT Tin đài LRIT",
           "slug": "tich-hop-kchtgt-tt-dai-lrit",
           "status": "proposed",
           "classification": "local",
@@ -4740,7 +5236,7 @@
         },
         "F-251": {
           "id": "F-251",
-          "name": "tich-hop-kchtgt-tt-dai-tt-hang-hai-hn",
+          "name": "Tích hợp KCHTGT Tin đài TT hàng hải HN",
           "slug": "tich-hop-kchtgt-tt-dai-tt-hang-hai-hn",
           "status": "proposed",
           "classification": "local",
@@ -4755,7 +5251,7 @@
         },
         "F-252": {
           "id": "F-252",
-          "name": "tich-hop-kchtgt-cang-can",
+          "name": "Tích hợp KCHTGT Cảng cạn",
           "slug": "tich-hop-kchtgt-cang-can",
           "status": "proposed",
           "classification": "local",
@@ -4770,7 +5266,7 @@
         },
         "F-253": {
           "id": "F-253",
-          "name": "tich-hop-kchtgt-mang-hai-do-dien-tu",
+          "name": "Tích hợp KCHTGT Mạng hải đồ điện tử",
           "slug": "tich-hop-kchtgt-mang-hai-do-dien-tu",
           "status": "proposed",
           "classification": "local",
@@ -4798,7 +5294,7 @@
       "features": {
         "F-254": {
           "id": "F-254",
-          "name": "tich-hop-kchtgt-tau-bien-ra-vao-cang",
+          "name": "Tích hợp KCHTGT Tàu biển ra vào cảng",
           "slug": "tich-hop-kchtgt-tau-bien-ra-vao-cang",
           "status": "proposed",
           "classification": "local",
@@ -4813,7 +5309,7 @@
         },
         "F-255": {
           "id": "F-255",
-          "name": "tich-hop-kchtgt-phuong-tien-thuy-noi-dia",
+          "name": "Tích hợp KCHTGT Phương tiện thủy nội địa",
           "slug": "tich-hop-kchtgt-phuong-tien-thuy-noi-dia",
           "status": "proposed",
           "classification": "local",
@@ -4828,7 +5324,7 @@
         },
         "F-256": {
           "id": "F-256",
-          "name": "tich-hop-kchtgt-tau-bien-nuoc-ngoai",
+          "name": "Tích hợp KCHTGT Tàu biển nước ngoài",
           "slug": "tich-hop-kchtgt-tau-bien-nuoc-ngoai",
           "status": "proposed",
           "classification": "local",
@@ -4843,7 +5339,7 @@
         },
         "F-257": {
           "id": "F-257",
-          "name": "tich-hop-kchtgt-tau-bien-vn-van-tai-quoc-te",
+          "name": "Tích hợp KCHTGT Tàu biển VN vận tải quốc tế",
           "slug": "tich-hop-kchtgt-tau-bien-vn-van-tai-quoc-te",
           "status": "proposed",
           "classification": "local",
@@ -4858,7 +5354,7 @@
         },
         "F-258": {
           "id": "F-258",
-          "name": "tich-hop-kchtgt-khoi-luong-hang-hoa-hanh-khach",
+          "name": "Tích hợp KCHTGT Khối lượng hàng hóa hành khách",
           "slug": "tich-hop-kchtgt-khoi-luong-hang-hoa-hanh-khach",
           "status": "proposed",
           "classification": "local",
@@ -4873,7 +5369,7 @@
         },
         "F-259": {
           "id": "F-259",
-          "name": "tich-hop-kchtgt-luot-tau-thuyen-vao-roi-cang",
+          "name": "Tích hợp KCHTGT Luợt tàu thuyền vào rời cảng",
           "slug": "tich-hop-kchtgt-luot-tau-thuyen-vao-roi-cang",
           "status": "proposed",
           "classification": "local",
@@ -4888,7 +5384,7 @@
         },
         "F-260": {
           "id": "F-260",
-          "name": "tich-hop-kchtgt-khoi-luong-hang-hoa-doi-tau-vn",
+          "name": "Tích hợp KCHTGT Khối lượng hàng hóa đối tàu VN",
           "slug": "tich-hop-kchtgt-khoi-luong-hang-hoa-doi-tau-vn",
           "status": "proposed",
           "classification": "local",
@@ -4903,7 +5399,7 @@
         },
         "F-261": {
           "id": "F-261",
-          "name": "tich-hop-kchtgt-khoi-luong-hang-hoa-trong-khu-quan-ly",
+          "name": "Tích hợp KCHTGT Khối lượng hàng hóa trong khu quản lý",
           "slug": "tich-hop-kchtgt-khoi-luong-hang-hoa-trong-khu-quan-ly",
           "status": "proposed",
           "classification": "local",
@@ -4918,7 +5414,7 @@
         },
         "F-262": {
           "id": "F-262",
-          "name": "tich-hop-kchtgt-thuyen-vien-hoa-tieu",
+          "name": "Tích hợp KCHTGT Thuyền viên, hoa tiêu",
           "slug": "tich-hop-kchtgt-thuyen-vien-hoa-tieu",
           "status": "proposed",
           "classification": "local",
@@ -4933,7 +5429,7 @@
         },
         "F-263": {
           "id": "F-263",
-          "name": "tich-hop-kchtgt-tau-bien-co-quoc-tich-vn",
+          "name": "Tích hợp KCHTGT Tàu biển có quốc tịch VN",
           "slug": "tich-hop-kchtgt-tau-bien-co-quoc-tich-vn",
           "status": "proposed",
           "classification": "local",
@@ -4948,7 +5444,7 @@
         },
         "F-264": {
           "id": "F-264",
-          "name": "tich-hop-kchtgt-tau-thuyen-lai-dhat",
+          "name": "Tích hợp KCHTGT Tàu thuyền lài dắt",
           "slug": "tich-hop-kchtgt-tau-thuyen-lai-dhat",
           "status": "proposed",
           "classification": "local",
@@ -4963,7 +5459,7 @@
         },
         "F-265": {
           "id": "F-265",
-          "name": "tich-hop-kchtgt-co-so-dong-moi-sua-chua",
+          "name": "Tích hợp KCHTGT Cơ sở đóng mới, sửa chữa",
           "slug": "tich-hop-kchtgt-co-so-dong-moi-sua-chua",
           "status": "proposed",
           "classification": "local",
@@ -4978,7 +5474,7 @@
         },
         "F-266": {
           "id": "F-266",
-          "name": "tich-hop-kchtgt-nang-luc-thong-qua-ben-cang",
+          "name": "Tích hợp KCHTGT Năng lực thông qua bến cảng",
           "slug": "tich-hop-kchtgt-nang-luc-thong-qua-ben-cang",
           "status": "proposed",
           "classification": "local",
@@ -4993,7 +5489,7 @@
         },
         "F-267": {
           "id": "F-267",
-          "name": "tich-hop-kchtgt-nang-luc-thong-qua-cang",
+          "name": "Tích hợp KCHTGT Năng lực thông qua cảng",
           "slug": "tich-hop-kchtgt-nang-luc-thong-qua-cang",
           "status": "proposed",
           "classification": "local",
@@ -5008,7 +5504,7 @@
         },
         "F-268": {
           "id": "F-268",
-          "name": "tich-hop-kchtgt-khoi-luong-hang-hoa-theo-thang",
+          "name": "Tích hợp KCHTGT Khối lượng hàng hóa theo tháng",
           "slug": "tich-hop-kchtgt-khoi-luong-hang-hoa-theo-thang",
           "status": "proposed",
           "classification": "local",
@@ -5023,7 +5519,7 @@
         },
         "F-269": {
           "id": "F-269",
-          "name": "tich-hop-kchtgt-khoi-luong-hang-hoa-theo-nam",
+          "name": "Tích hợp KCHTGT Khối lượng hàng hóa theo năm",
           "slug": "tich-hop-kchtgt-khoi-luong-hang-hoa-theo-nam",
           "status": "proposed",
           "classification": "local",
@@ -5038,7 +5534,7 @@
         },
         "F-270": {
           "id": "F-270",
-          "name": "tich-hop-kchtgt-san-luong-dich-vu-van-tai",
+          "name": "Tích hợp KCHTGT Sản lượng dịch vụ vận tải",
           "slug": "tich-hop-kchtgt-san-luong-dich-vu-van-tai",
           "status": "proposed",
           "classification": "local",
@@ -5066,7 +5562,7 @@
       "features": {
         "F-208": {
           "id": "F-208",
-          "name": "chia-se-kchtgt-de-chan-song-de-chan-cat-ke",
+          "name": "Chia sẻ KCHTGT đê chắn sóng, đê chắn cát, kênh",
           "slug": "chia-se-kchtgt-de-chan-song-de-chan-cat-ke",
           "status": "proposed",
           "classification": "local",
@@ -5081,7 +5577,7 @@
         },
         "F-209": {
           "id": "F-209",
-          "name": "chia-se-kchtgt-luong-hang-hai",
+          "name": "Chia sẻ KCHTGT luồng hàng hải",
           "slug": "chia-se-kchtgt-luong-hang-hai",
           "status": "proposed",
           "classification": "local",
@@ -5096,7 +5592,7 @@
         },
         "F-210": {
           "id": "F-210",
-          "name": "chia-se-kchtgt-dai-ttdh",
+          "name": "Chia sẻ KCHTGT đài TTDH",
           "slug": "chia-se-kchtgt-dai-ttdh",
           "status": "proposed",
           "classification": "local",
@@ -5111,7 +5607,7 @@
         },
         "F-211": {
           "id": "F-211",
-          "name": "chia-se-kchtgt-dai-inmarsat",
+          "name": "Chia sẻ KCHTGT đài Inmarsat",
           "slug": "chia-se-kchtgt-dai-inmarsat",
           "status": "proposed",
           "classification": "local",
@@ -5126,7 +5622,7 @@
         },
         "F-212": {
           "id": "F-212",
-          "name": "chia-se-kchtgt-dai-cospas-sarsat",
+          "name": "Chia sẻ KCHTGT đài Cospas-Sarsat",
           "slug": "chia-se-kchtgt-dai-cospas-sarsat",
           "status": "proposed",
           "classification": "local",
@@ -5141,7 +5637,7 @@
         },
         "F-213": {
           "id": "F-213",
-          "name": "chia-se-kchtgt-dai-lrit",
+          "name": "Chia sẻ KCHTGT đài LRIT",
           "slug": "chia-se-kchtgt-dai-lrit",
           "status": "proposed",
           "classification": "local",
@@ -5156,7 +5652,7 @@
         },
         "F-214": {
           "id": "F-214",
-          "name": "chia-se-kchtgt-dai-tt-hang-hai-hn",
+          "name": "Chia sẻ KCHTGT đài TT hàng hải HN",
           "slug": "chia-se-kchtgt-dai-tt-hang-hai-hn",
           "status": "proposed",
           "classification": "local",
@@ -5171,7 +5667,7 @@
         },
         "F-215": {
           "id": "F-215",
-          "name": "chia-se-kchtgt-cang-can",
+          "name": "Chia sẻ KCHTGT cảng cạn",
           "slug": "chia-se-kchtgt-cang-can",
           "status": "proposed",
           "classification": "local",
@@ -5186,7 +5682,7 @@
         },
         "F-216": {
           "id": "F-216",
-          "name": "chia-se-kchtgt-trang-thai-hoat-dong-kchtgt-hh",
+          "name": "Chia sẻ KCHTGT trạng thái hoạt động KCHTGT HH",
           "slug": "chia-se-kchtgt-trang-thai-hoat-dong-kchtgt-hh",
           "status": "proposed",
           "classification": "local",
@@ -5201,7 +5697,7 @@
         },
         "F-217": {
           "id": "F-217",
-          "name": "chia-se-kchtgt-thong-tin-tai-san-kchtgt-hh",
+          "name": "Chia sẻ KCHTGT thông tin tài sản KCHTGT HH",
           "slug": "chia-se-kchtgt-thong-tin-tai-san-kchtgt-hh",
           "status": "proposed",
           "classification": "local",
@@ -5216,7 +5712,7 @@
         },
         "F-218": {
           "id": "F-218",
-          "name": "chia-se-kchtgt-thong-tin-tong-hop-kchtgt-hang-hai",
+          "name": "Chia sẻ KCHTGT thông tin tổng hợp KCHTGT hàng hải",
           "slug": "chia-se-kchtgt-thong-tin-tong-hop-kchtgt-hang-hai",
           "status": "proposed",
           "classification": "local",
@@ -5231,7 +5727,7 @@
         },
         "F-219": {
           "id": "F-219",
-          "name": "chia-se-kchtgt-thong-tin-bao-tri-kchtgt-hang-hai",
+          "name": "Chia sẻ KCHTGT thông tin bảo trì KCHTGT hàng hải",
           "slug": "chia-se-kchtgt-thong-tin-bao-tri-kchtgt-hang-hai",
           "status": "proposed",
           "classification": "local",
@@ -5246,7 +5742,7 @@
         },
         "F-220": {
           "id": "F-220",
-          "name": "chia-se-kchtgt-tong-hop-kchtgt-cang-bien",
+          "name": "Chia sẻ KCHTGT tổng hợp KCHTGT - cảng biển",
           "slug": "chia-se-kchtgt-tong-hop-kchtgt-cang-bien",
           "status": "proposed",
           "classification": "local",
@@ -5261,7 +5757,7 @@
         },
         "F-221": {
           "id": "F-221",
-          "name": "chia-se-kchtgt-tong-hop-kchtgt-ben-cang-cau-cang",
+          "name": "Chia sẻ KCHTGT tổng hợp KCHTGT - bến cảng, cầu cảng",
           "slug": "chia-se-kchtgt-tong-hop-kchtgt-ben-cang-cau-cang",
           "status": "proposed",
           "classification": "local",
@@ -5276,7 +5772,7 @@
         },
         "F-222": {
           "id": "F-222",
-          "name": "chia-se-kchtgt-tong-hop-kchtgt-luong-hang-hai",
+          "name": "Chia sẻ KCHTGT tổng hợp KCHTGT - luồng hàng hải",
           "slug": "chia-se-kchtgt-tong-hop-kchtgt-luong-hang-hai",
           "status": "proposed",
           "classification": "local",
@@ -5291,7 +5787,7 @@
         },
         "F-223": {
           "id": "F-223",
-          "name": "chia-se-kchtgt-tong-hop-kchtgt-khu-chuyen-tai-khu-neo-dau",
+          "name": "Chia sẻ KCHTGT tổng hợp KCHTGT - khu chuyển tải, khu neo đậu",
           "slug": "chia-se-kchtgt-tong-hop-kchtgt-khu-chuyen-tai-khu-neo-dau",
           "status": "proposed",
           "classification": "local",
@@ -5306,7 +5802,7 @@
         },
         "F-224": {
           "id": "F-224",
-          "name": "chia-se-kchtgt-tong-hop-kchtgt-phao-tieu",
+          "name": "Chia sẻ KCHTGT tổng hợp KCHTGT - phao tiêu",
           "slug": "chia-se-kchtgt-tong-hop-kchtgt-phao-tieu",
           "status": "proposed",
           "classification": "local",
@@ -5321,7 +5817,7 @@
         },
         "F-225": {
           "id": "F-225",
-          "name": "chia-se-kchtgt-tong-hop-kchtgt-he-thong-den-bien",
+          "name": "Chia sẻ KCHTGT tổng hợp KCHTGT - hệ thống đèn biển",
           "slug": "chia-se-kchtgt-tong-hop-kchtgt-he-thong-den-bien",
           "status": "proposed",
           "classification": "local",
@@ -5336,7 +5832,7 @@
         },
         "F-226": {
           "id": "F-226",
-          "name": "chia-se-kchtgt-tong-hop-kchtgt-he-thong-de-ke",
+          "name": "Chia sẻ KCHTGT tổng hợp KCHTGT - hệ thống đê kè",
           "slug": "chia-se-kchtgt-tong-hop-kchtgt-he-thong-de-ke",
           "status": "proposed",
           "classification": "local",
