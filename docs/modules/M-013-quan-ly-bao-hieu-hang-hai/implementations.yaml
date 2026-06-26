@@ -3,19 +3,99 @@ module_name: "Quản lý Báo hiệu hàng hải"
 type: bounded-context
 slug: quan-ly-bao-hieu-hang-hai
 
-# Map logical module → physical implementations across apps/services/libs.
-# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
 implementations:
-  apps: []
+  apps:
+    - path: "src/main/java/com/hanghai/kchtg"
+      type: spring-boot-app
+      description: "Main application containing M-013 beacon management bounded context"
   services: []
   libs: []
-  packages: []
+  packages:
+    - name: "entity-beacon"
+      path: "src/main/java/com/hanghai/kchtg/beacon/entity"
+      files:
+        - "BeaconLight.java"
+        - "Buoy.java"
+        - "BeaconHistory.java"
+        - "BeaconLightType.java"
+        - "BuoyType.java"
+        - "BeaconStatus.java"
+        - "BeaconApprovalStatus.java"
+        - "BeaconHistoryActionType.java"
+        - "BeaconType.java"
+      description: "Beacon entities + enums (F-068 to F-079)"
+      status: implemented
+    - name: "entity-repository"
+      path: "src/main/java/com/hanghai/kchtg/beacon/repository"
+      files:
+        - "BeaconLightRepository.java"
+        - "BuoyRepository.java"
+        - "BeaconHistoryRepository.java"
+      description: "JPA repositories for beacon entities"
+      status: implemented
+    - name: "dto-beacon-light"
+      path: "src/main/java/com/hanghai/kchtg/beacon/dto/beacon_light"
+      files:
+        - "CreateBeaconLightRequest.java"
+        - "UpdateBeaconLightRequest.java"
+        - "BeaconLightResponse.java"
+      description: "Light CRUD request/response DTOs"
+      status: implemented
+    - name: "dto-buoy"
+      path: "src/main/java/com/hanghai/kchtg/beacon/dto/buoy"
+      files:
+        - "CreateBuoyRequest.java"
+        - "UpdateBuoyRequest.java"
+        - "BuoyResponse.java"
+      description: "Buoy CRUD request/response DTOs"
+      status: implemented
+    - name: "dto-history"
+      path: "src/main/java/com/hanghai/kchtg/beacon/dto/history"
+      files:
+        - "BeaconHistoryResponse.java"
+        - "BeaconHistoryQuery.java"
+      description: "History audit trail DTOs"
+      status: implemented
+    - name: "service-beacon"
+      path: "src/main/java/com/hanghai/kchtg/beacon/service"
+      files:
+        - "BeaconLightService.java"
+        - "BuoyService.java"
+        - "BeaconHistoryService.java"
+        - "PointObjectSyncService.java"
+        - "NotificationService.java"
+      description: "Business logic: CRUD + 2-level approval + history + M-007 sync"
+      status: implemented
+    - name: "controller-beacon"
+      path: "src/main/java/com/hanghai/kchtg/beacon/controller"
+      files:
+        - "BeaconLightController.java"
+        - "BuoyController.java"
+        - "BeaconHistoryController.java"
+      description: "REST endpoints: 10 light + 10 buoy + 1 history = 21 endpoints"
+      status: implemented
+    - name: "tests-service"
+      path: "src/test/java/com/hanghai/kchtg/beacon"
+      files:
+        - "BeaconLightServiceTest.java"
+        - "BuoyServiceTest.java"
+        - "BeaconHistoryServiceTest.java"
+      description: "Service layer unit tests — 116 total tests, 100% pass"
+      status: implemented
+    - name: "tests-controller"
+      path: "src/test/java/com/hanghai/kchtg/beacon"
+      files:
+        - "BeaconLightControllerTest.java"
+        - "BuoyControllerTest.java"
+        - "BeaconHistoryControllerTest.java"
+      description: "Controller unit tests — validation, response envelope, status codes"
+      status: implemented
 
-# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
 stakeholders:
   business-owner: ""
   tech-lead: ""
   qa-lead: ""
 
-# Cross-references
-depends_on: []
+depends_on:
+  - M-007: PointObject sync on approveL2
+  - M-001: Unit validation (service-level only)

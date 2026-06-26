@@ -9,7 +9,7 @@ interface ActionButton {
   danger?: boolean;
   loading?: boolean;
   disabled?: boolean;
-  onClick: () => void;
+  onClick: (record: any) => void;
   tooltip?: string;
 }
 
@@ -22,14 +22,7 @@ interface DataTableProps<T> {
   actions?: ActionButton[];
   onRowClick?: (record: T) => void;
   showHeader?: boolean;
-  pagination?: false | {
-    current?: number;
-    pageSize?: number;
-    total?: number;
-    onChange?: (page: number) => void;
-    showSizeChanger?: boolean;
-    pageSizeOptions?: string[];
-  };
+  pagination?: false | any;
   size?: 'small' | 'middle' | 'default';
   sticky?: boolean;
   emptyText?: ReactNode;
@@ -78,7 +71,7 @@ export default function DataTable<T extends Record<string, unknown>>({
             ))}
           </Space>
         ),
-      } as TableProps<T>['columns'][0])
+      } as any)
     : undefined;
 
   const allColumns = actionColumn ? [...(columns || []), actionColumn] : columns;
@@ -94,7 +87,7 @@ export default function DataTable<T extends Record<string, unknown>>({
       loading={loading}
       rowKey={rowKey}
       scroll={scroll || { x: 'max-content' }}
-      size={size}
+      size={size as any}
       sticky={sticky}
       bordered
       rowClassName={(record, index) => {
