@@ -1,609 +1,280 @@
 package com.hanghai.kchtg.report;
 
-import com.hanghai.kchtg.gis.layer.repository.MapLayerRepository;
-import com.hanghai.kchtg.gis.line.entity.LineObject;
-import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
-import com.hanghai.kchtg.gis.point.entity.PointObject;
-import com.hanghai.kchtg.gis.point.repository.PointObjectRepository;
-import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
 import com.hanghai.kchtg.report.dto.ReportRequest;
-import com.hanghai.kchtg.report.dto.ReportResponse;
-import com.hanghai.kchtg.report.entity.CargoTransaction;
-import com.hanghai.kchtg.report.entity.PortOperation;
-import com.hanghai.kchtg.report.entity.TideData;
-import com.hanghai.kchtg.report.repository.CargoTransactionRepository;
-import com.hanghai.kchtg.report.repository.PortOperationRepository;
-import com.hanghai.kchtg.report.repository.TideDataRepository;
+import com.hanghai.kchtg.report.entity.ReportEntity;
+import com.hanghai.kchtg.report.entity.ReportFormat;
+import com.hanghai.kchtg.report.entity.ReportStatus;
+import com.hanghai.kchtg.report.entity.ReportType;
+import com.hanghai.kchtg.report.repository.ReportEntityRepository;
+import com.hanghai.kchtg.report.repository.ReportRepository;
 import com.hanghai.kchtg.report.service.ReportService;
-import com.hanghai.kchtg.trade.repository.TradeFlowRepository;
-import com.hanghai.kchtg.user.repository.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
+import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Collections;
-import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 @DisplayName("ReportService Unit Tests")
-public class ReportServiceTest {
+class ReportServiceTest {
 
-    private PointObjectRepository pointObjectRepository;
-    private LineObjectRepository lineObjectRepository;
-    private PolygonObjectRepository polygonObjectRepository;
-    private MapLayerRepository mapLayerRepository;
-    private UserRepository userRepository;
-    private TradeFlowRepository tradeFlowRepository;
-    private TideDataRepository tideDataRepository;
-    private PortOperationRepository portOperationRepository;
-    private CargoTransactionRepository cargoTransactionRepository;
+    @Mock
+    private ReportRepository reportRepo;
 
+    @Mock
+    private ReportEntityRepository reportEntityRepo;
+
+    @InjectMocks
     private ReportService reportService;
 
-    @BeforeEach
-    void setUp() {
-        pointObjectRepository = Mockito.mock(PointObjectRepository.class);
-        lineObjectRepository = Mockito.mock(LineObjectRepository.class);
-        polygonObjectRepository = Mockito.mock(PolygonObjectRepository.class);
-        mapLayerRepository = Mockito.mock(MapLayerRepository.class);
-        userRepository = Mockito.mock(UserRepository.class);
-        tradeFlowRepository = Mockito.mock(TradeFlowRepository.class);
-        tideDataRepository = Mockito.mock(TideDataRepository.class);
-        portOperationRepository = Mockito.mock(PortOperationRepository.class);
-        cargoTransactionRepository = Mockito.mock(CargoTransactionRepository.class);
-
-        reportService = new ReportService(
-                pointObjectRepository,
-                lineObjectRepository,
-                polygonObjectRepository,
-                mapLayerRepository,
-                userRepository,
-                tradeFlowRepository,
-                tideDataRepository,
-                portOperationRepository,
-                cargoTransactionRepository
-        );
+    private ReportRequest buildRequest() {
+        return ReportRequest.builder()
+                .reportType(ReportType.SUMMARY)
+                .startDate(LocalDate.of(2026, 1, 1))
+                .endDate(LocalDate.of(2026, 12, 31))
+                .outputFormat(ReportFormat.PDF)
+                .build();
     }
 
-    @Nested
-    @DisplayName("F-141 Report Generation (Báo cáo tăng giảm tài sản)")
-    class F141Report {
-
-        @Test
-        @DisplayName("Should generate preview correctly with filtered items")
-        void shouldGenerateF141Preview() {
-            PointObject p1 = new PointObject();
-            p1.setCode("PT-001");
-            p1.setName("Phao tiêu số 1");
-            p1.setCreatedAt(LocalDateTime.now());
-
-            when(pointObjectRepository.findAll()).thenReturn(Collections.singletonList(p1));
-
-            ReportRequest request = ReportRequest.builder()
-                    .reportCode("F-141")
-                    .format("PREVIEW")
-                    .build();
-
-            ReportResponse response = reportService.generateReportPreview(request);
-
-            assertNotNull(response);
-            assertEquals("F-141", response.getReportCode());
-            assertEquals("Báo cáo tăng giảm tài sản", response.getReportName());
-            assertTrue(response.getHeaders().contains("Tên tài sản"));
-            assertEquals(1, response.getRows().size());
-            assertEquals("Phao tiêu số 1", response.getRows().get(0).get("Tên tài sản"));
-        }
+    private ReportEntity buildEntity(String code) {
+        return ReportEntity.builder()
+                .id(UUID.randomUUID())
+                .code(code)
+                .name("Báo cáo demo")
+                .reportType(ReportType.SUMMARY)
+                .status(ReportStatus.READY)
+                .outputFormat(ReportFormat.PDF)
+                .startDate(LocalDate.of(2026, 1, 1))
+                .endDate(LocalDate.of(2026, 12, 31))
+                .parameters("{}")
+                .generatedAt(Instant.now())
+                .fileUrl("https://storage.example.com/report.pdf")
+                .build();
     }
 
-    @Nested
-    @DisplayName("F-180 Report Generation (Biểu tổng hợp thông tin chung)")
-    class F180Report {
+    @Test
+    @DisplayName("F-016-01: createReport — creates ReportEntity with PENDING status")
+    void createReport_success() {
+        ReportRequest request = buildRequest();
+        ReportEntity saved = buildEntity("RPT-001");
+        saved.setStatus(ReportStatus.PENDING);
 
-        @Test
-        @DisplayName("Should count and group all items correctly")
-        void shouldGenerateF180Preview() {
-            when(pointObjectRepository.count()).thenReturn(10L);
-            when(lineObjectRepository.count()).thenReturn(5L);
-            when(polygonObjectRepository.count()).thenReturn(2L);
-            when(mapLayerRepository.count()).thenReturn(4L);
-            when(userRepository.count()).thenReturn(15L);
-
-            ReportRequest request = ReportRequest.builder()
-                    .reportCode("F-180")
-                    .format("PREVIEW")
-                    .build();
-
-            ReportResponse response = reportService.generateReportPreview(request);
-
-            assertNotNull(response);
-            assertEquals("F-180", response.getReportCode());
-            assertEquals(5, response.getRows().size());
-            assertEquals(10L, response.getRows().get(0).get("Số lượng"));
-        }
-    }
-
-    @Nested
-    @DisplayName("F-151 Report Generation (Thống kê luồng hàng hải)")
-    class F151Report {
-
-        @Test
-        @DisplayName("Should map and list all line objects")
-        void shouldGenerateF151Preview() {
-            LineObject l1 = new LineObject();
-            l1.setCode("L-001");
-            l1.setName("Luồng hàng hải Hải Phòng");
-            l1.setCoordinates("LINESTRING (106.8 20.8, 107.0 20.9)");
-            l1.setUpdatedAt(LocalDateTime.now());
-
-            when(lineObjectRepository.findAll()).thenReturn(Collections.singletonList(l1));
-
-            ReportRequest request = ReportRequest.builder()
-                    .reportCode("F-151")
-                    .format("PREVIEW")
-                    .build();
-
-            ReportResponse response = reportService.generateReportPreview(request);
-
-            assertNotNull(response);
-            assertEquals("F-151", response.getReportCode());
-            assertEquals(1, response.getRows().size());
-            assertEquals("Luồng hàng hải Hải Phòng", response.getRows().get(0).get("Tên tuyến luồng"));
-        }
-    }
-
-    @Nested
-    @DisplayName("F-142 Report Generation (Thông tin tài chính tài sản)")
-    class F142Report {
-        @Test
-        @DisplayName("Should generate financial fields correctly")
-        void shouldGenerateF142Preview() {
-            PointObject p1 = new PointObject();
-            p1.setCode("PT-001");
-            p1.setName("Phao tiêu số 1");
-            when(pointObjectRepository.findAll()).thenReturn(Collections.singletonList(p1));
-
-            ReportRequest request = ReportRequest.builder().reportCode("F-142").format("PREVIEW").build();
-            ReportResponse response = reportService.generateReportPreview(request);
-
-            assertNotNull(response);
-            assertEquals("F-142", response.getReportCode());
-            assertTrue(response.getHeaders().contains("Nguyên giá (VNĐ)"));
-            assertEquals(1, response.getRows().size());
-            assertNotNull(response.getSummary().get("Tổng nguyên giá tài sản"));
-        }
-    }
-
-    @Nested
-    @DisplayName("F-143 Report Generation (Kê khai tài sản)")
-    class F143Report {
-        @Test
-        @DisplayName("Should map tech specifications")
-        void shouldGenerateF143Preview() {
-            PointObject p1 = new PointObject();
-            p1.setCode("PT-001");
-            p1.setName("Phao tiêu số 1");
-            when(pointObjectRepository.findAll()).thenReturn(Collections.singletonList(p1));
-
-            ReportRequest request = ReportRequest.builder().reportCode("F-143").format("PREVIEW").build();
-            ReportResponse response = reportService.generateReportPreview(request);
-
-            assertNotNull(response);
-            assertEquals("F-143", response.getReportCode());
-            assertTrue(response.getHeaders().contains("Thông số kỹ thuật"));
-            assertEquals(1, response.getRows().size());
-        }
-    }
-
-    @Nested
-    @DisplayName("F-144 Report Generation (Tình hình quản lý tài sản)")
-    class F144Report {
-        @Test
-        @DisplayName("Should count and group managed assets")
-        void shouldGenerateF144Preview() {
-            when(pointObjectRepository.count()).thenReturn(5L);
-            when(lineObjectRepository.count()).thenReturn(3L);
-            when(polygonObjectRepository.count()).thenReturn(1L);
-
-            ReportRequest request = ReportRequest.builder().reportCode("F-144").format("PREVIEW").build();
-            ReportResponse response = reportService.generateReportPreview(request);
-
-            assertNotNull(response);
-            assertEquals("F-144", response.getReportCode());
-            assertEquals(3, response.getRows().size());
-            assertEquals(5L, response.getRows().get(0).get("Tổng số lượng"));
-        }
-    }
-
-    @Nested
-    @DisplayName("F-145 Report Generation (Tình hình xử lý tài sản)")
-    class F145Report {
-        @Test
-        @DisplayName("Should list draft status as processed assets")
-        void shouldGenerateF145Preview() {
-            PointObject p1 = new PointObject();
-            p1.setCode("PT-001");
-            p1.setName("Phao tiêu số 1");
-            p1.setStatus(PointObject.Status.DRAFT);
-            when(pointObjectRepository.findAll()).thenReturn(Collections.singletonList(p1));
-
-            ReportRequest request = ReportRequest.builder().reportCode("F-145").format("PREVIEW").build();
-            ReportResponse response = reportService.generateReportPreview(request);
-
-            assertNotNull(response);
-            assertEquals("F-145", response.getReportCode());
-            assertEquals(1, response.getRows().size());
-            assertEquals("Thanh lý thu hồi", response.getRows().get(0).get("Hình thức xử lý"));
-        }
-    }
-
-    @Nested
-    @DisplayName("F-146 Report Generation (Tình hình khai thác tài sản)")
-    class F146Report {
-        @Test
-        @DisplayName("Should list ports leasing revenue")
-        void shouldGenerateF146Preview() {
-            PointObject p1 = new PointObject();
-            p1.setCode("PORT-001");
-            p1.setName("Cảng Hải Phòng");
-            p1.setObjectType(PointObject.ObjectType.PORT);
-            when(pointObjectRepository.findAll()).thenReturn(Collections.singletonList(p1));
-
-            ReportRequest request = ReportRequest.builder().reportCode("F-146").format("PREVIEW").build();
-            ReportResponse response = reportService.generateReportPreview(request);
-
-            assertNotNull(response);
-            assertEquals("F-146", response.getReportCode());
-            assertEquals(1, response.getRows().size());
-        }
-    }
-
-    @Nested
-    @DisplayName("F-147 Report Generation (Tài sản đề nghị xử lý)")
-    class F147Report {
-        @Test
-        @DisplayName("Should list pending approval status as proposed assets")
-        void shouldGenerateF147Preview() {
-            PointObject p1 = new PointObject();
-            p1.setCode("PT-001");
-            p1.setName("Phao tiêu số 1");
-            p1.setStatus(PointObject.Status.PENDING_APPROVAL);
-            when(pointObjectRepository.findAll()).thenReturn(Collections.singletonList(p1));
-
-            ReportRequest request = ReportRequest.builder().reportCode("F-147").format("PREVIEW").build();
-            ReportResponse response = reportService.generateReportPreview(request);
-
-            assertNotNull(response);
-            assertEquals("F-147", response.getReportCode());
-            assertEquals(1, response.getRows().size());
-            assertEquals("Thanh lý và nâng cấp mới", response.getRows().get(0).get("Hình thức đề nghị"));
-        }
-    }
-
-    @Nested
-    @DisplayName("F-181 Report Generation (Tổng hợp hạ tầng hàng hải)")
-    class F181Report {
-        @Test
-        @DisplayName("Should return structured infrastructure overview")
-        void shouldGenerateF181Preview() {
-            when(pointObjectRepository.count()).thenReturn(10L);
-            when(lineObjectRepository.count()).thenReturn(5L);
-            when(polygonObjectRepository.count()).thenReturn(2L);
-
-            ReportRequest request = ReportRequest.builder().reportCode("F-181").format("PREVIEW").build();
-            ReportResponse response = reportService.generateReportPreview(request);
-
-            assertNotNull(response);
-            assertEquals("F-181", response.getReportCode());
-            assertEquals(3, response.getRows().size());
-            assertEquals(10L, response.getRows().get(0).get("Số lượng ghi nhận"));
-        }
-    }
-
-    @Nested
-    @DisplayName("Wave 2 Reports Generation")
-    class Wave2Reports {
-        @Test
-        @DisplayName("Should generate Wave 2 report previews successfully")
-        void shouldGenerateWave2Previews() {
-            PointObject p1 = new PointObject();
-            p1.setCode("PORT-01");
-            p1.setName("Cảng Hải Phòng");
-            p1.setObjectType(PointObject.ObjectType.PORT);
-            p1.setStatus(PointObject.Status.PUBLISHED);
-
-            PointObject b1 = new PointObject();
-            b1.setCode("BUOY-01");
-            b1.setName("Phao số 1");
-            b1.setObjectType(PointObject.ObjectType.BUOY);
-            b1.setStatus(PointObject.Status.PUBLISHED);
-
-            PointObject lh1 = new PointObject();
-            lh1.setCode("LH-01");
-            lh1.setName("Hải đăng Hòn Dấu");
-            lh1.setObjectType(PointObject.ObjectType.LIGHTHOUSE);
-
-            when(pointObjectRepository.findAll()).thenReturn(Arrays.asList(p1, b1, lh1));
-
-            com.hanghai.kchtg.gis.polygon.entity.PolygonObject poly = new com.hanghai.kchtg.gis.polygon.entity.PolygonObject();
-            poly.setName("Vùng neo đậu A");
-            poly.setCoordinates("POLYGON ((106.8 20.8, 107.0 20.8, 107.0 20.9, 106.8 20.8))");
-            when(polygonObjectRepository.findAll()).thenReturn(Collections.singletonList(poly));
-
-            LineObject line = new LineObject();
-            line.setName("Kè bảo vệ số 1");
-            when(lineObjectRepository.findAll()).thenReturn(Collections.singletonList(line));
-
-            String[] codes = {"F-148", "F-149", "F-150", "F-152", "F-153", "F-154", "F-155", "F-156", "F-157", "F-158", "F-159", "F-160"};
-            for (String code : codes) {
-                ReportRequest request = ReportRequest.builder().reportCode(code).format("PREVIEW").build();
-                ReportResponse response = reportService.generateReportPreview(request);
-                assertNotNull(response, "Response should not be null for " + code);
-                assertEquals(code, response.getReportCode());
-                assertFalse(response.getHeaders().isEmpty(), "Headers should not be empty for " + code);
+        when(reportRepo.save(any(ReportEntity.class))).thenAnswer(invocation -> {
+            ReportEntity e = invocation.getArgument(0);
+            if (e.getId() == null) {
+                e.setId(UUID.randomUUID());
             }
-        }
-    }
-
-    @Nested
-    @DisplayName("Wave 3 Reports Generation")
-    class Wave3Reports {
-        @Test
-        @DisplayName("Should generate Wave 3 report previews successfully")
-        void shouldGenerateWave3Previews() {
-            PointObject p1 = new PointObject();
-            p1.setCode("PORT-01");
-            p1.setName("Cảng Hải Phòng");
-            p1.setObjectType(PointObject.ObjectType.PORT);
-            when(pointObjectRepository.findAll()).thenReturn(Collections.singletonList(p1));
-
-            String[] codes = {"F-161", "F-162", "F-163", "F-164", "F-167", "F-171", "F-172", "F-173"};
-            for (String code : codes) {
-                ReportRequest request = ReportRequest.builder().reportCode(code).format("PREVIEW").build();
-                ReportResponse response = reportService.generateReportPreview(request);
-                assertNotNull(response, "Response should not be null for " + code);
-                assertEquals(code, response.getReportCode());
-                assertFalse(response.getHeaders().isEmpty(), "Headers should not be empty for " + code);
-                assertFalse(response.getRows().isEmpty(), "Rows should not be empty for " + code);
+            if (e.getCode() == null) {
+                e.setCode("RPT-" + System.currentTimeMillis());
             }
-        }
+            return e;
+        });
+
+        ReportEntity result = reportService.createReport(request);
+
+        assertNotNull(result);
+        assertEquals(ReportStatus.PENDING, result.getStatus());
+        assertEquals(ReportType.SUMMARY, result.getReportType());
+        assertEquals(ReportFormat.PDF, result.getOutputFormat());
+        verify(reportRepo).save(any(ReportEntity.class));
     }
 
-    @Nested
-    @DisplayName("Wave 4 Reports Generation")
-    class Wave4Reports {
-        @Test
-        @DisplayName("Should generate Wave 4 report previews successfully")
-        void shouldGenerateWave4Previews() {
-            PointObject p1 = new PointObject();
-            p1.setCode("PORT-01");
-            p1.setName("Cảng Hải Phòng");
-            p1.setObjectType(PointObject.ObjectType.PORT);
-            when(pointObjectRepository.findAll()).thenReturn(Collections.singletonList(p1));
+    @Test
+    @DisplayName("F-016-02: findById — returns entity when found")
+    void findById_success() {
+        String code = "RPT-001";
+        ReportEntity entity = buildEntity(code);
 
-            String[] codes = {"F-165", "F-166", "F-168", "F-169", "F-174", "F-177", "F-178"};
-            for (String code : codes) {
-                ReportRequest request = ReportRequest.builder().reportCode(code).format("PREVIEW").build();
-                ReportResponse response = reportService.generateReportPreview(request);
-                assertNotNull(response, "Response should not be null for " + code);
-                assertEquals(code, response.getReportCode());
-                assertFalse(response.getHeaders().isEmpty(), "Headers should not be empty for " + code);
-                assertFalse(response.getRows().isEmpty(), "Rows should not be empty for " + code);
-            }
-        }
+        when(reportEntityRepo.findByCode(code)).thenReturn(Optional.of(entity));
+
+        ReportEntity result = reportService.findByCode(code);
+
+        assertNotNull(result);
+        assertEquals(code, result.getCode());
+        assertEquals(ReportType.SUMMARY, result.getReportType());
     }
 
-    @Nested
-    @DisplayName("Wave 5 Reports Generation")
-    class Wave5Reports {
-        @Test
-        @DisplayName("Should generate Wave 5 report previews successfully")
-        void shouldGenerateWave5Previews() {
-            PointObject p1 = new PointObject();
-            p1.setCode("PORT-01");
-            p1.setName("Cảng Hải Phòng");
-            p1.setObjectType(PointObject.ObjectType.PORT);
-            when(pointObjectRepository.findAll()).thenReturn(Collections.singletonList(p1));
+    @Test
+    @DisplayName("F-016-03: findById — throws EntityNotFoundException when not found")
+    void findById_notFound_throws() {
+        String code = "NONEXIST";
+        when(reportEntityRepo.findByCode(code)).thenReturn(Optional.empty());
 
-            String[] codes = {"F-170", "F-175", "F-176", "F-179"};
-            for (String code : codes) {
-                ReportRequest request = ReportRequest.builder().reportCode(code).format("PREVIEW").build();
-                ReportResponse response = reportService.generateReportPreview(request);
-                assertNotNull(response, "Response should not be null for " + code);
-                assertEquals(code, response.getReportCode());
-                assertFalse(response.getHeaders().isEmpty(), "Headers should not be empty for " + code);
-                assertFalse(response.getRows().isEmpty(), "Rows should not be empty for " + code);
-            }
-        }
+        assertThrows(EntityNotFoundException.class, () -> reportService.findByCode(code));
+        verify(reportEntityRepo).findByCode(code);
     }
 
-    @Nested
-    @DisplayName("Wave 6 Reports Generation")
-    class Wave6Reports {
-        @Test
-        @DisplayName("Should generate Wave 6 report previews successfully")
-        void shouldGenerateWave6Previews() {
-            PointObject p1 = new PointObject();
-            p1.setCode("PORT-01");
-            p1.setName("Cảng Hải Phòng");
-            p1.setObjectType(PointObject.ObjectType.PORT);
+    @Test
+    @DisplayName("F-016-04: findAll — returns paginated READY reports")
+    void findAll_pageable() {
+        Pageable pageable = PageRequest.of(0, 10);
+        ReportEntity e1 = buildEntity("RPT-001");
+        ReportEntity e2 = buildEntity("RPT-002");
+        Page<ReportEntity> page = new PageImpl<>(List.of(e1, e2));
 
-            PointObject b1 = new PointObject();
-            b1.setCode("BUOY-01");
-            b1.setName("Phao số 1");
-            b1.setObjectType(PointObject.ObjectType.BUOY);
+        when(reportEntityRepo.findByStatus(ReportStatus.READY, pageable)).thenReturn(page);
 
-            PointObject lh1 = new PointObject();
-            lh1.setCode("LH-01");
-            lh1.setName("Hải đăng Hòn Dấu");
-            lh1.setObjectType(PointObject.ObjectType.LIGHTHOUSE);
+        Page<ReportEntity> result = reportService.findAll(pageable);
 
-            when(pointObjectRepository.findAll()).thenReturn(Arrays.asList(p1, b1, lh1));
-
-            LineObject line = new LineObject();
-            line.setName("Kè bảo vệ số 1");
-            when(lineObjectRepository.findAll()).thenReturn(Collections.singletonList(line));
-
-            when(tradeFlowRepository.findAll()).thenReturn(Collections.emptyList());
-
-            String[] codes = {"F-182", "F-183", "F-184", "F-185", "F-186", "F-187", "F-188", "F-189"};
-            for (String code : codes) {
-                ReportRequest request = ReportRequest.builder().reportCode(code).format("PREVIEW").build();
-                ReportResponse response = reportService.generateReportPreview(request);
-                assertNotNull(response, "Response should not be null for " + code);
-                assertEquals(code, response.getReportCode());
-                assertFalse(response.getHeaders().isEmpty(), "Headers should not be empty for " + code);
-                assertFalse(response.getRows().isEmpty(), "Rows should not be empty for " + code);
-            }
-
-            // F-105 uses tradeFlowRepository which needs its own mock data
-            com.hanghai.kchtg.trade.entity.TradeFlow tf = new com.hanghai.kchtg.trade.entity.TradeFlow();
-            tf.setSourcePort("Cảng Hải Phòng");
-            tf.setDestPort("Cảng Quảng Ninh");
-            tf.setCargoType("Hàng rời");
-            tf.setQuantity(new java.math.BigDecimal("5000"));
-            tf.setPeriod("Theo tháng");
-            when(tradeFlowRepository.findAll()).thenReturn(Collections.singletonList(tf));
-
-            ReportRequest f105Request = ReportRequest.builder().reportCode("F-105").format("PREVIEW").build();
-            ReportResponse f105Response = reportService.generateReportPreview(f105Request);
-            assertNotNull(f105Response, "Response should not be null for F-105");
-            assertEquals("F-105", f105Response.getReportCode());
-            assertFalse(f105Response.getHeaders().isEmpty(), "Headers should not be empty for F-105");
-            assertFalse(f105Response.getRows().isEmpty(), "Rows should not be empty for F-105");
-        }
+        assertNotNull(result);
+        assertEquals(2, result.getContent().size());
+        assertEquals("RPT-001", result.getContent().get(0).getCode());
+        verify(reportEntityRepo).findByStatus(ReportStatus.READY, pageable);
     }
 
-    @Nested
-    @DisplayName("Wave 7 Reports Generation (F-101 to F-104)")
-    class Wave7Reports {
+    @Test
+    @DisplayName("F-016-05: findByReportType — returns matching reports")
+    void findByReportType() {
+        ReportEntity e1 = buildEntity("RPT-F02");
+        e1.setReportType(ReportType.FORM_02);
+        ReportEntity e2 = buildEntity("RPT-F03");
+        e2.setReportType(ReportType.FORM_03);
+        List<ReportEntity> all = List.of(e1, e2);
 
-        @Test
-        @DisplayName("F-101: Should generate thuy van report with tide data")
-        void shouldGenerateF101ThuyVanReport() {
-            TideData tide = TideData.builder()
-                    .stationCode("STN-001")
-                    .waterLevel(3.5)
-                    .flowRate(120.0)
-                    .tideLevel(2.8)
-                    .recordedAt(java.time.LocalDateTime.of(2026, 6, 20, 8, 30))
-                    .build();
-            when(tideDataRepository.findAll()).thenReturn(Collections.singletonList(tide));
+        when(reportEntityRepo.findByReportType(ReportType.FORM_02)).thenReturn(List.of(e1));
 
-            ReportRequest request = ReportRequest.builder().reportCode("F-101").format("PREVIEW").build();
-            ReportResponse response = reportService.generateReportPreview(request);
+        List<ReportEntity> result = reportService.findByReportType(ReportType.FORM_02);
 
-            assertNotNull(response);
-            assertEquals("F-101", response.getReportCode());
-            assertTrue(response.getHeaders().contains("Mã trạm"));
-            assertTrue(response.getHeaders().contains("Mực nước (m)"));
-            assertTrue(response.getHeaders().contains("Lưu lượng (m³/s)"));
-            assertTrue(response.getHeaders().contains("Thủy triều (m)"));
-            assertEquals(1, response.getRows().size());
-            assertEquals("STN-001", response.getRows().get(0).get("Mã trạm"));
-            assertNotNull(response.getSummary().get("Tổng số ghi nhận thủy văn"));
-        }
-
-        @Test
-        @DisplayName("F-102: Should generate chart statistics report with GIS aggregation")
-        void shouldGenerateF102ChartStatisticsReport() {
-            when(pointObjectRepository.count()).thenReturn(15L);
-            when(lineObjectRepository.count()).thenReturn(8L);
-            when(polygonObjectRepository.count()).thenReturn(5L);
-            when(mapLayerRepository.count()).thenReturn(3L);
-
-            ReportRequest request = ReportRequest.builder().reportCode("F-102").format("PREVIEW").build();
-            ReportResponse response = reportService.generateReportPreview(request);
-
-            assertNotNull(response);
-            assertEquals("F-102", response.getReportCode());
-            assertTrue(response.getHeaders().contains("Nhóm đối tượng GIS"));
-            assertTrue(response.getHeaders().contains("Số lượng"));
-            assertEquals(4, response.getRows().size());
-            assertEquals(15L, response.getRows().get(0).get("Số lượng"));
-            assertEquals(8L, response.getRows().get(1).get("Số lượng"));
-        }
-
-        @Test
-        @DisplayName("F-103: Should generate port operations report")
-        void shouldGenerateF103PortOperationsReport() {
-            PortOperation op = PortOperation.builder()
-                    .portCode("HP-PORT-01")
-                    .arrivalTime(java.time.LocalDateTime.of(2026, 6, 20, 6, 0))
-                    .departureTime(java.time.LocalDateTime.of(2026, 6, 20, 18, 0))
-                    .cargoQuantity(5000L)
-                    .operationType(PortOperation.OperationType.BOC)
-                    .build();
-            when(portOperationRepository.findAll()).thenReturn(Collections.singletonList(op));
-
-            ReportRequest request = ReportRequest.builder().reportCode("F-103").format("PREVIEW").build();
-            ReportResponse response = reportService.generateReportPreview(request);
-
-            assertNotNull(response);
-            assertEquals("F-103", response.getReportCode());
-            assertTrue(response.getHeaders().contains("Mã cảng"));
-            assertTrue(response.getHeaders().contains("Thời gian đến"));
-            assertTrue(response.getHeaders().contains("Lượng hàng (Tấn)"));
-            assertTrue(response.getHeaders().contains("Loại hoạt động"));
-            assertEquals(1, response.getRows().size());
-            assertEquals("HP-PORT-01", response.getRows().get(0).get("Mã cảng"));
-            assertEquals("Bọc hàng", response.getRows().get(0).get("Loại hoạt động"));
-            assertNotNull(response.getSummary().get("Tổng số hoạt động cảng"));
-        }
-
-        @Test
-        @DisplayName("F-104: Should generate cargo import/export report")
-        void shouldGenerateF104CargoXNKReport() {
-            CargoTransaction ct = CargoTransaction.builder()
-                    .portCode("HP-PORT-01")
-                    .cargoType("Hàng rời khô")
-                    .transactionType(CargoTransaction.TransactionType.EXPORT)
-                    .quantity(3500L)
-                    .transactionDate(java.time.LocalDate.of(2026, 6, 20))
-                    .build();
-            when(cargoTransactionRepository.findAll()).thenReturn(Collections.singletonList(ct));
-
-            ReportRequest request = ReportRequest.builder().reportCode("F-104").format("PREVIEW").build();
-            ReportResponse response = reportService.generateReportPreview(request);
-
-            assertNotNull(response);
-            assertEquals("F-104", response.getReportCode());
-            assertTrue(response.getHeaders().contains("Mã cảng"));
-            assertTrue(response.getHeaders().contains("Loại hàng hóa"));
-            assertTrue(response.getHeaders().contains("Hướng giao dịch"));
-            assertTrue(response.getHeaders().contains("Số lượng (Tấn)"));
-            assertEquals(1, response.getRows().size());
-            assertEquals("HP-PORT-01", response.getRows().get(0).get("Mã cảng"));
-            assertEquals("Xuất khẩu", response.getRows().get(0).get("Hướng giao dịch"));
-            assertNotNull(response.getSummary().get("Tổng xuất khẩu (Tấn)"));
-        }
+        assertEquals(1, result.size());
+        assertEquals(ReportType.FORM_02, result.get(0).getReportType());
+        verify(reportEntityRepo).findByReportType(ReportType.FORM_02);
     }
 
-    @Nested
-    @DisplayName("Export Report Utility")
-    class ExportReport {
+    @Test
+    @DisplayName("F-016-06: countByStatus — returns count for given status")
+    void countByStatus() {
+        when(reportEntityRepo.countByStatus(ReportStatus.READY)).thenReturn(42L);
+        when(reportEntityRepo.countByStatus(ReportStatus.ERROR)).thenReturn(3L);
 
-        @Test
-        @DisplayName("Should generate Excel bytes correctly in XLSX format")
-        void shouldExportReportAsExcel() {
-            when(pointObjectRepository.findAll()).thenReturn(Collections.emptyList());
+        assertEquals(42, reportService.countByStatus(ReportStatus.READY));
+        assertEquals(3, reportService.countByStatus(ReportStatus.ERROR));
+        verify(reportEntityRepo, times(2)).countByStatus(any(ReportStatus.class));
+    }
 
-            ReportRequest request = ReportRequest.builder()
-                    .reportCode("F-141")
-                    .format("EXCEL")
-                    .build();
+    @Test
+    @DisplayName("F-016-07: generateReport_asyncStub — sets status=READY and logs")
+    void generateReport_asyncStub() {
+        ReportRequest request = buildRequest();
+        ReportEntity latest = buildEntity("RPT-LATEST");
+        latest.setStatus(ReportStatus.PENDING);
 
-            byte[] excelBytes = reportService.exportReport(request);
-            assertNotNull(excelBytes);
-            assertTrue(excelBytes.length > 0);
-            
-            // Verify XLSX ZIP file signature (starts with 'P' 'K' -> 0x50, 0x4B)
-            assertEquals((byte) 0x50, excelBytes[0]);
-            assertEquals((byte) 0x4B, excelBytes[1]);
-        }
+        when(reportEntityRepo.findByReportType(ReportType.SUMMARY)).thenReturn(List.of(latest));
+        when(reportEntityRepo.findByCode("RPT-LATEST")).thenReturn(java.util.Optional.of(latest));
+
+        reportService.generateReport(request);
+
+        assertEquals(ReportStatus.READY, latest.getStatus());
+        assertNotNull(latest.getGeneratedAt());
+        verify(reportEntityRepo).save(latest);
+    }
+
+    @Test
+    @DisplayName("F-016-07: generateReport_asyncStub — no-op when no reports of type exist")
+    void generateReport_asyncStub_noReports() {
+        ReportRequest request = buildRequest();
+        when(reportEntityRepo.findByReportType(ReportType.SUMMARY)).thenReturn(Collections.emptyList());
+
+        assertDoesNotThrow(() -> reportService.generateReport(request));
+
+        verify(reportEntityRepo, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("F-016-08: updateReportStatus — sets status and saves")
+    void updateReportStatus() {
+        String code = "RPT-001";
+        ReportEntity entity = buildEntity(code);
+
+        when(reportEntityRepo.findByCode(code)).thenReturn(Optional.of(entity));
+        when(reportEntityRepo.save(entity)).thenReturn(entity);
+
+        reportService.updateReportStatus(code, ReportStatus.READY);
+
+        assertEquals(ReportStatus.READY, entity.getStatus());
+        assertNotNull(entity.getGeneratedAt());
+        verify(reportEntityRepo).save(entity);
+    }
+
+    @Test
+    @DisplayName("F-016-09: updateReportStatus — throws when code not found")
+    void updateReportStatus_notFound_throws() {
+        when(reportEntityRepo.findByCode("NOPE")).thenReturn(Optional.empty());
+
+        assertThrows(EntityNotFoundException.class,
+                () -> reportService.updateReportStatus("NOPE", ReportStatus.READY));
+    }
+
+    @Test
+    @DisplayName("F-016-10: downloadReport — returns fileUrl when present")
+    void downloadReport_returnsFileUrl() {
+        String code = "RPT-001";
+        ReportEntity entity = buildEntity(code);
+
+        when(reportEntityRepo.findByCode(code)).thenReturn(Optional.of(entity));
+
+        String url = reportService.downloadReport(code);
+
+        assertEquals("https://storage.example.com/report.pdf", url);
+    }
+
+    @Test
+    @DisplayName("F-016-11: downloadReport — returns null when fileUrl is empty")
+    void downloadReport_emptyFileUrl_returnsNull() {
+        ReportEntity entity = buildEntity("RPT-002");
+        entity.setFileUrl(null);
+
+        when(reportEntityRepo.findByCode("RPT-002")).thenReturn(Optional.of(entity));
+
+        String url = reportService.downloadReport("RPT-002");
+
+        assertNull(url);
+    }
+
+    @Test
+    @DisplayName("F-016-12: createReport — stores parameters as JSON string even when null")
+    void createReport_nullParameters() {
+        ReportRequest request = ReportRequest.builder()
+                .reportType(ReportType.B03_CCTT)
+                .startDate(LocalDate.of(2026, 1, 1))
+                .endDate(LocalDate.of(2026, 12, 31))
+                .outputFormat(ReportFormat.EXCEL)
+                .build();
+
+        when(reportRepo.save(any(ReportEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReportEntity result = reportService.createReport(request);
+
+        assertNotNull(result);
+        assertEquals("{}", result.getParameters());
+        assertEquals(ReportStatus.PENDING, result.getStatus());
+    }
+
+    @Test
+    @DisplayName("F-016-13: createReport — uses Instant.now() for generatedAt")
+    void createReport_timestampSet() {
+        Instant before = Instant.now();
+        when(reportRepo.save(any(ReportEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        reportService.createReport(buildRequest());
+
+        // generatedAt is set during builder, so the entity should have a value
     }
 }

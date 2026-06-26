@@ -1,25 +1,34 @@
 package com.hanghai.kchtg.report.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.hanghai.kchtg.report.entity.ReportFormat;
+import com.hanghai.kchtg.report.entity.ReportType;
+import jakarta.validation.constraints.*;
+import lombok.*;
 
 import java.time.LocalDate;
-import java.util.UUID;
+import java.util.Map;
 
+/**
+ * Request DTO cho việc tạo / yêu cầu sinh báo cáo tổng hợp (M-016).
+ * Bao gồm type, khoảng thời gian, định dạng đầu ra và các tham số động.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class ReportRequest {
 
-    @NotBlank(message = "Mã báo cáo không được để trống")
-    private String reportCode;
+    @NotNull(message = "reportType không được để trống")
+    private ReportType reportType;
 
+    @NotNull(message = "startDate không được để trống")
     private LocalDate startDate;
+
+    @NotNull(message = "endDate không được để trống")
     private LocalDate endDate;
-    private UUID orgUnitId;
-    private String format; // PREVIEW, EXCEL, PDF
+
+    @NotNull(message = "outputFormat không được để trống")
+    private ReportFormat outputFormat;
+
+    private Map<String, Object> parameters;
 }
