@@ -2,24 +2,21 @@
 feature-id: M-016
 feature-name: Báo cáo & Tổng hợp
 pipeline-type: sdlc
-status: in-progress
+status: done
+sealed: true
+closed-at: "2026-06-26T00:00:00Z"
 depends-on: []
 blocked-by: []
 created: 2026-06-16T15:42:46Z
-last-updated: 2026-06-17T02:09:38Z
-current-stage: engineering-business-analyst
+last-updated: "2026-06-26T00:00:00Z"
+current-stage: closed
 output-mode: lean
 repo-type: mini
 repo-path: .
 project: ""
 docs-path: docs/modules/M-016-bao-cao-tong-hop
 intel-path: docs/intel
-stages-queue:
-  - engineering-system-architect
-  - engineering-technical-lead
-  - engineering-backend-developer-wave-1
-  - engineering-qa-engineer-wave-1
-  - engineering-code-reviewer
+stages-queue: []
 completed-stages:
   consulting-intelligence-extractor:
     verdict: Ready for BA
@@ -32,7 +29,7 @@ kpi:
 rework-count: {}
 locked-fields: []
 version: 1
-finalizers: []
+finalizers: [seal]
 children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
@@ -43,7 +40,7 @@ feature-req:
   scope-modules: []
   scope-features: []
   dev-unit: ""
-clarification-notes: ""
+  clarification-notes: ""
 name: Báo cáo & Tổng hợp
 ---
 # Pipeline State: Báo cáo & Tổng hợp
@@ -65,11 +62,11 @@ name: Báo cáo & Tổng hợp
 
 ## Current Stage
 
-**ba** — Ready to start. Input: `docs/modules/M-016-bao-cao-tong-hop/module-brief.md`.
+**closed** — Module sealed on 2026-06-26.
 
 ## Next Action
 
-Run: `/resume-module M-016` để dispatch BA agent.
+Module is closed. No further action required.
 
 ## Active Blockers
 
@@ -79,6 +76,10 @@ none
 
 | Wave | Tasks | Dev Status | QA Status |
 |---|---|---|---|
+| Wave 1 | Entity, Repository, Enum | ✅ Done | — |
+| Wave 2 | DTO, Service | ✅ Done | — |
+| Wave 3 | Controller | ✅ Done | — |
+| Wave 4 | Test | ✅ Done | — |
 
 ## Escalation Log
 
