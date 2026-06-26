@@ -6,7 +6,7 @@ status: done
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:14Z
-last-updated: 2026-06-24T08:14:53Z
+last-updated: 2026-06-25T09:24:54Z
 current-stage: closed
 output-mode: lean
 repo-type: mini
@@ -14,12 +14,7 @@ repo-path: .
 project: ""
 docs-path: docs/modules/M-012-hai-do-gis-integration
 intel-path: docs/intel
-stages-queue:
-  - engineering-system-architect
-  - engineering-technical-lead
-  - engineering-backend-developer-wave-1
-  - engineering-qa-engineer-wave-1
-  - engineering-code-reviewer
+stages-queue: []
 completed-stages:
   consulting-intelligence-extractor:
     verdict: Ready for BA
@@ -44,6 +39,7 @@ feature-req: |
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
+current_stage: close
 ---
 # Pipeline State: Hải đồ & GIS Integration
 
