@@ -1,17 +1,16 @@
 ---
 id: F-283
-name: "Báo cáo SIEM"
+name: Báo cáo SIEM
 slug: bao-cao-siem
 module-id: M-011
-status: proposed
+status: implemented
 classification: local
 priority: low
-created: "2026-06-16T04:42:24Z"
-last-updated: "2026-06-16T04:42:24Z"
+created: 2026-06-16T04:42:24Z
+last-updated: 2026-06-25T09:24:35Z
 locked-fields: []
 consumed_by_modules: []
 ---
-
 # Feature: Báo cáo SIEM
 
 ## Description
