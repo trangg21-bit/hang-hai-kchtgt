@@ -3,19 +3,35 @@ module_name: "Quản lý Nhà trạm"
 type: bounded-context
 slug: quan-ly-nha-tram
 
-# Map logical module → physical implementations across apps/services/libs.
-# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
 implementations:
-  apps: []
+  apps:
+    - path: "src/main/java/com/hanghai/kchtg"
+      type: spring-boot-app
+      description: "Main application containing M-014 nha trang bounded context"
   services: []
   libs: []
-  packages: []
+  packages:
+    - name: "nhatram-phao"
+      path: "src/main/java/com/hanghai/kchtg/nhatram"
+      description: "Nha trang phao management (F-080 to F-085)"
+      status: implemented
+    - name: "nhatram-den"
+      path: "src/main/java/com/hanghai/kchtg/nhatram"
+      description: "Nha trang den management (F-086 to F-091)"
+      status: implemented
+    - name: "nhatram-history"
+      path: "src/main/java/com/hanghai/kchtg/nhatram"
+      description: "History audit trail (F-083, F-090)"
+      status: implemented
+    - name: "nhatram-tests"
+      path: "src/test/java/com/hanghai/kchtg/nhatram"
+      description: "Unit tests for nha trang module"
+      status: implemented
 
-# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
 stakeholders:
   business-owner: ""
   tech-lead: ""
   qa-lead: ""
 
-# Cross-references
-depends_on: []
+depends_on:
+  - M-007: PointObject sync on approve L2
