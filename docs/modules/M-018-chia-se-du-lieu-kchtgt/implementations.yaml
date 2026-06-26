@@ -3,19 +3,34 @@ module_name: "Chia sẻ dữ liệu KCHTGT"
 type: bounded-context
 slug: chia-se-du-lieu-kchtgt
 
-# Map logical module → physical implementations across apps/services/libs.
-# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
 implementations:
-  apps: []
+  apps:
+    - path: "src/main/java/com/hanghai/kchtg"
+      type: spring-boot-app
+      description: "Main application containing M-018 chia se du lieu KCHTGT bounded context"
   services: []
   libs: []
-  packages: []
+  packages:
+    - name: "datasharing-core"
+      path: "src/main/java/com/hanghai/kchtg/datasharing"
+      description: "Core data sharing (F-190 to F-207)"
+      status: implemented
+    - name: "datasharing-workflow"
+      path: "src/main/java/com/hanghai/kchtg/datasharing"
+      description: "Share workflow: submit/approve/revoke (F-190 to F-207)"
+      status: implemented
+    - name: "datasharing-services"
+      path: "src/main/java/com/hanghai/kchtg/datasharing"
+      description: "Specialized services: PortShare, SystemShare, NavigationShare"
+      status: implemented
+    - name: "datasharing-tests"
+      path: "src/test/java/com/hanghai/kchtg/datasharing"
+      description: "Unit tests for data sharing module"
+      status: implemented
 
-# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
 stakeholders:
   business-owner: ""
   tech-lead: ""
   qa-lead: ""
 
-# Cross-references
 depends_on: []

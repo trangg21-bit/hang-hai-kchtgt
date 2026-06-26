@@ -1,32 +1,37 @@
 package com.hanghai.kchtg.tai;
 
-import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
+import com.hanghai.kchtg.security.JwtUtil;
+import com.hanghai.kchtg.security.service.JwtSessionService;
+import com.hanghai.kchtg.security.service.TokenService;
+import com.hanghai.kchtg.security.service.TokenValidationService;
 import com.hanghai.kchtg.tai.controller.TaiHistoryController;
 import com.hanghai.kchtg.tai.dto.history.TaiHistoryResponse;
 import com.hanghai.kchtg.tai.entity.TaiHistoryActionType;
 import com.hanghai.kchtg.tai.entity.TaiType;
 import com.hanghai.kchtg.tai.service.TaiHistoryService;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.user.service.PermissionRoleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
+import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(TaiHistoryController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -39,28 +44,28 @@ class TaiHistoryControllerTest {
     private TaiHistoryService historyService;
 
     @MockBean
-    private com.hanghai.kchtg.accesslog.repository.AccessLogRepository accessLogRepository;
+    private AccessLogRepository accessLogRepository;
 
     @MockBean
-    private com.hanghai.kchtg.user.repository.UserRepository userRepository;
+    private UserRepository userRepository;
 
     @MockBean
-    private com.hanghai.kchtg.security.service.TokenService tokenService;
+    private TokenService tokenService;
 
     @MockBean
-    private com.hanghai.kchtg.security.service.JwtSessionService jwtSessionService;
+    private JwtSessionService jwtSessionService;
 
     @MockBean
-    private com.hanghai.kchtg.security.service.TokenValidationService tokenValidationService;
+    private TokenValidationService tokenValidationService;
 
     @MockBean
-    private com.hanghai.kchtg.security.JwtUtil jwtUtil;
+    private JwtUtil jwtUtil;
 
     @MockBean
-    private com.hanghai.kchtg.user.service.PermissionRoleService permissionRoleService;
+    private PermissionRoleService permissionRoleService;
 
     @MockBean
-    private org.springframework.data.jpa.mapping.JpaMetamodelMappingContext jpaMetamodelMappingContext;
+    private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     private TaiHistoryResponse makeHistoryResponse() {
         return TaiHistoryResponse.builder()

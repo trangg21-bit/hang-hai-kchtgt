@@ -1,23 +1,33 @@
 package com.hanghai.kchtg.statistics;
 
+import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
+import com.hanghai.kchtg.security.JwtUtil;
+import com.hanghai.kchtg.security.service.JwtSessionService;
+import com.hanghai.kchtg.security.service.TokenService;
+import com.hanghai.kchtg.security.service.TokenValidationService;
 import com.hanghai.kchtg.statistics.controller.FormApprovalController;
 import com.hanghai.kchtg.statistics.entity.FormApprovalHistory;
 import com.hanghai.kchtg.statistics.entity.StatFormStatus;
 import com.hanghai.kchtg.statistics.entity.StatisticsForm;
 import com.hanghai.kchtg.statistics.service.FormApprovalService;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.user.service.PermissionRoleService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(FormApprovalController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -31,28 +41,28 @@ class FormApprovalControllerTest {
 
     // Global interceptor / security dependencies mock
     @MockBean
-    private com.hanghai.kchtg.accesslog.repository.AccessLogRepository accessLogRepository;
+    private AccessLogRepository accessLogRepository;
 
     @MockBean
-    private com.hanghai.kchtg.user.repository.UserRepository userRepository;
+    private UserRepository userRepository;
 
     @MockBean
-    private com.hanghai.kchtg.security.service.TokenService tokenService;
+    private TokenService tokenService;
 
     @MockBean
-    private com.hanghai.kchtg.security.service.JwtSessionService jwtSessionService;
+    private JwtSessionService jwtSessionService;
 
     @MockBean
-    private com.hanghai.kchtg.security.service.TokenValidationService tokenValidationService;
+    private TokenValidationService tokenValidationService;
 
     @MockBean
-    private com.hanghai.kchtg.security.JwtUtil jwtUtil;
+    private JwtUtil jwtUtil;
 
     @MockBean
-    private com.hanghai.kchtg.user.service.PermissionRoleService permissionRoleService;
+    private PermissionRoleService permissionRoleService;
 
     @MockBean
-    private org.springframework.data.jpa.mapping.JpaMetamodelMappingContext jpaMetamodelMappingContext;
+    private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test
     void submit_returns200() throws Exception {
