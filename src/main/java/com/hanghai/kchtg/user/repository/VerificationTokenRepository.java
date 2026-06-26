@@ -2,6 +2,7 @@ package com.hanghai.kchtg.user.repository;
 
 import com.hanghai.kchtg.user.entity.VerificationToken;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -28,6 +29,7 @@ public interface VerificationTokenRepository extends JpaRepository<VerificationT
     /**
      * Xóa các token hết hạn.
      */
+    @Modifying(clearAutomatically = true)
     @Query("DELETE FROM VerificationToken t WHERE t.expiresAt < :now")
     int deleteExpiredTokens(LocalDateTime now);
 

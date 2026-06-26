@@ -3,16 +3,15 @@ id: F-271
 name: Đăng ký tài khoản
 slug: dang-ky-tai-khoan
 module-id: M-010
-status: implemented
+status: done
 classification: local
 priority: high
 created: 2026-06-16T04:42:05Z
-last-updated: 2026-06-23T11:30:06Z
+last-updated: 2026-06-25T09:18:36Z
 locked-fields: []
 consumed_by_modules: []
 stage: qa
 ---
-
 # Feature: Đăng ký tài khoản
 
 ## Description
