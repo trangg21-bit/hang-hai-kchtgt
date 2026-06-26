@@ -3,19 +3,47 @@ module_name: "Quản lý Đài thông tin duyên hải"
 type: bounded-context
 slug: quan-ly-dai-thong-tin-duyen-hai
 
-# Map logical module → physical implementations across apps/services/libs.
-# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
 implementations:
-  apps: []
+  apps:
+    - path: "src/main/java/com/hanghai/kchtg"
+      type: spring-boot-app
+      description: "Main application containing M-015 dai thong tin bounded context"
   services: []
   libs: []
-  packages: []
+  packages:
+    - name: "tai-thong-tin-duyen-hai"
+      path: "src/main/java/com/hanghai/kchtg/tai"
+      description: "Dai thong tin duyen hai management (F-092 to F-097)"
+      status: implemented
+    - name: "tai-inmarsat"
+      path: "src/main/java/com/hanghai/kchtg/tai"
+      description: "Tai Inmarsat management (F-098 to F-103)"
+      status: implemented
+    - name: "tai-cospas-sarsat"
+      path: "src/main/java/com/hanghai/kchtg/tai"
+      description: "Tai Cospas Sarsat management (F-104 to F-109)"
+      status: implemented
+    - name: "tai-lrit"
+      path: "src/main/java/com/hanghai/kchtg/tai"
+      description: "Tai LRIT management (F-110 to F-115)"
+      status: implemented
+    - name: "tai-hanoi-hai"
+      path: "src/main/java/com/hanghai/kchtg/tai"
+      description: "Tai Thong Tin Hang Hai HN management (F-116 to F-121)"
+      status: implemented
+    - name: "tai-history"
+      path: "src/main/java/com/hanghai/kchtg/tai"
+      description: "History audit trail"
+      status: implemented
+    - name: "tai-tests"
+      path: "src/test/java/com/hanghai/kchtg/tai"
+      description: "Unit tests for tai module"
+      status: implemented
 
-# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
 stakeholders:
   business-owner: ""
   tech-lead: ""
   qa-lead: ""
 
-# Cross-references
-depends_on: []
+depends_on:
+  - M-007: PointObject sync on approve L2
