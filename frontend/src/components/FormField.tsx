@@ -70,11 +70,11 @@ export default function FormField(props: FormFieldProps) {
   const rules = rest.rules || [];
 
   // Auto-add required rule if marked required
-  if (required && !rules.some((r) => r.required)) {
+  if (required && !rules.some((r: any) => r.required)) {
     rules.unshift({ required: true, message: `Vui lòng nhập ${label.toLowerCase()}` });
   }
 
-  const fieldProps: Record<string, unknown> = { name, disabled, placeholder: props.placeholder };
+  const fieldProps: Record<string, unknown> = { name, disabled, placeholder: (props as any).placeholder };
 
   // Type-specific field props
   switch (type) {
@@ -83,14 +83,14 @@ export default function FormField(props: FormFieldProps) {
     case 'password':
     case 'phone':
     case 'url':
-      fieldProps.maxLength = props.maxLength;
+      fieldProps.maxLength = (props as any).maxLength;
       if (type === 'password' && (props as TextInputField).showPassword) {
         (fieldProps as any).type = 'password';
       }
       break;
     case 'textarea':
       (fieldProps as any).rows = 4;
-      fieldProps.maxLength = props.maxLength;
+      fieldProps.maxLength = (props as any).maxLength;
       break;
     case 'number':
       fieldProps.min = (props as NumberField).min;
@@ -160,9 +160,9 @@ export default function FormField(props: FormFieldProps) {
       case 'textarea':
         return <Input.TextArea {...fieldProps} />;
       case 'password':
-        return <Input.Password {...fieldProps} placeholder={props.placeholder} />;
+        return <Input.Password {...fieldProps} placeholder={(props as any).placeholder} />;
       case 'email':
-        return <Input type="email" {...fieldProps} placeholder={props.placeholder} />;
+        return <Input type="email" {...fieldProps} placeholder={(props as any).placeholder} />;
       default:
         return (
           <Input
@@ -188,9 +188,9 @@ export default function FormField(props: FormFieldProps) {
           : []),
         // Validate email if type is email
         ...(type === 'email'
-          ? [{ type: 'email', message: 'Email không hợp lệ' }]
+          ? [{ type: 'email' as any, message: 'Email không hợp lệ' }]
           : []),
-      ]}
+      ] as any[]}
       help={help || undefined}
       hasFeedback={type === 'phone' || type === 'email'}
       validateStatus={

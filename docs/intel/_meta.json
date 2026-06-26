@@ -13,10 +13,10 @@
       "version": 95
     },
     "docs/intel/catalog.json": {
-      "content_hash": "sha256:04eb3819d74ab789beff356fae4bcb0f2db69db5115c243df2d386d97dd7e9ce",
-      "last_modified": "2026-06-24T08:15:55Z",
+      "content_hash": "sha256:ad3577253b1a8419bf391e47140869423bdd13f48ad0f641bb96e1add84546ba",
+      "last_modified": "2026-06-26T02:54:27Z",
       "last_producer": "ai-kit/state-update-rebuild-catalog",
-      "version": 45
+      "version": 53
     },
     "docs/modules/M-001-quan-tri-he-thong/module-brief.md": {
       "content_hash": "sha256:36e913dd80aec0ba586099d2541430bdb83e5897c9aa752f8695df33f6987f5f",
@@ -55,46 +55,52 @@
       "version": 2
     },
     "docs/modules/M-007-gis-ban-do/module-brief.md": {
-      "content_hash": "sha256:c0ca1cf965e02531b91b378b47664e542895e5255490f716cad862edc406f675",
-      "last_modified": "2026-06-18T04:22:54Z",
-      "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
-      "version": 6
-    },
-    "docs/modules/M-008-bao-cao-thong-ke/module-brief.md": {
-      "content_hash": "sha256:acb4fea7e54a65e0ddc98a71da38cb57e99446838b1e7cd77ddae35f7e856e70",
-      "last_modified": "2026-06-16T15:29:06Z",
-      "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
-      "version": 3
-    },
-    "docs/modules/M-009-lien-thong-tich-hop-du-lieu/module-brief.md": {
-      "content_hash": "sha256:c910080e1690d75073297ec58d392b17091aeef166727b4229a4176aacf84257",
-      "last_modified": "2026-06-23T03:02:00Z",
+      "content_hash": "sha256:02252b73e0e0957c7bde0ae56067f622336143a0427c8a6f4926a91387ed5950",
+      "last_modified": "2026-06-26T02:54:12Z",
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
       "version": 9
     },
+    "docs/modules/M-008-bao-cao-thong-ke/module-brief.md": {
+      "content_hash": "sha256:e079fb04598c25be0d309b198fa42a78a5e5ca262c43710c227ba3d02d6eb1cd",
+      "last_modified": "2026-06-26T02:54:17Z",
+      "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
+      "version": 4
+    },
+    "docs/modules/M-009-lien-thong-tich-hop-du-lieu/module-brief.md": {
+      "content_hash": "sha256:54ad81172fc96d96fedafd1bdd781df881aa2b974b18132009b8729925cc6d42",
+      "last_modified": "2026-06-26T02:36:47Z",
+      "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
+      "version": 10
+    },
     "docs/modules/M-010-xac-thuc-phan-quyen/module-brief.md": {
-      "content_hash": "sha256:a44daa8360b3ea215d15b82609455cc1961b988dec57299bf6f3e8b5fa91c82a",
-      "last_modified": "2026-06-23T08:24:54Z",
+      "content_hash": "sha256:3da74a332a58d0816a752b69aaa6132c881fc1ec1600ea77c483a7180e4c6f70",
+      "last_modified": "2026-06-25T09:25:36Z",
+      "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
+      "version": 11
+    },
+    "docs/modules/M-011-nhat-ky-backup/module-brief.md": {
+      "content_hash": "sha256:c52e79cfccf1540bc532d00d77c435b6fa514750c753123757a720729dc6a8ea",
+      "last_modified": "2026-06-26T02:54:20Z",
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
       "version": 8
     },
-    "docs/modules/M-011-nhat-ky-backup/module-brief.md": {
-      "content_hash": "sha256:94c4930e34085e831faf6c49ec8b749ce2d2625f6daf6e9730abfbac070e55f3",
-      "last_modified": "2026-06-25T01:23:25Z",
-      "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
-      "version": 5
-    },
     "docs/modules/M-012-hai-do-gis-integration/module-brief.md": {
-      "content_hash": "sha256:205810b854d428abc902b64ea34299e786b0a683d14203c79ed2ae9e5ea54680",
-      "last_modified": "2026-06-24T08:15:55Z",
+      "content_hash": "sha256:d681eddcadea85a7bb5e95309f4cff055615f095f2bc1cd9eda0d35d7f720d3c",
+      "last_modified": "2026-06-26T02:54:23Z",
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
-      "version": 6
+      "version": 8
+    },
+    "docs/modules/M-013-quan-ly-bao-hieu-hang-hai/_state.md": {
+      "content_hash": "sha256:8d90ffa14fb455456efdf10d87e98336ab4ea2c0640ccff6f05a4696a6523385",
+      "last_modified": "2026-06-25T05:05:13Z",
+      "last_producer": "ai-kit/update_state(stage_rollback)",
+      "version": 1
     },
     "docs/modules/M-013-quan-ly-bao-hieu-hang-hai/module-brief.md": {
-      "content_hash": "sha256:3ab669b083fba65487fe9caf2e739293c096eb442713e067a4b48d21be999ddb",
-      "last_modified": "2026-06-17T02:09:56Z",
+      "content_hash": "sha256:6986202e4adff7fc32d746ed3d4bad3571f26ffbebce9982914ed70e5e390c41",
+      "last_modified": "2026-06-26T02:54:25Z",
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
-      "version": 2
+      "version": 3
     },
     "docs/modules/M-015-quan-ly-dai-thong-tin-duyen-hai/module-brief.md": {
       "content_hash": "sha256:d88857676a1698454a5b60d207b801f29b7ddffe52759b17baa03422997bd0ba",

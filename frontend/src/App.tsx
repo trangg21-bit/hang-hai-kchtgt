@@ -32,6 +32,11 @@ import GroupList from './pages/groups/GroupList';
 import GroupForm from './pages/groups/GroupForm';
 import GroupMembers from './pages/groups/GroupMembers';
 import LogsPage from './pages/LogsPage';
+import BeaconList from './pages/beacons/BeaconList';
+import BeaconForm from './pages/beacons/BeaconForm';
+import BuoyList from './pages/buoys/BuoyList';
+import BuoyForm from './pages/buoys/BuoyForm';
+import BeaconHistoryList from './pages/history/BeaconHistoryList';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -125,6 +130,15 @@ export default function App() {
                 {/* Reports & Statistics */}
                 <Route path="/reports" element={<ReportList />} />
                 <Route path="/reports/:code" element={<ReportViewer />} />
+
+                {/* Beacon Lights & Buoys — Báo hiệu hàng hải */}
+                <Route path="/beacons" element={<BeaconList />} />
+                <Route path="/beacons/create" element={<BeaconForm />} />
+                <Route path="/beacons/:id" element={<BeaconForm />} />
+                <Route path="/buoys" element={<BuoyList />} />
+                <Route path="/buoys/create" element={<BuoyForm />} />
+                <Route path="/buoys/:id" element={<BuoyForm />} />
+                <Route path="/history" element={<BeaconHistoryList />} />
 
                 {/* Nhật ký & Backup */}
                 <Route path="/logs" element={<LogsPage />} />
