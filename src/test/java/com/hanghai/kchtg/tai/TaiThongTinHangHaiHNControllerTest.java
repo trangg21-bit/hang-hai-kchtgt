@@ -10,7 +10,7 @@ import com.hanghai.kchtg.tai.dto.hanoi_hai.TaiThongTinHangHaiHNResponse;
 import com.hanghai.kchtg.tai.entity.TaiApprovalStatus;
 import com.hanghai.kchtg.tai.entity.TaiStatus;
 import com.hanghai.kchtg.tai.entity.TaiType;
-import com.hanghai.kchtg.tai.repository.TaiRepository;
+import com.hanghai.kchtg.tai.repository.TaiThongTinHangHaiHNRepository;
 import com.hanghai.kchtg.tai.service.TaiThongTinHangHaiHNService;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.user.service.PermissionRoleService;
@@ -47,7 +47,7 @@ class TaiThongTinHangHaiHNControllerTest {
     private TaiThongTinHangHaiHNService service;
 
     @MockBean
-    private TaiRepository taiRepository;
+    private TaiThongTinHangHaiHNRepository taiRepository;
 
     @MockBean
     private AccessLogRepository accessLogRepository;

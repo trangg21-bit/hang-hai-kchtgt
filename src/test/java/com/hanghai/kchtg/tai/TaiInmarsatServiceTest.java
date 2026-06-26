@@ -7,7 +7,6 @@ import com.hanghai.kchtg.tai.dto.inmarsat.UpdateTaiInmarsatRequest;
 import com.hanghai.kchtg.tai.entity.*;
 import com.hanghai.kchtg.tai.repository.TaiHistoryRepository;
 import com.hanghai.kchtg.tai.repository.TaiInmarsatRepository;
-import com.hanghai.kchtg.tai.repository.TaiRepository;
 import com.hanghai.kchtg.tai.service.PointObjectSyncService;
 import com.hanghai.kchtg.tai.service.TaiHistoryService;
 import com.hanghai.kchtg.tai.service.TaiInmarsatService;

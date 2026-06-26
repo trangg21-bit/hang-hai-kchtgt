@@ -7,7 +7,6 @@ import com.hanghai.kchtg.tai.dto.hanoi_hai.TaiThongTinHangHaiHNResponse;
 import com.hanghai.kchtg.tai.dto.hanoi_hai.UpdateTaiThongTinHangHaiHNRequest;
 import com.hanghai.kchtg.tai.entity.*;
 import com.hanghai.kchtg.tai.repository.TaiHistoryRepository;
-import com.hanghai.kchtg.tai.repository.TaiRepository;
 import com.hanghai.kchtg.tai.repository.TaiThongTinHangHaiHNRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;

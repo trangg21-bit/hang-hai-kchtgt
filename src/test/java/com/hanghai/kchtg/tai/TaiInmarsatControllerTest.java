@@ -10,7 +10,7 @@ import com.hanghai.kchtg.tai.dto.inmarsat.TaiInmarsatResponse;
 import com.hanghai.kchtg.tai.entity.TaiApprovalStatus;
 import com.hanghai.kchtg.tai.entity.TaiStatus;
 import com.hanghai.kchtg.tai.entity.TaiType;
-import com.hanghai.kchtg.tai.repository.TaiRepository;
+import com.hanghai.kchtg.tai.repository.TaiInmarsatRepository;
 import com.hanghai.kchtg.tai.service.TaiInmarsatService;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.user.service.PermissionRoleService;
@@ -46,7 +46,7 @@ class TaiInmarsatControllerTest {
     private TaiInmarsatService service;
 
     @MockBean
-    private TaiRepository taiRepository;
+    private TaiInmarsatRepository taiRepository;
 
     @MockBean
     private AccessLogRepository accessLogRepository;

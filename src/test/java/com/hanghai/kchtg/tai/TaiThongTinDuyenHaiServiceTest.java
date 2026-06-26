@@ -6,7 +6,6 @@ import com.hanghai.kchtg.tai.dto.thongtinduyenhai.TaiThongTinDuyenHaiResponse;
 import com.hanghai.kchtg.tai.dto.thongtinduyenhai.UpdateTaiThongTinDuyenHaiRequest;
 import com.hanghai.kchtg.tai.entity.*;
 import com.hanghai.kchtg.tai.repository.TaiHistoryRepository;
-import com.hanghai.kchtg.tai.repository.TaiRepository;
 import com.hanghai.kchtg.tai.repository.TaiThongTinDuyenHaiRepository;
 import com.hanghai.kchtg.tai.service.PointObjectSyncService;
 import com.hanghai.kchtg.tai.service.TaiHistoryService;
@@ -40,9 +39,6 @@ class TaiThongTinDuyenHaiServiceTest {
 
     @Mock
     private TaiThongTinDuyenHaiRepository taiRepo;
-
-    @Mock
-    private TaiRepository baseTaiRepo;
 
     @Mock
     private TaiHistoryRepository historyRepo;
@@ -156,7 +152,6 @@ class TaiThongTinDuyenHaiServiceTest {
                 new BigDecimal("157.000"), 15, "Vietnam", "new@test.com");
 
         when(taiRepo.existsByCode("TDH-002")).thenReturn(false);
-        when(baseTaiRepo.findByCodeAndDeletedFalse("TDH-002")).thenReturn(Optional.empty());
         when(taiRepo.save(any(TaiThongTinDuyenHai.class))).thenAnswer(inv -> {
             TaiThongTinDuyenHai saved = inv.getArgument(0);
             saved.setId(UUID.randomUUID());
@@ -183,20 +178,6 @@ class TaiThongTinDuyenHaiServiceTest {
                 new BigDecimal("157.000"), 15, "Vietnam", "new@test.com");
 
         when(taiRepo.existsByCode("TDH-001")).thenReturn(true);
-
-        assertThrows(IllegalArgumentException.class, () -> service.create(request));
-    }
-
-    @Test
-    @DisplayName("F-015-003: create — throws when code exists in base tai table")
-    void testCreateCodeInBaseTai() {
-        CreateTaiThongTinDuyenHaiRequest request = new CreateTaiThongTinDuyenHaiRequest(
-                "TDH-001", "Dai moi", TaiType.COASTAL,
-                new BigDecimal("157.000"), 15, "Vietnam", "new@test.com");
-
-        when(taiRepo.existsByCode("TDH-001")).thenReturn(false);
-        when(baseTaiRepo.findByCodeAndDeletedFalse("TDH-001")).thenReturn(
-                Optional.of(mock(BaseTai.class)));
 
         assertThrows(IllegalArgumentException.class, () -> service.create(request));
     }

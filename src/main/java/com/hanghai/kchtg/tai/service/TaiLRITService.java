@@ -8,7 +8,6 @@ import com.hanghai.kchtg.tai.dto.lrit.UpdateTaiLRITRequest;
 import com.hanghai.kchtg.tai.entity.*;
 import com.hanghai.kchtg.tai.repository.TaiHistoryRepository;
 import com.hanghai.kchtg.tai.repository.TaiLRITRepository;
-import com.hanghai.kchtg.tai.repository.TaiRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

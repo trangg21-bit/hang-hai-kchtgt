@@ -10,7 +10,7 @@ import com.hanghai.kchtg.tai.dto.lrit.TaiLRITResponse;
 import com.hanghai.kchtg.tai.entity.TaiApprovalStatus;
 import com.hanghai.kchtg.tai.entity.TaiStatus;
 import com.hanghai.kchtg.tai.entity.TaiType;
-import com.hanghai.kchtg.tai.repository.TaiRepository;
+import com.hanghai.kchtg.tai.repository.TaiLRITRepository;
 import com.hanghai.kchtg.tai.service.TaiLRITService;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.user.service.PermissionRoleService;
@@ -46,7 +46,7 @@ class TaiLRITControllerTest {
     private TaiLRITService service;
 
     @MockBean
-    private TaiRepository taiRepository;
+    private TaiLRITRepository taiRepository;
 
     @MockBean
     private AccessLogRepository accessLogRepository;
