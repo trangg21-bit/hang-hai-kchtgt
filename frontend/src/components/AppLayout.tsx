@@ -107,6 +107,28 @@ const menuItems: MenuProps['items'] = [
     type: 'divider' as const,
   },
   {
+    key: 'beacon',
+    icon: <SettingOutlined />,
+    label: 'Báo hiệu hàng hải',
+    children: [
+      {
+        key: '/beacons',
+        label: 'Đèn biển',
+      },
+      {
+        key: '/buoys',
+        label: 'Phao tiêu',
+      },
+      {
+        key: '/history',
+        label: 'Lịch sử thay đổi',
+      },
+    ],
+  },
+  {
+    type: 'divider' as const,
+  },
+  {
     key: '/reports',
     icon: <BarChartOutlined />,
     label: 'Báo cáo & Thống kê',
@@ -148,6 +170,9 @@ const pageTitles: Record<string, string> = {
   '/gis/search': 'Tra cứu GIS',
   '/gis/map': 'Bản đồ Hải đồ (S-57/S-63)',
   '/gis/permits': 'Giấy phép S-63',
+  '/beacons': 'Đèn biển',
+  '/buoys': 'Phao tiêu',
+  '/history': 'Lịch sử thay đổi',
   '/connections': 'Liên thông dữ liệu',
   '/reports': 'Báo cáo & Thống kê',
   '/settings': 'Cấu hình hệ thống',

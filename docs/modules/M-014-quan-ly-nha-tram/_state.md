@@ -2,12 +2,14 @@
 feature-id: M-014
 feature-name: Quản lý Nhà trạm
 pipeline-type: sdlc
-status: in-progress
+status: done
+sealed: true
+closed-at: "2026-06-26T00:00:00Z"
 depends-on: []
 blocked-by: []
 created: 2026-06-16T15:42:46Z
-last-updated: 2026-06-17T02:09:32Z
-current-stage: engineering-business-analyst
+last-updated: 2026-06-26T00:00:00Z
+current-stage: closed
 output-mode: lean
 repo-type: mini
 repo-path: .

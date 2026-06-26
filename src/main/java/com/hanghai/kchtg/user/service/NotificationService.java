@@ -13,7 +13,7 @@ import java.util.UUID;
  * an email/SMS gateway (e.g. SMTP, VNPay, Zalo OTP, etc.).
  * </p>
  */
-@Component
+@Component("userNotificationService")
 public class NotificationService {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationService.class);

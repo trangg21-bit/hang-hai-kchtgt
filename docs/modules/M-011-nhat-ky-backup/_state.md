@@ -2,11 +2,11 @@
 feature-id: M-011
 feature-name: Nhật ký & Backup
 pipeline-type: sdlc
-status: complete
+status: done
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
-last-updated: 2026-06-24T14:12:00Z
+last-updated: 2026-06-25T09:25:36Z
 current-stage: complete
 output-mode: lean
 repo-type: mini
@@ -54,6 +54,7 @@ feature-req:
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
+current_stage: close
 ---
 # Pipeline State: Nhật ký & Backup
 

@@ -19,7 +19,7 @@ export const reportService = {
     });
 
     // Extract filename from response headers if present, else construct custom filename
-    const disposition = res.headers['content-disposition'];
+    const disposition = res.headers['content-disposition'] as string | undefined;
     let filename = '';
     if (disposition && disposition.indexOf('attachment') !== -1) {
       const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
@@ -35,7 +35,8 @@ export const reportService = {
       filename = `baocao_${request.reportCode.toLowerCase()}_${Date.now()}${extension}`;
     }
 
-    const url = window.URL.createObjectURL(new Blob([res.data], { type: res.headers['content-type'] }));
+    const contentType = res.headers['content-type'] as string | undefined;
+    const url = window.URL.createObjectURL(new Blob([res.data], { type: contentType }));
     const link = document.createElement('a');
     link.href = url;
     link.setAttribute('download', filename);
