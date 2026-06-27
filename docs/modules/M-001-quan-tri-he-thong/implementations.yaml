@@ -9,7 +9,17 @@ implementations:
   apps: []
   services: []
   libs: []
-  packages: []
+  packages:
+    - name: "user"
+      path: "src/main/java/com/hanghai/kchtg/user"
+      files:
+        - "entity/User.java"
+        - "entity/Role.java"
+        - "entity/Permission.java"
+        - "entity/UserStatus.java"
+        - "entity/RoleStatus.java"
+      description: "User entity base fields (username, email, phone, isActive, status). Owner: M-001."
+      status: proposed
 
 # Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
 stakeholders:

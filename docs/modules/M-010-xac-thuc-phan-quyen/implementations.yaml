@@ -35,7 +35,7 @@ implementations:
         - "service/LoginAuditLogService.java"
         - "service/NotificationService.java"
         - "service/AccountRegistrationAuditService.java"
-        - "entity/User.java"
+        # User.java base entity is owned by M-001 — not re-declared here
         - "entity/UserStatus.java"
         - "entity/Role.java"
         - "entity/RoleStatus.java"
@@ -46,7 +46,8 @@ implementations:
         - "entity/LoginAttemptType.java"
         - "entity/LoginAttemptResult.java"
         - "entity/AccountRegistrationAudit.java"
-      description: "User management, registration, auth, TOTP, password policy (F-271 to F-277)"
+      # Note: User entity base fields are owned by M-001. This package extends User for auth purposes.
+      description: "User entity extension fields + auth (passwordHash, totpSecret, jwtRefreshToken, lockedUntil, loginFailCount). Auth controllers and services (F-271 to F-277)."
       status: implemented
     - name: "security"
       path: "src/main/java/com/hanghai/kchtg/security"
