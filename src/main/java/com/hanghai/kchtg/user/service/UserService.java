@@ -6,8 +6,10 @@ import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.user.dto.CreateUserRequest;
 import com.hanghai.kchtg.user.dto.UpdateUserRequest;
+import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
+import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
@@ -37,15 +39,18 @@ public class UserService {
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final OrgUnitRepository orgUnitRepository;
     private final GroupRepository groupRepository;
     private final PasswordEncoder passwordEncoder;
 
     public UserService(UserRepository userRepository,
+                       RoleRepository roleRepository,
                        OrgUnitRepository orgUnitRepository,
                        GroupRepository groupRepository,
                        PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.orgUnitRepository = orgUnitRepository;
         this.groupRepository = groupRepository;
         this.passwordEncoder = passwordEncoder;
@@ -115,7 +120,10 @@ public class UserService {
         user.setEmail(request.getEmail());
         user.setFullName(request.getFullName());
         user.setPhone(request.getPhone());
-        user.setRole(request.getRole() != null ? request.getRole() : "ROLE_USER");
+        String roleCode = request.getRole() != null ? request.getRole() : "ROLE_USER";
+        Role role = roleRepository.findByCode(roleCode)
+                .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + roleCode));
+        user.getRoles().add(role);
         user.setStatus(UserStatus.ACTIVE);
 
         // Set OrgUnit relationship
@@ -167,7 +175,9 @@ public class UserService {
             user.setPhone(request.getPhone());
         }
         if (request.getRole() != null) {
-            user.setRole(request.getRole());
+            Role role = roleRepository.findByCode(request.getRole())
+                    .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + request.getRole()));
+            user.getRoles().add(role);
         }
         if (request.getOrgUnitId() != null) {
             OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())

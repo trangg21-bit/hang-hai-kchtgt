@@ -82,7 +82,7 @@ public class AuthController {
                 user.setLastLoginAt(LocalDateTime.now());
                 userRepository.save(user);
 
-                String role = user.getRole() != null ? user.getRole() : "ROLE_USER";
+                String role = user.getPrimaryRoleCode() != null ? user.getPrimaryRoleCode() : "ROLE_USER";
                 String token = tokenService.createAccessToken(user.getUsername(), role);
 
                 LoginResponse response = LoginResponse.of(token, user.getUsername(),

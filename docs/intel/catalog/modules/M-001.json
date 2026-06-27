@@ -2,7 +2,7 @@
   "entry": {
     "aggregate_size_status": "green",
     "depends_on": [],
-    "feature_count": 7,
+    "feature_count": 4,
     "features": {
       "F-001": {
         "classification": "local",
@@ -49,21 +49,6 @@
           "PRIVATE"
         ]
       },
-      "F-004": {
-        "classification": "local",
-        "confidence": "high",
-        "consumed_by_modules": [],
-        "depends_on": [],
-        "id": "F-004",
-        "name": "quan-ly-tai-khoan-admin",
-        "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-004-quan-ly-tai-khoan-admin/",
-        "slug": "quan-ly-tai-khoan-admin",
-        "status": "proposed",
-        "version": 1,
-        "visibility": [
-          "PRIVATE"
-        ]
-      },
       "F-005": {
         "classification": "local",
         "confidence": "high",
@@ -78,43 +63,13 @@
         "visibility": [
           "PRIVATE"
         ]
-      },
-      "F-006": {
-        "classification": "local",
-        "confidence": "high",
-        "consumed_by_modules": [],
-        "depends_on": [],
-        "id": "F-006",
-        "name": "quan-ly-bieu-tuong-ban-do",
-        "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-006-quan-ly-bieu-tuong-ban-do/",
-        "slug": "quan-ly-bieu-tuong-ban-do",
-        "status": "proposed",
-        "version": 1,
-        "visibility": [
-          "PRIVATE"
-        ]
-      },
-      "F-007": {
-        "classification": "local",
-        "confidence": "high",
-        "consumed_by_modules": [],
-        "depends_on": [],
-        "id": "F-007",
-        "name": "quan-ly-ket-noi-lien-thong-chia-du-lieu",
-        "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-007-quan-ly-ket-noi-lien-thong-chia-du-lieu/",
-        "slug": "quan-ly-ket-noi-lien-thong-chia-du-lieu",
-        "status": "proposed",
-        "version": 1,
-        "visibility": [
-          "PRIVATE"
-        ]
       }
     },
     "id": "M-001",
     "name": "Quản trị hệ thống",
     "path": "docs/modules/M-001-quan-tri-he-thong/",
     "slug": "quan-tri-he-thong",
-    "status": "done",
+    "status": "proposed",
     "version": 1
   },
   "module_id": "M-001",

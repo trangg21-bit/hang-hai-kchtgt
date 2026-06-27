@@ -42,7 +42,7 @@ Bảo vệ tài khoản người dùng bằng cách đảm bảo mật khẩu lu
 ## In Scope
 
 - **Độ phức tạp mật khẩu (Password Complexity):**
-  - Tối thiểu 8 ký tự (configurable, default 12)
+  - Tối thiểu 8 ký tự (configurable, default 8)
   - Bắt buộc ít nhất 1 chữ hoa (A-Z)
   - Bắt buộc ít nhất 1 chữ thường (a-z)
   - Bắt buộc ít nhất 1 số (0-9)
@@ -89,7 +89,7 @@ Bảo vệ tài khoản người dùng bằng cách đảm bảo mật khẩu lu
 
 | Entity | Fields | Description |
 |---|---|---|
-| `PasswordPolicy` | `id` (UUID), `minLength` (int, default 12), `requireUppercase` (bool, default true), `requireLowercase` (bool, default true), `requireDigit` (bool, default true), `requireSpecialChar` (bool, default true), `specialCharSet` (string, default "!@#$%^&*()-_=+"), `maxAgeDays` (int, default 90), `historyDepth` (int, default 5), `blockUsernameInPassword` (bool, default true), `createdAt` (timestamp), `updatedAt` (timestamp) | Bảng cấu hình chính sách mật khẩu — chỉ có 1 row (singleton table) |
+| `PasswordPolicy` | `id` (UUID), `minLength` (int, default 8), `requireUppercase` (bool, default true), `requireLowercase` (bool, default true), `requireDigit` (bool, default true), `requireSpecialChar` (bool, default true), `specialCharSet` (string, default "!@#$%^&*()-_=+"), `maxAgeDays` (int, default 90), `historyDepth` (int, default 5), `blockUsernameInPassword` (bool, default true), `createdAt` (timestamp), `updatedAt` (timestamp) | Bảng cấu hình chính sách mật khẩu — chỉ có 1 row (singleton table) |
 | `UserPassword` (extends từ User entity) | `userId` (FK → User), `passwordHash` (string), `salt` (string, embedded in hash), `createdAt` (timestamp), `expiresAt` (timestamp), `lastChangedAt` (timestamp) | Lưu trữ mật khẩu hash của user. Mỗi user có tối đa 1 record active + N records trong history |
 | `PasswordHistory` | `id` (UUID), `userId` (FK → User), `passwordHash` (string), `createdAt` (timestamp) | Lịch sử N mật khẩu gần nhất của từng user — dùng để ngăn tái sử dụng |
 | `PasswordExpirationLog` (optional, audit trail) | `id` (UUID), `userId` (FK → User), `expiredAt` (timestamp), `status` (enum: `warning`, `forced_change`, `changed`), `notifiedVia` (enum: `email`, `in-app`, `none`) | Audit trail cảnh báo và xử lý mật khẩu hết hạn |
@@ -98,7 +98,7 @@ Bảo vệ tài khoản người dùng bằng cách đảm bảo mật khẩu lu
 
 | ID | Rule | Applies-to | Source |
 |---|---|---|---|
-| BR-276-01 | Mật khẩu phải có tối thiểu 12 ký tự (configurable). Nếu dưới 8 ký tự → reject ngay với lỗi "Mật khẩu quá ngắn". | Đăng ký (F-271), Đổi mật khẩu (F-276) | Chính sách bảo mật hệ thống |
+| BR-276-01 | Mật khẩu phải có tối thiểu 8 ký tự (configurable). Nếu dưới 8 ký tự → reject ngay với lỗi "Mật khẩu quá ngắn". | Đăng ký (F-271), Đổi mật khẩu (F-276) | Chính sách bảo mật hệ thống |
 | BR-276-02 | Mật khẩu bắt buộc chứa ít nhất 1 chữ hoa, 1 chữ thường, 1 số, 1 ký tự đặc biệt (theo set cấu hình). Thiếu bất kỳ loại nào → reject với mô tả cụ thể loại ký tự thiếu. | Đăng ký (F-271), Đổi mật khẩu (F-276) | Chính sách bảo mật hệ thống |
 | BR-276-03 | Mật khẩu không được chứa username hoặc email của người dùng (case-insensitive, length ≥ 4). Vi phạm → reject với lỗi "Mật khẩu chứa thông tin cá nhân". | Đăng ký (F-271), Đổi mật khẩu (F-276) | Phòng chống guessable password |
 | BR-276-04 | Không cho phép tái sử dụng mật khẩu thuộc 5 mật khẩu gần nhất (configurable). So sánh hash. | Đổi mật khẩu (F-276) | Phòng chống password reuse |

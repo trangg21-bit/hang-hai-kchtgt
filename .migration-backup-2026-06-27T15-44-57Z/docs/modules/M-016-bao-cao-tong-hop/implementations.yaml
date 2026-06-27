@@ -1,0 +1,36 @@
+module_id: M-016
+module_name: "Báo cáo & Tổng hợp"
+type: bounded-context
+slug: bao-cao-tong-hop
+
+implementations:
+  apps:
+    - path: "src/main/java/com/hanghai/kchtg"
+      type: spring-boot-app
+      description: "Main application containing M-016 bao cao bounded context"
+  services: []
+  libs: []
+  packages:
+    - name: "report-core"
+      path: "src/main/java/com/hanghai/kchtg/report"
+      description: "Core report generation (F-141 to F-147)"
+      status: implemented
+    - name: "report-asset"
+      path: "src/main/java/com/hanghai/kchtg/report"
+      description: "Asset summary reports (F-141 to F-147)"
+      status: implemented
+    - name: "report-cargo-maintenance"
+      path: "src/main/java/com/hanghai/kchtg/report"
+      description: "Cargo and maintenance reports (F-174 to F-189)"
+      status: implemented
+    - name: "report-tests"
+      path: "src/test/java/com/hanghai/kchtg/report"
+      description: "Unit tests for report module"
+      status: implemented
+
+stakeholders:
+  business-owner: ""
+  tech-lead: ""
+  qa-lead: ""
+
+depends_on: []

@@ -25,8 +25,10 @@ import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
+import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +49,7 @@ public class DataSeeder implements CommandLineRunner {
     private final LineCategoryRepository lineCategoryRepo;
     private final PolygonCategoryRepository polygonCategoryRepo;
     private final MapIconRepository mapIconRepo;
+    private final RoleRepository roleRepo;
     private final UserRepository userRepo;
     private final DataConnectionRepository connectionRepo;
     private final AdminAccountRepository adminAccountRepo;
@@ -173,7 +176,9 @@ public class DataSeeder implements CommandLineRunner {
         admin.setPassword(passwordEncoder.encode("admin123"));
         admin.setEmail("admin@hh.gov.vn");
         admin.setFullName("System Administrator");
-        admin.setRole("ROLE_SUPER_ADMIN");
+        Role adminRole = roleRepo.findByCode("ROLE_SUPER_ADMIN")
+                .orElseThrow(() -> new IllegalStateException("Role not found: ROLE_SUPER_ADMIN"));
+        admin.getRoles().add(adminRole);
         admin.setStatus(UserStatus.ACTIVE);
 
         userRepo.save(admin);
@@ -221,7 +226,7 @@ public class DataSeeder implements CommandLineRunner {
 
         log.info("📦 Seeding AdminAccounts for default users...");
         userRepo.findAll().forEach(user -> {
-            String role = user.getRole();
+            String role = user.getPrimaryRoleCode();
             if ("ROLE_SUPER_ADMIN".equals(role) || "ROLE_SYSTEM_ADMIN".equals(role)) {
                 AdminAccount admin = new AdminAccount();
                 admin.setUser(user);

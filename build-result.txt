@@ -1,0 +1,51 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -------------------------< com.hanghai:kchtg >--------------------------
+[INFO] Building HH.KCHT :: M-001 Quản trị hệ thống 0.1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[WARNING] The artifact com.itextpdf:itext7-core:pom:8.0.5 has been relocated to com.itextpdf:itext-core:pom:8.0.5
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ kchtg ---
+[INFO] Deleting /Users/thuytrang/workspace/hang-hai-kchtgt/target
+[INFO] 
+[INFO] --- jacoco:0.8.12:prepare-agent (default) @ kchtg ---
+[INFO] argLine set to -javaagent:/Users/thuytrang/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/Users/thuytrang/workspace/hang-hai-kchtgt/target/jacoco.exec
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ kchtg ---
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] Copying 95 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ kchtg ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 539 source files with javac [debug parameters release 17] to target/classes
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/tai/entity/BaseTai.java:[57,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/admin/service/AdminAccountService.java:[65,21] setRole(java.lang.String) in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/admin/service/AdminAccountService.java:[69,21] setRole(java.lang.String) in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/admin/service/AdminAccountService.java:[72,21] setRole(java.lang.String) in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/admin/service/AdminAccountService.java:[75,21] setRole(java.lang.String) in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/admin/service/AdminAccountService.java:[78,21] setRole(java.lang.String) in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/config/SecurityConfig.java:[112,31] getRole() in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/config/SecurityConfig.java:[112,56] getRole() in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/security/service/JwtSessionService.java:[71,46] getRole() in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/seeder/DataSeeder.java:[176,14] setRole(java.lang.String) in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/seeder/DataSeeder.java:[224,31] getRole() in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/user/controller/AuthController.java:[85,35] getRole() in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/user/controller/AuthController.java:[85,60] getRole() in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/user/service/TotpAuthService.java:[244,30] getRole() in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/user/service/TotpAuthService.java:[244,55] getRole() in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/user/service/RegistrationService.java:[190,13] setRole(java.lang.String) in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/user/service/RegistrationService.java:[202,30] getRole() in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/user/service/UserService.java:[118,13] setRole(java.lang.String) in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/user/service/UserService.java:[170,17] setRole(java.lang.String) in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/user/dto/UserResponse.java:[67,21] getRole() in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/user/service/AuthService.java:[62,27] getRole() in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/user/service/AuthService.java:[62,52] getRole() in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[INFO] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/beacon/service/BeaconLightService.java: Some input files use unchecked or unsafe operations.
+[INFO] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/beacon/service/BeaconLightService.java: Recompile with -Xlint:unchecked for details.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  5.248 s
+[INFO] Finished at: 2026-06-27T22:46:49+07:00
+[INFO] ------------------------------------------------------------------------

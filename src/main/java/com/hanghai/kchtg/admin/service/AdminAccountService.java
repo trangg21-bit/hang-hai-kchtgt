@@ -7,8 +7,10 @@ import com.hanghai.kchtg.admin.entity.AdminAccount;
 import com.hanghai.kchtg.admin.entity.AdminRole;
 import com.hanghai.kchtg.admin.entity.AdminStatus;
 import com.hanghai.kchtg.admin.repository.AdminAccountRepository;
+import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
+import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
@@ -28,6 +30,7 @@ public class AdminAccountService {
     private final AdminAccountRepository repository;
     private final EntityManager entityManager;
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
     public List<AdminResponse> findAll() {
@@ -59,25 +62,27 @@ public class AdminAccountService {
         user.setPhone(request.getPhone());
         // Map admin role string to user role (with ROLE_ prefix for Spring Security)
         String roleKey = request.getRole().toUpperCase();
+        String userRoleCode;
         switch (roleKey) {
             case "SYSTEM_ADMIN":
             case "SUPER_ADMIN":
-                user.setRole("ROLE_SYSTEM_ADMIN");
+                userRoleCode = "ROLE_SYSTEM_ADMIN";
                 break;
             case "ADMIN":
             case "ADMINISTRATOR":
-                user.setRole("ROLE_ADMIN");
+                userRoleCode = "ROLE_ADMIN";
                 break;
             case "VIEWER":
-                user.setRole("ROLE_VIEWER");
+                userRoleCode = "ROLE_VIEWER";
                 break;
             case "USER":
-                user.setRole("ROLE_USER");
-                break;
             default:
-                user.setRole("ROLE_USER");
+                userRoleCode = "ROLE_USER";
                 break;
         }
+        Role userRole = roleRepository.findByCode(userRoleCode)
+                .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + userRoleCode));
+        user.getRoles().add(userRole);
         user.setStatus(UserStatus.ACTIVE);
         User savedUser = userRepository.save(user);
 

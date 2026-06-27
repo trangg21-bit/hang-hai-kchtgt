@@ -59,7 +59,7 @@ public class AuthService {
             return new AuthError("Account is locked");
         }
 
-        String role = user.getRole() != null ? user.getRole() : "ROLE_USER";
+        String role = user.getPrimaryRoleCode() != null ? user.getPrimaryRoleCode() : "ROLE_USER";
 
         if (Boolean.TRUE.equals(user.getTotpEnabled())) {
             return new TotpSetupRequired(user.getId().toString(), user.getUsername(), user.getFullName(), role);

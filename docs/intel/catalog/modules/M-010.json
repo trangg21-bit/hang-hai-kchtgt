@@ -58,7 +58,7 @@
         "name": "Quản lý JWT session",
         "path": "docs/modules/M-010-xac-thuc-phan-quyen/_features/F-274-quan-ly-jwt-session/",
         "slug": "quan-ly-jwt-session",
-        "status": "done",
+        "status": "changes-requested",
         "version": 1,
         "visibility": [
           "PRIVATE"
@@ -114,7 +114,7 @@
     "name": "xac-thuc-phan-quyen",
     "path": "docs/modules/M-010-xac-thuc-phan-quyen/",
     "slug": "xac-thuc-phan-quyen",
-    "status": "proposed",
+    "status": "done",
     "version": 1
   },
   "module_id": "M-010",

@@ -1,0 +1,13 @@
+feature_id: F-155
+module_id: M-008
+slug: bieu-06-n-thong-ke-he-thong-den-bien
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: ""
+  consumers: []
+
+# Cross-cutting: features consumed by multiple modules
+consumed_by_modules: []

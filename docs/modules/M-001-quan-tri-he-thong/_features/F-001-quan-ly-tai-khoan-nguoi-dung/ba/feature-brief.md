@@ -45,6 +45,10 @@ Quan tri he thong, Lanh dao, Chuyen vien - Tao, sua, xoa, khoa/mo khoa tai khoan
 - Phân quyền theo vai trò (system-admin, admin, user)
 - Quản lý danh sách vai trò và phân quyền chi tiết
 - Nhật ký thay đổi trạng thái tài khoản (UserStatusLog)
+- Quản lý phê duyệt tài khoản đăng ký tự động (approve/reject đăng ký mới)
+- Quản lý tài khoản admin: tạo/sửa/xóa/khóa/mở khóa, phê duyệt, phân quyền theo vai trò (system-admin, admin, user)
+- Cập nhật thông tin tài khoản admin (họ tên, email, số điện thoại, vai trò, module access)
+- Xem danh sách và phê duyệt yêu cầu đăng ký tài khoản mới từ người dùng
 
 ## Out of Scope
 
@@ -62,6 +66,7 @@ Quan tri he thong, Lanh dao, Chuyen vien - Tao, sua, xoa, khoa/mo khoa tai khoan
 | system-admin | Full (CRUD + Lock/Unlock + Reset Password) | Có toàn quyền quản lý người dùng, vai trò, phân quyền; tạo/xóa tài khoản system-admin |
 | admin | CRUD + Lock/Unlock | Quản lý người dùng trong đơn vị/phân hệ của mình; không được tạo tài khoản system-admin |
 | user | Read-only | Chỉ có thể xem thông tin người dùng; không có quyền chỉnh sửa hoặc khóa tài khoản |
+| admin-operation | Full (CRUD + Approve + Lock/Unlock) | Quản lý tài khoản admin và phê duyệt đăng ký trong phạm vi vận hành |
 
 ## Entities
 
@@ -83,6 +88,10 @@ Quan tri he thong, Lanh dao, Chuyen vien - Tao, sua, xoa, khoa/mo khoa tai khoan
 | BR-001-06 | Khi tạo/reset password, mật khẩu mới phải khác 3 mật khẩu gần nhất của user | Reset password | Chính sách mật khẩu |
 | BR-001-07 | Mọi thay đổi trạng thái tài khoản (active/blocked) phải được ghi vào UserStatusLog với lý do | Lock/Unlock | Audit requirement |
 | BR-001-08 | User không thể tự thay đổi vai trò (role) của chính mình; chỉ admin/system-admin được phép gán/hủy vai trò | Role assignment | Phân quyền |
+| BR-001-09 | Tài khoản đăng ký tự động qua email/SĐT cần được admin phê duyệt trước khi kích hoạt | Đăng ký (F-271 M-010) | URD III.3.2 |
+| BR-001-10 | Admin được phân quyền truy cập module cụ thể (system-admin: tất cả, admin: phân hệ của mình, user: không) | Phân quyền | URD III.3.2 |
+| BR-001-11 | Khi admin phê duyệt tài khoản đăng ký, user account được kích hoạt và phân quyền theo vai trò đã chỉ định | Phê duyệt | URD III.3.2 |
+| BR-001-12 | Admin có thể xem và phê duyệt danh sách tài khoản đăng ký chờ xử lý, từ chối với lý do cụ thể | Phê duyệt | URD III.3.2 |
 
 ## Testing Strategy
 
@@ -110,6 +119,11 @@ Quan tri he thong, Lanh dao, Chuyen vien - Tao, sua, xoa, khoa/mo khoa tai khoan
   - Kiểm tra JWT không tiết lộ thông tin nhạy cảm trong payload
   - Kiểm tra password hash (bcrypt/argon2) không lưu plaintext
   - Kiểm tra session invalidation khi lock account (BR-001-05)
+
+- **Approval Testing**:
+  - Test workflow: tạo yêu cầu đăng ký → admin xem danh sách → duyệt/từ chối → kích hoạt user
+  - Test từ chối với lý do → gửi notification đến user
+  - Test admin không thể tự phê duyệt yêu cầu của chính mình (anti-self-approval)
 
 - **UI/UX Testing**:
   - Responsive sidebar trên mobile (collapse hamburger)

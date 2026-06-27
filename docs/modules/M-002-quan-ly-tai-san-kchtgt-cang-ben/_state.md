@@ -6,8 +6,8 @@ status: in-progress
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:22Z
-last-updated: 2026-06-16T05:21:42Z
-current-stage: engineering-business-analyst
+last-updated: 2026-06-27T19:55:04Z
+current-stage: engineering-backend-developer-wave-1
 output-mode: lean
 repo-type: mini
 repo-path: .
@@ -24,6 +24,15 @@ completed-stages:
   consulting-intelligence-extractor:
     verdict: Ready for BA
     completed-at: 2026-06-16T04:39:22Z
+  engineering-business-analyst:
+    verdict: Ready
+    completed-at: 2026-06-27
+  engineering-system-architect:
+    verdict: Ready
+    completed-at: 2026-06-27
+  engineering-technical-lead:
+    verdict: Ready
+    completed-at: 2026-06-27
 kpi:
   tokens-total: 0
   cycle-time-start: 2026-06-16T04:39:22Z
@@ -61,6 +70,9 @@ Quản lý cảng biển (36), bến cảng (301), cầu cảng (614), cảng c�
 | 4 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | — | — | — |
 | 5 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | — | — | — |
 | 6 | engineering-code-reviewer | engineering-code-reviewer | — | — | — |
+| engineering-business-analyst | engineering-business-analyst | Ready |  | 2026-06-27 |
+| engineering-system-architect | engineering-system-architect | Ready |  | 2026-06-27 |
+| engineering-technical-lead | engineering-technical-lead | Ready |  | 2026-06-27 |
 
 ## Current Stage
 

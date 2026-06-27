@@ -68,7 +68,7 @@ public class JwtSessionService {
         String hash = sha512Hex(refreshTokenValue + ":" + salt);
 
         // 3. Determine role level
-        int roleLevel = resolveRoleLevel(user.getRole());
+        int roleLevel = resolveRoleLevel(user.getPrimaryRoleCode());
 
         // 4. Build and persist session
         JwtSessionEntity session = new JwtSessionEntity();

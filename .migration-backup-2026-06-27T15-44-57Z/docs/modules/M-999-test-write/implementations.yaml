@@ -1,0 +1,21 @@
+module_id: M-999
+module_name: "Test"
+type: bounded-context
+slug: test-write
+
+# Map logical module → physical implementations across apps/services/libs.
+# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
+implementations:
+  apps: []
+  services: []
+  libs: []
+  packages: []
+
+# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
+stakeholders:
+  business-owner: ""
+  tech-lead: ""
+  qa-lead: ""
+
+# Cross-references
+depends_on: []

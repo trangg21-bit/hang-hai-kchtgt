@@ -73,10 +73,27 @@
         "name": "Xem chi tiết Cảng biển",
         "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-012-xem-cb/",
         "slug": "xem-cb",
-        "status": "proposed",
+        "status": "in_design",
         "version": 1,
         "visibility": [
           "PRIVATE"
+        ],
+        "description": "Tính năng cho phép người dùng nội bộ tra cứu và xem thông tin chi tiết của Cảng biển bao gồm các trường dữ liệu cơ bản (maCang, tenCang, tinhThanh, trangThai), thông tin kỹ thuật mở rộng (toDo GPS, dienTich, khaNangTiepNhanTau, ghiChu), thông tin audit (createdBy, updatedBy, createdAt, updatedAt), và vị trí địa lý hiển thị trên bản đồ tích hợp GIS. Tính năng hỗ trợ tìm kiếm live (debounce ≤500ms) theo mã cảng, tên cảng, tỉnh/thành phố và lọc theo trạng thái; danh sách kết quả phân trang (50 mục/trang) với sắp xếp theo tên hoặc thời gian tạo. Trường dữ liệu được kiểm soát hiển thị theo vai trò (field-level RBAC): Nhân viên vận hành chỉ xem 4 trường cơ bản; Chuyên viên và Lãnh đạo xem đầy đủ tất cả trường.",
+        "acceptance_criteria": [
+          "Người dùng có permission VIEW_CANG_BIEN có thể tra cứu Cảng biển theo mã, tên (partial match, case-insensitive), hoặc tỉnh/thành phố với kết quả trả về trong vòng 3 giây (p95) trên tập 1000 bản ghi.",
+          "Trang chi tiết Cảng biển hiển thị đầy đủ 13 trường của entity CangBien (maCang, tenCang, tinhThanh, toDo, dienTich, khaNangTiepNhanTau, trangThai, ghiChu, createdAt, updatedAt, createdBy, updatedBy) kèm bản đồ tích hợp hiển thị tọa độ GPS; nếu toDo null thì hiển thị thông báo \"Chưa có tọa độ\".",
+          "Người dùng vai trò Nhân viên vận hành (A-004) chỉ nhận được 4 trường cơ bản (maCang, tenCang, tinhThanh, trangThai) trong cả UI lẫn API response; các trường kỹ thuật mở rộng không xuất hiện trong JSON response cho token vai trò này.",
+          "Danh sách kết quả tìm kiếm hiển thị tối đa 50 bản ghi mỗi trang, có điều hướng phân trang và tùy chọn sắp xếp theo tên hoặc thời gian tạo.",
+          "Kết quả tìm kiếm mặc định chỉ hiển thị Cảng biển trạng thái \"Hiện hành\" và \"Tạm ngừng\"; Cảng trạng thái \"Chờ phê duyệt\" và \"Đã xóa\" chỉ xuất hiện khi người dùng bật tùy chọn \"Xem tất cả\".",
+          "Người dùng không có permission VIEW_CANG_BIEN nhận HTTP 403 Forbidden khi gọi API GET /cang-bien hoặc GET /cang-bien/{id}."
+        ],
+        "business_rules": [
+          "BR-001: Kết quả tìm kiếm mặc định chỉ trả Cảng biển trạng thái hien_hanh và tam_ngung; ngoại lệ khi bật tùy chọn Xem tất cả.",
+          "BR-002: Tọa độ GPS (toDo) được render trên bản đồ tích hợp; nếu toDo null hiển thị thông báo thay thế; nếu GeoServer timeout hiển thị tọa độ dạng text.",
+          "BR-003: Nhân viên vận hành (A-004) chỉ xem được 4 trường cơ bản; kiểm soát tại API layer không chỉ frontend.",
+          "BR-004: Trường kỹ thuật mở rộng chỉ hiển thị cho vai trò Chuyên viên (A-003) trở lên; A-001 luôn thấy đầy đủ.",
+          "BR-005: Danh sách kết quả hiển thị tối đa 50 bản ghi/trang bắt buộc có phân trang.",
+          "BR-006: Live search debounce ≤ 500ms; bộ lọc dropdown kích hoạt ngay khi chọn."
         ]
       },
       "F-013": {
@@ -253,10 +270,27 @@
         "name": "Xem chi tiết Cầu cảng",
         "path": "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-024-xem-cc/",
         "slug": "xem-cc",
-        "status": "proposed",
+        "status": "in_design",
         "version": 1,
         "visibility": [
           "PRIVATE"
+        ],
+        "description": "Tính năng cho phép người dùng nội bộ tra cứu và xem thông tin chi tiết của Cầu cảng bao gồm các trường dữ liệu cơ bản (maCau, tenCau, trangThai), thông tin kỹ thuật mở rộng (loaiKetCau, vatLieuChinh, taiTrongThietKe, chieuDaiCau, chieuRongCau, mucNuocCaoNhat, ghiChu), liên kết đến Bến cảng mẹ, thông tin audit (createdBy, updatedBy, createdAt, updatedAt). Tính năng hỗ trợ tìm kiếm theo mã cầu, tên cầu (partial match, case-insensitive), Bến cảng mẹ và lọc theo trạng thái; danh sách kết quả phân trang 50 mục/trang với sắp xếp theo tên hoặc thời gian tạo. Trường dữ liệu được kiểm soát hiển thị theo vai trò (field-level RBAC): Người dùng tại Cảng (A-004) chỉ xem 4 trường cơ bản; Chuyên viên (A-003) và Lãnh đạo (A-002) xem đầy đủ; kiểm soát áp dụng cả tại API layer.",
+        "acceptance_criteria": [
+          "Người dùng có permission VIEW_CAU_CANG có thể tra cứu Cầu cảng theo mã cầu, tên cầu (partial match, case-insensitive) hoặc Bến cảng mẹ với kết quả trả về trong vòng 3 giây (p95) trên tập 614 bản ghi.",
+          "Trang chi tiết Cầu cảng hiển thị đầy đủ tất cả trường của entity CauCang (maCau, tenCau, liên kết BenCang mẹ, loaiKetCau, vatLieuChinh, taiTrongThietKe, chieuDaiCau, chieuRongCau, mucNuocCaoNhat, trangThai, ghiChu, createdAt, updatedAt, createdBy, updatedBy) cho vai trò Chuyên viên (A-003) trở lên.",
+          "Người dùng tại Cảng (A-004) chỉ nhận được 4 trường cơ bản (maCau, tenCau, trangThai, tenBenCangMe) trong cả UI lẫn API response; các trường kỹ thuật mở rộng không xuất hiện trong JSON response cho token vai trò này.",
+          "Danh sách kết quả tìm kiếm hiển thị tối đa 50 bản ghi mỗi trang, có điều hướng phân trang và tùy chọn sắp xếp theo tên hoặc thời gian tạo.",
+          "Kết quả tìm kiếm mặc định chỉ hiển thị Cầu cảng trạng thái hien_hanh và tam_ngung; trạng thái cho_phe_duyet và da_xoa chỉ xuất hiện khi bật tùy chọn Xem tất cả.",
+          "Người dùng không có permission VIEW_CAU_CANG nhận HTTP 403 Forbidden khi gọi API GET /cau-cang hoặc GET /cau-cang/{id}."
+        ],
+        "business_rules": [
+          "BR-001: Kết quả tìm kiếm mặc định chỉ trả Cầu cảng trạng thái hien_hanh và tam_ngung; ngoại lệ khi bật tùy chọn Xem tất cả.",
+          "BR-002: Người dùng tại Cảng (A-004) chỉ xem được 4 trường cơ bản; kiểm soát tại API layer không chỉ frontend.",
+          "BR-003: Trường kỹ thuật mở rộng chỉ hiển thị cho vai trò Chuyên viên (A-003) trở lên; A-001 luôn thấy đầy đủ.",
+          "BR-004: Danh sách kết quả hiển thị tối đa 50 bản ghi/trang; bắt buộc có phân trang.",
+          "BR-005: Liên kết điều hướng đến Bến cảng mẹ chỉ hiển thị khi người dùng có quyền VIEW_BEN_CANG.",
+          "BR-006: Live search debounce ≤ 500ms sau khi ngừng gõ; bộ lọc dropdown kích hoạt ngay khi chọn."
         ]
       },
       "F-025": {
@@ -392,6 +426,21 @@
         "version": 1,
         "visibility": [
           "PRIVATE"
+        ],
+        "description": "Cho phép người dùng có thẩm quyền (Admin hoặc Quản lý cảng) cập nhật thông tin của Vùng nước đã tồn tại trong hệ thống, bao gồm tên, Cảng biển quản lý, diện tích, độ sâu, tọa độ, điều kiện hải văn, khả năng thông hành và mục đích sử dụng. Mã vùng nước là trường bất biến sau khi tạo. Hệ thống cảnh báo khi Vùng nước đang chờ phê duyệt, chặn cập nhật khi đã xóa mềm, kích hoạt phê duyệt lại khi thay đổi trường quan trọng (doSau, khaNangThongHanh), và ghi nhật ký thay đổi tự động (LichSuVungNuoc) sau mỗi lần lưu thành công để đảm bảo kiểm toán đầy đủ.",
+        "acceptance_criteria": [
+          "Người dùng có role Admin hoặc Quan_ly_cang mới có thể truy cập chức năng cập nhật Vùng nước; role khác nhận HTTP 403 khi gọi API trực tiếp",
+          "Trường mã vùng nước (ma) ở trạng thái read-only trên UI và bị bỏ qua/từ chối ở tầng API nếu được gửi lên; tất cả trường còn lại đều có thể chỉnh sửa",
+          "Hệ thống hiển thị cảnh báo xác nhận khi Vùng nước đang trong trạng thái cho_phe_duyet và chặn hoàn toàn khi trangThai = da_xoa",
+          "Thay đổi trường doSau hoặc khaNangThongHanh tự động kích hoạt yêu cầu phê duyệt lại theo F-035 và cập nhật trangThai thành cho_phe_duyet_lai",
+          "Mỗi lần cập nhật thành công, hệ thống ghi bản ghi LichSuVungNuoc cho từng trường bị thay đổi, bao gồm giaTriCu, giaTriMoi, nguoiCapNhat và thoiGianCapNhat; nhật ký không thể xóa hoặc sửa bởi bất kỳ actor nào"
+        ],
+        "business_rules": [
+          "Mã vùng nước (ma) là bất biến sau khi tạo; không có API nào được phép cập nhật trường này",
+          "Vùng nước có trangThai = da_xoa không được phép cập nhật (HTTP 422); trangThai = cho_phe_duyet hiển thị cảnh báo nhưng cho phép tiếp tục sau xác nhận",
+          "Thay đổi doSau hoặc khaNangThongHanh bắt buộc phê duyệt lại theo F-035",
+          "LichSuVungNuoc ghi tự động một bản ghi per trường bị thay đổi; không cho phép xóa hoặc sửa bởi bất kỳ actor nào kể cả Admin",
+          "Ghi nhật ký và cập nhật VungNuoc nằm trong cùng một transaction; nếu một phần thất bại thì toàn bộ rollback"
         ]
       },
       "F-034": {

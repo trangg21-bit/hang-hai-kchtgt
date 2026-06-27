@@ -1,0 +1,86 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -------------------------< com.hanghai:kchtg >--------------------------
+[INFO] Building HH.KCHT :: M-001 Quản trị hệ thống 0.1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[WARNING] The artifact com.itextpdf:itext7-core:pom:8.0.5 has been relocated to com.itextpdf:itext-core:pom:8.0.5
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ kchtg ---
+[INFO] 
+[INFO] --- jacoco:0.8.12:prepare-agent (default) @ kchtg ---
+[INFO] argLine set to -javaagent:/Users/thuytrang/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/Users/thuytrang/workspace/hang-hai-kchtgt/target/jacoco.exec
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ kchtg ---
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] Copying 95 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ kchtg ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 539 source files with javac [debug parameters release 17] to target/classes
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/tai/entity/BaseTai.java:[57,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[INFO] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/beacon/service/BeaconLightService.java: Some input files use unchecked or unsafe operations.
+[INFO] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/beacon/service/BeaconLightService.java: Recompile with -Xlint:unchecked for details.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ kchtg ---
+[INFO] Copying 1 resource from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ kchtg ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 90 source files with javac [debug parameters release 17] to target/test-classes
+[INFO] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java: Some input files use unchecked or unsafe operations.
+[INFO] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java: Recompile with -Xlint:unchecked for details.
+[INFO] -------------------------------------------------------------
+[WARNING] COMPILATION WARNING : 
+[INFO] -------------------------------------------------------------
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/security/service/TokenServiceTest.java:[39,17] setRole(java.lang.String) in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/user/service/TotpAuthServiceTest.java:[71,17] setRole(java.lang.String) in com.hanghai.kchtg.user.entity.User has been deprecated and marked for removal
+[INFO] 2 warnings 
+[INFO] -------------------------------------------------------------
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/datasharing/ShareControllerTest.java:[66,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/datasharing/ShareWorkflowControllerTest.java:[62,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/nhatram/NhaTramDenControllerTest.java:[60,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/nhatram/NhaTramHistoryControllerTest.java:[60,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/nhatram/NhaTramPhaoControllerTest.java:[60,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/report/ReportControllerTest.java:[70,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/statistics/FormApprovalControllerTest.java:[60,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/statistics/StatisticsControllerTest.java:[65,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/tai/TaiCospasSarsatControllerTest.java:[68,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/tai/TaiHistoryControllerTest.java:[63,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/tai/TaiInmarsatControllerTest.java:[68,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/tai/TaiLRITControllerTest.java:[68,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/tai/TaiThongTinDuyenHaiControllerTest.java:[68,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/tai/TaiThongTinHangHaiHNControllerTest.java:[69,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[INFO] 14 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  6.075 s
+[INFO] Finished at: 2026-06-27T23:12:02+07:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:testCompile (default-testCompile) on project kchtg: Compilation failure: Compilation failure: 
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/datasharing/ShareControllerTest.java:[66,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/datasharing/ShareWorkflowControllerTest.java:[62,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/nhatram/NhaTramDenControllerTest.java:[60,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/nhatram/NhaTramHistoryControllerTest.java:[60,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/nhatram/NhaTramPhaoControllerTest.java:[60,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/report/ReportControllerTest.java:[70,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/statistics/FormApprovalControllerTest.java:[60,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/statistics/StatisticsControllerTest.java:[65,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/tai/TaiCospasSarsatControllerTest.java:[68,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/tai/TaiHistoryControllerTest.java:[63,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/tai/TaiInmarsatControllerTest.java:[68,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/tai/TaiLRITControllerTest.java:[68,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/tai/TaiThongTinDuyenHaiControllerTest.java:[68,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/tai/TaiThongTinHangHaiHNControllerTest.java:[69,5] container org.springframework.boot.test.mock.mockito.MockBeans is not applicable to element jpaMetamodelMappingContext
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

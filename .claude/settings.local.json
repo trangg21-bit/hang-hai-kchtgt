@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 *)",
+      "Bash(mkdir -p /Users/thuytrang/workspace/hang-hai-kchtgt/docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben)",
+      "Bash(uuidgen)",
+      "Bash(echo \"{\\\\\"session\\\\\":\\\\\"$\\(uuidgen\\)\\\\\",\\\\\"timestamp\\\\\":\\\\\"$\\(date -u +%Y-%m-%dT%H:%M:%SZ\\)\\\\\"}\")"
+    ]
+  }
+}

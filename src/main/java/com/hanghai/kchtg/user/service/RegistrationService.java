@@ -3,10 +3,12 @@ package com.hanghai.kchtg.user.service;
 import com.hanghai.kchtg.security.ClientEncryptionService;
 import com.hanghai.kchtg.user.dto.RegisterAccountRequest;
 import com.hanghai.kchtg.user.dto.RegisterResponse;
+import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.exception.DuplicateResourceException;
 import com.hanghai.kchtg.user.exception.ValidationException;
+import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +31,7 @@ public class RegistrationService {
     private static final Logger log = LoggerFactory.getLogger(RegistrationService.class);
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyValidator passwordPolicyValidator;
     private final ClientEncryptionService clientEncryptionService;
@@ -38,6 +41,7 @@ public class RegistrationService {
     private final RateLimiterService rateLimiterService;
 
     public RegistrationService(UserRepository userRepository,
+                               RoleRepository roleRepository,
                                PasswordEncoder passwordEncoder,
                                PasswordPolicyValidator passwordPolicyValidator,
                                ClientEncryptionService clientEncryptionService,
@@ -46,6 +50,7 @@ public class RegistrationService {
                                AccountRegistrationAuditService auditService,
                                RateLimiterService rateLimiterService) {
         this.userRepository = userRepository;
+        this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicyValidator = passwordPolicyValidator;
         this.clientEncryptionService = clientEncryptionService;
@@ -187,7 +192,10 @@ public class RegistrationService {
         user.setEmail(request.getEmail());
         user.setFullName(request.getFullName());
         user.setPhone(request.getPhone());
-        user.setRole(request.getRole() != null ? request.getRole() : "ROLE_USER");
+        String roleCode = request.getRole() != null ? request.getRole() : "ROLE_USER";
+        Role role = roleRepository.findByCode(roleCode)
+                .orElseThrow(() -> new ValidationException("Vai trò không tồn tại: " + roleCode));
+        user.getRoles().add(role);
         user.setStatus(UserStatus.PENDING_VERIFICATION);
         return user;
     }
@@ -199,7 +207,7 @@ public class RegistrationService {
         response.setEmail(user.getEmail());
         response.setFullName(user.getFullName());
         response.setPhone(user.getPhone());
-        response.setRole(user.getRole());
+        response.setRole(user.getPrimaryRoleCode());
         response.setStatus(user.getStatus().name());
         response.setMessage("Đăng ký thành công. Vui lòng kiểm tra email để xác minh tài khoản.");
         return response;

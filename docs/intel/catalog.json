@@ -1,15 +1,15 @@
 {
   "version": "v2",
-  "generated_at": "2026-06-26T06:33:43Z",
+  "generated_at": "2026-06-27T20:55:58Z",
   "generator": "ai-kit/state-update-rebuild-catalog",
   "modules": {
     "M-001": {
       "id": "M-001",
       "name": "Quản trị hệ thống",
       "slug": "quan-tri-he-thong",
-      "status": "done",
+      "status": "proposed",
       "version": 1,
-      "feature_count": 7,
+      "feature_count": 4,
       "aggregate_size_status": "green",
       "depends_on": [],
       "path": "docs/modules/M-001-quan-tri-he-thong/",
@@ -59,21 +59,6 @@
           "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/",
           "confidence": "high"
         },
-        "F-004": {
-          "id": "F-004",
-          "name": "Quản lý tài khoản admin",
-          "slug": "quan-ly-tai-khoan-admin",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-004-quan-ly-tai-khoan-admin/",
-          "confidence": "high"
-        },
         "F-005": {
           "id": "F-005",
           "name": "Quản lý log truy cập",
@@ -87,36 +72,6 @@
           "depends_on": [],
           "consumed_by_modules": [],
           "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-005-quan-ly-log-truy-cap/",
-          "confidence": "high"
-        },
-        "F-006": {
-          "id": "F-006",
-          "name": "Quản lý biểu tượng bản đồ",
-          "slug": "quan-ly-bieu-tuong-ban-do",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-006-quan-ly-bieu-tuong-ban-do/",
-          "confidence": "high"
-        },
-        "F-007": {
-          "id": "F-007",
-          "name": "Quản lý kết nối liên thông chia sẻ dữ liệu",
-          "slug": "quan-ly-ket-noi-lien-thong-chia-du-lieu",
-          "status": "proposed",
-          "classification": "local",
-          "visibility": [
-            "PRIVATE"
-          ],
-          "version": 1,
-          "depends_on": [],
-          "consumed_by_modules": [],
-          "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-007-quan-ly-ket-noi-lien-thong-chia-du-lieu/",
           "confidence": "high"
         }
       }
@@ -3360,7 +3315,7 @@
       "id": "M-015",
       "name": "Quản lý Đài thông tin duyên hải",
       "slug": "quan-ly-dai-thong-tin-duyen-hai",
-      "status": "in-progress",
+      "status": "done",
       "version": 1,
       "feature_count": 30,
       "aggregate_size_status": "yellow",
@@ -3823,7 +3778,7 @@
       "id": "M-016",
       "name": "Báo cáo & Tổng hợp",
       "slug": "bao-cao-tong-hop",
-      "status": "in-progress",
+      "status": "done",
       "version": 1,
       "feature_count": 21,
       "aggregate_size_status": "yellow",
@@ -4151,7 +4106,7 @@
       "id": "M-017",
       "name": "Thống kê chuyên đề",
       "slug": "thong-ke-chuyen-de",
-      "status": "in-progress",
+      "status": "done",
       "version": 1,
       "feature_count": 28,
       "aggregate_size_status": "yellow",
@@ -4584,7 +4539,7 @@
       "id": "M-018",
       "name": "Chia sẻ dữ liệu KCHTGT",
       "slug": "chia-se-du-lieu-kchtgt",
-      "status": "in-progress",
+      "status": "done",
       "version": 1,
       "feature_count": 18,
       "aggregate_size_status": "yellow",

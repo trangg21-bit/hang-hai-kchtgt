@@ -1,0 +1,405 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -------------------------< com.hanghai:kchtg >--------------------------
+[INFO] Building HH.KCHT :: M-001 Quản trị hệ thống 0.1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[WARNING] The artifact com.itextpdf:itext7-core:pom:8.0.5 has been relocated to com.itextpdf:itext-core:pom:8.0.5
+[INFO] 
+[INFO] --- jacoco:0.8.12:prepare-agent (default) @ kchtg ---
+[INFO] argLine set to -javaagent:/Users/thuytrang/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/Users/thuytrang/workspace/hang-hai-kchtgt/target/jacoco.exec
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ kchtg ---
+[INFO] Copying 3 resources from src/main/resources to target/classes
+[INFO] Copying 95 resources from src/main/resources to target/classes
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ kchtg ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 539 source files with javac [debug parameters release 17] to target/classes
+[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/tai/entity/BaseTai.java:[57,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[INFO] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/beacon/service/BeaconLightService.java: Some input files use unchecked or unsafe operations.
+[INFO] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/beacon/service/BeaconLightService.java: Recompile with -Xlint:unchecked for details.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ kchtg ---
+[INFO] Copying 1 resource from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ kchtg ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 90 source files with javac [debug parameters release 17] to target/test-classes
+[INFO] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/gis/service/ChartIntegrationServiceTest.java: /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/gis/service/ChartIntegrationServiceTest.java uses unchecked or unsafe operations.
+[INFO] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/gis/service/ChartIntegrationServiceTest.java: Recompile with -Xlint:unchecked for details.
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[3,39] package com.hanghai.kchtg.accesslog.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[4,39] package com.hanghai.kchtg.accesslog.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[5,42] package com.hanghai.kchtg.accesslog.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[6,42] package com.hanghai.kchtg.accesslog.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[7,43] cannot find symbol
+  symbol:   class AccessLogService
+  location: package com.hanghai.kchtg.accesslog.service
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[8,36] package com.hanghai.kchtg.common.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[38,13] cannot find symbol
+  symbol:   class AccessLogService
+  location: class com.hanghai.kchtg.accesslog.controller.AccessLogControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[41,13] cannot find symbol
+  symbol:   class AccessLogController
+  location: class com.hanghai.kchtg.accesslog.controller.AccessLogControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[43,13] cannot find symbol
+  symbol:   class AccessLogResponse
+  location: class com.hanghai.kchtg.accesslog.controller.AccessLogControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/LogExportControllerTest.java:[3,39] package com.hanghai.kchtg.accesslog.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/LogExportControllerTest.java:[4,43] cannot find symbol
+  symbol:   class LogService
+  location: package com.hanghai.kchtg.accesslog.service
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/LogExportControllerTest.java:[5,36] package com.hanghai.kchtg.common.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/LogExportControllerTest.java:[36,13] cannot find symbol
+  symbol:   class LogService
+  location: class com.hanghai.kchtg.accesslog.controller.LogExportControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/LogExportControllerTest.java:[39,13] cannot find symbol
+  symbol:   class LogExportController
+  location: class com.hanghai.kchtg.accesslog.controller.LogExportControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[3,46] package com.hanghai.kchtg.accesslog.annotation does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[4,42] package com.hanghai.kchtg.accesslog.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[5,42] package com.hanghai.kchtg.accesslog.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[6,46] package com.hanghai.kchtg.accesslog.repository does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[7,37] cannot find symbol
+  symbol:   class User
+  location: package com.hanghai.kchtg.user.entity
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[8,41] cannot find symbol
+  symbol:   class UserRepository
+  location: package com.hanghai.kchtg.user.repository
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[37,13] cannot find symbol
+  symbol:   class AccessLogRepository
+  location: class com.hanghai.kchtg.accesslog.interceptor.AccessLogInterceptorTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[40,13] cannot find symbol
+  symbol:   class UserRepository
+  location: class com.hanghai.kchtg.accesslog.interceptor.AccessLogInterceptorTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[52,13] cannot find symbol
+  symbol:   class AuditLog
+  location: class com.hanghai.kchtg.accesslog.interceptor.AccessLogInterceptorTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[55,13] cannot find symbol
+  symbol:   class AccessLogInterceptor
+  location: class com.hanghai.kchtg.accesslog.interceptor.AccessLogInterceptorTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[57,13] cannot find symbol
+  symbol:   class User
+  location: class com.hanghai.kchtg.accesslog.interceptor.AccessLogInterceptorTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java:[3,39] package com.hanghai.kchtg.accesslog.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java:[4,39] package com.hanghai.kchtg.accesslog.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java:[5,42] package com.hanghai.kchtg.accesslog.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java:[6,42] package com.hanghai.kchtg.accesslog.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java:[7,46] package com.hanghai.kchtg.accesslog.repository does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java:[36,13] cannot find symbol
+  symbol:   class AccessLogRepository
+  location: class com.hanghai.kchtg.accesslog.service.AccessLogServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java:[39,13] cannot find symbol
+  symbol:   class AccessLogService
+  location: class com.hanghai.kchtg.accesslog.service.AccessLogServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java:[41,13] cannot find symbol
+  symbol:   class AccessLog
+  location: class com.hanghai.kchtg.accesslog.service.AccessLogServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[3,39] package com.hanghai.kchtg.accesslog.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[4,39] package com.hanghai.kchtg.accesslog.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[5,42] package com.hanghai.kchtg.accesslog.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[6,42] package com.hanghai.kchtg.accesslog.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[7,46] package com.hanghai.kchtg.accesslog.repository does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[40,13] cannot find symbol
+  symbol:   class AccessLogService
+  location: class com.hanghai.kchtg.accesslog.service.LogServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[43,13] cannot find symbol
+  symbol:   class AccessLogRepository
+  location: class com.hanghai.kchtg.accesslog.service.LogServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[45,13] cannot find symbol
+  symbol:   class LogService
+  location: class com.hanghai.kchtg.accesslog.service.LogServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[47,13] cannot find symbol
+  symbol:   class AccessLog
+  location: class com.hanghai.kchtg.accesslog.service.LogServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/backup/service/BackupServiceTest.java:[3,39] package com.hanghai.kchtg.backup.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/backup/service/BackupServiceTest.java:[4,43] package com.hanghai.kchtg.backup.repository does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/backup/service/BackupServiceTest.java:[32,13] cannot find symbol
+  symbol:   class DatabaseBackupRepository
+  location: class com.hanghai.kchtg.backup.service.BackupServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/backup/service/BackupServiceTest.java:[38,13] cannot find symbol
+  symbol:   class BackupService
+  location: class com.hanghai.kchtg.backup.service.BackupServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[3,43] package com.hanghai.kchtg.beacon.controller does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[4,44] package com.hanghai.kchtg.beacon.dto.history does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[5,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[6,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[7,40] package com.hanghai.kchtg.beacon.service does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[8,36] package com.hanghai.kchtg.common.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[38,13] cannot find symbol
+  symbol:   class BeaconHistoryService
+  location: class com.hanghai.kchtg.beacon.BeaconHistoryControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[41,13] cannot find symbol
+  symbol:   class BeaconHistoryController
+  location: class com.hanghai.kchtg.beacon.BeaconHistoryControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[43,13] cannot find symbol
+  symbol:   class BeaconHistoryResponse
+  location: class com.hanghai.kchtg.beacon.BeaconHistoryControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[3,44] package com.hanghai.kchtg.beacon.dto.history does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[4,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[5,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[6,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[7,43] package com.hanghai.kchtg.beacon.repository does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[8,40] package com.hanghai.kchtg.beacon.service does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[35,13] cannot find symbol
+  symbol:   class BeaconHistoryRepository
+  location: class com.hanghai.kchtg.beacon.BeaconHistoryServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[38,13] cannot find symbol
+  symbol:   class BeaconHistoryService
+  location: class com.hanghai.kchtg.beacon.BeaconHistoryServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[40,13] cannot find symbol
+  symbol:   class BeaconHistory
+  location: class com.hanghai.kchtg.beacon.BeaconHistoryServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[3,43] package com.hanghai.kchtg.beacon.controller does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[4,49] package com.hanghai.kchtg.beacon.dto.beacon_light does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[5,49] package com.hanghai.kchtg.beacon.dto.beacon_light does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[6,49] package com.hanghai.kchtg.beacon.dto.beacon_light does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[7,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[8,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[9,40] package com.hanghai.kchtg.beacon.service does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[10,36] package com.hanghai.kchtg.common.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[35,13] cannot find symbol
+  symbol:   class BeaconLightService
+  location: class com.hanghai.kchtg.beacon.BeaconLightControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[38,13] cannot find symbol
+  symbol:   class BeaconLightController
+  location: class com.hanghai.kchtg.beacon.BeaconLightControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[40,13] cannot find symbol
+  symbol:   class BeaconLightResponse
+  location: class com.hanghai.kchtg.beacon.BeaconLightControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[3,49] package com.hanghai.kchtg.beacon.dto.beacon_light does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[4,49] package com.hanghai.kchtg.beacon.dto.beacon_light does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[5,49] package com.hanghai.kchtg.beacon.dto.beacon_light does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[7,43] package com.hanghai.kchtg.beacon.repository does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[8,43] package com.hanghai.kchtg.beacon.repository does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[9,43] package com.hanghai.kchtg.beacon.repository does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[10,40] package com.hanghai.kchtg.beacon.service does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[11,40] package com.hanghai.kchtg.beacon.service does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[12,40] package com.hanghai.kchtg.beacon.service does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[40,13] cannot find symbol
+  symbol:   class BeaconLightRepository
+  location: class com.hanghai.kchtg.beacon.BeaconLightServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[42,13] cannot find symbol
+  symbol:   class BuoyRepository
+  location: class com.hanghai.kchtg.beacon.BeaconLightServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[44,13] cannot find symbol
+  symbol:   class BeaconHistoryRepository
+  location: class com.hanghai.kchtg.beacon.BeaconLightServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[46,13] cannot find symbol
+  symbol:   class PointObjectSyncService
+  location: class com.hanghai.kchtg.beacon.BeaconLightServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[48,13] cannot find symbol
+  symbol:   class NotificationService
+  location: class com.hanghai.kchtg.beacon.BeaconLightServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[54,13] cannot find symbol
+  symbol:   class BeaconLightService
+  location: class com.hanghai.kchtg.beacon.BeaconLightServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[56,13] cannot find symbol
+  symbol:   class BeaconLight
+  location: class com.hanghai.kchtg.beacon.BeaconLightServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[6,1] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BuoyControllerTest.java:[3,43] package com.hanghai.kchtg.beacon.controller does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BuoyControllerTest.java:[4,41] package com.hanghai.kchtg.beacon.dto.buoy does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BuoyControllerTest.java:[5,41] package com.hanghai.kchtg.beacon.dto.buoy does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BuoyControllerTest.java:[6,41] package com.hanghai.kchtg.beacon.dto.buoy does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BuoyControllerTest.java:[7,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BuoyControllerTest.java:[8,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BuoyControllerTest.java:[9,40] package com.hanghai.kchtg.beacon.service does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BuoyControllerTest.java:[10,36] package com.hanghai.kchtg.common.dto does not exist
+[INFO] 100 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  12.475 s
+[INFO] Finished at: 2026-06-27T23:06:53+07:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:testCompile (default-testCompile) on project kchtg: Compilation failure: Compilation failure: 
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[3,39] package com.hanghai.kchtg.accesslog.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[4,39] package com.hanghai.kchtg.accesslog.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[5,42] package com.hanghai.kchtg.accesslog.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[6,42] package com.hanghai.kchtg.accesslog.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[7,43] cannot find symbol
+[ERROR]   symbol:   class AccessLogService
+[ERROR]   location: package com.hanghai.kchtg.accesslog.service
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[8,36] package com.hanghai.kchtg.common.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[38,13] cannot find symbol
+[ERROR]   symbol:   class AccessLogService
+[ERROR]   location: class com.hanghai.kchtg.accesslog.controller.AccessLogControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[41,13] cannot find symbol
+[ERROR]   symbol:   class AccessLogController
+[ERROR]   location: class com.hanghai.kchtg.accesslog.controller.AccessLogControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/AccessLogControllerTest.java:[43,13] cannot find symbol
+[ERROR]   symbol:   class AccessLogResponse
+[ERROR]   location: class com.hanghai.kchtg.accesslog.controller.AccessLogControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/LogExportControllerTest.java:[3,39] package com.hanghai.kchtg.accesslog.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/LogExportControllerTest.java:[4,43] cannot find symbol
+[ERROR]   symbol:   class LogService
+[ERROR]   location: package com.hanghai.kchtg.accesslog.service
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/LogExportControllerTest.java:[5,36] package com.hanghai.kchtg.common.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/LogExportControllerTest.java:[36,13] cannot find symbol
+[ERROR]   symbol:   class LogService
+[ERROR]   location: class com.hanghai.kchtg.accesslog.controller.LogExportControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/controller/LogExportControllerTest.java:[39,13] cannot find symbol
+[ERROR]   symbol:   class LogExportController
+[ERROR]   location: class com.hanghai.kchtg.accesslog.controller.LogExportControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[3,46] package com.hanghai.kchtg.accesslog.annotation does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[4,42] package com.hanghai.kchtg.accesslog.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[5,42] package com.hanghai.kchtg.accesslog.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[6,46] package com.hanghai.kchtg.accesslog.repository does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[7,37] cannot find symbol
+[ERROR]   symbol:   class User
+[ERROR]   location: package com.hanghai.kchtg.user.entity
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[8,41] cannot find symbol
+[ERROR]   symbol:   class UserRepository
+[ERROR]   location: package com.hanghai.kchtg.user.repository
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[37,13] cannot find symbol
+[ERROR]   symbol:   class AccessLogRepository
+[ERROR]   location: class com.hanghai.kchtg.accesslog.interceptor.AccessLogInterceptorTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[40,13] cannot find symbol
+[ERROR]   symbol:   class UserRepository
+[ERROR]   location: class com.hanghai.kchtg.accesslog.interceptor.AccessLogInterceptorTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[52,13] cannot find symbol
+[ERROR]   symbol:   class AuditLog
+[ERROR]   location: class com.hanghai.kchtg.accesslog.interceptor.AccessLogInterceptorTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[55,13] cannot find symbol
+[ERROR]   symbol:   class AccessLogInterceptor
+[ERROR]   location: class com.hanghai.kchtg.accesslog.interceptor.AccessLogInterceptorTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/interceptor/AccessLogInterceptorTest.java:[57,13] cannot find symbol
+[ERROR]   symbol:   class User
+[ERROR]   location: class com.hanghai.kchtg.accesslog.interceptor.AccessLogInterceptorTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java:[3,39] package com.hanghai.kchtg.accesslog.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java:[4,39] package com.hanghai.kchtg.accesslog.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java:[5,42] package com.hanghai.kchtg.accesslog.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java:[6,42] package com.hanghai.kchtg.accesslog.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java:[7,46] package com.hanghai.kchtg.accesslog.repository does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java:[36,13] cannot find symbol
+[ERROR]   symbol:   class AccessLogRepository
+[ERROR]   location: class com.hanghai.kchtg.accesslog.service.AccessLogServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java:[39,13] cannot find symbol
+[ERROR]   symbol:   class AccessLogService
+[ERROR]   location: class com.hanghai.kchtg.accesslog.service.AccessLogServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/AccessLogServiceTest.java:[41,13] cannot find symbol
+[ERROR]   symbol:   class AccessLog
+[ERROR]   location: class com.hanghai.kchtg.accesslog.service.AccessLogServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[3,39] package com.hanghai.kchtg.accesslog.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[4,39] package com.hanghai.kchtg.accesslog.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[5,42] package com.hanghai.kchtg.accesslog.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[6,42] package com.hanghai.kchtg.accesslog.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[7,46] package com.hanghai.kchtg.accesslog.repository does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[40,13] cannot find symbol
+[ERROR]   symbol:   class AccessLogService
+[ERROR]   location: class com.hanghai.kchtg.accesslog.service.LogServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[43,13] cannot find symbol
+[ERROR]   symbol:   class AccessLogRepository
+[ERROR]   location: class com.hanghai.kchtg.accesslog.service.LogServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[45,13] cannot find symbol
+[ERROR]   symbol:   class LogService
+[ERROR]   location: class com.hanghai.kchtg.accesslog.service.LogServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/accesslog/service/LogServiceTest.java:[47,13] cannot find symbol
+[ERROR]   symbol:   class AccessLog
+[ERROR]   location: class com.hanghai.kchtg.accesslog.service.LogServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/backup/service/BackupServiceTest.java:[3,39] package com.hanghai.kchtg.backup.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/backup/service/BackupServiceTest.java:[4,43] package com.hanghai.kchtg.backup.repository does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/backup/service/BackupServiceTest.java:[32,13] cannot find symbol
+[ERROR]   symbol:   class DatabaseBackupRepository
+[ERROR]   location: class com.hanghai.kchtg.backup.service.BackupServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/backup/service/BackupServiceTest.java:[38,13] cannot find symbol
+[ERROR]   symbol:   class BackupService
+[ERROR]   location: class com.hanghai.kchtg.backup.service.BackupServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[3,43] package com.hanghai.kchtg.beacon.controller does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[4,44] package com.hanghai.kchtg.beacon.dto.history does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[5,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[6,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[7,40] package com.hanghai.kchtg.beacon.service does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[8,36] package com.hanghai.kchtg.common.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[38,13] cannot find symbol
+[ERROR]   symbol:   class BeaconHistoryService
+[ERROR]   location: class com.hanghai.kchtg.beacon.BeaconHistoryControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[41,13] cannot find symbol
+[ERROR]   symbol:   class BeaconHistoryController
+[ERROR]   location: class com.hanghai.kchtg.beacon.BeaconHistoryControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryControllerTest.java:[43,13] cannot find symbol
+[ERROR]   symbol:   class BeaconHistoryResponse
+[ERROR]   location: class com.hanghai.kchtg.beacon.BeaconHistoryControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[3,44] package com.hanghai.kchtg.beacon.dto.history does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[4,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[5,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[6,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[7,43] package com.hanghai.kchtg.beacon.repository does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[8,40] package com.hanghai.kchtg.beacon.service does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[35,13] cannot find symbol
+[ERROR]   symbol:   class BeaconHistoryRepository
+[ERROR]   location: class com.hanghai.kchtg.beacon.BeaconHistoryServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[38,13] cannot find symbol
+[ERROR]   symbol:   class BeaconHistoryService
+[ERROR]   location: class com.hanghai.kchtg.beacon.BeaconHistoryServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconHistoryServiceTest.java:[40,13] cannot find symbol
+[ERROR]   symbol:   class BeaconHistory
+[ERROR]   location: class com.hanghai.kchtg.beacon.BeaconHistoryServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[3,43] package com.hanghai.kchtg.beacon.controller does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[4,49] package com.hanghai.kchtg.beacon.dto.beacon_light does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[5,49] package com.hanghai.kchtg.beacon.dto.beacon_light does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[6,49] package com.hanghai.kchtg.beacon.dto.beacon_light does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[7,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[8,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[9,40] package com.hanghai.kchtg.beacon.service does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[10,36] package com.hanghai.kchtg.common.dto does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[35,13] cannot find symbol
+[ERROR]   symbol:   class BeaconLightService
+[ERROR]   location: class com.hanghai.kchtg.beacon.BeaconLightControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[38,13] cannot find symbol
+[ERROR]   symbol:   class BeaconLightController
+[ERROR]   location: class com.hanghai.kchtg.beacon.BeaconLightControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightControllerTest.java:[40,13] cannot find symbol
+[ERROR]   symbol:   class BeaconLightResponse
+[ERROR]   location: class com.hanghai.kchtg.beacon.BeaconLightControllerTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[3,49] package com.hanghai.kchtg.beacon.dto.beacon_light does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[4,49] package com.hanghai.kchtg.beacon.dto.beacon_light does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[5,49] package com.hanghai.kchtg.beacon.dto.beacon_light does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[7,43] package com.hanghai.kchtg.beacon.repository does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[8,43] package com.hanghai.kchtg.beacon.repository does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[9,43] package com.hanghai.kchtg.beacon.repository does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[10,40] package com.hanghai.kchtg.beacon.service does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[11,40] package com.hanghai.kchtg.beacon.service does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[12,40] package com.hanghai.kchtg.beacon.service does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[40,13] cannot find symbol
+[ERROR]   symbol:   class BeaconLightRepository
+[ERROR]   location: class com.hanghai.kchtg.beacon.BeaconLightServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[42,13] cannot find symbol
+[ERROR]   symbol:   class BuoyRepository
+[ERROR]   location: class com.hanghai.kchtg.beacon.BeaconLightServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[44,13] cannot find symbol
+[ERROR]   symbol:   class BeaconHistoryRepository
+[ERROR]   location: class com.hanghai.kchtg.beacon.BeaconLightServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[46,13] cannot find symbol
+[ERROR]   symbol:   class PointObjectSyncService
+[ERROR]   location: class com.hanghai.kchtg.beacon.BeaconLightServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[48,13] cannot find symbol
+[ERROR]   symbol:   class NotificationService
+[ERROR]   location: class com.hanghai.kchtg.beacon.BeaconLightServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[54,13] cannot find symbol
+[ERROR]   symbol:   class BeaconLightService
+[ERROR]   location: class com.hanghai.kchtg.beacon.BeaconLightServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[56,13] cannot find symbol
+[ERROR]   symbol:   class BeaconLight
+[ERROR]   location: class com.hanghai.kchtg.beacon.BeaconLightServiceTest
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BeaconLightServiceTest.java:[6,1] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BuoyControllerTest.java:[3,43] package com.hanghai.kchtg.beacon.controller does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BuoyControllerTest.java:[4,41] package com.hanghai.kchtg.beacon.dto.buoy does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BuoyControllerTest.java:[5,41] package com.hanghai.kchtg.beacon.dto.buoy does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BuoyControllerTest.java:[6,41] package com.hanghai.kchtg.beacon.dto.buoy does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BuoyControllerTest.java:[7,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BuoyControllerTest.java:[8,39] package com.hanghai.kchtg.beacon.entity does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BuoyControllerTest.java:[9,40] package com.hanghai.kchtg.beacon.service does not exist
+[ERROR] /Users/thuytrang/workspace/hang-hai-kchtgt/src/test/java/com/hanghai/kchtg/beacon/BuoyControllerTest.java:[10,36] package com.hanghai.kchtg.common.dto does not exist
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

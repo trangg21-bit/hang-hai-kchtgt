@@ -28,134 +28,39 @@ import {
   ApiOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
+import { usePermissionStore } from '../store/permissionStore';
 import type { MenuProps } from 'antd';
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
 
-const menuItems: MenuProps['items'] = [
-  {
-    key: '/users',
-    icon: <UserOutlined />,
-    label: 'Quản lý người dùng',
-  },
-  {
-    key: '/organizations',
-    icon: <TeamOutlined />,
-    label: 'Quản lý đơn vị',
-  },
-  {
-    key: '/groups',
-    icon: <TeamOutlined />,
-    label: 'Quản lý nhóm',
-  },
-  {
-    key: '/admins',
-    icon: <IdcardOutlined />,
-    label: 'Quản trị viên',
-  },
-  {
-    key: '/roles',
-    icon: <SafetyOutlined />,
-    label: 'Phân quyền',
-  },
-  {
-    type: 'divider' as const,
-  },
-  {
-    key: 'gis',
-    icon: <CompassOutlined />,
-    label: 'GIS • Bản đồ',
-    children: [
-      {
-        key: '/gis/points',
-        label: 'Đối tượng điểm',
-      },
-      {
-        key: '/gis/lines',
-        label: 'Đối tượng đường',
-      },
-      {
-        key: '/gis/polygons',
-        label: 'Đối tượng vùng',
-      },
-      {
-        key: '/gis/layers',
-        label: 'Lớp bản đồ',
-      },
-      {
-        type: 'divider' as const,
-      },
-      {
-        key: '/gis/search',
-        label: 'Tra cứu GIS',
-      },
-      {
-        type: 'divider' as const,
-      },
-      {
-        key: '/gis/map',
-        label: 'Bản đồ Hải đồ (S-57/S-63)',
-      },
-      {
-        key: '/gis/permits',
-        label: 'Giấy phép S-63',
-      },
-    ],
-  },
-  {
-    type: 'divider' as const,
-  },
-  {
-    key: 'beacon',
-    icon: <SettingOutlined />,
-    label: 'Báo hiệu hàng hải',
-    children: [
-      {
-        key: '/beacons',
-        label: 'Đèn biển',
-      },
-      {
-        key: '/buoys',
-        label: 'Phao tiêu',
-      },
-      {
-        key: '/history',
-        label: 'Lịch sử thay đổi',
-      },
-    ],
-  },
-  {
-    type: 'divider' as const,
-  },
-  {
-    key: '/reports',
-    icon: <BarChartOutlined />,
-    label: 'Báo cáo & Thống kê',
-  },
-  {
-    type: 'divider' as const,
-  },
-  {
-    key: '/connections',
-    icon: <ApiOutlined />,
-    label: 'Liên thông dữ liệu',
-  },
-  {
-    type: 'divider' as const,
-  },
-  {
-    key: '/settings',
-    icon: <SettingOutlined />,
-    label: 'Cấu hình hệ thống',
-    disabled: true,
-  },
-  {
-    key: '/logs',
-    icon: <DashboardOutlined />,
-    label: 'Nhật ký hệ thống',
-  },
-];
+const MENU_PERMISSION_MAP: Record<string, string> = {
+  '/users': 'user:manage',
+  '/organizations': 'orgunit:manage',
+  '/groups': 'group:manage',
+  '/admins': 'admin:manage',
+  '/roles': 'role:manage',
+  '/gis/points': 'data:read',
+  '/gis/lines': 'data:read',
+  '/gis/polygons': 'data:read',
+  '/gis/layers': 'map:manage',
+  '/gis/search': 'data:read',
+  '/gis/map': 'data:read',
+  '/gis/permits': 'data:read',
+  '/beacons': 'data:read',
+  '/buoys': 'data:read',
+  '/history': 'data:read',
+  '/connections': 'connection:read',
+  '/reports': 'report:read',
+  '/settings': 'admin:manage',
+  '/logs': 'log:manage',
+};
+
+const canAccessMenu = (path: string): boolean => {
+  const required = MENU_PERMISSION_MAP[path];
+  if (!required) return true;
+  return usePermissionStore.getState().hasPermission(required);
+};
 
 const pageTitles: Record<string, string> = {
   '/users': 'Quản lý người dùng',
@@ -188,6 +93,47 @@ export default function AppLayout() {
   const logout = useAuthStore((s) => s.logout);
   const screens = useBreakpoint();
   const { token } = theme.useToken();
+
+  const menuItems: MenuProps['items'] = [
+    canAccessMenu('/users') ? { key: '/users', icon: <UserOutlined />, label: 'Quản lý người dùng' } : null,
+    canAccessMenu('/organizations') ? { key: '/organizations', icon: <TeamOutlined />, label: 'Quản lý đơn vị' } : null,
+    canAccessMenu('/groups') ? { key: '/groups', icon: <TeamOutlined />, label: 'Quản lý nhóm' } : null,
+    canAccessMenu('/admins') ? { key: '/admins', icon: <IdcardOutlined />, label: 'Quản trị viên' } : null,
+    canAccessMenu('/roles') ? { key: '/roles', icon: <SafetyOutlined />, label: 'Phân quyền' } : null,
+    { type: 'divider' as const },
+    {
+      key: 'gis',
+      icon: <CompassOutlined />,
+      label: 'GIS • Bản đồ',
+      children: [
+        canAccessMenu('/gis/points') ? { key: '/gis/points', label: 'Đối tượng điểm' } : null,
+        canAccessMenu('/gis/lines') ? { key: '/gis/lines', label: 'Đối tượng đường' } : null,
+        canAccessMenu('/gis/polygons') ? { key: '/gis/polygons', label: 'Đối tượng vùng' } : null,
+        canAccessMenu('/gis/layers') ? { key: '/gis/layers', label: 'Lớp bản đồ' } : null,
+        canAccessMenu('/gis/search') ? { key: '/gis/search', label: 'Tra cứu GIS' } : null,
+        canAccessMenu('/gis/map') ? { key: '/gis/map', label: 'Bản đồ Hải đồ (S-57/S-63)' } : null,
+        canAccessMenu('/gis/permits') ? { key: '/gis/permits', label: 'Giấy phép S-63' } : null,
+      ].filter(Boolean),
+    },
+    { type: 'divider' as const },
+    {
+      key: 'beacon',
+      icon: <SettingOutlined />,
+      label: 'Báo hiệu hàng hải',
+      children: [
+        canAccessMenu('/beacons') ? { key: '/beacons', label: 'Đèn biển' } : null,
+        canAccessMenu('/buoys') ? { key: '/buoys', label: 'Phao tiêu' } : null,
+        canAccessMenu('/history') ? { key: '/history', label: 'Lịch sử thay đổi' } : null,
+      ].filter(Boolean),
+    },
+    { type: 'divider' as const },
+    canAccessMenu('/reports') ? { key: '/reports', icon: <BarChartOutlined />, label: 'Báo cáo & Thống kê' } : null,
+    { type: 'divider' as const },
+    canAccessMenu('/connections') ? { key: '/connections', icon: <ApiOutlined />, label: 'Liên thông dữ liệu' } : null,
+    { type: 'divider' as const },
+    canAccessMenu('/settings') ? { key: '/settings', icon: <SettingOutlined />, label: 'Cấu hình hệ thống', disabled: true } : null,
+    canAccessMenu('/logs') ? { key: '/logs', icon: <DashboardOutlined />, label: 'Nhật ký hệ thống' } : null,
+  ].filter(Boolean) as MenuProps['items'];
 
   const isMobile = !screens.md;
 

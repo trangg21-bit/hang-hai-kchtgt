@@ -2,7 +2,7 @@
   "entry": {
     "aggregate_size_status": "yellow",
     "depends_on": [],
-    "feature_count": 26,
+    "feature_count": 27,
     "features": {
       "F-193": {
         "classification": "local",
@@ -14,6 +14,21 @@
         "path": "docs/modules/M-009-lien-thong-tich-hop-du-lieu/_features/F-193-chia-se-kchtgt-khu-tranh-bao/",
         "slug": "chia-se-kchtgt-khu-tranh-bao",
         "status": "implemented",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-007": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-007",
+        "name": "quan-ly-ket-noi-lien-thong-chia-du-lieu",
+        "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-007-quan-ly-ket-noi-lien-thong-chia-du-lieu/",
+        "slug": "quan-ly-ket-noi-lien-thong-chia-du-lieu",
+        "status": "proposed",
         "version": 1,
         "visibility": [
           "PRIVATE"

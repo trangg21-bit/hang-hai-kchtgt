@@ -1,0 +1,152 @@
+{
+  "module_id": "M-006",
+  "module_name": "Quan ly van ban & Thong tin nghiep vu",
+  "description": "Quan ly van ban phap ly, van hanh, bao tri, su co, quy hoach",
+  "stack": [
+    "Spring Boot 17+",
+    "MSSQL Server 2022",
+    "ReactJS 18+",
+    "Nginx",
+    "MinIO",
+    "GeoServer"
+  ],
+  "actors": [
+    "A-003"
+  ],
+  "features": [
+    {
+      "id": "F-128",
+      "name": "Quan ly van ban phap ly",
+      "module": "M-006",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-89, line 3550",
+      "scope": "Chuyen vien - Them/sua/xoa van ban phap ly lien quan KCHT",
+      "business_rules": [
+        "Van ban phai lien quan den doi tuong KCHT"
+      ],
+      "acceptance_criteria": [
+        "Quan ly van ban thanh cong"
+      ]
+    },
+    {
+      "id": "F-129",
+      "name": "Quan ly thong tin van hanh",
+      "module": "M-006",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-90, line 3553",
+      "scope": "Chuyen vien - Cap nhat ke hoach/thong tin van hanh",
+      "business_rules": [
+        "Ke hoach van hanh"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat van hanh thanh cong"
+      ]
+    },
+    {
+      "id": "F-130",
+      "name": "Quan ly thong tin bao tri",
+      "module": "M-006",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-91, line 3556",
+      "scope": "Chuyen vien - Cap nhat ke hoach/thong tin bao tri",
+      "business_rules": [
+        "Ke hoach bao tri"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat bao tri thanh cong"
+      ]
+    },
+    {
+      "id": "F-131",
+      "name": "Quan ly thong tin su co",
+      "module": "M-006",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-92, line 3559",
+      "scope": "Chuyen vien - Dinh kem bien ban su co, van ban chi dao, ket qua xu ly",
+      "business_rules": [
+        "Dinh kem bien ban su co KCHT",
+        "Theo doi lich su su co"
+      ],
+      "acceptance_criteria": [
+        "Quan ly su co thanh cong"
+      ]
+    },
+    {
+      "id": "F-132",
+      "name": "Quan ly quy hoach ben cang",
+      "module": "M-006",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-93-95, line 3562-3569",
+      "scope": "Chuyen vien - Them/sua/xoa, cap nhat quy hoach ben cang hang hai",
+      "business_rules": [
+        "Quy hoach ben cang hang hai"
+      ],
+      "acceptance_criteria": [
+        "Quan ly quy hoach thanh cong"
+      ]
+    },
+    {
+      "id": "F-133",
+      "name": "Tra cuu quy hoach ben cang",
+      "module": "M-006",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-94, line 3565",
+      "scope": "Chuyen vien - Tra cuu quy hoach ben cang hang hai",
+      "business_rules": [
+        "Tra cuu theo dieukien"
+      ],
+      "acceptance_criteria": [
+        "Tra cuu thanh cong"
+      ]
+    },
+    {
+      "id": "F-134",
+      "name": "Cap nhat quy hoach ben cang",
+      "module": "M-006",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-95, line 3568",
+      "scope": "Chuyen vien - Cap nhat quy hoach ben cang hang hai",
+      "business_rules": [
+        "Cap nhat thong tin quy hoach"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat quy hoach thanh cong"
+      ]
+    },
+    {
+      "id": "F-135",
+      "name": "Quan ly van ban - Tim kiem",
+      "module": "M-006",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "line ~3550",
+      "scope": "Tat ca roles - Tra cuu van ban phap ly lien quan KCHT",
+      "business_rules": [
+        "Tra cuu theo dieukien"
+      ],
+      "acceptance_criteria": [
+        "Tra cuu van ban thanh cong"
+      ]
+    }
+  ],
+  "cross_references": {
+    "catalog_ref": "docs/intel/catalog.json#M-006",
+    "brief_ref": "docs/intel/doc-brief.md"
+  },
+  "do_d": {
+    "api_contract_complete": false,
+    "entity_schema_defined": false,
+    "business_rules_mapped": true,
+    "test_data_ready": false,
+    "acceptance_criteria_written": true,
+    "priority_assigned": true,
+    "source_traced": true
+  }
+}

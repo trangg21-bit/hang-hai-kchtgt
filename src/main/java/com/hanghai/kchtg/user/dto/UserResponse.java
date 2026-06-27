@@ -64,7 +64,7 @@ public class UserResponse {
                 user.getEmail(),
                 user.getFullName(),
                 user.getPhone(),
-                user.getRole(),
+                user.getPrimaryRoleCode(),
                 oId,
                 oName,
                 gIds,

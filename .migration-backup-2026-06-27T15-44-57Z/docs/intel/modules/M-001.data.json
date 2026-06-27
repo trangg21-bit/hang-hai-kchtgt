@@ -1,0 +1,152 @@
+{
+  "module_id": "M-001",
+  "module_name": "Quan tri he thong",
+  "description": "Quan ly tai khoan, nhom, don vi, admin, log, bieu tuong, ket noi lien thong",
+  "stack": [
+    "Spring Boot 17+",
+    "MSSQL Server 2022",
+    "ReactJS 18+",
+    "Nginx",
+    "MinIO",
+    "GeoServer"
+  ],
+  "actors": [
+    "A-001"
+  ],
+  "features": [
+    {
+      "id": "F-001",
+      "name": "Quan ly tai khoan nguoi dung",
+      "module": "M-001",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-001, line 3243-3245",
+      "scope": "Quan tri he thong, Lanh dao, Chuyen vien - Tao, sua, xoa, khoa/mo khoa tai khoan",
+      "business_rules": [
+        "Moi tai khoan co vai tro duoc gan truoc",
+        "Tai khoan phai duoc phe duyet truoc khi hoat dong"
+      ],
+      "acceptance_criteria": [
+        "Tao tai khoan thanh cong",
+        "Cap quyen theo vai tro",
+        "Khoa/mo khoa tai khoan"
+      ]
+    },
+    {
+      "id": "F-002",
+      "name": "Quan ly nhom nguoi dung",
+      "module": "M-001",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-002, line 3246-3248",
+      "scope": "Quan tri he thong - Tao/sua/xoa nhom, gan thanh vien",
+      "business_rules": [
+        "Phan quyen theo nhom",
+        "Cap quyen tu dong theo vai tro nhom"
+      ],
+      "acceptance_criteria": [
+        "Tao/sua/xoa nhom thanh cong",
+        "Gan thanh vien vao nhom"
+      ]
+    },
+    {
+      "id": "F-003",
+      "name": "Quan ly don vi",
+      "module": "M-001",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-003, line 3249-3251",
+      "scope": "Quan tri he thong - Quan ly don vi Cuc, Chi cuc, Cang vu, TCT",
+      "business_rules": [
+        "Don vi co he thung cap phat",
+        "Moi don vi co admin rieng"
+      ],
+      "acceptance_criteria": [
+        "Quan ly thong tin don vi",
+        "Phan cap quyen don vi"
+      ]
+    },
+    {
+      "id": "F-004",
+      "name": "Quan ly tai khoan admin",
+      "module": "M-001",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-004, line 3252-3254",
+      "scope": "Quan tri he thong - Tao, phe duyet, khoa, phan quyen admin",
+      "business_rules": [
+        "Admin 3 muc: thuong, su dung, van hanh",
+        "Moi admin co quyen gioi han"
+      ],
+      "acceptance_criteria": [
+        "Quan ly toan bo tai khoan admin",
+        "Phan quyen theo muc"
+      ]
+    },
+    {
+      "id": "F-005",
+      "name": "Quan ly log truy cap",
+      "module": "M-001",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-005, line 3255-3257",
+      "scope": "Quan tri he thong - Tra cuu 5 nhom log (truy cap, dang nhap, loi, tai khoan, cau hinh)",
+      "business_rules": [
+        "5 nhom log",
+        "5 truong: thoi diem, phan nhom, mo ta, doi tuong, muc do"
+      ],
+      "acceptance_criteria": [
+        "Tra cuu duoc 5 nhom log",
+        "Hien thi du 5 truong log"
+      ]
+    },
+    {
+      "id": "F-006",
+      "name": "Quan ly bieu tuong ban do",
+      "module": "M-001",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-006, line 3258-3260",
+      "scope": "Quan tri he thong - Quan ly bieu tuong doi tuong GIS tren ban do",
+      "business_rules": [
+        "Bieu tuong theo tung loai doi tuong"
+      ],
+      "acceptance_criteria": [
+        "Them/sua/xoa bieu tuong",
+        "Gan bieu tuong cho doi tuong GIS"
+      ]
+    },
+    {
+      "id": "F-007",
+      "name": "Quan ly ket noi lien thong chia du lieu",
+      "module": "M-001",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-007, line 3261-3263",
+      "scope": "Quan tri he thong - Cau hinh ket noi LGSP, NDXP, API",
+      "business_rules": [
+        "Ket noi qua HTTPS/TLS",
+        "JWT xac thuc cho moi ket noi",
+        "IP whitelist de kiem soat truy cap"
+      ],
+      "acceptance_criteria": [
+        "Cau hinh ket noi thanh cong",
+        "Xem lich su ket noi",
+        "Cap nhat thong tin ket noi"
+      ]
+    }
+  ],
+  "cross_references": {
+    "catalog_ref": "docs/intel/catalog.json#M-001",
+    "brief_ref": "docs/intel/doc-brief.md"
+  },
+  "do_d": {
+    "api_contract_complete": false,
+    "entity_schema_defined": false,
+    "business_rules_mapped": true,
+    "test_data_ready": false,
+    "acceptance_criteria_written": true,
+    "priority_assigned": true,
+    "source_traced": true
+  }
+}
