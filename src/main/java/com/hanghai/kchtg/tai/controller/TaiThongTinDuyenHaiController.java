@@ -31,7 +31,7 @@ public class TaiThongTinDuyenHaiController {
     private final TaiThongTinDuyenHaiService service;
 
     @PostMapping
-    @PreAuthorize("hasRole('ROLE_DAI_TTDH_CREATE')")
+    @PreAuthorize("@auth.check(authentication, 'tai:create')")
     public ResponseEntity<ApiResponse<TaiThongTinDuyenHaiResponse>> create(
             @Valid @RequestBody CreateTaiThongTinDuyenHaiRequest request) {
         TaiThongTinDuyenHaiResponse response = service.create(request);
@@ -40,7 +40,7 @@ public class TaiThongTinDuyenHaiController {
     }
 
     @PutMapping("/{code}")
-    @PreAuthorize("hasRole('ROLE_DAI_TTDH_UPDATE')")
+    @PreAuthorize("@auth.check(authentication, 'tai:update')")
     public ResponseEntity<ApiResponse<TaiThongTinDuyenHaiResponse>> update(
             @PathVariable String code,
             @Valid @RequestBody UpdateTaiThongTinDuyenHaiRequest request) {
@@ -51,7 +51,7 @@ public class TaiThongTinDuyenHaiController {
     }
 
     @DeleteMapping("/{code}")
-    @PreAuthorize("hasRole('ROLE_DAI_TTDH_DELETE')")
+    @PreAuthorize("@auth.check(authentication, 'tai:delete')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable String code) {
         service.delete(code);
         return ResponseEntity.ok(
@@ -59,7 +59,7 @@ public class TaiThongTinDuyenHaiController {
     }
 
     @GetMapping("/{code}")
-    @PreAuthorize("hasRole('ROLE_DAI_TTDH_READ')")
+    @PreAuthorize("@auth.check(authentication, 'tai:read')")
     public ResponseEntity<ApiResponse<TaiThongTinDuyenHaiResponse>> findById(
             @PathVariable String code) {
         TaiThongTinDuyenHaiResponse response = service.findByCode(code);
@@ -67,13 +67,13 @@ public class TaiThongTinDuyenHaiController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('ROLE_DAI_TTDH_READ')")
+    @PreAuthorize("@auth.check(authentication, 'tai:read')")
     public ResponseEntity<ApiResponse<List<TaiThongTinDuyenHaiResponse>>> findAll() {
         return ResponseEntity.ok(ApiResponse.success(service.findAll()));
     }
 
     @GetMapping("/status/{status}")
-    @PreAuthorize("hasRole('ROLE_DAI_TTDH_READ')")
+    @PreAuthorize("@auth.check(authentication, 'tai:read')")
     public ResponseEntity<ApiResponse<List<TaiThongTinDuyenHaiResponse>>> findByStatus(
             @PathVariable TaiStatus status) {
         return ResponseEntity.ok(ApiResponse.success(
@@ -83,13 +83,13 @@ public class TaiThongTinDuyenHaiController {
     }
 
     @GetMapping("/count-by-status")
-    @PreAuthorize("hasRole('ROLE_DAI_TTDH_READ')")
+    @PreAuthorize("@auth.check(authentication, 'tai:read')")
     public ResponseEntity<ApiResponse<List<TaiThongTinDuyenHaiResponse>>> countByStatus() {
         return ResponseEntity.ok(ApiResponse.success(service.findAll()));
     }
 
     @PutMapping("/{code}/approve")
-    @PreAuthorize("hasRole('ROLE_DAI_TTDH_APPROVE_L2')")
+    @PreAuthorize("@auth.check(authentication, 'tai:approve')")
     public ResponseEntity<ApiResponse<TaiThongTinDuyenHaiResponse>> approve(
             @PathVariable String code,
             @RequestParam(required = false) String remarks) {
@@ -99,7 +99,7 @@ public class TaiThongTinDuyenHaiController {
     }
 
     @PutMapping("/{code}/reject")
-    @PreAuthorize("hasRole('ROLE_DAI_TTDH_APPROVE_L2')")
+    @PreAuthorize("@auth.check(authentication, 'tai:approve')")
     public ResponseEntity<ApiResponse<TaiThongTinDuyenHaiResponse>> reject(
             @PathVariable String code,
             @RequestParam String remarks) {
@@ -109,7 +109,7 @@ public class TaiThongTinDuyenHaiController {
     }
 
     @PostMapping("/{code}/sync")
-    @PreAuthorize("hasRole('ROLE_DAI_TTDH_SYNC')")
+    @PreAuthorize("@auth.check(authentication, 'tai:sync')")
     public ResponseEntity<ApiResponse<Void>> syncToMapPhao(@PathVariable String code) {
         UUID id = service.findByCode(code).getId();
         service.syncToMapPhao(id);
@@ -117,7 +117,7 @@ public class TaiThongTinDuyenHaiController {
     }
 
     @DeleteMapping("/{code}/hide")
-    @PreAuthorize("hasRole('ROLE_DAI_TTDH_SYNC')")
+    @PreAuthorize("@auth.check(authentication, 'tai:sync')")
     public ResponseEntity<ApiResponse<Void>> hideFromMapPhao(@PathVariable String code) {
         UUID id = service.findByCode(code).getId();
         service.hideFromMapPhao(id);

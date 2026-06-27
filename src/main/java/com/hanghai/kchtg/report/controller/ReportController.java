@@ -36,7 +36,7 @@ public class ReportController {
      * Tạo báo cáo mới với status = PENDING, sau đó sinh báo cáo.
      */
     @PostMapping("/generate")
-    @PreAuthorize("hasRole('ROLE_REPORT_CREATE')")
+    @PreAuthorize("@auth.check(authentication, 'report:create')")
     public ResponseEntity<ApiResponse<ReportResponse>> createReport(
             @Valid @RequestBody ReportRequest request) {
         log.info("Received report generation request: type={}", request.getReportType());
@@ -56,7 +56,7 @@ public class ReportController {
      * Tìm báo cáo theo mã code.
      */
     @GetMapping("/{code}")
-    @PreAuthorize("hasRole('ROLE_REPORT_READ')")
+    @PreAuthorize("@auth.check(authentication, 'report:read')")
     public ResponseEntity<ApiResponse<ReportResponse>> findById(
             @PathVariable String code) {
         var entity = reportService.findByCode(code);
@@ -67,7 +67,7 @@ public class ReportController {
      * Liệt kê báo cáo READY, có thể lọc theo loại.
      */
     @GetMapping
-    @PreAuthorize("hasRole('ROLE_REPORT_READ')")
+    @PreAuthorize("@auth.check(authentication, 'report:read')")
     public ResponseEntity<ApiResponse<List<ReportResponse>>> findAll(
             @RequestParam(required = false) ReportType type,
             Pageable pageable) {
@@ -81,7 +81,7 @@ public class ReportController {
      * Cập nhật trạng thái báo cáo (DRAFT / PENDING / READY / ERROR).
      */
     @PutMapping("/{code}/status/{status}")
-    @PreAuthorize("hasRole('ROLE_REPORT_UPDATE')")
+    @PreAuthorize("@auth.check(authentication, 'report:update')")
     public ResponseEntity<Void> updateStatus(
             @PathVariable String code,
             @PathVariable ReportStatus status) {
@@ -94,7 +94,7 @@ public class ReportController {
      * Tải file báo cáo theo mã (stub: trả về fileUrl).
      */
     @PostMapping("/{code}/download")
-    @PreAuthorize("hasRole('ROLE_REPORT_READ')")
+    @PreAuthorize("@auth.check(authentication, 'report:read')")
     public ResponseEntity<byte[]> download(@PathVariable String code) {
         String fileUrl = reportService.downloadReport(code);
         if (fileUrl == null) {
@@ -118,7 +118,7 @@ public class ReportController {
      * Đếm số báo cáo theo trạng thái.
      */
     @GetMapping("/count-by-status/{status}")
-    @PreAuthorize("hasRole('ROLE_REPORT_READ')")
+    @PreAuthorize("@auth.check(authentication, 'report:read')")
     public ResponseEntity<ApiResponse<Long>> countByStatus(
             @PathVariable ReportStatus status) {
         long count = reportService.countByStatus(status);

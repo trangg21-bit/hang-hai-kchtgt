@@ -32,7 +32,7 @@ public class GroupController {
 
     /** GET /api/groups - liet ke tat ca nhom. */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<List<GroupResponse>>> list() {
         List<GroupResponse> groups = service.findAll();
         return ResponseEntity.ok(ApiResponse.success(groups));
@@ -40,7 +40,7 @@ public class GroupController {
 
     /** GET /api/groups/{id} - lay chi tiet mot nhom. */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<GroupResponse>> get(@PathVariable UUID id) {
         GroupResponse group = service.findById(id);
         return ResponseEntity.ok(ApiResponse.success(group));
@@ -48,7 +48,7 @@ public class GroupController {
 
     /** POST /api/groups - tao moi nhom. Tra ve 201 Created. */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<GroupResponse>> create(
             @Valid @RequestBody CreateGroupRequest request) {
         GroupResponse group = service.create(request);
@@ -59,7 +59,7 @@ public class GroupController {
 
     /** PUT /api/groups/{id} - cap nhat nhom. */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<GroupResponse>> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateGroupRequest request) {
@@ -69,7 +69,7 @@ public class GroupController {
 
     /** DELETE /api/groups/{id} - xoa nhom. */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Nhom da duoc xoa thanh cong", null));

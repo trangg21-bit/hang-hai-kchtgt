@@ -1,9 +1,11 @@
 package com.hanghai.kchtg.user.dto;
 
+import com.hanghai.kchtg.user.entity.Permission;
 import com.hanghai.kchtg.user.entity.Role;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * DTO trả về khi query role.
@@ -28,7 +30,7 @@ public class RoleResponse {
         resp.setName(role.getName());
         resp.setCode(role.getCode());
         resp.setDescription(role.getDescription());
-        resp.setPermissions(role.getPermissions());
+        resp.setPermissions(role.getPermissions().stream().map(Permission::getCode).collect(Collectors.toList()));
         resp.setStatus(role.getStatus() != null ? role.getStatus().name() : null);
         resp.setUserCount(role.getUserCount());
         resp.setCreatedAt(role.getCreatedAt());

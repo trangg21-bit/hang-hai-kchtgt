@@ -20,7 +20,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/siem")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+@PreAuthorize("@auth.check(authentication, 'security:manage')")
 public class SiemController {
 
     private final SiemService siemService;

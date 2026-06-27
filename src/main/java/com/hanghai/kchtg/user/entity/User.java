@@ -14,7 +14,10 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Tài khoản người dùng hệ thống.
@@ -70,19 +73,66 @@ public class User extends BaseEntity {
     private String phone;
 
     /**
-     * Vai trò của người dùng (e.g. ROLE_USER, ROLE_ADMIN).
-     * Mã hóa trong JWT token.
-     */
-    @Column(length = 50)
-    private String role;
-
-    /**
      * Đơn vị tổ chức mà người dùng trực thuộc.
      * Many-to-One relationship with lazy loading.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "org_unit_id")
     private OrgUnit orgUnit;
+
+    /**
+     * Vai trò của người dùng (M-to-N relationship via user_roles join table).
+     * Mỗi user chỉ có 1 role chính theo business rule.
+     */
+    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.PERSIST)
+    @JoinTable(name = "user_roles",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id"))
+    private Set<Role> roles = new HashSet<>();
+
+    /**
+     * Lấy mã của role chính (role đầu tiên trong set).
+     * Chỉ có 1 role theo business rule.
+     */
+    public String getPrimaryRoleCode() {
+        return roles.stream()
+            .map(Role::getCode)
+            .findFirst()
+            .orElse(null);
+    }
+
+    /**
+     * Lấy tất cả permissions từ tất cả roles + user_permission_override.
+     */
+    public Set<String> getAllPermissions() {
+        Set<String> perms = new HashSet<>();
+        for (Role role : roles) {
+            if (role.getPermissions() != null) {
+                perms.addAll(role.getPermissions().stream()
+                    .map(Permission::getCode).collect(Collectors.toSet()));
+            }
+        }
+        // TODO: add per-user overrides from UserPermissionOverride
+        return perms;
+    }
+
+    /**
+     * @deprecated Use {@link #getPrimaryRoleCode()} or {@link #getRoles()} instead.
+     * Kept for backward compatibility with existing services.
+     */
+    @Deprecated(forRemoval = true)
+    public String getRole() {
+        return getPrimaryRoleCode();
+    }
+
+    /**
+     * @deprecated Use {@link #setRoles(Set)} instead.
+     * Kept for backward compatibility with existing services.
+     */
+    @Deprecated(forRemoval = true)
+    public void setRole(String role) {
+        // No-op: roles are now managed via the roles Set
+    }
 
     /**
      * Danh sách nhóm người dùng mà người dùng thuộc về.

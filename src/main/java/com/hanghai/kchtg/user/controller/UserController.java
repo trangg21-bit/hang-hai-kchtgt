@@ -37,7 +37,7 @@ public class UserController {
      * Lấy danh sách toàn bộ người dùng.
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<List<UserResponse>>> list() {
         List<UserResponse> users = userService.findAll().stream()
                 .map(UserResponse::from)
@@ -49,7 +49,7 @@ public class UserController {
      * Lấy chi tiết một người dùng theo ID.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<UserResponse>> getById(@PathVariable UUID id) {
         UserResponse user = UserResponse.from(userService.findById(id));
         return ResponseEntity.ok(ApiResponse.success(user));
@@ -60,7 +60,7 @@ public class UserController {
      */
     @PostMapping
     @AuditLog(module = "USER", action = "CREATE_USER")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<UserResponse>> create(@Valid @RequestBody CreateUserRequest request) {
         UserResponse user = UserResponse.from(userService.create(request));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Tạo người dùng thành công", user));
@@ -71,7 +71,7 @@ public class UserController {
      */
     @PutMapping("/{id}")
     @AuditLog(module = "USER", action = "UPDATE_USER")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<UserResponse>> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateUserRequest request) {
@@ -84,7 +84,7 @@ public class UserController {
      */
     @DeleteMapping("/{id}")
     @AuditLog(module = "USER", action = "DELETE_USER")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         userService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa người dùng thành công", null));
@@ -95,7 +95,7 @@ public class UserController {
      */
     @PatchMapping("/{id}/status")
     @AuditLog(module = "USER", action = "CHANGE_USER_STATUS")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<UserResponse>> changeStatus(
             @PathVariable UUID id,
             @Valid @RequestBody ChangeStatusRequest request) {
@@ -108,7 +108,7 @@ public class UserController {
      */
     @PostMapping("/{id}/lock")
     @AuditLog(module = "USER", action = "LOCK_USER")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<UserResponse>> lockUser(@PathVariable UUID id) {
         UserResponse user = UserResponse.from(userService.changeStatus(id, UserStatus.LOCKED));
         return ResponseEntity.ok(ApiResponse.success("Khóa tài khoản thành công", user));
@@ -119,7 +119,7 @@ public class UserController {
      */
     @PostMapping("/{id}/unlock")
     @AuditLog(module = "USER", action = "UNLOCK_USER")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<UserResponse>> unlockUser(@PathVariable UUID id) {
         UserResponse user = UserResponse.from(userService.changeStatus(id, UserStatus.ACTIVE));
         return ResponseEntity.ok(ApiResponse.success("Mở khóa tài khoản thành công", user));

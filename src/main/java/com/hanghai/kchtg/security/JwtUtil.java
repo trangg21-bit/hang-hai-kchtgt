@@ -9,11 +9,17 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
 
+import com.hanghai.kchtg.user.entity.Permission;
+import com.hanghai.kchtg.user.entity.Role;
+import com.hanghai.kchtg.user.repository.PermissionRepository;
+
 import javax.crypto.SecretKey;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Utility for generating and validating JWT tokens using HMAC-SHA256.
@@ -27,10 +33,12 @@ public class JwtUtil {
     private final JwtProperties jwtProperties;
     private final SecretKey signingKey;
     private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
 
-    public JwtUtil(JwtProperties jwtProperties, RoleRepository roleRepository) {
+    public JwtUtil(JwtProperties jwtProperties, RoleRepository roleRepository, PermissionRepository permissionRepository) {
         this.jwtProperties = jwtProperties;
         this.roleRepository = roleRepository;
+        this.permissionRepository = permissionRepository;
         byte[] keyBytes = Base64.getUrlDecoder().decode(jwtProperties.getSecret());
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
@@ -103,18 +111,12 @@ public class JwtUtil {
     public String generateAccessToken(User user) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtProperties.getAccessTokenExpiration());
-        String role = user.getRole() != null ? user.getRole() : "ROLE_USER";
+        String role = user.getRoles().stream().map(Role::getCode).findFirst().orElse("ROLE_USER");
         List<String> permissions = new java.util.ArrayList<>();
-        if (user.getRole() != null) {
-            String roleCode = user.getRole();
-            if (roleCode.startsWith("ROLE_")) {
-                roleCode = roleCode.substring(5);
+        for (Role r : user.getRoles()) {
+            if (r.getPermissions() != null) {
+                permissions.addAll(r.getPermissions().stream().map(Permission::getCode).collect(Collectors.toList()));
             }
-            roleRepository.findByCode(roleCode).ifPresent(r -> {
-                if (r.getPermissions() != null) {
-                    permissions.addAll(r.getPermissions());
-                }
-            });
         }
 
         Map<String, Object> claims = TokenClaimsBuilder.builder()

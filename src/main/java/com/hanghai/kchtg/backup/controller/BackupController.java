@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/backups")
-@PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
+@PreAuthorize("@auth.check(authentication, 'admin:manage')")
 public class BackupController {
 
     private final BackupService backupService;

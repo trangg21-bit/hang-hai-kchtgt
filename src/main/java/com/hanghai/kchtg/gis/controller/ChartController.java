@@ -24,7 +24,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/gis/charts")
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+@PreAuthorize("@auth.check(authentication, 'admin:manage')")
 public class ChartController {
 
     private final ChartIntegrationService chartIntegrationService;

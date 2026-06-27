@@ -39,7 +39,7 @@ public class LogExportController {
      * Export access logs thành file CSV.
      */
     @GetMapping("/export/csv")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<Resource> exportCsv(
             @RequestParam(required = false) String userId,
             @RequestParam(required = false) String module,
@@ -70,7 +70,7 @@ public class LogExportController {
      * Kiểm tra cảnh báo failures - số lượng log FAILED trong 30 phút qua.
      */
     @GetMapping("/alerts/failures")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<Integer>> checkFailureAlerts() {
         int count = logService.checkFailureAlerts();
         return ResponseEntity.ok(ApiResponse.success(count));
@@ -80,7 +80,7 @@ public class LogExportController {
      * Thống kê logs theo status trong ngày.
      */
     @GetMapping("/stats/daily")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<List<Object[]>>> getDailyStats() {
         return ResponseEntity.ok(ApiResponse.success(logService.getDailyStats()));
     }
@@ -89,7 +89,7 @@ public class LogExportController {
      * Tổng số log trong hệ thống.
      */
     @GetMapping("/stats/total")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<Long>> getTotalCount() {
         return ResponseEntity.ok(ApiResponse.success(logService.getTotalCount()));
     }

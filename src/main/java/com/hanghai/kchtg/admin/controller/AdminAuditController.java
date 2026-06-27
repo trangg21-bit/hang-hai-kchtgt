@@ -38,7 +38,7 @@ public class AdminAuditController {
      * Lay danh sach audit logs cua mot admin (phan trang).
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<List<AdminAuditLog>>> list(
             @RequestParam UUID adminId,
             @RequestParam(defaultValue = "0") int page,
@@ -51,7 +51,7 @@ public class AdminAuditController {
      * Lay tat ca audit logs (khong filter admin).
      */
     @GetMapping("/all")
-    @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<List<AdminAuditLog>>> listAll(
             @RequestParam(required = false) String action,
             @RequestParam(defaultValue = "0") int page,
@@ -75,7 +75,7 @@ public class AdminAuditController {
      * Lay chi tiet mot audit log entry.
      */
     @GetMapping("/{logId}")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<AdminAuditLog>> getById(@PathVariable UUID logId) {
         List<AdminAuditLog> all = auditLogRepo.findAll(Sort.by("createdAt").descending());
         AdminAuditLog found = all.stream()

@@ -37,14 +37,14 @@ public class DataConnectionController {
     // ── CRUD ──────────────────────────────────────────────────────────
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'connection:manage')")
     public ResponseEntity<ApiResponse<List<ConnectionResponse>>> listAll() {
         List<ConnectionResponse> connections = service.listAll();
         return ResponseEntity.ok(ApiResponse.success(connections));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'connection:manage')")
     public ResponseEntity<ApiResponse<ConnectionResponse>> getById(@PathVariable UUID id) {
         ConnectionResponse connection = service.getById(id);
         return ResponseEntity.ok(ApiResponse.success(connection));
@@ -52,7 +52,7 @@ public class DataConnectionController {
 
     @PostMapping
     @AuditLog(module = "CONNECTION", action = "CREATE_CONNECTION")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'connection:manage')")
     public ResponseEntity<ApiResponse<ConnectionResponse>> create(
             @Valid @RequestBody CreateConnectionRequest request) {
         ConnectionResponse connection = service.create(request);
@@ -63,7 +63,7 @@ public class DataConnectionController {
 
     @PutMapping("/{id}")
     @AuditLog(module = "CONNECTION", action = "UPDATE_CONNECTION")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'connection:manage')")
     public ResponseEntity<ApiResponse<ConnectionResponse>> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateConnectionRequest request) {
@@ -73,7 +73,7 @@ public class DataConnectionController {
 
     @DeleteMapping("/{id}")
     @AuditLog(module = "CONNECTION", action = "DELETE_CONNECTION")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'connection:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity
@@ -85,14 +85,14 @@ public class DataConnectionController {
 
     @PostMapping("/{id}/health")
     @AuditLog(module = "CONNECTION", action = "RUN_HEALTH_CHECK")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'connection:manage')")
     public ResponseEntity<ApiResponse<ConnectionHealth>> runHealthCheck(@PathVariable UUID id) {
         ConnectionHealth health = service.healthCheck(id);
         return ResponseEntity.ok(ApiResponse.success("Health check completed", health));
     }
 
     @GetMapping("/{id}/health")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'connection:manage')")
     public ResponseEntity<ApiResponse<List<ConnectionHealth>>> getHealthHistory(
             @PathVariable UUID id,
             @RequestParam(defaultValue = "24") int hours) {
@@ -101,7 +101,7 @@ public class DataConnectionController {
     }
 
     @GetMapping("/summary")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'connection:manage')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getHealthSummary() {
         List<ConnectionResponse> list = service.listAll();
         long total = list.size();
@@ -123,7 +123,7 @@ public class DataConnectionController {
     // ── Sync History Logs ─────────────────────────────────────────────
 
     @GetMapping("/{id}/sync-log")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'connection:manage')")
     public ResponseEntity<ApiResponse<List<SyncLog>>> getSyncHistory(@PathVariable UUID id) {
         List<SyncLog> logs = syncLogRepository.findByConnectionIdOrderByStartTimeDesc(id);
         return ResponseEntity.ok(ApiResponse.success(logs));
@@ -133,7 +133,7 @@ public class DataConnectionController {
 
     @PostMapping("/{id}/test")
     @AuditLog(module = "CONNECTION", action = "TEST_CONNECTION")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'connection:manage')")
     public ResponseEntity<ApiResponse<TestConnectionResponse>> testConnection(
             @PathVariable UUID id,
             @Valid @RequestBody(required = false) TestConnectionRequest request) {

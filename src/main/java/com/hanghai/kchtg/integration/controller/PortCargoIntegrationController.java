@@ -13,7 +13,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/integration/kchtgt")
-@PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+@PreAuthorize("@auth.check(authentication, 'admin:manage')")
 public class PortCargoIntegrationController {
 
     private final PortCargoIntegrationService integrationService;

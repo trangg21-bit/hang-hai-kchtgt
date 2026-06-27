@@ -29,25 +29,25 @@ public class AdminAccountController {
     private final AdminAccountService service;
 
     @GetMapping
-    @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<List<AdminResponse>>> findAll() {
         return ResponseEntity.ok(ApiResponse.success(service.findAll()));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<AdminResponse>> findById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.findById(id)));
     }
 
     @GetMapping("/by-user/{userId}")
-    @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<AdminResponse>> findByUserId(@PathVariable UUID userId) {
         return ResponseEntity.ok(ApiResponse.success(service.findByUserId(userId)));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<AdminResponse>> create(
             @Valid @RequestBody CreateAdminWithUserRequest request) {
         AdminResponse created = service.create(request);
@@ -56,7 +56,7 @@ public class AdminAccountController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<AdminResponse>> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateAdminRequest request) {
@@ -64,7 +64,7 @@ public class AdminAccountController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.ok(ApiResponse.success("AdminAccount deleted", null));

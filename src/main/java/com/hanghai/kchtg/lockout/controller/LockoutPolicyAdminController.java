@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/api/admin")
-@PreAuthorize("hasAnyRole('ROLE_SYSTEM_ADMIN', 'ROLE_ADMIN')")
+@PreAuthorize("@auth.check(authentication, 'security:manage')")
 public class LockoutPolicyAdminController {
 
     private final LockoutPolicyService policyService;

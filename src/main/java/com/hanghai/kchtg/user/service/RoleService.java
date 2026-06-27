@@ -2,8 +2,10 @@ package com.hanghai.kchtg.user.service;
 
 import com.hanghai.kchtg.user.dto.CreateRoleRequest;
 import com.hanghai.kchtg.user.dto.UpdateRoleRequest;
+import com.hanghai.kchtg.user.entity.Permission;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.RoleStatus;
+import com.hanghai.kchtg.user.repository.PermissionRepository;
 import com.hanghai.kchtg.user.repository.RoleRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
@@ -11,8 +13,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Service quản lý vai trò (Role) trong hệ thống.
@@ -24,9 +29,11 @@ public class RoleService {
     private static final Logger log = LoggerFactory.getLogger(RoleService.class);
 
     private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
 
-    public RoleService(RoleRepository roleRepository) {
+    public RoleService(RoleRepository roleRepository, PermissionRepository permissionRepository) {
         this.roleRepository = roleRepository;
+        this.permissionRepository = permissionRepository;
     }
 
     @Transactional(readOnly = true)
@@ -51,6 +58,16 @@ public class RoleService {
         return roleRepository.findByStatus(RoleStatus.ACTIVE);
     }
 
+    private Set<Permission> resolvePermissions(List<String> permissionCodes) {
+        if (permissionCodes == null) {
+            return new HashSet<>();
+        }
+        return permissionCodes.stream()
+                .map(code -> permissionRepository.findByCode(code.trim())
+                        .orElseThrow(() -> new IllegalArgumentException("Permission không tồn tại: " + code)))
+                .collect(Collectors.toSet());
+    }
+
     /**
      * Tạo mới vai trò.
      *
@@ -65,7 +82,7 @@ public class RoleService {
         role.setName(request.getName());
         role.setCode(request.getCode());
         role.setDescription(request.getDescription());
-        role.setPermissions(request.getPermissions() != null ? new java.util.ArrayList<>(request.getPermissions()) : new java.util.ArrayList<>());
+        role.setPermissions(resolvePermissions(request.getPermissions()));
         role.setStatus(RoleStatus.ACTIVE);
         role.setUserCount(0);
 
@@ -96,7 +113,7 @@ public class RoleService {
             role.setDescription(request.getDescription());
         }
         if (request.getPermissions() != null) {
-            role.setPermissions(new java.util.ArrayList<>(request.getPermissions()));
+            role.setPermissions(resolvePermissions(request.getPermissions()));
         }
 
         Role saved = roleRepository.save(role);

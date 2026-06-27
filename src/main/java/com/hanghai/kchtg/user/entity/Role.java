@@ -8,8 +8,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Vai trò (Role) trong hệ thống - dùng để nhóm permissions và gán cho người dùng.
@@ -37,11 +37,12 @@ public class Role extends BaseEntity {
     @Column(length = 500)
     private String description;
 
-    /** Danh sách các permission keys mà vai trò này sở hữu. */
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "role_permissions", joinColumns = @JoinColumn(name = "role_id"))
-    @Column(name = "permission")
-    private List<String> permissions = new ArrayList<>();
+    /** Danh sách các permission mà vai trò này sở hữu (M-to-N via role_permissions join table). */
+    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.PERSIST)
+    @JoinTable(name = "role_permissions",
+        joinColumns = @JoinColumn(name = "role_id"),
+        inverseJoinColumns = @JoinColumn(name = "permission_id"))
+    private Set<Permission> permissions = new HashSet<>();
 
     /** Trạng thái vai trò. */
     @Enumerated(EnumType.STRING)

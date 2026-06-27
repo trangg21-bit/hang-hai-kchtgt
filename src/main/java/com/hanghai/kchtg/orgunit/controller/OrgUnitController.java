@@ -32,7 +32,7 @@ public class OrgUnitController {
      * List all units (flat). Add {@code ?parentId=} to filter by parent.
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<List<OrgUnitResponse>>> getAll(
             @RequestParam(required = false) UUID parentId) {
         if (parentId != null) {
@@ -46,7 +46,7 @@ public class OrgUnitController {
      * Full hierarchical tree (root → children recursively).
      */
     @GetMapping("/tree")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<List<OrgUnitResponse>>> getTree() {
         return ResponseEntity.ok(ApiResponse.success(service.findTree()));
     }
@@ -55,7 +55,7 @@ public class OrgUnitController {
      * Single unit by ID (flat, no children).
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<OrgUnitResponse>> getById(
             @PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.findById(id)));
@@ -65,7 +65,7 @@ public class OrgUnitController {
      * Create a new organisational unit.
      */
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<OrgUnitResponse>> create(
             @Valid @RequestBody CreateOrgUnitRequest request) {
         OrgUnitResponse response = service.create(request);
@@ -78,7 +78,7 @@ public class OrgUnitController {
      * Partial update of an existing unit.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<OrgUnitResponse>> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateOrgUnitRequest request) {
@@ -90,7 +90,7 @@ public class OrgUnitController {
      * Delete a unit (fails if the unit has children).
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         service.delete(id);

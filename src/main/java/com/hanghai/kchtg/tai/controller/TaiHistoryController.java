@@ -28,7 +28,7 @@ public class TaiHistoryController {
     private final TaiHistoryService historyService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ROLE_DAI_TTDH_HISTORY')")
+    @PreAuthorize("@auth.check(authentication, 'tai:history')")
     public ResponseEntity<ApiResponse<Page<TaiHistoryResponse>>> findAll(
             @RequestParam(required = false) UUID entityId,
             @RequestParam(required = false) TaiType taiType,
@@ -51,7 +51,7 @@ public class TaiHistoryController {
     }
 
     @GetMapping("/type/{type}")
-    @PreAuthorize("hasRole('ROLE_DAI_TTDH_HISTORY')")
+    @PreAuthorize("@auth.check(authentication, 'tai:history')")
     public ResponseEntity<ApiResponse<Page<TaiHistoryResponse>>> findByType(
             @PathVariable TaiType type,
             @RequestParam(defaultValue = "0") int page,
@@ -63,7 +63,7 @@ public class TaiHistoryController {
     }
 
     @GetMapping("/action/{action}")
-    @PreAuthorize("hasRole('ROLE_DAI_TTDH_HISTORY')")
+    @PreAuthorize("@auth.check(authentication, 'tai:history')")
     public ResponseEntity<ApiResponse<Page<TaiHistoryResponse>>> findByAction(
             @PathVariable TaiHistoryActionType action,
             @RequestParam(defaultValue = "0") int page,

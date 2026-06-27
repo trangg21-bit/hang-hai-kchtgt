@@ -74,14 +74,6 @@ public class Permission extends BaseEntity {
 
     // =========================================================================
 
-    /** Vai trò mặc định mà permission này được gán cho (nullable).
-     *  Nếu null, permission được gán tự do qua Role.permissions list. */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "role_id")
-    private Role role;
-
-    // =========================================================================
-
     /**
      * Trích xuất resource (feature) từ {@link #getCode()}.
      * Ví dụ: "manhien:read" -> "manhien"

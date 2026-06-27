@@ -26,7 +26,7 @@ public class IntegrationSyncController {
     }
 
     @PostMapping("/{connectionId}")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<SyncLog>> triggerSync(@PathVariable UUID connectionId) {
         SyncLog syncLog = syncService.executeSync(connectionId);
         return ResponseEntity.ok(ApiResponse.success("Sync executed successfully", syncLog));

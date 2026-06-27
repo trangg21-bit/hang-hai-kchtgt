@@ -1,12 +1,10 @@
 package com.hanghai.kchtg.user.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.user.dto.AssignPermissionsRequest;
 import com.hanghai.kchtg.user.dto.CreateRoleRequest;
 import com.hanghai.kchtg.user.dto.RoleResponse;
 import com.hanghai.kchtg.user.dto.UpdateRoleRequest;
 import com.hanghai.kchtg.user.entity.Role;
-import com.hanghai.kchtg.user.service.PermissionRoleService;
 import com.hanghai.kchtg.user.service.RoleService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -29,11 +27,9 @@ import java.util.stream.Collectors;
 public class RoleController {
 
     private final RoleService roleService;
-    private final PermissionRoleService permissionRoleService;
 
-    public RoleController(RoleService roleService, PermissionRoleService permissionRoleService) {
+    public RoleController(RoleService roleService) {
         this.roleService = roleService;
-        this.permissionRoleService = permissionRoleService;
     }
 
     @GetMapping
@@ -65,7 +61,7 @@ public class RoleController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<RoleResponse>> create(@Valid @RequestBody CreateRoleRequest request) {
         RoleResponse role = RoleResponse.from(roleService.create(request));
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -73,7 +69,7 @@ public class RoleController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<RoleResponse>> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateRoleRequest request) {
@@ -82,19 +78,9 @@ public class RoleController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         roleService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa vai trò thành công", null));
-    }
-
-    @PostMapping("/{id}/permissions")
-    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_SYSTEM_ADMIN')")
-    public ResponseEntity<ApiResponse<RoleResponse>> assignPermissions(
-            @PathVariable UUID id,
-            @Valid @RequestBody AssignPermissionsRequest request) {
-        Role role = roleService.findById(id);
-        Role saved = permissionRoleService.assignPermissions(role, request.getPermissionCodes());
-        return ResponseEntity.ok(ApiResponse.success("Gán quyền hạn thành công", RoleResponse.from(saved)));
     }
 }
