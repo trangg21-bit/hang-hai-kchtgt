@@ -13,7 +13,6 @@ import com.hanghai.kchtg.security.service.JwtSessionService;
 import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.security.service.TokenValidationService;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.user.service.PermissionRoleService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -69,7 +68,6 @@ class ReportControllerTest {
     private JwtUtil jwtUtil;
 
     @MockBean
-    private PermissionRoleService permissionRoleService;
 
     @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;

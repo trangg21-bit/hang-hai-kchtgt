@@ -10,7 +10,6 @@ import com.hanghai.kchtg.security.service.JwtSessionService;
 import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.security.service.TokenValidationService;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.user.service.PermissionRoleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,7 +60,6 @@ class ShareWorkflowControllerTest {
     private JwtUtil jwtUtil;
 
     @MockBean
-    private PermissionRoleService permissionRoleService;
 
     @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;

@@ -13,7 +13,6 @@ import com.hanghai.kchtg.tai.entity.TaiType;
 import com.hanghai.kchtg.tai.repository.TaiLRITRepository;
 import com.hanghai.kchtg.tai.service.TaiLRITService;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.user.service.PermissionRoleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,7 +66,6 @@ class TaiLRITControllerTest {
     private JwtUtil jwtUtil;
 
     @MockBean
-    private PermissionRoleService permissionRoleService;
 
     @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
