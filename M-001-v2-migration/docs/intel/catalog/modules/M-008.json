@@ -1,0 +1,92 @@
+{
+  "entry": {
+    "aggregate_size_status": "green",
+    "depends_on": [],
+    "feature_count": 5,
+    "features": {
+      "F-101": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-101",
+        "name": "bao-cao-tong-hop-thuy-van",
+        "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-101-bao-cao-tong-hop-thuy-van/",
+        "slug": "bao-cao-tong-hop-thuy-van",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-102": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-102",
+        "name": "bieu-thong-ke-hang-hai",
+        "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-102-bieu-thong-ke-hang-hai/",
+        "slug": "bieu-thong-ke-hang-hai",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-103": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-103",
+        "name": "bao-cao-khanh-tac-cang",
+        "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-103-bao-cao-khanh-tac-cang/",
+        "slug": "bao-cao-khanh-tac-cang",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-104": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-104",
+        "name": "bao-cao-hang-hoa-xuat-nhap-khau",
+        "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-104-bao-cao-hang-hoa-xuat-nhap-khau/",
+        "slug": "bao-cao-hang-hoa-xuat-nhap-khau",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-105": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-105",
+        "name": "bieu-do-trao-doi-thuong-mai",
+        "path": "docs/modules/M-008-bao-cao-thong-ke/_features/F-105-bieu-do-trao-doi-thuong-mai/",
+        "slug": "bieu-do-trao-doi-thuong-mai",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      }
+    },
+    "id": "M-008",
+    "name": "Báo cáo & Thống kê",
+    "path": "docs/modules/M-008-bao-cao-thong-ke/",
+    "slug": "bao-cao-thong-ke",
+    "status": "done",
+    "version": 1
+  },
+  "module_id": "M-008",
+  "schema_version": "1.0"
+}

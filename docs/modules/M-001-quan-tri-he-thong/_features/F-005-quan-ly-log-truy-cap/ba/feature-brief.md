@@ -1,8 +1,4 @@
 ---
-status: proposed
-last-updated: 2026-06-17T03:23:17Z
----
----
 id: F-005
 name: Quan ly log truy cap
 slug: quan-ly-log-truy-cap

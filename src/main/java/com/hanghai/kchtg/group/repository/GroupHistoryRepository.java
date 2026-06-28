@@ -1,8 +1,10 @@
 package com.hanghai.kchtg.group.repository;
 
 import com.hanghai.kchtg.group.entity.GroupHistory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import java.time.LocalDateTime;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -12,18 +14,17 @@ import java.util.UUID;
 public interface GroupHistoryRepository extends JpaRepository<GroupHistory, UUID> {
 
     /**
-     * Tìm tất cả lịch sử thay đổi của một nhóm, sắp xếp mới nhất trước.
+     * Tim tat ca lich su thay doi cua mot nhom, sap xep moi nhat truoc (BR-009/015).
      */
-    List<GroupHistory> findByUserGroupIdOrderByChangeTimestampDesc(UUID userGroupId);
+    List<GroupHistory> findByUserGroupIdOrderByPerformedAtDesc(UUID userGroupId);
 
     /**
-     * Tìm lịch sử trong khoảng thời gian.
+     * Tim lich su thay doi cua mot nhom, co phan trang, sap xep moi nhat truoc.
      */
-    List<GroupHistory> findByChangeTimestampBetweenOrderByChangeTimestampDesc(
-            LocalDateTime from, LocalDateTime to);
+    Page<GroupHistory> findByUserGroupIdOrderByPerformedAtDesc(UUID userGroupId, Pageable pageable);
 
     /**
-     * Đếm số lần thay đổi của một nhóm.
+     * Dem so lan thay doi cua mot nhom.
      */
     long countByUserGroupId(UUID userGroupId);
 }

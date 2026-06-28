@@ -1,21 +1,17 @@
 ---
-status: proposed
-last-updated: 2026-06-17T03:23:16Z
----
----
 id: F-003
-name: Quan ly don vi
+name: Quản lý đơn vị
 slug: quan-ly-don-vi
 module-id: M-001
 status: done
 classification: local
 priority: high
 created: 2026-06-16T04:40:53Z
-last-updated: 2026-06-17T01:35:44Z
+last-updated: 2026-06-28T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quan ly don vi
+# Feature: Quản lý đơn vị
 
 ## Description
 

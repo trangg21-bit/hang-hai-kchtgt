@@ -2,10 +2,13 @@ package com.hanghai.kchtg.group.repository;
 
 import com.hanghai.kchtg.group.entity.GroupMember;
 import com.hanghai.kchtg.group.entity.GroupMemberStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import java.util.List;
+
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,43 +18,66 @@ import java.util.UUID;
 public interface GroupMemberRepository extends JpaRepository<GroupMember, UUID> {
 
     /**
-     * Tim tat ca members cua mot nhom voi trang thai ACTIVE.
-     */
-    @Query("SELECT gm FROM GroupMember gm "
-         + "LEFT JOIN FETCH gm.user u "
-         + "LEFT JOIN FETCH gm.userGroup "
-         + "WHERE gm.userGroup.id = :groupId AND gm.status = :status")
-    List<GroupMember> findByGroupId(@Param("groupId") UUID groupId, @Param("status") GroupMemberStatus status);
-
-    /**
-     * Tim membership cua mot nguoi dung trong mot nhom cu the.
-     */
-    Optional<GroupMember> findByUserIdAndUserGroupId(UUID userId, UUID userGroupId);
-
-    /**
-     * Tim tat ca groups ma mot nguoi dung la member.
-     */
-    @Query("SELECT gm FROM GroupMember gm "
-         + "LEFT JOIN FETCH gm.userGroup "
-         + "WHERE gm.user.id = :userId AND gm.status = :status")
-    List<GroupMember> findByUserId(@Param("userId") UUID userId, @Param("status") GroupMemberStatus status);
-
-    /**
-     * Dem so thanh vien active cua mot nhom.
+     * Dem so thanh vien active cua mot nhom (BR-009).
      */
     long countByUserGroupIdAndStatus(UUID groupId, GroupMemberStatus status);
 
     /**
-     * Tim tat ca members cua nhom (khong filter status).
+     * Kiem tra membership da ton tai chua (BR-010).
      */
-    @Query("SELECT gm FROM GroupMember gm "
-         + "LEFT JOIN FETCH gm.user "
-         + "LEFT JOIN FETCH gm.userGroup "
-         + "WHERE gm.userGroup.id = :groupId")
-    List<GroupMember> findAllByGroupId(@Param("groupId") UUID groupId);
+    boolean existsByUserIdAndUserGroupIdAndStatus(UUID userId, UUID groupId, GroupMemberStatus status);
 
     /**
-     * Tim members bi banned cua mot nhom.
+     * Tim membership cua mot nguoi dung trong mot nhom cu the (active).
      */
-    List<GroupMember> findByUserGroupIdAndStatus(UUID groupId, GroupMemberStatus status);
+    Optional<GroupMember> findByUserIdAndUserGroupIdAndStatus(UUID userId, UUID groupId, GroupMemberStatus status);
+
+    /**
+     * Liet ke thanh vien cua nhom (active), phan trang.
+     */
+    @Query("SELECT gm FROM GroupMember gm "
+          + "WHERE gm.userGroup.id = :groupId AND gm.status = :status")
+    Page<GroupMember> findByGroupId(@Param("groupId") UUID groupId,
+                                    @Param("status") GroupMemberStatus status,
+                                    Pageable pageable);
+
+    /**
+     * Liet ke tat ca members cua mot nhom (active), LEFT JOIN FETCH user.
+     */
+    @Query("SELECT DISTINCT gm FROM GroupMember gm "
+          + "LEFT JOIN FETCH gm.user "
+          + "WHERE gm.userGroup.id = :groupId AND gm.status = :status")
+    Page<GroupMember> findByGroupIdWithUser(@Param("groupId") UUID groupId,
+                                            @Param("status") GroupMemberStatus status,
+                                            Pageable pageable);
+
+    /**
+     * Liet ke thanh vien active cua mot nguoi dung (my groups filter).
+     */
+    @Query("SELECT gm FROM GroupMember gm "
+          + "LEFT JOIN FETCH gm.userGroup "
+          + "WHERE gm.user.id = :userId AND gm.status = :status")
+    Page<GroupMember> findByUserId(@Param("userId") UUID userId,
+                                   @Param("status") GroupMemberStatus status,
+                                   Pageable pageable);
+
+    /**
+     * Xoa mem (soft delete — status=REMOVED) cho mot user trong mot nhom.
+     */
+    @Modifying
+    @Query("UPDATE GroupMember gm SET gm.status = :removedStatus "
+          + "WHERE gm.user.id = :userId AND gm.userGroup.id = :groupId AND gm.status = :activeStatus")
+    int removeMember(@Param("userId") UUID userId,
+                     @Param("groupId") UUID groupId,
+                     @Param("activeStatus") GroupMemberStatus activeStatus,
+                     @Param("removedStatus") GroupMemberStatus removedStatus);
+
+    /**
+     * Tim tat ca membership (khong filter status) cho membership list.
+     */
+    @Query("SELECT DISTINCT gm FROM GroupMember gm "
+          + "LEFT JOIN FETCH gm.user "
+          + "WHERE gm.userGroup.id = :groupId")
+    Page<GroupMember> findAllByGroupIdWithUser(@Param("groupId") UUID groupId,
+                                               Pageable pageable);
 }

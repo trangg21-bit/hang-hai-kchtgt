@@ -1,0 +1,865 @@
+{
+  "module_id": "M-008",
+  "module_name": "Bao cao & Thong ke",
+  "description": "50+ mau bao cao, bieu thong ke chuyen nganh",
+  "stack": [
+    "Spring Boot 17+",
+    "MSSQL Server 2022",
+    "ReactJS 18+",
+    "Nginx",
+    "MinIO",
+    "GeoServer"
+  ],
+  "actors": [
+    "A-003",
+    "A-002"
+  ],
+  "features": [
+    {
+      "id": "F-141",
+      "name": "Bao cao Bao cao tang giam tai san",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-156, line ~3775",
+      "scope": "Chuyen vien - Bao cao Bao cao tang giam tai san",
+      "business_rules": [
+        "Bao cao Bao cao tang giam tai san",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bao cao tang giam tai san thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-142",
+      "name": "Bao cao Mau B03/CCTT: Thong tin tai chinh tai san KCHT",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-157, line ~3776",
+      "scope": "Chuyen vien - Bao cao Mau B03/CCTT: Thong tin tai chinh tai san KCHT",
+      "business_rules": [
+        "Bao cao Mau B03/CCTT: Thong tin tai chinh tai san KCHT",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Mau B03/CCTT: Thong tin tai chinh tai san KCHT thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-143",
+      "name": "Bao cao Mau so 02: Bao cao ke khai tai san KCHT",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-158, line ~3777",
+      "scope": "Chuyen vien - Bao cao Mau so 02: Bao cao ke khai tai san KCHT",
+      "business_rules": [
+        "Bao cao Mau so 02: Bao cao ke khai tai san KCHT",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Mau so 02: Bao cao ke khai tai san KCHT thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-144",
+      "name": "Bao cao Mau so 03: Bao cao tinh hinh quan ly tai san KCHT",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-159, line ~3778",
+      "scope": "Chuyen vien - Bao cao Mau so 03: Bao cao tinh hinh quan ly tai san KCHT",
+      "business_rules": [
+        "Bao cao Mau so 03: Bao cao tinh hinh quan ly tai san KCHT",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Mau so 03: Bao cao tinh hinh quan ly tai san KCHT thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-145",
+      "name": "Bao cao Mau so 04: Bao cao tinh hinh xu ly tai san KCHT",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-160, line ~3779",
+      "scope": "Chuyen vien - Bao cao Mau so 04: Bao cao tinh hinh xu ly tai san KCHT",
+      "business_rules": [
+        "Bao cao Mau so 04: Bao cao tinh hinh xu ly tai san KCHT",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Mau so 04: Bao cao tinh hinh xu ly tai san KCHT thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-146",
+      "name": "Bao cao Mau so 05: Bao cao tinh hinh khai thac tai san KCHT",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-161, line ~3780",
+      "scope": "Chuyen vien - Bao cao Mau so 05: Bao cao tinh hinh khai thac tai san KCHT",
+      "business_rules": [
+        "Bao cao Mau so 05: Bao cao tinh hinh khai thac tai san KCHT",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Mau so 05: Bao cao tinh hinh khai thac tai san KCHT thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-147",
+      "name": "Bao cao Mau so 06: Tong hop danh muc TS KCHTGT de nghi xu ly",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-162, line ~3781",
+      "scope": "Chuyen vien - Bao cao Mau so 06: Tong hop danh muc TS KCHTGT de nghi xu ly",
+      "business_rules": [
+        "Bao cao Mau so 06: Tong hop danh muc TS KCHTGT de nghi xu ly",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Mau so 06: Tong hop danh muc TS KCHTGT de nghi xu ly thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-148",
+      "name": "Bao cao Bieu 01-N: Nang luc thong qua ben cang, cau cang",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-163, line ~3782",
+      "scope": "Chuyen vien - Bao cao Bieu 01-N: Nang luc thong qua ben cang, cau cang",
+      "business_rules": [
+        "Bao cao Bieu 01-N: Nang luc thong qua ben cang, cau cang",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 01-N: Nang luc thong qua ben cang, cau cang thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-149",
+      "name": "Bao cao Bieu 01B-N: Nang luc thong qua cang bien",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-164, line ~3783",
+      "scope": "Chuyen vien - Bao cao Bieu 01B-N: Nang luc thong qua cang bien",
+      "business_rules": [
+        "Bao cao Bieu 01B-N: Nang luc thong qua cang bien",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 01B-N: Nang luc thong qua cang bien thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-150",
+      "name": "Bao cao Bieu 02-N: Thong ke cau cang",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-165, line ~3784",
+      "scope": "Chuyen vien - Bao cao Bieu 02-N: Thong ke cau cang",
+      "business_rules": [
+        "Bao cao Bieu 02-N: Thong ke cau cang",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 02-N: Thong ke cau cang thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-151",
+      "name": "Bao cao Bieu 03-Q/N: Thong ke luong hang hai",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-166, line ~3785",
+      "scope": "Chuyen vien - Bao cao Bieu 03-Q/N: Thong ke luong hang hai",
+      "business_rules": [
+        "Bao cao Bieu 03-Q/N: Thong ke luong hang hai",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 03-Q/N: Thong ke luong hang hai thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-152",
+      "name": "Bao cao Bieu 04-6T/N: Thong ke vung do/tra hoa tieu, vung quay tro",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-167, line ~3786",
+      "scope": "Chuyen vien - Bao cao Bieu 04-6T/N: Thong ke vung do/tra hoa tieu, vung quay tro",
+      "business_rules": [
+        "Bao cao Bieu 04-6T/N: Thong ke vung do/tra hoa tieu, vung quay tro",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 04-6T/N: Thong ke vung do/tra hoa tieu, vung quay tro thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-153",
+      "name": "Bao cao Bieu 04B-N: Thong ke khu chuyen tai, khu neo dau",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-168, line ~3787",
+      "scope": "Chuyen vien - Bao cao Bieu 04B-N: Thong ke khu chuyen tai, khu neo dau",
+      "business_rules": [
+        "Bao cao Bieu 04B-N: Thong ke khu chuyen tai, khu neo dau",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 04B-N: Thong ke khu chuyen tai, khu neo dau thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-154",
+      "name": "Bao cao Bieu 05-N: Thong ke ben phao, khu neo dau",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-169, line ~3788",
+      "scope": "Chuyen vien - Bao cao Bieu 05-N: Thong ke ben phao, khu neo dau",
+      "business_rules": [
+        "Bao cao Bieu 05-N: Thong ke ben phao, khu neo dau",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 05-N: Thong ke ben phao, khu neo dau thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-155",
+      "name": "Bao cao Bieu 06-N: Thong ke he thong den bien",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-170, line ~3789",
+      "scope": "Chuyen vien - Bao cao Bieu 06-N: Thong ke he thong den bien",
+      "business_rules": [
+        "Bao cao Bieu 06-N: Thong ke he thong den bien",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 06-N: Thong ke he thong den bien thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-156",
+      "name": "Bao cao Bieu 07-6T/N: Thong ke he thong phao tieu",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-171, line ~3790",
+      "scope": "Chuyen vien - Bao cao Bieu 07-6T/N: Thong ke he thong phao tieu",
+      "business_rules": [
+        "Bao cao Bieu 07-6T/N: Thong ke he thong phao tieu",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 07-6T/N: Thong ke he thong phao tieu thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-157",
+      "name": "Bao cao Bieu 07B-6T/N: Thong ke phao tieu bao hieu",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-172, line ~3791",
+      "scope": "Chuyen vien - Bao cao Bieu 07B-6T/N: Thong ke phao tieu bao hieu",
+      "business_rules": [
+        "Bao cao Bieu 07B-6T/N: Thong ke phao tieu bao hieu",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 07B-6T/N: Thong ke phao tieu bao hieu thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-158",
+      "name": "Bao cao Bieu 08-N: Thong ke he thong giam sat VTS",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-173, line ~3792",
+      "scope": "Chuyen vien - Bao cao Bieu 08-N: Thong ke he thong giam sat VTS",
+      "business_rules": [
+        "Bao cao Bieu 08-N: Thong ke he thong giam sat VTS",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 08-N: Thong ke he thong giam sat VTS thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-159",
+      "name": "Bao cao Bieu 09-N: He thong dai thong tin duyen hai",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-174, line ~3793",
+      "scope": "Chuyen vien - Bao cao Bieu 09-N: He thong dai thong tin duyen hai",
+      "business_rules": [
+        "Bao cao Bieu 09-N: He thong dai thong tin duyen hai",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 09-N: He thong dai thong tin duyen hai thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-160",
+      "name": "Bao cao Bieu 10-N: Thong ke he thong de, ke chan song",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-175, line ~3794",
+      "scope": "Chuyen vien - Bao cao Bieu 10-N: Thong ke he thong de, ke chan song",
+      "business_rules": [
+        "Bao cao Bieu 10-N: Thong ke he thong de, ke chan song",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 10-N: Thong ke he thong de, ke chan song thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-161",
+      "name": "Bao cao Bieu 11-T: Bao cao chi tiet tau bien ra vao cang",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-176, line ~3795",
+      "scope": "Chuyen vien - Bao cao Bieu 11-T: Bao cao chi tiet tau bien ra vao cang",
+      "business_rules": [
+        "Bao cao Bieu 11-T: Bao cao chi tiet tau bien ra vao cang",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 11-T: Bao cao chi tiet tau bien ra vao cang thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-162",
+      "name": "Bao cao Bieu 11B-T: Bao cao chi tiet phuong tien thuy noi dia",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-177, line ~3796",
+      "scope": "Chuyen vien - Bao cao Bieu 11B-T: Bao cao chi tiet phuong tien thuy noi dia",
+      "business_rules": [
+        "Bao cao Bieu 11B-T: Bao cao chi tiet phuong tien thuy noi dia",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 11B-T: Bao cao chi tiet phuong tien thuy noi dia thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-163",
+      "name": "Bao cao Bieu 16-Q: Thong ke tau bien nuoc ngoai den, roi",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-178, line ~3797",
+      "scope": "Chuyen vien - Bao cao Bieu 16-Q: Thong ke tau bien nuoc ngoai den, roi",
+      "business_rules": [
+        "Bao cao Bieu 16-Q: Thong ke tau bien nuoc ngoai den, roi",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 16-Q: Thong ke tau bien nuoc ngoai den, roi thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-164",
+      "name": "Bao cao Bieu 17-Q: Thong ke tau bien VN van tai quoc te",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-179, line ~3798",
+      "scope": "Chuyen vien - Bao cao Bieu 17-Q: Thong ke tau bien VN van tai quoc te",
+      "business_rules": [
+        "Bao cao Bieu 17-Q: Thong ke tau bien VN van tai quoc te",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 17-Q: Thong ke tau bien VN van tai quoc te thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-165",
+      "name": "Bao cao Bieu 12-T: Khoi luong hang hoa, hanh khach theo thang",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-180, line ~3799",
+      "scope": "Chuyen vien - Bao cao Bieu 12-T: Khoi luong hang hoa, hanh khach theo thang",
+      "business_rules": [
+        "Bao cao Bieu 12-T: Khoi luong hang hoa, hanh khach theo thang",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 12-T: Khoi luong hang hoa, hanh khach theo thang thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-166",
+      "name": "Bao cao Bieu 12-N: Khoi luong hang hoa theo nam",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-181, line ~3800",
+      "scope": "Chuyen vien - Bao cao Bieu 12-N: Khoi luong hang hoa theo nam",
+      "business_rules": [
+        "Bao cao Bieu 12-N: Khoi luong hang hoa theo nam",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 12-N: Khoi luong hang hoa theo nam thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-167",
+      "name": "Bao cao Bieu 13-T: Luot tau thuyá»n vao roi cang bien",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-182, line ~3801",
+      "scope": "Chuyen vien - Bao cao Bieu 13-T: Luot tau thuyá»n vao roi cang bien",
+      "business_rules": [
+        "Bao cao Bieu 13-T: Luot tau thuyá»n vao roi cang bien",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 13-T: Luot tau thuyá»n vao roi cang bien thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-168",
+      "name": "Bao cao Bieu 14-T: Khoi luong hang hoa, hanh khach, luot tau",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-183, line ~3802",
+      "scope": "Chuyen vien - Bao cao Bieu 14-T: Khoi luong hang hoa, hanh khach, luot tau",
+      "business_rules": [
+        "Bao cao Bieu 14-T: Khoi luong hang hoa, hanh khach, luot tau",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 14-T: Khoi luong hang hoa, hanh khach, luot tau thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-169",
+      "name": "Bao cao Bieu 15-T: Khoi luong hang hoa trong khu quan ly",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-184, line ~3803",
+      "scope": "Chuyen vien - Bao cao Bieu 15-T: Khoi luong hang hoa trong khu quan ly",
+      "business_rules": [
+        "Bao cao Bieu 15-T: Khoi luong hang hoa trong khu quan ly",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 15-T: Khoi luong hang hoa trong khu quan ly thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-170",
+      "name": "Bao cao Bieu 21-6T/N: Thong ke thuyen vien, hoa tieu",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-185, line ~3804",
+      "scope": "Chuyen vien - Bao cao Bieu 21-6T/N: Thong ke thuyen vien, hoa tieu",
+      "business_rules": [
+        "Bao cao Bieu 21-6T/N: Thong ke thuyen vien, hoa tieu",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 21-6T/N: Thong ke thuyen vien, hoa tieu thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-171",
+      "name": "Bao cao Bieu 22-6T/N: Thong ke tau bien quoc tich VN",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-186, line ~3805",
+      "scope": "Chuyen vien - Bao cao Bieu 22-6T/N: Thong ke tau bien quoc tich VN",
+      "business_rules": [
+        "Bao cao Bieu 22-6T/N: Thong ke tau bien quoc tich VN",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 22-6T/N: Thong ke tau bien quoc tich VN thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-172",
+      "name": "Bao cao Bieu 23-N: Thong ke tau thuyá»n hoat dong lai dhat",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-187, line ~3806",
+      "scope": "Chuyen vien - Bao cao Bieu 23-N: Thong ke tau thuyá»n hoat dong lai dhat",
+      "business_rules": [
+        "Bao cao Bieu 23-N: Thong ke tau thuyá»n hoat dong lai dhat",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 23-N: Thong ke tau thuyá»n hoat dong lai dhat thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-173",
+      "name": "Bao cao Bieu 31-N: Thong ke co so dong moi, sua chua, pha do tau",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-188, line ~3807",
+      "scope": "Chuyen vien - Bao cao Bieu 31-N: Thong ke co so dong moi, sua chua, pha do tau",
+      "business_rules": [
+        "Bao cao Bieu 31-N: Thong ke co so dong moi, sua chua, pha do tau",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 31-N: Thong ke co so dong moi, sua chua, pha do tau thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-174",
+      "name": "Bao cao Bieu 45-6T/N: Bao cao tong hop hang hoa thong qua cang",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-189, line ~3808",
+      "scope": "Chuyen vien - Bao cao Bieu 45-6T/N: Bao cao tong hop hang hoa thong qua cang",
+      "business_rules": [
+        "Bao cao Bieu 45-6T/N: Bao cao tong hop hang hoa thong qua cang",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 45-6T/N: Bao cao tong hop hang hoa thong qua cang thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-175",
+      "name": "Bao cao Bieu so 06-N: Nang luc thong qua ben cang thong tu 48",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-190, line ~3809",
+      "scope": "Chuyen vien - Bao cao Bieu so 06-N: Nang luc thong qua ben cang thong tu 48",
+      "business_rules": [
+        "Bao cao Bieu so 06-N: Nang luc thong qua ben cang thong tu 48",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu so 06-N: Nang luc thong qua ben cang thong tu 48 thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-176",
+      "name": "Bao cao Bieu 07-N: Nang luc thong qua cang bien, thuy noi dia",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-191, line ~3810",
+      "scope": "Chuyen vien - Bao cao Bieu 07-N: Nang luc thong qua cang bien, thuy noi dia",
+      "business_rules": [
+        "Bao cao Bieu 07-N: Nang luc thong qua cang bien, thuy noi dia",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 07-N: Nang luc thong qua cang bien, thuy noi dia thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-177",
+      "name": "Bao cao Bieu 28-T: Khoi luong hang hoa theo thang",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-192, line ~3811",
+      "scope": "Chuyen vien - Bao cao Bieu 28-T: Khoi luong hang hoa theo thang",
+      "business_rules": [
+        "Bao cao Bieu 28-T: Khoi luong hang hoa theo thang",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 28-T: Khoi luong hang hoa theo thang thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-178",
+      "name": "Bao cao Bieu 29-N: Khoi luong hang hoa theo nam",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-193, line ~3812",
+      "scope": "Chuyen vien - Bao cao Bieu 29-N: Khoi luong hang hoa theo nam",
+      "business_rules": [
+        "Bao cao Bieu 29-N: Khoi luong hang hoa theo nam",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 29-N: Khoi luong hang hoa theo nam thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-179",
+      "name": "Bao cao Bieu 33-N: San luong dich vu van tai, doanh nghiep",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-194, line ~3813",
+      "scope": "Chuyen vien - Bao cao Bieu 33-N: San luong dich vu van tai, doanh nghiep",
+      "business_rules": [
+        "Bao cao Bieu 33-N: San luong dich vu van tai, doanh nghiep",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu 33-N: San luong dich vu van tai, doanh nghiep thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-180",
+      "name": "Bao cao Bieu Tong hop thong tin chung",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-195, line ~3814",
+      "scope": "Chuyen vien - Bao cao Bieu Tong hop thong tin chung",
+      "business_rules": [
+        "Bao cao Bieu Tong hop thong tin chung",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu Tong hop thong tin chung thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-181",
+      "name": "Bao cao Bieu Tong hop thong tin KCHTGT hang hai",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-196, line ~3815",
+      "scope": "Chuyen vien - Bao cao Bieu Tong hop thong tin KCHTGT hang hai",
+      "business_rules": [
+        "Bao cao Bieu Tong hop thong tin KCHTGT hang hai",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu Tong hop thong tin KCHTGT hang hai thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-182",
+      "name": "Bao cao Bieu Tong hop thong tin bao tri KCHTGT",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-197, line ~3816",
+      "scope": "Chuyen vien - Bao cao Bieu Tong hop thong tin bao tri KCHTGT",
+      "business_rules": [
+        "Bao cao Bieu Tong hop thong tin bao tri KCHTGT",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu Tong hop thong tin bao tri KCHTGT thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-183",
+      "name": "Bao cao Bieu Tong hop bao tri KCHTGT - Cau cang",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-198, line ~3817",
+      "scope": "Chuyen vien - Bao cao Bieu Tong hop bao tri KCHTGT - Cau cang",
+      "business_rules": [
+        "Bao cao Bieu Tong hop bao tri KCHTGT - Cau cang",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu Tong hop bao tri KCHTGT - Cau cang thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-184",
+      "name": "Bao cao Bieu Tong hop bao tri KCHTGT - Luong hang hai",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-199, line ~3818",
+      "scope": "Chuyen vien - Bao cao Bieu Tong hop bao tri KCHTGT - Luong hang hai",
+      "business_rules": [
+        "Bao cao Bieu Tong hop bao tri KCHTGT - Luong hang hai",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu Tong hop bao tri KCHTGT - Luong hang hai thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-185",
+      "name": "Bao cao Bieu Tong hop bao tri KCHTGT - Phao tieu",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-200, line ~3819",
+      "scope": "Chuyen vien - Bao cao Bieu Tong hop bao tri KCHTGT - Phao tieu",
+      "business_rules": [
+        "Bao cao Bieu Tong hop bao tri KCHTGT - Phao tieu",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu Tong hop bao tri KCHTGT - Phao tieu thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-186",
+      "name": "Bao cao Bieu Tong hop bao tri KCHTGT - Den bien",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-201, line ~3820",
+      "scope": "Chuyen vien - Bao cao Bieu Tong hop bao tri KCHTGT - Den bien",
+      "business_rules": [
+        "Bao cao Bieu Tong hop bao tri KCHTGT - Den bien",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu Tong hop bao tri KCHTGT - Den bien thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-187",
+      "name": "Bao cao Bieu Tong hop bao tri KCHTGT - De, ke",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-202, line ~3821",
+      "scope": "Chuyen vien - Bao cao Bieu Tong hop bao tri KCHTGT - De, ke",
+      "business_rules": [
+        "Bao cao Bieu Tong hop bao tri KCHTGT - De, ke",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bieu Tong hop bao tri KCHTGT - De, ke thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-188",
+      "name": "Bao cao Bao cao ke khai, tinh hinh quan ly TS KCHTGT hang hai",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-203, line ~3822",
+      "scope": "Chuyen vien - Bao cao Bao cao ke khai, tinh hinh quan ly TS KCHTGT hang hai",
+      "business_rules": [
+        "Bao cao Bao cao ke khai, tinh hinh quan ly TS KCHTGT hang hai",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bao cao ke khai, tinh hinh quan ly TS KCHTGT hang hai thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    },
+    {
+      "id": "F-189",
+      "name": "Bao cao Bao cao tinh hinh hoat dong bao hieu hang hai va de, ke",
+      "module": "M-008",
+      "confidence": "high",
+      "priority": "P2",
+      "source": "UC-204, line ~3823",
+      "scope": "Chuyen vien - Bao cao Bao cao tinh hinh hoat dong bao hieu hang hai va de, ke",
+      "business_rules": [
+        "Bao cao Bao cao tinh hinh hoat dong bao hieu hang hai va de, ke",
+        "Xuat PDF/Excel"
+      ],
+      "acceptance_criteria": [
+        "Hien thi bao cao Bao cao tinh hinh hoat dong bao hieu hang hai va de, ke thanh cong",
+        "Xuat PDF/Excel thanh cong"
+      ]
+    }
+  ],
+  "cross_references": {
+    "catalog_ref": "docs/intel/catalog.json#M-008",
+    "brief_ref": "docs/intel/doc-brief.md"
+  },
+  "do_d": {
+    "api_contract_complete": false,
+    "entity_schema_defined": false,
+    "business_rules_mapped": true,
+    "test_data_ready": false,
+    "acceptance_criteria_written": true,
+    "priority_assigned": true,
+    "source_traced": true
+  }
+}

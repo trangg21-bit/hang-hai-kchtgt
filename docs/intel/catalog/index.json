@@ -1,11 +1,11 @@
 {
-  "checksum": "77625f2ec70194f51e914494bb8ba4cf0f1f3c7baa2cd8564600234099a3c58a",
-  "generated_at": "2026-06-27T20:56:53.840Z",
+  "checksum": "sha256:60ca54a5df5e14577d3314fa7cb0c59b7dd09d0e9f91908fc20be9edc40d179f",
+  "generated_at": "2026-06-28T08:42:02Z",
   "generator": "ai-kit/state-update-rebuild-catalog",
   "modules": {
     "M-001": {
       "aggregate_size_status": "green",
-      "checksum": "sha256:67635147a2e8278c96f2e49fbe68d7cfec675cb2cfd5a4d1a0e85787f45099d5",
+      "checksum": "sha256:4f4eeb46a4ee3fc67e3c0e5bd1294d5c5cb249e3c02633f1dff18eb667a09aab",
       "feature_count": 4,
       "path": "docs/intel/catalog/modules/M-001.json"
     },

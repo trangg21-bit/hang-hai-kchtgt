@@ -1,0 +1,17 @@
+feature_id: F-277
+module_id: M-010
+slug: chinh-sach-gioi-han-dang-nhap-sai
+stage: done
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: "com.hanghai.kchtg.user.service.LoginAttemptService"
+  consumers:
+    - "com.hanghai.kchtg.user.controller.AuthController"
+    - "com.hanghai.kchtg.user.controller.TotpSetupController"
+    - "com.hanghai.kchtg.user.controller.TotpVerifyController"
+
+# Cross-cutting: features consumed by multiple modules
+consumed_by_modules: []

@@ -1,12 +1,13 @@
 package com.hanghai.kchtg.group.dto;
 
 import com.hanghai.kchtg.group.entity.GroupMember;
+import com.hanghai.kchtg.group.entity.GroupMemberStatus;
 import com.hanghai.kchtg.user.entity.User;
 
 import java.time.LocalDateTime;
 
 /**
- * DTO trả về thông tin thành viên nhóm.
+ * DTO trả về thông tin thành viên nhóm (with full user details).
  */
 public class GroupMemberResponse {
 
@@ -16,18 +17,21 @@ public class GroupMemberResponse {
     private String fullName;
     private String groupId;
     private String groupName;
-    private String role;
+    private String roleInGroup;
     private String status;
     private LocalDateTime joinedAt;
     private LocalDateTime createdAt;
 
     public GroupMemberResponse() {}
 
+    /**
+     * Map from GroupMember entity, loading eagerly associated user/group data.
+     */
     public static GroupMemberResponse from(GroupMember member) {
         GroupMemberResponse resp = new GroupMemberResponse();
         resp.setId(member.getId().toString());
-        resp.setStatus(member.getStatus().name());
-        resp.setRole(member.getRole());
+        resp.setStatus(member.getStatus() != null ? member.getStatus().name() : null);
+        resp.setRoleInGroup(member.getRole());
         resp.setJoinedAt(member.getJoinedAt());
         resp.setCreatedAt(member.getCreatedAt());
 
@@ -56,8 +60,8 @@ public class GroupMemberResponse {
     public void setGroupId(String groupId) { this.groupId = groupId; }
     public String getGroupName() { return groupName; }
     public void setGroupName(String groupName) { this.groupName = groupName; }
-    public String getRole() { return role; }
-    public void setRole(String role) { this.role = role; }
+    public String getRoleInGroup() { return roleInGroup; }
+    public void setRoleInGroup(String roleInGroup) { this.roleInGroup = roleInGroup; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public LocalDateTime getJoinedAt() { return joinedAt; }

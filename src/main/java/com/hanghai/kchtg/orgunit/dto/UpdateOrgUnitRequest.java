@@ -2,14 +2,15 @@ package com.hanghai.kchtg.orgunit.dto;
 
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
+import lombok.*;
 
 import java.util.UUID;
 
 /**
  * Request body for partial update of an existing organisational unit.
- * All fields are optional - only non-null fields are applied.
+ * All fields are optional — only non-null fields are applied.
  */
 @Data
 public class UpdateOrgUnitRequest {
@@ -24,11 +25,19 @@ public class UpdateOrgUnitRequest {
 
     private OrgUnitType type;
 
+    /** Optional description of the unit. */
+    private String description;
+
     @Size(max = 500, message = "Địa chỉ tối đa 500 ký tự")
     private String address;
 
     @Size(max = 20, message = "Số điện thoại tối đa 20 ký tự")
     private String phone;
 
+    /** Coefficient: > 0, max 2 decimal places. BR-017 */
+    @DecimalMin(value = "0.01", message = "Hệ số phải lớn hơn 0")
+    private Double coefficient;
+
+    /** Status — can be used to submit for approval (PENDING). */
     private OrgUnitStatus status;
 }

@@ -1,0 +1,27 @@
+{
+  "_pipeline": {
+    "created_at": "2026-06-25T18:12:13.409Z",
+    "pmo_session_id": "ses_1003678b3ffei8GKeH9JoeHWe0",
+    "updated_at": "2026-06-25T18:12:13.409Z"
+  },
+  "blocks": [
+    {
+      "id": "h1",
+      "level": 1,
+      "text": "BÁO CÁO HIỆN TRẠNG DỰ ÁN",
+      "type": "heading"
+    },
+    {
+      "id": "p1",
+      "text": "**Dự án:** Hệ thống Quản lý Kết cấu Hạ tầng Giao thông Hàng hải \\(Hàng Hải KCHTGT\\)  \n**Ngày:** 2026-06-26  \n**Mục đích:** Cung cấp bức tranh toàn cảnh Code ↔ Doc ↔ SDLC để PMO ra quyết định triển khai  \n**Scope:** 22 modules, 289 features, 361 Java files, 86 TS/TSX files",
+      "type": "paragraph"
+    }
+  ],
+  "created_at": "2026-06-25T18:12:13.409Z",
+  "doc_type": "report",
+  "id": "project-status-report-hang-hai-kchtgt",
+  "schema_version": "1.0",
+  "session_id": "ses_1003678b3ffei8GKeH9JoeHWe0",
+  "title": "Project Status Report — Hàng Hải KCHTGT",
+  "updated_at": "2026-06-26T06:53:45.082Z"
+}

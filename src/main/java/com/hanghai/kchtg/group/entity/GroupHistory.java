@@ -11,56 +11,63 @@ import lombok.Setter;
 import java.util.UUID;
 
 /**
- * Lịch sử thay đổi của nhóm - ghi lại mọi thao tác CREATE / UPDATE / DELETE
- * để phục vụ việc audit và khôi phục nếu cần.
+ * Lich su thay doi cua nhom - ghi lai moi thao tac CREATE / UPDATE / DELETE
+ * de phuc vu viec audit va khoi phuc neu can.
+ * <p>
+ * M-001 F-002: Aligned with SA spec — action, performedBy, performedAt, notes.
+ * </p>
  */
 @Entity
-@Table(name = "group_history")
+@Table(name = "group_histories")
 @Getter
 @Setter
 @NoArgsConstructor
 public class GroupHistory extends BaseEntity {
 
-    /** ID của nhóm bị thay đổi. */
+    /** ID cua nhom bi thay doi. */
     @Column(name = "user_group_id", nullable = false)
     private UUID userGroupId;
 
-    /** Tên nhóm tại thời điểm thay đổi. */
-    @Column(length = 150)
+    /** Ten nhom tai thoi diem thay doi (denormalized). */
+    @Column(length = 100)
     private String groupName;
 
-    /** Mã code của nhóm tại thời điểm thay đổi. */
+    /** Ma code cua nhom tai thoi diem thay doi (denormalized). */
     @Column(length = 50)
     private String groupCode;
 
-    /** Hành động đã thực hiện: CREATED, UPDATED, DELETED. */
-    @Column(nullable = false, length = 20)
+    /** Hanh dong da thuc hien: CREATED, UPDATED, DELETED, MEMBER_ADDED, MEMBER_REMOVED, COPIED. */
+    @Column(nullable = false, length = 30)
     private String action;
 
-    /** Nội dung chi tiết của thay đổi (JSON hoặc mô tả text). */
+    /** Noi dung chi tiet cua thay doi (mo ta text). */
     @Column(columnDefinition = "TEXT")
-    private String details;
+    private String notes;
 
-    /** Người thực hiện thay đổi. */
-    @Column(name = "changed_by", nullable = false)
-    private UUID changedBy;
+    /** Nguoi thuc hien thay doi (UUID FK to User). */
+    @Column(name = "performed_by", nullable = false)
+    private UUID performedBy;
 
-    /** Tên người thực hiện (denormalized cho query nhanh). */
+    /** Ten nguoi thuc hien (denormalized cho query nhanh). */
     @Column(length = 100)
-    private String changedByName;
+    private String performedByName;
 
-    /** Timestamp tạo record (khác với createdAt của BaseEntity). */
-    @Column(name = "change_timestamp", nullable = false)
-    private java.time.LocalDateTime changeTimestamp;
+    /** Thoi diem thay doi (khac voi createdAt cua BaseEntity). */
+    @Column(name = "performed_at", nullable = false)
+    private java.time.LocalDateTime performedAt;
 
-    public static GroupHistory create(UUID userGroupId, String action, String details, UUID changedBy, String changedByName) {
+    /**
+     * Create a new GroupHistory entry.
+     */
+    public static GroupHistory create(UUID userGroupId, String action, String notes,
+                                      UUID performedBy, String performedByName) {
         GroupHistory history = new GroupHistory();
         history.setUserGroupId(userGroupId);
         history.setAction(action);
-        history.setDetails(details);
-        history.setChangedBy(changedBy);
-        history.setChangedByName(changedByName);
-        history.setChangeTimestamp(java.time.LocalDateTime.now());
+        history.setNotes(notes);
+        history.setPerformedBy(performedBy);
+        history.setPerformedByName(performedByName);
+        history.setPerformedAt(java.time.LocalDateTime.now());
         return history;
     }
 }

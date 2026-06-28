@@ -1,8 +1,4 @@
 ---
-status: proposed
-last-updated: 2026-06-17T03:23:15Z
----
----
 id: F-002
 name: Quan ly nhom nguoi dung
 slug: quan-ly-nhom-nguoi-dung

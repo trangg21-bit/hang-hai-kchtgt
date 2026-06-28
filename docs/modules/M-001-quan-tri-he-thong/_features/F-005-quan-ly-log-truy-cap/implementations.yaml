@@ -6,8 +6,51 @@ slug: quan-ly-log-truy-cap
 # Primary owner = service that implements feature's main flow.
 # Consumers = services/apps that read or invoke this feature.
 implementations:
-  primary: ""
-  consumers: []
+  primary: "com.hanghai.kchtg.accesslog.service.AccessLogService"
+  services:
+    - path: "com.hanghai.kchtg.accesslog.service.AccessLogService"
+      role: primary
+      description: "Read-only access-log queries with specification-based filtering (type, severity, keyword)"
+    - path: "com.hanghai.kchtg.accesslog.service.LogService"
+      role: primary
+      description: "CSV export (streaming), aggregation, retention cleanup, alert-on-failures, retention policy CRUD"
+    - path: "com.hanghai.kchtg.accesslog.service.AsyncLogAppender"
+      role: infrastructure
+      description: "Async batch log writer — receives entries from interceptor, batches to DB"
+    - path: "com.hanghai.kchtg.accesslog.interceptor.AccessLogInterceptor"
+      role: infrastructure
+      description: "HandlerInterceptor — captures request details, auto-assigns type/severity, queues entries"
+    - path: "com.hanghai.kchtg.accesslog.controller.AccessLogController"
+      role: primary
+      description: "GET /api/access-logs (list/detail), POST/PUT/DELETE → 403 immutability"
+    - path: "com.hanghai.kchtg.accesslog.controller.LogExportController"
+      role: primary
+      description: "GET /api/logs/export/csv, /api/logs/alerts/failures, /api/logs/aggregate, /api/logs/retention"
+  consumers:
+    - path: "com.hanghai.kchtg.accesslog.scheduler.LogCleanupScheduler"
+      role: consumer
+      description: "Daily cleanup — reads retentionDays from LogRetentionPolicy entity"
+    - path: "com.hanghai.kchtg.accesslog.scheduler.LogStatsScheduler"
+      role: consumer
+      description: "Daily aggregate computation at 3 AM"
+  entities:
+    - com.hanghai.kchtg.accesslog.entity.AccessLog
+    - com.hanghai.kchtg.accesslog.entity.LogRetentionPolicy
+    - com.hanghai.kchtg.accesslog.entity.LogAggregate
+    - com.hanghai.kchtg.accesslog.entity.AccessLogStatus
+  enums:
+    - com.hanghai.kchtg.accesslog.enums.LogType
+    - com.hanghai.kchtg.accesslog.enums.LogSeverity
+  repositories:
+    - com.hanghai.kchtg.accesslog.repository.AccessLogRepository
+    - com.hanghai.kchtg.accesslog.repository.LogRetentionPolicyRepository
+    - com.hanghai.kchtg.accesslog.repository.LogAggregateRepository
+  dtos:
+    - com.hanghai.kchtg.accesslog.dto.AccessLogFilterRequest
+    - com.hanghai.kchtg.accesslog.dto.AccessLogResponse
+    - com.hanghai.kchtg.accesslog.dto.LogAggregateResponse
+  migration:
+    - V21__F-005_extend_access_logs_add_type_severity.sql
 
 # Cross-cutting: features consumed by multiple modules
-consumed_by_modules: []
+consumed_by_modules: ["M-010"]

@@ -1,0 +1,81 @@
+{
+  "version": "v2",
+  "generated_at": "2026-06-27T22:33:27Z",
+  "generator": "ai-kit/state-update-rebuild-catalog",
+  "modules": {
+    "M-001": {
+      "id": "M-001",
+      "name": "Quản trị hệ thống",
+      "slug": "quan-tri-he-thong",
+      "status": "proposed",
+      "version": 1,
+      "feature_count": 4,
+      "aggregate_size_status": "green",
+      "depends_on": [],
+      "path": "docs/modules/M-001-quan-tri-he-thong/",
+      "features": {
+        "F-001": {
+          "id": "F-001",
+          "name": "Quản lý tài khoản người dùng",
+          "slug": "quan-ly-tai-khoan-nguoi-dung",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-001-quan-ly-tai-khoan-nguoi-dung/",
+          "confidence": "high"
+        },
+        "F-002": {
+          "id": "F-002",
+          "name": "Quản lý nhóm người dùng",
+          "slug": "quan-ly-nhom-nguoi-dung",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-002-quan-ly-nhom-nguoi-dung/",
+          "confidence": "high"
+        },
+        "F-003": {
+          "id": "F-003",
+          "name": "Quản lý đơn vị",
+          "slug": "quan-ly-don-vi",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-003-quan-ly-don-vi/",
+          "confidence": "high"
+        },
+        "F-005": {
+          "id": "F-005",
+          "name": "Quản lý log truy cập",
+          "slug": "quan-ly-log-truy-cap",
+          "status": "proposed",
+          "classification": "local",
+          "visibility": [
+            "PRIVATE"
+          ],
+          "version": 1,
+          "depends_on": [],
+          "consumed_by_modules": [],
+          "path": "docs/modules/M-001-quan-tri-he-thong/_features/F-005-quan-ly-log-truy-cap/",
+          "confidence": "high"
+        }
+      }
+    }
+  },
+  "checksum": "sha256:c784359edf16058813db573ee41874c22520d42e2546b1b2126516278f6f9b63"
+}

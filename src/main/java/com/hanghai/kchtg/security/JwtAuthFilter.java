@@ -1,5 +1,8 @@
 package com.hanghai.kchtg.security;
 
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.entity.UserStatus;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -18,6 +21,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -29,6 +33,10 @@ import java.util.List;
  * When the {@code totp_enabled} claim is {@code true}, the filter additionally
  * checks that the request is NOT targeted at a TOTP management endpoint -
  * such requests require explicit MFA verification and are handled separately.
+ * <p>
+ * <b>Wave 2 enhancement (T-005, T-007):</b> Checks user status=LOCKED
+ * and accountLockedUntil > now on every authenticated request.
+ * If the account is locked, the request is rejected with 403.
  * </p>
  */
 @Component
@@ -52,12 +60,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     };
 
     private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
 
     @Value("${jwt.mock-token:#{null}}")
     private String mockToken;
 
-    public JwtAuthFilter(JwtUtil jwtUtil) {
+    public JwtAuthFilter(JwtUtil jwtUtil, UserRepository userRepository) {
         this.jwtUtil = jwtUtil;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -99,25 +109,58 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                     log.debug("JWT authenticated: user={}, role={}, totpEnabled={}", username, role, totpEnabled);
 
-                    // If TOTP is enabled and this is NOT a TOTP management endpoint,
-                    // log a warning (the actual enforcement is expected at the controller layer).
-                    if (totpEnabled) {
-                        String path = request.getRequestURI();
-                        for (String allowed : PATHS_WITHOUT_AUTH) {
-                            if (path.startsWith(allowed)) {
-                                return; // Allow TOTP management endpoints
+                    // Wave 2 (T-005, T-007): Check account lockout on every request
+                    if (!isAccountLocked(username)) {
+                        // TOTP check for TOTP-enabled users
+                        if (totpEnabled) {
+                            String path = request.getRequestURI();
+                            for (String allowed : PATHS_WITHOUT_AUTH) {
+                                if (path.startsWith(allowed)) {
+                                    filterChain.doFilter(request, response);
+                                    return; // Allow TOTP management endpoints
+                                }
                             }
+                            log.debug("User {} has TOTP enabled - proceed with request: {}", username, path);
                         }
-                        log.debug("User {} has TOTP enabled - proceed with request: {}", username, path);
+                        filterChain.doFilter(request, response);
+                    } else {
+                        log.warn("Request from LOCKED user {} rejected by JwtAuthFilter", username);
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        response.setContentType("application/json");
+                        response.getWriter().write("{\"success\":false,\"message\":\"Tai khoan da bi khoa\"}");
+                        return;
                     }
                 }
             } catch (JwtException e) {
                 log.debug("Invalid JWT token: {}", e.getMessage());
                 SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
             }
+        } else {
+            filterChain.doFilter(request, response);
         }
+    }
 
-        filterChain.doFilter(request, response);
+    /**
+     * T-005, T-007: Check if the user account is locked.
+     * Checks both status=LOCKED and accountLockedUntil > now.
+     *
+     * @param username the username to check
+     * @return true if the account is locked (should reject request)
+     */
+    private boolean isAccountLocked(String username) {
+        return userRepository.findByUsername(username).map(user -> {
+            // Check status = LOCKED
+            if (user.getStatus() == UserStatus.LOCKED) {
+                return true;
+            }
+            // Check accountLockedUntil > now (BR-007 auto-lock from failed TOTP logins)
+            if (user.getAccountLockedUntil() != null
+                    && LocalDateTime.now().isBefore(user.getAccountLockedUntil())) {
+                return true;
+            }
+            return false;
+        }).orElse(false);
     }
 
     /**

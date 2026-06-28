@@ -11,23 +11,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.UUID;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * Read-only REST controller for access-log audit records.
  * <p>
- * Endpoints:
- * <ul>
- *   <li>{@code GET /api/access-logs} - paginated list with optional filters</li>
- *   <li>{@code GET /api/access-logs/{id}} - single entry by ID</li>
- * </ul>
- * No create, update, or delete operations are exposed - the access-log is
- * an audit artifact populated by a cross-cutting aspect.
+ * F-005 changes:
+ * - PK type changed from UUID to Long
+ * - {@code @PreAuthorize} guards added per BA role table
+ * - Immutability enforcement: PUT/DELETE/POST return 403 (not 404)
+ * - Filter supports type, severity, keyword (via AccessLogFilterRequest)
  * </p>
  */
 @RestController
@@ -45,23 +39,23 @@ public class AccessLogController {
     /**
      * List access-log entries with optional filters and pagination.
      * <p>
-     * Default sort: newest entries first.
+     * F-005: Added @PreAuthorize guard per BA role table.
+     * Supports type, severity, keyword filters via query params.
      * </p>
-     *
-     * @param filter   optional query parameters: userId, module, from, to
-     * @param pageable pagination (page, size, sort) - defaults to page 0, size 20,
-     *                 sorted by createdAt descending
-     * @return paginated list of access-log entries
      */
     @GetMapping
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<Page<AccessLogResponse>>> list(
             AccessLogFilterRequest filter,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
 
-        log.debug("Listing access-logs with filter: userId={}, module={}, from={}, to={}",
+        log.debug("Listing access-logs with filter: userId={}, module={}, type={}, severity={}, keyword={}, from={}, to={}",
                 filter != null ? filter.getUserId() : null,
                 filter != null ? filter.getModule() : null,
+                filter != null ? filter.getType() : null,
+                filter != null ? filter.getSeverity() : null,
+                filter != null ? filter.getKeyword() : null,
                 filter != null ? filter.getFrom() : null,
                 filter != null ? filter.getTo() : null);
 
@@ -71,14 +65,50 @@ public class AccessLogController {
 
     /**
      * Get a single access-log entry by its ID.
-     *
-     * @param id the entity primary key
-     * @return the access-log entry
+     * <p>
+     * F-005: PK type changed from UUID to Long.
+     * </p>
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<AccessLogResponse>> getById(@PathVariable UUID id) {
+    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
+    public ResponseEntity<ApiResponse<AccessLogResponse>> getById(@PathVariable Long id) {
         log.debug("Fetching access-log entry: id={}", id);
         AccessLogResponse response = service.findById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // ── Immutability enforcement — BR-025 ─────────────────────────────
+
+    /**
+     * Reject POST attempts to create logs manually.
+     * BR-005-08: Only the system creates logs.
+     */
+    @PostMapping
+    public ResponseEntity<ApiResponse<Void>> createLog() {
+        log.warn("Attempted manual log creation via POST /api/access-logs — rejected");
+        return ResponseEntity.status(403)
+                .body(ApiResponse.error("Log chỉ được tạo tự động bởi hệ thống"));
+    }
+
+    /**
+     * Reject PUT attempts to modify logs.
+     * BR-005-02: Logs are immutable.
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> updateLog(@PathVariable Long id) {
+        log.warn("Attempted to UPDATE access-log id={} — rejected", id);
+        return ResponseEntity.status(403)
+                .body(ApiResponse.error("Log không thể sửa đổi"));
+    }
+
+    /**
+     * Reject DELETE attempts on logs.
+     * BR-005-02: Logs are immutable.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteLog(@PathVariable Long id) {
+        log.warn("Attempted to DELETE access-log id={} — rejected", id);
+        return ResponseEntity.status(403)
+                .body(ApiResponse.error("Log không thể xóa"));
     }
 }

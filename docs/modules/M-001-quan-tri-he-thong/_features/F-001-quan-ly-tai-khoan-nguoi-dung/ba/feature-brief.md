@@ -1,8 +1,4 @@
 ---
-status: proposed
-last-updated: 2026-06-17T03:23:15Z
----
----
 id: F-001
 name: Quan ly tai khoan nguoi dung
 slug: quan-ly-tai-khoan-nguoi-dung

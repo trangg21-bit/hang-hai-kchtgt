@@ -1,70 +1,68 @@
 package com.hanghai.kchtg.orgunit.entity;
 
 import com.hanghai.kchtg.common.entity.BaseEntity;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.persistence.*;
+import lombok.*;
 
 import java.util.UUID;
 
 /**
- * Lịch sử thay đổi của đơn vị tổ chức - ghi lại mọi thao tác CREATE / UPDATE / DELETE / APPROVE / REJECT
- * để phục vụ việc audit và khôi phục nếu cần.
+ * Audit trail entity for organisational unit changes.
+ * Append-only — records CREATE, UPDATE, DELETE, APPROVE, REJECT, MOVE actions.
  */
 @Entity
 @Table(name = "unit_history")
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class UnitHistory extends BaseEntity {
 
-    /** ID của đơn vị bị thay đổi. */
+    /** ID of the unit that was changed. */
     @Column(name = "unit_id", nullable = false)
     private UUID unitId;
 
-    /** Tên đơn vị tại thời điểm thay đổi. */
+    /** Unit name at time of change. */
     @Column(length = 200)
     private String unitName;
 
-    /** Mã code của đơn vị tại thời điểm thay đổi. */
+    /** Unit code at time of change. */
     @Column(length = 50)
     private String unitCode;
 
-    /** Hành động đã thực hiện: CREATED, UPDATED, DELETED, APPROVED, REJECTED. */
+    /** Action type: CREATED, UPDATED, DELETED, APPROVED, REJECTED, MOVED. */
     @Column(nullable = false, length = 20)
     private String action;
 
-    /** Nội dung chi tiết của thay đổi (JSON hoặc mô tả text). */
+    /** Detailed description of the change (JSON or text). */
     @Column(columnDefinition = "TEXT")
     private String details;
 
-    /** Người thực hiện thay đổi. */
+    /** User who performed the action (FK → User.id, stored as UUID). */
     @Column(name = "performed_by", nullable = false)
     private UUID performedBy;
 
-    /** Tên người thực hiện (denormalized cho query nhanh). */
+    /** Username who performed the action (denormalized for fast queries). */
     @Column(length = 100)
     private String performedByName;
 
-    /** Timestamp tạo record. */
+    /** Timestamp of when the action was performed. */
     @Column(name = "performed_at", nullable = false)
     private java.time.LocalDateTime performedAt;
 
     /**
-     * Tạo mới record UnitHistory.
+     * Factory method to create a new UnitHistory record.
      */
     public static UnitHistory create(UUID unitId, String action, String details,
                                      UUID performedBy, String performedByName) {
-        UnitHistory history = new UnitHistory();
-        history.setUnitId(unitId);
-        history.setAction(action);
-        history.setDetails(details);
-        history.setPerformedBy(performedBy);
-        history.setPerformedByName(performedByName);
-        history.setPerformedAt(java.time.LocalDateTime.now());
-        return history;
+        return UnitHistory.builder()
+                .unitId(unitId)
+                .action(action)
+                .details(details)
+                .performedBy(performedBy)
+                .performedByName(performedByName)
+                .performedAt(java.time.LocalDateTime.now())
+                .build();
     }
 }

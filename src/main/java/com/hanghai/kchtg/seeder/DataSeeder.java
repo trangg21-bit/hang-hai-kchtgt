@@ -271,10 +271,10 @@ public class DataSeeder implements CommandLineRunner {
         OrgUnit u1 = OrgUnit.builder()
                 .name("Tổng Cục Đường Bộ")
                 .code("ORG_TCDb")
-                .type(OrgUnitType.DEPARTMENT)
+                .type(OrgUnitType.CUC)
                 .address("Hà Nội")
                 .phone("0241234567")
-                .status(OrgUnitStatus.ACTIVE)
+                .status(OrgUnitStatus.APPROVED)
                 .build();
         orgUnitRepo.save(u1);
         log.info("✅ Seeded {} OrgUnits", orgUnitRepo.count());

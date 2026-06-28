@@ -1,0 +1,194 @@
+﻿{
+  "wave": "wave5",
+  "module": "M-009-lien-thong-tich-hop-du-lieu",
+  "date": "2026-06-23T10:07:08+07:00",
+  "environment": {
+    "java_version": "17.0.18",
+    "maven_version": "3.9.14",
+    "spring_boot_version": "3.3.6"
+  },
+  "wave_features": {
+    "F-237": {
+      "name": "VTS Operations Operational Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/vts/operations/sync",
+      "test_method": "syncVtsOperations_success",
+      "status": "implemented"
+    },
+    "F-238": {
+      "name": "Radar Operational Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/radar/sync",
+      "test_method": "syncRadar_success",
+      "status": "implemented"
+    },
+    "F-239": {
+      "name": "AIS Operational Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/ais/sync",
+      "test_method": "syncAis_success",
+      "status": "implemented"
+    },
+    "F-240": {
+      "name": "CCTV Operational Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/cctv/sync",
+      "test_method": "syncCctv_success",
+      "status": "implemented"
+    },
+    "F-241": {
+      "name": "SCADA Operational Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/scada/sync",
+      "test_method": "syncScada_success",
+      "status": "implemented"
+    },
+    "F-242": {
+      "name": "VHF Info Operational Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/vhf-info/sync",
+      "test_method": "syncVhfInfo_success",
+      "status": "implemented"
+    },
+    "F-243": {
+      "name": "Transmission Operational Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/transmission/sync",
+      "test_method": "syncTransmission_success",
+      "status": "implemented"
+    },
+    "F-244": {
+      "name": "VTS Support Operational Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/vts-support/sync",
+      "test_method": "syncVtsSupport_success",
+      "status": "implemented"
+    },
+    "F-245": {
+      "name": "Breakwater Operational Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/breakwater/sync",
+      "test_method": "syncBreakwater_success",
+      "status": "implemented"
+    },
+    "F-246": {
+      "name": "Cargo Operational Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/cargo/sync",
+      "test_method": "syncCargo_success",
+      "status": "implemented"
+    },
+    "F-247": {
+      "name": "Operation Center TTDH Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/operation-center/ttdh/sync",
+      "test_method": "syncOperationCenterTtdh_success",
+      "status": "implemented"
+    },
+    "F-248": {
+      "name": "Operation Center Inmarsat Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/operation-center/inmarsat/sync",
+      "test_method": "syncOperationCenterInmarsat_success",
+      "status": "implemented"
+    },
+    "F-249": {
+      "name": "Operation Center COSPAS-SARSAT Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/operation-center/cospas-sarsat/sync",
+      "test_method": "syncOperationCenterCospasSarsat_success",
+      "status": "implemented"
+    },
+    "F-250": {
+      "name": "Operation Center LRIT Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/operation-center/lrit/sync",
+      "test_method": "syncOperationCenterLrit_success",
+      "status": "implemented"
+    },
+    "F-251": {
+      "name": "Operation Center Haiphong Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/operation-center/haiphong/sync",
+      "test_method": "syncOperationCenterHaiphong_success",
+      "status": "implemented"
+    },
+    "F-252": {
+      "name": "Port Status Operational Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/port-status/sync",
+      "test_method": "syncPortStatus_success",
+      "status": "implemented"
+    }
+  },
+  "summary": {
+    "total": 31,
+    "passed": 31,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "pass_rate": 100.0
+  },
+  "build": {
+    "status": "SUCCESS",
+    "duration_seconds": 27.570
+  },
+  "test_classes": [
+    {
+      "class": "com.hanghai.kchtg.integration.PortCargoIntegrationControllerTest",
+      "features": "F-237..F-252",
+      "total_tests": 19,
+      "wave_specific": 16,
+      "shared": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "wave_specific_tests": [
+        "syncVtsOperations_success",
+        "syncRadar_success",
+        "syncAis_success",
+        "syncCctv_success",
+        "syncScada_success",
+        "syncVhfInfo_success",
+        "syncTransmission_success",
+        "syncVtsSupport_success",
+        "syncBreakwater_success",
+        "syncCargo_success",
+        "syncOperationCenterTtdh_success",
+        "syncOperationCenterInmarsat_success",
+        "syncOperationCenterCospasSarsat_success",
+        "syncOperationCenterLrit_success",
+        "syncOperationCenterHaiphong_success",
+        "syncPortStatus_success"
+      ],
+      "shared_tests": [
+        "syncEndpoint_unauthenticated_forbiddenOrUnauthorized",
+        "syncEndpoint_insufficientRoles_forbidden",
+        "retrySync_success"
+      ]
+    },
+    {
+      "class": "com.hanghai.kchtg.integration.PortCargoIntegrationServiceTest",
+      "features": "shared-infrastructure",
+      "total_tests": 6,
+      "wave_specific": 0,
+      "shared": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "wave_specific_tests": [],
+      "shared_tests": [
+        "executeSync_connectionNotFound_throws",
+        "executeSync_emptyUrl_fails",
+        "executeSync_disallowedUrlScheme_fails",
+        "retrySyncJob_jobNotFound_throws",
+        "retrySyncJob_maxRetryReached_throws",
+        "retrySyncJob_incrementRetryCount"
+      ]
+    },
+    {
+      "class": "com.hanghai.kchtg.integration.PortCargoShareControllerTest",
+      "features": "shared-infrastructure",
+      "total_tests": 6,
+      "wave_specific": 0,
+      "shared": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "wave_specific_tests": [],
+      "shared_tests": [
+        "missingToken_unauthorized",
+        "getPortStatuses_success",
+        "getAssetStatus_success",
+        "getComprehensiveInfo_success",
+        "getPortCargoTotal_success",
+        "getCargoSummary_success"
+      ]
+    }
+  ],
+  "verdict": "PASS"
+}

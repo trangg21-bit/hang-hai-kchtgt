@@ -1,0 +1,87 @@
+module_id: M-009
+module_name: "Liên thông & Tích hợp dữ liệu"
+type: bounded-context
+slug: lien-thong-tich-hop-du-lieu
+
+# Map logical module → physical implementations across apps/services/libs.
+# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
+implementations:
+  apps:
+    - path: "src/main/java/com/hanghai/kchtg"
+      type: spring-boot-app
+      description: "Main application containing M-009 bounded context"
+  services: []
+  libs: []
+  packages:
+    - name: "integration"
+      path: "src/main/java/com/hanghai/kchtg/integration"
+      files:
+        - "controller/IntegrationShareController.java"
+        - "controller/IntegrationSyncController.java"
+        - "controller/IntegrationTokenAdvice.java"
+        - "controller/PortCargoShareController.java"
+        - "controller/PortCargoIntegrationController.java"
+        - "service/IntegrationSyncService.java"
+        - "service/PortCargoIntegrationService.java"
+        - "service/DataSeeder.java"
+        - "entity/PortStatus.java"
+        - "entity/CargoAggregate.java"
+        - "entity/IntegrationSyncJob.java"
+        - "entity/IntegrationDlq.java"
+        - "repository/PortStatusRepository.java"
+        - "repository/CargoAggregateRepository.java"
+        - "repository/IntegrationSyncJobRepository.java"
+        - "repository/IntegrationDlqRepository.java"
+        - "dto/SyncTriggerResponse.java"
+      description: "Integration share & sync endpoints"
+      status: implemented
+    - name: "dataconnection"
+      path: "src/main/java/com/hanghai/kchtg/dataconnection"
+      files:
+        - "controller/DataConnectionController.java"
+        - "service/DataConnectionService.java"
+        - "service/ConnectionService.java"
+        - "entity/DataConnection.java"
+        - "entity/ConnectionHealth.java"
+        - "entity/SyncLog.java"
+        - "dto/CreateConnectionRequest.java"
+        - "dto/UpdateConnectionRequest.java"
+        - "dto/ConnectionResponse.java"
+        - "dto/TestConnectionRequest.java"
+        - "dto/TestConnectionResponse.java"
+        - "repository/DataConnectionRepository.java"
+        - "repository/SyncLogRepository.java"
+        - "repository/ConnectionHealthRepository.java"
+        - "enums/ConnectionType.java"
+        - "enums/ConnectionStatus.java"
+        - "enums/AuthType.java"
+        - "enums/SyncFrequency.java"
+      description: "Data connection management with encryption, health check, retry policy"
+      status: implemented
+    - name: "integration-tests"
+      path: "src/test/java/com/hanghai/kchtg/integration"
+      files:
+        - "IntegrationShareControllerTest.java"
+        - "IntegrationSyncServiceTest.java"
+        - "PortCargoShareControllerTest.java"
+        - "PortCargoIntegrationControllerTest.java"
+        - "PortCargoIntegrationServiceTest.java"
+      description: "Unit tests for integration module"
+      status: implemented
+    - name: "security"
+      path: "src/main/java/com/hanghai/kchtg/security"
+      files:
+        - "EncryptionUtil.java"
+      description: "Encryption utilities used by dataconnection for credentials"
+      status: implemented
+
+# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
+stakeholders:
+  business-owner: ""
+  tech-lead: ""
+  qa-lead: ""
+
+# Cross-references
+depends_on:
+  - M-001: Security & auth framework (JwtAuthFilter, EncryptionUtil)
+  - M-006: GIS framework (PointObject, LineObject, PolygonObject repositories)

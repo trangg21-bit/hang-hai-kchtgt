@@ -8,5 +8,6 @@ public enum UserStatus {
     INACTIVE,
     LOCKED,
     DELETED,
-    PENDING_VERIFICATION
+    PENDING_VERIFICATION,
+    PENDING_APPROVAL
 }

@@ -1,0 +1,36 @@
+module_id: M-018
+module_name: "Chia sẻ dữ liệu KCHTGT"
+type: bounded-context
+slug: chia-se-du-lieu-kchtgt
+
+implementations:
+  apps:
+    - path: "src/main/java/com/hanghai/kchtg"
+      type: spring-boot-app
+      description: "Main application containing M-018 chia se du lieu KCHTGT bounded context"
+  services: []
+  libs: []
+  packages:
+    - name: "datasharing-core"
+      path: "src/main/java/com/hanghai/kchtg/datasharing"
+      description: "Core data sharing (F-190 to F-207)"
+      status: implemented
+    - name: "datasharing-workflow"
+      path: "src/main/java/com/hanghai/kchtg/datasharing"
+      description: "Share workflow: submit/approve/revoke (F-190 to F-207)"
+      status: implemented
+    - name: "datasharing-services"
+      path: "src/main/java/com/hanghai/kchtg/datasharing"
+      description: "Specialized services: PortShare, SystemShare, NavigationShare"
+      status: implemented
+    - name: "datasharing-tests"
+      path: "src/test/java/com/hanghai/kchtg/datasharing"
+      description: "Unit tests for data sharing module"
+      status: implemented
+
+stakeholders:
+  business-owner: ""
+  tech-lead: ""
+  qa-lead: ""
+
+depends_on: []

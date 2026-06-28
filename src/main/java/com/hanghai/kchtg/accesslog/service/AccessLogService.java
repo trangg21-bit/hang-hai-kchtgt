@@ -3,6 +3,8 @@ package com.hanghai.kchtg.accesslog.service;
 import com.hanghai.kchtg.accesslog.dto.AccessLogFilterRequest;
 import com.hanghai.kchtg.accesslog.dto.AccessLogResponse;
 import com.hanghai.kchtg.accesslog.entity.AccessLog;
+import com.hanghai.kchtg.accesslog.enums.LogSeverity;
+import com.hanghai.kchtg.accesslog.enums.LogType;
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.criteria.Predicate;
@@ -16,14 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Read-only service for access-log queries.
  * <p>
- * The access-log is an audit artifact - entries are created by a
- * cross-cutting aspect (not implemented here). This service only
- * provides query operations.
+ * F-005 extends buildSpecification() to support type, severity, and keyword filters.
  * </p>
  */
 @Service
@@ -40,12 +39,8 @@ public class AccessLogService {
 
     /**
      * Retrieve a single access-log entry by its primary key.
-     *
-     * @param id the entry ID
-     * @return the response DTO
-     * @throws EntityNotFoundException if the entry does not exist
      */
-    public AccessLogResponse findById(UUID id) {
+    public AccessLogResponse findById(Long id) {
         AccessLog entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("AccessLog not found: " + id));
         return new AccessLogResponse(entity);
@@ -54,10 +49,6 @@ public class AccessLogService {
     /**
      * List access-log entries with optional filters, returned as a
      * Spring Data {@link Page} of {@link AccessLogResponse}.
-     *
-     * @param filter   optional filter criteria (may be {@code null})
-     * @param pageable pagination / sort parameters
-     * @return a page of access-log responses
      */
     public Page<AccessLogResponse> findAll(AccessLogFilterRequest filter, Pageable pageable) {
         Specification<AccessLog> spec = buildSpecification(filter);
@@ -65,15 +56,11 @@ public class AccessLogService {
                 .map(AccessLogResponse::new);
     }
 
-    // =========================================================================
+    // ── Specification builder ────────────────────────────────────────
 
-    /**
-     * Build a dynamic JPA {@link Specification} from the filter DTO.
-     * Only non-{@code null} fields contribute predicates.
-     */
     private Specification<AccessLog> buildSpecification(AccessLogFilterRequest filter) {
         if (filter == null) {
-            return null; // no filtering
+            return null;
         }
 
         return (root, query, cb) -> {
@@ -90,6 +77,24 @@ public class AccessLogService {
             }
             if (filter.getTo() != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), filter.getTo()));
+            }
+
+            // ── F-005 new filters ──────────────────────────────────────
+
+            // Type filter
+            if (filter.getType() != null && !filter.getType().isBlank()) {
+                predicates.add(cb.equal(root.get("type"), LogType.fromValue(filter.getType())));
+            }
+
+            // Severity filter
+            if (filter.getSeverity() != null && !filter.getSeverity().isBlank()) {
+                predicates.add(cb.equal(root.get("severity"), LogSeverity.fromValue(filter.getSeverity())));
+            }
+
+            // Keyword search (case-insensitive LIKE on detail field)
+            if (filter.getKeyword() != null && !filter.getKeyword().isBlank()) {
+                String keywordPattern = "%" + filter.getKeyword().trim().toLowerCase() + "%";
+                predicates.add(cb.like(cb.lower(root.get("detail")), keywordPattern));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

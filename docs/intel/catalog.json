@@ -1,14 +1,14 @@
 {
   "version": "v2",
-  "generated_at": "2026-06-27T20:55:58Z",
+  "generated_at": "2026-06-28T12:19:33Z",
   "generator": "ai-kit/state-update-rebuild-catalog",
   "modules": {
     "M-001": {
       "id": "M-001",
       "name": "Quản trị hệ thống",
       "slug": "quan-tri-he-thong",
-      "status": "proposed",
-      "version": 1,
+      "status": "in-progress",
+      "version": 4,
       "feature_count": 4,
       "aggregate_size_status": "green",
       "depends_on": [],

@@ -1,0 +1,18 @@
+feature_id: F-274
+module_id: M-010
+slug: quan-ly-jwt-session
+stage: done
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: "com.hanghai.kchtg.security.JwtTokenService"
+  consumers:
+    - "com.hanghai.kchtg.user.controller.AuthController"
+    - "com.hanghai.kchtg.config.SecurityConfig"
+    - "com.hanghai.kchtg.user.service.UserService"
+    - "com.hanghai.kchtg.security.JwtAuthFilter"
+
+# Cross-cutting: features consumed by multiple modules
+consumed_by_modules: []
