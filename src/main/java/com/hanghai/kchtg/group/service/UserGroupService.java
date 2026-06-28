@@ -3,6 +3,7 @@ package com.hanghai.kchtg.group.service;
 import com.hanghai.kchtg.group.dto.AddGroupMemberRequest;
 import com.hanghai.kchtg.group.dto.CreateUserGroupRequest;
 import com.hanghai.kchtg.group.dto.GroupCopyRequest;
+import com.hanghai.kchtg.group.dto.GroupResponse;
 import com.hanghai.kchtg.group.dto.PaginatedGroupResponse;
 import com.hanghai.kchtg.group.dto.UpdateUserGroupRequest;
 import com.hanghai.kchtg.group.dto.UserGroupResponse;
@@ -111,7 +112,7 @@ public class UserGroupService {
      * Cap nhat thong tin nhom (BR-008: unique name re-check).
      */
     public UserGroup update(UUID id, UpdateUserGroupRequest request, UUID operatorId, String operatorName) {
-        UserGroup group = findById(id);
+        UserGroup group = findEntityById(id);
         StringBuilder details = new StringBuilder();
 
         if (request.getName() != null && !request.getName().equals(group.getName())) {
@@ -154,7 +155,7 @@ public class UserGroupService {
      * Xoa nhom (BR-009: member count check, BR-011: Admin-only enforced by controller).
      */
     public void delete(UUID id, UUID operatorId, String operatorName) {
-        UserGroup group = findById(id);
+        UserGroup group = findEntityById(id);
 
         // BR-009: Check member count before delete
         long activeMemberCount = groupMemberRepository
@@ -188,13 +189,18 @@ public class UserGroupService {
 
         Page<UserGroup> pageResult = groupRepository.searchAndFilter(searchParam, groupType, status, pageable);
 
-        List<UserGroupResponse> items = pageResult.getContent().stream()
+        List<GroupResponse> items = pageResult.getContent().stream()
                 .map(g -> UserGroupResponse.from(g,
                         groupMemberRepository.countByUserGroupIdAndStatus(g.getId(), GroupMemberStatus.ACTIVE)))
+                .map(this::toGroupResponse)
                 .toList();
 
-        return new PaginatedGroupResponse(items, pageResult.getTotalElements(),
-                                          pageResult.getNumber(), pageResult.getSize());
+        PaginatedGroupResponse result = new PaginatedGroupResponse();
+        result.setItems(items);
+        result.setTotal(pageResult.getTotalElements());
+        result.setPage(pageResult.getNumber());
+        result.setPageSize(pageResult.getSize());
+        return result;
     }
 
     /**
@@ -212,13 +218,18 @@ public class UserGroupService {
         Page<UserGroup> pageResult = groupRepository.searchAndFilterMyGroups(
                 searchParam, groupType, userId, pageable);
 
-        List<UserGroupResponse> items = pageResult.getContent().stream()
+        List<GroupResponse> items = pageResult.getContent().stream()
                 .map(g -> UserGroupResponse.from(g,
                         groupMemberRepository.countByUserGroupIdAndStatus(g.getId(), GroupMemberStatus.ACTIVE)))
+                .map(this::toGroupResponse)
                 .toList();
 
-        return new PaginatedGroupResponse(items, pageResult.getTotalElements(),
-                                          pageResult.getNumber(), pageResult.getSize());
+        PaginatedGroupResponse result = new PaginatedGroupResponse();
+        result.setItems(items);
+        result.setTotal(pageResult.getTotalElements());
+        result.setPage(pageResult.getNumber());
+        result.setPageSize(pageResult.getSize());
+        return result;
     }
 
     /**
@@ -338,7 +349,8 @@ public class UserGroupService {
         // Clone all active members with joinedBy = currentAdmin (BR-014)
         List<GroupMember> sourceMembers = groupMemberRepository
                 .findByGroupIdWithUser(sourceGroupId, GroupMemberStatus.ACTIVE,
-                                       org.springframework.data.domain.PageRequest.of(0, Integer.MAX_VALUE));
+                                       org.springframework.data.domain.PageRequest.of(0, Integer.MAX_VALUE))
+                .getContent();
 
         for (GroupMember srcMember : sourceMembers) {
             GroupMember newMember = new GroupMember();
@@ -383,6 +395,19 @@ public class UserGroupService {
     }
 
     // ── Private helpers ─────────────────────────────────────────────
+
+    private GroupResponse toGroupResponse(UserGroupResponse response) {
+        return new GroupResponse(
+                response.getId(),
+                response.getName(),
+                response.getCode(),
+                response.getDescription(),
+                null, // permissions not available from UserGroupResponse
+                response.getStatus(),
+                response.getCreatedAt(),
+                response.getUpdatedAt()
+        );
+    }
 
     private void saveHistory(UUID userGroupId, String name, String code,
                              String action, String notes, UUID changedBy, String changedByName) {

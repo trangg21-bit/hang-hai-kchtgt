@@ -5,9 +5,11 @@ import com.hanghai.kchtg.group.dto.AddGroupMemberRequest;
 import com.hanghai.kchtg.group.dto.CreateUserGroupRequest;
 import com.hanghai.kchtg.group.dto.GroupCopyRequest;
 import com.hanghai.kchtg.group.dto.GroupMemberResponse;
+import com.hanghai.kchtg.group.dto.GroupResponse;
 import com.hanghai.kchtg.group.dto.PaginatedGroupResponse;
 import com.hanghai.kchtg.group.dto.UpdateUserGroupRequest;
 import com.hanghai.kchtg.group.dto.UserGroupResponse;
+import com.hanghai.kchtg.group.entity.UserGroup;
 import com.hanghai.kchtg.group.entity.GroupHistory;
 import com.hanghai.kchtg.group.entity.GroupMember;
 import com.hanghai.kchtg.group.service.UserGroupService;
@@ -105,10 +107,10 @@ public class GroupController {
                     .body(ApiResponse.error("Yeu cau xac thuc"));
         }
 
-        UserGroupResponse group = service.create(request, operatorId, operatorName);
+        UserGroup created = service.create(request, operatorId, operatorName);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Tao nhom thanh cong", group));
+                .body(ApiResponse.success("Tao nhom thanh cong", UserGroupResponse.from(created, 0L)));
     }
 
     /**
@@ -129,8 +131,8 @@ public class GroupController {
                     .body(ApiResponse.error("Yeu cau xac thuc"));
         }
 
-        UserGroupResponse group = service.update(id, request, operatorId, operatorName);
-        return ResponseEntity.ok(ApiResponse.success("Cap nhat nhom thanh cong", group));
+        UserGroup updated = service.update(id, request, operatorId, operatorName);
+        return ResponseEntity.ok(ApiResponse.success("Cap nhat nhom thanh cong", UserGroupResponse.from(updated, 0L)));
     }
 
     /**
@@ -213,10 +215,9 @@ public class GroupController {
             @RequestParam(defaultValue = "20") int size) {
         Page<GroupMember> pageResult = service.findMembers(id, page, size);
 
-        List<GroupMemberResponse> items = pageResult.getContent().stream()
-                .map(GroupMemberResponse::from)
+        List<GroupResponse> items = pageResult.getContent().stream()
+                .map(m -> GroupResponse.from(m.getUserGroup()))
                 .toList();
-
         PaginatedGroupResponse result = new PaginatedGroupResponse(items, pageResult.getTotalElements(),
                 pageResult.getNumber(), pageResult.getSize());
         return ResponseEntity.ok(ApiResponse.success(result));
@@ -242,8 +243,7 @@ public class GroupController {
                     .body(ApiResponse.error("Yeu cau xac thuc"));
         }
 
-        UserGroup copied = service.copy(id, request, operatorId, operatorName);
-        UserGroupResponse response = UserGroupResponse.from(copied,
+        UserGroupResponse response = UserGroupResponse.from(service.copy(id, request, operatorId, operatorName),
                 0L); // will be populated with actual count by client or separate call
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -275,7 +275,12 @@ public class GroupController {
             @RequestParam(defaultValue = "20") int size) {
         Page<GroupHistory> pageResult = service.findHistoryPaginated(id, page, size);
 
-        List<GroupHistory> items = pageResult.getContent();
+        List<GroupResponse> items = pageResult.getContent().stream()
+                .map(h -> {
+                    UserGroup group = service.findEntityById(h.getUserGroupId());
+                    return GroupResponse.from(group);
+                })
+                .toList();
 
         PaginatedGroupResponse result = new PaginatedGroupResponse(items, pageResult.getTotalElements(),
                 pageResult.getNumber(), pageResult.getSize());
