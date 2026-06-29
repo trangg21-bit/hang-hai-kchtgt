@@ -7,24 +7,61 @@
 [WARNING] The artifact com.itextpdf:itext7-core:pom:8.0.5 has been relocated to com.itextpdf:itext-core:pom:8.0.5
 [INFO] 
 [INFO] --- clean:3.3.2:clean (default-clean) @ kchtg ---
-[INFO] Deleting /Users/thuytrang/workspace/hang-hai-kchtgt/target
+[INFO] Deleting D:\project\hang-hai-kchtgt\target
 [INFO] 
 [INFO] --- jacoco:0.8.12:prepare-agent (default) @ kchtg ---
-[INFO] argLine set to -javaagent:/Users/thuytrang/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/Users/thuytrang/workspace/hang-hai-kchtgt/target/jacoco.exec
+[INFO] argLine set to -javaagent:C:\Users\sonpn\.m2\repository\org\jacoco\org.jacoco.agent\0.8.12\org.jacoco.agent-0.8.12-runtime.jar=destfile=D:\project\hang-hai-kchtgt\target\jacoco.exec
 [INFO] 
 [INFO] --- resources:3.3.1:resources (default-resources) @ kchtg ---
-[INFO] Copying 3 resources from src/main/resources to target/classes
-[INFO] Copying 95 resources from src/main/resources to target/classes
+[INFO] Copying 3 resources from src\main\resources to target\classes
+[INFO] Copying 103 resources from src\main\resources to target\classes
 [INFO] 
 [INFO] --- compiler:3.13.0:compile (default-compile) @ kchtg ---
 [INFO] Recompiling the module because of changed source code.
-[INFO] Compiling 539 source files with javac [debug parameters release 17] to target/classes
-[WARNING] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/tai/entity/BaseTai.java:[57,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
-[INFO] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/beacon/service/BeaconLightService.java: Some input files use unchecked or unsafe operations.
-[INFO] /Users/thuytrang/workspace/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/beacon/service/BeaconLightService.java: Recompile with -Xlint:unchecked for details.
+[INFO] Compiling 699 source files with javac [debug parameters release 17] to target\classes
+[INFO] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/accesslog/service/LogService.java: Some input files use or override a deprecated API.
+[INFO] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/accesslog/service/LogService.java: Recompile with -Xlint:deprecation for details.
+[INFO] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/beacon/service/BeaconLightService.java: Some input files use unchecked or unsafe operations.
+[INFO] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/beacon/service/BeaconLightService.java: Recompile with -Xlint:unchecked for details.
+[INFO] -------------------------------------------------------------
+[WARNING] COMPILATION WARNING : 
+[INFO] -------------------------------------------------------------
+[WARNING] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/assetmovement/entity/BaoCaoKiemKe.java:[53,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/assetmovement/entity/HoSoXuLyTaiSan.java:[62,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/assetmovement/entity/KhaiThacTaiSan.java:[50,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/tai/entity/BaseTai.java:[57,21] @SuperBuilder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/assetmovement/entity/TaiSanKCHT.java:[76,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/assetmovement/entity/KeHoachKiemKe.java:[59,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/assetmovement/entity/LuuPheDuyet.java:[45,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/assetmovement/entity/YeuCauTangTaiSan.java:[65,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/assetmovement/entity/YeuCauGiamTaiSan.java:[64,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/assetmovement/entity/YeuCauBienDong.java:[55,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[WARNING] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/assetmovement/entity/TaiSanKiemKe.java:[47,21] @Builder will ignore the initializing expression entirely. If you want the initializing expression to serve as default, add @Builder.Default. If it is not supposed to be settable during building, make the field final.
+[INFO] 11 warnings 
+[INFO] -------------------------------------------------------------
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/assetmovement/service/YeuCauBienDongService.java:[124,33] cannot find symbol
+  symbol:   method getTaiSanId()
+  location: variable entity of type com.hanghai.kchtg.assetmovement.entity.YeuCauBienDong
+[INFO] 1 error
+[INFO] -------------------------------------------------------------
 [INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
+[INFO] BUILD FAILURE
 [INFO] ------------------------------------------------------------------------
-[INFO] Total time:  6.330 s
-[INFO] Finished at: 2026-06-27T23:06:17+07:00
+[INFO] Total time:  24.046 s
+[INFO] Finished at: 2026-06-29T10:46:41+07:00
 [INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project kchtg: Compilation failure
+[ERROR] /D:/project/hang-hai-kchtgt/src/main/java/com/hanghai/kchtg/assetmovement/service/YeuCauBienDongService.java:[124,33] cannot find symbol
+[ERROR]   symbol:   method getTaiSanId()
+[ERROR]   location: variable entity of type com.hanghai.kchtg.assetmovement.entity.YeuCauBienDong
+[ERROR] 
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
