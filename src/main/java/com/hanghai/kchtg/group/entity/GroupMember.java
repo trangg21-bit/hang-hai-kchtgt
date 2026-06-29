@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.group.entity;
 
 import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.user.entity.User;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -24,7 +25,7 @@ public class GroupMember extends BaseEntity {
     /** Nguoi dung trong nhom. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private com.hanghai.kchtg.user.entity.User user;
+    private User user;
 
     /** Nhom ma nguoi dung thuoc ve. */
     @ManyToOne(fetch = FetchType.LAZY)

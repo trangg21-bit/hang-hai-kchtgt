@@ -437,12 +437,12 @@ export default function UsersPage() {
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={() => setModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         confirmLoading={submitting}
         okText={editingUser ? 'Cập nhật' : 'Tạo mới'}
         cancelText="Hủy"
         width={600}
-        maskClosable={false}
+        mask={{ closable: false }}
       >
         <Spin spinning={submitting}>
           <Form form={form} layout="vertical" style={{ marginTop: 16 }}>

@@ -15,6 +15,7 @@ import com.hanghai.kchtg.group.entity.UserGroup;
 import com.hanghai.kchtg.group.repository.GroupHistoryRepository;
 import com.hanghai.kchtg.group.repository.GroupMemberRepository;
 import com.hanghai.kchtg.group.repository.GroupRepository;
+import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
@@ -420,7 +421,7 @@ public class UserGroupService {
     /**
      * Validate user exists in F-001 UserAccount (cross-module read).
      */
-    private com.hanghai.kchtg.user.entity.User getUserById(UUID userId) {
+    private User getUserById(UUID userId) {
         return userRepository.findById(userId).orElse(null);
     }
 }

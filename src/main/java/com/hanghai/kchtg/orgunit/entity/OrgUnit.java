@@ -31,7 +31,7 @@ import java.util.UUID;
        indexes = {
            @Index(name = "idx_org_units_path", columnList = "path"),
            @Index(name = "idx_org_units_parent", columnList = "parent_id"),
-           @Index(name = "idx_org_units_type_status", columnList = "unit_type, status"),
+           @Index(name = "idx_org_units_type_status", columnList = "type, status"),
            @Index(name = "idx_org_units_level", columnList = "level")
        })
 @Getter

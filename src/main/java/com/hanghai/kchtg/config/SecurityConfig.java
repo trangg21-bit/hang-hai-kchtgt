@@ -126,14 +126,4 @@ public class SecurityConfig {
     public RoleHierarchy roleHierarchy() {
         return RoleHierarchyImpl.fromHierarchy("ROLE_SUPER_ADMIN > ROLE_SYSTEM_ADMIN\nROLE_SYSTEM_ADMIN > ROLE_ADMIN\nROLE_ADMIN > ROLE_USER");
     }
-
-    /**
-     * Permission-based authorization manager exposed as bean "auth" so that
-     * {@code @PreAuthorize("@auth.check(authentication, 'resource:action')}")}
-     * expressions can resolve the Spring-managed bean.
-     */
-    @Bean(name = "auth")
-    public PermissionAuthorizationManager permissionAuthorizationManager() {
-        return new PermissionAuthorizationManager();
-    }
 }

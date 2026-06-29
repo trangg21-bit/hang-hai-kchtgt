@@ -2,6 +2,11 @@
 current_stage: close
 module-status: closed
 status: done
+sealed: true
+current-stage: closed
+source-file-count: 77
+test-file-count: 13
+test-method-count: 263
 last-updated: 2026-06-25T09:24:12Z
 ---
 feature-id: M-007

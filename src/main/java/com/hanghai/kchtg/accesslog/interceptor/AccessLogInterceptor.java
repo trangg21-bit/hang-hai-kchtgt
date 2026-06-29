@@ -97,8 +97,22 @@ public class AccessLogInterceptor implements HandlerInterceptor {
         logEntry.setUsername(username);
 
         // Resolve userId from username
+        // Resolve userId from username
         String userIdStr = resolveUserId(username);
-        logEntry.setUserId(userIdStr != null ? Long.parseLong(userIdStr) : null);
+        if (userIdStr != null) {
+            try {
+                java.util.UUID uuid = java.util.UUID.fromString(userIdStr);
+                logEntry.setUserId(uuid.getMostSignificantBits());
+            } catch (IllegalArgumentException e) {
+                try {
+                    logEntry.setUserId(Long.parseLong(userIdStr));
+                } catch (NumberFormatException nfe) {
+                    logEntry.setUserId(0L);
+                }
+            }
+        } else {
+            logEntry.setUserId(0L);
+        }
 
         // ── Status, severity, response code, duration ───────────────────
         int statusCode = response.getStatus();

@@ -3,13 +3,14 @@ package com.hanghai.kchtg.config;
 import com.hanghai.kchtg.user.entity.Permission;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.RoleStatus;
-import com.hanghai.kchtg.user.repository.PermissionRepository;
 import com.hanghai.kchtg.user.repository.RoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -30,6 +31,7 @@ import java.util.Set;
  * </p>
  */
 @Component
+@Order(1)
 @Profile("local")
 @RequiredArgsConstructor
 @Slf4j
@@ -47,9 +49,9 @@ public class RolePermissionSeeder implements CommandLineRunner {
     };
 
     private final RoleRepository roleRepository;
-    private final PermissionRepository permissionRepository;
 
     @Override
+    @Transactional
     public void run(String... args) {
         log.info("🔐 Starting role/permission seeding...");
 
@@ -146,20 +148,19 @@ public class RolePermissionSeeder implements CommandLineRunner {
         seedPermission(permissionsByCode, "security", "read", "Xem báo cáo an ninh",
                 "Xem báo cáo an ninh, cảnh báo");
 
-        // Save all permissions.
-        List<Permission> allPermissions = List.copyOf(permissionsByCode.values());
-        permissionRepository.saveAll(allPermissions);
-        log.info("✅ Seeded {} permissions", allPermissions.size());
+        // Permissions will be saved automatically via @ManyToMany cascade when saving roles.
+        log.info("📦 Prepared {} permissions for role assignment", permissionsByCode.size());
 
         // 2. Build roles with their permission sets.
         Map<String, List<String>> rolePermissionMap = new LinkedHashMap<>();
         rolePermissionMap.put("ROLE_SYSTEM_ADMIN", List.of(
                 "user:manage", "role:manage", "orgunit:manage",
-                "admin:manage", "log:manage", "map:manage", "connection:manage"
+                "admin:manage", "log:manage", "map:manage", "connection:manage",
+                "data:read", "data:create", "data:update", "data:approve"
         ));
         rolePermissionMap.put("ROLE_ADMIN", List.of(
                 "orgunit:manage", "group:manage", "user:read",
-                "report:read", "connection:read"
+                "report:read", "connection:read", "data:read", "data:approve"
         ));
         rolePermissionMap.put("ROLE_LEADER", List.of(
                 "data:approve", "report:read", "approve:action"
@@ -214,12 +215,16 @@ public class RolePermissionSeeder implements CommandLineRunner {
                     }
 
                     Set<Permission> perms = new HashSet<>();
-                    for (String permCode : permCodes) {
-                        Permission perm = permissionsByCode.get(permCode);
-                        if (perm != null) {
-                            perms.add(perm);
-                        } else {
-                            log.warn("⚠️ Permission '{}' not found for role '{}'", permCode, roleCode);
+                    if ("ROLE_SYSTEM_ADMIN".equals(roleCode)) {
+                        perms.addAll(permissionsByCode.values());
+                    } else {
+                        for (String permCode : permCodes) {
+                            Permission perm = permissionsByCode.get(permCode);
+                            if (perm != null) {
+                                perms.add(perm);
+                            } else {
+                                log.warn("⚠️ Permission '{}' not found for role '{}'", permCode, roleCode);
+                            }
                         }
                     }
                     role.setPermissions(perms);

@@ -1,0 +1,31 @@
+package com.hanghai.kchtg.systemintegration.enums;
+
+public enum IntegrationType {
+    BEN_CANG,
+    CAU_CANG,
+    BEN_PHAO,
+    KHU_TRAM_TICH_BOI,
+    KHU_CHUYEN_TAI,
+    KHU_NEO_DAU,
+    CO_SO_SUA_CHUA,
+    TIN_DEN_BIEN,
+    TIN_PHAO_TIEU,
+    HE_THONG_VTS,
+    TIN_DIEU_HANH_VTS,
+    TRAM_RADAR,
+    HE_THONG_AIS,
+    HE_THONG_CCTV,
+    HE_THONG_SCADA,
+    HE_THONG_THONG_TIN_VHF,
+    HE_THONG_TRUYEN_DAN,
+    HE_THONG_PHU_TRO_VTS,
+    DE_KE,
+    LUONG_HANG_HAI,
+    TIN_DAI_TTDH,
+    TIN_DAI_INMARSAT,
+    TIN_DAI_COSPAS_SARSAT,
+    TIN_DAI_LRIT,
+    TIN_DAI_HANG_HAI_HN,
+    CANG_CAN,
+    MANG_HAI_DO_DIEN_TU
+}

@@ -96,7 +96,7 @@ spring:
     defer-datasource-initialization: true
   sql:
     init:
-      mode: always
+      mode: never
       encoding: UTF-8
 
 server:

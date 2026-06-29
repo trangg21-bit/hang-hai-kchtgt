@@ -46,6 +46,9 @@ feature-req:
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
+source-file-count: 29
+test-file-count: 6
+test-method-count: 68
 name: Quản lý Nhà trạm
 ---
 # Pipeline State: Quản lý Nhà trạm
@@ -67,11 +70,11 @@ name: Quản lý Nhà trạm
 
 ## Current Stage
 
-**ba** — Ready to start. Input: `docs/modules/M-014-quan-ly-nha-tram/module-brief.md`.
+**closed** — Module sealed. All stages complete, QA verified, finalizers executed.
 
 ## Next Action
 
-Run: `/resume-module M-014` để dispatch BA agent.
+Module M-014 is CLOSED. No further action required.
 
 ## Active Blockers
 

@@ -84,7 +84,7 @@ public class User extends BaseEntity {
      * Vai trò của người dùng (M-to-N relationship via user_roles join table).
      * Mỗi user chỉ có 1 role chính theo business rule.
      */
-    @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.PERSIST)
+    @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "user_roles",
         joinColumns = @JoinColumn(name = "user_id"),
         inverseJoinColumns = @JoinColumn(name = "role_id"))

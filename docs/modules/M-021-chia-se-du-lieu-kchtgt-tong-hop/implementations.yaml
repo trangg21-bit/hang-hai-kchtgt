@@ -1,21 +1,101 @@
-module_id: M-021
-module_name: "Chia sẻ dữ liệu KCHTGT - Tổng hợp"
-type: bounded-context
-slug: chia-se-du-lieu-kchtgt-tong-hop
+module:
+  id: M-021
+  name: "Chia sẻ dữ liệu KCHTGT - Tổng hợp"
+  package: com.hanghai.kchtg.datasharingaggregation
+  status: sealed
+  sealed-at: "2026-06-29T00:00:00Z"
+  pipeline-type: sdlc
+  current-stage: closed
+  closed-at: "2026-06-29T00:00:00Z"
 
-# Map logical module → physical implementations across apps/services/libs.
-# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
-implementations:
-  apps: []
-  services: []
-  libs: []
-  packages: []
+features:
+  - id: F-208
+    name: chia-se-kchtgt-de-chan-song-de-chan-cat
+    status: completed
+  - id: F-209
+    name: chia-se-kchtgt-luong-hang-hai
+    status: completed
+  - id: F-210
+    name: chia-se-kchtgt-dai-ttdh
+    status: completed
+  - id: F-211
+    name: chia-se-kchtgt-dai-inmarsat
+    status: completed
+  - id: F-212
+    name: chia-se-kchtgt-dai-cospas-sarsat
+    status: completed
+  - id: F-213
+    name: chia-se-kchtgt-dai-lrit
+    status: completed
+  - id: F-214
+    name: chia-se-kchtgt-dai-tt-hang-hai-hn
+    status: completed
+  - id: F-215
+    name: chia-se-kchtgt-cang-can
+    status: completed
+  - id: F-216
+    name: chia-se-kchtgt-trang-thai-hoat-dong-kchtgt-hh
+    status: completed
+  - id: F-217
+    name: chia-se-kchtgt-thong-tin-tai-san-kchtgt-hh
+    status: completed
+  - id: F-218
+    name: chia-se-kchtgt-thong-tin-tong-hop-kchtgt-hang-hai
+    status: completed
+  - id: F-219
+    name: chia-se-kchtgt-thong-tin-bao-tri-kchtgt-hang-hai
+    status: completed
+  - id: F-220
+    name: chia-se-kchtgt-tong-hop-kchtgt-cang-bien
+    status: completed
+  - id: F-221
+    name: chia-se-kchtgt-tong-hop-kchtgt-ben-cang-cau-cang
+    status: completed
+  - id: F-222
+    name: chia-se-kchtgt-tong-hop-kchtgt-luong-hang-hai
+    status: completed
+  - id: F-223
+    name: chia-se-kchtgt-tong-hop-kchtgt-khu-chuyen-tai-khu-neo-dau
+    status: completed
+  - id: F-224
+    name: chia-se-kchtgt-tong-hop-kchtgt-phao-tieu
+    status: completed
+  - id: F-225
+    name: chia-se-kchtgt-tong-hop-kchtgt-he-thong-den-bien
+    status: completed
+  - id: F-226
+    name: chia-se-kchtgt-tong-hop-kchtgt-he-thong-de-ke
+    status: completed
 
-# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
-stakeholders:
-  business-owner: ""
-  tech-lead: ""
-  qa-lead: ""
+sources:
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/entity/DataSharingAggregationRecord.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/enums/SharingType.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/enums/SharingStatus.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/repository/DataSharingAggregationRecordRepository.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/dto/CreateDataSharingAggregationRequest.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/dto/UpdateDataSharingAggregationRequest.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/dto/DataSharingAggregationResponse.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/dto/DataSharingAggregationFilter.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/dto/DataSharingAggregationSummary.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/service/DataSharingAggregationService.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/service/DataSharingAggregationSchedulingService.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/service/CoastalFacilitySharingService.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/service/StationSharingService.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/service/PortAndAssetSharingService.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/controller/DataSharingAggregationController.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/controller/CoastalFacilitySharingController.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/controller/StationSharingController.java
+  - src/main/java/com/hanghai/kchtg/datasharingaggregation/controller/PortAndAssetSharingController.java
 
-# Cross-references
-depends_on: []
+tests:
+  - src/test/java/com/hanghai/kchtg/datasharingaggregation/DataSharingAggregationControllerTest.java
+  - src/test/java/com/hanghai/kchtg/datasharingaggregation/CoastalFacilitySharingControllerTest.java
+  - src/test/java/com/hanghai/kchtg/datasharingaggregation/StationSharingControllerTest.java
+  - src/test/java/com/hanghai/kchtg/datasharingaggregation/PortAndAssetSharingControllerTest.java
+
+qa:
+  total_test_methods: 29
+  total_endpoints: 29
+  total_features: 19
+  verdict: PASS
+  status: SEALED

@@ -14,7 +14,7 @@ import java.util.concurrent.Executor;
  * managed Spring {@code ThreadPoolTaskExecutor} for proper lifecycle management.
  * </p>
  */
-@Configuration
+@Configuration("accessLogAsyncConfig")
 @EnableAsync
 public class AsyncConfig {
 

@@ -1,21 +1,105 @@
-module_id: M-020
-module_name: "Tích hợp dữ liệu nghiệp vụ"
-type: bounded-context
-slug: tich-hop-du-lieu-nghiep-vu
-
-# Map logical module → physical implementations across apps/services/libs.
-# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
-implementations:
-  apps: []
-  services: []
-  libs: []
-  packages: []
-
-# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
-stakeholders:
-  business-owner: ""
-  tech-lead: ""
-  qa-lead: ""
-
-# Cross-references
-depends_on: []
+module-id: M-020
+module-name: "Tích hợp dữ liệu nghiệp vụ"
+total-features: 17
+total-source-files: 18
+total-test-files: 4
+total-test-methods: 25
+features:
+  - feature-id: F-254
+    feature-name: "tích hợp KCHTGT tàu biển ra vào cảng"
+    source-files: []
+    test-files: []
+  - feature-id: F-255
+    feature-name: "tích hợp KCHTGT phương tiện thủy nội địa"
+    source-files: []
+    test-files: []
+  - feature-id: F-256
+    feature-name: "tích hợp KCHTGT tàu biển nước ngoài"
+    source-files: []
+    test-files: []
+  - feature-id: F-257
+    feature-name: "tích hợp KCHTGT tàu biển VN vận tải quốc tế"
+    source-files: []
+    test-files: []
+  - feature-id: F-258
+    feature-name: "tích hợp KCHTGT khối lượng hàng hóa hành khách"
+    source-files: []
+    test-files: []
+  - feature-id: F-259
+    feature-name: "tích hợp KCHTGT lượt tàu thuyền vào rời cảng"
+    source-files: []
+    test-files: []
+  - feature-id: F-260
+    feature-name: "tích hợp KCHTGT khối lượng hàng hóa đối tàu VN"
+    source-files: []
+    test-files: []
+  - feature-id: F-261
+    feature-name: "tích hợp KCHTGT khối lượng hàng hóa trong khu quản lý"
+    source-files: []
+    test-files: []
+  - feature-id: F-262
+    feature-name: "tích hợp KCHTGT thuyền viên hoa tiêu"
+    source-files: []
+    test-files: []
+  - feature-id: F-263
+    feature-name: "tích hợp KCHTGT tàu biển có quốc tịch VN"
+    source-files: []
+    test-files: []
+  - feature-id: F-264
+    feature-name: "tích hợp KCHTGT tàu thuyền lai dắt"
+    source-files: []
+    test-files: []
+  - feature-id: F-265
+    feature-name: "tích hợp KCHTGT cơ sở đóng mới sửa chữa"
+    source-files: []
+    test-files: []
+  - feature-id: F-266
+    feature-name: "tích hợp KCHTGT năng lực thông qua bến cảng"
+    source-files: []
+    test-files: []
+  - feature-id: F-267
+    feature-name: "tích hợp KCHTGT năng lực thông qua cảng"
+    source-files: []
+    test-files: []
+  - feature-id: F-268
+    feature-name: "tích hợp KCHTGT khối lượng hàng hóa theo tháng"
+    source-files: []
+    test-files: []
+  - feature-id: F-269
+    feature-name: "tích hợp KCHTGT khối lượng hàng hóa theo năm"
+    source-files: []
+    test-files: []
+  - feature-id: F-270
+    feature-name: "tích hợp KCHTGT sản lượng dịch vụ vận tải"
+    source-files: []
+    test-files: []
+waves:
+  - wave: 1
+    tasks: "Entity, Enum, Repository"
+    files: 4
+    status: done
+  - wave: 2
+    tasks: "DTOs + Services"
+    files: 10
+    status: done
+  - wave: 3
+    tasks: "Controllers"
+    files: 4
+    endpoints: 23
+    status: done
+  - wave: 4
+    tasks: "Tests"
+    files: 4
+    test_methods: 25
+    status: done
+  - wave: 5
+    tasks: "Docs + Seal"
+    status: done
+seal:
+  sealed: true
+  sealed-at: "2026-06-29T00:00:00Z"
+  total-source-files: 18
+  total-test-files: 4
+  total-test-methods: 25
+  total-endpoints: 23
+  total-features: 17

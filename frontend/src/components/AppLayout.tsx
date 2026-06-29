@@ -138,8 +138,10 @@ export default function AppLayout() {
   const isMobile = !screens.md;
 
   const handleMenuClick = (e: { key: string }) => {
-    navigate(e.key);
-    if (isMobile) setMobileDrawerOpen(false);
+    if (e.key.startsWith('/')) {
+      navigate(e.key);
+      if (isMobile) setMobileDrawerOpen(false);
+    }
   };
 
   const userMenuItems: MenuProps['items'] = [

@@ -41,13 +41,16 @@ feature-req:
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
+source-file-count: 19
+test-file-count: 4
+test-method-count: 33
 name: Thống kê chuyên đề
 ---
 # Pipeline State: Thống kê chuyên đề
 
 ## Business Goal
 
-[CẦN BỔ SUNG: 1-2 câu mô tả mục tiêu nghiệp vụ của module]
+Thống kê chuyên đề theo 28 biểu (Biểu 01-N, 03-Q/N, 04-6T/N...) với cơ chế phê duyệt và tổng hợp dashboard.
 
 ## Stage Progress
 
@@ -62,11 +65,11 @@ name: Thống kê chuyên đề
 
 ## Current Stage
 
-**ba** — Ready to start. Input: `docs/modules/M-017-thong-ke-chuyen-de/module-brief.md`.
+**closed** — Module sealed. All waves complete, all tests passing.
 
 ## Next Action
 
-Run: `/resume-module M-017` để dispatch BA agent.
+Module M-017 is sealed. No further action required.
 
 ## Active Blockers
 

@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  * - Retries on failure: logs error but does not stop the scheduler
  * </p>
  */
-@Component
+@Component("accessLogCleanupScheduler")
 public class LogCleanupScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(LogCleanupScheduler.class);
