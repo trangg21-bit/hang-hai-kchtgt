@@ -7,6 +7,9 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+/**
+ * Search result wrapper for paginated search results (F-042).
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

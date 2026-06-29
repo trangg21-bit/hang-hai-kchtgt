@@ -1,19 +1,23 @@
 package com.hanghai.kchtg.luonghanghai.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
+import java.time.LocalDate;
+
+/**
+ * History entry for approval timeline (F-043).
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class HistoryEntry {
 
-    private String thoiGian;
-    private String nguoiThucHien;
-    private String tuTrangThai;
-    private String sangTrangThai;
-    private String ghiChu;
+    private Long id;
+    private Long luongHangHaiId;
+    private Integer capPheDuyet;
+    private String trangThai;
+    private String nguoiPheDuyet;
+    private LocalDate ngayPheDuyet;
+    private String lyDo;
 }

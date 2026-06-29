@@ -2,314 +2,275 @@ package com.hanghai.kchtg.luonghanghai.service;
 
 import com.hanghai.kchtg.luonghanghai.dto.*;
 import com.hanghai.kchtg.luonghanghai.entity.*;
-import com.hanghai.kchtg.luonghanghai.repository.LuongHangHaiAttachmentRepository;
 import com.hanghai.kchtg.luonghanghai.repository.LuongHangHaiRepository;
-import com.hanghai.kchtg.luonghanghai.repository.PheDuyetLichSuRepository;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
-@Service
-@RequiredArgsConstructor
-@Slf4j
+@Service @RequiredArgsConstructor @Slf4j
 public class LuongHangHaiService {
-
-    private final LuongHangHaiRepository luongHangHaiRepository;
-    private final PheDuyetLichSuRepository pheDuyetLichSuRepository;
-    private final LuongHangHaiAttachmentRepository attachmentRepository;
-
-    // -- CRUD --
+    private final LuongHangHaiRepository repo;
 
     @Transactional
-    public LuongHangHaiResponse create(LuongHangHaiCreateRequest request) {
-        log.info("Creating LuongHangHai: loaiTau={}", request.getLoaiTau());
-
-        if (request.getNgayGhiNhan() != null && request.getNgayGhiNhan().isAfter(LocalDate.now())) {
-            throw new IllegalArgumentException("Ngay ghi nhan khong the be hom nay");
-        }
-
-        LuongHangHai entity = LuongHangHai.builder()
-                .loaiTau(request.getLoaiTau())
-                .soLuong(request.getSoLuong())
-                .ngayGhiNhan(request.getNgayGhiNhan())
-                .gioDien(request.getGioDien())
-                .taiTrong(request.getTaiTrong() != null ? request.getTaiTrong().toPlainString() : null)
-                .dienTichDangBo(request.getDienTichDangBo() != null ? request.getDienTichDangBo().toPlainString() : null)
-                .ghiChu(request.getGhiChu())
+    public LuongHangHaiResponse create(LuongHangHaiCreateRequest req) {
+        LuongHangHai l = LuongHangHai.builder()
+                .loaiTau(req.getLoaiTau())
+                .soLuong(req.getSoLuong())
+                .ngayGhiNhan(req.getNgayGhiNhan())
+                .gioDien(req.getGioDien())
+                .taiTrong(req.getTaiTrong())
+                .dienTichDangBo(req.getDienTichDangBo())
+                .ghiChu(req.getGhiChu())
                 .approvalStatus(LuongHangHaiApprovalStatus.PROPOSED)
-                .createdBy(request.getCreatedBy())
+                .pheDuyetC1(false)
+                .pheDuyetC2(false)
+                .isDeleted(false)
+                .createdBy(req.getCreatedBy())
                 .build();
-
-        LuongHangHai saved = luongHangHaiRepository.save(entity);
-        return toResponse(saved);
+        if (req.getAttachments() != null && !req.getAttachments().isEmpty()) {
+            l.setAttachments(req.getAttachments().stream()
+                    .map(a -> LuongHangHaiAttachment.builder()
+                            .luongHangHai(l)
+                            .tenTaiLieu(a.getTenTaiLieu())
+                            .duongDan(a.getDuongDan())
+                            .kichThuoc(a.getKichThuoc())
+                            .ngayTaiLen(a.getNgayTaiLen())
+                            .build())
+                    .collect(Collectors.toList()));
+        }
+        return toResponse(repo.save(l));
     }
 
     @Transactional(readOnly = true)
     public LuongHangHaiResponse getById(Long id) {
-        LuongHangHai entity = luongHangHaiRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
-        return toResponse(entity);
+        return toResponse(repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id)));
+    }
+
+    @Transactional(readOnly = true)
+    public List<LuongHangHaiResponse> findAll() {
+        return repo.findByIsDeletedFalse(Sort.by(Sort.Direction.DESC, "createdAt"))
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Page<LuongHangHaiResponse> findAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return luongHangHaiRepository.findAll(pageable).map(this::toResponse);
-    }
-
-    @Transactional(readOnly = true)
-    public KetQuaTimKiemResponse searchDocuments(String keyword, String statusStr,
-                                                    LocalDate ngayGhiNhanStart, LocalDate ngayGhiNhanEnd,
-                                                    int page, int size) {
-        LuongHangHaiApprovalStatus status = null;
-        if (statusStr != null && !statusStr.isEmpty()) {
-            try {
-                status = LuongHangHaiApprovalStatus.valueOf(statusStr);
-            } catch (IllegalArgumentException ignored) {
-                log.warn("Invalid status: {}", statusStr);
-            }
-        }
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<LuongHangHai> result = luongHangHaiRepository.searchDocuments(
-                keyword, status, ngayGhiNhanStart, ngayGhiNhanEnd, pageable);
-        return KetQuaTimKiemResponse.builder()
-                .results(result.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
-                .totalElements(result.getTotalElements())
-                .totalPages(result.getTotalPages())
-                .currentPage(result.getNumber())
-                .pageSize(result.getSize())
-                .build();
+        return repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")))
+                .map(this::toResponse);
     }
 
     @Transactional
-    public LuongHangHaiResponse update(Long id, LuongHangHaiUpdateRequest request) {
-        LuongHangHai entity = luongHangHaiRepository.findById(id)
+    public LuongHangHaiResponse update(Long id, LuongHangHaiUpdateRequest req) {
+        LuongHangHai l = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
-
-        if (entity.getApprovalStatus() == LuongHangHaiApprovalStatus.APPROVED) {
-            throw new IllegalStateException("Ban ghi da duoc phe duyet, khong the cap nhat");
-        }
-
-        if (entity.getApprovalStatus() != LuongHangHaiApprovalStatus.PROPOSED
-                && entity.getApprovalStatus() != LuongHangHaiApprovalStatus.UNDER_REVIEW
-                && entity.getApprovalStatus() != LuongHangHaiApprovalStatus.REJECTED) {
-            throw new IllegalStateException("Chi co the cap nhat ban ghi o trang thai PROPOSED, UNDER_REVIEW, hoac REJECTED");
-        }
-
-        if (request.getLoaiTau() != null) entity.setLoaiTau(request.getLoaiTau());
-        if (request.getSoLuong() != null) entity.setSoLuong(request.getSoLuong());
-        if (request.getNgayGhiNhan() != null) entity.setNgayGhiNhan(request.getNgayGhiNhan());
-        if (request.getGioDien() != null) entity.setGioDien(request.getGioDien());
-        if (request.getTaiTrong() != null) entity.setTaiTrong(request.getTaiTrong());
-        if (request.getDienTichDangBo() != null) entity.setDienTichDangBo(request.getDienTichDangBo());
-        if (request.getGhiChu() != null) entity.setGhiChu(request.getGhiChu());
-        if (request.getUpdatedBy() != null) entity.setUpdatedBy(request.getUpdatedBy());
-
-        createHistoryEntry(entity, 0, "UPDATED", request.getUpdatedBy() != null ? request.getUpdatedBy() : "system", "Cap nhat ban ghi");
-
-        LuongHangHai saved = luongHangHaiRepository.save(entity);
-        return toResponse(saved);
+        if (req.getLoaiTau() != null) l.setLoaiTau(req.getLoaiTau());
+        if (req.getSoLuong() != null) l.setSoLuong(req.getSoLuong());
+        if (req.getNgayGhiNhan() != null) l.setNgayGhiNhan(req.getNgayGhiNhan());
+        if (req.getGioDien() != null) l.setGioDien(req.getGioDien());
+        if (req.getTaiTrong() != null) l.setTaiTrong(req.getTaiTrong());
+        if (req.getDienTichDangBo() != null) l.setDienTichDangBo(req.getDienTichDangBo());
+        if (req.getGhiChu() != null) l.setGhiChu(req.getGhiChu());
+        if (req.getUpdatedBy() != null) l.setUpdatedBy(req.getUpdatedBy());
+        return toResponse(repo.save(l));
     }
 
     @Transactional
     public void delete(Long id) {
-        LuongHangHai entity = luongHangHaiRepository.findById(id)
+        LuongHangHai l = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
+        l.setIsDeleted(true);
+        repo.save(l);
+    }
+
+    @Transactional
+    public PheDuyetResponse approve(Long id, PheDuyetRequest req) {
+        LuongHangHai l = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
-        if (entity.getApprovalStatus() != LuongHangHaiApprovalStatus.APPROVED) {
-            throw new IllegalStateException("Chi co the xoa mem ban ghi da duoc phe duyet");
-        }
+        String cap = req.getCapPheDuyet() != null ? req.getCapPheDuyet() : "C1";
+        LuongHangHaiApprovalStatus cur = l.getApprovalStatus();
 
-        if (entity.getAttachments() != null && !entity.getAttachments().isEmpty()) {
-            for (LuongHangHaiAttachment att : entity.getAttachments()) {
-                log.warn("Can xoa MinIO attachment: {} tai {}", att.getTenTaiLieu(), att.getDuongDan());
+        if ("C1".equalsIgnoreCase(cap)) {
+            if (cur == LuongHangHaiApprovalStatus.PROPOSED || cur == LuongHangHaiApprovalStatus.REJECTED) {
+                l.setApprovalStatus(LuongHangHaiApprovalStatus.UNDER_REVIEW);
+                l.setPheDuyetC1("APPROVED".equalsIgnoreCase(req.getTrangThai()));
+            }
+        } else if ("C2".equalsIgnoreCase(cap)) {
+            if (cur == LuongHangHaiApprovalStatus.UNDER_REVIEW) {
+                if ("APPROVED".equalsIgnoreCase(req.getTrangThai())) {
+                    l.setApprovalStatus(LuongHangHaiApprovalStatus.APPROVED);
+                    l.setPheDuyetC2(true);
+                } else if ("REJECTED".equalsIgnoreCase(req.getTrangThai())) {
+                    l.setApprovalStatus(LuongHangHaiApprovalStatus.REJECTED);
+                    l.setPheDuyetC2(false);
+                }
             }
         }
 
-        entity.setIsDeleted(true);
-        luongHangHaiRepository.save(entity);
-        log.info("Soft deleted LuongHangHai with id: {}", id);
-    }
-
-    // -- Approval Workflow (2-tier: phong -> cuc) --
-
-    @Transactional
-    public PheDuyetResponse approveC1(Long id, PheDuyetRequest request) {
-        LuongHangHai entity = luongHangHaiRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
-
-        if (entity.getApprovalStatus() != LuongHangHaiApprovalStatus.PROPOSED) {
-            throw new IllegalStateException("Ban ghi khong o trang thai cho phep phe duyet cap 1");
+        // Set approver info
+        if ("C1".equalsIgnoreCase(cap)) {
+            l.setNguoiPheDuyetC1(req.getNguoiPheDuyet());
+            l.setNgayPheDuyetC1(java.time.LocalDate.now());
+        } else if ("C2".equalsIgnoreCase(cap)) {
+            l.setNguoiPheDuyetC2(req.getNguoiPheDuyet());
+            l.setNgayPheDuyetC2(java.time.LocalDate.now());
         }
 
-        if ("APPROVE".equalsIgnoreCase(request.getAction())) {
-            entity.setPheDuyetC1(true);
-            entity.setNguoiPheDuyetC1(request.getApprovedBy());
-            entity.setNgayPheDuyetC1(LocalDateTime.now());
-            entity.setApprovalStatus(LuongHangHaiApprovalStatus.UNDER_REVIEW);
-            createHistoryEntry(entity, 1, "APPROVED", request.getApprovedBy(), request.getLyDo());
-        } else if ("REJECT".equalsIgnoreCase(request.getAction())) {
-            entity.setApprovalStatus(LuongHangHaiApprovalStatus.REJECTED);
-            entity.setLyDoTuChoi(request.getLyDo());
-            createHistoryEntry(entity, 1, "REJECTED", request.getApprovedBy(), request.getLyDo());
-        } else {
-            throw new IllegalArgumentException("Hanh dong khong hop le: " + request.getAction());
+        // Set rejection reason if applicable
+        if ("REJECTED".equalsIgnoreCase(req.getTrangThai()) && req.getGhiChu() != null) {
+            l.setLyDoTuChoi(req.getGhiChu());
         }
 
-        LuongHangHai saved = luongHangHaiRepository.save(entity);
-        return toApproveResponse(saved, 1, request);
-    }
-
-    @Transactional
-    public PheDuyetResponse approveC2(Long id, PheDuyetRequest request) {
-        LuongHangHai entity = luongHangHaiRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
-
-        if (entity.getApprovalStatus() != LuongHangHaiApprovalStatus.UNDER_REVIEW) {
-            throw new IllegalStateException("Ban ghi khong o trang thai cho phep phe duyet cap 2");
-        }
-
-        if ("APPROVE".equalsIgnoreCase(request.getAction())) {
-            entity.setPheDuyetC2(true);
-            entity.setNguoiPheDuyetC2(request.getApprovedBy());
-            entity.setNgayPheDuyetC2(LocalDateTime.now());
-            entity.setApprovalStatus(LuongHangHaiApprovalStatus.APPROVED);
-            createHistoryEntry(entity, 2, "APPROVED", request.getApprovedBy(), request.getLyDo());
-        } else if ("REJECT".equalsIgnoreCase(request.getAction())) {
-            entity.setApprovalStatus(LuongHangHaiApprovalStatus.REJECTED);
-            entity.setLyDoTuChoi(request.getLyDo());
-            createHistoryEntry(entity, 2, "REJECTED", request.getApprovedBy(), request.getLyDo());
-        } else {
-            throw new IllegalArgumentException("Hanh dong khong hop le: " + request.getAction());
-        }
-
-        LuongHangHai saved = luongHangHaiRepository.save(entity);
-        return toApproveResponse(saved, 2, request);
-    }
-
-    // -- History --
-
-    @Transactional(readOnly = true)
-    public List<HistoryEntry> getApprovalHistory(Long id) {
-        LuongHangHai entity = luongHangHaiRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
-
-        List<PheDuyetLichSu> history = pheDuyetLichSuRepository.findByLuongHangHaiIdOrderByNgayPheDuyetDesc(id);
-        return history.stream().map(h -> HistoryEntry.builder()
-                .id(h.getId())
-                .luongHangHaiId(id)
-                .capPheDuyet(h.getCapPheDuyet())
-                .trangThai(h.getTrangThai())
-                .nguoiPheDuyet(h.getNguoiPheDuyet())
-                .ngayPheDuyet(h.getNgayPheDuyet())
-                .lyDo(h.getLyDo())
-                .build()).collect(Collectors.toList());
-    }
-
-    // -- Search / Filter --
-
-    @Transactional(readOnly = true)
-    public List<LuongHangHaiResponse> findByApprovalStatus(LuongHangHaiApprovalStatus status) {
-        return luongHangHaiRepository.findByApprovalStatus(status)
-                .stream().map(this::toResponse).collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public List<LuongHangHaiResponse> findByLoaiTauContaining(String keyword) {
-        return luongHangHaiRepository.findByLoaiTauContaining(keyword)
-                .stream().map(this::toResponse).collect(Collectors.toList());
-    }
-
-    // -- Helpers --
-
-    private void createHistoryEntry(LuongHangHai entity, Integer capPheDuyet,
-                                     String trangThai, String nguoiPheDuyet, String lyDo) {
+        // Record approval history
         PheDuyetLichSu history = PheDuyetLichSu.builder()
-                .luongHangHai(entity)
-                .capPheDuyet(capPheDuyet)
-                .trangThai(trangThai)
-                .nguoiPheDuyet(nguoiPheDuyet)
-                .ngayPheDuyet(LocalDate.now())
-                .lyDo(lyDo)
+                .luongHangHai(l)
+                .capPheDuyet(Integer.parseInt(cap.replaceAll("[^0-9]", "")))
+                .trangThai(req.getTrangThai())
+                .nguoiPheDuyet(req.getNguoiPheDuyet())
+                .ngayPheDuyet(java.time.LocalDate.now())
+                .lyDo(req.getGhiChu())
                 .build();
-        pheDuyetLichSuRepository.save(history);
+        l.getApprovalHistory().add(history);
+
+        LuongHangHai saved = repo.save(l);
+        return PheDuyetResponse.builder()
+                .luongHangHaiId(saved.getId())
+                .capPheDuyet(cap)
+                .trangThai(saved.getApprovalStatus().name())
+                .nguoiPheDuyet(req.getNguoiPheDuyet())
+                .ghiChu(req.getGhiChu())
+                .build();
     }
 
-    private LuongHangHaiResponse toResponse(LuongHangHai entity) {
-        List<LuongHangHaiAttachmentResponse> attachmentList = new ArrayList<>();
-        if (entity.getAttachments() != null) {
-            attachmentList = entity.getAttachments().stream()
-                    .map(att -> LuongHangHaiAttachmentResponse.builder()
-                            .id(att.getId())
-                            .tenTaiLieu(att.getTenTaiLieu())
-                            .duongDan(att.getDuongDan())
-                            .kichThuoc(att.getKichThuoc())
-                            .ngayTaiLen(att.getNgayTaiLen())
-                            .build())
-                    .collect(Collectors.toList());
+    @Transactional(readOnly = true)
+    public List<HistoryEntry> getHistory(Long id) {
+        LuongHangHai l = repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
+        List<HistoryEntry> h = new ArrayList<>();
+
+        // Initial creation entry
+        h.add(HistoryEntry.builder()
+                .thoiGian(l.getCreatedAt() != null ? l.getCreatedAt().toString() : null)
+                .nguoiThucHien(l.getCreatedBy())
+                .tuTrangThai(null)
+                .sangTrangTai("PROPOSED")
+                .ghiChu("Tao moi luong hang hai")
+                .build());
+
+        // Approval history entries
+        if (l.getApprovalHistory() != null) {
+            for (PheDuyetLichSu ph : l.getApprovalHistory()) {
+                h.add(HistoryEntry.builder()
+                        .thoiGian(ph.getNgayPheDuyet() != null ? ph.getNgayPheDuyet().toString() : null)
+                        .nguoiThucHien(ph.getNguoiPheDuyet())
+                        .tuTrangThai(null)
+                        .sangTrangThai(ph.getTrangThai())
+                        .ghiChu(ph.getLyDo())
+                        .build());
+            }
         }
 
-        List<HistoryEntry> historyList = new ArrayList<>();
-        if (entity.getApprovalHistory() != null) {
-            historyList = entity.getApprovalHistory().stream()
-                    .map(h -> HistoryEntry.builder()
-                            .id(h.getId())
-                            .luongHangHaiId(entity.getId())
-                            .capPheDuyet(h.getCapPheDuyet())
+        // Update entries from entity state
+        if (l.getUpdatedAt() != null) {
+            h.add(HistoryEntry.builder()
+                    .thoiGian(l.getUpdatedAt().toString())
+                    .nguoiThucHien(l.getUpdatedBy())
+                    .tuTrangThai(null)
+                    .sangTrangThai(l.getApprovalStatus().name())
+                    .ghiChu("Cap nhat luong hang hai")
+                    .build());
+        }
+
+        return h;
+    }
+
+    @Transactional(readOnly = true)
+    public List<LuongHangHaiResponse> findByApprovalStatus(LuongHangHaiApprovalStatus s) {
+        return repo.findByApprovalStatusAndIsDeletedFalse(s)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<LuongHangHaiResponse> searchByLoaiTauContaining(String kw) {
+        return repo.findByLoaiTauContainingAndIsDeletedFalse(kw)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public KetQuaTimKiemResponse searchDocuments(String kw, String gioDien, String taiTrong, String trangThaiStr, int page, int size) {
+        LuongHangHaiApprovalStatus trangThai = null;
+        if (trangThaiStr != null && !trangThaiStr.isEmpty()) {
+            try { trangThai = LuongHangHaiApprovalStatus.valueOf(trangThaiStr); } catch (Exception ignored) {}
+        }
+        Page<LuongHangHai> r = repo.searchDocuments(kw, gioDien, taiTrong, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        return KetQuaTimKiemResponse.builder()
+                .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
+                .totalElements(r.getTotalElements())
+                .totalPages(r.getTotalPages())
+                .currentPage(r.getNumber())
+                .pageSize(r.getSize())
+                .build();
+    }
+
+    private LuongHangHaiResponse toResponse(LuongHangHai l) {
+        List<LuongHangHaiAttachmentResponse> atts = l.getAttachments() != null
+                ? l.getAttachments().stream()
+                    .map(a -> LuongHangHaiAttachmentResponse.builder()
+                            .id(a.getId())
+                            .tenTaiLieu(a.getTenTaiLieu())
+                            .duongDan(a.getDuongDan())
+                            .kichThuoc(a.getKichThuoc())
+                            .ngayTaiLen(a.getNgayTaiLen())
+                            .build())
+                    .collect(Collectors.toList())
+                : new ArrayList<>();
+
+        List<PheDuyetResponse> hist = l.getApprovalHistory() != null
+                ? l.getApprovalHistory().stream()
+                    .map(h -> PheDuyetResponse.builder()
+                            .luongHangHaiId(l.getId())
+                            .capPheDuyet(h.getCapPheDuyet() != null ? h.getCapPheDuyet().toString() : null)
                             .trangThai(h.getTrangThai())
                             .nguoiPheDuyet(h.getNguoiPheDuyet())
-                            .ngayPheDuyet(h.getNgayPheDuyet())
-                            .lyDo(h.getLyDo())
+                            .ghiChu(h.getLyDo())
                             .build())
-                    .collect(Collectors.toList());
-        }
+                    .collect(Collectors.toList())
+                : new ArrayList<>();
 
         return LuongHangHaiResponse.builder()
-                .id(entity.getId())
-                .loaiTau(entity.getLoaiTau())
-                .soLuong(entity.getSoLuong())
-                .ngayGhiNhan(entity.getNgayGhiNhan())
-                .gioDien(entity.getGioDien())
-                .taiTrong(entity.getTaiTrong())
-                .dienTichDangBo(entity.getDienTichDangBo())
-                .ghiChu(entity.getGhiChu())
-                .approvalStatus(entity.getApprovalStatus())
-                .pheDuyetC1(entity.getPheDuyetC1())
-                .nguoiPheDuyetC1(entity.getNguoiPheDuyetC1())
-                .ngayPheDuyetC1(entity.getNgayPheDuyetC1())
-                .pheDuyetC2(entity.getPheDuyetC2())
-                .nguoiPheDuyetC2(entity.getNguoiPheDuyetC2())
-                .ngayPheDuyetC2(entity.getNgayPheDuyetC2())
-                .lyDoTuChoi(entity.getLyDoTuChoi())
-                .isDeleted(entity.getIsDeleted())
-                .createdAt(entity.getCreatedAt())
-                .updatedAt(entity.getUpdatedAt())
-                .createdBy(entity.getCreatedBy())
-                .updatedBy(entity.getUpdatedBy())
-                .attachments(attachmentList)
-                .approvalHistory(historyList)
-                .build();
-    }
-
-    private PheDuyetResponse toApproveResponse(LuongHangHai entity, Integer cap, PheDuyetRequest request) {
-        return PheDuyetResponse.builder()
-                .luongHangHaiId(entity.getId())
-                .capPheDuyet(cap)
-                .trangThai(entity.getApprovalStatus().name())
-                .nguoiPheDuyet(request.getApprovedBy())
-                .ngayPheDuyet(LocalDateTime.now())
-                .lyDo(request.getLyDo())
+                .id(l.getId())
+                .loaiTau(l.getLoaiTau())
+                .soLuong(l.getSoLuong())
+                .ngayGhiNhan(l.getNgayGhiNhan())
+                .gioDien(l.getGioDien())
+                .taiTrong(l.getTaiTrong())
+                .dienTichDangBo(l.getDienTichDangBo())
+                .ghiChu(l.getGhiChu())
+                .approvalStatus(l.getApprovalStatus())
+                .pheDuyetC1(l.getPheDuyetC1())
+                .nguoiPheDuyetC1(l.getNguoiPheDuyetC1())
+                .ngayPheDuyetC1(l.getNgayPheDuyetC1())
+                .pheDuyetC2(l.getPheDuyetC2())
+                .nguoiPheDuyetC2(l.getNguoiPheDuyetC2())
+                .ngayPheDuyetC2(l.getNgayPheDuyetC2())
+                .lyDoTuChoi(l.getLyDoTuChoi())
+                .isDeleted(l.getIsDeleted())
+                .createdAt(l.getCreatedAt())
+                .updatedAt(l.getUpdatedAt())
+                .createdBy(l.getCreatedBy())
+                .updatedBy(l.getUpdatedBy())
+                .attachments(atts)
+                .approvalHistory(hist)
                 .build();
     }
 }

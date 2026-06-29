@@ -7,6 +7,9 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
+/**
+ * Response DTO for LuongHangHai attachments (F-038, F-042).
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

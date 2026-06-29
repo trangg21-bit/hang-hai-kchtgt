@@ -1,22 +1,23 @@
 package com.hanghai.kchtg.luonghanghai.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
+/**
+ * Response DTO for a single approval action (F-039, F-040).
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class PheDuyetResponse {
 
+    private Long id;
     private Long luongHangHaiId;
     private Integer capPheDuyet;
     private String trangThai;
     private String nguoiPheDuyet;
-    private LocalDateTime ngayPheDuyet;
+    private LocalDate ngayPheDuyet;
     private String lyDo;
 }

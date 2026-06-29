@@ -1,22 +1,24 @@
 package com.hanghai.kchtg.luonghanghai.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
+/**
+ * Approval request for LuongHangHai (F-039, F-040).
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class PheDuyetRequest {
 
-    @NotBlank(message = "Hanh dong la bat buoc (APPROVE/REJECT)")
-    private String action;
+    private Integer capPheDuyet;
 
-    @NotBlank(message = "Nguoi phe duyet la bat buoc")
-    private String approvedBy;
+    @NotBlank(message = "Nguoi phe duyet khong duoc de trong")
+    private String nguoiPheDuyet;
+
+    @NotBlank(message = "Trang thai khong duoc de trong")
+    private String trangThai;
 
     private String lyDo;
 }

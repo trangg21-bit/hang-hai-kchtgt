@@ -20,4 +20,5 @@ public class FileQuyHoachResponse {
     private String duongDan;
     private Long kichThuoc;
     private LocalDateTime ngayTaiLen;
+    private String nguoiTaiLen;
 }
