@@ -29,7 +29,7 @@ public class LogStatsScheduler {
      * Compute aggregate stats for yesterday at 3 AM daily.
      * Uses @Value("${LOG_STATS_CRON:0 3 * * ?}") for configurable cron expression.
      */
-    @Scheduled(cron = "${LOG_STATS_CRON:0 3 * * ?}")
+    @Scheduled(cron = "${LOG_STATS_CRON:0 0 3 * * ?}")
     public void computeDailyAggregate() {
         try {
             LocalDate yesterday = LocalDate.now().minusDays(1);

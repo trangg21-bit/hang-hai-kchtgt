@@ -14,15 +14,15 @@ import java.util.concurrent.ThreadPoolExecutor;
 /**
  * Configuration for async log appender and scheduled jobs.
  */
-@Configuration
+@Configuration("commonAsyncConfig")
 @EnableAsync
 @EnableScheduling
 public class AsyncConfig {
 
     private static final Logger log = LoggerFactory.getLogger(AsyncConfig.class);
 
-    @Bean(name = "logAppenderExecutor")
-    public Executor logAppenderExecutor() {
+    @Bean(name = "commonLogAppenderExecutor")
+    public Executor commonLogAppenderExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(10);
         executor.setMaxPoolSize(20);

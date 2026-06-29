@@ -62,7 +62,7 @@ public class TaiSanKiemKeService {
     }
 
     public Page<TaiSanKiemKeResponse> findByKeHoachIdAndTrangThai(UUID keHoachId, TrangThaiKiemKe trangThai, Pageable pageable) {
-        return repository.findByKeHoachIdAndTrangThai(keHoachId, trangThai, pageable).map(this::toResponse);
+        return repository.findByKeHoachIdAndTrangThaiKiemKe(keHoachId, trangThai, pageable).map(this::toResponse);
     }
 
     @Transactional

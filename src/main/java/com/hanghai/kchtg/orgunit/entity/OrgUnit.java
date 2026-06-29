@@ -105,7 +105,7 @@ public class OrgUnit extends BaseEntity {
 
     /** Coefficient for calculations/reports. Must be > 0 with max 2 decimal places (BR-017). */
     @DecimalMin(value = "0.01", message = "Hệ số phải lớn hơn 0")
-    @Column(precision = 5, scale = 2)
+    @Column
     private Double coefficient;
 
     /** Timestamp when unit was approved (set on APPROVED transition). */

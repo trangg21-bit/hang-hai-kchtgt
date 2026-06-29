@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  * de xoa cac logs cu hon 90 ngay.
  * </p>
  */
-@Component
+@Component("commonLogCleanupScheduler")
 public class LogCleanupScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(LogCleanupScheduler.class);

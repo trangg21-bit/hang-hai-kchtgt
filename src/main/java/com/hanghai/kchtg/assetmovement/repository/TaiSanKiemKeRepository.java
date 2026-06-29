@@ -25,5 +25,5 @@ public interface TaiSanKiemKeRepository extends JpaRepository<TaiSanKiemKe, UUID
 
     Page<TaiSanKiemKe> findByTrangThaiKiemKe(TrangThaiKiemKe trangThaiKiemKe, Pageable pageable);
 
-    Page<TaiSanKiemKe> findByKeHoachIdAndTrangThai(UUID keHoachId, TrangThaiKiemKe trangThaiKiemKe, Pageable pageable);
+    Page<TaiSanKiemKe> findByKeHoachIdAndTrangThaiKiemKe(UUID keHoachId, TrangThaiKiemKe trangThaiKiemKe, Pageable pageable);
 }

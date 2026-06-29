@@ -281,6 +281,10 @@ public class DataSeeder implements CommandLineRunner {
                 .address("Hà Nội")
                 .phone("0241234567")
                 .status(OrgUnitStatus.APPROVED)
+                .path("/ORG_TCDb/")
+                .level(1)
+                .scopeId(0L)
+                .sortOrder(1)
                 .build();
         orgUnitRepo.save(u1);
         log.info("✅ Seeded {} OrgUnits", orgUnitRepo.count());
