@@ -23,6 +23,7 @@ public class KeHoachBaoTriService {
 
     private final KeHoachBaoTriRepository keHoachBaoTriRepository;
     private final KetQuaBaoTriRepository ketQuaBaoTriRepository;
+    private final BaoCaoBaoTriRepository baoCaoBaoTriRepository;
 
     // ── CRUD ──────────────────────────────────────────────────────────
 
@@ -132,6 +133,22 @@ public class KeHoachBaoTriService {
         return toKetQuaResponse(ketQuaBaoTriRepository.save(kqb));
     }
 
+    // ── BaoCaoBaoTri ──────────────────────────────────────────────────
+
+    @Transactional
+    public BaoCaoBaoTriResponse createBaoCao(BaoCaoBaoTriCreateRequest request) {
+        log.info("Creating BaoCaoBaoTri: {}", request.getLoaiBaoCao());
+        BaoCaoBaoTri bc = BaoCaoBaoTri.builder()
+                .loaiBaoCao(request.getLoaiBaoCao())
+                .kyBatDau(request.getKyBatDau())
+                .kyKetThuc(request.getKyKetThuc())
+                .tongChiPhi(request.getTongChiPhi())
+                .duongDanFile(request.getDuongDanFile())
+                .nguoiTao(request.getNguoiTao())
+                .build();
+        return toBaoCaoBaoTriResponse(baoCaoBaoTriRepository.save(bc));
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────
 
     private KeHoachBaoTriResponse toResponse(KeHoachBaoTri khbt) {
@@ -147,6 +164,19 @@ public class KeHoachBaoTriService {
                 .ngayTao(khbt.getNgayTao())
                 .nguoiSuaDoi(khbt.getNguoiSuaDoi())
                 .ngaySuaDoi(khbt.getNgaySuaDoi())
+                .build();
+    }
+
+    private BaoCaoBaoTriResponse toBaoCaoBaoTriResponse(BaoCaoBaoTri bc) {
+        return BaoCaoBaoTriResponse.builder()
+                .id(bc.getId())
+                .loaiBaoCao(bc.getLoaiBaoCao())
+                .kyBatDau(bc.getKyBatDau())
+                .kyKetThuc(bc.getKyKetThuc())
+                .tongChiPhi(bc.getTongChiPhi())
+                .duongDanFile(bc.getDuongDanFile())
+                .nguoiTao(bc.getNguoiTao())
+                .ngayTao(bc.getNgayTao())
                 .build();
     }
 

@@ -24,6 +24,7 @@ public class SuCoService {
 
     private final SuCoRepository suCoRepository;
     private final TienDoXuLyRepository tienDoXuLyRepository;
+    private final BienBanSuCoRepository bienBanSuCoRepository;
 
     // ── CRUD ──────────────────────────────────────────────────────────
 
@@ -132,6 +133,22 @@ public class SuCoService {
                 .map(this::toTienDoResponse).collect(Collectors.toList());
     }
 
+    // ── BienBanSuCo ───────────────────────────────────────────────────
+
+    @Transactional
+    public BienBanSuCoResponse createBienBan(BienBanSuCoCreateRequest request) {
+        log.info("Creating BienBanSuCo for suCoId: {}", request.getSuCoId());
+        BienBanSuCo bb = BienBanSuCo.builder()
+                .suCoId(request.getSuCoId())
+                .moTaChiTiet(request.getMoTaChiTiet())
+                .bienPhapKacPhuc(request.getBienPhapKacPhuc())
+                .thoiGianXuLyKetThuc(request.getThoiGianXuLyKetThuc())
+                .nguoiLapBienBan(request.getNguoiLapBienBan())
+                .taiLieuDinhKem(request.getTaiLieuDinhKem())
+                .build();
+        return toBienBanResponse(bienBanSuCoRepository.save(bb));
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────
 
     private SuCoResponse toResponse(SuCo sc) {
@@ -169,6 +186,19 @@ public class SuCoService {
                 .thoiGianCapNhat(td.getThoiGianCapNhat())
                 .moTaTienDo(td.getMoTaTienDo())
                 .nguoiCapNhat(td.getNguoiCapNhat())
+                .build();
+    }
+
+    private BienBanSuCoResponse toBienBanResponse(BienBanSuCo bb) {
+        return BienBanSuCoResponse.builder()
+                .id(bb.getId())
+                .suCoId(bb.getSuCoId())
+                .moTaChiTiet(bb.getMoTaChiTiet())
+                .bienPhapKacPhuc(bb.getBienPhapKacPhuc())
+                .thoiGianXuLyKetThuc(bb.getThoiGianXuLyKetThuc())
+                .nguoiLapBienBan(bb.getNguoiLapBienBan())
+                .ngayLap(bb.getNgayLap())
+                .taiLieuDinhKem(bb.getTaiLieuDinhKem())
                 .build();
     }
 }

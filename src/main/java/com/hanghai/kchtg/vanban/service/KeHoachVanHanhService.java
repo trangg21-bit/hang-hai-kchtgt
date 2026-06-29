@@ -25,6 +25,7 @@ public class KeHoachVanHanhService {
 
     private final KeHoachVanHanhRepository keHoachVanHanhRepository;
     private final VanHanhChiTietRepository vanHanhChiTietRepository;
+    private final BaoCaoVanHanhRepository baoCaoVanHanhRepository;
 
     // ── CRUD ──────────────────────────────────────────────────────────
 
@@ -124,6 +125,20 @@ public class KeHoachVanHanhService {
         return !conflicts.isEmpty();
     }
 
+    @Transactional
+    public BaoCaoVanHanhResponse createBaoCao(BaoCaoVanHanhCreateRequest request) {
+        log.info("Creating BaoCaoVanHanh: {}", request.getLoaiBaoCao());
+        BaoCaoVanHanh bc = BaoCaoVanHanh.builder()
+                .loaiBaoCao(request.getLoaiBaoCao())
+                .kyBatDau(request.getKyBatDau())
+                .kyKetThuc(request.getKyKetThuc())
+                .tongChiPhi(request.getTongChiPhi())
+                .duongDanFile(request.getDuongDanFile())
+                .nguoiTao(request.getNguoiTao())
+                .build();
+        return toBaoCaoVanHanhResponse(baoCaoVanHanhRepository.save(bc));
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────
 
     private KeHoachVanHanhResponse toResponse(KeHoachVanHanh kh) {
@@ -152,6 +167,19 @@ public class KeHoachVanHanhService {
                 .nguoiSuaDoi(kh.getNguoiSuaDoi())
                 .ngaySuaDoi(kh.getNgaySuaDoi())
                 .vanHanhChiTiet(chiTietList)
+                .build();
+    }
+
+    private BaoCaoVanHanhResponse toBaoCaoVanHanhResponse(BaoCaoVanHanh bc) {
+        return BaoCaoVanHanhResponse.builder()
+                .id(bc.getId())
+                .loaiBaoCao(bc.getLoaiBaoCao())
+                .kyBatDau(bc.getKyBatDau())
+                .kyKetThuc(bc.getKyKetThuc())
+                .tongChiPhi(bc.getTongChiPhi())
+                .duongDanFile(bc.getDuongDanFile())
+                .nguoiTao(bc.getNguoiTao())
+                .ngayTao(bc.getNgayTao())
                 .build();
     }
 }

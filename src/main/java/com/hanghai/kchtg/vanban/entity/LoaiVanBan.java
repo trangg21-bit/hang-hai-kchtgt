@@ -7,5 +7,5 @@ public enum LoaiVanBan {
     LUAT,
     NGHI_DINH,
     THONG_TU,
-    QUET_DINH
+    QUYET_DINH
 }

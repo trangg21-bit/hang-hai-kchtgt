@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -36,6 +37,7 @@ public class KeHoachVanHanhController {
      * Returns all operation plans.
      */
     @GetMapping
+    @PreAuthorize("@auth.check(authentication, 'vanban:read')")
     public ResponseEntity<ApiResponse<List<KeHoachVanHanhResponse>>> listPlans(
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
@@ -48,6 +50,7 @@ public class KeHoachVanHanhController {
      * Creates a new operation plan.
      */
     @PostMapping
+    @PreAuthorize("@auth.check(authentication, 'vanban:van-hanh:create')")
     public ResponseEntity<ApiResponse<KeHoachVanHanhResponse>> createPlan(
             @RequestBody @Valid KeHoachVanHanhCreateRequest request) {
         KeHoachVanHanhResponse response = keHoachVanHanhService.create(request);
@@ -59,6 +62,7 @@ public class KeHoachVanHanhController {
      * Returns a single operation plan by ID.
      */
     @GetMapping("/{id}")
+    @PreAuthorize("@auth.check(authentication, 'vanban:read')")
     public ResponseEntity<ApiResponse<KeHoachVanHanhResponse>> getPlan(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(keHoachVanHanhService.getById(id)));
     }
@@ -68,6 +72,7 @@ public class KeHoachVanHanhController {
      * Updates an existing operation plan.
      */
     @PutMapping("/{id}")
+    @PreAuthorize("@auth.check(authentication, 'vanban:van-hanh:update')")
     public ResponseEntity<ApiResponse<KeHoachVanHanhResponse>> updatePlan(
             @PathVariable Long id,
             @RequestBody @Valid KeHoachVanHanhCreateRequest request) {
@@ -80,6 +85,7 @@ public class KeHoachVanHanhController {
      * Deletes an operation plan.
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("@auth.check(authentication, 'vanban:van-hanh:delete')")
     public ResponseEntity<ApiResponse<Void>> deletePlan(@PathVariable Long id) {
         keHoachVanHanhService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa kế hoạch vận hành thành công", null));
@@ -92,6 +98,7 @@ public class KeHoachVanHanhController {
      * Filter by operation date.
      */
     @GetMapping("/date/{ngayVanHanh}")
+    @PreAuthorize("@auth.check(authentication, 'vanban:read')")
     public ResponseEntity<ApiResponse<List<KeHoachVanHanhResponse>>> filterByDate(
             @PathVariable LocalDate ngayVanHanh) {
         return ResponseEntity.ok(ApiResponse.success(keHoachVanHanhService.findByNgayVanHanh(ngayVanHanh)));
@@ -102,6 +109,7 @@ public class KeHoachVanHanhController {
      * Filter by status.
      */
     @GetMapping("/status/{tinhTrang}")
+    @PreAuthorize("@auth.check(authentication, 'vanban:read')")
     public ResponseEntity<ApiResponse<List<KeHoachVanHanhResponse>>> filterByStatus(
             @PathVariable String tinhTrang) {
         TinhTrangVanHanh status = TinhTrangVanHanh.valueOf(tinhTrang);
@@ -113,6 +121,7 @@ public class KeHoachVanHanhController {
      * Filter by structure (cầu cảng).
      */
     @GetMapping("/caucang/{cauCang}")
+    @PreAuthorize("@auth.check(authentication, 'vanban:read')")
     public ResponseEntity<ApiResponse<List<KeHoachVanHanhResponse>>> filterByCauCang(
             @PathVariable String cauCang) {
         return ResponseEntity.ok(ApiResponse.success(keHoachVanHanhService.findByCauCang(cauCang)));
@@ -123,6 +132,7 @@ public class KeHoachVanHanhController {
      * Filter by equipment.
      */
     @GetMapping("/thietbi/{thietBi}")
+    @PreAuthorize("@auth.check(authentication, 'vanban:read')")
     public ResponseEntity<ApiResponse<List<KeHoachVanHanhResponse>>> filterByThietBi(
             @PathVariable String thietBi) {
         return ResponseEntity.ok(ApiResponse.success(keHoachVanHanhService.findByThietBi(thietBi)));
@@ -133,6 +143,7 @@ public class KeHoachVanHanhController {
      * Check for scheduling conflicts.
      */
     @GetMapping("/conflict")
+    @PreAuthorize("@auth.check(authentication, 'vanban:read')")
     public ResponseEntity<ApiResponse<Boolean>> checkConflict(
             @RequestParam LocalDate ngayVanHanh,
             @RequestParam LocalTime thoiGianBatDau,

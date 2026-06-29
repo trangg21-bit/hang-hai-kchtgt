@@ -24,6 +24,8 @@ public class QuyHoachBenCangService {
 
     private final QuyHoachBenCangRepository quyHoachBenCangRepository;
     private final HamMucQuyHoachRepository hamMucQuyHoachRepository;
+    private final FileQuyHoachRepository fileQuyHoachRepository;
+    private final TraCuuLogRepository traCuuLogRepository;
 
     // ── CRUD ──────────────────────────────────────────────────────────
 
@@ -135,6 +137,29 @@ public class QuyHoachBenCangService {
         return toResponse(quyHoachBenCangRepository.save(qh));
     }
 
+    // ── File Management (F-132) ──────────────────────────────────────
+
+    @Transactional
+    public FileQuyHoachResponse uploadFile(FileQuyHoachCreateRequest request) {
+        log.info("Uploading FileQuyHoach for quyHoachId: {}", request.getQuyHoachId());
+        FileQuyHoach fq = FileQuyHoach.builder()
+                .quyHoachId(request.getQuyHoachId())
+                .tenFile(request.getTenFile())
+                .loaiFile(request.getLoaiFile())
+                .duongDan(request.getDuongDan())
+                .kichThuoc(request.getKichThuoc())
+                .build();
+        return toFileQuyHoachResponse(fileQuyHoachRepository.save(fq));
+    }
+
+    // ── Search Logging (F-133) ───────────────────────────────────────
+
+    @Transactional
+    public void logTraCuu(TraCuuLog traCuuLog) {
+        log.info("Logging TraCuuLog: {}", traCuuLog.getTuKhoa());
+        traCuuLogRepository.save(traCuuLog);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────
 
     private QuyHoachBenCangResponse toResponse(QuyHoachBenCang qh) {
@@ -165,6 +190,19 @@ public class QuyHoachBenCangService {
                 .nguoiSuaDoi(qh.getNguoiSuaDoi())
                 .ngaySuaDoi(qh.getNgaySuaDoi())
                 .hamMucQuyHoach(hamMucList)
+                .build();
+    }
+
+    private FileQuyHoachResponse toFileQuyHoachResponse(FileQuyHoach fq) {
+        return FileQuyHoachResponse.builder()
+                .id(fq.getId())
+                .quyHoachId(fq.getQuyHoachId())
+                .tenFile(fq.getTenFile())
+                .loaiFile(fq.getLoaiFile())
+                .duongDan(fq.getDuongDan())
+                .kichThuoc(fq.getKichThuoc())
+                .ngayTaiLen(fq.getNgayTaiLen())
+                .nguoiTaiLen(fq.getNguoiTaiLen())
                 .build();
     }
 }

@@ -24,6 +24,9 @@ public class VanBanPhapLyService {
 
     private final VanBanPhapLyRepository vanBanPhapLyRepository;
     private final TaiLieuDinhKemRepository taiLieuDinhKemRepository;
+    private final TimKiemLogRepository timKiemLogRepository;
+    private final KetQuaTimKiemRepository ketQuaTimKiemRepository;
+    private final GoiYTimKiemRepository goiYTimKiemRepository;
 
     // ── CRUD ──────────────────────────────────────────────────────────
 
@@ -137,6 +140,30 @@ public class VanBanPhapLyService {
                 .currentPage(result.getNumber())
                 .pageSize(result.getSize())
                 .build();
+    }
+
+    /**
+     * Log search query (F-134).
+     */
+    @Transactional
+    public void logTimKiem(TimKiemLog timKiemLog) {
+        log.info("Logging search: {}", timKiemLog.getTuKhoa());
+        timKiemLogRepository.save(timKiemLog);
+    }
+
+    /**
+     * Get search suggestions for a keyword (F-134).
+     */
+    @Transactional(readOnly = true)
+    public List<GoiYTimKiemResponse> getGoiYTimKiem(String keyword) {
+        List<GoiYTimKiem> goiYList = goiYTimKiemRepository.findByTuKhoaContainingIgnoreCase(keyword);
+        return goiYList.stream().map(g -> GoiYTimKiemResponse.builder()
+                        .id(g.getId())
+                        .tuKhoa(g.getTuKhoa())
+                        .soLuongTim(g.getSoLuongTim())
+                        .lanCuoiTim(g.getLanCuoiTim())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     // ── Helpers ───────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -37,6 +38,7 @@ public class VanBanPhapLyController {
      * Returns all legal documents.
      */
     @GetMapping
+    @PreAuthorize("@auth.check(authentication, 'vanban:read')")
     public ResponseEntity<ApiResponse<List<VanBanPhapLyResponse>>> listVanBan(
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
@@ -49,6 +51,7 @@ public class VanBanPhapLyController {
      * Creates a new legal document.
      */
     @PostMapping
+    @PreAuthorize("@auth.check(authentication, 'vanban:create')")
     public ResponseEntity<ApiResponse<VanBanPhapLyResponse>> createVanBan(
             @RequestBody @Valid VanBanPhapLyCreateRequest request) {
         VanBanPhapLyResponse response = vanBanPhapLyService.create(request);
@@ -60,6 +63,7 @@ public class VanBanPhapLyController {
      * Returns a single legal document by ID.
      */
     @GetMapping("/{id}")
+    @PreAuthorize("@auth.check(authentication, 'vanban:read')")
     public ResponseEntity<ApiResponse<VanBanPhapLyResponse>> getVanBan(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.success(vanBanPhapLyService.getById(id)));
     }
@@ -69,6 +73,7 @@ public class VanBanPhapLyController {
      * Updates an existing legal document.
      */
     @PutMapping("/{id}")
+    @PreAuthorize("@auth.check(authentication, 'vanban:update')")
     public ResponseEntity<ApiResponse<VanBanPhapLyResponse>> updateVanBan(
             @PathVariable Long id,
             @RequestBody @Valid VanBanPhapLyCreateRequest request) {
@@ -81,6 +86,7 @@ public class VanBanPhapLyController {
      * Deletes a legal document.
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("@auth.check(authentication, 'vanban:delete')")
     public ResponseEntity<ApiResponse<Void>> deleteVanBan(@PathVariable Long id) {
         vanBanPhapLyService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa văn bản pháp lý thành công", null));
@@ -93,6 +99,7 @@ public class VanBanPhapLyController {
      * Filter by legal status.
      */
     @GetMapping("/status/{tinhTrang}")
+    @PreAuthorize("@auth.check(authentication, 'vanban:read')")
     public ResponseEntity<ApiResponse<List<VanBanPhapLyResponse>>> filterByStatus(
             @PathVariable String tinhTrang) {
         TinhTrangHieuLuc status = TinhTrangHieuLuc.valueOf(tinhTrang);
@@ -104,6 +111,7 @@ public class VanBanPhapLyController {
      * Filter by document type.
      */
     @GetMapping("/type/{loai}")
+    @PreAuthorize("@auth.check(authentication, 'vanban:read')")
     public ResponseEntity<ApiResponse<List<VanBanPhapLyResponse>>> filterByType(
             @PathVariable String loai) {
         LoaiVanBan type = LoaiVanBan.valueOf(loai);
@@ -117,6 +125,7 @@ public class VanBanPhapLyController {
      * Dynamic search with keyword, issuing body, type, status, year range (F-135).
      */
     @GetMapping("/search")
+    @PreAuthorize("@auth.check(authentication, 'vanban:read')")
     public ResponseEntity<ApiResponse<KetQuaTimKiemResponse>> searchDocuments(
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "coQuan", required = false) String coQuan,
