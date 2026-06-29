@@ -215,12 +215,16 @@ public class RolePermissionSeeder implements CommandLineRunner {
                     }
 
                     Set<Permission> perms = new HashSet<>();
-                    for (String permCode : permCodes) {
-                        Permission perm = permissionsByCode.get(permCode);
-                        if (perm != null) {
-                            perms.add(perm);
-                        } else {
-                            log.warn("⚠️ Permission '{}' not found for role '{}'", permCode, roleCode);
+                    if ("ROLE_SYSTEM_ADMIN".equals(roleCode)) {
+                        perms.addAll(permissionsByCode.values());
+                    } else {
+                        for (String permCode : permCodes) {
+                            Permission perm = permissionsByCode.get(permCode);
+                            if (perm != null) {
+                                perms.add(perm);
+                            } else {
+                                log.warn("⚠️ Permission '{}' not found for role '{}'", permCode, roleCode);
+                            }
                         }
                     }
                     role.setPermissions(perms);

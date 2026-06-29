@@ -1,12 +1,11 @@
 package com.hanghai.kchtg.security;
 
 import com.hanghai.kchtg.user.entity.User;
-import org.springframework.security.authorization.AuthorizationDecision;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -15,6 +14,12 @@ import java.util.Set;
  */
 @Component("auth")
 public class PermissionAuthorizationManager {
+
+    private final UserRepository userRepository;
+
+    public PermissionAuthorizationManager(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     /**
      * Check if the authenticated user has the required permission.
@@ -25,8 +30,12 @@ public class PermissionAuthorizationManager {
             return false;
         }
 
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof org.springframework.security.core.userdetails.User) {
+        // Grant full access to system administrators
+        boolean isSystemAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN")
+                        || a.getAuthority().equals("ROLE_SUPER_ADMIN")
+                        || a.getAuthority().equals("SYSTEM_ADMIN"));
+        if (isSystemAdmin) {
             return true;
         }
 
@@ -40,8 +49,19 @@ public class PermissionAuthorizationManager {
         }
         Object principal = authentication.getPrincipal();
         if (principal instanceof User) {
-            User user = (User) principal;
-            return user.getAllPermissions();
+            return ((User) principal).getAllPermissions();
+        }
+        if (principal instanceof org.springframework.security.core.userdetails.User) {
+            String username = ((org.springframework.security.core.userdetails.User) principal).getUsername();
+            return userRepository.findByUsername(username)
+                    .map(User::getAllPermissions)
+                    .orElse(Collections.emptySet());
+        }
+        if (principal instanceof String) {
+            String username = (String) principal;
+            return userRepository.findByUsername(username)
+                    .map(User::getAllPermissions)
+                    .orElse(Collections.emptySet());
         }
         return Collections.emptySet();
     }
