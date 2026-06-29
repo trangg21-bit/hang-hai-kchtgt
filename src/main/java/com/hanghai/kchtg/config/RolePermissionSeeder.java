@@ -155,11 +155,12 @@ public class RolePermissionSeeder implements CommandLineRunner {
         Map<String, List<String>> rolePermissionMap = new LinkedHashMap<>();
         rolePermissionMap.put("ROLE_SYSTEM_ADMIN", List.of(
                 "user:manage", "role:manage", "orgunit:manage",
-                "admin:manage", "log:manage", "map:manage", "connection:manage"
+                "admin:manage", "log:manage", "map:manage", "connection:manage",
+                "data:read", "data:create", "data:update", "data:approve"
         ));
         rolePermissionMap.put("ROLE_ADMIN", List.of(
                 "orgunit:manage", "group:manage", "user:read",
-                "report:read", "connection:read"
+                "report:read", "connection:read", "data:read", "data:approve"
         ));
         rolePermissionMap.put("ROLE_LEADER", List.of(
                 "data:approve", "report:read", "approve:action"

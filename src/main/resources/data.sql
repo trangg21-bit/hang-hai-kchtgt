@@ -28,24 +28,24 @@ INSERT INTO user_roles (user_id, role_id) VALUES
 
 -- 4. Permissions
 INSERT INTO permissions (id, code, name, resource, action, created_at, updated_at) VALUES
-  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8001', 'users:read', 'Xem danh sách người dùng', 'users', 'read', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8002', 'users:create', 'Tạo mới người dùng', 'users', 'create', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8003', 'users:update', 'Cập nhật người dùng', 'users', 'update', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8004', 'users:delete', 'Xóa người dùng', 'users', 'delete', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8005', 'roles:read', 'Xem vai trò', 'roles', 'read', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8006', 'roles:manage', 'Quản lý vai trò', 'roles', 'manage', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8007', 'gis:read', 'Xem bản đồ GIS', 'gis', 'read', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8008', 'gis:create', 'Thêm đối tượng GIS', 'gis', 'create', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8009', 'gis:update', 'Sửa đối tượng GIS', 'gis', 'update', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8010', 'gis:delete', 'Xóa đối tượng GIS', 'gis', 'delete', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8011', 'map:view', 'Xem bản đồ', 'map', 'view', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8012', 'map:edit', 'Sửa cấu hình bản đồ', 'map', 'edit', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8013', 'admin:manage', 'Quản trị hệ thống', 'admin', 'manage', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8001', 'user:manage', 'Quản lý người dùng', 'user', 'manage', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8002', 'orgunit:manage', 'Quản lý đơn vị', 'orgunit', 'manage', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8003', 'group:manage', 'Quản lý nhóm', 'group', 'manage', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8004', 'role:manage', 'Quản lý vai trò', 'role', 'manage', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8005', 'data:read', 'Xem dữ liệu', 'data', 'read', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8006', 'data:create', 'Tạo dữ liệu', 'data', 'create', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8007', 'data:update', 'Chỉnh sửa dữ liệu', 'data', 'update', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8008', 'data:approve', 'Phê duyệt dữ liệu', 'data', 'approve', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8009', 'map:manage', 'Quản lý bản đồ', 'map', 'manage', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8010', 'connection:read', 'Xem kết nối liên thông', 'connection', 'read', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8011', 'report:read', 'Xem báo cáo', 'report', 'read', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8012', 'admin:manage', 'Quản trị hệ thống', 'admin', 'manage', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8013', 'log:manage', 'Quản lý log', 'log', 'manage', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
   ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8014', 'audit:read', 'Xem nhật ký hoạt động', 'audit', 'read', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8015', 'audit:export', 'Xuất nhật ký hoạt động', 'audit', 'export', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  ('1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8015', 'user:read', 'Xem danh sách người dùng', 'user', 'read', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- 5. Map Permissions to Roles (role_permissions)
--- SYSTEM_ADMIN (15 permissions)
+-- SYSTEM_ADMIN (All 15 permissions)
 INSERT INTO role_permissions (role_id, permission_id) VALUES
   ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8031', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8001'),
   ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8031', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8002'),
@@ -63,36 +63,32 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
   ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8031', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8014'),
   ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8031', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8015');
 
--- ADMIN (10 permissions)
+-- ADMIN (9 permissions)
 INSERT INTO role_permissions (role_id, permission_id) VALUES
   ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8032', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8001'),
   ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8032', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8002'),
   ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8032', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8003'),
   ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8032', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8005'),
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8032', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8007'),
   ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8032', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8008'),
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8032', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8009'),
+  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8032', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8010'),
   ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8032', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8011'),
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8032', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8012'),
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8032', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8014');
+  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8032', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8014'),
+  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8032', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8015');
 
--- MANAGER (6 permissions)
+-- MANAGER (5 permissions)
 INSERT INTO role_permissions (role_id, permission_id) VALUES
   ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8033', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8001'),
+  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8033', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8005'),
+  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8033', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8006'),
   ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8033', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8007'),
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8033', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8008'),
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8033', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8009'),
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8033', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8011'),
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8033', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8012');
+  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8033', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8015');
 
--- USER (3 permissions)
+-- USER (2 permissions)
 INSERT INTO role_permissions (role_id, permission_id) VALUES
   ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8034', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8001'),
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8034', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8007'),
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8034', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8011');
+  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8034', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8005');
 
--- VIEWER (3 permissions)
+-- VIEWER (2 permissions)
 INSERT INTO role_permissions (role_id, permission_id) VALUES
   ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8035', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8001'),
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8035', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8007'),
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8035', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8011');
+  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8035', '1f8f4a13-43f1-4dfb-9efc-fcd4ef9d8005');
