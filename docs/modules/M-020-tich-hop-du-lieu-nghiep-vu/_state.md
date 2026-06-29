@@ -59,8 +59,7 @@ kpi:
 rework-count: {}
 locked-fields: []
 version: 1
-finalizers:
-  - seal
+finalizers: [seal]
 children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
@@ -117,18 +116,7 @@ none
 | Wave 4 | Tests (4 files, 25 methods) | ✅ Done | ✅ Passed |
 | Wave 5 | Docs + Seal | ✅ Done | ✅ Passed |
 
-## Final Summary
 
-- **Module ID**: M-020
-- **Module Name**: Tích hợp dữ liệu nghiệp vụ
-- **Status**: Done — Sealed
-- **Sealed At**: 2026-06-29T00:00:00Z
-- **Total Features**: 17 (F-254 → F-270)
-- **Total Source Files**: 18
-- **Total Test Files**: 4
-- **Total Test Methods**: 25
-- **Total Endpoints**: 23
-- **Verdict**: PASSED — All features implemented, all tests passing, module ready for production.
 
 ## Escalation Log
 

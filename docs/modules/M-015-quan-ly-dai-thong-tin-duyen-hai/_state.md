@@ -2,14 +2,17 @@
 feature-id: M-015
 feature-name: Quản lý Đài thông tin duyên hải
 pipeline-type: sdlc
-status: done
-sealed: true
+status: in-progress
+sealed: false
 depends-on: []
 blocked-by: []
 created: 2026-06-16T15:42:46Z
-closed-at: "2026-06-26T00:00:00Z"
-last-updated: "2026-06-26T00:00:00Z"
-current-stage: closed
+closed-at: ""
+last-updated: 2026-06-29T00:00:00Z
+current-stage: engineering-business-analyst
+source-file-count: 35
+test-file-count: 6
+test-method-count: 86
 output-mode: lean
 repo-type: mini
 repo-path: .
@@ -29,7 +32,7 @@ kpi:
 rework-count: {}
 locked-fields: []
 version: 1
-finalizers: [seal]
+finalizers: []
 children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
@@ -40,14 +43,14 @@ feature-req:
   scope-modules: []
   scope-features: []
   dev-unit: ""
-clarification-notes: ""
+  clarification-notes: ""
 name: Quản lý Đài thông tin duyên hải
 ---
 # Pipeline State: Quản lý Đài thông tin duyên hải
 
 ## Business Goal
 
-[CAN BO SUNG: 1-2 cau mo ta muc tieu nghiep vu cua module]
+Quản lý đài thông tin duyên hải: Inmarsat, Cospas-Sarsat, LRIT, đài thông tin hàng hải
 
 ## Stage Progress
 
@@ -62,15 +65,17 @@ name: Quản lý Đài thông tin duyên hải
 
 ## Current Stage
 
-**closed** — Module sealed. All stages complete, QA verified, finalizers executed.
+**engineering-business-analyst** — Module unsealed. Code exists in `integration/` package (35 source, 6 test, 86 @Test) but module-brief still shows 30 features as "proposed". Needs BA stage to reconcile features with existing code.
 
 ## Next Action
 
-Module M-015 is CLOSED. No further action required.
+1. Reconcile module-brief features (F-092 to F-121, all "proposed") against existing code in `integration/`.
+2. Determine if existing code covers these features or if additional features are needed.
+3. Update feature statuses or proceed with new feature development.
 
 ## Active Blockers
 
-none
+Module-brief (30 features all "proposed") contradicts existing implementation code in `integration/`. Code review doc indicates Wave 1-4 completed but module was sealed without feature status reconciliation.
 
 ## Wave Tracker
 
@@ -85,3 +90,4 @@ none
 
 | Date | Item | Decision |
 |---|---|---|
+| 2026-06-29 | M-015 sealed but module-brief says BA | Unsealed — needs feature reconciliation |

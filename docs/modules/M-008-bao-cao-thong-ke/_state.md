@@ -63,6 +63,9 @@ feature-req: |
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
+source-file-count: 26
+test-file-count: 4
+test-method-count: 44
 deprecated: true
 ---
 # Pipeline State: Báo cáo & Thống kê

@@ -2,14 +2,17 @@
 feature-id: M-016
 feature-name: Báo cáo & Tổng hợp
 pipeline-type: sdlc
-status: done
-sealed: true
-closed-at: "2026-06-26T00:00:00Z"
+status: in-progress
+sealed: false
+closed-at: ""
 depends-on: []
 blocked-by: []
 created: 2026-06-16T15:42:46Z
-last-updated: "2026-06-26T00:00:00Z"
-current-stage: closed
+last-updated: 2026-06-29T00:00:00Z
+current-stage: engineering-business-analyst
+source-file-count: 18
+test-file-count: 0
+test-method-count: 0
 output-mode: lean
 repo-type: mini
 repo-path: .
@@ -29,7 +32,7 @@ kpi:
 rework-count: {}
 locked-fields: []
 version: 1
-finalizers: [seal]
+finalizers: []
 children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
@@ -47,41 +50,37 @@ name: Báo cáo & Tổng hợp
 
 ## Business Goal
 
-[CẦN BỔ SUNG: 1-2 câu mô tả mục tiêu nghiệp vụ của module]
+Quản lý kết nối dữ liệu, sync, health monitoring — backend foundation cho báo cáo & tổng hợp
 
 ## Stage Progress
 
 | # | Stage | Agent | Verdict | Artifact | Date |
 |---|---|---|---|---|---|
 | 1 | Intake | consulting-intelligence-extractor | Ready for BA | docs/intel/_snapshot.md | 2026-06-16T15:42:46Z |
-| 2 | engineering-system-architect | engineering-system-architect | — | — | — |
-| 3 | engineering-technical-lead | engineering-technical-lead | — | — | — |
-| 4 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | — | — | — |
-| 5 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | — | — | — |
-| 6 | engineering-code-reviewer | engineering-code-reviewer | — | — | — |
 
 ## Current Stage
 
-**closed** — Module sealed on 2026-06-26.
+**engineering-business-analyst** — Module unsealed. Code exists in `dataconnection/` package (18 source, 0 test). Backend foundation implemented but no test files exist. Module-brief shows 21 features (F-141 to F-189) all "proposed".
 
 ## Next Action
 
-Module is closed. No further action required.
+1. Reconcile module-brief features (F-141 to F-189, all "proposed") against existing code in `dataconnection/`.
+2. Create test suite for `dataconnection/` (currently 0 test files).
+3. Update feature statuses to match implementation.
 
 ## Active Blockers
 
-none
+- Module sealed but 0 test files in `dataconnection/`.
+- Module-brief features (21) not reconciled with existing code.
+- Needs full QA wave before sealing.
 
 ## Wave Tracker
 
 | Wave | Tasks | Dev Status | QA Status |
 |---|---|---|---|
-| Wave 1 | Entity, Repository, Enum | ✅ Done | — |
-| Wave 2 | DTO, Service | ✅ Done | — |
-| Wave 3 | Controller | ✅ Done | — |
-| Wave 4 | Test | ✅ Done | — |
 
 ## Escalation Log
 
 | Date | Item | Decision |
 |---|---|---|
+| 2026-06-29 | M-016 sealed but no tests | Unsealed — needs QA wave + feature reconciliation |

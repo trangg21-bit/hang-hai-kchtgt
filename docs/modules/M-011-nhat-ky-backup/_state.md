@@ -3,11 +3,12 @@ feature-id: M-011
 feature-name: Nhật ký & Backup
 pipeline-type: sdlc
 status: done
+sealed: true
+current-stage: closed
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
 last-updated: 2026-06-25T09:25:36Z
-current-stage: complete
 output-mode: lean
 repo-type: mini
 repo-path: .
@@ -42,7 +43,7 @@ kpi:
   rework-count: {}
 locked-fields: []
 version: 2
-finalizers: []
+finalizers: [seal]
 children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
@@ -54,6 +55,9 @@ feature-req:
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
+source-file-count: 5
+test-file-count: 1
+test-method-count: 3
 current_stage: close
 ---
 # Pipeline State: Nhật ký & Backup
@@ -75,11 +79,11 @@ current_stage: close
 
 ## Current Stage
 
-**complete** — All stages completed.
+**closed** — Module sealed. All stages complete, QA verified, finalizers executed.
 
 ## Next Action
 
-Merge branch feature/M011 into main.
+Module M-011 is CLOSED. No further action required.
 
 ## Active Blockers
 
@@ -95,4 +99,4 @@ none
 
 | Date | Item | Decision |
 |---|---|---|
-| — | — | — |
+

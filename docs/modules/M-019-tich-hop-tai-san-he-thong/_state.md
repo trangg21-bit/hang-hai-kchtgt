@@ -45,7 +45,7 @@ kpi:
 rework-count: {}
 locked-fields: []
 version: 2
-finalizers: []
+finalizers: [seal]
 children-close-policy: TERMINATE
 child-events: []
 partial-redo: []

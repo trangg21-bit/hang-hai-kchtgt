@@ -59,6 +59,9 @@ feature-req:
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
+source-file-count: 25
+test-file-count: 9
+test-method-count: 54
 ---
 # Pipeline State: Xác thực & Phân quyền
 

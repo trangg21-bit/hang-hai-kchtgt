@@ -7,6 +7,13 @@
 - **Compiler**: `mvn compile -DskipTests` → **BUILD SUCCESS**
 - **Total Source Files**: 28 (6 entities, 3 repos, 6 DTOs, 4 services, 3 controllers, 4 auxiliary)
 - **Total Test Files**: 6 (2 service, 2 controller, 2 history)
+- **Total Test Methods**: 122 (@Test methods)
+- **status**: done
+- **sealed**: true
+- **current-stage**: closed
+- **source-file-count**: 28
+- **test-file-count**: 6
+- **test-method-count**: 122
 
 ## Verdict: Pass (Ready to Merge)
 
@@ -137,5 +144,7 @@ All 12 features (F-068 to F-079) are implemented per tech-spec. All business rul
 - **Code-review verdict**: Pass
 - **Total test cases**: 116 (100% pass rate)
 - **Source files**: 28
+- **Test files**: 6
+- **Test methods**: 122
 - **Cross-cutting consumers**: None blocking
 - **Intel drift**: None reported
