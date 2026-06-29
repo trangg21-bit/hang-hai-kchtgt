@@ -26,6 +26,12 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
 
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -96,19 +102,39 @@ class CangBienRbacSecurityTest {
     @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
+    // ── Helper ─────────────────────────────────────────────────────────────
+
+    /**
+     * RequestPostProcessor that:
+     * 1. Uses SecurityMockMvcRequestPostProcessors.authentication() to install a
+     *    TestSecurityContextRepository so SecurityContextHolderFilter populates
+     *    SecurityContextHolder with the test authentication (required for @PreAuthorize).
+     * 2. Sets request.setUserPrincipal(auth) so Spring MVC's
+     *    ServletRequestMethodArgumentResolver resolves Authentication method parameters.
+     */
+    private RequestPostProcessor userPrincipal(String username) {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                username, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        RequestPostProcessor securityCtxProcessor = SecurityMockMvcRequestPostProcessors.authentication(auth);
+        return request -> {
+            request = securityCtxProcessor.postProcessRequest(request);
+            request.setUserPrincipal(auth);
+            return request;
+        };
+    }
+
     // ── Tests proving WITH-permission path works ───────────────────────────
 
     @Test
-    @WithMockUser(username = "approver-user")
     @DisplayName("approve endpoint — user WITH cangbien:approve authority → 200 OK")
     void approve_withAuthority_returns200() throws Exception {
         UUID id = UUID.randomUUID();
 
-        when(auth.check(any(Authentication.class), eq("cangbien:approve")))
+        when(auth.check(any(), eq("cangbien:approve")))
                 .thenReturn(true);
 
         mockMvc.perform(post("/api/v1/cang-bien/{id}/approve", id)
-                        .param("userId", "approver-user"))
+                        .with(userPrincipal("approver-user")))
                 .andExpect(status().isOk());
     }
 
@@ -142,8 +168,7 @@ class CangBienRbacSecurityTest {
                 .thenReturn(false);
 
         assertThrows(Exception.class, () ->
-                mockMvc.perform(post("/api/v1/cang-bien/{id}/approve", id)
-                        .param("userId", "user-without-perm")),
+                mockMvc.perform(post("/api/v1/cang-bien/{id}/approve", id)),
                 "Expected AccessDeniedException propagated for denied cangbien:approve");
     }
 

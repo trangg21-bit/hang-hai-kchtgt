@@ -7,10 +7,10 @@
       "version": 1
     },
     "catalog.json": {
-      "content_hash": "sha256:87c97d46f176e60da3d61d43f3a1fb8f12b2b433374d8a1969e1f94235ee99c7",
-      "last_modified": "2026-06-23T08:05:33Z",
-      "last_producer": "ai-kit/scaffold_module",
-      "version": 95
+      "content_hash": "sha256:cf9d56af8c7aabe892d54d12896d37b586659bf9d63e9927b283c1b3f0b07396",
+      "last_modified": "2026-06-28T16:09:46Z",
+      "last_producer": "ai-kit/scaffold_hotfix",
+      "version": 96
     },
     "docs/intel/catalog.json": {
       "content_hash": "sha256:012dacf07d14b80405297d08e1000df08ecdcd33310a50bfa2283e77aa12d004",

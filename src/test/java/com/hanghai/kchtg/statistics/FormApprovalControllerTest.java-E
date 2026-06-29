@@ -58,8 +58,6 @@ class FormApprovalControllerTest {
     private JwtUtil jwtUtil;
 
     @MockBean
-
-    @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     @Test

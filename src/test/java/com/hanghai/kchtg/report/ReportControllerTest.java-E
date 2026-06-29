@@ -68,8 +68,6 @@ class ReportControllerTest {
     private JwtUtil jwtUtil;
 
     @MockBean
-
-    @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     private ReportEntity buildEntity(String code, ReportType type, ReportStatus status) {

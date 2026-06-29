@@ -2,6 +2,7 @@ package com.hanghai.kchtg.orgunit.service;
 
 import com.hanghai.kchtg.orgunit.dto.CreateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
+import com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
@@ -19,6 +20,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -78,14 +80,14 @@ class OrganizationServiceTest {
             assertTrue(ex.getMessage().contains("đã tồn tại"));
         }
 
-        @Test
-        @DisplayName("shouldAllowUniqueCodeOnCreate")
-        void shouldAllowUniqueCodeOnCreate() {
-            CreateOrgUnitRequest request = new CreateOrgUnitRequest();
-            request.setName("Chi cục 1");
-            request.setCode("CUC001");
-            request.setType(OrgUnitType.CHI_CUC);
-            request.setCoefficient(1.5);
+    @Test
+    @DisplayName("shouldAllowUniqueCodeOnCreate")
+    void shouldAllowUniqueCodeOnCreate() {
+        CreateOrgUnitRequest request = new CreateOrgUnitRequest();
+        request.setName("Chi cục 1");
+        request.setCode("CUC001");
+        request.setType(OrgUnitType.CHI_CUC);
+        request.setCoefficient(BigDecimal.valueOf(1.5));
 
             when(orgUnitRepo.existsByCode("CUC001")).thenReturn(false);
             when(orgUnitRepo.save(any())).thenAnswer(invocation -> {
@@ -293,47 +295,47 @@ class OrganizationServiceTest {
     @DisplayName("BR-017: Coefficient must be > 0 with max 2 decimal places")
     class CoefficientTests {
 
-        @Test
-        @DisplayName("shouldRejectZeroCoefficientViaValidation")
-        void shouldRejectZeroCoefficient() {
-            CreateOrgUnitRequest request = new CreateOrgUnitRequest();
-            request.setName("Test");
-            request.setCode("TEST001");
-            request.setType(OrgUnitType.CUC);
-            request.setCoefficient(0.0);
+    @Test
+    @DisplayName("shouldRejectZeroCoefficientViaValidation")
+    void shouldRejectZeroCoefficient() {
+        CreateOrgUnitRequest request = new CreateOrgUnitRequest();
+        request.setName("Test");
+        request.setCode("TEST001");
+        request.setType(OrgUnitType.CUC);
+        request.setCoefficient(BigDecimal.ZERO);
 
-            // Jakarta Validation @DecimalMin("0.01") — 0.0 fails
-            if (request.getCoefficient() != null && request.getCoefficient() <= 0) {
-                fail("Coefficient 0 should be rejected by @DecimalMin validation");
-            }
+        // Jakarta Validation @DecimalMin("0.01") — 0.0 fails
+        if (request.getCoefficient() != null && request.getCoefficient().compareTo(BigDecimal.ZERO) <= 0) {
+            fail("Coefficient 0 should be rejected by @DecimalMin validation");
         }
+    }
 
-        @Test
-        @DisplayName("shouldRejectNegativeCoefficient")
-        void shouldRejectNegativeCoefficient() {
-            CreateOrgUnitRequest request = new CreateOrgUnitRequest();
-            request.setName("Test");
-            request.setCode("TEST001");
-            request.setType(OrgUnitType.CUC);
-            request.setCoefficient(-0.5);
+    @Test
+    @DisplayName("shouldRejectNegativeCoefficient")
+    void shouldRejectNegativeCoefficient() {
+        CreateOrgUnitRequest request = new CreateOrgUnitRequest();
+        request.setName("Test");
+        request.setCode("TEST001");
+        request.setType(OrgUnitType.CUC);
+        request.setCoefficient(BigDecimal.valueOf(-0.5));
 
-            if (request.getCoefficient() != null && request.getCoefficient() <= 0) {
-                fail("Negative coefficient should be rejected by @DecimalMin validation");
-            }
+        if (request.getCoefficient() != null && request.getCoefficient().compareTo(BigDecimal.ZERO) <= 0) {
+            fail("Negative coefficient should be rejected by @DecimalMin validation");
         }
+    }
 
-        @Test
-        @DisplayName("shouldAcceptValidCoefficient")
-        void shouldAcceptValidCoefficient() {
-            CreateOrgUnitRequest request = new CreateOrgUnitRequest();
-            request.setName("Test");
-            request.setCode("TEST001");
-            request.setType(OrgUnitType.CUC);
-            request.setCoefficient(1.50);
+    @Test
+    @DisplayName("shouldAcceptValidCoefficient")
+    void shouldAcceptValidCoefficient() {
+        CreateOrgUnitRequest request = new CreateOrgUnitRequest();
+        request.setName("Test");
+        request.setCode("TEST001");
+        request.setType(OrgUnitType.CUC);
+        request.setCoefficient(BigDecimal.valueOf(1.50));
 
-            assertNotNull(request.getCoefficient());
-            assertTrue(request.getCoefficient() > 0);
-        }
+        assertNotNull(request.getCoefficient());
+        assertTrue(request.getCoefficient().compareTo(BigDecimal.ZERO) > 0);
+    }
 
         @Test
         @DisplayName("shouldAcceptNullCoefficient")
@@ -361,7 +363,7 @@ class OrganizationServiceTest {
         unit.setLevel(1);
         unit.setScopeId(0L);
         unit.setSortOrder(0);
-        unit.setCoefficient(1.0);
+        unit.setCoefficient(BigDecimal.valueOf(1.0));
         unit.setCreatedAt(LocalDateTime.now());
         unit.setUpdatedAt(LocalDateTime.now());
         return unit;

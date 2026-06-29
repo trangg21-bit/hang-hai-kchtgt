@@ -61,8 +61,6 @@ class TaiHistoryControllerTest {
     private JwtUtil jwtUtil;
 
     @MockBean
-
-    @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     private TaiHistoryResponse makeHistoryResponse() {

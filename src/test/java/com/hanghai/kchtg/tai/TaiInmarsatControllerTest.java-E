@@ -66,8 +66,6 @@ class TaiInmarsatControllerTest {
     private JwtUtil jwtUtil;
 
     @MockBean
-
-    @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     private TaiInmarsatResponse makeResponse() {

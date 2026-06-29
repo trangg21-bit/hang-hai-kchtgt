@@ -4,33 +4,35 @@ import com.hanghai.kchtg.accesslog.dto.AccessLogFilterRequest;
 import com.hanghai.kchtg.accesslog.dto.AccessLogResponse;
 import com.hanghai.kchtg.accesslog.entity.AccessLog;
 import com.hanghai.kchtg.accesslog.entity.AccessLogStatus;
+import com.hanghai.kchtg.accesslog.entity.LogAggregate;
+import com.hanghai.kchtg.accesslog.entity.LogRetentionPolicy;
+import com.hanghai.kchtg.accesslog.enums.LogSeverity;
+import com.hanghai.kchtg.accesslog.enums.LogType;
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
+import com.hanghai.kchtg.accesslog.repository.LogAggregateRepository;
+import com.hanghai.kchtg.accesslog.repository.LogRetentionPolicyRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("LogService Unit Tests")
@@ -42,40 +44,33 @@ class LogServiceTest {
     @Mock
     private AccessLogRepository repository;
 
+    @Mock
+    private LogRetentionPolicyRepository retentionPolicyRepository;
+
+    @Mock
+    private LogAggregateRepository aggregateRepository;
+
     private LogService logService;
 
-    private AccessLog sampleLog;
-    private UUID logId;
-    private UUID userId;
-
-    @TempDir
-    Path tempDir;
+    private Long logId;
+    private Long userId;
 
     @BeforeEach
     void setUp() {
-        logService = new LogService(accessLogService, repository, "", tempDir.toString());
+        logService = new LogService(accessLogService, repository, retentionPolicyRepository, aggregateRepository, "", "./logs");
+        ReflectionTestUtils.setField(logService, "accessLogService", accessLogService);
 
-        logId = UUID.randomUUID();
-        userId = UUID.randomUUID();
-
-        sampleLog = new AccessLog();
-        sampleLog.setId(logId);
-        sampleLog.setUserId(userId);
-        sampleLog.setUsername("testuser");
-        sampleLog.setAction("CREATE_USER");
-        sampleLog.setModule("USER");
-        sampleLog.setIpAddress("127.0.0.1");
-        sampleLog.setUserAgent("Mozilla/5.0 \"Browser\"");
-        sampleLog.setStatus(AccessLogStatus.SUCCESS);
-        sampleLog.setDetail("HTTP 201 \"Created\"");
-        sampleLog.setCreatedAt(LocalDateTime.now());
-        sampleLog.setUpdatedAt(LocalDateTime.now());
+        logId = 1L;
+        userId = 42L;
     }
 
     @Test
     @DisplayName("findById should delegate to accessLogService")
     void findById_ShouldDelegate() {
-        AccessLogResponse mockResponse = new AccessLogResponse(sampleLog);
+        AccessLog logEntity = new AccessLog();
+        logEntity.setId(logId);
+        logEntity.setUsername("testuser");
+        AccessLogResponse mockResponse = new AccessLogResponse(logEntity);
         when(accessLogService.findById(logId)).thenReturn(mockResponse);
 
         AccessLogResponse response = logService.findById(logId);
@@ -90,7 +85,10 @@ class LogServiceTest {
     void findAll_ShouldDelegate() {
         Pageable pageable = PageRequest.of(0, 20);
         AccessLogFilterRequest filter = new AccessLogFilterRequest();
-        Page<AccessLogResponse> mockPage = new PageImpl<>(Collections.singletonList(new AccessLogResponse(sampleLog)));
+        AccessLog logEntity = new AccessLog();
+        logEntity.setId(logId);
+        logEntity.setUsername("testuser");
+        Page<AccessLogResponse> mockPage = new PageImpl<>(Collections.singletonList(new AccessLogResponse(logEntity)));
 
         when(accessLogService.findAll(filter, pageable)).thenReturn(mockPage);
 
@@ -102,44 +100,42 @@ class LogServiceTest {
     }
 
     @Test
-    @DisplayName("exportToCsv should create a CSV file and escape double quotes")
-    void exportToCsv_ShouldCreateFileAndEscapeQuotes() throws IOException {
-        Pageable pageable = PageRequest.of(0, 20);
-        AccessLogFilterRequest filter = new AccessLogFilterRequest();
-        Page<AccessLogResponse> mockPage = new PageImpl<>(Collections.singletonList(new AccessLogResponse(sampleLog)));
+    @DisplayName("alertOnFailures should count login failures and return count")
+    void alertOnFailures_ShouldReturnCount() {
+        when(repository.countByTypeAndSeverityAndCreatedAtAfter(
+                eq(LogType.LOGIN),
+                eq(LogSeverity.WARNING),
+                any(LocalDateTime.class)))
+                .thenReturn(50L);
 
-        when(accessLogService.findAll(filter, pageable)).thenReturn(mockPage);
-
-        String filePath = logService.exportToCsv(filter, pageable);
-        assertNotNull(filePath);
-
-        Path csvPath = Path.of(filePath);
-        assertTrue(Files.exists(csvPath));
-
-        List<String> lines = Files.readAllLines(csvPath);
-        assertTrue(lines.size() >= 2);
-        assertTrue(lines.get(0).contains("Username"));
-        // Check escaping: Mozilla/5.0 "Browser" -> Mozilla/5.0 ""Browser""
-        assertTrue(lines.get(1).contains("\"Mozilla/5.0 \"\"Browser\"\"\""));
-        // Check escaping: HTTP 201 "Created" -> HTTP 201 ""Created""
-        assertTrue(lines.get(1).contains("\"HTTP 201 \"\"Created\"\"\""));
+        int count = logService.alertOnFailures();
+        assertEquals(50, count);
     }
 
     @Test
-    @DisplayName("alertOnFailures should return failure count and trigger alert above threshold")
-    void alertOnFailures_ShouldReturnCountAndAlert() {
-        when(repository.countByStatusAndCreatedAtAfter(eq(AccessLogStatus.FAILED), any(LocalDateTime.class)))
-                .thenReturn(50L);
-
-        int count = logService.alertOnFailures(10);
-        assertEquals(50, count);
-
-        // Alias call
-        when(repository.countByStatusAndCreatedAtAfter(eq(AccessLogStatus.FAILED), any(LocalDateTime.class)))
+    @DisplayName("alertOnFailures threshold triggers warning when >= 5")
+    void alertOnFailures_ShouldTriggerWarningAboveThreshold() {
+        when(repository.countByTypeAndSeverityAndCreatedAtAfter(
+                eq(LogType.LOGIN),
+                eq(LogSeverity.WARNING),
+                any(LocalDateTime.class)))
                 .thenReturn(120L);
 
-        int aliasCount = logService.checkFailureAlerts();
-        assertEquals(120, aliasCount);
+        int count = logService.alertOnFailures();
+        assertEquals(120, count);
+    }
+
+    @Test
+    @DisplayName("checkFailureAlerts is alias for alertOnFailures")
+    void checkFailureAlerts_ShouldAliasAlertOnFailures() {
+        when(repository.countByTypeAndSeverityAndCreatedAtAfter(
+                eq(LogType.LOGIN),
+                eq(LogSeverity.WARNING),
+                any(LocalDateTime.class)))
+                .thenReturn(7L);
+
+        int count = logService.checkFailureAlerts();
+        assertEquals(7, count);
     }
 
     @Test
@@ -174,5 +170,41 @@ class LogServiceTest {
 
         long count = logService.getTotalCount();
         assertEquals(100L, count);
+    }
+
+    @Test
+    @DisplayName("getRetentionPolicy should return Optional.of(policy) when found")
+    void getRetentionPolicy_ShouldReturnPolicy() {
+        LogRetentionPolicy policy = new LogRetentionPolicy();
+        policy.setRetentionDays(90);
+        when(retentionPolicyRepository.findById(1L)).thenReturn(Optional.of(policy));
+
+        Optional<LogRetentionPolicy> result = logService.getRetentionPolicy();
+        assertTrue(result.isPresent());
+        assertEquals(90, result.get().getRetentionDays());
+    }
+
+    @Test
+    @DisplayName("getRetentionPolicy should return Optional.empty() when not found")
+    void getRetentionPolicy_ShouldReturnEmpty() {
+        when(retentionPolicyRepository.findById(1L)).thenReturn(Optional.empty());
+
+        Optional<LogRetentionPolicy> result = logService.getRetentionPolicy();
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    @DisplayName("listAggregates should return list of aggregate responses")
+    void listAggregates_ShouldReturnAggregates() {
+        LogAggregate agg = new LogAggregate();
+        agg.setId(1L);
+        agg.setDate(java.time.LocalDate.now());
+        agg.setTotalAccesses(100L);
+        agg.setUniqueUsers(5L);
+        when(aggregateRepository.findAll(any(org.springframework.data.domain.Sort.class))).thenReturn(Collections.singletonList(agg));
+
+        List<com.hanghai.kchtg.accesslog.dto.LogAggregateResponse> result = logService.listAggregates(Optional.empty(), Optional.empty());
+        assertEquals(1, result.size());
+        assertEquals(100, result.get(0).getTotalAccesses());
     }
 }

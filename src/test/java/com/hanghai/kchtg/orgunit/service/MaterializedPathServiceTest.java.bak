@@ -7,6 +7,7 @@ import com.hanghai.kchtg.orgunit.entity.UnitHistory;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.orgunit.repository.UnitRepository;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -37,7 +38,7 @@ class MaterializedPathServiceTest {
     @Mock
     private org.springframework.data.jpa.repository.JpaRepository<OrgUnit, UUID> jpaRepo;
 
-    private org.springframework.data.jpa.repository.EntityManager entityManager;
+    private EntityManager entityManager;
 
     @InjectMocks
     private MaterializedPathService service;
@@ -53,7 +54,7 @@ class MaterializedPathServiceTest {
         childId = UUID.fromString("00000000-0000-0000-0000-000000000003");
 
         // Setup EntityManager mock
-        entityManager = org.mockito.Mockito.mock(org.springframework.data.jpa.repository.EntityManager.class);
+        entityManager = org.mockito.Mockito.mock(EntityManager.class);
     }
 
     // ── Path computation ─────────────────────────────────────────────
