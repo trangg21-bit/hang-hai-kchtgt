@@ -30,4 +30,5 @@ public class LuongHangHaiResponse {
     private String updatedBy;
     private List<LuongHangHaiAttachmentResponse> attachments;
     private List<PheDuyetResponse> approvalHistory;
+    private List<HistoryEntry> history;
 }

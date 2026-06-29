@@ -12,7 +12,9 @@ public interface LuongHangHaiRepository extends JpaRepository<LuongHangHai, Long
 
     List<LuongHangHai> findByApprovalStatusAndIsDeletedFalse(LuongHangHaiApprovalStatus approvalStatus);
 
-    List<LuongHangHai> findByIsDeletedFalse();
+    List<LuongHangHai> findByIsDeletedFalse(Sort sort);
+
+    Page<LuongHangHai> findByIsDeletedFalse(Pageable pageable);
 
     List<LuongHangHai> findByLoaiTauContainingAndIsDeletedFalse(String loaiTau);
 

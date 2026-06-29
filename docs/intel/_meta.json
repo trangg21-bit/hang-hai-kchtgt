@@ -281,10 +281,10 @@
       "version": 95
     },
     "module-map.yaml": {
-      "content_hash": "sha256:ac634e658d74d2c4948aec9418c2d0dfe4df4727c9d7718003fa4ae126bccef5",
-      "last_modified": "2026-06-23T08:05:33Z",
-      "last_producer": "ai-kit/scaffold_module",
-      "version": 17
+      "content_hash": "sha256:f6da9b6a85d4dd6167bcba5762012774d98a31e3b609cdede9eb01126a2d8118",
+      "last_modified": "2026-06-29T10:44:15Z",
+      "last_producer": "ai-kit/scaffold_module_repair",
+      "version": 18
     }
   },
   "created_at": "2026-06-16T04:38:16Z",
