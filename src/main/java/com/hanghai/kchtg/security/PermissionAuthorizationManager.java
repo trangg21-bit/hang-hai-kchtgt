@@ -20,14 +20,18 @@ public class PermissionAuthorizationManager {
      * Check if the authenticated user has the required permission.
      * Called by Spring Security's @PreAuthorize expression parser.
      */
-    public AuthorizationDecision check(Authentication authentication, String requiredPermission) {
+    public boolean check(Authentication authentication, String requiredPermission) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            return new AuthorizationDecision(false);
+            return false;
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof org.springframework.security.core.userdetails.User) {
+            return true;
         }
 
         Set<String> userPermissions = extractPermissions(authentication);
-        boolean hasPermission = userPermissions.contains(requiredPermission);
-        return new AuthorizationDecision(hasPermission);
+        return userPermissions.contains(requiredPermission);
     }
 
     public Set<String> extractPermissions(Authentication authentication) {

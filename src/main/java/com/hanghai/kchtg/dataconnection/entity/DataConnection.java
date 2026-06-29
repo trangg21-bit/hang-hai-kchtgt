@@ -14,6 +14,8 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.SQLRestriction;
+
 /**
  * Represents an external system data connection (liên thông / chia sẻ dữ liệu).
  * <p>
@@ -23,6 +25,7 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "data_connections")
+@SQLRestriction("deleted_at IS NULL")
 @Getter
 @Setter
 public class DataConnection extends BaseEntity {

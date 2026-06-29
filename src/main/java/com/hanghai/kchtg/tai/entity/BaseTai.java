@@ -54,6 +54,7 @@ public abstract class BaseTai {
     @Column(length = 1000)
     private String unapprovedRemarks;
 
+    @lombok.Builder.Default
     private Boolean deleted = false;
     private UUID deletedBy;
     private Instant deletedAt;

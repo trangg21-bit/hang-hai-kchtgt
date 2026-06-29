@@ -202,7 +202,6 @@ public class QuyHoachBenCangService {
                 .duongDan(fq.getDuongDan())
                 .kichThuoc(fq.getKichThuoc())
                 .ngayTaiLen(fq.getNgayTaiLen())
-                .nguoiTaiLen(fq.getNguoiTaiLen())
                 .build();
     }
 }

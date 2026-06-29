@@ -61,6 +61,7 @@ public class YeuCauGiamTaiSan {
     @Column(length = 1000)
     private String unapprovedRemarks;
 
+    @Builder.Default
     private Boolean deleted = false;
     private UUID deletedBy;
     private Instant deletedAt;

@@ -26,9 +26,11 @@ public class TimKiemRequest {
     private LocalDate yearEnd;
 
     @Min(value = 0, message = "Trang phải >= 0")
+    @Builder.Default
     private int page = 0;
 
     @Min(value = 1, message = "Kích thước trang phải >= 1")
     @Max(value = 100, message = "Kích thước trang tối đa 100")
+    @Builder.Default
     private int size = 20;
 }
