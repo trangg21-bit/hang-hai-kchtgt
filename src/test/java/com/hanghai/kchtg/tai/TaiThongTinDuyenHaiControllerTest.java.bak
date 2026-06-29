@@ -66,8 +66,6 @@ class TaiThongTinDuyenHaiControllerTest {
     private JwtUtil jwtUtil;
 
     @MockBean
-
-    @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     private TaiThongTinDuyenHaiResponse makeResponse() {

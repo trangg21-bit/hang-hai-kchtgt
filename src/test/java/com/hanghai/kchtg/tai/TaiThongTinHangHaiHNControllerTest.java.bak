@@ -67,8 +67,6 @@ class TaiThongTinHangHaiHNControllerTest {
     private JwtUtil jwtUtil;
 
     @MockBean
-
-    @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     private TaiThongTinHangHaiHNResponse makeResponse(String code, String name) {

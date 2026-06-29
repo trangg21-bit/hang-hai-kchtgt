@@ -58,8 +58,6 @@ class NhaTramPhaoControllerTest {
     private JwtUtil jwtUtil;
 
     @MockBean
-
-    @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     private NhaTramPhaoResponse makeResponse(UUID id) {
