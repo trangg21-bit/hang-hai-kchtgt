@@ -23,7 +23,7 @@ export default function LoadingSkeleton({ rows = 5, type = 'table' }: Props) {
   if (type === 'form') {
     return (
       <Card>
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
+        <Space orientation="vertical" style={{ width: '100%' }} size="large">
           <Skeleton.Input active block />
           <Skeleton.Input active block />
           <Skeleton.Input active block />
@@ -37,7 +37,7 @@ export default function LoadingSkeleton({ rows = 5, type = 'table' }: Props) {
   // table skeleton
   return (
     <Card>
-      <Space direction="vertical" style={{ width: '100%' }} size="middle">
+      <Space orientation="vertical" style={{ width: '100%' }} size="middle">
         {/* search bar skeleton */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
           <Skeleton.Input active style={{ width: 240 }} />
