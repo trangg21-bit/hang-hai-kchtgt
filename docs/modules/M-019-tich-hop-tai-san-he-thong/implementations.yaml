@@ -1,21 +1,145 @@
-module_id: M-019
-module_name: "Tích hợp tài sản & Hệ thống"
-type: bounded-context
-slug: tich-hop-tai-san-he-thong
-
-# Map logical module → physical implementations across apps/services/libs.
-# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
-implementations:
-  apps: []
-  services: []
-  libs: []
-  packages: []
-
-# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
-stakeholders:
-  business-owner: ""
-  tech-lead: ""
-  qa-lead: ""
-
-# Cross-references
-depends_on: []
+module-id: M-019
+module-name: "Tích hợp tài sản & Hệ thống"
+total-features: 27
+total-source-files: 18
+total-test-files: 4
+total-test-methods: 25
+features:
+  - feature-id: F-227
+    feature-name: "tích hợp KCHTGT bến cảng"
+    source-files: []
+    test-files: []
+  - feature-id: F-228
+    feature-name: "tích hợp KCHTGT cầu cảng"
+    source-files: []
+    test-files: []
+  - feature-id: F-229
+    feature-name: "tích hợp KCHTGT bến phao"
+    source-files: []
+    test-files: []
+  - feature-id: F-230
+    feature-name: "tích hợp KCHTGT khu trầm tích bồi"
+    source-files: []
+    test-files: []
+  - feature-id: F-231
+    feature-name: "tích hợp KCHTGT khu chuyển tải"
+    source-files: []
+    test-files: []
+  - feature-id: F-232
+    feature-name: "tích hợp KCHTGT khu neo đậu"
+    source-files: []
+    test-files: []
+  - feature-id: F-233
+    feature-name: "tích hợp KCHTGT cơ sở sửa chữa"
+    source-files: []
+    test-files: []
+  - feature-id: F-234
+    feature-name: "tích hợp KCHTGT tin đèn biển"
+    source-files: []
+    test-files: []
+  - feature-id: F-235
+    feature-name: "tích hợp KCHTGT tin phao tiêu"
+    source-files: []
+    test-files: []
+  - feature-id: F-236
+    feature-name: "tích hợp KCHTGT hệ thống VTS"
+    source-files: []
+    test-files: []
+  - feature-id: F-237
+    feature-name: "tích hợp KCHTGT tin điều hành VTS"
+    source-files: []
+    test-files: []
+  - feature-id: F-238
+    feature-name: "tích hợp KCHTGT trạm radar"
+    source-files: []
+    test-files: []
+  - feature-id: F-239
+    feature-name: "tích hợp KCHTGT hệ thống AIS"
+    source-files: []
+    test-files: []
+  - feature-id: F-240
+    feature-name: "tích hợp KCHTGT hệ thống CCTV"
+    source-files: []
+    test-files: []
+  - feature-id: F-241
+    feature-name: "tích hợp KCHTGT hệ thống SCADA"
+    source-files: []
+    test-files: []
+  - feature-id: F-242
+    feature-name: "tích hợp KCHTGT hệ thống thông tin VHF"
+    source-files: []
+    test-files: []
+  - feature-id: F-243
+    feature-name: "tích hợp KCHTGT hệ thống truyền dẫn"
+    source-files: []
+    test-files: []
+  - feature-id: F-244
+    feature-name: "tích hợp KCHTGT hệ thống phụ trợ VTS"
+    source-files: []
+    test-files: []
+  - feature-id: F-245
+    feature-name: "tích hợp KCHTGT đê kè"
+    source-files: []
+    test-files: []
+  - feature-id: F-246
+    feature-name: "tích hợp KCHTGT luồng hàng hải"
+    source-files: []
+    test-files: []
+  - feature-id: F-247
+    feature-name: "tích hợp KCHTGT tin đài TTDH"
+    source-files: []
+    test-files: []
+  - feature-id: F-248
+    feature-name: "tích hợp KCHTGT tin đài Inmarsat"
+    source-files: []
+    test-files: []
+  - feature-id: F-249
+    feature-name: "tích hợp KCHTGT tin đài Cospas-Sarsat"
+    source-files: []
+    test-files: []
+  - feature-id: F-250
+    feature-name: "tích hợp KCHTGT tin đài LRIT"
+    source-files: []
+    test-files: []
+  - feature-id: F-251
+    feature-name: "tích hợp KCHTGT tin đài TT hàng hải HN"
+    source-files: []
+    test-files: []
+  - feature-id: F-252
+    feature-name: "tích hợp KCHTGT cảng cạn"
+    source-files: []
+    test-files: []
+  - feature-id: F-253
+    feature-name: "tích hợp KCHTGT mạng hải đồ điện tử"
+    source-files: []
+    test-files: []
+waves:
+  - wave: 1
+    tasks: "Entity, Enum, Repository"
+    files: 4
+    status: done
+  - wave: 2
+    tasks: "DTOs + Services"
+    files: 10
+    status: done
+  - wave: 3
+    tasks: "Controllers"
+    files: 4
+    endpoints: 33
+    status: done
+  - wave: 4
+    tasks: "Tests"
+    files: 4
+    test_methods: 25
+    status: done
+  - wave: 5
+    tasks: "Docs + Seal"
+    status: done
+seal:
+  sealed: true
+  sealed-at: "2026-06-26T00:00:00Z"
+  total-source-files: 18
+  total-test-files: 4
+  total-test-methods: 25
+  total-endpoints: 33
+  total-features: 27
