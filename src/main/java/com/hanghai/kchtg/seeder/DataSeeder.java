@@ -33,13 +33,17 @@ import com.hanghai.kchtg.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Component
+@Order(2)
 @Profile("local")
 @RequiredArgsConstructor
 @Slf4j
@@ -58,6 +62,7 @@ public class DataSeeder implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
 
     @Override
+    @Transactional
     public void run(String... args) {
         log.info("🌱 Starting data seeding...");
 
@@ -164,7 +169,7 @@ public class DataSeeder implements CommandLineRunner {
         log.info("✅ Seeded {} MapIcons", icons.size());
     }
 
-    private void seedUsers() {
+    public void seedUsers() {
         if (userRepo.count() > 0) {
             log.info("⏭️ Users already exist, skipping...");
             return;
@@ -176,8 +181,9 @@ public class DataSeeder implements CommandLineRunner {
         admin.setPassword(passwordEncoder.encode("admin123"));
         admin.setEmail("admin@hh.gov.vn");
         admin.setFullName("System Administrator");
-        Role adminRole = roleRepo.findByCode("ROLE_SUPER_ADMIN")
-                .orElseThrow(() -> new IllegalStateException("Role not found: ROLE_SUPER_ADMIN"));
+        Role adminRole = roleRepo.findByCode("ROLE_SYSTEM_ADMIN")
+                .orElseThrow(() -> new IllegalStateException("Role not found: ROLE_SYSTEM_ADMIN"));
+        // adminRole is managed by the transactional context — cascade PERSIST on it is a no-op
         admin.getRoles().add(adminRole);
         admin.setStatus(UserStatus.ACTIVE);
 
@@ -227,7 +233,7 @@ public class DataSeeder implements CommandLineRunner {
         log.info("📦 Seeding AdminAccounts for default users...");
         userRepo.findAll().forEach(user -> {
             String role = user.getPrimaryRoleCode();
-            if ("ROLE_SUPER_ADMIN".equals(role) || "ROLE_SYSTEM_ADMIN".equals(role)) {
+            if ("ROLE_SYSTEM_ADMIN".equals(role)) {
                 AdminAccount admin = new AdminAccount();
                 admin.setUser(user);
                 admin.setRole(AdminRole.SUPER_ADMIN);
@@ -275,6 +281,10 @@ public class DataSeeder implements CommandLineRunner {
                 .address("Hà Nội")
                 .phone("0241234567")
                 .status(OrgUnitStatus.APPROVED)
+                .path("/ORG_TCDb/")
+                .level(1)
+                .scopeId(0L)
+                .sortOrder(1)
                 .build();
         orgUnitRepo.save(u1);
         log.info("✅ Seeded {} OrgUnits", orgUnitRepo.count());
