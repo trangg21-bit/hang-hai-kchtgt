@@ -62,6 +62,11 @@ public interface AccessLogRepository extends JpaRepository<AccessLog, Long>,
     /** Count all log entries by status. */
     long countByStatus(com.hanghai.kchtg.accesslog.entity.AccessLogStatus status);
 
+    /** Count all log entries with a given status created after a specific time. */
+    long countByStatusAndCreatedAtAfter(
+            @Param("status") com.hanghai.kchtg.accesslog.entity.AccessLogStatus status,
+            @Param("since") LocalDateTime since);
+
     // ── Aggregation helpers for LogAggregate ──────────────────────────
 
     /**

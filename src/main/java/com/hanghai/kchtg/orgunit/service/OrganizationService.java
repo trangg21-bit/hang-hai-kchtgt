@@ -404,8 +404,8 @@ public class OrganizationService {
      * Seed the root unit if none exists. Called after Flyway migration.
      */
     public OrgUnitResponse seedRoot(String name, String code, OrgUnitType type,
-                                     String description, String address, String phone,
-                                     Double coefficient, UUID operatorId, String operatorName) {
+                                      String description, String address, String phone,
+                                      java.math.BigDecimal coefficient, UUID operatorId, String operatorName) {
         long rootCount = orgUnitRepo.findByParentIdIsNull().size();
         if (rootCount > 0) {
             log.warn("Root unit already exists ({} roots found). Skipping seed.", rootCount);

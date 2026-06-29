@@ -83,7 +83,7 @@ public class AuthController {
                 userRepository.save(user);
 
                 String role = user.getPrimaryRoleCode() != null ? user.getPrimaryRoleCode() : "ROLE_USER";
-                String token = tokenService.createAccessToken(user.getUsername(), role);
+                String token = tokenService.createAccessToken(user);
 
                 LoginResponse response = LoginResponse.of(token, user.getUsername(),
                         user.getFullName(), role);

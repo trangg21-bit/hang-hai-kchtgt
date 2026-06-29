@@ -106,7 +106,7 @@ public class OrgUnit extends BaseEntity {
     /** Coefficient for calculations/reports. Must be > 0 with max 2 decimal places (BR-017). */
     @DecimalMin(value = "0.01", message = "Hệ số phải lớn hơn 0")
     @Column(precision = 5, scale = 2)
-    private Double coefficient;
+    private BigDecimal coefficient;
 
     /** Timestamp when unit was approved (set on APPROVED transition). */
     @Column(name = "approved_at")
@@ -118,8 +118,8 @@ public class OrgUnit extends BaseEntity {
      * Create a new root unit (no parent).
      */
     public static OrgUnit createRoot(String name, String code, OrgUnitType type,
-                                     String description, String address, String phone,
-                                     Double coefficient) {
+                                      String description, String address, String phone,
+                                      java.math.BigDecimal coefficient) {
         OrgUnit unit = new OrgUnit();
         unit.setName(name);
         unit.setCode(code);

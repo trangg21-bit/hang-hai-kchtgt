@@ -43,7 +43,7 @@ public class CreateOrgUnitRequest {
 
     /** Coefficient for calculations/reports. Must be > 0, max 2 decimal places. BR-017 */
     @DecimalMin(value = "0.01", message = "Hệ số phải lớn hơn 0")
-    private Double coefficient;
+    private java.math.BigDecimal coefficient;
 
     /** Status — defaults to DRAFT on the service layer if not provided. */
     private OrgUnitStatus status;

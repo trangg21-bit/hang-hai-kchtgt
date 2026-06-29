@@ -36,7 +36,7 @@ public class UpdateOrgUnitRequest {
 
     /** Coefficient: > 0, max 2 decimal places. BR-017 */
     @DecimalMin(value = "0.01", message = "Hệ số phải lớn hơn 0")
-    private Double coefficient;
+    private java.math.BigDecimal coefficient;
 
     /** Status — can be used to submit for approval (PENDING). */
     private OrgUnitStatus status;
