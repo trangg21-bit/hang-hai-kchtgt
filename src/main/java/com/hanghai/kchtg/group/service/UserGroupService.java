@@ -103,7 +103,7 @@ public class UserGroupService {
 
         // BR-015: Log history
         saveHistory(saved.getId(), saved.getName(), saved.getCode(), "CREATED",
-                "Da tao nhom moi", operatorId, operatorName);
+                "Đã tạo nhóm mới", operatorId, operatorName);
 
         log.info("Created group: {} ({}) by {}", saved.getCode(), saved.getId(), operatorName);
         return saved;
@@ -121,12 +121,12 @@ public class UserGroupService {
             if (groupRepository.existsByNameAndIdNot(request.getName(), id)) {
                 throw new IllegalArgumentException("Tên nhóm đã tồn tại: " + request.getName());
             }
-            details.append("Ten: ").append(group.getName()).append(" -> ").append(request.getName()).append("; ");
+            details.append("Tên: ").append(group.getName()).append(" -> ").append(request.getName()).append("; ");
             group.setName(request.getName());
         }
 
         if (request.getDescription() != null && !request.getDescription().equals(group.getDescription())) {
-            details.append("Mo ta da cap nhat; ");
+            details.append("Mô tả đã cập nhật; ");
             group.setDescription(request.getDescription());
         }
 
@@ -137,7 +137,7 @@ public class UserGroupService {
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Loại nhóm không hợp lệ: " + request.getGroupType());
             }
-            details.append("Loai nhom: ").append(group.getGroupType()).append(" -> ").append(request.getGroupType()).append("; ");
+            details.append("Loại nhóm: ").append(group.getGroupType()).append(" -> ").append(request.getGroupType()).append("; ");
             group.setGroupType(request.getGroupType());
         }
 
@@ -163,12 +163,12 @@ public class UserGroupService {
                 .countByUserGroupIdAndStatus(id, GroupMemberStatus.ACTIVE);
         if (activeMemberCount > 0) {
             throw new IllegalStateException(
-                "Khong the xoa nhom con " + activeMemberCount + " thanh vien");
+                "Không thể xóa nhóm còn " + activeMemberCount + " thành viên");
         }
 
         // BR-015: Log history before delete
         saveHistory(group.getId(), group.getName(), group.getCode(), "DELETED",
-                "Da xoa nhom '" + group.getName() + "'", operatorId, operatorName);
+                "Đã xóa nhóm '" + group.getName() + "'", operatorId, operatorName);
 
         group.softDelete();
         groupRepository.save(group);
@@ -239,7 +239,7 @@ public class UserGroupService {
     @Transactional(readOnly = true)
     public UserGroupResponse findById(UUID id) {
         UserGroup entity = groupRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nhom voi id=" + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhóm với id=" + id));
 
         long memberCount = groupMemberRepository
                 .countByUserGroupIdAndStatus(id, GroupMemberStatus.ACTIVE);
@@ -253,7 +253,7 @@ public class UserGroupService {
     @Transactional(readOnly = true)
     public UserGroup findEntityById(UUID id) {
         return groupRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nhom voi id=" + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhóm với id=" + id));
     }
 
     // ── Member management ───────────────────────────────────────────
@@ -268,13 +268,13 @@ public class UserGroupService {
         boolean alreadyMember = groupMemberRepository
                 .existsByUserIdAndUserGroupIdAndStatus(request.getUserId(), groupId, GroupMemberStatus.ACTIVE);
         if (alreadyMember) {
-            throw new IllegalArgumentException("Nguoi dung da thuoc nhom nay");
+            throw new IllegalArgumentException("Người dùng đã thuộc nhóm này");
         }
 
         // Validate user exists (cross-module: F-001 UserAccount)
         com.hanghai.kchtg.user.entity.User user = getUserById(request.getUserId());
         if (user == null) {
-            throw new IllegalArgumentException("Khong tim thay user voi id=" + request.getUserId());
+            throw new IllegalArgumentException("Không tìm thấy user với id=" + request.getUserId());
         }
 
         GroupMember member = GroupMember.create(user, group,
@@ -284,7 +284,7 @@ public class UserGroupService {
 
         // BR-015: Log history
         saveHistory(groupId, group.getName(), group.getCode(), "MEMBER_ADDED",
-                "Da them user " + request.getUserId() + " (" + user.getUsername() + ")",
+                "Đã thêm user " + request.getUserId() + " (" + user.getUsername() + ")",
                 operatorId, operatorName);
 
         log.info("Added member {} to group {} by {}", request.getUserId(), group.getCode(), operatorName);
@@ -302,14 +302,14 @@ public class UserGroupService {
 
         if (removed == 0) {
             throw new IllegalArgumentException(
-                "Khong tim thay thanh vien co id=" + userId + " trong nhom " + group.getCode());
+                "Không tìm thấy thành viên có id=" + userId + " trong nhóm " + group.getCode());
         }
 
         // BR-015: Log history
         com.hanghai.kchtg.user.entity.User targetUser = getUserById(userId);
         String userRef = targetUser != null ? targetUser.getUsername() : userId.toString();
         saveHistory(groupId, group.getName(), group.getCode(), "MEMBER_REMOVED",
-                "Da xoa user " + userRef + " khoi nhom", operatorId, operatorName);
+                "Đã xóa user " + userRef + " khỏi nhóm", operatorId, operatorName);
 
         log.info("Removed member {} from group {} by {}", userId, group.getCode(), operatorName);
     }
@@ -366,7 +366,7 @@ public class UserGroupService {
 
         // BR-015: Log history
         saveHistory(source.getId(), source.getName(), source.getCode(), "COPIED",
-                "Da sao cop thanh nhom '" + savedCopy.getName() + "' (code: " + savedCopy.getCode() + ")",
+                "Đã sao chép thành nhóm '" + savedCopy.getName() + "' (code: " + savedCopy.getCode() + ")",
                 operatorId, operatorName);
 
         log.info("Copied group {} -> {} by {}", source.getCode(), savedCopy.getCode(), operatorName);
@@ -406,7 +406,8 @@ public class UserGroupService {
                 null, // permissions not available from UserGroupResponse
                 response.getStatus(),
                 response.getCreatedAt(),
-                response.getUpdatedAt()
+                response.getUpdatedAt(),
+                response.getMemberCount()
         );
     }
 

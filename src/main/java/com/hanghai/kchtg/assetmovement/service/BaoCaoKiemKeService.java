@@ -39,7 +39,7 @@ public class BaoCaoKiemKeService {
 
     public BaoCaoKiemKeResponse getById(UUID id) {
         BaoCaoKiemKe entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("BaoCaoKiemKe not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy báo cáo kiểm kê với id: " + id));
         return toResponse(entity);
     }
 
@@ -55,7 +55,7 @@ public class BaoCaoKiemKeService {
     @Transactional
     public BaoCaoKiemKeResponse update(UUID id, BaoCaoKiemKeRequest request) {
         BaoCaoKiemKe entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("BaoCaoKiemKe not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy báo cáo kiểm kê với id: " + id));
         if (request.getMoTa() != null) entity.setMoTa(request.getMoTa());
         BaoCaoKiemKe saved = repository.save(entity);
         return toResponse(saved);
@@ -63,7 +63,7 @@ public class BaoCaoKiemKeService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!repository.existsById(id)) throw new EntityNotFoundException("BaoCaoKiemKe not found: " + id);
+        if (!repository.existsById(id)) throw new EntityNotFoundException("Không tìm thấy báo cáo kiểm kê với id: " + id);
         repository.deleteById(id);
     }
 

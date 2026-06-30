@@ -285,7 +285,10 @@ export default function SymbolList() {
               current: page,
               pageSize,
               total,
-              onChange: (p) => setPage(p),
+              onChange: (p, sz) => {
+                setPage(p);
+                if (sz) setPageSize(sz);
+              },
               showSizeChanger: true,
               showTotal: (t) => `Tổng ${t} biểu tượng`,
               pageSizeOptions: ['10', '20', '50'],

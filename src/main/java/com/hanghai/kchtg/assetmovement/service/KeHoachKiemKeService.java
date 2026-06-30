@@ -42,7 +42,7 @@ public class KeHoachKiemKeService {
 
     public KeHoachKiemKeResponse getById(UUID id) {
         KeHoachKiemKe entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("KeHoachKiemKe not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy kế hoạch kiểm kê với id: " + id));
         return toResponse(entity);
     }
 
@@ -58,7 +58,7 @@ public class KeHoachKiemKeService {
     @Transactional
     public KeHoachKiemKeResponse update(UUID id, KeHoachKiemKeRequest request) {
         KeHoachKiemKe entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("KeHoachKiemKe not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy kế hoạch kiểm kê với id: " + id));
         if (request.getPhamVi() != null) entity.setPhamVi(request.getPhamVi());
         if (request.getMoTa() != null) entity.setMoTa(request.getMoTa());
         KeHoachKiemKe saved = repository.save(entity);
@@ -67,7 +67,7 @@ public class KeHoachKiemKeService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!repository.existsById(id)) throw new EntityNotFoundException("KeHoachKiemKe not found: " + id);
+        if (!repository.existsById(id)) throw new EntityNotFoundException("Không tìm thấy kế hoạch kiểm kê với id: " + id);
         repository.deleteById(id);
     }
 

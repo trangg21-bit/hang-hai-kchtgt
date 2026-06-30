@@ -19,6 +19,7 @@ public class GroupMemberResponse {
     private String groupName;
     private String roleInGroup;
     private String status;
+    private String email;
     private LocalDateTime joinedAt;
     private LocalDateTime createdAt;
 
@@ -40,6 +41,7 @@ public class GroupMemberResponse {
             resp.setUserId(user.getId().toString());
             resp.setUsername(user.getUsername());
             resp.setFullName(user.getFullName());
+            resp.setEmail(user.getEmail());
         }
         if (member.getUserGroup() != null) {
             resp.setGroupId(member.getUserGroup().getId().toString());
@@ -68,4 +70,6 @@ public class GroupMemberResponse {
     public void setJoinedAt(LocalDateTime joinedAt) { this.joinedAt = joinedAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 }

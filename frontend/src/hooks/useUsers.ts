@@ -11,6 +11,8 @@ interface ListParams {
   search?: string;
   roleId?: string;
   status?: string;
+  sortField?: string;
+  sortOrder?: 'ascend' | 'descend' | null;
 }
 
 export function useUsers(params: ListParams) {
@@ -39,9 +41,6 @@ export function useCreateUser() {
       message.success('Đã tạo người dùng thành công');
       qc.invalidateQueries({ queryKey: ['users'] });
     },
-    onError: (err: Error) => {
-      message.error(err.message || 'Tạo người dùng thất bại');
-    },
   });
 }
 
@@ -55,9 +54,6 @@ export function useUpdateUser() {
       message.success('Đã cập nhật người dùng');
       qc.invalidateQueries({ queryKey: ['users'] });
     },
-    onError: (err: Error) => {
-      message.error(err.message || 'Cập nhật thất bại');
-    },
   });
 }
 
@@ -69,9 +65,6 @@ export function useDeleteUser() {
     onSuccess: () => {
       message.success('Đã xóa người dùng');
       qc.invalidateQueries({ queryKey: ['users'] });
-    },
-    onError: (err: Error) => {
-      message.error(err.message || 'Xóa thất bại');
     },
   });
 }
@@ -86,9 +79,6 @@ export function useToggleLockUser() {
       message.success(`Tài khoản ${statusText}`);
       qc.invalidateQueries({ queryKey: ['users'] });
     },
-    onError: (err: Error) => {
-      message.error(err.message || 'Thao tác thất bại');
-    },
   });
 }
 
@@ -97,9 +87,6 @@ export function useResetPassword() {
     mutationFn: (id: string) => userService.resetPassword(id),
     onSuccess: (res) => {
       message.success(`Mật khẩu mới: ${res.data.newPassword}`);
-    },
-    onError: (err: Error) => {
-      message.error(err.message || 'Reset mật khẩu thất bại');
     },
   });
 }

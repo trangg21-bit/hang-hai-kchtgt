@@ -36,7 +36,7 @@ public class TaiInmarsatController {
             @Valid @RequestBody CreateTaiInmarsatRequest request) {
         TaiInmarsatResponse response = service.create(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Tao tai inmarsat thanh cong", response));
+                .body(ApiResponse.success("Tao tai inmarsat thành công", response));
     }
 
     @PutMapping("/{code}")
@@ -47,7 +47,7 @@ public class TaiInmarsatController {
         UUID id = service.findByCode(code).getId();
         TaiInmarsatResponse response = service.update(id, request);
         return ResponseEntity.ok(ApiResponse.success(
-                "Cap nhat tai inmarsat thanh cong", response));
+                "Cap nhat tai inmarsat thành công", response));
     }
 
     @DeleteMapping("/{code}")
@@ -55,7 +55,7 @@ public class TaiInmarsatController {
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable String code) {
         service.delete(code);
         return ResponseEntity.ok(
-                ApiResponse.success("Da xoa tai inmarsat thanh cong", null));
+                ApiResponse.success("Da xoa tai inmarsat thành công", null));
     }
 
     @GetMapping("/{code}")
@@ -95,7 +95,7 @@ public class TaiInmarsatController {
             @RequestParam(required = false) String remarks) {
         TaiInmarsatResponse response = service.approve(code, remarks, UUID.randomUUID());
         return ResponseEntity.ok(ApiResponse.success(
-                "Phe duyet thanh cong", response));
+                "Phê duyệt thành công", response));
     }
 
     @PutMapping("/{code}/reject")
@@ -105,7 +105,7 @@ public class TaiInmarsatController {
             @RequestParam String remarks) {
         TaiInmarsatResponse response = service.reject(code, remarks, UUID.randomUUID());
         return ResponseEntity.ok(ApiResponse.success(
-                "Tu choi thanh cong", response));
+                "Từ chối thành công", response));
     }
 
     @PostMapping("/{code}/sync")
@@ -113,7 +113,7 @@ public class TaiInmarsatController {
     public ResponseEntity<ApiResponse<Void>> syncToMapPhao(@PathVariable String code) {
         UUID id = service.findByCode(code).getId();
         service.syncToMapPhao(id);
-        return ResponseEntity.ok(ApiResponse.success("Da dong bo thanh cong", null));
+        return ResponseEntity.ok(ApiResponse.success("Da dong bo thành công", null));
     }
 
     @DeleteMapping("/{code}/hide")
@@ -121,6 +121,6 @@ public class TaiInmarsatController {
     public ResponseEntity<ApiResponse<Void>> hideFromMapPhao(@PathVariable String code) {
         UUID id = service.findByCode(code).getId();
         service.hideFromMapPhao(id);
-        return ResponseEntity.ok(ApiResponse.success("Da anh xoa khoi ban do", null));
+        return ResponseEntity.ok(ApiResponse.success("Đã ẩn/xóa khỏi bản đồ", null));
     }
 }

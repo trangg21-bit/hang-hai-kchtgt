@@ -242,7 +242,7 @@ public class JwtSessionController {
     private String generateNewAccessToken(JwtSessionEntity session) {
         java.util.UUID userId = java.util.UUID.fromString(session.getUserId());
         com.hanghai.kchtg.user.entity.User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng: " + userId));
         return tokenService.createAccessToken(user);
     }
 

@@ -69,33 +69,33 @@ public class PasswordPolicyValidator {
      */
     public void validate(String password) {
         if (password == null || password.isEmpty()) {
-            throw new ValidationException("Mat khau khong duoc de trong");
+            throw new ValidationException("Mật khẩu không được để trống");
         }
 
         if (password.length() < minLength) {
-            throw new ValidationException("Mat khau phai co it nhat " + minLength + " ky tu",
+            throw new ValidationException("Mật khẩu phải có ít nhất " + minLength + " ký tự",
                     "Length: " + password.length() + "/" + minLength);
         }
 
         if (password.length() > maxLength) {
-            throw new ValidationException("Mat khau toi da " + maxLength + " ky tu",
+            throw new ValidationException("Mật khẩu tối đa " + maxLength + " ký tự",
                     "Length: " + password.length() + "/" + maxLength);
         }
 
         if (requireUppercase && !password.matches(UPPERCASE_PATTERN)) {
-            throw new ValidationException("Mat khau phai chua it nhat mot chu hoa (A-Z)");
+            throw new ValidationException("Mật khẩu phải chứa ít nhất một chữ hoa (A-Z)");
         }
 
         if (requireLowercase && !password.matches(LOWERCASE_PATTERN)) {
-            throw new ValidationException("Mat khau phai chua it nhat mot chu thuong (a-z)");
+            throw new ValidationException("Mật khẩu phải chứa ít nhất một chữ thường (a-z)");
         }
 
         if (requireDigit && !password.matches(DIGIT_PATTERN)) {
-            throw new ValidationException("Mat khau phai chua it nhat mot so (0-9)");
+            throw new ValidationException("Mật khẩu phải chứa ít nhất một số (0-9)");
         }
 
         if (requireSpecial && !password.matches(SPECIAL_CHAR_PATTERN)) {
-            throw new ValidationException("Mat khau phai chua it nhat mot ky tu dac biet (!@#$%^&*...)");
+            throw new ValidationException("Mật khẩu phải chứa ít nhất một ký tự đặc biệt (!@#$%^&*...)");
         }
 
         log.debug("Password policy validation passed for length={}", password.length());
@@ -111,21 +111,21 @@ public class PasswordPolicyValidator {
      */
     public void validateResetPassword(String password) {
         if (password == null || password.isEmpty()) {
-            throw new ValidationException("Mat khau khong duoc de trong");
+            throw new ValidationException("Mật khẩu không được để trống");
         }
         if (password.length() < 8) {
-            throw new ValidationException("Mat khau phai co it nhat 8 ky tu");
+            throw new ValidationException("Mật khẩu phải có ít nhất 8 ký tự");
         }
         if (password.length() > 128) {
-            throw new ValidationException("Mat khau toi da 128 ky tu");
+            throw new ValidationException("Mật khẩu tối đa 128 ký tự");
         }
         // Must contain at least one letter
         if (!password.matches(".*[a-zA-Z].*")) {
-            throw new ValidationException("Mat khau phai chua it nhat mot chu cai");
+            throw new ValidationException("Mật khẩu phải chứa ít nhất một chữ cái");
         }
         // Must contain at least one digit
         if (!password.matches(".*\\d.*")) {
-            throw new ValidationException("Mat khau phai chua it nhat mot so");
+            throw new ValidationException("Mật khẩu phải chứa ít nhất một số");
         }
     }
 

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Input, Select, Row, Col } from 'antd';
+import { Card, Form, Button, Space, Typography, Input, Select, Row, Col, InputNumber } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { organizationService } from '../../services/organizationService';
@@ -13,6 +13,7 @@ export default function UnitForm() {
   const { id } = useParams<{ id: string }>();
   const isEdit = !!id;
   const [form] = Form.useForm();
+  const selectedType = Form.useWatch('type', form);
   const [submitting, setSubmitting] = useState(false);
   const [initialData, setInitialData] = useState<UpdateOrganizationPayload & { parentOrgId?: string } | null>(null);
   const [orgOptions, setOrgOptions] = useState<Organization[]>([]);
@@ -37,22 +38,26 @@ export default function UnitForm() {
           const data = await organizationService.getById(id!);
           setInitialData({
             name: data.name,
-            code: (data as any).code || 'ORG_' + id,
-            parentOrgId: data.parentOrgId,
+            code: data.code || 'ORG_' + id,
+            parentId: data.parentId,
+            type: data.type,
             description: data.description,
             address: data.address,
             contactPerson: data.contactPerson,
             contactPhone: data.contactPhone,
+            coefficient: data.coefficient,
             status: data.status,
           });
           form.setFieldsValue({
             name: data.name,
-            code: (data as any).code || 'ORG_' + id,
-            parentOrgId: data.parentOrgId,
+            code: data.code || 'ORG_' + id,
+            parentId: data.parentId,
+            type: data.type,
             description: data.description,
             address: data.address,
             contactPerson: data.contactPerson,
             contactPhone: data.contactPhone,
+            coefficient: data.coefficient,
             status: data.status,
           });
         } catch {
@@ -72,14 +77,18 @@ export default function UnitForm() {
       const values = await form.validateFields();
       setSubmitting(true);
 
+      const targetParentId = values.type === 'TCT' ? undefined : values.parentId;
+
       if (isEdit) {
         const payload: UpdateOrganizationPayload = {
           name: values.name,
-          parentOrgId: values.parentOrgId,
+          parentId: targetParentId,
+          type: values.type,
           description: values.description,
           address: values.address,
           contactPerson: values.contactPerson,
           contactPhone: values.contactPhone,
+          coefficient: values.coefficient,
           status: values.status,
         };
         await organizationService.update(id!, payload);
@@ -87,11 +96,13 @@ export default function UnitForm() {
       } else {
         const payload: CreateOrganizationPayload = {
           name: values.name,
-          parentOrgId: values.parentOrgId,
+          parentId: targetParentId,
+          type: values.type,
           description: values.description,
           address: values.address,
           contactPerson: values.contactPerson,
           contactPhone: values.contactPhone,
+          coefficient: values.coefficient,
         };
         await organizationService.create(payload);
         toast.success('Đã tạo đơn vị thành công');
@@ -119,7 +130,7 @@ export default function UnitForm() {
       </Card>
 
       <Card style={{ maxWidth: 700, margin: '0 auto' }}>
-        <Form form={form} layout="vertical" onFinish={handleSubmit} onFinishFailed={(info) => console.error("Form validation failed:", info)} initialValues={{ status: 'active', ...initialData }}>
+        <Form form={form} layout="vertical" onFinish={handleSubmit} onFinishFailed={(info) => console.error("Form validation failed:", info)} initialValues={{ status: 'draft', ...initialData }}>
           <FormField
             type="text"
             name="name"
@@ -136,12 +147,27 @@ export default function UnitForm() {
             placeholder="VD: PHONG_CNTT"
           />
 
+          {selectedType !== 'TCT' && (
+            <FormField
+              type="select"
+              name="parentId"
+              label="Đơn vị cha"
+              options={[{ value: '', label: '(Không có) — đơn vị cấp cao nhất' }, ...parentOptions]}
+              help="Để trống nếu đây là đơn vị cấp cao nhất"
+            />
+          )}
+
           <FormField
             type="select"
-            name="parentOrgId"
-            label="Đơn vị cha"
-            options={[{ value: '', label: '(Không có) — đơn vị cấp cao nhất' }, ...parentOptions]}
-            help="Để trống nếu đây là đơn vị cấp cao nhất"
+            name="type"
+            label="Loại đơn vị"
+            required
+            options={[
+              { value: 'TCT', label: 'Tổng cục' },
+              { value: 'CUC', label: 'Cục' },
+              { value: 'CHI_CUC', label: 'Chi cục' },
+              { value: 'CANG_VU', label: 'Cảng vụ' },
+            ]}
           />
 
           <FormField
@@ -157,6 +183,30 @@ export default function UnitForm() {
             label="Địa chỉ"
             placeholder="Địa chỉ trụ sở..."
           />
+
+          <Form.Item
+            name="coefficient"
+            label="Hệ số"
+            required
+            rules={[
+              { required: true, message: 'Vui lòng nhập hệ số' },
+              {
+                validator: (_, value) => {
+                  if (value === undefined || value === null) return Promise.resolve();
+                  if (value <= 0) {
+                    return Promise.reject(new Error('Hệ số phải lớn hơn 0'));
+                  }
+                  const parts = String(value).split('.');
+                  if (parts[1] && parts[1].length > 2) {
+                    return Promise.reject(new Error('Hệ số tối đa 2 chữ số thập phân'));
+                  }
+                  return Promise.resolve();
+                }
+              }
+            ]}
+          >
+            <InputNumber style={{ width: '100%' }} min={0.01} step={0.1} placeholder="VD: 1.00" />
+          </Form.Item>
 
           <Row style={{ display: 'flex', gap: 16 }}>
             <Col style={{ flex: 1 }}>
@@ -183,9 +233,10 @@ export default function UnitForm() {
             label="Trạng thái"
             required
             options={[
-              { value: 'active', label: 'Hoạt động' },
-              { value: 'locked', label: 'Đã khóa' },
-              { value: 'inactive', label: 'Không hoạt động' },
+              { value: 'draft', label: 'Bản nháp' },
+              { value: 'pending', label: 'Chờ duyệt' },
+              { value: 'approved', label: 'Đã phê duyệt' },
+              { value: 'rejected', label: 'Bị từ chối' },
             ]}
           />
 

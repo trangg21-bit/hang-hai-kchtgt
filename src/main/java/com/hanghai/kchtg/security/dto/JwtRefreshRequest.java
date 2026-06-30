@@ -16,6 +16,6 @@ public class JwtRefreshRequest {
     /**
      * Refresh token string (co the lay tu body hoac tu cookie).
      */
-    @NotBlank(message = "Refresh token khong duoc de trong")
+    @NotBlank(message = "Refresh token khong duoc để trống")
     private String refreshToken;
 }

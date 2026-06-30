@@ -22,7 +22,8 @@ import java.util.List;
 /**
  * Read-only service for access-log queries.
  * <p>
- * F-005 extends buildSpecification() to support type, severity, and keyword filters.
+ * F-005 extends buildSpecification() to support type, severity, and keyword
+ * filters.
  * </p>
  */
 @Service
@@ -71,6 +72,9 @@ public class AccessLogService {
             }
             if (filter.getModule() != null && !filter.getModule().isBlank()) {
                 predicates.add(cb.equal(root.get("module"), filter.getModule().trim()));
+            }
+            if (filter.getAction() != null && !filter.getAction().isBlank()) {
+                predicates.add(cb.equal(root.get("action"), filter.getAction().trim()));
             }
             if (filter.getFrom() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), filter.getFrom()));

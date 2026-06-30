@@ -36,7 +36,7 @@ public class FormApprovalController {
         log.info("Submitting form [{}] by actor={}", id, actor);
         StatisticsForm form = formApprovalService.submitForm(id, actor, comments);
         return ResponseEntity.ok(
-                ApiResponse.success("Da gui form phe duyet", form));
+                ApiResponse.success("Da gui form phê duyệt", form));
     }
 
     /**
@@ -51,7 +51,7 @@ public class FormApprovalController {
         log.info("Approving form [{}] by actor={}", id, actor);
         StatisticsForm form = formApprovalService.approveForm(id, actor, comments);
         return ResponseEntity.ok(
-                ApiResponse.success("Phe duyet form thanh cong", form));
+                ApiResponse.success("Phê duyệt form thành công", form));
     }
 
     /**
@@ -66,7 +66,7 @@ public class FormApprovalController {
         log.info("Rejecting form [{}] by actor={}", id, actor);
         StatisticsForm form = formApprovalService.rejectForm(id, actor, comments);
         return ResponseEntity.ok(
-                ApiResponse.success("Tu choi form", form));
+                ApiResponse.success("Từ chối form", form));
     }
 
     /**
@@ -79,6 +79,6 @@ public class FormApprovalController {
         log.info("Fetching approval history for form [{}]", id);
         List<FormApprovalHistory> history = formApprovalService.getHistory(id);
         return ResponseEntity.ok(
-                ApiResponse.success("Lay lich phe duyet thanh cong", history));
+                ApiResponse.success("Lay lich phê duyệt thành công", history));
     }
 }

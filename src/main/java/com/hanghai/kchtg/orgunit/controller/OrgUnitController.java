@@ -7,6 +7,8 @@ import com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
 import com.hanghai.kchtg.orgunit.service.OrganizationService;
+import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -16,6 +18,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,6 +40,23 @@ import java.util.UUID;
 public class OrgUnitController {
 
     private final OrganizationService organizationService;
+    private final UserRepository userRepository;
+
+    private User getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getName() != null && !"anonymousUser".equals(auth.getName())) {
+            return userRepository.findByUsername(auth.getName()).orElse(null);
+        }
+        return null;
+    }
+
+    private UUID getOperatorId(User user) {
+        return user != null ? user.getId() : UUID.fromString("00000000-0000-0000-0000-000000000000");
+    }
+
+    private String getOperatorName(User user) {
+        return user != null ? user.getUsername() : "system";
+    }
 
     // ── Read endpoints (all authenticated users) ─────────────────────
 
@@ -141,7 +162,8 @@ public class OrgUnitController {
     @PreAuthorize("@auth.check(authentication, 'orgunit:manage')")
     public ResponseEntity<ApiResponse<OrgUnitResponse>> create(
             @Valid @RequestBody CreateOrgUnitRequest request) {
-        OrgUnitResponse response = organizationService.create(request, null, "system");
+        User currentUser = getCurrentUser();
+        OrgUnitResponse response = organizationService.create(request, getOperatorId(currentUser), getOperatorName(currentUser));
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Tạo đơn vị thành công", response));
@@ -155,8 +177,9 @@ public class OrgUnitController {
     public ResponseEntity<ApiResponse<OrgUnitResponse>> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateOrgUnitRequest request) {
+        User currentUser = getCurrentUser();
         return ResponseEntity.ok(ApiResponse.success(
-                "Cập nhật đơn vị thành công", organizationService.update(id, request, null, "system")));
+                "Cập nhật đơn vị thành công", organizationService.update(id, request, getOperatorId(currentUser), getOperatorName(currentUser))));
     }
 
     /**
@@ -166,7 +189,8 @@ public class OrgUnitController {
     @PreAuthorize("@auth.check(authentication, 'orgunit:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
-        organizationService.delete(id, null, "system");
+        User currentUser = getCurrentUser();
+        organizationService.delete(id, getOperatorId(currentUser), getOperatorName(currentUser));
         return ResponseEntity.ok(ApiResponse.success("Xóa đơn vị thành công", null));
     }
 
@@ -179,9 +203,10 @@ public class OrgUnitController {
     @PreAuthorize("@auth.check(authentication, 'orgunit:manage')")
     public ResponseEntity<ApiResponse<OrgUnitResponse>> submitForApproval(
             @PathVariable UUID id) {
+        User currentUser = getCurrentUser();
         return ResponseEntity.ok(ApiResponse.success(
                 "Gửi phê duyệt thành công",
-                organizationService.submitForApproval(id, null, "system")));
+                organizationService.submitForApproval(id, getOperatorId(currentUser), getOperatorName(currentUser))));
     }
 
     /**
@@ -193,9 +218,10 @@ public class OrgUnitController {
     public ResponseEntity<ApiResponse<OrgUnitResponse>> approve(
             @PathVariable UUID id,
             @RequestParam(required = false) String comments) {
+        User currentUser = getCurrentUser();
         return ResponseEntity.ok(ApiResponse.success(
                 "Phê duyệt đơn vị thành công",
-                organizationService.approve(id, null, "system", comments)));
+                organizationService.approve(id, getOperatorId(currentUser), getOperatorName(currentUser), comments)));
     }
 
     /**
@@ -207,8 +233,9 @@ public class OrgUnitController {
     public ResponseEntity<ApiResponse<OrgUnitResponse>> reject(
             @PathVariable UUID id,
             @RequestParam(required = false) String comments) {
+        User currentUser = getCurrentUser();
         return ResponseEntity.ok(ApiResponse.success(
                 "Từ chối đơn vị thành công",
-                organizationService.reject(id, null, "system", comments)));
+                organizationService.reject(id, getOperatorId(currentUser), getOperatorName(currentUser), comments)));
     }
 }

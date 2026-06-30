@@ -93,25 +93,25 @@ public class TotpAuthService {
         // =========================================================================
         if (user == null) {
             auditLogService.logAttempt(null, username, LoginAttemptType.CREDENTIALS,
-                    LoginAttemptResult.FAIL, "User not found", request);
-            throw new IllegalArgumentException("Invalid username or password");
+                    LoginAttemptResult.FAIL, "Không tìm thấy người dùng", request);
+            throw new IllegalArgumentException("Tên đăng nhập hoặc mật khẩu không hợp lệ");
         }
 
         // =========================================================================
         if (user.getStatus() == UserStatus.LOCKED) {
             auditLogService.logAttempt(user.getId(), user.getUsername(),
                     LoginAttemptType.CREDENTIALS, LoginAttemptResult.FAIL,
-                    "Account locked", request);
-            throw new IllegalArgumentException("Account is locked");
+                    "Tài khoản bị khóa", request);
+            throw new IllegalArgumentException("Tài khoản đã bị khóa");
         }
 
         if (user.getAccountLockedUntil() != null
                 && LocalDateTime.now().isBefore(user.getAccountLockedUntil())) {
             auditLogService.logAttempt(user.getId(), user.getUsername(),
                     LoginAttemptType.CREDENTIALS, LoginAttemptResult.FAIL,
-                    "Account locked until " + user.getAccountLockedUntil(), request);
+                    "Tài khoản bị khóa until " + user.getAccountLockedUntil(), request);
             throw new IllegalArgumentException(
-                    "Account is locked until " + user.getAccountLockedUntil().toString());
+                    "Tài khoản đã bị khóa until " + user.getAccountLockedUntil().toString());
         }
 
         // =========================================================================
@@ -122,9 +122,9 @@ public class TotpAuthService {
 
             auditLogService.logAttempt(user.getId(), user.getUsername(),
                     LoginAttemptType.CREDENTIALS, LoginAttemptResult.FAIL,
-                    "Invalid password (attempt " + user.getFailedLoginCount() + ")", request);
+                    "Mật khẩu không hợp lệ (lần thử " + user.getFailedLoginCount() + ")", request);
 
-            throw new IllegalArgumentException("Invalid username or password");
+            throw new IllegalArgumentException("Tên đăng nhập hoặc mật khẩu không hợp lệ");
         }
 
         // =========================================================================
@@ -167,39 +167,39 @@ public class TotpAuthService {
         String totpCode = request.getTotpCode();
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid user ID"));
+                .orElseThrow(() -> new IllegalArgumentException("ID người dùng không hợp lệ"));
 
         // =========================================================================
         if (user.getStatus() == UserStatus.LOCKED) {
             auditLogService.logAttempt(user.getId(), user.getUsername(),
                     LoginAttemptType.TOTP, LoginAttemptResult.FAIL,
-                    "Account locked", requestHttp);
-            throw new IllegalArgumentException("Account is locked");
+                    "Tài khoản bị khóa", requestHttp);
+            throw new IllegalArgumentException("Tài khoản đã bị khóa");
         }
 
         if (user.getAccountLockedUntil() != null
                 && LocalDateTime.now().isBefore(user.getAccountLockedUntil())) {
             auditLogService.logAttempt(user.getId(), user.getUsername(),
                     LoginAttemptType.TOTP, LoginAttemptResult.FAIL,
-                    "Account locked until " + user.getAccountLockedUntil(), requestHttp);
+                    "Tài khoản bị khóa until " + user.getAccountLockedUntil(), requestHttp);
             throw new IllegalArgumentException(
-                    "Account is locked until " + user.getAccountLockedUntil().toString());
+                    "Tài khoản đã bị khóa until " + user.getAccountLockedUntil().toString());
         }
 
         // =========================================================================
         if (!Boolean.TRUE.equals(user.getTotpEnabled())) {
             auditLogService.logAttempt(user.getId(), user.getUsername(),
                     LoginAttemptType.TOTP, LoginAttemptResult.FAIL,
-                    "TOTP not enabled for this account", requestHttp);
-            throw new IllegalArgumentException("TOTP is not enabled for this account");
+                    "Xác thực hai lớp (TOTP) chưa được kích hoạt cho tài khoản này", requestHttp);
+            throw new IllegalArgumentException("Xác thực hai lớp (TOTP) chưa được kích hoạt cho tài khoản này");
         }
 
         // =========================================================================
         if (totpCode == null || totpCode.length() != 6) {
             auditLogService.logAttempt(user.getId(), user.getUsername(),
                     LoginAttemptType.TOTP, LoginAttemptResult.FAIL,
-                    "Invalid TOTP code format", requestHttp);
-            throw new IllegalArgumentException("Invalid TOTP code");
+                    "Định dạng mã TOTP không hợp lệ", requestHttp);
+            throw new IllegalArgumentException("Mã xác thực hai lớp (TOTP) không hợp lệ");
         }
 
         boolean totpValid = totpValidator.isValid(user.getTotpSecret(), totpCode);
@@ -218,9 +218,9 @@ public class TotpAuthService {
 
             auditLogService.logAttempt(user.getId(), user.getUsername(),
                     LoginAttemptType.TOTP, LoginAttemptResult.FAIL,
-                    "Invalid TOTP (attempt " + newCount + "/" + MAX_TOTP_ATTEMPTS + ")", requestHttp);
+                    "Mã TOTP không hợp lệ (lần thử " + newCount + "/" + MAX_TOTP_ATTEMPTS + ")", requestHttp);
 
-            throw new IllegalArgumentException("Invalid TOTP code");
+            throw new IllegalArgumentException("Mã xác thực hai lớp (TOTP) không hợp lệ");
         }
 
         // =========================================================================
@@ -274,7 +274,7 @@ public class TotpAuthService {
             // Check token type claim
             String type = claims.get("type", String.class);
             if (!"refresh".equals(type)) {
-                throw new IllegalArgumentException("Invalid token type - not a refresh token");
+                throw new IllegalArgumentException("Loại token không hợp lệ - không phải là refresh token");
             }
 
             String username = claims.getSubject();
@@ -282,22 +282,22 @@ public class TotpAuthService {
             UUID userId = UUID.fromString(userIdStr);
 
             User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));
 
             if (user.getStatus() == UserStatus.LOCKED) {
-                throw new IllegalArgumentException("Account is locked");
+                throw new IllegalArgumentException("Tài khoản đã bị khóa");
             }
 
             String newAccessToken = tokenService.createAccessToken(user);
             auditLogService.logAttempt(user.getId(), user.getUsername(),
                     LoginAttemptType.CREDENTIALS, LoginAttemptResult.SUCCESS,
-                    "Token refresh", requestHttp);
+                    "Làm mới token", requestHttp);
             return newAccessToken;
 
         } catch (Exception e) {
             auditLogService.logAttempt(null, "unknown", LoginAttemptType.CREDENTIALS,
-                    LoginAttemptResult.FAIL, "Token refresh failed: " + e.getMessage(), requestHttp);
-            throw new IllegalArgumentException("Invalid or expired refresh token");
+                    LoginAttemptResult.FAIL, "Làm mới token failed: " + e.getMessage(), requestHttp);
+            throw new IllegalArgumentException("Refresh token không hợp lệ hoặc đã hết hạn");
         }
     }
 }

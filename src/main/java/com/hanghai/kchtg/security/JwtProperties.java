@@ -43,19 +43,19 @@ public class JwtProperties {
     @PostConstruct
     public void validate() {
         if (secret == null || secret.isBlank()) {
-            throw new IllegalStateException("JWT secret phai duoc set qua jwt.secret property "
-                    + "(vi du: bien moi truong JWT_SECRET). "
-                    + "Hardcoded fallback da duoc loai bo de bao mat.");
+            throw new IllegalStateException("JWT secret phải được đặt qua thuộc tính jwt.secret "
+                    + "(ví dụ: biến môi trường JWT_SECRET). "
+                    + "Giá trị mặc định hardcoded đã được loại bỏ để bảo mật.");
         }
         try {
             byte[] keyBytes = Base64.getUrlDecoder().decode(secret);
             if (keyBytes.length < 32) {
-                throw new IllegalStateException("JWT secret phai decode duoc 32 bytes (256 bits) tro len. "
-                        + "Nhan duoc " + keyBytes.length + " bytes.");
+                throw new IllegalStateException("JWT secret phải giải mã (decode) được từ 32 bytes (256 bits) trở lên. "
+                        + "Nhận được " + keyBytes.length + " bytes.");
             }
             log.info("JWT secret validated successfully ({} bits)", keyBytes.length * 8);
         } catch (Exception e) {
-            throw new IllegalStateException("JWT secret khong hop le (decode bi loi): " + e.getMessage(), e);
+            throw new IllegalStateException("JWT secret không hợp lệ (decode bi loi): " + e.getMessage(), e);
         }
     }
 

@@ -333,7 +333,10 @@ export default function PolygonObjectList() {
               current: page,
               pageSize,
               total,
-              onChange: (p) => setPage(p),
+              onChange: (p, sz) => {
+                setPage(p);
+                if (sz) setPageSize(sz);
+              },
               showSizeChanger: true,
               showTotal: (t) => `Tổng ${t} đối tượng`,
               pageSizeOptions: ['10', '20', '50'],

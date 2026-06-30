@@ -47,7 +47,7 @@ public class KhaiThacTaiSanService {
 
     public KhaiThacTaiSanResponse getById(UUID id) {
         KhaiThacTaiSan entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("KhaiThacTaiSan not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thông tin khai thác tài sản với id: " + id));
         return toResponse(entity);
     }
 
@@ -57,21 +57,21 @@ public class KhaiThacTaiSanService {
 
     public Page<KhaiThacTaiSanResponse> findByTaiSanId(UUID taiSanId, Pageable pageable) {
         if (taiSanId == null) {
-            throw new IllegalArgumentException("taiSanId must not be null");
+            throw new IllegalArgumentException("taiSanId không được để trống");
         }
         return repository.findByTaiSanId(taiSanId, pageable).map(this::toResponse);
     }
 
     public Page<KhaiThacTaiSanResponse> findByNamKhaiThac(Integer namKhaiThac, Pageable pageable) {
         if (namKhaiThac == null) {
-            throw new IllegalArgumentException("namKhaiThac must not be null");
+            throw new IllegalArgumentException("namKhaiThac không được để trống");
         }
         return repository.findByNamKhaiThac(namKhaiThac, pageable).map(this::toResponse);
     }
 
     public Page<KhaiThacTaiSanResponse> findByTaiSanIdAndNamKhaiThac(UUID taiSanId, Integer namKhaiThac, Pageable pageable) {
         if (taiSanId == null || namKhaiThac == null) {
-            throw new IllegalArgumentException("Both taiSanId and namKhaiThac must be provided");
+            throw new IllegalArgumentException("Cả taiSanId và namKhaiThac phải được cung cấp");
         }
         return repository.findByTaiSanIdAndNamKhaiThac(taiSanId, namKhaiThac, pageable).map(this::toResponse);
     }
@@ -79,7 +79,7 @@ public class KhaiThacTaiSanService {
     @Transactional
     public KhaiThacTaiSanResponse update(UUID id, KhaiThacTaiSanRequest request) {
         KhaiThacTaiSan entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("KhaiThacTaiSan not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thông tin khai thác tài sản với id: " + id));
 
         if (request.getTaiSanId() != null) {
             entity.setTaiSanId(request.getTaiSanId());
@@ -101,7 +101,7 @@ public class KhaiThacTaiSanService {
     @Transactional
     public void delete(UUID id) {
         if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("KhaiThacTaiSan not found with id: " + id);
+            throw new EntityNotFoundException("Không tìm thấy thông tin khai thác tài sản với id: " + id);
         }
         repository.deleteById(id);
     }
@@ -109,7 +109,7 @@ public class KhaiThacTaiSanService {
     public BigDecimal calculateHaoMon(UUID taiSanId) {
         KhaiThacTaiSan entity = repository.findByTaiSanId(taiSanId).stream()
                 .findFirst()
-                .orElseThrow(() -> new EntityNotFoundException("KhaiThacTaiSan not found for taiSanId: " + taiSanId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thông tin khai thác tài sản cho taiSanId: " + taiSanId));
         return entity.getChiPhiVanHanh() != null
                 ? entity.getChiPhiVanHanh()
                 : BigDecimal.ZERO;
@@ -117,10 +117,10 @@ public class KhaiThacTaiSanService {
 
     private void validateRequest(KhaiThacTaiSanRequest request) {
         if (request.getTaiSanId() == null) {
-            throw new IllegalArgumentException("taiSanId must not be null");
+            throw new IllegalArgumentException("taiSanId không được để trống");
         }
         if (request.getNamKhaiThac() == null) {
-            throw new IllegalArgumentException("namKhaiThac must not be null");
+            throw new IllegalArgumentException("namKhaiThac không được để trống");
         }
     }
 

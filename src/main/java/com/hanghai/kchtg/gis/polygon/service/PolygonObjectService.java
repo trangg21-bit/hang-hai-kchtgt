@@ -132,7 +132,7 @@ public class PolygonObjectService {
 
         if (entity.getStatus() != Status.PENDING_APPROVAL) {
             throw new IllegalStateException(
-                    "Chi co the duyet L1 khi status = PENDING_APPROVAL, hien tai: " + entity.getStatus());
+                    "Chỉ có thể duyệt L1 khi status = PENDING_APPROVAL, hien tai: " + entity.getStatus());
         }
 
         entity.setStatus(Status.APPROVED_L1);
@@ -160,7 +160,7 @@ public class PolygonObjectService {
 
         if (entity.getStatus() != Status.APPROVED_L1) {
             throw new IllegalStateException(
-                    "Chi co the duyet L2 khi status = APPROVED_L1, hien tai: " + entity.getStatus());
+                    "Chỉ có thể duyệt L2 khi status = APPROVED_L1, hien tai: " + entity.getStatus());
         }
 
         entity.setStatus(Status.PUBLISHED);

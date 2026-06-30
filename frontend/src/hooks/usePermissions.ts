@@ -4,6 +4,12 @@ import type { PermissionGroup, PermissionTreeNode } from '../types/permission';
 const GROUP_LABELS: Record<string, string> = {
   user_management: 'Quản lý người dùng',
   role_management: 'Quản lý vai trò & phân quyền',
+  admin_management: 'Quản lý tài khoản quản trị',
+  group_management: 'Quản lý nhóm',
+  org_management: 'Quản lý đơn vị',
+  connection_management: 'Quản lý kết nối liên thông',
+  connection: 'Kết nối liên thông',
+  gis: 'Bản đồ GIS',
   system: 'Hệ thống',
 };
 

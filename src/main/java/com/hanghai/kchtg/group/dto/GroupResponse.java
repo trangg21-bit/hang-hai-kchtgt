@@ -25,6 +25,7 @@ public class GroupResponse {
     GroupStatus status;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
+    Long memberCount;
 
     /**
      * Map từ entity sang response DTO.
@@ -38,7 +39,8 @@ public class GroupResponse {
                 entity.getPermissions(),
                 entity.getStatus(),
                 entity.getCreatedAt(),
-                entity.getUpdatedAt()
+                entity.getUpdatedAt(),
+                0L
         );
     }
 }

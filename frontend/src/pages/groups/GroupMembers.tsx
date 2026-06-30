@@ -25,12 +25,14 @@ import type { ColumnsType } from 'antd/es/table';
 import { useNavigate, useParams } from 'react-router-dom';
 import { groupService } from '../../services/groupService';
 import type { GroupMember, AddMemberPayload } from '../../services/groupService';
+import { userService } from '../../services/userService';
 import DataTable from '../../components/DataTable';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
 import dayjs from 'dayjs';
+import FormField from '../../components/FormField';
 
 const ROLE_MAP: Record<string, { color: string; label: string }> = {
   admin: { color: 'red', label: 'Quản lý' },
@@ -54,6 +56,24 @@ export default function GroupMembers() {
   const [filterRole, setFilterRole] = useState<string | undefined>();
 
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [userOptions, setUserOptions] = useState<{ value: string; label: string }[]>([]);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const res = await userService.list({ pageSize: 100 });
+        setUserOptions(
+          res.data.map((u) => ({
+            value: u.id,
+            label: `${u.fullName} (${u.username})`,
+          }))
+        );
+      } catch (err) {
+        console.error('Failed to load users for dropdown:', err);
+      }
+    };
+    void loadUsers();
+  }, []);
 
   const fetchMembers = useCallback(async () => {
     setIsLoading(true);
@@ -65,7 +85,10 @@ export default function GroupMembers() {
       if (search) {
         const q = search.toLowerCase();
         filtered = filtered.filter(
-          (m) => m.fullName.toLowerCase().includes(q) || m.email.toLowerCase().includes(q),
+          (m) =>
+            m.fullName.toLowerCase().includes(q) ||
+            m.username.toLowerCase().includes(q) ||
+            m.email.toLowerCase().includes(q),
         );
       }
       if (filterRole) {
@@ -83,7 +106,7 @@ export default function GroupMembers() {
     }
   }, [id, page, pageSize, search, filterRole]);
 
-  useEffect(() => { void fetchMembers(); }, []);
+  useEffect(() => { void fetchMembers(); }, [fetchMembers]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);
@@ -260,7 +283,10 @@ export default function GroupMembers() {
               current: page,
               pageSize,
               total,
-              onChange: (p) => setPage(p),
+              onChange: (p, sz) => {
+                setPage(p);
+                if (sz) setPageSize(sz);
+              },
               showSizeChanger: true,
               showTotal: (t) => `Tổng ${t} thành viên`,
               pageSizeOptions: ['10', '20', '50'],
@@ -278,15 +304,16 @@ export default function GroupMembers() {
           form.resetFields();
         }}
         onOk={handleAddMember}
-        destroyOnClose
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <FormField
-            type="text"
+            type="select"
             name="userId"
-            label="ID người dùng"
+            label="Chọn người dùng"
             required
-            placeholder="VD: user-001"
+            placeholder="Tìm và chọn người dùng..."
+            options={userOptions}
           />
           <FormField
             type="select"

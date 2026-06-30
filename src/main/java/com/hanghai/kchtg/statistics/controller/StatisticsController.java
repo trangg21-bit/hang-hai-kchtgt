@@ -37,7 +37,7 @@ public class StatisticsController {
                 request.getFormType(), request.getReportingPeriod());
         StatisticsFormResponse response = statisticsService.createForm(request);
         return ResponseEntity.ok(
-                ApiResponse.success("Tao form thong ke thanh cong", response));
+                ApiResponse.success("Tao form thong ke thành công", response));
     }
 
     /**
@@ -124,6 +124,6 @@ public class StatisticsController {
         log.info("Fetching statistics summary");
         StatisticsSummary summary = statisticsService.getSummary();
         return ResponseEntity.ok(
-                ApiResponse.success("Lay tong ket thong ke thanh cong", summary));
+                ApiResponse.success("Lay tong ket thong ke thành công", summary));
     }
 }

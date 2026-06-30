@@ -34,6 +34,9 @@ public class UpdateOrgUnitRequest {
     @Size(max = 20, message = "Số điện thoại tối đa 20 ký tự")
     private String phone;
 
+    @Size(max = 200, message = "Trưởng đơn vị tối đa 200 ký tự")
+    private String contactPerson;
+
     /** Coefficient: > 0, max 2 decimal places. BR-017 */
     @DecimalMin(value = "0.01", message = "Hệ số phải lớn hơn 0")
     private java.math.BigDecimal coefficient;

@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class User extends BaseEntity {
+public class User extends BaseEntity implements java.security.Principal {
 
     /**
      * Tên đăng nhập - duy nhất, không được trống.
@@ -112,7 +112,13 @@ public class User extends BaseEntity {
                     .map(Permission::getCode).collect(Collectors.toSet()));
             }
         }
-        // TODO: add per-user overrides from UserPermissionOverride
+        if (groups != null) {
+            for (UserGroup group : groups) {
+                if (group.getPermissions() != null) {
+                    perms.addAll(group.getPermissions());
+                }
+            }
+        }
         return perms;
     }
 
@@ -238,4 +244,10 @@ public class User extends BaseEntity {
      */
     @Column(name = "password_strength_score")
     private Integer passwordStrengthScore;
+
+    @Override
+    @jakarta.persistence.Transient
+    public String getName() {
+        return getUsername();
+    }
 }

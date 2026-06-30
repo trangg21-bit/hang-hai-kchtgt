@@ -77,4 +77,16 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             + "LEFT JOIN FETCH u.groups "
             + "WHERE u.username = :username")
     Optional<User> findByUsernameWithRelations(String username);
+
+    /**
+     * Đếm số lượng người dùng hoạt động (chưa xóa) có vai trò này.
+     */
+    @Query("SELECT COUNT(u) FROM User u JOIN u.roles r WHERE r.id = :roleId AND u.status <> com.hanghai.kchtg.user.entity.UserStatus.DELETED")
+    long countByRoleId(@org.springframework.data.repository.query.Param("roleId") UUID roleId);
+
+    /**
+     * Thống kê số lượng người dùng hoạt động theo từng vai trò (tránh N+1 query).
+     */
+    @Query("SELECT r.id, COUNT(u) FROM User u JOIN u.roles r WHERE u.status <> com.hanghai.kchtg.user.entity.UserStatus.DELETED GROUP BY r.id")
+    List<Object[]> countUsersGroupByRoleId();
 }

@@ -56,7 +56,7 @@ public class AuthService {
         }
 
         if (user.getStatus() == com.hanghai.kchtg.user.entity.UserStatus.LOCKED) {
-            return new AuthError("Account is locked");
+            return new AuthError("Tài khoản đã bị khóa");
         }
 
         String role = user.getPrimaryRoleCode() != null ? user.getPrimaryRoleCode() : "ROLE_USER";

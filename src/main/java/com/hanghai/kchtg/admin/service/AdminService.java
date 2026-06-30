@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,12 +51,59 @@ public class AdminService {
     }
 
     @Transactional(readOnly = true)
-    public List<AdminAuditLog> findAuditLogs(UUID adminId, int page, int size) {
-        return auditLogRepo.findByAdminIdOrderByCreatedAtDesc(adminId)
-                .stream()
-                .skip((long) page * size)
-                .limit(size)
-                .collect(Collectors.toList());
+    public List<AdminAuditLog> findAuditLogs(UUID adminId, String action, String result, String startDate, String endDate) {
+        UUID searchUserId = adminId;
+        Optional<AdminAccount> adminOpt = adminRepo.findById(adminId);
+        if (adminOpt.isPresent()) {
+            searchUserId = adminOpt.get().getUser().getId();
+        }
+
+        final UUID finalSearchUserId = searchUserId;
+        Specification<AdminAuditLog> spec = Specification.where((root, query, cb) -> cb.equal(root.get("adminId"), finalSearchUserId));
+
+        if (action != null && !action.isBlank()) {
+            final String finalAction = action;
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("action"), finalAction));
+        }
+
+        if (result != null && !result.isBlank()) {
+            final String finalResult = result;
+            spec = spec.and((root, query, cb) -> {
+                if ("success".equalsIgnoreCase(finalResult)) {
+                    return cb.or(
+                        cb.like(cb.lower(root.get("details")), "http 2%"),
+                        cb.equal(cb.upper(root.get("details")), "SUCCESS")
+                    );
+                } else {
+                    return cb.not(cb.or(
+                        cb.like(cb.lower(root.get("details")), "http 2%"),
+                        cb.equal(cb.upper(root.get("details")), "SUCCESS")
+                    ));
+                }
+            });
+        }
+
+        if (startDate != null && !startDate.isBlank()) {
+            try {
+                java.time.LocalDate date = java.time.LocalDate.parse(startDate);
+                java.time.LocalDateTime startDateTime = date.atStartOfDay();
+                spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("createdAt"), startDateTime));
+            } catch (Exception e) {
+                // Ignore
+            }
+        }
+
+        if (endDate != null && !endDate.isBlank()) {
+            try {
+                java.time.LocalDate date = java.time.LocalDate.parse(endDate);
+                java.time.LocalDateTime endDateTime = date.atTime(23, 59, 59, 999999999);
+                spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("createdAt"), endDateTime));
+            } catch (Exception e) {
+                // Ignore
+            }
+        }
+
+        return auditLogRepo.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"));
     }
 
     @Transactional(readOnly = true)
@@ -80,9 +128,8 @@ public class AdminService {
         AdminRecoveryToken recoveryToken = AdminRecoveryToken.create(adminId, token);
         recoveryTokenRepo.save(recoveryToken);
 
-        // Ghi audit log
         auditLogRepo.save(AdminAuditLog.create(
-                admin.getId(), "MFA Reset Requested", "MFA",
+                admin.getUser().getId(), "MFA Reset Requested", "MFA",
                 "Yêu cầu khôi phục MFA cho userId: " + adminId,
                 "Bởi: " + requestByName, "0.0.0.0", "System"));
 
@@ -120,7 +167,7 @@ public class AdminService {
         AdminAccount admin = adminRepo.findByUserId(adminId).orElse(null);
         if (admin != null) {
             auditLogRepo.save(AdminAuditLog.create(
-                    admin.getId(), admin.getUser().getUsername(),
+                    admin.getUser().getId(), admin.getUser().getUsername(),
                     "MFA_RESET", "MFA đã được khôi phục thành công",
                     "Sử dụng recovery token", "0.0.0.0", "System"));
         }
@@ -167,7 +214,7 @@ public class AdminService {
         AdminPermission saved = permRepo.save(newPerm);
 
         auditLogRepo.save(AdminAuditLog.create(
-                admin.getId(), admin.getUser().getUsername(),
+                admin.getUser().getId(), admin.getUser().getUsername(),
                 "PERMISSION_GRANT", "Module: " + moduleId,
                 permissions != null ? String.join(", ", permissions) : null,
                 "0.0.0.0", "System"));
@@ -187,7 +234,7 @@ public class AdminService {
         existing.forEach(permRepo::delete);
 
         auditLogRepo.save(AdminAuditLog.create(
-                admin.getId(), admin.getUser().getUsername(),
+                admin.getUser().getId(), admin.getUser().getUsername(),
                 "PERMISSION_REVOKE", "Module: " + moduleId,
                 null, "0.0.0.0", "System"));
     }
@@ -217,7 +264,7 @@ public class AdminService {
         AdminAccount saved = adminRepo.save(admin);
 
         auditLogRepo.save(AdminAuditLog.create(
-                admin.getId(), admin.getUser().getUsername(),
+                admin.getUser().getId(), admin.getUser().getUsername(),
                 "LOCKED", "Admin account locked",
                 reason, "0.0.0.0", "System"));
 
@@ -232,7 +279,7 @@ public class AdminService {
         AdminAccount saved = adminRepo.save(admin);
 
         auditLogRepo.save(AdminAuditLog.create(
-                admin.getId(), admin.getUser().getUsername(),
+                admin.getUser().getId(), admin.getUser().getUsername(),
                 "UNLOCKED", "Admin account unlocked",
                 reason, "0.0.0.0", "System"));
 

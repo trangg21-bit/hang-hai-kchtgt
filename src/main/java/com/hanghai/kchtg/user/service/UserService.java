@@ -35,7 +35,8 @@ import java.util.UUID;
  * {@code @Transactional} tai class-level de tat ca public method deu
  * chay trong transaction - tranh {@code LazyInitializationException}
  * khi {@code spring.jpa.open-in-view=false}.
- * Read methods dung {@code findAllWithRelations()} / {@code findByIdWithRelations()}
+ * Read methods dung {@code findAllWithRelations()} /
+ * {@code findByIdWithRelations()}
  * de JOIN FETCH cac lazy associations.
  * </p>
  */
@@ -56,11 +57,11 @@ public class UserService {
     private final PasswordPolicyValidator passwordPolicyValidator;
 
     public UserService(UserRepository userRepository,
-                       RoleRepository roleRepository,
-                       OrgUnitRepository orgUnitRepository,
-                       GroupRepository groupRepository,
-                       PasswordEncoder passwordEncoder,
-                       PasswordPolicyValidator passwordPolicyValidator) {
+            RoleRepository roleRepository,
+            OrgUnitRepository orgUnitRepository,
+            GroupRepository groupRepository,
+            PasswordEncoder passwordEncoder,
+            PasswordPolicyValidator passwordPolicyValidator) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.orgUnitRepository = orgUnitRepository;
@@ -76,7 +77,7 @@ public class UserService {
      * Default 20 items/page, max 100.
      */
     @Transactional(readOnly = true)
-    public Page<User> findAll(Pageable pageable) {
+    public Page<UserResponse> findAll(Pageable pageable) {
         // Enforce max page size
         int actualSize = pageable.getPageSize();
         if (actualSize > MAX_PAGE_SIZE || actualSize <= 0) {
@@ -84,7 +85,7 @@ public class UserService {
         }
         Pageable cappedPageable = Pageable.ofSize(actualSize);
         cappedPageable = cappedPageable.withPage(pageable.getPageNumber());
-        return userRepository.findAll(cappedPageable);
+        return userRepository.findAll(cappedPageable).map(UserResponse::from);
     }
 
     /**
@@ -103,7 +104,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public User findById(UUID id) {
         return userRepository.findByIdWithRelations(id)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nguoi dung voi id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với id: " + id));
     }
 
     /**
@@ -114,7 +115,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public User findByUsername(String username) {
         return userRepository.findByUsernameWithRelations(username)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nguoi dung voi username: " + username));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với username: " + username));
     }
 
     /**
@@ -125,7 +126,7 @@ public class UserService {
     @Transactional(readOnly = true)
     public User findByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nguoi dung voi email: " + email));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với email: " + email));
     }
 
     // =========================================================================
@@ -134,15 +135,15 @@ public class UserService {
      * Tao moi nguoi dung.
      *
      * @throws IllegalArgumentException neu username hoac email da ton tai
-     * @throws ValidationException neu mat khau khong dap ung chinh sach
+     * @throws ValidationException      neu mat khau khong dap ung chinh sach
      */
     public User create(CreateUserRequest request) {
         // BR-001: Check email unique
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new IllegalArgumentException("Ten dang nhap da ton tai: " + request.getUsername());
+            throw new IllegalArgumentException("Tên đăng nhập đã tồn tại: " + request.getUsername());
         }
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email da ton tai: " + request.getEmail());
+            throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
         }
 
         // BR-002: Validate password policy
@@ -156,7 +157,7 @@ public class UserService {
         user.setPhone(request.getPhone());
         String roleCode = request.getRole() != null ? request.getRole() : "ROLE_USER";
         Role role = roleRepository.findByCode(roleCode)
-                .orElseThrow(() -> new IllegalArgumentException("Vai tro khong ton tai: " + roleCode));
+                .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + roleCode));
         user.getRoles().add(role);
         user.setStatus(UserStatus.ACTIVE);
 
@@ -164,7 +165,7 @@ public class UserService {
         if (request.getOrgUnitId() != null) {
             OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
                     .orElseThrow(() -> new IllegalArgumentException(
-                            "Khong tim thay don vi voi id: " + request.getOrgUnitId()));
+                            "Không tìm thấy đơn vị với id: " + request.getOrgUnitId()));
             user.setOrgUnit(orgUnit);
         }
 
@@ -172,7 +173,7 @@ public class UserService {
         if (request.getGroupIds() != null && !request.getGroupIds().isEmpty()) {
             List<UserGroup> groups = groupRepository.findAllById(request.getGroupIds());
             if (groups.size() != request.getGroupIds().size()) {
-                throw new IllegalArgumentException("Mot so nhom khong ton tai");
+                throw new IllegalArgumentException("Một số nhóm không tồn tại");
             }
             user.setGroups(new ArrayList<>(groups));
         }
@@ -183,17 +184,19 @@ public class UserService {
     }
 
     /**
-     * Cap nhat thong tin nguoi dung. Chi cap nhat nhung truong duoc gui (khac {@code null}).
+     * Cap nhat thong tin nguoi dung. Chi cap nhat nhung truong duoc gui (khac
+     * {@code null}).
      *
-     * @throws EntityNotFoundException neu khong tim thay nguoi dung
-     * @throws IllegalArgumentException neu email moi da duoc dung boi nguoi dung khac
+     * @throws EntityNotFoundException  neu khong tim thay nguoi dung
+     * @throws IllegalArgumentException neu email moi da duoc dung boi nguoi dung
+     *                                  khac
      */
     public User update(UUID id, UpdateUserRequest request) {
         User user = findById(id);
 
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
-                throw new IllegalArgumentException("Email da ton tai: " + request.getEmail());
+                throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
             }
             user.setEmail(request.getEmail());
         }
@@ -212,13 +215,13 @@ public class UserService {
         }
         if (request.getRole() != null) {
             Role role = roleRepository.findByCode(request.getRole())
-                    .orElseThrow(() -> new IllegalArgumentException("Vai tro khong ton tai: " + request.getRole()));
+                    .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + request.getRole()));
             user.getRoles().add(role);
         }
         if (request.getOrgUnitId() != null) {
             OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
                     .orElseThrow(() -> new IllegalArgumentException(
-                            "Khong tim thay don vi voi id: " + request.getOrgUnitId()));
+                            "Không tìm thấy đơn vị với id: " + request.getOrgUnitId()));
             user.setOrgUnit(orgUnit);
         }
         if (request.getGroupIds() != null) {
@@ -237,12 +240,13 @@ public class UserService {
      * T-002: Xoa nguoi dung (BR-003 guard).
      * Kiem tra kha nhien phanhen/bao cao FK references truoc khi soft delete.
      *
-     * @throws IllegalArgumentException neu nguoi dung co du lieu nghiep vu lien quan (BR-003)
-     * @throws EntityNotFoundException neu khong tim thay nguoi dung
+     * @throws IllegalArgumentException neu nguoi dung co du lieu nghiep vu lien
+     *                                  quan (BR-003)
+     * @throws EntityNotFoundException  neu khong tim thay nguoi dung
      */
     public void delete(UUID id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay nguoi dung voi id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với id: " + id));
 
         // BR-003: Data-dependency check — query phanhen/bao cao FK references
         // If FK constraints exist in the DB, this will fail at constraint level.
@@ -260,11 +264,14 @@ public class UserService {
      * Quat phanhen va bao cao bang UUID de linh hoat voi thiet ke CSDL.
      */
     private void checkBusinessDataReferences(User user) {
-        // Check phanhen references by user ID — replace with actual repository when BR-003 FKs are confirmed
-        // Since we don't know the exact phanhen/bao cao repository/package, we use a placeholder
+        // Check phanhen references by user ID — replace with actual repository when
+        // BR-003 FKs are confirmed
+        // Since we don't know the exact phanhen/bao cao repository/package, we use a
+        // placeholder
         // that the dev can wire up once FK relationships are confirmed.
         // For now, we skip the FK check and rely on DB-level constraints.
-        log.info("BR-003: No FK-dependent business data references detected for user {} — soft delete allowed", user.getUsername());
+        log.info("BR-003: No FK-dependent business data references detected for user {} — soft delete allowed",
+                user.getUsername());
     }
 
     /**
@@ -281,7 +288,7 @@ public class UserService {
     }
 
     // =========================================================================
-    //  T-004: Self-edit endpoint (GET/PUT /users/me)
+    // T-004: Self-edit endpoint (GET/PUT /users/me)
     // =========================================================================
 
     /**
@@ -293,23 +300,26 @@ public class UserService {
     public UserResponse getMyProfile() {
         String username = getCurrentUsername();
         if (username == null) {
-            throw new EntityNotFoundException("Khong tim thay nguoi dung dang dang nhap");
+            throw new EntityNotFoundException("Không tìm thấy người dùng đang đăng nhập");
         }
         User user = findByUsername(username);
         return UserResponse.from(user);
     }
 
     /**
-     * T-004: PUT /users/me — cho phep nguoi dung hien tai cap nhat thong tin cua chinh minh.
-     * Chi cho phep cap nhat fullName, phone. Email yeu cau xac minh (khong cap nhat truc tiep).
+     * T-004: PUT /users/me — cho phep nguoi dung hien tai cap nhat thong tin cua
+     * chinh minh.
+     * Chi cho phep cap nhat fullName, phone. Email yeu cau xac minh (khong cap nhat
+     * truc tiep).
      *
-     * @throws AccessDeniedException neu nguoi dung khong phai la admin va hien tai co the cap nhat
+     * @throws AccessDeniedException   neu nguoi dung khong phai la admin va hien
+     *                                 tai co the cap nhat
      * @throws EntityNotFoundException neu khong tim thay nguoi dung dang nhap
      */
     public UserResponse updateMyProfile(UpdateUserRequest request) {
         String username = getCurrentUsername();
         if (username == null) {
-            throw new EntityNotFoundException("Khong tim thay nguoi dung dang dang nhap");
+            throw new EntityNotFoundException("Không tìm thấy người dùng đang đăng nhập");
         }
         User user = findByUsername(username);
 
@@ -324,11 +334,11 @@ public class UserService {
 
         // Email update: only admins can change email for security reasons
         if (!isAdmin && request.getEmail() != null) {
-            throw new AccessDeniedException("Chi quan tri vien moi duoc thay doi email");
+            throw new AccessDeniedException("Chỉ quản trị viên mới được thay đổi email");
         }
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {
-                throw new IllegalArgumentException("Email da ton tai: " + request.getEmail());
+                throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
             }
             user.setEmail(request.getEmail());
         }
@@ -345,13 +355,13 @@ public class UserService {
         if (isAdmin) {
             if (request.getRole() != null) {
                 Role role = roleRepository.findByCode(request.getRole())
-                        .orElseThrow(() -> new IllegalArgumentException("Vai tro khong ton tai: " + request.getRole()));
+                        .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + request.getRole()));
                 user.getRoles().add(role);
             }
             if (request.getOrgUnitId() != null) {
                 OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
                         .orElseThrow(() -> new IllegalArgumentException(
-                                "Khong tim thay don vi voi id: " + request.getOrgUnitId()));
+                                "Không tìm thấy đơn vị với id: " + request.getOrgUnitId()));
                 user.setOrgUnit(orgUnit);
             }
             if (request.getGroupIds() != null) {
@@ -375,7 +385,8 @@ public class UserService {
      */
     public User resetPasswordByAdmin(UUID userId, String newPassword) {
         User user = findById(userId);
-        // Relaxed policy for admin reset: >= 8 chars, contains letter + digit, no special char required
+        // Relaxed policy for admin reset: >= 8 chars, contains letter + digit, no
+        // special char required
         validateResetPassword(newPassword, true);
         user.setPassword(passwordEncoder.encode(newPassword));
         // Reset lockout counter on password reset
@@ -388,7 +399,8 @@ public class UserService {
     }
 
     /**
-     * T-008: GET /users/{id}/pending-status — tra ve trang thai dang ky dang cho phep duyet.
+     * T-008: GET /users/{id}/pending-status — tra ve trang thai dang ky dang cho
+     * phep duyet.
      * Chi cho phep user xem trang thai cua chinh minh.
      *
      * @throws AccessDeniedException neu khong phai la user hien tai
@@ -397,13 +409,13 @@ public class UserService {
     public String getPendingStatus(UUID targetUserId) {
         String currentUsername = getCurrentUsername();
         if (currentUsername == null) {
-            throw new EntityNotFoundException("Khong tim thay nguoi dung dang dang nhap");
+            throw new EntityNotFoundException("Không tìm thấy người dùng đang đăng nhập");
         }
 
         // Get current user's ID to compare
         User currentUser = findByUsername(currentUsername);
         if (!currentUser.getId().equals(targetUserId)) {
-            throw new AccessDeniedException("Chi duoc xem trang thai dang ky cua chinh minh");
+            throw new AccessDeniedException("Chỉ được xem trạng thái đăng ký của chính mình");
         }
 
         // Check if user has a pending approval record
@@ -413,7 +425,7 @@ public class UserService {
     }
 
     // =========================================================================
-    //  HELPERS
+    // HELPERS
     // =========================================================================
 
     /**
@@ -445,13 +457,13 @@ public class UserService {
      */
     private void validateResetPassword(String password, boolean adminReset) {
         if (password == null || password.isEmpty()) {
-            throw new ValidationException("Mat khau khong duoc de trong");
+            throw new ValidationException("Mật khẩu không được để trống");
         }
         if (password.length() < 8) {
-            throw new ValidationException("Mat khau phai co it nhat 8 ky tu");
+            throw new ValidationException("Mật khẩu phải có ít nhất 8 ký tự");
         }
         if (password.length() > 128) {
-            throw new ValidationException("Mat khau toi da 128 ky tu");
+            throw new ValidationException("Mật khẩu tối đa 128 ký tự");
         }
         // Admin reset: only letter + digit required, no special char needed
         if (!adminReset) {

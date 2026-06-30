@@ -32,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
-@WithMockUser(roles = "SYSTEM_ADMIN")
+@WithMockUser(authorities = "ROLE_SYSTEM_ADMIN")
 class DataConnectionControllerTest {
 
     @Autowired

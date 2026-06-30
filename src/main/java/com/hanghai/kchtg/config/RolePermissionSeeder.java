@@ -83,6 +83,10 @@ public class RolePermissionSeeder implements CommandLineRunner {
         // ---- org unit management ----
         seedPermission(permissionsByCode, "orgunit", "manage", "Quản lý đơn vị",
                 "Tạo, sửa, xóa đơn vị tổ chức");
+        seedPermission(permissionsByCode, "orgunit", "read", "Xem đơn vị",
+                "Xem danh sách và chi tiết đơn vị tổ chức");
+        seedPermission(permissionsByCode, "orgunit", "approve", "Phê duyệt đơn vị",
+                "Phê duyệt đơn vị tổ chức");
 
         // ---- group management ----
         seedPermission(permissionsByCode, "group", "manage", "Quản lý nhóm",
@@ -148,46 +152,6 @@ public class RolePermissionSeeder implements CommandLineRunner {
         seedPermission(permissionsByCode, "security", "read", "Xem báo cáo an ninh",
                 "Xem báo cáo an ninh, cảnh báo");
 
-        // ---- cangbien (port) ----
-        seedPermission(permissionsByCode, "cangbien", "create", "Tạo cảng biển", "Thêm mới cảng biển");
-        seedPermission(permissionsByCode, "cangbien", "read",   "Xem cảng biển",  "Xem danh sách và chi tiết cảng biển");
-        seedPermission(permissionsByCode, "cangbien", "update", "Sửa cảng biển",  "Chỉnh sửa thông tin cảng biển");
-        seedPermission(permissionsByCode, "cangbien", "delete", "Xóa cảng biển",  "Xóa (soft-delete) cảng biển");
-        seedPermission(permissionsByCode, "cangbien", "approve","Phê duyệt cảng biển","Phê duyệt/từ chối cảng biển");
-        seedPermission(permissionsByCode, "cangbien", "history","Xem lịch sử cảng biển","Xem lịch sử thay đổi cảng biển");
-
-        // ---- bencang (berth) ----
-        seedPermission(permissionsByCode, "bencang", "create", "Tạo bến cảng", "Thêm mới bến cảng");
-        seedPermission(permissionsByCode, "bencang", "read",   "Xem bến cảng",  "Xem danh sách và chi tiết bến cảng");
-        seedPermission(permissionsByCode, "bencang", "update", "Sửa bến cảng",  "Chỉnh sửa thông tin bến cảng");
-        seedPermission(permissionsByCode, "bencang", "delete", "Xóa bến cảng",  "Xóa (soft-delete) bến cảng");
-        seedPermission(permissionsByCode, "bencang", "approve","Phê duyệt bến cảng","Phê duyệt/từ chối bến cảng");
-        seedPermission(permissionsByCode, "bencang", "history","Xem lịch sử bến cảng","Xem lịch sử thay đổi bến cảng");
-
-        // ---- caucang (crane/quay) ----
-        seedPermission(permissionsByCode, "caucang", "create", "Tạo cầu cảng", "Thêm mới cầu cảng");
-        seedPermission(permissionsByCode, "caucang", "read",   "Xem cầu cảng",  "Xem danh sách và chi tiết cầu cảng");
-        seedPermission(permissionsByCode, "caucang", "update", "Sửa cầu cảng",  "Chỉnh sửa thông tin cầu cảng");
-        seedPermission(permissionsByCode, "caucang", "delete", "Xóa cầu cảng",  "Xóa (soft-delete) cầu cảng");
-        seedPermission(permissionsByCode, "caucang", "approve","Phê duyệt cầu cảng","Phê duyệt/từ chối cầu cảng");
-        seedPermission(permissionsByCode, "caucang", "history","Xem lịch sử cầu cảng","Xem lịch sử thay đổi cầu cảng");
-
-        // ---- cangcan (inland port) ----
-        seedPermission(permissionsByCode, "cangcan", "create", "Tạo cảng cạn", "Thêm mới cảng cạn");
-        seedPermission(permissionsByCode, "cangcan", "read",   "Xem cảng cạn",  "Xem danh sách và chi tiết cảng cạn");
-        seedPermission(permissionsByCode, "cangcan", "update", "Sửa cảng cạn",  "Chỉnh sửa thông tin cảng cạn");
-        seedPermission(permissionsByCode, "cangcan", "delete", "Xóa cảng cạn",  "Xóa (soft-delete) cảng cạn");
-        seedPermission(permissionsByCode, "cangcan", "approve","Phê duyệt cảng cạn","Phê duyệt/từ chối cảng cạn");
-        seedPermission(permissionsByCode, "cangcan", "history","Xem lịch sử cảng cạn","Xem lịch sử thay đổi cảng cạn");
-
-        // ---- vungnuoc (water zone) ----
-        seedPermission(permissionsByCode, "vungnuoc", "create", "Tạo vùng nước", "Thêm mới vùng nước");
-        seedPermission(permissionsByCode, "vungnuoc", "read",   "Xem vùng nước",  "Xem danh sách và chi tiết vùng nước");
-        seedPermission(permissionsByCode, "vungnuoc", "update", "Sửa vùng nước",  "Chỉnh sửa thông tin vùng nước");
-        seedPermission(permissionsByCode, "vungnuoc", "delete", "Xóa vùng nước",  "Xóa (soft-delete) vùng nước");
-        seedPermission(permissionsByCode, "vungnuoc", "approve","Phê duyệt vùng nước","Phê duyệt/từ chối vùng nước");
-        seedPermission(permissionsByCode, "vungnuoc", "history","Xem lịch sử vùng nước","Xem lịch sử thay đổi vùng nước");
-
         // Permissions will be saved automatically via @ManyToMany cascade when saving roles.
         log.info("📦 Prepared {} permissions for role assignment", permissionsByCode.size());
 
@@ -196,44 +160,24 @@ public class RolePermissionSeeder implements CommandLineRunner {
         rolePermissionMap.put("ROLE_SYSTEM_ADMIN", List.of(
                 "user:manage", "role:manage", "orgunit:manage",
                 "admin:manage", "log:manage", "map:manage", "connection:manage",
-                "cangbien:create", "cangbien:read", "cangbien:update", "cangbien:delete", "cangbien:approve", "cangbien:history",
-                "bencang:create",  "bencang:read",  "bencang:update",  "bencang:delete",  "bencang:approve",  "bencang:history",
-                "caucang:create",  "caucang:read",  "caucang:update",  "caucang:delete",  "caucang:approve",  "caucang:history",
-                "cangcan:create",  "cangcan:read",  "cangcan:update",  "cangcan:delete",  "cangcan:approve",  "cangcan:history",
-                "vungnuoc:create", "vungnuoc:read", "vungnuoc:update", "vungnuoc:delete", "vungnuoc:approve", "vungnuoc:history"
+                "data:read", "data:create", "data:update", "data:approve"
         ));
         rolePermissionMap.put("ROLE_ADMIN", List.of(
-                "orgunit:manage", "group:manage", "user:read",
-                "report:read", "connection:read",
-                "cangbien:create", "cangbien:read", "cangbien:update", "cangbien:delete", "cangbien:approve", "cangbien:history",
-                "bencang:create",  "bencang:read",  "bencang:update",  "bencang:delete",  "bencang:approve",  "bencang:history",
-                "caucang:create",  "caucang:read",  "caucang:update",  "caucang:delete",  "caucang:approve",  "caucang:history",
-                "cangcan:create",  "cangcan:read",  "cangcan:update",  "cangcan:delete",  "cangcan:approve",  "cangcan:history",
-                "vungnuoc:create", "vungnuoc:read", "vungnuoc:update", "vungnuoc:delete", "vungnuoc:approve", "vungnuoc:history"
+                "orgunit:manage", "orgunit:read", "orgunit:approve", "group:manage", "user:read",
+                "report:read", "connection:read", "data:read", "data:approve"
         ));
         rolePermissionMap.put("ROLE_LEADER", List.of(
-                "data:approve", "report:read", "approve:action",
-                "cangbien:read", "cangbien:approve", "cangbien:history",
-                "bencang:read",  "bencang:approve",  "bencang:history",
-                "caucang:read",  "caucang:approve",  "caucang:history",
-                "cangcan:read",  "cangcan:approve",  "cangcan:history",
-                "vungnuoc:read", "vungnuoc:approve", "vungnuoc:history"
+                "orgunit:read", "data:approve", "report:read", "approve:action"
         ));
         rolePermissionMap.put("ROLE_SPECIALIST", List.of(
-                "data:create", "data:update", "data:read",
-                "report:read", "check:read",
-                "cangbien:create", "cangbien:read", "cangbien:update", "cangbien:history",
-                "bencang:create",  "bencang:read",  "bencang:update",  "bencang:history",
-                "caucang:create",  "caucang:read",  "caucang:update",  "caucang:history",
-                "cangcan:create",  "cangcan:read",  "cangcan:update",  "cangcan:history",
-                "vungnuoc:create", "vungnuoc:read", "vungnuoc:update", "vungnuoc:history"
+                "orgunit:read", "data:create", "data:update", "data:read",
+                "report:read", "check:read"
         ));
         rolePermissionMap.put("ROLE_PORT_OPERATOR", List.of(
-                "data:read", "data:update",
-                "cangbien:read", "bencang:read", "caucang:read", "cangcan:read", "vungnuoc:read"
+                "orgunit:read", "data:read", "data:update"
         ));
         rolePermissionMap.put("ROLE_PUBLIC_USER", List.of(
-                "data:read"
+                "orgunit:read", "data:read"
         ));
         rolePermissionMap.put("ROLE_INTEGRATION", List.of(
                 "data:read", "data:write", "api:share"
@@ -255,32 +199,36 @@ public class RolePermissionSeeder implements CommandLineRunner {
 
                     switch (roleCode) {
                         case "ROLE_SYSTEM_ADMIN" ->
-                                role.setName("Quan tri he thong");
+                                role.setName("Quản trị hệ thống");
                         case "ROLE_ADMIN" ->
-                                role.setName("Quan tri don vi");
+                                role.setName("Quản trị đơn vị");
                         case "ROLE_LEADER" ->
-                                role.setName("Lanh dao");
+                                role.setName("Lãnh đạo");
                         case "ROLE_SPECIALIST" ->
-                                role.setName("Chuyen vien");
+                                role.setName("Chuyên viên");
                         case "ROLE_PORT_OPERATOR" ->
-                                role.setName("Nguoi dung tai Cang");
+                                role.setName("Người dùng tại Cảng");
                         case "ROLE_PUBLIC_USER" ->
-                                role.setName("Public User");
+                                role.setName("Người dùng công cộng");
                         case "ROLE_INTEGRATION" ->
-                                role.setName("External System (HTTT-DV, LGSP, NDXP)");
+                                role.setName("Hệ thống bên ngoài (HTTT-DV, LGSP, NDXP)");
                         case "ROLE_SECURITY_MONITOR" ->
-                                role.setName("SIEM");
+                                role.setName("Giám sát an ninh (SIEM)");
                         default ->
                                 role.setName(roleCode);
                     }
 
                     Set<Permission> perms = new HashSet<>();
-                    for (String permCode : permCodes) {
-                        Permission perm = permissionsByCode.get(permCode);
-                        if (perm != null) {
-                            perms.add(perm);
-                        } else {
-                            log.warn("⚠️ Permission '{}' not found for role '{}'", permCode, roleCode);
+                    if ("ROLE_SYSTEM_ADMIN".equals(roleCode)) {
+                        perms.addAll(permissionsByCode.values());
+                    } else {
+                        for (String permCode : permCodes) {
+                            Permission perm = permissionsByCode.get(permCode);
+                            if (perm != null) {
+                                perms.add(perm);
+                            } else {
+                                log.warn("⚠️ Permission '{}' not found for role '{}'", permCode, roleCode);
+                            }
                         }
                     }
                     role.setPermissions(perms);

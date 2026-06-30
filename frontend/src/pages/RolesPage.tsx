@@ -58,12 +58,22 @@ export default function RolesPage() {
   const [checkedKeys, setCheckedKeys] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+
   const [form] = Form.useForm();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
   const { tree, allGroupKeys } = usePermissions();
 
   // Query
-  const { data: roles, isLoading, isError, error, refetch } = useRoles({ search: search || undefined });
+  const { data: rolesData, isLoading, isError, error, refetch } = useRoles({
+    page,
+    pageSize,
+    search: search || undefined,
+  });
+
+  const roles = rolesData?.data || [];
+  const total = rolesData?.total || 0;
 
   // Mutations
   const createRole = useCreateRole();
@@ -109,12 +119,14 @@ export default function RolesPage() {
       const values = await form.validateFields();
       setSubmitting(true);
 
+      const actualPermissions = checkedKeys.filter((k) => !allGroupKeys.includes(k));
+
       if (editingRole) {
         const payload: UpdateRolePayload = {
           name: values.name,
           code: values.code,
           description: values.description,
-          permissions: checkedKeys,
+          permissions: actualPermissions,
         };
         await updateRole.mutateAsync({ id: editingRole.id, payload });
       } else {
@@ -122,7 +134,7 @@ export default function RolesPage() {
           name: values.name,
           code: values.code,
           description: values.description,
-          permissions: checkedKeys,
+          permissions: actualPermissions,
         };
         await createRole.mutateAsync(payload);
       }
@@ -132,7 +144,7 @@ export default function RolesPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [editingRole, form, checkedKeys, createRole, updateRole]);
+  }, [editingRole, form, checkedKeys, allGroupKeys, createRole, updateRole]);
 
   const handleDelete = useCallback(
     (role: Role) => {
@@ -156,7 +168,16 @@ export default function RolesPage() {
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);
+    setPage(1);
   }, []);
+
+  const handleTableChange = useCallback(
+    (pag: { current?: number; pageSize?: number }) => {
+      setPage(pag.current || 1);
+      setPageSize(pag.pageSize || 5);
+    },
+    []
+  );
 
   // ---- Permission count display ----
   const getCheckedCount = () => {
@@ -198,7 +219,15 @@ export default function RolesPage() {
         columns={columns}
         dataSource={roles}
         rowKey="id"
-        pagination={{ pageSize: 10, showSizeChanger: true, showTotal: (total) => `${total} vai trò` }}
+        pagination={{
+          current: page,
+          pageSize: pageSize,
+          total: total,
+          showSizeChanger: true,
+          showTotal: (t) => `Tổng ${t} vai trò`,
+          pageSizeOptions: ['5', '10', '20', '50']
+        }}
+        onChange={handleTableChange}
         scroll={{ x: 800 }}
       />
     );
@@ -322,12 +351,12 @@ export default function RolesPage() {
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={() => setModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         confirmLoading={submitting}
         okText={editingRole ? 'Cập nhật' : 'Tạo mới'}
         cancelText="Hủy"
         width={700}
-        maskClosable={false}
+        mask={{ closable: false }}
       >
         <Spin spinning={submitting}>
           <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
