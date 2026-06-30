@@ -9,7 +9,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 /**
- * Token dung cho tinh nang "Quên mat khau" - nguoi dung nhan token qua email
+ * Token dung cho tinh nang "Quên mật khẩu" - nguoi dung nhan token qua email
  * de dat lai mat khau. Token có thoi han 1 gio và chỉ su dung duoc mot lan.
  */
 @Entity

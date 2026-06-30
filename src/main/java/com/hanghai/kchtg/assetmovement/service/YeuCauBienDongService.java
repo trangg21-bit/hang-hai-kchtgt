@@ -34,7 +34,7 @@ public class YeuCauBienDongService {
         try {
             loaiBienDong = LoaiBienDong.valueOf(request.getLoaiBienDong());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid loaiBienDong: " + request.getLoaiBienDong());
+            throw new IllegalArgumentException("loaiBienDong không hợp lệ: " + request.getLoaiBienDong());
         }
 
         YeuCauBienDong entity = YeuCauBienDong.builder()
@@ -51,7 +51,7 @@ public class YeuCauBienDongService {
 
     public YeuCauBienDongResponse getById(UUID id) {
         YeuCauBienDong entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("YeuCauBienDong not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yêu cầu biến động với id: " + id));
         return toResponse(entity);
     }
 
@@ -74,7 +74,7 @@ public class YeuCauBienDongService {
     @Transactional
     public YeuCauBienDongResponse update(UUID id, YeuCauBienDongRequest request) {
         YeuCauBienDong entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("YeuCauBienDong not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yêu cầu biến động với id: " + id));
 
         validateRequest(request);
 
@@ -82,7 +82,7 @@ public class YeuCauBienDongService {
             try {
                 entity.setLoaiBienDong(LoaiBienDong.valueOf(request.getLoaiBienDong()));
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Invalid loaiBienDong: " + request.getLoaiBienDong());
+                throw new IllegalArgumentException("loaiBienDong không hợp lệ: " + request.getLoaiBienDong());
             }
         }
         if (request.getTenTaiSan() != null) {
@@ -99,17 +99,17 @@ public class YeuCauBienDongService {
     @Transactional
     public void delete(UUID id) {
         if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("YeuCauBienDong not found with id: " + id);
+            throw new EntityNotFoundException("Không tìm thấy yêu cầu biến động với id: " + id);
         }
         repository.deleteById(id);
     }
 
     private void validateRequest(YeuCauBienDongRequest request) {
         if (request.getLoaiBienDong() == null) {
-            throw new IllegalArgumentException("loaiBienDong must not be null");
+            throw new IllegalArgumentException("loaiBienDong không được để trống");
         }
         if (request.getTenTaiSan() == null || request.getTenTaiSan().isBlank()) {
-            throw new IllegalArgumentException("tenTaiSan (tieuDe) must not be blank");
+            throw new IllegalArgumentException("Tên tài sản (tiêu đề) không được để trống");
         }
     }
 

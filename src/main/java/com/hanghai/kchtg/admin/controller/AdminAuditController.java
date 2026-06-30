@@ -41,9 +41,11 @@ public class AdminAuditController {
     @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<List<AdminAuditLog>>> list(
             @RequestParam UUID adminId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        List<AdminAuditLog> logs = adminService.findAuditLogs(adminId, page, size);
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) String result,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        List<AdminAuditLog> logs = adminService.findAuditLogs(adminId, action, result, startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(logs));
     }
 

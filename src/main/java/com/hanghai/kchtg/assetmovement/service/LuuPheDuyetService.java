@@ -32,7 +32,7 @@ public class LuuPheDuyetService {
         try {
             ketQua = KetQuaPheDuyet.valueOf(request.getKetQua());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid ketQua: " + request.getKetQua());
+            throw new IllegalArgumentException("ketQua không hợp lệ: " + request.getKetQua());
         }
 
         LuuPheDuyet entity = LuuPheDuyet.builder()
@@ -52,7 +52,7 @@ public class LuuPheDuyetService {
 
     public LuuPheDuyetResponse getById(UUID id) {
         LuuPheDuyet entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("LuuPheDuyet not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy kết quả lưu phê duyệt với id: " + id));
         return toResponse(entity);
     }
 
@@ -62,7 +62,7 @@ public class LuuPheDuyetService {
 
     public Page<LuuPheDuyetResponse> findByYeuCauId(UUID yeuCauId, Pageable pageable) {
         if (yeuCauId == null) {
-            throw new IllegalArgumentException("yeuCauId must not be null");
+            throw new IllegalArgumentException("yeuCauId không được để trống");
         }
         return repository.findByYeuCauId(yeuCauId, pageable).map(this::toResponse);
     }
@@ -73,7 +73,7 @@ public class LuuPheDuyetService {
 
     public Page<LuuPheDuyetResponse> findByYeuCauIdAndKetQua(UUID yeuCauId, KetQuaPheDuyet ketQua, Pageable pageable) {
         if (yeuCauId == null) {
-            throw new IllegalArgumentException("yeuCauId must not be null");
+            throw new IllegalArgumentException("yeuCauId không được để trống");
         }
         return repository.findByYeuCauIdAndKetQua(yeuCauId, ketQua, pageable).map(this::toResponse);
     }
@@ -81,13 +81,13 @@ public class LuuPheDuyetService {
     @Transactional
     public LuuPheDuyetResponse update(UUID id, LuuPheDuyetRequest request) {
         LuuPheDuyet entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("LuuPheDuyet not found with id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy kết quả lưu phê duyệt với id: " + id));
 
         if (request.getKetQua() != null && !request.getKetQua().isBlank()) {
             try {
                 entity.setKetQua(KetQuaPheDuyet.valueOf(request.getKetQua()));
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Invalid ketQua: " + request.getKetQua());
+                throw new IllegalArgumentException("ketQua không hợp lệ: " + request.getKetQua());
             }
         }
         if (request.getGhiChu() != null) {
@@ -101,17 +101,17 @@ public class LuuPheDuyetService {
     @Transactional
     public void delete(UUID id) {
         if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("LuuPheDuyet not found with id: " + id);
+            throw new EntityNotFoundException("Không tìm thấy kết quả lưu phê duyệt với id: " + id);
         }
         repository.deleteById(id);
     }
 
     private void validateRequest(LuuPheDuyetRequest request) {
         if (request.getYeuCauId() == null) {
-            throw new IllegalArgumentException("yeuCauId must not be null");
+            throw new IllegalArgumentException("yeuCauId không được để trống");
         }
         if (request.getKetQua() == null || request.getKetQua().isBlank()) {
-            throw new IllegalArgumentException("ketQua must not be blank");
+            throw new IllegalArgumentException("ketQua không được để trống");
         }
     }
 

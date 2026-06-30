@@ -94,19 +94,19 @@ public class PasswordResetService {
     public void resetByToken(String token, String newPassword) {
         Optional<PasswordResetToken> tokenOpt = tokenRepository.findByToken(token);
         if (tokenOpt.isEmpty()) {
-            throw new ValidationException("Token khong hop le");
+            throw new ValidationException("Token không hợp lệ");
         }
 
         PasswordResetToken resetToken = tokenOpt.get();
 
         // BR-006: Check token expiry (1 hour)
         if (resetToken.isExpired()) {
-            throw new ValidationException("Link dat lai mat khau da het han");
+            throw new ValidationException("Link đặt lại mật khẩu đã hết hạn");
         }
 
         // Check if already used (single-use token)
         if (resetToken.isUsed()) {
-            throw new ValidationException("Token da duoc su dung");
+            throw new ValidationException("Token đã được sử dụng");
         }
 
         User user = resetToken.getUser();

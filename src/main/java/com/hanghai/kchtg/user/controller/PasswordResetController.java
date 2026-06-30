@@ -45,7 +45,7 @@ public class PasswordResetController {
     public ResponseEntity<ApiResponse<Void>> forgotPassword(@Valid @RequestBody Map<String, String> body) {
         String email = body.get("email");
         if (email == null || email.isBlank()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("Email khong duoc de trong"));
+            return ResponseEntity.badRequest().body(ApiResponse.error("Email khong duoc để trống"));
         }
 
         // Rate limiting check: 3 requests per 15 minutes per email
@@ -55,7 +55,7 @@ public class PasswordResetController {
             long retryAfter = rateLimiterService.getRetryAfterSeconds(rateKey);
             log.warn("Password reset rate limit exceeded for email: {} (retry after {}s)", email, retryAfter);
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(ApiResponse.error("Qua so luot yeu cau dat lai mat khau. Hay thu lai sau " + (retryAfter / 60 + 1) + " phut."));
+                    .body(ApiResponse.error("Qua so luot yeu cau đặt lại mật khẩu. Hay thu lai sau " + (retryAfter / 60 + 1) + " phut."));
         }
 
         try {
@@ -63,7 +63,7 @@ public class PasswordResetController {
             // Increment rate limit counter
             rateLimiterService.increment(rateKey);
             // Always return success (even if email doesn't exist) to prevent email enumeration attacks
-            return ResponseEntity.ok(ApiResponse.success("Yeu cau dat lai mat khau da duoc gui. Kiem tra email cua ban.", null));
+            return ResponseEntity.ok(ApiResponse.success("Yeu cau đặt lại mật khẩu da duoc gui. Kiem tra email cua ban.", null));
         } catch (Exception e) {
             log.error("Password reset request failed for email: {}", email, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -87,14 +87,14 @@ public class PasswordResetController {
         if (currentCount >= MAX_RESET_REQUESTS) {
             long retryAfter = rateLimiterService.getRetryAfterSeconds(rateKey);
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-                    .body(ApiResponse.error("Qua so luot yeu cau dat lai mat khau. Hay thu lai sau " + (retryAfter / 60 + 1) + " phut."));
+                    .body(ApiResponse.error("Qua so luot yeu cau đặt lại mật khẩu. Hay thu lai sau " + (retryAfter / 60 + 1) + " phut."));
         }
 
         try {
             passwordResetService.resetByToken(token, newPassword);
             // Increment rate limit counter
             rateLimiterService.increment(rateKey);
-            return ResponseEntity.ok(ApiResponse.success("Dat lai mat khau thanh cong.", null));
+            return ResponseEntity.ok(ApiResponse.success("Đặt lại mật khẩu thành công.", null));
         } catch (com.hanghai.kchtg.user.exception.ValidationException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {

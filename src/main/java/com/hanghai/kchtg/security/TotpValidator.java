@@ -51,7 +51,7 @@ public class TotpValidator {
             // Check with offset -1
             try { if (gat.authorize(secret, codeInt, -1)) return true; } catch (IllegalArgumentException ignored) {}
         } catch (NumberFormatException e) {
-            log.debug("Invalid TOTP code format: {}", code);
+            log.debug("Định dạng mã TOTP không hợp lệ: {}", code);
             return false;
         }
         return false;

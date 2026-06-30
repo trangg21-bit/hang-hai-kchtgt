@@ -27,7 +27,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
-@WithMockUser
+@WithMockUser(authorities = "ROLE_SYSTEM_ADMIN")
 class DieuChinhQuyHoachControllerTest {
 
     @Autowired

@@ -37,6 +37,25 @@ const RESULT_MAP: Record<string, { color: string; icon: React.ReactNode; label: 
   failure: { color: 'red', icon: <CloseCircleOutlined />, label: 'Thất bại' },
 };
 
+const ACTION_MAP: Record<string, string> = {
+  LOGIN: 'Đăng nhập',
+  LOGIN_TOTP: 'Đăng nhập 2FA',
+  CREATE_USER: 'Tạo người dùng',
+  UPDATE_USER: 'Sửa người dùng',
+  DELETE_USER: 'Xóa người dùng',
+  LOCK_USER: 'Khóa người dùng',
+  UNLOCK_USER: 'Mở khóa người dùng',
+  CHANGE_USER_STATUS: 'Đổi trạng thái',
+  RESET_USER_PASSWORD: 'Cấp lại mật khẩu',
+  CREATE_CONNECTION: 'Tạo kết nối',
+  UPDATE_CONNECTION: 'Sửa kết nối',
+  DELETE_CONNECTION: 'Xóa kết nối',
+  TEST_CONNECTION: 'Kiểm tra kết nối',
+  RUN_HEALTH_CHECK: 'Chạy health check',
+  CREATE_BACKUP: 'Tạo sao lưu',
+  RESTORE_BACKUP: 'Khôi phục sao lưu',
+};
+
 export default function AdminAudit() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -80,19 +99,25 @@ export default function AdminAudit() {
     }
   }, [page, pageSize, id, filters]);
 
-  useEffect(() => { void fetchLogs(); }, []);
-
-  const handleFilter = useCallback(async () => {
-    setPage(1);
-    await fetchLogs();
+  useEffect(() => {
+    void fetchLogs();
   }, [fetchLogs]);
+
+  const handleFilter = useCallback((values: any) => {
+    setFilters({
+      action: values.action || '',
+      result: values.result || '',
+      startDate: values.startDate ? values.startDate.format('YYYY-MM-DD') : '',
+      endDate: values.endDate ? values.endDate.format('YYYY-MM-DD') : '',
+    });
+    setPage(1);
+  }, []);
 
   const handleReset = useCallback(() => {
     form.resetFields();
     setFilters({ action: '', result: '', startDate: '', endDate: '' });
     setPage(1);
-    void fetchLogs();
-  }, [fetchLogs]);
+  }, [form]);
 
   const columns: ColumnsType<AdminAuditLog> = [
     { title: '#', width: 60, render: (_, __, idx: number) => (page - 1) * pageSize + idx + 1 },
@@ -107,7 +132,7 @@ export default function AdminAudit() {
       dataIndex: 'action',
       width: 180,
       render: (action: string) => (
-        <Tag color="blue">{action.replace(/_/g, ' ')}</Tag>
+        <Tag color="blue">{ACTION_MAP[action] || action.replace(/_/g, ' ')}</Tag>
       ),
     },
     {
@@ -130,7 +155,8 @@ export default function AdminAudit() {
       dataIndex: 'result',
       width: 120,
       render: (result: string) => {
-        const r = RESULT_MAP[result] || { color: 'default', icon: null, label: result };
+        const key = String(result || '').toLowerCase();
+        const r = RESULT_MAP[key] || { color: 'default', icon: null, label: result };
         return (
           <Space>
             {r.icon}
@@ -164,22 +190,21 @@ export default function AdminAudit() {
           <Form.Item name="action">
             <Select placeholder="Hành động" style={{ width: 200 }} allowClear options={[
               { value: 'LOGIN', label: 'Đăng nhập' },
+              { value: 'LOGIN_TOTP', label: 'Đăng nhập 2FA' },
               { value: 'CREATE_USER', label: 'Tạo người dùng' },
               { value: 'UPDATE_USER', label: 'Sửa người dùng' },
               { value: 'DELETE_USER', label: 'Xóa người dùng' },
               { value: 'LOCK_USER', label: 'Khóa người dùng' },
-              { value: 'CREATE_GROUP', label: 'Tạo nhóm' },
-              { value: 'UPDATE_GROUP', label: 'Sửa nhóm' },
-              { value: 'DELETE_GROUP', label: 'Xóa nhóm' },
-              { value: 'CREATE_ORG', label: 'Tạo đơn vị' },
-              { value: 'UPDATE_ORG', label: 'Sửa đơn vị' },
-              { value: 'DELETE_ORG', label: 'Xóa đơn vị' },
-              { value: 'CREATE_SYMBOL', label: 'Tạo biểu tượng' },
-              { value: 'UPDATE_SYMBOL', label: 'Sửa biểu tượng' },
-              { value: 'DELETE_SYMBOL', label: 'Xóa biểu tượng' },
+              { value: 'UNLOCK_USER', label: 'Mở khóa người dùng' },
+              { value: 'CHANGE_USER_STATUS', label: 'Đổi trạng thái' },
+              { value: 'RESET_USER_PASSWORD', label: 'Cấp lại mật khẩu' },
+              { value: 'CREATE_CONNECTION', label: 'Tạo kết nối' },
+              { value: 'UPDATE_CONNECTION', label: 'Sửa kết nối' },
+              { value: 'DELETE_CONNECTION', label: 'Xóa kết nối' },
               { value: 'TEST_CONNECTION', label: 'Kiểm tra kết nối' },
-              { value: 'SYSTEM_STARTUP', label: 'Khởi động hệ thống' },
-              { value: 'EXPORT_LOG', label: 'Xuất nhật ký' },
+              { value: 'RUN_HEALTH_CHECK', label: 'Chạy health check' },
+              { value: 'CREATE_BACKUP', label: 'Tạo sao lưu' },
+              { value: 'RESTORE_BACKUP', label: 'Khôi phục sao lưu' },
             ]} />
           </Form.Item>
           <Form.Item name="result">
@@ -227,7 +252,10 @@ export default function AdminAudit() {
               current: page,
               pageSize,
               total,
-              onChange: (p) => setPage(p),
+              onChange: (p, sz) => {
+                setPage(p);
+                if (sz) setPageSize(sz);
+              },
               showSizeChanger: true,
               showTotal: (t) => `Tổng ${t} nhật ký`,
               pageSizeOptions: ['10', '20', '50'],

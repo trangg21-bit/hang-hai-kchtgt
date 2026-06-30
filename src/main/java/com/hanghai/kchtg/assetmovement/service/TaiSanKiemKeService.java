@@ -38,7 +38,7 @@ public class TaiSanKiemKeService {
 
     public TaiSanKiemKeResponse getById(UUID id) {
         TaiSanKiemKe entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("TaiSanKiemKe not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy tài sản kiểm kê với id: " + id));
         return toResponse(entity);
     }
 
@@ -68,7 +68,7 @@ public class TaiSanKiemKeService {
     @Transactional
     public TaiSanKiemKeResponse update(UUID id, TaiSanKiemKeRequest request) {
         TaiSanKiemKe entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("TaiSanKiemKe not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy tài sản kiểm kê với id: " + id));
         if (request.getTrangThaiKiemKe() != null) entity.setTrangThaiKiemKe(parseTrangThaiKiemKe(request.getTrangThaiKiemKe()));
         if (request.getMoTa() != null) entity.setGhiChu(request.getMoTa());
         TaiSanKiemKe saved = repository.save(entity);
@@ -77,7 +77,7 @@ public class TaiSanKiemKeService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!repository.existsById(id)) throw new EntityNotFoundException("TaiSanKiemKe not found: " + id);
+        if (!repository.existsById(id)) throw new EntityNotFoundException("Không tìm thấy tài sản kiểm kê với id: " + id);
         repository.deleteById(id);
     }
 

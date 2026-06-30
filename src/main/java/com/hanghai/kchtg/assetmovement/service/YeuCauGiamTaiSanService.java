@@ -40,7 +40,7 @@ public class YeuCauGiamTaiSanService {
 
     public YeuCauGiamTaiSanResponse getById(UUID id) {
         YeuCauGiamTaiSan entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("YeuCauGiamTaiSan not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yêu cầu giảm tài sản với id: " + id));
         return toResponse(entity);
     }
 
@@ -56,7 +56,7 @@ public class YeuCauGiamTaiSanService {
     @Transactional
     public YeuCauGiamTaiSanResponse update(UUID id, YeuCauGiamTaiSanRequest request) {
         YeuCauGiamTaiSan entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("YeuCauGiamTaiSan not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yêu cầu giảm tài sản với id: " + id));
         if (request.getLyDo() != null) entity.setMoTa(request.getLyDo());
         YeuCauGiamTaiSan saved = repository.save(entity);
         return toResponse(saved);
@@ -64,7 +64,7 @@ public class YeuCauGiamTaiSanService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!repository.existsById(id)) throw new EntityNotFoundException("YeuCauGiamTaiSan not found: " + id);
+        if (!repository.existsById(id)) throw new EntityNotFoundException("Không tìm thấy yêu cầu giảm tài sản với id: " + id);
         repository.deleteById(id);
     }
 

@@ -7,6 +7,7 @@ import com.hanghai.kchtg.group.dto.GroupCopyRequest;
 import com.hanghai.kchtg.group.dto.GroupMemberResponse;
 import com.hanghai.kchtg.group.dto.GroupResponse;
 import com.hanghai.kchtg.group.dto.PaginatedGroupResponse;
+import com.hanghai.kchtg.group.dto.PaginatedGroupMemberResponse;
 import com.hanghai.kchtg.group.dto.UpdateUserGroupRequest;
 import com.hanghai.kchtg.group.dto.UserGroupResponse;
 import com.hanghai.kchtg.group.entity.UserGroup;
@@ -110,7 +111,7 @@ public class GroupController {
         UserGroup created = service.create(request, operatorId, operatorName);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Tao nhom thanh cong", UserGroupResponse.from(created, 0L)));
+                .body(ApiResponse.success("Tao nhom thành công", UserGroupResponse.from(created, 0L)));
     }
 
     /**
@@ -132,7 +133,7 @@ public class GroupController {
         }
 
         UserGroup updated = service.update(id, request, operatorId, operatorName);
-        return ResponseEntity.ok(ApiResponse.success("Cap nhat nhom thanh cong", UserGroupResponse.from(updated, 0L)));
+        return ResponseEntity.ok(ApiResponse.success("Cap nhat nhom thành công", UserGroupResponse.from(updated, 0L)));
     }
 
     /**
@@ -153,7 +154,7 @@ public class GroupController {
         }
 
         service.delete(id, operatorId, operatorName);
-        return ResponseEntity.ok(ApiResponse.success("Xoa nhom thanh cong", null));
+        return ResponseEntity.ok(ApiResponse.success("Xoa nhom thành công", null));
     }
 
     // ── Member Management ───────────────────────────────────────────
@@ -209,16 +210,16 @@ public class GroupController {
      * Role: Admin, Lanh dao, Can bo, Ca nhan
      */
     @GetMapping("/{id}/members")
-    public ResponseEntity<ApiResponse<PaginatedGroupResponse>> listMembers(
+    public ResponseEntity<ApiResponse<PaginatedGroupMemberResponse>> listMembers(
             @PathVariable UUID id,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<GroupMember> pageResult = service.findMembers(id, page, size);
 
-        List<GroupResponse> items = pageResult.getContent().stream()
-                .map(m -> GroupResponse.from(m.getUserGroup()))
+        List<GroupMemberResponse> items = pageResult.getContent().stream()
+                .map(GroupMemberResponse::from)
                 .toList();
-        PaginatedGroupResponse result = new PaginatedGroupResponse(items, pageResult.getTotalElements(),
+        PaginatedGroupMemberResponse result = new PaginatedGroupMemberResponse(items, pageResult.getTotalElements(),
                 pageResult.getNumber(), pageResult.getSize());
         return ResponseEntity.ok(ApiResponse.success(result));
     }
@@ -247,7 +248,7 @@ public class GroupController {
                 0L); // will be populated with actual count by client or separate call
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Sao cop thanh cong", response));
+                .body(ApiResponse.success("Sao cop thành công", response));
     }
 
     // ── History (BR-015) ───────────────────────────────────────────

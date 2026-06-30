@@ -286,7 +286,10 @@ export default function ConnectionList() {
               current: page,
               pageSize,
               total,
-              onChange: (p: number) => setPage(p),
+              onChange: (p: number, sz?: number) => {
+                setPage(p);
+                if (sz) setPageSize(sz);
+              },
               showSizeChanger: true,
               showTotal: (t: number) => `Tổng ${t} kết nối`,
               pageSizeOptions: ['10', '20', '50'],

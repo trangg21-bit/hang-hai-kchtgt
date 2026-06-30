@@ -52,7 +52,7 @@ public class UserController {
         // Enforce max page size
         int actualSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         Pageable pageable = PageRequest.of(page, actualSize, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<UserResponse> result = userService.findAll(pageable).map(UserResponse::from);
+        Page<UserResponse> result = userService.findAll(pageable);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
@@ -74,7 +74,7 @@ public class UserController {
     @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<UserResponse>> create(@Valid @RequestBody CreateUserRequest request) {
         UserResponse user = UserResponse.from(userService.create(request));
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Tao nguoi dung thanh cong", user));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Tao người dùng thành công", user));
     }
 
     /**
@@ -87,7 +87,7 @@ public class UserController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateUserRequest request) {
         UserResponse user = UserResponse.from(userService.update(id, request));
-        return ResponseEntity.ok(ApiResponse.success("Cap nhat nguoi dung thanh cong", user));
+        return ResponseEntity.ok(ApiResponse.success("Cap nhat người dùng thành công", user));
     }
 
     /**
@@ -98,7 +98,7 @@ public class UserController {
     @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         userService.delete(id);
-        return ResponseEntity.ok(ApiResponse.success("Xoa nguoi dung thanh cong", null));
+        return ResponseEntity.ok(ApiResponse.success("Xoa người dùng thành công", null));
     }
 
     /**
@@ -111,7 +111,7 @@ public class UserController {
             @PathVariable UUID id,
             @Valid @RequestBody ChangeStatusRequest request) {
         UserResponse user = UserResponse.from(userService.changeStatus(id, request.getStatus()));
-        return ResponseEntity.ok(ApiResponse.success("Thay doi trang thai thanh cong", user));
+        return ResponseEntity.ok(ApiResponse.success("Thay doi trang thai thành công", user));
     }
 
     /**
@@ -122,7 +122,7 @@ public class UserController {
     @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<UserResponse>> lockUser(@PathVariable UUID id) {
         UserResponse user = UserResponse.from(userService.changeStatus(id, UserStatus.LOCKED));
-        return ResponseEntity.ok(ApiResponse.success("Khoa tai khoan thanh cong", user));
+        return ResponseEntity.ok(ApiResponse.success("Khóa tài khoản thành công", user));
     }
 
     /**
@@ -133,7 +133,7 @@ public class UserController {
     @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<UserResponse>> unlockUser(@PathVariable UUID id) {
         UserResponse user = UserResponse.from(userService.changeStatus(id, UserStatus.ACTIVE));
-        return ResponseEntity.ok(ApiResponse.success("Mo khoa tai khoan thanh cong", user));
+        return ResponseEntity.ok(ApiResponse.success("Mo khóa tài khoản thành công", user));
     }
 
     // =========================================================================
@@ -155,7 +155,7 @@ public class UserController {
     @PutMapping("/me")
     public ResponseEntity<ApiResponse<UserResponse>> updateMyProfile(@Valid @RequestBody UpdateUserRequest request) {
         UserResponse user = userService.updateMyProfile(request);
-        return ResponseEntity.ok(ApiResponse.success("Cap nhat thong tin ca nhan thanh cong", user));
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật thông tin cá nhân thành công", user));
     }
 
     // =========================================================================
@@ -176,7 +176,7 @@ public class UserController {
             return ResponseEntity.badRequest().body(ApiResponse.error("Mật khẩu mới không được để trống"));
         }
         userService.resetPasswordByAdmin(id, newPassword);
-        return ResponseEntity.ok(ApiResponse.success("Dat lai mat khau thanh cong", null));
+        return ResponseEntity.ok(ApiResponse.success("Đặt lại mật khẩu thành công", null));
     }
 
     // =========================================================================

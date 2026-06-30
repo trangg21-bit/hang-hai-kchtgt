@@ -130,7 +130,7 @@ public class LogService {
 
             } catch (Exception e) {
                 log.error("Streaming CSV export failed: {}", e.getMessage());
-                throw new RuntimeException("Xuat CSV that bai: " + e.getMessage(), e);
+                throw new RuntimeException("Xuất CSV thất bại: " + e.getMessage(), e);
             } finally {
                 writer.close();
             }

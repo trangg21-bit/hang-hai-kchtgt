@@ -83,6 +83,10 @@ public class RolePermissionSeeder implements CommandLineRunner {
         // ---- org unit management ----
         seedPermission(permissionsByCode, "orgunit", "manage", "Quản lý đơn vị",
                 "Tạo, sửa, xóa đơn vị tổ chức");
+        seedPermission(permissionsByCode, "orgunit", "read", "Xem đơn vị",
+                "Xem danh sách và chi tiết đơn vị tổ chức");
+        seedPermission(permissionsByCode, "orgunit", "approve", "Phê duyệt đơn vị",
+                "Phê duyệt đơn vị tổ chức");
 
         // ---- group management ----
         seedPermission(permissionsByCode, "group", "manage", "Quản lý nhóm",
@@ -159,21 +163,21 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "data:read", "data:create", "data:update", "data:approve"
         ));
         rolePermissionMap.put("ROLE_ADMIN", List.of(
-                "orgunit:manage", "group:manage", "user:read",
+                "orgunit:manage", "orgunit:read", "orgunit:approve", "group:manage", "user:read",
                 "report:read", "connection:read", "data:read", "data:approve"
         ));
         rolePermissionMap.put("ROLE_LEADER", List.of(
-                "data:approve", "report:read", "approve:action"
+                "orgunit:read", "data:approve", "report:read", "approve:action"
         ));
         rolePermissionMap.put("ROLE_SPECIALIST", List.of(
-                "data:create", "data:update", "data:read",
+                "orgunit:read", "data:create", "data:update", "data:read",
                 "report:read", "check:read"
         ));
         rolePermissionMap.put("ROLE_PORT_OPERATOR", List.of(
-                "data:read", "data:update"
+                "orgunit:read", "data:read", "data:update"
         ));
         rolePermissionMap.put("ROLE_PUBLIC_USER", List.of(
-                "data:read"
+                "orgunit:read", "data:read"
         ));
         rolePermissionMap.put("ROLE_INTEGRATION", List.of(
                 "data:read", "data:write", "api:share"
@@ -195,21 +199,21 @@ public class RolePermissionSeeder implements CommandLineRunner {
 
                     switch (roleCode) {
                         case "ROLE_SYSTEM_ADMIN" ->
-                                role.setName("Quan tri he thong");
+                                role.setName("Quản trị hệ thống");
                         case "ROLE_ADMIN" ->
-                                role.setName("Quan tri don vi");
+                                role.setName("Quản trị đơn vị");
                         case "ROLE_LEADER" ->
-                                role.setName("Lanh dao");
+                                role.setName("Lãnh đạo");
                         case "ROLE_SPECIALIST" ->
-                                role.setName("Chuyen vien");
+                                role.setName("Chuyên viên");
                         case "ROLE_PORT_OPERATOR" ->
-                                role.setName("Nguoi dung tai Cang");
+                                role.setName("Người dùng tại Cảng");
                         case "ROLE_PUBLIC_USER" ->
-                                role.setName("Public User");
+                                role.setName("Người dùng công cộng");
                         case "ROLE_INTEGRATION" ->
-                                role.setName("External System (HTTT-DV, LGSP, NDXP)");
+                                role.setName("Hệ thống bên ngoài (HTTT-DV, LGSP, NDXP)");
                         case "ROLE_SECURITY_MONITOR" ->
-                                role.setName("SIEM");
+                                role.setName("Giám sát an ninh (SIEM)");
                         default ->
                                 role.setName(roleCode);
                     }

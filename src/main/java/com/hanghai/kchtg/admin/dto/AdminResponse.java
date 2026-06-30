@@ -23,6 +23,7 @@ public class AdminResponse {
     private String fullName;
     private String phone;
     private AdminStatus status;
+    private LocalDateTime lastLoginAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -37,6 +38,7 @@ public class AdminResponse {
                 .role(entity.getRole())
                 .modules(entity.getModules() != null ? new java.util.ArrayList<>(entity.getModules()) : List.of())
                 .status(entity.getStatus())
+                .lastLoginAt(entity.getUser().getLastLoginAt())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

@@ -39,7 +39,7 @@ public class HoSoXuLyTaiSanService {
 
     public HoSoXuLyTaiSanResponse getById(UUID id) {
         HoSoXuLyTaiSan entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("HoSoXuLyTaiSan not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hồ sơ xử lý tài sản với id: " + id));
         return toResponse(entity);
     }
 
@@ -64,7 +64,7 @@ public class HoSoXuLyTaiSanService {
     @Transactional
     public HoSoXuLyTaiSanResponse update(UUID id, HoSoXuLyTaiSanRequest request) {
         HoSoXuLyTaiSan entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("HoSoXuLyTaiSan not found: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hồ sơ xử lý tài sản với id: " + id));
         if (request.getLoaiXuLy() != null) entity.setLoaiXuLy(parseLoaiXuLy(request.getLoaiXuLy()));
         if (request.getMoTa() != null) entity.setMoTa(request.getMoTa());
         HoSoXuLyTaiSan saved = repository.save(entity);
@@ -73,7 +73,7 @@ public class HoSoXuLyTaiSanService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!repository.existsById(id)) throw new EntityNotFoundException("HoSoXuLyTaiSan not found: " + id);
+        if (!repository.existsById(id)) throw new EntityNotFoundException("Không tìm thấy hồ sơ xử lý tài sản với id: " + id);
         repository.deleteById(id);
     }
 

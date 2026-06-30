@@ -11,9 +11,10 @@ import EmptyState from '../../components/EmptyState';
 import dayjs from 'dayjs';
 
 const STATUS_MAP: Record<string, { color: string; label: string }> = {
-  active: { color: 'green', label: 'Hoạt động' },
-  locked: { color: 'red', label: 'Đã khóa' },
-  inactive: { color: 'default', label: 'Không hoạt động' },
+  draft: { color: 'default', label: 'Bản nháp' },
+  pending: { color: 'orange', label: 'Chờ duyệt' },
+  approved: { color: 'green', label: 'Đã phê duyệt' },
+  rejected: { color: 'red', label: 'Bị từ chối' },
 };
 
 interface OrgTreeNode extends DataNode {
@@ -25,7 +26,7 @@ interface OrgTreeNode extends DataNode {
 
 function buildTree(orgs: Organization[], parentId?: string): OrgTreeNode[] {
   return orgs
-    .filter((o) => o.parentOrgId === parentId)
+    .filter((o) => parentId ? o.parentId === parentId : !o.parentId)
     .map((org) => ({
       key: org.id,
       title: (

@@ -75,6 +75,11 @@ public class OrgUnit extends BaseEntity {
     @Column(length = 20)
     private String phone;
 
+    /** Contact person / representative of the unit (optional). */
+    @Size(max = 200, message = "Trưởng đơn vị tối đa 200 ký tự")
+    @Column(name = "contact_person", length = 200)
+    private String contactPerson;
+
     /** Approval status. Defaults to DRAFT at creation time. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)

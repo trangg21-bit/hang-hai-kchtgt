@@ -8,6 +8,10 @@ import com.hanghai.kchtg.accesslog.enums.LogType;
 import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.admin.entity.AdminAccount;
+import com.hanghai.kchtg.admin.entity.AdminAuditLog;
+import com.hanghai.kchtg.admin.repository.AdminAccountRepository;
+import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -34,10 +38,13 @@ public class AccessLogInterceptor implements HandlerInterceptor {
 
     private final AsyncLogAppender asyncLogAppender;
     private final UserRepository userRepository;
+    private final AdminAuditLogRepository adminAuditLogRepository;
 
-    public AccessLogInterceptor(AsyncLogAppender asyncLogAppender, UserRepository userRepository) {
+    public AccessLogInterceptor(AsyncLogAppender asyncLogAppender, UserRepository userRepository,
+                                AdminAuditLogRepository adminAuditLogRepository) {
         this.asyncLogAppender = asyncLogAppender;
         this.userRepository = userRepository;
+        this.adminAuditLogRepository = adminAuditLogRepository;
     }
 
     /** Record the start time for duration calculation. */
@@ -88,10 +95,15 @@ public class AccessLogInterceptor implements HandlerInterceptor {
         if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getName())) {
             username = auth.getName();
         } else {
-            // Fallback: check if username was sent in the request parameter
-            String reqUsername = request.getParameter("username");
-            if (reqUsername != null && !reqUsername.isBlank()) {
-                username = sanitize(reqUsername);
+            User reqUser = (User) request.getAttribute("authenticatedUser");
+            if (reqUser != null) {
+                username = reqUser.getUsername();
+            } else {
+                // Fallback: check if username was sent in the request parameter
+                String reqUsername = request.getParameter("username");
+                if (reqUsername != null && !reqUsername.isBlank()) {
+                    username = sanitize(reqUsername);
+                }
             }
         }
         logEntry.setUsername(username);
@@ -144,6 +156,51 @@ public class AccessLogInterceptor implements HandlerInterceptor {
 
         // ── Async batch queue (replaces sync repository.save()) ─────────
         asyncLogAppender.queue(logEntry);
+
+        // Also save to AdminAuditLog if the user has admin authority
+        User user = null;
+
+        if (auth != null && auth.isAuthenticated()
+                && !"anonymousUser".equals(auth.getName())) {
+            boolean isAdminRole = auth.getAuthorities().stream()
+                    .anyMatch(a -> "ROLE_SYSTEM_ADMIN".equals(a.getAuthority()) || "ROLE_ADMIN".equals(a.getAuthority()));
+
+            if (isAdminRole) {
+                if (auth.getPrincipal() instanceof User) {
+                    user = (User) auth.getPrincipal();
+                } else {
+                    String currentUsername = auth.getName();
+                    user = userRepository.findByUsername(currentUsername).orElse(null);
+                }
+            }
+        } else {
+            User reqUser = (User) request.getAttribute("authenticatedUser");
+            if (reqUser != null) {
+                String role = (String) request.getAttribute("authenticatedUserRole");
+                if ("ROLE_SYSTEM_ADMIN".equals(role) || "ROLE_ADMIN".equals(role)) {
+                    user = reqUser;
+                }
+            }
+        }
+
+        if (user != null) {
+            try {
+                log.info("Saving AdminAuditLog for admin: {}, action: {}, target: {}", 
+                        user.getUsername(), auditLog.action(), logEntry.getTargetResource());
+                AdminAuditLog adminLog = AdminAuditLog.create(
+                    user.getId(),
+                    user.getUsername(),
+                    auditLog.action(),
+                    logEntry.getTargetResource(),
+                    logEntry.getDetail(),
+                    logEntry.getIpAddress(),
+                    logEntry.getUserAgent()
+                );
+                adminAuditLogRepository.save(adminLog);
+            } catch (Exception e) {
+                log.error("Failed to save AdminAuditLog in AccessLogInterceptor", e);
+            }
+        }
     }
 
     /**
@@ -201,16 +258,7 @@ public class AccessLogInterceptor implements HandlerInterceptor {
 
     /** Extract client IP from headers or remote address. */
     private String extractClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        } else {
-            int commaIndex = ip.indexOf(',');
-            if (commaIndex != -1) {
-                ip = ip.substring(0, commaIndex).trim();
-            }
-        }
-        return ip;
+        return com.hanghai.kchtg.common.util.IpUtils.getClientIp(request);
     }
 
     /** Resolve userId from username by querying UserRepository. */

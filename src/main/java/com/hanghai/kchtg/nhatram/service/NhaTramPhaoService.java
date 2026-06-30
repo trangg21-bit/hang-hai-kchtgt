@@ -45,7 +45,7 @@ public class NhaTramPhaoService {
     public NhaTramPhaoResponse findById(UUID id) {
         NhaTramPhao entity = phaoRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Nha tram phao khong tim thay: " + id));
+                        "Nhà trạm phao không tìm thấy: " + id));
         return toResponse(entity);
     }
 
@@ -62,7 +62,7 @@ public class NhaTramPhaoService {
     public NhaTramPhaoResponse create(CreateNhaTramPhaoRequest request) {
         if (phaoRepo.existsByCode(request.getCode())
                 || denRepo.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Da ton tai: " + request.getCode());
+            throw new IllegalArgumentException("Đã tồn tại: " + request.getCode());
         }
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
@@ -110,10 +110,10 @@ public class NhaTramPhaoService {
     public NhaTramPhaoResponse update(UUID id, UpdateNhaTramPhaoRequest request) {
         NhaTramPhao entity = phaoRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Nha tram phao khong tim thay: " + id));
+                        "Nhà trạm phao không tìm thấy: " + id));
 
         if (entity.getStatus() == NhaTramStatus.DELETED) {
-            throw new EntityNotFoundException("Nha tram phao da bi xoa");
+            throw new EntityNotFoundException("Nhà trạm phao đã bị xóa");
         }
 
         String oldJson = toJson(entity);
@@ -125,7 +125,7 @@ public class NhaTramPhaoService {
         if (request.getType() != null && request.getType() != entity.getType()) {
             if (isApprovedStatus(entity.getStatus())) {
                 throw new IllegalArgumentException(
-                        "Loai nha tram phao khong the thay doi khi da duoc phe duyet.");
+                        "Loai nhà trạm phao khong the thay doi khi da duoc phê duyệt.");
             }
             entity.setType(request.getType());
         }
@@ -179,15 +179,15 @@ public class NhaTramPhaoService {
     public void delete(UUID id) {
         NhaTramPhao entity = phaoRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Nha tram phao khong tim thay: " + id));
+                        "Nhà trạm phao không tìm thấy: " + id));
 
         if (entity.getStatus() == NhaTramStatus.DELETED) {
-            throw new IllegalArgumentException("Nha tram phao nay da bi xoa truoc do");
+            throw new IllegalArgumentException("Nhà trạm phao này đã bị xóa trước đó");
         }
 
         if (isInApprovalProcess(entity.getStatus())) {
             throw new IllegalStateException(
-                    "Khong the xoa nha tram phao dang cho phe duyet");
+                    "Không thể xóa nhà trạm phao đang chờ phê duyệt");
         }
 
         entity.setStatus(NhaTramStatus.DELETED);
@@ -205,11 +205,11 @@ public class NhaTramPhaoService {
     public void submitForApproval(UUID id) {
         NhaTramPhao entity = phaoRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Nha tram phao khong tim thay: " + id));
+                        "Nhà trạm phao không tìm thấy: " + id));
 
         if (entity.getStatus() != NhaTramStatus.DRAFT) {
             throw new IllegalStateException(
-                    "Chi co the gui phe duyet khi status = DRAFT");
+                    "Chỉ có thể gửi phê duyệt khi status = DRAFT");
         }
 
         entity.setStatus(NhaTramStatus.PENDING_APPROVAL);
@@ -224,18 +224,18 @@ public class NhaTramPhaoService {
     public NhaTramPhaoResponse approveL1(UUID id, String approverId) {
         NhaTramPhao entity = phaoRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Nha tram phao khong tim thay: " + id));
+                        "Nhà trạm phao không tìm thấy: " + id));
 
         if (entity.getStatus() != NhaTramStatus.PENDING_APPROVAL) {
             throw new IllegalStateException(
-                    "Khong o trang thai cho phe duyet L1");
+                    "Không ở trạng thái chờ phê duyệt L1");
         }
 
         Long creatorId = resolveCreatedBy(entity);
         Long approverUserId = Long.parseLong(approverId);
         if (creatorId != null && creatorId.equals(approverUserId)) {
             throw new IllegalStateException(
-                    "Ban khong the phe duyet ban do chinh minh gui");
+                    "Bạn không thể phê duyệt bản do chính mình gửi");
         }
 
         entity.setStatus(NhaTramStatus.APPROVED_L1);
@@ -254,11 +254,11 @@ public class NhaTramPhaoService {
     public NhaTramPhaoResponse approveL2(UUID id, String approverId) {
         NhaTramPhao entity = phaoRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Nha tram phao khong tim thay: " + id));
+                        "Nhà trạm phao không tìm thấy: " + id));
 
         if (entity.getStatus() != NhaTramStatus.APPROVED_L1) {
             throw new IllegalStateException(
-                    "Khong o trang thai cho phe duyet L2");
+                    "Không ở trạng thái chờ phê duyệt L2");
         }
 
         Long approverUserId = Long.parseLong(approverId);
@@ -279,11 +279,11 @@ public class NhaTramPhaoService {
     public NhaTramPhaoResponse reject(UUID id, String rejectReason, String approverId) {
         NhaTramPhao entity = phaoRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Nha tram phao khong tim thay: " + id));
+                        "Nhà trạm phao không tìm thấy: " + id));
 
         if (rejectReason == null || rejectReason.length() < 10) {
             throw new IllegalArgumentException(
-                    "Ly do tu choi phai co it nhat 10 ky tu");
+                    "Lý do từ chối phai co ít nhất 10 ký tự");
         }
 
         entity.setStatus(NhaTramStatus.DRAFT);
@@ -301,26 +301,26 @@ public class NhaTramPhaoService {
 
     private void validateCoordinates(Double longitude, Double latitude) {
         if (longitude == null || latitude == null) {
-            throw new IllegalArgumentException("Toa do khong duoc de trong");
+            throw new IllegalArgumentException("Tọa độ không được để trống");
         }
         if (longitude < -180.0 || longitude > 180.0) {
             throw new IllegalArgumentException(
-                    "Kinh do phai trong khoang -180~180 (WGS84)");
+                    "Kinh độ phải trong khoảng -180~180 (WGS84)");
         }
         if (latitude < -90.0 || latitude > 90.0) {
             throw new IllegalArgumentException(
-                    "Vi do phai trong khoang -90~90 (WGS84)");
+                    "Vĩ độ phải trong khoảng -90~90 (WGS84)");
         }
     }
 
     private void validateInspectionDates(LocalDate last, LocalDate next) {
         if (last != null && last.isAfter(LocalDate.now())) {
             throw new IllegalArgumentException(
-                    "Ngay kiem tra gan nhat khong duoc lon hon ngay hien tai");
+                    "Ngày kiểm tra gần nhất không được lớn hơn ngày hiện tại");
         }
         if (last != null && next != null && next.isBefore(last)) {
             throw new IllegalArgumentException(
-                    "Ngay kiem tra ke tiep khong duoc nho hon ngay kiem tra gan nhat");
+                    "Ngày kiểm tra kế tiếp không được nhỏ hơn ngày kiểm tra gần nhất");
         }
     }
 

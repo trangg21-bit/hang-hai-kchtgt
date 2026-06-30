@@ -36,6 +36,7 @@ public class OrgUnitResponse {
     private String description;
     private String address;
     private String phone;
+    private String contactPerson;
     private Double coefficient;
     private String path;
     private Integer level;
@@ -62,6 +63,7 @@ public class OrgUnitResponse {
                 .description(entity.getDescription())
                 .address(entity.getAddress())
                 .phone(entity.getPhone())
+                .contactPerson(entity.getContactPerson())
                 .coefficient(entity.getCoefficient())
                 .path(entity.getPath())
                 .level(entity.getLevel())

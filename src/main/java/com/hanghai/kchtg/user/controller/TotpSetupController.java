@@ -92,7 +92,7 @@ public class TotpSetupController {
 
         Optional<User> userOpt = userRepository.findByIdWithRelations(java.util.UUID.fromString(userId));
         if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(ApiResponse.error("User not found"));
+            return ResponseEntity.badRequest().body(ApiResponse.error("Không tìm thấy người dùng"));
         }
 
         User user = userOpt.get();
@@ -147,8 +147,8 @@ public class TotpSetupController {
 
         // Check rate limiter
         if (rateLimiter.isLockedOut(userId)) {
-            logAudit(userId, "TOTP_VERIFY_LOCKED", code, "Account locked due to too many attempts");
-            throw new TotpVerifyLockedException("Account locked due to too many failed attempts. Try again in 15 minutes.");
+            logAudit(userId, "TOTP_VERIFY_LOCKED", code, "Tài khoản bị khóa due to too many attempts");
+            throw new TotpVerifyLockedException("Tài khoản bị khóa due to too many failed attempts. Try again in 15 minutes.");
         }
 
         // Get session
@@ -163,8 +163,8 @@ public class TotpSetupController {
 
         if (!verified) {
             rateLimiter.recordAttempt(userId);
-            logAudit(userId, "TOTP_VERIFY_FAILED", code, "Invalid TOTP code");
-            throw new TotpCodeInvalidException("Invalid TOTP code. Remaining attempts: " + calculateRemainingAttempts(userId));
+            logAudit(userId, "TOTP_VERIFY_FAILED", code, "Mã xác thực hai lớp (TOTP) không hợp lệ");
+            throw new TotpCodeInvalidException("Mã xác thực hai lớp (TOTP) không hợp lệ. Remaining attempts: " + calculateRemainingAttempts(userId));
         }
 
         // Mark user with TOTP enabled

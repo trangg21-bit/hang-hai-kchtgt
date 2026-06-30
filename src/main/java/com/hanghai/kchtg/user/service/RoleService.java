@@ -7,11 +7,15 @@ import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.RoleStatus;
 import com.hanghai.kchtg.user.repository.PermissionRepository;
 import com.hanghai.kchtg.user.repository.RoleRepository;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.HashSet;
 import java.util.List;
@@ -30,15 +34,44 @@ public class RoleService {
 
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
+    private final UserRepository userRepository;
 
-    public RoleService(RoleRepository roleRepository, PermissionRepository permissionRepository) {
+    public RoleService(RoleRepository roleRepository, PermissionRepository permissionRepository, UserRepository userRepository) {
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
+        this.userRepository = userRepository;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<Role> findAll() {
-        return roleRepository.findAll();
+        List<Role> roles = roleRepository.findByStatusNot(RoleStatus.DELETED);
+        
+        java.util.Map<UUID, Long> countsMap = userRepository.countUsersGroupByRoleId().stream()
+                .collect(Collectors.toMap(
+                        row -> (UUID) row[0],
+                        row -> (Long) row[1]
+                ));
+
+        for (Role role : roles) {
+            role.setUserCount(countsMap.getOrDefault(role.getId(), 0L).intValue());
+        }
+        return roles;
+    }
+
+    @Transactional
+    public Page<Role> findAll(Pageable pageable) {
+        Page<Role> roles = roleRepository.findByStatusNot(RoleStatus.DELETED, pageable);
+        
+        java.util.Map<UUID, Long> countsMap = userRepository.countUsersGroupByRoleId().stream()
+                .collect(Collectors.toMap(
+                        row -> (UUID) row[0],
+                        row -> (Long) row[1]
+                ));
+
+        for (Role role : roles) {
+            role.setUserCount(countsMap.getOrDefault(role.getId(), 0L).intValue());
+        }
+        return roles;
     }
 
     @Transactional(readOnly = true)
@@ -138,12 +171,10 @@ public class RoleService {
     /**
      * Cập nhật số lượng người dùng của role.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public void updateUserCount(UUID id) {
         Role role = findById(id);
-        // Đếm users có role này
-        long count = 0;
-        // Trong thực tế sẽ dùng UserRepository.countByRole()
+        long count = userRepository.countByRoleId(id);
         role.setUserCount((int) count);
         roleRepository.save(role);
     }

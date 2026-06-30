@@ -326,7 +326,10 @@ export default function BeaconHistoryList() {
               current: page,
               pageSize,
               total,
-              onChange: (p: number) => setPage(p),
+              onChange: (p: number, sz?: number) => {
+                setPage(p);
+                if (sz) setPageSize(sz);
+              },
               showSizeChanger: true,
               showTotal: (t: number) => `Tổng ${t} bản ghi lịch sử`,
               pageSizeOptions: ['10', '20', '50'],

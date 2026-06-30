@@ -85,7 +85,7 @@ public class AuthPasswordController {
             }
 
             User user = userRepo.findByUsername(username)
-                    .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));
 
             // Step 1: Verify current password
             if (!hashService.verify(request.getCurrentPassword(), user.getPassword())) {

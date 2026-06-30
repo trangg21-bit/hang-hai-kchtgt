@@ -37,14 +37,14 @@ public class TaiLRITService {
     public TaiLRITResponse findById(UUID id) {
         TaiLRIT entity = taiRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai LRIT khong tim thay: " + id));
+                        "Đài LRIT không tìm thấy: " + id));
         return toResponse(entity);
     }
 
     public TaiLRITResponse findByCode(String code) {
         TaiLRIT entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai LRIT khong tim thay: " + code));
+                        "Đài LRIT không tìm thấy: " + code));
         return toResponse(entity);
     }
 
@@ -59,7 +59,7 @@ public class TaiLRITService {
     @Transactional
     public TaiLRITResponse create(CreateTaiLRITRequest request) {
         if (taiRepo.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Da ton tai: " + request.getCode());
+            throw new IllegalArgumentException("Đã tồn tại: " + request.getCode());
         }
 
         TaiLRIT entity = TaiLRIT.builder()
@@ -77,7 +77,7 @@ public class TaiLRITService {
         entity = taiRepo.save(entity);
 
         saveHistory(entity, TaiHistoryActionType.CREATE, null, null);
-        notificationService.sendApproveNotification("Tai LRIT: " + entity.getName(),
+        notificationService.sendApproveNotification("Đài LRIT: " + entity.getName(),
                 entity.getCreatedBy());
 
         return toResponse(entity);
@@ -89,10 +89,10 @@ public class TaiLRITService {
     public TaiLRITResponse update(UUID id, UpdateTaiLRITRequest request) {
         TaiLRIT entity = taiRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai LRIT khong tim thay: " + id));
+                        "Đài LRIT không tìm thấy: " + id));
 
         if (Boolean.TRUE.equals(entity.getDeleted())) {
-            throw new EntityNotFoundException("Tai da bi xoa");
+            throw new EntityNotFoundException("Đài đã bị xóa");
         }
 
         String oldJson = toJson(entity);
@@ -118,10 +118,10 @@ public class TaiLRITService {
     public void delete(String code) {
         TaiLRIT entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai LRIT khong tim thay: " + code));
+                        "Đài LRIT không tìm thấy: " + code));
 
         if (Boolean.TRUE.equals(entity.getDeleted())) {
-            throw new IllegalArgumentException("Tai nay da bi xoa truoc do");
+            throw new IllegalArgumentException("Đài này đã bị xóa trước đó");
         }
 
         entity.softDelete();
@@ -138,7 +138,7 @@ public class TaiLRITService {
     public TaiLRITResponse approve(String code, String remarks, UUID approverId) {
         TaiLRIT entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai LRIT khong tim thay: " + code));
+                        "Đài LRIT không tìm thấy: " + code));
 
         entity.setStatus(TaiStatus.ACTIVE);
         entity.setApprovalStatus(TaiApprovalStatus.APPROVED);
@@ -156,7 +156,7 @@ public class TaiLRITService {
     public TaiLRITResponse reject(String code, String remarks, UUID approverId) {
         TaiLRIT entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai LRIT khong tim thay: " + code));
+                        "Đài LRIT không tìm thấy: " + code));
 
         entity.setApprovalStatus(TaiApprovalStatus.REJECTED);
         entity.setUnapprovedBy(approverId);

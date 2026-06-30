@@ -1,11 +1,14 @@
 package com.hanghai.kchtg.common.exception;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.user.exception.ValidationException;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -100,6 +103,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<ApiResponse<String>> handleValidationException(ValidationException ex) {
+        log.debug("Validation exception: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
     /**
      * Handles UnauthorizedIntegrationException when pre-shared token is invalid or missing.
      */
@@ -117,10 +128,7 @@ public class GlobalExceptionHandler {
      * security filter chain (ExceptionTranslationFilter) can handle them (e.g.
      * returning 401 Unauthorized or 403 Forbidden).
      */
-    @ExceptionHandler({
-        org.springframework.security.access.AccessDeniedException.class,
-        org.springframework.security.authorization.AuthorizationDeniedException.class
-    })
+    @ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class})
     public void handleAccessDenied(Exception ex) throws Exception {
         throw ex;
     }

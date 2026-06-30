@@ -45,7 +45,7 @@ public class BuoyService {
     public BuoyResponse findById(UUID id) {
         Buoy entity = buoyRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Phao tieu khong tim thay: " + id));
+                        "Phao tiêu không tìm thấy: " + id));
         return toResponse(entity);
     }
 
@@ -62,7 +62,7 @@ public class BuoyService {
     public BuoyResponse create(CreateBuoyRequest request) {
         if (buoyRepo.existsByCode(request.getCode())
                 || beaconLightRepo.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Da ton tai: " + request.getCode());
+            throw new IllegalArgumentException("Đã tồn tại: " + request.getCode());
         }
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
@@ -110,10 +110,10 @@ public class BuoyService {
     public BuoyResponse update(UUID id, UpdateBuoyRequest request) {
         Buoy entity = buoyRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Phao tieu khong tim thay: " + id));
+                        "Phao tiêu không tìm thấy: " + id));
 
         if (entity.getStatus() == BeaconStatus.DELETED) {
-            throw new EntityNotFoundException("Phao tieu da bi xoa");
+            throw new EntityNotFoundException("Phao tiêu đã bị xóa");
         }
 
         String oldJson = toJson(entity);
@@ -179,15 +179,15 @@ public class BuoyService {
     public void delete(UUID id) {
         Buoy entity = buoyRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Phao tieu khong tim thay: " + id));
+                        "Phao tiêu không tìm thấy: " + id));
 
         if (entity.getStatus() == BeaconStatus.DELETED) {
-            throw new IllegalArgumentException("Phao tieu nay da bi xoa truoc do");
+            throw new IllegalArgumentException("Phao tiêu này đã bị xóa trước đó");
         }
 
         if (isInApprovalProcess(entity.getStatus())) {
             throw new IllegalStateException(
-                    "Khong the xoa phao tieu dang cho phe duyet");
+                    "Không thể xóa phao tiêu đang chờ phê duyệt");
         }
 
         entity.setStatus(BeaconStatus.DELETED);
@@ -205,11 +205,11 @@ public class BuoyService {
     public void submitForApproval(UUID id) {
         Buoy entity = buoyRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Phao tieu khong tim thay: " + id));
+                        "Phao tiêu không tìm thấy: " + id));
 
         if (entity.getStatus() != BeaconStatus.DRAFT) {
             throw new IllegalStateException(
-                    "Chi co the gui phe duyet khi status = DRAFT");
+                    "Chỉ có thể gửi phê duyệt khi status = DRAFT");
         }
 
         entity.setStatus(BeaconStatus.PENDING_APPROVAL);
@@ -224,18 +224,18 @@ public class BuoyService {
     public BuoyResponse approveL1(UUID id, String approverId) {
         Buoy entity = buoyRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Phao tieu khong tim thay: " + id));
+                        "Phao tiêu không tìm thấy: " + id));
 
         if (entity.getStatus() != BeaconStatus.PENDING_APPROVAL) {
             throw new IllegalStateException(
-                    "Khong o trang thai cho phe duyet L1");
+                    "Không ở trạng thái chờ phê duyệt L1");
         }
 
         Long creatorId = resolveCreatedBy(entity);
         Long approverUserId = Long.parseLong(approverId);
         if (creatorId != null && creatorId.equals(approverUserId)) {
             throw new IllegalStateException(
-                    "Ban khong the phe duyet ban do chinh minh gui");
+                    "Bạn không thể phê duyệt bản do chính mình gửi");
         }
 
         entity.setStatus(BeaconStatus.APPROVED_L1);
@@ -254,11 +254,11 @@ public class BuoyService {
     public BuoyResponse approveL2(UUID id, String approverId) {
         Buoy entity = buoyRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Phao tieu khong tim thay: " + id));
+                        "Phao tiêu không tìm thấy: " + id));
 
         if (entity.getStatus() != BeaconStatus.APPROVED_L1) {
             throw new IllegalStateException(
-                    "Khong o trang thai cho phe duyet L2");
+                    "Không ở trạng thái chờ phê duyệt L2");
         }
 
         Long approverUserId = Long.parseLong(approverId);
@@ -279,11 +279,11 @@ public class BuoyService {
     public BuoyResponse reject(UUID id, String rejectReason, String approverId) {
         Buoy entity = buoyRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Phao tieu khong tim thay: " + id));
+                        "Phao tiêu không tìm thấy: " + id));
 
         if (rejectReason == null || rejectReason.length() < 10) {
             throw new IllegalArgumentException(
-                    "Ly do tu choi phai co it nhat 10 ky tu");
+                    "Lý do từ chối phai co ít nhất 10 ký tự");
         }
 
         entity.setStatus(BeaconStatus.DRAFT);
@@ -301,26 +301,26 @@ public class BuoyService {
 
     private void validateCoordinates(Double longitude, Double latitude) {
         if (longitude == null || latitude == null) {
-            throw new IllegalArgumentException("Toa do khong duoc de trong");
+            throw new IllegalArgumentException("Tọa độ không được để trống");
         }
         if (longitude < -180.0 || longitude > 180.0) {
             throw new IllegalArgumentException(
-                    "Kinh do phai trong khoang -180~180 (WGS84)");
+                    "Kinh độ phải trong khoảng -180~180 (WGS84)");
         }
         if (latitude < -90.0 || latitude > 90.0) {
             throw new IllegalArgumentException(
-                    "Vi do phai trong khoang -90~90 (WGS84)");
+                    "Vĩ độ phải trong khoảng -90~90 (WGS84)");
         }
     }
 
     private void validateInspectionDates(LocalDate last, LocalDate next) {
         if (last != null && last.isAfter(LocalDate.now())) {
             throw new IllegalArgumentException(
-                    "Ngay kiem tra gan nhat khong duoc lon hon ngay hien tai");
+                    "Ngày kiểm tra gần nhất không được lớn hơn ngày hiện tại");
         }
         if (last != null && next != null && next.isBefore(last)) {
             throw new IllegalArgumentException(
-                    "Ngay kiem tra ke tiep khong duoc nho hon ngay kiem tra gan nhat");
+                    "Ngày kiểm tra kế tiếp không được nhỏ hơn ngày kiểm tra gần nhất");
         }
     }
 

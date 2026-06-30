@@ -16,6 +16,6 @@ public class JwtRevokeRequest {
     /**
      * JWT ID (jti) cua token can thu hoi.
      */
-    @NotBlank(message = "JTI khong duoc de trong")
+    @NotBlank(message = "JTI khong duoc để trống")
     private String jti;
 }
