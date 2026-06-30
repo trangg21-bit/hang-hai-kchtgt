@@ -1,66 +1,59 @@
----
+﻿---
 id: F-060
-name: Xem chi tiết Trạm radar
+name: ""Xem chi tiet Tram radar""
 slug: xem-chi-tiet-tram-radar
 module-id: M-003
 status: proposed
 classification: local
-priority: high
-created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+priority: P0
+created: ""2026-06-30T00:00:00Z""
+last-updated: ""2026-06-30T00:00:00Z""
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Xem chi tiết Trạm radar
+
+# Feature: Xem chi tiet Tram radar
 
 ## Description
-Tất cả các vai trò trong hệ thống có quyền xem chi tiết thông tin của từng bản ghi trạm radar, bao gồm toàn bộ dữ liệu nhập liệu, thông tin phê duyệt theo từng cấp, lịch sử thay đổi và các văn bản đính kèm liên quan.
+Tra cuu, xem chi tiet Tram radar, bao gom thong tin co ban, thong so ky thuat va van ban dinh kem lien quan.
 
 ## Business Intent
-Cho phép người dùng tra cứu, xem xét và nắm bắt đầy đủ thông tin về các trạm radar tại khu nước VTS, hỗ trợ ra quyết định quản lý, lập báo cáo và theo dõi tiến độ công tác bảo trì, vận hành hệ thống giám sát hàng hải một cách minh bạch và kịp thời.
+Cho phep cac don vi lien quan tra cuu, xem chi tiet Tram radar da duoc phe duyet, bao gom toan bo thong tin va van ban dinh kem.
 
 ## Flow Summary
-Người dùng truy cập danh sách trạm radar, chọn bản ghi cần xem chi tiết hoặc tìm kiếm theo tiêu chí (tên trạm, vị trí, loại radar). Hệ thống hiển thị đầy đủ thông tin chi tiết của bản ghi bao gồm các trường dữ liệu nhập liệu, thông tin người tạo, trạng thái phê duyệt theo từng cấp với tên người phê duyệt và ngày giờ, lịch sử thay đổi và các văn bản đính kèm (nếu có).
+1. User tra cuu Tram radar theo tieu chi tim kiem
+2. He thong hien thi danh sach ket qua
+3. Chon Tram radar de xem chi tiet
+4. Hien thi toan bo thong tin + van ban dinh kem
 
 ## Acceptance Criteria
-- Tất cả vai trò đều có thể xem chi tiết bản ghi trạm radar
-- Giao diện hiển thị đầy đủ thông tin: dữ liệu nhập, người tạo, trạng thái phê duyệt, lịch sử
-- Có thể tra cứu bản ghi theo tên, vị trí, loại radar và trạng thái
-- Hiển thị văn bản đính kèm nếu có (file upload)
-- Thông tin phê duyệt cấp 1 và cấp 2 được hiển thị riêng biệt với người phê duyệt và ngày giờ
-
-## In Scope
-- Danh sách trạm radar với bộ lọc và tìm kiếm
-- Trang chi tiết hiển thị toàn bộ thông tin bản ghi
-- Hiển thị thông tin phê duyệt theo từng cấp
-- Hiển thị lịch sử thay đổi của bản ghi
-- Tải xuống và xem các văn bản đính kèm
-- Phân quyền xem dựa trên vai trò của người dùng
-
-## Out of Scope
-- Tạo mới, cập nhật, xóa bản ghi trạm radar
-- Phê duyệt bản ghi trạm radar
-- Xuất báo cáo tổng hợp thống kê
-- In ấn bản ghi trạm radar
-
-## Roles + Permissions
-| Role | Permissions |
-|------|-------------|
-| Chuyên viên | Xem chi tiết bản ghi của mình, Xem tất cả |
-| Trưởng phòng | Xem chi tiết mọi bản ghi, Xem bản ghi cấp phòng |
-| Cục trưởng | Xem chi tiết mọi bản ghi |
-| Admin | Xem chi tiết mọi bản ghi, Quản lý hệ thống |
-
-## Entities
-- **TramRadar**: id, tenTram, viTri, loaiRadar, phamViHoatDong, trangThaiKyThuat, ngayVaoVanhHan, heSoTruyenDan, nguoiQuanLy, ghiChu, trangThai, NguoiTao, ngayTao, nguoiCapNhat, ngayCapNhat, pheDuyetC1, nguoiPheDuyetC1, pheDuyetC2, nguoiPheDuyetC2, vanBanDinhKem
-- **VanBanDinhKem**: id, tramRadarId, tenFile, duongDan, kichThuoc, nguoiTaiLen, ngayTaiLen
+- [x] Tra cuu Tram radar thanh cong
+- [x] Xem chi tiet Tram radar bao gom toan bo thong tin
+- [x] Hien thi van ban dinh kem lien quan
+- [x] Chi xem du lieu da duoc phe duyet (APPROVED)
+- [x] Hien thi thong tin da duoc phe duyet cap 1 va cap 2
+- [x] Cho phep tai xuat van ban dinh kem
 
 ## Business Rules
-1. Tất cả vai trò đều có quyền đọc (view) các bản ghi trạm radar
-2. Thông tin phê duyệt chỉ hiển thị cho người dùng có quyền xem (trưởng phòng, cục trưởng)
-3. Văn bản đính kèm chỉ hiển thị khi có file được upload lên hệ thống
-4. Lịch sử thay đổi hiển thị cho tất cả các vai trò nhưng chỉ cho phép chỉnh sửa bởi chuyên viên và admin
-5. Dữ liệu hiển thị phải được đồng bộ với trạng thái phê duyệt hiện tại
+| ID | Rule | Applies-to | Source |
+|---|---|---|---|
+| BR-060-01 | Tra cuu, xem chi tiet + van ban dinh kem | Read | UC-3314 |
+| BR-060-02 | Chi xem du lieu da duoc phe duyet | Read | DESIGN.md |
 
-## Testing Strategy
-Kiểm thử hiển thị thông tin chi tiết cho các vai trò khác nhau (chuyên viên, trưởng phòng, cục trưởng, admin). Kiểm thử tìm kiếm và lọc theo tên, vị trí, loại radar, trạng thái. Kiểm thử hiển thị văn bản đính kèm và tải xuống. Kiểm thử tính nhất quán của dữ liệu hiển thị với cơ sở dữ liệu.
+## Roles + Permissions
+| Role | Level | Notes |
+|---|---|---|
+| A-003 (Chuyen vien) | Xem | Toan bo du lieu |
+| A-002 (Lanh dao) | Xem | Toan bo du lieu |
+| A-004 (Lanh dao Cuc) | Xem | Toan bo du lieu |
+
+## Entities
+| Entity | Table | Description |
+|---|---|---|
+| TramRadar | tram_radar | Entity chinh |
+| TramRadarAttachment | attachment | Tai lieu dinh kem |
+
+## Design Reference
+- DESIGN.md: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/DESIGN.md
+- BA Spec: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/ba/00-lean-spec.md
+- Source: UC-3314

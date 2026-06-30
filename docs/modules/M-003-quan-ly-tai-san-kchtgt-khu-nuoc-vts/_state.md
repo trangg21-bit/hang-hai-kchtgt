@@ -6,7 +6,7 @@ status: in-progress
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
-last-updated: 2026-06-17T02:09:32Z
+last-updated: 2026-06-29T09:08:25Z
 current-stage: engineering-business-analyst
 output-mode: lean
 repo-type: mini
@@ -24,6 +24,9 @@ completed-stages:
   consulting-intelligence-extractor:
     verdict: Ready for BA
     completed-at: 2026-06-16T04:39:13Z
+  5-impl-active:
+    verdict: implemented
+    completed-at: 2026-06-29
 kpi:
   tokens-total: 0
   cycle-time-start: 2026-06-16T04:39:13Z
@@ -44,7 +47,7 @@ feature-req:
   scope-features: []
   dev-unit: ""
 clarification-notes: ""
-name: Quản lý tài sản KCHTGT - Khu nước & VTS
+name: "Quản lý tài sản KCHTGT - Khu nước & VTS\r"
 ---
 # Pipeline State: Quản lý tài sản KCHTGT - Khu nước & VTS
 
@@ -62,6 +65,7 @@ Quản lý luồng hàng hải (56), đê/kè (85), cơ sở sửa chữa (411),
 | 4 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | — | — | — |
 | 5 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | — | — | — |
 | 6 | engineering-code-reviewer | engineering-code-reviewer | — | — | — |
+| 5-impl-active | 5-impl-active | implemented |  | 2026-06-29 |
 
 ## Current Stage
 

@@ -9,7 +9,43 @@ implementations:
   apps: []
   services: []
   libs: []
-  packages: []
+  packages:
+    - path: src/main/java/com/hanghai/kchtg/luonghanghai/entity/LuongHangHai.java
+      type: entity
+      features: [F-038, F-039, F-040, F-041, F-042, F-043]
+    - path: src/main/java/com/hanghai/kchtg/luonghanghai/entity/LuongHangHaiApprovalStatus.java
+      type: enum
+      features: [F-038, F-039, F-040, F-041, F-042, F-043]
+    - path: src/main/java/com/hanghai/kchtg/luonghanghai/entity/LuongHangHaiAttachment.java
+      type: entity
+      features: [F-038, F-042]
+    - path: src/main/java/com/hanghai/kchtg/luonghanghai/repository/LuongHangHaiRepository.java
+      type: repository
+      features: [F-038, F-039, F-040, F-041, F-042, F-043]
+    - path: src/main/java/com/hanghai/kchtg/luonghanghai/service/LuongHangHaiService.java
+      type: service
+      features: [F-038, F-039, F-040, F-041, F-042, F-043]
+    - path: src/main/java/com/hanghai/kchtg/luonghanghai/controller/LuongHangHaiController.java
+      type: controller
+      features: [F-038, F-039, F-040, F-041, F-042, F-043]
+    - path: src/main/java/com/hanghai/kchtg/luonghanghai/dto/LuongHangHaiCreateRequest.java
+      type: dto
+      features: [F-038, F-039]
+    - path: src/main/java/com/hanghai/kchtg/luonghanghai/dto/LuongHangHaiResponse.java
+      type: dto
+      features: [F-038, F-039, F-040, F-041, F-042, F-043]
+    - path: src/main/java/com/hanghai/kchtg/luonghanghai/dto/PheDuyetRequest.java
+      type: dto
+      features: [F-041]
+    - path: src/main/java/com/hanghai/kchtg/luonghanghai/dto/PheDuyetResponse.java
+      type: dto
+      features: [F-041]
+    - path: src/main/java/com/hanghai/kchtg/luonghanghai/dto/HistoryEntry.java
+      type: dto
+      features: [F-043]
+    - path: src/main/java/com/hanghai/kchtg/luonghanghai/dto/LuongHangHaiAttachmentResponse.java
+      type: dto
+      features: [F-038, F-042]
 
 # Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
 stakeholders:

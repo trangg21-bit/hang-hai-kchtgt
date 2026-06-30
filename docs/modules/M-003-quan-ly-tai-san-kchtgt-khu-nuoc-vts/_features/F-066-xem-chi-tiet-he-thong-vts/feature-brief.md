@@ -1,66 +1,59 @@
 ---
 id: F-066
-name: Xem chi tiết Hệ thống VTS
+name: "Xem chi tiet He thong VTS"
 slug: xem-chi-tiet-he-thong-vts
 module-id: M-003
 status: proposed
 classification: local
-priority: high
-created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+priority: P0
+created: "2026-06-30T00:00:00Z"
+last-updated: "2026-06-30T00:00:00Z"
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Xem chi tiết Hệ thống VTS
+
+# Feature: Xem chi tiet He thong VTS
 
 ## Description
-Tất cả các vai trò trong hệ thống có quyền xem chi tiết thông tin của từng bản ghi hệ thống VTS, bao gồm toàn bộ dữ liệu nhập liệu, thông tin phê duyệt theo từng cấp, lịch sử thay đổi và các văn bản đính kèm liên quan.
+Chuyen vien co the tra cuu, xem chi tiet He thong VTS bao gom thong tin co ban, dieu kien, nang luc, van ban dinh kem.
 
 ## Business Intent
-Cho phép người dùng tra cứu, xem xét và nắm bắt đầy đủ thông tin về các hệ thống VTS tại khu nước VTS, hỗ trợ ra quyết định quản lý, lập báo cáo và theo dõi tiến độ công tác vận hành, bảo trì hệ thống dịch vụ thông tin giao thông đường thủy một cách minh bạch và kịp thời.
+Tra cuu thong tin He thong VTS tai cac khu vuc khu nuoc & VTS nhanh chong, chính xác, phuc vu cong tác quan ly, bao cao va quyét đinh đầu tư phát triển KCHTGT.
 
 ## Flow Summary
-Người dùng truy cập danh sách hệ thống VTS, chọn bản ghi cần xem chi tiết hoặc tìm kiếm theo tiêu chí (tên hệ thống, vị trí, loại thiết bị). Hệ thống hiển thị đầy đủ thông tin chi tiết của bản ghi bao gồm các trường dữ liệu nhập liệu, thông tin người tạo, trạng thái phê duyệt theo từng cấp với tên người phê duyệt và ngày giờ, lịch sử thay đổi và các văn bản đính kèm (nếu có).
+1. Chuyen vien nhap tieu chi tra cuu (ten, dia diem, trang thai, nam...)
+2. He thong liet ke ket qua tra cuu theo tieu chi da chon
+3. Chuyen vien chon mot He thong VTS de xem chi tiet
+4. He thong hien thi toan bo thong tin + van ban dinh kem + lich su phe duyet
 
 ## Acceptance Criteria
-- Tất cả vai trò đều có thể xem chi tiết bản ghi hệ thống VTS
-- Giao diện hiển thị đầy đủ thông tin: dữ liệu nhập, người tạo, trạng thái phê duyệt, lịch sử
-- Có thể tra cứu bản ghi theo tên, vị trí, loại thiết bị và trạng thái
-- Hiển thị văn bản đính kèm nếu có (file upload)
-- Thông tin phê duyệt cấp 1 và cấp 2 được hiển thị riêng biệt với người phê duyệt và ngày giờ
-
-## In Scope
-- Danh sách hệ thống VTS với bộ lọc và tìm kiếm
-- Trang chi tiết hiển thị toàn bộ thông tin bản ghi
-- Hiển thị thông tin phê duyệt theo từng cấp
-- Hiển thị lịch sử thay đổi của bản ghi
-- Tải xuống và xem các văn bản đính kèm
-- Phân quyền xem dựa trên vai trò của người dùng
-
-## Out of Scope
-- Tạo mới, cập nhật, xóa bản ghi hệ thống VTS
-- Phê duyệt bản ghi hệ thống VTS
-- Xuất báo cáo tổng hợp thống kê
-- In ấn bản ghi hệ thống VTS
-
-## Roles + Permissions
-| Role | Permissions |
-|------|-------------|
-| Chuyên viên | Xem chi tiết bản ghi của mình, Xem tất cả |
-| Trưởng phòng | Xem chi tiết mọi bản ghi, Xem bản ghi cấp phòng |
-| Cục trưởng | Xem chi tiết mọi bản ghi |
-| Admin | Xem chi tiết mọi bản ghi, Quản lý hệ thống |
-
-## Entities
-- **HeThongVTS**: id, tenHeThong, viTri, loaiThietBi, phamViBaoPhu, congSuat, ngayVaoVanhHan, heSoHieuQua, nguoiQuanLy, ghiChu, trangThai, NguoiTao, ngayTao, nguoiCapNhat, ngayCapNhat, pheDuyetC1, nguoiPheDuyetC1, pheDuyetC2, nguoiPheDuyetC2, vanBanDinhKem
-- **VanBanDinhKem**: id, heThongVTsId, tenFile, duongDan, kichThuoc, nguoiTaiLen, ngayTaiLen
+- [x] Tra cuu He thong VTS theo nhieu tieu chi
+- [x] Xem chi tiet He thong VTS (thong tin co ban, dieu kien, nang luc)
+- [x] Hien thi van ban dinh kem lien quan
+- [x] Hien thi thong tin phe duyet va trang thai hien tai
 
 ## Business Rules
-1. Tất cả vai trò đều có quyền đọc (view) các bản ghi hệ thống VTS
-2. Thông tin phê duyệt chỉ hiển thị cho người dùng có quyền xem (trưởng phòng, cục trưởng)
-3. Văn bản đính kèm chỉ hiển thị khi có file được upload lên hệ thống
-4. Lịch sử thay đổi hiển thị cho tất cả các vai trò nhưng chỉ cho phép chỉnh sửa bởi chuyên viên và admin
-5. Dữ liệu hiển thị phải được đồng bộ với trạng thái phê duyệt hiện tại
+| ID | Rule | Applies-to | Source |
+|---|---|---|---|
+| BR-066-01 | Tra cuu theo tieu chi: ten, dia diem, trang thai, nam | Read | UC-3308 |
+| BR-066-02 | Xem chi tiet toan bo thong tin He thong VTS | Read | DESIGN.md |
+| BR-066-03 | Hien thi van ban dinh kem lien quan | Read | UC-3308 |
 
-## Testing Strategy
-Kiểm thử hiển thị thông tin chi tiết cho các vai trò khác nhau (chuyên viên, trưởng phòng, cục trưởng, admin). Kiểm thử tìm kiếm và lọc theo tên, vị trí, loại thiết bị, trạng thái. Kiểm thử hiển thị văn bản đính kèm và tải xuống. Kiểm thử tính nhất quán của dữ liệu hiển thị với cơ sở dữ liệu.
+## Roles + Permissions
+| Role | Level | Notes |
+|---|---|---|
+| A-003 (Chuyen vien) | Xem/Tra cuu | Toan bo du lieu |
+| A-002 (Lanh dao) | Xem/Tra cuu | Toan bo du lieu |
+| A-004 (Lanh dao Cuc) | Xem/Tra cuu | Toan bo du lieu |
+
+## Entities
+| Entity | Table | Description |
+|---|---|---|
+| HeThongVTS | he_thong_vts | Entity chinh |
+| HeThongVTSAttachment | attachment | Tai lieu dinh kem |
+| HeThongVTSApproval | he_thong_vts_approval | Thong tin phe duyet |
+
+## Design Reference
+- DESIGN.md: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/DESIGN.md
+- BA Spec: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/ba/00-lean-spec.md
+- Source: UC-3308
