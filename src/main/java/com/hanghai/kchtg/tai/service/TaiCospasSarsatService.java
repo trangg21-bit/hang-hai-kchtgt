@@ -37,14 +37,14 @@ public class TaiCospasSarsatService {
     public TaiCospasSarsatResponse findById(UUID id) {
         TaiCospasSarsat entity = taiRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai Cospas-Sarsat khong tim thay: " + id));
+                        "Đài Cospas-Sarsat không tìm thấy: " + id));
         return toResponse(entity);
     }
 
     public TaiCospasSarsatResponse findByCode(String code) {
         TaiCospasSarsat entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai Cospas-Sarsat khong tim thay: " + code));
+                        "Đài Cospas-Sarsat không tìm thấy: " + code));
         return toResponse(entity);
     }
 
@@ -59,7 +59,7 @@ public class TaiCospasSarsatService {
     @Transactional
     public TaiCospasSarsatResponse create(CreateTaiCospasSarsatRequest request) {
         if (taiRepo.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Da ton tai: " + request.getCode());
+            throw new IllegalArgumentException("Đã tồn tại: " + request.getCode());
         }
 
         TaiCospasSarsat entity = TaiCospasSarsat.builder()
@@ -77,7 +77,7 @@ public class TaiCospasSarsatService {
         entity = taiRepo.save(entity);
 
         saveHistory(entity, TaiHistoryActionType.CREATE, null, null);
-        notificationService.sendApproveNotification("Tai Cospas-Sarsat: " + entity.getName(),
+        notificationService.sendApproveNotification("Đài Cospas-Sarsat: " + entity.getName(),
                 entity.getCreatedBy());
 
         return toResponse(entity);
@@ -89,10 +89,10 @@ public class TaiCospasSarsatService {
     public TaiCospasSarsatResponse update(UUID id, UpdateTaiCospasSarsatRequest request) {
         TaiCospasSarsat entity = taiRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai Cospas-Sarsat khong tim thay: " + id));
+                        "Đài Cospas-Sarsat không tìm thấy: " + id));
 
         if (Boolean.TRUE.equals(entity.getDeleted())) {
-            throw new EntityNotFoundException("Tai da bi xoa");
+            throw new EntityNotFoundException("Đài đã bị xóa");
         }
 
         String oldJson = toJson(entity);
@@ -118,10 +118,10 @@ public class TaiCospasSarsatService {
     public void delete(String code) {
         TaiCospasSarsat entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai Cospas-Sarsat khong tim thay: " + code));
+                        "Đài Cospas-Sarsat không tìm thấy: " + code));
 
         if (Boolean.TRUE.equals(entity.getDeleted())) {
-            throw new IllegalArgumentException("Tai nay da bi xoa truoc do");
+            throw new IllegalArgumentException("Đài này đã bị xóa trước đó");
         }
 
         entity.softDelete();
@@ -138,7 +138,7 @@ public class TaiCospasSarsatService {
     public TaiCospasSarsatResponse approve(String code, String remarks, UUID approverId) {
         TaiCospasSarsat entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai Cospas-Sarsat khong tim thay: " + code));
+                        "Đài Cospas-Sarsat không tìm thấy: " + code));
 
         entity.setStatus(TaiStatus.ACTIVE);
         entity.setApprovalStatus(TaiApprovalStatus.APPROVED);
@@ -156,7 +156,7 @@ public class TaiCospasSarsatService {
     public TaiCospasSarsatResponse reject(String code, String remarks, UUID approverId) {
         TaiCospasSarsat entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai Cospas-Sarsat khong tim thay: " + code));
+                        "Đài Cospas-Sarsat không tìm thấy: " + code));
 
         entity.setApprovalStatus(TaiApprovalStatus.REJECTED);
         entity.setUnapprovedBy(approverId);

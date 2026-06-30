@@ -1,13 +1,13 @@
 ---
 id: F-024
-name: "Xem chi tiết Cầu cảng"
+name: Xem chi tiết Cầu cảng
 slug: xem-cc
 module-id: M-002
-status: proposed
+status: done
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+last-updated: 2026-06-29T11:10:05Z
 locked-fields: []
 consumed_by_modules: []
 ---

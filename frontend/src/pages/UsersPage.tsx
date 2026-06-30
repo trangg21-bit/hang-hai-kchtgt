@@ -59,6 +59,8 @@ export default function UsersPage() {
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [sortField, setSortField] = useState<string | undefined>();
+  const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>(null);
 
   // Modal
   const [modalOpen, setModalOpen] = useState(false);
@@ -76,6 +78,8 @@ export default function UsersPage() {
     search: search || undefined,
     roleId: filterRoleId,
     status: filterStatus,
+    sortField,
+    sortOrder,
   });
 
   const { data: rolesData } = useRoles();
@@ -193,10 +197,24 @@ export default function UsersPage() {
     setPage(1);
   }, []);
 
-  const handleTableChange = useCallback((pag: { current?: number; pageSize?: number }) => {
-    setPage(pag.current || 1);
-    setPageSize(pag.pageSize || 10);
-  }, []);
+  const handleTableChange = useCallback(
+    (
+      pag: { current?: number; pageSize?: number },
+      _filters: any,
+      sorter: any
+    ) => {
+      setPage(pag.current || 1);
+      setPageSize(pag.pageSize || 10);
+      if (sorter && sorter.field) {
+        setSortField(sorter.field);
+        setSortOrder(sorter.order || null);
+      } else {
+        setSortField(undefined);
+        setSortOrder(null);
+      }
+    },
+    []
+  );
 
   // ---- Columns ----
   const columns: ColumnsType<User> = [
@@ -209,6 +227,7 @@ export default function UsersPage() {
       title: 'Họ và tên',
       dataIndex: 'fullName',
       sorter: true,
+      sortOrder: sortField === 'fullName' ? sortOrder : null,
       render: (text: string, record: User) => (
         <Space>
           <Badge
@@ -390,7 +409,7 @@ export default function UsersPage() {
                   setPage(1);
                 }}
                 options={rolesData?.map((r) => ({
-                  value: r.id,
+                  value: r.code,
                   label: r.name,
                 }))}
               />
@@ -465,14 +484,14 @@ export default function UsersPage() {
                   label="Mật khẩu"
                   rules={[
                     { required: true, message: 'Vui lòng nhập mật khẩu' },
-                    { min: 6, message: 'Tối thiểu 6 ký tự' },
+                    { min: 8, message: 'Tối thiểu 8 ký tự' },
                     {
                       pattern: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).+$/,
                       message: 'Phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 số',
                     },
                   ]}
                 >
-                  <Input.Password name="password" placeholder="Ít nhất 6 ký tự" autoComplete="new-password" />
+                  <Input.Password name="password" placeholder="Ít nhất 8 ký tự" autoComplete="new-password" />
                 </Form.Item>
               </>
             )}
@@ -518,7 +537,7 @@ export default function UsersPage() {
               <Select
                 placeholder="Chọn vai trò"
                 options={rolesData?.map((r) => ({
-                  value: r.id,
+                  value: r.code,
                   label: r.name,
                 }))}
               />

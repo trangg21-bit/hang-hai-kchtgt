@@ -37,14 +37,14 @@ public class TaiInmarsatService {
     public TaiInmarsatResponse findById(UUID id) {
         TaiInmarsat entity = taiRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai Inmarsat khong tim thay: " + id));
+                        "Đài Inmarsat không tìm thấy: " + id));
         return toResponse(entity);
     }
 
     public TaiInmarsatResponse findByCode(String code) {
         TaiInmarsat entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai Inmarsat khong tim thay: " + code));
+                        "Đài Inmarsat không tìm thấy: " + code));
         return toResponse(entity);
     }
 
@@ -59,7 +59,7 @@ public class TaiInmarsatService {
     @Transactional
     public TaiInmarsatResponse create(CreateTaiInmarsatRequest request) {
         if (taiRepo.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Da ton tai: " + request.getCode());
+            throw new IllegalArgumentException("Đã tồn tại: " + request.getCode());
         }
 
         TaiInmarsat entity = TaiInmarsat.builder()
@@ -77,7 +77,7 @@ public class TaiInmarsatService {
         entity = taiRepo.save(entity);
 
         saveHistory(entity, TaiHistoryActionType.CREATE, null, null);
-        notificationService.sendApproveNotification("Tai Inmarsat: " + entity.getName(),
+        notificationService.sendApproveNotification("Đài Inmarsat: " + entity.getName(),
                 entity.getCreatedBy());
 
         return toResponse(entity);
@@ -89,10 +89,10 @@ public class TaiInmarsatService {
     public TaiInmarsatResponse update(UUID id, UpdateTaiInmarsatRequest request) {
         TaiInmarsat entity = taiRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai Inmarsat khong tim thay: " + id));
+                        "Đài Inmarsat không tìm thấy: " + id));
 
         if (Boolean.TRUE.equals(entity.getDeleted())) {
-            throw new EntityNotFoundException("Tai da bi xoa");
+            throw new EntityNotFoundException("Đài đã bị xóa");
         }
 
         String oldJson = toJson(entity);
@@ -118,10 +118,10 @@ public class TaiInmarsatService {
     public void delete(String code) {
         TaiInmarsat entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai Inmarsat khong tim thay: " + code));
+                        "Đài Inmarsat không tìm thấy: " + code));
 
         if (Boolean.TRUE.equals(entity.getDeleted())) {
-            throw new IllegalArgumentException("Tai nay da bi xoa truoc do");
+            throw new IllegalArgumentException("Đài này đã bị xóa trước đó");
         }
 
         entity.softDelete();
@@ -138,7 +138,7 @@ public class TaiInmarsatService {
     public TaiInmarsatResponse approve(String code, String remarks, UUID approverId) {
         TaiInmarsat entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai Inmarsat khong tim thay: " + code));
+                        "Đài Inmarsat không tìm thấy: " + code));
 
         entity.setStatus(TaiStatus.ACTIVE);
         entity.setApprovalStatus(TaiApprovalStatus.APPROVED);
@@ -156,7 +156,7 @@ public class TaiInmarsatService {
     public TaiInmarsatResponse reject(String code, String remarks, UUID approverId) {
         TaiInmarsat entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai Inmarsat khong tim thay: " + code));
+                        "Đài Inmarsat không tìm thấy: " + code));
 
         entity.setApprovalStatus(TaiApprovalStatus.REJECTED);
         entity.setUnapprovedBy(approverId);

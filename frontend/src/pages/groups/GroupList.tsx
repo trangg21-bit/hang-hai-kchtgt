@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Button,
   Space,
@@ -43,6 +44,7 @@ const STATUS_MAP: Record<string, { color: string; label: string }> = {
 };
 
 export default function GroupList() {
+  const navigate = useNavigate();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const [search, setSearch] = useState('');
@@ -225,7 +227,7 @@ export default function GroupList() {
               type="link"
               size="small"
               icon={<ArrowRightOutlined />}
-              onClick={() => { /* members page — read-only navigation */ }}
+              onClick={() => navigate(`/groups/${record.id}/members`)}
             />
           </Tooltip>
           {hasPerm('group.edit') && (
@@ -328,7 +330,10 @@ export default function GroupList() {
               current: page,
               pageSize,
               total,
-              onChange: (p) => setPage(p),
+              onChange: (p, sz) => {
+                setPage(p);
+                if (sz) setPageSize(sz);
+              },
               showSizeChanger: true,
               showTotal: (t) => `Tổng ${t} nhóm`,
               pageSizeOptions: ['10', '20', '50'],
@@ -343,12 +348,12 @@ export default function GroupList() {
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={() => setModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         confirmLoading={submitting}
         okText={editingGroup ? 'Cập nhật' : 'Tạo mới'}
         cancelText="Hủy"
         width={600}
-        maskClosable={false}
+        mask={{ closable: false }}
       >
         <Spin spinning={submitting}>
           <Form form={form} layout="vertical" style={{ marginTop: 16 }}>

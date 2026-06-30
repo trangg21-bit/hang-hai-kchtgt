@@ -86,18 +86,18 @@ public class LockoutService implements CommandLineRunner {
             user.setAccountLockedUntil(lockedUntil);
             userRepo.save(user);
 
-            log.warn("Account locked due to failed attempts: user={}, count={}",
+            log.warn("Tài khoản bị khóa due to failed attempts: user={}, count={}",
                     user.getUsername(), user.getFailedLoginCount());
 
             saveAuditLog(user, LoginAttemptResult.FAIL,
-                    "Account locked after " + user.getFailedLoginCount() + " failures",
+                    "Tài khoản bị khóa after " + user.getFailedLoginCount() + " failures",
                     httpRequest);
 
             return LockoutStatus.LOCKED;
         }
 
         String failureReason = user.getAccountLockedUntil() != null
-                ? "Account is locked"
+                ? "Tài khoản đã bị khóa"
                 : (reason != null ? reason : "Invalid credentials");
         saveAuditLog(user, LoginAttemptResult.FAIL, failureReason, httpRequest);
 
@@ -127,7 +127,7 @@ public class LockoutService implements CommandLineRunner {
     @Transactional
     public void unlockAccount(UUID userId, String adminUser) {
         User user = userRepo.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));
         user.setFailedLoginCount(0);
         user.setAccountLockedUntil(null);
         userRepo.save(user);

@@ -53,14 +53,14 @@ public class DataConnectionService {
     @Transactional(readOnly = true)
     public ConnectionResponse getById(UUID id) {
         DataConnection entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Data connection not found: id=" + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy kết nối dữ liệu: id=" + id));
         decryptCredentials(entity);
         return ConnectionResponse.fromEntity(entity);
     }
 
     public ConnectionResponse create(CreateConnectionRequest request) {
         if (repository.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Connection code already exists: " + request.getCode());
+            throw new IllegalArgumentException("Mã kết nối đã tồn tại: " + request.getCode());
         }
 
         DataConnection entity = new DataConnection();
@@ -82,14 +82,14 @@ public class DataConnectionService {
 
     public ConnectionResponse update(UUID id, UpdateConnectionRequest request) {
         DataConnection entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Data connection not found: id=" + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy kết nối dữ liệu: id=" + id));
 
         if (request.getName() != null) {
             entity.setName(request.getName());
         }
         if (request.getCode() != null && !request.getCode().equals(entity.getCode())) {
             if (repository.existsByCode(request.getCode())) {
-                throw new IllegalArgumentException("Connection code already exists: " + request.getCode());
+                throw new IllegalArgumentException("Mã kết nối đã tồn tại: " + request.getCode());
             }
             entity.setCode(request.getCode());
         }
@@ -123,7 +123,7 @@ public class DataConnectionService {
 
     public void delete(UUID id) {
         if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("Data connection not found: id=" + id);
+            throw new EntityNotFoundException("Không tìm thấy kết nối dữ liệu: id=" + id);
         }
         DataConnection entity = repository.findById(id).orElseThrow();
         entity.softDelete();
@@ -143,7 +143,7 @@ public class DataConnectionService {
      */
     public TestConnectionResponse testConnection(UUID id, TestConnectionRequest overrides) {
         DataConnection entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Data connection not found: id=" + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy kết nối dữ liệu: id=" + id));
 
         String url = overrides.getEndpointUrl() != null
                 ? overrides.getEndpointUrl()

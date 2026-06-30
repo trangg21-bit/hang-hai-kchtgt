@@ -4,8 +4,8 @@ import { roleService } from '../services/roleService';
 import type { CreateRolePayload, UpdateRolePayload } from '../types/role';
 import type { Role } from '../types/role';
 
-export function useRoles(params?: { search?: string }) {
-  return useQuery<Role[]>({
+export function useRoles(params?: { page?: number; pageSize?: number; search?: string }) {
+  return useQuery<any>({
     queryKey: ['roles', params],
     queryFn: () => roleService.list(params),
     staleTime: 60_000,
@@ -30,9 +30,6 @@ export function useCreateRole() {
       message.success('Đã tạo vai trò mới');
       qc.invalidateQueries({ queryKey: ['roles'] });
     },
-    onError: (err: Error) => {
-      message.error(err.message || 'Tạo vai trò thất bại');
-    },
   });
 }
 
@@ -46,9 +43,6 @@ export function useUpdateRole() {
       message.success('Đã cập nhật vai trò');
       qc.invalidateQueries({ queryKey: ['roles'] });
     },
-    onError: (err: Error) => {
-      message.error(err.message || 'Cập nhật vai trò thất bại');
-    },
   });
 }
 
@@ -60,9 +54,6 @@ export function useDeleteRole() {
     onSuccess: () => {
       message.success('Đã xóa vai trò');
       qc.invalidateQueries({ queryKey: ['roles'] });
-    },
-    onError: (err: Error) => {
-      message.error(err.message || 'Xóa vai trò thất bại');
     },
   });
 }

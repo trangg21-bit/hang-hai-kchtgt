@@ -16,7 +16,7 @@ public class NotificationService {
      */
     public void sendApprovalNotificationDen(NhaTramDen entity) {
         // Post-integration: thong bao nguoi quan ly L1 (phong) cua don vi entity.
-        // Message: "Co nha tram den moi cho phe duyet: {entity.getName()}"
+        // Message: "Co nhà trạm đèn moi chờ phê duyệt: {entity.getName()}"
     }
 
     /**
@@ -24,7 +24,7 @@ public class NotificationService {
      */
     public void sendL2ApprovalNotificationDen(NhaTramDen entity) {
         // Post-integration: thong bao nguoi quan ly L2 (cuc).
-        // Message: "Co nha tram den da duoc L1 phe duyet, cho L2: {entity.getName()}"
+        // Message: "Co nhà trạm đèn da duoc L1 phê duyệt, cho L2: {entity.getName()}"
     }
 
     /**
@@ -32,7 +32,7 @@ public class NotificationService {
      */
     public void sendRejectionNotificationDen(NhaTramDen entity, String rejectReason) {
         // Post-integration: thong bao nguoi tao.
-        // Message: "Nha tram den bi tu choi — Ly do: {rejectReason}"
+        // Message: "Nhà trạm đèn bi từ chối — Ly do: {rejectReason}"
     }
 
     /**
@@ -40,7 +40,7 @@ public class NotificationService {
      */
     public void sendApprovalNotificationPhao(NhaTramPhao entity) {
         // Post-integration: thong bao nguoi quan ly L1 (phong) cua don vi entity.
-        // Message: "Co nha tram phao moi cho phe duyet: {entity.getName()}"
+        // Message: "Co nhà trạm phao moi chờ phê duyệt: {entity.getName()}"
     }
 
     /**
@@ -48,7 +48,7 @@ public class NotificationService {
      */
     public void sendL2ApprovalNotificationPhao(NhaTramPhao entity) {
         // Post-integration: thong bao nguoi quan ly L2 (cuc).
-        // Message: "Co nha tram phao da duoc L1 phe duyet, cho L2: {entity.getName()}"
+        // Message: "Co nhà trạm phao da duoc L1 phê duyệt, cho L2: {entity.getName()}"
     }
 
     /**
@@ -56,6 +56,6 @@ public class NotificationService {
      */
     public void sendRejectionNotificationPhao(NhaTramPhao entity, String rejectReason) {
         // Post-integration: thong bao nguoi tao.
-        // Message: "Nha tram phao bi tu choi — Ly do: {rejectReason}"
+        // Message: "Nhà trạm phao bi từ chối — Ly do: {rejectReason}"
     }
 }

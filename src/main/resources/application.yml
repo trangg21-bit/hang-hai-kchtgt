@@ -92,7 +92,7 @@ spring:
       path: /h2-console
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
-    show-sql: true
+    show-sql: false
     defer-datasource-initialization: true
   sql:
     init:
@@ -106,6 +106,7 @@ logging:
   level:
     com.hanghai.kchtg: DEBUG
     org.springframework.security: DEBUG
+    org.hibernate: ERROR
 
 ---
 # -- PROD profile (PostgreSQL) ------------------------------------------------

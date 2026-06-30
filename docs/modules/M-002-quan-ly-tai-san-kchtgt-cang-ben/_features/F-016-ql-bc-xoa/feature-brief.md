@@ -1,13 +1,13 @@
 ---
 id: F-016
-name: "Quản lý Bến cảng - Xóa"
+name: Quản lý Bến cảng - Xóa
 slug: ql-bc-xoa
 module-id: M-002
-status: proposed
+status: done
 classification: local
 priority: high
-created: "2026-06-16T04:40:42Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:40:42Z
+last-updated: 2026-06-29T11:10:01Z
 locked-fields: []
 consumed_by_modules: []
 ---

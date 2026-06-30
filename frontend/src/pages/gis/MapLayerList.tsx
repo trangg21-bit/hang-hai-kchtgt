@@ -292,7 +292,10 @@ export default function MapLayerList() {
               current: page,
               pageSize,
               total,
-              onChange: (p) => setPage(p),
+              onChange: (p, sz) => {
+                setPage(p);
+                if (sz) setPageSize(sz);
+              },
               showSizeChanger: true,
               showTotal: (t) => `Tổng ${t} lớp`,
               pageSizeOptions: ['10', '20', '50'],

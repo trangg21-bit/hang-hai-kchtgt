@@ -75,7 +75,7 @@ public class TotpService {
                 } catch (IllegalArgumentException ignored) {}
             }
         } catch (NumberFormatException e) {
-            log.warn("Invalid TOTP code format: {}", code);
+            log.warn("Định dạng mã TOTP không hợp lệ: {}", code);
         }
         return false;
     }

@@ -36,7 +36,7 @@ public class TaiThongTinHangHaiHNController {
             @Valid @RequestBody CreateTaiThongTinHangHaiHNRequest request) {
         TaiThongTinHangHaiHNResponse response = service.create(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Tao tai thong tin hai hai hn thanh cong", response));
+                .body(ApiResponse.success("Tao tai thong tin hai hai hn thành công", response));
     }
 
     @PutMapping("/{code}")
@@ -47,7 +47,7 @@ public class TaiThongTinHangHaiHNController {
         UUID id = service.findByCode(code).getId();
         TaiThongTinHangHaiHNResponse response = service.update(id, request);
         return ResponseEntity.ok(ApiResponse.success(
-                "Cap nhat tai thong tin hai hai hn thanh cong", response));
+                "Cap nhat tai thong tin hai hai hn thành công", response));
     }
 
     @DeleteMapping("/{code}")
@@ -55,7 +55,7 @@ public class TaiThongTinHangHaiHNController {
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable String code) {
         service.delete(code);
         return ResponseEntity.ok(
-                ApiResponse.success("Da xoa tai thong tin hai hai hn thanh cong", null));
+                ApiResponse.success("Da xoa tai thong tin hai hai hn thành công", null));
     }
 
     @GetMapping("/{code}")
@@ -95,7 +95,7 @@ public class TaiThongTinHangHaiHNController {
             @RequestParam(required = false) String remarks) {
         TaiThongTinHangHaiHNResponse response = service.approve(code, remarks, UUID.randomUUID());
         return ResponseEntity.ok(ApiResponse.success(
-                "Phe duyet thanh cong", response));
+                "Phê duyệt thành công", response));
     }
 
     @PutMapping("/{code}/reject")
@@ -105,7 +105,7 @@ public class TaiThongTinHangHaiHNController {
             @RequestParam String remarks) {
         TaiThongTinHangHaiHNResponse response = service.reject(code, remarks, UUID.randomUUID());
         return ResponseEntity.ok(ApiResponse.success(
-                "Tu choi thanh cong", response));
+                "Từ chối thành công", response));
     }
 
     @PostMapping("/{code}/sync")
@@ -113,7 +113,7 @@ public class TaiThongTinHangHaiHNController {
     public ResponseEntity<ApiResponse<Void>> syncToMapPhao(@PathVariable String code) {
         UUID id = service.findByCode(code).getId();
         service.syncToMapPhao(id);
-        return ResponseEntity.ok(ApiResponse.success("Da dong bo thanh cong", null));
+        return ResponseEntity.ok(ApiResponse.success("Da dong bo thành công", null));
     }
 
     @DeleteMapping("/{code}/hide")
@@ -121,6 +121,6 @@ public class TaiThongTinHangHaiHNController {
     public ResponseEntity<ApiResponse<Void>> hideFromMapPhao(@PathVariable String code) {
         UUID id = service.findByCode(code).getId();
         service.hideFromMapPhao(id);
-        return ResponseEntity.ok(ApiResponse.success("Da anh xoa khoi ban do", null));
+        return ResponseEntity.ok(ApiResponse.success("Đã ẩn/xóa khỏi bản đồ", null));
     }
 }

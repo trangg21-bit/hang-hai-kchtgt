@@ -130,6 +130,17 @@ public class AdminAccountService {
         if (request.getStatus() != null) {
             entity.setStatus(request.getStatus());
         }
+        if (entity.getUser() != null) {
+            if (request.getFullName() != null) {
+                entity.getUser().setFullName(request.getFullName());
+            }
+            if (request.getEmail() != null) {
+                entity.getUser().setEmail(request.getEmail());
+            }
+            if (request.getPhone() != null) {
+                entity.getUser().setPhone(request.getPhone());
+            }
+        }
 
         AdminAccount saved = repository.save(entity);
         return AdminResponse.from(saved);

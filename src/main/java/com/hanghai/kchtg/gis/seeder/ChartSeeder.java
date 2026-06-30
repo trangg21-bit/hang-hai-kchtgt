@@ -12,6 +12,10 @@ import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
 
+import jakarta.persistence.EntityManager;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
+
 /**
  * Automatically seeds the database with the electronic chart cell (.000) files
  * located in classpath:charts/ on application startup if they do not already exist.
@@ -23,10 +27,15 @@ public class ChartSeeder implements CommandLineRunner {
 
     private final ChartIntegrationService chartIntegrationService;
     private final ChartCellRepository cellRepository;
+    private final EntityManager entityManager;
+    private final PlatformTransactionManager transactionManager;
 
     @Override
     public void run(String... args) throws Exception {
         log.info("Khởi chạy ChartSeeder - Tự động quét và import các mảnh hải đồ từ classpath...");
+
+        var definition = new DefaultTransactionDefinition();
+        var txStatus = transactionManager.getTransaction(definition);
 
         ResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         Resource[] resources;
@@ -65,6 +74,11 @@ public class ChartSeeder implements CommandLineRunner {
                 byte[] fileBytes = is.readAllBytes();
                 chartIntegrationService.importS57(fileBytes, filename);
                 importedCount++;
+                if (importedCount % 20 == 0) {
+                    entityManager.flush();
+                    entityManager.clear();
+                    log.debug("Flushed and cleared persistence context after {} imported cells", importedCount);
+                }
                 if (importedCount % 10 == 0 || importedCount == resources.length - skippedCount) {
                     log.info("Đã import thành công {} mảnh hải đồ...", importedCount);
                 }
@@ -73,6 +87,7 @@ public class ChartSeeder implements CommandLineRunner {
             }
         }
 
+        transactionManager.commit(txStatus);
         log.info("Hoàn tất tiến trình seeder hải đồ. Đã import mới: {} mảnh, Đã bỏ qua (trùng lặp): {} mảnh.",
                 importedCount, skippedCount);
     }

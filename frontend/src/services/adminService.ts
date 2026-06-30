@@ -113,6 +113,9 @@ export const adminService = {
         return st === (params.status as string)?.toLowerCase();
       });
     }
+    if (params?.roleId) {
+      filtered = filtered.filter((a) => a.role === params.roleId);
+    }
 
     const page = params?.page || 1;
     const pageSize = params?.pageSize || 10;
@@ -130,7 +133,9 @@ export const adminService = {
         roleId: item.role ?? "",
         roleName: item.role ?? "",
         status: (item.status?.toLowerCase() as Status) ?? "active",
-        lastLoginAt: undefined, // backend does not return lastLoginAt
+        lastLoginAt: item.lastLoginAt
+          ? new Date(item.lastLoginAt).toISOString()
+          : undefined,
         createdAt: item.createdAt
           ? new Date(item.createdAt).toISOString()
           : "",
@@ -210,6 +215,9 @@ export const adminService = {
     const resp = await api.put(`/admin-accounts/${id}`, {
       role: payload.roleId,
       status: payload.status?.toUpperCase(),
+      fullName: payload.fullName,
+      email: payload.email,
+      phone: payload.phone,
       modules: [],
     });
     const item: any = extractData(resp);
@@ -288,7 +296,7 @@ export const adminService = {
     }
   ): Promise<PaginatedResponse<AdminAuditLog>> {
     try {
-      const resp = await api.get("/admin-accounts/audit", {
+      const resp = await api.get("/admins/audit", {
         params: {
           adminId: params?.adminId,
           action: params?.action,
@@ -312,10 +320,10 @@ export const adminService = {
           action: item.action ?? "",
           targetType: item.targetType ?? "",
           targetId: item.targetId,
-          targetName: item.targetName,
-          ipAddress: item.ipAddress,
+          targetName: item.targetName ?? item.target ?? "",
+          ipAddress: item.ipAddress ?? item.ipAddr ?? "",
           userAgent: item.userAgent,
-          result: item.result ?? "success",
+          result: item.result ? item.result.toLowerCase() : (item.details?.startsWith("HTTP 20") || item.details === "SUCCESS" ? "success" : "failure"),
           details: item.details,
           createdAt: item.createdAt
             ? new Date(item.createdAt).toISOString()
@@ -348,7 +356,7 @@ export const adminService = {
     topActions: Array<{ action: string; count: number }>;
   }> {
     try {
-      const resp = await api.get("/admin-accounts/audit/stats", {
+      const resp = await api.get("/admins/audit/stats", {
         params: { adminId },
       });
       return extractData(resp);

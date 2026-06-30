@@ -60,8 +60,6 @@ class ShareWorkflowControllerTest {
     private JwtUtil jwtUtil;
 
     @MockBean
-
-    @MockBean
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     // ------------------------------------------------------------------

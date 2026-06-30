@@ -208,6 +208,7 @@ public class OrganizationService {
                 .description(request.getDescription())
                 .address(request.getAddress())
                 .phone(request.getPhone())
+                .contactPerson(request.getContactPerson())
                 .coefficient(request.getCoefficient())
                 .status(request.getStatus() != null ? request.getStatus() : OrgUnitStatus.DRAFT)
                 .scopeId(0L)
@@ -257,28 +258,35 @@ public class OrganizationService {
         if (request.getParentId() != null) {
             UUID newParentId = request.getParentId();
 
-            // Self-parent check
-            if (newParentId.equals(id)) {
-                throw new IllegalArgumentException("Đơn vị không thể là cha của chính nó");
+            if (newParentId.equals(new UUID(0L, 0L))) {
+                // Nil UUID: clear parent (move to root)
+                if (unit.getParentId() != null) {
+                    materializedPathService.cascadePathRebuild(id, null);
+                    unit.setParentId(null);
+                }
+            } else {
+                // Self-parent check
+                if (newParentId.equals(id)) {
+                    throw new IllegalArgumentException("Đơn vị không thể là cha của chính nó");
+                }
+
+                // Parent must exist
+                OrgUnit newParent = orgUnitRepo.findById(newParentId)
+                        .orElseThrow(() -> new EntityNotFoundException(
+                                "Đơn vị cha không tồn tại: " + newParentId));
+
+                // BR-016: circular reference detection
+                if (materializedPathService.isAncestor(id, newParentId)) {
+                    throw new IllegalArgumentException(
+                            "Không thể đặt đơn vị con làm cha của đơn vị cha — sẽ tạo vòng lặp phân cấp");
+                }
+
+                // Parent changed — cascade path rebuild
+                if (!newParentId.equals(unit.getParentId())) {
+                    materializedPathService.cascadePathRebuild(id, newParentId);
+                    unit.setParentId(newParentId);
+                }
             }
-
-            // Parent must exist
-            OrgUnit newParent = orgUnitRepo.findById(newParentId)
-                    .orElseThrow(() -> new EntityNotFoundException(
-                            "Đơn vị cha không tồn tại: " + newParentId));
-
-            // BR-016: circular reference detection
-            if (materializedPathService.isAncestor(id, newParentId)) {
-                throw new IllegalArgumentException(
-                        "Không thể đặt đơn vị con làm cha của đơn vị cha — sẽ tạo vòng lặp phân cấp");
-            }
-
-            // Parent changed — cascade path rebuild
-            if (!newParentId.equals(unit.getParentId())) {
-                materializedPathService.cascadePathRebuild(id, newParentId);
-            }
-
-            unit.setParentId(newParentId);
         }
 
         // Update scalar fields
@@ -287,6 +295,7 @@ public class OrganizationService {
         if (request.getDescription() != null) unit.setDescription(request.getDescription());
         if (request.getAddress() != null) unit.setAddress(request.getAddress());
         if (request.getPhone() != null) unit.setPhone(request.getPhone());
+        if (request.getContactPerson() != null) unit.setContactPerson(request.getContactPerson());
         if (request.getCoefficient() != null) unit.setCoefficient(request.getCoefficient());
 
         OrgUnit saved = orgUnitRepo.save(unit);
@@ -404,8 +413,8 @@ public class OrganizationService {
      * Seed the root unit if none exists. Called after Flyway migration.
      */
     public OrgUnitResponse seedRoot(String name, String code, OrgUnitType type,
-                                     String description, String address, String phone,
-                                     Double coefficient, UUID operatorId, String operatorName) {
+                                      String description, String address, String phone,
+                                      java.math.BigDecimal coefficient, UUID operatorId, String operatorName) {
         long rootCount = orgUnitRepo.findByParentIdIsNull().size();
         if (rootCount > 0) {
             log.warn("Root unit already exists ({} roots found). Skipping seed.", rootCount);

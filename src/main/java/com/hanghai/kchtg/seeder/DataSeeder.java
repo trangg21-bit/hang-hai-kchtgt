@@ -18,7 +18,10 @@ import com.hanghai.kchtg.gis.polygon.entity.PolygonCategory;
 import com.hanghai.kchtg.gis.polygon.repository.PolygonCategoryRepository;
 import com.hanghai.kchtg.group.entity.GroupStatus;
 import com.hanghai.kchtg.group.entity.UserGroup;
+import com.hanghai.kchtg.group.entity.GroupMember;
+import com.hanghai.kchtg.group.entity.GroupMemberStatus;
 import com.hanghai.kchtg.group.repository.GroupRepository;
+import com.hanghai.kchtg.group.repository.GroupMemberRepository;
 import com.hanghai.kchtg.mapicon.entity.MapIcon;
 import com.hanghai.kchtg.mapicon.repository.MapIconRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
@@ -58,6 +61,7 @@ public class DataSeeder implements CommandLineRunner {
     private final DataConnectionRepository connectionRepo;
     private final AdminAccountRepository adminAccountRepo;
     private final GroupRepository groupRepo;
+    private final GroupMemberRepository groupMemberRepo;
     private final OrgUnitRepository orgUnitRepo;
     private final PasswordEncoder passwordEncoder;
 
@@ -70,10 +74,10 @@ public class DataSeeder implements CommandLineRunner {
         seedLineCategories();
         seedPolygonCategories();
         seedMapIcons();
+        seedOrgUnits();
+        seedUserGroups();
         seedUsers();
         seedAdminAccounts();
-        seedUserGroups();
-        seedOrgUnits();
         seedDataConnections();
 
         log.info("✅ Data seeding completed successfully!");
@@ -169,59 +173,181 @@ public class DataSeeder implements CommandLineRunner {
         log.info("✅ Seeded {} MapIcons", icons.size());
     }
 
+    private void seedOrgUnits() {
+        if (orgUnitRepo.count() > 0) {
+            log.info("⏭️ Org units already exist, skipping...");
+            return;
+        }
+        log.info("📦 Seeding 15 OrgUnits...");
+
+        String[] codes = {
+            "ORG_TCDb", "ORG_CVHP", "ORG_CVHCM", "ORG_CVQN", "ORG_CVDN",
+            "ORG_CVVT", "ORG_CVNT", "ORG_CVQN2", "ORG_CVCT", "ORG_CVQB",
+            "ORG_CVTH", "ORG_CVNA", "ORG_CVHT", "ORG_CVQT", "ORG_CVTTH"
+        };
+
+        String[] names = {
+            "Tổng Cục Đường Bộ", "Cảng vụ Hàng hải Hải Phòng", "Cảng vụ Hàng hải TP. Hồ Chí Minh",
+            "Cảng vụ Hàng hải Quảng Ninh", "Cảng vụ Hàng hải Đà Nẵng", "Cảng vụ Hàng hải Vũng Tàu",
+            "Cảng vụ Hàng hải Nha Trang", "Cảng vụ Hàng hải Quy Nhơn", "Cảng vụ Hàng hải Cần Thơ",
+            "Cảng vụ Hàng hải Quảng Bình", "Cảng vụ Hàng hải Thanh Hóa", "Cảng vụ Hàng hải Nghệ An",
+            "Cảng vụ Hàng hải Hà Tĩnh", "Cảng vụ Hàng hải Quảng Trị", "Cảng vụ Hàng hải Thừa Thiên Huế"
+        };
+
+        String[] cities = {
+            "Hà Nội", "Hải Phòng", "TP. Hồ Chí Minh", "Quảng Ninh", "Đà Nẵng",
+            "Bà Rịa - Vũng Tàu", "Khánh Hòa", "Bình Định", "Cần Thơ", "Quảng Bình",
+            "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "Thừa Thiên Huế"
+        };
+
+        for (int i = 0; i < 15; i++) {
+            OrgUnit u = OrgUnit.builder()
+                    .name(names[i])
+                    .code(codes[i])
+                    .type(i == 0 ? OrgUnitType.CUC : OrgUnitType.CHI_CUC)
+                    .address(cities[i])
+                    .phone("024" + (1234567 + i))
+                    .status(OrgUnitStatus.APPROVED)
+                    .path("/" + codes[i] + "/")
+                    .level(i == 0 ? 1 : 2)
+                    .scopeId(0L)
+                    .sortOrder(i + 1)
+                    .build();
+            orgUnitRepo.save(u);
+        }
+        log.info("✅ Seeded 15 OrgUnits");
+    }
+
+    private void seedUserGroups() {
+        log.info("📦 Checking and seeding UserGroups...");
+
+        String[] codes = {
+            "GRP_ADMINS", "GRP_CV_SPECIALISTS", "GRP_CV_LEADERS", "GRP_TC_SPECIALISTS", "GRP_TC_LEADERS",
+            "GRP_TECH_MAINT", "GRP_MONITOR_BUOY", "GRP_OPERATOR_STATION", "GRP_REPORT_STAT", "GRP_DOC_RECEIVE",
+            "GRP_DOC_APPROVE", "GRP_PARTNER_OPERATOR", "GRP_CONSTRUCT_UNIT", "GRP_INSPECTOR", "GRP_TECH_SUPPORT"
+        };
+
+        String[] names = {
+            "Nhóm Quản Trị Viên", "Nhóm Chuyên Viên Cảng Vụ", "Nhóm Lãnh Đạo Cảng Vụ", 
+            "Nhóm Chuyên Viên Tổng Cục", "Nhóm Lãnh Đạo Tổng Cục", "Nhóm Kỹ Thuật Viên Bảo Trì",
+            "Nhóm Giám Sát Phao Tiêu", "Nhóm Vận Hành Nhà Trạm", "Nhóm Báo Cáo Thống Kê",
+            "Nhóm Tiếp Nhận Hồ Sơ", "Nhóm Phê Duyệt Hồ Sơ", "Nhóm Đối Tác Khai Thác",
+            "Nhóm Đơn Vị Thi Công", "Nhóm Thanh Tra Hàng Hải", "Nhóm Hỗ Trợ Kỹ Thuật"
+        };
+
+        String[] groupTypes = {
+            "department", "department", "department", "department", "department",
+            "project", "project", "project", "custom", "department",
+            "department", "custom", "project", "department", "custom"
+        };
+
+        int seededCount = 0;
+        for (int i = 0; i < 15; i++) {
+            if (!groupRepo.existsByCode(codes[i])) {
+                UserGroup g = new UserGroup();
+                g.setName(names[i]);
+                g.setCode(codes[i]);
+                g.setDescription("Mô tả nhóm " + names[i]);
+                g.setGroupType(groupTypes[i]);
+                g.setStatus(GroupStatus.ACTIVE);
+                g.setPermissions(List.of("users:read", "users:create", "users:update", "roles:read"));
+                groupRepo.save(g);
+                seededCount++;
+            }
+        }
+        if (seededCount > 0) {
+            log.info("✅ Seeded {} UserGroups", seededCount);
+        } else {
+            log.info("⏭️ All 15 UserGroups already exist");
+        }
+    }
+
     public void seedUsers() {
         if (userRepo.count() > 0) {
             log.info("⏭️ Users already exist, skipping...");
             return;
         }
 
-        log.info("📦 Seeding default admin user...");
-        User admin = new User();
-        admin.setUsername("admin");
-        admin.setPassword(passwordEncoder.encode("admin123"));
-        admin.setEmail("admin@hh.gov.vn");
-        admin.setFullName("System Administrator");
+        log.info("📦 Seeding 15 App Users...");
+
+        // Find existing roles
         Role adminRole = roleRepo.findByCode("ROLE_SYSTEM_ADMIN")
                 .orElseThrow(() -> new IllegalStateException("Role not found: ROLE_SYSTEM_ADMIN"));
-        // adminRole is managed by the transactional context — cascade PERSIST on it is a no-op
-        admin.getRoles().add(adminRole);
-        admin.setStatus(UserStatus.ACTIVE);
+        Role specialistRole = roleRepo.findByCode("ROLE_SPECIALIST")
+                .orElseThrow(() -> new IllegalStateException("Role not found: ROLE_SPECIALIST"));
+        Role adminModuleRole = roleRepo.findByCode("ROLE_ADMIN")
+                .orElseThrow(() -> new IllegalStateException("Role not found: ROLE_ADMIN"));
+                
+        // Fetch seeded OrgUnits & UserGroups
+        List<OrgUnit> units = orgUnitRepo.findAll();
+        List<UserGroup> groups = groupRepo.findAll();
 
-        userRepo.save(admin);
-        log.info("✅ Seeded admin user successfully");
-    }
+        String[] usernames = {
+            "admin", "trantmai", "leantuan", "phamdm", "buivanh",
+            "nguyenthib", "phamvancl", "hoangthid", "vuvanem", "lethif",
+            "nguyenvang", "tranvanh", "phamthii", "vuvank", "lethil"
+        };
 
-    private void seedDataConnections() {
-        if (connectionRepo.count() > 0) {
-            log.info("⏭️ Data connections already exist, skipping...");
-            return;
+        String[] fullNames = {
+            "Nguyễn Văn An", "Trần Thị Mai", "Lê Anh Tuấn", "Phạm Đức Minh", "Bùi Văn Anh",
+            "Nguyễn Thị Bình", "Phạm Văn Cường", "Hoàng Thị Dung", "Vũ Văn Em", "Lê Thị Hoa",
+            "Nguyễn Văn Giáp", "Trần Văn Hải", "Phạm Thị Inh", "Vũ Văn Khánh", "Lê Thị Lan"
+        };
+
+        String[] emails = {
+            "admin@hh.gov.vn", "trantmai@hh.gov.vn", "leantuan@hh.gov.vn", "phamdm@hh.gov.vn", "buivanh@hh.gov.vn",
+            "nguyenthib@hh.gov.vn", "phamvancl@hh.gov.vn", "hoangthid@hh.gov.vn", "vuvanem@hh.gov.vn", "lethif@hh.gov.vn",
+            "nguyenvang@hh.gov.vn", "tranvanh@hh.gov.vn", "phamthii@hh.gov.vn", "vuvank@hh.gov.vn", "lethil@hh.gov.vn"
+        };
+
+        for (int i = 0; i < 15; i++) {
+            User u = new User();
+            u.setUsername(usernames[i]);
+            u.setPassword(passwordEncoder.encode(i == 0 ? "admin123" : "password123"));
+            u.setEmail(emails[i]);
+            u.setFullName(fullNames[i]);
+            u.setPhone("09123456" + (78 + i));
+            u.setStatus(UserStatus.ACTIVE);
+            
+            // Assign role
+            if (i == 0) {
+                u.getRoles().add(adminRole);
+            } else if (i < 3) {
+                u.getRoles().add(adminModuleRole);
+            } else {
+                u.getRoles().add(specialistRole);
+            }
+
+            // Assign OrgUnit
+            if (!units.isEmpty()) {
+                u.setOrgUnit(units.get(i % units.size()));
+            }
+
+            // Assign Group (Legacy list mapping for backward compatibility)
+            if (!groups.isEmpty()) {
+                u.getGroups().add(groups.get(i % groups.size()));
+            }
+
+            userRepo.save(u);
+
+            // Assign Group (via GroupMember junction entity)
+            if (!groups.isEmpty()) {
+                int[] groupOffsets = {0, 1, 2};
+                for (int offset : groupOffsets) {
+                    UserGroup group = groups.get((i + offset) % groups.size());
+                    if (!groupMemberRepo.existsByUserIdAndUserGroupIdAndStatus(u.getId(), group.getId(), GroupMemberStatus.ACTIVE)) {
+                        GroupMember member = new GroupMember();
+                        member.setUser(u);
+                        member.setUserGroup(group);
+                        member.setRole(offset == 0 ? "admin" : "member");
+                        member.setStatus(GroupMemberStatus.ACTIVE);
+                        member.setJoinedAt(java.time.LocalDateTime.now());
+                        groupMemberRepo.save(member);
+                    }
+                }
+            }
         }
-
-        log.info("📦 Seeding DataConnections...");
-
-        DataConnection conn1 = new DataConnection();
-        conn1.setName("API Dữ liệu Hàng hải");
-        conn1.setCode("CONN_MARITIME_API");
-        conn1.setTargetSystem("Maritime Authority");
-        conn1.setConnectionType(ConnectionType.REST);
-        conn1.setEndpointUrl("http://localhost:8080/api/v1/integration/share/points");
-        conn1.setAuthType(AuthType.TOKEN);
-        conn1.setCredentials("integration-secret-token-2026");
-        conn1.setSyncFrequency(SyncFrequency.MANUAL);
-        conn1.setStatus(ConnectionStatus.ACTIVE);
-
-        DataConnection conn2 = new DataConnection();
-        conn2.setName("API Khí tượng Thủy văn");
-        conn2.setCode("CONN_METEO_API");
-        conn2.setTargetSystem("Hydrometeorological Center");
-        conn2.setConnectionType(ConnectionType.REST);
-        conn2.setEndpointUrl("https://api.meteo-vietnam.gov.vn/v1");
-        conn2.setAuthType(AuthType.TOKEN);
-        conn2.setSyncFrequency(SyncFrequency.HOURLY);
-        conn2.setStatus(ConnectionStatus.INACTIVE);
-
-        connectionRepo.saveAll(List.of(conn1, conn2));
-        log.info("✅ Seeded 2 DataConnections");
+        log.info("✅ Seeded 15 Users successfully");
     }
 
     private void seedAdminAccounts() {
@@ -252,41 +378,43 @@ public class DataSeeder implements CommandLineRunner {
         log.info("✅ Seeded {} AdminAccounts", adminAccountRepo.count());
     }
 
-    private void seedUserGroups() {
-        if (groupRepo.count() > 0) {
-            log.info("⏭️ User groups already exist, skipping...");
+    private void seedDataConnections() {
+        if (connectionRepo.count() > 0) {
+            log.info("⏭️ Data connections already exist, skipping...");
             return;
         }
-        log.info("📦 Seeding UserGroups...");
-        UserGroup g1 = new UserGroup();
-        g1.setName("Nhóm Quản Trị Viên");
-        g1.setCode("GRP_ADMINS");
-        g1.setDescription("Nhóm dành cho các quản trị viên hệ thống");
-        g1.setStatus(GroupStatus.ACTIVE);
-        g1.setPermissions(List.of("users:read", "users:create", "users:update", "roles:read"));
-        groupRepo.save(g1);
-        log.info("✅ Seeded {} UserGroups", groupRepo.count());
-    }
 
-    private void seedOrgUnits() {
-        if (orgUnitRepo.count() > 0) {
-            log.info("⏭️ Org units already exist, skipping...");
-            return;
+        log.info("📦 Seeding 15 DataConnections...");
+
+        String[] names = {
+            "API Dữ liệu Hàng hải Hải Phòng", "API Khí tượng Thủy văn", "Kết nối Phao tiêu luồng trục",
+            "API Vận tải biển quốc tế", "Dịch vụ LRIT trung tâm", "Cổng thông tin Cospas-Sarsat",
+            "API luồng hàng hải Vũng Tàu", "Kết nối phao tiêu luồng nhánh", "API luồng hàng hải Đà Nẵng",
+            "Dịch vụ GIS đường thủy quốc gia", "API dữ liệu cảng biển HCM", "Dịch vụ giám sát AIS Hải Phòng",
+            "API luồng hàng hải Quảng Ninh", "Kết nối báo hiệu đèn biển miền Bắc", "Kết nối phao tiêu luồng sông Chanh"
+        };
+
+        String[] codes = {
+            "CONN_MARITIME_HP", "CONN_METEO_API", "CONN_BUOY_TRUNK",
+            "CONN_SHIPPING_INT", "CONN_LRIT_CENTRAL", "CONN_COSPAS_PORTAL",
+            "CONN_MARITIME_VT", "CONN_BUOY_BRANCH", "CONN_MARITIME_DN",
+            "CONN_GIS_WATERWAY", "CONN_MARITIME_HCM", "CONN_AIS_HP",
+            "CONN_MARITIME_QN", "CONN_LIGHTHOUSE_NORTH", "CONN_BUOY_CHANH"
+        };
+
+        for (int i = 0; i < 15; i++) {
+            DataConnection conn = new DataConnection();
+            conn.setName(names[i]);
+            conn.setCode(codes[i]);
+            conn.setTargetSystem("System " + (i + 1));
+            conn.setConnectionType(i % 3 == 0 ? ConnectionType.REST : (i % 3 == 1 ? ConnectionType.DATABASE : ConnectionType.FILE));
+            conn.setEndpointUrl("http://localhost:8080/api/v1/integration/conn" + i);
+            conn.setAuthType(i % 2 == 0 ? AuthType.TOKEN : AuthType.BASIC);
+            conn.setCredentials("secret-credentials-token-" + i);
+            conn.setSyncFrequency(i % 2 == 0 ? SyncFrequency.MANUAL : SyncFrequency.HOURLY);
+            conn.setStatus(i % 3 == 2 ? ConnectionStatus.INACTIVE : ConnectionStatus.ACTIVE);
+            connectionRepo.save(conn);
         }
-        log.info("📦 Seeding OrgUnits...");
-        OrgUnit u1 = OrgUnit.builder()
-                .name("Tổng Cục Đường Bộ")
-                .code("ORG_TCDb")
-                .type(OrgUnitType.CUC)
-                .address("Hà Nội")
-                .phone("0241234567")
-                .status(OrgUnitStatus.APPROVED)
-                .path("/ORG_TCDb/")
-                .level(1)
-                .scopeId(0L)
-                .sortOrder(1)
-                .build();
-        orgUnitRepo.save(u1);
-        log.info("✅ Seeded {} OrgUnits", orgUnitRepo.count());
+        log.info("✅ Seeded 15 DataConnections");
     }
 }

@@ -52,7 +52,7 @@ public class NhaTramPhaoController {
             @Valid @RequestBody CreateNhaTramPhaoRequest request) {
         NhaTramPhaoResponse response = service.create(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Tao nha tram phao thanh cong", response));
+                .body(ApiResponse.success("Tao nhà trạm phao thành công", response));
     }
 
     @PutMapping("/{id}")
@@ -60,7 +60,7 @@ public class NhaTramPhaoController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateNhaTramPhaoRequest request) {
         return ResponseEntity.ok(ApiResponse.success(
-                "Cap nhat nha tram phao thanh cong",
+                "Cap nhat nhà trạm phao thành công",
                 service.update(id, request)));
     }
 
@@ -68,7 +68,7 @@ public class NhaTramPhaoController {
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.ok(
-                ApiResponse.success("Da xoa nha tram phao thanh cong", null));
+                ApiResponse.success("Da xoa nhà trạm phao thành công", null));
     }
 
     @PostMapping("/{id}/submit-approval")
@@ -76,14 +76,14 @@ public class NhaTramPhaoController {
             @PathVariable UUID id) {
         service.submitForApproval(id);
         return ResponseEntity.ok(
-                ApiResponse.success("Da gui phe duyet", null));
+                ApiResponse.success("Da gửi phê duyệt", null));
     }
 
     @PostMapping("/{id}/approve-l1")
     public ResponseEntity<ApiResponse<NhaTramPhaoResponse>> approveL1(
             @PathVariable UUID id, @RequestParam String approverId) {
         return ResponseEntity.ok(ApiResponse.success(
-                "Phe duyet L1 thanh cong",
+                "Phê duyệt L1 thành công",
                 service.approveL1(id, approverId)));
     }
 
@@ -91,7 +91,7 @@ public class NhaTramPhaoController {
     public ResponseEntity<ApiResponse<NhaTramPhaoResponse>> approveL2(
             @PathVariable UUID id, @RequestParam String approverId) {
         return ResponseEntity.ok(ApiResponse.success(
-                "Phe duyet L2 thanh cong — Da cong bo",
+                "Phê duyệt L2 thành công — Da cong bo",
                 service.approveL2(id, approverId)));
     }
 
@@ -101,7 +101,7 @@ public class NhaTramPhaoController {
             @RequestParam String rejectReason,
             @RequestParam String approverId) {
         return ResponseEntity.ok(ApiResponse.success(
-                "Da tu choi",
+                "Da từ chối",
                 service.reject(id, rejectReason, approverId)));
     }
 }

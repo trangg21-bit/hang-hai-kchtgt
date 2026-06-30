@@ -90,7 +90,7 @@ public class ApprovalService {
     @Transactional(readOnly = true)
     public PendingApprovalResponse getById(UUID id) {
         PendingApproval pa = pendingApprovalRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay yeu cau phep duyet voi id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yeu cau phê duyệt voi id: " + id));
         return PendingApprovalResponse.from(pa);
     }
 
@@ -105,10 +105,10 @@ public class ApprovalService {
     public PendingApprovalResponse submitRegistration(PendingApprovalRequest request) {
         // BR-001: Check email/username uniqueness
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new ValidationException("Email da ton tai: " + request.getEmail());
+            throw new ValidationException("Email đã tồn tại: " + request.getEmail());
         }
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new ValidationException("Ten dang nhap da ton tai: " + request.getUsername());
+            throw new ValidationException("Tên đăng nhập đã tồn tại: " + request.getUsername());
         }
 
         // BR-002: Validate password policy
@@ -116,10 +116,10 @@ public class ApprovalService {
 
         // Check for existing pending approval
         if (!pendingApprovalRepository.findByEmailAndStatus(request.getEmail(), "pending").isEmpty()) {
-            throw new AccountPendingApprovalException("Da co yeu cau dang ky dang cho phep duyet cho email: " + request.getEmail());
+            throw new AccountPendingApprovalException("Đã có yêu cầu đăng ký đang chờ phê duyệt cho email: " + request.getEmail());
         }
         if (!pendingApprovalRepository.findByUsernameAndStatus(request.getUsername(), "pending").isEmpty()) {
-            throw new AccountPendingApprovalException("Da co yeu cau dang ky dang cho phep duyet cho username: " + request.getUsername());
+            throw new AccountPendingApprovalException("Đã có yêu cầu đăng ký đang chờ phê duyệt cho tên đăng nhập: " + request.getUsername());
         }
 
         // Create pending approval record
@@ -167,7 +167,7 @@ public class ApprovalService {
     @Transactional
     public PendingApprovalResponse approve(UUID pendingId, UUID approverId, String roleCode) {
         PendingApproval pa = pendingApprovalRepository.findById(pendingId)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay yeu cau phep duyet voi id: " + pendingId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yeu cau phê duyệt voi id: " + pendingId));
 
         // Validate status
         if (!"pending".equals(pa.getStatus())) {
@@ -179,7 +179,7 @@ public class ApprovalService {
         // We check via email comparison since we don't have direct user-to-pending mapping at this point
         // The approver user is loaded separately
         if (isSelfApproval(pa, approverId)) {
-            throw new SelfApprovalException("Khong the phep duyet cho chinh minh");
+            throw new SelfApprovalException("Không thể phê duyệt cho chính mình");
         }
 
         // Resolve role
@@ -187,7 +187,7 @@ public class ApprovalService {
         Role role = null;
         if (resolveRoleCode != null) {
             role = roleRepository.findByCode(resolveRoleCode)
-                    .orElseThrow(() -> new ValidationException("Vai tro khong ton tai: " + resolveRoleCode));
+                    .orElseThrow(() -> new ValidationException("Vai trò không tồn tại: " + resolveRoleCode));
         }
 
         // Create UserAccount
@@ -230,7 +230,7 @@ public class ApprovalService {
     @Transactional
     public PendingApprovalResponse reject(UUID pendingId, UUID approverId, String reason) {
         PendingApproval pa = pendingApprovalRepository.findById(pendingId)
-                .orElseThrow(() -> new EntityNotFoundException("Khong tim thay yeu cau phep duyet voi id: " + pendingId));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yeu cau phê duyệt voi id: " + pendingId));
 
         // Validate status
         if (!"pending".equals(pa.getStatus())) {
@@ -277,7 +277,7 @@ public class ApprovalService {
         notification.setRecipientEmail(pa.getEmail());
         notification.setRecipientName(pa.getFullName());
         notification.setNotificationType("APPROVAL_PENDING");
-        notification.setMessage("Yeu ca dang ky tai khoan cua ban da duoc gui. Mong cho phep duyet.");
+        notification.setMessage("Yeu ca dang ky tai khoan cua ban da duoc gui. Mong chờ phê duyệt.");
         notification.setSent(true);
         notificationRepository.save(notification);
 
@@ -297,7 +297,7 @@ public class ApprovalService {
         notification.setRecipientEmail(user.getEmail());
         notification.setRecipientName(user.getFullName());
         notification.setNotificationType("APPROVAL_GRANTED");
-        notification.setMessage("Yeu ca dang ky tai khoan cua ban da duoc phep duyet. Tai khoan: " + user.getUsername());
+        notification.setMessage("Yeu ca dang ky tai khoan cua ban da duoc phê duyệt. Tai khoan: " + user.getUsername());
         notification.setSent(true);
         notificationRepository.save(notification);
     }

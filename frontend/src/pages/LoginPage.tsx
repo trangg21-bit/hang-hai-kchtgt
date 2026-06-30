@@ -12,7 +12,7 @@ export default function LoginPage() {
     try {
       await login(values.username, values.password);
       message.success('Đăng nhập thành công');
-      window.location.href = '/users';
+      window.location.href = '/';
     } catch {
       message.error('Đăng nhập thất bại. Vui lòng thử lại.');
     } finally {

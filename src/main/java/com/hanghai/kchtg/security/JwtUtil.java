@@ -187,7 +187,15 @@ public class JwtUtil {
      * Lay role claim tu JWT.
      */
     public String extractRole(String token) {
-        return validateToken(token).get("role", String.class);
+        Claims claims = validateToken(token);
+        String role = claims.get("role", String.class);
+        if (role == null) {
+            Object rolesObj = claims.get("roles");
+            if (rolesObj instanceof List<?> rolesList && !rolesList.isEmpty()) {
+                role = String.valueOf(rolesList.get(0));
+            }
+        }
+        return role;
     }
 
     /**

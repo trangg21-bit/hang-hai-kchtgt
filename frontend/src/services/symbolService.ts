@@ -48,99 +48,108 @@ export interface SymbolFilters {
 // ============================================================
 // Service
 // ============================================================
-const delay = (ms = 500) => new Promise((resolve) => setTimeout(resolve, ms + Math.random() * 300));
+function extractData<T>(response: any): T {
+  return response.data?.data ?? response.data;
+}
 
-let symbols: Symbol[] = [
-  { id: 'sym-001', code: 'SYM-HD', name: 'Hướng đi', description: 'Ký hiệu hướng đi', category: 'navigation', icon: 'ArrowRightOutlined', color: '#1677ff', value: 'HD', status: 'active', createdBy: 'admin', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2026-05-01T00:00:00Z' },
-  { id: 'sym-002', code: 'SYM-DC', name: 'Đường chính', description: 'Ký hiệu đường chính', category: 'road', icon: 'LineOutlined', color: '#52c41a', value: 'DC', status: 'active', createdBy: 'admin', createdAt: '2025-01-15T00:00:00Z', updatedAt: '2026-04-15T00:00:00Z' },
-  { id: 'sym-003', code: 'SYM-TT', name: 'Tọa độ', description: 'Ký hiệu tọa độ', category: 'position', icon: 'MapOutlined', color: '#faad14', value: 'TT', status: 'active', createdBy: 'tuanla', createdAt: '2025-02-01T00:00:00Z', updatedAt: '2026-03-10T00:00:00Z' },
-  { id: 'sym-004', code: 'SYM-CC', name: 'Chia cắt', description: 'Ký hiệu chia cắt', category: 'division', icon: 'DividerOutlined', color: '#f5222d', value: 'CC', status: 'inactive', createdBy: 'admin', createdAt: '2025-03-01T00:00:00Z', updatedAt: '2026-02-01T00:00:00Z' },
-  { id: 'sym-005', code: 'SYM-CT', name: 'Cửa tầng', description: 'Ký hiệu cửa tầng ngầm', category: 'building', icon: 'DoorOutlined', color: '#722ed1', value: 'CT', status: 'active', createdBy: 'tuanla', createdAt: '2025-04-01T00:00:00Z', updatedAt: '2026-06-01T00:00:00Z' },
-  { id: 'sym-006', code: 'SYM-BN', name: 'Bến ngầm', description: 'Ký hiệu bến ngầm', category: 'transport', icon: 'ShipOutlined', color: '#13c2c2', value: 'BN', status: 'active', createdBy: 'admin', createdAt: '2025-05-01T00:00:00Z', updatedAt: '2026-05-20T00:00:00Z' },
-  { id: 'sym-007', code: 'SYM-OD', name: 'Địa điểm', description: 'Ký hiệu địa điểm', category: 'location', icon: 'EnvironmentOutlined', color: '#eb2f96', value: 'OD', status: 'deprecated', createdBy: 'admin', createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-12-01T00:00:00Z' },
-];
+function mapSymbol(item: any): Symbol {
+  return {
+    id: item.id ?? '',
+    code: item.code ?? '',
+    name: item.name ?? '',
+    description: item.description ?? '',
+    category: item.category ?? '',
+    icon: item.icon ?? '',
+    color: item.color ?? '',
+    value: item.value ?? '',
+    status: (item.status?.toLowerCase() as Symbol['status']) || 'active',
+    createdBy: item.createdBy ?? '',
+    createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : '',
+    updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : '',
+  };
+}
 
 export const symbolService = {
   async list(params?: { page?: number; pageSize?: number; search?: string; category?: string; status?: string }): Promise<PaginatedResponse<Symbol>> {
-    await delay();
+    const backendPage = params?.page ? params.page - 1 : 0;
 
-    let filtered = [...symbols];
+    const resp = await api.get('/symbols', {
+      params: {
+        search: params?.search,
+        category: params?.category,
+        status: params?.status ? params.status.toUpperCase() : undefined,
+        page: backendPage,
+        size: params?.pageSize || 10,
+      }
+    });
 
-    if (params?.search) {
-      const q = params.search.toLowerCase();
-      filtered = filtered.filter((s) => s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q) || (s.description || '').toLowerCase().includes(q));
-    }
-    if (params?.category) {
-      filtered = filtered.filter((s) => s.category === params.category);
-    }
-    if (params?.status) {
-      filtered = filtered.filter((s) => s.status === params.status);
-    }
+    const rawData: any = extractData(resp);
+    const items: any[] = Array.isArray(rawData)
+      ? rawData
+      : (rawData && Array.isArray(rawData.content) ? rawData.content : []);
 
-    const page = params?.page || 1;
-    const pageSize = params?.pageSize || 10;
-    const start = (page - 1) * pageSize;
+    const total = Array.isArray(rawData) ? rawData.length : (rawData?.totalElements || 0);
 
     return {
-      data: filtered.slice(start, start + pageSize),
-      total: filtered.length,
-      page,
-      pageSize,
+      data: items.map(mapSymbol),
+      total,
+      page: params?.page || 1,
+      pageSize: params?.pageSize || 10,
     };
   },
 
   async getById(id: string): Promise<Symbol> {
-    await delay(300);
-    const sym = symbols.find((s) => s.id === id);
-    if (!sym) throw new Error('Biểu tượng không tồn tại');
-    return sym;
+    const resp = await api.get(`/symbols/${id}`);
+    return mapSymbol(extractData(resp));
   },
 
   async getByCode(code: string): Promise<Symbol> {
-    await delay(300);
-    const sym = symbols.find((s) => s.code === code);
-    if (!sym) throw new Error(`Biểu tượng ${code} không tồn tại`);
-    return sym;
+    const resp = await api.get('/symbols', { params: { search: code } });
+    const rawData: any = extractData(resp);
+    const items: any[] = Array.isArray(rawData)
+      ? rawData
+      : (rawData && Array.isArray(rawData.content) ? rawData.content : []);
+    const found = items.find((s: any) => s.code === code);
+    if (!found) throw new Error(`Biểu tượng ${code} không tồn tại`);
+    return mapSymbol(found);
   },
 
   async create(payload: CreateSymbolPayload): Promise<Symbol> {
-    await delay(700);
-    const newSymbol: Symbol = {
-      id: `sym-${Date.now()}`,
+    const resp = await api.post('/symbols', {
       ...payload,
-      status: 'active',
-      createdBy: 'admin',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    symbols.unshift(newSymbol);
-    return newSymbol;
+      status: 'ACTIVE'
+    });
+    return mapSymbol(extractData(resp));
   },
 
   async update(id: string, payload: UpdateSymbolPayload): Promise<Symbol> {
-    await delay(500);
-    const idx = symbols.findIndex((s) => s.id === id);
-    if (idx === -1) throw new Error('Biểu tượng không tồn tại');
-
-    symbols[idx] = { ...symbols[idx], ...payload, updatedAt: new Date().toISOString() };
-    return symbols[idx];
+    const resp = await api.put(`/symbols/${id}`, {
+      ...payload,
+      status: payload.status ? payload.status.toUpperCase() : undefined
+    });
+    return mapSymbol(extractData(resp));
   },
 
   async delete(id: string): Promise<void> {
-    await delay(400);
-    const idx = symbols.findIndex((s) => s.id === id);
-    if (idx === -1) throw new Error('Biểu tượng không tồn tại');
-    symbols = symbols.filter((s) => s.id !== id);
+    await api.delete(`/symbols/${id}`);
   },
 
   async getCategories(): Promise<string[]> {
-    await delay(200);
-    const cats = new Set(symbols.map((s) => s.category));
+    const resp = await api.get('/symbols', { params: { size: 100 } });
+    const rawData: any = extractData(resp);
+    const items: any[] = Array.isArray(rawData)
+      ? rawData
+      : (rawData && Array.isArray(rawData.content) ? rawData.content : []);
+    const cats = new Set(items.map((s: any) => s.category).filter(Boolean));
     return Array.from(cats);
   },
 
   async searchByValue(value: string): Promise<Symbol[]> {
-    await delay(300);
-    return symbols.filter((s) => s.value?.toLowerCase().includes(value.toLowerCase()));
+    const resp = await api.get('/symbols', { params: { search: value, size: 50 } });
+    const rawData: any = extractData(resp);
+    const items: any[] = Array.isArray(rawData)
+      ? rawData
+      : (rawData && Array.isArray(rawData.content) ? rawData.content : []);
+    return items.map(mapSymbol);
   },
 };

@@ -143,17 +143,17 @@ public class MaterializedPathService {
      * @return true if candidateParentId IS an ancestor of nodeId (circular!)
      */
     public boolean isAncestor(UUID nodeId, UUID candidateParentId) {
-        OrgUnit node = repo.findById(nodeId)
-                .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + nodeId));
+        OrgUnit candidateParent = repo.findById(candidateParentId)
+                .orElseThrow(() -> new EntityNotFoundException("Đơn vị cha đề xuất không tồn tại: " + candidateParentId));
 
-        String nodePath = node.getPath();
-        if (nodePath == null || nodePath.isEmpty()) {
-            return false; // no path yet, can't be ancestor
+        String parentPath = candidateParent.getPath();
+        if (parentPath == null || parentPath.isEmpty()) {
+            return false;
         }
 
-        // Check if candidateParentId appears in the node's path (excluding the node itself)
-        String candidatePathFragment = "/" + candidateParentId;
-        return nodePath.contains(candidatePathFragment + "/");
+        // Check if nodeId (the unit being edited) is in candidateParent's path
+        String nodePathFragment = "/" + nodeId;
+        return parentPath.contains(nodePathFragment + "/");
     }
 
     /**

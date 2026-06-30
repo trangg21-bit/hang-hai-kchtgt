@@ -89,7 +89,7 @@ public class NhaTramHistoryService {
             } else if (entity.getChangedBy() == 2L) {
                 userName = "Nhan vien van hanh";
             } else {
-                userName = "Nguoi dung #" + entity.getChangedBy();
+                userName = "Người dùng #" + entity.getChangedBy();
             }
         }
         return NhaTramHistoryResponse.builder()

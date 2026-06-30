@@ -21,7 +21,7 @@ public class TaiNotificationService {
      */
     public void sendApproveNotification(String entityName, UUID approverId) {
         // Post-integration: thong bao nguoi quan ly L1 (phong) cua don vi entity.
-        // Message: "Co dai moi cho phe duyet: " + entityName
+        // Message: "Co dai moi chờ phê duyệt: " + entityName
         log.info("sendApproveNotification: entityName={}, approverId={}", entityName, approverId);
     }
 
@@ -33,7 +33,7 @@ public class TaiNotificationService {
      */
     public void sendRejectNotification(String entityName, UUID approverId) {
         // Post-integration: thong bao nguoi tao.
-        // Message: "Dai bi tu tuyen phe duyet: " + entityName
+        // Message: "Dai bi tu tuyen phê duyệt: " + entityName
         log.info("sendRejectNotification: entityName={}, approverId={}", entityName, approverId);
     }
 
@@ -45,7 +45,7 @@ public class TaiNotificationService {
      */
     public void sendApprovedNotification(String entityName, UUID approverId) {
         // Post-integration: thong bao toan bo don vi lien quan.
-        // Message: "Dai da duoc phe duyet: " + entityName
+        // Message: "Dai da duoc phê duyệt: " + entityName
         log.info("sendApprovedNotification: entityName={}, approverId={}", entityName, approverId);
     }
 }

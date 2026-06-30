@@ -78,7 +78,7 @@ public class ApprovalController {
         String roleCode = request.getRoleCode();
 
         PendingApprovalResponse result = approvalService.approve(id, approverId, roleCode);
-        return ResponseEntity.ok(ApiResponse.success("Phep duyet thanh cong", result));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt thành công", result));
     }
 
     /**
@@ -93,7 +93,7 @@ public class ApprovalController {
         String reason = request.getReason() != null ? request.getReason() : "Khong co ly do";
 
         PendingApprovalResponse result = approvalService.reject(id, approverId, reason);
-        return ResponseEntity.ok(ApiResponse.success("Tu tuyen thanh cong", result));
+        return ResponseEntity.ok(ApiResponse.success("Tu tuyen thành công", result));
     }
 
     // =========================================================================

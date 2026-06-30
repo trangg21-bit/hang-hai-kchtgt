@@ -63,18 +63,7 @@ public class LoginAuditLogService {
      * Lấy IP thực của client từ HttpServletRequest (xử lý proxy headers).
      */
     public String extractIpAddress(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("X-Real-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        // X-Forwarded-For co the chua nhieu IP (client -> proxy1 -> proxy2)
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
-        return ip;
+        return com.hanghai.kchtg.common.util.IpUtils.getClientIp(request);
     }
 
     /**

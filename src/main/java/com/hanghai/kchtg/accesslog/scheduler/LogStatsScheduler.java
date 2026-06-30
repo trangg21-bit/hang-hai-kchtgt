@@ -12,7 +12,7 @@ import java.time.LocalDate;
 
 /**
  * Scheduler để tính toán thống kê aggregate hàng ngày.
- * Chạy lúc 03:00 mỗi ngày theo {@code LOG_STATS_CRON} (default: 0 3 * * ?).
+ * Chạy lúc 03:00 mỗi ngày theo {@code LOG_STATS_CRON} (default: 0 0 3 * * ?).
  */
 @Component
 public class LogStatsScheduler {
@@ -27,7 +27,7 @@ public class LogStatsScheduler {
 
     /**
      * Compute aggregate stats for yesterday at 3 AM daily.
-     * Uses @Value("${LOG_STATS_CRON:0 3 * * ?}") for configurable cron expression.
+     * Uses @Value("${LOG_STATS_CRON:0 0 3 * * ?}") for configurable cron expression.
      */
     @Scheduled(cron = "${LOG_STATS_CRON:0 0 3 * * ?}")
     public void computeDailyAggregate() {

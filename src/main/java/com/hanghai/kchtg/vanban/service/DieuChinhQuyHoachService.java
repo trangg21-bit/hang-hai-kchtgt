@@ -96,7 +96,7 @@ public class DieuChinhQuyHoachService {
 
     @Transactional
     public PheDuyetDieuChinhResponse addApproval(Long dieuChinhId, PheDuyetDieuChinhRequest request) {
-        log.info("Adding PheDuyetDieuChinh for dieuChinhId: {}", dieuChinhId);
+        log.info("Adding PheDuyệtDieuChinh for dieuChinhId: {}", dieuChinhId);
         DieuChinhQuyHoach dc = dieuChinhQuyHoachRepository.findById(dieuChinhId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy điều chỉnh với id: " + dieuChinhId));
 

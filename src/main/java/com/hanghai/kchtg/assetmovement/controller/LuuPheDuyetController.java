@@ -21,22 +21,22 @@ import java.util.UUID;
  * Pattern tu TaiHistoryController (M-015).
  */
 @RestController
-@RequestMapping("/api/v1/asset/luu-phe-duyet")
+@RequestMapping("/api/v1/asset/luu-phe-duyệt")
 @RequiredArgsConstructor
 public class LuuPheDuyetController {
 
     private final LuuPheDuyetService luuPheService;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:luu-phe-duyet')")
+    @PreAuthorize("@auth.check(authentication, 'asset:luu-phe-duyệt')")
     public ResponseEntity<ApiResponse<LuuPheDuyetResponse>> create(
             @RequestBody LuuPheDuyetRequest request) {
         LuuPheDuyetResponse response = luuPheService.create(request);
-        return ResponseEntity.status(201).body(ApiResponse.success("Luu phe duyet da duoc tao", response));
+        return ResponseEntity.status(201).body(ApiResponse.success("Luu phê duyệt da duoc tao", response));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:luu-phe-duyet')")
+    @PreAuthorize("@auth.check(authentication, 'asset:luu-phe-duyệt')")
     public ResponseEntity<ApiResponse<LuuPheDuyetResponse>> getById(
             @PathVariable UUID id) {
         LuuPheDuyetResponse response = luuPheService.getById(id);
@@ -44,7 +44,7 @@ public class LuuPheDuyetController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:luu-phe-duyet')")
+    @PreAuthorize("@auth.check(authentication, 'asset:luu-phe-duyệt')")
     public ResponseEntity<ApiResponse<Page<LuuPheDuyetResponse>>> findAll(
             @RequestParam(required = false) UUID yeuCauId,
             @RequestParam(required = false) KetQuaPheDuyet ketQua,
@@ -66,19 +66,19 @@ public class LuuPheDuyetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:luu-phe-duyet')")
+    @PreAuthorize("@auth.check(authentication, 'asset:luu-phe-duyệt')")
     public ResponseEntity<ApiResponse<LuuPheDuyetResponse>> update(
             @PathVariable UUID id,
             @RequestBody LuuPheDuyetRequest request) {
         LuuPheDuyetResponse response = luuPheService.update(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Luu phe duyet da duoc cap nhat", response));
+        return ResponseEntity.ok(ApiResponse.success("Luu phê duyệt da duoc cap nhat", response));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:luu-phe-duyet')")
+    @PreAuthorize("@auth.check(authentication, 'asset:luu-phe-duyệt')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         luuPheService.delete(id);
-        return ResponseEntity.ok(ApiResponse.success("Luu phe duyet da duoc xoa", null));
+        return ResponseEntity.ok(ApiResponse.success("Luu phê duyệt da duoc xoa", null));
     }
 }

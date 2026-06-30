@@ -1,13 +1,13 @@
 ---
 id: F-012
-name: "Xem chi tiết Cảng biển"
+name: Xem chi tiết Cảng biển
 slug: xem-cb
 module-id: M-002
-status: proposed
+status: done
 classification: local
 priority: critical
-created: "2026-06-16T04:40:19Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:40:19Z
+last-updated: 2026-06-29T11:09:59Z
 locked-fields: []
 consumed_by_modules: []
 ---

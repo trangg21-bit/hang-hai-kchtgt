@@ -124,6 +124,8 @@ export default function FormField(props: FormFieldProps) {
           mode: (props as SelectField).mode,
           allowClear: (props as SelectField).allowClear !== false,
           showSearch: (props as SelectField).searchable !== false,
+          filterOption: (input, option) =>
+            (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase()),
           maxCount: (props as SelectField).maxCount,
         };
         return <Select {...selectProps} />;

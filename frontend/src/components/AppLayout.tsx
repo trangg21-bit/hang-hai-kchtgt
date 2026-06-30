@@ -63,6 +63,7 @@ const canAccessMenu = (path: string): boolean => {
 };
 
 const pageTitles: Record<string, string> = {
+  '/': 'Trang chủ',
   '/users': 'Quản lý người dùng',
   '/organizations': 'Quản lý đơn vị',
   '/groups': 'Quản lý nhóm',
@@ -95,6 +96,8 @@ export default function AppLayout() {
   const { token } = theme.useToken();
 
   const menuItems: MenuProps['items'] = [
+    { key: '/', icon: <DashboardOutlined />, label: 'Trang chủ' },
+    { type: 'divider' as const },
     canAccessMenu('/users') ? { key: '/users', icon: <UserOutlined />, label: 'Quản lý người dùng' } : null,
     canAccessMenu('/organizations') ? { key: '/organizations', icon: <TeamOutlined />, label: 'Quản lý đơn vị' } : null,
     canAccessMenu('/groups') ? { key: '/groups', icon: <TeamOutlined />, label: 'Quản lý nhóm' } : null,
@@ -181,6 +184,7 @@ export default function AppLayout() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Logo area */}
       <div
+        onClick={() => navigate('/')}
         style={{
           height: 64,
           display: 'flex',
@@ -189,6 +193,7 @@ export default function AppLayout() {
           borderBottom: `1px solid ${token.colorBorderSecondary}`,
           padding: '0 16px',
           gap: 8,
+          cursor: 'pointer',
         }}
       >
         <TeamOutlined style={{ fontSize: 22, color: token.colorPrimary }} />
@@ -289,8 +294,8 @@ export default function AppLayout() {
               </Badge>
               {!isMobile && (
                 <>
-                  <div>
-                    <Typography.Text strong style={{ fontSize: 14, display: 'block' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 'normal', justifyContent: 'center' }}>
+                    <Typography.Text strong style={{ fontSize: 14 }}>
                       {user?.fullName || 'Admin'}
                     </Typography.Text>
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>

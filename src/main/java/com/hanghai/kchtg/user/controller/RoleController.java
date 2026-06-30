@@ -33,11 +33,19 @@ public class RoleController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<RoleResponse>>> list() {
-        List<RoleResponse> roles = roleService.findAll().stream()
-                .map(RoleResponse::from)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(ApiResponse.success(roles));
+    public ResponseEntity<ApiResponse<?>> list(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        if (page != null && size != null) {
+            org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
+            org.springframework.data.domain.Page<RoleResponse> rolesPage = roleService.findAll(pageable).map(RoleResponse::from);
+            return ResponseEntity.ok(ApiResponse.success(rolesPage));
+        } else {
+            List<RoleResponse> roles = roleService.findAll().stream()
+                    .map(RoleResponse::from)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(ApiResponse.success(roles));
+        }
     }
 
     @GetMapping("/{id}")

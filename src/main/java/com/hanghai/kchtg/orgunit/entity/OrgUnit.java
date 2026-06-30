@@ -75,6 +75,11 @@ public class OrgUnit extends BaseEntity {
     @Column(length = 20)
     private String phone;
 
+    /** Contact person / representative of the unit (optional). */
+    @Size(max = 200, message = "Trưởng đơn vị tối đa 200 ký tự")
+    @Column(name = "contact_person", length = 200)
+    private String contactPerson;
+
     /** Approval status. Defaults to DRAFT at creation time. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
@@ -105,8 +110,8 @@ public class OrgUnit extends BaseEntity {
 
     /** Coefficient for calculations/reports. Must be > 0 with max 2 decimal places (BR-017). */
     @DecimalMin(value = "0.01", message = "Hệ số phải lớn hơn 0")
-    @Column
-    private Double coefficient;
+    @Column(precision = 5, scale = 2)
+    private BigDecimal coefficient;
 
     /** Timestamp when unit was approved (set on APPROVED transition). */
     @Column(name = "approved_at")
@@ -118,8 +123,8 @@ public class OrgUnit extends BaseEntity {
      * Create a new root unit (no parent).
      */
     public static OrgUnit createRoot(String name, String code, OrgUnitType type,
-                                     String description, String address, String phone,
-                                     Double coefficient) {
+                                      String description, String address, String phone,
+                                      java.math.BigDecimal coefficient) {
         OrgUnit unit = new OrgUnit();
         unit.setName(name);
         unit.setCode(code);

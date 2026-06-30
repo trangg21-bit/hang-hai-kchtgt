@@ -37,14 +37,14 @@ public class TaiThongTinHangHaiHNService {
     public TaiThongTinHangHaiHNResponse findById(UUID id) {
         TaiThongTinHangHaiHN entity = taiRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai TT Hang Hai HN khong tim thay: " + id));
+                        "Đài TT Hàng Hải HN không tìm thấy: " + id));
         return toResponse(entity);
     }
 
     public TaiThongTinHangHaiHNResponse findByCode(String code) {
         TaiThongTinHangHaiHN entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai TT Hang Hai HN khong tim thay: " + code));
+                        "Đài TT Hàng Hải HN không tìm thấy: " + code));
         return toResponse(entity);
     }
 
@@ -59,7 +59,7 @@ public class TaiThongTinHangHaiHNService {
     @Transactional
     public TaiThongTinHangHaiHNResponse create(CreateTaiThongTinHangHaiHNRequest request) {
         if (taiRepo.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Da ton tai: " + request.getCode());
+            throw new IllegalArgumentException("Đã tồn tại: " + request.getCode());
         }
 
         TaiThongTinHangHaiHN entity = TaiThongTinHangHaiHN.builder()
@@ -77,7 +77,7 @@ public class TaiThongTinHangHaiHNService {
         entity = taiRepo.save(entity);
 
         saveHistory(entity, TaiHistoryActionType.CREATE, null, null);
-        notificationService.sendApproveNotification("Tai TT Hang Hai HN: " + entity.getName(),
+        notificationService.sendApproveNotification("Đài TT Hàng Hải HN: " + entity.getName(),
                 entity.getCreatedBy());
 
         return toResponse(entity);
@@ -89,10 +89,10 @@ public class TaiThongTinHangHaiHNService {
     public TaiThongTinHangHaiHNResponse update(UUID id, UpdateTaiThongTinHangHaiHNRequest request) {
         TaiThongTinHangHaiHN entity = taiRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai TT Hang Hai HN khong tim thay: " + id));
+                        "Đài TT Hàng Hải HN không tìm thấy: " + id));
 
         if (Boolean.TRUE.equals(entity.getDeleted())) {
-            throw new EntityNotFoundException("Tai da bi xoa");
+            throw new EntityNotFoundException("Đài đã bị xóa");
         }
 
         String oldJson = toJson(entity);
@@ -118,10 +118,10 @@ public class TaiThongTinHangHaiHNService {
     public void delete(String code) {
         TaiThongTinHangHaiHN entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai TT Hang Hai HN khong tim thay: " + code));
+                        "Đài TT Hàng Hải HN không tìm thấy: " + code));
 
         if (Boolean.TRUE.equals(entity.getDeleted())) {
-            throw new IllegalArgumentException("Tai nay da bi xoa truoc do");
+            throw new IllegalArgumentException("Đài này đã bị xóa trước đó");
         }
 
         entity.softDelete();
@@ -138,7 +138,7 @@ public class TaiThongTinHangHaiHNService {
     public TaiThongTinHangHaiHNResponse approve(String code, String remarks, UUID approverId) {
         TaiThongTinHangHaiHN entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai TT Hang Hai HN khong tim thay: " + code));
+                        "Đài TT Hàng Hải HN không tìm thấy: " + code));
 
         entity.setStatus(TaiStatus.ACTIVE);
         entity.setApprovalStatus(TaiApprovalStatus.APPROVED);
@@ -156,7 +156,7 @@ public class TaiThongTinHangHaiHNService {
     public TaiThongTinHangHaiHNResponse reject(String code, String remarks, UUID approverId) {
         TaiThongTinHangHaiHN entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai TT Hang Hai HN khong tim thay: " + code));
+                        "Đài TT Hàng Hải HN không tìm thấy: " + code));
 
         entity.setApprovalStatus(TaiApprovalStatus.REJECTED);
         entity.setUnapprovedBy(approverId);

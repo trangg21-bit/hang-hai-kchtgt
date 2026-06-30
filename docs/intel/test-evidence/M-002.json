@@ -1,0 +1,82 @@
+{
+  "schema-version": "1.0",
+  "feature-id": "M-002",
+  "captured-at": "2026-06-28T16:00:00Z",
+  "captured-by": "resume-module/qa",
+  "playwright-config": null,
+  "note": "Backend-only module. No Playwright tests. Evidence is JUnit/compilation based.",
+  "compilation": {
+    "command": "mvn -q -DskipTests compile",
+    "result": "BUILD SUCCESS",
+    "exit-code": 0,
+    "files-compiled": 625,
+    "cangben-errors": 0
+  },
+  "test-run": {
+    "command": "mvn -DskipTests=false test",
+    "result": "BUILD FAILURE",
+    "tests-run": 1206,
+    "failures": 9,
+    "errors": 682,
+    "cangben-tests-run": 0,
+    "cangben-tests-exist": false,
+    "pre-existing-jvm25-mockito-errors": 682,
+    "note": "All 682 errors are pre-existing JVM-25 Mockito inline-mock failures in beacon/totp/group packages. Zero cangben tests exist."
+  },
+  "test-cases": [],
+  "screenshots": [],
+  "coverage": {
+    "ac-covered": 4,
+    "ac-total": 12,
+    "ac-coverage-pct": 33.3,
+    "code-coverage-pct": null,
+    "note": "4 ACs verified analytically (approval state machine, pagination cap, duplicate code rejection, FK parent check). 8 ACs not implemented or not verifiable without tests."
+  },
+  "gaps": [
+    {
+      "severity": "blocker",
+      "kind": "missing-migration",
+      "tables": ["vung_nuoc", "giay_to", "lich_su_thay_doi", "phe_duyet_log"],
+      "evidence": "src/main/resources/db/migration/ — no V18+ migrations for these tables",
+      "affected-features": ["F-032", "F-033", "F-034", "F-035", "F-036", "F-037", "F-008 thru F-037 GiayTo", "ALL history features F-013/019/025/031/037"]
+    },
+    {
+      "severity": "blocker",
+      "kind": "missing-tests",
+      "evidence": "src/test/java/com/hanghai/kchtg/cangben/ directory does not exist",
+      "affected-features": ["F-008 thru F-037"]
+    },
+    {
+      "severity": "critical",
+      "kind": "missing-rbac",
+      "evidence": "SecurityConfig.java: only .authenticated() for /api/**; no @PreAuthorize in CangBienController/BenCangController/CauCangController/CangCanController/VungNuocController",
+      "affected-features": ["F-008 thru F-037"]
+    },
+    {
+      "severity": "major",
+      "kind": "stub-not-wired",
+      "description": "CangBienService.countBenCangByCangBienId() and countVungNuocByCangBienId() return 0 (stubs)",
+      "evidence": "src/main/java/com/hanghai/kchtg/cangben/service/CangBienService.java:156-165",
+      "affected-features": ["F-010"]
+    },
+    {
+      "severity": "major",
+      "kind": "missing-validation",
+      "description": "GPS lat/lng range and area max constraints absent from CreateCangBienRequest DTO",
+      "evidence": "src/main/java/com/hanghai/kchtg/cangben/dto/cangbien/CreateCangBienRequest.java — no @DecimalMin/@DecimalMax/@Pattern",
+      "affected-features": ["F-008"]
+    },
+    {
+      "severity": "major",
+      "kind": "business-rule-not-implemented",
+      "description": "BenCangService does not check parent CangBien trangThaiHoatDong == hien_hanh before creating BenCang",
+      "evidence": "src/main/java/com/hanghai/kchtg/cangben/service/BenCangService.java — only FK existence check",
+      "affected-features": ["F-014"]
+    }
+  ],
+  "verdict": "Fail",
+  "freshness": {
+    "catalog-hash-at-capture": null,
+    "code-hash-at-capture": null
+  }
+}

@@ -76,13 +76,17 @@ public class AuthController {
             if (!challenge.isTotpRequired()) {
                 // User does NOT have TOTP enabled - proceed with single-phase login
                 User user = userRepository.findById(challenge.getUserId())
-                        .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                        .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));
 
                 // Update last login
                 user.setLastLoginAt(LocalDateTime.now());
                 userRepository.save(user);
 
+                httpRequest.setAttribute("authenticatedUser", user);
+
                 String role = user.getPrimaryRoleCode() != null ? user.getPrimaryRoleCode() : "ROLE_USER";
+                httpRequest.setAttribute("authenticatedUserRole", role);
+                
                 String token = tokenService.createAccessToken(user);
 
                 LoginResponse response = LoginResponse.of(token, user.getUsername(),
@@ -115,6 +119,11 @@ public class AuthController {
             HttpServletRequest httpRequest) {
         try {
             TwoFactorLoginResponse response = totpAuthService.verifyTotp(request, httpRequest);
+            User user = userRepository.findById(response.getUser().getId()).orElse(null);
+            if (user != null) {
+                httpRequest.setAttribute("authenticatedUser", user);
+                httpRequest.setAttribute("authenticatedUserRole", response.getUser().getRole());
+            }
             log.info("2FA login successful for user ID: {}", request.getUserId());
             return ResponseEntity.ok(ApiResponse.success("2FA login successful", response));
 

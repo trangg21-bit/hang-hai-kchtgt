@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, Form, Input, Button, Typography, message, Divider, Alert } from 'antd';
 import { UserOutlined, LockOutlined, LoginOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -23,6 +23,38 @@ interface LoginData {
   status: string;
 }
 
+interface AxiosErrorResponse {
+  response?: {
+    status?: number;
+    data?: {
+      message?: string;
+    };
+  };
+  message: string;
+}
+
+const getFriendlyAuthError = (err: unknown, defaultMsg: string): string => {
+  const axiosErr = err as AxiosErrorResponse;
+  const rawMsg = axiosErr.response?.data?.message || axiosErr.message;
+  
+  if (!rawMsg) return defaultMsg;
+  
+  if (rawMsg === 'Account is locked') {
+    return 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.';
+  }
+  if (rawMsg.startsWith('Account is locked until')) {
+    return 'Tài khoản của bạn đang tạm thời bị khóa. Vui lòng thử lại sau.';
+  }
+  if (rawMsg === 'Invalid username or password') {
+    return 'Tên đăng nhập hoặc mật khẩu không chính xác.';
+  }
+  if (rawMsg === 'Invalid TOTP code' || rawMsg === 'Mã TOTP không đúng hoặc hết hạn') {
+    return 'Mã xác thực TOTP không chính xác hoặc đã hết hạn.';
+  }
+  
+  return rawMsg;
+};
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const login = useAuthStore((s) => s.login);
@@ -30,6 +62,14 @@ export default function LoginPage() {
   const [showTotp, setShowTotp] = useState(false);
   const [userId, setUserId] = useState('');
   const [totpCode, setTotpCode] = useState('');
+
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    if (query.get('error') === 'locked') {
+      message.error('Tài khoản của bạn đã bị khóa bởi quản trị viên. Vui lòng liên hệ quản trị viên.');
+      navigate('/login', { replace: true });
+    }
+  }, [navigate]);
 
   const handleLogin = useCallback(async (values: LoginRequest) => {
     setSubmitting(true);
@@ -58,17 +98,13 @@ export default function LoginPage() {
       if (loginData.token) {
         login(loginData.username, '', loginData.token);
         message.success('Đăng nhập thành công');
-        navigate('/users');
+        navigate('/');
       } else {
         message.error('Không nhận được token');
       }
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { status: number }; message: string };
-      if (axiosErr.response?.status === 401) {
-        message.error('Tên đăng nhập hoặc mật khẩu không đúng');
-      } else {
-        message.error(axiosErr.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
-      }
+      const msg = getFriendlyAuthError(err, 'Đăng nhập thất bại. Vui lòng thử lại.');
+      message.error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -95,17 +131,13 @@ export default function LoginPage() {
       if (totpData.accessToken) {
         login(totpData.user?.username || '', '', totpData.accessToken);
         message.success('Đăng nhập thành công');
-        navigate('/users');
+        navigate('/');
       } else {
         message.error('Không nhận được token');
       }
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { status: number }; message: string };
-      if (axiosErr.response?.status === 401) {
-        message.error('Mã TOTP không đúng hoặc hết hạn');
-      } else {
-        message.error(axiosErr.message || 'Xác thực TOTP thất bại');
-      }
+      const msg = getFriendlyAuthError(err, 'Xác thực TOTP thất bại. Vui lòng thử lại.');
+      message.error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -155,6 +187,8 @@ export default function LoginPage() {
         </div>
 
         <Divider style={{ margin: '0 0 24px' }} />
+
+
 
         {showTotp ? (
           <div>
@@ -223,9 +257,16 @@ export default function LoginPage() {
               label="Mật khẩu"
               name="password"
               rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }]}
+              style={{ marginBottom: 8 }}
             >
               <Input.Password prefix={<LockOutlined />} placeholder="Mật khẩu" />
             </Form.Item>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
+              <Button type="link" onClick={() => navigate('/forgot-password')} style={{ padding: 0, height: 'auto' }}>
+                Quên mật khẩu?
+              </Button>
+            </div>
 
             <Form.Item style={{ marginBottom: 0 }}>
               <Button

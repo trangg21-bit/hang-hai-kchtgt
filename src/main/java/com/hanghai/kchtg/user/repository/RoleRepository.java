@@ -30,6 +30,16 @@ public interface RoleRepository extends JpaRepository<Role, UUID> {
     List<Role> findByStatus(RoleStatus status);
 
     /**
+     * Tìm tất cả các role có trạng thái khác trạng thái truyền vào (dùng để bỏ qua DELETED).
+     */
+    List<Role> findByStatusNot(RoleStatus status);
+
+    /**
+     * Tìm tất cả các role có trạng thái khác trạng thái truyền vào có phân trang.
+     */
+    org.springframework.data.domain.Page<Role> findByStatusNot(RoleStatus status, org.springframework.data.domain.Pageable pageable);
+
+    /**
      * Tìm role có chứa permission cụ thể.
      */
     @Query("SELECT r FROM Role r WHERE :permission MEMBER OF r.permissions")

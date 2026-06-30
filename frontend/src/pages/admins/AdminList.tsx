@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Button,
   Space,
@@ -42,6 +43,7 @@ const STATUS_MAP: Record<string, { color: string; label: string }> = {
 
 export default function AdminList() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
@@ -215,7 +217,7 @@ export default function AdminList() {
               type="link"
               size="small"
               icon={<FileTextOutlined />}
-              onClick={() => { /* audit page — read-only navigation */ }}
+              onClick={() => navigate(`/admins/${record.id}/audit`)}
             />
           </Tooltip>
           {hasPerm('admin.edit') && (
@@ -267,9 +269,9 @@ export default function AdminList() {
                   setPage(1);
                 }}
                 options={[
-                  { value: 'system-admin', label: 'System Admin' },
-                  { value: 'admin', label: 'Admin' },
-                  { value: 'operator', label: 'Operator' },
+                  { value: 'SUPER_ADMIN', label: 'Quản trị hệ thống (Super Admin)' },
+                  { value: 'MODULE_ADMIN', label: 'Quản trị phân hệ (Admin)' },
+                  { value: 'VIEWER', label: 'Người xem' },
                 ]}
               />
               <Select
@@ -330,7 +332,10 @@ export default function AdminList() {
               current: page,
               pageSize,
               total,
-              onChange: (p) => setPage(p),
+              onChange: (p, sz) => {
+                setPage(p);
+                if (sz) setPageSize(sz);
+              },
               showSizeChanger: true,
               showTotal: (t) => `Tổng ${t} quản trị viên`,
               pageSizeOptions: ['10', '20', '50'],
@@ -345,12 +350,12 @@ export default function AdminList() {
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={() => setModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         confirmLoading={submitting}
         okText={editingAdmin ? 'Cập nhật' : 'Tạo mới'}
         cancelText="Hủy"
         width={600}
-        maskClosable={false}
+        mask={{ closable: false }}
       >
         <Spin spinning={submitting}>
           <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
@@ -373,14 +378,14 @@ export default function AdminList() {
                   label="Mật khẩu"
                   rules={[
                     { required: true, message: 'Vui lòng nhập mật khẩu' },
-                    { min: 6, message: 'Tối thiểu 6 ký tự' },
+                    { min: 8, message: 'Tối thiểu 8 ký tự' },
                     {
                       pattern: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).+$/,
                       message: 'Phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 số',
                     },
                   ]}
                 >
-                  <Input.Password placeholder="Ít nhất 6 ký tự" autoComplete="new-password" />
+                  <Input.Password placeholder="Ít nhất 8 ký tự" autoComplete="new-password" />
                 </Form.Item>
               </>
             )}
@@ -426,9 +431,9 @@ export default function AdminList() {
               <Select
                 placeholder="Chọn vai trò"
                 options={[
-                  { value: 'system-admin', label: 'System Admin' },
-                  { value: 'admin', label: 'Admin' },
-                  { value: 'operator', label: 'Operator' },
+                  { value: 'SUPER_ADMIN', label: 'Quản trị hệ thống (Super Admin)' },
+                  { value: 'MODULE_ADMIN', label: 'Quản trị phân hệ (Admin)' },
+                  { value: 'VIEWER', label: 'Người xem' },
                 ]}
               />
             </Form.Item>

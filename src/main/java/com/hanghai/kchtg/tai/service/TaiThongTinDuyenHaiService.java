@@ -38,14 +38,14 @@ public class TaiThongTinDuyenHaiService {
     public TaiThongTinDuyenHaiResponse findById(UUID id) {
         TaiThongTinDuyenHai entity = taiRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai thong tin duyen hai khong tim thay: " + id));
+                        "Đài thông tin duyên hải không tìm thấy: " + id));
         return toResponse(entity);
     }
 
     public TaiThongTinDuyenHaiResponse findByCode(String code) {
         TaiThongTinDuyenHai entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai thong tin duyen hai khong tim thay: " + code));
+                        "Đài thông tin duyên hải không tìm thấy: " + code));
         return toResponse(entity);
     }
 
@@ -68,7 +68,7 @@ public class TaiThongTinDuyenHaiService {
     @Transactional
     public TaiThongTinDuyenHaiResponse create(CreateTaiThongTinDuyenHaiRequest request) {
         if (taiRepo.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Da ton tai: " + request.getCode());
+            throw new IllegalArgumentException("Đã tồn tại: " + request.getCode());
         }
 
         TaiThongTinDuyenHai entity = TaiThongTinDuyenHai.builder()
@@ -99,10 +99,10 @@ public class TaiThongTinDuyenHaiService {
     public TaiThongTinDuyenHaiResponse update(UUID id, UpdateTaiThongTinDuyenHaiRequest request) {
         TaiThongTinDuyenHai entity = taiRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai thong tin duyen hai khong tim thay: " + id));
+                        "Đài thông tin duyên hải không tìm thấy: " + id));
 
         if (Boolean.TRUE.equals(entity.getDeleted())) {
-            throw new EntityNotFoundException("Tai da bi xoa");
+            throw new EntityNotFoundException("Đài đã bị xóa");
         }
 
         String oldJson = toJson(entity);
@@ -131,10 +131,10 @@ public class TaiThongTinDuyenHaiService {
     public void delete(String code) {
         TaiThongTinDuyenHai entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai thong tin duyen hai khong tim thay: " + code));
+                        "Đài thông tin duyên hải không tìm thấy: " + code));
 
         if (Boolean.TRUE.equals(entity.getDeleted())) {
-            throw new IllegalArgumentException("Tai nay da bi xoa truoc do");
+            throw new IllegalArgumentException("Đài này đã bị xóa trước đó");
         }
 
         entity.softDelete();
@@ -152,7 +152,7 @@ public class TaiThongTinDuyenHaiService {
     public TaiThongTinDuyenHaiResponse approve(String code, String remarks, UUID approverId) {
         TaiThongTinDuyenHai entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai thong tin duyen hai khong tim thay: " + code));
+                        "Đài thông tin duyên hải không tìm thấy: " + code));
 
         entity.setStatus(TaiStatus.ACTIVE);
         entity.setApprovalStatus(TaiApprovalStatus.APPROVED);
@@ -171,7 +171,7 @@ public class TaiThongTinDuyenHaiService {
     public TaiThongTinDuyenHaiResponse reject(String code, String remarks, UUID approverId) {
         TaiThongTinDuyenHai entity = taiRepo.findByCodeAndDeletedFalse(code)
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Tai thong tin duyen hai khong tim thay: " + code));
+                        "Đài thông tin duyên hải không tìm thấy: " + code));
 
         entity.setApprovalStatus(TaiApprovalStatus.REJECTED);
         entity.setUnapprovedBy(approverId);

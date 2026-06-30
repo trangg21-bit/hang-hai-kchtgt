@@ -11,9 +11,19 @@ export const roleService = {
   /**
    * GET /api/roles
    */
-  async list(params?: { search?: string }): Promise<Role[]> {
-    const resp = await api.get('/roles');
-    const items: any[] = extractData(resp) ?? [];
+  async list(params?: { page?: number; pageSize?: number; search?: string }): Promise<any> {
+    const backendPage = params?.page !== undefined ? params.page - 1 : undefined;
+    const resp = await api.get('/roles', {
+      params: {
+        page: backendPage,
+        size: params?.pageSize,
+      }
+    });
+    const rawData: any = extractData(resp);
+    const items: any[] = Array.isArray(rawData)
+      ? rawData
+      : (rawData && Array.isArray(rawData.content) ? rawData.content : []);
+    const total = Array.isArray(rawData) ? rawData.length : (rawData?.totalElements || 0);
 
     let result: Role[] = items.map((item) => ({
       id: item.id ?? '',
@@ -35,6 +45,13 @@ export const roleService = {
       result = result.filter((r) =>
         r.name.toLowerCase().includes(q),
       );
+    }
+
+    if (params?.page !== undefined && params?.pageSize !== undefined) {
+      return {
+        data: result,
+        total,
+      };
     }
 
     return result;

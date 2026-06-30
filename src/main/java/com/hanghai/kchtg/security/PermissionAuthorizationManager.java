@@ -11,6 +11,10 @@ import java.util.Set;
 /**
  * Authorization bean for Spring Security @PreAuthorize expressions.
  * Usage: @PreAuthorize("@auth.check(authentication, 'resource:action')")
+ *
+ * Returns boolean so SpEL evaluates the actual grant/deny value.
+ * Returning AuthorizationDecision was a bug: any non-null object is truthy in SpEL,
+ * causing all @PreAuthorize guards to always pass regardless of isGranted().
  */
 @Component("auth")
 public class PermissionAuthorizationManager {
@@ -24,6 +28,8 @@ public class PermissionAuthorizationManager {
     /**
      * Check if the authenticated user has the required permission.
      * Called by Spring Security's @PreAuthorize expression parser.
+     *
+     * @return true if the user holds the required permission, false otherwise
      */
     public boolean check(Authentication authentication, String requiredPermission) {
         if (authentication == null || !authentication.isAuthenticated()) {

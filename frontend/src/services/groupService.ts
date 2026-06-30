@@ -78,7 +78,12 @@ export const groupService = {
     params?: { page?: number; pageSize?: number; search?: string; status?: string }
   ): Promise<PaginatedResponse<Group>> {
     const resp = await api.get("/groups");
-    const items: any[] = extractData(resp) ?? [];
+    const rawData: any = extractData(resp);
+    const items: any[] = Array.isArray(rawData)
+      ? rawData
+      : (rawData && Array.isArray(rawData.items)
+        ? rawData.items
+        : (rawData && Array.isArray(rawData.content) ? rawData.content : []));
 
     let filtered: any[] = [...items];
 
@@ -109,7 +114,7 @@ export const groupService = {
         code: item.code,
         description: item.description,
         permissions: item.permissions,
-        memberCount: undefined, // backend does not return memberCount
+        memberCount: item.memberCount ?? 0,
         status: (item.status?.toLowerCase() as Group["status"]) ?? "active",
         createdAt: item.createdAt
           ? new Date(item.createdAt).toISOString()
@@ -220,22 +225,25 @@ export const groupService = {
   // --- Members ---
   /**
    * GET /api/groups/:id/members
-   * Note: GroupMembers endpoint may need backend implementation.
-   * Falls back to empty array.
    */
   async getMembers(groupId: string): Promise<GroupMember[]> {
     try {
       const resp = await api.get(`/groups/${groupId}/members`);
-      const items: any[] = extractData(resp) ?? [];
+      const rawData: any = extractData(resp);
+      const items: any[] = Array.isArray(rawData)
+        ? rawData
+        : (rawData && Array.isArray(rawData.items)
+          ? rawData.items
+          : (rawData && Array.isArray(rawData.content) ? rawData.content : []));
       return items.map((item) => ({
         id: item.id ?? "",
         userId: item.userId ?? "",
         fullName: item.fullName ?? "",
         username: item.username ?? "",
-        email: "", // backend does not return email in GroupMemberResponse
+        email: item.email ?? "",
         groupId: item.groupId ?? groupId,
         groupName: item.groupName ?? "",
-        role: (item.role as GroupMember["role"]) ?? "member",
+        role: (item.roleInGroup as GroupMember["role"]) ?? (item.role as GroupMember["role"]) ?? "member",
         status: item.status ?? "active",
         joinedAt: item.joinedAt
           ? new Date(item.joinedAt).toISOString()
@@ -244,8 +252,8 @@ export const groupService = {
           ? new Date(item.createdAt).toISOString()
           : "",
       }));
-    } catch {
-      // Group members endpoint may not be implemented yet
+    } catch (e) {
+      console.error("Error fetching group members:", e);
       return [];
     }
   },
@@ -259,7 +267,7 @@ export const groupService = {
   ): Promise<void> {
     await api.post(`/groups/${groupId}/members`, {
       userId: payload.userId,
-      role: payload.role,
+      roleInGroup: payload.role,
     });
   },
 

@@ -16,4 +16,10 @@ public class UpdateAdminRequest {
     private List<String> modules;
 
     private AdminStatus status;
+
+    private String fullName;
+
+    private String email;
+
+    private String phone;
 }
