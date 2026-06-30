@@ -7,7 +7,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
-@Entity
+@Entity(name = "CoSuaChuaPheDuyetLichSu")
 @Table(name = "phe_duyet_lich_su")
 @EntityListeners(AuditingEntityListener.class)
 @Data

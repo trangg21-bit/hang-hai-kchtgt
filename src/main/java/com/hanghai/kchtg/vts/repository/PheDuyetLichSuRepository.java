@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-@Repository
+@Repository("vtsPheDuyetLichSuRepository")
 public interface PheDuyetLichSuRepository extends JpaRepository<PheDuyetLichSu, Long> {
 
     List<PheDuyetLichSu> findByHeThongVTSIdOrderByNgayPheDuyetDesc(Long heThongVTSId);

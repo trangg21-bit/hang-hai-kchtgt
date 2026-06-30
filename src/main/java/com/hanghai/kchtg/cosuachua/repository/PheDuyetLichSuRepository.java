@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-@Repository
+@Repository("coSuaChuaPheDuyetLichSuRepository")
 public interface PheDuyetLichSuRepository extends JpaRepository<PheDuyetLichSu, Long> {
 
     List<PheDuyetLichSu> findByCoSuaChuaIdOrderByNgayPheDuyetDesc(Long coSuaChuaId);

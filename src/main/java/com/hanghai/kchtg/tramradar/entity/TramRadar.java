@@ -49,7 +49,6 @@ public class TramRadar {
     @Column(name = "tinh_trang", length = 50)
     private String tinhTrang;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "trang_thai", nullable = false, length = 20)
     private String trangThai;
 
