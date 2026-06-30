@@ -161,10 +161,10 @@
       "version": 14
     },
     "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/module-brief.md": {
-      "content_hash": "sha256:08472eaf917a98806ee66b4f337fe4a89e9c19f2f487d58cf9475a05a16f0f79",
-      "last_modified": "2026-06-16T06:28:30Z",
+      "content_hash": "sha256:dd7371b7d9cbf798269a879b10318c5a211d87e0481b8525efa85994219460fb",
+      "last_modified": "2026-06-30T07:27:41Z",
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
-      "version": 1
+      "version": 2
     },
     "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/module-brief.md": {
       "content_hash": "sha256:6a6504c1d0a73e16623490f791262b80054f720dcf9fd8962b36e34eeab68c6c",

@@ -1,65 +1,61 @@
 ---
 id: F-065
-name: Phê duyệt Hệ thống VTS
+name: "Phe duyet He thong VTS"
 slug: phe-duyet-he-thong-vts
 module-id: M-003
 status: proposed
 classification: local
-priority: high
-created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+priority: P0
+created: "2026-06-30T00:00:00Z"
+last-updated: "2026-06-30T00:00:00Z"
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Phê duyệt Hệ thống VTS
+
+# Feature: Phe duyet He thong VTS
 
 ## Description
-Quy trình phê duyệt hai cấp cho các bản ghi hệ thống VTS: trưởng phòng phê duyệt cấp 1 và cục trưởng phê duyệt cấp 2. Sau khi hoàn tất cả hai cấp phê duyệt, bản ghi hệ thống VTS được đưa vào hệ thống chính thức và xuất hiện trong các báo cáo tổng hợp về hạ tầng dịch vụ thông tin giao thông đường thủy.
+Quy trinh phe duyet 2 cap cho He thong VTS: Cap C1 (Truong Phong) → Cap C2 (Giam Cuc), tu trang thai PROPOSED/UNDER_REVIEW den APPROVED.
 
 ## Business Intent
-Đảm bảo chất lượng và tính chính xác của dữ liệu hệ thống VTS trước khi đưa vào hệ thống thống kê chính thức. Cơ chế phê duyệt hai cấp giúp kiểm soát thông tin, giảm thiểu sai sót và đảm bảo trách nhiệm giải trình trong quản lý tài sản hạ tầng hàng hải khu nước VTS.
+Đảm bảo mọi thay đổi về Hệ thống VTS đều được xem xét, phê duyệt chặt chẽ theo đúng phân cấp quản lý, đảm bảo tính chính xác và hợp lệ của dữ liệu phục vụ công tác quản lý tài sản KCHTGT khu nước & VTS.
 
 ## Flow Summary
-Khi chuyên viên tạo mới hoặc cập nhật bản ghi hệ thống VTS, bản ghi ở trạng thái "chờ phê duyệt cấp 1". Trưởng phòng xem danh sách bản ghi chờ phê duyệt, kiểm tra thông tin và quyết định phê duyệt hoặc từ chối kèm lý do. Nếu được phê duyệt cấp 1, bản ghi chuyển sang "chờ phê duyệt cấp 2". Cục trưởng thực hiện phê duyệt cấp 2 và khi hoàn tất, bản ghi chuyển sang trạng thái "đã phê duyệt" và chính thức ghi nhận trong hệ thống.
+1. Chuyen vien gui y kiến PROPOSED/UPDATE (C1)
+2. Truong Phong xem xet → Phê duyệt C1 → UNDER_REVIEW (Chuyen Cuc)
+3. Giam Cuc xem xét chi tiết → Phê duyệt C2 → APPROVED
+4. Nếu từ chối ở bất kỳ cấp nào → trạng thái REJECTED (tra lại Chuyen vien)
 
 ## Acceptance Criteria
-- Bản ghi hệ thống VTS cần phải trải qua 2 cấp phê duyệt (trưởng phòng → cục trưởng)
-- Trưởng phòng có thể phê duyệt hoặc từ chối bản ghi chờ phê duyệt cấp 1
-- Cục trưởng có thể phê duyệt hoặc từ chối bản ghi chờ phê duyệt cấp 2
-- Khi từ chối, người từ chối phải nhập lý do và bản ghi được gửi lại cho người tạo
-- Khi hoàn tất cả 2 cấp phê duyệt, bản ghi chuyển sang trạng thái "đã phê duyệt"
-
-## In Scope
-- Danh sách bản ghi hệ thống VTS chờ phê duyệt theo từng cấp
-- Giao diện xem chi tiết và ra quyết định phê duyệt/từ chối
-- Nhập lý do phê duyệt hoặc từ chối
-- Theo dõi tiến độ phê duyệt theo từng cấp
-- Thông báo cho người tạo khi bản ghi được phê duyệt hoặc từ chối
-
-## Out of Scope
-- Quy trình tạo mới bản ghi (thuộc tính năng F-062)
-- Cập nhật bản ghi sau phê duyệt (thuộc tính năng F-063)
-- Tự động phê duyệt dựa trên quy tắc
-- Tự động gửi thông báo qua SMS/email
-
-## Roles + Permissions
-| Role | Permissions |
-|------|-------------|
-| Chuyên viên | Xem bản ghi của mình, Nhận thông báo phê duyệt |
-| Trưởng phòng | Phê duyệt cấp 1, Từ chối cấp 1, Xem bản ghi chờ |
-| Cục trưởng | Phê duyệt cấp 2, Từ chối cấp 2, Xem mọi bản ghi |
-| Admin | Xem và quản lý toàn bộ quy trình phê duyệt |
-
-## Entities
-- **HeThongVTS**: id, tenHeThong, viTri, loaiThietBi, phamViBaoPhu, congSuat, ngayVaoVanhHan, heSoHieuQua, nguoiQuanLy, ghiChu, trangThai, pheDuyetC1, nguoiPheDuyetC1, ngayPheDuyetC1, pheDuyetC2, nguoiPheDuyetC2, ngayPheDuyetC2, lyDoTuChoi
-- **PheDuyetLichSu**: id, heThongVTsId, capPheDuyet, trangThai, nguoiPheDuyet, ngayPheDuyet, lyDo
+- [x] Phe duyet 2 cap: phong (C1) → Cuc (C2)
+- [x] Cap C1 chuyen PROPOSED → UNDER_REVIEW
+- [x] Cap C2 chuyen UNDER_REVIEW → APPROVED
+- [x] Từ chối ở bất kỳ cấp → REJECTED (tra lại cho Chuyen vien)
+- [x] Ghi nhan lich sử phê duyệt (ai phê duyệt, khi nào, kết quả)
 
 ## Business Rules
-1. Quy trình phê duyệt bắt buộc 2 cấp: trưởng phòng (cấp 1) rồi đến cục trưởng (cấp 2)
-2. Nếu bị từ chối ở cấp 1, bản ghi gửi lại cho chuyên viên để chỉnh sửa
-3. Nếu bị từ chối ở cấp 2, bản ghi gửi lại cho chuyên viên để chỉnh sửa
-4. Lý do từ chối là trường bắt buộc khi phê duyệt cấp từ chối
-5. Thời gian phê duyệt mỗi cấp phải được ghi nhận và hiển thị trong giao diện
+| ID | Rule | Applies-to | Source |
+|---|---|---|---|
+| BR-065-01 | 2 cấp duyệt: phong (C1) → Cuc (C2) | Approval | UC-3312 |
+| BR-065-02 | Cap C1: PROPOSED → UNDER_REVIEW | Approval | DESIGN.md |
+| BR-065-03 | Cap C2: UNDER_REVIEW → APPROVED | Approval | UC-3312 |
+| BR-065-04 | Tu choi ở bất kỳ cấp → REJECTED | Approval | DESIGN.md |
 
-## Testing Strategy
-Kiểm thử quy trình phê duyệt 2 cấp với các kịch bản: phê duyệt cả 2 cấp, từ chối cấp 1, từ chối cấp 2, gửi lại và tạo mới. Kiểm thử thời gian và trạng thái chuyển đổi giữa các bước. Kiểm thử quyền hạn: trưởng phòng không phê duyệt được cấp 2, cục trưởng chỉ phê duyệt cấp 2.
+## Roles + Permissions
+| Role | Level | Notes |
+|---|---|---|
+| A-003 (Chuyen vien) | Gui xet duyet | Tao cap nhat → gui C1 xem xét |
+| A-002 (Lanh dao Phong) | Phe duyet C1 | PROPOSED → UNDER_REVIEW / REJECTED |
+| A-004 (Lanh dao Cuc) | Phe duyet C2 | UNDER_REVIEW → APPROVED / REJECTED |
+
+## Entities
+| Entity | Table | Description |
+|---|---|---|
+| HeThongVTS | he_thong_vts | Entity chinh |
+| HeThongVTSApproval | he_thong_vts_approval | Lich su phe duyet 2 cap |
+| HeThongVTSAttachment | attachment | Tai lieu dinh kem |
+
+## Design Reference
+- DESIGN.md: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/DESIGN.md
+- BA Spec: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/ba/00-lean-spec.md
+- Source: UC-3312

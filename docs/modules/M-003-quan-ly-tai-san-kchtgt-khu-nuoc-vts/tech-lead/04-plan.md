@@ -683,6 +683,69 @@ All acceptance criteria from BA spec section 5 (AC-038-01 through AC-043-05) mus
 
 ---
 
+## 15. DE/KE Implementation (F-044 → F-049)
+
+| Feature | Name | Priority | Service |
+|---------|------|----------|---------|
+| F-044 | Tạo mới Đê/kè | P0 | engineering-backend-developer |
+| F-045 | Cập nhật Đê/kè | P0 | engineering-backend-developer |
+| F-046 | Xóa Đê/kè | P1 | engineering-backend-developer |
+| F-047 | Phê duyệt Đê/kè | P0 | engineering-backend-developer |
+| F-048 | Xem chi tiết Đê/kè | P0 | engineering-backend-developer |
+| F-049 | Lịch sử Đê/kè | P1 | engineering-backend-developer |
+
+### Package: com.hanghai.kchtg.deke
+
+| File | Type | Description |
+|------|------|-------------|
+| entity/DeKe.java | Entity | Main entity (loaiDe, viTri, chieuDai, chieuRong, chieuCao, matVatLieu, tinhTrang, trangThaiPheDuyet) |
+| entity/DeKeAttachment.java | Entity | Attachments (FK to DeKe) |
+| repository/DeKeRepository.java | Repository | JpaRepository + custom queries |
+| dto/DeKeCreateRequest.java | DTO | Create request |
+| dto/DeKeResponse.java | DTO | Response |
+| dto/PheDuyetRequest.java | DTO | Approval request |
+| dto/PheDuyetResponse.java | DTO | Approval response |
+| dto/HistoryEntry.java | DTO | History log |
+| dto/DeKeAttachmentResponse.java | DTO | Attachment response |
+| service/DeKeService.java | Service | CRUD + 2-tier approval workflow |
+| controller/DeKeController.java | Controller | REST @RequestMapping("/api/v1/de-ke") |
+
+### Implementation Order (10 files)
+1. entity/DeKe.java
+2. entity/DeKeAttachment.java
+3. repository/DeKeRepository.java
+4. dto/DeKeCreateRequest.java
+5. dto/DeKeResponse.java
+6. dto/PheDuyetRequest.java
+7. dto/PheDuyetResponse.java
+8. dto/HistoryEntry.java
+9. service/DeKeService.java
+10. controller/DeKeController.java
+
+### Dependencies
+entity/DeKe → repository/DeKeRepository → service/DeKeService → controller/DeKeController
+entity/DeKeAttachment → entity/DeKe (ManyToOne FK)
+
+### Risk Analysis
+- Entity name collision: TrangThaiPheDuyet enum reused from luonghanghai — ensure no conflict
+- Approval workflow: 2-tier (phong→cuc) same as luonghanghai
+- Soft delete: isDeleted flag same pattern
+
+### Code Review Checklist
+- JPA annotations (@Entity, @Table, @Data, @Builder, @PrePersist, @PreUpdate)
+- Repository: JpaRepository + findByTrangThaiPheDuyet, search methods
+- Service: @Service, @RequiredArgsConstructor, @Transactional for writes
+- Controller: @RestController, @RequestMapping, @PreAuthorize
+- DTOs: CreateRequest/Response pattern, validation (@NotBlank, @Min)
+- Naming: camelCase Java, snake_case DB columns
+
+### Build & Test Plan
+- mvn compile → BUILD SUCCESS
+- mvn test → PASS (36+ test cases)
+- Test coverage ≥ 70%
+
+---
+
 <verdict_envelope>
   <verdict>Pass</verdict>
   <confidence>high</confidence>
