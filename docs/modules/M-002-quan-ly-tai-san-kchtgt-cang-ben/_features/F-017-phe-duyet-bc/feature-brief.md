@@ -1,13 +1,13 @@
 ---
 id: F-017
-name: "Phê duyệt Bến cảng"
+name: Phê duyệt Bến cảng
 slug: phe-duyet-bc
 module-id: M-002
-status: proposed
+status: done
 classification: local
 priority: critical
-created: "2026-06-16T04:40:42Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:40:42Z
+last-updated: 2026-06-29T11:10:01Z
 locked-fields: []
 consumed_by_modules: []
 ---

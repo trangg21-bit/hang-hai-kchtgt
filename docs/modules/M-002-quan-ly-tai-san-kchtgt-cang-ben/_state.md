@@ -2,22 +2,19 @@
 feature-id: M-002
 feature-name: Quản lý tài sản KCHTGT - Cảng & Bến
 pipeline-type: sdlc
-status: in-progress
+status: done
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:22Z
-last-updated: 2026-06-29T04:30:58Z
-current-stage: engineering-backend-developer-wave-3
+last-updated: 2026-06-29T09:51:49Z
+current-stage: done
 output-mode: lean
 repo-type: mini
 repo-path: .
 project: ""
 docs-path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben
 intel-path: docs/intel
-stages-queue:
-  - engineering-backend-developer-wave-3
-  - engineering-qa-engineer-wave-3
-  - engineering-code-reviewer
+stages-queue: []
 completed-stages:
   consulting-intelligence-extractor:
     verdict: Ready for BA
@@ -40,6 +37,17 @@ completed-stages:
   engineering-qa-engineer-wave-2:
     verdict: Pass
     artifact: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w2.md
+    completed-at: 2026-06-29
+  engineering-backend-developer-wave-3:
+    verdict: Pass
+    completed-at: 2026-06-29
+  engineering-qa-engineer-wave-3:
+    verdict: Pass
+    artifact: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w3.md
+    completed-at: 2026-06-29
+  engineering-code-reviewer:
+    verdict: Approved
+    artifact: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/reviewer/final-verdict-rereview.md
     completed-at: 2026-06-29
 kpi:
   tokens-total: 0
@@ -83,6 +91,9 @@ Quản lý cảng biển (36), bến cảng (301), cầu cảng (614), cảng c�
 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | Pass |  | 2026-06-28 |
 | engineering-backend-developer-wave-2 | engineering-backend-developer-wave-2 | Pass |  | 2026-06-29 |
 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w2.md | 2026-06-29 |
+| engineering-backend-developer-wave-3 | engineering-backend-developer-wave-3 | Pass |  | 2026-06-29 |
+| engineering-qa-engineer-wave-3 | engineering-qa-engineer-wave-3 | Pass | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w3.md | 2026-06-29 |
+| engineering-code-reviewer | engineering-code-reviewer | Approved | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/reviewer/final-verdict-rereview.md | 2026-06-29 |
 
 ## Current Stage
 

@@ -28,7 +28,6 @@ import java.util.UUID;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.util.List;
@@ -103,20 +102,16 @@ class BenCangRbacSecurityTest {
     // ── Helper ─────────────────────────────────────────────────────────────
 
     /**
-     * RequestPostProcessor that:
-     * 1. Uses SecurityMockMvcRequestPostProcessors.authentication() to install a
-     *    TestSecurityContextRepository so SecurityContextHolderFilter populates
-     *    SecurityContextHolder with the test authentication (required for @PreAuthorize).
-     * 2. Sets request.setUserPrincipal(auth) so Spring MVC's
-     *    ServletRequestMethodArgumentResolver resolves Authentication method parameters.
+     * RequestPostProcessor that sets the user principal on MockHttpServletRequest.
+     * Spring MVC's ServletRequestMethodArgumentResolver resolves the Authentication
+     * method parameter via request.getUserPrincipal(). The SecurityContext for
+     * @PreAuthorize SpEL is provided separately by @WithMockUser.
      */
-    private RequestPostProcessor userPrincipal(String username) {
-        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+    private RequestPostProcessor principalOf(String username) {
+        UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(
                 username, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
-        RequestPostProcessor securityCtxProcessor = SecurityMockMvcRequestPostProcessors.authentication(auth);
         return request -> {
-            request = securityCtxProcessor.postProcessRequest(request);
-            request.setUserPrincipal(auth);
+            request.setUserPrincipal(token);
             return request;
         };
     }
@@ -124,15 +119,16 @@ class BenCangRbacSecurityTest {
     // ── Tests proving WITH-permission path works ───────────────────────────
 
     @Test
+    @WithMockUser(username = "approver-user")
     @DisplayName("approve endpoint — user WITH bencang:approve authority → 200 OK")
     void approve_withAuthority_returns200() throws Exception {
         UUID id = UUID.randomUUID();
 
-        when(auth.check(any(), eq("bencang:approve")))
+        when(auth.check(any(Authentication.class), eq("bencang:approve")))
                 .thenReturn(true);
 
         mockMvc.perform(post("/api/v1/ben-cang/{id}/approve", id)
-                        .with(userPrincipal("approver-user")))
+                        .with(principalOf("approver-user")))
                 .andExpect(status().isOk());
     }
 

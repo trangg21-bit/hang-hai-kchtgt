@@ -1,13 +1,13 @@
 ---
 id: F-029
-name: "Phê duyệt Cảng cạn"
+name: Phê duyệt Cảng cạn
 slug: phe-duyet-cct
 module-id: M-002
-status: proposed
+status: done
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+last-updated: 2026-06-29T11:10:07Z
 locked-fields: []
 consumed_by_modules: []
 ---

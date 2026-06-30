@@ -13,12 +13,12 @@
       "version": 96
     },
     "docs/intel/catalog.json": {
-      "content_hash": "sha256:012dacf07d14b80405297d08e1000df08ecdcd33310a50bfa2283e77aa12d004",
-      "last_modified": "2026-06-28T12:19:33Z",
+      "content_hash": "sha256:9ff3a521a4d7c4b3a81fdeea720469adeae2e08841afcd596f5fcaa0f5691e3f",
+      "last_modified": "2026-06-29T16:40:10Z",
       "last_producer": "ai-kit/state-update-rebuild-catalog",
       "last_updated": "2026-06-27T00:00:00Z",
       "stale": false,
-      "version": 12
+      "version": 16
     },
     "docs/intel/catalog/modules/M-002.json": {
       "last_updated": "2026-06-27T18:31:43Z",
@@ -153,6 +153,12 @@
       "last_updated": "2026-06-27T18:53:22Z",
       "stale": false,
       "updated_by": "sdlc-ba"
+    },
+    "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md": {
+      "content_hash": "sha256:c23cb7824eda9b4e3ede9bfc56544450502a1e654aae59fe833d18ae9ae175b2",
+      "last_modified": "2026-06-29T16:39:04Z",
+      "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
+      "version": 2
     },
     "docs/modules/M-003-quan-ly-hang-hoa/module-brief.md": {
       "content_hash": "sha256:e8bc607a71e630fb166541ba3dd4202a517ba6da0f65c44936ca97d83a3f9fb2",

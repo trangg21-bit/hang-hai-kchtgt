@@ -1,2 +1,385 @@
 schema_version: "1.0"
-features: {}
+features:
+  F-008:
+    id: F-008
+    slug: ql-cb-tao-moi
+    name: Quản lý Cảng biển - Tạo mới
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-008-ql-cb-tao-moi/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-009:
+    id: F-009
+    slug: ql-cb-cap-nhat
+    name: Quản lý Cảng biển - Cập nhật
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-009-ql-cb-cap-nhat/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-010:
+    id: F-010
+    slug: ql-cb-xoa
+    name: Quản lý Cảng biển - Xóa
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-010-ql-cb-xoa/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-011:
+    id: F-011
+    slug: phe-duyet-cb
+    name: Phê duyệt Cảng biển
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-011-phe-duyet-cb/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-012:
+    id: F-012
+    slug: xem-cb
+    name: Xem chi tiết Cảng biển
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-012-xem-cb/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+    description: "Tính năng cho phép người dùng nội bộ tra cứu và xem thông tin chi tiết của Cảng biển bao gồm các trường dữ liệu cơ bản (maCang, tenCang, tinhThanh, trangThai), thông tin kỹ thuật mở rộng (toDo GPS, dienTich, khaNangTiepNhanTau, ghiChu), thông tin audit (createdBy, updatedBy, createdAt, updatedAt), và vị trí địa lý hiển thị trên bản đồ tích hợp GIS. Tính năng hỗ trợ tìm kiếm live (debounce \u2264500ms) theo mã cảng, tên cảng, tỉnh/thành phố và lọc theo trạng thái; danh sách kết quả phân trang (50 mục/trang) với sắp xếp theo tên hoặc thời gian tạo. Trường dữ liệu được kiểm soát hiển thị theo vai trò (field-level RBAC): Nhân viên vận hành chỉ xem 4 trường cơ bản; Chuyên viên và Lãnh đạo xem đầy đủ tất cả trường."
+    acceptance_criteria:
+      - "Người dùng có permission VIEW_CANG_BIEN có thể tra cứu Cảng biển theo mã, tên (partial match, case-insensitive), hoặc tỉnh/thành phố với kết quả trả về trong vòng 3 giây (p95) trên tập 1000 bản ghi."
+      - "Trang chi tiết Cảng biển hiển thị đầy đủ 13 trường của entity CangBien (maCang, tenCang, tinhThanh, toDo, dienTich, khaNangTiepNhanTau, trangThai, ghiChu, createdAt, updatedAt, createdBy, updatedBy) kèm bản đồ tích hợp hiển thị tọa độ GPS; nếu toDo null thì hiển thị thông báo \"Chưa có tọa độ\"."
+      - "Người dùng vai trò Nhân viên vận hành (A-004) chỉ nhận được 4 trường cơ bản (maCang, tenCang, tinhThanh, trangThai) trong cả UI lẫn API response; các trường kỹ thuật mở rộng không xuất hiện trong JSON response cho token vai trò này."
+      - "Danh sách kết quả tìm kiếm hiển thị tối đa 50 bản ghi mỗi trang, có điều hướng phân trang và tùy chọn sắp xếp theo tên hoặc thời gian tạo."
+      - "Kết quả tìm kiếm mặc định chỉ hiển thị Cảng biển trạng thái \"Hiện hành\" và \"Tạm ngừng\"; Cảng trạng thái \"Chờ phê duyệt\" và \"Đã xóa\" chỉ xuất hiện khi người dùng bật tùy chọn \"Xem tất cả\"."
+      - "Người dùng không có permission VIEW_CANG_BIEN nhận HTTP 403 Forbidden khi gọi API GET /cang-bien hoặc GET /cang-bien/{id}."
+  F-013:
+    id: F-013
+    slug: ql-cb-lich-su
+    name: Quản lý Cảng biển - Lịch sử
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-013-ql-cb-lich-su/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-014:
+    id: F-014
+    slug: ql-bc-tao-moi
+    name: Quản lý Bến cảng - Tạo mới
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-014-ql-bc-tao-moi/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-015:
+    id: F-015
+    slug: ql-bc-cap-nhat
+    name: Quản lý Bến cảng - Cập nhật
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-015-ql-bc-cap-nhat/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-016:
+    id: F-016
+    slug: ql-bc-xoa
+    name: Quản lý Bến cảng - Xóa
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-016-ql-bc-xoa/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-017:
+    id: F-017
+    slug: phe-duyet-bc
+    name: Phê duyệt Bến cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-017-phe-duyet-bc/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-018:
+    id: F-018
+    slug: xem-bc
+    name: Xem chi tiết Bến cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-018-xem-bc/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-019:
+    id: F-019
+    slug: ql-bc-lich-su
+    name: Quản lý Bến cảng - Lịch sử
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-019-ql-bc-lich-su/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-020:
+    id: F-020
+    slug: ql-cc-tao-moi
+    name: Quản lý Cầu cảng - Tạo mới
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-020-ql-cc-tao-moi/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-021:
+    id: F-021
+    slug: ql-cc-cap-nhat
+    name: Quản lý Cầu cảng - Cập nhật
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-021-ql-cc-cap-nhat/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-022:
+    id: F-022
+    slug: ql-cc-xoa
+    name: Quản lý Cầu cảng - Xóa
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-022-ql-cc-xoa/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-023:
+    id: F-023
+    slug: phe-duyet-cc
+    name: Phê duyệt Cầu cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-023-phe-duyet-cc/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-024:
+    id: F-024
+    slug: xem-cc
+    name: Xem chi tiết Cầu cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-024-xem-cc/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+    description: "Tính năng cho phép người dùng nội bộ tra cứu và xem thông tin chi tiết của Cầu cảng bao gồm các trường dữ liệu cơ bản (maCau, tenCau, trangThai), thông tin kỹ thuật mở rộng (loaiKetCau, vatLieuChinh, taiTrongThietKe, chieuDaiCau, chieuRongCau, mucNuocCaoNhat, ghiChu), liên kết đến Bến cảng mẹ, thông tin audit (createdBy, updatedBy, createdAt, updatedAt). Tính năng hỗ trợ tìm kiếm theo mã cầu, tên cầu (partial match, case-insensitive), Bến cảng mẹ và lọc theo trạng thái; danh sách kết quả phân trang 50 mục/trang với sắp xếp theo tên hoặc thời gian tạo. Trường dữ liệu được kiểm soát hiển thị theo vai trò (field-level RBAC): Người dùng tại Cảng (A-004) chỉ xem 4 trường cơ bản; Chuyên viên (A-003) và Lãnh đạo (A-002) xem đầy đủ; kiểm soát áp dụng cả tại API layer."
+    acceptance_criteria:
+      - "Người dùng có permission VIEW_CAU_CANG có thể tra cứu Cầu cảng theo mã cầu, tên cầu (partial match, case-insensitive) hoặc Bến cảng mẹ với kết quả trả về trong vòng 3 giây (p95) trên tập 614 bản ghi."
+      - "Trang chi tiết Cầu cảng hiển thị đầy đủ tất cả trường của entity CauCang (maCau, tenCau, liên kết BenCang mẹ, loaiKetCau, vatLieuChinh, taiTrongThietKe, chieuDaiCau, chieuRongCau, mucNuocCaoNhat, trangThai, ghiChu, createdAt, updatedAt, createdBy, updatedBy) cho vai trò Chuyên viên (A-003) trở lên."
+      - "Người dùng tại Cảng (A-004) chỉ nhận được 4 trường cơ bản (maCau, tenCau, trangThai, tenBenCangMe) trong cả UI lẫn API response; các trường kỹ thuật mở rộng không xuất hiện trong JSON response cho token vai trò này."
+      - "Danh sách kết quả tìm kiếm hiển thị tối đa 50 bản ghi mỗi trang, có điều hướng phân trang và tùy chọn sắp xếp theo tên hoặc thời gian tạo."
+      - "Kết quả tìm kiếm mặc định chỉ hiển thị Cầu cảng trạng thái hien_hanh và tam_ngung; trạng thái cho_phe_duyet và da_xoa chỉ xuất hiện khi bật tùy chọn Xem tất cả."
+      - "Người dùng không có permission VIEW_CAU_CANG nhận HTTP 403 Forbidden khi gọi API GET /cau-cang hoặc GET /cau-cang/{id}."
+  F-025:
+    id: F-025
+    slug: ql-cc-lich-su
+    name: Quản lý Cầu cảng - Lịch sử
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-025-ql-cc-lich-su/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-026:
+    id: F-026
+    slug: ql-cct-tao-moi
+    name: Quản lý Cảng cạn - Tạo mới
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-026-ql-cct-tao-moi/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-027:
+    id: F-027
+    slug: ql-cct-cap-nhat
+    name: Quản lý Cảng cạn - Cập nhật
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-027-ql-cct-cap-nhat/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-028:
+    id: F-028
+    slug: ql-cct-xoa
+    name: Quản lý Cảng cạn - Xóa
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-028-ql-cct-xoa/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-029:
+    id: F-029
+    slug: phe-duyet-cct
+    name: Phê duyệt Cảng cạn
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-029-phe-duyet-cct/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-030:
+    id: F-030
+    slug: xem-cct
+    name: Xem chi tiết Cảng cạn
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-030-xem-cct/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-031:
+    id: F-031
+    slug: ql-cct-lich-su
+    name: Quản lý Cảng cạn - Lịch sử
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-031-ql-cct-lich-su/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-032:
+    id: F-032
+    slug: ql-vn-tao-moi
+    name: Quản lý Vùng nước - Tạo mới
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-032-ql-vn-tao-moi/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-033:
+    id: F-033
+    slug: ql-vn-cap-nhat
+    name: Quản lý Vùng nước - Cập nhật
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-033-ql-vn-cap-nhat/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+    description: "Cho phép người dùng có thẩm quyền (Admin hoặc Quản lý cảng) cập nhật thông tin của Vùng nước đã tồn tại trong hệ thống, bao gồm tên, Cảng biển quản lý, diện tích, độ sâu, tọa độ, điều kiện hải văn, khả năng thông hành và mục đích sử dụng. Mã vùng nước là trường bất biến sau khi tạo. Hệ thống cảnh báo khi Vùng nước đang chờ phê duyệt, chặn cập nhật khi đã xóa mềm, kích hoạt phê duyệt lại khi thay đổi trường quan trọng (doSau, khaNangThongHanh), và ghi nhật ký thay đổi tự động (LichSuVungNuoc) sau mỗi lần lưu thành công để đảm bảo kiểm toán đầy đủ."
+    acceptance_criteria:
+      - "Người dùng có role Admin hoặc Quan_ly_cang mới có thể truy cập chức năng cập nhật Vùng nước; role khác nhận HTTP 403 khi gọi API trực tiếp"
+      - "Trường mã vùng nước (ma) ở trạng thái read-only trên UI và bị bỏ qua/từ chối ở tầng API nếu được gửi lên; tất cả trường còn lại đều có thể chỉnh sửa"
+      - "Hệ thống hiển thị cảnh báo xác nhận khi Vùng nước đang trong trạng thái cho_phe_duyet và chặn hoàn toàn khi trangThai = da_xoa"
+      - "Thay đổi trường doSau hoặc khaNangThongHanh tự động kích hoạt yêu cầu phê duyệt lại theo F-035 và cập nhật trangThai thành cho_phe_duyet_lai"
+      - "Mỗi lần cập nhật thành công, hệ thống ghi bản ghi LichSuVungNuoc cho từng trường bị thay đổi, bao gồm giaTriCu, giaTriMoi, nguoiCapNhat và thoiGianCapNhat; nhật ký không thể xóa hoặc sửa bởi bất kỳ actor nào"
+  F-034:
+    id: F-034
+    slug: ql-vn-xoa
+    name: Quản lý Vùng nước - Xóa
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-034-ql-vn-xoa/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-035:
+    id: F-035
+    slug: phe-duyet-vn
+    name: Phê duyệt Vùng nước
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-035-phe-duyet-vn/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-036:
+    id: F-036
+    slug: xem-vn
+    name: Xem chi tiết Vùng nước
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-036-xem-vn/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-037:
+    id: F-037
+    slug: ql-vn-lich-su
+    name: Quản lý Vùng nước - Lịch sử
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-037-ql-vn-lich-su/
+    status: done
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
