@@ -12,6 +12,7 @@ import com.hanghai.kchtg.statistics.entity.StatFormStatus;
 import com.hanghai.kchtg.statistics.entity.StatisticsForm;
 import com.hanghai.kchtg.statistics.service.FormApprovalService;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -50,6 +51,9 @@ class FormApprovalControllerTest {
 
     @MockBean
     private UserRepository userRepository;
+    @MockBean
+    private AdminAuditLogRepository adminAuditLogRepository;
+
 
     @MockBean
     private TokenService tokenService;

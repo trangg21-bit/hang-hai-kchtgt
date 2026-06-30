@@ -128,13 +128,15 @@ class MaterializedPathServiceTest {
         UUID childId = UUID.fromString("00000000-0000-0000-0000-000000000003");
         UUID descendantId = UUID.fromString("00000000-0000-0000-0000-000000000004");
 
-        // Grandchild path contains descendant's ID
-        OrgUnit grandchild = new OrgUnit();
-        grandchild.setId(descendantId);
-        grandchild.setPath("/" + childId + "/" + descendantId + "/");
+        // isAncestor(nodeId=descendantId, candidateParentId=childId)
+        // Method calls repo.findById(candidateParentId=childId)
+        OrgUnit child = new OrgUnit();
+        child.setId(childId);
+        child.setPath("/" + childId + "/" + descendantId + "/");
 
-        when(repo.findById(descendantId)).thenReturn(Optional.of(grandchild));
+        when(repo.findById(childId)).thenReturn(Optional.of(child));
 
+        // descendantId is in child's path → circular ref detected
         boolean isAncestor = service.isAncestor(descendantId, childId);
         assertTrue(isAncestor, "A unit's descendant should be detected as ancestor when used as parent");
     }
@@ -145,11 +147,13 @@ class MaterializedPathServiceTest {
         UUID unitId = UUID.fromString("00000000-0000-0000-0000-000000000003");
         UUID unrelatedId = UUID.fromString("00000000-0000-0000-0000-000000000009");
 
-        OrgUnit unit = new OrgUnit();
-        unit.setId(unitId);
-        unit.setPath("/" + unitId + "/");
+        // isAncestor(nodeId=unitId, candidateParentId=unrelatedId)
+        // Method calls repo.findById(candidateParentId=unrelatedId)
+        OrgUnit unrelated = new OrgUnit();
+        unrelated.setId(unrelatedId);
+        unrelated.setPath("/" + unrelatedId + "/");
 
-        when(repo.findById(unitId)).thenReturn(Optional.of(unit));
+        when(repo.findById(unrelatedId)).thenReturn(Optional.of(unrelated));
 
         assertFalse(service.isAncestor(unitId, unrelatedId));
     }
@@ -158,13 +162,17 @@ class MaterializedPathServiceTest {
     @DisplayName("F-003: isAncestor returns false when path is empty")
     void shouldHandleEmptyPath() {
         UUID unitId = UUID.randomUUID();
-        OrgUnit unit = new OrgUnit();
-        unit.setId(unitId);
-        unit.setPath("");
+        UUID candidateParentId = UUID.randomUUID();
 
-        when(repo.findById(unitId)).thenReturn(Optional.of(unit));
+        // isAncestor(nodeId=unitId, candidateParentId=candidateParentId)
+        // Method calls repo.findById(candidateParentId)
+        OrgUnit candidateParent = new OrgUnit();
+        candidateParent.setId(candidateParentId);
+        candidateParent.setPath("");
 
-        assertFalse(service.isAncestor(unitId, UUID.randomUUID()));
+        when(repo.findById(candidateParentId)).thenReturn(Optional.of(candidateParent));
+
+        assertFalse(service.isAncestor(unitId, candidateParentId));
     }
 
     // ── Coefficient validation ───────────────────────────────────────

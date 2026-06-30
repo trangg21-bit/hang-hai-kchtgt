@@ -13,6 +13,7 @@ import com.hanghai.kchtg.security.service.JwtSessionService;
 import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.security.service.TokenValidationService;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +57,9 @@ class ShareControllerTest {
 
     @MockBean
     private UserRepository userRepository;
+    @MockBean
+    private AdminAuditLogRepository adminAuditLogRepository;
+
 
     @MockBean
     private TokenService tokenService;

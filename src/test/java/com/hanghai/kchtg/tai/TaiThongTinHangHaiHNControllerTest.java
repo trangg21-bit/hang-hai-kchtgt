@@ -14,6 +14,7 @@ import com.hanghai.kchtg.tai.entity.TaiType;
 import com.hanghai.kchtg.tai.repository.TaiThongTinHangHaiHNRepository;
 import com.hanghai.kchtg.tai.service.TaiThongTinHangHaiHNService;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +60,9 @@ class TaiThongTinHangHaiHNControllerTest {
 
     @MockBean
     private UserRepository userRepository;
+    @MockBean
+    private AdminAuditLogRepository adminAuditLogRepository;
+
 
     @MockBean
     private TokenService tokenService;

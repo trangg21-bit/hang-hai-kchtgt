@@ -12,6 +12,7 @@ import com.hanghai.kchtg.tai.entity.TaiHistoryActionType;
 import com.hanghai.kchtg.tai.entity.TaiType;
 import com.hanghai.kchtg.tai.service.TaiHistoryService;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +54,9 @@ class TaiHistoryControllerTest {
 
     @MockBean
     private UserRepository userRepository;
+    @MockBean
+    private AdminAuditLogRepository adminAuditLogRepository;
+
 
     @MockBean
     private TokenService tokenService;

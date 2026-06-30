@@ -38,28 +38,28 @@ class PasswordPolicyValidatorTest {
     void validate_shouldRejectMissingUppercase() {
         ValidationException ex = assertThrows(ValidationException.class, () -> validator.validate("strongpass!123"));
         assertEquals("VALIDATION_ERROR", ex.getErrorCode());
-        assertTrue(ex.getMessage().contains("chu hoa"));
+        assertTrue(ex.getMessage().contains("chữ hoa"));
     }
 
     @Test
     void validate_shouldRejectMissingLowercase() {
         ValidationException ex = assertThrows(ValidationException.class, () -> validator.validate("STRONGPASS!123"));
         assertEquals("VALIDATION_ERROR", ex.getErrorCode());
-        assertTrue(ex.getMessage().contains("chu thuong"));
+        assertTrue(ex.getMessage().contains("chữ thường"));
     }
 
     @Test
     void validate_shouldRejectMissingDigit() {
         ValidationException ex = assertThrows(ValidationException.class, () -> validator.validate("StrongPass!!!"));
         assertEquals("VALIDATION_ERROR", ex.getErrorCode());
-        assertTrue(ex.getMessage().contains("so"));
+        assertTrue(ex.getMessage().contains("số"));
     }
 
     @Test
     void validate_shouldRejectMissingSpecialChar() {
         ValidationException ex = assertThrows(ValidationException.class, () -> validator.validate("StrongPass123"));
         assertEquals("VALIDATION_ERROR", ex.getErrorCode());
-        assertTrue(ex.getMessage().contains("ky tu dac biet"));
+        assertTrue(ex.getMessage().contains("ký tự đặc biệt"));
     }
 
     @Test
