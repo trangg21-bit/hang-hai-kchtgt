@@ -177,7 +177,7 @@ class LogServiceTest {
     void getRetentionPolicy_ShouldReturnPolicy() {
         LogRetentionPolicy policy = new LogRetentionPolicy();
         policy.setRetentionDays(90);
-        when(retentionPolicyRepository.findById(1L)).thenReturn(Optional.of(policy));
+        when(retentionPolicyRepository.findActive()).thenReturn(Optional.of(policy));
 
         Optional<LogRetentionPolicy> result = logService.getRetentionPolicy();
         assertTrue(result.isPresent());
@@ -187,7 +187,7 @@ class LogServiceTest {
     @Test
     @DisplayName("getRetentionPolicy should return Optional.empty() when not found")
     void getRetentionPolicy_ShouldReturnEmpty() {
-        when(retentionPolicyRepository.findById(1L)).thenReturn(Optional.empty());
+        when(retentionPolicyRepository.findActive()).thenReturn(Optional.empty());
 
         Optional<LogRetentionPolicy> result = logService.getRetentionPolicy();
         assertTrue(result.isEmpty());

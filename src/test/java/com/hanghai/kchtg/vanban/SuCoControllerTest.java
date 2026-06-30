@@ -28,7 +28,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
-@WithMockUser
+@WithMockUser(roles = "SYSTEM_ADMIN")
 class SuCoControllerTest {
 
     @Autowired
