@@ -38,7 +38,7 @@ public class JwtSessionEntity extends BaseEntity {
      * User chu session - FK ->’ User.id.
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, insertable = false, updatable = false, foreignKey = @ForeignKey(name = "fk_jwt_session_user"))
+    @JoinColumn(name = "user_id", nullable = false, insertable = false, updatable = false, foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
     private User user;
 
     /**
