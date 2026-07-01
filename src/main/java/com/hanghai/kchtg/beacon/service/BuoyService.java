@@ -51,7 +51,12 @@ public class BuoyService {
 
     public List<BuoyResponse> search(
             String name, String code, BuoyType type, BeaconStatus status) {
-        return buoyRepo.searchFiltered(name, code, type, status).stream()
+        return buoyRepo.searchFiltered(
+                name,
+                code,
+                type != null ? type.name() : null,
+                status != null ? status.name() : null
+        ).stream()
                 .map(this::toResponse)
                 .toList();
     }

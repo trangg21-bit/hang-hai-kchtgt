@@ -98,12 +98,13 @@ export default function BeaconHistoryList() {
 
   const [beaconType, setBeaconType] = useState<BeaconType>(paramType);
   const [entityId, setEntityId] = useState(paramEntityId);
+  const [entityCode, setEntityCode] = useState('');
   const [actionType, setActionType] = useState<BeaconHistoryActionType | undefined>();
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
   const [fromStr, setFromStr] = useState('');
   const [toStr, setToStr] = useState('');
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<BeaconHistoryResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -117,6 +118,7 @@ export default function BeaconHistoryList() {
       const params: BeaconHistoryFilters = {
         type: beaconType,
         entityId: entityId.trim() || undefined,
+        entityCode: entityCode.trim() || undefined,
         actionType,
         from: fromStr || undefined,
         to: toStr || undefined,
@@ -132,7 +134,7 @@ export default function BeaconHistoryList() {
     } finally {
       setIsLoading(false);
     }
-  }, [beaconType, entityId, actionType, fromStr, toStr, page, pageSize]);
+  }, [beaconType, entityId, entityCode, actionType, fromStr, toStr, page, pageSize]);
 
   const handleSearch = useCallback(() => {
     setPage(1);
@@ -263,11 +265,11 @@ export default function BeaconHistoryList() {
                 options={BEACON_TYPE_OPTIONS}
               />
               <Input
-                placeholder="ID thực thể (entityId)"
+                placeholder="Lọc theo mã đối tượng"
                 allowClear
-                style={{ width: 280 }}
-                value={entityId}
-                onChange={(e) => setEntityId(e.target.value)}
+                style={{ width: 200 }}
+                value={entityCode}
+                onChange={(e) => setEntityCode(e.target.value)}
               />
               <DatePicker.RangePicker
                 placeholder={['Từ ngày', 'Đến ngày']}

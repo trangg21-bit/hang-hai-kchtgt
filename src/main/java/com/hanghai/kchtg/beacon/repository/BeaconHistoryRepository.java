@@ -46,5 +46,20 @@ public interface BeaconHistoryRepository extends JpaRepository<BeaconHistory, UU
         Pageable pageable
     );
 
+    @Query("SELECT h FROM BeaconHistory h WHERE h.beaconType = :beaconType " +
+           "AND (:actionType IS NULL OR h.actionType = :actionType) " +
+           "AND (:from IS NULL OR h.changedAt >= :from) " +
+           "AND (:to IS NULL OR h.changedAt <= :to) " +
+           "AND (:hasEntityIds = false OR h.entityId IN :entityIds)")
+    Page<BeaconHistory> searchHistory(
+        @Param("beaconType") BeaconType beaconType,
+        @Param("entityIds") java.util.Collection<UUID> entityIds,
+        @Param("hasEntityIds") boolean hasEntityIds,
+        @Param("actionType") BeaconHistoryActionType actionType,
+        @Param("from") LocalDateTime from,
+        @Param("to") LocalDateTime to,
+        Pageable pageable
+    );
+
     long countByEntityIdAndBeaconType(UUID entityId, BeaconType beaconType);
 }

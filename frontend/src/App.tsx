@@ -17,9 +17,6 @@ import GISSearch from './pages/gis/GISSearch';
 import GISChartView from './pages/gis/GISChartView';
 import S63PermitsPage from './pages/gis/S63PermitsPage';
 import LoginPage from './pages/Login';
-import AdminList from './pages/admins/AdminList';
-import AdminForm from './pages/admins/AdminForm';
-import AdminAudit from './pages/admins/AdminAudit';
 import ReportList from './pages/reports/ReportList';
 import ReportViewer from './pages/reports/ReportViewer';
 import ConnectionList from './pages/connections/ConnectionList';
@@ -95,11 +92,7 @@ export default function App() {
                 <Route path="/groups/:id/edit" element={<PermissionGuard permission="group:manage"><GroupForm /></PermissionGuard>} />
                 <Route path="/groups/:id/members" element={<PermissionGuard permission="group:manage"><GroupMembers /></PermissionGuard>} />
 
-                {/* Admin — Quản trị viên */}
-                <Route path="/admins" element={<PermissionGuard permission="admin:manage"><AdminList /></PermissionGuard>} />
-                <Route path="/admins/create" element={<PermissionGuard permission="admin:manage"><AdminForm /></PermissionGuard>} />
-                <Route path="/admins/:id/edit" element={<PermissionGuard permission="admin:manage"><AdminForm /></PermissionGuard>} />
-                <Route path="/admins/:id/audit" element={<PermissionGuard permission="admin:manage"><AdminAudit /></PermissionGuard>} />
+
 
                 {/* GIS - Bản đồ */}
                 <Route path="/gis/points" element={<PermissionGuard permission="data:read"><PointObjectList /></PermissionGuard>} />
@@ -138,10 +131,8 @@ export default function App() {
 
                 {/* Beacon Lights & Buoys — Báo hiệu hàng hải */}
                 <Route path="/beacons" element={<PermissionGuard permission="data:read"><BeaconList /></PermissionGuard>} />
-                <Route path="/beacons/create" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
                 <Route path="/beacons/:id" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
                 <Route path="/buoys" element={<PermissionGuard permission="data:read"><BuoyList /></PermissionGuard>} />
-                <Route path="/buoys/create" element={<PermissionGuard permission="data:read"><BuoyForm /></PermissionGuard>} />
                 <Route path="/buoys/:id" element={<PermissionGuard permission="data:read"><BuoyForm /></PermissionGuard>} />
                 <Route path="/history" element={<PermissionGuard permission="data:read"><BeaconHistoryList /></PermissionGuard>} />
 

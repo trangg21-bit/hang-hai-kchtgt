@@ -29,16 +29,16 @@ public interface LineObjectRepository extends JpaRepository<LineObject, UUID> {
 
     List<LineObject> findByCodeContainingIgnoreCase(String code);
 
-    @Query("SELECT l FROM LineObject l WHERE " +
-            "(:name IS NULL OR l.name LIKE %:name%) AND " +
-            "(:code IS NULL OR l.code LIKE %:code%) AND " +
-            "(:objectType IS NULL OR l.objectType = :objectType) AND " +
-            "(:status IS NULL OR l.status = :status)")
+    @Query(value = "SELECT * FROM line_objects l WHERE " +
+            "(:name IS NULL OR LOWER(l.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
+            "(:code IS NULL OR LOWER(l.code) LIKE LOWER(CONCAT('%', :code, '%'))) AND " +
+            "(:objectType IS NULL OR l.object_type = :objectType) AND " +
+            "(:status IS NULL OR l.status = :status)", nativeQuery = true)
     List<LineObject> searchFiltered(
             @Param("name") String name,
             @Param("code") String code,
-            @Param("objectType") ObjectType objectType,
-            @Param("status") Status status
+            @Param("objectType") String objectType,
+            @Param("status") String status
     );
 
     long countByStatus(Status status);

@@ -74,7 +74,7 @@ export default function SymbolList() {
     }
   }, [page, pageSize, search, filterCategory, filterStatus]);
 
-  useEffect(() => { void fetchSymbols(); }, []);
+  useEffect(() => { void fetchSymbols(); }, [fetchSymbols]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);

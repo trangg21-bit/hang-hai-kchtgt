@@ -16,6 +16,7 @@ import com.hanghai.kchtg.gis.search.dto.SearchResponse.SearchResultItem;
 import com.hanghai.kchtg.gis.search.entity.SearchQuery;
 import com.hanghai.kchtg.gis.search.repository.SearchQueryRepository;
 import lombok.RequiredArgsConstructor;
+import javax.sql.DataSource;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -37,7 +38,23 @@ public class SearchService {
     private final PolygonObjectRepository polygonRepository;
     private final SearchQueryRepository searchQueryRepository;
     private final ObjectMapper objectMapper;
+    private final DataSource dataSource;
 
+    private Boolean isH2Database;
+
+    private boolean isH2() {
+        if (isH2Database == null) {
+            try (java.sql.Connection conn = dataSource.getConnection()) {
+                String dbName = conn.getMetaData().getDatabaseProductName();
+                isH2Database = dbName != null && dbName.toLowerCase().contains("h2");
+            } catch (Exception e) {
+                isH2Database = false;
+            }
+        }
+        return isH2Database;
+    }
+
+    @Transactional
     public SearchResponse search(SearchRequest request) {
         long startTime = System.currentTimeMillis();
         List<SearchResultItem> results = new ArrayList<>();
@@ -62,6 +79,9 @@ public class SearchService {
 
         List<SearchResultItem> paginated = results.subList(
                 Math.min(fromIndex, results.size()), toIndex);
+
+        // Save to query history
+        saveSearchQuery(request, results.size(), durationMs);
 
         return SearchResponse.builder()
                 .results(paginated)
@@ -145,7 +165,20 @@ public class SearchService {
         String pointWKT = String.format("POINT (%f %f)", centerLon, centerLat);
 
         // Find PointObjects within 500m using Hibernate Spatial ST_Distance
-        List<PointObject> nearbyPoints = pointRepository.findByDistance(pointWKT, radiusMeters);
+        List<PointObject> nearbyPoints;
+        if (isH2()) {
+            nearbyPoints = pointRepository.findByStatus(Status.PUBLISHED).stream()
+                .filter(p -> calculateDistance(centerLon, centerLat, p.getLongitude(), p.getLatitude()) <= radiusMeters)
+                .toList();
+        } else {
+            try {
+                nearbyPoints = pointRepository.findByDistance(pointWKT, radiusMeters);
+            } catch (Exception e) {
+                nearbyPoints = pointRepository.findByStatus(Status.PUBLISHED).stream()
+                    .filter(p -> calculateDistance(centerLon, centerLat, p.getLongitude(), p.getLatitude()) <= radiusMeters)
+                    .toList();
+            }
+        }
         for (PointObject p : nearbyPoints) {
             double distance = calculateDistance(centerLon, centerLat, p.getLongitude(), p.getLatitude());
             results.add(SearchResultItem.builder()
@@ -182,7 +215,20 @@ public class SearchService {
         String pointWKT = String.format("POINT (%f %f)", centerLon, centerLat);
 
         // Find PointObjects within radius
-        List<PointObject> nearbyPoints = pointRepository.findByDistance(pointWKT, radiusMeters);
+        List<PointObject> nearbyPoints;
+        if (isH2()) {
+            nearbyPoints = pointRepository.findByStatus(Status.PUBLISHED).stream()
+                .filter(p -> calculateDistance(centerLon, centerLat, p.getLongitude(), p.getLatitude()) <= radiusMeters)
+                .toList();
+        } else {
+            try {
+                nearbyPoints = pointRepository.findByDistance(pointWKT, radiusMeters);
+            } catch (Exception e) {
+                nearbyPoints = pointRepository.findByStatus(Status.PUBLISHED).stream()
+                    .filter(p -> calculateDistance(centerLon, centerLat, p.getLongitude(), p.getLatitude()) <= radiusMeters)
+                    .toList();
+            }
+        }
         for (PointObject p : nearbyPoints) {
             double distance = calculateDistance(centerLon, centerLat, p.getLongitude(), p.getLatitude());
             results.add(SearchResultItem.builder()
@@ -353,10 +399,23 @@ public class SearchService {
             // Ignore - queryParams is optional
         }
 
+        Long userId = request.getUnitId() != null ? request.getUnitId() : 0L;
+        String queryText = request.getQuery();
+
+        // Deduplicate: Find existing identical search queries and delete them so the new one goes to the top
+        List<SearchQuery> existing = searchQueryRepository.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(0, Integer.MAX_VALUE));
+        for (SearchQuery q : existing) {
+            boolean textMatches = (queryText == null && q.getQueryText() == null)
+                    || (queryText != null && queryText.equalsIgnoreCase(q.getQueryText()));
+            if (q.getQueryType() == request.getQueryType() && textMatches) {
+                searchQueryRepository.delete(q);
+            }
+        }
+
         SearchQuery query = SearchQuery.builder()
-                .userId(request.getUnitId() != null ? request.getUnitId() : 0L)
+                .userId(userId)
                 .queryType(request.getQueryType())
-                .queryText(request.getQuery())
+                .queryText(queryText)
                 .queryParams(queryParamsJson)
                 .resultCount(resultCount)
                 .durationMs(durationMs)

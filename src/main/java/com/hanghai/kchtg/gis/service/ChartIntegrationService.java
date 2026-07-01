@@ -144,6 +144,11 @@ public class ChartIntegrationService {
         return permitRepository.save(permit);
     }
 
+    public boolean isPermitRegistered(String cellName) {
+        if (cellName == null) return false;
+        return permitRepository.findByCellName(cellName.toUpperCase().trim()).isPresent();
+    }
+
     /**
      * Lists all registered permits.
      */

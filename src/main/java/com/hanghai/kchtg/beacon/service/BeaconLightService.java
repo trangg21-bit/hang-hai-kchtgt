@@ -51,7 +51,12 @@ public class BeaconLightService {
 
     public List<BeaconLightResponse> search(
             String name, String code, BeaconLightType type, BeaconStatus status) {
-        return beaconLightRepo.searchFiltered(name, code, type, status).stream()
+        return beaconLightRepo.searchFiltered(
+                name,
+                code,
+                type != null ? type.name() : null,
+                status != null ? status.name() : null
+        ).stream()
                 .map(this::toResponse)
                 .toList();
     }

@@ -38,7 +38,6 @@ const MENU_PERMISSION_MAP: Record<string, string> = {
   '/users': 'user:manage',
   '/organizations': 'orgunit:manage',
   '/groups': 'group:manage',
-  '/admins': 'admin:manage',
   '/roles': 'role:manage',
   '/gis/points': 'data:read',
   '/gis/lines': 'data:read',
@@ -67,7 +66,6 @@ const pageTitles: Record<string, string> = {
   '/users': 'Quản lý người dùng',
   '/organizations': 'Quản lý đơn vị',
   '/groups': 'Quản lý nhóm',
-  '/admins': 'Quản trị viên',
   '/roles': 'Phân quyền',
   '/gis/points': 'Đối tượng điểm',
   '/gis/lines': 'Đối tượng đường',
@@ -101,7 +99,6 @@ export default function AppLayout() {
     canAccessMenu('/users') ? { key: '/users', icon: <UserOutlined />, label: 'Quản lý người dùng' } : null,
     canAccessMenu('/organizations') ? { key: '/organizations', icon: <TeamOutlined />, label: 'Quản lý đơn vị' } : null,
     canAccessMenu('/groups') ? { key: '/groups', icon: <TeamOutlined />, label: 'Quản lý nhóm' } : null,
-    canAccessMenu('/admins') ? { key: '/admins', icon: <IdcardOutlined />, label: 'Quản trị viên' } : null,
     canAccessMenu('/roles') ? { key: '/roles', icon: <SafetyOutlined />, label: 'Phân quyền' } : null,
     { type: 'divider' as const },
     {
