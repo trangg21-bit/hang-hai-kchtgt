@@ -10,9 +10,9 @@ modules:
     slug: quan-ly-tai-san-kchtgt-cang-ben
     status: in-progress
   M-003:
-    name: Quản lý tàu bè
-    path: docs/modules/M-003-quan-ly-tau-be
-    slug: quan-ly-tau-be
+    name: Quản lý tài sản KCHTGT - Khu nước & VTS
+    path: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts
+    slug: quan-ly-tai-san-kchtgt-khu-nuoc-vts
     status: in-progress
   M-004:
     name: Quản lý tài sản Báo hiệu & Thông tin
