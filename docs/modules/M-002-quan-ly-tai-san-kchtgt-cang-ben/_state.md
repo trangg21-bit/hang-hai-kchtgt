@@ -2,19 +2,23 @@
 feature-id: M-002
 feature-name: Quản lý tài sản KCHTGT - Cảng & Bến
 pipeline-type: sdlc
-status: done
+status: in-progress
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:22Z
-last-updated: 2026-06-29T09:51:49Z
-current-stage: done
+last-updated: 2026-07-01T07:35:10Z
+current-stage: engineering-designer
 output-mode: lean
 repo-type: mini
 repo-path: .
 project: ""
 docs-path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben
 intel-path: docs/intel
-stages-queue: []
+stages-queue:
+  - engineering-designer
+  - engineering-frontend-developer-wave-1
+  - engineering-qa-engineer-ui-wave-1
+  - engineering-code-reviewer
 completed-stages:
   consulting-intelligence-extractor:
     verdict: Ready for BA
@@ -66,6 +70,7 @@ partial-redo: []
 agent-flags: {}
 feature-req: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md
 clarification-notes: ""
+ui-status: pending
 ---
 # Pipeline State: Quản lý tài sản KCHTGT - Cảng & Bến
 
@@ -118,3 +123,7 @@ none
 |---|---|---|
 | 2026-06-28 | QA wave-1 Fail (AC 33%) — 3 HIGH gaps: missing migrations, RBAC unenforced, zero tests | dev-only rework; paused for user confirmation (resume-module M-002 paused at qa-wave-1) |
 | 2026-06-29 | Reviewer (5-shard + integrator) = Changes requested — 5 cross-cutting must-fixes (orgUnitId UUID, userId impersonation, history subsystem, VungNuoc filter, CauCang guard) | backward escalation to dev-wave-3 (targeted shared-code fixes); rework #2; user pre-authorized run-to-done/blocked |
+
+## Audit Log
+
+| 2026-07-01 |  |  |  |

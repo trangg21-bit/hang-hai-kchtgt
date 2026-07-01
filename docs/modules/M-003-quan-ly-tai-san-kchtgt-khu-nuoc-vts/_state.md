@@ -2,19 +2,23 @@
 feature-id: M-003
 feature-name: Quản lý tài sản KCHTGT - Khu nước & VTS
 pipeline-type: sdlc
-status: done
+status: in-progress
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
-last-updated: 2026-07-01T06:21:29Z
-current-stage: done
+last-updated: 2026-07-01T07:35:13Z
+current-stage: engineering-designer
 output-mode: lean
 repo-type: mini
 repo-path: .
 project: ""
 docs-path: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts
 intel-path: docs/intel
-stages-queue: []
+stages-queue:
+  - engineering-designer
+  - engineering-frontend-developer-wave-1
+  - engineering-qa-engineer-ui-wave-1
+  - engineering-code-reviewer
 completed-stages:
   consulting-intelligence-extractor:
     verdict: Ready for BA
@@ -77,6 +81,7 @@ clarification-notes: ""
 name: "Quản lý tài sản KCHTGT - Khu nước & VTS\r"
 risk_score: 3
 pipeline-path: L
+ui-status: pending
 ---
 # Pipeline State: Quản lý tài sản KCHTGT - Khu nước & VTS
 
@@ -131,6 +136,7 @@ none
 
 ## Audit Log
 
+| 2026-07-01 |  |  |  |
 | 2026-07-01 |  |  |  |
 | 2026-07-01 |  |  |  |
 | 2026-07-01 |  |  |  |
