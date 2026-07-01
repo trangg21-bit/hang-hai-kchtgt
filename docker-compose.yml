@@ -19,12 +19,12 @@ services:
         condition: service_healthy
 
   redis:
-    image: redis:7-alpine
+    image: registry.etc.vn/library/redis@sha256:4c2e27eef99b7016ffa6668b8c3db6c98efbd02a02f713b6f4b648d540bb4fbd
     ports:
       - "6379:6379"
     restart: always
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 3
