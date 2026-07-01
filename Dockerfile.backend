@@ -30,8 +30,8 @@ COPY --from=build /build/target/*.jar app.jar
 # Expose backend port
 EXPOSE 8080
 
-# Use dev profile for H2 in-memory database
-ENV SPRING_PROFILES_ACTIVE=dev
+# Use prod profile for PostgreSQL database
+ENV SPRING_PROFILES_ACTIVE=prod
 
 # Health check — verify Spring Boot is listening
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
