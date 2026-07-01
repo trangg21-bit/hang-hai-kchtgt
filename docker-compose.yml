@@ -19,7 +19,7 @@ services:
         condition: service_healthy
 
   redis:
-    image: registry.etc.vn/library/redis@sha256:4c2e27eef99b7016ffa6668b8c3db6c98efbd02a02f713b6f4b648d540bb4fbd
+    image: registry.etc.vn/library/redis:8.0.2-alpine
     ports:
       - "6379:6379"
     restart: always
