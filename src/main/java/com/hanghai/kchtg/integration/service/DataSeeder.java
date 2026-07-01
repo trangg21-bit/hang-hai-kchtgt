@@ -22,7 +22,7 @@ import java.time.LocalDate;
 
 @Component("integrationDataSeeder")
 @Order(3)
-@Profile("local")
+@Profile({"local", "prod"})
 public class DataSeeder implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
