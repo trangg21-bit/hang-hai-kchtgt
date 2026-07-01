@@ -28,7 +28,7 @@ public class DeKeService {
     private final PheDuyetLichSuDeKeRepository pheDuyetLichSuRepo;
 
     @Transactional
-    public DeKeResponse create(DeKeCreateRequest req) {
+    public DeKeResponse create(DeKeCreateRequest req, String username) {
         DeKe d = DeKe.builder()
                 .loaiDe(req.getLoaiDe())
                 .viTri(req.getViTri())
@@ -37,11 +37,11 @@ public class DeKeService {
                 .chieuCao(req.getChieuCao())
                 .matVatLieu(req.getMatVatLieu())
                 .tinhTrang(req.getTinhTrang())
-                .trangThaiPheDuyet(req.getTrangThaiPheDuyet() != null ? req.getTrangThaiPheDuyet() : DeKeApprovalStatus.PROPOSED)
+                .trangThaiPheDuyet(DeKeApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(false)
-                .createdBy(req.getCreatedBy())
+                .createdBy(username)
                 .build();
 
         // Save attachments if provided
@@ -98,7 +98,7 @@ public class DeKeService {
     }
 
     @Transactional
-    public DeKeResponse update(Long id, DeKeUpdateRequest req) {
+    public DeKeResponse update(Long id, DeKeUpdateRequest req, String username) {
         DeKe d = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
@@ -109,7 +109,7 @@ public class DeKeService {
         if (req.getChieuCao() != null) d.setChieuCao(req.getChieuCao());
         if (req.getMatVatLieu() != null) d.setMatVatLieu(req.getMatVatLieu());
         if (req.getTinhTrang() != null) d.setTinhTrang(req.getTinhTrang());
-        if (req.getUpdatedBy() != null) d.setUpdatedBy(req.getUpdatedBy());
+        d.setUpdatedBy(username);
 
         return toResponse(repo.save(d));
     }
@@ -161,6 +161,11 @@ public class DeKeService {
 
         if (d.getTrangThaiPheDuyet() != DeKeApprovalStatus.UNDER_REVIEW) {
             throw new IllegalStateException("Chi co the phe duyet C2 khi trang thai la UNDER_REVIEW");
+        }
+
+        String c1Actor = d.getNguoiPheDuyetC1();
+        if (c1Actor != null && c1Actor.equals(req.getNguoiPheDuyet())) {
+            throw new IllegalStateException("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
         }
 
         d.setPheDuyetC2(true);

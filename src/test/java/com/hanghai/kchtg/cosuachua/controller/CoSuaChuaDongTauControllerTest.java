@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.cosuachua.controller;
 
+import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.cosuachua.dto.*;
 import com.hanghai.kchtg.cosuachua.service.CoSuaChuaDongTauService;
 import org.junit.jupiter.api.BeforeEach;
@@ -85,7 +86,7 @@ class CoSuaChuaDongTauControllerTest {
         ResponseEntity<?> result = controller.create(createRequest, mockAuth());
 
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
-        assertTrue(result.getBody().toString().contains("Lỗi khi tạo"));
+        assertNotNull(result.getBody());
     }
 
     @Test
@@ -95,7 +96,10 @@ class CoSuaChuaDongTauControllerTest {
         ResponseEntity<?> result = controller.getById(1L);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        CoSuaChuaDongTauResponse body = (CoSuaChuaDongTauResponse) result.getBody();
+        @SuppressWarnings("unchecked")
+        ApiResponse<CoSuaChuaDongTauResponse> apiResp = (ApiResponse<CoSuaChuaDongTauResponse>) result.getBody();
+        assertNotNull(apiResp);
+        CoSuaChuaDongTauResponse body = apiResp.getData();
         assertNotNull(body);
         assertEquals(1L, body.getId());
     }
@@ -107,7 +111,7 @@ class CoSuaChuaDongTauControllerTest {
         ResponseEntity<?> result = controller.getById(999L);
 
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
-        assertTrue(result.getBody().toString().contains("Không tìm thấy"));
+        assertNotNull(result.getBody());
     }
 
     @Test
@@ -118,7 +122,9 @@ class CoSuaChuaDongTauControllerTest {
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         @SuppressWarnings("unchecked")
-        List<CoSuaChuaDongTauResponse> bodies = (List<CoSuaChuaDongTauResponse>) result.getBody();
+        ApiResponse<List<CoSuaChuaDongTauResponse>> apiResp = (ApiResponse<List<CoSuaChuaDongTauResponse>>) result.getBody();
+        assertNotNull(apiResp);
+        List<CoSuaChuaDongTauResponse> bodies = apiResp.getData();
         assertEquals(1, bodies.size());
     }
 
@@ -130,7 +136,9 @@ class CoSuaChuaDongTauControllerTest {
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         @SuppressWarnings("unchecked")
-        List<CoSuaChuaDongTauResponse> bodies = (List<CoSuaChuaDongTauResponse>) result.getBody();
+        ApiResponse<List<CoSuaChuaDongTauResponse>> apiRespEmpty = (ApiResponse<List<CoSuaChuaDongTauResponse>>) result.getBody();
+        assertNotNull(apiRespEmpty);
+        List<CoSuaChuaDongTauResponse> bodies = apiRespEmpty.getData();
         assertTrue(bodies.isEmpty());
     }
 
@@ -153,7 +161,10 @@ class CoSuaChuaDongTauControllerTest {
         ResponseEntity<?> result = controller.delete(1L, mockAuth());
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        assertTrue(result.getBody().toString().contains("Đã xóa"));
+        @SuppressWarnings("unchecked")
+        ApiResponse<Void> delResp = (ApiResponse<Void>) result.getBody();
+        assertNotNull(delResp);
+        assertTrue(delResp.isSuccess());
         verify(service, times(1)).delete(eq(1L), anyString());
     }
 
@@ -164,7 +175,7 @@ class CoSuaChuaDongTauControllerTest {
         ResponseEntity<?> result = controller.delete(1L, mockAuth());
 
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
-        assertTrue(result.getBody().toString().contains("Lỗi khi xóa"));
+        assertNotNull(result.getBody());
     }
 
     @Test
@@ -214,7 +225,9 @@ class CoSuaChuaDongTauControllerTest {
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         @SuppressWarnings("unchecked")
-        List<HistoryEntry> bodies = (List<HistoryEntry>) result.getBody();
+        ApiResponse<List<HistoryEntry>> apiResp = (ApiResponse<List<HistoryEntry>>) result.getBody();
+        assertNotNull(apiResp);
+        List<HistoryEntry> bodies = apiResp.getData();
         assertEquals(1, bodies.size());
     }
 

@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,8 +27,9 @@ public class DeKeController {
     @PostMapping
     @PreAuthorize("@auth.check(authentication, 'deke:create')")
     public ResponseEntity<ApiResponse<DeKeResponse>> create(
-            @RequestBody @Valid DeKeCreateRequest req) {
-        return ResponseEntity.ok(ApiResponse.success("Tao de ke thanh cong", service.create(req)));
+            @RequestBody @Valid DeKeCreateRequest req,
+            Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.success("Tao de ke thanh cong", service.create(req, authentication.getName())));
     }
 
     @GetMapping("/{id}")
@@ -48,8 +50,9 @@ public class DeKeController {
     @PreAuthorize("@auth.check(authentication, 'deke:update')")
     public ResponseEntity<ApiResponse<DeKeResponse>> update(
             @PathVariable Long id,
-            @RequestBody @Valid DeKeUpdateRequest req) {
-        return ResponseEntity.ok(ApiResponse.success("Cap nhat de ke thanh cong", service.update(id, req)));
+            @RequestBody @Valid DeKeUpdateRequest req,
+            Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.success("Cap nhat de ke thanh cong", service.update(id, req, authentication.getName())));
     }
 
     @DeleteMapping("/{id}")
@@ -60,7 +63,7 @@ public class DeKeController {
     }
 
     @PostMapping("/{id}/approve/c1")
-    @PreAuthorize("@auth.check(authentication, 'deke:approve-c1')")
+    @PreAuthorize("@auth.check(authentication, 'deke:approvec1')")
     public ResponseEntity<ApiResponse<PheDuyetResponse>> approveC1(
             @PathVariable Long id,
             @RequestBody @Valid PheDuyetRequest req) {
@@ -68,7 +71,7 @@ public class DeKeController {
     }
 
     @PostMapping("/{id}/approve/c2")
-    @PreAuthorize("@auth.check(authentication, 'deke:approve-c2')")
+    @PreAuthorize("@auth.check(authentication, 'deke:approvec2')")
     public ResponseEntity<ApiResponse<PheDuyetResponse>> approveC2(
             @PathVariable Long id,
             @RequestBody @Valid PheDuyetRequest req) {

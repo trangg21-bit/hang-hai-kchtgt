@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.deke.dto;
 
-import com.hanghai.kchtg.deke.entity.DeKeApprovalStatus;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
@@ -26,10 +25,6 @@ public class DeKeCreateRequest {
     private Double chieuCao;
     private String matVatLieu;
     private String tinhTrang;
-    private String createdBy;
-
-    @Builder.Default
-    private DeKeApprovalStatus trangThaiPheDuyet = DeKeApprovalStatus.PROPOSED;
 
     private List<DeKeAttachmentCreate> attachments;
 

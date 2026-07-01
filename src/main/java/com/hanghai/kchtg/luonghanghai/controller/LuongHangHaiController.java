@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,8 +27,10 @@ public class LuongHangHaiController {
     @PostMapping
     @PreAuthorize("@auth.check(authentication, 'luonghanghai:create')")
     public ResponseEntity<ApiResponse<LuongHangHaiResponse>> create(
-            @RequestBody @Valid LuongHangHaiCreateRequest req) {
-        return ResponseEntity.ok(ApiResponse.success("Tao luong hang hai thanh cong", service.create(req)));
+            @RequestBody @Valid LuongHangHaiCreateRequest req,
+            Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : "system";
+        return ResponseEntity.ok(ApiResponse.success("Tao luong hang hai thanh cong", service.create(req, username)));
     }
 
     @GetMapping("/{id}")
@@ -48,8 +51,10 @@ public class LuongHangHaiController {
     @PreAuthorize("@auth.check(authentication, 'luonghanghai:update')")
     public ResponseEntity<ApiResponse<LuongHangHaiResponse>> update(
             @PathVariable Long id,
-            @RequestBody @Valid LuongHangHaiUpdateRequest req) {
-        return ResponseEntity.ok(ApiResponse.success("Cap nhat luong hang hai thanh cong", service.update(id, req)));
+            @RequestBody @Valid LuongHangHaiUpdateRequest req,
+            Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : "system";
+        return ResponseEntity.ok(ApiResponse.success("Cap nhat luong hang hai thanh cong", service.update(id, req, username)));
     }
 
     @DeleteMapping("/{id}")
@@ -60,7 +65,7 @@ public class LuongHangHaiController {
     }
 
     @PostMapping("/{id}/approve/c1")
-    @PreAuthorize("@auth.check(authentication, 'luonghanghai:approve-c1')")
+    @PreAuthorize("@auth.check(authentication, 'luonghanghai:approvec1')")
     public ResponseEntity<ApiResponse<PheDuyetResponse>> approveC1(
             @PathVariable Long id,
             @RequestBody @Valid PheDuyetRequest req) {
@@ -68,7 +73,7 @@ public class LuongHangHaiController {
     }
 
     @PostMapping("/{id}/approve/c2")
-    @PreAuthorize("@auth.check(authentication, 'luonghanghai:approve-c2')")
+    @PreAuthorize("@auth.check(authentication, 'luonghanghai:approvec2')")
     public ResponseEntity<ApiResponse<PheDuyetResponse>> approveC2(
             @PathVariable Long id,
             @RequestBody @Valid PheDuyetRequest req) {

@@ -744,3 +744,696 @@ Response: @Data, @NoArgsConstructor, @AllArgsConstructor, @Builder
 2. **engineering-technical-lead** — lập implementation tasks dựa trên spec
 3. **QA** — viết test cases dựa trên acceptance criteria
 4. **Reviewer** — review toàn bộ spec và domain model
+
+---
+
+# EXTENSION — F-044 đến F-067 (Đê/Kè, Cơ sở sửa chữa, Trạm radar, Hệ thống VTS)
+
+> **Phạm vi mở rộng:** Sections 15–28 bổ sung BA cho 24 features còn lại của M-003 (F-044→F-067). Các features này chia sẻ cùng approval workflow 2 cấp, state machine, và NFR như F-038–F-043. Chỉ các điểm khác biệt (entity fields, permission codes, geo constraints) được ghi chú riêng.
+
+> **Gap resolutions từ code (bắt buộc đọc trước khi dùng spec này):**
+> 1. **Actor A-004 conflict (F-056/059/062/065):** Feature briefs ghi A-004 cho C2 approval là sai. A-004 = "Nguoi dung tai Cang" (Port Operator) theo actor-registry — KHÔNG phải lãnh đạo. Code (HeThongVTSController `@PreAuthorize('vts:approve:c2')`, DESIGN-tram-radar-vts.md) xác nhận C2 = Cục trưởng (A-002), nhất quán với mọi group khác. TramRadarController THIẾU `@PreAuthorize` — đây là security gap cần fix (flagged cho reviewer). Spec này dùng A-002 cho cả C1 và C2 trên tất cả 30 features.
+> 2. **Cross-domain FK:** Code xác nhận KHÔNG có FK `de_ke→khu_nuoc` và KHÔNG có FK `he_thong_vts→luong_hang_hai`. Các domain là DECOUPLED hoàn toàn — thiết kế đã chủ ý. Không cần referential integrity giữa các domain.
+> 3. **Real-time NFR (TramRadar/VTS):** TramRadar có `kinhDo`/`viDo` fields (DECIMAL 10,6) lưu trữ tọa độ địa lý. KHÔNG có WebSocket, SSE, GeoServer, hay scheduler integration trong code. Đây là plain CRUD với geo-coordinate storage. NFR = standard CRUD + geo coordinate validation. Không áp dụng real-time SLA.
+
+---
+
+## 15. Phạm vi — F-044 đến F-067
+
+| STT | Feature ID | Tên tính năng | Group | Priority | Actor chính |
+|-----|-----------|--------------|-------|----------|-------------|
+| 7 | F-044 | Quản lý Đê/Kè — Tạo mới | Đê/Kè | P0 | Chuyên viên (A-003) |
+| 8 | F-045 | Quản lý Đê/Kè — Cập nhật | Đê/Kè | P0 | Chuyên viên (A-003) |
+| 9 | F-046 | Quản lý Đê/Kè — Xóa | Đê/Kè | P1 | Chuyên viên (A-003) |
+| 10 | F-047 | Phê duyệt Đê/Kè | Đê/Kè | P0 | Lãnh đạo (A-002) |
+| 11 | F-048 | Xem chi tiết Đê/Kè | Đê/Kè | P0 | Tất cả roles |
+| 12 | F-049 | Quản lý Đê/Kè — Lịch sử | Đê/Kè | P1 | Chuyên viên (A-003) |
+| 13 | F-050 | Quản lý Cơ sở sửa chữa, đóng tàu — Tạo mới | CoSuaChua | P0 | Chuyên viên (A-003) |
+| 14 | F-051 | Quản lý Cơ sở sửa chữa, đóng tàu — Cập nhật | CoSuaChua | P0 | Chuyên viên (A-003) |
+| 15 | F-052 | Quản lý Cơ sở sửa chữa, đóng tàu — Xóa | CoSuaChua | P1 | Chuyên viên (A-003) |
+| 16 | F-053 | Phê duyệt Cơ sở sửa chữa, đóng tàu | CoSuaChua | P0 | Lãnh đạo (A-002) |
+| 17 | F-054 | Xem chi tiết Cơ sở sửa chữa, đóng tàu | CoSuaChua | P0 | Tất cả roles |
+| 18 | F-055 | Quản lý Cơ sở sửa chữa, đóng tàu — Lịch sử | CoSuaChua | P1 | Chuyên viên (A-003) |
+| 19 | F-056 | Quản lý Trạm radar — Tạo mới | TramRadar | P0 | Chuyên viên (A-003) |
+| 20 | F-057 | Quản lý Trạm radar — Cập nhật | TramRadar | P0 | Chuyên viên (A-003) |
+| 21 | F-058 | Quản lý Trạm radar — Xóa | TramRadar | P1 | Chuyên viên (A-003) |
+| 22 | F-059 | Phê duyệt Trạm radar | TramRadar | P0 | Lãnh đạo (A-002) |
+| 23 | F-060 | Xem chi tiết Trạm radar | TramRadar | P0 | Tất cả roles |
+| 24 | F-061 | Quản lý Trạm radar — Lịch sử | TramRadar | P1 | Chuyên viên (A-003) |
+| 25 | F-062 | Quản lý Hệ thống VTS — Tạo mới | VTS | P0 | Chuyên viên (A-003) |
+| 26 | F-063 | Quản lý Hệ thống VTS — Cập nhật | VTS | P0 | Chuyên viên (A-003) |
+| 27 | F-064 | Quản lý Hệ thống VTS — Xóa | VTS | P1 | Chuyên viên (A-003) |
+| 28 | F-065 | Phê duyệt Hệ thống VTS | VTS | P0 | Lãnh đạo (A-002) |
+| 29 | F-066 | Xem chi tiết Hệ thống VTS | VTS | P0 | Tất cả roles |
+| 30 | F-067 | Quản lý Hệ thống VTS — Lịch sử | VTS | P1 | Chuyên viên (A-003) |
+
+---
+
+## 16. Entity Definitions — Đê/Kè (F-044→F-049)
+
+### 16.1. DeKe
+
+| Field | Type | Nullable | Length/Precision | Constraints | Description |
+|-------|------|----------|---------|-------------|-------------|
+| `id` | Long | No | — | PK, AUTO_INCREMENT | Khóa chính |
+| `loaiDe` | String | No | 100 | NOT NULL | Loại đê/kè |
+| `viTri` | String | No | 255 | NOT NULL | Vị trí địa lý |
+| `chieuDai` | BigDecimal | No | DECIMAL(10,2) | > 0 | Chiều dài (m) |
+| `chieuRong` | BigDecimal | No | DECIMAL(10,2) | > 0 | Chiều rộng (m) |
+| `chieuCao` | BigDecimal | No | DECIMAL(10,2) | > 0 | Chiều cao (m) |
+| `matVatLieu` | String | Yes | 100 | — | Vật liệu mặt đê |
+| `tinhTrang` | String | Yes | 50 | — | Tình trạng (tốt/trung bình/kém) |
+| `trangThaiPheDuyet` | Enum | No | 30 | DeKeApprovalStatus | Trạng thái phê duyệt |
+| `pheDuyetC1` | Boolean | No | — | Default: false | Phê duyệt cấp 1 |
+| `nguoiPheDuyetC1` | String | Yes | 100 | — | Người phê duyệt C1 |
+| `ngayPheDuyetC1` | LocalDateTime | Yes | — | — | Ngày phê duyệt C1 |
+| `pheDuyetC2` | Boolean | No | — | Default: false | Phê duyệt cấp 2 |
+| `nguoiPheDuyetC2` | String | Yes | 100 | — | Người phê duyệt C2 |
+| `ngayPheDuyetC2` | LocalDateTime | Yes | — | — | Ngày phê duyệt C2 |
+| `lyDoTuChoi` | String | Yes | 500 | — | Lý do từ chối |
+| `nguoiTao` | String | No | 100 | — | Người tạo |
+| `ngayTao` | LocalDateTime | No | — | Auto-set on create | Ngày tạo |
+| `nguoiSuaDoi` | String | Yes | 100 | — | Người sửa đổi |
+| `ngaySuaDoi` | LocalDateTime | Yes | — | Auto-set on update | Ngày sửa đổi |
+| `isDeleted` | Boolean | No | — | Default: false | Soft delete flag |
+
+**Package:** `com.hanghai.kchtg.deke.entity` | **Table:** `de_ke`
+
+**Note (from code):** Enum class trong code là `DeKeApprovalStatus` (không phải `TrangThaiPheDuyet` như DESIGN doc ghi). Field name là `trangThaiPheDuyet` (not `trangThai`). Source: `DeKe.java` line 39.
+
+**Cross-domain:** KHÔNG có FK đến `khu_nuoc` hay `luong_hang_hai`. Decoupled by design.
+
+### 16.2. DeKeAttachment
+
+| Field | Type | Nullable | Length | Constraints | Description |
+|-------|------|----------|--------|-------------|-------------|
+| `id` | Long | No | — | PK | Khóa chính |
+| `deKeId` | Long | No | — | FK → DeKe.id | Khóa ngoại |
+| `tenTaiLieu` | String | No | 255 | NOT NULL | Tên tài liệu |
+| `duongDan` | String | No | 500 | NOT NULL | Đường dẫn MinIO |
+| `kichThuoc` | Long | Yes | — | — | Kích thước (bytes) |
+| `loaiTaiLieu` | String | Yes | 50 | — | Loại tài liệu |
+| `nguoiTaiLen` | String | Yes | 100 | — | Người tải lên |
+| `ngayTaiLen` | LocalDateTime | Yes | — | Auto-set | Ngày tải lên |
+
+**Table:** `de_ke_attachment`
+
+### 16.3. DeKeApprovalStatus (Enum)
+
+```
+PROPOSED      — Chờ phê duyệt cấp 1
+UNDER_REVIEW  — Đã duyệt cấp 1, chờ duyệt cấp 2
+APPROVED      — Đã phê duyệt cả 2 cấp
+REJECTED      — Bị từ chối
+```
+
+---
+
+## 17. Entity Definitions — Cơ sở sửa chữa, đóng tàu (F-050→F-055)
+
+### 17.1. CoSuaChuaDongTau
+
+| Field | Type | Nullable | Length | Constraints | Description |
+|-------|------|----------|--------|-------------|-------------|
+| `id` | Long | No | — | PK | Khóa chính |
+| `tenCoSo` | String | No | 255 | NOT NULL | Tên cơ sở |
+| `diaChi` | String | No | 500 | NOT NULL | Địa chỉ |
+| `tinhThanh` | String | No | 100 | NOT NULL | Tỉnh/thành phố |
+| `soDienThoai` | String | Yes | 20 | — | Số điện thoại |
+| `email` | String | Yes | 100 | — | Email |
+| `loaiCoSo` | String | No | 100 | NOT NULL | Loại cơ sở |
+| `khaNang` | String | Yes | 255 | — | Khả năng xử lý |
+| `chuQuan` | String | Yes | 255 | — | Chủ quản |
+| `trangThai` | Enum | No | 30 | TrangThaiPheDuyet | Trạng thái phê duyệt |
+| `pheDuyetC1` | Boolean | No | — | Default: false | Phê duyệt C1 |
+| `nguoiPheDuyetC1` | String | Yes | 100 | — | Người phê duyệt C1 |
+| `ngayPheDuyetC1` | LocalDateTime | Yes | — | — | Ngày phê duyệt C1 |
+| `pheDuyetC2` | Boolean | No | — | Default: false | Phê duyệt C2 |
+| `nguoiPheDuyetC2` | String | Yes | 100 | — | Người phê duyệt C2 |
+| `ngayPheDuyetC2` | LocalDateTime | Yes | — | — | Ngày phê duyệt C2 |
+| `lyDoTuChoi` | String | Yes | 500 | — | Lý do từ chối |
+| `nguoiTao` | String | No | 100 | — | Người tạo |
+| `ngayTao` | LocalDateTime | No | — | Auto-set | Ngày tạo |
+| `nguoiSuaDoi` | String | Yes | 100 | — | Người sửa đổi |
+| `ngaySuaDoi` | LocalDateTime | Yes | — | Auto-set | Ngày sửa đổi |
+| `isDeleted` | Boolean | No | — | Default: false | Soft delete |
+
+**Package:** `com.hanghai.kchtg.cosuachua.entity` | **Table:** `co_sua_chua_dong_tau`
+
+### 17.2. CoSuaChuaDongTauAttachment
+
+| Field | Type | Nullable | Length | Constraints | Description |
+|-------|------|----------|--------|-------------|-------------|
+| `id` | Long | No | — | PK | Khóa chính |
+| `coSuaChuaId` | Long | No | — | FK → CoSuaChuaDongTau.id | Khóa ngoại |
+| `tenTaiLieu` | String | No | 255 | NOT NULL | Tên tài liệu |
+| `duongDan` | String | No | 500 | NOT NULL | Đường dẫn MinIO |
+| `kichThuoc` | Long | Yes | — | — | Kích thước (bytes) |
+| `loaiTaiLieu` | String | Yes | 50 | — | Loại tài liệu |
+| `nguoiTaiLen` | String | Yes | 100 | — | Người tải lên |
+| `ngayTaiLen` | LocalDateTime | Yes | — | Auto-set | Ngày tải lên |
+
+**Table:** `co_sua_chua_dong_tau_attachment`
+
+---
+
+## 18. Entity Definitions — Trạm radar (F-056→F-061)
+
+### 18.1. TramRadar
+
+| Field | Type | Nullable | Length/Precision | Constraints | Description |
+|-------|------|----------|---------|-------------|-------------|
+| `id` | Long | No | — | PK | Khóa chính |
+| `tenTram` | String | No | 255 | NOT NULL | Tên trạm |
+| `viTri` | String | No | 500 | NOT NULL | Vị trí mô tả |
+| `kinhDo` | BigDecimal | Yes | DECIMAL(10,6) | [-180, 180] | Kinh độ (°) |
+| `viDo` | BigDecimal | Yes | DECIMAL(10,6) | [-90, 90] | Vĩ độ (°) |
+| `loaiTram` | String | Yes | 100 | — | Loại trạm |
+| `coTrinh` | String | Yes | 100 | — | Có trinh sát |
+| `dienTichPhaXa` | BigDecimal | Yes | DECIMAL(10,2) | > 0 | Diện tích phát xạ (km²) |
+| `nguonGoc` | String | Yes | 255 | — | Nguồn gốc |
+| `tinhTrang` | String | Yes | 50 | — | Tình trạng |
+| `trangThai` | String | No | 20 | NOT NULL | Trạng thái phê duyệt (String trong DB) |
+| `pheDuyetC1` | Boolean | No | — | Default: false | Phê duyệt C1 |
+| `nguoiPheDuyetC1` | String | Yes | 100 | — | Người phê duyệt C1 |
+| `ngayPheDuyetC1` | LocalDateTime | Yes | — | — | Ngày phê duyệt C1 |
+| `pheDuyetC2` | Boolean | No | — | Default: false | Phê duyệt C2 |
+| `nguoiPheDuyetC2` | String | Yes | 100 | — | Người phê duyệt C2 |
+| `ngayPheDuyetC2` | LocalDateTime | Yes | — | — | Ngày phê duyệt C2 |
+| `lyDoTuChoi` | String | Yes | 500 | — | Lý do từ chối |
+| `nguoiTao` | String | Yes | 100 | — | Người tạo |
+| `ngayTao` | LocalDateTime | Yes | — | Auto-set | Ngày tạo |
+| `nguoiSuaDoi` | String | Yes | 100 | — | Người sửa đổi |
+| `ngaySuaDoi` | LocalDateTime | Yes | — | Auto-set | Ngày sửa đổi |
+| `isDeleted` | Boolean | No | — | Default: false | Soft delete (`@SQLRestriction`) |
+
+**Package:** `com.hanghai.kchtg.tramradar.entity` | **Table:** `tram_radar`
+
+**Geo fields (from code, TramRadar.java):** `kinhDo` DECIMAL(10,6), `viDo` DECIMAL(10,6). Storage only — NO GeoServer integration, NO real-time monitoring in implemented code. NFR: standard CRUD + coordinate range validation.
+
+**Cross-domain:** KHÔNG có FK đến `luong_hang_hai` hay `khu_nuoc`. Decoupled by design.
+
+**Security gap:** `TramRadarController` KHÔNG có `@PreAuthorize` annotations (confirmed from code). All endpoints are unprotected at controller level. This is a security deficit requiring fix before production. Flag for security reviewer.
+
+### 18.2. TramRadarAttachment
+
+| Field | Type | Nullable | Length | Constraints | Description |
+|-------|------|----------|--------|-------------|-------------|
+| `id` | Long | No | — | PK | Khóa chính |
+| `tramRadarId` | Long | No | — | FK → TramRadar.id | Khóa ngoại |
+| `tenTaiLieu` | String | No | 255 | NOT NULL | Tên tài liệu |
+| `duongDan` | String | No | 500 | NOT NULL | Đường dẫn MinIO |
+| `kichThuoc` | Long | Yes | — | — | Kích thước (bytes) |
+| `loaiTaiLieu` | String | Yes | 50 | — | Loại tài liệu |
+| `nguoiTaiLen` | String | Yes | 100 | — | Người tải lên |
+| `ngayTaiLen` | LocalDateTime | Yes | — | Auto-set | Ngày tải lên |
+
+**Table:** `tram_radar_attachment`
+
+---
+
+## 19. Entity Definitions — Hệ thống VTS (F-062→F-067)
+
+### 19.1. HeThongVTS
+
+| Field | Type | Nullable | Length | Constraints | Description |
+|-------|------|----------|--------|-------------|-------------|
+| `id` | Long | No | — | PK | Khóa chính |
+| `tenHeThong` | String | No | 255 | NOT NULL | Tên hệ thống |
+| `viTri` | String | No | 500 | NOT NULL | Vị trí mô tả |
+| `tinhTrang` | String | Yes | 50 | — | Tình trạng |
+| `mucDoPhuTrach` | String | Yes | 255 | — | Mức độ phụ trách |
+| `nguonGoc` | String | Yes | 255 | — | Nguồn gốc |
+| `doiTac` | String | Yes | 255 | — | Đối tác |
+| `trangThai` | String | No | 20 | NOT NULL | Trạng thái phê duyệt (String trong DB) |
+| `pheDuyetC1` | Boolean | No | — | Default: false | Phê duyệt C1 |
+| `nguoiPheDuyetC1` | String | Yes | 100 | — | Người phê duyệt C1 |
+| `ngayPheDuyetC1` | LocalDateTime | Yes | — | — | Ngày phê duyệt C1 |
+| `pheDuyetC2` | Boolean | No | — | Default: false | Phê duyệt C2 |
+| `nguoiPheDuyetC2` | String | Yes | 100 | — | Người phê duyệt C2 |
+| `ngayPheDuyetC2` | LocalDateTime | Yes | — | — | Ngày phê duyệt C2 |
+| `lyDoTuChoi` | String | Yes | 500 | — | Lý do từ chối |
+| `nguoiTao` | String | Yes | 100 | — | Người tạo |
+| `ngayTao` | LocalDateTime | Yes | — | Auto-set | Ngày tạo |
+| `nguoiSuaDoi` | String | Yes | 100 | — | Người sửa đổi |
+| `ngaySuaDoi` | LocalDateTime | Yes | — | Auto-set | Ngày sửa đổi |
+| `isDeleted` | Boolean | No | — | Default: false | Soft delete (`@SQLRestriction`) |
+
+**Package:** `com.hanghai.kchtg.vts.entity` | **Table:** `he_thong_vts`
+**Service name:** `HeThongVTSDataService` (tránh xung đột tên với Spring VTS concept).
+
+**Cross-domain:** KHÔNG có FK đến `luong_hang_hai` hay bất kỳ domain khác trong M-003. Decoupled by design.
+
+### 19.2. HeThongVTSAttachment
+
+| Field | Type | Nullable | Length | Constraints | Description |
+|-------|------|----------|--------|-------------|-------------|
+| `id` | Long | No | — | PK | Khóa chính |
+| `heThongVTSId` | Long | No | — | FK → HeThongVTS.id | Khóa ngoại |
+| `tenTaiLieu` | String | No | 255 | NOT NULL | Tên tài liệu |
+| `duongDan` | String | No | 500 | NOT NULL | Đường dẫn MinIO |
+| `kichThuoc` | Long | Yes | — | — | Kích thước (bytes) |
+| `loaiTaiLieu` | String | Yes | 50 | — | Loại tài liệu |
+| `nguoiTaiLen` | String | Yes | 100 | — | Người tải lên |
+| `ngayTaiLen` | LocalDateTime | Yes | — | Auto-set | Ngày tải lên |
+
+**Table:** `he_thong_vts_attachment`
+
+---
+
+## 20. Business Rules — Đê/Kè (F-044→F-049)
+
+### 20.1. F-044 — Tạo mới
+
+| Rule ID | Rule | Applies-to | Source |
+|---------|------|-----------|--------|
+| BR-044-01 | Đê/kè phải được phê duyệt trước khi chính thức ghi nhận | DeKe | Feature brief F-044 |
+| BR-044-02 | Bản ghi mới luôn ở trạng thái `PROPOSED` | DeKe.trangThaiPheDuyet | DESIGN.md |
+| BR-044-03 | `loaiDe` bắt buộc, max 100 | DeKe.loaiDe | Entity |
+| BR-044-04 | `viTri` bắt buộc, max 255 | DeKe.viTri | Entity |
+| BR-044-05 | `chieuDai`, `chieuRong`, `chieuCao` bắt buộc, > 0 | DeKe dimensions | Entity |
+| BR-044-06 | `matVatLieu` tùy chọn, max 100 | DeKe.matVatLieu | Entity |
+| BR-044-07 | `tinhTrang` tùy chọn, max 50 | DeKe.tinhTrang | Entity |
+| BR-044-08 | Chỉ Chuyên viên (A-003) có quyền tạo | Permission `deke:create` | DESIGN.md |
+
+### 20.2. F-045 — Cập nhật
+
+| Rule ID | Rule | Applies-to | Source |
+|---------|------|-----------|--------|
+| BR-045-01 | Cập nhật phải được phê duyệt lại | DeKe | DESIGN.md |
+| BR-045-02 | Chỉ PROPOSED/UNDER_REVIEW/REJECTED được cập nhật | DeKe.trangThaiPheDuyet | DESIGN.md |
+| BR-045-03 | APPROVED không cho phép cập nhật trực tiếp | DeKe | DESIGN.md |
+| BR-045-04 | Mọi thay đổi ghi nhận vào PheDuyetLichSu với status=UPDATED | PheDuyetLichSu | DESIGN.md |
+| BR-045-05 | `nguoiSuaDoi` + `ngaySuaDoi` tự động cập nhật | DeKe | Entity `@PreUpdate` |
+
+### 20.3. F-046 — Xóa
+
+| Rule ID | Rule | Applies-to | Source |
+|---------|------|-----------|--------|
+| BR-046-01 | Xóa chỉ với bản ghi APPROVED | DeKe.trangThaiPheDuyet | DESIGN.md |
+| BR-046-02 | Soft delete — isDeleted = true | DeKe.isDeleted | DESIGN.md |
+| BR-046-03 | Hành động xóa ghi nhận vào PheDuyetLichSu (status=DELETED) | PheDuyetLichSu | DESIGN.md |
+| BR-046-04 | Chỉ Chuyên viên có quyền xóa | Permission `deke:delete` | DESIGN.md |
+
+### 20.4. F-047 — Phê duyệt
+
+| Rule ID | Rule | Applies-to | Source |
+|---------|------|-----------|--------|
+| BR-047-01 | 2 cấp phê duyệt: Trưởng phòng (C1) → Cục trưởng (C2) | DeKe | DESIGN.md |
+| BR-047-02 | Từ chối cấp 1 → REJECTED, gửi lại cho chuyên viên | DeKe.trangThaiPheDuyet | DESIGN.md |
+| BR-047-03 | Từ chối cấp 2 → REJECTED, gửi lại cho chuyên viên | DeKe.trangThaiPheDuyet | DESIGN.md |
+| BR-047-04 | Lý do từ chối bắt buộc khi REJECTED | PheDuyetLichSu.lyDo | DESIGN.md |
+| BR-047-05 | Thời gian phê duyệt mỗi cấp được ghi nhận | DeKe.ngayPheDuyetC1/C2 | DESIGN.md |
+| BR-047-06 | Hoàn tất 2 cấp → APPROVED | DeKe.trangThaiPheDuyet | DESIGN.md |
+| BR-047-07 | Cả 2 cấp đều dùng A-002 (Trưởng phòng C1, Cục trưởng C2) | Permission `deke:approve:c1` / `deke:approve:c2` | Code evidence |
+
+### 20.5. F-048 — Xem chi tiết
+
+| Rule ID | Rule | Applies-to | Source |
+|---------|------|-----------|--------|
+| BR-048-01 | Tất cả roles có quyền tra cứu và xem chi tiết | Permission `deke:read` | DESIGN.md |
+| BR-048-02 | Văn bản đính kèm có thể xem và tải xuống (MinIO presigned URL) | DeKeAttachment | DESIGN.md |
+| BR-048-03 | Bản ghi đã xóa không hiển thị trong tra cứu mặc định | DeKe.isDeleted + `@SQLRestriction` | DESIGN.md |
+| BR-048-04 | Tra cứu theo loại đê, vị trí, trạng thái phê duyệt | Search endpoint | DESIGN.md |
+
+### 20.6. F-049 — Lịch sử
+
+| Rule ID | Rule | Applies-to | Source |
+|---------|------|-----------|--------|
+| BR-049-01 | Lịch sử theo dõi mọi bản ghi DeKe | PheDuyetLichSu | DESIGN.md |
+| BR-049-02 | Lịch sử hiển thị theo thứ tự giảm dần (mới nhất trước) | PheDuyetLichSu | DESIGN.md |
+| BR-049-03 | Permission `deke:history` để xem lịch sử | DeKe | DESIGN.md |
+
+---
+
+## 21. Business Rules — Cơ sở sửa chữa, đóng tàu (F-050→F-055)
+
+### 21.1. F-050 — Tạo mới
+
+| Rule ID | Rule | Applies-to | Source |
+|---------|------|-----------|--------|
+| BR-050-01 | Cơ sở sửa chữa phải được phê duyệt trước khi ghi nhận | CoSuaChuaDongTau | Feature brief |
+| BR-050-02 | Bản ghi mới luôn PROPOSED | CoSuaChuaDongTau.trangThai | DESIGN-cosua.md |
+| BR-050-03 | `tenCoSo` bắt buộc, max 255 | Entity | DESIGN-cosua.md |
+| BR-050-04 | `diaChi` bắt buộc, max 500 | Entity | DESIGN-cosua.md |
+| BR-050-05 | `tinhThanh` bắt buộc, max 100 | Entity | DESIGN-cosua.md |
+| BR-050-06 | `loaiCoSo` bắt buộc, max 100 | Entity | DESIGN-cosua.md |
+| BR-050-07 | `soDienThoai` tùy chọn, max 20 | Entity | DESIGN-cosua.md |
+| BR-050-08 | `email` tùy chọn, max 100 | Entity | DESIGN-cosua.md |
+| BR-050-09 | `khaNang` tùy chọn, max 255 | Entity | DESIGN-cosua.md |
+| BR-050-10 | `chuQuan` tùy chọn, max 255 | Entity | DESIGN-cosua.md |
+| BR-050-11 | Chỉ Chuyên viên (A-003) có quyền tạo | Permission `cosuachua:create` | DESIGN-cosua.md |
+
+### 21.2. F-051→F-055
+
+Rules F-051→F-055 kế thừa toàn bộ pattern từ F-045→F-049 (cập nhật, xóa, phê duyệt, xem, lịch sử). Permission codes: `cosuachua:update`, `cosuachua:delete`, `cosuachua:approve:c1`, `cosuachua:approve:c2`, `cosuachua:read`, `cosuachua:history`.
+
+| Rule ID | Rule | Applies-to | Source |
+|---------|------|-----------|--------|
+| BR-051-01 | Cập nhật phải được phê duyệt lại | CoSuaChuaDongTau | DESIGN-cosua.md |
+| BR-051-02 | Chỉ PROPOSED/UNDER_REVIEW/REJECTED cập nhật được | CoSuaChuaDongTau.trangThai | DESIGN-cosua.md |
+| BR-051-03 | APPROVED không cho phép cập nhật trực tiếp | CoSuaChuaDongTau | DESIGN-cosua.md |
+| BR-052-01 | Xóa chỉ với APPROVED (soft delete) | CoSuaChuaDongTau.isDeleted | DESIGN-cosua.md |
+| BR-053-01 | 2 cấp phê duyệt: Trưởng phòng C1 → Cục trưởng C2 | CoSuaChuaDongTau | DESIGN-cosua.md |
+| BR-053-02 | Lý do từ chối bắt buộc khi REJECTED | PheDuyetLichSu.lyDo | DESIGN-cosua.md |
+| BR-054-01 | Tất cả roles xem chi tiết | Permission `cosuachua:read` | DESIGN-cosua.md |
+| BR-055-01 | Lịch sử giảm dần theo thời gian | PheDuyetLichSu ORDER BY DESC | DESIGN-cosua.md |
+
+---
+
+## 22. Business Rules — Trạm radar (F-056→F-061)
+
+### 22.1. F-056 — Tạo mới (specific fields)
+
+| Rule ID | Rule | Applies-to | Source |
+|---------|------|-----------|--------|
+| BR-056-01 | Trạm radar phải được phê duyệt trước khi ghi nhận | TramRadar | Feature brief |
+| BR-056-02 | Bản ghi mới luôn PROPOSED | TramRadar.trangThai | DESIGN-radar-vts.md |
+| BR-056-03 | `tenTram` bắt buộc, max 255 | Entity | Code TramRadar.java |
+| BR-056-04 | `viTri` bắt buộc, max 500 | Entity | Code TramRadar.java |
+| BR-056-05 | `kinhDo` tùy chọn, phạm vi [-180, 180], DECIMAL(10,6) | TramRadar.kinhDo | Code TramRadar.java |
+| BR-056-06 | `viDo` tùy chọn, phạm vi [-90, 90], DECIMAL(10,6) | TramRadar.viDo | Code TramRadar.java |
+| BR-056-07 | `loaiTram` tùy chọn, max 100 | Entity | DESIGN-radar-vts.md |
+| BR-056-08 | `coTrinh` tùy chọn, max 100 | Entity | DESIGN-radar-vts.md |
+| BR-056-09 | `dienTichPhaXa` tùy chọn, > 0, DECIMAL(10,2) | TramRadar.dienTichPhaXa | Code TramRadar.java |
+| BR-056-10 | `nguonGoc` tùy chọn, max 255 | Entity | DESIGN-radar-vts.md |
+| BR-056-11 | `kinhDo`/`viDo` là lưu trữ CRUD — không real-time, không GeoServer | TramRadar | Code evidence (no WebSocket/SSE) |
+| BR-056-12 | Chỉ Chuyên viên (A-003) có quyền tạo | Permission `tramradar:create` | DESIGN-radar-vts.md |
+
+### 22.2. F-057→F-061
+
+Rules kế thừa pattern chuẩn. Permission codes: `tramradar:update`, `tramradar:delete`, `tramradar:approve:c1`, `tramradar:approve:c2`, `tramradar:read`, `tramradar:history`.
+
+**Lưu ý quan trọng:** TramRadarController hiện THIẾU `@PreAuthorize` annotations (xác nhận từ code review). Tất cả endpoints đang unprotected ở controller level. Cần add `@PreAuthorize("@auth.check(authentication, 'tramradar:XXX')")` vào mỗi endpoint trước production. HeThongVTSController đã có `@PreAuthorize` đầy đủ — dùng làm reference pattern.
+
+| Rule ID | Rule | Applies-to | Source |
+|---------|------|-----------|--------|
+| BR-057-01 | Cập nhật phải được phê duyệt lại | TramRadar | DESIGN-radar-vts.md |
+| BR-057-02 | Chỉ PROPOSED/UNDER_REVIEW/REJECTED cập nhật được | TramRadar.trangThai | DESIGN-radar-vts.md |
+| BR-057-03 | APPROVED không cho phép cập nhật trực tiếp | TramRadar | DESIGN-radar-vts.md |
+| BR-058-01 | Xóa chỉ với APPROVED (soft delete, `@SQLRestriction`) | TramRadar.isDeleted | Code TramRadar.java |
+| BR-059-01 | 2 cấp phê duyệt A-002: Trưởng phòng C1 → Cục trưởng C2 | TramRadar | Code evidence (feature brief A-004 là sai) |
+| BR-059-02 | Lý do từ chối bắt buộc khi REJECTED | PheDuyetLichSu.lyDo | DESIGN-radar-vts.md |
+| BR-060-01 | Tất cả roles xem chi tiết | Permission `tramradar:read` | DESIGN-radar-vts.md |
+| BR-061-01 | Lịch sử giảm dần theo thời gian | PheDuyetLichSu ORDER BY DESC | DESIGN-radar-vts.md |
+
+---
+
+## 23. Business Rules — Hệ thống VTS (F-062→F-067)
+
+### 23.1. F-062 — Tạo mới (specific fields)
+
+| Rule ID | Rule | Applies-to | Source |
+|---------|------|-----------|--------|
+| BR-062-01 | Hệ thống VTS phải được phê duyệt trước khi ghi nhận | HeThongVTS | Feature brief |
+| BR-062-02 | Bản ghi mới luôn PROPOSED | HeThongVTS.trangThai | DESIGN-radar-vts.md |
+| BR-062-03 | `tenHeThong` bắt buộc, max 255 | Entity | Code HeThongVTS.java |
+| BR-062-04 | `viTri` bắt buộc, max 500 | Entity | Code HeThongVTS.java |
+| BR-062-05 | `tinhTrang` tùy chọn, max 50 | Entity | DESIGN-radar-vts.md |
+| BR-062-06 | `mucDoPhuTrach` tùy chọn, max 255 | Entity | DESIGN-radar-vts.md |
+| BR-062-07 | `nguonGoc` tùy chọn, max 255 | Entity | DESIGN-radar-vts.md |
+| BR-062-08 | `doiTac` tùy chọn, max 255 | Entity | Code HeThongVTS.java |
+| BR-062-09 | Chỉ Chuyên viên (A-003) có quyền tạo | Permission `vts:create` | Code HeThongVTSController.java |
+| BR-062-10 | KHÔNG có FK đến luong_hang_hai hay domain khác trong M-003 | HeThongVTS | Code evidence (decoupled) |
+
+### 23.2. F-063→F-067
+
+Rules kế thừa pattern chuẩn. Permission codes: `vts:update`, `vts:delete`, `vts:approve:c1`, `vts:approve:c2`, `vts:read`, `vts:history`. Tất cả đã có `@PreAuthorize` đầy đủ trong HeThongVTSController.
+
+| Rule ID | Rule | Applies-to | Source |
+|---------|------|-----------|--------|
+| BR-063-01 | Cập nhật phải được phê duyệt lại | HeThongVTS | DESIGN-radar-vts.md |
+| BR-063-02 | Chỉ PROPOSED/UNDER_REVIEW/REJECTED cập nhật được | HeThongVTS.trangThai | DESIGN-radar-vts.md |
+| BR-064-01 | Xóa chỉ với APPROVED (soft delete, `@SQLRestriction`) | HeThongVTS.isDeleted | Code HeThongVTS.java |
+| BR-065-01 | 2 cấp phê duyệt A-002: Trưởng phòng C1 → Cục trưởng C2 | HeThongVTS | Code HeThongVTSController `vts:approve:c1/c2` |
+| BR-065-02 | Lý do từ chối bắt buộc khi REJECTED | PheDuyetLichSu.lyDo | DESIGN-radar-vts.md |
+| BR-066-01 | Tất cả roles xem chi tiết | Permission `vts:read` | Code HeThongVTSController |
+| BR-067-01 | Lịch sử giảm dần theo thời gian | PheDuyetLichSu ORDER BY DESC | DESIGN-radar-vts.md |
+
+---
+
+## 24. Acceptance Criteria (BDD) — Đê/Kè (F-044→F-049)
+
+| ID | Feature | Scenario | Given | When | Then |
+|----|---------|----------|-------|------|------|
+| AC-044-01 | F-044 | Tạo mới thành công | Chuyên viên đăng nhập, có quyền `deke:create` | Nhập đủ loaiDe, viTri, chieuDai/Rong/Cao và nhấn Lưu | Bản ghi tạo với trangThaiPheDuyet=PROPOSED, thông báo thành công |
+| AC-044-02 | F-044 | Thiếu trường bắt buộc | Chuyên viên đăng nhập | Để trống loaiDe hoặc viTri và nhấn Lưu | Validation error, không tạo bản ghi |
+| AC-044-03 | F-044 | Dimension ≤ 0 | Chuyên viên đăng nhập | Nhập chieuDai = 0 | Validation error "@Positive", không tạo |
+| AC-044-04 | F-044 | Không có quyền | Người dùng không có `deke:create` | Truy cập tạo mới | 403 Forbidden |
+| AC-045-01 | F-045 | Cập nhật PROPOSED | Bản ghi PROPOSED tồn tại | Chuyên viên cập nhật và lưu | Bản ghi cập nhật, entry PheDuyetLichSu status=UPDATED |
+| AC-045-02 | F-045 | Cập nhật APPROVED bị từ chối | Bản ghi APPROVED | Cố gắng cập nhật | IllegalStateException, thông báo "Không thể cập nhật bản ghi APPROVED" |
+| AC-046-01 | F-046 | Xóa APPROVED thành công | Bản ghi APPROVED | Xác nhận xóa | isDeleted=true, không hiển thị trong danh sách mặc định |
+| AC-046-02 | F-046 | Xóa bản ghi không phải APPROVED | Bản ghi PROPOSED | Cố gắng xóa | Lỗi "Chỉ xóa bản ghi đã phê duyệt" |
+| AC-047-01 | F-047 | Phê duyệt C1 thành công | Bản ghi PROPOSED, user có `deke:approve:c1` | Phê duyệt C1 | pheDuyetC1=true, trangThaiPheDuyet=UNDER_REVIEW |
+| AC-047-02 | F-047 | Phê duyệt C2 thành công | Bản ghi UNDER_REVIEW, user có `deke:approve:c2` | Phê duyệt C2 | pheDuyetC2=true, trangThaiPheDuyet=APPROVED |
+| AC-047-03 | F-047 | Từ chối không có lý do | Bản ghi PROPOSED | Từ chối mà không nhập lý do | Validation error "Lý do từ chối bắt buộc" |
+| AC-047-04 | F-047 | Từ chối → REJECTED | Bản ghi PROPOSED | Từ chối với lý do | trangThaiPheDuyet=REJECTED, lyDoTuChoi ghi nhận |
+| AC-048-01 | F-048 | Xem chi tiết | Bản ghi tồn tại, user đăng nhập | Chọn bản ghi | Hiển thị đầy đủ: dimensions, phê duyệt, attachment |
+| AC-048-02 | F-048 | Tra cứu theo loaiDe | Nhiều bản ghi | Nhập loaiDe làm filter | Danh sách lọc đúng |
+| AC-049-01 | F-049 | Xem lịch sử | Bản ghi có entries | Chọn tab lịch sử | Danh sách giảm dần theo ngày |
+| AC-049-02 | F-049 | Lịch sử rỗng | Bản ghi chưa có thay đổi | Chọn tab lịch sử | Hiển thị "Chưa có thay đổi" |
+
+---
+
+## 25. Acceptance Criteria (BDD) — Cơ sở sửa chữa, đóng tàu (F-050→F-055)
+
+| ID | Feature | Scenario | Given | When | Then |
+|----|---------|----------|-------|------|------|
+| AC-050-01 | F-050 | Tạo mới thành công | Chuyên viên, có `cosuachua:create` | Nhập tenCoSo, diaChi, tinhThanh, loaiCoSo và lưu | Bản ghi tạo, trangThai=PROPOSED |
+| AC-050-02 | F-050 | Thiếu loaiCoSo | Chuyên viên | Để trống loaiCoSo | Validation error |
+| AC-050-03 | F-050 | Email format không hợp lệ | Chuyên viên | Nhập email sai định dạng | Validation error nếu email được validate |
+| AC-051-01 | F-051 | Cập nhật PROPOSED | Bản ghi PROPOSED | Cập nhật tinhThanh | Bản ghi cập nhật, PheDuyetLichSu UPDATED |
+| AC-051-02 | F-051 | Cập nhật APPROVED bị từ chối | Bản ghi APPROVED | Cố gắng cập nhật | IllegalStateException |
+| AC-052-01 | F-052 | Xóa APPROVED | Bản ghi APPROVED | Xác nhận xóa | Soft delete thành công |
+| AC-053-01 | F-053 | Phê duyệt 2 cấp đầy đủ | Bản ghi PROPOSED | C1 phê duyệt → C2 phê duyệt | trangThai=APPROVED |
+| AC-053-02 | F-053 | Từ chối C1 | Bản ghi PROPOSED | Từ chối C1 với lý do | trangThai=REJECTED, gửi lại chuyên viên |
+| AC-054-01 | F-054 | Xem chi tiết với attachment | Bản ghi có attachment | Xem chi tiết | Hiển thị attachment, MinIO presigned URL |
+| AC-054-02 | F-054 | Lọc theo tinhThanh | Nhiều bản ghi | Search tinhThanh="Hà Nội" | Danh sách lọc đúng |
+| AC-055-01 | F-055 | Lịch sử phê duyệt | Bản ghi đã qua nhiều bước | Xem lịch sử | Entries giảm dần, bao gồm C1/C2/REJECTED |
+
+---
+
+## 26. Acceptance Criteria (BDD) — Trạm radar (F-056→F-061)
+
+| ID | Feature | Scenario | Given | When | Then |
+|----|---------|----------|-------|------|------|
+| AC-056-01 | F-056 | Tạo mới thành công | Chuyên viên, `tramradar:create` | Nhập tenTram, viTri và lưu | Bản ghi tạo, trangThai=PROPOSED |
+| AC-056-02 | F-056 | Thiếu tenTram | Chuyên viên | tenTram rỗng | Validation error @NotBlank |
+| AC-056-03 | F-056 | kinhDo ngoài phạm vi | Chuyên viên | kinhDo = 200 | Validation error @DecimalMax("180") |
+| AC-056-04 | F-056 | viDo ngoài phạm vi | Chuyên viên | viDo = -100 | Validation error @DecimalMin("-90") |
+| AC-056-05 | F-056 | Tạo mới không cần kinhDo/viDo | Chuyên viên | Để trống kinhDo, viDo | Bản ghi tạo thành công (geo fields nullable) |
+| AC-057-01 | F-057 | Cập nhật kinhDo/viDo | Bản ghi PROPOSED | Cập nhật tọa độ hợp lệ | Tọa độ cập nhật, PheDuyetLichSu UPDATED |
+| AC-058-01 | F-058 | Xóa APPROVED | Bản ghi APPROVED | Xác nhận xóa | `@SQLRestriction` ẩn bản ghi khỏi query |
+| AC-059-01 | F-059 | Phê duyệt C1 bởi A-002 (Trưởng phòng) | Bản ghi PROPOSED | C1 approve | trangThai=UNDER_REVIEW (A-002, không phải A-004) |
+| AC-059-02 | F-059 | Phê duyệt C2 bởi A-002 (Cục trưởng) | Bản ghi UNDER_REVIEW | C2 approve | trangThai=APPROVED |
+| AC-059-03 | F-059 | Permission guard tại controller | Endpoint `/approve/c1` | User không có `tramradar:approve:c1` | 403 (SAU KHI fix security gap @PreAuthorize) |
+| AC-060-01 | F-060 | Xem chi tiết bao gồm tọa độ | Bản ghi có kinhDo/viDo | Xem chi tiết | kinhDo, viDo hiển thị trong response |
+| AC-060-02 | F-060 | Tìm kiếm theo tinhTrang | Nhiều bản ghi | Search tinhTrang="tốt" | Danh sách lọc đúng |
+| AC-061-01 | F-061 | Lịch sử giảm dần | Bản ghi đã qua approval | Xem lịch sử | Entries theo ngayPheDuyet DESC |
+
+---
+
+## 27. Acceptance Criteria (BDD) — Hệ thống VTS (F-062→F-067)
+
+| ID | Feature | Scenario | Given | When | Then |
+|----|---------|----------|-------|------|------|
+| AC-062-01 | F-062 | Tạo mới thành công | Chuyên viên, `vts:create` | Nhập tenHeThong, viTri và lưu | Bản ghi tạo, trangThai=PROPOSED |
+| AC-062-02 | F-062 | Thiếu tenHeThong | Chuyên viên | tenHeThong rỗng | Validation error @NotBlank |
+| AC-062-03 | F-062 | Thiếu viTri | Chuyên viên | viTri rỗng | Validation error @NotBlank |
+| AC-062-04 | F-062 | Người dùng không có quyền | User không có `vts:create` | Gọi POST /api/v1/he-thong-vts | 403 Forbidden (@PreAuthorize đã có) |
+| AC-063-01 | F-063 | Cập nhật doiTac | Bản ghi PROPOSED | Cập nhật doiTac mới | Bản ghi cập nhật, entry PheDuyetLichSu UPDATED |
+| AC-063-02 | F-063 | Cập nhật APPROVED | Bản ghi APPROVED | Cố gắng cập nhật | IllegalStateException |
+| AC-064-01 | F-064 | Xóa APPROVED | Bản ghi APPROVED, user `vts:delete` | Xóa | isDeleted=true, không hiển thị |
+| AC-064-02 | F-064 | Xóa PROPOSED | Bản ghi PROPOSED | Cố gắng xóa | Lỗi "Chỉ xóa bản ghi đã phê duyệt" |
+| AC-065-01 | F-065 | Phê duyệt C1 bởi A-002 (Trưởng phòng) | Bản ghi PROPOSED, user `vts:approve:c1` | C1 approve | trangThai=UNDER_REVIEW |
+| AC-065-02 | F-065 | Phê duyệt C2 bởi A-002 (Cục trưởng) | Bản ghi UNDER_REVIEW, user `vts:approve:c2` | C2 approve | trangThai=APPROVED |
+| AC-065-03 | F-065 | Từ chối không có lý do | Bản ghi bất kỳ | Từ chối, lyDo rỗng | Validation error |
+| AC-065-04 | F-065 | A-004 không được phê duyệt | User A-004 (Port Operator) | Gọi approve endpoint | 403 Forbidden (A-004 không có vts:approve:c2) |
+| AC-066-01 | F-066 | Xem chi tiết với tất cả roles | Bản ghi APPROVED, user A-004 | Xem chi tiết | Hiển thị đầy đủ (A-004 có `vts:read`) |
+| AC-066-02 | F-066 | Lọc theo tinhTrang | Nhiều bản ghi | Search tinhTrang="trung bình" | Danh sách lọc đúng |
+| AC-067-01 | F-067 | Lịch sử đầy đủ | Bản ghi qua C1→C2→APPROVED | Xem lịch sử | Entries: PROPOSED create, UPDATED, C1 approve, C2 approve |
+| AC-067-02 | F-067 | Không có lịch sử | Bản ghi mới tạo | Xem lịch sử | "Chưa có thay đổi" |
+
+---
+
+## 28. Role/Permission Matrix — F-044 đến F-067
+
+### 28.1. Đê/Kè (F-044→F-049)
+
+| Feature | Actor | Permission | Notes |
+|---------|-------|-----------|-------|
+| F-044 | A-003 (Chuyên viên) | `deke:create` | Tạo mới DeKe |
+| F-045 | A-003 | `deke:update` | Cập nhật PROPOSED/UNDER_REVIEW/REJECTED |
+| F-046 | A-003 | `deke:delete` | Soft delete APPROVED |
+| F-047 | A-002 (Trưởng phòng) | `deke:approve:c1` | Phê duyệt C1 |
+| F-047 | A-002 (Cục trưởng) | `deke:approve:c2` | Phê duyệt C2 |
+| F-048 | A-002, A-003, A-004 | `deke:read` | Xem chi tiết, tra cứu |
+| F-049 | A-003 | `deke:history` | Xem lịch sử |
+
+### 28.2. Cơ sở sửa chữa, đóng tàu (F-050→F-055)
+
+| Feature | Actor | Permission | Notes |
+|---------|-------|-----------|-------|
+| F-050 | A-003 | `cosuachua:create` | Tạo mới |
+| F-051 | A-003 | `cosuachua:update` | Cập nhật |
+| F-052 | A-003 | `cosuachua:delete` | Soft delete APPROVED |
+| F-053 | A-002 (Trưởng phòng) | `cosuachua:approve:c1` | Phê duyệt C1 |
+| F-053 | A-002 (Cục trưởng) | `cosuachua:approve:c2` | Phê duyệt C2 |
+| F-054 | A-002, A-003, A-004 | `cosuachua:read` | Xem chi tiết, tra cứu |
+| F-055 | A-003 | `cosuachua:history` | Xem lịch sử |
+
+### 28.3. Trạm radar (F-056→F-061)
+
+| Feature | Actor | Permission | Notes |
+|---------|-------|-----------|-------|
+| F-056 | A-003 | `tramradar:create` | Tạo mới (SECURITY GAP: controller chưa có @PreAuthorize) |
+| F-057 | A-003 | `tramradar:update` | Cập nhật (SECURITY GAP) |
+| F-058 | A-003 | `tramradar:delete` | Soft delete APPROVED (SECURITY GAP) |
+| F-059 | A-002 (Trưởng phòng) | `tramradar:approve:c1` | C1 — A-002, KHÔNG phải A-004 |
+| F-059 | A-002 (Cục trưởng) | `tramradar:approve:c2` | C2 — A-002, KHÔNG phải A-004 |
+| F-060 | A-002, A-003, A-004 | `tramradar:read` | Xem chi tiết (SECURITY GAP) |
+| F-061 | A-003 | `tramradar:history` | Xem lịch sử (SECURITY GAP) |
+
+### 28.4. Hệ thống VTS (F-062→F-067)
+
+| Feature | Actor | Permission | Notes |
+|---------|-------|-----------|-------|
+| F-062 | A-003 | `vts:create` | Tạo mới (có @PreAuthorize) |
+| F-063 | A-003 | `vts:update` | Cập nhật (có @PreAuthorize) |
+| F-064 | A-003 | `vts:delete` | Soft delete APPROVED (có @PreAuthorize) |
+| F-065 | A-002 (Trưởng phòng) | `vts:approve:c1` | C1 — A-002, KHÔNG phải A-004 |
+| F-065 | A-002 (Cục trưởng) | `vts:approve:c2` | C2 — A-002, KHÔNG phải A-004 |
+| F-066 | A-002, A-003, A-004 | `vts:read` | Xem chi tiết (có @PreAuthorize) |
+| F-067 | A-003 | `vts:history` | Xem lịch sử (có @PreAuthorize) |
+
+---
+
+## 29. API Endpoints — F-044 đến F-067
+
+### 29.1. Đê/Kè
+
+| Method | Endpoint | Feature | Permission |
+|--------|----------|---------|-----------|
+| POST | `/api/v1/de-ke` | F-044 | `deke:create` |
+| GET | `/api/v1/de-ke` | F-048 | `deke:read` |
+| GET | `/api/v1/de-ke/{id}` | F-048 | `deke:read` |
+| PUT | `/api/v1/de-ke/{id}` | F-045 | `deke:update` |
+| DELETE | `/api/v1/de-ke/{id}` | F-046 | `deke:delete` |
+| POST | `/api/v1/de-ke/{id}/approve/c1` | F-047 | `deke:approve:c1` |
+| POST | `/api/v1/de-ke/{id}/approve/c2` | F-047 | `deke:approve:c2` |
+| GET | `/api/v1/de-ke/search` | F-048 | `deke:read` |
+| GET | `/api/v1/de-ke/status-phe-duyet/{trangThai}` | F-048 | `deke:read` |
+| GET | `/api/v1/de-ke/{id}/history` | F-049 | `deke:history` |
+
+### 29.2. Cơ sở sửa chữa, đóng tàu
+
+| Method | Endpoint | Feature | Permission |
+|--------|----------|---------|-----------|
+| POST | `/api/v1/co-so-sua-chua` | F-050 | `cosuachua:create` |
+| GET | `/api/v1/co-so-sua-chua` | F-054 | `cosuachua:read` |
+| GET | `/api/v1/co-so-sua-chua/{id}` | F-054 | `cosuachua:read` |
+| PUT | `/api/v1/co-so-sua-chua/{id}` | F-051 | `cosuachua:update` |
+| DELETE | `/api/v1/co-so-sua-chua/{id}` | F-052 | `cosuachua:delete` |
+| POST | `/api/v1/co-so-sua-chua/{id}/approve/c1` | F-053 | `cosuachua:approve:c1` |
+| POST | `/api/v1/co-so-sua-chua/{id}/approve/c2` | F-053 | `cosuachua:approve:c2` |
+| GET | `/api/v1/co-so-sua-chua/search` | F-054 | `cosuachua:read` |
+| GET | `/api/v1/co-so-sua-chua/status-phe-duyet/{trangThai}` | F-054 | `cosuachua:read` |
+| GET | `/api/v1/co-so-sua-chua/{id}/history` | F-055 | `cosuachua:history` |
+
+### 29.3. Trạm radar
+
+| Method | Endpoint | Feature | Permission | Security Status |
+|--------|----------|---------|-----------|----------------|
+| POST | `/api/v1/tram-radar` | F-056 | `tramradar:create` | MISSING @PreAuthorize |
+| GET | `/api/v1/tram-radar` | F-060 | `tramradar:read` | MISSING @PreAuthorize |
+| GET | `/api/v1/tram-radar/{id}` | F-060 | `tramradar:read` | MISSING @PreAuthorize |
+| PUT | `/api/v1/tram-radar/{id}` | F-057 | `tramradar:update` | MISSING @PreAuthorize |
+| DELETE | `/api/v1/tram-radar/{id}` | F-058 | `tramradar:delete` | MISSING @PreAuthorize |
+| POST | `/api/v1/tram-radar/{id}/approve/c1` | F-059 | `tramradar:approve:c1` | MISSING @PreAuthorize |
+| POST | `/api/v1/tram-radar/{id}/approve/c2` | F-059 | `tramradar:approve:c2` | MISSING @PreAuthorize |
+| GET | `/api/v1/tram-radar/search` | F-060 | `tramradar:read` | MISSING @PreAuthorize |
+| GET | `/api/v1/tram-radar/{id}/history` | F-061 | `tramradar:history` | MISSING @PreAuthorize |
+
+### 29.4. Hệ thống VTS
+
+| Method | Endpoint | Feature | Permission |
+|--------|----------|---------|-----------|
+| POST | `/api/v1/he-thong-vts` | F-062 | `vts:create` |
+| GET | `/api/v1/he-thong-vts` | F-066 | `vts:read` |
+| GET | `/api/v1/he-thong-vts/{id}` | F-066 | `vts:read` |
+| PUT | `/api/v1/he-thong-vts/{id}` | F-063 | `vts:update` |
+| DELETE | `/api/v1/he-thong-vts/{id}` | F-064 | `vts:delete` |
+| POST | `/api/v1/he-thong-vts/{id}/approve/c1` | F-065 | `vts:approve:c1` |
+| POST | `/api/v1/he-thong-vts/{id}/approve/c2` | F-065 | `vts:approve:c2` |
+| GET | `/api/v1/he-thong-vts/search` | F-066 | `vts:read` |
+| GET | `/api/v1/he-thong-vts/status-phe-duyet/{trangThai}` | F-066 | `vts:read` |
+| GET | `/api/v1/he-thong-vts/{id}/history` | F-067 | `vts:history` |
+
+---
+
+## 30. NFR Bổ sung — F-044 đến F-067
+
+### 30.1. Performance (inherited từ F-038-043)
+
+| ID | Requirement | Target | Applies-to |
+|----|-------------|--------|-----------|
+| NFR-PERF-05 | API response tạo mới/cập nhật | ≤ 2 giây | DeKe, CoSuaChua, TramRadar, VTS |
+| NFR-PERF-06 | API tra cứu có phân trang | ≤ 3 giây (≤10.000 bản ghi) | Tất cả |
+| NFR-PERF-07 | Xem chi tiết bao gồm attachment list | ≤ 1.5 giây | Tất cả |
+
+### 30.2. Security (gaps và additions)
+
+| ID | Requirement | Target | Status |
+|----|-------------|--------|--------|
+| NFR-SEC-06 | `@PreAuthorize` trên tất cả TramRadar endpoints | MUST FIX trước production | GAP — TramRadarController missing |
+| NFR-SEC-07 | Coordinate validation kinhDo/viDo | [-180,180] / [-90,90] via @DecimalMin/@DecimalMax | Implemented in DTO |
+| NFR-SEC-08 | A-004 không có quyền approve (C1 hoặc C2) trên bất kỳ domain nào | Enforcement via permission-matrix | Documented — cần verify permission-matrix |
+
+### 30.3. Geo Coordinate (TramRadar specific)
+
+| ID | Requirement | Target |
+|----|-------------|--------|
+| NFR-GEO-01 | kinhDo range validation | DECIMAL(10,6), [-180.000000, 180.000000] |
+| NFR-GEO-02 | viDo range validation | DECIMAL(10,6), [-90.000000, 90.000000] |
+| NFR-GEO-03 | Geo fields nullable | Không bắt buộc khi tọa độ chưa rõ |
+| NFR-GEO-04 | Không có real-time map/GeoServer integration trong Phase 1 | N/A — plain CRUD storage |
+
+### 30.4. Reliability, Usability, Maintainability
+
+Kế thừa toàn bộ từ sections 9.3–9.5 (F-038-043): soft delete, @Transactional, pagination, Vietnamese UI, 70% test coverage, SLF4J logging.
+
+---
+
+## 31. Module-Level Summary — M-003 (30 features)
+
+### 31.1. Shared Patterns Across All 30 Features
+
+| Pattern | Value | Applies-to |
+|---------|-------|-----------|
+| Approval workflow | 2-cấp: Trưởng phòng (C1) → Cục trưởng (C2), cả hai là A-002 | F-041, F-047, F-053, F-059, F-065 |
+| State machine | PROPOSED → UNDER_REVIEW → APPROVED; PROPOSED/UNDER_REVIEW → REJECTED → PROPOSED | Tất cả 5 groups |
+| Delete constraint | Soft delete (isDeleted=true), chỉ APPROVED mới xóa được | F-040, F-046, F-052, F-058, F-064 |
+| History tracking | PheDuyetLichSu entries tại mỗi create/update/approve/reject/delete | F-043, F-049, F-055, F-061, F-067 |
+| @SQLRestriction | `is_deleted = false` filter tự động (Hibernate) | TramRadar, HeThongVTS |
+| MinIO attachment | Tất cả entities đều có Attachment sub-entity + MinIO | 5 × 2 = 10 entities |
+| Cross-domain decoupling | KHÔNG FK giữa domain entities trong M-003 | Confirmed từ code |
+
+### 31.2. Các điểm khác biệt theo domain
+
+| Domain | Entity đặc trưng | Unique constraints | Permission prefix |
+|--------|-----------------|-------------------|------------------|
+| Lượng hàng hải | loaiTau, soLuong, ngayGhiNhan ≤ today | soLuong > 0 (Integer), ngayGhiNhan @PastOrPresent | `luonghanghai:` |
+| Đê/Kè | loaiDe, viTri, 3 dimensions | chieuDai/Rong/Cao > 0 (BigDecimal) | `deke:` |
+| Cơ sở sửa chữa | tenCoSo, diaChi, tinhThanh, loaiCoSo | email optional, soDienThoai optional | `cosuachua:` |
+| Trạm radar | tenTram, viTri + kinhDo/viDo geo coordinates | kinhDo ∈[-180,180], viDo ∈[-90,90] | `tramradar:` |
+| Hệ thống VTS | tenHeThong, viTri, doiTac | Service name: HeThongVTSDataService | `vts:` |
+
+### 31.3. Security Gaps Summary
+
+| Gap | Location | Severity | Action |
+|-----|----------|----------|--------|
+| Missing @PreAuthorize | TramRadarController (tất cả 9 endpoints) | Critical | Add `@PreAuthorize("@auth.check(authentication, 'tramradar:XXX')")` cho từng endpoint. Reference: HeThongVTSController |
+| Feature brief A-004 actor error | F-059, F-065 feature-brief.md | Medium | Brief đã incorrect — code/spec là nguồn truth, brief có thể update sau |
+
+*Extended by sdlc-ba-pro for M-003 covering F-044→F-067. Source-of-truth: implemented code + DESIGN docs.*
+*Code evidence base: `src/main/java/com/hanghai/kchtg/{deke,cosuachua,tramradar,vts}/`*

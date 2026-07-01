@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.luonghanghai.dto;
 
-import com.hanghai.kchtg.luonghanghai.entity.LuongHangHaiApprovalStatus;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import java.time.LocalDate;
@@ -18,6 +17,4 @@ public class LuongHangHaiCreateRequest {
     private String taiTrong;
     private String dienTichDangBo;
     private String ghiChu;
-    private String createdBy;
-    @Builder.Default private LuongHangHaiApprovalStatus approvalStatus = LuongHangHaiApprovalStatus.PROPOSED;
 }
