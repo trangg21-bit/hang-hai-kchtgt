@@ -148,6 +148,20 @@ class TramRadarServiceTest {
     }
 
     @Test
+    void testApproveC2_sameActorAsC1_throwsException() {
+        entity.setTrangThai("UNDER_REVIEW");
+        entity.setPheDuyetC1(true);
+        entity.setNguoiPheDuyetC1("user1");
+        PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
+
+        when(repository.findById(1L)).thenReturn(Optional.of(entity));
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> service.approveC2(1L, req, "user1"));
+        assertTrue(ex.getMessage().contains("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1"));
+    }
+
+    @Test
     void testRejectC1() {
         PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("REJECTED").lyDo("Không đủ điều kiện").build();
         when(repository.findById(1L)).thenReturn(Optional.of(entity));

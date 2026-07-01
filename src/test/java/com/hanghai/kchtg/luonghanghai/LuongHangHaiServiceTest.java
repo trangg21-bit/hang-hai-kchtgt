@@ -64,13 +64,12 @@ class LuongHangHaiServiceTest {
                 .taiTrong("800")
                 .dienTichDangBo("150")
                 .ghiChu("Create test")
-                .createdBy("User1")
                 .build();
     }
 
     @Test void create_shouldSaveEntity() {
         when(repo.save(any())).thenReturn(testEntity);
-        LuongHangHaiResponse r = service.create(createReq);
+        LuongHangHaiResponse r = service.create(createReq, "testuser");
         assertThat(r).isNotNull();
         assertThat(r.getLoaiTau()).isEqualTo("Tau ca cuoc");
         assertThat(r.getApprovalStatus()).isEqualTo(LuongHangHaiApprovalStatus.PROPOSED);
@@ -79,7 +78,7 @@ class LuongHangHaiServiceTest {
 
     @Test void create_shouldSetDefaultStatusToProposed() {
         when(repo.save(any())).thenReturn(testEntity);
-        assertThat(service.create(createReq).getApprovalStatus()).isEqualTo(LuongHangHaiApprovalStatus.PROPOSED);
+        assertThat(service.create(createReq, "testuser").getApprovalStatus()).isEqualTo(LuongHangHaiApprovalStatus.PROPOSED);
     }
 
     @Test void getById_shouldReturnResponse() {
@@ -110,14 +109,14 @@ class LuongHangHaiServiceTest {
                 .build();
         when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
         when(repo.save(any())).thenReturn(testEntity);
-        LuongHangHaiResponse r = service.update(1L, ur);
+        LuongHangHaiResponse r = service.update(1L, ur, "testuser");
         assertThat(r.getLoaiTau()).isEqualTo("Da cap nhat");
         verify(repo, times(1)).save(any());
     }
 
     @Test void update_shouldThrowWhenNotFound() {
         when(repo.findById(99L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.update(99L, LuongHangHaiUpdateRequest.builder().build()))
+        assertThatThrownBy(() -> service.update(99L, LuongHangHaiUpdateRequest.builder().build(), "testuser"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -210,6 +209,18 @@ class LuongHangHaiServiceTest {
         when(repo.findById(99L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.approveC2(99L, PheDuyetRequest.builder().build()))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test void approveC2_sameActorAsC1_throwsException() {
+        testEntity.setApprovalStatus(LuongHangHaiApprovalStatus.UNDER_REVIEW);
+        testEntity.setNguoiPheDuyetC1("user1");
+        when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
+        assertThatThrownBy(() -> service.approveC2(1L, PheDuyetRequest.builder()
+                .trangThai("APPROVED")
+                .nguoiPheDuyet("user1")
+                .build()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
     }
 
     @Test void reject_shouldRejectAndSetLyDo() {

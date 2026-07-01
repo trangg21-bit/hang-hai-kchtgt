@@ -8,6 +8,7 @@ import com.hanghai.kchtg.deke.service.DeKeService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 
@@ -21,6 +22,7 @@ class DeKeControllerTest {
     private DeKeController controller;
     private DeKeService service;
     private ObjectMapper objectMapper;
+    private Authentication authentication;
 
     private DeKeResponse testResp;
     private DeKeCreateRequest createReq;
@@ -29,6 +31,8 @@ class DeKeControllerTest {
         service = mock(DeKeService.class);
         controller = new DeKeController(service);
         objectMapper = new ObjectMapper();
+        authentication = mock(Authentication.class);
+        when(authentication.getName()).thenReturn("testuser");
 
         testResp = DeKeResponse.builder()
                 .id(1L)
@@ -53,22 +57,21 @@ class DeKeControllerTest {
                 .chieuCao(8.0)
                 .matVatLieu("Thep")
                 .tinhTrang("Tot")
-                .createdBy("User1")
                 .build();
     }
 
     // ── create ──────────────────────────────────────────────────────────
 
     @Test void create_shouldReturnSuccessResponse() {
-        when(service.create(any())).thenReturn(testResp);
+        when(service.create(any(), anyString())).thenReturn(testResp);
 
-        var resp = controller.create(createReq);
+        var resp = controller.create(createReq, authentication);
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody().isSuccess()).isTrue();
         assertThat(resp.getBody().getMessage()).isEqualTo("Tao de ke thanh cong");
         assertThat(resp.getBody().getData().getLoaiDe()).isEqualTo("De ke son");
-        verify(service, times(1)).create(any());
+        verify(service, times(1)).create(any(), anyString());
     }
 
     // ── getById ─────────────────────────────────────────────────────────
@@ -100,15 +103,15 @@ class DeKeControllerTest {
 
     @Test void update_shouldReturnUpdated() {
         DeKeResponse up = DeKeResponse.builder().id(1L).loaiDe("Da cap nhat").build();
-        when(service.update(eq(1L), any())).thenReturn(up);
+        when(service.update(eq(1L), any(), anyString())).thenReturn(up);
 
         DeKeUpdateRequest updateReq = DeKeUpdateRequest.builder()
                 .loaiDe("Da cap nhat").viTri("Da Nang").build();
-        var resp = controller.update(1L, updateReq);
+        var resp = controller.update(1L, updateReq, authentication);
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody().getData().getLoaiDe()).isEqualTo("Da cap nhat");
-        verify(service, times(1)).update(eq(1L), any());
+        verify(service, times(1)).update(eq(1L), any(), anyString());
     }
 
     // ── softDelete ──────────────────────────────────────────────────────

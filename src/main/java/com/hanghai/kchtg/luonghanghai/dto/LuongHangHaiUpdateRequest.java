@@ -26,6 +26,4 @@ public class LuongHangHaiUpdateRequest {
     private String dienTichDangBo;
 
     private String ghiChu;
-
-    private String updatedBy;
 }

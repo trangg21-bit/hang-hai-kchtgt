@@ -160,6 +160,11 @@ public class CoSuaChuaDongTauService {
             throw new RuntimeException("Can only approve UNDER_REVIEW records: " + id);
         }
 
+        String c1Actor = entity.getNguoiPheDuyetC1();
+        if (c1Actor != null && c1Actor.equals(approvedBy)) {
+            throw new IllegalStateException("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
+        }
+
         if ("REJECTED".equals(request.getQuyetDinh())) {
             entity.setTrangThai("REJECTED");
             entity.setLyDoTuChoi(request.getLyDo());

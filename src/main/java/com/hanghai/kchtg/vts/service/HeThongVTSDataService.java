@@ -160,6 +160,11 @@ public class HeThongVTSDataService {
             throw new RuntimeException("Can only approve from UNDER_REVIEW status");
         }
 
+        String c1Actor = entity.getNguoiPheDuyetC1();
+        if (c1Actor != null && c1Actor.equals(username)) {
+            throw new IllegalStateException("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
+        }
+
         if ("REJECTED".equals(request.getQuyetDinh())) {
             entity.setTrangThai("REJECTED");
             entity.setLyDoTuChoi(request.getLyDo());

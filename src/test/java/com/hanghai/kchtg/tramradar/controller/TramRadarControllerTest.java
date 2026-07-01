@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.tramradar.controller;
 
+import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.tramradar.dto.*;
 import com.hanghai.kchtg.tramradar.service.TramRadarService;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,7 +61,10 @@ class TramRadarControllerTest {
         when(service.getById(1L)).thenReturn(response);
         ResponseEntity<?> result = controller.getById(1L);
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        assertEquals(1L, ((TramRadarResponse) result.getBody()).getId());
+        @SuppressWarnings("unchecked")
+        ApiResponse<TramRadarResponse> apiResp = (ApiResponse<TramRadarResponse>) result.getBody();
+        assertNotNull(apiResp);
+        assertEquals(1L, apiResp.getData().getId());
     }
 
     @Test
