@@ -56,6 +56,11 @@ const MENU_PERMISSION_MAP: Record<string, string> = {
   '/caucang': 'caucang:read',
   '/cangcan': 'cangcan:read',
   '/vungnuoc': 'vungnuoc:read',
+  '/luong-hang-hai': 'luonghanghai:read',
+  '/de-ke': 'deke:read',
+  '/co-so-sua-chua': 'cosuachua:read',
+  '/tram-radar': 'tramradar:read',
+  '/he-thong-vts': 'vts:read',
   '/connections': 'connection:read',
   '/reports': 'report:read',
   '/settings': 'admin:manage',
@@ -90,6 +95,11 @@ const pageTitles: Record<string, string> = {
   '/caucang': 'Cầu cảng',
   '/cangcan': 'Cảng cạn',
   '/vungnuoc': 'Vùng nước',
+  '/luong-hang-hai': 'Luồng hàng hải',
+  '/de-ke': 'Đê/Kè',
+  '/co-so-sua-chua': 'Cơ sở sửa chữa & đóng tàu',
+  '/tram-radar': 'Trạm Radar',
+  '/he-thong-vts': 'Hệ thống VTS',
   '/connections': 'Liên thông dữ liệu',
   '/reports': 'Báo cáo & Thống kê',
   '/settings': 'Cấu hình hệ thống',
@@ -154,6 +164,19 @@ export default function AppLayout() {
       ].filter(Boolean),
     },
     { type: 'divider' as const },
+    {
+      key: 'khu-nuoc-vts',
+      icon: <SettingOutlined />,
+      label: 'Khu nước & VTS',
+      children: [
+        canAccessMenu('/luong-hang-hai') ? { key: '/luong-hang-hai', label: 'Luồng hàng hải' } : null,
+        canAccessMenu('/de-ke') ? { key: '/de-ke', label: 'Đê/Kè' } : null,
+        canAccessMenu('/co-so-sua-chua') ? { key: '/co-so-sua-chua', label: 'Cơ sở sửa chữa & đóng tàu' } : null,
+        canAccessMenu('/tram-radar') ? { key: '/tram-radar', label: 'Trạm Radar' } : null,
+        canAccessMenu('/he-thong-vts') ? { key: '/he-thong-vts', label: 'Hệ thống VTS' } : null,
+      ].filter(Boolean),
+    },
+    { type: 'divider' as const },
     canAccessMenu('/reports') ? { key: '/reports', icon: <BarChartOutlined />, label: 'Báo cáo & Thống kê' } : null,
     { type: 'divider' as const },
     canAccessMenu('/connections') ? { key: '/connections', icon: <ApiOutlined />, label: 'Liên thông dữ liệu' } : null,
@@ -201,6 +224,8 @@ export default function AppLayout() {
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
   } else if (pathSegments[0] === 'cangbien' || pathSegments[0] === 'bencang' || pathSegments[0] === 'caucang' || pathSegments[0] === 'cangcan' || pathSegments[0] === 'vungnuoc') {
+    selectedKey = '/' + pathSegments[0];
+  } else if (pathSegments[0] === 'luong-hang-hai' || pathSegments[0] === 'de-ke' || pathSegments[0] === 'co-so-sua-chua' || pathSegments[0] === 'tram-radar' || pathSegments[0] === 'he-thong-vts') {
     selectedKey = '/' + pathSegments[0];
   } else {
     selectedKey = '/' + pathSegments[0];

@@ -82,6 +82,18 @@ import VungNuocHistoryPage from './app/vungnuoc/VungNuocHistoryPage';
 
 import GiayToUploadPage from './app/giayto/GiayToUploadPage';
 
+// M-003: Khu nước & VTS — Quản lý tàu bè
+import LuongHangHaiList from './pages/luonghanghai/LuongHangHaiList';
+import LuongHangHaiForm from './pages/luonghanghai/LuongHangHaiForm';
+import DeKeList from './pages/deke/DeKeList';
+import DeKeForm from './pages/deke/DeKeForm';
+import CoSuaChuaList from './pages/cosuachua/CoSuaChuaList';
+import CoSuaChuaForm from './pages/cosuachua/CoSuaChuaForm';
+import TramRadarList from './pages/tramradar/TramRadarList';
+import TramRadarForm from './pages/tramradar/TramRadarForm';
+import HeThongVTSList from './pages/hethongvts/HeThongVTSList';
+import HeThongVTSForm from './pages/hethongvts/HeThongVTSForm';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -228,6 +240,33 @@ export default function App() {
                 <Route path="/vungnuoc/:id/history" element={<PermissionGuard permission="vungnuoc:read"><VungNuocHistoryPage /></PermissionGuard>} />
 
                 <Route path="/giayto/upload/:entityType/:entityId" element={<PermissionGuard permission="cangben:read"><GiayToUploadPage /></PermissionGuard>} />
+
+                {/* M-003: Khu nước & VTS — Quản lý tàu bè */}
+
+                {/* Luồng hàng hải */}
+                <Route path="/luong-hang-hai" element={<PermissionGuard permission="luonghanghai:read"><LuongHangHaiList /></PermissionGuard>} />
+                <Route path="/luong-hang-hai/create" element={<PermissionGuard permission="luonghanghai:create"><LuongHangHaiForm /></PermissionGuard>} />
+                <Route path="/luong-hang-hai/:id" element={<PermissionGuard permission="luonghanghai:read"><LuongHangHaiForm /></PermissionGuard>} />
+
+                {/* Đê/kè */}
+                <Route path="/de-ke" element={<PermissionGuard permission="deke:read"><DeKeList /></PermissionGuard>} />
+                <Route path="/de-ke/create" element={<PermissionGuard permission="deke:create"><DeKeForm /></PermissionGuard>} />
+                <Route path="/de-ke/:id" element={<PermissionGuard permission="deke:read"><DeKeForm /></PermissionGuard>} />
+
+                {/* Cơ sở sửa chữa/đóng tàu */}
+                <Route path="/co-so-sua-chua" element={<PermissionGuard permission="cosuachua:read"><CoSuaChuaList /></PermissionGuard>} />
+                <Route path="/co-so-sua-chua/create" element={<PermissionGuard permission="cosuachua:create"><CoSuaChuaForm /></PermissionGuard>} />
+                <Route path="/co-so-sua-chua/:id" element={<PermissionGuard permission="cosuachua:read"><CoSuaChuaForm /></PermissionGuard>} />
+
+                {/* Trạm radar */}
+                <Route path="/tram-radar" element={<PermissionGuard permission="tramradar:read"><TramRadarList /></PermissionGuard>} />
+                <Route path="/tram-radar/create" element={<PermissionGuard permission="tramradar:create"><TramRadarForm /></PermissionGuard>} />
+                <Route path="/tram-radar/:id" element={<PermissionGuard permission="tramradar:read"><TramRadarForm /></PermissionGuard>} />
+
+                {/* Hệ thống VTS */}
+                <Route path="/he-thong-vts" element={<PermissionGuard permission="vts:read"><HeThongVTSList /></PermissionGuard>} />
+                <Route path="/he-thong-vts/create" element={<PermissionGuard permission="vts:create"><HeThongVTSForm /></PermissionGuard>} />
+                <Route path="/he-thong-vts/:id" element={<PermissionGuard permission="vts:read"><HeThongVTSForm /></PermissionGuard>} />
 
                 {/* Nhật ký & Backup */}
                 <Route path="/logs" element={<PermissionGuard permission="log:manage"><LogsPage /></PermissionGuard>} />
