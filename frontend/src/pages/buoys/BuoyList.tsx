@@ -10,6 +10,9 @@ import {
   Select,
   Tooltip,
   Popconfirm,
+  Modal,
+  Form,
+  message,
 } from 'antd';
 import {
   PlusOutlined,
@@ -20,10 +23,11 @@ import {
   SendOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { buoyCRUD, approval } from '../../services/beaconService';
-import type { Buoy } from '../../types/beacon';
+import type { Buoy, CreateBuoyRequest, UpdateBuoyRequest } from '../../types/beacon';
 import {
   BEACON_STATUS_MAP,
   BUOY_TYPE_OPTIONS,
@@ -34,22 +38,27 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
+import FormField from '../../components/FormField';
 
 export default function BuoyList() {
   const navigate = useNavigate();
 
-  const [search, setSearch] = useState('');
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
   const [filterType, setFilterType] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(10);
   const [dataSource, setDataSource] = useState<Buoy[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+
+  const [form] = Form.useForm();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<Buoy | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -63,7 +72,9 @@ export default function BuoyList() {
         type: filterType,
         status: filterStatus,
       });
-      setDataSource(res.data);
+      const startIndex = (page - 1) * pageSize;
+      const paginatedData = res.data.slice(startIndex, startIndex + pageSize);
+      setDataSource(paginatedData);
       setTotal(res.total);
     } catch (err: unknown) {
       setIsError(true);
@@ -73,14 +84,84 @@ export default function BuoyList() {
     }
   }, [page, pageSize, filterName, filterCode, filterType, filterStatus]);
 
-  useEffect(() => { void fetchData(); }, []);
+  const openCreateModal = useCallback(() => {
+    setEditingRecord(null);
+    form.resetFields();
+    setIsModalOpen(true);
+  }, [form]);
 
-  const handleSearch = useCallback((value: string) => {
-    setSearch(value);
-    setFilterName(value);
-    setFilterCode(value);
-    setPage(1);
-  }, []);
+  const openEditModal = useCallback((record: Buoy) => {
+    setEditingRecord(record);
+    form.setFieldsValue({
+      name: record.name,
+      code: record.code,
+      type: record.type,
+      longitude: record.longitude,
+      latitude: record.latitude,
+      range: record.range,
+      color: record.color,
+      description: record.description,
+    });
+    setIsModalOpen(true);
+  }, [form]);
+
+  const handleSubmit = useCallback(async () => {
+    try {
+      const values = await form.validateFields();
+
+      // WGS84 validation
+      if (values.latitude < -90 || values.latitude > 90) {
+        message.error('Vĩ độ phải từ -90 đến 90');
+        return;
+      }
+      if (values.longitude < -180 || values.longitude > 180) {
+        message.error('Kinh độ phải từ -180 đến 180');
+        return;
+      }
+      if (values.range < 0.01 || values.range > 100) {
+        message.error('Bán kính hoạt động phải từ 0.01 đến 100');
+        return;
+      }
+
+      setSubmitting(true);
+
+      if (editingRecord) {
+        const payload: UpdateBuoyRequest = {
+          name: values.name,
+          type: values.type,
+          longitude: values.longitude,
+          latitude: values.latitude,
+          range: values.range,
+          color: values.color,
+          description: values.description,
+        };
+        await buoyCRUD.update(editingRecord.id, payload);
+        toast.success('Đã cập nhật phao tiêu');
+      } else {
+        const payload: CreateBuoyRequest = {
+          name: values.name,
+          code: values.code,
+          type: values.type,
+          longitude: values.longitude,
+          latitude: values.latitude,
+          range: values.range,
+          color: values.color,
+          description: values.description,
+        };
+        await buoyCRUD.create(payload);
+        toast.success('Đã tạo phao tiêu');
+      }
+
+      setIsModalOpen(false);
+      void fetchData();
+    } catch {
+      // validation error
+    } finally {
+      setSubmitting(false);
+    }
+  }, [editingRecord, form, fetchData]);
+
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const handleDelete = useCallback(
     async (record: Buoy) => {
@@ -204,7 +285,7 @@ export default function BuoyList() {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 340,
+      width: 140,
       fixed: 'right' as const,
       render: (_: unknown, record: Buoy) => (
         <Space size="small">
@@ -212,17 +293,16 @@ export default function BuoyList() {
             <Button
               type="link"
               size="small"
+              icon={<EyeOutlined />}
               onClick={() => navigate(`/buoys/${record.id}`)}
-            >
-              <span style={{ fontSize: 13 }}>Chi tiết</span>
-            </Button>
+            />
           </Tooltip>
           <Tooltip title="Sửa">
             <Button
               type="link"
               size="small"
               icon={<EditOutlined />}
-              onClick={() => navigate(`/buoys/${record.id}`)}
+              onClick={() => openEditModal(record)}
             />
           </Tooltip>
           {record.status === 'DRAFT' && (
@@ -315,13 +395,6 @@ export default function BuoyList() {
         <Row gutter={[12, 12]} align="middle" justify="space-between">
           <Col xs={24} md={16}>
             <Space wrap>
-              <Input.Search
-                placeholder="Tìm theo tên, mã..."
-                allowClear
-                style={{ width: 260 }}
-                prefix={<SearchOutlined />}
-                onSearch={handleSearch}
-              />
               <Input
                 placeholder="Lọc theo tên"
                 allowClear
@@ -359,7 +432,7 @@ export default function BuoyList() {
               <Tooltip title="Tải lại">
                 <Button icon={<ReloadOutlined />} onClick={fetchData} />
               </Tooltip>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/buoys/create')}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
                 Tạo phao tiêu
               </Button>
             </Space>
@@ -377,9 +450,9 @@ export default function BuoyList() {
         )}
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
-            description={search || filterName || filterCode || filterType || filterStatus ? 'Không tìm thấy' : 'Chưa có phao tiêu nào'}
+            description={filterName || filterCode || filterType || filterStatus ? 'Không tìm thấy' : 'Chưa có phao tiêu nào'}
             ctaText="Tạo phao tiêu đầu tiên"
-            onCta={() => navigate('/buoys/create')}
+            onCta={openCreateModal}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (
@@ -403,6 +476,108 @@ export default function BuoyList() {
           />
         )}
       </Card>
+
+      <Modal
+        title={editingRecord ? 'Chỉnh sửa phao tiêu' : 'Thêm phao tiêu mới'}
+        open={isModalOpen}
+        onOk={handleSubmit}
+        onCancel={() => setIsModalOpen(false)}
+        destroyOnClose
+        confirmLoading={submitting}
+        okText={editingRecord ? 'Cập nhật' : 'Tạo mới'}
+        cancelText="Hủy"
+        width={700}
+        mask={{ closable: false }}
+      >
+        <Form form={form} layout="vertical" style={{ marginTop: 16, maxHeight: '60vh', overflowY: 'auto', paddingRight: 12 }}>
+          <FormField
+            type="text"
+            name="code"
+            label="Mã phao tiêu"
+            required
+            disabled={!!editingRecord}
+            placeholder="VD: BY-HAIPHONG-001"
+            help="Mã định danh duy nhất cho phao tiêu"
+          />
+
+          <FormField
+            type="text"
+            name="name"
+            label="Tên phao tiêu"
+            required
+            placeholder="VD: Phao tiêu số 0"
+          />
+
+          <FormField
+            type="select"
+            name="type"
+            label="Loại phao tiêu"
+            required
+            options={BUOY_TYPE_OPTIONS}
+          />
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <FormField
+                type="number"
+                name="longitude"
+                label="Kinh độ (Longitude)"
+                required
+                min={-180}
+                max={180}
+                step={0.000001}
+                placeholder="106.8"
+                help="WGS84: -180 ~ 180"
+              />
+            </Col>
+            <Col span={12}>
+              <FormField
+                type="number"
+                name="latitude"
+                label="Vĩ độ (Latitude)"
+                required
+                min={-90}
+                max={90}
+                step={0.000001}
+                placeholder="20.7"
+                help="WGS84: -90 ~ 90"
+              />
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <FormField
+                type="number"
+                name="range"
+                label="Bán kính hoạt động (Hải lý)"
+                required
+                min={0.01}
+                max={100}
+                step={0.01}
+                placeholder="VD: 5"
+                help="Từ 0.01 đến 100 hải lý"
+              />
+            </Col>
+            <Col span={12}>
+              <FormField
+                type="text"
+                name="color"
+                label="Màu sắc phao"
+                required
+                placeholder="VD: Đỏ, Xanh lá"
+              />
+            </Col>
+          </Row>
+
+          <FormField
+            type="textarea"
+            name="description"
+            label="Mô tả"
+            placeholder="Mô tả về phao tiêu..."
+          />
+        </Form>
+      </Modal>
     </>
   );
 }

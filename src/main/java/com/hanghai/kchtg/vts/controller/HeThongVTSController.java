@@ -3,6 +3,7 @@ package com.hanghai.kchtg.vts.controller;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.vts.dto.*;
 import com.hanghai.kchtg.vts.service.HeThongVTSDataService;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,7 +25,7 @@ public class HeThongVTSController {
     @PreAuthorize("@auth.check(authentication, 'vts:create')")
     @PostMapping
     public ResponseEntity<ApiResponse<HeThongVTSResponse>> create(
-            @RequestBody HeThongVTSCreateRequest request,
+            @Valid @RequestBody HeThongVTSCreateRequest request,
             Authentication authentication) {
         try {
             HeThongVTSResponse response = service.create(request, authentication.getName());
@@ -56,7 +57,7 @@ public class HeThongVTSController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<HeThongVTSResponse>> update(
             @PathVariable Long id,
-            @RequestBody HeThongVTSUpdateRequest request,
+            @Valid @RequestBody HeThongVTSUpdateRequest request,
             Authentication authentication) {
         try {
             HeThongVTSResponse response = service.update(id, request, authentication.getName());
@@ -79,11 +80,11 @@ public class HeThongVTSController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'vts:approve:c1')")
+    @PreAuthorize("@auth.check(authentication, 'vts:approvec1')")
     @PostMapping("/{id}/approve/c1")
     public ResponseEntity<ApiResponse<HeThongVTSResponse>> approveC1(
             @PathVariable Long id,
-            @RequestBody PheDuyetRequest request,
+            @Valid @RequestBody PheDuyetRequest request,
             Authentication authentication) {
         try {
             HeThongVTSResponse response = service.approveC1(id, request, authentication.getName());
@@ -93,11 +94,11 @@ public class HeThongVTSController {
         }
     }
 
-    @PreAuthorize("@auth.check(authentication, 'vts:approve:c2')")
+    @PreAuthorize("@auth.check(authentication, 'vts:approvec2')")
     @PostMapping("/{id}/approve/c2")
     public ResponseEntity<ApiResponse<HeThongVTSResponse>> approveC2(
             @PathVariable Long id,
-            @RequestBody PheDuyetRequest request,
+            @Valid @RequestBody PheDuyetRequest request,
             Authentication authentication) {
         try {
             HeThongVTSResponse response = service.approveC2(id, request, authentication.getName());

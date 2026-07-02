@@ -11,6 +11,9 @@ import {
   Select,
   Tooltip,
   Popconfirm,
+  Modal,
+  Form,
+  message,
 } from 'antd';
 import {
   PlusOutlined,
@@ -20,6 +23,7 @@ import {
   ReloadOutlined,
   SendOutlined,
   CheckCircleOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -29,12 +33,14 @@ import {
   POLYGON_OBJECT_TYPE_OPTIONS,
   POLYGON_OBJECT_STATUS_MAP,
 } from '../../types/polygonObject';
+import type { CreatePolygonObjectPayload, UpdatePolygonObjectPayload } from '../../types/polygonObject';
 import { usePermissionStore } from '../../store/permissionStore';
 import DataTable from '../../components/DataTable';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
+import FormField from '../../components/FormField';
 
 export default function PolygonObjectList() {
   const navigate = useNavigate();
@@ -50,6 +56,11 @@ export default function PolygonObjectList() {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+
+  const [form] = Form.useForm();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<PolygonObject | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -72,7 +83,87 @@ export default function PolygonObjectList() {
     }
   }, [page, pageSize, search, filterType, filterStatus]);
 
-  useEffect(() => { void fetchData(); }, []);
+  const openCreateModal = useCallback(() => {
+    setEditingRecord(null);
+    form.resetFields();
+    setIsModalOpen(true);
+  }, [form]);
+
+  const openEditModal = useCallback((record: PolygonObject) => {
+    setEditingRecord(record);
+    form.setFieldsValue({
+      name: record.name,
+      code: record.code,
+      objectType: record.objectType,
+      categoryId: record.categoryId,
+      fillSymbolId: record.fillSymbolId,
+      coordinates: record.coordinates,
+      description: record.description,
+      area: record.area,
+      purpose: record.purpose,
+      restrictionLevel: record.restrictionLevel,
+    });
+    setIsModalOpen(true);
+  }, [form]);
+
+  const validateWKT = (value: string): boolean => {
+    if (!value) return false;
+    return value.trim().toUpperCase().startsWith('POLYGON');
+  };
+
+  const handleSubmit = useCallback(async () => {
+    try {
+      const values = await form.validateFields();
+
+      // WKT validation
+      if (!validateWKT(values.coordinates)) {
+        message.error('Tọa độ phải ở định dạng WKT POLYGON (VD: POLYGON((106.7 20.8, 106.8 20.8, 106.8 20.9, 106.7 20.9, 106.7 20.8)))');
+        return;
+      }
+
+      setSubmitting(true);
+
+      if (editingRecord) {
+        const payload: UpdatePolygonObjectPayload = {
+          name: values.name,
+          objectType: values.objectType,
+          categoryId: values.categoryId,
+          fillSymbolId: values.fillSymbolId,
+          coordinates: values.coordinates,
+          description: values.description,
+          area: values.area,
+          purpose: values.purpose,
+          restrictionLevel: values.restrictionLevel,
+        };
+        await polygonObjectService.update(editingRecord.id, payload);
+        toast.success('Đã cập nhật đối tượng vùng');
+      } else {
+        const payload: CreatePolygonObjectPayload = {
+          name: values.name,
+          code: values.code,
+          objectType: values.objectType,
+          categoryId: values.categoryId,
+          fillSymbolId: values.fillSymbolId,
+          coordinates: values.coordinates,
+          description: values.description,
+          area: values.area,
+          purpose: values.purpose,
+          restrictionLevel: values.restrictionLevel,
+        };
+        await polygonObjectService.create(payload);
+        toast.success('Đã tạo đối tượng vùng');
+      }
+
+      setIsModalOpen(false);
+      void fetchData();
+    } catch {
+      // validation error
+    } finally {
+      setSubmitting(false);
+    }
+  }, [editingRecord, form, fetchData]);
+
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);
@@ -200,14 +291,17 @@ export default function PolygonObjectList() {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 260,
+      width: 140,
       fixed: 'right' as const,
       render: (_: unknown, record: PolygonObject) => (
         <Space size="small">
-          <Tooltip title="Xem">
-            <Button type="link" size="small" onClick={() => navigate(`/gis/polygons/${record.id}`)}>
-              <span style={{ fontSize: 13 }}>Chi tiết</span>
-            </Button>
+          <Tooltip title="Xem chi tiết">
+            <Button
+              type="link"
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => navigate(`/gis/polygons/${record.id}`)}
+            />
           </Tooltip>
           {hasPerm('gis.polygon.edit') && (
             <Tooltip title="Sửa">
@@ -215,7 +309,7 @@ export default function PolygonObjectList() {
                 type="link"
                 size="small"
                 icon={<EditOutlined />}
-                onClick={() => navigate(`/gis/polygons/${record.id}/edit`)}
+                onClick={() => openEditModal(record)}
               />
             </Tooltip>
           )}
@@ -242,6 +336,18 @@ export default function PolygonObjectList() {
                 onConfirm={() => handleSubmitApproval(record)}
               >
                 <Button type="link" size="small" icon={<SendOutlined />} />
+              </Popconfirm>
+            </Tooltip>
+          )}
+          {record.status === 'PENDING_APPROVAL' && hasPerm('gis.polygon.approve-l1') && (
+            <Tooltip title="Phê duyệt L1">
+              <Popconfirm
+                title="Phê duyệt cấp 1?"
+                okText="Phê duyệt"
+                cancelText="Hủy"
+                onConfirm={() => handleApproveL1(record)}
+              >
+                <Button type="link" size="small" icon={<CheckCircleOutlined />} />
               </Popconfirm>
             </Tooltip>
           )}
@@ -299,7 +405,7 @@ export default function PolygonObjectList() {
                 <Button icon={<ReloadOutlined />} onClick={fetchData} />
               </Tooltip>
               {hasPerm('gis.polygon.create') && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/gis/polygons/create')}>
+                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
                   Thêm đối tượng vùng
                 </Button>
               )}
@@ -320,7 +426,7 @@ export default function PolygonObjectList() {
           <EmptyState
             description={search || filterType || filterStatus ? 'Không tìm thấy' : 'Chưa có đối tượng vùng nào'}
             ctaText="Thêm đối tượng vùng đầu tiên"
-            onCta={() => navigate('/gis/polygons/create')}
+            onCta={openCreateModal}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (
@@ -344,6 +450,130 @@ export default function PolygonObjectList() {
           />
         )}
       </Card>
+
+      <Modal
+        title={editingRecord ? 'Chỉnh sửa đối tượng vùng' : 'Thêm đối tượng vùng mới'}
+        open={isModalOpen}
+        onOk={handleSubmit}
+        onCancel={() => setIsModalOpen(false)}
+        destroyOnClose
+        confirmLoading={submitting}
+        okText={editingRecord ? 'Cập nhật' : 'Tạo mới'}
+        cancelText="Hủy"
+        width={700}
+        mask={{ closable: false }}
+      >
+        <Form form={form} layout="vertical" style={{ marginTop: 16, maxHeight: '60vh', overflowY: 'auto', paddingRight: 12 }}>
+          <FormField
+            type="text"
+            name="code"
+            label="Mã đối tượng"
+            required
+            disabled={!!editingRecord}
+            placeholder="VD: PG-ANCHOR-001"
+            help="Mã định danh duy nhất cho đối tượng vùng"
+          />
+
+          <FormField
+            type="text"
+            name="name"
+            label="Tên đối tượng"
+            required
+            placeholder="VD: Vùng neo đậu Hải Phòng"
+          />
+
+          <FormField
+            type="select"
+            name="objectType"
+            label="Loại đối tượng"
+            required
+            options={POLYGON_OBJECT_TYPE_OPTIONS}
+          />
+
+          <FormField
+            type="textarea"
+            name="coordinates"
+            label="Tọa độ (WKT POLYGON)"
+            required
+            placeholder="POLYGON((106.7000 20.8000, 106.8000 20.8000, 106.8000 20.9000, 106.7000 20.9000, 106.7000 20.8000))"
+            help="Định dạng WKT POLYGON — phải bắt đầu bằng 'POLYGON'"
+          />
+
+          <FormField
+            type="textarea"
+            name="description"
+            label="Mô tả"
+            placeholder="Mô tả về đối tượng vùng..."
+          />
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <FormField
+                type="number"
+                name="area"
+                label="Diện tích (km²)"
+                min={0}
+                step={0.01}
+                placeholder="Tùy chọn"
+              />
+            </Col>
+            <Col span={12}>
+              <FormField
+                type="text"
+                name="restrictionLevel"
+                label="Mức độ hạn chế"
+                placeholder="VD: HIGH, MEDIUM, LOW"
+              />
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <FormField
+                type="text"
+                name="purpose"
+                label="Mục đích sử dụng"
+                placeholder="Tùy chọn"
+              />
+            </Col>
+            <Col span={12}>
+              <FormField
+                type="select"
+                name="categoryId"
+                label="Danh mục"
+                placeholder="Tùy chọn danh mục"
+                options={[
+                  { label: 'Vùng nước cảng biển', value: 1 },
+                  { label: 'Luồng hàng hải', value: 2 },
+                  { label: 'Vùng đón trả hoa tiêu', value: 3 },
+                  { label: 'Vùng kiểm dịch', value: 4 },
+                  { label: 'Vùng hạn chế', value: 5 },
+                  { label: 'Khác', value: 6 },
+                ]}
+              />
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <FormField
+                type="select"
+                name="fillSymbolId"
+                label="Ký hiệu vùng"
+                placeholder="Tùy chọn ký hiệu"
+                options={[
+                  { label: 'Symbol Vùng nước cảng biển', value: 1 },
+                  { label: 'Symbol Luồng hàng hải', value: 2 },
+                  { label: 'Symbol Vùng đón trả hoa tiêu', value: 3 },
+                  { label: 'Symbol Vùng hạn chế', value: 4 },
+                  { label: 'Symbol Khác', value: 5 },
+                ]}
+              />
+            </Col>
+            <Col span={12} />
+          </Row>
+        </Form>
+      </Modal>
     </>
   );
 }

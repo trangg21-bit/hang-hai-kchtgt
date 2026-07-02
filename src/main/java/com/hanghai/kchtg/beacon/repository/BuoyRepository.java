@@ -23,16 +23,16 @@ public interface BuoyRepository extends JpaRepository<Buoy, UUID> {
     List<Buoy> findByNameContainingIgnoreCase(String name);
     List<Buoy> findByCodeContainingIgnoreCase(String code);
 
-    @Query("SELECT b FROM Buoy b WHERE " +
-           "(:name IS NULL OR b.name LIKE %:name%) AND " +
-           "(:code IS NULL OR b.code LIKE %:code%) AND " +
+    @Query(value = "SELECT * FROM buoy b WHERE " +
+           "(:name IS NULL OR LOWER(b.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
+           "(:code IS NULL OR LOWER(b.code) LIKE LOWER(CONCAT('%', :code, '%'))) AND " +
            "(:type IS NULL OR b.type = :type) AND " +
-           "(:status IS NULL OR b.status = :status)")
+           "(:status IS NULL OR b.status = :status)", nativeQuery = true)
     List<Buoy> searchFiltered(
         @Param("name") String name,
         @Param("code") String code,
-        @Param("type") BuoyType type,
-        @Param("status") BeaconStatus status
+        @Param("type") String type,
+        @Param("status") String status
     );
 
     long countByStatus(BeaconStatus status);

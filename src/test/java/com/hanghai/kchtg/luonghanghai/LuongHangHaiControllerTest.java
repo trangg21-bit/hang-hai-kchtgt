@@ -65,7 +65,6 @@ class LuongHangHaiControllerTest {
                 .taiTrong("800")
                 .dienTichDangBo("150")
                 .ghiChu("Create test")
-                .createdBy("User1")
                 .build();
     }
 
@@ -78,7 +77,7 @@ class LuongHangHaiControllerTest {
     }
 
     @Test void create_shouldReturnCreated() throws Exception {
-        when(service.create(any())).thenReturn(testResp);
+        when(service.create(any(), anyString())).thenReturn(testResp);
         mockMvc.perform(post("/api/v1/luong-hang-hai")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(createReq)))
@@ -105,7 +104,7 @@ class LuongHangHaiControllerTest {
 
     @Test void update_shouldReturnUpdated() throws Exception {
         LuongHangHaiResponse up = LuongHangHaiResponse.builder().id(1L).loaiTau("Da cap nhat").build();
-        when(service.update(eq(1L), any())).thenReturn(up);
+        when(service.update(eq(1L), any(), anyString())).thenReturn(up);
         mockMvc.perform(put("/api/v1/luong-hang-hai/1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(createReq)))

@@ -58,6 +58,5 @@ desktop.ini
 *.bak
 
 # ===== Docker =====
-Dockerfile*
-docker-compose*
-.dockerignore
+# Dockerfile* and docker-compose* removed from ignore list to avoid BuildKit errors
+

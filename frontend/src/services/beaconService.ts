@@ -186,6 +186,7 @@ export const beaconHistory = {
   async getHistory(params: {
     type: BeaconType;
     entityId?: string;
+    entityCode?: string;
     actionType?: BeaconHistoryActionType;
     from?: string;
     to?: string;
@@ -195,6 +196,7 @@ export const beaconHistory = {
     const sp = buildSearchParams({
       type: params.type,
       entityId: params.entityId,
+      entityCode: params.entityCode,
       actionType: params.actionType,
       from: params.from,
       to: params.to,

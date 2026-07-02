@@ -11,6 +11,9 @@ import {
   Select,
   Tooltip,
   Popconfirm,
+  Modal,
+  Form,
+  message,
 } from 'antd';
 import {
   PlusOutlined,
@@ -21,6 +24,7 @@ import {
   ExclamationCircleOutlined,
   SendOutlined,
   CheckCircleOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -30,12 +34,14 @@ import {
   POINT_OBJECT_TYPE_OPTIONS,
   POINT_OBJECT_STATUS_MAP,
 } from '../../types/pointObject';
+import type { CreatePointObjectPayload, UpdatePointObjectPayload } from '../../types/pointObject';
 import { usePermissionStore } from '../../store/permissionStore';
 import DataTable from '../../components/DataTable';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
+import FormField from '../../components/FormField';
 
 export default function PointObjectList() {
   const navigate = useNavigate();
@@ -51,6 +57,11 @@ export default function PointObjectList() {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+
+  const [form] = Form.useForm();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<PointObject | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -73,7 +84,82 @@ export default function PointObjectList() {
     }
   }, [page, pageSize, search, filterType, filterStatus]);
 
-  useEffect(() => { void fetchData(); }, []);
+  const openCreateModal = useCallback(() => {
+    setEditingRecord(null);
+    form.resetFields();
+    form.setFieldsValue({ status: 'DRAFT' });
+    setIsModalOpen(true);
+  }, [form]);
+
+  const openEditModal = useCallback((record: PointObject) => {
+    setEditingRecord(record);
+    form.setFieldsValue({
+      name: record.name,
+      code: record.code,
+      objectType: record.objectType,
+      categoryId: record.categoryId,
+      iconId: record.iconId,
+      longitude: record.longitude,
+      latitude: record.latitude,
+      description: record.description,
+      status: record.status,
+    });
+    setIsModalOpen(true);
+  }, [form]);
+
+  const handleSubmit = useCallback(async () => {
+    try {
+      const values = await form.validateFields();
+
+      // WGS84 validation
+      if (values.latitude < -90 || values.latitude > 90) {
+        message.error('Vĩ độ phải từ -90 đến 90');
+        return;
+      }
+      if (values.longitude < -180 || values.longitude > 180) {
+        message.error('Kinh độ phải từ -180 đến 180');
+        return;
+      }
+
+      setSubmitting(true);
+
+      if (editingRecord) {
+        const payload: UpdatePointObjectPayload = {
+          name: values.name,
+          objectType: values.objectType,
+          categoryId: values.categoryId,
+          iconId: values.iconId,
+          longitude: values.longitude,
+          latitude: values.latitude,
+          description: values.description,
+        };
+        await pointObjectService.update(editingRecord.id, payload);
+        toast.success('Đã cập nhật đối tượng điểm');
+      } else {
+        const payload: CreatePointObjectPayload = {
+          name: values.name,
+          code: values.code,
+          objectType: values.objectType,
+          categoryId: values.categoryId,
+          iconId: values.iconId,
+          longitude: values.longitude,
+          latitude: values.latitude,
+          description: values.description,
+        };
+        await pointObjectService.create(payload);
+        toast.success('Đã tạo đối tượng điểm');
+      }
+
+      setIsModalOpen(false);
+      void fetchData();
+    } catch {
+      // validation error
+    } finally {
+      setSubmitting(false);
+    }
+  }, [editingRecord, form, fetchData]);
+
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);
@@ -211,18 +297,17 @@ export default function PointObjectList() {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 280,
+      width: 140,
       fixed: 'right' as const,
       render: (_: unknown, record: PointObject) => (
         <Space size="small">
-          <Tooltip title="Xem">
+          <Tooltip title="Xem chi tiết">
             <Button
               type="link"
               size="small"
+              icon={<EyeOutlined />}
               onClick={() => navigate(`/gis/points/${record.id}`)}
-            >
-              <span style={{ fontSize: 13 }}>Chi tiết</span>
-            </Button>
+            />
           </Tooltip>
           {hasPerm('gis.point.edit') && (
             <Tooltip title="Sửa">
@@ -230,7 +315,7 @@ export default function PointObjectList() {
                 type="link"
                 size="small"
                 icon={<EditOutlined />}
-                onClick={() => navigate(`/gis/points/${record.id}/edit`)}
+                onClick={() => openEditModal(record)}
               />
             </Tooltip>
           )}
@@ -257,6 +342,18 @@ export default function PointObjectList() {
                 onConfirm={() => handleSubmitApproval(record)}
               >
                 <Button type="link" size="small" icon={<SendOutlined />} />
+              </Popconfirm>
+            </Tooltip>
+          )}
+          {record.status === 'PENDING_APPROVAL' && hasPerm('gis.point.approve-l1') && (
+            <Tooltip title="Phê duyệt L1">
+              <Popconfirm
+                title="Phê duyệt cấp 1?"
+                okText="Phê duyệt"
+                cancelText="Hủy"
+                onConfirm={() => handleApproveL1(record)}
+              >
+                <Button type="link" size="small" icon={<CheckCircleOutlined />} />
               </Popconfirm>
             </Tooltip>
           )}
@@ -314,7 +411,7 @@ export default function PointObjectList() {
                 <Button icon={<ReloadOutlined />} onClick={fetchData} />
               </Tooltip>
               {hasPerm('gis.point.create') && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/gis/points/create')}>
+                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
                   Thêm đối tượng điểm
                 </Button>
               )}
@@ -335,7 +432,7 @@ export default function PointObjectList() {
           <EmptyState
             description={search || filterType || filterStatus ? 'Không tìm thấy' : 'Chưa có đối tượng điểm nào'}
             ctaText="Thêm đối tượng điểm đầu tiên"
-            onCta={() => navigate('/gis/points/create')}
+            onCta={openCreateModal}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (
@@ -359,6 +456,116 @@ export default function PointObjectList() {
           />
         )}
       </Card>
+
+      <Modal
+        title={editingRecord ? 'Chỉnh sửa đối tượng điểm' : 'Thêm đối tượng điểm mới'}
+        open={isModalOpen}
+        onOk={handleSubmit}
+        onCancel={() => setIsModalOpen(false)}
+        destroyOnClose
+        confirmLoading={submitting}
+        okText={editingRecord ? 'Cập nhật' : 'Tạo mới'}
+        cancelText="Hủy"
+        width={700}
+        mask={{ closable: false }}
+      >
+        <Form form={form} layout="vertical" style={{ marginTop: 16, maxHeight: '60vh', overflowY: 'auto', paddingRight: 12 }}>
+          <FormField
+            type="text"
+            name="code"
+            label="Mã đối tượng"
+            required
+            disabled={!!editingRecord}
+            placeholder="VD: PT-PORT-001"
+            help="Mã định danh duy nhất cho đối tượng điểm"
+          />
+
+          <FormField
+            type="text"
+            name="name"
+            label="Tên đối tượng"
+            required
+            placeholder="VD: Cảng Hải Phòng"
+          />
+
+          <FormField
+            type="select"
+            name="objectType"
+            label="Loại đối tượng"
+            required
+            options={POINT_OBJECT_TYPE_OPTIONS}
+          />
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <FormField
+                type="number"
+                name="longitude"
+                label="Kinh độ (Longitude)"
+                required
+                min={-180}
+                max={180}
+                step={0.0001}
+                placeholder="-106.7"
+                help="WGS84: -180 ~ 180"
+              />
+            </Col>
+            <Col span={12}>
+              <FormField
+                type="number"
+                name="latitude"
+                label="Vĩ độ (Latitude)"
+                required
+                min={-90}
+                max={90}
+                step={0.0001}
+                placeholder="20.9"
+                help="WGS84: -90 ~ 90"
+              />
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <FormField
+                type="select"
+                name="categoryId"
+                label="Danh mục"
+                placeholder="Tùy chọn danh mục"
+                options={[
+                  { label: 'Cảng biển', value: 1 },
+                  { label: 'Đèn biển', value: 2 },
+                  { label: 'Phao tiêu', value: 3 },
+                  { label: 'Đèn hiệu', value: 4 },
+                  { label: 'Khác', value: 5 },
+                ]}
+              />
+            </Col>
+            <Col span={12}>
+              <FormField
+                type="select"
+                name="iconId"
+                label="Biểu tượng bản đồ"
+                placeholder="Tùy chọn biểu tượng"
+                options={[
+                  { label: 'Icon Cảng biển', value: 1 },
+                  { label: 'Icon Đèn biển', value: 2 },
+                  { label: 'Icon Phao tiêu', value: 3 },
+                  { label: 'Icon Đèn hiệu', value: 4 },
+                  { label: 'Icon Khác (Default)', value: 5 },
+                ]}
+              />
+            </Col>
+          </Row>
+
+          <FormField
+            type="textarea"
+            name="description"
+            label="Mô tả"
+            placeholder="Mô tả về đối tượng điểm..."
+          />
+        </Form>
+      </Modal>
     </>
   );
 }

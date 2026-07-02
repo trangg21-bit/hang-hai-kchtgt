@@ -32,17 +32,26 @@ public class BeaconHistoryController {
     @GetMapping
     public ResponseEntity<ApiResponse<Page<BeaconHistoryResponse>>> getHistory(
             @RequestParam BeaconType type,
-            @RequestParam(required = false) UUID entityId,
+            @RequestParam(required = false) String entityId,
+            @RequestParam(required = false) String entityCode,
             @RequestParam(required = false) BeaconHistoryActionType actionType,
             @RequestParam(required = false) Long changedBy,
-            @RequestParam(required = false) LocalDateTime from,
-            @RequestParam(required = false) LocalDateTime to,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime from,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        java.util.UUID uuid = null;
+        if (entityId != null && !entityId.trim().isEmpty()) {
+            try {
+                uuid = java.util.UUID.fromString(entityId.trim());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.ok(ApiResponse.success(org.springframework.data.domain.Page.empty()));
+            }
+        }
         Pageable pageable = PageRequest.of(page, size,
                 Sort.by("changedAt").descending());
         Page<BeaconHistoryResponse> result = historyService.getHistoryFiltered(
-                type, entityId, actionType, changedBy, from, to, pageable);
+                type, uuid, entityCode, actionType, changedBy, from, to, pageable);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

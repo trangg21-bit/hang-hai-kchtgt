@@ -17,6 +17,9 @@ public interface PointObjectRepository extends JpaRepository<PointObject, UUID> 
 
     boolean existsByCode(String code);
 
+    @Query(value = "SELECT COUNT(*) FROM point_objects WHERE code = :code", nativeQuery = true)
+    long countByCodeIncludingDeleted(@Param("code") String code);
+
     List<PointObject> findByObjectType(ObjectType objectType);
 
     List<PointObject> findByStatus(Status status);
@@ -29,16 +32,16 @@ public interface PointObjectRepository extends JpaRepository<PointObject, UUID> 
 
     List<PointObject> findByCodeContainingIgnoreCase(String code);
 
-    @Query("SELECT p FROM PointObject p WHERE " +
-            "(:name IS NULL OR p.name LIKE %:name%) AND " +
-            "(:code IS NULL OR p.code LIKE %:code%) AND " +
-            "(:objectType IS NULL OR p.objectType = :objectType) AND " +
-            "(:status IS NULL OR p.status = :status)")
+    @Query(value = "SELECT * FROM point_objects p WHERE " +
+            "(:name IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
+            "(:code IS NULL OR LOWER(p.code) LIKE LOWER(CONCAT('%', :code, '%'))) AND " +
+            "(:objectType IS NULL OR p.object_type = :objectType) AND " +
+            "(:status IS NULL OR p.status = :status)", nativeQuery = true)
     List<PointObject> searchFiltered(
             @Param("name") String name,
             @Param("code") String code,
-            @Param("objectType") ObjectType objectType,
-            @Param("status") Status status
+            @Param("objectType") String objectType,
+            @Param("status") String status
     );
 
     @Query("SELECT p FROM PointObject p WHERE p.status = 'PUBLISHED' AND " +

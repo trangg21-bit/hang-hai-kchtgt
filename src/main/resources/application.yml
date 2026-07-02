@@ -115,14 +115,14 @@ spring:
     activate:
       on-profile: prod
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:kchtg_m001}
+    url: ${SPRING_DATASOURCE_POSTGIS_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:kchtg_m001}}
     driver-class-name: org.postgresql.Driver
-    username: ${DB_USER:kchtg}
-    password: ${DB_PASS:kchtg}
+    username: ${SPRING_DATASOURCE_POSTGIS_USERNAME:${DB_USER:kchtg}}
+    password: ${SPRING_DATASOURCE_POSTGIS_PASSWORD:${DB_PASS:kchtg}}
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
 
 server:
   port: ${SERVER_PORT:8080}

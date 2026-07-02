@@ -217,6 +217,7 @@ export interface BeaconHistoryResponse {
 export interface BeaconHistoryFilters {
   type: BeaconType;
   entityId?: string;
+  entityCode?: string;
   actionType?: BeaconHistoryActionType;
   from?: string;
   to?: string;

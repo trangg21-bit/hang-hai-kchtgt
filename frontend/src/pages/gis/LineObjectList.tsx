@@ -11,6 +11,9 @@ import {
   Select,
   Tooltip,
   Popconfirm,
+  Modal,
+  Form,
+  message,
 } from 'antd';
 import {
   PlusOutlined,
@@ -20,6 +23,7 @@ import {
   ReloadOutlined,
   SendOutlined,
   CheckCircleOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -29,12 +33,14 @@ import {
   LINE_OBJECT_TYPE_OPTIONS,
   LINE_OBJECT_STATUS_MAP,
 } from '../../types/lineObject';
+import type { CreateLineObjectPayload, UpdateLineObjectPayload } from '../../types/lineObject';
 import { usePermissionStore } from '../../store/permissionStore';
 import DataTable from '../../components/DataTable';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
+import FormField from '../../components/FormField';
 
 export default function LineObjectList() {
   const navigate = useNavigate();
@@ -50,6 +56,11 @@ export default function LineObjectList() {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+
+  const [form] = Form.useForm();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<LineObject | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -72,7 +83,87 @@ export default function LineObjectList() {
     }
   }, [page, pageSize, search, filterType, filterStatus]);
 
-  useEffect(() => { void fetchData(); }, []);
+  const openCreateModal = useCallback(() => {
+    setEditingRecord(null);
+    form.resetFields();
+    setIsModalOpen(true);
+  }, [form]);
+
+  const openEditModal = useCallback((record: LineObject) => {
+    setEditingRecord(record);
+    form.setFieldsValue({
+      name: record.name,
+      code: record.code,
+      objectType: record.objectType,
+      categoryId: record.categoryId,
+      lineSymbolId: record.lineSymbolId,
+      coordinates: record.coordinates,
+      description: record.description,
+      length: record.length,
+      material: record.material,
+      yearBuilt: record.yearBuilt,
+    });
+    setIsModalOpen(true);
+  }, [form]);
+
+  const validateWKT = (value: string): boolean => {
+    if (!value) return false;
+    return value.trim().toUpperCase().startsWith('LINESTRING');
+  };
+
+  const handleSubmit = useCallback(async () => {
+    try {
+      const values = await form.validateFields();
+
+      // WKT validation
+      if (!validateWKT(values.coordinates)) {
+        message.error('Tọa độ phải ở định dạng WKT LINESTRING (VD: LINESTRING(106.7 21.0, 106.8 21.1))');
+        return;
+      }
+
+      setSubmitting(true);
+
+      if (editingRecord) {
+        const payload: UpdateLineObjectPayload = {
+          name: values.name,
+          objectType: values.objectType,
+          categoryId: values.categoryId,
+          lineSymbolId: values.lineSymbolId,
+          coordinates: values.coordinates,
+          description: values.description,
+          length: values.length,
+          material: values.material,
+          yearBuilt: values.yearBuilt,
+        };
+        await lineObjectService.update(editingRecord.id, payload);
+        toast.success('Đã cập nhật đối tượng đường');
+      } else {
+        const payload: CreateLineObjectPayload = {
+          name: values.name,
+          code: values.code,
+          objectType: values.objectType,
+          categoryId: values.categoryId,
+          lineSymbolId: values.lineSymbolId,
+          coordinates: values.coordinates,
+          description: values.description,
+          length: values.length,
+          material: values.material,
+          yearBuilt: values.yearBuilt,
+        };
+        await lineObjectService.create(payload);
+        toast.success('Đã tạo đối tượng đường');
+      }
+
+      setIsModalOpen(false);
+      void fetchData();
+    } catch {
+      // validation error
+    } finally {
+      setSubmitting(false);
+    }
+  }, [editingRecord, form, fetchData]);
+
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);
@@ -206,14 +297,17 @@ export default function LineObjectList() {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 260,
+      width: 140,
       fixed: 'right' as const,
       render: (_: unknown, record: LineObject) => (
         <Space size="small">
-          <Tooltip title="Xem">
-            <Button type="link" size="small" onClick={() => navigate(`/gis/lines/${record.id}`)}>
-              <span style={{ fontSize: 13 }}>Chi tiết</span>
-            </Button>
+          <Tooltip title="Xem chi tiết">
+            <Button
+              type="link"
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => navigate(`/gis/lines/${record.id}`)}
+            />
           </Tooltip>
           {hasPerm('gis.line.edit') && (
             <Tooltip title="Sửa">
@@ -221,7 +315,7 @@ export default function LineObjectList() {
                 type="link"
                 size="small"
                 icon={<EditOutlined />}
-                onClick={() => navigate(`/gis/lines/${record.id}/edit`)}
+                onClick={() => openEditModal(record)}
               />
             </Tooltip>
           )}
@@ -248,6 +342,18 @@ export default function LineObjectList() {
                 onConfirm={() => handleSubmitApproval(record)}
               >
                 <Button type="link" size="small" icon={<SendOutlined />} />
+              </Popconfirm>
+            </Tooltip>
+          )}
+          {record.status === 'PENDING_APPROVAL' && hasPerm('gis.line.approve-l1') && (
+            <Tooltip title="Phê duyệt L1">
+              <Popconfirm
+                title="Phê duyệt cấp 1?"
+                okText="Phê duyệt"
+                cancelText="Hủy"
+                onConfirm={() => handleApproveL1(record)}
+              >
+                <Button type="link" size="small" icon={<CheckCircleOutlined />} />
               </Popconfirm>
             </Tooltip>
           )}
@@ -305,7 +411,7 @@ export default function LineObjectList() {
                 <Button icon={<ReloadOutlined />} onClick={fetchData} />
               </Tooltip>
               {hasPerm('gis.line.create') && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/gis/lines/create')}>
+                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
                   Thêm đối tượng đường
                 </Button>
               )}
@@ -326,7 +432,7 @@ export default function LineObjectList() {
           <EmptyState
             description={search || filterType || filterStatus ? 'Không tìm thấy' : 'Chưa có đối tượng đường nào'}
             ctaText="Thêm đối tượng đường đầu tiên"
-            onCta={() => navigate('/gis/lines/create')}
+            onCta={openCreateModal}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (
@@ -350,6 +456,129 @@ export default function LineObjectList() {
           />
         )}
       </Card>
+
+      <Modal
+        title={editingRecord ? 'Chỉnh sửa đối tượng đường' : 'Thêm đối tượng đường mới'}
+        open={isModalOpen}
+        onOk={handleSubmit}
+        onCancel={() => setIsModalOpen(false)}
+        destroyOnClose
+        confirmLoading={submitting}
+        okText={editingRecord ? 'Cập nhật' : 'Tạo mới'}
+        cancelText="Hủy"
+        width={700}
+        mask={{ closable: false }}
+      >
+        <Form form={form} layout="vertical" style={{ marginTop: 16, maxHeight: '60vh', overflowY: 'auto', paddingRight: 12 }}>
+          <FormField
+            type="text"
+            name="code"
+            label="Mã đối tượng"
+            required
+            disabled={!!editingRecord}
+            placeholder="VD: LN-ROUTE-001"
+            help="Mã định danh duy nhất cho đối tượng đường"
+          />
+
+          <FormField
+            type="text"
+            name="name"
+            label="Tên đối tượng"
+            required
+            placeholder="VD: Tuyến hàng hải Hải Phòng - Quảng Ninh"
+          />
+
+          <FormField
+            type="select"
+            name="objectType"
+            label="Loại đối tượng"
+            required
+            options={LINE_OBJECT_TYPE_OPTIONS}
+          />
+
+          <FormField
+            type="textarea"
+            name="coordinates"
+            label="Tọa độ (WKT LINESTRING)"
+            required
+            placeholder="LINESTRING(106.7000 20.8500, 106.8000 20.9000, 107.0000 21.0000)"
+            help="Định dạng WKT LINESTRING — phải bắt đầu bằng 'LINESTRING'"
+          />
+
+          <FormField
+            type="textarea"
+            name="description"
+            label="Mô tả"
+            placeholder="Mô tả về đối tượng đường..."
+          />
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <FormField
+                type="number"
+                name="length"
+                label="Chiều dài (km)"
+                min={0}
+                step={0.01}
+                placeholder="Tùy chọn"
+              />
+            </Col>
+            <Col span={12}>
+              <FormField
+                type="number"
+                name="yearBuilt"
+                label="Năm xây dựng"
+                min={1900}
+                max={9999}
+                placeholder="Tùy chọn"
+              />
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <FormField
+                type="text"
+                name="material"
+                label="Vật liệu"
+                placeholder="Tùy chọn"
+              />
+            </Col>
+            <Col span={12}>
+              <FormField
+                type="select"
+                name="categoryId"
+                label="Danh mục"
+                placeholder="Tùy chọn danh mục"
+                options={[
+                  { label: 'Đường bờ biển', value: 1 },
+                  { label: 'Tuyến hàng hải', value: 2 },
+                  { label: 'Đường thủy', value: 3 },
+                  { label: 'Khác', value: 4 },
+                ]}
+              />
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <FormField
+                type="select"
+                name="lineSymbolId"
+                label="Ký hiệu đường"
+                placeholder="Tùy chọn ký hiệu"
+                options={[
+                  { label: 'Symbol Đường bờ biển', value: 1 },
+                  { label: 'Symbol Tuyến hàng hải', value: 2 },
+                  { label: 'Symbol Đường thủy', value: 3 },
+                  { label: 'Symbol Khác', value: 4 },
+                ]}
+              />
+            </Col>
+            <Col span={12} />
+          </Row>
+        </Form>
+      </Modal>
     </>
   );
 }

@@ -33,6 +33,13 @@ import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.beacon.entity.BeaconLight;
+import com.hanghai.kchtg.beacon.entity.BeaconLightType;
+import com.hanghai.kchtg.beacon.entity.BeaconStatus;
+import com.hanghai.kchtg.beacon.entity.Buoy;
+import com.hanghai.kchtg.beacon.entity.BuoyType;
+import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
+import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -47,7 +54,7 @@ import java.util.List;
 
 @Component
 @Order(2)
-@Profile("local")
+@Profile({"local", "prod"})
 @RequiredArgsConstructor
 @Slf4j
 public class DataSeeder implements CommandLineRunner {
@@ -64,6 +71,8 @@ public class DataSeeder implements CommandLineRunner {
     private final GroupMemberRepository groupMemberRepo;
     private final OrgUnitRepository orgUnitRepo;
     private final PasswordEncoder passwordEncoder;
+    private final BeaconLightRepository beaconLightRepo;
+    private final BuoyRepository buoyRepo;
 
     @Override
     @Transactional
@@ -77,6 +86,8 @@ public class DataSeeder implements CommandLineRunner {
         seedOrgUnits();
         seedUserGroups();
         seedUsers();
+        seedBeaconLights();
+        seedBuoys();
         seedAdminAccounts();
         seedDataConnections();
 
@@ -416,5 +427,121 @@ public class DataSeeder implements CommandLineRunner {
             connectionRepo.save(conn);
         }
         log.info("✅ Seeded 15 DataConnections");
+    }
+
+    private void seedBeaconLights() {
+        if (beaconLightRepo.count() > 0) {
+            log.info("⏭️ Beacon lights already exist, skipping...");
+            return;
+        }
+
+        log.info("📦 Seeding 15 BeaconLights...");
+        String[] names = {
+            "Đèn biển Hòn Dấu", "Hải đăng Cô Tô", "Đèn biển Long Châu",
+            "Đèn biển Ba Lạt", "Hải đăng Sơn Trà", "Đèn biển Cù Lao Xanh",
+            "Đèn biển Mũi Dinh", "Hải đăng Kê Gà", "Đèn biển Vũng Tàu",
+            "Đèn biển Cần Giờ", "Hải đăng Bạch Long Vĩ", "Đèn biển Cửa Hội",
+            "Đèn biển Lạch Giang", "Đèn biển Lệ Thủy", "Đèn biển Hòn Khoai"
+        };
+
+        String[] codes = {
+            "LH-HONDAU-001", "LH-COTO-002", "LH-LONGCHAU-003",
+            "LH-BALAT-004", "LH-SONTRA-005", "LH-CLXANH-006",
+            "LH-MUIDINH-007", "LH-KEGA-008", "LH-VUNGTAU-009",
+            "LH-CANGIO-010", "LH-BLV-011", "LH-CUAHOI-012",
+            "LH-LACHGIANG-013", "LH-LETHUY-014", "LH-HONKHOAI-015"
+        };
+
+        BeaconLightType[] types = {
+            BeaconLightType.LIGHTHOUSE, BeaconLightType.LIGHTHOUSE, BeaconLightType.LIGHTHOUSE,
+            BeaconLightType.BEACON_LIGHT, BeaconLightType.LIGHTHOUSE, BeaconLightType.BEACON_LIGHT,
+            BeaconLightType.BEACON_MARK, BeaconLightType.LIGHTHOUSE, BeaconLightType.LIGHTHOUSE,
+            BeaconLightType.BEACON_LIGHT, BeaconLightType.LIGHTHOUSE, BeaconLightType.BEACON_LIGHT,
+            BeaconLightType.BEACON_MARK, BeaconLightType.BEACON_LIGHT, BeaconLightType.LIGHTHOUSE
+        };
+
+        BeaconStatus[] statuses = {
+            BeaconStatus.DRAFT, BeaconStatus.PENDING_APPROVAL, BeaconStatus.APPROVED_L1,
+            BeaconStatus.APPROVED_L2, BeaconStatus.PUBLISHED, BeaconStatus.REJECTED,
+            BeaconStatus.DRAFT, BeaconStatus.PENDING_APPROVAL, BeaconStatus.APPROVED_L1,
+            BeaconStatus.APPROVED_L2, BeaconStatus.PUBLISHED, BeaconStatus.REJECTED,
+            BeaconStatus.DRAFT, BeaconStatus.PENDING_APPROVAL, BeaconStatus.PUBLISHED
+        };
+
+        double[] lats = { 20.666, 20.985, 20.622, 20.301, 16.121, 13.782, 11.481, 10.697, 10.329, 10.428, 20.133, 18.788, 20.021, 17.155, 8.431 };
+        double[] lons = { 106.815, 107.755, 107.159, 106.599, 108.291, 109.281, 109.019, 107.989, 107.072, 106.915, 107.721, 105.799, 106.277, 106.999, 104.831 };
+
+        for (int i = 0; i < 15; i++) {
+            BeaconLight b = new BeaconLight();
+            b.setCode(codes[i]);
+            b.setName(names[i]);
+            b.setType(types[i]);
+            b.setLatitude(lats[i]);
+            b.setLongitude(lons[i]);
+            b.setLightRange(12.5 + i % 5);
+            b.setLightColor(i % 3 == 0 ? "Trắng chớp nhoáng" : (i % 3 == 1 ? "Đỏ chớp chu kỳ" : "Xanh lục"));
+            b.setStatus(statuses[i]);
+            b.setIsActive(statuses[i] == BeaconStatus.PUBLISHED);
+            beaconLightRepo.save(b);
+        }
+        log.info("✅ Seeded 15 BeaconLights");
+    }
+
+    private void seedBuoys() {
+        if (buoyRepo.count() > 0) {
+            log.info("⏭️ Buoys already exist, skipping...");
+            return;
+        }
+
+        log.info("📦 Seeding 15 Buoys...");
+        String[] names = {
+            "Phao số 0 Hải Phòng", "Phao số 1 luồng Nam Triệu", "Phao số 2 Lạch Huyện",
+            "Phao giới hạn luồng Hòn Gai", "Phao ngầm Cửa Lò", "Phao tiêu Sơn Trà",
+            "Phao số 0 Đà Nẵng", "Phao báo hiệu Quy Nhơn", "Phao phân khu Nha Trang",
+            "Phao số 0 Vũng Tàu", "Phao giới hạn Soài Rạp", "Phao chỉ hướng Đồng Nai",
+            "Phao vùng nước an toàn Phú Quốc", "Phao tiêu Côn Đảo", "Phao báo nguy hiểm Thổ Chu"
+        };
+
+        String[] codes = {
+            "BY-HPH-000", "BY-NAMTRIEU-001", "BY-LACHHUYEN-002",
+            "BY-HONGAI-003", "BY-CUALO-004", "BY-SONTRA-005",
+            "BY-DANANG-000", "BY-QUYNHON-006", "BY-NHATRANG-007",
+            "BY-VUNGTAU-000", "BY-SOAIRAP-008", "BY-DONGNAI-009",
+            "BY-PHUQUOC-010", "BY-CONDAO-011", "BY-THOCHU-012"
+        };
+
+        BuoyType[] types = {
+            BuoyType.SAFE_WATER, BuoyType.CARDINAL, BuoyType.CARDINAL,
+            BuoyType.SECTOR, BuoyType.SPECIAL, BuoyType.CARDINAL,
+            BuoyType.SAFE_WATER, BuoyType.SPECIAL, BuoyType.SECTOR,
+            BuoyType.SAFE_WATER, BuoyType.CARDINAL, BuoyType.SPECIAL,
+            BuoyType.SAFE_WATER, BuoyType.SECTOR, BuoyType.ISOLATED_DANGER
+        };
+
+        BeaconStatus[] statuses = {
+            BeaconStatus.DRAFT, BeaconStatus.PENDING_APPROVAL, BeaconStatus.APPROVED_L1,
+            BeaconStatus.APPROVED_L2, BeaconStatus.PUBLISHED, BeaconStatus.REJECTED,
+            BeaconStatus.DRAFT, BeaconStatus.PENDING_APPROVAL, BeaconStatus.APPROVED_L1,
+            BeaconStatus.APPROVED_L2, BeaconStatus.PUBLISHED, BeaconStatus.REJECTED,
+            BeaconStatus.DRAFT, BeaconStatus.PENDING_APPROVAL, BeaconStatus.PUBLISHED
+        };
+
+        double[] lats = { 20.601, 20.722, 20.733, 20.911, 18.812, 16.133, 16.101, 13.711, 12.215, 10.222, 10.311, 10.601, 10.111, 8.655, 9.301 };
+        double[] lons = { 106.888, 106.822, 106.901, 107.033, 105.744, 108.201, 108.255, 109.211, 109.201, 107.011, 106.799, 106.811, 103.955, 106.601, 103.455 };
+
+        for (int i = 0; i < 15; i++) {
+            Buoy b = new Buoy();
+            b.setCode(codes[i]);
+            b.setName(names[i]);
+            b.setType(types[i]);
+            b.setLatitude(lats[i]);
+            b.setLongitude(lons[i]);
+            b.setRange(5.0 + i % 3);
+            b.setColor(i % 2 == 0 ? "Đỏ" : "Xanh lục");
+            b.setStatus(statuses[i]);
+            b.setIsActive(statuses[i] == BeaconStatus.PUBLISHED);
+            buoyRepo.save(b);
+        }
+        log.info("✅ Seeded 15 Buoys");
     }
 }

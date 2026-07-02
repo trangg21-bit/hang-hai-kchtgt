@@ -1,7 +1,7 @@
 # ============================================================
-# Stage 1: Build with Maven + JDK 21
+# Stage 1: Build with Maven + JDK 17
 # ============================================================
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-17 AS build
 
 WORKDIR /build
 
@@ -14,9 +14,9 @@ COPY src ./src
 RUN mvn package -DskipTests -B
 
 # ============================================================
-# Stage 2: Runtime with JRE 21
+# Stage 2: Runtime with JRE 17
 # ============================================================
-FROM eclipse-temurin:21-jre AS run
+FROM eclipse-temurin:17-jre AS run
 
 WORKDIR /app
 
@@ -30,8 +30,8 @@ COPY --from=build /build/target/*.jar app.jar
 # Expose backend port
 EXPOSE 8080
 
-# Use dev profile for H2 in-memory database
-ENV SPRING_PROFILES_ACTIVE=dev
+# Use prod profile for PostgreSQL database
+ENV SPRING_PROFILES_ACTIVE=prod
 
 # Health check — verify Spring Boot is listening
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \

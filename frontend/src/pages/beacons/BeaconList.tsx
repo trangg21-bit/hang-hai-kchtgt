@@ -10,6 +10,9 @@ import {
   Select,
   Tooltip,
   Popconfirm,
+  Modal,
+  Form,
+  message,
 } from 'antd';
 import {
   PlusOutlined,
@@ -20,13 +23,14 @@ import {
   SendOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import {
   beaconLightCRUD,
   approval,
 } from '../../services/beaconService';
-import type { BeaconLight } from '../../types/beacon';
+import type { BeaconLight, CreateBeaconLightRequest, UpdateBeaconLightRequest } from '../../types/beacon';
 import {
   BEACON_STATUS_MAP,
   BEACON_LIGHT_TYPE_OPTIONS,
@@ -37,22 +41,27 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
+import FormField from '../../components/FormField';
 
 export default function BeaconList() {
   const navigate = useNavigate();
 
-  const [search, setSearch] = useState('');
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
   const [filterType, setFilterType] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(10);
   const [dataSource, setDataSource] = useState<BeaconLight[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+
+  const [form] = Form.useForm();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<BeaconLight | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -66,7 +75,9 @@ export default function BeaconList() {
         type: filterType,
         status: filterStatus,
       });
-      setDataSource(res.data);
+      const startIndex = (page - 1) * pageSize;
+      const paginatedData = res.data.slice(startIndex, startIndex + pageSize);
+      setDataSource(paginatedData);
       setTotal(res.total);
     } catch (err: unknown) {
       setIsError(true);
@@ -76,14 +87,84 @@ export default function BeaconList() {
     }
   }, [page, pageSize, filterName, filterCode, filterType, filterStatus]);
 
-  useEffect(() => { void fetchData(); }, []);
+  const openCreateModal = useCallback(() => {
+    setEditingRecord(null);
+    form.resetFields();
+    setIsModalOpen(true);
+  }, [form]);
 
-  const handleSearch = useCallback((value: string) => {
-    setSearch(value);
-    setFilterName(value);
-    setFilterCode(value);
-    setPage(1);
-  }, []);
+  const openEditModal = useCallback((record: BeaconLight) => {
+    setEditingRecord(record);
+    form.setFieldsValue({
+      name: record.name,
+      code: record.code,
+      type: record.type,
+      longitude: record.longitude,
+      latitude: record.latitude,
+      lightRange: record.lightRange,
+      lightColor: record.lightColor,
+      description: record.description,
+    });
+    setIsModalOpen(true);
+  }, [form]);
+
+  const handleSubmit = useCallback(async () => {
+    try {
+      const values = await form.validateFields();
+
+      // WGS84 validation
+      if (values.latitude < -90 || values.latitude > 90) {
+        message.error('Vĩ độ phải từ -90 đến 90');
+        return;
+      }
+      if (values.longitude < -180 || values.longitude > 180) {
+        message.error('Kinh độ phải từ -180 đến 180');
+        return;
+      }
+      if (values.lightRange < 0.01 || values.lightRange > 60) {
+        message.error('Bán kính chiếu sáng phải từ 0.01 đến 60');
+        return;
+      }
+
+      setSubmitting(true);
+
+      if (editingRecord) {
+        const payload: UpdateBeaconLightRequest = {
+          name: values.name,
+          type: values.type,
+          longitude: values.longitude,
+          latitude: values.latitude,
+          lightRange: values.lightRange,
+          lightColor: values.lightColor,
+          description: values.description,
+        };
+        await beaconLightCRUD.update(editingRecord.id, payload);
+        toast.success('Đã cập nhật đèn biển');
+      } else {
+        const payload: CreateBeaconLightRequest = {
+          name: values.name,
+          code: values.code,
+          type: values.type,
+          longitude: values.longitude,
+          latitude: values.latitude,
+          lightRange: values.lightRange,
+          lightColor: values.lightColor,
+          description: values.description,
+        };
+        await beaconLightCRUD.create(payload);
+        toast.success('Đã tạo đèn biển');
+      }
+
+      setIsModalOpen(false);
+      void fetchData();
+    } catch {
+      // validation error
+    } finally {
+      setSubmitting(false);
+    }
+  }, [editingRecord, form, fetchData]);
+
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const handleDelete = useCallback(
     async (record: BeaconLight) => {
@@ -207,7 +288,7 @@ export default function BeaconList() {
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 340,
+      width: 140,
       fixed: 'right' as const,
       render: (_: unknown, record: BeaconLight) => (
         <Space size="small">
@@ -215,17 +296,16 @@ export default function BeaconList() {
             <Button
               type="link"
               size="small"
+              icon={<EyeOutlined />}
               onClick={() => navigate(`/beacons/${record.id}`)}
-            >
-              <span style={{ fontSize: 13 }}>Chi tiết</span>
-            </Button>
+            />
           </Tooltip>
           <Tooltip title="Sửa">
             <Button
               type="link"
               size="small"
               icon={<EditOutlined />}
-              onClick={() => navigate(`/beacons/${record.id}`)}
+              onClick={() => openEditModal(record)}
             />
           </Tooltip>
           {record.status === 'DRAFT' && (
@@ -318,13 +398,6 @@ export default function BeaconList() {
         <Row gutter={[12, 12]} align="middle" justify="space-between">
           <Col xs={24} md={16}>
             <Space wrap>
-              <Input.Search
-                placeholder="Tìm theo tên, mã..."
-                allowClear
-                style={{ width: 260 }}
-                prefix={<SearchOutlined />}
-                onSearch={handleSearch}
-              />
               <Input
                 placeholder="Lọc theo tên"
                 allowClear
@@ -362,7 +435,7 @@ export default function BeaconList() {
               <Tooltip title="Tải lại">
                 <Button icon={<ReloadOutlined />} onClick={fetchData} />
               </Tooltip>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/beacons/create')}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
                 Tạo đèn biển
               </Button>
             </Space>
@@ -380,9 +453,9 @@ export default function BeaconList() {
         )}
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
-            description={search || filterName || filterCode || filterType || filterStatus ? 'Không tìm thấy' : 'Chưa có đèn biển nào'}
+            description={filterName || filterCode || filterType || filterStatus ? 'Không tìm thấy' : 'Chưa có đèn biển nào'}
             ctaText="Tạo đèn biển đầu tiên"
-            onCta={() => navigate('/beacons/create')}
+            onCta={openCreateModal}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (
@@ -406,6 +479,108 @@ export default function BeaconList() {
           />
         )}
       </Card>
+
+      <Modal
+        title={editingRecord ? 'Chỉnh sửa đèn biển' : 'Thêm đèn biển mới'}
+        open={isModalOpen}
+        onOk={handleSubmit}
+        onCancel={() => setIsModalOpen(false)}
+        destroyOnClose
+        confirmLoading={submitting}
+        okText={editingRecord ? 'Cập nhật' : 'Tạo mới'}
+        cancelText="Hủy"
+        width={700}
+        mask={{ closable: false }}
+      >
+        <Form form={form} layout="vertical" style={{ marginTop: 16, maxHeight: '60vh', overflowY: 'auto', paddingRight: 12 }}>
+          <FormField
+            type="text"
+            name="code"
+            label="Mã đèn biển"
+            required
+            disabled={!!editingRecord}
+            placeholder="VD: LH-HAIPHONG-001"
+            help="Mã định danh duy nhất cho đèn biển"
+          />
+
+          <FormField
+            type="text"
+            name="name"
+            label="Tên đèn biển"
+            required
+            placeholder="VD: Đèn biển Hòn Dấu"
+          />
+
+          <FormField
+            type="select"
+            name="type"
+            label="Loại đèn biển"
+            required
+            options={BEACON_LIGHT_TYPE_OPTIONS}
+          />
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <FormField
+                type="number"
+                name="longitude"
+                label="Kinh độ (Longitude)"
+                required
+                min={-180}
+                max={180}
+                step={0.000001}
+                placeholder="106.8"
+                help="WGS84: -180 ~ 180"
+              />
+            </Col>
+            <Col span={12}>
+              <FormField
+                type="number"
+                name="latitude"
+                label="Vĩ độ (Latitude)"
+                required
+                min={-90}
+                max={90}
+                step={0.000001}
+                placeholder="20.7"
+                help="WGS84: -90 ~ 90"
+              />
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <FormField
+                type="number"
+                name="lightRange"
+                label="Bán kính chiếu sáng (Hải lý)"
+                required
+                min={0.01}
+                max={60}
+                step={0.01}
+                placeholder="VD: 15"
+                help="Từ 0.01 đến 60 hải lý"
+              />
+            </Col>
+            <Col span={12}>
+              <FormField
+                type="text"
+                name="lightColor"
+                label="Màu sắc ánh sáng"
+                required
+                placeholder="VD: Trắng, Đỏ chớp"
+              />
+            </Col>
+          </Row>
+
+          <FormField
+            type="textarea"
+            name="description"
+            label="Mô tả"
+            placeholder="Mô tả về đặc tính đèn biển..."
+          />
+        </Form>
+      </Modal>
     </>
   );
 }

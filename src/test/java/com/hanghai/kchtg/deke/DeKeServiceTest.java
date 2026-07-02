@@ -66,7 +66,6 @@ class DeKeServiceTest {
                 .chieuCao(8.0)
                 .matVatLieu("Thep")
                 .tinhTrang("Tot")
-                .createdBy("User1")
                 .build();
     }
 
@@ -74,7 +73,7 @@ class DeKeServiceTest {
 
     @Test void create_shouldSaveEntity() {
         when(repo.save(any())).thenReturn(testEntity);
-        DeKeResponse r = service.create(createReq);
+        DeKeResponse r = service.create(createReq, "testuser");
         assertThat(r).isNotNull();
         assertThat(r.getLoaiDe()).isEqualTo("De ke son");
         assertThat(r.getTrangThaiPheDuyet()).isEqualTo(DeKeApprovalStatus.PROPOSED);
@@ -83,7 +82,7 @@ class DeKeServiceTest {
 
     @Test void create_shouldSetDefaultStatusToProposed() {
         when(repo.save(any())).thenReturn(testEntity);
-        assertThat(service.create(createReq).getTrangThaiPheDuyet())
+        assertThat(service.create(createReq, "testuser").getTrangThaiPheDuyet())
                 .isEqualTo(DeKeApprovalStatus.PROPOSED);
     }
 
@@ -123,14 +122,14 @@ class DeKeServiceTest {
                 .build();
         when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
         when(repo.save(any())).thenReturn(testEntity);
-        DeKeResponse r = service.update(1L, ur);
+        DeKeResponse r = service.update(1L, ur, "testuser");
         assertThat(r.getLoaiDe()).isEqualTo("Da cap nhat");
         verify(repo, times(1)).save(any());
     }
 
     @Test void update_shouldThrowWhenNotFound() {
         when(repo.findById(99L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.update(99L, DeKeUpdateRequest.builder().build()))
+        assertThatThrownBy(() -> service.update(99L, DeKeUpdateRequest.builder().build(), "testuser"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -244,6 +243,18 @@ class DeKeServiceTest {
         when(repo.findById(99L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.approveC2(99L, PheDuyetRequest.builder().build()))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test void approveC2_sameActorAsC1_throwsException() {
+        testEntity.setTrangThaiPheDuyet(DeKeApprovalStatus.UNDER_REVIEW);
+        testEntity.setNguoiPheDuyetC1("user1");
+        when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
+        assertThatThrownBy(() -> service.approveC2(1L, PheDuyetRequest.builder()
+                .quyetDinh("APPROVED")
+                .nguoiPheDuyet("user1")
+                .build()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
     }
 
     // ── reject ──────────────────────────────────────────────────────────

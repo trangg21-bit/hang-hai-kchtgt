@@ -26,7 +26,7 @@ public class LuongHangHaiService {
     private final PheDuyetLichSuRepository pheDuyetLichSuRepo;
 
     @Transactional
-    public LuongHangHaiResponse create(LuongHangHaiCreateRequest req) {
+    public LuongHangHaiResponse create(LuongHangHaiCreateRequest req, String username) {
         LuongHangHai l = LuongHangHai.builder()
                 .loaiTau(req.getLoaiTau())
                 .soLuong(req.getSoLuong())
@@ -35,11 +35,11 @@ public class LuongHangHaiService {
                 .taiTrong(req.getTaiTrong())
                 .dienTichDangBo(req.getDienTichDangBo())
                 .ghiChu(req.getGhiChu())
-                .approvalStatus(req.getApprovalStatus() != null ? req.getApprovalStatus() : LuongHangHaiApprovalStatus.PROPOSED)
+                .approvalStatus(LuongHangHaiApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(false)
-                .createdBy(req.getCreatedBy())
+                .createdBy(username)
                 .build();
 
         return toResponse(repo.save(l));
@@ -81,7 +81,7 @@ public class LuongHangHaiService {
     }
 
     @Transactional
-    public LuongHangHaiResponse update(Long id, LuongHangHaiUpdateRequest req) {
+    public LuongHangHaiResponse update(Long id, LuongHangHaiUpdateRequest req, String username) {
         LuongHangHai l = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -92,7 +92,7 @@ public class LuongHangHaiService {
         if (req.getTaiTrong() != null) l.setTaiTrong(req.getTaiTrong());
         if (req.getDienTichDangBo() != null) l.setDienTichDangBo(req.getDienTichDangBo());
         if (req.getGhiChu() != null) l.setGhiChu(req.getGhiChu());
-        if (req.getUpdatedBy() != null) l.setUpdatedBy(req.getUpdatedBy());
+        l.setUpdatedBy(username);
 
         return toResponse(repo.save(l));
     }
@@ -144,6 +144,11 @@ public class LuongHangHaiService {
 
         if (l.getApprovalStatus() != LuongHangHaiApprovalStatus.UNDER_REVIEW) {
             throw new IllegalStateException("Chi co the phe duyet C2 khi trang thai la UNDER_REVIEW");
+        }
+
+        String c1Actor = l.getNguoiPheDuyetC1();
+        if (c1Actor != null && c1Actor.equals(req.getNguoiPheDuyet())) {
+            throw new IllegalStateException("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
         }
 
         l.setPheDuyetC2(true);

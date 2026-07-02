@@ -37,7 +37,8 @@ public class SiemReport {
     private int version;
 
     /** The content bytes stored in DB (or S3 key, depending on scale). */
-    @Column(columnDefinition = "LONGBLOB")
+    @Lob
+    @Column(name = "content")
     private byte[] content;
 
     /** Content type (MIME type). */

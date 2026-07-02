@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.user.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Null;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -31,6 +32,7 @@ public class LoginRequest {
      * Flexible login identifier - may be username, email, or phone number.
      * When provided, takes precedence over {username}.
      */
+    @Null(message = "Identifier không được sử dụng cùng lúc với username")
     @Size(min = 3, max = 150, message = "Identifier phải từ 3 đến 150 ký tự")
     private String identifier;
 
