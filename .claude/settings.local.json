@@ -55,7 +55,19 @@
       "Bash(mvn -Dtest='com.hanghai.kchtg.cangben.**' test -Dsurefire.failIfNoSpecifiedTests=false)",
       "Bash(xargs cat)",
       "Bash(git *)",
-      "Bash(mvn -Dtest='com.hanghai.kchtg.cangben.CangBienRbacSecurityTest#approve_withAuthority_returns200' test -Dsurefire.failIfNoSpecifiedTests=false)"
+      "Bash(mvn -Dtest='com.hanghai.kchtg.cangben.CangBienRbacSecurityTest#approve_withAuthority_returns200' test -Dsurefire.failIfNoSpecifiedTests=false)",
+      "Bash(rm .resume-lock)",
+      "Bash(ls .resume-lock)",
+      "Bash(npm run *)",
+      "Bash(pnpm build *)",
+      "Bash(grep -hnE \"'/api|\\\\`/api|approve/c1|approve/c2|/history|/search\" src/services/luongHangHaiService.ts src/services/heThongVtsService.ts)",
+      "Bash(node_modules/.bin/tsc -b --noEmit)",
+      "Bash(timeout 30 node_modules/.bin/playwright test e2e/m003-luong-hang-hai.spec.ts --project=desktop --reporter=line)",
+      "Bash(node_modules/.bin/playwright test *)",
+      "Bash(curl *)",
+      "Bash(./node_modules/.bin/tsc -b --noEmit)",
+      "Bash(./node_modules/.bin/tsc --noEmit frontend/src/pages/luonghanghai/*.tsx)",
+      "Bash(./node_modules/.bin/tsc --noEmit src/pages/luonghanghai/LuongHangHaiList.tsx src/pages/luonghanghai/LuongHangHaiForm.tsx)"
     ]
   }
 }

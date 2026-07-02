@@ -13,12 +13,12 @@
       "version": 96
     },
     "docs/intel/catalog.json": {
-      "content_hash": "sha256:9ff3a521a4d7c4b3a81fdeea720469adeae2e08841afcd596f5fcaa0f5691e3f",
-      "last_modified": "2026-06-29T16:40:10Z",
+      "content_hash": "sha256:27d45be5d87307bf98bc597f475aa26bcd966b10ca7a33873c4227636bfe3066",
+      "last_modified": "2026-07-02T01:21:30Z",
       "last_producer": "ai-kit/state-update-rebuild-catalog",
       "last_updated": "2026-06-27T00:00:00Z",
       "stale": false,
-      "version": 16
+      "version": 17
     },
     "docs/intel/catalog/modules/M-002.json": {
       "last_updated": "2026-06-27T18:31:43Z",
