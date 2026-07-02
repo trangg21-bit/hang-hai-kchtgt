@@ -32,7 +32,7 @@ import java.util.Set;
  */
 @Component
 @Order(1)
-@Profile({"local", "dev"})
+@Profile({"local", "prod"})
 @RequiredArgsConstructor
 @Slf4j
 public class RolePermissionSeeder implements CommandLineRunner {

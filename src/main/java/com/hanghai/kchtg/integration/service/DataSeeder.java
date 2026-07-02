@@ -22,7 +22,7 @@ import java.time.LocalDate;
 
 @Component("integrationDataSeeder")
 @Order(3)
-@Profile("local")
+@Profile({"local", "prod"})
 public class DataSeeder implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
@@ -53,7 +53,7 @@ public class DataSeeder implements CommandLineRunner {
     public void seed() {
         log.info("Seeding Wave-1 KCHTGT chart data...");
 
-        if (!pointRepository.existsByCode("PIER-HPH-001")) {
+        if (pointRepository.countByCodeIncludingDeleted("PIER-HPH-001") == 0) {
             PointObject pier = PointObject.builder()
                     .code("PIER-HPH-001")
                     .name("Bến cảng Hải Phòng")
@@ -67,7 +67,7 @@ public class DataSeeder implements CommandLineRunner {
             pointRepository.save(pier);
         }
 
-        if (!lineRepository.existsByCode("BRG-DNG-001")) {
+        if (lineRepository.countByCodeIncludingDeleted("BRG-DNG-001") == 0) {
             LineObject bridge = LineObject.builder()
                     .code("BRG-DNG-001")
                     .name("Cầu Đà Nẵng")
@@ -80,7 +80,7 @@ public class DataSeeder implements CommandLineRunner {
             lineRepository.save(bridge);
         }
 
-        if (!pointRepository.existsByCode("BUOY-BTH-001")) {
+        if (pointRepository.countByCodeIncludingDeleted("BUOY-BTH-001") == 0) {
             PointObject buoyBerth = PointObject.builder()
                     .code("BUOY-BTH-001")
                     .name("Bến phao số 1")
@@ -94,7 +94,7 @@ public class DataSeeder implements CommandLineRunner {
             pointRepository.save(buoyBerth);
         }
 
-        if (!pointRepository.existsByCode("BUOY-MKR-001")) {
+        if (pointRepository.countByCodeIncludingDeleted("BUOY-MKR-001") == 0) {
             PointObject buoyMarker = PointObject.builder()
                     .code("BUOY-MKR-001")
                     .name("Phao tiêu số 15")
@@ -108,7 +108,7 @@ public class DataSeeder implements CommandLineRunner {
             pointRepository.save(buoyMarker);
         }
 
-        if (!polygonRepository.existsByCode("STORM-QLG-001")) {
+        if (polygonRepository.countByCodeIncludingDeleted("STORM-QLG-001") == 0) {
             PolygonObject stormShelter = PolygonObject.builder()
                     .code("STORM-QLG-001")
                     .name("Khu tránh bão vịnh Hạ Long")
@@ -121,7 +121,7 @@ public class DataSeeder implements CommandLineRunner {
             polygonRepository.save(stormShelter);
         }
 
-        if (!lineRepository.existsByCode("ROUTE-HPH-DAD-001")) {
+        if (lineRepository.countByCodeIncludingDeleted("ROUTE-HPH-DAD-001") == 0) {
             LineObject transportRoute = LineObject.builder()
                     .code("ROUTE-HPH-DAD-001")
                     .name("Tuyến chuyển tải Hải Phòng Đà Nẵng")
@@ -134,7 +134,7 @@ public class DataSeeder implements CommandLineRunner {
             lineRepository.save(transportRoute);
         }
 
-        if (!polygonRepository.existsByCode("ANCH-HPH-001")) {
+        if (polygonRepository.countByCodeIncludingDeleted("ANCH-HPH-001") == 0) {
             PolygonObject anchorage = PolygonObject.builder()
                     .code("ANCH-HPH-001")
                     .name("Khu neo đậu Hải Phòng")
@@ -147,7 +147,7 @@ public class DataSeeder implements CommandLineRunner {
             polygonRepository.save(anchorage);
         }
 
-        if (!pointRepository.existsByCode("REPAIR-HPH-001")) {
+        if (pointRepository.countByCodeIncludingDeleted("REPAIR-HPH-001") == 0) {
             PointObject repairFacility = PointObject.builder()
                     .code("REPAIR-HPH-001")
                     .name("Cơ sở sửa chữa Hải Phòng")
@@ -161,7 +161,7 @@ public class DataSeeder implements CommandLineRunner {
             pointRepository.save(repairFacility);
         }
 
-        if (!pointRepository.existsByCode("BEACON-DAD-001")) {
+        if (pointRepository.countByCodeIncludingDeleted("BEACON-DAD-001") == 0) {
             PointObject beacon = PointObject.builder()
                     .code("BEACON-DAD-001")
                     .name("Đèn biển Đà Nẵng")
@@ -175,7 +175,7 @@ public class DataSeeder implements CommandLineRunner {
             pointRepository.save(beacon);
         }
 
-        if (!pointRepository.existsByCode("VTS-HPH-001")) {
+        if (pointRepository.countByCodeIncludingDeleted("VTS-HPH-001") == 0) {
             PointObject vtsSystem = PointObject.builder()
                     .code("VTS-HPH-001")
                     .name("Hệ thống VTS Hải Phòng")
@@ -192,7 +192,7 @@ public class DataSeeder implements CommandLineRunner {
         // Generates 15 PointObjects
         for (int i = 1; i <= 15; i++) {
             String code = "POINT-GEN-" + String.format("%03d", i);
-            if (!pointRepository.existsByCode(code)) {
+            if (pointRepository.countByCodeIncludingDeleted(code) == 0) {
                 PointObject.Status status = PointObject.Status.values()[(i - 1) % PointObject.Status.values().length];
                 PointObject.ObjectType type = PointObject.ObjectType.values()[(i - 1) % PointObject.ObjectType.values().length];
                 
@@ -219,7 +219,7 @@ public class DataSeeder implements CommandLineRunner {
         // Generates 15 LineObjects
         for (int i = 1; i <= 15; i++) {
             String code = "LINE-GEN-" + String.format("%03d", i);
-            if (!lineRepository.existsByCode(code)) {
+            if (lineRepository.countByCodeIncludingDeleted(code) == 0) {
                 LineObject.Status status = LineObject.Status.values()[(i - 1) % LineObject.Status.values().length];
                 LineObject.ObjectType type = LineObject.ObjectType.values()[(i - 1) % LineObject.ObjectType.values().length];
                 
@@ -245,7 +245,7 @@ public class DataSeeder implements CommandLineRunner {
         // Generates 15 PolygonObjects
         for (int i = 1; i <= 15; i++) {
             String code = "POLY-GEN-" + String.format("%03d", i);
-            if (!polygonRepository.existsByCode(code)) {
+            if (polygonRepository.countByCodeIncludingDeleted(code) == 0) {
                 PolygonObject.Status status = PolygonObject.Status.values()[(i - 1) % PolygonObject.Status.values().length];
                 PolygonObject.ObjectType type = PolygonObject.ObjectType.values()[(i - 1) % PolygonObject.ObjectType.values().length];
                 
@@ -279,56 +279,69 @@ public class DataSeeder implements CommandLineRunner {
 
         log.info("Seeding Wave-3 Port and Cargo aggregate data...");
 
-        PortStatus hpStatus = PortStatus.builder()
-                .portCode("PIER-HPH-001")
-                .portName("Cảng Hải Phòng")
-                .berthCount(15)
-                .operationalStatus("ACTIVE")
-                .currentCapacityTons(10000000.0)
-                .build();
-        portStatusRepository.save(hpStatus);
+        if (portStatusRepository.countByPortCodeIncludingDeleted("PIER-HPH-001") == 0) {
+            PortStatus hpStatus = PortStatus.builder()
+                    .portCode("PIER-HPH-001")
+                    .portName("Cảng Hải Phòng")
+                    .berthCount(15)
+                    .operationalStatus("ACTIVE")
+                    .currentCapacityTons(10000000.0)
+                    .build();
+            portStatusRepository.save(hpStatus);
+        }
 
-        PortStatus dnStatus = PortStatus.builder()
-                .portCode("BEACON-DAD-001")
-                .portName("Cảng Đà Nẵng")
-                .berthCount(8)
-                .operationalStatus("ACTIVE")
-                .currentCapacityTons(5000000.0)
-                .build();
-        portStatusRepository.save(dnStatus);
+        if (portStatusRepository.countByPortCodeIncludingDeleted("BEACON-DAD-001") == 0) {
+            PortStatus dnStatus = PortStatus.builder()
+                    .portCode("BEACON-DAD-001")
+                    .portName("Cảng Đà Nẵng")
+                    .berthCount(8)
+                    .operationalStatus("ACTIVE")
+                    .currentCapacityTons(5000000.0)
+                    .build();
+            portStatusRepository.save(dnStatus);
+        }
 
-        CargoAggregate hpAnnual = CargoAggregate.builder()
-                .portCode("PIER-HPH-001")
-                .periodType("ANNUAL")
-                .periodStart(LocalDate.of(2025, 1, 1))
-                .periodEnd(LocalDate.of(2025, 12, 31))
-                .totalTons(BigDecimal.valueOf(8000000.00))
-                .totalTeus(BigDecimal.valueOf(450000.00))
-                .vesselCount(1200)
-                .build();
-        cargoRepository.save(hpAnnual);
+        LocalDate hpAnnualStart = LocalDate.of(2025, 1, 1);
+        if (cargoRepository.countByPortCodeAndPeriodTypeAndPeriodStartIncludingDeleted("PIER-HPH-001", "ANNUAL", hpAnnualStart) == 0) {
+            CargoAggregate hpAnnual = CargoAggregate.builder()
+                    .portCode("PIER-HPH-001")
+                    .periodType("ANNUAL")
+                    .periodStart(hpAnnualStart)
+                    .periodEnd(LocalDate.of(2025, 12, 31))
+                    .totalTons(BigDecimal.valueOf(8000000.00))
+                    .totalTeus(BigDecimal.valueOf(450000.00))
+                    .vesselCount(1200)
+                    .build();
+            cargoRepository.save(hpAnnual);
+        }
 
-        CargoAggregate hpMonthly = CargoAggregate.builder()
-                .portCode("PIER-HPH-001")
-                .periodType("MONTHLY")
-                .periodStart(LocalDate.of(2026, 5, 1))
-                .periodEnd(LocalDate.of(2026, 5, 31))
-                .totalTons(BigDecimal.valueOf(750000.00))
-                .totalTeus(BigDecimal.valueOf(42000.00))
-                .vesselCount(110)
-                .build();
-        cargoRepository.save(hpMonthly);
+        LocalDate hpMonthlyStart = LocalDate.of(2026, 5, 1);
+        if (cargoRepository.countByPortCodeAndPeriodTypeAndPeriodStartIncludingDeleted("PIER-HPH-001", "MONTHLY", hpMonthlyStart) == 0) {
+            CargoAggregate hpMonthly = CargoAggregate.builder()
+                    .portCode("PIER-HPH-001")
+                    .periodType("MONTHLY")
+                    .periodStart(hpMonthlyStart)
+                    .periodEnd(LocalDate.of(2026, 5, 31))
+                    .totalTons(BigDecimal.valueOf(750000.00))
+                    .totalTeus(BigDecimal.valueOf(42000.00))
+                    .vesselCount(110)
+                    .build();
+            cargoRepository.save(hpMonthly);
+        }
 
-        CargoAggregate dnAnnual = CargoAggregate.builder()
-                .portCode("BEACON-DAD-001")
-                .periodType("ANNUAL")
-                .periodStart(LocalDate.of(2025, 1, 1))
-                .periodEnd(LocalDate.of(2025, 12, 31))
-                .totalTons(BigDecimal.valueOf(3500000.00))
-                .totalTeus(BigDecimal.valueOf(180000.00))
-                .vesselCount(600)
-                .build();
-        cargoRepository.save(dnAnnual);
+        LocalDate dnAnnualStart = LocalDate.of(2025, 1, 1);
+        if (cargoRepository.countByPortCodeAndPeriodTypeAndPeriodStartIncludingDeleted("BEACON-DAD-001", "ANNUAL", dnAnnualStart) == 0) {
+            CargoAggregate dnAnnual = CargoAggregate.builder()
+                    .portCode("BEACON-DAD-001")
+                    .periodType("ANNUAL")
+                    .periodStart(dnAnnualStart)
+                    .periodEnd(LocalDate.of(2025, 12, 31))
+                    .totalTons(BigDecimal.valueOf(3500000.00))
+                    .totalTeus(BigDecimal.valueOf(180000.00))
+                    .vesselCount(600)
+                    .build();
+            cargoRepository.save(dnAnnual);
+        }
 
         log.info("Wave-1 & Wave-3 seed complete: {} points, {} lines, {} polygons, {} port statuses, {} cargo aggregates",
                 pointRepository.count(), lineRepository.count(), polygonRepository.count(),

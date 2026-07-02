@@ -17,6 +17,9 @@ public interface PointObjectRepository extends JpaRepository<PointObject, UUID> 
 
     boolean existsByCode(String code);
 
+    @Query(value = "SELECT COUNT(*) FROM point_objects WHERE code = :code", nativeQuery = true)
+    long countByCodeIncludingDeleted(@Param("code") String code);
+
     List<PointObject> findByObjectType(ObjectType objectType);
 
     List<PointObject> findByStatus(Status status);

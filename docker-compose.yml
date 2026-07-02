@@ -1,15 +1,20 @@
 
 services:
-  backend:
+  vmd-csdl-v2:
     image: registry.etc.vn/hang-hai-kchtgt-backend:latest
     build:
       context: .
       dockerfile: Dockerfile.backend
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_PROFILES_ACTIVE=prod
       - JWT_SECRET=${JWT_SECRET}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - REDIS_HOST=redis
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
     ports:
       - "8080:8080"
     restart: always
@@ -40,5 +45,5 @@ services:
       - "3001:80"
     restart: always
     depends_on:
-      backend:
+      vmd-csdl-v2:
         condition: service_healthy

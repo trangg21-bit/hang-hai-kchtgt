@@ -17,6 +17,9 @@ public interface PolygonObjectRepository extends JpaRepository<PolygonObject, UU
 
     boolean existsByCode(String code);
 
+    @Query(value = "SELECT COUNT(*) FROM polygon_objects WHERE code = :code", nativeQuery = true)
+    long countByCodeIncludingDeleted(@Param("code") String code);
+
     List<PolygonObject> findByObjectType(ObjectType objectType);
 
     List<PolygonObject> findByStatus(Status status);

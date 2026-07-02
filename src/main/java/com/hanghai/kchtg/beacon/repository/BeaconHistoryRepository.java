@@ -47,9 +47,9 @@ public interface BeaconHistoryRepository extends JpaRepository<BeaconHistory, UU
     );
 
     @Query("SELECT h FROM BeaconHistory h WHERE h.beaconType = :beaconType " +
-           "AND (:actionType IS NULL OR h.actionType = :actionType) " +
-           "AND (:from IS NULL OR h.changedAt >= :from) " +
-           "AND (:to IS NULL OR h.changedAt <= :to) " +
+           "AND (cast(:actionType as string) IS NULL OR h.actionType = :actionType) " +
+           "AND (cast(:from as timestamp) IS NULL OR h.changedAt >= :from) " +
+           "AND (cast(:to as timestamp) IS NULL OR h.changedAt <= :to) " +
            "AND (:hasEntityIds = false OR h.entityId IN :entityIds)")
     Page<BeaconHistory> searchHistory(
         @Param("beaconType") BeaconType beaconType,
