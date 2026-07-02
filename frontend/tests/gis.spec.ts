@@ -4,7 +4,7 @@ const AUTH_TOKEN = 'mock-jwt-token-2026';
 const STORAGE_STATE = {
   cookies: [],
   origins: [{
-    origin: 'http://localhost:3000',
+    origin: 'http://localhost:3001',
     localStorage: [{ name: 'auth_token', value: AUTH_TOKEN }],
   }],
 };

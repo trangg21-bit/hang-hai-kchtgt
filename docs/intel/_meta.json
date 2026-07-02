@@ -155,10 +155,10 @@
       "updated_by": "sdlc-ba"
     },
     "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md": {
-      "content_hash": "sha256:c23cb7824eda9b4e3ede9bfc56544450502a1e654aae59fe833d18ae9ae175b2",
-      "last_modified": "2026-06-29T16:39:04Z",
+      "content_hash": "sha256:146dbf04256e2606a7947c24cb689ac2fd9bc19799a3e3577c2b7e57bad4fd1a",
+      "last_modified": "2026-07-01T08:29:39Z",
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
-      "version": 2
+      "version": 7
     },
     "docs/modules/M-003-quan-ly-hang-hoa/module-brief.md": {
       "content_hash": "sha256:e8bc607a71e630fb166541ba3dd4202a517ba6da0f65c44936ca97d83a3f9fb2",

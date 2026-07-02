@@ -26,6 +26,7 @@ import {
   IdcardOutlined,
   BarChartOutlined,
   ApiOutlined,
+  ContainerOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
@@ -50,6 +51,11 @@ const MENU_PERMISSION_MAP: Record<string, string> = {
   '/beacons': 'data:read',
   '/buoys': 'data:read',
   '/history': 'data:read',
+  '/cangbien': 'cangbien:read',
+  '/bencang': 'bencang:read',
+  '/caucang': 'caucang:read',
+  '/cangcan': 'cangcan:read',
+  '/vungnuoc': 'vungnuoc:read',
   '/connections': 'connection:read',
   '/reports': 'report:read',
   '/settings': 'admin:manage',
@@ -79,6 +85,11 @@ const pageTitles: Record<string, string> = {
   '/beacons': 'Đèn biển',
   '/buoys': 'Phao tiêu',
   '/history': 'Lịch sử thay đổi',
+  '/cangbien': 'Cảng biển',
+  '/bencang': 'Bến cảng',
+  '/caucang': 'Cầu cảng',
+  '/cangcan': 'Cảng cạn',
+  '/vungnuoc': 'Vùng nước',
   '/connections': 'Liên thông dữ liệu',
   '/reports': 'Báo cáo & Thống kê',
   '/settings': 'Cấu hình hệ thống',
@@ -130,6 +141,19 @@ export default function AppLayout() {
       ].filter(Boolean),
     },
     { type: 'divider' as const },
+    {
+      key: 'cangben',
+      icon: <ContainerOutlined />,
+      label: 'Tài sản KCHTGT',
+      children: [
+        canAccessMenu('/cangbien') ? { key: '/cangbien', label: 'Cảng biển' } : null,
+        canAccessMenu('/bencang') ? { key: '/bencang', label: 'Bến cảng' } : null,
+        canAccessMenu('/caucang') ? { key: '/caucang', label: 'Cầu cảng' } : null,
+        canAccessMenu('/cangcan') ? { key: '/cangcan', label: 'Cảng cạn' } : null,
+        canAccessMenu('/vungnuoc') ? { key: '/vungnuoc', label: 'Vùng nước' } : null,
+      ].filter(Boolean),
+    },
+    { type: 'divider' as const },
     canAccessMenu('/reports') ? { key: '/reports', icon: <BarChartOutlined />, label: 'Báo cáo & Thống kê' } : null,
     { type: 'divider' as const },
     canAccessMenu('/connections') ? { key: '/connections', icon: <ApiOutlined />, label: 'Liên thông dữ liệu' } : null,
@@ -176,6 +200,8 @@ export default function AppLayout() {
     // For GIS, select the deepest valid key: /gis/points, /gis/lines, etc.
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
+  } else if (pathSegments[0] === 'cangbien' || pathSegments[0] === 'bencang' || pathSegments[0] === 'caucang' || pathSegments[0] === 'cangcan' || pathSegments[0] === 'vungnuoc') {
+    selectedKey = '/' + pathSegments[0];
   } else {
     selectedKey = '/' + pathSegments[0];
   }

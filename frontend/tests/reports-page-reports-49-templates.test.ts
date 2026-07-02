@@ -7,7 +7,7 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('ReportsPage — 49 REPORT_TEMPLATES', () => {
-  test.use({ storageState: { cookies: [], origins: [{ origin: 'http://localhost:3000', localStorage: [{ name: 'auth_token', value: 'mock-jwt-token-2026' }] }] } });
+  test.use({ storageState: { cookies: [], origins: [{ origin: 'http://localhost:3001', localStorage: [{ name: 'auth_token', value: 'mock-jwt-token-2026' }] }] } });
 
   // =========================================================================
   // Test 1: all-templates-listed

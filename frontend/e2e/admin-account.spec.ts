@@ -3,10 +3,10 @@ import { test, expect } from '@playwright/test';
 test.describe('Quản lý tài khoản admin', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/login');
-    await page.getByLabel('Tài khoản').fill('admin');
-    await page.getByLabel('Mật khẩu').fill('admin123');
+    await page.getByPlaceholder('Tên đăng nhập').fill('admin');
+    await page.getByPlaceholder('Mật khẩu').fill('admin123');
     await page.getByRole('button', { name: /đăng nhập/i }).click();
-    await page.waitForURL(/\/users/);
+    await page.waitForURL(/\/$/);
   });
 
   test('Hiển thị danh sách admin', async ({ page }) => {

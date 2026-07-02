@@ -6,7 +6,7 @@ status: in-progress
 depends-on: []
 blocked-by: []
 created: 2026-06-29T10:44:15Z
-last-updated: 2026-06-29T10:44:25Z
+last-updated: 2026-06-29T10:47:16Z
 current-stage: engineering-business-analyst
 output-mode: lean
 repo-type: mini
@@ -26,6 +26,15 @@ completed-stages:
     completed-at: 2026-06-29T10:44:15Z
   engineering-backend:
     verdict: passed
+    completed-at: 2026-06-29
+  engineering-backend-developer-wave-1:
+    verdict: Pass
+    completed-at: 2026-06-29
+  engineering-qa-engineer-wave-1:
+    verdict: Pass
+    completed-at: 2026-06-29
+  implemented:
+    verdict: Pass
     completed-at: 2026-06-29
 kpi:
   tokens-total: 0
@@ -65,6 +74,9 @@ clarification-notes: ""
 | 5 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | — | — | — |
 | 6 | engineering-code-reviewer | engineering-code-reviewer | — | — | — |
 | engineering-backend | engineering-backend | passed |  | 2026-06-29 |
+| engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | Pass |  | 2026-06-29 |
+| engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | Pass |  | 2026-06-29 |
+| implemented | implemented | Pass |  | 2026-06-29 |
 
 ## Current Stage
 

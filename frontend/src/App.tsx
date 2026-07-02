@@ -40,6 +40,47 @@ import BeaconHistoryList from './pages/history/BeaconHistoryList';
 import HomePage from './pages/Home';
 import PermissionGuard from './components/PermissionGuard';
 import PasswordResetPage from './pages/PasswordResetPage';
+import CangBienList from './services/cangbien/CangBienListPage';
+import CangBienCreatePage from './services/cangbien/CangBienCreatePage';
+import CangBienUpdatePage from './services/cangbien/CangBienUpdatePage';
+import CangBienDetailPage from './services/cangbien/CangBienDetailPage';
+import CangBienApprovePage from './services/cangbien/CangBienApprovePage';
+import CangBienDeleteConfirm from './services/cangbien/CangBienDeleteConfirm';
+import CangBienHistoryPage from './services/cangbien/CangBienHistoryPage';
+
+import BenCangListPage from './app/bencang/BenCangListPage';
+import BenCangCreatePage from './app/bencang/BenCangCreatePage';
+import BenCangUpdatePage from './app/bencang/BenCangUpdatePage';
+import BenCangDetailPage from './app/bencang/BenCangDetailPage';
+import BenCangApprovePage from './app/bencang/BenCangApprovePage';
+import BenCangDeleteConfirm from './app/bencang/BenCangDeleteConfirm';
+import BenCangHistoryPage from './app/bencang/BenCangHistoryPage';
+
+import CauCangListPage from './app/caucang/CauCangListPage';
+import CauCangCreatePage from './app/caucang/CauCangCreatePage';
+import CauCangUpdatePage from './app/caucang/CauCangUpdatePage';
+import CauCangDetailPage from './app/caucang/CauCangDetailPage';
+import CauCangApprovePage from './app/caucang/CauCangApprovePage';
+import CauCangDeleteConfirm from './app/caucang/CauCangDeleteConfirm';
+import CauCangHistoryPage from './app/caucang/CauCangHistoryPage';
+
+import CangCanListPage from './app/cangcan/CangCanListPage';
+import CangCanCreatePage from './app/cangcan/CangCanCreatePage';
+import CangCanUpdatePage from './app/cangcan/CangCanUpdatePage';
+import CangCanDetailPage from './app/cangcan/CangCanDetailPage';
+import CangCanApprovePage from './app/cangcan/CangCanApprovePage';
+import CangCanDeleteConfirm from './app/cangcan/CangCanDeleteConfirm';
+import CangCanHistoryPage from './app/cangcan/CangCanHistoryPage';
+
+import VungNuocListPage from './app/vungnuoc/VungNuocListPage';
+import VungNuocCreatePage from './app/vungnuoc/VungNuocCreatePage';
+import VungNuocUpdatePage from './app/vungnuoc/VungNuocUpdatePage';
+import VungNuocDetailPage from './app/vungnuoc/VungNuocDetailPage';
+import VungNuocApprovePage from './app/vungnuoc/VungNuocApprovePage';
+import VungNuocDeleteConfirm from './app/vungnuoc/VungNuocDeleteConfirm';
+import VungNuocHistoryPage from './app/vungnuoc/VungNuocHistoryPage';
+
+import GiayToUploadPage from './app/giayto/GiayToUploadPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -144,6 +185,49 @@ export default function App() {
                 <Route path="/buoys/create" element={<PermissionGuard permission="data:read"><BuoyForm /></PermissionGuard>} />
                 <Route path="/buoys/:id" element={<PermissionGuard permission="data:read"><BuoyForm /></PermissionGuard>} />
                 <Route path="/history" element={<PermissionGuard permission="data:read"><BeaconHistoryList /></PermissionGuard>} />
+
+                {/* M-002: Tài sản KCHTGT - Cảng & Bến */}
+                <Route path="/cangbien" element={<PermissionGuard permission="cangbien:read"><CangBienList /></PermissionGuard>} />
+                <Route path="/cangbien/create" element={<PermissionGuard permission="cangbien:create"><CangBienCreatePage /></PermissionGuard>} />
+                <Route path="/cangbien/:id" element={<PermissionGuard permission="cangbien:read"><CangBienDetailPage /></PermissionGuard>} />
+                <Route path="/cangbien/:id/edit" element={<PermissionGuard permission="cangbien:update"><CangBienUpdatePage /></PermissionGuard>} />
+                <Route path="/cangbien/:id/approve" element={<PermissionGuard permission="cangbien:approve"><CangBienApprovePage /></PermissionGuard>} />
+                <Route path="/cangbien/:id/delete" element={<PermissionGuard permission="cangbien:delete"><CangBienDeleteConfirm /></PermissionGuard>} />
+                <Route path="/cangbien/:id/history" element={<PermissionGuard permission="cangbien:read"><CangBienHistoryPage /></PermissionGuard>} />
+
+                <Route path="/bencang" element={<PermissionGuard permission="bencang:read"><BenCangListPage /></PermissionGuard>} />
+                <Route path="/bencang/create" element={<PermissionGuard permission="bencang:create"><BenCangCreatePage /></PermissionGuard>} />
+                <Route path="/bencang/:id" element={<PermissionGuard permission="bencang:read"><BenCangDetailPage /></PermissionGuard>} />
+                <Route path="/bencang/:id/edit" element={<PermissionGuard permission="bencang:update"><BenCangUpdatePage /></PermissionGuard>} />
+                <Route path="/bencang/:id/approve" element={<PermissionGuard permission="bencang:approve"><BenCangApprovePage /></PermissionGuard>} />
+                <Route path="/bencang/:id/delete" element={<PermissionGuard permission="bencang:delete"><BenCangDeleteConfirm /></PermissionGuard>} />
+                <Route path="/bencang/:id/history" element={<PermissionGuard permission="bencang:read"><BenCangHistoryPage /></PermissionGuard>} />
+
+                <Route path="/caucang" element={<PermissionGuard permission="caucang:read"><CauCangListPage /></PermissionGuard>} />
+                <Route path="/caucang/create" element={<PermissionGuard permission="caucang:create"><CauCangCreatePage /></PermissionGuard>} />
+                <Route path="/caucang/:id" element={<PermissionGuard permission="caucang:read"><CauCangDetailPage /></PermissionGuard>} />
+                <Route path="/caucang/:id/edit" element={<PermissionGuard permission="caucang:update"><CauCangUpdatePage /></PermissionGuard>} />
+                <Route path="/caucang/:id/approve" element={<PermissionGuard permission="caucang:approve"><CauCangApprovePage /></PermissionGuard>} />
+                <Route path="/caucang/:id/delete" element={<PermissionGuard permission="caucang:delete"><CauCangDeleteConfirm /></PermissionGuard>} />
+                <Route path="/caucang/:id/history" element={<PermissionGuard permission="caucang:read"><CauCangHistoryPage /></PermissionGuard>} />
+
+                <Route path="/cangcan" element={<PermissionGuard permission="cangcan:read"><CangCanListPage /></PermissionGuard>} />
+                <Route path="/cangcan/create" element={<PermissionGuard permission="cangcan:create"><CangCanCreatePage /></PermissionGuard>} />
+                <Route path="/cangcan/:id" element={<PermissionGuard permission="cangcan:read"><CangCanDetailPage /></PermissionGuard>} />
+                <Route path="/cangcan/:id/edit" element={<PermissionGuard permission="cangcan:update"><CangCanUpdatePage /></PermissionGuard>} />
+                <Route path="/cangcan/:id/approve" element={<PermissionGuard permission="cangcan:approve"><CangCanApprovePage /></PermissionGuard>} />
+                <Route path="/cangcan/:id/delete" element={<PermissionGuard permission="cangcan:delete"><CangCanDeleteConfirm /></PermissionGuard>} />
+                <Route path="/cangcan/:id/history" element={<PermissionGuard permission="cangcan:read"><CangCanHistoryPage /></PermissionGuard>} />
+
+                <Route path="/vungnuoc" element={<PermissionGuard permission="vungnuoc:read"><VungNuocListPage /></PermissionGuard>} />
+                <Route path="/vungnuoc/create" element={<PermissionGuard permission="vungnuoc:create"><VungNuocCreatePage /></PermissionGuard>} />
+                <Route path="/vungnuoc/:id" element={<PermissionGuard permission="vungnuoc:read"><VungNuocDetailPage /></PermissionGuard>} />
+                <Route path="/vungnuoc/:id/edit" element={<PermissionGuard permission="vungnuoc:update"><VungNuocUpdatePage /></PermissionGuard>} />
+                <Route path="/vungnuoc/:id/approve" element={<PermissionGuard permission="vungnuoc:approve"><VungNuocApprovePage /></PermissionGuard>} />
+                <Route path="/vungnuoc/:id/delete" element={<PermissionGuard permission="vungnuoc:delete"><VungNuocDeleteConfirm /></PermissionGuard>} />
+                <Route path="/vungnuoc/:id/history" element={<PermissionGuard permission="vungnuoc:read"><VungNuocHistoryPage /></PermissionGuard>} />
+
+                <Route path="/giayto/upload/:entityType/:entityId" element={<PermissionGuard permission="cangben:read"><GiayToUploadPage /></PermissionGuard>} />
 
                 {/* Nhật ký & Backup */}
                 <Route path="/logs" element={<PermissionGuard permission="log:manage"><LogsPage /></PermissionGuard>} />

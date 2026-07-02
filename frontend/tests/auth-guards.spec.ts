@@ -14,7 +14,7 @@ test.describe('Auth Guard & Protected Routes', () => {
 });
 
 test.describe('UI Responsiveness', () => {
-  test.use({ storageState: { cookies: [], origins: [{ origin: 'http://localhost:3000', localStorage: [{ name: 'auth_token', value: 'mock-jwt-token-2026' }] }] } });
+  test.use({ storageState: { cookies: [], origins: [{ origin: 'http://localhost:3001', localStorage: [{ name: 'auth_token', value: 'mock-jwt-token-2026' }] }] } });
 
   test('users page should render properly at normal viewport', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
@@ -30,7 +30,7 @@ test.describe('UI Responsiveness', () => {
 });
 
 test.describe('Modal and Forms', () => {
-  test.use({ storageState: { cookies: [], origins: [{ origin: 'http://localhost:3000', localStorage: [{ name: 'auth_token', value: 'mock-jwt-token-2026' }] }] } });
+  test.use({ storageState: { cookies: [], origins: [{ origin: 'http://localhost:3001', localStorage: [{ name: 'auth_token', value: 'mock-jwt-token-2026' }] }] } });
 
   test('should open create user modal', async ({ page }) => {
     await page.goto('/users');
@@ -79,7 +79,7 @@ test.describe('Modal and Forms', () => {
 });
 
 test.describe('Error States', () => {
-  test.use({ storageState: { cookies: [], origins: [{ origin: 'http://localhost:3000', localStorage: [{ name: 'auth_token', value: 'mock-jwt-token-2026' }] }] } });
+  test.use({ storageState: { cookies: [], origins: [{ origin: 'http://localhost:3001', localStorage: [{ name: 'auth_token', value: 'mock-jwt-token-2026' }] }] } });
 
   test('users page should show loading skeleton', async ({ page }) => {
     await page.goto('/users');

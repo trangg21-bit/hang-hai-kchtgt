@@ -1,4 +1,21 @@
 ---
+status: proposed
+current-stage: proposed
+completed-stages:
+  engineering-code-reviewer:
+    verdict: Approved
+    completed-at: 2026-07-02
+  done:
+    verdict: Approved
+    completed-at: 2026-07-02
+stages-queue:
+  - engineering-business-analyst
+  - engineering-system-architect
+  - engineering-technical-lead
+  - engineering-backend-developer-wave-1
+last-updated: 2026-07-02T01:44:39Z
+---
+---
 feature-id: M-002
 feature-name: Quản lý tài sản KCHTGT - Cảng & Bến
 pipeline-type: sdlc
@@ -94,6 +111,8 @@ Quản lý cảng biển (36), bến cảng (301), cầu cảng (614), cảng c�
 | engineering-backend-developer-wave-3 | engineering-backend-developer-wave-3 | Pass |  | 2026-06-29 |
 | engineering-qa-engineer-wave-3 | engineering-qa-engineer-wave-3 | Pass | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w3.md | 2026-06-29 |
 | engineering-code-reviewer | engineering-code-reviewer | Approved | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/reviewer/final-verdict-rereview.md | 2026-06-29 |
+| engineering-code-reviewer | engineering-code-reviewer | Approved |  | 2026-07-02 |
+| done | done | Approved |  | 2026-07-02 |
 
 ## Current Stage
 
