@@ -17,6 +17,9 @@ public interface LineObjectRepository extends JpaRepository<LineObject, UUID> {
 
     boolean existsByCode(String code);
 
+    @Query(value = "SELECT COUNT(*) FROM line_objects WHERE code = :code", nativeQuery = true)
+    long countByCodeIncludingDeleted(@Param("code") String code);
+
     List<LineObject> findByObjectType(ObjectType objectType);
 
     List<LineObject> findByStatus(Status status);
