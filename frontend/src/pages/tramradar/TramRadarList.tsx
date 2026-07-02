@@ -8,25 +8,25 @@ import {
   Col,
   Input,
   Select,
-  Spin,
-  Empty,
+  Tooltip,
   message,
   Popconfirm,
+  Table,
+  Empty,
   Tag,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   EditOutlined,
   DeleteOutlined,
-  SearchOutlined,
   ReloadOutlined,
   EyeOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import { tramRadarCRUD } from '../../services/tramRadarService';
 import type { TramRadarResponse, ListParams } from '../../types/tramRadar';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
-import CrudPageLayout from '../../components/shared/CrudPageLayout';
 
 const APPROVAL_STATUS_OPTIONS = [
   { label: 'Chờ duyệt', value: 'PROPOSED' },
@@ -82,10 +82,6 @@ export default function TramRadarList() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  const handleSearch = useCallback(() => {
-    setPage(1);
-  }, []);
 
   const handleReset = useCallback(() => {
     setFilterKeyword('');
@@ -221,97 +217,86 @@ export default function TramRadarList() {
     } as any,
   ];
 
-  const filterBar = (
-    <Row gutter={16} align="middle">
-      <Col xs={24} sm={12} md={8}>
-        <Input
-          placeholder="Tìm kiếm tên trạm..."
-          value={filterKeyword}
-          onChange={(e) => setFilterKeyword(e.target.value)}
-          onPressEnter={handleSearch}
-          allowClear
-        />
-      </Col>
-      <Col xs={24} sm={12} md={8}>
-        <Select
-          placeholder="Tình trạng"
-          options={TINH_TRANG_OPTIONS}
-          value={filterTinhTrang}
-          onChange={setFilterTinhTrang}
-          allowClear
-          style={{ width: '100%' }}
-        />
-      </Col>
-      <Col xs={24} sm={12} md={8}>
-        <Select
-          placeholder="Trạng thái phê duyệt"
-          options={APPROVAL_STATUS_OPTIONS}
-          value={filterTrangThai}
-          onChange={setFilterTrangThai}
-          allowClear
-          style={{ width: '100%' }}
-        />
-      </Col>
-      <Col xs={24} sm={12} md={6}>
-        <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch} block>
-          Tìm kiếm
-        </Button>
-      </Col>
-      <Col xs={24} sm={12} md={6}>
-        <Button icon={<ReloadOutlined />} onClick={handleReset} block>
-          Xóa bộ lọc
-        </Button>
-      </Col>
-    </Row>
-  );
-
-  if (isError && !isLoading) {
-    return (
-      <div style={{ padding: '24px' }}>
-        <Card>
-          <Empty
-            description={error?.message || 'Lỗi tải dữ liệu'}
-            style={{ marginTop: '50px' }}
-          />
-          <Button onClick={fetchData} style={{ marginTop: '16px' }}>
-            Thử lại
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
-  const breadcrumbs = [
-    { title: 'Trang chủ', onClick: () => navigate('/') },
-    { title: 'Trạm Radar' },
-  ];
-
   return (
-    <Spin spinning={isLoading} fullscreen={isLoading}>
-      <CrudPageLayout
-        title="Quản lý Trạm Radar"
-        breadcrumbs={breadcrumbs}
-        filterBar={filterBar}
-        canCreate={userPermissions.includes('tramradar:create')}
-        onCreateClick={() => navigate('/tram-radar/create')}
-        createButtonText="Thêm mới"
-        tableProps={{
-          columns: columns as any,
-          dataSource: dataSource.map((item) => ({ ...item, key: item.id })),
-          loading: isLoading,
-          pagination: {
-            current: page,
-            pageSize,
-            total,
-            showSizeChanger: true,
-            showTotal: (total) => `Tổng ${total} bản ghi`,
-            onChange: (p, ps) => {
-              setPage(p);
-              setPageSize(ps);
-            },
-          },
-        }}
-      />
-    </Spin>
+    <>
+      {/* Filter Card */}
+      <Card style={{ marginBottom: 16 }}>
+        <Row gutter={[12, 12]} align="middle">
+          <Col xs={24} md={16}>
+            <Space wrap>
+              <Input.Search
+                placeholder="Tìm kiếm tên trạm..."
+                allowClear
+                value={filterKeyword}
+                onSearch={(val) => { setFilterKeyword(val); setPage(1); }}
+                onChange={(e) => setFilterKeyword(e.target.value)}
+                style={{ width: 200 }}
+              />
+              <Select
+                placeholder="Tình trạng"
+                options={TINH_TRANG_OPTIONS}
+                value={filterTinhTrang}
+                onChange={(val) => { setFilterTinhTrang(val); setPage(1); }}
+                allowClear
+                style={{ width: 180 }}
+              />
+              <Select
+                placeholder="Trạng thái phê duyệt"
+                options={APPROVAL_STATUS_OPTIONS}
+                value={filterTrangThai}
+                onChange={(val) => { setFilterTrangThai(val); setPage(1); }}
+                allowClear
+                style={{ width: 180 }}
+              />
+            </Space>
+          </Col>
+          <Col xs={24} md={8} style={{ textAlign: 'right' }}>
+            <Space>
+              <Tooltip title="Tải lại">
+                <Button icon={<ReloadOutlined />} onClick={fetchData} />
+              </Tooltip>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/tram-radar/create')}>
+                Thêm mới
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Table Card with Loading/Error/Empty */}
+      <Card>
+        {isLoading && (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+            Đang tải dữ liệu...
+          </div>
+        )}
+        {isError && !isLoading && (
+          <div style={{ textAlign: 'center', padding: '40px' }}>
+            <p style={{ color: '#ff4d4f' }}>{error?.message || 'Lỗi tải dữ liệu'}</p>
+            <Button onClick={fetchData}>Thử lại</Button>
+          </div>
+        )}
+        {!isLoading && !isError && dataSource.length === 0 && (
+          <Empty description="Không có dữ liệu" />
+        )}
+        {!isLoading && !isError && dataSource.length > 0 && (
+          <Table
+            columns={columns}
+            dataSource={dataSource.map((item) => ({ ...item, key: item.id }))}
+            loading={false}
+            pagination={{
+              current: page,
+              pageSize,
+              total,
+              showSizeChanger: true,
+              showTotal: (total) => `Tổng ${total} bản ghi`,
+              onChange: (p, ps) => { setPage(p); setPageSize(ps); },
+            }}
+            size="small"
+            scroll={{ x: 1200 }}
+          />
+        )}
+      </Card>
+    </>
   );
 }

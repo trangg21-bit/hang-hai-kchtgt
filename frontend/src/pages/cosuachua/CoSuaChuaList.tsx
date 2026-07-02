@@ -8,24 +8,24 @@ import {
   Col,
   Input,
   Select,
-  Spin,
-  Empty,
+  Tooltip,
   message,
   Popconfirm,
+  Table,
+  Empty,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   EditOutlined,
   DeleteOutlined,
-  SearchOutlined,
   ReloadOutlined,
   EyeOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import { coSuaChuaCRUD } from '../../services/coSuaChuaService';
 import type { CoSuaChuaResponse, ListParams } from '../../types/coSuaChua';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
-import CrudPageLayout from '../../components/shared/CrudPageLayout';
 
 const APPROVAL_STATUS_OPTIONS = [
   { label: 'Chờ duyệt', value: 'PROPOSED' },
@@ -72,10 +72,6 @@ export default function CoSuaChuaList() {
   }, [filterKeyword, filterTinhThanh, filterTrangThai, filterStatus]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const handleSearch = useCallback(() => {
     fetchData();
   }, [fetchData]);
 
@@ -205,100 +201,84 @@ export default function CoSuaChuaList() {
     } as any,
   ];
 
-  const filterBar = (
-    <Row gutter={16} align="middle">
-      <Col xs={24} sm={12} md={6}>
-        <Input
-          placeholder="Tìm kiếm tên cơ sở..."
-          value={filterKeyword}
-          onChange={(e) => setFilterKeyword(e.target.value)}
-          onPressEnter={handleSearch}
-          allowClear
-        />
-      </Col>
-      <Col xs={24} sm={12} md={6}>
-        <Input
-          placeholder="Tỉnh/thành"
-          value={filterTinhThanh || ''}
-          onChange={(e) => setFilterTinhThanh(e.target.value || undefined)}
-          allowClear
-        />
-      </Col>
-      <Col xs={24} sm={12} md={6}>
-        <Select
-          placeholder="Trạng thái"
-          value={filterTrangThai}
-          onChange={setFilterTrangThai}
-          allowClear
-        />
-      </Col>
-      <Col xs={24} sm={12} md={6}>
-        <Select
-          placeholder="Trạng thái phê duyệt"
-          options={APPROVAL_STATUS_OPTIONS}
-          value={filterStatus}
-          onChange={setFilterStatus}
-          allowClear
-        />
-      </Col>
-      <Col xs={24} sm={12} md={6}>
-        <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch} block>
-          Tìm kiếm
-        </Button>
-      </Col>
-      <Col xs={24} sm={12} md={6}>
-        <Button icon={<ReloadOutlined />} onClick={handleReset} block>
-          Xóa bộ lọc
-        </Button>
-      </Col>
-    </Row>
-  );
-
-  if (isError && !isLoading) {
-    return (
-      <Spin spinning={isLoading} fullscreen={isLoading}>
-        <div style={{ padding: '24px' }}>
-          <Card>
-            <Empty
-              description={error?.message || 'Lỗi tải dữ liệu'}
-              style={{ marginTop: '50px' }}
-            />
-            <Button onClick={fetchData} style={{ marginTop: '16px' }}>
-              Thử lại
-            </Button>
-          </Card>
-        </div>
-      </Spin>
-    );
-  }
-
-  const breadcrumbs = [
-    { title: 'Trang chủ', onClick: () => navigate('/') },
-    { title: 'Cơ sở sửa chữa & đóng tàu' },
-  ];
-
   return (
-    <Spin spinning={isLoading} fullscreen={isLoading}>
-      <CrudPageLayout
-        title="Quản lý Cơ sở Sửa chữa & Đóng tàu"
-        breadcrumbs={breadcrumbs}
-        filterBar={filterBar}
-        canCreate={userPermissions.includes('cosuachua:create')}
-        onCreateClick={() => navigate('/co-so-sua-chua/create')}
-        createButtonText="Thêm mới"
-        tableProps={{
-          columns: columns as any,
-          dataSource: dataSource.map((item) => ({ ...item, key: item.id })),
-          loading: isLoading,
-          pagination: {
-            current: 1,
-            pageSize: total,
-            total,
-            showSizeChanger: false,
-            showTotal: (total) => `Tổng ${total} bản ghi`,
-          },
-        }}
-      />
-    </Spin>
+    <>
+      {/* Filter Card */}
+      <Card style={{ marginBottom: 16 }}>
+        <Row gutter={[12, 12]} align="middle">
+          <Col xs={24} md={16}>
+            <Space wrap>
+              <Input.Search
+                placeholder="Tìm kiếm tên cơ sở..."
+                allowClear
+                value={filterKeyword}
+                onSearch={(val) => { setFilterKeyword(val); fetchData(); }}
+                onChange={(e) => setFilterKeyword(e.target.value)}
+                style={{ width: 200 }}
+              />
+              <Input
+                placeholder="Tỉnh/thành"
+                value={filterTinhThanh || ''}
+                onChange={(e) => setFilterTinhThanh(e.target.value || undefined)}
+                allowClear
+                style={{ width: 150 }}
+              />
+              <Select
+                placeholder="Trạng thái"
+                value={filterTrangThai}
+                onChange={(val) => { setFilterTrangThai(val); fetchData(); }}
+                allowClear
+                style={{ width: 150 }}
+              />
+              <Select
+                placeholder="Trạng thái phê duyệt"
+                options={APPROVAL_STATUS_OPTIONS}
+                value={filterStatus}
+                onChange={(val) => { setFilterStatus(val); fetchData(); }}
+                allowClear
+                style={{ width: 180 }}
+              />
+            </Space>
+          </Col>
+          <Col xs={24} md={8} style={{ textAlign: 'right' }}>
+            <Space>
+              <Tooltip title="Tải lại">
+                <Button icon={<ReloadOutlined />} onClick={fetchData} />
+              </Tooltip>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/co-so-sua-chua/create')}>
+                Thêm mới
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Table Card with Loading/Error/Empty */}
+      <Card>
+        {isLoading && (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+            Đang tải dữ liệu...
+          </div>
+        )}
+        {isError && !isLoading && (
+          <div style={{ textAlign: 'center', padding: '40px' }}>
+            <p style={{ color: '#ff4d4f' }}>{error?.message || 'Lỗi tải dữ liệu'}</p>
+            <Button onClick={fetchData}>Thử lại</Button>
+          </div>
+        )}
+        {!isLoading && !isError && dataSource.length === 0 && (
+          <Empty description="Không có dữ liệu" />
+        )}
+        {!isLoading && !isError && dataSource.length > 0 && (
+          <Table
+            columns={columns}
+            dataSource={dataSource.map((item) => ({ ...item, key: item.id }))}
+            loading={false}
+            size="small"
+            scroll={{ x: 1200 }}
+          />
+        )}
+      </Card>
+    </>
   );
 }

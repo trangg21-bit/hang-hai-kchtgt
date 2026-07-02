@@ -54,7 +54,7 @@ import java.util.List;
 
 @Component
 @Order(2)
-@Profile("local")
+@Profile({"local", "dev"})
 @RequiredArgsConstructor
 @Slf4j
 public class DataSeeder implements CommandLineRunner {

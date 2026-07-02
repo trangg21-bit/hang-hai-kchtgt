@@ -8,24 +8,24 @@ import {
   Col,
   Input,
   Select,
-  Spin,
-  Empty,
+  Tooltip,
   message,
   Popconfirm,
+  Table,
+  Empty,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
   EditOutlined,
   DeleteOutlined,
-  SearchOutlined,
   ReloadOutlined,
   EyeOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import { heThongVTSCRUD } from '../../services/heThongVtsService';
 import type { HeThongVTSResponse, ListParams } from '../../types/heThongVts';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
-import CrudPageLayout from '../../components/shared/CrudPageLayout';
 
 const APPROVAL_STATUS_OPTIONS = [
   { label: 'Chờ duyệt', value: 'PROPOSED' },
@@ -75,10 +75,6 @@ export default function HeThongVTSList() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  const handleSearch = useCallback(() => {
-    setPage(1);
-  }, []);
 
   const handleReset = useCallback(() => {
     setFilterKeyword('');
@@ -201,99 +197,90 @@ export default function HeThongVTSList() {
     } as any,
   ];
 
-  const filterBar = (
-    <Row gutter={16} align="middle">
-      <Col xs={24} sm={12} md={6}>
-        <Input
-          placeholder="Tìm kiếm..."
-          value={filterKeyword}
-          onChange={(e) => setFilterKeyword(e.target.value)}
-          onPressEnter={handleSearch}
-          allowClear
-        />
-      </Col>
-      <Col xs={24} sm={12} md={6}>
-        <Select
-          placeholder="Tình trạng"
-          options={[
-            { label: 'Tốt', value: 'Tốt' },
-            { label: 'Xuống cấp', value: 'Xuống cấp' },
-            { label: 'Hư hỏng', value: 'Hư hỏng' },
-          ]}
-          value={filterTinhTrang}
-          onChange={setFilterTinhTrang}
-          allowClear
-        />
-      </Col>
-      <Col xs={24} sm={12} md={6}>
-        <Select
-          placeholder="Trạng thái phê duyệt"
-          options={APPROVAL_STATUS_OPTIONS}
-          value={filterStatus}
-          onChange={setFilterStatus}
-          allowClear
-        />
-      </Col>
-      <Col xs={24} sm={12} md={6}>
-        <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch} block>
-          Tìm kiếm
-        </Button>
-      </Col>
-      <Col xs={24} sm={12} md={6}>
-        <Button icon={<ReloadOutlined />} onClick={handleReset} block>
-          Xóa bộ lọc
-        </Button>
-      </Col>
-    </Row>
-  );
-
-  if (isError && !isLoading) {
-    return (
-      <div style={{ padding: '24px' }}>
-        <Card>
-          <Empty
-            description={error?.message || 'Lỗi tải dữ liệu'}
-            style={{ marginTop: '50px' }}
-          />
-          <Button onClick={fetchData} style={{ marginTop: '16px' }}>
-            Thử lại
-          </Button>
-        </Card>
-      </div>
-    );
-  }
-
-  const breadcrumbs = [
-    { title: 'Trang chủ', onClick: () => navigate('/') },
-    { title: 'Hệ thống VTS' },
-  ];
-
   return (
-    <Spin spinning={isLoading} fullscreen={isLoading}>
-      <CrudPageLayout
-        title="Quản lý Hệ thống VTS"
-        breadcrumbs={breadcrumbs}
-        filterBar={filterBar}
-        canCreate={userPermissions.includes('vts:create')}
-        onCreateClick={() => navigate('/he-thong-vts/create')}
-        createButtonText="Thêm mới"
-        tableProps={{
-          columns: columns as any,
-          dataSource: dataSource.map((item) => ({ ...item, key: item.id })),
-          loading: isLoading,
-          pagination: {
-            current: page,
-            pageSize,
-            total,
-            showSizeChanger: true,
-            showTotal: (total) => `Tổng ${total} bản ghi`,
-            onChange: (p, ps) => {
-              setPage(p);
-              setPageSize(ps);
-            },
-          },
-        }}
-      />
-    </Spin>
+    <>
+      {/* Filter Card */}
+      <Card style={{ marginBottom: 16 }}>
+        <Row gutter={[12, 12]} align="middle">
+          <Col xs={24} md={16}>
+            <Space wrap>
+              <Input.Search
+                placeholder="Tìm kiếm..."
+                allowClear
+                value={filterKeyword}
+                onSearch={(val) => { setFilterKeyword(val); setPage(1); }}
+                onChange={(e) => setFilterKeyword(e.target.value)}
+                style={{ width: 200 }}
+              />
+              <Select
+                placeholder="Tình trạng"
+                options={[
+                  { label: 'Tốt', value: 'Tốt' },
+                  { label: 'Xuống cấp', value: 'Xuống cấp' },
+                  { label: 'Hư hỏng', value: 'Hư hỏng' },
+                ]}
+                value={filterTinhTrang}
+                onChange={(val) => { setFilterTinhTrang(val); setPage(1); }}
+                allowClear
+                style={{ width: 150 }}
+              />
+              <Select
+                placeholder="Trạng thái phê duyệt"
+                options={APPROVAL_STATUS_OPTIONS}
+                value={filterStatus}
+                onChange={(val) => { setFilterStatus(val); setPage(1); }}
+                allowClear
+                style={{ width: 180 }}
+              />
+            </Space>
+          </Col>
+          <Col xs={24} md={8} style={{ textAlign: 'right' }}>
+            <Space>
+              <Tooltip title="Tải lại">
+                <Button icon={<ReloadOutlined />} onClick={fetchData} />
+              </Tooltip>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/he-thong-vts/create')}>
+                Thêm mới
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Table Card with Loading/Error/Empty */}
+      <Card>
+        {isLoading && (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+            Đang tải dữ liệu...
+          </div>
+        )}
+        {isError && !isLoading && (
+          <div style={{ textAlign: 'center', padding: '40px' }}>
+            <p style={{ color: '#ff4d4f' }}>{error?.message || 'Lỗi tải dữ liệu'}</p>
+            <Button onClick={fetchData}>Thử lại</Button>
+          </div>
+        )}
+        {!isLoading && !isError && dataSource.length === 0 && (
+          <Empty description="Không có dữ liệu" />
+        )}
+        {!isLoading && !isError && dataSource.length > 0 && (
+          <Table
+            columns={columns}
+            dataSource={dataSource.map((item) => ({ ...item, key: item.id }))}
+            loading={false}
+            pagination={{
+              current: page,
+              pageSize,
+              total,
+              showSizeChanger: true,
+              showTotal: (total) => `Tổng ${total} bản ghi`,
+              onChange: (p, ps) => { setPage(p); setPageSize(ps); },
+            }}
+            size="small"
+            scroll={{ x: 1200 }}
+          />
+        )}
+      </Card>
+    </>
   );
 }
