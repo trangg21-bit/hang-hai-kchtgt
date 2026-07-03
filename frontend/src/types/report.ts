@@ -4,6 +4,7 @@ export interface ReportRequest {
   endDate?: string;   // Format: YYYY-MM-DD
   orgUnitId?: string;
   format?: 'PREVIEW' | 'EXCEL' | 'PDF';
+  bcNoiDung?: string;
 }
 
 export interface ReportResponse {

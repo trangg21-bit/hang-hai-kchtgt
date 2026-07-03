@@ -27,7 +27,7 @@ public class PointObjectResponse {
     private Double latitude;
     private String description;
     private Status status;
-    private Long unitId;
+    private UUID unitId;
     private ApprovalStatus approvalStatus;
     private Long approvedBy;
     private LocalDateTime approvedDate;

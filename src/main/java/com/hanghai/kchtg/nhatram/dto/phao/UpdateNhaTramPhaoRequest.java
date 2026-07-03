@@ -50,7 +50,7 @@ public class UpdateNhaTramPhaoRequest {
     @Size(max = 1000)
     private String description;
 
-    private Long unitId;
+    private java.util.UUID unitId;
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
     private Boolean isActive;

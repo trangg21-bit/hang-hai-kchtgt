@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Row, Col, message, Tag } from 'antd';
+import { Card, Form, Button, Space, Typography, Row, Col, message, Tag, Select } from 'antd';
 import { ArrowLeftOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { buoyCRUD, approval } from '../../services/beaconService';
@@ -11,6 +11,7 @@ import {
 } from '../../types/beacon';
 import FormField from '../../components/FormField';
 import toast from '../../components/ToastNotification';
+import { organizationService } from '../../services/organizationService';
 
 export default function BuoyForm() {
   const navigate = useNavigate();
@@ -20,6 +21,18 @@ export default function BuoyForm() {
   const [submitting, setSubmitting] = useState(false);
   const [entityData, setEntityData] = useState<{ status: BeaconStatus } | null>(null);
   const [rejectLoading, setRejectLoading] = useState(false);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await organizationService.list({ pageSize: 1000 });
+        setOrganizations(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load organizations', err);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (isEdit) {
@@ -36,6 +49,7 @@ export default function BuoyForm() {
             range: data.range,
             color: data.color,
             description: data.description,
+            unitId: data.unitId,
           });
         } catch {
           toast.error('Không thể tải thông tin phao tiêu');
@@ -49,45 +63,47 @@ export default function BuoyForm() {
     try {
       const values = await form.validateFields();
 
-          // WGS84 validation
-          if (values.latitude < -90 || values.latitude > 90) {
-            message.error('Vĩ độ phải từ -90 đến 90');
-            return;
-          }
-          if (values.longitude < -180 || values.longitude > 180) {
-            message.error('Kinh độ phải từ -180 đến 180');
-            return;
-          }
-          if (values.range < 0.01 || values.range > 100) {
-            message.error('Bán kính hoạt động phải từ 0.01 đến 100');
-            return;
-          }
+      // WGS84 validation
+      if (values.latitude < -90 || values.latitude > 90) {
+        message.error('Vĩ độ phải từ -90 đến 90');
+        return;
+      }
+      if (values.longitude < -180 || values.longitude > 180) {
+        message.error('Kinh độ phải từ -180 đến 180');
+        return;
+      }
+      if (values.range < 0.01 || values.range > 100) {
+        message.error('Bán kính hoạt động phải từ 0.01 đến 100');
+        return;
+      }
 
       setSubmitting(true);
 
       if (isEdit) {
-          const payload: UpdateBuoyRequest = {
-            name: values.name,
-            type: values.type,
-            longitude: values.longitude,
-            latitude: values.latitude,
-            range: values.range,
-            color: values.color,
-            description: values.description,
-          };
+        const payload: UpdateBuoyRequest = {
+          name: values.name,
+          type: values.type,
+          longitude: values.longitude,
+          latitude: values.latitude,
+          range: values.range,
+          color: values.color,
+          description: values.description,
+          unitId: values.unitId,
+        };
         await buoyCRUD.update(id!, payload);
         toast.success('Đã cập nhật phao tiêu');
       } else {
-          const payload: CreateBuoyRequest = {
-            name: values.name,
-            code: values.code,
-            type: values.type,
-            longitude: values.longitude,
-            latitude: values.latitude,
-            range: values.range,
-            color: values.color,
-            description: values.description,
-          };
+        const payload: CreateBuoyRequest = {
+          name: values.name,
+          code: values.code,
+          type: values.type,
+          longitude: values.longitude,
+          latitude: values.latitude,
+          range: values.range,
+          color: values.color,
+          description: values.description,
+          unitId: values.unitId,
+        };
         await buoyCRUD.create(payload);
         toast.success('Đã tạo phao tiêu');
       }
@@ -99,6 +115,7 @@ export default function BuoyForm() {
       setSubmitting(false);
     }
   }, [isEdit, id, form, navigate]);
+
 
   const handleDelete = useCallback(async () => {
     if (!id) return;
@@ -216,6 +233,18 @@ export default function BuoyForm() {
             options={BUOY_TYPE_OPTIONS}
             disabled={isEdit && (entityData?.status === 'APPROVED_L2' || entityData?.status === 'PUBLISHED')}
           />
+
+          <FormField
+            type="select"
+            name="unitId"
+            label="Đơn vị quản lý"
+            placeholder="Chọn đơn vị quản lý"
+            options={organizations.map((org) => ({
+              value: org.id,
+              label: org.code ? `${org.code} - ${org.name}` : org.name,
+            }))}
+          />
+
 
            <Row style={{ display: 'flex', gap: 16 }}>
              <Col style={{ flex: 1 }}>

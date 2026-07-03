@@ -132,7 +132,10 @@ export const organizationService = {
     params?: { page?: number; pageSize?: number; search?: string; status?: string }
   ): Promise<PaginatedResponse<Organization>> {
     const resp = await api.get("/org-units", {
-      params: params?.parentId ? { parentId: params.parentId } : undefined,
+      params: {
+        size: 1000,
+        parentId: params?.parentId,
+      }
     });
     const rawData: any = extractData(resp);
     const items: any[] = Array.isArray(rawData)
@@ -232,7 +235,7 @@ export const organizationService = {
     }
 
     const page = params?.page || 1;
-    const pageSize = params?.pageSize || 10;
+    const pageSize = params?.pageSize || 1000;
     const start = (page - 1) * pageSize;
 
     return {
@@ -554,5 +557,30 @@ export const organizationService = {
       createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
       updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "",
     };
+  },
+
+  async search(query: string): Promise<Organization[]> {
+    const resp = await api.get("/org-units/search", {
+      params: { q: query }
+    });
+    const rawData: any[] = extractData(resp) || [];
+    return rawData.map((item) => ({
+      id: item.id ?? "",
+      name: item.name ?? "",
+      code: item.code,
+      parentId: item.parentId ? String(item.parentId) : undefined,
+      parentOrgName: undefined,
+      level: item.level,
+      type: item.type as Organization["type"],
+      description: item.description,
+      address: item.address,
+      phone: item.phone,
+      contactPerson: item.contactPerson,
+      contactPhone: item.phone,
+      status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
+      childCount: 0,
+      createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
+      updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "",
+    }));
   },
 };

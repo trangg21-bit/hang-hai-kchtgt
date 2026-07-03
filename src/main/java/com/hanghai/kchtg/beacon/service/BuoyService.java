@@ -9,6 +9,8 @@ import com.hanghai.kchtg.beacon.entity.*;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,7 @@ public class BuoyService {
     private final PointObjectSyncService pointObjectSyncService;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
+    private final OrgUnitRepository orgUnitRepo;
 
     // -- READ --
 
@@ -341,6 +344,13 @@ public class BuoyService {
     }
 
     private BuoyResponse toResponse(Buoy entity) {
+        String unitName = null;
+        if (entity.getUnitId() != null) {
+            unitName = orgUnitRepo.findById(entity.getUnitId())
+                    .map(OrgUnit::getName)
+                    .orElse(null);
+        }
+
         return BuoyResponse.builder()
                 .id(entity.getId())
                 .code(entity.getCode())
@@ -354,6 +364,7 @@ public class BuoyService {
                 .range(entity.getRange())
                 .description(entity.getDescription())
                 .unitId(entity.getUnitId())
+                .unitName(unitName)
                 .lastInspectionDate(entity.getLastInspectionDate())
                 .nextInspectionDate(entity.getNextInspectionDate())
                 .isActive(entity.getIsActive())
@@ -380,7 +391,7 @@ public class BuoyService {
                 || status == BeaconStatus.APPROVED_L2;
     }
 
-    private Long getCurrentUserUnitId() {
+    private java.util.UUID getCurrentUserUnitId() {
         return null;
     }
 

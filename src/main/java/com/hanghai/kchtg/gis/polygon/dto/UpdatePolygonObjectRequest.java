@@ -21,7 +21,7 @@ public class UpdatePolygonObjectRequest {
     private String coordinates;
     private String description;
     private Status status;
-    private Long unitId;
+    private java.util.UUID unitId;
     private Double area;
     private String purpose;
     private String restrictionLevel;

@@ -26,7 +26,7 @@ public class LineObjectResponse {
     private String coordinates;
     private String description;
     private Status status;
-    private Long unitId;
+    private UUID unitId;
     private Double length;
     private String material;
     private Integer yearBuilt;

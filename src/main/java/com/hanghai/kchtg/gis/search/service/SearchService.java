@@ -353,8 +353,9 @@ public class SearchService {
             // Ignore - queryParams is optional
         }
 
+        Long userId = request.getUnitId() != null ? request.getUnitId().getMostSignificantBits() : 0L;
         SearchQuery query = SearchQuery.builder()
-                .userId(request.getUnitId() != null ? request.getUnitId() : 0L)
+                .userId(userId)
                 .queryType(request.getQueryType())
                 .queryText(request.getQuery())
                 .queryParams(queryParamsJson)

@@ -31,5 +31,5 @@ public class UpdatePointObjectRequest {
 
     private String description;
     private Status status;
-    private Long unitId;
+    private java.util.UUID unitId;
 }

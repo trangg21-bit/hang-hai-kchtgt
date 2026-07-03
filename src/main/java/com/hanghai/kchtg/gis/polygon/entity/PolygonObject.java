@@ -74,7 +74,7 @@ public class PolygonObject extends BaseEntity {
     private Status status = Status.DRAFT;
 
     @Column(name = "unit_id")
-    private Long unitId;
+    private java.util.UUID unitId;
 
     @Column
     private Double area;

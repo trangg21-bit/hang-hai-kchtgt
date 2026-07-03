@@ -77,7 +77,7 @@ public class UserService {
      * Default 20 items/page, max 100.
      */
     @Transactional(readOnly = true)
-    public Page<UserResponse> findAll(Pageable pageable) {
+    public Page<UserResponse> findAll(String search, String roleCode, UserStatus status, Pageable pageable) {
         // Enforce max page size
         int actualSize = pageable.getPageSize();
         if (actualSize > MAX_PAGE_SIZE || actualSize <= 0) {
@@ -85,7 +85,14 @@ public class UserService {
         }
         Pageable cappedPageable = Pageable.ofSize(actualSize);
         cappedPageable = cappedPageable.withPage(pageable.getPageNumber());
-        return userRepository.findAll(cappedPageable).map(UserResponse::from);
+        
+        // We always use searchUsers if we have search, roleCode, or status filters, or we can use it universally!
+        return userRepository.searchUsers(
+                (search != null && !search.trim().isEmpty()) ? search.trim() : null,
+                (roleCode != null && !roleCode.trim().isEmpty()) ? roleCode.trim() : null,
+                status,
+                cappedPageable
+        ).map(UserResponse::from);
     }
 
     /**

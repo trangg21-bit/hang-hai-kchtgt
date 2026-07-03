@@ -67,7 +67,7 @@ public class Buoy extends BaseEntity {
     private String description;
 
     @Column(name = "unit_id")
-    private Long unitId;
+    private java.util.UUID unitId;
 
     @Column(name = "last_inspection_date")
     private LocalDate lastInspectionDate;

@@ -130,7 +130,26 @@ export default function AppLayout() {
       ].filter(Boolean),
     },
     { type: 'divider' as const },
-    canAccessMenu('/reports') ? { key: '/reports', icon: <BarChartOutlined />, label: 'Báo cáo & Thống kê' } : null,
+    canAccessMenu('/reports') ? {
+      key: 'reports-parent',
+      icon: <BarChartOutlined />,
+      label: 'BÁO CÁO THỐNG KÊ',
+      children: [
+        {
+          key: 'reports-chung',
+          label: 'Báo cáo thống kê chung',
+          children: [
+            { key: '/reports/F-141', label: 'Báo cáo thống kê tăng giảm tài sản' },
+            { key: '/reports/F-142', label: 'Mẫu B04a/BCTC: Thuyết minh chi tiết số liệu tài sản KCHT đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng' },
+            { key: '/reports/F-143', label: 'Mẫu số 02: Báo cáo kê khai tài sản kết cấu hạ tầng hàng hải' },
+            { key: '/reports/F-144', label: 'Mẫu số 03: Báo cáo tình hình quản lý tài sản kết cấu hạ tầng hàng hải' },
+            { key: '/reports/F-145', label: 'Mẫu số 04: Báo cáo tình hình xử lý tài sản kết cấu hạ tầng hàng hải' },
+            { key: '/reports/F-146', label: 'Mẫu số 05: Báo cáo tình hình khai thác tài sản kết cấu hạ tầng hàng hải' },
+            { key: '/reports/F-147', label: 'Mẫu số 06: Tổng hợp danh mục TS KCHTGT hàng hải đề nghị xử lý' }
+          ]
+        }
+      ]
+    } : null,
     { type: 'divider' as const },
     canAccessMenu('/connections') ? { key: '/connections', icon: <ApiOutlined />, label: 'Liên thông dữ liệu' } : null,
     { type: 'divider' as const },
@@ -176,6 +195,8 @@ export default function AppLayout() {
     // For GIS, select the deepest valid key: /gis/points, /gis/lines, etc.
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
+  } else if (pathSegments[0] === 'reports') {
+    selectedKey = location.pathname;
   } else {
     selectedKey = '/' + pathSegments[0];
   }
@@ -299,7 +320,7 @@ export default function AppLayout() {
                       {user?.fullName || 'Admin'}
                     </Typography.Text>
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      {user?.roleName || 'Administrator'}
+                      {user?.role?.replace('ROLE_', '') || 'Administrator'}
                     </Typography.Text>
                   </div>
                   <DownOutlined style={{ fontSize: 10, color: token.colorTextSecondary }} />

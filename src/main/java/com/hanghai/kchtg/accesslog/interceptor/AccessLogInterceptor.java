@@ -6,12 +6,10 @@ import com.hanghai.kchtg.accesslog.entity.AccessLogStatus;
 import com.hanghai.kchtg.accesslog.enums.LogSeverity;
 import com.hanghai.kchtg.accesslog.enums.LogType;
 import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
+import com.hanghai.kchtg.admin.entity.AdminAuditLog;
+import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.admin.entity.AdminAccount;
-import com.hanghai.kchtg.admin.entity.AdminAuditLog;
-import com.hanghai.kchtg.admin.repository.AdminAccountRepository;
-import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -185,7 +183,7 @@ public class AccessLogInterceptor implements HandlerInterceptor {
 
         if (user != null) {
             try {
-                log.info("Saving AdminAuditLog for admin: {}, action: {}, target: {}", 
+                log.info("Saving AdminAuditLog for admin: {}, action: {}, target: {}",
                         user.getUsername(), auditLog.action(), logEntry.getTargetResource());
                 AdminAuditLog adminLog = AdminAuditLog.create(
                     user.getId(),

@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
-import { Card, Input, Space, Tag, Row, Col, Typography, List, Badge, Empty } from 'antd';
-import { SearchOutlined, FileTextOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import { useState, useMemo, useEffect } from 'react';
+import { Card, Input, Space, Tag, Typography, Empty, Tree } from 'antd';
+import { SearchOutlined, FileTextOutlined, FolderOutlined, FolderOpenOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 export interface ReportTemplate {
@@ -12,15 +12,13 @@ export interface ReportTemplate {
 
 export const REPORT_TEMPLATES: ReportTemplate[] = [
   // Assets
-  { code: 'F-141', name: 'Báo cáo tăng giảm tài sản', category: 'assets', status: 'active' },
-  { code: 'F-142', name: 'Mẫu B03/CCTT: Thông tin tài chính tài sản KCHT', category: 'assets', status: 'active' },
-  { code: 'F-143', name: 'Mẫu số 02: Báo cáo kê khai tài sản KCHT', category: 'assets', status: 'active' },
-  { code: 'F-144', name: 'Mẫu số 03: Báo cáo tình hình quản lý tài sản KCHT', category: 'assets', status: 'active' },
-  { code: 'F-145', name: 'Mẫu số 04: Báo cáo tình hình xử lý tài sản KCHT', category: 'assets', status: 'active' },
-  { code: 'F-146', name: 'Mẫu số 05: Báo cáo tình hình khai thác tài sản KCHT', category: 'assets', status: 'active' },
-  { code: 'F-147', name: 'Mẫu số 06: Tổng hợp danh mục TS KCHTGT đề nghị xử lý', category: 'assets', status: 'active' },
-  { code: 'F-181', name: 'Biểu tổng hợp thông tin KCHTGT hàng hải', category: 'assets', status: 'active' },
-  { code: 'F-188', name: 'Báo cáo kê khai, tình hình quản lý TS KCHTGT hàng hải', category: 'assets', status: 'active' },
+  { code: 'F-141', name: 'Báo cáo thống kê tăng giảm tài sản', category: 'assets', status: 'active' },
+  { code: 'F-142', name: 'Mẫu B04a/BCTC: Thuyết minh chi tiết số liệu tài sản KCHT đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng', category: 'assets', status: 'active' },
+  { code: 'F-143', name: 'Mẫu số 02: Báo cáo kê khai tài sản kết cấu hạ tầng hàng hải', category: 'assets', status: 'active' },
+  { code: 'F-144', name: 'Mẫu số 03: Báo cáo tình hình quản lý tài sản kết cấu hạ tầng hàng hải', category: 'assets', status: 'active' },
+  { code: 'F-145', name: 'Mẫu số 04: Báo cáo tình hình xử lý tài sản kết cấu hạ tầng hàng hải', category: 'assets', status: 'active' },
+  { code: 'F-146', name: 'Mẫu số 05: Báo cáo tình hình khai thác tài sản kết cấu hạ tầng hàng hải', category: 'assets', status: 'active' },
+  { code: 'F-147', name: 'Mẫu số 06: Tổng hợp danh mục TS KCHTGT hàng hải đề nghị xử lý', category: 'assets', status: 'active' },
 
   // Infrastructure
   { code: 'F-148', name: 'Biểu 01-N: Năng lực thông qua bến cảng, cầu cảng', category: 'infrastructure', status: 'active' },
@@ -64,18 +62,20 @@ export const REPORT_TEMPLATES: ReportTemplate[] = [
 
   // Maintenance
   { code: 'F-180', name: 'Biểu tổng hợp thông tin chung', category: 'maintenance', status: 'active' },
+  { code: 'F-181', name: 'Biểu tổng hợp thông tin KCHTGT hàng hải', category: 'maintenance', status: 'active' },
   { code: 'F-182', name: 'Biểu tổng hợp thông tin bảo trì KCHTGT', category: 'maintenance', status: 'active' },
   { code: 'F-183', name: 'Biểu tổng hợp bảo trì KCHTGT - Cầu cảng', category: 'maintenance', status: 'active' },
   { code: 'F-184', name: 'Biểu tổng hợp bảo trì KCHTGT - Luồng hàng hải', category: 'maintenance', status: 'active' },
   { code: 'F-185', name: 'Biểu tổng hợp bảo trì KCHTGT - Phao tiêu', category: 'maintenance', status: 'active' },
   { code: 'F-186', name: 'Biểu tổng hợp bảo trì KCHTGT - Đèn biển', category: 'maintenance', status: 'active' },
   { code: 'F-187', name: 'Biểu tổng hợp bảo trì KCHTGT - Đê, kè', category: 'maintenance', status: 'active' },
+  { code: 'F-188', name: 'Báo cáo kê khai, tình hình quản lý TS KCHTGT hàng hải', category: 'maintenance', status: 'active' },
   { code: 'F-189', name: 'Báo cáo tình hình hoạt động báo hiệu hàng hải và đê, kè', category: 'maintenance', status: 'active' },
 ];
 
 export const CATEGORY_MAP = {
-  assets: { label: 'Tài sản kết cấu hạ tầng', color: 'blue' },
-  infrastructure: { label: 'Cơ sở hạ tầng hàng hải', color: 'purple' },
+  assets: { label: 'Báo cáo thống kê chung', color: 'blue' },
+  infrastructure: { label: 'Nhóm chỉ tiêu kết cấu hạ tầng', color: 'purple' },
   vessels: { label: 'Hoạt động tàu thuyền & Thuyền viên', color: 'cyan' },
   cargo: { label: 'Khối lượng hàng hóa & Hành khách', color: 'orange' },
   capacity: { label: 'Năng lực vận tải & Dịch vụ', color: 'magenta' },
@@ -85,6 +85,7 @@ export const CATEGORY_MAP = {
 export default function ReportList() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
 
   const filteredReports = useMemo(() => {
     if (!search.trim()) return REPORT_TEMPLATES;
@@ -94,23 +95,57 @@ export default function ReportList() {
     );
   }, [search]);
 
-  // Group by category
-  const groupedReports = useMemo(() => {
-    const groups: Record<string, ReportTemplate[]> = {
-      assets: [],
-      infrastructure: [],
-      vessels: [],
-      cargo: [],
-      capacity: [],
-      maintenance: [],
-    };
-    filteredReports.forEach((r) => {
-      if (groups[r.category]) {
-        groups[r.category].push(r);
+  // Group by category and build tree data
+  const treeData = useMemo(() => {
+    const data: any[] = [];
+    Object.entries(CATEGORY_MAP).forEach(([key, info]) => {
+      const list = filteredReports.filter((r) => r.category === key);
+      if (list.length > 0) {
+        data.push({
+          title: (
+            <Space style={{ padding: '4px 0' }}>
+              <Typography.Text strong style={{ fontSize: 15 }}>{info.label}</Typography.Text>
+              <Tag color={info.color} style={{ margin: 0 }}>{list.length} biểu mẫu</Tag>
+            </Space>
+          ),
+          key: key,
+          icon: ({ expanded }: { expanded: boolean }) =>
+            expanded ? (
+              <FolderOpenOutlined style={{ color: '#1890ff', fontSize: 16 }} />
+            ) : (
+              <FolderOutlined style={{ color: '#1890ff', fontSize: 16 }} />
+            ),
+          children: list.map((item) => ({
+            title: (
+              <Space style={{ padding: '2px 0' }}>
+                <Typography.Text code style={{ color: '#1677ff', fontWeight: 'bold' }}>{item.code}</Typography.Text>
+                <Typography.Text style={{ fontSize: 14 }}>{item.name}</Typography.Text>
+              </Space>
+            ),
+            key: item.code,
+            isLeaf: true,
+            icon: <FileTextOutlined style={{ color: '#52c41a', fontSize: 15 }} />,
+          })),
+        });
       }
     });
-    return groups;
+    return data;
   }, [filteredReports]);
+
+  // Auto-expand all categories when searching
+  useEffect(() => {
+    if (search.trim()) {
+      setExpandedKeys(Object.keys(CATEGORY_MAP));
+    } else {
+      setExpandedKeys([]);
+    }
+  }, [search]);
+
+  const onSelect = (_selectedKeys: any, info: any) => {
+    if (info.node.isLeaf) {
+      navigate(`/reports/${info.node.key}`);
+    }
+  };
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -133,87 +168,20 @@ export default function ReportList() {
         />
       </Card>
 
-      {/* Group Lists */}
-      <Row gutter={[16, 16]}>
-        {Object.entries(CATEGORY_MAP).map(([key, info]) => {
-          const list = groupedReports[key] || [];
-          if (list.length === 0) return null;
-
-          return (
-            <Col xs={24} lg={12} key={key}>
-              <Card
-                title={
-                  <Space>
-                    <Tag color={info.color} style={{ margin: 0 }}>
-                      {list.length} biểu mẫu
-                    </Tag>
-                    <Typography.Text strong>{info.label}</Typography.Text>
-                  </Space>
-                }
-                styles={{ body: { padding: 0 } }}
-                style={{ height: '100%', minHeight: 300 }}
-              >
-                <List
-                  dataSource={list}
-                  renderItem={(item) => (
-                    <List.Item
-                      actions={[
-                        item.status === 'active' ? (
-                          <ArrowRightOutlined
-                            style={{ color: '#1677ff', cursor: 'pointer' }}
-                            onClick={() => navigate(`/reports/${item.code}`)}
-                          />
-                        ) : (
-                          <Tag color="default">Proposed</Tag>
-                        ),
-                      ]}
-                      style={{
-                        padding: '12px 16px',
-                        cursor: item.status === 'active' ? 'pointer' : 'default',
-                        backgroundColor: item.status === 'active' ? '#fafafa' : 'transparent',
-                        transition: 'background-color 0.2s',
-                      }}
-                      onClick={() => {
-                        if (item.status === 'active') {
-                          navigate(`/reports/${item.code}`);
-                        }
-                      }}
-                      onMouseEnter={(e) => {
-                        if (item.status === 'active') {
-                          e.currentTarget.style.backgroundColor = '#f0f0f0';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (item.status === 'active') {
-                          e.currentTarget.style.backgroundColor = '#fafafa';
-                        }
-                      }}
-                    >
-                      <List.Item.Meta
-                        avatar={
-                          <Badge dot={item.status === 'active'} status="success">
-                            <FileTextOutlined style={{ fontSize: 20, color: item.status === 'active' ? '#1677ff' : '#8c8c8c' }} />
-                          </Badge>
-                        }
-                        title={
-                          <Space>
-                            <Typography.Text code>{item.code}</Typography.Text>
-                            <Typography.Text strong={item.status === 'active'} delete={item.status !== 'active' && false}>
-                              {item.name}
-                            </Typography.Text>
-                          </Space>
-                        }
-                      />
-                    </List.Item>
-                  )}
-                />
-              </Card>
-            </Col>
-          );
-        })}
-      </Row>
-
-      {filteredReports.length === 0 && (
+      {/* Tree list catalog */}
+      {treeData.length > 0 ? (
+        <Card styles={{ body: { padding: '16px 24px' } }}>
+          <Tree
+            showIcon
+            blockNode
+            expandedKeys={expandedKeys}
+            onExpand={(keys) => setExpandedKeys(keys)}
+            onSelect={onSelect}
+            treeData={treeData}
+            style={{ fontSize: 15 }}
+          />
+        </Card>
+      ) : (
         <Card style={{ textAlign: 'center', padding: '40px 0' }}>
           <Empty description="Không tìm thấy biểu mẫu báo cáo nào khớp với từ khóa tìm kiếm" />
         </Card>

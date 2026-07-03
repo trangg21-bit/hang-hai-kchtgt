@@ -52,7 +52,7 @@ public class IntegrationSyncService {
         this.objectMapper = objectMapper;
     }
 
-    public SyncLog executeSync(UUID connectionId) {
+    public SyncLog executeSync(@org.springframework.lang.NonNull UUID connectionId) {
         DataConnection connection = connectionRepository.findById(connectionId)
                 .orElseThrow(() -> new EntityNotFoundException("Connection not found: id=" + connectionId));
 
