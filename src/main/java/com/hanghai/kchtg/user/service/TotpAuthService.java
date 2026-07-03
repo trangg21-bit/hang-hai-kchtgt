@@ -66,7 +66,7 @@ public class TotpAuthService {
      * <p>
      * Nếu thành công: kiểm tra TOTP - nếu user đã kích hoạt (enable) TOTP thì trả về
      * MfaChallengeResponse (yêu cầu mã 2 yếu tố). Nếu chưa kích hoạt thì trả về
-     * MfaChallengeResponse với totpRequired=false (bỏ qua bước TOTP, client
+     * MfaChallengeResponse với skipTotp=true (bỏ qua bước TOTP, client
      * có thể trả về JWT từ session - phase 1.5 nếu cần).
      * </p>
      *
@@ -141,7 +141,7 @@ public class TotpAuthService {
         }
 
         // =========================================================================
-        // Client có thể gọi endpoint login/totp với totpRequired=false để lấy JWT
+        // Client có thể gọi endpoint login/totp với skipTotp=true để lấy JWT
         MfaChallengeResponse response = MfaChallengeResponse.skipChallenge(user.getId());
         auditLogService.logAttempt(user.getId(), user.getUsername(),
                 LoginAttemptType.CREDENTIALS, LoginAttemptResult.SUCCESS,

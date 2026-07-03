@@ -73,7 +73,7 @@ public class AuthController {
             MfaChallengeResponse challenge = totpAuthService.authenticateCredentials(
                     identifier, request.getPassword(), httpRequest);
 
-            if (!challenge.isTotpRequired()) {
+            if (challenge.isSkipTotp()) {
                 // User does NOT have TOTP enabled - proceed with single-phase login
                 User user = userRepository.findById(challenge.getUserId())
                         .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));

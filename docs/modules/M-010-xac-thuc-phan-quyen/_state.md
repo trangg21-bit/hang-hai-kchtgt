@@ -2,14 +2,14 @@
 feature-id: M-010
 feature-name: Xác thực & Phân quyền
 pipeline-type: sdlc
-status: done
-sealed: true
-sealed-at: 2026-06-29T00:00:00Z
+status: in_progress
+sealed: false
+sealed-at: null
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
-last-updated: 2026-06-29T00:00:00Z
-current-stage: closed
+last-updated: 2026-07-03T12:00:00Z
+current-stage: rework
 output-mode: lean
 repo-type: mini
 repo-path: .
@@ -63,7 +63,7 @@ feature-req:
 clarification-notes: ""
 source-file-count: 25
 test-file-count: 9
-test-method-count: 54
+test-method-count: "54\r"
 ---
 # Pipeline State: Xác thực & Phân quyền
 

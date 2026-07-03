@@ -8,7 +8,7 @@ import lombok.Setter;
 import java.util.UUID;
 
 /**
- * DTO tra ve o phase 1 - cho biet client co can giai ma TOTP hay khong.
+ * DTO returned in phase 1 - indicates whether client needs to solve TOTP challenge.
  */
 @Getter
 @Setter
@@ -16,28 +16,25 @@ import java.util.UUID;
 @AllArgsConstructor
 public class MfaChallengeResponse {
 
-    /** Luon la true neu account co enable TOTP */
+    /** True if account requires MFA challenge */
     private boolean requiresMfa;
 
-    /** UUID cua nguoi dung (de client GUI gui lai o phase 2) */
+    /** User UUID (for client to send back in phase 2) */
     private UUID userId;
 
-    /**
-     * Mat ma tranh de cuoi (anti-replay).
-     * De client GUI luu va gui lai khi giai ma TOTP.
-     */
+    /** Anti-replay challenge ID */
     private UUID challengeId;
 
     /**
-     * Neu account da enable TOTP thi set false;
-     * Neu chua enable thi set true (client se skip TOTP step).
+     * If true, the client should SKIP the TOTP step (user does NOT have TOTP enabled).
+     * If false, the client MUST enter TOTP (user HAS TOTP enabled).
      */
-    private boolean totpRequired;
+    private boolean skipTotp;
 
     public static MfaChallengeResponse skipChallenge(UUID userId) {
         MfaChallengeResponse r = new MfaChallengeResponse();
         r.setRequiresMfa(false);
-        r.setTotpRequired(false);
+        r.setSkipTotp(true);
         r.setUserId(userId);
         r.setChallengeId(null);
         return r;
@@ -46,7 +43,7 @@ public class MfaChallengeResponse {
     public static MfaChallengeResponse requireChallenge(UUID userId) {
         MfaChallengeResponse r = new MfaChallengeResponse();
         r.setRequiresMfa(true);
-        r.setTotpRequired(true);
+        r.setSkipTotp(false);
         r.setUserId(userId);
         r.setChallengeId(UUID.randomUUID());
         return r;

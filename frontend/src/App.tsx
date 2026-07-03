@@ -271,6 +271,9 @@ export default function App() {
                 {/* Nhật ký & Backup */}
                 <Route path="/logs" element={<PermissionGuard permission="log:manage"><LogsPage /></PermissionGuard>} />
               </Route>
+
+              {/* Catch-all: redirect unknown routes to login */}
+              <Route path="*" element={<Navigate to="/login" />} />
             </Routes>
           </BrowserRouter>
         </AntApp>
