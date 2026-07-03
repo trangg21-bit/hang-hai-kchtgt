@@ -77,7 +77,7 @@ class NhaTramDenControllerTest {
     private NhaTramDenResponse makeResponse(UUID id, String name) {
         return new NhaTramDenResponse(
                 id, "DEN-001", name, null, 10.0, 106.0, 15.0,
-                null, null, 20.0, "Mo ta", 1L, null, null, true,
+                null, null, 20.0, "Mo ta", null, null, null, true,
                 null, null, null, null, null, null, null, null);
     }
 

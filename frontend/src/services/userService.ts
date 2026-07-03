@@ -48,6 +48,8 @@ function mapUser(item: any): User {
     phone: item.phone ?? '',
     roleId: roleCode,
     roleName,
+    orgUnitId: item.orgUnitId ?? undefined,
+    orgUnitName: item.orgUnitName ?? undefined,
     status: statusMap[statusKey] || 'active',
     lastLoginAt: item.lastLoginAt ? new Date(item.lastLoginAt).toISOString() : undefined,
     createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : '',
@@ -126,6 +128,7 @@ export const userService = {
       phone: payload.phone,
       password: payload.password || 'admin123',
       role: payload.roleId,
+      orgUnitId: payload.orgUnitId,
       status: 'ACTIVE'
     });
 
@@ -139,6 +142,7 @@ export const userService = {
       email: payload.email,
       phone: payload.phone,
       role: payload.roleId,
+      orgUnitId: payload.orgUnitId,
       status: payload.status ? payload.status.toUpperCase() : undefined
     });
 

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Table,
   Button,
@@ -43,6 +43,7 @@ import LoadingSkeleton from '../components/LoadingSkeleton';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
 import type { User, CreateUserPayload, UpdateUserPayload } from '../types/user';
+import { organizationService } from '../services/organizationService';
 
 const { confirm } = Modal;
 
@@ -67,6 +68,18 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await organizationService.list({ pageSize: 1000 });
+        setOrganizations(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load organizations', err);
+      }
+    })();
+  }, []);
 
   // Permissions
   const hasPerm = usePermissionStore((s) => s.hasPermission);
@@ -106,6 +119,7 @@ export default function UsersPage() {
         email: user.email,
         phone: user.phone,
         roleId: user.roleId,
+        orgUnitId: user.orgUnitId,
         status: user.status,
       });
       setModalOpen(true);
@@ -124,6 +138,7 @@ export default function UsersPage() {
           email: values.email,
           phone: values.phone,
           roleId: values.roleId,
+          orgUnitId: values.orgUnitId,
         };
         await updateUser.mutateAsync({ id: editingUser.id, payload });
       } else {
@@ -134,6 +149,7 @@ export default function UsersPage() {
           phone: values.phone,
           password: values.password,
           roleId: values.roleId,
+          orgUnitId: values.orgUnitId,
         };
         await createUser.mutateAsync(payload);
       }
@@ -192,10 +208,6 @@ export default function UsersPage() {
     [resetPassword],
   );
 
-  const handleSearch = useCallback((value: string) => {
-    setSearch(value);
-    setPage(1);
-  }, []);
 
   const handleTableChange = useCallback(
     (
@@ -251,6 +263,11 @@ export default function UsersPage() {
       title: 'Vai trò',
       dataIndex: 'roleName',
       render: (text: string) => <Tag color="blue">{text}</Tag>,
+    },
+    {
+      title: 'Đơn vị',
+      dataIndex: 'orgUnitName',
+      render: (text: string) => text ? <Typography.Text>{text}</Typography.Text> : <Typography.Text type="secondary">—</Typography.Text>,
     },
     {
       title: 'Trạng thái',
@@ -395,8 +412,15 @@ export default function UsersPage() {
                 placeholder="Tìm theo tên, email, username..."
                 allowClear
                 style={{ width: 260 }}
-                prefix={<SearchOutlined />}
-                onSearch={handleSearch}
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                onSearch={(val) => {
+                  setSearch(val);
+                  setPage(1);
+                }}
               />
 
               <Select
@@ -539,6 +563,24 @@ export default function UsersPage() {
                 options={rolesData?.map((r) => ({
                   value: r.code,
                   label: r.name,
+                }))}
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="orgUnitId"
+              label="Đơn vị trực thuộc"
+            >
+              <Select
+                placeholder="Chọn đơn vị trực thuộc"
+                allowClear
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
+                }
+                options={organizations.map((org) => ({
+                  value: org.id,
+                  label: org.code ? `${org.code} - ${org.name}` : org.name,
                 }))}
               />
             </Form.Item>

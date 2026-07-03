@@ -35,7 +35,7 @@ public class CreatePolygonObjectRequest {
     @Builder.Default
     private Status status = Status.DRAFT;
 
-    private Long unitId;
+    private java.util.UUID unitId;
     private Double area;
     private String purpose;
     private String restrictionLevel;

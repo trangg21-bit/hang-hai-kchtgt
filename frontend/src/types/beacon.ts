@@ -70,7 +70,8 @@ export interface BeaconLight {
   lightCharacteristic?: string;
   range?: number;
   description?: string;
-  unitId?: number;
+  unitId?: string;
+  unitName?: string;
   lastMaintenanceDate?: string;
   nextMaintenanceDate?: string;
   isActive: boolean;
@@ -95,7 +96,7 @@ export interface CreateBeaconLightRequest {
   lightCharacteristic?: string;
   range?: number;
   description?: string;
-  unitId?: number;
+  unitId?: string;
   lastMaintenanceDate?: string;
   nextMaintenanceDate?: string;
   isActive?: boolean;
@@ -112,7 +113,7 @@ export interface UpdateBeaconLightRequest {
   lightCharacteristic?: string;
   range?: number;
   description?: string;
-  unitId?: number;
+  unitId?: string;
   lastMaintenanceDate?: string;
   nextMaintenanceDate?: string;
   isActive?: boolean;
@@ -131,7 +132,8 @@ export interface Buoy {
   lightCharacteristic?: string;
   range: number;
   description?: string;
-  unitId?: number;
+  unitId?: string;
+  unitName?: string;
   lastInspectionDate?: string;
   nextInspectionDate?: string;
   isActive: boolean;
@@ -156,7 +158,7 @@ export interface CreateBuoyRequest {
   lightCharacteristic?: string;
   range: number;
   description?: string;
-  unitId?: number;
+  unitId?: string;
   lastInspectionDate?: string;
   nextInspectionDate?: string;
   isActive?: boolean;
@@ -173,7 +175,7 @@ export interface UpdateBuoyRequest {
   lightCharacteristic?: string;
   range?: number;
   description?: string;
-  unitId?: number;
+  unitId?: string;
   lastInspectionDate?: string;
   nextInspectionDate?: string;
   isActive?: boolean;

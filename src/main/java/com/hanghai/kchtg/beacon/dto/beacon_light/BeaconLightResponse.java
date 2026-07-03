@@ -32,7 +32,8 @@ public class BeaconLightResponse {
     private String lightCharacteristic;
     private Double range;
     private String description;
-    private Long unitId;
+    private UUID unitId;
+    private String unitName;
     private LocalDate lastMaintenanceDate;
     private LocalDate nextMaintenanceDate;
     private Boolean isActive;

@@ -44,5 +44,5 @@ public class CreatePointObjectRequest {
     @Builder.Default
     private Status status = Status.DRAFT;
 
-    private Long unitId;
+    private java.util.UUID unitId;
 }

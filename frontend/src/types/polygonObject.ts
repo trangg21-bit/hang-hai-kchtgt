@@ -8,7 +8,7 @@ export interface PolygonObject {
   coordinates: string;
   description?: string;
   status: PolygonObject.Status;
-  unitId?: number;
+  unitId?: string;
   area?: number;
   purpose?: string;
   restrictionLevel?: string;

@@ -9,7 +9,7 @@ export interface PointObject {
   latitude: number;
   description?: string;
   status: PointObject.Status;
-  unitId?: number;
+  unitId?: string;
   approvalStatus: PointObject.ApprovalStatus;
   approvedBy?: number;
   approvedDate?: string;

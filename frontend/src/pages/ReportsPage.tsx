@@ -437,7 +437,7 @@ export default function ReportsPage() {
             padding: '20px 24px',
           },
         }}
-        bordered={false}
+        variant="borderless"
       >
         <div style={{ color: '#fff' }}>
           <Title level={4} style={{ color: '#fff', margin: 0, fontWeight: 600 }}>

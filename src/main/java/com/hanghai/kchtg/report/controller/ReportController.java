@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.report.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.report.entity.ReportStatus;
@@ -40,16 +41,9 @@ public class ReportController {
     public ResponseEntity<ApiResponse<ReportResponse>> createReport(
             @Valid @RequestBody ReportRequest request) {
         log.info("Received report generation request: type={}", request.getReportType());
+        com.hanghai.kchtg.report.entity.ReportEntity entity = reportService.createReport(request);
         reportService.generateReport(request);
-        ReportResponse resp = ReportResponse.builder()
-                .reportType(request.getReportType())
-                .status(ReportStatus.READY)
-                .outputFormat(request.getOutputFormat())
-                .startDate(request.getStartDate())
-                .endDate(request.getEndDate())
-                .parameters(request.getParameters())
-                .build();
-        return ResponseEntity.ok(ApiResponse.success(resp));
+        return ResponseEntity.ok(ApiResponse.success(toResponse(entity)));
     }
 
     /**
@@ -91,7 +85,7 @@ public class ReportController {
     }
 
     /**
-     * Tải file báo cáo theo mã (stub: trả về fileUrl).
+     * Tải file báo cáo theo mã.
      */
     @PostMapping("/{code}/download")
     @PreAuthorize("@auth.check(authentication, 'report:read')")
@@ -102,10 +96,16 @@ public class ReportController {
         }
         byte[] data = fileUrl.getBytes();
 
-        String filename = "baocao_" + code + ".pdf";
+        String reportName = getReportNameVietnamese(code);
+        String dateSuffix = java.time.format.DateTimeFormatter.ofPattern("ddMMyyyy").format(java.time.LocalDate.now());
+        String filename = reportName + "___" + dateSuffix + ".pdf";
+
+        org.springframework.http.ContentDisposition contentDisposition = org.springframework.http.ContentDisposition.builder("attachment")
+                .filename(filename, java.nio.charset.StandardCharsets.UTF_8)
+                .build();
+
         HttpHeaders headers = new HttpHeaders();
-        headers.set(HttpHeaders.CONTENT_DISPOSITION,
-                "attachment; filename=\"" + filename + "\"");
+        headers.setContentDisposition(contentDisposition);
         headers.set(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
 
         return ResponseEntity.ok()
@@ -123,6 +123,50 @@ public class ReportController {
             @PathVariable ReportStatus status) {
         long count = reportService.countByStatus(status);
         return ResponseEntity.ok(ApiResponse.success(count));
+    }
+
+    /**
+     * POST /api/v1/reports/preview — Xem trước dữ liệu báo cáo động.
+     */
+    @PostMapping("/preview")
+    @PreAuthorize("@auth.check(authentication, 'report:read')")
+    public ResponseEntity<ApiResponse<ReportResponse>> getPreview(
+            @RequestBody ReportPreviewRequest request) {
+        log.info("Generating preview for report code: {}, orgUnitId: {}", request.getReportCode(), request.getOrgUnitId());
+        ReportResponse response = reportService.getPreview(request);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * POST /api/v1/reports/export — Xuất file báo cáo (Excel / Text).
+     */
+    @PostMapping("/export")
+    @PreAuthorize("@auth.check(authentication, 'report:read')")
+    public ResponseEntity<byte[]> exportReport(
+            @RequestBody ReportPreviewRequest request) {
+        log.info("Exporting report code: {}, format: {}", request.getReportCode(), request.getFormat());
+        byte[] fileBytes = reportService.exportReport(request);
+
+        String reportCodeStr = request.getReportCode() != null ? request.getReportCode() : "F-141";
+        boolean isExcel = "EXCEL".equalsIgnoreCase(request.getFormat());
+
+        String reportName = getReportNameVietnamese(reportCodeStr);
+        String dateSuffix = java.time.format.DateTimeFormatter.ofPattern("ddMMyyyy").format(java.time.LocalDate.now());
+        String filename = reportName + "___" + dateSuffix + (isExcel ? ".xlsx" : ".pdf");
+
+        org.springframework.http.ContentDisposition contentDisposition = org.springframework.http.ContentDisposition.builder("attachment")
+                .filename(filename, java.nio.charset.StandardCharsets.UTF_8)
+                .build();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentDisposition(contentDisposition);
+        headers.set(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .contentType(isExcel ? org.springframework.http.MediaType.APPLICATION_OCTET_STREAM
+                                    : org.springframework.http.MediaType.APPLICATION_PDF)
+                .body(fileBytes);
     }
 
     /**
@@ -159,6 +203,23 @@ public class ReportController {
         } catch (Exception e) {
             log.error("Failed to parse report parameters JSON: {}", paramsJson, e);
             return java.util.Map.of();
+        }
+    }
+
+    private String getReportNameVietnamese(String reportCode) {
+        if (reportCode == null) return "Bao_cao";
+        String code = reportCode.toUpperCase();
+        switch (code) {
+            case "F-141": return "Báo cáo tăng giảm tài sản";
+            case "F-142": return "Mẫu B03_CCTT_ Thông tin tài chính tài sản KCHT";
+            case "F-143": return "Mẫu số 02_ Báo cáo kê khai tài sản kết cấu hạ tầng hàng hải";
+            case "F-144": return "Mẫu số 03_ Báo cáo tình hình quản lý tài sản kết cấu hạ tầng hàng hải";
+            case "F-145": return "Mẫu số 04_ Báo cáo tình hình xử lý tài sản kết cấu hạ tầng hàng hải";
+            case "F-146": return "Mẫu số 05_ Báo cáo tình hình khai thác tài sản kết cấu hạ tầng hàng hải";
+            case "F-147": return "Mẫu số 06_ Tổng hợp danh mục TS KCHTGT đề nghị xử lý";
+            case "F-181": return "Biểu tổng hợp thông tin KCHTGT hàng hải";
+            case "F-188": return "Báo cáo kê khai, tình hình quản lý TS KCHTGT hàng hải";
+            default: return "Báo cáo " + reportCode;
         }
     }
 }

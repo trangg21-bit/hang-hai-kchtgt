@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Row, Col, message, Tag } from 'antd';
+import { Card, Form, Button, Space, Typography, Row, Col, message, Tag, Select } from 'antd';
 import { ArrowLeftOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { beaconLightCRUD, approval } from '../../services/beaconService';
@@ -11,6 +11,7 @@ import {
 } from '../../types/beacon';
 import FormField from '../../components/FormField';
 import toast from '../../components/ToastNotification';
+import { organizationService } from '../../services/organizationService';
 
 export default function BeaconForm() {
   const navigate = useNavigate();
@@ -20,6 +21,18 @@ export default function BeaconForm() {
   const [submitting, setSubmitting] = useState(false);
   const [entityData, setEntityData] = useState<{ status: BeaconStatus } | null>(null);
   const [rejectLoading, setRejectLoading] = useState(false);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await organizationService.list({ pageSize: 1000 });
+        setOrganizations(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load organizations', err);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (isEdit) {
@@ -36,6 +49,7 @@ export default function BeaconForm() {
             lightRange: data.lightRange,
             lightColor: data.lightColor,
             description: data.description,
+            unitId: data.unitId,
           });
         } catch {
           toast.error('Không thể tải thông tin đèn biển');
@@ -49,45 +63,47 @@ export default function BeaconForm() {
     try {
       const values = await form.validateFields();
 
-          // WGS84 validation
-          if (values.latitude < -90 || values.latitude > 90) {
-            message.error('Vĩ độ phải từ -90 đến 90');
-            return;
-          }
-          if (values.longitude < -180 || values.longitude > 180) {
-            message.error('Kinh độ phải từ -180 đến 180');
-            return;
-          }
-          if (values.lightRange < 0.01 || values.lightRange > 60) {
-            message.error('Bán kính chiếu sáng phải từ 0.01 đến 60');
-            return;
-          }
+      // WGS84 validation
+      if (values.latitude < -90 || values.latitude > 90) {
+        message.error('Vĩ độ phải từ -90 đến 90');
+        return;
+      }
+      if (values.longitude < -180 || values.longitude > 180) {
+        message.error('Kinh độ phải từ -180 đến 180');
+        return;
+      }
+      if (values.lightRange < 0.01 || values.lightRange > 60) {
+        message.error('Bán kính chiếu sáng phải từ 0.01 đến 60');
+        return;
+      }
 
       setSubmitting(true);
 
       if (isEdit) {
-          const payload: UpdateBeaconLightRequest = {
-            name: values.name,
-            type: values.type,
-            longitude: values.longitude,
-            latitude: values.latitude,
-            lightRange: values.lightRange,
-            lightColor: values.lightColor,
-            description: values.description,
-          };
+        const payload: UpdateBeaconLightRequest = {
+          name: values.name,
+          type: values.type,
+          longitude: values.longitude,
+          latitude: values.latitude,
+          lightRange: values.lightRange,
+          lightColor: values.lightColor,
+          description: values.description,
+          unitId: values.unitId,
+        };
         await beaconLightCRUD.update(id!, payload);
         toast.success('Đã cập nhật đèn biển');
       } else {
-          const payload: CreateBeaconLightRequest = {
-            name: values.name,
-            code: values.code,
-            type: values.type,
-            longitude: values.longitude,
-            latitude: values.latitude,
-            lightRange: values.lightRange,
-            lightColor: values.lightColor,
-            description: values.description,
-          };
+        const payload: CreateBeaconLightRequest = {
+          name: values.name,
+          code: values.code,
+          type: values.type,
+          longitude: values.longitude,
+          latitude: values.latitude,
+          lightRange: values.lightRange,
+          lightColor: values.lightColor,
+          description: values.description,
+          unitId: values.unitId,
+        };
         await beaconLightCRUD.create(payload);
         toast.success('Đã tạo đèn biển');
       }
@@ -99,6 +115,7 @@ export default function BeaconForm() {
       setSubmitting(false);
     }
   }, [isEdit, id, form, navigate]);
+
 
   const handleDelete = useCallback(async () => {
     if (!id) return;
@@ -216,6 +233,18 @@ export default function BeaconForm() {
             options={BEACON_LIGHT_TYPE_OPTIONS}
             disabled={isEdit && (entityData?.status === 'APPROVED_L2' || entityData?.status === 'PUBLISHED')}
           />
+
+          <FormField
+            type="select"
+            name="unitId"
+            label="Đơn vị quản lý"
+            placeholder="Chọn đơn vị quản lý"
+            options={organizations.map((org) => ({
+              value: org.id,
+              label: org.code ? `${org.code} - ${org.name}` : org.name,
+            }))}
+          />
+
 
            <Row style={{ display: 'flex', gap: 16 }}>
              <Col style={{ flex: 1 }}>
