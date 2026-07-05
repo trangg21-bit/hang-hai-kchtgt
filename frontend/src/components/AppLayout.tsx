@@ -242,15 +242,12 @@ export default function AppLayout() {
     // For GIS, select the deepest valid key: /gis/points, /gis/lines, etc.
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
-<<<<<<< HEAD
   } else if (pathSegments[0] === 'cangbien' || pathSegments[0] === 'bencang' || pathSegments[0] === 'caucang' || pathSegments[0] === 'cangcan' || pathSegments[0] === 'vungnuoc') {
     selectedKey = '/' + pathSegments[0];
   } else if (pathSegments[0] === 'luong-hang-hai' || pathSegments[0] === 'de-ke' || pathSegments[0] === 'co-so-sua-chua' || pathSegments[0] === 'tram-radar' || pathSegments[0] === 'he-thong-vts') {
     selectedKey = '/' + pathSegments[0];
-=======
   } else if (pathSegments[0] === 'reports') {
     selectedKey = location.pathname;
->>>>>>> fix
   } else {
     selectedKey = '/' + pathSegments[0];
   }
