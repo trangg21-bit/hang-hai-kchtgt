@@ -531,7 +531,7 @@ export default function LogsPage() {
                   {/* SIEM Metrics Cards */}
                   <Row gutter={[16, 16]}>
                     <Col xs={24} sm={12} md={6}>
-                      <Card bordered={false} style={{ background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)' }}>
+                      <Card variant="borderless" style={{ background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)' }}>
                         <Statistic
                           title="Tốc độ sự kiện (EPS)"
                           value={siemMetrics?.eventsPerSecond ?? 0}
@@ -542,7 +542,7 @@ export default function LogsPage() {
                       </Card>
                     </Col>
                     <Col xs={24} sm={12} md={6}>
-                      <Card bordered={false} style={{ background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)' }}>
+                      <Card variant="borderless" style={{ background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)' }}>
                         <Statistic
                           title="Tỷ lệ truy cập lỗi"
                           value={siemMetrics?.failureRate ?? 0}
@@ -553,7 +553,7 @@ export default function LogsPage() {
                       </Card>
                     </Col>
                     <Col xs={24} sm={12} md={6}>
-                      <Card bordered={false} style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' }}>
+                      <Card variant="borderless" style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' }}>
                         <Statistic
                           title="Tài khoản đang bị khóa"
                           value={siemMetrics?.activeAlertsCount ?? 0}
@@ -563,7 +563,7 @@ export default function LogsPage() {
                       </Card>
                     </Col>
                     <Col xs={24} sm={12} md={6}>
-                      <Card bordered={false} style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' }}>
+                      <Card variant="borderless" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' }}>
                         <Statistic
                           title="Cảnh báo an ninh (24h)"
                           value={siemMetrics?.securityAlertsCount ?? 0}

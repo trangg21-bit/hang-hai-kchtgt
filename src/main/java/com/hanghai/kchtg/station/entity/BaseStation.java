@@ -34,7 +34,7 @@ public abstract class BaseStation {
     @Column(length = 1000)
     protected String description;
 
-    protected Long unitId;
+    protected java.util.UUID unitId;
 
     protected Boolean isActive;
 

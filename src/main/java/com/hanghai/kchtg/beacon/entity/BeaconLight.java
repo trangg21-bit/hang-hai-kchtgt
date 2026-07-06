@@ -70,7 +70,7 @@ public class BeaconLight extends BaseEntity {
     private String description;
 
     @Column(name = "unit_id")
-    private Long unitId;
+    private java.util.UUID unitId;
 
     @Column(name = "last_maintenance_date")
     private LocalDate lastMaintenanceDate;

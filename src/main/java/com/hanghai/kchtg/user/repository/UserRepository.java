@@ -89,4 +89,18 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      */
     @Query("SELECT r.id, COUNT(u) FROM User u JOIN u.roles r WHERE u.status <> com.hanghai.kchtg.user.entity.UserStatus.DELETED GROUP BY r.id")
     List<Object[]> countUsersGroupByRoleId();
+
+    @Query("SELECT DISTINCT u FROM User u " +
+           "LEFT JOIN u.roles r " +
+           "WHERE (:search IS NULL OR :search = '' OR " +
+           "  LOWER(u.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "  LOWER(u.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
+           "  LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+           "AND (:roleCode IS NULL OR :roleCode = '' OR r.code = :roleCode) " +
+           "AND (:status IS NULL OR u.status = :status)")
+    org.springframework.data.domain.Page<User> searchUsers(
+            @org.springframework.data.repository.query.Param("search") String search,
+            @org.springframework.data.repository.query.Param("roleCode") String roleCode,
+            @org.springframework.data.repository.query.Param("status") com.hanghai.kchtg.user.entity.UserStatus status,
+            org.springframework.data.domain.Pageable pageable);
 }

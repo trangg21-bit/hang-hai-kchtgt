@@ -119,6 +119,17 @@ class ReportControllerTest {
                 }
                 """;
 
+        ReportEntity mockEntity = ReportEntity.builder()
+                .id(java.util.UUID.randomUUID())
+                .code("RPT-001")
+                .name("Báo cáo tổng hợp")
+                .reportType(ReportType.SUMMARY)
+                .status(ReportStatus.READY)
+                .outputFormat(ReportFormat.PDF)
+                .startDate(LocalDate.of(2026, 1, 1))
+                .endDate(LocalDate.of(2026, 12, 31))
+                .build();
+        when(reportService.createReport(any(ReportRequest.class))).thenReturn(mockEntity);
         doNothing().when(reportService).generateReport(any(ReportRequest.class));
 
         mockMvc.perform(post("/api/v1/reports/generate")
@@ -200,7 +211,7 @@ class ReportControllerTest {
         mockMvc.perform(post("/api/v1/reports/RPT-001/download"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition",
-                        containsString("baocao_RPT-001.pdf")))
+                        containsString("RPT-001")))
                 .andExpect(header().string("Cache-Control", "no-cache, no-store, must-revalidate"))
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF));
 

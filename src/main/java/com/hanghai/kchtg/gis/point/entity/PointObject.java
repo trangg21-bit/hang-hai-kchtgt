@@ -76,7 +76,7 @@ public class PointObject extends BaseEntity {
     private Status status = Status.DRAFT;
 
     @Column(name = "unit_id")
-    private Long unitId;
+    private java.util.UUID unitId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "approval_status", length = 20)

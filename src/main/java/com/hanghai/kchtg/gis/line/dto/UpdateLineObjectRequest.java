@@ -21,7 +21,7 @@ public class UpdateLineObjectRequest {
     private String coordinates;
     private String description;
     private Status status;
-    private Long unitId;
+    private java.util.UUID unitId;
     private Double length;
     private String material;
     private Integer yearBuilt;

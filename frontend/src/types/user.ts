@@ -9,6 +9,8 @@ export interface User {
   avatar?: string;
   roleId: string;
   roleName: string;
+  orgUnitId?: string;
+  orgUnitName?: string;
   status: Status;
   lastLoginAt?: string;
   createdAt: string;
@@ -22,6 +24,7 @@ export interface CreateUserPayload {
   phone: string;
   password: string;
   roleId: string;
+  orgUnitId?: string;
 }
 
 export interface UpdateUserPayload {
@@ -29,6 +32,7 @@ export interface UpdateUserPayload {
   email?: string;
   phone?: string;
   roleId?: string;
+  orgUnitId?: string;
   status?: Status;
 }
 

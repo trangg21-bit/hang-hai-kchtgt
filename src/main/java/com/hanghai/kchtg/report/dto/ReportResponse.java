@@ -42,4 +42,10 @@ public class ReportResponse {
     private Integer portsCount;
     private Integer maintenanceCount;
     private Integer navigationSignalsCount;
+
+    // -- preview fields --
+    private java.util.List<String> headers;
+    private java.util.List<java.util.Map<String, Object>> rows;
+    private java.util.Map<String, Object> summary;
 }
+

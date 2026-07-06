@@ -35,7 +35,7 @@ public class CreateLineObjectRequest {
     @Builder.Default
     private Status status = Status.DRAFT;
 
-    private Long unitId;
+    private java.util.UUID unitId;
     private Double length;
     private String material;
     private Integer yearBuilt;

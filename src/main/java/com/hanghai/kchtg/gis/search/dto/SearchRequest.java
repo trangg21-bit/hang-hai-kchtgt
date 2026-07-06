@@ -35,7 +35,7 @@ public class SearchRequest {
     private String layerTypes;
 
     private String statuses;
-    private Long unitId;
+    private java.util.UUID unitId;
 
     @Builder.Default
     private Integer page = 0;

@@ -399,7 +399,7 @@ public class SearchService {
             // Ignore - queryParams is optional
         }
 
-        Long userId = request.getUnitId() != null ? request.getUnitId() : 0L;
+        Long userId = request.getUnitId() != null ? request.getUnitId().getMostSignificantBits() : 0L;
         String queryText = request.getQuery();
 
         // Deduplicate: Find existing identical search queries and delete them so the new one goes to the top
@@ -411,7 +411,6 @@ public class SearchService {
                 searchQueryRepository.delete(q);
             }
         }
-
         SearchQuery query = SearchQuery.builder()
                 .userId(userId)
                 .queryType(request.getQueryType())

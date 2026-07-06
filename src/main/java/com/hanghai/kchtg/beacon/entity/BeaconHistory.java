@@ -28,7 +28,7 @@ public class BeaconHistory {
     private UUID id;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "beacon_type", nullable = false, length = 10)
+    @Column(name = "beacon_type", nullable = false, length = 20)
     private BeaconType beaconType;
 
     @Column(name = "entity_id", nullable = false)

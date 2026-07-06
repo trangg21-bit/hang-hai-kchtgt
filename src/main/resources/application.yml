@@ -39,7 +39,7 @@ spring:
 jwt:
   secret: ${JWT_SECRET:aXRzLWEtc2VjcmV0LWtleS1mb3Itand0LXRva2VuLWdlbmVyYXRpb24taGFuZ2hhaS1rY2h0Zw==}
   expiration: 86400000
-  access-token-expiration: 900000
+  access-token-expiration: 86400000
   refresh-token-expiration: 604800000
   mock-token: mock-jwt-token-2026
 

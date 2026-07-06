@@ -47,12 +47,15 @@ public class UserController {
     @GetMapping
     @PreAuthorize("@auth.check(authentication, 'admin:manage')")
     public ResponseEntity<ApiResponse<Page<UserResponse>>> list(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String roleCode,
+            @RequestParam(required = false) UserStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         // Enforce max page size
         int actualSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         Pageable pageable = PageRequest.of(page, actualSize, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<UserResponse> result = userService.findAll(pageable);
+        Page<UserResponse> result = userService.findAll(search, roleCode, status, pageable);
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

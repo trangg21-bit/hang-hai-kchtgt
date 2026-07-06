@@ -32,7 +32,8 @@ public class BuoyResponse {
     private String lightCharacteristic;
     private Double range;
     private String description;
-    private Long unitId;
+    private UUID unitId;
+    private String unitName;
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
     private Boolean isActive;

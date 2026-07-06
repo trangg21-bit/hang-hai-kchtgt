@@ -8,7 +8,7 @@ export interface LineObject {
   coordinates: string;
   description?: string;
   status: LineObject.Status;
-  unitId?: number;
+  unitId?: string;
   length?: number;
   material?: string;
   yearBuilt?: number;

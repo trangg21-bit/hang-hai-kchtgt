@@ -53,7 +53,7 @@ public class UpdateBeaconLightRequest {
     @Size(max = 1000)
     private String description;
 
-    private Long unitId;
+    private java.util.UUID unitId;
     private LocalDate lastMaintenanceDate;
     private LocalDate nextMaintenanceDate;
     private Boolean isActive;

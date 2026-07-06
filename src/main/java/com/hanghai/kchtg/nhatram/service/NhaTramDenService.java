@@ -378,7 +378,7 @@ public class NhaTramDenService {
                 || status == NhaTramStatus.APPROVED_L2;
     }
 
-    private Long getCurrentUserUnitId() {
+    private java.util.UUID getCurrentUserUnitId() {
         return null;
     }
 

@@ -12,7 +12,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
@@ -73,7 +72,7 @@ class SuCoControllerTest {
     @Test
     void listIncidents_shouldReturnAll() throws Exception {
         when(suCoService.findAll(anyInt(), anyInt()))
-                .thenReturn(new PageImpl<>(List.of(testResponse)));
+                .thenReturn(new PageImpl<>(java.util.Objects.requireNonNull(List.of(testResponse))));
 
         mockMvc.perform(get("/api/v1/su-co")
                         .param("page", "0").param("size", "20"))
@@ -89,8 +88,8 @@ class SuCoControllerTest {
                 .thenReturn(testResponse);
 
         mockMvc.perform(post("/api/v1/su-co")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createRequest)))
+                        .contentType("application/json")
+                        .content(java.util.Objects.requireNonNull(objectMapper.writeValueAsString(createRequest))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.moTa").value("Rò rỉ dầu tại cần trục 01"));
@@ -115,8 +114,8 @@ class SuCoControllerTest {
                 .thenReturn(updated);
 
         mockMvc.perform(put("/api/v1/su-co/1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createRequest)))
+                        .contentType("application/json")
+                        .content(java.util.Objects.requireNonNull(objectMapper.writeValueAsString(createRequest))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.moTa").value("Đã sửa đổi mô tả sự cố"));
     }
@@ -143,8 +142,8 @@ class SuCoControllerTest {
                 .thenReturn(progressResponse);
 
         mockMvc.perform(post("/api/v1/su-co/progress")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(progressRequest)))
+                        .contentType("application/json")
+                        .content(java.util.Objects.requireNonNull(objectMapper.writeValueAsString(progressRequest))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.moTaTienDo").value("Đã thay thế seal dầu"));
@@ -191,7 +190,7 @@ class SuCoControllerTest {
     @Test
     void searchByLocation_shouldReturnMatchingIncidents() throws Exception {
         when(suCoService.searchByViTriContaining("Bến Cảng A", 0, 20))
-                .thenReturn(new PageImpl<>(List.of(testResponse)));
+                .thenReturn(new PageImpl<>(java.util.Objects.requireNonNull(List.of(testResponse))));
 
         mockMvc.perform(get("/api/v1/su-co/search/location")
                         .param("location", "Bến Cảng A")
@@ -203,7 +202,7 @@ class SuCoControllerTest {
     @Test
     void searchByDescription_shouldReturnMatchingIncidents() throws Exception {
         when(suCoService.searchByMoTaContaining("rò rỉ", 0, 20))
-                .thenReturn(new PageImpl<>(List.of(testResponse)));
+                .thenReturn(new PageImpl<>(java.util.Objects.requireNonNull(List.of(testResponse))));
 
         mockMvc.perform(get("/api/v1/su-co/search/description")
                         .param("description", "rò rỉ")

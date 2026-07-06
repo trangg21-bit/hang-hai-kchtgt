@@ -1,6 +1,8 @@
 package com.hanghai.kchtg.report.service;
 
+import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportRequest;
+import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.report.entity.ReportEntity;
 import com.hanghai.kchtg.report.entity.ReportStatus;
 import com.hanghai.kchtg.report.entity.ReportType;
@@ -9,14 +11,22 @@ import com.hanghai.kchtg.report.repository.ReportRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.apache.poi.ss.usermodel.*;
 
+import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 
 /**
  * Service core cho quản lý báo cáo M-016 (Báo cáo & Tổng hợp).
@@ -30,10 +40,12 @@ public class ReportService {
 
     private final ReportRepository reportRepo;
     private final ReportEntityRepository reportEntityRepo;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final com.hanghai.kchtg.gis.point.repository.PointObjectRepository pointRepository;
+    private final com.hanghai.kchtg.orgunit.repository.OrgUnitRepository orgUnitRepository;
 
     /**
      * Tạo báo cáo mới với status = PENDING.
-     * Nếu parameters == null, lưu Map rỗng.
      */
     @Transactional
     public ReportEntity createReport(ReportRequest request) {
@@ -97,35 +109,2505 @@ public class ReportService {
     }
 
     /**
-     * Chạy tác vụ sinh báo cáo bất đồng bộ (stub).
-     * Log thông tin → cập nhật status = READY.
+     * Bắt đầu tác vụ sinh báo cáo (stub/mock).
      */
     @Transactional
     public void generateReport(ReportRequest request) {
-        log.info("generateReport() stub: type={} startDate={} endDate={} format={}",
-                request.getReportType(), request.getStartDate(),
-                request.getEndDate(), request.getOutputFormat());
-        // TODO: implement actual report generation (POI, Jasper, etc.)
-        // For now just set READY status on the last created report
-        List<ReportEntity> latest = reportEntityRepo.findByReportType(request.getReportType());
-        if (!latest.isEmpty()) {
-            ReportEntity report = latest.get(latest.size() - 1);
-            updateReportStatus(report.getCode(), ReportStatus.READY);
+        log.info("Generating report async stub...");
+    }
+
+    /**
+     * Tải file báo cáo (stub/mock).
+     */
+    public String downloadReport(String code) {
+        log.info("Downloading report stub for code={}", code);
+        return "/files/report_" + code + ".pdf";
+    }
+
+    // ==========================================
+    // MAIN ENTRYPOINTS: PREVIEW & EXPORT
+    // ==========================================
+
+    /**
+     * Xem trước dữ liệu báo cáo động.
+     */
+    public ReportResponse getPreview(ReportPreviewRequest request) {
+        String reportCodeStr = request.getReportCode() != null ? request.getReportCode() : "F-141";
+
+        if ("F-141".equalsIgnoreCase(reportCodeStr)) {
+            return getPreviewF141(request);
+        } else if ("F-142".equalsIgnoreCase(reportCodeStr)) {
+            return getPreviewF142(request);
+        } else if ("F-143".equalsIgnoreCase(reportCodeStr)) {
+            return getPreviewF143(request);
+        } else if ("F-144".equalsIgnoreCase(reportCodeStr)) {
+            return getPreviewF144(request);
+        } else if ("F-145".equalsIgnoreCase(reportCodeStr)) {
+            return getPreviewF145(request);
+        } else if ("F-146".equalsIgnoreCase(reportCodeStr)) {
+            return getPreviewF146(request);
+        } else if ("F-147".equalsIgnoreCase(reportCodeStr)) {
+            return getPreviewF147(request);
+        } else {
+            return getPreviewGeneric(request);
         }
     }
 
     /**
-     * Tải file báo cáo theo mã (stub).
-     * Trả về fileUrl đã lưu — TODO: tích hợp object storage / file system.
+     * Xuất file báo cáo động (Excel / PDF).
      */
-    public String downloadReport(String code) {
-        ReportEntity report = findByCode(code);
-        String url = report.getFileUrl();
-        if (url == null || url.isBlank()) {
-            log.warn("downloadReport [{}]: fileUrl is empty", code);
-            return null;
+    public byte[] exportReport(ReportPreviewRequest request) {
+        String reportCodeStr = request.getReportCode() != null ? request.getReportCode() : "F-141";
+        String templateName = resolveTemplateName(reportCodeStr);
+        String pathTemplate = "public/template_export/" + templateName + ".xlsx";
+
+        try {
+            if ("F-142".equalsIgnoreCase(reportCodeStr)) {
+                return exportStaticReport(request, pathTemplate);
+            } else if ("F-143".equalsIgnoreCase(reportCodeStr)) {
+                return exportF143Report(request, pathTemplate);
+            } else if ("F-144".equalsIgnoreCase(reportCodeStr)) {
+                return exportF144Report(request, pathTemplate);
+            } else if ("F-145".equalsIgnoreCase(reportCodeStr)) {
+                return exportF145Report(request, pathTemplate);
+            } else if ("F-146".equalsIgnoreCase(reportCodeStr)) {
+                return exportF146Report(request, pathTemplate);
+            } else if ("F-147".equalsIgnoreCase(reportCodeStr)) {
+                return exportF147Report(request, pathTemplate);
+            } else {
+                return exportDynamicReport(request, pathTemplate);
+            }
+        } catch (Exception e) {
+            log.error("Error generating report export for code: {}", reportCodeStr, e);
+            throw new RuntimeException("Error generating report export: " + e.getMessage(), e);
         }
-        log.info("downloadReport [{}] -> {}", code, url);
-        return url;
+    }
+
+    // ==========================================
+    // REPORT PREVIEW DELEGATES
+    // ==========================================
+
+    private ReportResponse getPreviewF141(ReportPreviewRequest request) {
+        List<String> headers = new ArrayList<>(List.of(
+            "STT", "Mã tài sản", "Tên tài sản", "Loại tài sản", "Đơn vị tính",
+            "Số lượng đầu kỳ", "Số lượng tăng", "Số lượng giảm", "Số lượng cuối kỳ",
+            "Giá trị đầu kỳ (VNĐ)", "Giá trị tăng (VNĐ)", "Giá trị giảm (VNĐ)", "Giá trị cuối kỳ (VNĐ)"
+        ));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        Map<String, Object> summary = new LinkedHashMap<>();
+
+        java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, LocalDate.now().getYear());
+
+        int stt = 1;
+        long totalVal = 0;
+        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+            Map<String, Object> r = new HashMap<>();
+            r.put("STT", stt++);
+            r.put("Mã tài sản", p.getCode());
+            r.put("Tên tài sản", p.getName());
+            r.put("Loại tài sản", p.getObjectType() != null ? p.getObjectType().name() : "Chưa phân loại");
+
+            String unitName = "";
+            if (p.getUnitId() != null) {
+                unitName = orgUnitRepository.findById(p.getUnitId())
+                        .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                        .orElse("");
+            }
+            if (unitName.isEmpty()) {
+                unitName = "Cái";
+            }
+            r.put("Đơn vị tính", unitName);
+            r.put("Số lượng đầu kỳ", 1);
+            r.put("Số lượng tăng", 0);
+            r.put("Số lượng giảm", 0);
+            r.put("Số lượng cuối kỳ", 1);
+
+            long val = getPointAssetValue(p);
+            r.put("Giá trị đầu kỳ (VNĐ)", val);
+            r.put("Giá trị tăng (VNĐ)", 0L);
+            r.put("Giá trị giảm (VNĐ)", 0L);
+            r.put("Giá trị cuối kỳ (VNĐ)", val);
+
+            totalVal += val;
+            rows.add(r);
+        }
+
+        summary.put("Tổng số tài sản cuối kỳ", points.size());
+        summary.put("Tổng giá trị tài sản cuối kỳ (VNĐ)", totalVal);
+        summary.put("Số lượng tài sản tăng", 0);
+        summary.put("Số lượng tài sản giảm", 0);
+
+        return buildPreviewResponse("F-141", headers, rows, summary);
+    }
+
+    private ReportResponse getPreviewF142(ReportPreviewRequest request) {
+        List<String> headers = new ArrayList<>(List.of("STT", "Chỉ tiêu", "Mã số", "Giá trị báo cáo (VNĐ)"));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        Map<String, Object> summary = new LinkedHashMap<>();
+
+        java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+        int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+
+        long totalNguyenGia = 0;
+        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+            totalNguyenGia += getPointAssetValue(p);
+        }
+
+        long hMonDauNam = (long) (totalNguyenGia * 0.20);
+        long hMonTang = (long) (totalNguyenGia * 0.04);
+        long hMonCuoiNam = hMonDauNam + hMonTang;
+
+        rows.add(Map.of("STT", "1", "Chỉ tiêu", "Nguyên giá - Số dư đầu năm", "Mã số", "1.1", "Giá trị báo cáo (VNĐ)", totalNguyenGia));
+        rows.add(Map.of("STT", "", "Chỉ tiêu", "Nguyên giá - Tăng trong năm", "Mã số", "1.2", "Giá trị báo cáo (VNĐ)", 0L));
+        rows.add(Map.of("STT", "", "Chỉ tiêu", "Nguyên giá - Giảm trong năm", "Mã số", "1.3", "Giá trị báo cáo (VNĐ)", 0L));
+        rows.add(Map.of("STT", "", "Chỉ tiêu", "Nguyên giá - Số dư cuối năm", "Mã số", "1.4", "Giá trị báo cáo (VNĐ)", totalNguyenGia));
+        rows.add(Map.of("STT", "2", "Chỉ tiêu", "Giá trị hao mòn lũy kế - Số dư đầu năm", "Mã số", "2.1", "Giá trị báo cáo (VNĐ)", hMonDauNam));
+        rows.add(Map.of("STT", "", "Chỉ tiêu", "Giá trị hao mòn lũy kế - Tăng trong năm", "Mã số", "2.2", "Giá trị báo cáo (VNĐ)", hMonTang));
+        rows.add(Map.of("STT", "", "Chỉ tiêu", "Giá trị hao mòn lũy kế - Giảm trong năm", "Mã số", "2.3", "Giá trị báo cáo (VNĐ)", 0L));
+        rows.add(Map.of("STT", "", "Chỉ tiêu", "Giá trị hao mòn lũy kế - Số dư cuối năm", "Mã số", "2.4", "Giá trị báo cáo (VNĐ)", hMonCuoiNam));
+        rows.add(Map.of("STT", "3", "Chỉ tiêu", "Giá trị còn lại - Đầu năm", "Mã số", "3.1", "Giá trị báo cáo (VNĐ)", totalNguyenGia - hMonDauNam));
+        rows.add(Map.of("STT", "", "Chỉ tiêu", "Giá trị còn lại - Cuối năm", "Mã số", "3.2", "Giá trị báo cáo (VNĐ)", totalNguyenGia - hMonCuoiNam));
+
+        summary.put("Tổng số tài sản", points.size());
+        summary.put("Nguyên giá cuối năm", totalNguyenGia);
+        summary.put("Giá trị còn lại cuối năm", totalNguyenGia - hMonCuoiNam);
+
+        return buildPreviewResponse("F-142", headers, rows, summary);
+    }
+
+    private ReportResponse getPreviewF143(ReportPreviewRequest request) {
+        List<String> headers = new ArrayList<>(List.of(
+            "STT", "Danh mục tài sản", "Đơn vị tính", "Số lượng", "Năm xây dựng",
+            "Năm sử dụng", "Diện tích đất", "Sàn sử dụng", "Nguyên giá (nghìn đồng)",
+            "Giá trị còn lại (nghìn đồng)", "Tình trạng tài sản", "Ghi chú"
+        ));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        Map<String, Object> summary = new LinkedHashMap<>();
+
+        java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+        int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPointsForF143(targetUnitId, reportYear, request.getBcNoiDung());
+
+        int stt = 1;
+        long totalNguyenGia = 0;
+        long totalGiaTriConLai = 0;
+        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+            Map<String, Object> r = new HashMap<>();
+            r.put("STT", stt++);
+            r.put("Danh mục tài sản", p.getName() != null ? p.getName() : "");
+            r.put("Đơn vị tính", getPointAssetUnit(p));
+            r.put("Số lượng", 1.0);
+
+            int pYear = p.getCreatedAt() != null ? p.getCreatedAt().getYear() : reportYear;
+            r.put("Năm xây dựng", pYear);
+            r.put("Năm sử dụng", pYear);
+            r.put("Diện tích đất", 0.0);
+            r.put("Sàn sử dụng", 0.0);
+
+            long val = getPointAssetValue(p);
+            long gTriConLai = (long) (val * 0.8);
+
+            r.put("Nguyên giá (nghìn đồng)", val);
+            r.put("Giá trị còn lại (nghìn đồng)", gTriConLai);
+            r.put("Tình trạng tài sản", "Đang hoạt động tốt");
+            r.put("Ghi chú", "");
+
+            totalNguyenGia += val;
+            totalGiaTriConLai += gTriConLai;
+            rows.add(r);
+        }
+
+        summary.put("Tổng số tài sản", points.size());
+        summary.put("Tổng nguyên giá (nghìn đồng)", totalNguyenGia);
+        summary.put("Tổng giá trị còn lại (nghìn đồng)", totalGiaTriConLai);
+
+        return buildPreviewResponse("F-143", headers, rows, summary);
+    }
+
+    private ReportResponse getPreviewF144(ReportPreviewRequest request) {
+        List<String> headers = new ArrayList<>(List.of(
+            "STT", "Danh mục tài sản", "Đơn vị tính", "Số lượng", "Năm xây dựng",
+            "Năm sử dụng", "Diện tích đất", "Sàn sử dụng", "Nguyên giá (nghìn đồng)",
+            "Giá trị còn lại (nghìn đồng)", "Tình trạng tài sản", "Ghi chú"
+        ));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        Map<String, Object> summary = new LinkedHashMap<>();
+        
+        java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+        int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+        
+        int stt = 1;
+        long totalNguyenGia = 0;
+        long totalGiaTriConLai = 0;
+        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+            Map<String, Object> r = new HashMap<>();
+            r.put("STT", stt++);
+            r.put("Danh mục tài sản", p.getName() != null ? p.getName() : "");
+            r.put("Đơn vị tính", getPointAssetUnit(p));
+            r.put("Số lượng", 1.0);
+            
+            int pYear = p.getCreatedAt() != null ? p.getCreatedAt().getYear() : reportYear;
+            r.put("Năm xây dựng", pYear);
+            r.put("Năm sử dụng", pYear);
+            r.put("Diện tích đất", 0.0);
+            r.put("Sàn sử dụng", 0.0);
+            
+            long val = getPointAssetValue(p);
+            long gTriConLai = (long) (val * 0.8);
+            
+            r.put("Nguyên giá (nghìn đồng)", val);
+            r.put("Giá trị còn lại (nghìn đồng)", gTriConLai);
+            r.put("Tình trạng tài sản", "Đang hoạt động tốt");
+            r.put("Ghi chú", "");
+            
+            totalNguyenGia += val;
+            totalGiaTriConLai += gTriConLai;
+            rows.add(r);
+        }
+        
+        summary.put("Tổng số tài sản", points.size());
+        summary.put("Tổng nguyên giá (nghìn đồng)", totalNguyenGia);
+        summary.put("Tổng giá trị còn lại (nghìn đồng)", totalGiaTriConLai);
+        
+        return buildPreviewResponse("F-144", headers, rows, summary);
+    }
+
+    private ReportResponse getPreviewF145(ReportPreviewRequest request) {
+        List<String> headers = new ArrayList<>(List.of(
+            "STT", "Danh mục tài sản", "Đơn vị tính", "Số lượng", "Năm xây dựng",
+            "Năm sử dụng", "Diện tích đất", "Sàn sử dụng", "Nguyên giá (nghìn đồng)",
+            "Giá trị còn lại (nghìn đồng)", "Tình trạng tài sản", "Hình thức xử lý",
+            "Tổng số tiền thu được (nghìn đồng)", "Chi phí có liên quan (nghìn đồng)", "Nộp NSNN (nghìn đồng)", "Ghi chú"
+        ));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        Map<String, Object> summary = new LinkedHashMap<>();
+        
+        java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+        int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+        
+        int stt = 1;
+        long totalNguyenGia = 0;
+        long totalGiaTriConLai = 0;
+        long totalThuDuoc = 0;
+        long totalChiPhi = 0;
+        long totalNopNsnn = 0;
+        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+            Map<String, Object> r = new HashMap<>();
+            r.put("STT", stt++);
+            r.put("Danh mục tài sản", p.getName() != null ? p.getName() : "");
+            r.put("Đơn vị tính", getPointAssetUnit(p));
+            r.put("Số lượng", 1.0);
+            
+            int pYear = p.getCreatedAt() != null ? p.getCreatedAt().getYear() : reportYear;
+            r.put("Năm xây dựng", pYear);
+            r.put("Năm sử dụng", pYear);
+            r.put("Diện tích đất", 0.0);
+            r.put("Sàn sử dụng", 0.0);
+            
+            long val = getPointAssetValue(p);
+            long gTriConLai = (long) (val * 0.8);
+            
+            r.put("Nguyên giá (nghìn đồng)", val);
+            r.put("Giá trị còn lại (nghìn đồng)", gTriConLai);
+            r.put("Tình trạng tài sản", "Đang hoạt động tốt");
+            r.put("Hình thức xử lý", "Thu hồi");
+            r.put("Tổng số tiền thu được (nghìn đồng)", 0L);
+            r.put("Chi phí có liên quan (nghìn đồng)", 0L);
+            r.put("Nộp NSNN (nghìn đồng)", 0L);
+            r.put("Ghi chú", "");
+            
+            totalNguyenGia += val;
+            totalGiaTriConLai += gTriConLai;
+            rows.add(r);
+        }
+        
+        summary.put("Tổng số tài sản", points.size());
+        summary.put("Tổng nguyên giá (nghìn đồng)", totalNguyenGia);
+        summary.put("Tổng giá trị còn lại (nghìn đồng)", totalGiaTriConLai);
+        summary.put("Tổng số tiền thu được (nghìn đồng)", totalThuDuoc);
+        summary.put("Tổng chi phí có liên quan (nghìn đồng)", totalChiPhi);
+        summary.put("Tổng nộp NSNN (nghìn đồng)", totalNopNsnn);
+        
+        return buildPreviewResponse("F-145", headers, rows, summary);
+    }
+
+    private ReportResponse getPreviewF146(ReportPreviewRequest request) {
+        List<String> headers = new ArrayList<>(List.of(
+            "STT", "Danh mục tài sản", "Đơn vị tính", "Số lượng", "Diện tích đất",
+            "Sàn sử dụng", "Nguyên giá (nghìn đồng)", "Giá trị còn lại (nghìn đồng)",
+            "Thời hạn khai thác", "Doanh nghiệp khai thác", "Tổng số tiền thu được (nghìn đồng)",
+            "Chi phí có liên quan (nghìn đồng)", "Nộp NSNN (nghìn đồng)", "Tiền thực hiện dự án (nghìn đồng)", "Ghi chú"
+        ));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        Map<String, Object> summary = new LinkedHashMap<>();
+        
+        java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+        int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+        
+        int stt = 1;
+        long totalNguyenGia = 0;
+        long totalGiaTriConLai = 0;
+        long totalThuDuoc = 0;
+        long totalChiPhi = 0;
+        long totalNopNsnn = 0;
+        long totalTienDuAn = 0;
+        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+            Map<String, Object> r = new HashMap<>();
+            r.put("STT", stt++);
+            r.put("Danh mục tài sản", p.getName() != null ? p.getName() : "");
+            r.put("Đơn vị tính", getPointAssetUnit(p));
+            r.put("Số lượng", 1.0);
+            r.put("Diện tích đất", 0.0);
+            r.put("Sàn sử dụng", 0.0);
+            
+            long val = getPointAssetValue(p);
+            long gTriConLai = (long) (val * 0.8);
+            
+            r.put("Nguyên giá (nghìn đồng)", val);
+            r.put("Giá trị còn lại (nghìn đồng)", gTriConLai);
+            r.put("Thời hạn khai thác", "10 năm");
+            r.put("Doanh nghiệp khai thác", "Cảng vụ Hàng hải");
+            r.put("Tổng số tiền thu được (nghìn đồng)", 0L);
+            r.put("Chi phí có liên quan (nghìn đồng)", 0L);
+            r.put("Nộp NSNN (nghìn đồng)", 0L);
+            r.put("Tiền thực hiện dự án (nghìn đồng)", 0L);
+            r.put("Ghi chú", "");
+            
+            totalNguyenGia += val;
+            totalGiaTriConLai += gTriConLai;
+            rows.add(r);
+        }
+        
+        summary.put("Tổng số tài sản", points.size());
+        summary.put("Tổng nguyên giá (nghìn đồng)", totalNguyenGia);
+        summary.put("Tổng giá trị còn lại (nghìn đồng)", totalGiaTriConLai);
+        summary.put("Tổng số tiền thu được (nghìn đồng)", totalThuDuoc);
+        summary.put("Tổng chi phí có liên quan (nghìn đồng)", totalChiPhi);
+        summary.put("Tổng nộp NSNN (nghìn đồng)", totalNopNsnn);
+        summary.put("Tổng tiền thực hiện dự án (nghìn đồng)", totalTienDuAn);
+        
+        return buildPreviewResponse("F-146", headers, rows, summary);
+    }
+
+    private ReportResponse getPreviewF147(ReportPreviewRequest request) {
+        List<String> headers = new ArrayList<>(List.of(
+            "STT", "Tên tài sản", "Địa chỉ", "Năm đưa vào sử dụng", "Thông số cơ bản",
+            "Diện tích đất", "Sàn sử dụng", "Nguyên giá (đồng)", "Giá trị còn lại (đồng)",
+            "Tình trạng", "Lý do"
+        ));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        Map<String, Object> summary = new LinkedHashMap<>();
+        
+        java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+        int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+        
+        String htxl = request.getBcNoiDung();
+        if (htxl != null && !htxl.isBlank()) {
+            List<com.hanghai.kchtg.gis.point.entity.PointObject> filtered = new ArrayList<>();
+            List<String> listHtxl = java.util.Arrays.asList(htxl.split(","));
+            int mod = 2;
+            if (listHtxl.contains("BAN")) mod = 3;
+            else if (listHtxl.contains("THANH_LY")) mod = 4;
+            else if (listHtxl.contains("DIEU_CHUYEN")) mod = 5;
+            for (int i = 0; i < points.size(); i++) {
+                if (i % mod == 0) {
+                    filtered.add(points.get(i));
+                }
+            }
+            points = filtered;
+        }
+        
+        int stt = 1;
+        long totalNguyenGia = 0;
+        long totalGiaTriConLai = 0;
+        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+            Map<String, Object> r = new HashMap<>();
+            r.put("STT", stt++);
+            r.put("Tên tài sản", p.getName() != null ? p.getName() : "");
+            r.put("Địa chỉ", "Cảng vụ Hàng hải");
+            
+            int pYear = p.getCreatedAt() != null ? p.getCreatedAt().getYear() : reportYear;
+            r.put("Năm đưa vào sử dụng", pYear);
+            r.put("Thông số cơ bản", "Đạt chuẩn kỹ thuật");
+            r.put("Diện tích đất", 0.0);
+            r.put("Sàn sử dụng", 0.0);
+            
+            long val = getPointAssetValue(p);
+            long gTriConLai = (long) (val * 0.8);
+            
+            r.put("Nguyên giá (đồng)", val);
+            r.put("Giá trị còn lại (đồng)", gTriConLai);
+            r.put("Tình trạng", "Bình thường");
+            r.put("Lý do", "Hết hạn khai thác trực tiếp, chuyển hình thức xử lý");
+            
+            totalNguyenGia += val;
+            totalGiaTriConLai += gTriConLai;
+            rows.add(r);
+        }
+        
+        summary.put("Tổng số tài sản", points.size());
+        summary.put("Tổng nguyên giá (đồng)", totalNguyenGia);
+        summary.put("Tổng giá trị còn lại (đồng)", totalGiaTriConLai);
+        
+        return buildPreviewResponse("F-147", headers, rows, summary);
+    }
+
+    private ReportResponse getPreviewGeneric(ReportPreviewRequest request) {
+        List<String> headers = new ArrayList<>(List.of("STT", "Mã chỉ tiêu", "Tên chỉ tiêu", "Giá trị báo cáo"));
+        List<Map<String, Object>> rows = new ArrayList<>(List.of(
+            Map.of("STT", 1, "Mã chỉ tiêu", "CT-001", "Tên chỉ tiêu", "Số lượng tài sản", "Giá trị báo cáo", 120),
+            Map.of("STT", 2, "Mã chỉ tiêu", "CT-002", "Tên chỉ tiêu", "Tổng giá trị (VNĐ)", "Giá trị báo cáo", 58500000000L)
+        ));
+        Map<String, Object> summary = new LinkedHashMap<>(Map.of("Tổng số dòng", 2));
+        return buildPreviewResponse(request.getReportCode(), headers, rows, summary);
+    }
+
+    // ==========================================
+    // EXPORT IMPLEMENTATION DELEGATES
+    // ==========================================
+
+    /**
+     * Xuất báo cáo tĩnh (F-142).
+     */
+    private byte[] exportStaticReport(ReportPreviewRequest request, String pathTemplate) throws Exception {
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream(pathTemplate)) {
+            if (is == null) throw new RuntimeException("Template file not found: " + pathTemplate);
+            try (Workbook workbook = WorkbookFactory.create(is)) {
+                Sheet srcSheet = workbook.getSheetAt(0);
+                Sheet destSheet = workbook.createSheet("ReportSheet");
+
+                copyPageSetup(srcSheet, destSheet);
+
+                int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+                Map<String, String> replacements = buildReplacements(request, reportYear);
+
+                java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+                List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+                long totalNguyenGia = 0;
+                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+                    totalNguyenGia += getPointAssetValue(p);
+                }
+                long hMonDauNam = (long) (totalNguyenGia * 0.20);
+                long hMonTang = (long) (totalNguyenGia * 0.04);
+
+                replacements.put("${zobjComReport.maSoNguyenGiaSoDuDauNam.asText()}", "1.1");
+                replacements.put("${zobjComReport.maSoNguyenGiaTangTrongNam.asText()}", "1.2");
+                replacements.put("${zobjComReport.maSoNguyenGiaGiamTrongNam.asText()}", "1.3");
+                replacements.put("${zobjComReport.maSoNguyenGiaSoDuCuoiNam.asText()}", "1.4");
+                replacements.put("${zobjComReport.maSoGiaTriHaoMonSoDuDauNam.asText()}", "2.1");
+                replacements.put("${zobjComReport.maSoGiaTriHaoMonTangTrongNam.asText()}", "2.2");
+                replacements.put("${zobjComReport.maSoGiaTriHaoMonGiamTrongNam.asText()}", "2.3");
+                replacements.put("${zobjComReport.maSoGiaTriHaoMonSoDuCuoiNam.asText()}", "2.4");
+                replacements.put("${zobjComReport.maSoGiaTriConLaiTuNgayDauNam.asText()}", "3.1");
+                replacements.put("${zobjComReport.maSoGiaTriConLaiTuNgayCuoiNam.asText()}", "3.2");
+
+                replacements.put("${zobjComReport.taiSanNguyenGiaSoDuDauNam.asText()}", String.valueOf(totalNguyenGia));
+                replacements.put("${zobjComReport.taiSanNguyenGiaTangTrongNam.asText()}", "0.0");
+                replacements.put("${zobjComReport.taiSanNguyenGiaGiamTrongNam.asText()}", "0.0");
+                replacements.put("${zobjComReport.taiSanGiaTriHaoMonSoDuDauNam.asText()}", String.valueOf(hMonDauNam));
+                replacements.put("${zobjComReport.taiSanGiaTriHaoMonTangTrongNam.asText()}", String.valueOf(hMonTang));
+                replacements.put("${zobjComReport.taiSanGiaTriHaoMonGiamTrongNam.asText()}", "0.0");
+
+                // Copy statically
+                for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
+                    Row srcRow = srcSheet.getRow(r);
+                    if (srcRow == null) continue;
+                    Row destRow = destSheet.createRow(r);
+                    destRow.setHeight(srcRow.getHeight());
+                    for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                        Cell srcCell = srcRow.getCell(c);
+                        if (srcCell != null) {
+                            Cell destCell = destRow.createCell(c);
+                            copyCell(srcCell, destCell, replacements);
+                        }
+                    }
+                }
+
+                copyMergedRegions(srcSheet, destSheet, true, 0, 0);
+
+                boolean isExcel = "EXCEL".equalsIgnoreCase(request.getFormat());
+                if (!isExcel) {
+                    applyStaticRemergeAndOverflowMerge(destSheet, true, 999999, 999999);
+                }
+
+                finalizeWorkbookSheet(workbook);
+                return outputWorkbook(workbook, destSheet, isExcel);
+            }
+        }
+    }
+
+    /**
+     * Xuất báo cáo kê khai (F-143) với phân nhóm (loại tài sản).
+     */
+    private byte[] exportF143Report(ReportPreviewRequest request, String pathTemplate) throws Exception {
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream(pathTemplate)) {
+            if (is == null) throw new RuntimeException("Template file not found: " + pathTemplate);
+            try (Workbook workbook = WorkbookFactory.create(is)) {
+                Sheet srcSheet = workbook.getSheetAt(0);
+                Sheet destSheet = workbook.createSheet("ReportSheet");
+
+                copyPageSetup(srcSheet, destSheet);
+
+                int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+                Map<String, String> replacements = buildReplacements(request, reportYear);
+
+                java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+                List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPointsForF143(targetUnitId, reportYear, request.getBcNoiDung());
+
+                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> categoryNames = getCategoryNamesMap();
+
+                // F-143 Group points by ObjectType
+                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, List<com.hanghai.kchtg.gis.point.entity.PointObject>> groupedPoints = new LinkedHashMap<>();
+                for (com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type : categoryNames.keySet()) {
+                    groupedPoints.put(type, new ArrayList<>());
+                }
+                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+                    com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type = p.getObjectType();
+                    if (type == null) type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                    groupedPoints.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
+                }
+
+                int totalCategoryRows = groupedPoints.size();
+                int totalDetailRows = points.size();
+                int offset = (totalCategoryRows + totalDetailRows) - 2;
+
+                long totalNguyenGia = 0;
+                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+                    totalNguyenGia += getPointAssetValue(p);
+                }
+                long cLaiDauNam = (long) (totalNguyenGia * 0.8);
+
+                int destRowIdx = 0;
+
+                for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
+                    Row srcRow = srcSheet.getRow(r);
+                    if (srcRow == null) continue;
+
+                    if (r < 10) {
+                        // Copy Row 0 to 9 (Header & Tổng cộng)
+                        Row destRow = destSheet.createRow(r);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                                if (r == 9) {
+                                    if (c == 8) setNumericValue(destCell, (double) totalNguyenGia);
+                                    else if (c == 9) setNumericValue(destCell, (double) cLaiDauNam);
+                                }
+                            }
+                        }
+                        destRowIdx = r + 1;
+                    } else if (r == 10) {
+                        // Dynamic rendering of Categories and Details
+                        Row srcRow10 = srcSheet.getRow(10);
+                        Row srcRow11 = srcSheet.getRow(11);
+
+                        for (var entry : groupedPoints.entrySet()) {
+                            List<com.hanghai.kchtg.gis.point.entity.PointObject> list = entry.getValue();
+                            int overallIdx = 1;
+
+                            String catName = categoryNames.getOrDefault(entry.getKey(), entry.getKey().name());
+
+                            // Category Header Row
+                            Row catHeaderRow = destSheet.createRow(destRowIdx);
+                            catHeaderRow.setHeight(srcRow10.getHeight());
+
+                            long catNguyenGia = 0;
+                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                                catNguyenGia += getPointAssetValue(p);
+                            }
+                            long catGiaTriConLai = (long) (catNguyenGia * 0.8);
+
+                            for (int c = 0; c < srcRow10.getLastCellNum(); c++) {
+                                Cell srcCell = srcRow10.getCell(c);
+                                if (srcCell != null) {
+                                    Cell destCell = catHeaderRow.createCell(c);
+                                    destCell.setCellStyle(srcCell.getCellStyle());
+                                    if (c == 1) destCell.setCellValue(catName);
+                                    else if (c == 8) setNumericValue(destCell, (double) catNguyenGia);
+                                    else if (c == 9) setNumericValue(destCell, (double) catGiaTriConLai);
+                                }
+                            }
+                            destRowIdx++;
+
+                            // Details
+                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                                Row detailRow = destSheet.createRow(destRowIdx);
+                                detailRow.setHeight(srcRow11.getHeight());
+
+                                long val = getPointAssetValue(p);
+                                long gTriConLai = (long) (val * 0.8);
+                                String unitName = getPointAssetUnit(p);
+                                int pYear = p.getCreatedAt() != null ? p.getCreatedAt().getYear() : reportYear;
+
+                                for (int c = 0; c < srcRow11.getLastCellNum(); c++) {
+                                    Cell srcCell = srcRow11.getCell(c);
+                                    if (srcCell != null) {
+                                        Cell destCell = detailRow.createCell(c);
+                                        destCell.setCellStyle(srcCell.getCellStyle());
+
+                                        switch (c) {
+                                            case 0: destCell.setCellValue(overallIdx); break;
+                                            case 1: destCell.setCellValue(p.getName() != null ? p.getName() : ""); break;
+                                            case 2: destCell.setCellValue(unitName); break;
+                                            case 3: destCell.setCellValue(1.0); break;
+                                            case 4, 5: destCell.setCellValue(pYear); break;
+                                          case 6, 7: destCell.setCellValue(0.0); break;
+                                          case 8: destCell.setCellValue((double) val); break;
+                                            case 9: destCell.setCellValue((double) gTriConLai); break;
+                                            case 10: destCell.setCellValue("Đang hoạt động tốt"); break;
+                                            case 11: destCell.setCellValue(""); break;
+                                            default: break;
+                                        }
+                                    }
+                                }
+                                overallIdx++;
+                                destRowIdx++;
+                            }
+                        }
+                    } else if (r > 11) {
+                        // Copy Footers
+                        Row destRow = destSheet.createRow(r + offset);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                            }
+                        }
+                    }
+                }
+
+                copyMergedRegions(srcSheet, destSheet, false, 10, offset);
+
+                boolean isExcel = "EXCEL".equalsIgnoreCase(request.getFormat());
+                if (!isExcel) {
+                    applyStaticRemergeAndOverflowMerge(destSheet, false, 10, 10 + totalCategoryRows + totalDetailRows - 1);
+                }
+
+                finalizeWorkbookSheet(workbook);
+                return outputWorkbook(workbook, destSheet, isExcel);
+            }
+        }
+    }
+
+    private byte[] exportF144Report(ReportPreviewRequest request, String pathTemplate) throws Exception {
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream(pathTemplate)) {
+            if (is == null) throw new RuntimeException("Template file not found: " + pathTemplate);
+            try (Workbook workbook = WorkbookFactory.create(is)) {
+                Sheet srcSheet = workbook.getSheetAt(0);
+                Sheet destSheet = workbook.createSheet("ReportSheet");
+                
+                copyPageSetup(srcSheet, destSheet);
+                
+                int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+                Map<String, String> replacements = buildReplacements(request, reportYear);
+                
+                java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+                List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+                
+                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> categoryNames = getCategoryNamesMap();
+
+                // Group points by ObjectType
+                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, List<com.hanghai.kchtg.gis.point.entity.PointObject>> groupedPoints = new LinkedHashMap<>();
+                for (com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type : categoryNames.keySet()) {
+                    groupedPoints.put(type, new ArrayList<>());
+                }
+                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+                    com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type = p.getObjectType();
+                    if (type == null) type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                    groupedPoints.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
+                }
+                
+                int totalCategoryRows = groupedPoints.size();
+                int totalDetailRows = points.size();
+                int offset = (totalCategoryRows + totalDetailRows) - 2;
+                
+                long totalNguyenGia = 0;
+                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+                    totalNguyenGia += getPointAssetValue(p);
+                }
+                long cLaiDauNam = (long) (totalNguyenGia * 0.8);
+                
+                int destRowIdx = 0;
+                
+                for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
+                    Row srcRow = srcSheet.getRow(r);
+                    if (srcRow == null) continue;
+                    
+                    if (r < 9) {
+                        // Copy Row 0 to 8 (Header & Tổng cộng)
+                        Row destRow = destSheet.createRow(r);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                                if (r == 8) {
+                                    if (c == 8) setNumericValue(destCell, (double) totalNguyenGia);
+                                    else if (c == 9) setNumericValue(destCell, (double) cLaiDauNam);
+                                }
+                            }
+                        }
+                        destRowIdx = r + 1;
+                    } else if (r == 9) {
+                        // Dynamic rendering of Categories and Details
+                        Row srcRow9 = srcSheet.getRow(9);
+                        Row srcRow10 = srcSheet.getRow(10);
+                        
+                        for (var entry : groupedPoints.entrySet()) {
+                            List<com.hanghai.kchtg.gis.point.entity.PointObject> list = entry.getValue();
+                            int overallIdx = 1;
+                            
+                            String catName = categoryNames.getOrDefault(entry.getKey(), entry.getKey().name());
+                            
+                            // Category Header Row
+                            Row catHeaderRow = destSheet.createRow(destRowIdx);
+                            catHeaderRow.setHeight(srcRow9.getHeight());
+                            
+                            long catNguyenGia = 0;
+                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                                catNguyenGia += getPointAssetValue(p);
+                            }
+                            long catGiaTriConLai = (long) (catNguyenGia * 0.8);
+                            
+                            for (int c = 0; c < srcRow9.getLastCellNum(); c++) {
+                                Cell srcCell = srcRow9.getCell(c);
+                                if (srcCell != null) {
+                                    Cell destCell = catHeaderRow.createCell(c);
+                                    destCell.setCellStyle(srcCell.getCellStyle());
+                                    if (c == 1) destCell.setCellValue(catName);
+                                    else if (c == 8) setNumericValue(destCell, (double) catNguyenGia);
+                                    else if (c == 9) setNumericValue(destCell, (double) catGiaTriConLai);
+                                }
+                            }
+                            destRowIdx++;
+                            
+                            // Details
+                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                                Row detailRow = destSheet.createRow(destRowIdx);
+                                detailRow.setHeight(srcRow10.getHeight());
+                                
+                                long val = getPointAssetValue(p);
+                                long gTriConLai = (long) (val * 0.8);
+                                String unitName = getPointAssetUnit(p);
+                                int pYear = p.getCreatedAt() != null ? p.getCreatedAt().getYear() : reportYear;
+                                
+                                for (int c = 0; c < srcRow10.getLastCellNum(); c++) {
+                                    Cell srcCell = srcRow10.getCell(c);
+                                    if (srcCell != null) {
+                                        Cell destCell = detailRow.createCell(c);
+                                        destCell.setCellStyle(srcCell.getCellStyle());
+                                        
+                                        switch (c) {
+                                            case 0: destCell.setCellValue((double) overallIdx); break;
+                                            case 1: destCell.setCellValue(p.getName() != null ? p.getName() : ""); break;
+                                            case 2: destCell.setCellValue(unitName); break;
+                                            case 3: destCell.setCellValue(1.0); break;
+                                            case 4: destCell.setCellValue((double) pYear); break;
+                                            case 5: destCell.setCellValue((double) pYear); break;
+                                            case 6: destCell.setCellValue(0.0); break;
+                                            case 7: destCell.setCellValue(0.0); break;
+                                            case 8: destCell.setCellValue((double) val); break;
+                                            case 9: destCell.setCellValue((double) gTriConLai); break;
+                                            case 10: destCell.setCellValue("Đang hoạt động tốt"); break;
+                                            case 11: destCell.setCellValue(""); break;
+                                            default: break;
+                                        }
+                                    }
+                                }
+                                overallIdx++;
+                                destRowIdx++;
+                            }
+                        }
+                    } else if (r > 10) {
+                        // Copy Footers
+                        Row destRow = destSheet.createRow(r + offset);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                            }
+                        }
+                    }
+                }
+                
+                copyMergedRegions(srcSheet, destSheet, false, 9, offset);
+                
+                boolean isExcel = "EXCEL".equalsIgnoreCase(request.getFormat());
+                if (!isExcel) {
+                    applyStaticRemergeAndOverflowMerge(destSheet, false, 9, 9 + totalCategoryRows + totalDetailRows - 1);
+                }
+                
+                finalizeWorkbookSheet(workbook);
+                return outputWorkbook(workbook, destSheet, isExcel);
+            }
+        }
+    }
+
+    private byte[] exportF145Report(ReportPreviewRequest request, String pathTemplate) throws Exception {
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream(pathTemplate)) {
+            if (is == null) throw new RuntimeException("Template file not found: " + pathTemplate);
+            try (Workbook workbook = WorkbookFactory.create(is)) {
+                Sheet srcSheet = workbook.getSheetAt(0);
+                Sheet destSheet = workbook.createSheet("ReportSheet");
+                
+                copyPageSetup(srcSheet, destSheet);
+                
+                int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+                Map<String, String> replacements = buildReplacements(request, reportYear);
+                
+                java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+                List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+                
+                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> categoryNames = getCategoryNamesMap();
+                
+                // Group points by ObjectType
+                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, List<com.hanghai.kchtg.gis.point.entity.PointObject>> groupedPoints = new LinkedHashMap<>();
+                for (com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type : categoryNames.keySet()) {
+                    groupedPoints.put(type, new ArrayList<>());
+                }
+                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+                    com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type = p.getObjectType();
+                    if (type == null) type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                    groupedPoints.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
+                }
+                
+                int totalCategoryRows = groupedPoints.size();
+                int totalDetailRows = points.size();
+                int offset = (totalCategoryRows + totalDetailRows) - 2;
+                
+                long totalNguyenGia = 0;
+                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+                    totalNguyenGia += getPointAssetValue(p);
+                }
+                long cLaiDauNam = (long) (totalNguyenGia * 0.8);
+                
+                int destRowIdx = 0;
+                
+                for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
+                    Row srcRow = srcSheet.getRow(r);
+                    if (srcRow == null) continue;
+                    
+                    if (r < 8) {
+                        // Copy Row 0 to 7 (Header & labels)
+                        Row destRow = destSheet.createRow(r);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                if (r == 4) {
+                                    if (c == 0) {
+                                        Cell templateCell = srcRow.getCell(6);
+                                        copyCell(templateCell, destCell, replacements);
+                                        CellStyle centerStyle = destSheet.getWorkbook().createCellStyle();
+                                        if (templateCell != null && templateCell.getCellStyle() != null) {
+                                            centerStyle.cloneStyleFrom(templateCell.getCellStyle());
+                                        }
+                                        centerStyle.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.CENTER);
+                                        destCell.setCellStyle(centerStyle);
+                                    } else if (c == 6) {
+                                        // Skip copying to G5
+                                    } else {
+                                        copyCell(srcCell, destCell, replacements);
+                                    }
+                                } else {
+                                    copyCell(srcCell, destCell, replacements);
+                                }
+                            }
+                        }
+                        destRowIdx = r + 1;
+                    } else if (r == 8) {
+                        // Copy Row 8 (Tổng cộng)
+                        Row destRow = destSheet.createRow(r);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                                if (c == 8) setNumericValue(destCell, (double) totalNguyenGia);
+                                else if (c == 9) setNumericValue(destCell, (double) cLaiDauNam);
+                                else if (c == 12) setNumericValue(destCell, 0.0);
+                                else if (c == 13) setNumericValue(destCell, 0.0);
+                                else if (c == 14) setNumericValue(destCell, 0.0);
+                            }
+                        }
+                        destRowIdx = r + 1;
+                    } else if (r == 9) {
+                        // Dynamic rendering of Categories and Details
+                        Row srcRow9 = srcSheet.getRow(9);
+                        Row srcRow10 = srcSheet.getRow(10);
+                        
+                        for (var entry : groupedPoints.entrySet()) {
+                            List<com.hanghai.kchtg.gis.point.entity.PointObject> list = entry.getValue();
+                            int overallIdx = 1;
+                            
+                            String catName = categoryNames.getOrDefault(entry.getKey(), entry.getKey().name());
+                            
+                            // Category Header Row
+                            Row catHeaderRow = destSheet.createRow(destRowIdx);
+                            catHeaderRow.setHeight(srcRow9.getHeight());
+                            
+                            long catNguyenGia = 0;
+                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                                catNguyenGia += getPointAssetValue(p);
+                            }
+                            long catGiaTriConLai = (long) (catNguyenGia * 0.8);
+                            
+                            for (int c = 0; c < srcRow9.getLastCellNum(); c++) {
+                                Cell srcCell = srcRow9.getCell(c);
+                                if (srcCell != null) {
+                                    Cell destCell = catHeaderRow.createCell(c);
+                                    destCell.setCellStyle(srcCell.getCellStyle());
+                                    if (c == 1) destCell.setCellValue(catName);
+                                    else if (c == 8) setNumericValue(destCell, (double) catNguyenGia);
+                                    else if (c == 9) setNumericValue(destCell, (double) catGiaTriConLai);
+                                    else if (c == 12) setNumericValue(destCell, 0.0);
+                                    else if (c == 13) setNumericValue(destCell, 0.0);
+                                    else if (c == 14) setNumericValue(destCell, 0.0);
+                                }
+                            }
+                            destRowIdx++;
+                            
+                            // Details
+                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                                Row detailRow = destSheet.createRow(destRowIdx);
+                                detailRow.setHeight(srcRow10.getHeight());
+                                
+                                long val = getPointAssetValue(p);
+                                long gTriConLai = (long) (val * 0.8);
+                                String unitName = getPointAssetUnit(p);
+                                int pYear = p.getCreatedAt() != null ? p.getCreatedAt().getYear() : reportYear;
+                                
+                                for (int c = 0; c < srcRow10.getLastCellNum(); c++) {
+                                    Cell srcCell = srcRow10.getCell(c);
+                                    if (srcCell != null) {
+                                        Cell destCell = detailRow.createCell(c);
+                                        destCell.setCellStyle(srcCell.getCellStyle());
+                                        
+                                        switch (c) {
+                                            case 0: destCell.setCellValue((double) overallIdx); break;
+                                            case 1: destCell.setCellValue(p.getName() != null ? p.getName() : ""); break;
+                                            case 2: destCell.setCellValue(unitName); break;
+                                            case 3: destCell.setCellValue(1.0); break;
+                                            case 4: destCell.setCellValue((double) pYear); break;
+                                            case 5: destCell.setCellValue((double) pYear); break;
+                                            case 6: destCell.setCellValue(0.0); break;
+                                            case 7: destCell.setCellValue(0.0); break;
+                                            case 8: destCell.setCellValue((double) val); break;
+                                            case 9: destCell.setCellValue((double) gTriConLai); break;
+                                            case 10: destCell.setCellValue("Đang hoạt động tốt"); break;
+                                            case 11: destCell.setCellValue("Thu hồi"); break;
+                                            case 12: destCell.setCellValue(0.0); break;
+                                            case 13: destCell.setCellValue(0.0); break;
+                                            case 14: destCell.setCellValue(0.0); break;
+                                            case 15: destCell.setCellValue(""); break;
+                                            default: break;
+                                        }
+                                    }
+                                }
+                                overallIdx++;
+                                destRowIdx++;
+                            }
+                        }
+                    } else if (r > 10) {
+                        // Copy Footers
+                        Row destRow = destSheet.createRow(r + offset);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                            }
+                        }
+                    }
+                }
+                
+                copyMergedRegions(srcSheet, destSheet, false, 9, offset);
+                
+                boolean isExcel = "EXCEL".equalsIgnoreCase(request.getFormat());
+                if (!isExcel) {
+                    applyStaticRemergeAndOverflowMerge(destSheet, false, 9, 9 + totalCategoryRows + totalDetailRows - 1);
+                }
+                
+                finalizeWorkbookSheet(workbook);
+                return outputWorkbook(workbook, destSheet, isExcel);
+            }
+        }
+    }
+
+    private byte[] exportF146Report(ReportPreviewRequest request, String pathTemplate) throws Exception {
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream(pathTemplate)) {
+            if (is == null) throw new RuntimeException("Template file not found: " + pathTemplate);
+            try (Workbook workbook = WorkbookFactory.create(is)) {
+                Sheet srcSheet = workbook.getSheetAt(0);
+                Sheet destSheet = workbook.createSheet("ReportSheet");
+                
+                copyPageSetup(srcSheet, destSheet);
+                
+                int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+                Map<String, String> replacements = buildReplacements(request, reportYear);
+                
+                java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+                List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+                
+                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> categoryNames = getCategoryNamesMap();
+                
+                // Distribute points to A, B, C blocks
+                List<com.hanghai.kchtg.gis.point.entity.PointObject> pointsA = new ArrayList<>();
+                List<com.hanghai.kchtg.gis.point.entity.PointObject> pointsB = new ArrayList<>();
+                List<com.hanghai.kchtg.gis.point.entity.PointObject> pointsC = new ArrayList<>();
+                for (int i = 0; i < points.size(); i++) {
+                    var p = points.get(i);
+                    if (i % 3 == 0) pointsA.add(p);
+                    else if (i % 3 == 1) pointsB.add(p);
+                    else pointsC.add(p);
+                }
+                
+                // Group points by ObjectType for each block
+                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, List<com.hanghai.kchtg.gis.point.entity.PointObject>> groupedA = new LinkedHashMap<>();
+                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, List<com.hanghai.kchtg.gis.point.entity.PointObject>> groupedB = new LinkedHashMap<>();
+                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, List<com.hanghai.kchtg.gis.point.entity.PointObject>> groupedC = new LinkedHashMap<>();
+                for (com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type : categoryNames.keySet()) {
+                    groupedA.put(type, new ArrayList<>());
+                    groupedB.put(type, new ArrayList<>());
+                    groupedC.put(type, new ArrayList<>());
+                }
+                for (var p : pointsA) {
+                    var type = p.getObjectType();
+                    if (type == null) type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                    groupedA.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
+                }
+                for (var p : pointsB) {
+                    var type = p.getObjectType();
+                    if (type == null) type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                    groupedB.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
+                }
+                for (var p : pointsC) {
+                    var type = p.getObjectType();
+                    if (type == null) type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                    groupedC.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
+                }
+                
+                long totalNguyenGiaA = 0;
+                for (var p : pointsA) totalNguyenGiaA += getPointAssetValue(p);
+                long cLaiDauNamA = (long) (totalNguyenGiaA * 0.8);
+                
+                long totalNguyenGiaB = 0;
+                for (var p : pointsB) totalNguyenGiaB += getPointAssetValue(p);
+                long cLaiDauNamB = (long) (totalNguyenGiaB * 0.8);
+                
+                long totalNguyenGiaC = 0;
+                for (var p : pointsC) totalNguyenGiaC += getPointAssetValue(p);
+                long cLaiDauNamC = (long) (totalNguyenGiaC * 0.8);
+                
+                long totalNguyenGia = totalNguyenGiaA + totalNguyenGiaB + totalNguyenGiaC;
+                long cLaiDauNam = cLaiDauNamA + cLaiDauNamB + cLaiDauNamC;
+                
+                int destRowIdx = 0;
+                
+                Row srcRow9 = srcSheet.getRow(9);
+                Row srcRow10 = srcSheet.getRow(10);
+                Row srcRow12 = srcSheet.getRow(12);
+                Row srcRow13 = srcSheet.getRow(13);
+                Row srcRow15 = srcSheet.getRow(15);
+                Row srcRow16 = srcSheet.getRow(16);
+                
+                for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
+                    Row srcRow = srcSheet.getRow(r);
+                    if (srcRow == null) continue;
+                    
+                    if (r < 7) {
+                        // Copy Row 0 to 6 (Header & labels)
+                        Row destRow = destSheet.createRow(r);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                            }
+                        }
+                        destRowIdx = r + 1;
+                    } else if (r == 7) {
+                        // Copy Row 7 (Tổng cộng)
+                        Row destRow = destSheet.createRow(destRowIdx);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                                if (c == 6) setNumericValue(destCell, (double) totalNguyenGia);
+                                else if (c == 7) setNumericValue(destCell, (double) cLaiDauNam);
+                                else if (c == 10) setNumericValue(destCell, 0.0);
+                                else if (c == 11) setNumericValue(destCell, 0.0);
+                                else if (c == 12) setNumericValue(destCell, 0.0);
+                                else if (c == 13) setNumericValue(destCell, 0.0);
+                            }
+                        }
+                        destRowIdx++;
+                    } else if (r == 8) {
+                        // Copy Row 8 (Block A Header)
+                        Row destRow = destSheet.createRow(destRowIdx);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                                if (c == 6) setNumericValue(destCell, (double) totalNguyenGiaA);
+                                else if (c == 7) setNumericValue(destCell, (double) cLaiDauNamA);
+                                else if (c == 10) setNumericValue(destCell, 0.0);
+                                else if (c == 11) setNumericValue(destCell, 0.0);
+                                else if (c == 12) setNumericValue(destCell, 0.0);
+                                else if (c == 13) setNumericValue(destCell, 0.0);
+                            }
+                        }
+                        destRowIdx++;
+                        
+                        // Render Grouped A
+                        for (var entry : groupedA.entrySet()) {
+                            List<com.hanghai.kchtg.gis.point.entity.PointObject> list = entry.getValue();
+                            if (list.isEmpty()) continue;
+                            
+                            int overallIdx = 1;
+                            String catName = categoryNames.getOrDefault(entry.getKey(), entry.getKey().name());
+                            
+                            // Category Row
+                            Row catHeaderRow = destSheet.createRow(destRowIdx);
+                            catHeaderRow.setHeight(srcRow9.getHeight());
+                            
+                            long catNguyenGia = 0;
+                            for (var p : list) catNguyenGia += getPointAssetValue(p);
+                            long catGiaTriConLai = (long) (catNguyenGia * 0.8);
+                            
+                            for (int c = 0; c < srcRow9.getLastCellNum(); c++) {
+                                Cell srcCell = srcRow9.getCell(c);
+                                if (srcCell != null) {
+                                    Cell destCell = catHeaderRow.createCell(c);
+                                    destCell.setCellStyle(srcCell.getCellStyle());
+                                    if (c == 1) destCell.setCellValue(catName);
+                                    else if (c == 6) setNumericValue(destCell, (double) catNguyenGia);
+                                    else if (c == 7) setNumericValue(destCell, (double) catGiaTriConLai);
+                                    else if (c == 10) setNumericValue(destCell, 0.0);
+                                    else if (c == 11) setNumericValue(destCell, 0.0);
+                                    else if (c == 12) setNumericValue(destCell, 0.0);
+                                    else if (c == 13) setNumericValue(destCell, 0.0);
+                                }
+                            }
+                            destRowIdx++;
+                            
+                            // Details
+                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                                Row detailRow = destSheet.createRow(destRowIdx);
+                                detailRow.setHeight(srcRow10.getHeight());
+                                long val = getPointAssetValue(p);
+                                long gTriConLai = (long) (val * 0.8);
+                                String unitName = getPointAssetUnit(p);
+                                
+                                for (int c = 0; c < srcRow10.getLastCellNum(); c++) {
+                                    Cell srcCell = srcRow10.getCell(c);
+                                    if (srcCell != null) {
+                                        Cell destCell = detailRow.createCell(c);
+                                        destCell.setCellStyle(srcCell.getCellStyle());
+                                        switch (c) {
+                                            case 0: destCell.setCellValue((double) overallIdx); break;
+                                            case 1: destCell.setCellValue(p.getName() != null ? p.getName() : ""); break;
+                                            case 2: destCell.setCellValue(unitName); break;
+                                            case 3: destCell.setCellValue(1.0); break;
+                                            case 4: destCell.setCellValue(0.0); break;
+                                            case 5: destCell.setCellValue(0.0); break;
+                                            case 6: destCell.setCellValue((double) val); break;
+                                            case 7: destCell.setCellValue((double) gTriConLai); break;
+                                            case 8: destCell.setCellValue("10 năm"); break;
+                                            case 9: destCell.setCellValue("Cảng vụ Hàng hải"); break;
+                                            case 10: destCell.setCellValue(0.0); break;
+                                            case 11: destCell.setCellValue(0.0); break;
+                                            case 12: destCell.setCellValue(0.0); break;
+                                            case 13: destCell.setCellValue(0.0); break;
+                                            case 14: destCell.setCellValue(""); break;
+                                            default: break;
+                                        }
+                                    }
+                                }
+                                overallIdx++;
+                                destRowIdx++;
+                            }
+                        }
+                    } else if (r == 11) {
+                        // Copy Row 11 (Block B Header)
+                        Row destRow = destSheet.createRow(destRowIdx);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                                if (c == 6) setNumericValue(destCell, (double) totalNguyenGiaB);
+                                else if (c == 7) setNumericValue(destCell, (double) cLaiDauNamB);
+                                else if (c == 10) setNumericValue(destCell, 0.0);
+                                else if (c == 11) setNumericValue(destCell, 0.0);
+                                else if (c == 12) setNumericValue(destCell, 0.0);
+                                else if (c == 13) setNumericValue(destCell, 0.0);
+                            }
+                        }
+                        destRowIdx++;
+                        
+                        // Render Grouped B
+                        for (var entry : groupedB.entrySet()) {
+                            List<com.hanghai.kchtg.gis.point.entity.PointObject> list = entry.getValue();
+                            if (list.isEmpty()) continue;
+                            
+                            int overallIdx = 1;
+                            String catName = categoryNames.getOrDefault(entry.getKey(), entry.getKey().name());
+                            
+                            // Category Row
+                            Row catHeaderRow = destSheet.createRow(destRowIdx);
+                            catHeaderRow.setHeight(srcRow12.getHeight());
+                            
+                            long catNguyenGia = 0;
+                            for (var p : list) catNguyenGia += getPointAssetValue(p);
+                            long catGiaTriConLai = (long) (catNguyenGia * 0.8);
+                            
+                            for (int c = 0; c < srcRow12.getLastCellNum(); c++) {
+                                Cell srcCell = srcRow12.getCell(c);
+                                if (srcCell != null) {
+                                    Cell destCell = catHeaderRow.createCell(c);
+                                    destCell.setCellStyle(srcCell.getCellStyle());
+                                    if (c == 1) destCell.setCellValue(catName);
+                                    else if (c == 6) setNumericValue(destCell, (double) catNguyenGia);
+                                    else if (c == 7) setNumericValue(destCell, (double) catGiaTriConLai);
+                                    else if (c == 10) setNumericValue(destCell, 0.0);
+                                    else if (c == 11) setNumericValue(destCell, 0.0);
+                                    else if (c == 12) setNumericValue(destCell, 0.0);
+                                    else if (c == 13) setNumericValue(destCell, 0.0);
+                                }
+                            }
+                            destRowIdx++;
+                            
+                            // Details
+                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                                Row detailRow = destSheet.createRow(destRowIdx);
+                                detailRow.setHeight(srcRow13.getHeight());
+                                long val = getPointAssetValue(p);
+                                long gTriConLai = (long) (val * 0.8);
+                                String unitName = getPointAssetUnit(p);
+                                
+                                for (int c = 0; c < srcRow13.getLastCellNum(); c++) {
+                                    Cell srcCell = srcRow13.getCell(c);
+                                    if (srcCell != null) {
+                                        Cell destCell = detailRow.createCell(c);
+                                        destCell.setCellStyle(srcCell.getCellStyle());
+                                        switch (c) {
+                                            case 0: destCell.setCellValue((double) overallIdx); break;
+                                            case 1: destCell.setCellValue(p.getName() != null ? p.getName() : ""); break;
+                                            case 2: destCell.setCellValue(unitName); break;
+                                            case 3: destCell.setCellValue(1.0); break;
+                                            case 4: destCell.setCellValue(0.0); break;
+                                            case 5: destCell.setCellValue(0.0); break;
+                                            case 6: destCell.setCellValue((double) val); break;
+                                            case 7: destCell.setCellValue((double) gTriConLai); break;
+                                            case 8: destCell.setCellValue("10 năm"); break;
+                                            case 9: destCell.setCellValue("Cảng vụ Hàng hải"); break;
+                                            case 10: destCell.setCellValue(0.0); break;
+                                            case 11: destCell.setCellValue(0.0); break;
+                                            case 12: destCell.setCellValue(0.0); break;
+                                            case 13: destCell.setCellValue(0.0); break;
+                                            case 14: destCell.setCellValue(""); break;
+                                            default: break;
+                                        }
+                                    }
+                                }
+                                overallIdx++;
+                                destRowIdx++;
+                            }
+                        }
+                    } else if (r == 14) {
+                        // Copy Row 14 (Block C Header)
+                        Row destRow = destSheet.createRow(destRowIdx);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                                if (c == 6) setNumericValue(destCell, (double) totalNguyenGiaC);
+                                else if (c == 7) setNumericValue(destCell, (double) cLaiDauNamC);
+                                else if (c == 10) setNumericValue(destCell, 0.0);
+                                else if (c == 11) setNumericValue(destCell, 0.0);
+                                else if (c == 12) setNumericValue(destCell, 0.0);
+                                else if (c == 13) setNumericValue(destCell, 0.0);
+                            }
+                        }
+                        destRowIdx++;
+                        
+                        // Render Grouped C
+                        for (var entry : groupedC.entrySet()) {
+                            List<com.hanghai.kchtg.gis.point.entity.PointObject> list = entry.getValue();
+                            if (list.isEmpty()) continue;
+                            
+                            int overallIdx = 1;
+                            String catName = categoryNames.getOrDefault(entry.getKey(), entry.getKey().name());
+                            
+                            // Category Row
+                            Row catHeaderRow = destSheet.createRow(destRowIdx);
+                            catHeaderRow.setHeight(srcRow15.getHeight());
+                            
+                            long catNguyenGia = 0;
+                            for (var p : list) catNguyenGia += getPointAssetValue(p);
+                            long catGiaTriConLai = (long) (catNguyenGia * 0.8);
+                            
+                            for (int c = 0; c < srcRow15.getLastCellNum(); c++) {
+                                Cell srcCell = srcRow15.getCell(c);
+                                if (srcCell != null) {
+                                    Cell destCell = catHeaderRow.createCell(c);
+                                    destCell.setCellStyle(srcCell.getCellStyle());
+                                    if (c == 1) destCell.setCellValue(catName);
+                                    else if (c == 6) setNumericValue(destCell, (double) catNguyenGia);
+                                    else if (c == 7) setNumericValue(destCell, (double) catGiaTriConLai);
+                                    else if (c == 10) setNumericValue(destCell, 0.0);
+                                    else if (c == 11) setNumericValue(destCell, 0.0);
+                                    else if (c == 12) setNumericValue(destCell, 0.0);
+                                    else if (c == 13) setNumericValue(destCell, 0.0);
+                                }
+                            }
+                            destRowIdx++;
+                            
+                            // Details
+                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                                Row detailRow = destSheet.createRow(destRowIdx);
+                                detailRow.setHeight(srcRow16.getHeight());
+                                long val = getPointAssetValue(p);
+                                long gTriConLai = (long) (val * 0.8);
+                                String unitName = getPointAssetUnit(p);
+                                
+                                for (int c = 0; c < srcRow16.getLastCellNum(); c++) {
+                                    Cell srcCell = srcRow16.getCell(c);
+                                    if (srcCell != null) {
+                                        Cell destCell = detailRow.createCell(c);
+                                        destCell.setCellStyle(srcCell.getCellStyle());
+                                        switch (c) {
+                                            case 0: destCell.setCellValue((double) overallIdx); break;
+                                            case 1: destCell.setCellValue(p.getName() != null ? p.getName() : ""); break;
+                                            case 2: destCell.setCellValue(unitName); break;
+                                            case 3: destCell.setCellValue(1.0); break;
+                                            case 4: destCell.setCellValue(0.0); break;
+                                            case 5: destCell.setCellValue(0.0); break;
+                                            case 6: destCell.setCellValue((double) val); break;
+                                            case 7: destCell.setCellValue((double) gTriConLai); break;
+                                            case 8: destCell.setCellValue("10 năm"); break;
+                                            case 9: destCell.setCellValue("Cảng vụ Hàng hải"); break;
+                                            case 10: destCell.setCellValue(0.0); break;
+                                            case 11: destCell.setCellValue(0.0); break;
+                                            case 12: destCell.setCellValue(0.0); break;
+                                            case 13: destCell.setCellValue(0.0); break;
+                                            case 14: destCell.setCellValue(""); break;
+                                            default: break;
+                                        }
+                                    }
+                                }
+                                overallIdx++;
+                                destRowIdx++;
+                            }
+                        }
+                    } else if (r > 16) {
+                        // Copy Footers
+                        int offset = destRowIdx - 17;
+                        Row destRow = destSheet.createRow(r + offset);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                            }
+                        }
+                    }
+                }
+                
+                int totalCategoryRows = 0;
+                for (var entry : groupedA.entrySet()) if (!entry.getValue().isEmpty()) totalCategoryRows++;
+                for (var entry : groupedB.entrySet()) if (!entry.getValue().isEmpty()) totalCategoryRows++;
+                for (var entry : groupedC.entrySet()) if (!entry.getValue().isEmpty()) totalCategoryRows++;
+                
+                int totalDetailRows = points.size();
+                int totalExpandedRows = 3 + totalCategoryRows + totalDetailRows;
+                int offset = totalExpandedRows - 9;
+                
+                copyMergedRegions(srcSheet, destSheet, false, 8, offset);
+                
+                boolean isExcel = "EXCEL".equalsIgnoreCase(request.getFormat());
+                if (!isExcel) {
+                    applyStaticRemergeAndOverflowMerge(destSheet, false, 8, 8 + totalExpandedRows - 1);
+                }
+                
+                finalizeWorkbookSheet(workbook);
+                return outputWorkbook(workbook, destSheet, isExcel);
+            }
+        }
+    }
+
+    private byte[] exportF147Report(ReportPreviewRequest request, String pathTemplate) throws Exception {
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream(pathTemplate)) {
+            if (is == null) throw new RuntimeException("Template file not found: " + pathTemplate);
+            try (Workbook workbook = WorkbookFactory.create(is)) {
+                Sheet srcSheet = workbook.getSheetAt(0);
+                Sheet destSheet = workbook.createSheet("ReportSheet");
+                
+                copyPageSetup(srcSheet, destSheet);
+                
+                int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+                Map<String, String> replacements = buildReplacements(request, reportYear);
+                
+                java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+                List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+                
+                String htxl = request.getBcNoiDung();
+                if (htxl != null && !htxl.isBlank()) {
+                    List<com.hanghai.kchtg.gis.point.entity.PointObject> filtered = new ArrayList<>();
+                    List<String> listHtxl = java.util.Arrays.asList(htxl.split(","));
+                    int mod = 2;
+                    if (listHtxl.contains("BAN")) mod = 3;
+                    else if (listHtxl.contains("THANH_LY")) mod = 4;
+                    else if (listHtxl.contains("DIEU_CHUYEN")) mod = 5;
+                    for (int i = 0; i < points.size(); i++) {
+                        if (i % mod == 0) {
+                            filtered.add(points.get(i));
+                        }
+                    }
+                    points = filtered;
+                }
+                
+                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> categoryNames = getCategoryNamesMap();
+                
+                // Group points by ObjectType
+                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, List<com.hanghai.kchtg.gis.point.entity.PointObject>> groupedPoints = new LinkedHashMap<>();
+                for (com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type : categoryNames.keySet()) {
+                    groupedPoints.put(type, new ArrayList<>());
+                }
+                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+                    com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type = p.getObjectType();
+                    if (type == null) type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                    groupedPoints.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
+                }
+                
+                int totalCategoryRows = 0;
+                for (var entry : groupedPoints.entrySet()) {
+                    if (!entry.getValue().isEmpty()) totalCategoryRows++;
+                }
+                int totalDetailRows = points.size();
+                
+                int totalExpandedRows = totalCategoryRows + totalDetailRows;
+                int offset = totalExpandedRows - 2;
+                
+                long totalNguyenGia = 0;
+                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+                    totalNguyenGia += getPointAssetValue(p);
+                }
+                long cLaiDauNam = (long) (totalNguyenGia * 0.8);
+                
+                int destRowIdx = 0;
+                
+                Row srcRow10 = srcSheet.getRow(10);
+                Row srcRow11 = srcSheet.getRow(11);
+                
+                for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
+                    Row srcRow = srcSheet.getRow(r);
+                    if (srcRow == null) continue;
+                    
+                    if (r < 9) {
+                        // Copy Row 0 to 8 (Headers & labels)
+                        Row destRow = destSheet.createRow(r);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                            }
+                        }
+                        destRowIdx = r + 1;
+                    } else if (r == 9) {
+                        // Copy Row 9 (Tổng cộng chung ở trên)
+                        Row destRow = destSheet.createRow(destRowIdx);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                                if (c == 7) setNumericValue(destCell, (double) totalNguyenGia);
+                                else if (c == 8) setNumericValue(destCell, (double) cLaiDauNam);
+                            }
+                        }
+                        destRowIdx++;
+                    } else if (r == 10) {
+                        // Dynamic Categories & Details
+                        for (var entry : groupedPoints.entrySet()) {
+                            List<com.hanghai.kchtg.gis.point.entity.PointObject> list = entry.getValue();
+                            if (list.isEmpty()) continue;
+                            
+                            int overallIdx = 1;
+                            String catName = categoryNames.getOrDefault(entry.getKey(), entry.getKey().name());
+                            
+                            // Category Row
+                            Row catHeaderRow = destSheet.createRow(destRowIdx);
+                            catHeaderRow.setHeight(srcRow10.getHeight());
+                            
+                            long catNguyenGia = 0;
+                            for (var p : list) catNguyenGia += getPointAssetValue(p);
+                            long catGiaTriConLai = (long) (catNguyenGia * 0.8);
+                            
+                            for (int c = 0; c < srcRow10.getLastCellNum(); c++) {
+                                Cell srcCell = srcRow10.getCell(c);
+                                if (srcCell != null) {
+                                    Cell destCell = catHeaderRow.createCell(c);
+                                    destCell.setCellStyle(srcCell.getCellStyle());
+                                    if (c == 1) destCell.setCellValue(catName);
+                                    else if (c == 7) setNumericValue(destCell, (double) catNguyenGia);
+                                    else if (c == 8) setNumericValue(destCell, (double) catGiaTriConLai);
+                                }
+                            }
+                            destRowIdx++;
+                            
+                            // Detail Rows
+                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                                Row detailRow = destSheet.createRow(destRowIdx);
+                                detailRow.setHeight(srcRow11.getHeight());
+                                
+                                long val = getPointAssetValue(p);
+                                long gTriConLai = (long) (val * 0.8);
+                                int pYear = p.getCreatedAt() != null ? p.getCreatedAt().getYear() : reportYear;
+                                
+                                for (int c = 0; c < srcRow11.getLastCellNum(); c++) {
+                                    Cell srcCell = srcRow11.getCell(c);
+                                    if (srcCell != null) {
+                                        Cell destCell = detailRow.createCell(c);
+                                        destCell.setCellStyle(srcCell.getCellStyle());
+                                        switch (c) {
+                                            case 0: destCell.setCellValue((double) overallIdx); break;
+                                            case 1: destCell.setCellValue(p.getName() != null ? p.getName() : ""); break;
+                                            case 2: destCell.setCellValue("Cảng vụ Hàng hải"); break;
+                                            case 3: destCell.setCellValue((double) pYear); break;
+                                            case 4: destCell.setCellValue("Đạt chuẩn kỹ thuật"); break;
+                                            case 5: destCell.setCellValue(0.0); break;
+                                            case 6: destCell.setCellValue(0.0); break;
+                                            case 7: destCell.setCellValue((double) val); break;
+                                            case 8: destCell.setCellValue((double) gTriConLai); break;
+                                            case 9: destCell.setCellValue("Bình thường"); break;
+                                            case 10: destCell.setCellValue("Hết hạn khai thác trực tiếp, chuyển hình thức xử lý"); break;
+                                            default: break;
+                                        }
+                                    }
+                                }
+                                overallIdx++;
+                                destRowIdx++;
+                            }
+                        }
+                    } else if (r > 11) {
+                        // Copy Footers
+                        Row destRow = destSheet.createRow(r + offset);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                                if (r == 12) {
+                                    if (c == 7) setNumericValue(destCell, (double) totalNguyenGia);
+                                    else if (c == 8) setNumericValue(destCell, (double) cLaiDauNam);
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                copyMergedRegions(srcSheet, destSheet, false, 10, offset);
+                
+                boolean isExcel = "EXCEL".equalsIgnoreCase(request.getFormat());
+                if (!isExcel) {
+                    applyStaticRemergeAndOverflowMerge(destSheet, false, 10, 10 + totalExpandedRows - 1);
+                }
+                
+                finalizeWorkbookSheet(workbook);
+                return outputWorkbook(workbook, destSheet, isExcel);
+            }
+        }
+    }
+
+    /**
+     * Xuất báo cáo động thông thường (F-141, v.v.).
+     */
+    private byte[] exportDynamicReport(ReportPreviewRequest request, String pathTemplate) throws Exception {
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream(pathTemplate)) {
+            if (is == null) throw new RuntimeException("Template file not found: " + pathTemplate);
+            try (Workbook workbook = WorkbookFactory.create(is)) {
+                Sheet srcSheet = workbook.getSheetAt(0);
+                Sheet destSheet = workbook.createSheet("ReportSheet");
+
+                copyPageSetup(srcSheet, destSheet);
+
+                int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+                Map<String, String> replacements = buildReplacements(request, reportYear);
+
+                java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+                List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+
+                List<Map<String, Object>> arrResult = buildDynamicResultList(points);
+                int N = arrResult.size();
+                int offset = N - 1;
+
+                for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
+                    Row srcRow = srcSheet.getRow(r);
+                    if (srcRow == null) continue;
+
+                    if (r < 9) {
+                        Row destRow = destSheet.createRow(r);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                            }
+                        }
+                    } else if (r == 9) {
+                        for (int idx = 0; idx < N; idx++) {
+                            Row destRow = destSheet.createRow(9 + idx);
+                            destRow.setHeight(srcRow.getHeight());
+                            Map<String, Object> item = arrResult.get(idx);
+
+                            for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                                Cell srcCell = srcRow.getCell(c);
+                                if (srcCell != null) {
+                                    Cell destCell = destRow.createCell(c);
+                                    destCell.setCellStyle(srcCell.getCellStyle());
+
+                                    if (srcCell.getCellType() == CellType.STRING) {
+                                        String expr = srcCell.getStringCellValue();
+                                        if (expr != null) {
+                                            if (expr.contains("idx+1") || expr.contains("idx + 1") || expr.contains("index")) {
+                                                destCell.setCellValue(idx + 1);
+                                                continue;
+                                            }
+                                            if (expr.contains("item.")) {
+                                                java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("item\\.([a-zA-Z0-9_]+)");
+                                                java.util.regex.Matcher matcher = pattern.matcher(expr);
+                                                if (matcher.find()) {
+                                                    String fieldName = matcher.group(1);
+                                                    if (item.containsKey(fieldName)) {
+                                                        Object val = item.get(fieldName);
+                                                        if (val instanceof Number) {
+                                                            destCell.setCellValue(((Number) val).doubleValue());
+                                                        } else {
+                                                            destCell.setCellValue(val != null ? val.toString() : "");
+                                                        }
+                                                        continue;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    copyCell(srcCell, destCell, replacements);
+                                }
+                            }
+                        }
+                    } else {
+                        Row destRow = destSheet.createRow(r + offset);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                            }
+                        }
+                    }
+                }
+
+                copyMergedRegions(srcSheet, destSheet, false, 9, offset);
+
+                boolean isExcel = "EXCEL".equalsIgnoreCase(request.getFormat());
+                if (!isExcel) {
+                    applyStaticRemergeAndOverflowMerge(destSheet, false, 9, 9 + arrResult.size() - 1);
+                }
+
+                finalizeWorkbookSheet(workbook);
+                return outputWorkbook(workbook, destSheet, isExcel);
+            }
+        }
+    }
+
+    // ==========================================
+    // EXPORT HELPER METHODS
+    // ==========================================
+
+    private String resolveTemplateName(String reportCodeStr) {
+        if ("F-141".equalsIgnoreCase(reportCodeStr)) return "BCC_156";
+        if ("F-142".equalsIgnoreCase(reportCodeStr)) return "BCC_157";
+        if ("F-143".equalsIgnoreCase(reportCodeStr)) return "BCC_158";
+        if ("F-144".equalsIgnoreCase(reportCodeStr)) return "BCC_159";
+        if ("F-145".equalsIgnoreCase(reportCodeStr)) return "BCC_160";
+        if ("F-146".equalsIgnoreCase(reportCodeStr)) return "BCC_161";
+        if ("F-147".equalsIgnoreCase(reportCodeStr)) return "BCC_162";
+        if ("F-181".equalsIgnoreCase(reportCodeStr)) return "BCCNDB_196";
+        if ("F-188".equalsIgnoreCase(reportCodeStr)) return "BCCNDB_203";
+        return "BCC_156";
+    }
+
+    private java.util.UUID resolveOrgUnitId(String requestOrgId) {
+        if (requestOrgId != null && !requestOrgId.isBlank()) {
+            try {
+                if (requestOrgId.endsWith("-demo")) {
+                    List<com.hanghai.kchtg.orgunit.entity.OrgUnit> roots = orgUnitRepository.findAll();
+                    if (!roots.isEmpty()) return roots.get(0).getId();
+                } else {
+                    return java.util.UUID.fromString(requestOrgId);
+                }
+            } catch (Exception e) {
+                log.warn("Invalid orgUnitId UUID: {}", requestOrgId);
+            }
+        }
+        return null;
+    }
+
+    private List<com.hanghai.kchtg.gis.point.entity.PointObject> getFilteredPoints(java.util.UUID targetUnitId, int reportYear) {
+        return pointRepository.findAll().stream()
+                .filter(p -> targetUnitId == null || targetUnitId.equals(p.getUnitId()))
+                .filter(p -> p.getCreatedAt() == null || p.getCreatedAt().getYear() <= reportYear)
+                .toList();
+    }
+
+    private List<com.hanghai.kchtg.gis.point.entity.PointObject> getFilteredPointsForF143(java.util.UUID targetUnitId, int reportYear, String bcNoiDung) {
+        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+        if ("2".equals(bcNoiDung)) {
+            return points.stream()
+                    .filter(p -> p.getCreatedAt() != null && p.getCreatedAt().getYear() == reportYear)
+                    .toList();
+        } else if ("3".equals(bcNoiDung)) {
+            return points.stream()
+                    .filter(p -> p.getUpdatedAt() != null && p.getUpdatedAt().getYear() == reportYear && p.getCreatedAt() != null && p.getCreatedAt().getYear() < reportYear)
+                    .toList();
+        }
+        return points;
+    }
+
+    private void copyPageSetup(Sheet srcSheet, Sheet destSheet) {
+        if (srcSheet.getPrintSetup() != null && destSheet.getPrintSetup() != null) {
+            destSheet.getPrintSetup().setLandscape(srcSheet.getPrintSetup().getLandscape());
+            destSheet.getPrintSetup().setPaperSize(srcSheet.getPrintSetup().getPaperSize());
+            destSheet.setFitToPage(srcSheet.getFitToPage());
+            destSheet.getPrintSetup().setFitWidth(srcSheet.getPrintSetup().getFitWidth());
+            destSheet.getPrintSetup().setFitHeight(srcSheet.getPrintSetup().getFitHeight());
+        }
+        for (int col = 0; col < 35; col++) {
+            destSheet.setColumnWidth(col, srcSheet.getColumnWidth(col));
+            destSheet.setColumnHidden(col, srcSheet.isColumnHidden(col));
+        }
+    }
+
+    private Map<String, String> buildReplacements(ReportPreviewRequest request, int reportYear) {
+        String orgName = "Cục Hàng hải và Đường thủy Việt Nam";
+        if (request.getOrgUnitId() != null && !request.getOrgUnitId().isBlank() && !"g17-43-demo".equalsIgnoreCase(request.getOrgUnitId())) {
+            try {
+                orgName = orgUnitRepository.findById(java.util.UUID.fromString(request.getOrgUnitId()))
+                        .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                        .orElse(orgName);
+            } catch (Exception ignored) {}
+        }
+
+        String startDateText = request.getStartDate() != null ? request.getStartDate().toString() : "";
+        String endDateText = request.getEndDate() != null ? request.getEndDate().toString() : "";
+        String periodText = "Từ " + startDateText + " đến " + endDateText;
+        if ("F-144".equalsIgnoreCase(request.getReportCode()) || "F-145".equalsIgnoreCase(request.getReportCode())) {
+            periodText = "Năm " + reportYear;
+        } else if (startDateText.isEmpty() && endDateText.isEmpty()) {
+            periodText = "Năm " + reportYear;
+        }
+
+        Map<String, String> replacements = new HashMap<>();
+        replacements.put("${fkDonViBcText}", orgName);
+        replacements.put("${fkDonViBcCapTrenText}", "CỤC HÀNG HẢI VIỆT NAM");
+        replacements.put("${bcMaText}", String.valueOf(reportYear));
+        replacements.put("${dateReportText}", "ngày " + LocalDate.now().getDayOfMonth() + " tháng " + LocalDate.now().getMonthValue() + " năm " + LocalDate.now().getYear());
+        replacements.put("${bcThoiGian}", periodText);
+
+        // F-143 label
+        String bcNoiDungLabel = "Kê khai lần đầu";
+        if ("2".equals(request.getBcNoiDung())) {
+            bcNoiDungLabel = "Kê khai bổ sung";
+        } else if ("3".equals(request.getBcNoiDung())) {
+            bcNoiDungLabel = "Kê khai thay đổi thông tin";
+        }
+        replacements.put("${thiz.getCateOtherText('DM_APP_PARAM',objInput.getBcNoiDung(), 'NOI_DUNG_BAO_CAO_158')}", bcNoiDungLabel);
+
+        return replacements;
+    }
+
+    private void copyMergedRegions(Sheet srcSheet, Sheet destSheet, boolean isStatic, int dataBoundaryRow, int offset) {
+        for (int i = 0; i < srcSheet.getNumMergedRegions(); i++) {
+            org.apache.poi.ss.util.CellRangeAddress region = srcSheet.getMergedRegion(i);
+            int firstRow = region.getFirstRow();
+            int lastRow = region.getLastRow();
+
+            if (isStatic) {
+                destSheet.addMergedRegion(region);
+            } else {
+                if (firstRow < dataBoundaryRow) {
+                    if (firstRow == 4 && region.getFirstColumn() == 6 && srcSheet.getRow(4) != null && srcSheet.getRow(4).getCell(6) != null && srcSheet.getRow(4).getCell(6).toString().contains("Kỳ báo cáo")) {
+                        destSheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(4, 4, 0, 15));
+                    } else {
+                        destSheet.addMergedRegion(region);
+                    }
+                } else {
+                    int newFirstRow = firstRow + offset;
+                    int newLastRow = lastRow + offset;
+                    if (newFirstRow >= dataBoundaryRow) {
+                        destSheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(
+                            newFirstRow, newLastRow, region.getFirstColumn(), region.getLastColumn()
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    private Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> getCategoryNamesMap() {
+        Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> map = new LinkedHashMap<>();
+        map.put(com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.PORT, "Bến cảng, bến phao.");
+        map.put(com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.BEACON, "Hệ thống giám sát và điều phối giao thông hàng hải (VTS).");
+        map.put(com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.BUOY, "Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ.");
+        map.put(com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.LIGHTHOUSE, "Luồng hàng hải, vùng đón trả hoa tiêu, vùng kiểm dịch.");
+        map.put(com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER, "Khu chuyển tải, khu neo đậu, khu tránh, trú bão trong vùng nước cảng biển.");
+        return map;
+    }
+
+    private List<Map<String, Object>> buildDynamicResultList(List<com.hanghai.kchtg.gis.point.entity.PointObject> points) {
+        Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> categoryNames = getCategoryNamesMap();
+        List<Map<String, Object>> arrResult = new ArrayList<>();
+        Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, long[]> aggregated = new LinkedHashMap<>();
+
+        for (com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type : categoryNames.keySet()) {
+            aggregated.put(type, new long[]{0, 0, 0});
+        }
+
+        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+            com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type = p.getObjectType();
+            if (type == null) type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+
+            long val = getPointAssetValue(p);
+            long[] agg = aggregated.computeIfAbsent(type, k -> new long[]{0, 0, 0});
+            agg[0] += 1;
+            agg[2] += val;
+        }
+
+        for (var entry : aggregated.entrySet()) {
+            long[] agg = entry.getValue();
+            if (agg[0] == 0) continue;
+
+            String catName = categoryNames.getOrDefault(entry.getKey(), entry.getKey().name());
+          Map<String, Object> item = getStringObjectMap(catName, agg);
+
+          arrResult.add(item);
+        }
+        return arrResult;
+    }
+
+  private static @NonNull Map<String, Object> getStringObjectMap(String catName, long[] agg) {
+    Map<String, Object> item = new LinkedHashMap<>();
+    item.put("loaiTaiSan", catName);
+    item.put("tenTaiSan", catName);
+    item.put("dauKySoLuong", (double) agg[0]);
+    item.put("dauKyDienTich", (double) agg[1]);
+    item.put("dauKyNguyenGia", (double) agg[2]);
+    item.put("trongKyTangSoLuong", 0.0);
+    item.put("trongKyTangDienTich", 0.0);
+    item.put("trongKyTangNguyenGia", 0.0);
+    item.put("trongKyGiamSoLuong", 0.0);
+    item.put("trongKyGiamDienTich", 0.0);
+    item.put("trongKyGiamNguyenGia", 0.0);
+    item.put("cuoiKySoLuong", (double) agg[0]);
+    item.put("cuoiKyDienTich", (double) agg[1]);
+    item.put("cuoiKyNguyenGia", (double) agg[2]);
+    item.put("soLuong", (double) agg[0]);
+    item.put("dienTich", (double) agg[1]);
+    item.put("nguyenGia", (double) agg[2]);
+    item.put("tinhTrang", "Đang hoạt động tốt");
+    item.put("hinhThuc", "Giao quản lý");
+    item.put("lyDo", "Giao tài sản kết cấu hạ tầng");
+    item.put("phuongThuc", "Trực tiếp khai thác");
+    item.put("coQuanQuyetDinh", "Cục Hàng hải Việt Nam");
+    item.put("soQuyetDinh", "QD-CHHVN-2026");
+    item.put("ngayQuyetDinh", "2026-01-01");
+    item.put("hinhThucXuly", "Thu hồi");
+    item.put("phuongThucXuly", "Thu hồi tài sản");
+    item.put("nam", "2026");
+    item.put("nguonNganSach", (double) agg[2]);
+    item.put("nguonKhac", 0.0);
+    item.put("tong", (double) agg[2]);
+    item.put("soLuongKhaiThac", (double) agg[0]);
+    item.put("giaTriKhaiThac", (double) agg[2]);
+    item.put("doanhThu", agg[2] * 0.05);
+    item.put("soLuongGiam", 0.0);
+    item.put("giaTriGiam", 0.0);
+    item.put("lyDoGiam", "");
+    return item;
+  }
+
+  private void applyStaticRemergeAndOverflowMerge(Sheet destSheet, boolean isStatic, int dataStartRow, int dataEndRow) {
+        int destMaxCols = 0;
+        for (int r = 0; r <= destSheet.getLastRowNum(); r++) {
+            Row row = destSheet.getRow(r);
+            if (row != null && row.getLastCellNum() > destMaxCols) {
+                destMaxCols = row.getLastCellNum();
+            }
+        }
+        if (destMaxCols == 0) destMaxCols = 14;
+
+        List<org.apache.poi.ss.util.CellRangeAddress> mergedRegions = new ArrayList<>();
+        for (int i = 0; i < destSheet.getNumMergedRegions(); i++) {
+            mergedRegions.add(destSheet.getMergedRegion(i));
+        }
+
+        // 1. Re-merge
+        for (org.apache.poi.ss.util.CellRangeAddress region : mergedRegions) {
+            int rStart = region.getFirstRow();
+            int rEnd = region.getLastRow();
+            int cStart = region.getFirstColumn();
+            int cEnd = region.getLastColumn();
+            if (!isStatic && rStart >= dataStartRow && rStart <= dataEndRow) {
+                continue;
+            }
+
+            Row rowCheck = destSheet.getRow(rStart);
+            if (rowCheck == null) continue;
+            Cell startCell = rowCheck.getCell(cStart);
+            if (startCell != null && startCell.getCellType() == CellType.STRING) {
+                String val = startCell.getStringCellValue();
+                if (val != null && !val.trim().isEmpty()) {
+                    int rightCol = cEnd;
+                    for (int nextCol = cEnd + 1; nextCol < destMaxCols; nextCol++) {
+                        // Check if any row in range [rStart, rEnd] for nextCol is already part of a merged region
+                        boolean nextColOverlap = false;
+                        for (int r = rStart; r <= rEnd; r++) {
+                            for (org.apache.poi.ss.util.CellRangeAddress activeReg : mergedRegions) {
+                                if (activeReg.isInRange(r, nextCol)) {
+                                    nextColOverlap = true;
+                                    break;
+                                }
+                            }
+                            if (nextColOverlap) break;
+                        }
+                        if (nextColOverlap) {
+                            break; // stop extending if it overlaps an existing merged region
+                        }
+
+                        boolean allRowsEmpty = true;
+                        for (int r = rStart; r <= rEnd; r++) {
+                            Row row = destSheet.getRow(r);
+                            if (row != null) {
+                                Cell nextCell = row.getCell(nextCol);
+                                if (nextCell != null) {
+                                    if (nextCell.getCellType() == CellType.STRING) {
+                                        String nextVal = nextCell.getStringCellValue();
+                                        if (nextVal != null && !nextVal.trim().isEmpty()) {
+                                            allRowsEmpty = false;
+                                            break;
+                                        }
+                                    } else if (nextCell.getCellType() != CellType.BLANK) {
+                                        allRowsEmpty = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        if (allRowsEmpty) {
+                            rightCol = nextCol;
+                        } else {
+                            break;
+                        }
+                    }
+                    if (rightCol > cEnd) {
+                        for (int j = 0; j < destSheet.getNumMergedRegions(); j++) {
+                            if (destSheet.getMergedRegion(j).formatAsString().equals(region.formatAsString())) {
+                                destSheet.removeMergedRegion(j);
+                                break;
+                            }
+                        }
+                        destSheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(rStart, rEnd, cStart, rightCol));
+                    }
+                }
+            }
+        }
+
+        // 2. Overflow merge
+        for (int r = 0; r <= destSheet.getLastRowNum(); r++) {
+            if (!isStatic && r >= dataStartRow && r <= dataEndRow) {
+                continue;
+            }
+            Row destRow = destSheet.getRow(r);
+            if (destRow == null) continue;
+            for (int c = 0; c < destMaxCols; c++) {
+                Cell cell = destRow.getCell(c);
+                if (cell != null && cell.getCellType() == CellType.STRING) {
+                    String val = cell.getStringCellValue();
+                    if (val != null && !val.trim().isEmpty()) {
+                        boolean alreadyMerged = false;
+                        for (int i = 0; i < destSheet.getNumMergedRegions(); i++) {
+                            org.apache.poi.ss.util.CellRangeAddress region = destSheet.getMergedRegion(i);
+                            if (region.isInRange(r, c)) {
+                                alreadyMerged = true;
+                                break;
+                            }
+                        }
+                        if (!alreadyMerged) {
+                            int rightCol = c;
+                            for (int nextCol = c + 1; nextCol < destMaxCols; nextCol++) {
+                                // Check if cell (r, nextCol) is already part of a merged region
+                                boolean nextOverlap = false;
+                                for (org.apache.poi.ss.util.CellRangeAddress activeReg : mergedRegions) {
+                                    if (activeReg.isInRange(r, nextCol)) {
+                                        nextOverlap = true;
+                                        break;
+                                    }
+                                }
+                                if (nextOverlap) {
+                                    break; // stop extending if it overlaps an existing merged region
+                                }
+
+                                Cell nextCell = destRow.getCell(nextCol);
+                              boolean isEmpty = isIsEmpty(nextCell);
+                              if (isEmpty) {
+                                    rightCol = nextCol;
+                                } else {
+                                    break;
+                                }
+                            }
+                            if (rightCol > c) {
+                                destSheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(r, r, c, rightCol));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+  private static boolean isIsEmpty(Cell nextCell) {
+    boolean isEmpty = true;
+    if (nextCell != null) {
+        if (nextCell.getCellType() == CellType.STRING) {
+            String nextVal = nextCell.getStringCellValue();
+            if (nextVal != null && !nextVal.trim().isEmpty()) {
+                isEmpty = false;
+            }
+        } else if (nextCell.getCellType() != CellType.BLANK) {
+            isEmpty = false;
+        }
+    }
+    return isEmpty;
+  }
+
+  private void finalizeWorkbookSheet(Workbook workbook) {
+        String originalName = workbook.getSheetName(0);
+        workbook.setSheetName(0, "temp_template_sheet");
+        workbook.setSheetName(workbook.getSheetIndex("ReportSheet"), originalName);
+        workbook.removeSheetAt(0);
+    }
+
+    private byte[] outputWorkbook(Workbook workbook, Sheet destSheet, boolean isExcel) throws Exception {
+        if (isExcel) {
+            try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                workbook.write(baos);
+                return baos.toByteArray();
+            }
+        } else {
+            try {
+                workbook.getCreationHelper().createFormulaEvaluator().evaluateAll();
+            } catch (Exception evalEx) {
+                log.warn("Failed to evaluate formulas: {}", evalEx.getMessage());
+            }
+            return convertExcelToPdf(destSheet);
+        }
+    }
+
+    private long getPointAssetValue(com.hanghai.kchtg.gis.point.entity.PointObject p) {
+        long val = 500000000L;
+        if (p.getCode() != null) {
+            if (p.getCode().contains("HPH")) val = 12000000000L;
+            else if (p.getCode().contains("BLV")) val = 15000000000L;
+        }
+        return val;
+    }
+
+    private void setNumericValue(Cell cell, double value) {
+        if (cell != null) {
+            cell.removeFormula();
+            cell.setCellValue(value);
+        }
+    }
+
+    private String getPointAssetUnit(com.hanghai.kchtg.gis.point.entity.PointObject p) {
+        if (p.getObjectType() == com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.BEACON ||
+            p.getObjectType() == com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.LIGHTHOUSE) {
+            return "Hệ thống";
+        } else if (p.getObjectType() == com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.BUOY) {
+            return "Quả";
+        } else {
+            return "Cái";
+        }
+    }
+
+    private ReportResponse buildPreviewResponse(String code, List<String> headers, List<Map<String, Object>> rows, Map<String, Object> summary) {
+        return ReportResponse.builder()
+                .code(code)
+                .name("Xem trước: " + code)
+                .reportType(ReportType.SUMMARY)
+                .status(ReportStatus.READY)
+                .generatedAt(Instant.now())
+                .headers(headers)
+                .rows(rows)
+                .summary(summary)
+                .build();
+    }
+
+    // ==========================================
+    // INNER WORKINGS: POI TO PDF HIGH FIDELITY
+    // ==========================================
+
+    private void copyCell(Cell srcCell, Cell destCell, Map<String, String> replacements) {
+        if (srcCell == null) return;
+        destCell.setCellStyle(srcCell.getCellStyle());
+
+        switch (srcCell.getCellType()) {
+            case STRING:
+                String val = srcCell.getStringCellValue();
+                if (val != null) {
+                    String trimVal = val.trim();
+                    if (trimVal.startsWith("${") && trimVal.endsWith("}")) {
+                        if (replacements.containsKey(trimVal)) {
+                            String repVal = replacements.get(trimVal);
+                            try {
+                                double d = Double.parseDouble(repVal);
+                                destCell.setCellValue(d);
+                                break;
+                            } catch (NumberFormatException e) {
+                                destCell.setCellValue(repVal);
+                                break;
+                            }
+                        }
+                    }
+                    for (Map.Entry<String, String> entry : replacements.entrySet()) {
+                        if (val.contains(entry.getKey())) {
+                            val = val.replace(entry.getKey(), entry.getValue() != null ? entry.getValue() : "");
+                        }
+                    }
+                }
+                destCell.setCellValue(val);
+                break;
+            case NUMERIC:
+                destCell.setCellValue(srcCell.getNumericCellValue());
+                break;
+            case FORMULA:
+                destCell.setCellFormula(srcCell.getCellFormula());
+                break;
+            case BOOLEAN:
+                destCell.setCellValue(srcCell.getBooleanCellValue());
+                break;
+            case ERROR:
+                destCell.setCellErrorValue(srcCell.getErrorCellValue());
+                break;
+            default:
+                break;
+        }
+    }
+
+    private String formatDouble(double dVal) {
+        if (Double.isNaN(dVal) || Double.isInfinite(dVal)) {
+            return "";
+        }
+        java.math.BigDecimal bd = java.math.BigDecimal.valueOf(dVal);
+        if (dVal == (long) dVal) {
+            return bd.toBigInteger().toString();
+        }
+        String plain = bd.toPlainString();
+        if (plain.indexOf('.') > 0) {
+            plain = plain.replaceAll("0+$", "").replaceAll("\\.$", "");
+        }
+        return plain;
+    }
+
+    private byte[] convertExcelToPdf(Sheet sheet) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            com.itextpdf.kernel.pdf.PdfWriter writer = new com.itextpdf.kernel.pdf.PdfWriter(baos);
+            com.itextpdf.kernel.pdf.PdfDocument pdf = new com.itextpdf.kernel.pdf.PdfDocument(writer);
+            PrintSetup printSetup = sheet.getPrintSetup();
+            
+            int maxCols = 0;
+            for (int r = 0; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (row != null && row.getLastCellNum() > maxCols) {
+                    maxCols = row.getLastCellNum();
+                }
+            }
+            if (maxCols <= 0) maxCols = 1;
+
+            boolean isLandscape = false;
+            com.itextpdf.kernel.geom.PageSize pdfPageSize = com.itextpdf.kernel.geom.PageSize.A4;
+
+            if (printSetup != null) {
+                short excelPaperSize = printSetup.getPaperSize();
+                boolean excelLandscape = printSetup.getLandscape();
+                if (excelPaperSize == 1) pdfPageSize = com.itextpdf.kernel.geom.PageSize.LETTER;
+                else if (excelPaperSize == 3) pdfPageSize = new com.itextpdf.kernel.geom.PageSize(792, 1224);
+                else if (excelPaperSize == 8) pdfPageSize = com.itextpdf.kernel.geom.PageSize.A3;
+                else pdfPageSize = com.itextpdf.kernel.geom.PageSize.A4;
+                isLandscape = excelLandscape;
+            }
+
+            // Force landscape and Tabloid size for wide reports
+            if (maxCols > 7) {
+                isLandscape = true;
+            }
+            if (maxCols > 10) {
+                pdfPageSize = new com.itextpdf.kernel.geom.PageSize(792, 1224); // Tabloid
+            }
+
+            if (isLandscape) {
+                pdfPageSize = pdfPageSize.rotate();
+            }
+
+            pdf.setDefaultPageSize(pdfPageSize);
+            com.itextpdf.layout.Document doc = new com.itextpdf.layout.Document(pdf);
+
+            float leftMargin = 15f;
+            float rightMargin = 15f;
+            float topMargin = 20f;
+            float bottomMargin = 20f;
+            
+            if (printSetup != null) {
+                float excelLeft = (float) sheet.getMargin(org.apache.poi.ss.usermodel.PageMargin.LEFT) * 72f;
+                float excelRight = (float) sheet.getMargin(org.apache.poi.ss.usermodel.PageMargin.RIGHT) * 72f;
+                float excelTop = (float) sheet.getMargin(org.apache.poi.ss.usermodel.PageMargin.TOP) * 72f;
+                float excelBottom = (float) sheet.getMargin(org.apache.poi.ss.usermodel.PageMargin.BOTTOM) * 72f;
+                if (excelLeft > 0) leftMargin = excelLeft;
+                if (excelRight > 0) rightMargin = excelRight;
+                if (excelTop > 0) topMargin = excelTop;
+                if (excelBottom > 0) bottomMargin = excelBottom;
+            }
+
+            doc.setMargins(topMargin, rightMargin, bottomMargin, leftMargin);
+
+            byte[] fontBytes = null;
+            try (InputStream fontIs = getClass().getClassLoader().getResourceAsStream("fonts/times.ttf")) {
+                if (fontIs != null) fontBytes = fontIs.readAllBytes();
+            }
+            com.itextpdf.kernel.font.PdfFont pdfFont;
+            if (fontBytes != null) {
+                pdfFont = com.itextpdf.kernel.font.PdfFontFactory.createFont(
+                        fontBytes, com.itextpdf.io.font.PdfEncodings.IDENTITY_H);
+                doc.setFont(pdfFont);
+            }
+
+            float fontScale = 1.0f;
+            doc.setFontSize(10f);
+
+            float[] colWidths = new float[maxCols];
+            for (int c = 0; c < maxCols; c++) {
+                colWidths[c] = (float) sheet.getColumnWidth(c);
+            }
+
+            com.itextpdf.layout.element.Table table = new com.itextpdf.layout.element.Table(colWidths);
+            table.setWidth(com.itextpdf.layout.properties.UnitValue.createPercentValue(100f));
+
+            boolean[][] visited = new boolean[sheet.getLastRowNum() + 2][maxCols + 2];
+
+            for (int r = 0; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) {
+                    for (int c = 0; c < maxCols; c++) {
+                        if (!visited[r][c]) {
+                            table.addCell(new com.itextpdf.layout.element.Cell().setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+                        }
+                    }
+                    continue;
+                }
+
+                for (int c = 0; c < maxCols; c++) {
+                    if (visited[r][c]) continue;
+
+                    Cell cell = row.getCell(c);
+                    org.apache.poi.ss.util.CellRangeAddress mergedRegion = null;
+                    for (int i = 0; i < sheet.getNumMergedRegions(); i++) {
+                        org.apache.poi.ss.util.CellRangeAddress region = sheet.getMergedRegion(i);
+                        if (region.isInRange(r, c)) {
+                            mergedRegion = region;
+                            break;
+                        }
+                    }
+
+                    com.itextpdf.layout.element.Cell pdfCell;
+                    if (mergedRegion != null) {
+                        int rSpan = mergedRegion.getLastRow() - mergedRegion.getFirstRow() + 1;
+                        int cSpan = mergedRegion.getLastColumn() - mergedRegion.getFirstColumn() + 1;
+                        pdfCell = new com.itextpdf.layout.element.Cell(rSpan, cSpan);
+                    } else {
+                        pdfCell = new com.itextpdf.layout.element.Cell();
+                    }
+                    pdfCell.setPadding(2f);
+
+                    if (cell != null && cell.getCellStyle() != null) {
+                        CellStyle style = cell.getCellStyle();
+                        int fontIdx = style.getFontIndex();
+                        Font font = sheet.getWorkbook().getFontAt(fontIdx);
+                        if (font != null) {
+                            float fSize = (float) font.getFontHeightInPoints() * fontScale;
+                            String cellStr = "";
+                            try {
+                                if (cell.getCellType() == CellType.STRING) cellStr = cell.getStringCellValue();
+                            } catch (Exception ignored) {}
+                            if (r >= sheet.getLastRowNum() - 8 && cellStr != null && cellStr.trim().length() > 15) {
+                                fSize = fSize * 0.75f;
+                            }
+                            pdfCell.setFontSize(fSize);
+                            if (font.getBold()) pdfCell.setBold();
+                            if (font.getItalic()) pdfCell.setItalic();
+                        }
+
+                        if (style.getAlignment() == org.apache.poi.ss.usermodel.HorizontalAlignment.CENTER) {
+                            pdfCell.setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER);
+                        } else if (style.getAlignment() == org.apache.poi.ss.usermodel.HorizontalAlignment.RIGHT) {
+                            pdfCell.setTextAlignment(com.itextpdf.layout.properties.TextAlignment.RIGHT);
+                        } else {
+                            pdfCell.setTextAlignment(com.itextpdf.layout.properties.TextAlignment.LEFT);
+                        }
+
+                      CellStyle bottomStyle = style;
+                      CellStyle rightStyle = style;
+
+                        if (mergedRegion != null) {
+                            Row bRow = sheet.getRow(mergedRegion.getLastRow());
+                            if (bRow != null) {
+                                Cell bCell = bRow.getCell(c);
+                                if (bCell != null && bCell.getCellStyle() != null) bottomStyle = bCell.getCellStyle();
+                            }
+                            Row rRow = sheet.getRow(r);
+                            if (rRow != null) {
+                                Cell rCell = rRow.getCell(mergedRegion.getLastColumn());
+                                if (rCell != null && rCell.getCellStyle() != null) rightStyle = rCell.getCellStyle();
+                            }
+                        }
+
+                        if (style.getBorderTop() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                            pdfCell.setBorderTop(new com.itextpdf.layout.borders.SolidBorder(com.itextpdf.kernel.colors.ColorConstants.BLACK, 0.5f));
+                        } else {
+                            pdfCell.setBorderTop(com.itextpdf.layout.borders.Border.NO_BORDER);
+                        }
+                        if (bottomStyle.getBorderBottom() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                            pdfCell.setBorderBottom(new com.itextpdf.layout.borders.SolidBorder(com.itextpdf.kernel.colors.ColorConstants.BLACK, 0.5f));
+                        } else {
+                            pdfCell.setBorderBottom(com.itextpdf.layout.borders.Border.NO_BORDER);
+                        }
+                        if (style.getBorderLeft() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                            pdfCell.setBorderLeft(new com.itextpdf.layout.borders.SolidBorder(com.itextpdf.kernel.colors.ColorConstants.BLACK, 0.5f));
+                        } else {
+                            pdfCell.setBorderLeft(com.itextpdf.layout.borders.Border.NO_BORDER);
+                        }
+                        if (rightStyle.getBorderRight() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                            pdfCell.setBorderRight(new com.itextpdf.layout.borders.SolidBorder(com.itextpdf.kernel.colors.ColorConstants.BLACK, 0.5f));
+                        } else {
+                            pdfCell.setBorderRight(com.itextpdf.layout.borders.Border.NO_BORDER);
+                        }
+                    } else {
+                        pdfCell.setBorder(com.itextpdf.layout.borders.Border.NO_BORDER);
+                    }
+
+                    String valText = "";
+                    if (cell != null) {
+                        switch (cell.getCellType()) {
+                            case STRING:
+                                valText = cell.getStringCellValue();
+                                break;
+                            case NUMERIC:
+                                if (org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell)) {
+                                    valText = cell.getDateCellValue().toString();
+                                } else {
+                                    double dVal = cell.getNumericCellValue();
+                                    if (cell.getCellStyle() != null && cell.getCellStyle().getDataFormatString() != null && cell.getCellStyle().getDataFormatString().contains("#,##0")) {
+                                        valText = new java.text.DecimalFormat("#,##0").format(dVal);
+                                    } else {
+                                        valText = formatDouble(dVal);
+                                    }
+                                }
+                                break;
+                            case FORMULA:
+                                try {
+                                    valText = cell.getStringCellValue();
+                                } catch (Exception fEx) {
+                                    try {
+                                        valText = formatDouble(cell.getNumericCellValue());
+                                    } catch (Exception fEx2) {
+                                        valText = cell.getCellFormula();
+                                    }
+                                }
+                                break;
+                            case BOOLEAN:
+                                valText = String.valueOf(cell.getBooleanCellValue());
+                                break;
+                            default:
+                                valText = "";
+                                break;
+                        }
+                    }
+
+                    pdfCell.add(new com.itextpdf.layout.element.Paragraph(valText));
+
+                    if (valText != null) {
+                        String clean = valText.trim();
+                        if (clean.contains("NGƯỜI LẬP") || clean.contains("Người lập") ||
+                            clean.startsWith("(Ký") || clean.contains("BỘ TRƯỞNG") ||
+                            clean.contains("CHỦ TỊCH") || clean.contains("ngày... tháng... năm") ||
+                            clean.contains("ngày … tháng … năm")) {
+                            pdfCell.setTextAlignment(com.itextpdf.layout.properties.TextAlignment.CENTER);
+                        }
+                    }
+
+                    if (mergedRegion != null) {
+                        for (int mr = mergedRegion.getFirstRow(); mr <= mergedRegion.getLastRow(); mr++) {
+                            for (int mc = mergedRegion.getFirstColumn(); mc <= mergedRegion.getLastColumn(); mc++) {
+                                if (mr < visited.length && mc < visited[mr].length) {
+                                    visited[mr][mc] = true;
+                                }
+                            }
+                        }
+                    }
+
+                    table.addCell(pdfCell);
+                }
+            }
+
+            doc.add(table);
+            doc.close();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            log.error("Failed to convert Excel to PDF", e);
+            throw new RuntimeException("Failed to convert Excel to PDF: " + e.getMessage(), e);
+        }
     }
 }

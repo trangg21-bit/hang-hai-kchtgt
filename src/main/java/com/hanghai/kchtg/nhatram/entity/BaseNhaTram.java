@@ -33,7 +33,7 @@ public abstract class BaseNhaTram {
     @Column(length = 1000)
     private String description;
 
-    private Long unitId;
+    private java.util.UUID unitId;
 
     private Boolean isActive;
 
