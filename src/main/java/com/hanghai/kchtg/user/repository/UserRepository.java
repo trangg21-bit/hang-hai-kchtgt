@@ -85,6 +85,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     long countByRoleId(@org.springframework.data.repository.query.Param("roleId") UUID roleId);
 
     /**
+     * Lấy id của tất cả người dùng đang giữ một vai trò (dùng để invalidate cache
+     * quyền khi permission của vai trò đó thay đổi).
+     */
+    @Query("SELECT u.id FROM User u JOIN u.roles r WHERE r.id = :roleId")
+    List<UUID> findIdsByRoleId(@org.springframework.data.repository.query.Param("roleId") UUID roleId);
+
+    /**
      * Thống kê số lượng người dùng hoạt động theo từng vai trò (tránh N+1 query).
      */
     @Query("SELECT r.id, COUNT(u) FROM User u JOIN u.roles r WHERE u.status <> com.hanghai.kchtg.user.entity.UserStatus.DELETED GROUP BY r.id")

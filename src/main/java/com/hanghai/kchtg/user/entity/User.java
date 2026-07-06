@@ -245,6 +245,27 @@ public class User extends BaseEntity implements java.security.Principal {
     @Column(name = "password_strength_score")
     private Integer passwordStrengthScore;
 
+    /**
+     * Monotonic version for permission invalidation.
+     * Incremented on every role/group/override change to force JWT re-issuance.
+     */
+    @Column(name = "permission_version")
+    private Integer permissionVersion = 0;
+
+    /**
+     * Get the current permission version.
+     */
+    public Integer getPermissionVersion() {
+        return permissionVersion;
+    }
+
+    /**
+     * Increment the permission version.
+     */
+    public void incrementPermissionVersion() {
+        this.permissionVersion = (this.permissionVersion == null) ? 1 : this.permissionVersion + 1;
+    }
+
     @Override
     @jakarta.persistence.Transient
     public String getName() {
