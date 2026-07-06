@@ -10,15 +10,15 @@ M-001
 
 ## Status
 
-in-progress — current stage: intake
+closed — current stage: closed
 
 ## Features in scope (5)
 
-- **F-001** Quan ly tai khoan — status: `proposed`
-- **F-001** Quản lý tài khoản người dùng — status: `proposed`
-- **F-002** Quản lý nhóm người dùng — status: `proposed`
-- **F-003** Quản lý đơn vị — status: `proposed`
-- **F-005** Quản lý log truy cập — status: `proposed`
+- **F-001** Quản lý tài khoản người dùng — status: `done`
+- **F-002** Quản lý nhóm người dùng — status: `done`
+- **F-003** Quản lý đơn vị — status: `done`
+- **F-005** Quản lý log truy cập — status: `done`
+- **F-006** Quản lý admin — status: `done`
 
 ## Dependencies (module-level)
 

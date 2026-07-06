@@ -102,6 +102,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             : List.of();
 
                     User user = userRepository.findByUsername(username).orElse(null);
+
+                    // Instant permission revocation: reject tokens whose permission
+                    // snapshot is older than the user's current version. When an admin
+                    // changes a user's role, the user's permission_version is bumped, so
+                    // every previously-issued token becomes stale on its next request and
+                    // the user is forced to re-authenticate (fail-closed).
+                    if (user != null && isPermissionVersionStale(token, user)) {
+                        log.warn("Rejected stale token for user {} - permissions changed since issuance", username);
+                        SecurityContextHolder.clearContext();
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.setContentType("application/json;charset=UTF-8");
+                        response.getWriter().write(
+                            "{\"success\":false,\"message\":\"Phiên đăng nhập đã hết hiệu lực do thay đổi phân quyền. Vui lòng đăng nhập lại.\"}");
+                        return;
+                    }
+
                     Object principal = user != null ? user : username;
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(principal, null, authorities);
@@ -163,6 +179,26 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
             return false;
         }).orElse(false);
+    }
+
+    /**
+     * Checks whether the token's permission snapshot is stale relative to the user.
+     * <p>
+     * The token carries a {@code permission_version} claim captured at issuance.
+     * The user row holds the current version, bumped whenever the user's role
+     * assignment changes. A token is stale only when it carries a version strictly
+     * older than the current one. Tokens without the claim (issued before this
+     * feature) are treated as valid for backward compatibility.
+     *
+     * @return true if the token is stale and must be rejected
+     */
+    private boolean isPermissionVersionStale(String token, User user) {
+        Integer tokenVersion = jwtUtil.extractPermissionVersion(token);
+        if (tokenVersion == null) {
+            return false;
+        }
+        int currentVersion = user.getPermissionVersion() == null ? 0 : user.getPermissionVersion();
+        return tokenVersion < currentVersion;
     }
 
     /**
