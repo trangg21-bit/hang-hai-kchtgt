@@ -1,9 +1,5 @@
 package com.hanghai.kchtg.seeder;
 
-import com.hanghai.kchtg.admin.entity.AdminAccount;
-import com.hanghai.kchtg.admin.entity.AdminRole;
-import com.hanghai.kchtg.admin.entity.AdminStatus;
-import com.hanghai.kchtg.admin.repository.AdminAccountRepository;
 import com.hanghai.kchtg.dataconnection.entity.DataConnection;
 import com.hanghai.kchtg.dataconnection.enums.AuthType;
 import com.hanghai.kchtg.dataconnection.enums.ConnectionStatus;
@@ -66,7 +62,6 @@ public class DataSeeder implements CommandLineRunner {
     private final RoleRepository roleRepo;
     private final UserRepository userRepo;
     private final DataConnectionRepository connectionRepo;
-    private final AdminAccountRepository adminAccountRepo;
     private final GroupRepository groupRepo;
     private final GroupMemberRepository groupMemberRepo;
     private final OrgUnitRepository orgUnitRepo;
@@ -88,7 +83,6 @@ public class DataSeeder implements CommandLineRunner {
         seedUsers();
         seedBeaconLights();
         seedBuoys();
-        seedAdminAccounts();
         seedDataConnections();
 
         log.info("✅ Data seeding completed successfully!");
@@ -359,34 +353,6 @@ public class DataSeeder implements CommandLineRunner {
             }
         }
         log.info("✅ Seeded 15 Users successfully");
-    }
-
-    private void seedAdminAccounts() {
-        if (adminAccountRepo.count() > 0) {
-            log.info("⏭️ Admin accounts already exist, skipping...");
-            return;
-        }
-
-        log.info("📦 Seeding AdminAccounts for default users...");
-        userRepo.findAll().forEach(user -> {
-            String role = user.getPrimaryRoleCode();
-            if ("ROLE_SYSTEM_ADMIN".equals(role)) {
-                AdminAccount admin = new AdminAccount();
-                admin.setUser(user);
-                admin.setRole(AdminRole.SUPER_ADMIN);
-                admin.setStatus(AdminStatus.ACTIVE);
-                admin.setModules(List.of());
-                adminAccountRepo.save(admin);
-            } else if ("ROLE_ADMIN".equals(role)) {
-                AdminAccount admin = new AdminAccount();
-                admin.setUser(user);
-                admin.setRole(AdminRole.MODULE_ADMIN);
-                admin.setStatus(AdminStatus.ACTIVE);
-                admin.setModules(List.of());
-                adminAccountRepo.save(admin);
-            }
-        });
-        log.info("✅ Seeded {} AdminAccounts", adminAccountRepo.count());
     }
 
     private void seedDataConnections() {
