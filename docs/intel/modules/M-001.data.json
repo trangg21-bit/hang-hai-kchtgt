@@ -1,7 +1,7 @@
 {
   "module_id": "M-001",
   "module_name": "Quan tri he thong",
-  "description": "Quan ly tai khoan, nhom, don vi, admin, log, bieu tuong, ket noi lien thong",
+  "description": "Quan ly tai khoan nguoi dung, nhom, don vi, log truy cap",
   "stack": [
     "Spring Boot 17+",
     "MSSQL Server 2022",
@@ -67,23 +67,6 @@
       ]
     },
     {
-      "id": "F-004",
-      "name": "Quan ly tai khoan admin",
-      "module": "M-001",
-      "confidence": "high",
-      "priority": "P0",
-      "source": "UC-004, line 3252-3254",
-      "scope": "Quan tri he thong - Tao, phe duyet, khoa, phan quyen admin",
-      "business_rules": [
-        "Admin 3 muc: thuong, su dung, van hanh",
-        "Moi admin co quyen gioi han"
-      ],
-      "acceptance_criteria": [
-        "Quan ly toan bo tai khoan admin",
-        "Phan quyen theo muc"
-      ]
-    },
-    {
       "id": "F-005",
       "name": "Quan ly log truy cap",
       "module": "M-001",
@@ -98,41 +81,6 @@
       "acceptance_criteria": [
         "Tra cuu duoc 5 nhom log",
         "Hien thi du 5 truong log"
-      ]
-    },
-    {
-      "id": "F-006",
-      "name": "Quan ly bieu tuong ban do",
-      "module": "M-001",
-      "confidence": "high",
-      "priority": "P1",
-      "source": "UC-006, line 3258-3260",
-      "scope": "Quan tri he thong - Quan ly bieu tuong doi tuong GIS tren ban do",
-      "business_rules": [
-        "Bieu tuong theo tung loai doi tuong"
-      ],
-      "acceptance_criteria": [
-        "Them/sua/xoa bieu tuong",
-        "Gan bieu tuong cho doi tuong GIS"
-      ]
-    },
-    {
-      "id": "F-007",
-      "name": "Quan ly ket noi lien thong chia du lieu",
-      "module": "M-001",
-      "confidence": "high",
-      "priority": "P1",
-      "source": "UC-007, line 3261-3263",
-      "scope": "Quan tri he thong - Cau hinh ket noi LGSP, NDXP, API",
-      "business_rules": [
-        "Ket noi qua HTTPS/TLS",
-        "JWT xac thuc cho moi ket noi",
-        "IP whitelist de kiem soat truy cap"
-      ],
-      "acceptance_criteria": [
-        "Cau hinh ket noi thanh cong",
-        "Xem lich su ket noi",
-        "Cap nhat thong tin ket noi"
       ]
     }
   ],
