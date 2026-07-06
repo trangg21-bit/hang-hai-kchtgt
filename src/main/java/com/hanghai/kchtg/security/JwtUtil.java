@@ -127,6 +127,7 @@ public class JwtUtil {
                 .permissions(permissions)
                 .claim("role_level", resolveRoleLevel(role))
                 .claim("totp_enabled", Boolean.TRUE.equals(user.getTotpEnabled()))
+                .claim("permission_version", user.getPermissionVersion())
                 .build();
 
         return Jwts.builder()
