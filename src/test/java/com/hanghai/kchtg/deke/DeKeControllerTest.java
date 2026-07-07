@@ -171,7 +171,16 @@ class DeKeControllerTest {
         verify(service, times(1)).approveC2(eq(1L), any(), anyString());
     }
 
-    // ── getApprovalHistory ──────────────────────────────────────────────
+    // B1 regression: approver identity is bound from the authenticated principal
+    // (authentication.getName() == "testuser"), never from the request body — the
+    // PheDuyetRequest no longer carries an approver field, so spoofing is impossible.
+    @Test void approveC1_bindsApproverFromAuthentication() {
+        when(service.approveC1(eq(1L), any(), anyString()))
+                .thenReturn(PheDuyetResponse.builder().deKeId(1L).capPheDuyet(1).trangThai("UNDER_REVIEW").build());
+        controller.approveC1(1L, PheDuyetRequest.builder().quyetDinh("APPROVED").build(), authentication);
+        verify(service).approveC1(eq(1L), any(), eq("testuser"));
+    }
+
 
     @Test void getApprovalHistory_shouldReturnEntries() {
         when(service.getApprovalHistory(1L)).thenReturn(List.of(

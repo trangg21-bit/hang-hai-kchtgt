@@ -157,6 +157,24 @@ class LuongHangHaiControllerTest {
                 .andExpect(jsonPath("$.data.trangThai").value("APPROVED"));
     }
 
+    // B1 regression: approver identity must come from the authenticated principal,
+    // NOT from the request body. Posts a spoofed 'nguoiPheDuyet' and asserts the
+    // service still receives the authenticated username ("admin" per @WithMockUser).
+    @Test void approveC1_bindsApproverFromAuthentication_ignoresClientSuppliedName() throws Exception {
+        when(service.approveC1(eq(1L), any(), anyString()))
+                .thenReturn(PheDuyetResponse.builder().luongHangHaiId(1L).capPheDuyet(1).trangThai("UNDER_REVIEW").build());
+        // Raw body includes a spoofed approver name that no longer exists on PheDuyetRequest.
+        String spoofedBody = "{\"trangThai\":\"APPROVED\",\"nguoiPheDuyet\":\"HACKER\",\"lyDo\":\"x\"}";
+        var principal = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("admin", null);
+        mockMvc.perform(post("/api/v1/luong-hang-hai/1/approve/c1")
+                .principal(principal)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(spoofedBody))
+                .andExpect(status().isOk());
+        verify(service).approveC1(eq(1L), any(), eq("admin"));
+        verify(service, never()).approveC1(eq(1L), any(), eq("HACKER"));
+    }
+
     @Test void history_shouldReturnEntries() throws Exception {
         when(service.getApprovalHistory(1L)).thenReturn(List.of(
                 HistoryEntry.builder().luongHangHaiId(1L).trangThai("PROPOSED").lyDo("Tao moi").build()));
