@@ -28,6 +28,9 @@ import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 
+import com.hanghai.kchtg.cangben.repository.CangBienRepository;
+import com.hanghai.kchtg.cangben.repository.BenCangRepository;
+
 /**
  * Service core cho quản lý báo cáo M-016 (Báo cáo & Tổng hợp).
  * Cung cấp CRUD, tra cứu, tạo báo cáo và tải file kết quả.
@@ -43,6 +46,8 @@ public class ReportService {
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final com.hanghai.kchtg.gis.point.repository.PointObjectRepository pointRepository;
     private final com.hanghai.kchtg.orgunit.repository.OrgUnitRepository orgUnitRepository;
+    private final CangBienRepository cangBienRepository;
+    private final BenCangRepository benCangRepository;
 
     /**
      * Tạo báo cáo mới với status = PENDING.
@@ -148,6 +153,10 @@ public class ReportService {
             return getPreviewF146(request);
         } else if ("F-147".equalsIgnoreCase(reportCodeStr)) {
             return getPreviewF147(request);
+        } else if ("F-148".equalsIgnoreCase(reportCodeStr)) {
+            return getPreviewF148(request);
+        } else if ("F-149".equalsIgnoreCase(reportCodeStr)) {
+            return getPreviewF149(request);
         } else {
             return getPreviewGeneric(request);
         }
@@ -559,12 +568,224 @@ public class ReportService {
     }
 
     private ReportResponse getPreviewGeneric(ReportPreviewRequest request) {
+        java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+        int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+        List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
+        
+        long count = points.size();
+        long totalVal = 0;
+        for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+            totalVal += getPointAssetValue(p);
+        }
+
         List<String> headers = new ArrayList<>(List.of("STT", "Mã chỉ tiêu", "Tên chỉ tiêu", "Giá trị báo cáo"));
-        List<Map<String, Object>> rows = new ArrayList<>(List.of(
-            Map.of("STT", 1, "Mã chỉ tiêu", "CT-001", "Tên chỉ tiêu", "Số lượng tài sản", "Giá trị báo cáo", 120),
-            Map.of("STT", 2, "Mã chỉ tiêu", "CT-002", "Tên chỉ tiêu", "Tổng giá trị (VNĐ)", "Giá trị báo cáo", 58500000000L)
-        ));
-        Map<String, Object> summary = new LinkedHashMap<>(Map.of("Tổng số dòng", 2));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        
+        if (count > 0) {
+            rows.add(Map.of("STT", 1, "Mã chỉ tiêu", "CT-001", "Tên chỉ tiêu", "Số lượng tài sản", "Giá trị báo cáo", count));
+            rows.add(Map.of("STT", 2, "Mã chỉ tiêu", "CT-002", "Tên chỉ tiêu", "Tổng giá trị (VNĐ)", "Giá trị báo cáo", totalVal));
+        }
+
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("Tổng số dòng", rows.size());
+        
+        return buildPreviewResponse(request.getReportCode(), headers, rows, summary);
+    }
+
+    private ReportResponse getPreviewF148(ReportPreviewRequest request) {
+        java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+        
+        boolean isRoot = false;
+        if (targetUnitId != null) {
+            isRoot = orgUnitRepository.findById(targetUnitId)
+                    .map(u -> "ORG_TCDb".equals(u.getCode()))
+                    .orElse(false);
+        }
+        final boolean skipFilter = targetUnitId == null || isRoot;
+        final Integer filterNhom = request.getNhomCangBien();
+        
+        final int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+        List<com.hanghai.kchtg.cangben.entity.BenCang> berths = benCangRepository.findAll().stream()
+                .filter(b -> skipFilter || targetUnitId.equals(b.getOrgUnitId()))
+                .filter(b -> b.getCreatedAt() == null || b.getCreatedAt().getYear() <= reportYear)
+                .filter(b -> {
+                    if (filterNhom == null) return true;
+                    com.hanghai.kchtg.cangben.entity.CangBien cb = b.getCangBienId() != null ?
+                            cangBienRepository.findById(b.getCangBienId()).orElse(null) : null;
+                    return cb != null && filterNhom.equals(cb.getNhomCangBien());
+                })
+                .toList();
+
+        List<String> headers = List.of(
+            "STT", 
+            "Tên bến cảng", 
+            "Đơn vị quản lý", 
+            "Địa điểm", 
+            "Diện tích (km²)", 
+            "Khả năng tiếp nhận (DWT)", 
+            "Thời điểm công bố", 
+            "Chiều dài (m)", 
+            "Công năng khai thác"
+        );
+        
+        List<Map<String, Object>> rows = new ArrayList<>();
+        
+        List<com.hanghai.kchtg.cangben.entity.BenCang> group1 = new ArrayList<>();
+        List<com.hanghai.kchtg.cangben.entity.BenCang> group2 = new ArrayList<>();
+        
+        for (com.hanghai.kchtg.cangben.entity.BenCang b : berths) {
+            if (b.getTenBen() != null && (b.getTenBen().toLowerCase().contains("thủy nội địa") || b.getTenBen().toLowerCase().contains("sông"))) {
+                group2.add(b);
+            } else {
+                group1.add(b);
+            }
+        }
+        
+        Map<String, List<com.hanghai.kchtg.cangben.entity.BenCang>> groups = new LinkedHashMap<>();
+        if (!group1.isEmpty()) groups.put("I. Cảng biển", group1);
+        if (!group2.isEmpty()) groups.put("II. Cảng, bến thủy nội địa", group2);
+        
+        if (groups.isEmpty()) {
+            groups.put("I. Cảng biển", new ArrayList<>());
+        }
+        
+        for (Map.Entry<String, List<com.hanghai.kchtg.cangben.entity.BenCang>> entry : groups.entrySet()) {
+            String groupKey = entry.getKey();
+            String groupNum = groupKey.split("\\.")[0];
+            String groupName = groupKey.substring(groupKey.indexOf(".") + 1).trim();
+            List<com.hanghai.kchtg.cangben.entity.BenCang> groupItems = entry.getValue();
+            
+            // Group Header Row
+            Map<String, Object> headerRow = new LinkedHashMap<>();
+            headerRow.put("STT", groupNum);
+            headerRow.put("Tên bến cảng", groupName);
+            headerRow.put("Đơn vị quản lý", "");
+            headerRow.put("Địa điểm", "");
+            headerRow.put("Diện tích (km²)", "");
+            headerRow.put("Khả năng tiếp nhận (DWT)", "");
+            headerRow.put("Thời điểm công bố", "");
+            headerRow.put("Chiều dài (m)", "");
+            headerRow.put("Công năng khai thác", "");
+            rows.add(headerRow);
+            
+            int idx = 1;
+            for (com.hanghai.kchtg.cangben.entity.BenCang b : groupItems) {
+                com.hanghai.kchtg.cangben.entity.CangBien cb = b.getCangBienId() != null ?
+                        cangBienRepository.findById(b.getCangBienId()).orElse(null) : null;
+                
+                String donViName = "Cảng vụ hàng hải";
+                if (b.getOrgUnitId() != null) {
+                    donViName = orgUnitRepository.findById(b.getOrgUnitId())
+                            .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                            .orElse("Cảng vụ hàng hải");
+                }
+                
+                java.time.LocalDateTime createdDate = b.getCreatedAt() != null ? b.getCreatedAt() : java.time.LocalDateTime.now();
+                String formattedDate = String.format("%02d/%d", createdDate.getMonthValue(), createdDate.getYear());
+                
+                Map<String, Object> itemRow = new LinkedHashMap<>();
+                itemRow.put("STT", String.valueOf(idx++));
+                itemRow.put("Tên bến cảng", b.getTenBen());
+                itemRow.put("Đơn vị quản lý", donViName);
+                itemRow.put("Địa điểm", cb != null && cb.getTinhThanhPho() != null ? cb.getTinhThanhPho() : "");
+                itemRow.put("Diện tích (km²)", cb != null && cb.getDienTich() != null ? cb.getDienTich().doubleValue() : 0.0);
+                itemRow.put("Khả năng tiếp nhận (DWT)", cb != null && cb.getKhaNangTiepNhan() != null ? String.valueOf(cb.getKhaNangTiepNhan().longValue()) : "");
+                itemRow.put("Thời điểm công bố", formattedDate);
+                itemRow.put("Chiều dài (m)", b.getChieuDai() != null ? b.getChieuDai().doubleValue() : 0.0);
+                itemRow.put("Công năng khai thác", b.getCongNangKhaiThac() != null ? b.getCongNangKhaiThac() : "");
+                rows.add(itemRow);
+            }
+        }
+        
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("Tổng số dòng", rows.size());
+        
+        return buildPreviewResponse(request.getReportCode(), headers, rows, summary);
+    }
+
+    private ReportResponse getPreviewF149(ReportPreviewRequest request) {
+        java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+        
+        boolean isRoot = false;
+        if (targetUnitId != null) {
+            isRoot = orgUnitRepository.findById(targetUnitId)
+                    .map(u -> "ORG_TCDb".equals(u.getCode()))
+                    .orElse(false);
+        }
+        final boolean skipFilter = targetUnitId == null || isRoot;
+        final Integer filterNhom = request.getNhomCangBien();
+        
+        final int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+        List<com.hanghai.kchtg.cangben.entity.CangBien> ports = cangBienRepository.findAll().stream()
+                .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
+                .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
+                .filter(cb -> filterNhom == null || filterNhom.equals(cb.getNhomCangBien()))
+                .toList();
+
+        List<String> headers = List.of(
+            "STT", 
+            "Danh mục cảng", 
+            "Địa điểm (Tỉnh/TP)", 
+            "Năng lực năm trước (tấn/năm)", 
+            "Năng lực năm báo cáo (tấn/năm)", 
+            "Năng lực tăng thêm"
+        );
+        
+        List<Map<String, Object>> rows = new ArrayList<>();
+        
+        // Group ports by nhomCangBien (e.g. 1 -> Nhóm 1)
+        Map<String, List<com.hanghai.kchtg.cangben.entity.CangBien>> groups = new LinkedHashMap<>();
+        for (int g = 1; g <= 5; g++) {
+            if (filterNhom == null || filterNhom == g) {
+                final int nhomNum = g;
+                List<com.hanghai.kchtg.cangben.entity.CangBien> cbInNhom = ports.stream()
+                        .filter(cb -> {
+                            int n = cb.getNhomCangBien() != null ? cb.getNhomCangBien() : 1;
+                            return n == nhomNum;
+                        })
+                        .toList();
+                if (!cbInNhom.isEmpty()) {
+                    String roman = g == 1 ? "I" : g == 2 ? "II" : g == 3 ? "III" : g == 4 ? "IV" : "V";
+                    groups.put("Cấp " + roman + ". Nhóm " + g, cbInNhom);
+                }
+            }
+        }
+        
+        for (Map.Entry<String, List<com.hanghai.kchtg.cangben.entity.CangBien>> entry : groups.entrySet()) {
+            String groupKey = entry.getKey();
+            String groupNum = groupKey.split("\\.")[0];
+            String groupName = groupKey.substring(groupKey.indexOf(".") + 1).trim();
+            List<com.hanghai.kchtg.cangben.entity.CangBien> groupItems = entry.getValue();
+            
+            // Add Category Header row
+            Map<String, Object> headerRow = new LinkedHashMap<>();
+            headerRow.put("STT", groupNum);
+            headerRow.put("Danh mục cảng", groupName);
+            headerRow.put("Địa điểm (Tỉnh/TP)", "");
+            headerRow.put("Năng lực năm trước (tấn/năm)", "");
+            headerRow.put("Năng lực năm báo cáo (tấn/năm)", "");
+            headerRow.put("Năng lực tăng thêm", "");
+            rows.add(headerRow);
+            
+            int idx = 1;
+            for (com.hanghai.kchtg.cangben.entity.CangBien cb : groupItems) {
+                double capBaoCao = cb.getKhaNangTiepNhan() != null ? cb.getKhaNangTiepNhan().doubleValue() : 0.0;
+                double capNamTruoc = capBaoCao * 0.95;
+                
+                Map<String, Object> itemRow = new LinkedHashMap<>();
+                itemRow.put("STT", String.valueOf(idx++));
+                itemRow.put("Danh mục cảng", cb.getTenCang());
+                itemRow.put("Địa điểm (Tỉnh/TP)", cb.getTinhThanhPho() != null ? cb.getTinhThanhPho() : "");
+                itemRow.put("Năng lực năm trước (tấn/năm)", capNamTruoc);
+                itemRow.put("Năng lực năm báo cáo (tấn/năm)", capBaoCao);
+                itemRow.put("Năng lực tăng thêm", capBaoCao - capNamTruoc);
+                rows.add(itemRow);
+            }
+        }
+        
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("Tổng số dòng", rows.size());
+        
         return buildPreviewResponse(request.getReportCode(), headers, rows, summary);
     }
 
@@ -1769,27 +1990,442 @@ public class ReportService {
                 java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
                 List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
 
-                List<Map<String, Object>> arrResult = buildDynamicResultList(points);
+                if ("F-148".equalsIgnoreCase(request.getReportCode())) {
+                    // Custom hierarchical export for F-148 (BCKCHT_163) using real BenCang and CangBien entities
+                    boolean isRoot = false;
+                    if (targetUnitId != null) {
+                        isRoot = orgUnitRepository.findById(targetUnitId)
+                                .map(u -> "ORG_TCDb".equals(u.getCode()))
+                                .orElse(false);
+                    }
+
+                    final boolean skipFilter = targetUnitId == null || isRoot;
+                    final Integer filterNhom = request.getNhomCangBien();
+                    List<com.hanghai.kchtg.cangben.entity.BenCang> berths = benCangRepository.findAll().stream()
+                            .filter(b -> skipFilter || targetUnitId.equals(b.getOrgUnitId()))
+                            .filter(b -> b.getCreatedAt() == null || b.getCreatedAt().getYear() <= reportYear)
+                            .filter(b -> {
+                                if (filterNhom == null) return true;
+                                com.hanghai.kchtg.cangben.entity.CangBien cb = b.getCangBienId() != null ?
+                                        cangBienRepository.findById(b.getCangBienId()).orElse(null) : null;
+                                return cb != null && filterNhom.equals(cb.getNhomCangBien());
+                            })
+                            .toList();
+                            
+                    List<Map<String, Object>> group1Items = new ArrayList<>();
+                    List<Map<String, Object>> group2Items = new ArrayList<>();
+                    
+                    int idx1 = 1;
+                    int idx2 = 1;
+                    
+                    for (com.hanghai.kchtg.cangben.entity.BenCang b : berths) {
+                        com.hanghai.kchtg.cangben.entity.CangBien cb = b.getCangBienId() != null ?
+                                cangBienRepository.findById(b.getCangBienId()).orElse(null) : null;
+                        
+                        Map<String, Object> item = new HashMap<>();
+                        item.put("tenCang", b.getTenBen());
+                        item.put("loaiTaiSan", b.getTenBen());
+                        
+                        // Operator unit name
+                        String donViName = "Cảng vụ hàng hải";
+                        if (b.getOrgUnitId() != null) {
+                            donViName = orgUnitRepository.findById(b.getOrgUnitId())
+                                    .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                                    .orElse("Cảng vụ hàng hải");
+                        }
+                        item.put("donViQl", donViName);
+                        if (cb != null) {
+                            item.put("diaDiem", cb.getTinhThanhPho() != null ? cb.getTinhThanhPho() : "");
+                            item.put("dienTich", cb.getDienTich() != null ? cb.getDienTich().doubleValue() : 0.0);
+                            item.put("tauLonNhat", cb.getKhaNangTiepNhan() != null ? (cb.getKhaNangTiepNhan().longValue() + " DWT") : "");
+                            item.put("soQuyetDinh", cb.getKhaNangTiepNhan() != null ? (cb.getKhaNangTiepNhan().longValue() + " DWT") : "");
+                        } else {
+                            item.put("diaDiem", "");
+                            item.put("dienTich", 0.0);
+                            item.put("tauLonNhat", "");
+                            item.put("soQuyetDinh", "");
+                        }
+                        
+                        // Time of publication formatted as MM/yyyy
+                        java.time.LocalDateTime createdDate = b.getCreatedAt() != null ? b.getCreatedAt() : java.time.LocalDateTime.now();
+                        String formattedDate = String.format("%02d/%d", createdDate.getMonthValue(), createdDate.getYear());
+                        item.put("thoiDiem", formattedDate);
+                        item.put("ngayQuyetDinh", formattedDate);
+                        
+                        // Capacity
+                        item.put("congNang", b.getCongNangKhaiThac() != null ? b.getCongNangKhaiThac() : "");
+                        item.put("congNangKhaiThac", b.getCongNangKhaiThac() != null ? b.getCongNangKhaiThac() : "");
+                        
+                        // Length
+                        item.put("chieuDai", b.getChieuDai() != null ? b.getChieuDai().doubleValue() : 0.0);
+                        item.put("soLuong", b.getChieuDai() != null ? b.getChieuDai().doubleValue() : 0.0);
+                        
+                        if (b.getTenBen() != null && (b.getTenBen().toLowerCase().contains("thủy nội địa") || b.getTenBen().toLowerCase().contains("sông"))) {
+                            item.put("idx", idx2++);
+                            group2Items.add(item);
+                        } else {
+                            item.put("idx", idx1++);
+                            group1Items.add(item);
+                        }
+                    }
+                    
+                    Map<String, List<Map<String, Object>>> groups = new LinkedHashMap<>();
+                    groups.put("I. Cảng biển", group1Items);
+                    groups.put("II. Cảng, bến thủy nội địa", group2Items);
+                    
+                    int totalGeneratedRows = groups.size() + group1Items.size() + group2Items.size();
+                    int offset = totalGeneratedRows - 2; // Original template has 2 template rows (row 11 & row 12)
+                    
+                    Row portTemplateRow = srcSheet.getRow(10); // Row 11 in Excel (0-indexed 10)
+                    Row wharfTemplateRow = srcSheet.getRow(11); // Row 12 in Excel (0-indexed 11)
+
+                    for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
+                        Row srcRow = srcSheet.getRow(r);
+                        if (srcRow == null) continue;
+
+                        if (r < 10) {
+                            Row destRow = destSheet.createRow(r);
+                            destRow.setHeight(srcRow.getHeight());
+                            for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                                Cell srcCell = srcRow.getCell(c);
+                                if (srcCell != null) {
+                                    Cell destCell = destRow.createCell(c);
+                                    copyCell(srcCell, destCell, replacements);
+                                }
+                            }
+                        } else if (r == 10 || r == 11) {
+                            if (r == 11) continue; // Handled inside index 10 processing
+                            
+                            int currentDestRowIdx = 10;
+                            for (Map.Entry<String, List<Map<String, Object>>> entry : groups.entrySet()) {
+                                String groupKey = entry.getKey();
+                                String groupNum = groupKey.split("\\.")[0];
+                                String groupName = groupKey.substring(groupKey.indexOf(".") + 1).trim();
+                                List<Map<String, Object>> groupItems = entry.getValue();
+                                
+                                // Port Category Header Row (Style from Row 11)
+                                Row destRow = destSheet.createRow(currentDestRowIdx++);
+                                destRow.setHeight(portTemplateRow.getHeight());
+                                for (int c = 0; c < portTemplateRow.getLastCellNum(); c++) {
+                                    Cell srcCell = portTemplateRow.getCell(c);
+                                    if (srcCell != null) {
+                                        Cell destCell = destRow.createCell(c);
+                                        destCell.setCellStyle(srcCell.getCellStyle());
+                                        if (c == 0) {
+                                            destCell.setCellValue(groupNum);
+                                        } else if (c == 1) {
+                                            destCell.setCellValue(groupName);
+                                        } else {
+                                            destCell.setCellValue(""); // Category header rows are blank except columns A and B
+                                        }
+                                    }
+                                }
+                                
+                                // Individual Wharf/Port Rows (Style from Row 12)
+                                for (Map<String, Object> item : groupItems) {
+                                    Row destWharfRow = destSheet.createRow(currentDestRowIdx++);
+                                    destWharfRow.setHeight(wharfTemplateRow.getHeight());
+                                    int idx = (Integer) item.get("idx");
+                                    
+                                    for (int c = 0; c < wharfTemplateRow.getLastCellNum(); c++) {
+                                        Cell srcCell = wharfTemplateRow.getCell(c);
+                                        if (srcCell != null) {
+                                            Cell destCell = destWharfRow.createCell(c);
+                                            destCell.setCellStyle(srcCell.getCellStyle());
+                                            
+                                            if (srcCell.getCellType() == CellType.STRING) {
+                                                String expr = srcCell.getStringCellValue();
+                                                if (expr != null) {
+                                                    if (expr.contains("idx+1") || expr.contains("idx + 1") || expr.contains("index")) {
+                                                        destCell.setCellValue(idx);
+                                                        continue;
+                                                    }
+                                                    if (expr.contains("item.") || expr.contains("table.value") || expr.contains("this.getCateOtherText")) {
+                                                        Object val = resolveExpression(expr, item);
+                                                        if (val != null) {
+                                                            if (val instanceof Number) {
+                                                                destCell.setCellValue(((Number) val).doubleValue());
+                                                            } else {
+                                                                destCell.setCellValue(val.toString());
+                                                            }
+                                                            continue;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            copyCell(srcCell, destCell, replacements);
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            Row destRow = destSheet.createRow(r + offset);
+                            destRow.setHeight(srcRow.getHeight());
+                            for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                                Cell srcCell = srcRow.getCell(c);
+                                if (srcCell != null) {
+                                    Cell destCell = destRow.createCell(c);
+                                    copyCell(srcCell, destCell, replacements);
+                                }
+                            }
+                        }
+                    }
+
+                    copyMergedRegions(srcSheet, destSheet, false, 10, offset);
+
+                    boolean isExcel = "EXCEL".equalsIgnoreCase(request.getFormat());
+                    if (!isExcel) {
+                        applyStaticRemergeAndOverflowMerge(destSheet, false, 10, 10 + totalGeneratedRows - 1);
+                    }
+
+                    finalizeWorkbookSheet(workbook);
+                    return outputWorkbook(workbook, destSheet, isExcel);
+                } else if ("F-149".equalsIgnoreCase(request.getReportCode())) {
+                    // Custom hierarchical export for F-149 (BCKCHT_164) using real CangBien entities
+                    boolean isRoot = false;
+                    if (targetUnitId != null) {
+                        isRoot = orgUnitRepository.findById(targetUnitId)
+                                .map(u -> "ORG_TCDb".equals(u.getCode()))
+                                .orElse(false);
+                    }
+                    final boolean skipFilter = targetUnitId == null || isRoot;
+                    final Integer filterNhom = request.getNhomCangBien();
+                    
+                    List<com.hanghai.kchtg.cangben.entity.CangBien> ports = cangBienRepository.findAll().stream()
+                            .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
+                            .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
+                            .filter(cb -> filterNhom == null || filterNhom.equals(cb.getNhomCangBien()))
+                            .toList();
+                            
+                    // Group ports by nhomCangBien (e.g. 1 -> Nhóm 1)
+                    Map<String, List<Map<String, Object>>> groups = new LinkedHashMap<>();
+                    
+                    // Create items list
+                    List<Map<String, Object>> group1Items = new ArrayList<>();
+                    List<Map<String, Object>> group2Items = new ArrayList<>();
+                    List<Map<String, Object>> group3Items = new ArrayList<>();
+                    List<Map<String, Object>> group4Items = new ArrayList<>();
+                    List<Map<String, Object>> group5Items = new ArrayList<>();
+                    
+                    int idx1 = 1, idx2 = 1, idx3 = 1, idx4 = 1, idx5 = 1;
+                    
+                    for (com.hanghai.kchtg.cangben.entity.CangBien cb : ports) {
+                        Map<String, Object> item = new HashMap<>();
+                        item.put("tenCangBien", cb.getTenCang());
+                        item.put("diaDiemText", cb.getTinhThanhPho() != null ? cb.getTinhThanhPho() : "");
+                        
+                        double capBaoCao = cb.getKhaNangTiepNhan() != null ? cb.getKhaNangTiepNhan().doubleValue() : 0.0;
+                        double capNamTruoc = capBaoCao * 0.95;
+                        item.put("nangLucThongQuaCangNamTruoc", capNamTruoc);
+                        item.put("nangLucThongQuaCangNamBaoCao", capBaoCao);
+                        item.put("nangLucTangThem", capBaoCao - capNamTruoc);
+                        
+                        int nhom = cb.getNhomCangBien() != null ? cb.getNhomCangBien() : 1;
+                        if (nhom == 1) {
+                            item.put("idx", idx1++);
+                            group1Items.add(item);
+                        } else if (nhom == 2) {
+                            item.put("idx", idx2++);
+                            group2Items.add(item);
+                        } else if (nhom == 3) {
+                            item.put("idx", idx3++);
+                            group3Items.add(item);
+                        } else if (nhom == 4) {
+                            item.put("idx", idx4++);
+                            group4Items.add(item);
+                        } else {
+                            item.put("idx", idx5++);
+                            group5Items.add(item);
+                        }
+                    }
+                    
+                    if (!group1Items.isEmpty()) groups.put("Cấp I. Nhóm 1", group1Items);
+                    if (!group2Items.isEmpty()) groups.put("Cấp II. Nhóm 2", group2Items);
+                    if (!group3Items.isEmpty()) groups.put("Cấp III. Nhóm 3", group3Items);
+                    if (!group4Items.isEmpty()) groups.put("Cấp IV. Nhóm 4", group4Items);
+                    if (!group5Items.isEmpty()) groups.put("Cấp V. Nhóm 5", group5Items);
+                    
+                    // Fallback to empty display if no groups
+                    if (groups.isEmpty()) {
+                        groups.put("Cấp I. Nhóm 1", new ArrayList<>());
+                    }
+                    
+                    int totalGeneratedRows = 0;
+                    for (List<Map<String, Object>> gList : groups.values()) {
+                        totalGeneratedRows += 1 + gList.size(); // 1 group header + items
+                    }
+                    int offset = totalGeneratedRows - 2; // Original template has 2 template rows (row 11 & row 12)
+                    
+                    Row groupTemplateRow = srcSheet.getRow(10); // Row 11 in Excel (0-indexed 10)
+                    Row itemTemplateRow = srcSheet.getRow(11); // Row 12 in Excel (0-indexed 11)
+                    
+                    for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
+                        Row srcRow = srcSheet.getRow(r);
+                        if (srcRow == null) continue;
+                        
+                        if (r < 10) {
+                            Row destRow = destSheet.createRow(r);
+                            destRow.setHeight(srcRow.getHeight());
+                            for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                                Cell srcCell = srcRow.getCell(c);
+                                if (srcCell != null) {
+                                    Cell destCell = destRow.createCell(c);
+                                    copyCell(srcCell, destCell, replacements);
+                                }
+                            }
+                        } else if (r == 10 || r == 11) {
+                            if (r == 11) continue; // Handled inside index 10 processing
+                            
+                            int currentDestRowIdx = 10;
+                            for (Map.Entry<String, List<Map<String, Object>>> entry : groups.entrySet()) {
+                                String groupKey = entry.getKey();
+                                String groupNum = groupKey.split("\\.")[0];
+                                String groupName = groupKey.substring(groupKey.indexOf(".") + 1).trim();
+                                List<Map<String, Object>> groupItems = entry.getValue();
+                                
+                                // Group Header Row
+                                Row destRow = destSheet.createRow(currentDestRowIdx++);
+                                destRow.setHeight(groupTemplateRow.getHeight());
+                                for (int c = 0; c < groupTemplateRow.getLastCellNum(); c++) {
+                                    Cell srcCell = groupTemplateRow.getCell(c);
+                                    if (srcCell != null) {
+                                        Cell destCell = destRow.createCell(c);
+                                        destCell.setCellStyle(srcCell.getCellStyle());
+                                        if (c == 0) {
+                                            destCell.setCellValue(groupNum);
+                                        } else if (c == 1) {
+                                            destCell.setCellValue(groupName);
+                                        } else {
+                                            destCell.setCellValue("");
+                                        }
+                                    }
+                                }
+                                
+                                // Item Rows
+                                for (Map<String, Object> item : groupItems) {
+                                    Row destItemRow = destSheet.createRow(currentDestRowIdx++);
+                                    destItemRow.setHeight(itemTemplateRow.getHeight());
+                                    int idx = (Integer) item.get("idx");
+                                    
+                                    for (int c = 0; c < itemTemplateRow.getLastCellNum(); c++) {
+                                        Cell srcCell = itemTemplateRow.getCell(c);
+                                        if (srcCell != null) {
+                                            Cell destCell = destItemRow.createCell(c);
+                                            destCell.setCellStyle(srcCell.getCellStyle());
+                                            
+                                            if (srcCell.getCellType() == CellType.STRING) {
+                                                String expr = srcCell.getStringCellValue();
+                                                if (expr != null) {
+                                                    if (expr.contains("idx+1") || expr.contains("idx + 1") || expr.contains("index")) {
+                                                        destCell.setCellValue(idx);
+                                                        continue;
+                                                    }
+                                                    if (expr.contains("item.") || expr.contains("table.value")) {
+                                                        Object val = resolveExpression(expr, item);
+                                                        if (val != null) {
+                                                            if (val instanceof Number) {
+                                                                destCell.setCellValue(((Number) val).doubleValue());
+                                                            } else {
+                                                                destCell.setCellValue(val.toString());
+                                                            }
+                                                            continue;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            copyCell(srcCell, destCell, replacements);
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            Row destRow = destSheet.createRow(r + offset);
+                            destRow.setHeight(srcRow.getHeight());
+                            for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                                Cell srcCell = srcRow.getCell(c);
+                                if (srcCell != null) {
+                                    Cell destCell = destRow.createCell(c);
+                                    copyCell(srcCell, destCell, replacements);
+                                }
+                            }
+                        }
+                    }
+                    
+                    copyMergedRegions(srcSheet, destSheet, false, 10, offset);
+                    
+                    boolean isExcel = "EXCEL".equalsIgnoreCase(request.getFormat());
+                    if (!isExcel) {
+                        applyStaticRemergeAndOverflowMerge(destSheet, false, 10, 10 + totalGeneratedRows - 1);
+                    }
+                    
+                    finalizeWorkbookSheet(workbook);
+                    return outputWorkbook(workbook, destSheet, isExcel);
+                }
+
+                List<Map<String, Object>> arrResult = buildDynamicResultList(points, request.getReportCode());
                 int N = arrResult.size();
                 int offset = N - 1;
+
+                // Dynamically detect template row index
+                int templateRowIdx = -1;
+                for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
+                    Row srcRow = srcSheet.getRow(r);
+                    if (srcRow == null) continue;
+                    for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                        Cell cell = srcRow.getCell(c);
+                        if (cell != null && cell.getCellType() == CellType.STRING) {
+                            String val = cell.getStringCellValue();
+                            if (val != null && (val.contains("${item.") || val.contains("${idx+1}") || val.contains("${idx + 1}"))) {
+                                templateRowIdx = r;
+                                break;
+                            }
+                        }
+                    }
+                    if (templateRowIdx != -1) break;
+                }
+
+                if (templateRowIdx == -1) {
+                    templateRowIdx = 9; // fallback
+                }
 
                 for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
                     Row srcRow = srcSheet.getRow(r);
                     if (srcRow == null) continue;
 
-                    if (r < 9) {
+                    if (r < templateRowIdx) {
                         Row destRow = destSheet.createRow(r);
                         destRow.setHeight(srcRow.getHeight());
                         for (int c = 0; c < srcRow.getLastCellNum(); c++) {
                             Cell srcCell = srcRow.getCell(c);
                             if (srcCell != null) {
                                 Cell destCell = destRow.createCell(c);
-                                copyCell(srcCell, destCell, replacements);
+                                destCell.setCellStyle(srcCell.getCellStyle());
+
+                                boolean processed = false;
+                                if (srcCell.getCellType() == CellType.STRING) {
+                                    String expr = srcCell.getStringCellValue();
+                                    if (expr != null && (expr.contains("table.value") || expr.contains("this.getCateOtherText") || expr.contains("item."))) {
+                                        Map<String, Object> item = arrResult.isEmpty() ? new HashMap<>() : arrResult.get(0);
+                                        Object val = resolveExpression(expr, item);
+                                        if (val != null) {
+                                            if (val instanceof Number) {
+                                                destCell.setCellValue(((Number) val).doubleValue());
+                                            } else {
+                                                destCell.setCellValue(val.toString());
+                                            }
+                                            processed = true;
+                                        }
+                                    }
+                                }
+
+                                if (!processed) {
+                                    copyCell(srcCell, destCell, replacements);
+                                }
                             }
                         }
-                    } else if (r == 9) {
+                    } else if (r == templateRowIdx) {
                         for (int idx = 0; idx < N; idx++) {
-                            Row destRow = destSheet.createRow(9 + idx);
+                            Row destRow = destSheet.createRow(templateRowIdx + idx);
                             destRow.setHeight(srcRow.getHeight());
                             Map<String, Object> item = arrResult.get(idx);
 
@@ -1806,20 +2442,15 @@ public class ReportService {
                                                 destCell.setCellValue(idx + 1);
                                                 continue;
                                             }
-                                            if (expr.contains("item.")) {
-                                                java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("item\\.([a-zA-Z0-9_]+)");
-                                                java.util.regex.Matcher matcher = pattern.matcher(expr);
-                                                if (matcher.find()) {
-                                                    String fieldName = matcher.group(1);
-                                                    if (item.containsKey(fieldName)) {
-                                                        Object val = item.get(fieldName);
-                                                        if (val instanceof Number) {
-                                                            destCell.setCellValue(((Number) val).doubleValue());
-                                                        } else {
-                                                            destCell.setCellValue(val != null ? val.toString() : "");
-                                                        }
-                                                        continue;
+                                            if (expr.contains("item.") || expr.contains("table.value") || expr.contains("this.getCateOtherText")) {
+                                                Object val = resolveExpression(expr, item);
+                                                if (val != null) {
+                                                    if (val instanceof Number) {
+                                                        destCell.setCellValue(((Number) val).doubleValue());
+                                                    } else {
+                                                        destCell.setCellValue(val.toString());
                                                     }
+                                                    continue;
                                                 }
                                             }
                                         }
@@ -1834,18 +2465,39 @@ public class ReportService {
                         for (int c = 0; c < srcRow.getLastCellNum(); c++) {
                             Cell srcCell = srcRow.getCell(c);
                             if (srcCell != null) {
-                                Cell destCell = destRow.createCell(c);
-                                copyCell(srcCell, destCell, replacements);
+                                  Cell destCell = destRow.createCell(c);
+                                  destCell.setCellStyle(srcCell.getCellStyle());
+
+                                  boolean processed = false;
+                                  if (srcCell.getCellType() == CellType.STRING) {
+                                      String expr = srcCell.getStringCellValue();
+                                      if (expr != null && (expr.contains("table.value") || expr.contains("this.getCateOtherText") || expr.contains("item."))) {
+                                          Map<String, Object> item = arrResult.isEmpty() ? new HashMap<>() : arrResult.get(arrResult.size() - 1);
+                                          Object val = resolveExpression(expr, item);
+                                          if (val != null) {
+                                              if (val instanceof Number) {
+                                                  destCell.setCellValue(((Number) val).doubleValue());
+                                              } else {
+                                                  destCell.setCellValue(val.toString());
+                                              }
+                                              processed = true;
+                                          }
+                                      }
+                                  }
+
+                                  if (!processed) {
+                                      copyCell(srcCell, destCell, replacements);
+                                  }
                             }
                         }
                     }
                 }
 
-                copyMergedRegions(srcSheet, destSheet, false, 9, offset);
+                copyMergedRegions(srcSheet, destSheet, false, templateRowIdx, offset);
 
                 boolean isExcel = "EXCEL".equalsIgnoreCase(request.getFormat());
                 if (!isExcel) {
-                    applyStaticRemergeAndOverflowMerge(destSheet, false, 9, 9 + arrResult.size() - 1);
+                    applyStaticRemergeAndOverflowMerge(destSheet, false, templateRowIdx, templateRowIdx + arrResult.size() - 1);
                 }
 
                 finalizeWorkbookSheet(workbook);
@@ -1854,20 +2506,87 @@ public class ReportService {
         }
     }
 
+    private Object resolveExpression(String expr, Map<String, Object> item) {
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("item\\.([a-zA-Z0-9_]+)");
+        java.util.regex.Matcher matcher = pattern.matcher(expr);
+        Object val = null;
+        if (matcher.find()) {
+            String fieldName = matcher.group(1);
+            if (item.containsKey(fieldName)) {
+                val = item.get(fieldName);
+            } else {
+                // Fallback mapping for dynamic template fields
+                if (fieldName.toLowerCase().contains("ten") || fieldName.toLowerCase().contains("loai")) {
+                    val = item.get("loaiTaiSan");
+                } else if (fieldName.toLowerCase().contains("chieudai") || fieldName.toLowerCase().contains("dai")) {
+                    val = item.get("soLuong");
+                } else if (fieldName.toLowerCase().contains("dientich") || fieldName.toLowerCase().contains("tich")) {
+                    val = item.get("dienTich");
+                } else if (fieldName.toLowerCase().contains("congbo") || fieldName.toLowerCase().contains("thoidiem")) {
+                    val = item.get("ngayQuyetDinh");
+                } else if (fieldName.toLowerCase().contains("tau") || fieldName.toLowerCase().contains("lonnhat")) {
+                    val = item.get("soQuyetDinh");
+                } else if (fieldName.toLowerCase().contains("congnang")) {
+                    val = item.getOrDefault("congNangKhaiThac", item.get("hinhThucXuly"));
+                }
+            }
+        }
+
+        // Intercept specific table expressions
+        if (val == null) {
+            if (expr.contains("cbDonViQl") || expr.contains("DonVi")) {
+                val = item.getOrDefault("donViQl", item.getOrDefault("coQuanQuyetDinh", ""));
+            } else if (expr.contains("cbDiaDiem") || expr.contains("DiaDiem") || expr.contains("ViTri")) {
+                val = item.getOrDefault("diaDiem", "");
+            } else if (expr.contains("cbThoiDiem") || expr.contains("ThoiDiem")) {
+                val = item.getOrDefault("thoiDiem", item.getOrDefault("ngayQuyetDinh", ""));
+            } else if (expr.contains("cbCongNang") || expr.contains("ccCongNang") || expr.contains("CongNang")) {
+                val = item.getOrDefault("congNangKhaiThac", item.getOrDefault("congNang", ""));
+            } else if (expr.contains("cbNamTruoc") || expr.contains("NamTruoc")) {
+                val = item.getOrDefault("namTruoc", 0.0);
+            } else if (expr.contains("cbNamBaoCao") || expr.contains("NamBaoCao")) {
+                val = item.getOrDefault("namBaoCao", 0.0);
+            } else if (expr.contains("cbTongDienTich") || expr.contains("DienTich")) {
+                val = item.getOrDefault("dienTich", 0.0);
+            } else if (expr.contains("cbTauLonNhat") || expr.contains("TauLonNhat") || expr.contains("TauNeoDau")) {
+                val = item.getOrDefault("tauLonNhat", "");
+            } else if (expr.contains("cbTen") || expr.contains("TenCang") || expr.contains("loaiTaiSan")) {
+                val = item.getOrDefault("tenCang", item.getOrDefault("loaiTaiSan", ""));
+            }
+        }
+        return val;
+    }
+
     // ==========================================
     // EXPORT HELPER METHODS
     // ==========================================
 
     private String resolveTemplateName(String reportCodeStr) {
-        if ("F-141".equalsIgnoreCase(reportCodeStr)) return "BCC_156";
-        if ("F-142".equalsIgnoreCase(reportCodeStr)) return "BCC_157";
-        if ("F-143".equalsIgnoreCase(reportCodeStr)) return "BCC_158";
-        if ("F-144".equalsIgnoreCase(reportCodeStr)) return "BCC_159";
-        if ("F-145".equalsIgnoreCase(reportCodeStr)) return "BCC_160";
-        if ("F-146".equalsIgnoreCase(reportCodeStr)) return "BCC_161";
-        if ("F-147".equalsIgnoreCase(reportCodeStr)) return "BCC_162";
-        if ("F-181".equalsIgnoreCase(reportCodeStr)) return "BCCNDB_196";
-        if ("F-188".equalsIgnoreCase(reportCodeStr)) return "BCCNDB_203";
+        if (reportCodeStr == null) {
+            return "BCC_156";
+        }
+        String code = reportCodeStr.toUpperCase();
+        if ("F-180N".equals(code)) return "BCDL_180N";
+        if ("F-182N".equals(code)) return "BCDL_182N";
+        if ("F-183N".equals(code)) return "BCDL_183N";
+        if ("F-184N".equals(code)) return "BCDL_184N";
+
+        if (!code.startsWith("F-")) {
+            return "BCC_156";
+        }
+        try {
+            int num = Integer.parseInt(code.substring(2));
+            int mapped = num + 15;
+            if (mapped >= 156 && mapped <= 162) return "BCC_" + mapped;
+            if (mapped >= 163 && mapped <= 175) return "BCKCHT_" + mapped;
+            if (mapped >= 176 && mapped <= 184) return "BCDL_" + mapped;
+            if (mapped >= 185 && mapped <= 187) return "BCPTTV_" + mapped;
+            if (mapped >= 188 && mapped <= 189) return "BCDN_" + mapped;
+            if (mapped >= 190 && mapped <= 194) return "BCTT48_" + mapped;
+            if (mapped >= 195 && mapped <= 204) return "BCCNDB_" + mapped;
+        } catch (Exception e) {
+            log.warn("Failed to parse report code: {}", reportCodeStr);
+        }
         return "BCC_156";
     }
 
@@ -1888,8 +2607,15 @@ public class ReportService {
     }
 
     private List<com.hanghai.kchtg.gis.point.entity.PointObject> getFilteredPoints(java.util.UUID targetUnitId, int reportYear) {
+        boolean isRoot = false;
+        if (targetUnitId != null) {
+            isRoot = orgUnitRepository.findById(targetUnitId)
+                    .map(u -> "ORG_TCDb".equals(u.getCode()))
+                    .orElse(false);
+        }
+        final boolean skipFilter = targetUnitId == null || isRoot;
         return pointRepository.findAll().stream()
-                .filter(p -> targetUnitId == null || targetUnitId.equals(p.getUnitId()))
+                .filter(p -> skipFilter || targetUnitId.equals(p.getUnitId()))
                 .filter(p -> p.getCreatedAt() == null || p.getCreatedAt().getYear() <= reportYear)
                 .toList();
     }
@@ -1998,7 +2724,38 @@ public class ReportService {
         return map;
     }
 
-    private List<Map<String, Object>> buildDynamicResultList(List<com.hanghai.kchtg.gis.point.entity.PointObject> points) {
+    private List<Map<String, Object>> buildDynamicResultList(List<com.hanghai.kchtg.gis.point.entity.PointObject> points, String reportCode) {
+        // Custom grouping for F-148 to match production category grouping
+        if ("F-148".equalsIgnoreCase(reportCode)) {
+            List<Map<String, Object>> arrResult = new ArrayList<>();
+            // Group 1: Cảng biển
+            long[] agg1 = new long[]{0, 0, 0};
+            for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+                if (p.getObjectType() == com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.PORT || p.getObjectType() == com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.BEACON) {
+                    agg1[0] += 1;
+                    agg1[2] += getPointAssetValue(p);
+                }
+            }
+            if (agg1[0] > 0) {
+                Map<String, Object> item = getStringObjectMap("I. Cảng biển", agg1);
+                arrResult.add(item);
+            }
+            
+            // Group 2: Cảng, bến thủy nội địa
+            long[] agg2 = new long[]{0, 0, 0};
+            for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+                if (p.getObjectType() != com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.PORT && p.getObjectType() != com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.BEACON) {
+                    agg2[0] += 1;
+                    agg2[2] += getPointAssetValue(p);
+                }
+            }
+            if (agg2[0] > 0) {
+                Map<String, Object> item = getStringObjectMap("II. Cảng, bến thủy nội địa", agg2);
+                arrResult.add(item);
+            }
+            return arrResult;
+        }
+
         Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> categoryNames = getCategoryNamesMap();
         List<Map<String, Object>> arrResult = new ArrayList<>();
         Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, long[]> aggregated = new LinkedHashMap<>();
@@ -2022,9 +2779,9 @@ public class ReportService {
             if (agg[0] == 0) continue;
 
             String catName = categoryNames.getOrDefault(entry.getKey(), entry.getKey().name());
-          Map<String, Object> item = getStringObjectMap(catName, agg);
+            Map<String, Object> item = getStringObjectMap(catName, agg);
 
-          arrResult.add(item);
+            arrResult.add(item);
         }
         return arrResult;
     }
@@ -2353,6 +3110,53 @@ public class ReportService {
         return plain;
     }
 
+    private boolean isTableRow(Sheet sheet, int r) {
+        int startRow = -1;
+        for (int i = 0; i <= sheet.getLastRowNum(); i++) {
+            Row row = sheet.getRow(i);
+            if (row == null) continue;
+            for (int c = 0; c < row.getLastCellNum(); c++) {
+                Cell cell = row.getCell(c);
+                if (cell != null && cell.getCellType() == CellType.STRING) {
+                    String val = cell.getStringCellValue();
+                    if ("STT".equalsIgnoreCase(val) || "Số TT".equalsIgnoreCase(val)) {
+                        startRow = i;
+                        break;
+                    }
+                }
+            }
+            if (startRow != -1) break;
+        }
+        if (startRow == -1) {
+            startRow = 7;
+        }
+        
+        int endRow = sheet.getLastRowNum();
+        for (int i = startRow; i <= sheet.getLastRowNum(); i++) {
+            Row row = sheet.getRow(i);
+            if (row == null) continue;
+            for (int c = 0; c < row.getLastCellNum(); c++) {
+                Cell cell = row.getCell(c);
+                if (cell != null && cell.getCellType() == CellType.STRING) {
+                    String val = cell.getStringCellValue();
+                    if (val != null) {
+                        String clean = val.trim();
+                        if (clean.contains("NGƯỜI LẬP") || clean.contains("Người lập") ||
+                            clean.contains("ngày... tháng... năm") || clean.contains("ngày … tháng") ||
+                            clean.contains("Thủ trưởng đơn vị") || clean.contains("Người báo cáo") ||
+                            clean.contains("Trực ban")) {
+                            endRow = i - 1;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (endRow < sheet.getLastRowNum()) break;
+        }
+        
+        return r >= startRow && r <= endRow;
+    }
+
     private byte[] convertExcelToPdf(Sheet sheet) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             com.itextpdf.kernel.pdf.PdfWriter writer = new com.itextpdf.kernel.pdf.PdfWriter(baos);
@@ -2437,14 +3241,40 @@ public class ReportService {
             table.setWidth(com.itextpdf.layout.properties.UnitValue.createPercentValue(100f));
 
             boolean[][] visited = new boolean[sheet.getLastRowNum() + 2][maxCols + 2];
+            boolean[] rowHasBorder = new boolean[Math.max(1, sheet.getLastRowNum() + 1)];
+            for (int r = 0; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
+                for (int c = 0; c < row.getLastCellNum(); c++) {
+                    Cell cell = row.getCell(c);
+                    if (cell != null && cell.getCellStyle() != null) {
+                        CellStyle style = cell.getCellStyle();
+                        if (r >= 8 && r <= 12 && c <= 2) {
+                            log.info("Row {} Col {}: topBorder={}, bottomBorder={}, leftBorder={}, rightBorder={}", r, c, style.getBorderTop(), style.getBorderBottom(), style.getBorderLeft(), style.getBorderRight());
+                        }
+                        if (style.getBorderTop() != org.apache.poi.ss.usermodel.BorderStyle.NONE ||
+                            style.getBorderBottom() != org.apache.poi.ss.usermodel.BorderStyle.NONE ||
+                            style.getBorderLeft() != org.apache.poi.ss.usermodel.BorderStyle.NONE ||
+                            style.getBorderRight() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                            rowHasBorder[r] = true;
+                            break;
+                        }
+                    }
+                }
+            }
 
             for (int r = 0; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
+                boolean isTable = isTableRow(sheet, r);
                 if (row == null) {
                     for (int c = 0; c < maxCols; c++) {
-                        if (!visited[r][c]) {
-                            table.addCell(new com.itextpdf.layout.element.Cell().setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
-                        }
+                         if (!visited[r][c]) {
+                             if (isTable || rowHasBorder[r]) {
+                                 table.addCell(new com.itextpdf.layout.element.Cell().setBorder(new com.itextpdf.layout.borders.SolidBorder(com.itextpdf.kernel.colors.ColorConstants.BLACK, 0.5f)));
+                             } else {
+                                 table.addCell(new com.itextpdf.layout.element.Cell().setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+                             }
+                         }
                     }
                     continue;
                 }
@@ -2498,8 +3328,8 @@ public class ReportService {
                             pdfCell.setTextAlignment(com.itextpdf.layout.properties.TextAlignment.LEFT);
                         }
 
-                      CellStyle bottomStyle = style;
-                      CellStyle rightStyle = style;
+                        CellStyle bottomStyle = style;
+                        CellStyle rightStyle = style;
 
                         if (mergedRegion != null) {
                             Row bRow = sheet.getRow(mergedRegion.getLastRow());
@@ -2514,28 +3344,42 @@ public class ReportService {
                             }
                         }
 
-                        if (style.getBorderTop() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                        boolean borderTop = isTable || rowHasBorder[r];
+                        boolean borderBottom = isTable || rowHasBorder[r];
+                        boolean borderLeft = isTable || rowHasBorder[r];
+                        boolean borderRight = isTable || rowHasBorder[r];
+
+                        if (style.getBorderTop() != org.apache.poi.ss.usermodel.BorderStyle.NONE) borderTop = true;
+                        if (bottomStyle.getBorderBottom() != org.apache.poi.ss.usermodel.BorderStyle.NONE) borderBottom = true;
+                        if (style.getBorderLeft() != org.apache.poi.ss.usermodel.BorderStyle.NONE) borderLeft = true;
+                        if (rightStyle.getBorderRight() != org.apache.poi.ss.usermodel.BorderStyle.NONE) borderRight = true;
+
+                        if (borderTop) {
                             pdfCell.setBorderTop(new com.itextpdf.layout.borders.SolidBorder(com.itextpdf.kernel.colors.ColorConstants.BLACK, 0.5f));
                         } else {
                             pdfCell.setBorderTop(com.itextpdf.layout.borders.Border.NO_BORDER);
                         }
-                        if (bottomStyle.getBorderBottom() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                        if (borderBottom) {
                             pdfCell.setBorderBottom(new com.itextpdf.layout.borders.SolidBorder(com.itextpdf.kernel.colors.ColorConstants.BLACK, 0.5f));
                         } else {
                             pdfCell.setBorderBottom(com.itextpdf.layout.borders.Border.NO_BORDER);
                         }
-                        if (style.getBorderLeft() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                        if (borderLeft) {
                             pdfCell.setBorderLeft(new com.itextpdf.layout.borders.SolidBorder(com.itextpdf.kernel.colors.ColorConstants.BLACK, 0.5f));
                         } else {
                             pdfCell.setBorderLeft(com.itextpdf.layout.borders.Border.NO_BORDER);
                         }
-                        if (rightStyle.getBorderRight() != org.apache.poi.ss.usermodel.BorderStyle.NONE) {
+                        if (borderRight) {
                             pdfCell.setBorderRight(new com.itextpdf.layout.borders.SolidBorder(com.itextpdf.kernel.colors.ColorConstants.BLACK, 0.5f));
                         } else {
                             pdfCell.setBorderRight(com.itextpdf.layout.borders.Border.NO_BORDER);
                         }
                     } else {
-                        pdfCell.setBorder(com.itextpdf.layout.borders.Border.NO_BORDER);
+                        if (isTable || rowHasBorder[r]) {
+                            pdfCell.setBorder(new com.itextpdf.layout.borders.SolidBorder(com.itextpdf.kernel.colors.ColorConstants.BLACK, 0.5f));
+                        } else {
+                            pdfCell.setBorder(com.itextpdf.layout.borders.Border.NO_BORDER);
+                        }
                     }
 
                     String valText = "";

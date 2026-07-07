@@ -57,6 +57,8 @@ export default function PointObjectForm() {
 
       setSubmitting(true);
 
+
+
       if (isEdit) {
         const payload: UpdatePointObjectPayload = {
           name: values.name,
@@ -204,6 +206,8 @@ export default function PointObjectForm() {
               />
             </Col>
           </Row>
+
+
 
           <FormField
             type="textarea"
