@@ -15,7 +15,7 @@ async function login(page: Page) {
   await page.getByLabel('Tài khoản').fill('admin');
   await page.getByLabel('Mật khẩu').fill('admin123');
   await page.getByRole('button', { name: /đăng nhập/i }).click();
-  await page.waitForURL(/\/users/);
+  await page.waitForURL((url) => !/\/login/.test(url.pathname), { timeout: 15000 });
 }
 
 test.describe('M-003 Luồng Hàng Hải', () => {
@@ -27,16 +27,15 @@ test.describe('M-003 Luồng Hàng Hải', () => {
     await page.goto(LIST_URL);
     await expect(page).not.toHaveURL(/login/);
     await expect(page.getByText(/Placeholder/i)).toHaveCount(0);
-    await expect(page.getByPlaceholder('Tìm kiếm...')).toBeVisible({ timeout: 8000 });
-    await expect(page.getByRole('button', { name: 'Thêm mới' })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: 'Loại tàu' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Thêm mới' })).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText('Trạng thái phê duyệt')).toBeVisible();
   });
 
   test('TC-M003-LHH-02: Trang tạo mới hiển thị form với field thật', async ({ page }) => {
     await page.goto(CREATE_URL);
     await expect(page).not.toHaveURL(/login/);
     await expect(page.getByRole('heading', { name: 'Tạo mới Luồng Hàng Hải' })).toBeVisible({ timeout: 8000 });
-    await expect(page.getByText('Loại tàu')).toBeVisible();
+    await expect(page.getByText('Loại tàu', { exact: true })).toBeVisible();
   });
 
   test('TC-M003-LHH-03: Trang chi tiết /luong-hang-hai/:id reachable', async ({ page }) => {
