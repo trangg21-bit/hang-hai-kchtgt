@@ -12,13 +12,12 @@ M-001
 
 closed — current stage: closed
 
-## Features in scope (5)
+## Features in scope (4)
 
 - **F-001** Quản lý tài khoản người dùng — status: `done`
 - **F-002** Quản lý nhóm người dùng — status: `done`
 - **F-003** Quản lý đơn vị — status: `done`
 - **F-005** Quản lý log truy cập — status: `done`
-- **F-006** Quản lý admin — status: `done`
 
 ## Dependencies (module-level)
 
