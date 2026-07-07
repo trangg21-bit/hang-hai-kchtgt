@@ -12,7 +12,7 @@ M-002
 
 completed — current stage: completed
 
-## Features in scope (30)
+## Features in scope (70)
 
 - **F-008** ql-cb-tao-moi — status: `done`
 - **F-009** ql-cb-cap-nhat — status: `done`
@@ -44,6 +44,48 @@ completed — current stage: completed
 - **F-035** phe-duyet-vn — status: `done`
 - **F-036** xem-vn — status: `done`
 - **F-037** ql-vn-lich-su — status: `done`
+
+### UI features (frontend track — status: proposed)
+- **F-068** ui-ql-cb-danh-sach — status: `proposed`
+- **F-069** ui-xem-cb-chi-tiet — status: `proposed`
+- **F-070** ui-ql-cb-tao-moi — status: `proposed`
+- **F-071** ui-ql-cb-cap-nhat — status: `proposed`
+- **F-072** ui-phe-duyet-cb — status: `proposed`
+- **F-073** ui-ql-bc-danh-sach — status: `proposed`
+- **F-074** ui-xem-bc-chi-tiet — status: `proposed`
+- **F-075** ui-ql-bc-tao-moi — status: `proposed`
+- **F-076** ui-ql-bc-cap-nhat — status: `proposed`
+- **F-077** ui-phe-duyet-bc — status: `proposed`
+- **F-078** ui-ql-cc-danh-sach — status: `proposed`
+- **F-079** ui-xem-cc-chi-tiet — status: `proposed`
+- **F-080** ui-ql-cc-tao-moi — status: `proposed`
+- **F-081** ui-ql-cc-cap-nhat — status: `proposed`
+- **F-082** ui-phe-duyet-cc — status: `proposed`
+- **F-083** ui-ql-cct-danh-sach — status: `proposed`
+- **F-084** ui-xem-cct-chi-tiet — status: `proposed`
+- **F-085** ui-ql-cct-tao-moi — status: `proposed`
+- **F-086** ui-ql-cct-cap-nhat — status: `proposed`
+- **F-087** ui-phe-duyet-cct — status: `proposed`
+- **F-088** ui-ql-vn-danh-sach — status: `proposed`
+- **F-089** ui-xem-vn-chi-tiet — status: `proposed`
+- **F-090** ui-ql-vn-tao-moi — status: `proposed`
+- **F-091** ui-ql-vn-cap-nhat — status: `proposed`
+- **F-092** ui-phe-duyet-vn — status: `proposed`
+- **F-093** ui-ql-cb-xoa — status: `proposed`
+- **F-094** ui-ql-cb-lich-su — status: `proposed`
+- **F-095** ui-ql-bc-xoa — status: `proposed`
+- **F-096** ui-ql-bc-lich-su — status: `proposed`
+- **F-097** ui-ql-cc-xoa — status: `proposed`
+- **F-098** ui-ql-cc-lich-su — status: `proposed`
+- **F-099** ui-ql-cct-xoa — status: `proposed`
+- **F-100** ui-ql-cct-lich-su — status: `proposed`
+- **F-101** ui-ql-vn-xoa — status: `proposed`
+- **F-102** ui-ql-vn-lich-su — status: `proposed`
+- **F-103** ui-upload-giayto-cb — status: `proposed`
+- **F-104** ui-upload-giayto-bc — status: `proposed`
+- **F-105** ui-upload-giayto-cc — status: `proposed`
+- **F-106** ui-upload-giayto-cct — status: `proposed`
+- **F-107** ui-upload-giayto-vn — status: `proposed`
 
 ## Dependencies (module-level)
 
