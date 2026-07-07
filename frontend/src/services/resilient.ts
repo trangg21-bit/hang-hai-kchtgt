@@ -22,8 +22,8 @@ export function toArray<T>(response: unknown, expectedArrayField?: string): T[] 
       return obj[expectedArrayField] as T[];
     }
 
-    // Fallback: try common array field names
-    for (const key of ['results', 'items', 'data']) {
+    // Fallback: try common array field names ('content' = Spring Data Page)
+    for (const key of ['results', 'items', 'data', 'content']) {
       if (Array.isArray(obj[key])) {
         return obj[key] as T[];
       }
