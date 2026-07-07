@@ -46,7 +46,7 @@ export async function fetchCangCanList(
   sp.set('page', String(params.page ?? 0));
   sp.set('size', String(params.pageSize ?? 20));
 
-  const res = await api.get(`/cang-can?${sp}`);
+  const res = await api.get(`/v1/cang-can?${sp}`);
   const pageData = res.data.data;
   return {
     data: pageData.content || [],
@@ -59,45 +59,45 @@ export async function fetchCangCanList(
 // ── Detail ──────────────────────────────────────────────────────────────
 
 export async function fetchCangCanById(id: string): Promise<CangCan> {
-  const res = await api.get(`/cang-can/${id}`);
+  const res = await api.get(`/v1/cang-can/${id}`);
   return res.data.data;
 }
 
 // ── Create ──────────────────────────────────────────────────────────────
 
 export async function createCangCan(payload: CreateCangCanPayload): Promise<CangCan> {
-  const res = await api.post('/cang-can', payload);
+  const res = await api.post('/v1/cang-can', payload);
   return res.data.data;
 }
 
 // ── Update ──────────────────────────────────────────────────────────────
 
 export async function updateCangCan(payload: UpdateCangCanPayload): Promise<CangCan> {
-  const res = await api.put('/cang-can', payload);
+  const res = await api.put('/v1/cang-can', payload);
   return res.data.data;
 }
 
 // ── Delete ──────────────────────────────────────────────────────────────
 
 export async function deleteCangCan(id: string): Promise<void> {
-  await api.delete(`/cang-can/${id}`);
+  await api.delete(`/v1/cang-can/${id}`);
 }
 
 // ── Approve / Reject ────────────────────────────────────────────────────
 
 export async function approveCangCan(id: string): Promise<void> {
-  await api.post(`/cang-can/${id}/approve`);
+  await api.post(`/v1/cang-can/${id}/approve`);
 }
 
 export async function rejectCangCan(id: string, reason: string): Promise<void> {
   const sp = new URLSearchParams();
   sp.set('reason', reason);
-  await api.post(`/cang-can/${id}/reject?${sp}`);
+  await api.post(`/v1/cang-can/${id}/reject?${sp}`);
 }
 
 // ── History ─────────────────────────────────────────────────────────────
 
 export async function fetchCangCanHistory(id: string): Promise<CangCanHistoryRecord[]> {
-  const res = await api.get(`/cang-can/${id}/history`);
+  const res = await api.get(`/v1/cang-can/${id}/history`);
   return res.data.data ?? [];
 }

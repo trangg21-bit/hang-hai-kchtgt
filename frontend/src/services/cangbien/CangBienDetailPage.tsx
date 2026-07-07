@@ -59,7 +59,7 @@ export default function CangBienDetailPage() {
     );
   }
 
-  const gpsPaired = data.viDo !== null && data.kinhDo !== null;
+  const gpsPaired = data.viDo != null && data.kinhDo != null;
 
   return (
     <>
@@ -103,11 +103,11 @@ export default function CangBienDetailPage() {
           <Card title="Thống kê">
             <Typography.Text strong>Diện tích (m²):</Typography.Text>
             <br />
-            <Typography.Text>{data.dienTich !== null ? data.dienTich.toFixed(2) : '—'}</Typography.Text>
+            <Typography.Text>{data.dienTich != null ? data.dienTich.toFixed(2) : '—'}</Typography.Text>
             <br />
             <Typography.Text strong>Khả năng tiếp nhận:</Typography.Text>
             <br />
-            <Typography.Text>{data.khaNangTiepNhan !== null ? data.khaNangTiepNhan.toFixed(2) : '—'}</Typography.Text>
+            <Typography.Text>{data.khaNangTiepNhan != null ? data.khaNangTiepNhan.toFixed(2) : '—'}</Typography.Text>
           </Card>
         </Col>
 
@@ -118,12 +118,12 @@ export default function CangBienDetailPage() {
               <Col span={12}>
                 <Typography.Text strong>Vĩ độ:</Typography.Text>
                 <br />
-                <Typography.Text>{data.viDo !== null ? data.viDo.toFixed(6) : '—'}</Typography.Text>
+                <Typography.Text>{data.viDo != null ? data.viDo.toFixed(6) : '—'}</Typography.Text>
               </Col>
               <Col span={12}>
                 <Typography.Text strong>Kinh độ:</Typography.Text>
                 <br />
-                <Typography.Text>{data.kinhDo !== null ? data.kinhDo.toFixed(6) : '—'}</Typography.Text>
+                <Typography.Text>{data.kinhDo != null ? data.kinhDo.toFixed(6) : '—'}</Typography.Text>
               </Col>
             </Row>
             {gpsPaired ? (
@@ -245,7 +245,7 @@ export default function CangBienDetailPage() {
               >
                 <Button danger icon={<DeleteOutlined />}>Xóa</Button>
               </Popconfirm>
-              {data.trangThaiPheDuyet === 'CHỜ_PHE_DUYỆT' && (
+              {data.trangThaiPheDuyet === 'CHO_PHE_DUYET' && (
                 <>
                   <Popconfirm
                     title="Phê duyệt cảng biển này?"
@@ -270,7 +270,7 @@ export default function CangBienDetailPage() {
                     onConfirm={async () => {
                       const reason = window.prompt('Lý do từ chối (tối thiểu 10 ký tự):', '');
                       if (reason === null || reason.length < 10) {
-                        if (reason !== null) toast.error('Lý do từ chối tối thiểu 10 ký tự');
+                        if (reason != null) toast.error('Lý do từ chối tối thiểu 10 ký tự');
                         return;
                       }
                       try {

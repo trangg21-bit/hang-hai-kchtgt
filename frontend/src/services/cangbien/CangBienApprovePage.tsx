@@ -118,7 +118,7 @@ export default function CangBienApprovePage() {
               <br />
               <Typography.Text>{data.tinhThanhPho || '—'}</Typography.Text>
             </Col>
-            {data.viDo !== null && data.kinhDo !== null && (
+            {data.viDo != null && data.kinhDo != null && (
               <>
                 <Col span={12}>
                   <Typography.Text strong>Vĩ độ:</Typography.Text>
@@ -135,12 +135,12 @@ export default function CangBienApprovePage() {
             <Col span={12}>
               <Typography.Text strong>Diện tích (m²):</Typography.Text>
               <br />
-              <Typography.Text>{data.dienTich !== null ? data.dienTich.toFixed(2) : '—'}</Typography.Text>
+              <Typography.Text>{data.dienTich != null ? data.dienTich.toFixed(2) : '—'}</Typography.Text>
             </Col>
             <Col span={12}>
               <Typography.Text strong>Khả năng tiếp nhận:</Typography.Text>
               <br />
-              <Typography.Text>{data.khaNangTiepNhan !== null ? data.khaNangTiepNhan.toFixed(2) : '—'}</Typography.Text>
+              <Typography.Text>{data.khaNangTiepNhan != null ? data.khaNangTiepNhan.toFixed(2) : '—'}</Typography.Text>
             </Col>
             <Col span={12}>
               <Typography.Text strong>Trạng thái phê duyệt:</Typography.Text>

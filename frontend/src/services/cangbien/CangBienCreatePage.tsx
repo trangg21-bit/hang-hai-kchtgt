@@ -12,10 +12,11 @@ export default function CangBienCreatePage() {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
 
-  const [viDo, kinhDo] = Form.useWatch(['viDo', 'kinhDo'], form);
+  const viDo = Form.useWatch('viDo', form);
+  const kinhDo = Form.useWatch('kinhDo', form);
   const gpsPairedWarning =
-    ((viDo !== undefined && viDo !== null && !Number.isNaN(viDo)) !==
-      (kinhDo !== undefined && kinhDo !== null && !Number.isNaN(kinhDo)));
+    ((viDo !== undefined && viDo != null && !Number.isNaN(viDo)) !==
+      (kinhDo !== undefined && kinhDo != null && !Number.isNaN(kinhDo)));
 
   const handleFinish = async (values: Record<string, unknown>) => {
     // Manual field validation
@@ -27,8 +28,8 @@ export default function CangBienCreatePage() {
     if (tenCang.length > 255) { toast.error('Tên cảng tối đa 255 ký tự'); return; }
     const vi = values.viDo as number;
     const jd = values.kinhDo as number;
-    const viPresent = vi !== undefined && vi !== null && !Number.isNaN(vi);
-    const jdPresent = jd !== undefined && jd !== null && !Number.isNaN(jd);
+    const viPresent = vi !== undefined && vi != null && !Number.isNaN(vi);
+    const jdPresent = jd !== undefined && jd != null && !Number.isNaN(jd);
     if (viPresent !== jdPresent) {
       toast.error('Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau');
       return;
@@ -53,7 +54,7 @@ export default function CangBienCreatePage() {
         dienTich,
         khaNangTiepNhan: values.khaNangTiepNhan as number | undefined,
         trangThaiHoatDong: (values.trangThaiHoatDong as string) || undefined,
-        trangThaiPheDuyet: (values.trangThaiPheDuyet as string) || 'CHỜ_PHE_DUYỆT',
+        trangThaiPheDuyet: (values.trangThaiPheDuyet as string) || 'CHO_PHE_DUYET',
       };
       await createCangBien(payload);
       toast.success('Tạo mới thành công — chờ phê duyệt');
@@ -86,7 +87,7 @@ export default function CangBienCreatePage() {
       </Card>
 
       <Card style={{ maxWidth: 800, margin: '0 auto' }}>
-        <Form form={form} layout="vertical" onFinish={handleFinish} initialValues={{ trangThaiPheDuyet: 'CHỜ_PHE_DUYỆT' }}>
+        <Form form={form} layout="vertical" onFinish={handleFinish} initialValues={{ trangThaiPheDuyet: 'CHO_PHE_DUYET' }}>
           {/* Info Section */}
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thông tin chung
@@ -170,7 +171,7 @@ export default function CangBienCreatePage() {
             </Col>
             <Col span={12}>
               <Form.Item label="Trạng thái phê duyệt" name="trangThaiPheDuyet" rules={[{ required: true, message: 'Vui lòng chọn trạng thái phê duyệt' }]}>
-                <Select options={[{ label: 'Chờ phê duyệt', value: 'CHỜ_PHE_DUYỆT' }, { label: 'Được phê duyệt', value: 'ĐƯỢC_PHE_DUYỆT' }, { label: 'Từ chối', value: 'TỪ_CHỐI' }]} />
+                <Select options={[{ label: 'Chờ phê duyệt', value: 'CHO_PHE_DUYET' }, { label: 'Được phê duyệt', value: 'DUOC_PHE_DUYET' }, { label: 'Từ chối', value: 'TU_CHOI' }]} />
               </Form.Item>
             </Col>
           </Row>

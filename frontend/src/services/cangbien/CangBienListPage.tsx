@@ -155,7 +155,7 @@ export default function CangBienListPage() {
     async (record: CangBienResponse) => {
       const reason = window.prompt('Lý do từ chối (tối thiểu 10 ký tự):', '');
       if (reason === null || reason.length < 10) {
-        if (reason !== null) toast.error('Lý do từ chối tối thiểu 10 ký tự');
+        if (reason != null) toast.error('Lý do từ chối tối thiểu 10 ký tự');
         return;
       }
       try {
@@ -209,27 +209,27 @@ export default function CangBienListPage() {
       title: 'Vĩ độ',
       dataIndex: 'viDo',
       width: 100,
-      render: (v: number | null) => (v !== null ? v.toFixed(4) : '—'),
+      render: (v: number | null) => (v != null ? v.toFixed(4) : '—'),
     },
     {
       title: 'Kinh độ',
       dataIndex: 'kinhDo',
       width: 100,
-      render: (v: number | null) => (v !== null ? v.toFixed(4) : '—'),
+      render: (v: number | null) => (v != null ? v.toFixed(4) : '—'),
     },
     {
       title: 'Diện tích (m²)',
       dataIndex: 'dienTich',
       width: 120,
       align: 'right' as const,
-      render: (v: number | null) => (v !== null ? v.toFixed(2) : '—'),
+      render: (v: number | null) => (v != null ? v.toFixed(2) : '—'),
     },
     {
       title: 'Khả năng tiếp nhận',
       dataIndex: 'khaNangTiepNhan',
       width: 130,
       align: 'right' as const,
-      render: (v: number | null) => (v !== null ? v.toFixed(2) : '—'),
+      render: (v: number | null) => (v != null ? v.toFixed(2) : '—'),
     },
     {
       title: 'Trạng thái HĐ',

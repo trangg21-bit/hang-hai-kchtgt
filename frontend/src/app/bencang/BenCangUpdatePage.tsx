@@ -239,8 +239,8 @@ export default function BenCangUpdatePage() {
                 name="trangThaiHoatDong"
                 label="Trạng thái hoạt động"
                 options={[
-                  { label: 'Hiện hành', value: 'HIỆN_HÀNH' },
-                  { label: 'Tạm ngừng', value: 'TẠM_NGƯNG' },
+                  { label: 'Hiện hành', value: 'HIEN_HANH' },
+                  { label: 'Tạm ngừng', value: 'TAM_NGUNG' },
                 ]}
               />
             </Col>
