@@ -136,18 +136,17 @@ class DeKeControllerTest {
                 .trangThai("UNDER_REVIEW")
                 .nguoiPheDuyet("Truong Phong")
                 .build();
-        when(service.approveC1(eq(1L), any())).thenReturn(resp);
+        when(service.approveC1(eq(1L), any(), anyString())).thenReturn(resp);
 
         var ctrlResp = controller.approveC1(1L, PheDuyetRequest.builder()
                 .quyetDinh("APPROVED")
-                .nguoiPheDuyet("Truong Phong")
                 .lyDo("Phe cap 1")
-                .build());
+                .build(), null);
 
         assertThat(ctrlResp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(ctrlResp.getBody().getData().getTrangThai()).isEqualTo("UNDER_REVIEW");
         assertThat(ctrlResp.getBody().getData().getCapPheDuyet()).isEqualTo(1);
-        verify(service, times(1)).approveC1(eq(1L), any());
+        verify(service, times(1)).approveC1(eq(1L), any(), anyString());
     }
 
     // ── approveC2 ───────────────────────────────────────────────────────
@@ -159,18 +158,17 @@ class DeKeControllerTest {
                 .trangThai("APPROVED")
                 .nguoiPheDuyet("Giam Doc")
                 .build();
-        when(service.approveC2(eq(1L), any())).thenReturn(resp);
+        when(service.approveC2(eq(1L), any(), anyString())).thenReturn(resp);
 
         var ctrlResp = controller.approveC2(1L, PheDuyetRequest.builder()
                 .quyetDinh("APPROVED")
-                .nguoiPheDuyet("Giam Doc")
                 .lyDo("Phe cap 2")
-                .build());
+                .build(), null);
 
         assertThat(ctrlResp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(ctrlResp.getBody().getData().getTrangThai()).isEqualTo("APPROVED");
         assertThat(ctrlResp.getBody().getData().getCapPheDuyet()).isEqualTo(2);
-        verify(service, times(1)).approveC2(eq(1L), any());
+        verify(service, times(1)).approveC2(eq(1L), any(), anyString());
     }
 
     // ── getApprovalHistory ──────────────────────────────────────────────
@@ -237,14 +235,13 @@ class DeKeControllerTest {
     // ── error propagation ───────────────────────────────────────────────
 
     @Test void approveC1_shouldThrowWhenNotFound() {
-        when(service.approveC1(eq(99L), any())).thenThrow(new IllegalArgumentException("Khong tim thay"));
+        when(service.approveC1(eq(99L), any(), anyString())).thenThrow(new IllegalArgumentException("Khong tim thay"));
 
         assertThatThrownBy(() -> controller.approveC1(99L, PheDuyetRequest.builder()
                 .quyetDinh("APPROVED")
-                .nguoiPheDuyet("Truong")
-                .build()))
+                .build(), null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Khong tim thay");
-        verify(service, times(1)).approveC1(eq(99L), any());
+        verify(service, times(1)).approveC1(eq(99L), any(), anyString());
     }
 }

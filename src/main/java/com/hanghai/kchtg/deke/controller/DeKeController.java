@@ -66,16 +66,20 @@ public class DeKeController {
     @PreAuthorize("@auth.check(authentication, 'deke:approvec1')")
     public ResponseEntity<ApiResponse<PheDuyetResponse>> approveC1(
             @PathVariable Long id,
-            @RequestBody @Valid PheDuyetRequest req) {
-        return ResponseEntity.ok(ApiResponse.success("Phe duyet C1 thanh cong", service.approveC1(id, req)));
+            @RequestBody @Valid PheDuyetRequest req,
+            Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : "system";
+        return ResponseEntity.ok(ApiResponse.success("Phe duyet C1 thanh cong", service.approveC1(id, req, username)));
     }
 
     @PostMapping("/{id}/approve/c2")
     @PreAuthorize("@auth.check(authentication, 'deke:approvec2')")
     public ResponseEntity<ApiResponse<PheDuyetResponse>> approveC2(
             @PathVariable Long id,
-            @RequestBody @Valid PheDuyetRequest req) {
-        return ResponseEntity.ok(ApiResponse.success("Phe duyet C2 thanh cong", service.approveC2(id, req)));
+            @RequestBody @Valid PheDuyetRequest req,
+            Authentication authentication) {
+        String username = authentication != null ? authentication.getName() : "system";
+        return ResponseEntity.ok(ApiResponse.success("Phe duyet C2 thanh cong", service.approveC2(id, req, username)));
     }
 
     @GetMapping("/{id}/history")

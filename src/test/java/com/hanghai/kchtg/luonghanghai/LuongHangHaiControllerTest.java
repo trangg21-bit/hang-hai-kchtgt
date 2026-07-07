@@ -126,10 +126,9 @@ class LuongHangHaiControllerTest {
                 .trangThai("UNDER_REVIEW")
                 .nguoiPheDuyet("Truong Phong")
                 .build();
-        when(service.approveC1(eq(1L), any())).thenReturn(resp);
+        when(service.approveC1(eq(1L), any(), anyString())).thenReturn(resp);
         PheDuyetRequest req = PheDuyetRequest.builder()
                 .trangThai("APPROVED")
-                .nguoiPheDuyet("Truong Phong")
                 .lyDo("Phe cap 1")
                 .build();
         mockMvc.perform(post("/api/v1/luong-hang-hai/1/approve/c1")
@@ -146,10 +145,9 @@ class LuongHangHaiControllerTest {
                 .trangThai("APPROVED")
                 .nguoiPheDuyet("Giam Doc")
                 .build();
-        when(service.approveC2(eq(1L), any())).thenReturn(resp);
+        when(service.approveC2(eq(1L), any(), anyString())).thenReturn(resp);
         PheDuyetRequest req = PheDuyetRequest.builder()
                 .trangThai("APPROVED")
-                .nguoiPheDuyet("Giam Doc")
                 .lyDo("Phe cap 2")
                 .build();
         mockMvc.perform(post("/api/v1/luong-hang-hai/1/approve/c2")
@@ -205,8 +203,8 @@ class LuongHangHaiControllerTest {
     }
 
     @Test void approveC1_shouldThrowWhenNotFound() throws Exception {
-        when(service.approveC1(eq(99L), any())).thenThrow(new IllegalArgumentException("Khong tim thay"));
-        PheDuyetRequest req = PheDuyetRequest.builder().nguoiPheDuyet("Truong").build();
+        when(service.approveC1(eq(99L), any(), anyString())).thenThrow(new IllegalArgumentException("Khong tim thay"));
+        PheDuyetRequest req = PheDuyetRequest.builder().trangThai("APPROVED").build();
         mockMvc.perform(post("/api/v1/luong-hang-hai/99/approve/c1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)))

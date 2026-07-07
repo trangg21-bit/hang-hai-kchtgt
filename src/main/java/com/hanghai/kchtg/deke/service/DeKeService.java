@@ -130,7 +130,7 @@ public class DeKeService {
     }
 
     @Transactional
-    public PheDuyetResponse approveC1(Long id, PheDuyetRequest req) {
+    public PheDuyetResponse approveC1(Long id, PheDuyetRequest req, String approvedBy) {
         DeKe d = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
@@ -140,7 +140,7 @@ public class DeKeService {
         }
 
         d.setPheDuyetC1(true);
-        d.setNguoiPheDuyetC1(req.getNguoiPheDuyet());
+        d.setNguoiPheDuyetC1(approvedBy);
         d.setNgayPheDuyetC1(LocalDate.now());
 
         if ("APPROVED".equalsIgnoreCase(req.getQuyetDinh())) {
@@ -150,12 +150,12 @@ public class DeKeService {
             d.setLyDoTuChoi(req.getLyDo());
         }
 
-        saveApprovalHistory(d, 1, req.getQuyetDinh(), req.getNguoiPheDuyet(), req.getLyDo());
+        saveApprovalHistory(d, 1, req.getQuyetDinh(), approvedBy, req.getLyDo());
         return buildPheDuyetResponse(d, 1);
     }
 
     @Transactional
-    public PheDuyetResponse approveC2(Long id, PheDuyetRequest req) {
+    public PheDuyetResponse approveC2(Long id, PheDuyetRequest req, String approvedBy) {
         DeKe d = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
@@ -164,12 +164,12 @@ public class DeKeService {
         }
 
         String c1Actor = d.getNguoiPheDuyetC1();
-        if (c1Actor != null && c1Actor.equals(req.getNguoiPheDuyet())) {
+        if (c1Actor != null && c1Actor.equals(approvedBy)) {
             throw new IllegalStateException("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
         }
 
         d.setPheDuyetC2(true);
-        d.setNguoiPheDuyetC2(req.getNguoiPheDuyet());
+        d.setNguoiPheDuyetC2(approvedBy);
         d.setNgayPheDuyetC2(LocalDate.now());
 
         if ("APPROVED".equalsIgnoreCase(req.getQuyetDinh())) {
@@ -179,12 +179,12 @@ public class DeKeService {
             d.setLyDoTuChoi(req.getLyDo());
         }
 
-        saveApprovalHistory(d, 2, req.getQuyetDinh(), req.getNguoiPheDuyet(), req.getLyDo());
+        saveApprovalHistory(d, 2, req.getQuyetDinh(), approvedBy, req.getLyDo());
         return buildPheDuyetResponse(d, 2);
     }
 
     @Transactional
-    public PheDuyetResponse reject(Long id, PheDuyetRequest req) {
+    public PheDuyetResponse reject(Long id, PheDuyetRequest req, String approvedBy) {
         DeKe d = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
@@ -192,7 +192,7 @@ public class DeKeService {
         d.setLyDoTuChoi(req.getLyDo());
 
         Integer cap = req.getCapPheDuyet() != null ? req.getCapPheDuyet() : 1;
-        saveApprovalHistory(d, cap, "REJECTED", req.getNguoiPheDuyet(), req.getLyDo());
+        saveApprovalHistory(d, cap, "REJECTED", approvedBy, req.getLyDo());
         return buildPheDuyetResponse(d, cap);
     }
 
