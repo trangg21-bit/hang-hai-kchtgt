@@ -137,7 +137,7 @@ export default function FormField(props: FormFieldProps) {
             min={(props as NumberField).min}
             max={(props as NumberField).max}
             step={(props as NumberField).step}
-            addonAfter={(props as NumberField).addonAfter}
+            suffix={(props as NumberField).addonAfter}
             style={{ width: '100%' }}
           />
         );
@@ -169,10 +169,8 @@ export default function FormField(props: FormFieldProps) {
         return (
           <Input
             {...fieldProps}
-            prefix={(props as TextInputField).prefix}
-            suffix={(props as TextInputField).suffix}
-            addonBefore={(props as TextInputField).addonBefore}
-            addonAfter={(props as TextInputField).addonAfter}
+            prefix={(props as TextInputField).prefix || (props as TextInputField).addonBefore}
+            suffix={(props as TextInputField).suffix || (props as TextInputField).addonAfter}
           />
         );
     }

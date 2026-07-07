@@ -210,16 +210,38 @@ public class ReportController {
         if (reportCode == null) return "Bao_cao";
         String code = reportCode.toUpperCase();
         switch (code) {
-            case "F-141": return "Báo cáo tăng giảm tài sản";
-            case "F-142": return "Mẫu B03_CCTT_ Thông tin tài chính tài sản KCHT";
-            case "F-143": return "Mẫu số 02_ Báo cáo kê khai tài sản kết cấu hạ tầng hàng hải";
-            case "F-144": return "Mẫu số 03_ Báo cáo tình hình quản lý tài sản kết cấu hạ tầng hàng hải";
-            case "F-145": return "Mẫu số 04_ Báo cáo tình hình xử lý tài sản kết cấu hạ tầng hàng hải";
-            case "F-146": return "Mẫu số 05_ Báo cáo tình hình khai thác tài sản kết cấu hạ tầng hàng hải";
-            case "F-147": return "Mẫu số 06_ Tổng hợp danh mục TS KCHTGT đề nghị xử lý";
-            case "F-181": return "Biểu tổng hợp thông tin KCHTGT hàng hải";
-            case "F-188": return "Báo cáo kê khai, tình hình quản lý TS KCHTGT hàng hải";
-            default: return "Báo cáo " + reportCode;
+            case "F-141": return "Báo cáo thống kê tăng giảm tài sản";
+            case "F-142": return "Mẫu B04a/BCTC: Thuyết minh chi tiết số liệu tài sản kết cấu hạ tầng đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng";
+            case "F-143": return "Mẫu số 02: Báo cáo kê khai tài sản kết cấu hạ tầng hàng hải";
+            case "F-144": return "Mẫu số 03: Báo cáo tình hình quản lý tài sản kết cấu hạ tầng hàng hải";
+            case "F-145": return "Mẫu số 04: Báo cáo tình hình xử lý tài sản kết cấu hạ tầng hàng hải";
+            case "F-146": return "Mẫu số 05: Báo cáo tình hình khai thác tài sản kết cấu hạ tầng hàng hải";
+            case "F-147": return "Mẫu số 06: Tổng hợp danh mục TS KCHTGT hàng hải đề nghị xử lý";
+            case "F-180N": return "Biểu 12-T: Khối lượng hàng hóa, hành khách thông qua cảng biển theo ngày";
+            case "F-182N": return "Biểu 13-T: Lượt tàu thuyền vào, rời cảng biển theo ngày";
+            case "F-183N": return "Biểu 14-T: Khối lượng hàng hóa, hành khách, lượt tàu thông qua cảng biển bằng đội tàu Việt Nam theo ngày";
+            case "F-184N": return "Biểu 15-T: Khối lượng hàng hóa, hành khách thông qua qua cảng biển, bến cảng, khu chuyển tải trong khu vực quản lý theo ngày";
         }
+        try {
+            if (code.startsWith("F-")) {
+                int num = Integer.parseInt(code.substring(2));
+                int mapped = num + 15;
+                String enumName = null;
+                if (mapped >= 163 && mapped <= 175) enumName = "BCKCHT_" + mapped;
+                else if (mapped >= 176 && mapped <= 184) enumName = "BCDL_" + mapped;
+                else if (mapped >= 185 && mapped <= 187) enumName = "BCPTTV_" + mapped;
+                else if (mapped >= 188 && mapped <= 189) enumName = "BCDN_" + mapped;
+                else if (mapped >= 190 && mapped <= 194) enumName = "BCTT48_" + mapped;
+                else if (mapped >= 195 && mapped <= 204) enumName = "BCCNDB_" + mapped;
+
+                if (enumName != null) {
+                    ReportType type = ReportType.valueOf(enumName);
+                    return type.getDescription();
+                }
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+        return "Báo cáo " + reportCode;
     }
 }
