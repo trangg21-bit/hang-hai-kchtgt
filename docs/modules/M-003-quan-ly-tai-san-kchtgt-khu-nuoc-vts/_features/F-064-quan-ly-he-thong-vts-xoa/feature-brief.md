@@ -1,65 +1,60 @@
 ---
 id: F-064
-name: Quản lý Hệ thống VTS - Xóa
+name: "Quan ly He thong VTS - Xoa"
 slug: quan-ly-he-thong-vts-xoa
 module-id: M-003
 status: proposed
 classification: local
-priority: high
-created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+priority: P1
+created: "2026-06-30T00:00:00Z"
+last-updated: "2026-06-30T00:00:00Z"
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quản lý Hệ thống VTS - Xóa
+
+# Feature: Quan ly He thong VTS - Xoa
 
 ## Description
-Chuyên viên có quyền xóa các bản ghi hệ thống VTS đã được phê duyệt nhưng không còn phù hợp hoặc bị trùng lặp trong hệ thống. Việc xóa phải tuân theo quy trình kiểm soát và ghi nhận đầy đủ vào nhật ký hệ thống để đảm bảo truy vết.
+Chuyen vien co the xoa He thong VTS. Dieu kien: chi xoa du lieu da duoc phe duyet (APPROVED) va chuyen sang trang thai DA XOA.
 
 ## Business Intent
-Cho phép loại bỏ các bản ghi không chính xác, sai sót hoặc trùng lặp trong hệ thống quản lý hệ thống VTS, duy trì chất lượng dữ liệu tổng thể. Việc xóa có kiểm soát giúp ngăn chặn mất dữ liệu quan trọng và đảm bảo tính minh bạch trong quá trình quản lý tài sản hạ tầng hàng hải khu nước VTS.
+Giai toan cac ban ghi He thong VTS khong con hieu luc hoac trung lap, phuc vu cong tác quan ly tai san KCHTGT theo quy che quan ly dau tư.
 
 ## Flow Summary
-Chuyên viên chọn bản ghi hệ thống VTS cần xóa từ danh sách tra cứu. Hệ thống xác nhận bản ghi đó đã ở trạng thái "đã phê duyệt" trước khi cho phép xóa. Người dùng phải xác nhận xóa bằng thao tác xác nhận kép (confirm dialog). Hệ thống xóa bản ghi và ghi nhận thao tác vào bảng lịch sử hệ thống, bao gồm thông tin người thực hiện, thời gian xóa và lý do.
+1. Chuyen vien chon He thong VTS can xoa
+2. He thong kiem tra trang thai: chi cho phep xoa du lieu APPROVED
+3. He thong chuyen trang thai → DA XOA (soft delete)
+4. Ghi nhan nguoi xoa, thoi gian xoa vao logs
+5. Du lieu v cung co the tra ve (un-delete) nham dung dung thoi gian
 
 ## Acceptance Criteria
-- Chỉ cho phép xóa bản ghi hệ thống VTS đã ở trạng thái "đã phê duyệt"
-- Hệ thống yêu cầu xác nhận xóa bằng dialog xác nhận trước khi thực hiện
-- Sau khi xóa, bản ghi được loại bỏ khỏi danh sách hiển thị và không thể khôi phục
-- Hệ thống ghi nhận đầy đủ thông tin người xóa, thời gian xóa và lý do vào nhật ký
-- Không cho phép xóa bản ghi ở trạng thái "chờ phê duyệt" (cần từ chối thay vì xóa)
-
-## In Scope
-- Tìm kiếm, chọn bản ghi hệ thống VTS để xóa
-- Kiểm tra điều kiện cho phép xóa (phải đã phê duyệt)
-- Xác nhận xóa với dialog thông báo
-- Ghi nhận thao tác xóa vào nhật ký hệ thống
-- Cập nhật lại các thống kê liên quan sau khi xóa
-
-## Out of Scope
-- Xóa hàng loạt nhiều bản ghi cùng lúc
-- Khôi phục bản ghi đã xóa (soft delete không được áp dụng)
-- Phê duyệt xóa (chuyên viên tự thực hiện)
-- Xuất báo cáo trước khi xóa
-
-## Roles + Permissions
-| Role | Permissions |
-|------|-------------|
-| Chuyên viên | Xóa bản ghi đã phê duyệt, Xem chi tiết |
-| Trưởng phòng | Xem chi tiết, Xóa bản ghi cấp phòng |
-| Cục trưởng | Xem chi tiết, Xóa mọi bản ghi |
-| Admin | Xóa toàn bộ, Xem toàn bộ, Quản lý nhật ký |
-
-## Entities
-- **HeThongVTS**: id, tenHeThong, viTri, loaiThietBi, phamViBaoPhu, congSuat, ngayVaoVanhHan, heSoHieuQua, nguoiQuanLy, ghiChu, trangThai, daXoa, ngayXoa, nguoiXoa, lyDoXoa
-- **NhatKyHeThong**: id, loaiThaoTac, entity, entityId, thongTin, nguoiThucHien, ngayThucHien
+- [x] Chi cho phep xoa du lieu APPROVED
+- [x] Soft delete (khong xoa khoi co so du lieu)
+- [x] Ghi nhan nguoi xoa va thoi gian xoa
+- [x] Co the hoi phuc du lieu da xoa (neu can)
 
 ## Business Rules
-1. Chỉ bản ghi ở trạng thái "đã phê duyệt" mới được phép xóa
-2. Bắt buộc xác nhận xóa bằng dialog với thông báo về hậu quả của việc xóa
-3. Thao tác xóa phải được ghi nhận vào nhật ký hệ thống với đầy đủ thông tin truy vết
-4. Không cho phép xóa bản ghi ở trạng thái "chờ phê duyệt" hoặc "từ chối"
-5. Sau khi xóa, bản ghi không còn xuất hiện trong bất kỳ danh sách hoặc báo cáo nào
+| ID | Rule | Applies-to | Source |
+|---|---|---|---|
+| BR-064-01 | Xoa chi voi du lieu da duoc phe duyet | Delete | UC-3311 |
+| BR-064-02 | Soft delete — khong xoa khoi CSDL | Delete | DESIGN.md |
+| BR-064-03 | Ghi nhan nguoi xoa va thoi gian xoa | Delete | UC-3311 |
 
-## Testing Strategy
-Kiểm thử xóa với bản ghi đã phê duyệt thành công và bản ghi không phê duyệt bị từ chối. Kiểm thử xác nhận xóa (click cancel không xóa, click confirm xóa). Kiểm thử nhật ký hệ thống ghi nhận đúng thao tác xóa. Kiểm thử quyền hạn: vai trò khác nhau có quyền xóa khác nhau.
+## Roles + Permissions
+| Role | Level | Notes |
+|---|---|---|
+| A-003 (Chuyen vien) | Xoa | Chi du lieu APPROVED |
+| A-002 (Lanh dao) | Chuyen nghiep | Quan ly du lieu da xoa |
+| A-004 (Lanh dao Cuc) | Chuyen nghiep | Phê duyệt khôi phục (nếu cần) |
+
+## Entities
+| Entity | Table | Description |
+|---|---|---|
+| HeThongVTS | he_thong_vts | Entity chinh |
+| HeThongVTSAttachment | attachment | Tai lieu dinh kem |
+| HeThongVTSDeleteLog | he_thong_vts_delete_log | Nguoi xoa, thoi gian, ly do |
+
+## Design Reference
+- DESIGN.md: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/DESIGN.md
+- BA Spec: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/ba/00-lean-spec.md
+- Source: UC-3311

@@ -52,7 +52,4 @@ public class CauCang extends BaseEntity {
 
     @Column(name = "org_unit_id")
     private UUID orgUnitId;
-
-    @Column(name = "cong_nang_khai_thac", length = 255)
-    private String congNangKhaiThac;
 }

@@ -62,7 +62,7 @@ export default function VungNuocHistoryPage() {
       {/* PageHeader */}
       <Card style={{ marginBottom: 16 }}>
         <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/vungnuoc')}>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/vungnuoc/${id}`)}>
             Quay lại
           </Button>
           <Typography.Title level={5} style={{ margin: 0 }}>

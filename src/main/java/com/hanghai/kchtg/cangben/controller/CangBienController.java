@@ -72,18 +72,9 @@ public class CangBienController {
     public ResponseEntity<ApiResponse<Page<CangBienResponse>>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) UUID orgUnitId,
-            @RequestParam(required = false) String maCang,
-            @RequestParam(required = false) String tenCang,
-            @RequestParam(required = false) String tinhThanhPho,
-            @RequestParam(required = false) String trangThaiHoatDong,
-            @RequestParam(required = false) String trangThaiPheDuyet) {
-        Page<CangBienResponse> result;
-        if (maCang == null && tenCang == null && tinhThanhPho == null && trangThaiHoatDong == null && trangThaiPheDuyet == null) {
-            result = cangBienService.findAll(page, size, orgUnitId);
-        } else {
-            result = cangBienService.findAll(page, size, orgUnitId, maCang, tenCang, tinhThanhPho, trangThaiHoatDong, trangThaiPheDuyet);
-        }
+            @RequestParam(required = false) UUID orgUnitId) {
+        log.info("Listing CangBien: page={}, size={}, orgUnitId={}", page, size, orgUnitId);
+        Page<CangBienResponse> result = cangBienService.findAll(page, size, orgUnitId);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cảng biển thành công", result));
     }
 

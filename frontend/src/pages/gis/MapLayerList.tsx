@@ -73,7 +73,7 @@ export default function MapLayerList() {
     }
   }, [page, pageSize, search, filterType]);
 
-  useEffect(() => { void fetchData(); }, []);
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);

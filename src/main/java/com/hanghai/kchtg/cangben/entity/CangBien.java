@@ -58,7 +58,4 @@ public class CangBien extends BaseEntity {
 
     @Column(name = "org_unit_id")
     private UUID orgUnitId;
-
-    @Column(name = "nhom_cang_bien")
-    private Integer nhomCangBien;
 }

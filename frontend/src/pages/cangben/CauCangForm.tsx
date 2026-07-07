@@ -10,8 +10,6 @@ import {
 } from '../../types/cangben';
 import FormField from '../../components/FormField';
 import toast from '../../components/ToastNotification';
-import { parseCongNangKhaiThac } from '../../utils/congNangParser';
-
 
 export default function CauCangForm() {
   const navigate = useNavigate();
@@ -36,7 +34,6 @@ export default function CauCangForm() {
             taiTrong: data.taiTrong,
             loaiCau: data.loaiCau,
             trangThaiHoatDong: data.trangThaiHoatDong,
-            congNangKhaiThac: parseCongNangKhaiThac(data.congNangKhaiThac),
           });
         } catch {
           toast.error('Không thể tải thông tin cầu cảng');
@@ -52,14 +49,9 @@ export default function CauCangForm() {
 
       setSubmitting(true);
 
-      const congNangString = values.congNangKhaiThac && values.congNangKhaiThac.length > 0
-          ? values.congNangKhaiThac.join(', ')
-          : '';
-
       if (isEdit) {
         const payload: UpdateCauCangRequest & { id: string } = {
           ...values,
-          congNangKhaiThac: congNangString,
           id: id!,
         };
         await cauCangCRUD.update(payload);
@@ -73,7 +65,8 @@ export default function CauCangForm() {
           taiTrong: values.taiTrong,
           loaiCau: values.loaiCau,
           trangThaiHoatDong: values.trangThaiHoatDong,
-          congNangKhaiThac: congNangString,
+          trangThaiPheDuyet: 'DRAFT',
+          orgUnitId: '',
         };
         await cauCangCRUD.create(payload);
         toast.success('Đã tạo cầu cảng');
@@ -234,36 +227,20 @@ export default function CauCangForm() {
                { label: 'Cầu tàu góc', value: 'ANGLED' },
                { label: 'Cầu tàu dạng chữ T', value: 'T_SHAPED' },
              ]}
-              disabled={isEdit && ((entityData?.status as string) === 'APPROVED_L2' || (entityData?.status as string) === 'PUBLISHED')}
+             disabled={isEdit && (entityData?.status === 'APPROVED_L2' || entityData?.status === 'PUBLISHED')}
            />
 
-            <FormField
-              type="select"
-              name="congNangKhaiThac"
-              label="Công năng khai thác"
-              mode="multiple"
-              placeholder="Chọn công năng khai thác (chọn nhiều)"
-              options={[
-                { label: 'Hàng Container', value: 'Hàng Container' },
-                { label: 'Hàng tổng hợp (bách hóa)', value: 'Hàng tổng hợp (bách hóa)' },
-                { label: 'Hàng chuyên dụng hàng rời, quặng', value: 'Hàng chuyên dụng hàng rời, quặng' },
-                { label: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng', value: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng' },
-                { label: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu ...)', value: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu ...)' },
-                { label: 'Hành khách', value: 'Hành khách' },
-              ]}
-            />
-
-            <FormField
-              type="select"
-              name="trangThaiHoatDong"
-              label="Trạng thái hoạt động"
-              required
-              options={[
-                { label: 'Hoạt động', value: 'ACTIVE' },
-                { label: 'Ngừng hoạt động', value: 'INACTIVE' },
-                { label: 'Bảo trì', value: 'MAINTENANCE' },
-              ]}
-            />
+           <FormField
+             type="select"
+             name="trangThaiHoatDong"
+             label="Trạng thái hoạt động"
+             required
+             options={[
+               { label: 'Hoạt động', value: 'ACTIVE' },
+               { label: 'Ngừng hoạt động', value: 'INACTIVE' },
+               { label: 'Bảo trì', value: 'MAINTENANCE' },
+             ]}
+           />
 
           <Form.Item style={{ marginTop: 24 }}>
             <Space>
@@ -294,7 +271,7 @@ export default function CauCangForm() {
               Lịch sử thay đổi
             </Button>
 
-            {(entityData.status as string) === 'DRAFT' && (
+            {entityData.status === 'DRAFT' && (
               <Button
                 icon={<SendOutlined />}
                 onClick={handleSubmitApproval}
@@ -303,7 +280,7 @@ export default function CauCangForm() {
               </Button>
             )}
 
-            {(entityData.status as string) === 'PENDING_APPROVAL' && (
+            {entityData.status === 'PENDING_APPROVAL' && (
               <>
                 <Button
                   type="primary"
@@ -323,7 +300,7 @@ export default function CauCangForm() {
               </>
             )}
 
-            {(entityData.status as string) === 'APPROVED_L1' && (
+            {entityData.status === 'APPROVED_L1' && (
               <>
                 <Button
                   type="primary"
@@ -343,7 +320,7 @@ export default function CauCangForm() {
               </>
             )}
 
-            {(entityData.status as string) === 'DRAFT' && (
+            {entityData.status === 'DRAFT' && (
               <Button
                 danger
                 onClick={handleDelete}

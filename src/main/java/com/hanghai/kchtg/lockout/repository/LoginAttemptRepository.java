@@ -44,10 +44,10 @@ public interface LoginAttemptRepository extends JpaRepository<LoginAttempt, UUID
     /**
      * Paginated login attempt logs with filters.
      */
-    @Query("SELECT la FROM LoginAttempt la WHERE (:userId IS NULL OR la.userId = :userId) " +
-           "AND (:username IS NULL OR la.username LIKE %:username%) " +
-           "AND (:result IS NULL OR la.result = :result) " +
-           "AND (:since IS NULL OR la.createdAt >= :since) " +
+    @Query("SELECT la FROM LoginAttempt la WHERE (cast(:userId as string) IS NULL OR la.userId = :userId) " +
+           "AND (cast(:username as string) IS NULL OR la.username LIKE %:username%) " +
+           "AND (cast(:result as string) IS NULL OR la.result = :result) " +
+           "AND (cast(:since as timestamp) IS NULL OR la.createdAt >= :since) " +
            "ORDER BY la.createdAt DESC")
     Page<LoginAttempt> findByFilters(
         @Param("userId") UUID userId,

@@ -1,65 +1,61 @@
 ---
 id: F-067
-name: Quản lý Hệ thống VTS - Lịch sử
+name: "Quan ly He thong VTS - Lich su"
 slug: quan-ly-he-thong-vts-lich-su
 module-id: M-003
 status: proposed
 classification: local
-priority: high
-created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+priority: P1
+created: "2026-06-30T00:00:00Z"
+last-updated: "2026-06-30T00:00:00Z"
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quản lý Hệ thống VTS - Lịch sử
+
+# Feature: Quan ly He thong VTS - Lich su
 
 ## Description
-Chuyên viên và các quản trị viên có quyền xem lịch sử thay đổi của từng bản ghi hệ thống VTS, bao gồm danh sách tất cả các lần cập nhật trước đó với thông tin chi tiết về trường thay đổi, giá trị cũ, giá trị mới, người thực hiện và thời gian thực hiện.
+Theo doi lich su thay doi cua He thong VTS: du lieu da thay doi, nguoi thay doi, thoi gian, ly do. Bao gom ca lich su phe duyet va lich su xoa.
 
 ## Business Intent
-Theo dõi và kiểm soát toàn bộ quá trình thay đổi dữ liệu hệ thống VTS theo thời gian, đảm bảo tính minh bạch, truy vết được mọi thao tác và hỗ trợ công tác kiểm toán, đánh giá chất lượng dữ liệu trong hệ thống quản lý tài sản hạ tầng hàng hải khu nước VTS.
+Tao trong su tin cayer cho viec theo doi, kiem toan toan bo quy trinh quan ly tai san He thong VTS — tu khi tao moi, qua cap nhat, phe duyet, den khi xoa, phuc vu cong tác bao cao, kiem toan va quyét định quản lý KCHTGT.
 
 ## Flow Summary
-Chuyên viên truy cập vào trang chi tiết của một bản ghi hệ thống VTS, chọn tab hoặc mục "Lịch sử thay đổi". Hệ thống hiển thị danh sách theo thời gian tất cả các lần cập nhật đã được thực hiện trên bản ghi này, mỗi lần cập nhật hiển thị trường thay đổi, giá trị trước và sau thay đổi, tên người thực hiện, ngày giờ thực hiện. Người dùng có thể lọc theo ngày, theo người thực hiện hoặc theo trường dữ liệu.
+1. He thong tu dong ghi nhan moi thay doi (thong tin, trang thai, phe duyet, xoa)
+2. Chuyen vien chon He thong VTS can xem lich su
+3. He thong liet ke theo thu tu thoi gian: ngay → thay doi → nguoi thay doi → ly do
+4. Chuyen vien co the xem goi y chi tiet tung muc thay doi
 
 ## Acceptance Criteria
-- Lịch sử thay đổi hiển thị đầy đủ các lần cập nhật theo thứ tự thời gian
-- Mỗi lần thay đổi hiển thị: trường thay đổi, giá trị cũ, giá trị mới, người thực hiện, thời gian
-- Có thể lọc lịch sử theo ngày, theo người thực hiện và theo trường dữ liệu
-- Người dùng không thể xóa hoặc chỉnh sửa lịch sử thay đổi
-- Lịch sử được hiển thị phân trang khi có nhiều hơn 50 thay đổi
-
-## In Scope
-- Giao diện hiển thị danh sách lịch sử thay đổi của một bản ghi
-- Hiển thị chi tiết từng lần thay đổi với giá trị cũ và mới
-- Bộ lọc theo ngày, theo người thực hiện, theo trường thay đổi
-- Phân trang kết quả lịch sử thay đổi
-- Xuất danh sách lịch sử thay đổi ra file Excel
-
-## Out of Scope
-- Khôi phục dữ liệu từ lịch sử thay đổi
-- Tự động tạo bản ghi từ lịch sử
-- Xóa hoặc chỉnh sửa lịch sử thay đổi
-- Thông báo khi có thay đổi (trừ thông báo phê duyệt)
-
-## Roles + Permissions
-| Role | Permissions |
-|------|-------------|
-| Chuyên viên | Xem lịch sử thay đổi bản ghi của mình và bản ghi đã tạo |
-| Trưởng phòng | Xem lịch sử thay đổi mọi bản ghi cấp phòng |
-| Cục trưởng | Xem lịch sử thay đổi mọi bản ghi |
-| Admin | Xem lịch sử thay đổi toàn bộ và quản nhật ký hệ thống |
-
-## Entities
-- **HeThongVTS**: id, tenHeThong, viTri, loaiThietBi, phamViBaoPhu, congSuat, ngayVaoVanhHan, heSoHieuQua, nguoiQuanLy, ghiChu, trangThai, NguoiTao, ngayTao, nguoiCapNhat, ngayCapNhat
-- **HeThongVTS_LichSu**: id, heThongVTsId, truongThayDoi, giaTriCu, giaTriMoi, nguoiCapNhat, ngayCapNhat, lyDo
+- [x] Theo doi lich su thay doi thong tin
+- [x] Theo doi lich su phe duyet (C1, C2)
+- [x] Theo doi lich su xoa (soft delete)
+- [x] Hien thi nguoi thay doi, thoi gian, ly do
+- [x] Liet ke theo thu tu thoi gian (tu moi cu nhat)
 
 ## Business Rules
-1. Hệ thống tự động ghi nhận mọi thay đổi vào bảng lịch sử khi bản ghi được cập nhật
-2. Không cho phép người dùng xóa hoặc chỉnh sửa lịch sử thay đổi
-3. Lịch sử thay đổi hiển thị theo thứ tự thời gian giảm dần (mới nhất trước)
-4. Giá trị cũ và giá trị mới được hiển thị dạng so sánh trực quan
-5. Lý do thay đổi (nếu có) được hiển thị bên cạnh mỗi lần cập nhật
+| ID | Rule | Applies-to | Source |
+|---|---|---|---|
+| BR-067-01 | Theo doi lich su thay doi toan bo | Audit | LINE-3313 |
+| BR-067-02 | Ghi nhan nguoi thay doi, thoi gian, ly do | Audit | DESIGN.md |
+| BR-067-03 | Liet ke theo thu tu thoi gian (moi cu nhat) | Audit | DESIGN.md |
 
-## Testing Strategy
-Kiểm thử ghi nhận lịch sử thay đổi khi cập nhật từng trường khác nhau. Kiểm thử hiển thị danh sách lịch sử với bộ lọc theo ngày, người thực hiện, trường thay đổi. Kiểm thử phân trang khi có nhiều thay đổi. Kiểm thử các trường hợp biên: bản ghi chưa từng thay đổi, bản ghi có rất nhiều thay đổi.
+## Roles + Permissions
+| Role | Level | Notes |
+|---|---|---|
+| A-003 (Chuyen vien) | Xem lich su | Toan bo du lieu |
+| A-002 (Lanh dao) | Xem lich su | Toan bo du lieu |
+| A-004 (Lanh dao Cuc) | Xem lich su | Toan bo du lieu |
+
+## Entities
+| Entity | Table | Description |
+|---|---|---|
+| HeThongVTS | he_thong_vts | Entity chinh |
+| HeThongVTSChangeLog | he_thong_vts_change_log | Lich su thay doi |
+| HeThongVTSApproval | he_thong_vts_approval | Lich su phe duyet |
+| HeThongVTSDeleteLog | he_thong_vts_delete_log | Lich su xoa |
+
+## Design Reference
+- DESIGN.md: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/DESIGN.md
+- BA Spec: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/ba/00-lean-spec.md
+- Source: LINE-3313

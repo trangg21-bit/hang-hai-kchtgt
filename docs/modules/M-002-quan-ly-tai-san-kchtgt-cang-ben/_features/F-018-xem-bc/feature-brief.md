@@ -1,13 +1,13 @@
 ---
 id: F-018
-name: "Xem chi tiết Bến cảng"
+name: Xem chi tiết Bến cảng
 slug: xem-bc
 module-id: M-002
-status: proposed
+status: done
 classification: local
 priority: critical
-created: "2026-06-16T04:40:42Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:40:42Z
+last-updated: 2026-06-29T11:10:02Z
 locked-fields: []
 consumed_by_modules: []
 ---

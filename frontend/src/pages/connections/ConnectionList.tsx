@@ -86,7 +86,7 @@ export default function ConnectionList() {
     }
   }, [page, pageSize, search, filterType, filterStatus]);
 
-  useEffect(() => { void fetchConnections(); }, []);
+  useEffect(() => { void fetchConnections(); }, [fetchConnections]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);

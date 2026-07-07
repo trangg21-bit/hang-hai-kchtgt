@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Navigation and Sidebar', () => {
-  test.use({ storageState: { cookies: [], origins: [{ origin: 'http://localhost:3000', localStorage: [{ name: 'auth_token', value: 'mock-jwt-token-2026' }] }] } });
+  test.use({ storageState: { cookies: [], origins: [{ origin: 'http://localhost:3001', localStorage: [{ name: 'auth_token', value: 'mock-jwt-token-2026' }] }] } });
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/users');
@@ -56,7 +56,7 @@ test.describe('Navigation and Sidebar', () => {
 });
 
 test.describe('Routing and Navigation', () => {
-  test.use({ storageState: { cookies: [], origins: [{ origin: 'http://localhost:3000', localStorage: [{ name: 'auth_token', value: 'mock-jwt-token-2026' }] }] } });
+  test.use({ storageState: { cookies: [], origins: [{ origin: 'http://localhost:3001', localStorage: [{ name: 'auth_token', value: 'mock-jwt-token-2026' }] }] } });
 
   test('should redirect root to /users', async ({ page }) => {
     await page.goto('/');
@@ -83,7 +83,7 @@ test.describe('Routing and Navigation', () => {
 });
 
 test.describe('App Layout', () => {
-  test.use({ storageState: { cookies: [], origins: [{ origin: 'http://localhost:3000', localStorage: [{ name: 'auth_token', value: 'mock-jwt-token-2026' }] }] } });
+  test.use({ storageState: { cookies: [], origins: [{ origin: 'http://localhost:3001', localStorage: [{ name: 'auth_token', value: 'mock-jwt-token-2026' }] }] } });
 
   test('should have sidebar logo area', async ({ page }) => {
     await page.goto('/users');

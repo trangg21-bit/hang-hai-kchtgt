@@ -30,5 +30,4 @@ public class CreateBenCangRequest {
     private String loaiBen;
     private BigDecimal doSauLuong;
     private String trangThaiHoatDong;
-    private String congNangKhaiThac;
 }

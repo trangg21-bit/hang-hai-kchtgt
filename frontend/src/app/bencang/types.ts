@@ -27,7 +27,7 @@ export interface BenCangEntity {
 export type ApprovalStatus = "CHO_PHE_DUYET" | "DUOC_PHE_DUYET" | "TU_CHOI";
 
 // Activity statuses — free text, canonical display values
-export type ActivityStatus = "HIEN_HANH" | "TAM_NGUNG";
+export type ActivityStatus = "HIỆN_HÀNH" | "TẠM_NGƯNG";
 
 // API wrapper shapes
 export interface ApiResponse<T> {

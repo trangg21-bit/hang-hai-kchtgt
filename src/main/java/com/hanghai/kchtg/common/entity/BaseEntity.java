@@ -2,7 +2,9 @@ package com.hanghai.kchtg.common.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -22,6 +24,8 @@ import java.util.UUID;
  */
 @Getter
 @Setter
+@SuperBuilder
+@NoArgsConstructor
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 @SQLRestriction("deleted_at IS NULL")
@@ -54,6 +58,18 @@ public abstract class BaseEntity {
      */
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    /**
+     * User ID who created the entity.
+     */
+    @Column(name = "created_by", length = 36)
+    private String createdBy;
+
+    /**
+     * User ID who last updated the entity.
+     */
+    @Column(name = "updated_by", length = 36)
+    private String updatedBy;
 
     /**
      * Mark this entity as soft-deleted.

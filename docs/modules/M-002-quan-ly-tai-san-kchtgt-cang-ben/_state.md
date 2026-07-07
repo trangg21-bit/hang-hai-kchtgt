@@ -1,4 +1,21 @@
 ---
+status: proposed
+current-stage: proposed
+completed-stages:
+  engineering-code-reviewer:
+    verdict: Approved
+    completed-at: 2026-07-02
+  done:
+    verdict: Approved
+    completed-at: 2026-07-02
+stages-queue:
+  - engineering-business-analyst
+  - engineering-system-architect
+  - engineering-technical-lead
+  - engineering-backend-developer-wave-1
+last-updated: 2026-07-02T01:44:39Z
+---
+---
 feature-id: M-002
 feature-name: Quản lý tài sản KCHTGT - Cảng & Bến
 pipeline-type: sdlc
@@ -6,8 +23,8 @@ status: in-progress
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:22Z
-last-updated: 2026-06-27T19:55:04Z
-current-stage: engineering-backend-developer-wave-1
+last-updated: 2026-07-01T07:35:10Z
+current-stage: engineering-designer
 output-mode: lean
 repo-type: mini
 repo-path: .
@@ -15,10 +32,9 @@ project: ""
 docs-path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben
 intel-path: docs/intel
 stages-queue:
-  - engineering-system-architect
-  - engineering-technical-lead
-  - engineering-backend-developer-wave-1
-  - engineering-qa-engineer-wave-1
+  - engineering-designer
+  - engineering-frontend-developer-wave-1
+  - engineering-qa-engineer-ui-wave-1
   - engineering-code-reviewer
 completed-stages:
   consulting-intelligence-extractor:
@@ -33,11 +49,34 @@ completed-stages:
   engineering-technical-lead:
     verdict: Ready
     completed-at: 2026-06-27
+  engineering-backend-developer-wave-1:
+    verdict: Pass
+    completed-at: 2026-06-28
+  engineering-backend-developer-wave-2:
+    verdict: Pass
+    completed-at: 2026-06-29
+  engineering-qa-engineer-wave-2:
+    verdict: Pass
+    artifact: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w2.md
+    completed-at: 2026-06-29
+  engineering-backend-developer-wave-3:
+    verdict: Pass
+    completed-at: 2026-06-29
+  engineering-qa-engineer-wave-3:
+    verdict: Pass
+    artifact: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w3.md
+    completed-at: 2026-06-29
+  engineering-code-reviewer:
+    verdict: Approved
+    artifact: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/reviewer/final-verdict-rereview.md
+    completed-at: 2026-06-29
 kpi:
   tokens-total: 0
   cycle-time-start: 2026-06-16T04:39:22Z
   tokens-by-stage: {}
   tokens-by-feature: {}
+  rework_count_dev: 2
+  backward_escalation_count: 1
 rework-count: {}
 locked-fields: []
 version: 1
@@ -46,13 +85,9 @@ children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
 agent-flags: {}
-feature-req:
-  file: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md
-  canonical-fallback: docs/intel/_snapshot.md
-  scope-modules: []
-  scope-features: []
-  dev-unit: ""
+feature-req: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md
 clarification-notes: ""
+ui-status: pending
 ---
 # Pipeline State: Quản lý tài sản KCHTGT - Cảng & Bến
 
@@ -73,14 +108,24 @@ Quản lý cảng biển (36), bến cảng (301), cầu cảng (614), cảng c�
 | engineering-business-analyst | engineering-business-analyst | Ready |  | 2026-06-27 |
 | engineering-system-architect | engineering-system-architect | Ready |  | 2026-06-27 |
 | engineering-technical-lead | engineering-technical-lead | Ready |  | 2026-06-27 |
+| engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | Pass |  | 2026-06-28 |
+| engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | Pass |  | 2026-06-28 |
+| engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | Pass |  | 2026-06-28 |
+| engineering-backend-developer-wave-2 | engineering-backend-developer-wave-2 | Pass |  | 2026-06-29 |
+| engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w2.md | 2026-06-29 |
+| engineering-backend-developer-wave-3 | engineering-backend-developer-wave-3 | Pass |  | 2026-06-29 |
+| engineering-qa-engineer-wave-3 | engineering-qa-engineer-wave-3 | Pass | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w3.md | 2026-06-29 |
+| engineering-code-reviewer | engineering-code-reviewer | Approved | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/reviewer/final-verdict-rereview.md | 2026-06-29 |
+| engineering-code-reviewer | engineering-code-reviewer | Approved |  | 2026-07-02 |
+| done | done | Approved |  | 2026-07-02 |
 
 ## Current Stage
 
-**ba** — Ready to start. Input: `docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md`.
+**engineering-qa-engineer-wave-1** — Ready to start. Input: `docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md`, source code at `src/main/java/com/hanghai/kchtg/cangben/`.
 
 ## Next Action
 
-Run: `/resume-module M-002` để dispatch BA agent.
+Run: `/resume-feature F-002` hoặc `/new-feature` dưới module M-002 để dispatch QA engineer agent chạy wave-1 testing trên 47 file Java.
 
 ## Active Blockers
 
@@ -95,3 +140,9 @@ none
 
 | Date | Item | Decision |
 |---|---|---|
+| 2026-06-28 | QA wave-1 Fail (AC 33%) — 3 HIGH gaps: missing migrations, RBAC unenforced, zero tests | dev-only rework; paused for user confirmation (resume-module M-002 paused at qa-wave-1) |
+| 2026-06-29 | Reviewer (5-shard + integrator) = Changes requested — 5 cross-cutting must-fixes (orgUnitId UUID, userId impersonation, history subsystem, VungNuoc filter, CauCang guard) | backward escalation to dev-wave-3 (targeted shared-code fixes); rework #2; user pre-authorized run-to-done/blocked |
+
+## Audit Log
+
+| 2026-07-01 |  |  |  |

@@ -26,5 +26,4 @@ public class CreateCauCangRequest {
     private BigDecimal taiTrong;
     private String loaiCau;
     private String trangThaiHoatDong;
-    private String congNangKhaiThac;
 }

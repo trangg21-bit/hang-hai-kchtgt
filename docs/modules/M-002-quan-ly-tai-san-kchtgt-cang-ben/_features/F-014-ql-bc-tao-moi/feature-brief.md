@@ -1,13 +1,13 @@
 ---
 id: F-014
-name: "Quản lý Bến cảng - Tạo mới"
+name: Quản lý Bến cảng - Tạo mới
 slug: ql-bc-tao-moi
 module-id: M-002
-status: proposed
+status: done
 classification: local
 priority: critical
-created: "2026-06-16T04:40:42Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:40:42Z
+last-updated: 2026-06-29T11:10:00Z
 locked-fields: []
 consumed_by_modules: []
 ---

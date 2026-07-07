@@ -35,10 +35,6 @@ export default function CauCangCreatePage() {
       const values = await form.validateFields();
       setSubmitting(true);
 
-      const congNangString = values.congNangKhaiThac && values.congNangKhaiThac.length > 0
-        ? values.congNangKhaiThac.join(', ')
-        : '';
-
       const payload: Parameters<typeof createCauCang>[0] = {
         maCau: values.maCau,
         tenCau: values.tenCau,
@@ -47,7 +43,6 @@ export default function CauCangCreatePage() {
         ...(values.taiTrong !== undefined && values.taiTrong !== '' && { taiTrong: values.taiTrong as number }),
         ...(values.loaiCau && { loaiCau: values.loaiCau }),
         trangThaiHoatDong: values.trangThaiHoatDong,
-        congNangKhaiThac: congNangString,
       };
 
       await createCauCang(payload);
@@ -149,23 +144,6 @@ export default function CauCangCreatePage() {
           {/* Status Section */}
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>Trạng thái</Typography.Text>
           <Row gutter={[16, 16]}>
-            <Col span={12}>
-              <FormField
-                type="select"
-                name="congNangKhaiThac"
-                label="Công năng khai thác"
-                mode="multiple"
-                placeholder="Chọn công năng khai thác (chọn nhiều)"
-                options={[
-                  { label: 'Hàng Container', value: 'Hàng Container' },
-                  { label: 'Hàng tổng hợp (bách hóa)', value: 'Hàng tổng hợp (bách hóa)' },
-                  { label: 'Hàng chuyên dụng hàng rời, quặng', value: 'Hàng chuyên dụng hàng rời, quặng' },
-                  { label: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng', value: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng' },
-                  { label: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu ...)', value: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu ...)' },
-                  { label: 'Hành khách', value: 'Hành khách' },
-                ]}
-              />
-            </Col>
             <Col span={12}>
               <FormField
                 type="select"

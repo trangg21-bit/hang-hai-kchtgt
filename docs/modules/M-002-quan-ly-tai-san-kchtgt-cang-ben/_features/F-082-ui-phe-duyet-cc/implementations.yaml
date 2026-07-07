@@ -1,0 +1,13 @@
+feature_id: F-082
+module_id: M-002
+slug: ui-phe-duyet-cc
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: ""
+  consumers: []
+
+# Cross-cutting: features consumed by multiple modules
+consumed_by_modules: []

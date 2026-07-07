@@ -1,13 +1,13 @@
 ---
 id: F-031
-name: "Quản lý Cảng cạn - Lịch sử"
+name: Quản lý Cảng cạn - Lịch sử
 slug: ql-cct-lich-su
 module-id: M-002
-status: proposed
+status: done
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+last-updated: 2026-06-29T11:10:08Z
 locked-fields: []
 consumed_by_modules: []
 ---

@@ -53,7 +53,7 @@ export default function CangCanDeleteConfirm({
       footer={null}
       centered
       width={480}
-      destroyOnHidden
+      destroyOnClose
     >
       {/* Header */}
       <Space style={{ marginBottom: 16 }}>

@@ -32,7 +32,6 @@ export default function CangBienForm() {
             dienTich: data.dienTich,
             khaNangTiepNhan: data.khaNangTiepNhan,
             trangThaiHoatDong: data.trangThaiHoatDong,
-            nhomCangBien: data.nhomCangBien,
           });
         } catch {
           toast.error('Không thể tải thông tin cảng biển');
@@ -67,7 +66,6 @@ export default function CangBienForm() {
           dienTich: values.dienTich,
           khaNangTiepNhan: values.khaNangTiepNhan,
           trangThaiHoatDong: values.trangThaiHoatDong,
-          nhomCangBien: values.nhomCangBien,
         };
         await cangBienCRUD.update({ ...payload, id: id! });
         toast.success('Đã cập nhật cảng biển');
@@ -81,7 +79,6 @@ export default function CangBienForm() {
           dienTich: values.dienTich,
           khaNangTiepNhan: values.khaNangTiepNhan,
           trangThaiHoatDong: values.trangThaiHoatDong,
-          nhomCangBien: values.nhomCangBien,
           trangThaiPheDuyet: 'DRAFT',
           orgUnitId: '',
         };
@@ -271,19 +268,6 @@ export default function CangBienForm() {
               { label: 'Hoạt động', value: 'ACTIVE' },
               { label: 'Tạm ngừng', value: 'SUSPENDED' },
               { label: 'Ngừng hoạt động', value: 'INACTIVE' },
-            ]}
-          />
-
-          <FormField
-            type="select"
-            name="nhomCangBien"
-            label="Nhóm cảng biển"
-            options={[
-              { label: 'Nhóm 1', value: 1 },
-              { label: 'Nhóm 2', value: 2 },
-              { label: 'Nhóm 3', value: 3 },
-              { label: 'Nhóm 4', value: 4 },
-              { label: 'Nhóm 5', value: 5 },
             ]}
           />
 

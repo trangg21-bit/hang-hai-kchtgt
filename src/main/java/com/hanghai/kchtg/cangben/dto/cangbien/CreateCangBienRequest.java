@@ -43,8 +43,6 @@ public class CreateCangBienRequest {
 
     private String trangThaiHoatDong;
 
-    private Integer nhomCangBien;
-
     /**
      * GPS paired-field constraint: viDo and kinhDo must both be present or both be absent.
      */

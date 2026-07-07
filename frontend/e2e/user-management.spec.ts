@@ -1,28 +1,26 @@
 import { test, expect } from '@playwright/test';
 
-/**
- * e2e/user-management.spec.ts — Kiểm tra CRUD người dùng
- * 
- * Trang UsersPage sử dụng:
- * - Inline Modal (antd) cho Tạo/Sửa người dùng
- * - Ant Design Table với các cột: Họ và tên, Tên đăng nhập, Email, Vai trò, Trạng thái
- * - Modal.confirm cho xác nhận xóa
- * - Form fields: username, password, fullName, email, phone, roleId
- * 
- * Debugging:
- *   - test.only(...) để chạy duy nhất test này
- *   - test.skip(...) để bỏ qua tạm thời
- */
-
-const BASE_URL = 'http://localhost:3000';
+  /**
+   * e2e/user-management.spec.ts — Kiểm tra CRUD người dùng
+   * 
+   * Trang UsersPage sử dụng:
+   * - Inline Modal (antd) cho Tạo/Sửa người dùng
+   * - Ant Design Table với các cột: Họ và tên, Tên đăng nhập, Email, Vai trò, Trạng thái
+   * - Modal.confirm cho xác nhận xóa
+   * - Form fields: username, password, fullName, email, phone, roleId
+   * 
+   * Debugging:
+   *   - test.only(...) để chạy duy nhất test này
+   *   - test.skip(...) để bỏ qua tạm thời
+   */
 
 async function setupAuth(page: any): Promise<void> {
-  await page.context().addInitScript(() => {
-    localStorage.clear();
-    localStorage.setItem('auth_token', 'mock-jwt-token-2026');
-  });
-  await page.goto(BASE_URL);
-  await page.waitForURL(/\/users/, { timeout: 10_000 });
+  await page.goto('/login');
+  await page.getByPlaceholder('Tên đăng nhập').fill('admin');
+  await page.getByPlaceholder('Mật khẩu').fill('admin123');
+  await page.getByRole('button', { name: /Đăng nhập/ }).click();
+  // Login redirects to home page (/) not /users
+  await page.waitForURL(/\/$/);
 }
 
 // ============================================================
@@ -39,6 +37,13 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
   // TEST: Tạo người dùng mới
   // --------------------------------------------------------
   test('Tạo mới người dùng — điền đầy đủ form và xác nhận', async ({ page }) => {
+    // Navigate to users page
+    await page.getByText('Quản lý tài khoản').click();
+    await page.waitForURL(/\/users/);
+
+    // Wait for table to load
+    await expect(page.locator('.ant-table')).toBeVisible({ timeout: 15000 });
+
     // Mở modal tạo mới
     const createBtn = page.locator('button:has-text("Thêm người dùng")').first();
     await createBtn.scrollIntoViewIfNeeded();
@@ -49,11 +54,10 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
 
     const rand = Date.now();
     // Điền form
-    // Username: chỉ cho phép [a-z0-9_], min 4 ký tự
     await page.locator('#username').fill('testuser' + rand);
     
-    // Password: phải có chữ hoa, chữ thường, số, min 6 ký tự
-    await page.locator('#password').fill('Test1234');
+    // Password: phải có chữ hoa, chữ thường, số, min 8 ký tự
+    await page.locator('#password').fill('Test12345');
     
     // Full name
     await page.locator('#fullName').fill('Nguyễn Văn Test');
@@ -65,14 +69,11 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
     await page.locator('#phone').fill('0912345678');
     
     // Role — chọn từ dropdown Select
-    // Ant Design Select: click để mở dropdown, rồi chọn option
-    const roleSelect = page.locator('select#roleId, input#roleId, .ant-select:has(label:has-text("Vai trò"))');
-    // Find the Select component for roleId
     const roleIdSelect = page.locator('.ant-form-item:has(label:has-text("Vai trò")) .ant-select').first();
     await roleIdSelect.click({ timeout: 5000 });
     await page.waitForTimeout(300);
     
-    // Click the first role option — use force:true to bypass overlay interception
+    // Click the first role option
     const roleOption = page.locator('.ant-select-item-option').first();
     await roleOption.click({ timeout: 5000, force: true });
 
@@ -81,28 +82,14 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
     await submitBtn.click({ timeout: 10_000 });
 
     // Modal should close after successful submission
-    await page.waitForTimeout(1500); // mock delay 800ms + buffer
+    await page.waitForTimeout(1500);
     
-    // Verify success message from antd message.success
-    // useCreateUser hook shows: "Đã tạo người dùng thành công"
-    const successMsg = page.locator('.ant-message:has-text("thành công"), .ant-message-notice-content:has-text("thành công")');
-    // Either modal closed and we see updated list, or success message shown
-    const modalClosed = page.locator('.ant-modal').count();
-    
-    // Either modal closed OR success message is shown
-    if (modalClosed === 1) {
-      // Modal still open — check for error
+    const modalVisible = await page.locator('.ant-modal').isVisible();
+    if (modalVisible) {
       await expect(page.locator('.ant-modal')).not.toBeVisible({ timeout: 5000 });
-    } else {
-      // Modal closed successfully
     }
 
-    // Verify new user appears in table
-    // The new user should be in the list (mock data prepends to array)
-    const tableText = page.locator('.ant-table-tbody');
-    const hasNewUser = tableText.locator('td:has-text("Nguyễn Văn Test")');
-    // Note: in mock mode, user may or may not appear depending on render timing
-    // We just verify the page is still in valid state
+    // Verify page is still in valid state
     await expect(page.locator('.ant-table')).toBeVisible({ timeout: 5000 });
   });
 
@@ -110,6 +97,10 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
   // TEST: Tạo user với validation error — bỏ trống required fields
   // --------------------------------------------------------
   test('Không thể tạo user khi bỏ trống trường bắt buộc', async ({ page }) => {
+    // First navigate to users page
+    await page.getByText('Quản lý tài khoản').click();
+    await page.waitForURL(/\/users/);
+
     const createBtn = page.locator('button:has-text("Thêm người dùng")').first();
     await createBtn.scrollIntoViewIfNeeded();
     await createBtn.click({ timeout: 10_000 });
@@ -131,21 +122,24 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
   // TEST: Sửa thông tin người dùng
   // --------------------------------------------------------
   test('Sửa thông tin người dùng — thay đổi email', async ({ page }) => {
-    // Click edit button in first visible row
-    const firstRow = page.locator('tr.ant-table-row').first();
-    await firstRow.scrollIntoViewIfNeeded();
+    // Ensure we're on the users page
+    await page.getByText('Quản lý tài khoản').click();
+    await page.waitForURL(/\/users/);
 
-    // Find the edit button (link button with EditOutlined icon)
-    // In UsersPage, edit button is: Button type="link" size="small" icon={<EditOutlined />}
-    const editBtn = page.locator('tr.ant-table-row').first().locator('button[title="Sửa"]');
+    // Wait for table to load
+    await expect(page.locator('.ant-table')).toBeVisible({ timeout: 15000 });
     
-    if (await editBtn.count() > 0) {
-      await editBtn.click({ timeout: 10_000 });
-    } else {
-      // Fallback: click any edit icon in first row
-      const actionButtons = page.locator('tr.ant-table-row').first().locator('button.ant-btn-link, .ant-table-cell button[type="button"]');
-      await actionButtons.first().click({ timeout: 10_000 });
-    }
+    // Scroll to table body to find rows
+    const tableBody = page.locator('.ant-table-tbody');
+    await tableBody.scrollIntoViewIfNeeded();
+
+    const firstRow = page.locator('.ant-table-row').first();
+    await expect(firstRow).toBeVisible({ timeout: 10000 });
+
+    // Find the edit button (button with title="Sửa")
+    const editBtn = firstRow.locator('button[title="Sửa"]').first();
+    await expect(editBtn).toBeVisible({ timeout: 5000 });
+    await editBtn.click({ timeout: 10_000 });
 
     // Edit modal should open
     await expect(page.locator('.ant-modal-title')).toHaveText('Sửa người dùng', { timeout: 5000 });
@@ -153,6 +147,7 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
     // Pre-filled data should be present
     const emailInput = page.locator('#email');
     await expect(emailInput).toBeVisible({ timeout: 3000 });
+    const emailValue = await emailInput.inputValue();
 
     // Change email
     await emailInput.fill('updated@hh.gov.vn');
@@ -168,7 +163,6 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
     await expect(page.locator('.ant-modal')).not.toBeVisible({ timeout: 5000 });
 
     // Verify updated email is in table
-    // (mock data update should reflect in list)
     await expect(page.locator('.ant-table')).toBeVisible({ timeout: 5000 });
   });
 
@@ -176,16 +170,23 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
   // TEST: Xóa người dùng với xác nhận
   // --------------------------------------------------------
   test('Xóa người dùng phải hiện modal xác nhận và xóa khỏi danh sách', async ({ page }) => {
+    // Ensure we're on the users page
+    await page.getByText('Quản lý tài khoản').click();
+    await page.waitForURL(/\/users/);
+
     // Wait for table to load
-    await expect(page.locator('.ant-table-row').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.ant-table')).toBeVisible({ timeout: 15000 });
+    const tableBody = page.locator('.ant-table-tbody');
+    await tableBody.scrollIntoViewIfNeeded();
 
-    // Find the last row to delete
     const rows = page.locator('.ant-table-row');
-    const lastRow = rows.last();
-    await lastRow.scrollIntoViewIfNeeded();
+    const firstRow = rows.first();
+    await expect(firstRow).toBeVisible({ timeout: 10000 });
 
-    // Click delete icon inside row
-    await lastRow.locator('.anticon-delete').click({ timeout: 10_000 });
+    // Click delete button inside first row
+    const deleteBtn = firstRow.locator('button[title="Xóa"]').first();
+    await expect(deleteBtn).toBeVisible({ timeout: 5000 });
+    await deleteBtn.click({ timeout: 10_000 });
 
     // Ant Design Modal.confirm should appear
     await expect(page.locator('.ant-modal-confirm-title')).toHaveText('Xác nhận xóa người dùng', { timeout: 5000 });
@@ -193,7 +194,7 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
     // Click "Xóa" (danger button) in modal
     await page.locator('.ant-modal-confirm-btns button:has-text("Xóa")').first().click({ timeout: 10_000 });
 
-    // Wait for mutation (mock delay 500ms)
+    // Wait for mutation
     await page.waitForTimeout(1500);
 
     // Verify success message
@@ -211,6 +212,10 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
   // TEST: Tìm kiếm người dùng
   // --------------------------------------------------------
   test('Tìm kiếm người dùng theo tên, email, username', async ({ page }) => {
+    // Navigate to users page
+    await page.getByText('Quản lý tài khoản').click();
+    await page.waitForURL(/\/users/);
+
     const searchInput = page.locator('input[placeholder*="Tìm theo tên"], input[type="search"]').first();
     await expect(searchInput).toBeVisible({ timeout: 5000 });
 
@@ -235,8 +240,12 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
   // TEST: Bộ lọc theo vai trò
   // --------------------------------------------------------
   test('Lọc người dùng theo vai trò từ dropdown', async ({ page }) => {
+    // Navigate to users page
+    await page.getByText('Quản lý tài khoản').click();
+    await page.waitForURL(/\/users/);
+
     // Click role filter Select
-    const roleFilter = page.locator('.ant-form-item:has(label:has-text("Vai trò")) select, .ant-select:has(label:has-text("Vai trò"))').first();
+    const roleFilter = page.locator('select[placeholder="Vai trò"]').first();
     
     if (await roleFilter.count() > 0) {
       await roleFilter.click({ timeout: 5000 });
@@ -256,8 +265,12 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
   // TEST: Trạng thái hiển thị trên bảng
   // --------------------------------------------------------
   test('Bảng người dùng phải hiển thị badge và tag trạng thái', async ({ page }) => {
+    // Navigate to users page
+    await page.getByText('Quản lý tài khoản').click();
+    await page.waitForURL(/\/users/);
+
     // Wait for table to load
-    await expect(page.locator('.ant-table-row').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.ant-table')).toBeVisible({ timeout: 15000 });
 
     // Verify status column has tags
     const statusTags = page.locator('td:has-text("Hoạt động"), td:has-text("Đã khóa"), td:has-text("Không hoạt động")');
@@ -269,8 +282,12 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
   // TEST: Phân trang
   // --------------------------------------------------------
   test('Phân trang phải hoạt động — chuyển trang và thay đổi pageSize', async ({ page }) => {
+    // Navigate to users page
+    await page.getByText('Quản lý tài khoản').click();
+    await page.waitForURL(/\/users/);
+
     // Wait for table to load
-    await expect(page.locator('.ant-table-row').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.ant-table')).toBeVisible({ timeout: 15000 });
 
     // Check pagination is visible
     const pagination = page.locator('.ant-pagination');

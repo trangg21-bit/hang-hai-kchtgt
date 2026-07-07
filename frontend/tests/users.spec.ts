@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Users Page', () => {
-  test.use({ storageState: { cookies: [], origins: [{ origin: 'http://localhost:3000', localStorage: [{ name: 'auth_token', value: 'mock-jwt-token-2026' }] }] } });
+  test.use({ storageState: { cookies: [], origins: [{ origin: 'http://localhost:3001', localStorage: [{ name: 'auth_token', value: 'mock-jwt-token-2026' }] }] } });
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/users');

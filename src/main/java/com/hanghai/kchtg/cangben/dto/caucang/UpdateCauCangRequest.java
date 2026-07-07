@@ -18,5 +18,4 @@ public class UpdateCauCangRequest {
     private BigDecimal taiTrong;
     private String loaiCau;
     private String trangThaiHoatDong;
-    private String congNangKhaiThac;
 }

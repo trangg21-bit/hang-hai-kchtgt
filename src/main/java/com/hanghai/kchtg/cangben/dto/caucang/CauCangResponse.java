@@ -24,5 +24,4 @@ public class CauCangResponse {
     private String updatedBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private String congNangKhaiThac;
 }

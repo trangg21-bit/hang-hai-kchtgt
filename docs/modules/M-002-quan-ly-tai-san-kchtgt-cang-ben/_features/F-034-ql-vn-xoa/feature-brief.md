@@ -1,13 +1,13 @@
 ---
 id: F-034
-name: "Quản lý Vùng nước - Xóa"
+name: Quản lý Vùng nước - Xóa
 slug: ql-vn-xoa
 module-id: M-002
-status: proposed
+status: done
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+last-updated: 2026-06-29T11:10:10Z
 locked-fields: []
 consumed_by_modules: []
 ---

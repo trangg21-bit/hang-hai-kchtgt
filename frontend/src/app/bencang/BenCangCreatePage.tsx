@@ -20,10 +20,6 @@ export default function BenCangCreatePage() {
     try {
       const values = await form.validateFields();
 
-      const congNangString = values.congNangKhaiThac && values.congNangKhaiThac.length > 0
-        ? values.congNangKhaiThac.join(', ')
-        : '';
-
       // Zod validation (matches BE validation)
       const parsed = createSchema.parse({
         maBen: values.maBen,
@@ -36,8 +32,7 @@ export default function BenCangCreatePage() {
         chieuRong: values.chieuRong || undefined,
         loaiBen: values.loaiBen || undefined,
         doSauLuong: values.doSauLuong || undefined,
-        trangThaiHoatDong: values.trangThaiHoatDong || 'HIEN_HANH',
-        congNangKhaiThac: congNangString,
+        trangThaiHoatDong: values.trangThaiHoatDong || 'HIỆN_HÀNH',
       });
 
       setSubmitting(true);
@@ -54,7 +49,6 @@ export default function BenCangCreatePage() {
         loaiBen: parsed.loaiBen,
         doSauLuong: parsed.doSauLuong,
         trangThaiHoatDong: parsed.trangThaiHoatDong,
-        congNangKhaiThac: parsed.congNangKhaiThac,
       };
 
       await benCangCRUD.create(payload);
@@ -217,28 +211,11 @@ export default function BenCangCreatePage() {
             <Col span={12}>
               <FormField
                 type="select"
-                name="congNangKhaiThac"
-                label="Công năng khai thác"
-                mode="multiple"
-                placeholder="Chọn công năng khai thác (chọn nhiều)"
-                options={[
-                  { label: 'Hàng Container', value: 'Hàng Container' },
-                  { label: 'Hàng tổng hợp (bách hóa)', value: 'Hàng tổng hợp (bách hóa)' },
-                  { label: 'Hàng chuyên dụng hàng rời, quặng', value: 'Hàng chuyên dụng hàng rời, quặng' },
-                  { label: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng', value: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng' },
-                  { label: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu ...)', value: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu ...)' },
-                  { label: 'Hành khách', value: 'Hành khách' },
-                ]}
-              />
-            </Col>
-            <Col span={12}>
-              <FormField
-                type="select"
                 name="trangThaiHoatDong"
                 label="Trạng thái hoạt động"
                 options={[
-                  { label: 'Hiện hành', value: 'HIEN_HANH' },
-                  { label: 'Tạm ngừng', value: 'TAM_NGUNG' },
+                  { label: 'Hiện hành', value: 'HIỆN_HÀNH' },
+                  { label: 'Tạm ngừng', value: 'TẠM_NGƯNG' },
                 ]}
               />
             </Col>

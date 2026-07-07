@@ -10,8 +10,6 @@ import type {
   VungNuocHistoryRecord,
 } from './types';
 
-const BASE = '/v1/vung-nuoc';
-
 /* ── Helpers ──────────────────────────────────────────────────────────── */
 
 function parsePage<T>(res: any): { data: T[]; total: number; page: number; pageSize: number } {
@@ -33,48 +31,48 @@ export const vungNuocApi = {
     if (params?.page !== undefined) sp.set("page", String((params.page ?? 1) - 1)); // 1-based → 0-based
     if (params?.pageSize !== undefined) sp.set("size", String(params.pageSize));
     if (params?.cangBienId) sp.set("cangBienId", params.cangBienId);
-    const res = await api.get(`${BASE}?${sp}`);
+    const res = await api.get(`/vung-nuoc?${sp}`);
     return parsePage<VungNuoc>(res);
   },
 
   async findById(id: string) {
-    const res = await api.get(`${BASE}/${id}`);
+    const res = await api.get(`/vung-nuoc/${id}`);
     return res.data.data as VungNuoc;
   },
 
   async findByCode(maVungNuoc: string) {
-    const res = await api.get(`${BASE}/code/${maVungNuoc}`);
+    const res = await api.get(`/vung-nuoc/code/${maVungNuoc}`);
     return res.data.data as VungNuoc;
   },
 
   async create(payload: CreateVungNuocRequest) {
-    const res = await api.post(BASE, payload);
+    const res = await api.post('/vung-nuoc', payload);
     return res.data.data as VungNuoc;
   },
 
   async update(payload: UpdateVungNuocRequest) {
-    const res = await api.put(BASE, payload);
+    const res = await api.put('/vung-nuoc', payload);
     return res.data.data as VungNuoc;
   },
 
   async delete(id: string) {
-    await api.delete(`${BASE}/${id}`);
+    await api.delete(`/vung-nuoc/${id}`);
   },
 
   /* ── Approval ─────────────────────────────────────────────────────── */
 
   async approve(id: string) {
-    await api.post(`${BASE}/${id}/approve`);
+    await api.post(`/vung-nuoc/${id}/approve`);
   },
 
   async reject(id: string, reason: string) {
-    await api.post(`${BASE}/${id}/reject`, null, { params: { reason } });
+    await api.post(`/vung-nuoc/${id}/reject`, null, { params: { reason } });
   },
 
   /* ── History ──────────────────────────────────────────────────────── */
 
   async getHistory(entityId: string) {
-    const res = await api.get(`${BASE}/${entityId}/history`);
+    const res = await api.get(`/vung-nuoc/${entityId}/history`);
     return (res.data.data || []) as VungNuocHistoryRecord[];
   },
 };

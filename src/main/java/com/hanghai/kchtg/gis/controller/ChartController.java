@@ -85,13 +85,15 @@ public class ChartController {
     @PostMapping("/permits")
     public ResponseEntity<ApiResponse<S63Permit>> registerPermit(
             @Valid @RequestBody PermitRequest request) {
+        boolean isUpdate = chartIntegrationService.isPermitRegistered(request.getCellName());
         S63Permit permit = chartIntegrationService.registerPermit(
                 request.getCellName(),
                 request.getPermitKey(),
                 request.getExpiryDate()
         );
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Đăng ký giấy phép S-63 thành công", permit));
+        String message = isUpdate ? "Cập nhật giấy phép S-63 thành công" : "Đăng ký giấy phép S-63 thành công";
+        return ResponseEntity.status(isUpdate ? HttpStatus.OK : HttpStatus.CREATED)
+                .body(ApiResponse.success(message, permit));
     }
 
     @DeleteMapping("/permits/{id}")

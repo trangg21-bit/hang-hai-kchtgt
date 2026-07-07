@@ -3,7 +3,7 @@ import { z } from "zod";
 // ── List filters schema ──────────────────────────────────────────
 export const listFiltersSchema = z.object({
   search: z.string().optional(),
-  status: z.enum(["HIEN_HANH", "TAM_NGUNG"]).optional(),
+  status: z.enum(["HIỆN_HÀNH", "TẠM_NGƯNG"]).optional(),
   approvalStatus: z.enum(["CHO_PHE_DUYET", "DUOC_PHE_DUYET", "TU_CHOI"]).optional(),
   cangBienId: z.string().uuid().optional().or(z.literal("")),
   orgUnitId: z.string().uuid().optional().or(z.literal("")),
@@ -27,8 +27,7 @@ export const createSchema = z.object({
   chieuRong: z.coerce.number().optional().or(z.nan()),
   loaiBen: z.string().max(100, "Loại bến tối đa 100 ký tự").optional().or(z.literal("")),
   doSauLuong: z.coerce.number().optional().or(z.nan()),
-  trangThaiHoatDong: z.enum(["HIEN_HANH", "TAM_NGUNG"]).optional().default("HIEN_HANH"),
-  congNangKhaiThac: z.string().optional().or(z.literal("")),
+  trangThaiHoatDong: z.enum(["HIỆN_HÀNH", "TẠM_NGƯNG"]).optional().default("HIỆN_HÀNH"),
 });
 
 export type CreateForm = z.infer<typeof createSchema>;
@@ -45,8 +44,7 @@ export const updateSchema = z.object({
   chieuRong: z.coerce.number().optional().or(z.nan()),
   loaiBen: z.string().max(100, "Loại bến tối đa 100 ký tự").optional().or(z.literal("")),
   doSauLuong: z.coerce.number().optional().or(z.nan()),
-  trangThaiHoatDong: z.enum(["HIEN_HANH", "TAM_NGUNG"]).optional(),
-  congNangKhaiThac: z.string().optional().or(z.literal("")),
+  trangThaiHoatDong: z.enum(["HIỆN_HÀNH", "TẠM_NGƯNG"]).optional(),
 });
 
 export type UpdateForm = z.infer<typeof updateSchema>;

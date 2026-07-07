@@ -11,8 +11,8 @@ export const createCangCanSchema = z
     kinhDo: z.coerce.number().min(-180, 'Kinh độ phải từ -180 đến 180').max(180, 'Kinh độ phải từ -180 đến 180').optional(),
     dienTich: z.coerce.number().positive('Diện tích phải lớn hơn 0'),
     congSuatTEU: z.coerce.number().optional(),
-    trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional().default('HIEN_HANH'),
-    trangThaiPheDuyet: z.enum(['CHO_PHE_DUYET', 'DUOC_PHE_DUYET', 'TU_CHOI']).optional().default('CHO_PHE_DUYET'),
+    trangThaiHoatDong: z.enum(['HIỆN_HÀNH', 'TẠM_NGƯNG']).optional(),
+    trangThaiPheDuyet: z.enum(['CHỜ_PHE_DUYỆT', 'ĐƯỢC_PHE_DUYỆT', 'TỪ_CHỐI']).optional().default('CHỜ_PHE_DUYỆT'),
   })
   .refine(
     (data) => (data.viDo === undefined) === (data.kinhDo === undefined),
@@ -34,7 +34,7 @@ export const updateCangCanSchema = z
     kinhDo: z.coerce.number().min(-180, 'Kinh độ phải từ -180 đến 180').max(180, 'Kinh độ phải từ -180 đến 180').optional(),
     dienTich: z.coerce.number().positive('Diện tích phải lớn hơn 0').optional(),
     congSuatTEU: z.coerce.number().optional(),
-    trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
+    trangThaiHoatDong: z.enum(['HIỆN_HÀNH', 'TẠM_NGƯNG']).optional(),
   })
   .refine(
     (data: any) => (data.viDo === undefined || data.viDo === null) === (data.kinhDo === undefined || data.kinhDo === null),
@@ -48,8 +48,8 @@ export const updateCangCanSchema = z
 
 export const listFiltersSchema = z.object({
   search: z.string().optional(),
-  status: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
-  approvalStatus: z.enum(['CHO_PHE_DUYET', 'DUOC_PHE_DUYET', 'TU_CHOI']).optional(),
+  status: z.enum(['HIỆN_HÀNH', 'TẠM_NGƯNG']).optional(),
+  approvalStatus: z.enum(['CHỜ_PHE_DUYỆT', 'ĐƯỢC_PHE_DUYỆT', 'TỪ_CHỐI']).optional(),
   orgUnitId: z.string().uuid().optional(),
   sortBy: z.enum(['maCangCan', 'tenCangCan', 'createdAt', 'updatedAt']).default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),

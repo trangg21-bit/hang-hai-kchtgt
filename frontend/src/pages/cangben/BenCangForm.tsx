@@ -10,7 +10,6 @@ import {
 } from '../../types/cangben';
 import FormField from '../../components/FormField';
 import toast from '../../components/ToastNotification';
-import { parseCongNangKhaiThac } from '../../utils/congNangParser';
 
 export default function BenCangForm() {
   const navigate = useNavigate();
@@ -39,7 +38,6 @@ export default function BenCangForm() {
             loaiBen: data.loaiBen,
             doSauLuong: data.doSauLuong,
             trangThaiHoatDong: data.trangThaiHoatDong,
-            congNangKhaiThac: parseCongNangKhaiThac(data.congNangKhaiThac),
           });
         } catch {
           toast.error('Không thể tải thông tin bến cảng');
@@ -48,11 +46,11 @@ export default function BenCangForm() {
       })();
     }
   }, [isEdit, id, form, navigate]);
- 
+
   const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields();
- 
+
       // WGS84 validation
       if (values.viDo < -90 || values.viDo > 90) {
         message.error('Vĩ độ phải từ -90 đến 90');
@@ -62,17 +60,12 @@ export default function BenCangForm() {
         message.error('Kinh độ phải từ -180 đến 180');
         return;
       }
- 
+
       setSubmitting(true);
- 
-      const congNangString = values.congNangKhaiThac && values.congNangKhaiThac.length > 0
-          ? values.congNangKhaiThac.join(', ')
-          : '';
- 
+
       if (isEdit) {
         const payload: UpdateBenCangRequest & { id: string } = {
           ...values,
-          congNangKhaiThac: congNangString,
           id: id!,
         };
         await benCangCRUD.update(payload);
@@ -90,12 +83,13 @@ export default function BenCangForm() {
           loaiBen: values.loaiBen,
           doSauLuong: values.doSauLuong,
           trangThaiHoatDong: values.trangThaiHoatDong,
-          congNangKhaiThac: congNangString,
+          trangThaiPheDuyet: 'DRAFT',
+          orgUnitId: '',
         };
         await benCangCRUD.create(payload);
         toast.success('Đã tạo bến cảng');
       }
- 
+
       navigate('/bencang');
     } catch {
       // validation errors or API errors (handled globally by Axios interceptor in api.ts)
@@ -287,7 +281,7 @@ export default function BenCangForm() {
                { label: 'Bên bờ', value: 'SHORE' },
                { label: 'Đập chắn', value: 'BREAKWATER' },
              ]}
-             disabled={isEdit && ((entityData?.status as string) === 'APPROVED_L2' || (entityData?.status as string) === 'PUBLISHED')}
+             disabled={isEdit && (entityData?.status === 'APPROVED_L2' || entityData?.status === 'PUBLISHED')}
            />
 
            <FormField
@@ -299,22 +293,6 @@ export default function BenCangForm() {
              step={0.01}
              placeholder="VD: 12.5"
              help="Độ sâu luồng tính bằng mét"
-           />
-
-           <FormField
-             type="select"
-             name="congNangKhaiThac"
-             label="Công năng khai thác"
-             mode="multiple"
-             placeholder="Chọn công năng khai thác (chọn nhiều)"
-             options={[
-               { label: 'Hàng Container', value: 'Hàng Container' },
-               { label: 'Hàng tổng hợp (bách hóa)', value: 'Hàng tổng hợp (bách hóa)' },
-               { label: 'Hàng chuyên dụng hàng rời, quặng', value: 'Hàng chuyên dụng hàng rời, quặng' },
-               { label: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng', value: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng' },
-               { label: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu ...)', value: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu ...)' },
-               { label: 'Hành khách', value: 'Hành khách' },
-             ]}
            />
 
            <FormField
@@ -358,7 +336,7 @@ export default function BenCangForm() {
               Lịch sử thay đổi
             </Button>
 
-            {(entityData.status as string) === 'DRAFT' && (
+            {entityData.status === 'DRAFT' && (
               <Button
                 icon={<SendOutlined />}
                 onClick={handleSubmitApproval}
@@ -367,7 +345,7 @@ export default function BenCangForm() {
               </Button>
             )}
 
-            {(entityData.status as string) === 'PENDING_APPROVAL' && (
+            {entityData.status === 'PENDING_APPROVAL' && (
               <>
                 <Button
                   type="primary"
@@ -387,7 +365,7 @@ export default function BenCangForm() {
               </>
             )}
 
-            {(entityData.status as string) === 'APPROVED_L1' && (
+            {entityData.status === 'APPROVED_L1' && (
               <>
                 <Button
                   type="primary"
@@ -407,7 +385,7 @@ export default function BenCangForm() {
               </>
             )}
 
-            {(entityData.status as string) === 'DRAFT' && (
+            {entityData.status === 'DRAFT' && (
               <Button
                 danger
                 onClick={handleDelete}

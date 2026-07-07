@@ -67,19 +67,9 @@ public class BenCangController {
     public ResponseEntity<ApiResponse<Page<BenCangResponse>>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) UUID orgUnitId,
-            @RequestParam(required = false) String maBen,
-            @RequestParam(required = false) String tenBen,
-            @RequestParam(required = false) UUID cangBienId,
-            @RequestParam(required = false) String loaiBen,
-            @RequestParam(required = false) String trangThaiHoatDong,
-            @RequestParam(required = false) String trangThaiPheDuyet) {
-        Page<BenCangResponse> result;
-        if (maBen == null && tenBen == null && cangBienId == null && loaiBen == null && trangThaiHoatDong == null && trangThaiPheDuyet == null) {
-            result = benCangService.findAll(page, size, orgUnitId);
-        } else {
-            result = benCangService.findAll(page, size, orgUnitId, maBen, tenBen, cangBienId, loaiBen, trangThaiHoatDong, trangThaiPheDuyet);
-        }
+            @RequestParam(required = false) UUID orgUnitId) {
+        log.info("Listing BenCang: page={}, size={}, orgUnitId={}", page, size, orgUnitId);
+        Page<BenCangResponse> result = benCangService.findAll(page, size, orgUnitId);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách bến cảng thành công", result));
     }
 

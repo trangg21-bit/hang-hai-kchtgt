@@ -50,7 +50,12 @@ public class PointObjectService {
     }
 
     public List<PointObjectResponse> search(String name, String code, ObjectType objectType, Status status) {
-        return repository.searchFiltered(name, code, objectType, status).stream()
+        return repository.searchFiltered(
+                name,
+                code,
+                objectType != null ? objectType.name() : null,
+                status != null ? status.name() : null
+        ).stream()
                 .map(this::toResponse)
                 .toList();
     }

@@ -59,7 +59,6 @@ public class CangBienService {
                 .dienTich(request.getDienTich())
                 .khaNangTiepNhan(request.getKhaNangTiepNhan())
                 .trangThaiHoatDong(request.getTrangThaiHoatDong())
-                .nhomCangBien(request.getNhomCangBien())
                 .trangThaiPheDuyet("CHO_PHE_DUYET")
                 .build();
 
@@ -88,16 +87,8 @@ public class CangBienService {
     public Page<CangBienResponse> findAll(int page, int size, UUID orgUnitId) {
         int pageSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
+
         Page<CangBien> results = cangBienRepository.findAllActive(orgUnitId, pageable);
-        return results.map(this::toResponse);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<CangBienResponse> findAll(int page, int size, UUID orgUnitId, String maCang, String tenCang, String tinhThanhPho, String trangThaiHoatDong, String trangThaiPheDuyet) {
-        int pageSize = Math.min(Math.max(size, 1), 100);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
-
-        Page<CangBien> results = cangBienRepository.search(orgUnitId, maCang, tenCang, tinhThanhPho, trangThaiHoatDong, trangThaiPheDuyet, pageable);
         return results.map(this::toResponse);
     }
 
@@ -120,7 +111,6 @@ public class CangBienService {
         BigDecimal oldDienTich = entity.getDienTich();
         BigDecimal oldKhaNangTiepNhan = entity.getKhaNangTiepNhan();
         String oldTrangThaiHoatDong = entity.getTrangThaiHoatDong();
-        Integer oldNhomCangBien = entity.getNhomCangBien();
 
         // Update mutable fields — code (maCang) is immutable
         if (request.getTenCang() != null) entity.setTenCang(request.getTenCang());
@@ -130,7 +120,6 @@ public class CangBienService {
         if (request.getDienTich() != null) entity.setDienTich(request.getDienTich());
         if (request.getKhaNangTiepNhan() != null) entity.setKhaNangTiepNhan(request.getKhaNangTiepNhan());
         if (request.getTrangThaiHoatDong() != null) entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
-        if (request.getNhomCangBien() != null) entity.setNhomCangBien(request.getNhomCangBien());
 
         // Reset approval status — changes require re-approval
         entity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
@@ -142,7 +131,6 @@ public class CangBienService {
                 .tenCang(oldTenCang).tinhThanhPho(oldTinhThanhPho)
                 .viDo(oldViDo).kinhDo(oldKinhDo).dienTich(oldDienTich)
                 .khaNangTiepNhan(oldKhaNangTiepNhan).trangThaiHoatDong(oldTrangThaiHoatDong)
-                .nhomCangBien(oldNhomCangBien)
                 .trangThaiPheDuyet(saved.getTrangThaiPheDuyet())
                 .build();
 
@@ -205,7 +193,6 @@ public class CangBienService {
                 .trangThaiHoatDong(entity.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
                 .orgUnitId(entity.getOrgUnitId())
-                .nhomCangBien(entity.getNhomCangBien())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

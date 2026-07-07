@@ -66,13 +66,6 @@ public class CangCanService {
     }
 
     @Transactional(readOnly = true)
-    public Page<CangCanResponse> findAll(int page, int size, UUID orgUnitId, String maCangCan, String tenCangCan, String tinhThanhPho, String trangThaiHoatDong, String trangThaiPheDuyet) {
-        int pageSize = Math.min(Math.max(size, 1), 100);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
-        return cangCanRepository.search(orgUnitId, maCangCan, tenCangCan, tinhThanhPho, trangThaiHoatDong, trangThaiPheDuyet, pageable).map(this::toResponse);
-    }
-
-    @Transactional(readOnly = true)
     public CangCanResponse findByCode(String maCangCan) {
         return toResponse(cangCanRepository.findByMaCangCan(maCangCan)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với mã: " + maCangCan)));

@@ -1,13 +1,13 @@
 ---
 id: F-027
-name: "Quản lý Cảng cạn - Cập nhật"
+name: Quản lý Cảng cạn - Cập nhật
 slug: ql-cct-cap-nhat
 module-id: M-002
-status: proposed
+status: done
 classification: local
 priority: high
 created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+last-updated: 2026-06-29T11:10:06Z
 locked-fields: []
 consumed_by_modules: []
 ---

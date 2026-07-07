@@ -12,8 +12,7 @@ export default function CangBienCreatePage() {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
 
-  const viDo = Form.useWatch('viDo', form);
-  const kinhDo = Form.useWatch('kinhDo', form);
+  const [viDo, kinhDo] = Form.useWatch(['viDo', 'kinhDo'], form);
   const gpsPairedWarning =
     ((viDo !== undefined && viDo !== null && !Number.isNaN(viDo)) !==
       (kinhDo !== undefined && kinhDo !== null && !Number.isNaN(kinhDo)));
@@ -54,8 +53,7 @@ export default function CangBienCreatePage() {
         dienTich,
         khaNangTiepNhan: values.khaNangTiepNhan as number | undefined,
         trangThaiHoatDong: (values.trangThaiHoatDong as string) || undefined,
-        trangThaiPheDuyet: (values.trangThaiPheDuyet as string) || 'CHO_PHE_DUYET',
-        nhomCangBien: values.nhomCangBien as number | undefined,
+        trangThaiPheDuyet: (values.trangThaiPheDuyet as string) || 'CHỜ_PHE_DUYỆT',
       };
       await createCangBien(payload);
       toast.success('Tạo mới thành công — chờ phê duyệt');
@@ -88,7 +86,7 @@ export default function CangBienCreatePage() {
       </Card>
 
       <Card style={{ maxWidth: 800, margin: '0 auto' }}>
-        <Form form={form} layout="vertical" onFinish={handleFinish} initialValues={{ trangThaiPheDuyet: 'CHO_PHE_DUYET' }}>
+        <Form form={form} layout="vertical" onFinish={handleFinish} initialValues={{ trangThaiPheDuyet: 'CHỜ_PHE_DUYỆT' }}>
           {/* Info Section */}
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thông tin chung
@@ -113,25 +111,10 @@ export default function CangBienCreatePage() {
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={24}>
-            <Col span={12}>
+          <Row>
+            <Col span={24}>
               <Form.Item label="Tỉnh/thành phố" name="tinhThanhPho" rules={[{ max: 100, message: 'Tỉnh/thành phố tối đa 100 ký tự' }]}>
                 <Input placeholder="VD: Hải Phòng" maxLength={100} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Nhóm cảng biển" name="nhomCangBien">
-                <Select
-                  placeholder="Chọn nhóm cảng biển"
-                  allowClear
-                  options={[
-                    { label: 'Nhóm 1', value: 1 },
-                    { label: 'Nhóm 2', value: 2 },
-                    { label: 'Nhóm 3', value: 3 },
-                    { label: 'Nhóm 4', value: 4 },
-                    { label: 'Nhóm 5', value: 5 },
-                  ]}
-                />
               </Form.Item>
             </Col>
           </Row>
@@ -187,7 +170,7 @@ export default function CangBienCreatePage() {
             </Col>
             <Col span={12}>
               <Form.Item label="Trạng thái phê duyệt" name="trangThaiPheDuyet" rules={[{ required: true, message: 'Vui lòng chọn trạng thái phê duyệt' }]}>
-                <Select options={[{ label: 'Chờ phê duyệt', value: 'CHO_PHE_DUYET' }, { label: 'Được phê duyệt', value: 'DUOC_PHE_DUYET' }, { label: 'Từ chối', value: 'TU_CHOI' }]} />
+                <Select options={[{ label: 'Chờ phê duyệt', value: 'CHỜ_PHE_DUYỆT' }, { label: 'Được phê duyệt', value: 'ĐƯỢC_PHE_DUYỆT' }, { label: 'Từ chối', value: 'TỪ_CHỐI' }]} />
               </Form.Item>
             </Col>
           </Row>

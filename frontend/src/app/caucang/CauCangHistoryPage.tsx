@@ -64,7 +64,7 @@ export default function CauCangHistoryPage() {
     <>
       <Card style={{ marginBottom: 16 }}>
         <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/caucang')}>Quay lại</Button>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/caucang/${id}`)}>Quay lại</Button>
           <Typography.Title level={5} style={{ margin: 0 }}>
             Lịch sử thay đổi — {entity.maCau} — {entity.tenCau}
           </Typography.Title>

@@ -1,13 +1,13 @@
 ---
 id: F-019
-name: "Quản lý Bến cảng - Lịch sử"
+name: Quản lý Bến cảng - Lịch sử
 slug: ql-bc-lich-su
 module-id: M-002
-status: proposed
+status: done
 classification: local
 priority: high
-created: "2026-06-16T04:41:00Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:41:00Z
+last-updated: 2026-06-29T11:10:02Z
 locked-fields: []
 consumed_by_modules: []
 ---

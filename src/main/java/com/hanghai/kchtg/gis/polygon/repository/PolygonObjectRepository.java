@@ -17,6 +17,9 @@ public interface PolygonObjectRepository extends JpaRepository<PolygonObject, UU
 
     boolean existsByCode(String code);
 
+    @Query(value = "SELECT COUNT(*) FROM polygon_objects WHERE code = :code", nativeQuery = true)
+    long countByCodeIncludingDeleted(@Param("code") String code);
+
     List<PolygonObject> findByObjectType(ObjectType objectType);
 
     List<PolygonObject> findByStatus(Status status);
@@ -29,16 +32,16 @@ public interface PolygonObjectRepository extends JpaRepository<PolygonObject, UU
 
     List<PolygonObject> findByCodeContainingIgnoreCase(String code);
 
-    @Query("SELECT p FROM PolygonObject p WHERE " +
-            "(:name IS NULL OR p.name LIKE %:name%) AND " +
-            "(:code IS NULL OR p.code LIKE %:code%) AND " +
-            "(:objectType IS NULL OR p.objectType = :objectType) AND " +
-            "(:status IS NULL OR p.status = :status)")
+    @Query(value = "SELECT * FROM polygon_objects p WHERE " +
+            "(:name IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
+            "(:code IS NULL OR LOWER(p.code) LIKE LOWER(CONCAT('%', :code, '%'))) AND " +
+            "(:objectType IS NULL OR p.object_type = :objectType) AND " +
+            "(:status IS NULL OR p.status = :status)", nativeQuery = true)
     List<PolygonObject> searchFiltered(
             @Param("name") String name,
             @Param("code") String code,
-            @Param("objectType") ObjectType objectType,
-            @Param("status") Status status
+            @Param("objectType") String objectType,
+            @Param("status") String status
     );
 
     long countByStatus(Status status);

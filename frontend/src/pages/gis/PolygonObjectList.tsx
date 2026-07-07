@@ -456,7 +456,7 @@ export default function PolygonObjectList() {
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={() => setIsModalOpen(false)}
-        destroyOnHidden
+        destroyOnClose
         confirmLoading={submitting}
         okText={editingRecord ? 'Cập nhật' : 'Tạo mới'}
         cancelText="Hủy"

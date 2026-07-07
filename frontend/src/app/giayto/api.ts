@@ -38,7 +38,7 @@ export const giayToApi = {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('userId', userId);
-    const res = await api.post(`/v1/giay-to/upload/${entityType}/${entityId}`, formData, {
+    const res = await api.post(`/giay-to/upload/${entityType}/${entityId}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return res.data.data as GiayToUploadResponse;
@@ -54,7 +54,7 @@ export const giayToApi = {
       page: (params?.page ?? 1) - 1,
       size: params?.size,
     });
-    const res = await api.get(`/v1/giay-to/entity/${entityType}/${entityId}?${sp}`);
+    const res = await api.get(`/giay-to/entity/${entityType}/${entityId}?${sp}`);
     return parsePage<GiayTo>(res);
   },
 
@@ -62,7 +62,7 @@ export const giayToApi = {
    * Get attachment by ID.
    */
   async findById(id: string) {
-    const res = await api.get(`/v1/giay-to/${id}`);
+    const res = await api.get(`/giay-to/${id}`);
     return res.data.data as GiayTo;
   },
 
@@ -70,13 +70,13 @@ export const giayToApi = {
    * Delete an attachment.
    */
   async delete(id: string) {
-    await api.delete(`/v1/giay-to/${id}`);
+    await api.delete(`/giay-to/${id}`);
   },
 
   /**
    * Build the download URL from minioKey.
    */
   downloadUrl(minioKey: string): string {
-    return `/api/v1/giay-to/download/${encodeURIComponent(minioKey)}`;
+    return `/api/giay-to/download/${encodeURIComponent(minioKey)}`;
   },
 };

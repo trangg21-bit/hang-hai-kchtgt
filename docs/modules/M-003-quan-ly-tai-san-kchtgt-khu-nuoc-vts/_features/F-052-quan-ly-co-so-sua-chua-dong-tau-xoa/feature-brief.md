@@ -1,65 +1,102 @@
 ---
 id: F-052
-name: Quản lý Cơ sở sửa chữa, đóng tàu - Xóa
+name: "Quan ly Co so sua chua, dong tau - Xoa"
 slug: quan-ly-co-so-sua-chua-dong-tau-xoa
 module-id: M-003
 status: proposed
 classification: local
-priority: high
-created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+priority: P1
+created: "2026-06-29T00:00:00Z"
+last-updated: "2026-06-29T00:00:00Z"
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quản lý Cơ sở sửa chữa, đóng tàu - Xóa
+
+# Feature: Quan ly Co so sua chua, dong tau - Xoa
 
 ## Description
-Chuyên viên có quyền xóa các bản ghi cơ sở sửa chữa, đóng tàu đã được phê duyệt nhưng không còn phù hợp hoặc bị trùng lặp trong hệ thống. Việc xóa phải tuân theo quy trình kiểm soát và ghi nhận đầy đủ vào nhật ký hệ thống để đảm bảo truy vết.
+Chuyen vien co the xoa co so sua chua, dong tau da tao. Xoa chi voi du lieu da duoc phe duyet (trang thai APPROVED). He thong thuc hien xoa co che (soft delete) — co the phuc hoi sau nay neu can. Soft delete giu lai thong tin de theo doi tai lieu lien quan (tai lieu dinh kem, phe duyet lich su).
 
 ## Business Intent
-Cho phép loại bỏ các bản ghi không chính xác, sai sót hoặc trùng lặp trong hệ thống quản lý cơ sở sửa chữa, đóng tàu, duy trì chất lượng dữ liệu tổng thể. Việc xóa có kiểm soát giúp ngăn chặn mất dữ liệu quan trọng và đảm bảo tính minh bạch trong quá trình quản lý tài sản hạ tầng hàng hải khu nước VTS.
+Cho phep chuyen vien lo bo cac co so sua chua, dong tau khong con dung, chi voi nhung du lieu da duoc phe duyet 2 cap (APPROVED). Soft delete giup bao toan thong tin lich su de audit, trong khi co phuc hoi khi can. Theo quy trinh, chi co the xoa co so sua chua, dong tau khi du lieu da duoc phe duyet, phuc vu cong tac quan ly tai san KCHTGT.
 
 ## Flow Summary
-Chuyên viên chọn bản ghi cơ sở sửa chữa, đóng tàu cần xóa từ danh sách tra cứu. Hệ thống xác nhận bản ghi đó đã ở trạng thái "đã phê duyệt" trước khi cho phép xóa. Người dùng phải xác nhận xóa bằng thao tác xác nhận kép (confirm dialog). Hệ thống xóa bản ghi và ghi nhận thao tác vào bảng lịch sử hệ thống, bao gồm thông tin người thực hiện, thời gian xóa và lý do.
+1. Chuyen vien chon co so sua chua, dong tau can xoa (phai co trang thai = APPROVED)
+2. He thong kiem tra dieu kien: chi duoc xoa neu trang thai = APPROVED
+3. He thong hien hop thong bao xac nhan: "Ban co muon xoa co so sua chua, dong tau nay?"
+4. Chuyen vien xac nhan → he thong thuc hien soft delete (dat flag is_deleted = true)
+5. He thong ghi vao phe_duyet_lich_su (action = DELETE, ghi chu = "Chuyen vien xoa")
+6. Co so sua chua, dong tau bi xoa khong hien thi trong danh sach (truy van loai tru is_deleted)
+7. Soft delete: co the phuc hoi bang quy trinh admin
 
 ## Acceptance Criteria
-- Chỉ cho phép xóa bản ghi cơ sở sửa chữa, đóng tàu đã ở trạng thái "đã phê duyệt"
-- Hệ thống yêu cầu xác nhận xóa bằng dialog xác nhận trước khi thực hiện
-- Sau khi xóa, bản ghi được loại bỏ khỏi danh sách hiển thị và không thể khôi phục
-- Hệ thống ghi nhận đầy đủ thông tin người xóa, thời gian xóa và lý do vào nhật ký
-- Không cho phép xóa bản ghi ở trạng thái "chờ phê duyệt" (cần từ chối thay vì xóa)
+- [x] Xoa Co so sua chua, dong tau thanh cong (soft delete)
+- [x] Xoa chi voi du lieu da duoc phe duyet (trang thai = APPROVED)
+- [x] Soft delete → luu thong tin, co the phuc hoi
+- [x] Xoa → ghi vao phe_duyet_lich_su
+- [x] Du lieu da xoa khong hien thi trong danh sach (truy van loai tru is_deleted)
 
 ## In Scope
-- Tìm kiếm, chọn bản ghi cơ sở sửa chữa, đóng tàu để xóa
-- Kiểm tra điều kiện cho phép xóa (phải đã phê duyệt)
-- Xác nhận xóa với dialog thông báo
-- Ghi nhận thao tác xóa vào nhật ký hệ thống
-- Cập nhật lại các thống kê liên quan sau khi xóa
+- Tao moi co so sua chua, dong tau (F-050)
+- Cap nhat co so sua chua, dong tau (F-051)
+- Xoa co so sua chua, dong tau (F-052)
+- Phe duyet co so sua chua, dong tau (F-053, 2 cap: phong → Cuc)
+- Xem chi tiet (F-054)
+- Lich su thay doi (F-055)
 
 ## Out of Scope
-- Xóa hàng loạt nhiều bản ghi cùng lúc
-- Khôi phục bản ghi đã xóa (soft delete không được áp dụng)
-- Phê duyệt xóa (chuyên viên tự thực hiện)
-- Xuất báo cáo trước khi xóa
+- Phuc vu thong ke, bao cao
+- Tich hop voi he thong khac (Phase 1)
+- Email/SMS notification
+- Export Excel/PDF
+- Hard delete (khong the phuc hoi)
 
 ## Roles + Permissions
-| Role | Permissions |
-|------|-------------|
-| Chuyên viên | Xóa bản ghi đã phê duyệt, Xem chi tiết |
-| Trưởng phòng | Xem chi tiết, Xóa bản ghi cấp phòng |
-| Cục trưởng | Xem chi tiết, Xóa mọi bản ghi |
-| Admin | Xóa toàn bộ, Xem toàn bộ, Quản lý nhật ký |
+
+| Role | Level | Notes |
+|---|---|---|
+| A-003 (Chuyen vien) | Xoa | Chi du lieu APPROVED, soft delete |
+| A-002 (Lanh dao) | Phe duyet C1 (Phong) | PROPOSED → UNDER_REVIEW |
+| A-004 (Lanh dao Cuc) | Phe duyet C2 (Cuc) | UNDER_REVIEW → APPROVED |
 
 ## Entities
-- **CoSoSuaChua**: id, tenCoSo, diaChi, loaiHinhDV, nangLucTiepNhan, trangBiChinh, dienTich, soDienThoai, email, trangThai, daXoa, ngayXoa, nguoiXoa, lyDoXoa
-- **NhatKyHeThong**: id, loaiThaoTac, entity, entityId, thongTin, nguoiThucHien, ngayThucHien
+
+| Entity | Table | Primary Key | Description |
+|---|---|---|---|
+| CoSoSuaChuaDongTau | co_sua_chua_dong_tau | id | Entity chinh, 16 fields, co truong is_deleted (boolean) |
+| CoSoSuaChuaDongTauAttachment | co_sua_chua_dong_tau_attachment | id | Tai lieu dinh kem (MinIO) |
+| PheDuyetLichSu | phe_duyet_lich_su | id | History log |
 
 ## Business Rules
-1. Chỉ bản ghi ở trạng thái "đã phê duyệt" mới được phép xóa
-2. Bắt buộc xác nhận xóa bằng dialog với thông báo về hậu quả của việc xóa
-3. Thao tác xóa phải được ghi nhận vào nhật ký hệ thống với đầy đủ thông tin truy vết
-4. Không cho phép xóa bản ghi ở trạng thái "chờ phê duyệt" hoặc "từ chối"
-5. Sau khi xóa, bản ghi không còn xuất hiện trong bất kỳ danh sách hoặc báo cáo nào
+
+| ID | Rule | Applies-to | Source |
+|---|---|---|---|
+| BR-052-01 | Xoa chi voi du lieu da duoc phe duyet | Delete | UC-3302 |
+| BR-052-02 | Trang thai phai = APPROVED | Delete | DESIGN.md |
+| BR-052-03 | Soft delete (is_deleted = true) | Delete | DESIGN.md |
+| BR-052-04 | Ghi vao phe_duyet_lich_su khi xoa | Delete | DESIGN.md |
+| BR-052-05 | Soft delete → co the phuc hoi | Delete | DESIGN.md |
+
+## Technical Details
+
+### REST Endpoint
+- `DELETE /api/v1/co-sua-chua-dong-tau/{id}` — Xoa co che (soft delete) co so sua chua, dong tau
+- Response: 204 No Content (thanh cong)
+
+### Validation Rules
+- `status`: chi duoc xoa neu = APPROVED (neu khong phai → 403 Forbidden)
+- `is_deleted`: soft delete → dat is_deleted = true, khong xoa physically
 
 ## Testing Strategy
-Kiểm thử xóa với bản ghi đã phê duyệt thành công và bản ghi không phê duyệt bị từ chối. Kiểm thử xác nhận xóa (click cancel không xóa, click confirm xóa). Kiểm thử nhật ký hệ thống ghi nhận đúng thao tác xóa. Kiểm thử quyền hạn: vai trò khác nhau có quyền xóa khác nhau.
+- Unit tests: Entity builder, getters/setters, JPA lifecycle callbacks
+- Service tests: Delete co so sua chua, dong tau (APPROVED) → soft delete → ghi history
+- Controller tests: DELETE /api/v1/co-sua-chua-dong-tau/{id}, validation, auth filters
+- Integration: Delete → soft delete → kiem tra danh sach (tru soft-deleted)
+- Negative tests: Delete du lieu khong APPROVED → 403, Delete da xoa → 404
+- All unit tests must pass before feature seal
+
+## Design Reference
+- DESIGN.md: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/DESIGN.md
+- BA Spec: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/ba/00-lean-spec.md
+- Tech-Lead Plan: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/tech-lead/04-plan.md
+- Source: UC-3302

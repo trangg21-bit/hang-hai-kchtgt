@@ -15,7 +15,6 @@ export interface CauCang {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
-  congNangKhaiThac?: string;
 }
 
 export interface CauCangListQuery {
@@ -38,7 +37,6 @@ export interface CauCangCreateRequest {
   taiTrong?: number;
   loaiCau?: string;
   trangThaiHoatDong?: 'HIEN_HANH' | 'TAM_NGUNG';
-  congNangKhaiThac?: string;
 }
 
 export interface CauCangUpdateRequest {
@@ -49,7 +47,6 @@ export interface CauCangUpdateRequest {
   taiTrong?: number;
   loaiCau?: string;
   trangThaiHoatDong?: 'HIEN_HANH' | 'TAM_NGUNG';
-  congNangKhaiThac?: string;
 }
 
 export interface CauCangHistoryRecord {

@@ -48,7 +48,6 @@ export const createSchema = z.object({
   khaNangTiepNhan: z.coerce.number().optional().or(z.nan()),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
   trangThaiPheDuyet: z.enum(['CHO_PHE_DUYET', 'DUOC_PHE_DUYET', 'TU_CHOI']).default('CHO_PHE_DUYET'),
-  nhomCangBien: z.coerce.number().int().min(1).max(5).optional(),
 }).refine(
   (data) => (data.viDo === undefined || Number.isNaN(data.viDo)) === (data.kinhDo === undefined || Number.isNaN(data.kinhDo)),
   {
@@ -71,7 +70,6 @@ export const updateSchema = z.object({
   dienTich: z.coerce.number().positive('Diện tích phải lớn hơn 0').optional().or(z.nan()),
   khaNangTiepNhan: z.coerce.number().optional().or(z.nan()),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
-  nhomCangBien: z.coerce.number().int().min(1).max(5).optional(),
 }).refine(
   (data) => (data.viDo === undefined || Number.isNaN(data.viDo)) === (data.kinhDo === undefined || Number.isNaN(data.kinhDo)),
   {
@@ -126,7 +124,6 @@ export const trangThaiPheDuyetBadge = (status: string): { color: string; label: 
     case 'CHO_PHE_DUYET':
       return { color: 'orange', label: 'Chờ phê duyệt' };
     case 'DUOC_PHE_DUYET':
-    case 'APPROVED':
       return { color: 'green', label: 'Được phê duyệt' };
     case 'TU_CHOI':
       return { color: 'red', label: 'Từ chối' };

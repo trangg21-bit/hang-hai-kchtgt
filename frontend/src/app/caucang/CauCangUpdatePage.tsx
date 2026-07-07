@@ -7,8 +7,6 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
 import { fetchCauCangById, updateCauCang, fetchBenCangOptions } from './api';
-import { parseCongNangKhaiThac } from '../../utils/congNangParser';
-
 
 const TRANG_THAI_HOAT_DONG_OPTIONS = [
   { label: 'Hiện hành', value: 'HIEN_HANH' },
@@ -39,19 +37,15 @@ export default function CauCangUpdatePage() {
       try {
         const data = await fetchCauCangById(id);
         setEntityData({ trangThaiPheDuyet: data.trangThaiPheDuyet, benCangId: data.benCangId });
-        setTimeout(() => {
-          form.setFieldsValue({
-            id: data.id,
-            maCau: data.maCau,
-            tenCau: data.tenCau,
-            benCangId: data.benCangId,
-            chieuDai: data.chieuDai,
-            taiTrong: data.taiTrong,
-            loaiCau: data.loaiCau,
-            trangThaiHoatDong: (data.trangThaiHoatDong as string) === 'HIỆN_HÀNH' ? 'HIEN_HANH' : (data.trangThaiHoatDong as string) === 'TẠM_NGƯNG' ? 'TAM_NGUNG' : data.trangThaiHoatDong,
-            congNangKhaiThac: parseCongNangKhaiThac(data.congNangKhaiThac),
-          });
-        }, 0);
+        form.setFieldsValue({
+          id: data.id,
+          tenCau: data.tenCau,
+          benCangId: data.benCangId,
+          chieuDai: data.chieuDai,
+          taiTrong: data.taiTrong,
+          loaiCau: data.loaiCau,
+          trangThaiHoatDong: data.trangThaiHoatDong,
+        });
       } catch (err) {
         console.error('Failed to fetch CauCang:', err);
         setIsError(true);
@@ -78,9 +72,14 @@ export default function CauCangUpdatePage() {
       const values = await form.validateFields();
       setSubmitting(true);
 
-      const congNangString = values.congNangKhaiThac && values.congNangKhaiThac.length > 0
-        ? values.congNangKhaiThac.join(', ')
-        : '';
+      // Preventive: check if no changes
+      const current = form.getFieldsValue();
+      if (current.tenCau === entityData && current.benCangId === entityData) {
+        toast.info('Không có thay đổi nào được thực hiện.');
+        setSubmitting(false);
+        navigate('/caucang');
+        return;
+      }
 
       const payload = {
         id: values.id,
@@ -90,7 +89,6 @@ export default function CauCangUpdatePage() {
         taiTrong: values.taiTrong,
         loaiCau: values.loaiCau || undefined,
         trangThaiHoatDong: values.trangThaiHoatDong,
-        congNangKhaiThac: congNangString,
       };
 
       await updateCauCang(payload);
@@ -102,7 +100,7 @@ export default function CauCangUpdatePage() {
     } finally {
       setSubmitting(false);
     }
-  }, [form, navigate, id]);
+  }, [form, navigate, id, entityData]);
 
   if (isLoading) return <LoadingSkeleton rows={10} />;
   if (isError) return <ErrorState message="Không tìm thấy cầu cảng để cập nhật" onRetry={() => navigate('/caucang')} />;
@@ -122,7 +120,6 @@ export default function CauCangUpdatePage() {
 
       <Card style={{ maxWidth: 800, margin: '0 auto', marginBottom: 16 }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
-          <input type="hidden" name="id" />
           {/* Info Section */}
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>Thông tin chung</Typography.Text>
           <Row gutter={[16, 16]}>
@@ -195,23 +192,6 @@ export default function CauCangUpdatePage() {
           {/* Status Section */}
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>Trạng thái</Typography.Text>
           <Row gutter={[16, 16]}>
-            <Col span={12}>
-              <FormField
-                type="select"
-                name="congNangKhaiThac"
-                label="Công năng khai thác"
-                mode="multiple"
-                placeholder="Chọn công năng khai thác (chọn nhiều)"
-                options={[
-                  { label: 'Hàng Container', value: 'Hàng Container' },
-                  { label: 'Hàng tổng hợp (bách hóa)', value: 'Hàng tổng hợp (bách hóa)' },
-                  { label: 'Hàng chuyên dụng hàng rời, quặng', value: 'Hàng chuyên dụng hàng rời, quặng' },
-                  { label: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng', value: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng' },
-                  { label: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu ...)', value: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu ...)' },
-                  { label: 'Hành khách', value: 'Hành khách' },
-                ]}
-              />
-            </Col>
             <Col span={12}>
               <FormField
                 type="select"

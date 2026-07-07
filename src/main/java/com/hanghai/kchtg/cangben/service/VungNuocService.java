@@ -48,7 +48,7 @@ public class VungNuocService {
 
     @Transactional(readOnly = true)
     public Page<VungNuocResponse> findAll(int page, int size, UUID orgUnitId) {
-        return findAll(page, size, orgUnitId, (UUID) null);
+        return findAll(page, size, orgUnitId, null);
     }
 
     /**
@@ -59,13 +59,6 @@ public class VungNuocService {
         int pageSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
         return vungNuocRepository.findAllActive(orgUnitId, cangBienId, pageable).map(this::toResponse);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<VungNuocResponse> findAll(int page, int size, UUID orgUnitId, String maVungNuoc, String tenVungNuoc, UUID cangBienId, String loaiVungNuoc, String trangThaiHoatDong, String trangThaiPheDuyet) {
-        int pageSize = Math.min(Math.max(size, 1), 100);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
-        return vungNuocRepository.search(orgUnitId, maVungNuoc, tenVungNuoc, cangBienId, loaiVungNuoc, trangThaiHoatDong, trangThaiPheDuyet, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)

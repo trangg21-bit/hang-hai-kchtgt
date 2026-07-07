@@ -111,6 +111,12 @@
             <groupId>com.warrenstrange</groupId>
             <artifactId>googleauth</artifactId>
             <version>1.5.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Lombok -->
@@ -119,6 +125,13 @@
             <artifactId>lombok</artifactId>
             <version>1.18.38</version>
             <optional>true</optional>
+        </dependency>
+
+        <!-- Apache Tika for MIME type detection (GiayTo file upload validation) -->
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>2.9.1</version>
         </dependency>
 
         <!-- Dev tools -->
@@ -169,6 +182,28 @@
 
     <build>
         <plugins>
+            <!-- Pin build to Java 17 (project target). Tests misbehave on JDK 25
+                 (JaCoCo/ByteBuddy inline mocking); fail fast with a clear message. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-java-17</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[17,18)</version>
+                                    <message>This project must be built with Java 17 (set JAVA_HOME to a JDK 17). Newer JDKs (e.g. 25) break JaCoCo coverage and Mockito/ByteBuddy inline mocking in tests.</message>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

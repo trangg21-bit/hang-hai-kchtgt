@@ -50,7 +50,7 @@ export default function CangCanUpdatePage() {
           kinhDo: data.kinhDo,
           dienTich: data.dienTich,
           congSuatTEU: data.congSuatTEU,
-          trangThaiHoatDong: (data.trangThaiHoatDong as string) === 'HIỆN_HÀNH' ? 'HIEN_HANH' : (data.trangThaiHoatDong as string) === 'TẠM_NGƯNG' ? 'TAM_NGUNG' : data.trangThaiHoatDong,
+          trangThaiHoatDong: data.trangThaiHoatDong,
         });
       } catch {
         toast.error('Không thể tải thông tin cảng cạn');

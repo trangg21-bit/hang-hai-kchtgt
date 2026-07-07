@@ -25,7 +25,6 @@ public class CangBienResponse {
     private String trangThaiHoatDong;
     private String trangThaiPheDuyet;
     private UUID orgUnitId;
-    private Integer nhomCangBien;
     private String createdBy;
     private String updatedBy;
     private LocalDateTime createdAt;

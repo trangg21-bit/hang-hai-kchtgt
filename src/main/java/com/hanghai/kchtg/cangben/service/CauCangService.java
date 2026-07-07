@@ -47,7 +47,6 @@ public class CauCangService {
                 .benCangId(request.getBenCangId()).chieuDai(request.getChieuDai())
                 .taiTrong(request.getTaiTrong()).loaiCau(request.getLoaiCau())
                 .trangThaiHoatDong(request.getTrangThaiHoatDong())
-                .congNangKhaiThac(request.getCongNangKhaiThac())
                 .trangThaiPheDuyet("CHO_PHE_DUYET").build();
         CauCang saved = cauCangRepository.save(entity);
         log.info("Created CauCang [{}] code={}", saved.getId(), saved.getMaCau());
@@ -68,13 +67,6 @@ public class CauCangService {
     }
 
     @Transactional(readOnly = true)
-    public Page<CauCangResponse> findAll(int page, int size, UUID orgUnitId, String search, String trangThaiHoatDong, String trangThaiPheDuyet, UUID benCangId) {
-        int pageSize = Math.min(Math.max(size, 1), 100);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
-        return cauCangRepository.search(orgUnitId, search, trangThaiHoatDong, trangThaiPheDuyet, benCangId, pageable).map(this::toResponse);
-    }
-
-    @Transactional(readOnly = true)
     public CauCangResponse findByCode(String maCau) {
         return toResponse(cauCangRepository.findByMaCau(maCau)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cầu cảng với mã: " + maCau)));
@@ -91,7 +83,6 @@ public class CauCangService {
                 .chieuDai(entity.getChieuDai()).taiTrong(entity.getTaiTrong())
                 .loaiCau(entity.getLoaiCau()).trangThaiHoatDong(entity.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
-                .congNangKhaiThac(entity.getCongNangKhaiThac())
                 .build();
 
         if (request.getTenCau() != null) entity.setTenCau(request.getTenCau());
@@ -100,7 +91,6 @@ public class CauCangService {
         if (request.getTaiTrong() != null) entity.setTaiTrong(request.getTaiTrong());
         if (request.getLoaiCau() != null) entity.setLoaiCau(request.getLoaiCau());
         if (request.getTrangThaiHoatDong() != null) entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
-        if (request.getCongNangKhaiThac() != null) entity.setCongNangKhaiThac(request.getCongNangKhaiThac());
         entity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
 
         CauCang saved = cauCangRepository.save(entity);
@@ -127,7 +117,6 @@ public class CauCangService {
                 .benCangId(e.getBenCangId()).chieuDai(e.getChieuDai())
                 .taiTrong(e.getTaiTrong()).loaiCau(e.getLoaiCau())
                 .trangThaiHoatDong(e.getTrangThaiHoatDong()).trangThaiPheDuyet(e.getTrangThaiPheDuyet())
-                .orgUnitId(e.getOrgUnitId()).congNangKhaiThac(e.getCongNangKhaiThac())
-                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();
+                .orgUnitId(e.getOrgUnitId()).createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();
     }
 }

@@ -7,18 +7,18 @@
       "version": 1
     },
     "catalog.json": {
-      "content_hash": "sha256:87c97d46f176e60da3d61d43f3a1fb8f12b2b433374d8a1969e1f94235ee99c7",
-      "last_modified": "2026-06-23T08:05:33Z",
-      "last_producer": "ai-kit/scaffold_module",
-      "version": 95
+      "content_hash": "sha256:cf9d56af8c7aabe892d54d12896d37b586659bf9d63e9927b283c1b3f0b07396",
+      "last_modified": "2026-06-28T16:09:46Z",
+      "last_producer": "ai-kit/scaffold_hotfix",
+      "version": 96
     },
     "docs/intel/catalog.json": {
-      "content_hash": "sha256:012dacf07d14b80405297d08e1000df08ecdcd33310a50bfa2283e77aa12d004",
-      "last_modified": "2026-06-28T12:19:33Z",
+      "content_hash": "sha256:27d45be5d87307bf98bc597f475aa26bcd966b10ca7a33873c4227636bfe3066",
+      "last_modified": "2026-07-02T01:21:30Z",
       "last_producer": "ai-kit/state-update-rebuild-catalog",
       "last_updated": "2026-06-27T00:00:00Z",
       "stale": false,
-      "version": 12
+      "version": 17
     },
     "docs/intel/catalog/modules/M-002.json": {
       "last_updated": "2026-06-27T18:31:43Z",
@@ -154,6 +154,12 @@
       "stale": false,
       "updated_by": "sdlc-ba"
     },
+    "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md": {
+      "content_hash": "sha256:146dbf04256e2606a7947c24cb689ac2fd9bc19799a3e3577c2b7e57bad4fd1a",
+      "last_modified": "2026-07-01T08:29:39Z",
+      "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
+      "version": 7
+    },
     "docs/modules/M-003-quan-ly-hang-hoa/module-brief.md": {
       "content_hash": "sha256:e8bc607a71e630fb166541ba3dd4202a517ba6da0f65c44936ca97d83a3f9fb2",
       "last_modified": "2026-06-16T05:21:20Z",
@@ -161,10 +167,10 @@
       "version": 14
     },
     "docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/module-brief.md": {
-      "content_hash": "sha256:08472eaf917a98806ee66b4f337fe4a89e9c19f2f487d58cf9475a05a16f0f79",
-      "last_modified": "2026-06-16T06:28:30Z",
+      "content_hash": "sha256:dd7371b7d9cbf798269a879b10318c5a211d87e0481b8525efa85994219460fb",
+      "last_modified": "2026-06-30T07:27:41Z",
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
-      "version": 1
+      "version": 2
     },
     "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/module-brief.md": {
       "content_hash": "sha256:6a6504c1d0a73e16623490f791262b80054f720dcf9fd8962b36e34eeab68c6c",
@@ -281,10 +287,10 @@
       "version": 95
     },
     "module-map.yaml": {
-      "content_hash": "sha256:ac634e658d74d2c4948aec9418c2d0dfe4df4727c9d7718003fa4ae126bccef5",
-      "last_modified": "2026-06-23T08:05:33Z",
-      "last_producer": "ai-kit/scaffold_module",
-      "version": 17
+      "content_hash": "sha256:f6da9b6a85d4dd6167bcba5762012774d98a31e3b609cdede9eb01126a2d8118",
+      "last_modified": "2026-06-29T10:44:15Z",
+      "last_producer": "ai-kit/scaffold_module_repair",
+      "version": 18
     }
   },
   "created_at": "2026-06-16T04:38:16Z",

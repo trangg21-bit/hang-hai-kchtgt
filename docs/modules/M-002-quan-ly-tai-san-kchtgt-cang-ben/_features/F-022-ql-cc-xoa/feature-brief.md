@@ -1,13 +1,13 @@
 ---
 id: F-022
-name: "Quản lý Cầu cảng - Xóa"
+name: Quản lý Cầu cảng - Xóa
 slug: ql-cc-xoa
 module-id: M-002
-status: proposed
+status: done
 classification: local
 priority: high
-created: "2026-06-16T04:41:01Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:41:01Z
+last-updated: 2026-06-29T11:10:04Z
 locked-fields: []
 consumed_by_modules: []
 ---

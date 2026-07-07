@@ -28,7 +28,7 @@ export default function VungNuocUpdatePage() {
             doSauMax: data.doSauMax,
             doSauTrungBinh: data.doSauTrungBinh,
             loaiVungNuoc: data.loaiVungNuoc,
-            trangThaiHoatDong: (data.trangThaiHoatDong as string) === 'HIỆN_HÀNH' ? 'HIEN_HANH' : (data.trangThaiHoatDong as string) === 'TẠM_NGƯNG' ? 'TAM_NGUNG' : data.trangThaiHoatDong,
+            trangThaiHoatDong: data.trangThaiHoatDong,
           });
         } catch (err) {
           console.error('Failed to load VungNuoc data:', err);

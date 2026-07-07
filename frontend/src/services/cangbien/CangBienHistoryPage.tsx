@@ -36,10 +36,9 @@ export default function CangBienHistoryPage() {
         fetchCangBienById(id),
         fetchCangBienHistory(id, { page: page - 1, size: pageSize }),
       ]);
-      const rawHistory = historyRes as any;
       setEntity(entityRes);
-      setRecords(rawHistory.changeHistory || []);
-      setTotal(rawHistory.changeHistory ? rawHistory.changeHistory.length : 0);
+      setRecords(historyRes.content || []);
+      setTotal(historyRes.totalElements ?? 0);
     } catch (err: unknown) {
       setIsError(true);
       const msg = err instanceof Error ? err.message : 'Không thể tải lịch sử';
@@ -65,7 +64,7 @@ export default function CangBienHistoryPage() {
     <>
       <Card style={{ marginBottom: 16 }}>
         <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/cangbien')}>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/cangbien/${id}`)}>
             Quay lại
           </Button>
           <Typography.Title level={5} style={{ margin: 0 }}>

@@ -65,8 +65,10 @@ export default function S63PermitsPage() {
         expiryDate: values.expiryDate.format('YYYY-MM-DD'),
       };
 
+      const isUpdate = permits.some(p => p.cellName.toUpperCase() === values.cellName.trim().toUpperCase());
+      console.log('DEBUG [S63Permit]: permits list =', permits, 'input cellName =', values.cellName, 'isUpdate =', isUpdate);
       await chartService.registerPermit(payload);
-      toast.success('Đã đăng ký giấy phép S-63 thành công');
+      toast.success(isUpdate ? 'Đã cập nhật thông tin giấy phép S-63 thành công' : 'Đã đăng ký giấy phép S-63 thành công');
       form.resetFields();
       void fetchPermits();
     } catch (err: any) {
@@ -74,7 +76,7 @@ export default function S63PermitsPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [form, fetchPermits]);
+  }, [form, fetchPermits, permits]);
 
   const handleDelete = useCallback(async (id: string) => {
     try {
@@ -88,34 +90,62 @@ export default function S63PermitsPage() {
 
   const handlePermitTxtUpload = (file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const text = e.target?.result as string;
       if (!text) return;
 
-      // Simple parser for PERMIT.TXT content
-      // Typical line format: cellName,permitKey,expiryDate or hex keys
       const lines = text.split('\n');
-      let count = 0;
+      const permitsToRegister = [];
       for (const line of lines) {
         const cleanLine = line.trim();
-        if (cleanLine.startsWith('#') || cleanLine.isEmpty()) continue;
+        if (cleanLine.startsWith('#') || cleanLine === '') continue;
 
         const parts = cleanLine.split(',');
         if (parts.length >= 2) {
           const cellName = parts[0].trim().toUpperCase();
           const permitKey = parts[1].trim();
-          // Auto fill fields
-          form.setFieldsValue({
+          permitsToRegister.push({
             cellName,
             permitKey,
-            expiryDate: dayjs().plusYears(1),
+            expiryDate: dayjs().add(1, 'year').format('YYYY-MM-DD'),
           });
-          count++;
-          break; // fill the first matching entry
         }
       }
-      if (count > 0) {
-        toast.success(`Đã đọc được thông tin giấy phép S-63 từ file`);
+
+      if (permitsToRegister.length > 0) {
+        setLoading(true);
+        const successes: string[] = [];
+        const failures: { cellName: string; reason: string }[] = [];
+
+        for (const permit of permitsToRegister) {
+          try {
+            if (!permit.cellName) {
+              failures.push({ cellName: 'Không xác định', reason: 'Tên Cell trống' });
+              continue;
+            }
+            if (!permit.permitKey) {
+              failures.push({ cellName: permit.cellName, reason: 'Khóa Permit trống' });
+              continue;
+            }
+            await chartService.registerPermit(permit);
+            successes.push(permit.cellName);
+          } catch (err: any) {
+            const errorMessage = err.response?.data?.message || err.message || 'Lỗi kết nối';
+            failures.push({ cellName: permit.cellName, reason: errorMessage });
+          }
+        }
+
+        // Show detailed toast feedback
+        if (failures.length === 0) {
+          toast.success(`Đã đăng ký thành công toàn bộ ${successes.length} giấy phép S-63 từ file`);
+        } else if (successes.length === 0) {
+          toast.error(`Đăng ký thất bại toàn bộ ${failures.length} giấy phép. Chi tiết: ${failures.map(f => `${f.cellName}: ${f.reason}`).join('; ')}`);
+        } else {
+          toast.warning(`Hoàn tất nhập file: Đăng ký thành công ${successes.length} giấy phép, thất bại ${failures.length} giấy phép. Lỗi ở các Cell: ${failures.map(f => `${f.cellName} (${f.reason})`).join(', ')}`);
+        }
+
+        void fetchPermits();
+        setLoading(false);
       } else {
         toast.warning('Không tìm thấy thông tin giấy phép hợp lệ trong file');
       }

@@ -123,8 +123,6 @@ export default function PointObjectList() {
 
       setSubmitting(true);
 
-
-
       if (editingRecord) {
         const payload: UpdatePointObjectPayload = {
           name: values.name,
@@ -464,7 +462,7 @@ export default function PointObjectList() {
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={() => setIsModalOpen(false)}
-        destroyOnHidden
+        destroyOnClose
         confirmLoading={submitting}
         okText={editingRecord ? 'Cập nhật' : 'Tạo mới'}
         cancelText="Hủy"
@@ -559,8 +557,6 @@ export default function PointObjectList() {
               />
             </Col>
           </Row>
-
-
 
           <FormField
             type="textarea"

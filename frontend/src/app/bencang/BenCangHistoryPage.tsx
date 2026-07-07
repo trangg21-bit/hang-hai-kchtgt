@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Typography, Divider, Tag, Button } from 'antd';
+import { Card, Typography, Divider, Tag } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { benCangCRUD, benCangHistory } from '../../services/cangbenService';
@@ -50,7 +50,7 @@ export default function BenCangHistoryPage() {
     <>
       <Card style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/bencang')}>Quay lại</Button>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/bencang/${id}`)}>Quay lại</Button>
           <div>
             <Title level={5} style={{ margin: 0 }}>
               Lịch sử thay đổi — {entity.maBen} | {entity.tenBen}

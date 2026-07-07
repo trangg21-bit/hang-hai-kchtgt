@@ -1,13 +1,13 @@
 ---
 id: F-010
-name: "Quản lý Cảng biển - Xóa"
+name: Quản lý Cảng biển - Xóa
 slug: ql-cb-xoa
 module-id: M-002
-status: proposed
+status: done
 classification: local
 priority: high
-created: "2026-06-16T04:40:19Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:40:19Z
+last-updated: 2026-06-29T11:09:58Z
 locked-fields: []
 consumed_by_modules: []
 ---

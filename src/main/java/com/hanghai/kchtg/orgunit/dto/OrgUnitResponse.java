@@ -37,7 +37,7 @@ public class OrgUnitResponse {
     private String address;
     private String phone;
     private String contactPerson;
-    private Double coefficient;
+    private java.math.BigDecimal coefficient;
     private String path;
     private Integer level;
     private Long scopeId;

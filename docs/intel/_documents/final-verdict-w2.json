@@ -1,0 +1,68 @@
+{
+  "_pipeline": {
+    "created_at": "2026-07-01T10:19:01.168Z",
+    "pmo_session_id": "ses_0e2d5672affeQi9CR9tMUtSjfy",
+    "updated_at": "2026-07-01T10:19:01.168Z"
+  },
+  "blocks": [
+    {
+      "id": "b_4e2865f3",
+      "level": 1,
+      "text": "Code Review Final Verdict — M-003 Wave 2",
+      "type": "heading"
+    },
+    {
+      "id": "b_136765fc",
+      "type": "divider"
+    },
+    {
+      "columns": [
+        "Attribute",
+        "Value"
+      ],
+      "id": "b_958201da",
+      "rows": [
+        [
+          "Feature ID",
+          "M-003"
+        ],
+        [
+          "Feature Name",
+          "Quản lý tài sản KCHTGT - Khu nước & VTS"
+        ],
+        [
+          "Review Wave",
+          "2 (Final)"
+        ],
+        [
+          "Date",
+          "2026-07-01"
+        ],
+        [
+          "Reviewer",
+          "engineering-code-reviewer (orchestrated)"
+        ],
+        [
+          "Verdict",
+          "Pass"
+        ],
+        [
+          "Confidence",
+          "high"
+        ],
+        [
+          "Previous Verdict (Wave-1)",
+          "Approved with follow-ups"
+        ]
+      ],
+      "type": "table"
+    }
+  ],
+  "created_at": "2026-07-01T10:19:01.168Z",
+  "doc_type": "generic",
+  "id": "final-verdict-w2",
+  "schema_version": "1.0",
+  "session_id": "ses_0e2d5672affeQi9CR9tMUtSjfy",
+  "title": "Code Review Final Verdict — M-003 Wave 2",
+  "updated_at": "2026-07-01T10:19:01.168Z"
+}

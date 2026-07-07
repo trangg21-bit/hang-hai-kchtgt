@@ -4,7 +4,7 @@ import toast from '../../components/ToastNotification';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { fetchCangBienById, updateCangBien } from './api';
-import { TRANG_THAI_HOAT_DONG_OPTIONS, trangThaiPheDuyetBadge } from './schema';
+import { TRANG_THAI_HOAT_DONG_OPTIONS } from './schema';
 import type { CangBienResponse } from './types';
 
 export default function CangBienUpdatePage() {
@@ -14,8 +14,7 @@ export default function CangBienUpdatePage() {
   const [submitting, setSubmitting] = useState(false);
   const [entityData, setEntityData] = useState<CangBienResponse | null>(null);
 
-  const viDo = Form.useWatch('viDo', form);
-  const kinhDo = Form.useWatch('kinhDo', form);
+  const [viDo, kinhDo] = Form.useWatch(['viDo', 'kinhDo'], form);
   const gpsPairedWarning =
     ((viDo !== undefined && viDo !== null && !Number.isNaN(viDo)) !==
       (kinhDo !== undefined && kinhDo !== null && !Number.isNaN(kinhDo)));
@@ -35,8 +34,7 @@ export default function CangBienUpdatePage() {
           kinhDo: data.kinhDo !== null ? data.kinhDo : undefined,
           dienTich: data.dienTich !== null ? data.dienTich : undefined,
           khaNangTiepNhan: data.khaNangTiepNhan !== null ? data.khaNangTiepNhan : undefined,
-          trangThaiHoatDong: (data.trangThaiHoatDong as string) === 'HIỆN_HÀNH' ? 'HIEN_HANH' : (data.trangThaiHoatDong as string) === 'TẠM_NGƯNG' ? 'TAM_NGUNG' : data.trangThaiHoatDong || undefined,
-          nhomCangBien: data.nhomCangBien || undefined,
+          trangThaiHoatDong: data.trangThaiHoatDong || undefined,
         });
       } catch (err) {
         console.error('Failed to fetch CangBien:', err);
@@ -73,7 +71,7 @@ export default function CangBienUpdatePage() {
     setSubmitting(true);
     try {
       const payload = {
-        id: id!,
+        id: String(values.id),
         tenCang: (values.tenCang as string) || undefined,
         tinhThanhPho: (values.tinhThanhPho as string) || undefined,
         viDo: values.viDo as number | undefined,
@@ -81,11 +79,10 @@ export default function CangBienUpdatePage() {
         dienTich: values.dienTich as number | undefined,
         khaNangTiepNhan: values.khaNangTiepNhan as number | undefined,
         trangThaiHoatDong: (values.trangThaiHoatDong as string) || undefined,
-        nhomCangBien: values.nhomCangBien as number | undefined,
       };
       await updateCangBien(payload);
       toast.success('Cập nhật thành công');
-      navigate(`/cangbien/${id}`);
+      navigate(`/cangbien/${String(values.id)}`);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Cập nhật thất bại');
     } finally {
@@ -101,7 +98,7 @@ export default function CangBienUpdatePage() {
     <>
       <Card style={{ marginBottom: 16 }}>
         <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/cangbien')}>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/cangbien/${id}`)}>
             Quay lại
           </Button>
           <Typography.Title level={5} style={{ margin: 0 }}>
@@ -132,32 +129,14 @@ export default function CangBienUpdatePage() {
               </Form.Item>
             </Col>
           </Row>
-          <Row gutter={24}>
-            <Col span={12}>
+          <Row>
+            <Col span={24}>
               <Form.Item
                 label="Tỉnh/thành phố"
                 name="tinhThanhPho"
                 rules={[{ max: 100, message: 'Tỉnh/thành phố tối đa 100 ký tự' }]}
               >
                 <Input placeholder="VD: Hải Phòng" maxLength={100} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Nhóm cảng biển"
-                name="nhomCangBien"
-              >
-                <Select
-                  placeholder="Chọn nhóm cảng biển"
-                  allowClear
-                  options={[
-                    { label: 'Nhóm 1', value: 1 },
-                    { label: 'Nhóm 2', value: 2 },
-                    { label: 'Nhóm 3', value: 3 },
-                    { label: 'Nhóm 4', value: 4 },
-                    { label: 'Nhóm 5', value: 5 },
-                  ]}
-                />
               </Form.Item>
             </Col>
           </Row>
@@ -251,11 +230,7 @@ export default function CangBienUpdatePage() {
             </Col>
             <Col span={12}>
               <Form.Item label="Trạng thái phê duyệt">
-                <Input
-                  disabled
-                  value={trangThaiPheDuyetBadge(entityData.trangThaiPheDuyet || '').label}
-                  aria-readonly="true"
-                />
+                <Input disabled value={entityData.trangThaiPheDuyet || '—'} aria-readonly="true" />
               </Form.Item>
             </Col>
           </Row>
@@ -266,7 +241,7 @@ export default function CangBienUpdatePage() {
               <Button type="primary" htmlType="submit" loading={submitting}>
                 Cập nhật
               </Button>
-              <Button onClick={() => navigate('/cangbien')}>Hủy</Button>
+              <Button onClick={() => navigate(`/cangbien/${id}`)}>Hủy</Button>
             </Space>
           </Form.Item>
         </Form>

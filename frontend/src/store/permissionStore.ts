@@ -81,7 +81,7 @@ export const usePermissionStore = create<PermissionState>((set) => ({
       if (key.endsWith('.edit') || key.endsWith('.delete') || key.endsWith('.submit')) {
         return perms.includes('data:update');
       }
-      if (key.endsWith('.approve-l2')) {
+      if (key.endsWith('.approve-l1') || key.endsWith('.approve-l2')) {
         return perms.includes('data:approve');
       }
       return perms.includes('data:read');

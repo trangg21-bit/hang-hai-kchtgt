@@ -1,13 +1,13 @@
 ---
 id: F-013
-name: "Quản lý Cảng biển - Lịch sử"
+name: Quản lý Cảng biển - Lịch sử
 slug: ql-cb-lich-su
 module-id: M-002
-status: proposed
+status: done
 classification: local
 priority: high
-created: "2026-06-16T04:40:42Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:40:42Z
+last-updated: 2026-06-29T11:09:59Z
 locked-fields: []
 consumed_by_modules: []
 ---

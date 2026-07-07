@@ -1,3 +1,13 @@
-# Implementations placeholder
-waves: []
-tasks: []
+feature_id: F-038
+module_id: M-003
+slug: quan-ly-luong-hang-hai-tao-moi
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: ""
+  consumers: []
+
+# Cross-cutting: features consumed by multiple modules
+consumed_by_modules: []

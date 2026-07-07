@@ -1,63 +1,113 @@
 ---
 id: F-038
-name: Quản lý Lượng hàng hải - Tạo mới
+name: "Quan ly Luong hang hai - Tao moi"
 slug: quan-ly-luong-hang-hai-tao-moi
 module-id: M-003
 status: proposed
 classification: local
-priority: high
-created: 2026-06-26T00:00:00Z
-last-updated: 2026-06-26T00:00:00Z
+priority: P0
+created: "2026-06-29T00:00:00Z"
+last-updated: "2026-06-29T00:00:00Z"
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quản lý Lượng hàng hải - Tạo mới
+
+# Feature: Quan ly Luong hang hai - Tao moi
 
 ## Description
-Chuyên viên cho phép nhập liệu và tạo mới một bản ghi thông tin lượng hàng hải vào hệ thống quản lý tài sản KCHTGT khu nước VTS, bao gồm các thông tin về loại tàu, số lượng, thời gian cập bến, xuất bến và các thông số liên quan đến hoạt động giao thông thủy trong khu vực.
+Chuyen vien co the tao moi luong hang hai. Luong hang hai phai duoc phe duyet truoc khi chinh thuc ghi nhan. Du lieu sau khi tao mac dinh co trang thai PROPOSED, chuyen vien co the cap nhat tai lieu, sau do gui cho phe duyet 2 cap: phong (C1) → Cuc (C2). Thong tin luong hang bao gom loai tau, so luong, ngay ghi nhan, gio dien, tai trong, dien tich dang bo, va ghi chu (tuy chon).
 
 ## Business Intent
-Hệ thống cần ghi nhận chính xác và đầy đủ thông tin lượng hàng hải để phục vụ công tác quản lý, thống kê và báo cáo về hoạt động giao thông tàu thuyền trong khu nước VTS, làm cơ sở cho việc lập kế hoạch và ra quyết định quản lý tài sản hạ tầng hàng hải.
+Ky luong thong tin luong hang tai cac khu vuc khu nuoc va VTS, phuc vu cong tac quan ly tai san KCHTGT. Thong tin luong hang bao gom loai tau, so luong, ngay ghi nhan, gio dien, tai trong, dien tich dang bo, va ghi chu.
 
 ## Flow Summary
-Chuyên viên đăng nhập hệ thống, truy cập mục Lượng hàng hải, chọn chức năng Tạo mới, điền đầy đủ các trường thông tin bắt buộc bao gồm ngày giờ ghi nhận, loại tàu, số lượng tàu đi qua, tải trọng, và các thông số phụ trợ khác. Hệ thống kiểm tra tính hợp lệ của dữ liệu, sau khi lưu thành công bản ghi sẽ ở trạng thái chờ phê duyệt và gửi thông báo cho cấp phê duyệt.
+1. Chuyen vien truy cap module Luong hang hai → nut "Tao moi"
+2. Chuyen vien nhap thong tin: loai_tau, so_luong, ngay_ghi_nhan, gio_dien, tai_trong, dien_tich_dang_bo, ghi_chu (tuy chon)
+3. He thong kiem tra buoc: loai_tau (max 100 ky tu), so_luong (> 0), ngay_ghi_nhan (<= hom nay)
+4. He thong luu du lieu voi trang thai = PROPOSED
+5. Chuyen vien gui cho phe duyet → Ban ghi cho phe duyet tai cap phong (C1)
+6. Sau phe duyet C1 thanh cong → trang thai chuyen thanh UNDER_REVIEW
+7. Sau phe duyet C2 thanh cong → trang thai chuyen thanh APPROVED, chinh thuc ghi nhan
 
 ## Acceptance Criteria
-- Chuyên viên có thể tạo thành công bản ghi lượng hàng hải với đầy đủ thông tin bắt buộc
-- Hệ thống tự động kiểm tra tính hợp lệ của các trường dữ liệu (ngày giờ, số lượng, định dạng)
-- Bản ghi mới được lưu ở trạng thái "chờ phê duyệt" và không hiển thị trong báo cáo tổng hợp
-- Hệ thống gửi thông báo tự động đến cấp phê duyệt (trưởng phòng) khi có bản ghi mới được tạo
-- Giao diện hiển thị lỗi rõ ràng khi người dùng nhập thiếu hoặc nhập sai định dạng dữ liệu
+- [x] Tao moi Luong hang hai thanh cong
+- [x] Trang thai mac dinh = PROPOSED sau khi tao
+- [x] Ye cau buoc: loai_tau (max 100), so_luong (> 0), ngay_ghi_nhan (<= hom nay)
+- [x] Loai tau, so luong, ngay ghi nhan, gio dien, tai trong, dien tich dang bo, ghi chu (tuy chon)
 
 ## In Scope
-- Form nhập liệu lượng hàng hải với các trường thông tin cơ bản và mở rộng
-- Kiểm tra định dạng và tính hợp lệ của dữ liệu đầu vào
-- Chuyển trạng thái bản ghi sang "chờ phê duyệt" sau khi tạo
-- Gửi thông báo đến người có thẩm quyền phê duyệt
+- Tao moi luong hang hai (F-038)
+- Cap nhat luong hang hai (F-039)
+- Xoa luong hang hai (F-040)
+- Phe duyet luong hang hai (F-041, 2 cap: phong → Cuc)
+- Xem chi tiet (F-042)
+- Lich su thay doi (F-043)
 
 ## Out of Scope
-- Quy trình phê duyệt (thuộc tính năng F-041)
-- Chỉnh sửa hoặc hủy bản ghi sau khi tạo (thuộc tính năng F-039)
-- Xuất báo cáo thống kê lượng hàng hải
-- Tích hợp tự động dữ liệu lượng hàng hải từ hệ thống AIS
+- Phuc vu thong ke, bao cao
+- Tich hop voi he thong khac (Phase 1)
+- Email/SMS notification
+- Export Excel/PDF
 
 ## Roles + Permissions
-| Role | Permissions |
-|------|-------------|
-| Chuyên viên | Tạo mới, Xem chi tiết |
-| Trưởng phòng | Xem chi tiết, Phê duyệt |
-| Cục trưởng | Xem chi tiết, Phê duyệt cấp 2 |
-| Admin | Quản lý hệ thống, Xem toàn bộ |
+
+| Role | Level | Notes |
+|---|---|---|
+| A-003 (Chuyen vien) | Tao/Cap nhat/Xoa | Chi du lieu PROPOSED/UNDER_REVIEW/REJECTED |
+| A-002 (Lanh dao) | Phe duyet C1 (Phong) | PROPOSED → UNDER_REVIEW |
+| A-004 (Lanh dao Cuc) | Phe duyet C2 (Cuc) | UNDER_REVIEW → APPROVED |
 
 ## Entities
-- **LuongHangHai**: id, loaiTau, soLuong, ngayGhiNhan, gioDien, taiTrong, dienTichDangBo, ghiChu, trangThai,NguoiTao, ngayTao, nguoiCapNhat, ngayCapNhat
+
+| Entity | Table | Primary Key | Description |
+|---|---|---|---|
+| LuongHangHai | luong_hang_hai | id | Entity chinh, 32 fields |
+| LuongHangHaiAttachment | luong_hang_hai_attachment | id | Tai lieu dinh kem (MinIO) |
+| PheDuyetLichSu | phe_duyet_lich_su | id | History log |
 
 ## Business Rules
-1. Bản ghi lượng hàng hải phải có ngày giờ ghi nhận không vượt quá thời điểm hiện tại
-2. Số lượng tàu phải là số nguyên dương, không âm và không vượt quá 9999
-3. Các bản ghi mới tạo luôn ở trạng thái "chờ phê duyệt" trước khi được đưa vào sử dụng
-4. Một ngày trong một khu vực chỉ được phép tạo một bản ghi lượng hàng hải tổng hợp duy nhất
-5. Dữ liệu phải được lưu vào bảng lịch sử thay đổi để đảm bảo truy vết
+
+| ID | Rule | Applies-to | Source |
+|---|---|---|---|
+| BR-038-01 | Luong hang hai phai duoc phe duyet | Create | UC-3346 |
+| BR-038-02 | Trang thai mac dinh = PROPOSED sau khi tao | Create | DESIGN.md |
+| BR-038-03 | loai_tau buoc, max 100 ky tu | Create | DESIGN.md |
+| BR-038-04 | so_luong buoc, > 0 | Create | DESIGN.md |
+| BR-038-05 | ngay_ghi_nhan buoc, <= hom nay | Create | DESIGN.md |
+| BR-038-06 | Du lieu khong duoc phe duyet cap nhat sau khi APPROVED | Create | DESIGN.md |
+
+## Technical Details
+
+### REST Endpoint
+- `POST /api/v1/luong-hang-hai` — Tao moi luong hang hai
+- Request body: `LuongHangHaiCreateDTO`
+- Response: `LuongHangHaiDTO` (trang thai = PROPOSED)
+
+### DTO Fields
+- `loai_tau` (String, required, max 100) — loai tau
+- `so_luong` (Integer, required, > 0) — so luong
+- `ngay_ghi_nhan` (LocalDate, required, <= hom nay) — ngay ghi nhan
+- `gio_dien` (LocalDateTime, optional) — gio dien
+- `tai_trong` (BigDecimal, optional) — tai trong
+- `dien_tich_dang_bo` (BigDecimal, optional) — dien tich dang bo
+- `ghi_chu` (String, optional, max 500) — ghi chu
+
+### Validation Rules
+- `loai_tau`: not blank, max 100 characters
+- `so_luong`: >= 1, integer
+- `ngay_ghi_nhan`: not null, <= current date
+- `tai_trong`: >= 0 (if provided)
+- `dien_tich_dang_bo`: >= 0 (if provided)
 
 ## Testing Strategy
-Kiểm thử đơn vị (unit test) các quy tắc nghiệp vụ trên entity LuongHangHai. Kiểm thử chức năng tạo mới với dữ liệu hợp lệ và không hợp lệ (thiếu trường, sai định dạng, giá trị âm). Kiểm thử tự động hóa các kịch bản tạo bản ghi với các trường hợp biên (số lượng tối đa, ngày giờ lớn nhất).
+- Unit tests: Entity builder, getters/setters, JPA lifecycle callbacks
+- Service tests: Create luong hang hai → validate → luu → tra ve PROPOSED
+- Controller tests: POST /api/v1/luong-hang-hai, validation error handling, auth filters
+- Integration: Tao moi + gui phe duyet + phe duyet C1 + phe duyet C2, toan bo workflow
+- All unit tests must pass before feature seal
+
+## Design Reference
+- DESIGN.md: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/DESIGN.md
+- BA Spec: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/ba/00-lean-spec.md
+- Tech-Lead Plan: docs/modules/M-003-quan-ly-tai-san-kchtgt-khu-nuoc-vts/tech-lead/04-plan.md
+- Source: UC-3346

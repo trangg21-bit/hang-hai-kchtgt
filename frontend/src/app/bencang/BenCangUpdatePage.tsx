@@ -10,9 +10,7 @@ import { z } from 'zod';
 import { updateSchema } from './schema';
 
 const { Title } = Typography;
-
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { parseCongNangKhaiThac } from '../../utils/congNangParser';
 
 export default function BenCangUpdatePage() {
   const navigate = useNavigate();
@@ -27,22 +25,19 @@ export default function BenCangUpdatePage() {
       try {
         const data = await benCangCRUD.findById(id);
         setEntityData({ maBen: data.maBen, trangThaiPheDuyet: data.trangThaiPheDuyet });
-        setTimeout(() => {
-          form.setFieldsValue({
-            maBen: data.maBen,
-            tenBen: data.tenBen,
-            cangBienId: data.cangBienId,
-            tuyenDuongThuy: data.tuyenDuongThuy,
-            viDo: data.viDo,
-            kinhDo: data.kinhDo,
-            chieuDai: data.chieuDai,
-            chieuRong: data.chieuRong,
-            loaiBen: data.loaiBen,
-            doSauLuong: data.doSauLuong,
-            trangThaiHoatDong: (data.trangThaiHoatDong as string) === 'HIỆN_HÀNH' ? 'HIEN_HANH' : (data.trangThaiHoatDong as string) === 'TẠM_NGƯNG' ? 'TAM_NGUNG' : data.trangThaiHoatDong,
-            congNangKhaiThac: parseCongNangKhaiThac(data.congNangKhaiThac),
-          });
-        }, 0);
+        form.setFieldsValue({
+          maBen: data.maBen,
+          tenBen: data.tenBen,
+          cangBienId: data.cangBienId,
+          tuyenDuongThuy: data.tuyenDuongThuy,
+          viDo: data.viDo,
+          kinhDo: data.kinhDo,
+          chieuDai: data.chieuDai,
+          chieuRong: data.chieuRong,
+          loaiBen: data.loaiBen,
+          doSauLuong: data.doSauLuong,
+          trangThaiHoatDong: data.trangThaiHoatDong,
+        });
       } catch {
         toast.error('Không thể tải thông tin bến cảng');
         navigate('/bencang');
@@ -54,10 +49,6 @@ export default function BenCangUpdatePage() {
     if (!id) return;
     try {
       const values = await form.validateFields();
-
-      const congNangString = values.congNangKhaiThac && values.congNangKhaiThac.length > 0
-        ? values.congNangKhaiThac.join(', ')
-        : '';
 
       // Zod validation
       const parsed = updateSchema.parse({
@@ -72,7 +63,6 @@ export default function BenCangUpdatePage() {
         loaiBen: values.loaiBen || undefined,
         doSauLuong: values.doSauLuong,
         trangThaiHoatDong: values.trangThaiHoatDong,
-        congNangKhaiThac: congNangString,
       });
 
       const payload: UpdateBenCangRequest = {
@@ -87,7 +77,6 @@ export default function BenCangUpdatePage() {
         loaiBen: parsed.loaiBen,
         doSauLuong: parsed.doSauLuong,
         trangThaiHoatDong: parsed.trangThaiHoatDong,
-        congNangKhaiThac: parsed.congNangKhaiThac,
       };
 
       setSubmitting(true);
@@ -247,33 +236,14 @@ export default function BenCangUpdatePage() {
             <Col span={12}>
               <FormField
                 type="select"
-                name="congNangKhaiThac"
-                label="Công năng khai thác"
-                mode="multiple"
-                placeholder="Chọn công năng khai thác (chọn nhiều)"
-                options={[
-                  { label: 'Hàng Container', value: 'Hàng Container' },
-                  { label: 'Hàng tổng hợp (bách hóa)', value: 'Hàng tổng hợp (bách hóa)' },
-                  { label: 'Hàng chuyên dụng hàng rời, quặng', value: 'Hàng chuyên dụng hàng rời, quặng' },
-                  { label: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng', value: 'Hàng chuyên dụng xăng dầu, khí hóa lỏng' },
-                  { label: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu ...)', value: 'Hàng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu ...)' },
-                  { label: 'Hành khách', value: 'Hành khách' },
-                ]}
-              />
-            </Col>
-            <Col span={12}>
-              <FormField
-                type="select"
                 name="trangThaiHoatDong"
                 label="Trạng thái hoạt động"
                 options={[
-                  { label: 'Hiện hành', value: 'HIEN_HANH' },
-                  { label: 'Tạm ngừng', value: 'TAM_NGUNG' },
+                  { label: 'Hiện hành', value: 'HIỆN_HÀNH' },
+                  { label: 'Tạm ngừng', value: 'TẠM_NGƯNG' },
                 ]}
               />
             </Col>
-          </Row>
-          <Row gutter={16} style={{ marginTop: 16 }}>
             <Col span={12}>
               <div>
                 <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 2 }}>

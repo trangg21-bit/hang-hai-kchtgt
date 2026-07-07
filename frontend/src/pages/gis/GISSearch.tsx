@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   Form,
@@ -22,6 +23,7 @@ import {
   HistoryOutlined,
   DeleteOutlined,
   ClockCircleOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -47,6 +49,7 @@ const QUERY_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function GISSearch() {
+  const navigate = useNavigate();
   const [form] = Form.useForm();
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<SearchResultItem[]>([]);
@@ -102,12 +105,13 @@ export default function GISSearch() {
       setResults(response.results || []);
       setTotalResults(response.totalResults);
       setDurationMs(response.durationMs);
+      void loadHistory();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Tìm kiếm thất bại');
     } finally {
       setSearching(false);
     }
-  }, [form]);
+  }, [form, loadHistory]);
 
   const handleHistoryClick = useCallback((item: SearchHistoryItem) => {
     form.setFieldsValue({
@@ -162,6 +166,27 @@ export default function GISSearch() {
       width: 120,
       render: (v?: number) => v != null ? `${v.toFixed(1)}m` : '—',
     },
+    {
+      title: 'Thao tác',
+      key: 'actions',
+      width: 100,
+      render: (_: unknown, record: SearchResultItem) => {
+        let path = '';
+        if (record.objectType === 'POINT') path = `/gis/points/${record.objectId}`;
+        else if (record.objectType === 'LINE') path = `/gis/lines/${record.objectId}`;
+        else if (record.objectType === 'POLYGON') path = `/gis/polygons/${record.objectId}`;
+        
+        return path ? (
+          <Tooltip title="Xem chi tiết">
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              onClick={() => navigate(path)}
+            />
+          </Tooltip>
+        ) : '—';
+      },
+    },
   ];
 
   return (
@@ -184,7 +209,7 @@ export default function GISSearch() {
             </Col>
             <Col xs={24} md={18}>
               <Form.Item name="query" label="Từ khóa" rules={[{ required: true, message: 'Vui lòng nhập từ khóa' }]}>
-                <Input.Search
+                <Input
                   placeholder="Nhập từ khóa tìm kiếm..."
                   allowClear
                   size="large"

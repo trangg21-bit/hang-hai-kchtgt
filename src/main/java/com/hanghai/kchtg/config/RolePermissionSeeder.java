@@ -32,7 +32,7 @@ import java.util.Set;
  */
 @Component
 @Order(1)
-@Profile("local")
+@Profile({"local", "prod"})
 @RequiredArgsConstructor
 @Slf4j
 public class RolePermissionSeeder implements CommandLineRunner {
@@ -152,6 +152,87 @@ public class RolePermissionSeeder implements CommandLineRunner {
         seedPermission(permissionsByCode, "security", "read", "Xem báo cáo an ninh",
                 "Xem báo cáo an ninh, cảnh báo");
 
+        // ---- M-003 entity permissions (5 entities × 7 actions) ----
+        // luonghanghai
+        seedPermission(permissionsByCode, "luonghanghai", "create", "Tạo lương hàng hải",
+                "Tạo mới lương hàng hải");
+        seedPermission(permissionsByCode, "luonghanghai", "read", "Xem lương hàng hải",
+                "Xem danh sách và chi tiết lương hàng hải");
+        seedPermission(permissionsByCode, "luonghanghai", "update", "Cập nhật lương hàng hải",
+                "Chỉnh sửa lương hàng hải");
+        seedPermission(permissionsByCode, "luonghanghai", "delete", "Xóa lương hàng hải",
+                "Xóa lương hàng hải");
+        seedPermission(permissionsByCode, "luonghanghai", "approvec1", "Phê duyệt C1 lương hàng hải",
+                "Phê duyệt cấp 1 lương hàng hải");
+        seedPermission(permissionsByCode, "luonghanghai", "approvec2", "Phê duyệt C2 lương hàng hải",
+                "Phê duyệt cấp 2 lương hàng hải");
+        seedPermission(permissionsByCode, "luonghanghai", "history", "Xem lịch sử lương hàng hải",
+                "Xem lịch sử thay đổi lương hàng hải");
+
+        // deke
+        seedPermission(permissionsByCode, "deke", "create", "Tạo đề kế",
+                "Tạo mới đề kế");
+        seedPermission(permissionsByCode, "deke", "read", "Xem đề kế",
+                "Xem danh sách và chi tiết đề kế");
+        seedPermission(permissionsByCode, "deke", "update", "Cập nhật đề kế",
+                "Chỉnh sửa đề kế");
+        seedPermission(permissionsByCode, "deke", "delete", "Xóa đề kế",
+                "Xóa đề kế");
+        seedPermission(permissionsByCode, "deke", "approvec1", "Phê duyệt C1 đề kế",
+                "Phê duyệt cấp 1 đề kế");
+        seedPermission(permissionsByCode, "deke", "approvec2", "Phê duyệt C2 đề kế",
+                "Phê duyệt cấp 2 đề kế");
+        seedPermission(permissionsByCode, "deke", "history", "Xem lịch sử đề kế",
+                "Xem lịch sử thay đổi đề kế");
+
+        // cosuachua
+        seedPermission(permissionsByCode, "cosuachua", "create", "Tạo cơ sở chữa chạy",
+                "Tạo mới cơ sở chữa chạy");
+        seedPermission(permissionsByCode, "cosuachua", "read", "Xem cơ sở chữa chạy",
+                "Xem danh sách và chi tiết cơ sở chữa chạy");
+        seedPermission(permissionsByCode, "cosuachua", "update", "Cập nhật cơ sở chữa chạy",
+                "Chỉnh sửa cơ sở chữa chạy");
+        seedPermission(permissionsByCode, "cosuachua", "delete", "Xóa cơ sở chữa chạy",
+                "Xóa cơ sở chữa chạy");
+        seedPermission(permissionsByCode, "cosuachua", "approvec1", "Phê duyệt C1 cơ sở chữa chạy",
+                "Phê duyệt cấp 1 cơ sở chữa chạy");
+        seedPermission(permissionsByCode, "cosuachua", "approvec2", "Phê duyệt C2 cơ sở chữa chạy",
+                "Phê duyệt cấp 2 cơ sở chữa chạy");
+        seedPermission(permissionsByCode, "cosuachua", "history", "Xem lịch sử cơ sở chữa chạy",
+                "Xem lịch sử thay đổi cơ sở chữa chạy");
+
+        // tramradar
+        seedPermission(permissionsByCode, "tramradar", "create", "Tạo trạm radar",
+                "Tạo mới trạm radar");
+        seedPermission(permissionsByCode, "tramradar", "read", "Xem trạm radar",
+                "Xem danh sách và chi tiết trạm radar");
+        seedPermission(permissionsByCode, "tramradar", "update", "Cập nhật trạm radar",
+                "Chỉnh sửa trạm radar");
+        seedPermission(permissionsByCode, "tramradar", "delete", "Xóa trạm radar",
+                "Xóa trạm radar");
+        seedPermission(permissionsByCode, "tramradar", "approvec1", "Phê duyệt C1 trạm radar",
+                "Phê duyệt cấp 1 trạm radar");
+        seedPermission(permissionsByCode, "tramradar", "approvec2", "Phê duyệt C2 trạm radar",
+                "Phê duyệt cấp 2 trạm radar");
+        seedPermission(permissionsByCode, "tramradar", "history", "Xem lịch sử trạm radar",
+                "Xem lịch sử thay đổi trạm radar");
+
+        // vts
+        seedPermission(permissionsByCode, "vts", "create", "Tạo VTS",
+                "Tạo mới hệ thống VTS");
+        seedPermission(permissionsByCode, "vts", "read", "Xem VTS",
+                "Xem danh sách và chi tiết hệ thống VTS");
+        seedPermission(permissionsByCode, "vts", "update", "Cập nhật VTS",
+                "Chỉnh sửa hệ thống VTS");
+        seedPermission(permissionsByCode, "vts", "delete", "Xóa VTS",
+                "Xóa hệ thống VTS");
+        seedPermission(permissionsByCode, "vts", "approvec1", "Phê duyệt C1 VTS",
+                "Phê duyệt cấp 1 VTS");
+        seedPermission(permissionsByCode, "vts", "approvec2", "Phê duyệt C2 VTS",
+                "Phê duyệt cấp 2 VTS");
+        seedPermission(permissionsByCode, "vts", "history", "Xem lịch sử VTS",
+                "Xem lịch sử thay đổi VTS");
+
         // Permissions will be saved automatically via @ManyToMany cascade when saving roles.
         log.info("📦 Prepared {} permissions for role assignment", permissionsByCode.size());
 
@@ -160,27 +241,65 @@ public class RolePermissionSeeder implements CommandLineRunner {
         rolePermissionMap.put("ROLE_SYSTEM_ADMIN", List.of(
                 "user:manage", "role:manage", "orgunit:manage",
                 "admin:manage", "log:manage", "map:manage", "connection:manage",
-                "data:read", "data:create", "data:update", "data:approve"
+                "data:read", "data:create", "data:update", "data:approve",
+                // M-003 all actions
+                "luonghanghai:create", "luonghanghai:read", "luonghanghai:update", "luonghanghai:delete",
+                "luonghanghai:approvec1", "luonghanghai:approvec2", "luonghanghai:history",
+                "deke:create", "deke:read", "deke:update", "deke:delete",
+                "deke:approvec1", "deke:approvec2", "deke:history",
+                "cosuachua:create", "cosuachua:read", "cosuachua:update", "cosuachua:delete",
+                "cosuachua:approvec1", "cosuachua:approvec2", "cosuachua:history",
+                "tramradar:create", "tramradar:read", "tramradar:update", "tramradar:delete",
+                "tramradar:approvec1", "tramradar:approvec2", "tramradar:history",
+                "vts:create", "vts:read", "vts:update", "vts:delete",
+                "vts:approvec1", "vts:approvec2", "vts:history"
         ));
         rolePermissionMap.put("ROLE_ADMIN", List.of(
                 "orgunit:manage", "orgunit:read", "orgunit:approve", "group:manage", "user:read",
-                "report:read", "connection:read", "data:read", "data:approve"
+                "report:read", "connection:read", "data:read", "data:approve",
+                // M-003 read + approve actions
+                "luonghanghai:read", "luonghanghai:approvec1", "luonghanghai:approvec2",
+                "deke:read", "deke:approvec1", "deke:approvec2",
+                "cosuachua:read", "cosuachua:approvec1", "cosuachua:approvec2",
+                "tramradar:read", "tramradar:approvec1", "tramradar:approvec2",
+                "vts:read", "vts:approvec1", "vts:approvec2"
         ));
         rolePermissionMap.put("ROLE_LEADER", List.of(
-                "orgunit:read", "data:approve", "report:read", "approve:action"
+                "orgunit:read", "data:approve", "report:read", "approve:action",
+                // M-003 read + approve actions
+                "luonghanghai:read", "luonghanghai:approvec1", "luonghanghai:approvec2",
+                "deke:read", "deke:approvec1", "deke:approvec2",
+                "cosuachua:read", "cosuachua:approvec1", "cosuachua:approvec2",
+                "tramradar:read", "tramradar:approvec1", "tramradar:approvec2",
+                "vts:read", "vts:approvec1", "vts:approvec2"
         ));
         rolePermissionMap.put("ROLE_SPECIALIST", List.of(
                 "orgunit:read", "data:create", "data:update", "data:read",
-                "report:read", "check:read"
+                "report:read", "check:read",
+                // M-003 create/read/update
+                "luonghanghai:create", "luonghanghai:read", "luonghanghai:update",
+                "deke:create", "deke:read", "deke:update",
+                "cosuachua:create", "cosuachua:read", "cosuachua:update",
+                "tramradar:create", "tramradar:read", "tramradar:update",
+                "vts:create", "vts:read", "vts:update"
         ));
         rolePermissionMap.put("ROLE_PORT_OPERATOR", List.of(
-                "orgunit:read", "data:read", "data:update"
+                "orgunit:read", "data:read", "data:update",
+                // M-003 read only
+                "luonghanghai:read", "deke:read", "cosuachua:read",
+                "tramradar:read", "vts:read"
         ));
         rolePermissionMap.put("ROLE_PUBLIC_USER", List.of(
-                "orgunit:read", "data:read"
+                "orgunit:read", "data:read",
+                // M-003 read only
+                "luonghanghai:read", "deke:read", "cosuachua:read",
+                "tramradar:read", "vts:read"
         ));
         rolePermissionMap.put("ROLE_INTEGRATION", List.of(
-                "data:read", "data:write", "api:share"
+                "data:read", "data:write", "api:share",
+                // M-003 read only
+                "luonghanghai:read", "deke:read", "cosuachua:read",
+                "tramradar:read", "vts:read"
         ));
         rolePermissionMap.put("ROLE_SECURITY_MONITOR", List.of(
                 "security:monitor", "security:read"

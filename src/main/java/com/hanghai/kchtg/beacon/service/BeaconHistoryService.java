@@ -5,6 +5,8 @@ import com.hanghai.kchtg.beacon.entity.BeaconHistory;
 import com.hanghai.kchtg.beacon.entity.BeaconHistoryActionType;
 import com.hanghai.kchtg.beacon.entity.BeaconType;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
+import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
+import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +25,8 @@ import java.util.UUID;
 public class BeaconHistoryService {
 
     private final BeaconHistoryRepository historyRepo;
+    private final BeaconLightRepository beaconLightRepo;
+    private final BuoyRepository buoyRepo;
 
     /**
      * Get paginated history for a specific entity.
@@ -37,48 +41,36 @@ public class BeaconHistoryService {
      * Get filtered history with optional filters.
      */
     public Page<BeaconHistoryResponse> getHistoryFiltered(
-            BeaconType beaconType, UUID entityId,
+            BeaconType beaconType, UUID entityId, String entityCode,
             BeaconHistoryActionType actionType,
             Long changedBy, LocalDateTime from, LocalDateTime to,
             Pageable pageable) {
+        
+        java.util.List<UUID> entityIds = null;
+        boolean hasEntityIds = false;
+
         if (entityId != null) {
-            // Priority: actionType + date range, then date range, then basic
-            if (actionType != null && from != null && to != null) {
-                // Combined filter not available in single query, fall back to actionType + date
-                Page<BeaconHistory> result = historyRepo
-                        .findByEntityIdAndBeaconTypeAndActionType(entityId, beaconType, actionType, pageable);
-                return result.map(this::toResponse);
+            entityIds = java.util.List.of(entityId);
+            hasEntityIds = true;
+        } else if (entityCode != null && !entityCode.trim().isEmpty()) {
+            String cleanCode = entityCode.trim();
+            if (beaconType == BeaconType.BEACON_LIGHT) {
+                entityIds = beaconLightRepo.findByCodeContainingIgnoreCase(cleanCode).stream()
+                        .map(com.hanghai.kchtg.beacon.entity.BeaconLight::getId)
+                        .toList();
+            } else {
+                entityIds = buoyRepo.findByCodeContainingIgnoreCase(cleanCode).stream()
+                        .map(com.hanghai.kchtg.beacon.entity.Buoy::getId)
+                        .toList();
             }
-            if (from != null && to != null) {
-                return historyRepo.findByDateRange(entityId, beaconType, from, to, pageable)
-                        .map(this::toResponse);
+            if (entityIds.isEmpty()) {
+                return Page.empty();
             }
-            if (actionType != null) {
-                return historyRepo.findByEntityIdAndBeaconTypeAndActionType(
-                        entityId, beaconType, actionType, pageable)
-                        .map(this::toResponse);
-            }
-            return historyRepo.findByEntityIdAndBeaconType(entityId, beaconType, pageable)
-                    .map(this::toResponse);
-        } else {
-            // entityId is null: query all history of this beaconType
-            if (actionType != null && from != null && to != null) {
-                Page<BeaconHistory> result = historyRepo
-                        .findByBeaconTypeAndActionType(beaconType, actionType, pageable);
-                return result.map(this::toResponse);
-            }
-            if (from != null && to != null) {
-                return historyRepo.findByBeaconTypeAndDateRange(beaconType, from, to, pageable)
-                        .map(this::toResponse);
-            }
-            if (actionType != null) {
-                return historyRepo.findByBeaconTypeAndActionType(
-                        beaconType, actionType, pageable)
-                        .map(this::toResponse);
-            }
-            return historyRepo.findByBeaconType(beaconType, pageable)
-                    .map(this::toResponse);
+            hasEntityIds = true;
         }
+
+        return historyRepo.searchHistory(beaconType, entityIds, hasEntityIds, actionType, from, to, pageable)
+                .map(this::toResponse);
     }
 
     private BeaconHistoryResponse toResponse(BeaconHistory entity) {

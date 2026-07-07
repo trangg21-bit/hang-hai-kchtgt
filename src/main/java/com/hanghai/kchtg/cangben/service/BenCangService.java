@@ -61,7 +61,6 @@ public class BenCangService {
                 .chieuDai(request.getChieuDai()).chieuRong(request.getChieuRong())
                 .loaiBen(request.getLoaiBen()).doSauLuong(request.getDoSauLuong())
                 .trangThaiHoatDong(request.getTrangThaiHoatDong())
-                .congNangKhaiThac(request.getCongNangKhaiThac())
                 .trangThaiPheDuyet("CHO_PHE_DUYET").build();
         BenCang saved = benCangRepository.save(entity);
         log.info("Created BenCang [{}] code={}", saved.getId(), saved.getMaBen());
@@ -79,13 +78,6 @@ public class BenCangService {
         int pageSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
         return benCangRepository.findAllActive(orgUnitId, pageable).map(this::toResponse);
-    }
-
-    @Transactional(readOnly = true)
-    public Page<BenCangResponse> findAll(int page, int size, UUID orgUnitId, String maBen, String tenBen, UUID cangBienId, String loaiBen, String trangThaiHoatDong, String trangThaiPheDuyet) {
-        int pageSize = Math.min(Math.max(size, 1), 100);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
-        return benCangRepository.search(orgUnitId, maBen, tenBen, cangBienId, loaiBen, trangThaiHoatDong, trangThaiPheDuyet, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -115,7 +107,6 @@ public class BenCangService {
                 .chieuRong(entity.getChieuRong()).loaiBen(entity.getLoaiBen())
                 .doSauLuong(entity.getDoSauLuong()).trangThaiHoatDong(entity.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
-                .congNangKhaiThac(entity.getCongNangKhaiThac())
                 .build();
 
         if (request.getTenBen() != null) entity.setTenBen(request.getTenBen());
@@ -128,7 +119,6 @@ public class BenCangService {
         if (request.getLoaiBen() != null) entity.setLoaiBen(request.getLoaiBen());
         if (request.getDoSauLuong() != null) entity.setDoSauLuong(request.getDoSauLuong());
         if (request.getTrangThaiHoatDong() != null) entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
-        if (request.getCongNangKhaiThac() != null) entity.setCongNangKhaiThac(request.getCongNangKhaiThac());
         entity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
 
         BenCang saved = benCangRepository.save(entity);
@@ -158,8 +148,7 @@ public class BenCangService {
                 .viDo(e.getViDo()).kinhDo(e.getKinhDo()).chieuDai(e.getChieuDai())
                 .chieuRong(e.getChieuRong()).loaiBen(e.getLoaiBen())
                 .doSauLuong(e.getDoSauLuong()).trangThaiHoatDong(e.getTrangThaiHoatDong())
-                .trangThaiPheDuyet(e.getTrangThaiPheDuyet()).orgUnitId(e.getOrgUnitId())
-                .congNangKhaiThac(e.getCongNangKhaiThac())
+                .trangThaiPheDuyet(e.getTrangThaiPheDuyet())                .orgUnitId(e.getOrgUnitId())
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();
     }
 }

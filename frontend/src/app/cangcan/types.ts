@@ -8,8 +8,8 @@ export interface CangCan {
   kinhDo: number | null;
   dienTich: number;
   congSuatTEU: number | null;
-  trangThaiHoatDong: string; // 'HIEN_HANH' | 'TAM_NGUNG'
-  trangThaiPheDuyet: string; // 'CHO_PHE_DUYET' | 'DUOC_PHE_DUYET' | 'TU_CHOI'
+  trangThaiHoatDong: string; // 'HIỆN_HÀNH' | 'TẠM_NGƯNG'
+  trangThaiPheDuyet: string; // 'CHỜ_PHE_DUYỆT' | 'ĐƯỢC_PHE_DUYỆT' | 'TỪ_CHỐI'
   orgUnitId: string;
   createdBy: string;
   updatedBy: string;
@@ -54,25 +54,25 @@ export interface CangCanHistoryRecord {
 // ── Status maps ─────────────────────────────────────────────────────────
 
 export const TRANG_THAI_HOAT_DONG_OPTIONS = [
-  { label: 'Hoạt động', value: 'HIEN_HANH' },
-  { label: 'Tạm ngừng', value: 'TAM_NGUNG' },
+  { label: 'Hoạt động', value: 'HIỆN_HÀNH' },
+  { label: 'Tạm ngừng', value: 'TẠM_NGƯNG' },
 ];
 
 export const TRANG_THAI_PHE_DUYET_OPTIONS = [
-  { label: 'Chờ phê duyệt', value: 'CHO_PHE_DUYET' },
-  { label: 'Được phê duyệt', value: 'DUOC_PHE_DUYET' },
-  { label: 'Từ chối', value: 'TU_CHOI' },
+  { label: 'Chờ phê duyệt', value: 'CHỜ_PHE_DUYỆT' },
+  { label: 'Được phê duyệt', value: 'ĐƯỢC_PHE_DUYỆT' },
+  { label: 'Từ chối', value: 'TỪ_CHỐI' },
 ];
 
 export const TRANG_THAI_HOAT_DONG_MAP: Record<string, { color: string; label: string }> = {
-  'HIEN_HANH': { color: 'green', label: 'Hoạt động' },
-  'TAM_NGUNG': { color: 'orange', label: 'Tạm ngừng' },
+  'HIỆN_HÀNH': { color: 'green', label: 'Hoạt động' },
+  'TẠM_NGƯNG': { color: 'orange', label: 'Tạm ngừng' },
 };
 
 export const TRANG_THAI_PHE_DUYET_MAP: Record<string, { color: string; label: string }> = {
-  'CHO_PHE_DUYET': { color: 'orange', label: 'Chờ phê duyệt' },
-  'DUOC_PHE_DUYET': { color: 'green', label: 'Được phê duyệt' },
-  'TU_CHOI': { color: 'red', label: 'Từ chối' },
+  'CHỜ_PHE_DUYỆT': { color: 'orange', label: 'Chờ phê duyệt' },
+  'ĐƯỢC_PHE_DUYỆT': { color: 'green', label: 'Được phê duyệt' },
+  'TỪ_CHỐI': { color: 'red', label: 'Từ chối' },
 };
 
 // ── Pagination ──────────────────────────────────────────────────────────

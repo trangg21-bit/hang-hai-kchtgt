@@ -89,15 +89,10 @@ export default function CangBienDetailPage() {
                 <br />
                 <Typography.Text>{data.tenCang}</Typography.Text>
               </Col>
-              <Col span={12}>
+              <Col span={24}>
                 <Typography.Text strong>Tỉnh/thành phố:</Typography.Text>
                 <br />
                 <Typography.Text>{data.tinhThanhPho || '—'}</Typography.Text>
-              </Col>
-              <Col span={12}>
-                <Typography.Text strong>Nhóm cảng biển:</Typography.Text>
-                <br />
-                <Typography.Text>{data.nhomCangBien ? `Nhóm ${data.nhomCangBien}` : '—'}</Typography.Text>
               </Col>
             </Row>
           </Card>

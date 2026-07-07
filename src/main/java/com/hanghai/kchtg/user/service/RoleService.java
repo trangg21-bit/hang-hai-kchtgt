@@ -5,6 +5,7 @@ import com.hanghai.kchtg.user.dto.UpdateRoleRequest;
 import com.hanghai.kchtg.user.entity.Permission;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.RoleStatus;
+import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.user.repository.PermissionRepository;
 import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
@@ -35,11 +36,14 @@ public class RoleService {
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
     private final UserRepository userRepository;
+    private final PermissionCacheService permissionCacheService;
 
-    public RoleService(RoleRepository roleRepository, PermissionRepository permissionRepository, UserRepository userRepository) {
+    public RoleService(RoleRepository roleRepository, PermissionRepository permissionRepository,
+                       UserRepository userRepository, PermissionCacheService permissionCacheService) {
         this.roleRepository = roleRepository;
         this.permissionRepository = permissionRepository;
         this.userRepository = userRepository;
+        this.permissionCacheService = permissionCacheService;
     }
 
     @Transactional
@@ -145,11 +149,24 @@ public class RoleService {
         if (request.getDescription() != null) {
             role.setDescription(request.getDescription());
         }
+        boolean permissionsChanged = false;
         if (request.getPermissions() != null) {
             role.setPermissions(resolvePermissions(request.getPermissions()));
+            permissionsChanged = true;
         }
 
         Role saved = roleRepository.save(role);
+
+        // When a role's permission set changes, every user holding that role has stale
+        // cached permissions. Invalidate their cache so the next authorization check
+        // recomputes from the database. No version bump / re-login is required because
+        // the JWT role claim itself is unchanged — permissions are always resolved live.
+        if (permissionsChanged) {
+            for (UUID userId : userRepository.findIdsByRoleId(saved.getId())) {
+                permissionCacheService.invalidateCache(userId);
+            }
+        }
+
         log.info("Updated role: {} ({})", saved.getCode(), saved.getId());
         return saved;
     }

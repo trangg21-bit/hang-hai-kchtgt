@@ -107,7 +107,7 @@ export default function CangCanApprovePage({
       footer={null}
       centered
       width={600}
-      destroyOnHidden
+      destroyOnClose
     >
       {/* Header */}
       <Typography.Title level={5} style={{ margin: '0 0 8px' }}>

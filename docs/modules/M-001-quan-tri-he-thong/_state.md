@@ -2,8 +2,8 @@
 feature-id: M-001
 feature-name: Quản trị hệ thống
 pipeline-type: sdlc
-status: in-progress
-current-stage: intake
+status: closed
+current-stage: closed
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
@@ -45,14 +45,7 @@ completed-stages:
   closed:
     verdict: Module Complete
     completed-at: 2026-06-28
-stages-queue:
-  - engineering-business-analyst
-  - engineering-security-architect
-  - engineering-tech-lead
-  - engineering-implementor
-  - engineering-implementation
-  - engineering-code-review
-  - reviewer
+stages-queue: []
 kpi:
   tokens-total: 0
   cycle-time-start: 2026-06-16T04:39:13Z
@@ -71,11 +64,11 @@ agent-flags: {}
 
 ## Business Goal
 
-Quản lý tài khoản, nhóm, đơn vị, admin, log
+Quản lý tài khoản người dùng, phân quyền RBAC, quản lý nhóm, đơn vị, admin và audit log truy cập.
 
 ## Module Status
 
-**Status: in-code-review, Stage: engineering-code-review** — Module has completed all engineering stages (BA, SA, Tech Lead, Implementation, Code Review). Ready for final QA.
+**Status: closed, Stage: closed** — Module has completed all stages (BA, SA, TL, Dev, QA, Reviewer, Closed). Ready for deployment.
 
 ## Active Blockers
 
@@ -86,22 +79,13 @@ none
 
 | Stage | Status | Verdict | Date |
 |-------|--------|---------|------|
-| intake | completed | Ready for BA | 2026-06-27 |
-| engineering-business-analyst | completed | Ready for SA | 2026-06-27 |
-| engineering-security-architect | completed | Ready for Tech Lead | 2026-06-27 |
-| engineering-tech-lead | completed | Ready for Implementation | 2026-06-27 |
-| engineering-implementor | completed | Ready for QA | 2026-06-27 |
-| engineering-implementation | completed | Ready for Code Review | 2026-06-27 |
-| engineering-code-review | completed | Module Complete | 2026-06-27 |
-| reviewer | pending | — | — |
+| intake | completed | Ready for BA | 2026-06-28 |
+| engineering-business-analyst | completed | Ready for SA | 2026-06-28 |
+| engineering-security-architect | completed | Ready for Tech Lead | 2026-06-28 |
+| engineering-tech-lead | completed | Ready for Implementation | 2026-06-28 |
+| engineering-implementor | completed | Ready for QA | 2026-06-28 |
+| engineering-implementation | completed | Ready for Code Review | 2026-06-28 |
+| engineering-code-review | completed | Module Complete | 2026-06-28 |
 | qa | completed | Module Complete | 2026-06-28 |
+| reviewer | completed | Module Complete | 2026-06-28 |
 | closed | completed | Module Complete | 2026-06-28 |
-| engineering-business-analyst | engineering-business-analyst | Ready for feature pipeline (all closed) |  | 2026-06-28 |
-| engineering-security-architect | engineering-security-architect | Ready for Tech Lead |  | 2026-06-28 |
-| engineering-tech-lead | engineering-tech-lead | Ready for Implementation |  | 2026-06-28 |
-| engineering-implementor | engineering-implementor | Ready for QA |  | 2026-06-28 |
-| engineering-implementation | engineering-implementation | Ready for Code Review |  | 2026-06-28 |
-| engineering-code-review | engineering-code-review | Module Complete |  | 2026-06-28 |
-| qa | qa | Module Complete |  | 2026-06-28 |
-| reviewer | reviewer | Module Complete |  | 2026-06-28 |
-| closed | closed | Module Complete |  | 2026-06-28 |

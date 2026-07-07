@@ -67,18 +67,9 @@ public class CangCanController {
     public ResponseEntity<ApiResponse<Page<CangCanResponse>>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) UUID orgUnitId,
-            @RequestParam(required = false) String maCangCan,
-            @RequestParam(required = false) String tenCangCan,
-            @RequestParam(required = false) String tinhThanhPho,
-            @RequestParam(required = false) String trangThaiHoatDong,
-            @RequestParam(required = false) String trangThaiPheDuyet) {
-        Page<CangCanResponse> result;
-        if (maCangCan == null && tenCangCan == null && tinhThanhPho == null && trangThaiHoatDong == null && trangThaiPheDuyet == null) {
-            result = cangCanService.findAll(page, size, orgUnitId);
-        } else {
-            result = cangCanService.findAll(page, size, orgUnitId, maCangCan, tenCangCan, tinhThanhPho, trangThaiHoatDong, trangThaiPheDuyet);
-        }
+            @RequestParam(required = false) UUID orgUnitId) {
+        log.info("Listing CangCan: page={}, size={}, orgUnitId={}", page, size, orgUnitId);
+        Page<CangCanResponse> result = cangCanService.findAll(page, size, orgUnitId);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cảng cạn thành công", result));
     }
 

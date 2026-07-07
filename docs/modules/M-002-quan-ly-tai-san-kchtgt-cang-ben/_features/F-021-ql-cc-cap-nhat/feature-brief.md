@@ -1,13 +1,13 @@
 ---
 id: F-021
-name: "Quản lý Cầu cảng - Cập nhật"
+name: Quản lý Cầu cảng - Cập nhật
 slug: ql-cc-cap-nhat
 module-id: M-002
-status: proposed
+status: done
 classification: local
 priority: critical
-created: "2026-06-16T04:41:01Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:41:01Z
+last-updated: 2026-06-29T11:10:03Z
 locked-fields: []
 consumed_by_modules: []
 ---

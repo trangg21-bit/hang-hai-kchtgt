@@ -60,23 +60,10 @@ public class VungNuocController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) UUID orgUnitId,
-            @RequestParam(required = false) String maVungNuoc,
-            @RequestParam(required = false) String tenVungNuoc,
-            @RequestParam(required = false) UUID cangBienId,
-            @RequestParam(required = false) String loaiVungNuoc,
-            @RequestParam(required = false) String trangThaiHoatDong,
-            @RequestParam(required = false) String trangThaiPheDuyet) {
-        Page<VungNuocResponse> result;
-        if (maVungNuoc == null && tenVungNuoc == null && loaiVungNuoc == null && trangThaiHoatDong == null && trangThaiPheDuyet == null) {
-            if (cangBienId == null) {
-                result = vungNuocService.findAll(page, size, orgUnitId);
-            } else {
-                result = vungNuocService.findAll(page, size, orgUnitId, cangBienId);
-            }
-        } else {
-            result = vungNuocService.findAll(page, size, orgUnitId, maVungNuoc, tenVungNuoc, cangBienId, loaiVungNuoc, trangThaiHoatDong, trangThaiPheDuyet);
-        }
-        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách vùng nước thành công", result));
+            @RequestParam(required = false) UUID cangBienId) {
+        log.info("Listing VungNuoc: page={}, size={}, orgUnitId={}, cangBienId={}", page, size, orgUnitId, cangBienId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách vùng nước thành công",
+                vungNuocService.findAll(page, size, orgUnitId, cangBienId)));
     }
 
     @GetMapping("/code/{maVungNuoc}")

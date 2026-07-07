@@ -9,7 +9,6 @@ export const cauCangCreateSchema = z.object({
   taiTrong: z.coerce.number().min(0, 'Tải trọng phải ≥ 0').optional().or(z.literal('')),
   loaiCau: z.string().max(100, 'Loại cầu tối đa 100 ký tự').optional().or(z.literal('')),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional().default('HIEN_HANH'),
-  congNangKhaiThac: z.string().optional().or(z.literal('')),
 });
 
 export type CauCangCreateForm = z.infer<typeof cauCangCreateSchema>;
@@ -23,7 +22,6 @@ export const cauCangUpdateSchema = z.object({
   taiTrong: z.coerce.number().min(0, 'Tải trọng phải ≥ 0').optional().or(z.literal('')),
   loaiCau: z.string().max(100, 'Loại cầu tối đa 100 ký tự').optional().or(z.literal('')),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
-  congNangKhaiThac: z.string().optional().or(z.literal('')),
 });
 
 export type CauCangUpdateForm = z.infer<typeof cauCangUpdateSchema>;

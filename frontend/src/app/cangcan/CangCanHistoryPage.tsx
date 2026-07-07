@@ -106,7 +106,7 @@ export default function CangCanHistoryPage() {
     <>
       <Card style={{ marginBottom: 16 }}>
         <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/cangcan')}>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/cangcan/${id}`)}>
             Quay lại
           </Button>
           <Typography.Title level={5} style={{ margin: 0 }}>

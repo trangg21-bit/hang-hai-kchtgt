@@ -46,6 +46,9 @@ public class FileQuyHoach {
     @Column(name = "ngay_tai_len", updatable = false)
     private LocalDateTime ngayTaiLen;
 
+    @Column(name = "nguoi_tai_len", length = 100)
+    private String nguoiTaiLen;
+
     @PrePersist
     protected void onCreate() {
         this.ngayTaiLen = LocalDateTime.now();

@@ -51,7 +51,6 @@ export default function BenCangListPage() {
         tenBen: filterTenBen || undefined,
         loaiBen: filterLoaiBen || undefined,
         trangThaiHoatDong: filterStatus,
-        trangThaiPheDuyet: filterApprovalStatus,
       });
       setDataSource(res.data);
       setTotal(res.total);
@@ -61,7 +60,7 @@ export default function BenCangListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterMaBen, filterTenBen, filterLoaiBen, filterStatus, filterApprovalStatus]);
+  }, [page, pageSize, filterMaBen, filterTenBen, filterLoaiBen, filterStatus]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
@@ -305,10 +304,7 @@ export default function BenCangListPage() {
                 style={{ width: 150 }}
                 value={filterStatus}
                 onChange={(val) => { setFilterStatus(val); setPage(1); }}
-                options={[
-                  { label: 'Hiện hành', value: 'HIEN_HANH' },
-                  { label: 'Tạm ngừng', value: 'TAM_NGUNG' }
-                ]}
+                options={Object.entries(ACTIVITY_STATUS_MAP).map(([value, { label }]) => ({ value, label }))}
               />
               <Select
                 placeholder="Trạng thái phê duyệt"
@@ -316,11 +312,7 @@ export default function BenCangListPage() {
                 style={{ width: 170 }}
                 value={filterApprovalStatus}
                 onChange={(val) => { setFilterApprovalStatus(val); setPage(1); }}
-                options={[
-                  { label: 'Chờ phê duyệt', value: 'CHO_PHE_DUYET' },
-                  { label: 'Được phê duyệt', value: 'DUOC_PHE_DUYET' },
-                  { label: 'Từ chối', value: 'TU_CHOI' }
-                ]}
+                options={Object.entries(APPROVAL_STATUS_MAP).map(([value, { label }]) => ({ value, label }))}
               />
             </Space>
           </Col>

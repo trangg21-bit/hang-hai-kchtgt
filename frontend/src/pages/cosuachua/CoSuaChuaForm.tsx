@@ -189,7 +189,7 @@ export default function CoSuaChuaForm() {
   if (isLoading) {
     return (
       <div style={{ padding: '24px' }}>
-        <Spin fullscreen description="Đang tải..." />
+        <Spin fullscreen tip="Đang tải..." />
       </div>
     );
   }

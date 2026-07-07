@@ -4,6 +4,7 @@ import com.hanghai.kchtg.group.entity.UserGroup;
 import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.security.service.PermissionCacheService;
 import com.hanghai.kchtg.user.dto.CreateUserRequest;
 import com.hanghai.kchtg.user.dto.UpdateUserRequest;
 import com.hanghai.kchtg.user.dto.UserResponse;
@@ -55,19 +56,22 @@ public class UserService {
     private final GroupRepository groupRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyValidator passwordPolicyValidator;
+    private final PermissionCacheService permissionCacheService;
 
     public UserService(UserRepository userRepository,
             RoleRepository roleRepository,
             OrgUnitRepository orgUnitRepository,
             GroupRepository groupRepository,
             PasswordEncoder passwordEncoder,
-            PasswordPolicyValidator passwordPolicyValidator) {
+            PasswordPolicyValidator passwordPolicyValidator,
+            PermissionCacheService permissionCacheService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.orgUnitRepository = orgUnitRepository;
         this.groupRepository = groupRepository;
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicyValidator = passwordPolicyValidator;
+        this.permissionCacheService = permissionCacheService;
     }
 
     // =========================================================================
@@ -220,10 +224,13 @@ public class UserService {
         if (request.getPhone() != null) {
             user.setPhone(request.getPhone());
         }
+        boolean roleChanged = false;
+        boolean permissionsChanged = false;
         if (request.getRole() != null) {
             Role role = roleRepository.findByCode(request.getRole())
                     .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + request.getRole()));
             user.getRoles().add(role);
+            roleChanged = true;
         }
         if (request.getOrgUnitId() != null) {
             OrgUnit orgUnit = orgUnitRepository.findById(request.getOrgUnitId())
@@ -236,9 +243,21 @@ public class UserService {
                     ? List.of()
                     : groupRepository.findAllById(request.getGroupIds());
             user.setGroups(new ArrayList<>(groups));
+            permissionsChanged = true;
+        }
+
+        // Instant permission revocation: a role change alters the JWT's role claim, so
+        // bump the permission version to force re-login on the user's existing tokens.
+        // A group change only affects DB-computed permissions, so invalidating the
+        // cache (below) is enough — no re-login needed.
+        if (roleChanged) {
+            user.incrementPermissionVersion();
         }
 
         User saved = userRepository.save(user);
+        if (roleChanged || permissionsChanged) {
+            permissionCacheService.invalidateCache(saved.getId());
+        }
         log.info("Updated user: {} ({})", saved.getUsername(), saved.getId());
         return saved;
     }

@@ -1,22 +1,19 @@
 // ── Status types (shared across all CangBen entities) ────────────────
 
 // ── Activity status (trang_thai_hoat_dong) ────────────────────────
-export type CangBenActivityStatus = 'HIEN_HANH' | 'TAM_NGUNG' | 'HIỆN_HÀNH' | 'TẠM_NGƯNG';
+export type CangBenActivityStatus = 'HIỆN_HÀNH' | 'TẠM_NGƯNG';
 
-export const ACTIVITY_STATUS_MAP: Record<string, { color: string; label: string }> = {
-  'HIEN_HANH': { color: 'green', label: 'Hiện hành' },
+export const ACTIVITY_STATUS_MAP: Record<CangBenActivityStatus, { color: string; label: string }> = {
   'HIỆN_HÀNH': { color: 'green', label: 'Hiện hành' },
-  'TAM_NGUNG': { color: 'orange', label: 'Tạm ngừng' },
   'TẠM_NGƯNG': { color: 'orange', label: 'Tạm ngừng' },
 };
 
 // ── Approval status (trang_thai_phe_duyet) ────────────────────────
-export type CangBenApprovalStatus = 'CHO_PHE_DUYET' | 'DUOC_PHE_DUYET' | 'APPROVED' | 'TU_CHOI';
+export type CangBenApprovalStatus = 'CHO_PHE_DUYET' | 'DUOC_PHE_DUYET' | 'TU_CHOI';
 
-export const APPROVAL_STATUS_MAP: Record<string, { color: string; label: string }> = {
+export const APPROVAL_STATUS_MAP: Record<CangBenApprovalStatus, { color: string; label: string }> = {
   CHO_PHE_DUYET: { color: 'orange', label: 'Chờ phê duyệt' },
   DUOC_PHE_DUYET: { color: 'green', label: 'Được phê duyệt' },
-  APPROVED: { color: 'green', label: 'Được phê duyệt' },
   TU_CHOI: { color: 'red', label: 'Từ chối' },
 };
 
@@ -54,8 +51,8 @@ export interface CreateCangBienRequest {
   dienTich: number;
   khaNangTiepNhan: number;
   trangThaiHoatDong: string;
-  trangThaiPheDuyet?: string;
-  orgUnitId?: string;
+  trangThaiPheDuyet: string;
+  orgUnitId: string;
 }
 
 export interface UpdateCangBienRequest {
@@ -93,7 +90,6 @@ export interface BenCang {
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
-  congNangKhaiThac?: string;
 }
 
 export interface CreateBenCangRequest {
@@ -108,7 +104,6 @@ export interface CreateBenCangRequest {
   loaiBen?: string;
   doSauLuong?: number;
   trangThaiHoatDong?: string;
-  congNangKhaiThac?: string;
 }
 
 export interface UpdateBenCangRequest {
@@ -123,7 +118,6 @@ export interface UpdateBenCangRequest {
   loaiBen?: string;
   doSauLuong?: number;
   trangThaiHoatDong?: string;
-  congNangKhaiThac?: string;
 }
 
 // ── 3. Cầu Cảng ──────────────────────────────────────────────────────
@@ -143,7 +137,6 @@ export interface CauCang {
   updatedBy: string;
   createdAt: string;
   updatedAt: string;
-  congNangKhaiThac?: string;
 }
 
 export interface CreateCauCangRequest {
@@ -154,9 +147,8 @@ export interface CreateCauCangRequest {
   taiTrong: number;
   loaiCau: string;
   trangThaiHoatDong: string;
-  trangThaiPheDuyet?: string;
-  orgUnitId?: string;
-  congNangKhaiThac?: string;
+  trangThaiPheDuyet: string;
+  orgUnitId: string;
 }
 
 export interface UpdateCauCangRequest {
@@ -168,7 +160,6 @@ export interface UpdateCauCangRequest {
   loaiCau?: string;
   trangThaiHoatDong?: string;
   trangThaiPheDuyet?: string;
-  congNangKhaiThac?: string;
 }
 
 // ── 4. Cảng cạn ──────────────────────────────────────────────────────
@@ -200,8 +191,8 @@ export interface CreateCangCanRequest {
   dienTich: number;
   congSuatTEU: number;
   trangThaiHoatDong: string;
-  trangThaiPheDuyet?: string;
-  orgUnitId?: string;
+  trangThaiPheDuyet: string;
+  orgUnitId: string;
 }
 
 export interface UpdateCangCanRequest {
@@ -245,8 +236,8 @@ export interface CreateVungNuocRequest {
   doSauTrungBinh: number;
   loaiVungNuoc: string;
   trangThaiHoatDong: string;
-  trangThaiPheDuyet?: string;
-  orgUnitId?: string;
+  trangThaiPheDuyet: string;
+  orgUnitId: string;
 }
 
 export interface UpdateVungNuocRequest {

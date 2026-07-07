@@ -412,7 +412,7 @@ export default function CangBienListPage() {
       </Card>
 
       <Card>
-        <Spin spinning={isLoading} description="Đang tải...">
+        <Spin spinning={isLoading} tip="Đang tải...">
           {isError && (
             <div>
               <p>Đã xảy ra lỗi khi tải danh sách.</p>
