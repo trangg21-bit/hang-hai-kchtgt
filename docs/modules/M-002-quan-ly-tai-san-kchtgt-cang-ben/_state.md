@@ -80,35 +80,28 @@ Quản lý cảng biển (36), bến cảng (301), cầu cảng (614), cảng c�
 
 ## Stage Progress
 
-| # | Stage | Agent | Verdict | Artifact | Date |
-|---|---|---|---|---|---|
-| 1 | Intake | consulting-intelligence-extractor | Ready for BA | docs/intel/_snapshot.md | 2026-06-16T04:39:22Z |
-| 2 | engineering-system-architect | engineering-system-architect | — | — | — |
-| 3 | engineering-technical-lead | engineering-technical-lead | — | — | — |
-| 4 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | — | — | — |
-| 5 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | — | — | — |
-| 6 | engineering-code-reviewer | engineering-code-reviewer | — | — | — |
-| engineering-business-analyst | engineering-business-analyst | Ready |  | 2026-06-27 |
-| engineering-system-architect | engineering-system-architect | Ready |  | 2026-06-27 |
-| engineering-technical-lead | engineering-technical-lead | Ready |  | 2026-06-27 |
-| engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | Pass |  | 2026-06-28 |
-| engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | Pass |  | 2026-06-28 |
-| engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | Pass |  | 2026-06-28 |
-| engineering-backend-developer-wave-2 | engineering-backend-developer-wave-2 | Pass |  | 2026-06-29 |
-| engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w2.md | 2026-06-29 |
-| engineering-backend-developer-wave-3 | engineering-backend-developer-wave-3 | Pass |  | 2026-06-29 |
-| engineering-qa-engineer-wave-3 | engineering-qa-engineer-wave-3 | Pass | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w3.md | 2026-06-29 |
-| engineering-code-reviewer | engineering-code-reviewer | Approved | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/reviewer/final-verdict-rereview.md | 2026-06-29 |
-| engineering-code-reviewer | engineering-code-reviewer | Approved |  | 2026-07-02 |
-| done | done | Approved |  | 2026-07-02 |
+| Stage | Verdict | Artifact | Date |
+|---|---|---|---|
+| Intake (intelligence-extractor) | Ready for BA | docs/intel/_snapshot.md | 2026-06-16 |
+| engineering-business-analyst | Ready |  | 2026-06-27 |
+| engineering-system-architect | Ready |  | 2026-06-27 |
+| engineering-technical-lead | Ready |  | 2026-06-27 |
+| engineering-backend-developer-wave-1 | Pass |  | 2026-06-28 |
+| engineering-backend-developer-wave-2 | Pass |  | 2026-06-29 |
+| engineering-qa-engineer-wave-2 | Pass | qa/07-qa-report-w2.md | 2026-06-29 |
+| engineering-backend-developer-wave-3 | Pass |  | 2026-06-29 |
+| engineering-qa-engineer-wave-3 | Pass | qa/07-qa-report-w3.md | 2026-06-29 |
+| engineering-code-reviewer | Approved | reviewer/final-verdict-rereview.md | 2026-06-29 |
+
+_Backend track complete (waves 1–3 + code review, 2026-06-29). UI/frontend track pending — see Current Stage._
 
 ## Current Stage
 
-**engineering-qa-engineer-wave-1** — Ready to start. Input: `docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md`, source code at `src/main/java/com/hanghai/kchtg/cangben/`.
+**engineering-designer** — UI/frontend track in progress (`ui-status: pending`). Input: `docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md` + designer artifacts under `designer/`. 40 UI features (F-068–F-107, status `proposed`) awaiting designer → frontend-developer → qa-engineer-ui.
 
 ## Next Action
 
-Run: `/resume-feature F-002` hoặc `/new-feature` dưới module M-002 để dispatch QA engineer agent chạy wave-1 testing trên 47 file Java.
+Run: `/resume-module M-002` để đẩy tiếp track UI (engineering-designer → engineering-frontend-developer-wave-1 → engineering-qa-engineer-ui-wave-1 → code-reviewer).
 
 ## Active Blockers
 
