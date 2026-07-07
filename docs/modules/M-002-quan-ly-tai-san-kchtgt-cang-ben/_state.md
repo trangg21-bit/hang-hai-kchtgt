@@ -1,21 +1,4 @@
 ---
-status: proposed
-current-stage: proposed
-completed-stages:
-  engineering-code-reviewer:
-    verdict: Approved
-    completed-at: 2026-07-02
-  done:
-    verdict: Approved
-    completed-at: 2026-07-02
-stages-queue:
-  - engineering-business-analyst
-  - engineering-system-architect
-  - engineering-technical-lead
-  - engineering-backend-developer-wave-1
-last-updated: 2026-07-02T01:44:39Z
----
----
 feature-id: M-002
 feature-name: Quản lý tài sản KCHTGT - Cảng & Bến
 pipeline-type: sdlc
