@@ -8,7 +8,7 @@
 | **Feature Name** | Quản trị hệ thống |
 | **Business Goal** | Quản lý tài khoản người dùng, phân quyền RBAC, quản lý nhóm, đơn vị, admin và audit log truy cập |
 | **Dependencies** | None |
-| **Scope** | 5 features (F-001, F-002, F-003, F-005, F-006) |
+| **Scope** | 4 features (F-001, F-002, F-003, F-005) |
 | **Status** | done |
 
 ---
@@ -97,19 +97,7 @@
 - **Alerting:** Gửi cảnh báo nếu phát hiện ≥5 lần đăng nhập thất bại trong 1 giờ.
 - **Retention:** Chính sách lưu trữ tùy chỉnh, có job tự động dọn dẹp log cũ.
 
-### F-006: Quản lý admin (Admin)
-
-| Method | Path | Action | Permission |
-|---|---|---|---|
-| `GET` | `/api/admin-accounts` | List admins | `admin:manage` |
-| `POST` | `/api/admin-accounts` | Create admin (2-step: User + AdminAccount) | `admin:manage` |
-| `GET` | `/api/admins/audit` | Admin audit logs | `admin:manage` |
-| `GET` | `/api/admins/audit/all` | All audit logs | `admin:manage` |
-
-**Business Rules:**
-- **Creation Flow:** Tạo admin = 1) Tạo User trong `app_users` + 2) Tạo AdminAccount trong `admin_accounts`.
-- **Role Mapping:** Tự động ánh xạ: `ADMIN → ROLE_ADMIN`, `SUPER_ADMIN → ROLE_SYSTEM_ADMIN`, `VIEWER → ROLE_VIEWER`.
-- **Auditability:** Mọi hành động của admin đều được ghi nhận trong `AdminAuditLog`.
+> **Note:** F-006 (Quản lý admin / AdminAccount) đã được gỡ khỏi module — quyền admin nay chỉ là một `Role` trong RBAC của F-001 (xem migration `V28__cleanup_f006_redundant_tables.sql`). Bảng `AdminAuditLog` được giữ lại và do F-005 (AccessLogInterceptor) sử dụng.
 
 ---
 
@@ -164,7 +152,6 @@ User ──────── many-to-many ──────── Role ──�
               └─── UserGroupMembership (join table)      └─── GroupMember (entity)
                                                           └─── many → Permission keys
 
-User ──────── one-to-one ──────── AdminAccount
 User ──────── one-to-many ──────── LoginAuditLog
 User ──────── one-to-many ──────── PendingApproval
 User ──────── one-to-many ──────── AccountRegistrationAudit
