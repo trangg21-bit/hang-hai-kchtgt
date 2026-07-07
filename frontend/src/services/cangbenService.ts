@@ -41,7 +41,7 @@ export const cangBienCRUD = {
       size: params?.size,
       orgUnitId: params?.orgUnitId,
     });
-    const res = await api.get(`/cang-bien?${sp}`);
+    const res = await api.get(`/v1/cang-bien?${sp}`);
     const pageData = res.data.data;
     return {
       data: pageData.content || [],
@@ -52,7 +52,7 @@ export const cangBienCRUD = {
   },
 
   async findById(id: string): Promise<CangBien> {
-    const res = await api.get(`/cang-bien/${id}`);
+    const res = await api.get(`/v1/cang-bien/${id}`);
     return res.data.data;
   },
 
@@ -72,7 +72,7 @@ export const cangBienCRUD = {
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
-    const res = await api.get(`/cang-bien?${sp}`);
+    const res = await api.get(`/v1/cang-bien?${sp}`);
     const pageData = res.data.data;
     return {
       data: pageData.content || [],
@@ -83,17 +83,17 @@ export const cangBienCRUD = {
   },
 
   async create(payload: CreateCangBienRequest): Promise<CangBien> {
-    const res = await api.post('/cang-bien', payload);
+    const res = await api.post('/v1/cang-bien', payload);
     return res.data.data;
   },
 
   async update(payload: UpdateCangBienRequest & { id: string }): Promise<CangBien> {
-    const res = await api.put('/cang-bien', payload);
+    const res = await api.put('/v1/cang-bien', payload);
     return res.data.data;
   },
 
   async delete(id: string): Promise<void> {
-    await api.delete(`/cang-bien/${id}`);
+    await api.delete(`/v1/cang-bien/${id}`);
   },
 };
 
@@ -110,7 +110,7 @@ export const benCangCRUD = {
       size: params?.size,
       orgUnitId: params?.orgUnitId,
     });
-    const res = await api.get(`/ben-cang?${sp}`);
+    const res = await api.get(`/v1/ben-cang?${sp}`);
     const pageData = res.data.data;
     return {
       data: pageData.content || [],
@@ -121,7 +121,7 @@ export const benCangCRUD = {
   },
 
   async findById(id: string): Promise<BenCang> {
-    const res = await api.get(`/ben-cang/${id}`);
+    const res = await api.get(`/v1/ben-cang/${id}`);
     return res.data.data;
   },
 
@@ -143,7 +143,7 @@ export const benCangCRUD = {
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
-    const res = await api.get(`/ben-cang?${sp}`);
+    const res = await api.get(`/v1/ben-cang?${sp}`);
     const pageData = res.data.data;
     return {
       data: pageData.content || [],
@@ -154,17 +154,17 @@ export const benCangCRUD = {
   },
 
   async create(payload: CreateBenCangRequest): Promise<BenCang> {
-    const res = await api.post('/ben-cang', payload);
+    const res = await api.post('/v1/ben-cang', payload);
     return res.data.data;
   },
 
   async update(payload: UpdateBenCangRequest & { id: string }): Promise<BenCang> {
-    const res = await api.put('/ben-cang', payload);
+    const res = await api.put('/v1/ben-cang', payload);
     return res.data.data;
   },
 
   async delete(id: string): Promise<void> {
-    await api.delete(`/ben-cang/${id}`);
+    await api.delete(`/v1/ben-cang/${id}`);
   },
 };
 
@@ -181,7 +181,7 @@ export const cauCangCRUD = {
       size: params?.size,
       orgUnitId: params?.orgUnitId,
     });
-    const res = await api.get(`/cau-cang?${sp}`);
+    const res = await api.get(`/v1/cau-cang?${sp}`);
     const pageData = res.data.data;
     return {
       data: pageData.content || [],
@@ -192,7 +192,7 @@ export const cauCangCRUD = {
   },
 
   async findById(id: string): Promise<CauCang> {
-    const res = await api.get(`/cau-cang/${id}`);
+    const res = await api.get(`/v1/cau-cang/${id}`);
     return res.data.data;
   },
 
@@ -214,7 +214,7 @@ export const cauCangCRUD = {
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
-    const res = await api.get(`/cau-cang?${sp}`);
+    const res = await api.get(`/v1/cau-cang?${sp}`);
     const pageData = res.data.data;
     return {
       data: pageData.content || [],
@@ -225,17 +225,17 @@ export const cauCangCRUD = {
   },
 
   async create(payload: CreateCauCangRequest): Promise<CauCang> {
-    const res = await api.post('/cau-cang', payload);
+    const res = await api.post('/v1/cau-cang', payload);
     return res.data.data;
   },
 
   async update(payload: UpdateCauCangRequest & { id: string }): Promise<CauCang> {
-    const res = await api.put('/cau-cang', payload);
+    const res = await api.put('/v1/cau-cang', payload);
     return res.data.data;
   },
 
   async delete(id: string): Promise<void> {
-    await api.delete(`/cau-cang/${id}`);
+    await api.delete(`/v1/cau-cang/${id}`);
   },
 };
 
@@ -252,7 +252,7 @@ export const cangCanCRUD = {
       size: params?.size,
       orgUnitId: params?.orgUnitId,
     });
-    const res = await api.get(`/cang-can?${sp}`);
+    const res = await api.get(`/v1/cang-can?${sp}`);
     const pageData = res.data.data;
     return {
       data: pageData.content || [],
@@ -263,7 +263,7 @@ export const cangCanCRUD = {
   },
 
   async findById(id: string): Promise<CangCan> {
-    const res = await api.get(`/cang-can/${id}`);
+    const res = await api.get(`/v1/cang-can/${id}`);
     return res.data.data;
   },
 
@@ -283,7 +283,7 @@ export const cangCanCRUD = {
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
-    const res = await api.get(`/cang-can?${sp}`);
+    const res = await api.get(`/v1/cang-can?${sp}`);
     const pageData = res.data.data;
     return {
       data: pageData.content || [],
@@ -294,17 +294,17 @@ export const cangCanCRUD = {
   },
 
   async create(payload: CreateCangCanRequest): Promise<CangCan> {
-    const res = await api.post('/cang-can', payload);
+    const res = await api.post('/v1/cang-can', payload);
     return res.data.data;
   },
 
   async update(payload: UpdateCangCanRequest & { id: string }): Promise<CangCan> {
-    const res = await api.put('/cang-can', payload);
+    const res = await api.put('/v1/cang-can', payload);
     return res.data.data;
   },
 
   async delete(id: string): Promise<void> {
-    await api.delete(`/cang-can/${id}`);
+    await api.delete(`/v1/cang-can/${id}`);
   },
 };
 
@@ -323,7 +323,7 @@ export const vungNuocCRUD = {
       orgUnitId: params?.orgUnitId,
       cangBienId: params?.cangBienId,
     });
-    const res = await api.get(`/vung-nuoc?${sp}`);
+    const res = await api.get(`/v1/vung-nuoc?${sp}`);
     const pageData = res.data.data;
     return {
       data: pageData.content || [],
@@ -334,7 +334,7 @@ export const vungNuocCRUD = {
   },
 
   async findById(id: string): Promise<VungNuoc> {
-    const res = await api.get(`/vung-nuoc/${id}`);
+    const res = await api.get(`/v1/vung-nuoc/${id}`);
     return res.data.data;
   },
 
@@ -356,7 +356,7 @@ export const vungNuocCRUD = {
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
-    const res = await api.get(`/vung-nuoc?${sp}`);
+    const res = await api.get(`/v1/vung-nuoc?${sp}`);
     const pageData = res.data.data;
     return {
       data: pageData.content || [],
@@ -367,17 +367,17 @@ export const vungNuocCRUD = {
   },
 
   async create(payload: CreateVungNuocRequest): Promise<VungNuoc> {
-    const res = await api.post('/vung-nuoc', payload);
+    const res = await api.post('/v1/vung-nuoc', payload);
     return res.data.data;
   },
 
   async update(payload: UpdateVungNuocRequest & { id: string }): Promise<VungNuoc> {
-    const res = await api.put('/vung-nuoc', payload);
+    const res = await api.put('/v1/vung-nuoc', payload);
     return res.data.data;
   },
 
   async delete(id: string): Promise<void> {
-    await api.delete(`/vung-nuoc/${id}`);
+    await api.delete(`/v1/vung-nuoc/${id}`);
   },
 };
 
@@ -385,51 +385,51 @@ export const vungNuocCRUD = {
 
 export const cangBienApproval = {
   async approve(id: string): Promise<void> {
-    await api.post(`/cang-bien/${id}/approve`);
+    await api.post(`/v1/cang-bien/${id}/approve`);
   },
 
   async reject(id: string, reason: string): Promise<void> {
-    await api.post(`/cang-bien/${id}/reject`, null, { params: { reason } });
+    await api.post(`/v1/cang-bien/${id}/reject`, null, { params: { reason } });
   },
 };
 
 export const benCangApproval = {
   async approve(id: string): Promise<void> {
-    await api.post(`/ben-cang/${id}/approve`);
+    await api.post(`/v1/ben-cang/${id}/approve`);
   },
 
   async reject(id: string, reason: string): Promise<void> {
-    await api.post(`/ben-cang/${id}/reject`, null, { params: { reason } });
+    await api.post(`/v1/ben-cang/${id}/reject`, null, { params: { reason } });
   },
 };
 
 export const cauCangApproval = {
   async approve(id: string): Promise<void> {
-    await api.post(`/cau-cang/${id}/approve`);
+    await api.post(`/v1/cau-cang/${id}/approve`);
   },
 
   async reject(id: string, reason: string): Promise<void> {
-    await api.post(`/cau-cang/${id}/reject`, null, { params: { reason } });
+    await api.post(`/v1/cau-cang/${id}/reject`, null, { params: { reason } });
   },
 };
 
 export const cangCanApproval = {
   async approve(id: string): Promise<void> {
-    await api.post(`/cang-can/${id}/approve`);
+    await api.post(`/v1/cang-can/${id}/approve`);
   },
 
   async reject(id: string, reason: string): Promise<void> {
-    await api.post(`/cang-can/${id}/reject`, null, { params: { reason } });
+    await api.post(`/v1/cang-can/${id}/reject`, null, { params: { reason } });
   },
 };
 
 export const vungNuocApproval = {
   async approve(id: string): Promise<void> {
-    await api.post(`/vung-nuoc/${id}/approve`);
+    await api.post(`/v1/vung-nuoc/${id}/approve`);
   },
 
   async reject(id: string, reason: string): Promise<void> {
-    await api.post(`/vung-nuoc/${id}/reject`, null, { params: { reason } });
+    await api.post(`/v1/vung-nuoc/${id}/reject`, null, { params: { reason } });
   },
 };
 
@@ -446,7 +446,7 @@ export const cangBienHistory = {
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.size,
     });
-    const res = await api.get(`/cang-bien/${entityId}/history?${sp}`);
+    const res = await api.get(`/v1/cang-bien/${entityId}/history?${sp}`);
     const pageData = res.data.data;
     return {
       data: pageData.content || [],
@@ -468,7 +468,7 @@ export const benCangHistory = {
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.size,
     });
-    const res = await api.get(`/ben-cang/${entityId}/history?${sp}`);
+    const res = await api.get(`/v1/ben-cang/${entityId}/history?${sp}`);
     const pageData = res.data.data;
     return {
       data: pageData.content || [],
@@ -490,7 +490,7 @@ export const cauCangHistory = {
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.size,
     });
-    const res = await api.get(`/cau-cang/${entityId}/history?${sp}`);
+    const res = await api.get(`/v1/cau-cang/${entityId}/history?${sp}`);
     const pageData = res.data.data;
     return {
       data: pageData.content || [],
@@ -512,7 +512,7 @@ export const cangCanHistory = {
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.size,
     });
-    const res = await api.get(`/cang-can/${entityId}/history?${sp}`);
+    const res = await api.get(`/v1/cang-can/${entityId}/history?${sp}`);
     const pageData = res.data.data;
     return {
       data: pageData.content || [],
@@ -534,7 +534,7 @@ export const vungNuocHistory = {
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.size,
     });
-    const res = await api.get(`/vung-nuoc/${entityId}/history?${sp}`);
+    const res = await api.get(`/v1/vung-nuoc/${entityId}/history?${sp}`);
     const pageData = res.data.data;
     return {
       data: pageData.content || [],

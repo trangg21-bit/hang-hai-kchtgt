@@ -224,7 +224,7 @@ export default function CangCanListPage() {
               onClick={() => navigate(`/cangcan/${record.id}/edit`)}
             />
           </Tooltip>
-          {record.trangThaiPheDuyet === 'CHỜ_PHE_DUYỆT' && (
+          {record.trangThaiPheDuyet === 'CHO_PHE_DUYET' && (
             <>
               <Tooltip title="Phê duyệt">
                 <Popconfirm
@@ -287,8 +287,8 @@ export default function CangCanListPage() {
                 value={filterStatus}
                 onChange={(val) => { setFilterStatus(val); setPage(1); }}
                 options={[
-                  { label: 'Hoạt động', value: 'HIỆN_HÀNH' },
-                  { label: 'Tạm ngừng', value: 'TẠM_NGƯNG' },
+                  { label: 'Hoạt động', value: 'HIEN_HANH' },
+                  { label: 'Tạm ngừng', value: 'TAM_NGUNG' },
                 ]}
               />
               <Select
@@ -298,9 +298,9 @@ export default function CangCanListPage() {
                 value={filterApprovalStatus}
                 onChange={(val) => { setFilterApprovalStatus(val); setPage(1); }}
                 options={[
-                  { label: 'Chờ phê duyệt', value: 'CHỜ_PHE_DUYỆT' },
-                  { label: 'Được phê duyệt', value: 'ĐƯỢC_PHE_DUYỆT' },
-                  { label: 'Từ chối', value: 'TỪ_CHỐI' },
+                  { label: 'Chờ phê duyệt', value: 'CHO_PHE_DUYET' },
+                  { label: 'Được phê duyệt', value: 'DUOC_PHE_DUYET' },
+                  { label: 'Từ chối', value: 'TU_CHOI' },
                 ]}
               />
             </Space>

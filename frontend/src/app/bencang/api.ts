@@ -4,7 +4,7 @@
 
 import api from '../../services/api';
 
-const BASE = "/api/v1/ben-cang";
+const BASE = "/v1/ben-cang";
 
 // ----------------------------------------------------------------
 // CRUD

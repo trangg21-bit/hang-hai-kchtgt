@@ -97,12 +97,12 @@ export default function CauCangHistoryPage() {
           <Col span={6}>
             <Typography.Text type="secondary">Chiều dài:</Typography.Text>
             <br />
-            <Typography.Text>{entity.chieuDai !== null ? `${entity.chieuDai.toFixed(2)} m` : '—'}</Typography.Text>
+            <Typography.Text>{entity.chieuDai != null ? `${entity.chieuDai.toFixed(2)} m` : '—'}</Typography.Text>
           </Col>
           <Col span={6}>
             <Typography.Text type="secondary">Tải trọng:</Typography.Text>
             <br />
-            <Typography.Text>{entity.taiTrong !== null ? `${entity.taiTrong.toFixed(2)} tấn` : '—'}</Typography.Text>
+            <Typography.Text>{entity.taiTrong != null ? `${entity.taiTrong.toFixed(2)} tấn` : '—'}</Typography.Text>
           </Col>
           <Col span={6}>
             <Typography.Text type="secondary">Trạng thái HĐ:</Typography.Text>

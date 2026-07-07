@@ -185,14 +185,14 @@ export default function CauCangListPage() {
         dataIndex: 'chieuDai',
         width: 110,
         align: 'right' as const,
-        render: (v: number | null) => v !== null && v !== undefined ? v.toFixed(2) : '—',
+        render: (v: number | null) => v != null && v !== undefined ? v.toFixed(2) : '—',
       },
       {
         title: 'Tải trọng (tấn)',
         dataIndex: 'taiTrong',
         width: 100,
         align: 'right' as const,
-        render: (v: number | null) => v !== null && v !== undefined ? v.toFixed(2) : '—',
+        render: (v: number | null) => v != null && v !== undefined ? v.toFixed(2) : '—',
       },
       {
         title: 'Loại cầu',

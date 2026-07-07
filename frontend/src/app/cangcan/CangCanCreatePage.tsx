@@ -84,8 +84,8 @@ export default function CangCanCreatePage() {
           layout="vertical"
           onFinish={handleSubmit}
           initialValues={{
-            trangThaiHoatDong: 'HIỆN_HÀNH',
-            trangThaiPheDuyet: 'CHỜ_PHE_DUYỆT',
+            trangThaiHoatDong: 'HIEN_HANH',
+            trangThaiPheDuyet: 'CHO_PHE_DUYET',
           }}
         >
           {/* Info Section */}
