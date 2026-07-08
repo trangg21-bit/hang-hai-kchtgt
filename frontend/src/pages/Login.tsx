@@ -237,11 +237,10 @@ export default function LoginPage() {
 
         /* Logo */
         .logo{
-          width:64px; height:48px; margin:0 auto 12px; display:flex; align-items:center; justify-content:center;
+          width:140px; height:50px; margin:0 auto 12px; display:flex; align-items:center; justify-content:center;
           border-radius:0; background:transparent;
         }
-        .logo img{ width:64px; height:48px; object-fit:contain; display:block; }
-        .logo .logo-fallback{ line-height:1.2; text-align:center; }
+        .logo img{ width:140px; height:50px; object-fit:contain; display:block; }
 
         h1{ font-size:19px; font-weight:700; color:var(--ink); }
         .sub{ font-size:12px; color:#8a8f98; margin-top:4px; }
@@ -355,22 +354,11 @@ export default function LoginPage() {
             <div className="card-body">
 
               {/* Logo */}
-              <div className="logo" style={{ width: 64, height: 48, borderRadius: 0, background: 'transparent', margin: '0 auto 12px' }}>
+              <div className="logo" style={{ width: 140, height: 50, margin: '0 auto 12px' }}>
                 <img
-                  src="/images/logo-hai.png"
-                  alt="Cục Hàng hải Việt Nam"
+                  src="/images/Logo_Cục_Hàng_hải_Việt_Nam.jpg"
+                  alt="Logo Cục Hàng hải Việt Nam"
                   style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    const fallback = (e.target as HTMLImageElement).parentElement;
-                    if (fallback && !fallback.querySelector('.logo-fallback')) {
-                      const span = document.createElement('span');
-                      span.className = 'logo-fallback';
-                      span.style.cssText = 'font-size:10px;font-weight:600;color:var(--brand-blue);line-height:1.2;text-align:center;';
-                      span.textContent = 'LOGO\nTHẬT';
-                      fallback.appendChild(span);
-                    }
-                  }}
                 />
               </div>
 
