@@ -417,28 +417,45 @@ export default function AppLayout() {
       <div
         onClick={() => navigate('/')}
         style={{
-          height: 64,
+          height: 60,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          borderBottom: `1px solid ${token.colorBorderSecondary}`,
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
           padding: '0 16px',
-          gap: 8,
+          gap: 10,
           cursor: 'pointer',
         }}
       >
-        <TeamOutlined style={{ fontSize: 22, color: token.colorPrimary }} />
+        <img
+          src="/images/Logo_Cục_Hàng_hải_Việt_Nam.jpg"
+          alt="Cục Hàng hải Việt Nam"
+          style={{ width: 32, height: 25, objectFit: 'contain', flexShrink: 0 }}
+        />
         {!collapsed && (
-          <Typography.Text
-            strong
-            style={{
-              fontSize: 16,
-              whiteSpace: 'nowrap',
-              color: token.colorPrimary,
-            }}
-          >
-            Quản trị hệ thống
-          </Typography.Text>
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+            <Typography.Text
+              strong
+              style={{
+                fontSize: 12,
+                whiteSpace: 'nowrap',
+                color: '#fff',
+                letterSpacing: 0.5,
+              }}
+            >
+              CỤC HÀNG HẢI
+            </Typography.Text>
+            <Typography.Text
+              style={{
+                fontSize: 9,
+                whiteSpace: 'nowrap',
+                color: '#565674',
+                letterSpacing: 0.3,
+              }}
+            >
+              VIỆT NAM
+            </Typography.Text>
+          </div>
         )}
       </div>
 
@@ -464,8 +481,7 @@ export default function AppLayout() {
           onCollapse={setCollapsed}
           width={siderWidth}
           style={{
-            background: token.colorBgContainer,
-            borderRight: `1px solid ${token.colorBorderSecondary}`,
+            borderRight: '1px solid rgba(255,255,255,0.06)',
             position: 'relative',
           }}
           breakpoint="lg"
@@ -520,13 +536,10 @@ export default function AppLayout() {
         {/* Header */}
         <Header
           style={{
-            background: token.colorBgContainer,
             padding: '0 24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            borderBottom: `1px solid ${token.colorBorderSecondary}`,
-            height: 64,
             position: 'sticky',
             top: 0,
             zIndex: 100,
@@ -577,8 +590,7 @@ export default function AppLayout() {
         <Content
           style={{
             padding: 24,
-            background: token.colorBgLayout,
-            minHeight: 'calc(100vh - 64px)',
+            minHeight: 'calc(100vh - 56px)',
             overflow: 'auto',
           }}
         >

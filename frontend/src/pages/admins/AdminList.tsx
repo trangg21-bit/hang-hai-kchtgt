@@ -195,8 +195,9 @@ export default function AdminList() {
       dataIndex: 'status',
       width: 120,
       render: (status: string) => {
-        const s = STATUS_MAP[status] || { color: 'default', label: status };
-        return <Tag color={s.color}>{s.label}</Tag>;
+        const variant = status === 'active' ? 'active' : status === 'locked' ? 'locked' : 'inactive';
+        const label = STATUS_MAP[status]?.label || status;
+        return <span className={`status-badge status-badge--${variant}`}>{label}</span>;
       },
     },
     {

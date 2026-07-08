@@ -273,8 +273,9 @@ export default function UsersPage() {
       title: 'Trạng thái',
       dataIndex: 'status',
       render: (status: string) => {
-        const s = STATUS_MAP[status] || { color: 'default', label: status };
-        return <Tag color={s.color}>{s.label}</Tag>;
+        const variant = status === 'active' ? 'active' : status === 'locked' ? 'locked' : 'inactive';
+        const label = STATUS_MAP[status]?.label || status;
+        return <span className={`status-badge status-badge--${variant}`}>{label}</span>;
       },
     },
     {
@@ -289,53 +290,39 @@ export default function UsersPage() {
       width: 200,
       fixed: 'right',
       render: (_: unknown, record: User) => (
-        <Space size="small">
+        <div className="table-actions">
           {hasPerm('user.edit') && (
             <Tooltip title="Sửa">
-              <Button
-                type="link"
-                size="small"
-                icon={<EditOutlined />}
-                onClick={() => openEditModal(record)}
-              />
+              <span className="table-actions__btn" onClick={() => openEditModal(record)}>
+                <EditOutlined />
+              </span>
             </Tooltip>
           )}
 
           {hasPerm('user.lock') && (
             <Tooltip title={record.status === 'locked' ? 'Mở khóa' : 'Khóa'}>
-              <Button
-                type="link"
-                size="small"
-                danger={record.status !== 'locked'}
-                icon={record.status === 'locked' ? <UnlockOutlined /> : <LockOutlined />}
-                onClick={() => handleToggleLock(record)}
-              />
+              <span className="table-actions__btn" onClick={() => handleToggleLock(record)}>
+                {record.status === 'locked' ? <UnlockOutlined /> : <LockOutlined />}
+              </span>
             </Tooltip>
           )}
 
           {hasPerm('user.reset_password') && (
             <Tooltip title="Reset mật khẩu">
-              <Button
-                type="link"
-                size="small"
-                icon={<KeyOutlined />}
-                onClick={() => handleResetPassword(record)}
-              />
+              <span className="table-actions__btn" onClick={() => handleResetPassword(record)}>
+                <KeyOutlined />
+              </span>
             </Tooltip>
           )}
 
           {hasPerm('user.delete') && (
             <Tooltip title="Xóa">
-              <Button
-                type="link"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => handleDelete(record)}
-              />
+              <span className="table-actions__btn table-actions__btn--danger" onClick={() => handleDelete(record)}>
+                <DeleteOutlined />
+              </span>
             </Tooltip>
           )}
-        </Space>
+        </div>
       ),
     },
   ];

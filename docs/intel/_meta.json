@@ -13,12 +13,12 @@
       "version": 96
     },
     "docs/intel/catalog.json": {
-      "content_hash": "sha256:27d45be5d87307bf98bc597f475aa26bcd966b10ca7a33873c4227636bfe3066",
-      "last_modified": "2026-07-02T01:21:30Z",
+      "content_hash": "sha256:ec5f648e7c45e0126e955610b5a2328198a8973c1651e742c428cd95a7ff4d49",
+      "last_modified": "2026-07-07T03:33:33Z",
       "last_producer": "ai-kit/state-update-rebuild-catalog",
       "last_updated": "2026-06-27T00:00:00Z",
       "stale": false,
-      "version": 17
+      "version": 20
     },
     "docs/intel/catalog/modules/M-002.json": {
       "last_updated": "2026-06-27T18:31:43Z",
@@ -173,10 +173,10 @@
       "version": 2
     },
     "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/module-brief.md": {
-      "content_hash": "sha256:6a6504c1d0a73e16623490f791262b80054f720dcf9fd8962b36e34eeab68c6c",
-      "last_modified": "2026-06-16T05:02:12Z",
+      "content_hash": "sha256:6aae6d351e109b5560d6ace98e0b53ad4b4bc5b70f3c6a0239b3696f60971d92",
+      "last_modified": "2026-07-07T03:33:39Z",
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
-      "version": 3
+      "version": 8
     },
     "docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/module-brief.md": {
       "content_hash": "sha256:63d2d39195d687b52805a1df901c8e79edd86444df203eeda642f1280eae6861",
