@@ -28,6 +28,19 @@ import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 
+const LOAI_TRAM_MAP: Record<string, string> = {
+  'MAIN': 'Trạm radar chính',
+  'SECONDARY': 'Trạm radar phụ',
+  'ASSIST': 'Trạm radar hỗ trợ',
+  'KAC': 'Khác',
+};
+
+const TINH_TRANG_MAP: Record<string, string> = {
+  'TOT': 'Hoạt động tốt',
+  'KEM': 'Hoạt động kém',
+  'NGUNG': 'Ngừng hoạt động',
+};
+
 export interface TramRadarFormProps {
   open?: boolean;
   editId?: string | null;
@@ -38,17 +51,17 @@ export interface TramRadarFormProps {
 
 export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess }: TramRadarFormProps = {}) {
   const navigate = useNavigate();
-  const routeParams = useParams<{ id: string }>();
+  const { id: routeId } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
 
   const isModalMode = open !== undefined;
-  const id = isModalMode ? (editId || undefined) : routeParams.id;
-  const isEditMode = isModalMode ? (mode === 'edit') : searchParams.get('mode') === 'edit';
-  const isDetailMode = isModalMode ? (mode === 'detail') : (!!id && !isEditMode);
-  const isCreateMode = isModalMode ? (mode === 'create') : !id;
+  const id = isModalMode ? (editId || undefined) : routeId;
+  const isEditMode = isModalMode ? mode === 'edit' : searchParams.get('mode') === 'edit';
+  const isDetailMode = isModalMode ? mode === 'detail' : (!!id && !isEditMode);
+  const isCreateMode = isModalMode ? mode === 'create' : !id;
 
   const [record, setRecord] = useState<TramRadarResponse | null>(null);
   const [history, setHistory] = useState<any[]>([]);
@@ -57,6 +70,13 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setHasChanges(false);
+    }
+  }, [open]);
 
   // Fetch detail data
   useEffect(() => {
@@ -67,17 +87,19 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
         try {
           const data = await tramRadarCRUD.getById(id);
           setRecord(data);
-          form.setFieldsValue({
-            tenTram: data.tenTram,
-            viTri: data.viTri,
-            kinhDo: data.kinhDo,
-            viDo: data.viDo,
-            loaiTram: data.loaiTram,
-            coTrinh: data.coTrinh,
-            dienTichPhaXa: data.dienTichPhaXa,
-            nguonGoc: data.nguonGoc,
-            tinhTrang: data.tinhTrang,
-          });
+          if (!isEditMode) {
+            form.setFieldsValue({
+              tenTram: data.tenTram,
+              viTri: data.viTri,
+              kinhDo: data.kinhDo,
+              viDo: data.viDo,
+              loaiTram: data.loaiTram,
+              coTrinh: data.coTrinh,
+              dienTichPhaXa: data.dienTichPhaXa,
+              nguonGoc: data.nguonGoc,
+              tinhTrang: data.tinhTrang,
+            });
+          }
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
         } finally {
@@ -85,11 +107,8 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
         }
       };
       loadData();
-    } else {
-      form.resetFields();
-      setRecord(null);
     }
-  }, [id, isEditMode, form, open]);
+  }, [id, isEditMode, form]);
 
   // Fetch history
   useEffect(() => {
@@ -108,7 +127,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
       };
       loadHistory();
     }
-  }, [id, isDetailMode, open]);
+  }, [id, isDetailMode]);
 
   const handleSubmitForm = async (values: any) => {
     setIsSubmitting(true);
@@ -128,19 +147,11 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
       if (isCreateMode) {
         const newRecord = await tramRadarCRUD.create(payload);
         message.success('Tạo mới thành công');
-        if (isModalMode) {
-          onSuccess?.();
-        } else {
-          navigate(`/tram-radar/${newRecord.id}`);
-        }
+        navigate(`/tram-radar/${newRecord.id}`);
       } else if (id && isEditMode) {
         await tramRadarCRUD.update(id, payload as UpdateTramRadarRequest);
         message.success('Cập nhật thành công');
-        if (isModalMode) {
-          onSuccess?.();
-        } else {
-          navigate(`/tram-radar/${id}`);
-        }
+        navigate(`/tram-radar/${id}`);
       }
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
@@ -164,6 +175,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
         await tramRadarApproval.approveC1(id, pheDuyetData);
         message.success('Phê duyệt C1 thành công');
         setRecord({ ...record, trangThai: 'UNDER_REVIEW' });
+        setHasChanges(true);
       } else if (action === 'approveC2') {
         const pheDuyetData: PheDuyetRequest = {
           quyetDinh: 'APPROVED',
@@ -171,6 +183,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
         await tramRadarApproval.approveC2(id, pheDuyetData);
         message.success('Phê duyệt C2 thành công');
         setRecord({ ...record, trangThai: 'APPROVED' });
+        setHasChanges(true);
       } else if (action === 'reject') {
         const pheDuyetData: PheDuyetRequest = {
           quyetDinh: 'REJECTED',
@@ -189,15 +202,28 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
           trangThai: 'REJECTED',
           lyDoTuChoi: payload?.lyDo as string,
         });
+        setHasChanges(true);
       } else if (action === 'delete') {
         await tramRadarCRUD.delete(id);
         message.success('Xóa thành công');
-        navigate('/tram-radar');
+        if (isModalMode && onSuccess) {
+          onSuccess();
+        } else {
+          navigate('/tram-radar');
+        }
       }
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Lỗi thực hiện thao tác');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    if (hasChanges && onSuccess) {
+      onSuccess();
+    } else if (onCancel) {
+      onCancel();
     }
   };
 
@@ -231,9 +257,9 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
   // Detail/Read-only view
   if (isDetailMode) {
     const detailContent = (
-      <Spin spinning={isLoading}>
-        <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
-          {!isModalMode && <h2>Chi tiết Trạm Radar</h2>}
+      <>
+        <Card style={{ marginBottom: '24px' }}>
+          <h2>Chi tiết Trạm Radar</h2>
           {record && (
             <Descriptions column={2} bordered size="small">
               <Descriptions.Item label="Tên trạm">{record.tenTram ?? '—'}</Descriptions.Item>
@@ -244,25 +270,32 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
               <Descriptions.Item label="Vĩ độ">
                 {record.viDo !== undefined ? record.viDo.toFixed(6) : '—'}
               </Descriptions.Item>
-              <Descriptions.Item label="Loại trạm">{record.loaiTram ?? '—'}</Descriptions.Item>
+              <Descriptions.Item label="Loại trạm">
+                {LOAI_TRAM_MAP[record.loaiTram] || record.loaiTram || '—'}
+              </Descriptions.Item>
               <Descriptions.Item label="Cơ trình">{record.coTrinh ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Diện tích phát xạ (m²)">
-                {record.dienTichPhaXa !== undefined ? record.dienTichPhaXa : '—'}
+                {record.dienTichPhaXa !== undefined ? record.dienTichPhaXa.toFixed(2) : '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Nguồn gốc">{record.nguonGoc ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Tình trạng">
-                {record.tinhTrang ?? '—'}
+                {TINH_TRANG_MAP[record.tinhTrang] || record.tinhTrang || '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
-                <ApprovalStatusBadge status={record.trangThai} />
+                <ApprovalStatusBadge status={record.trangThaiPheDuyet} />
               </Descriptions.Item>
+              {record.lyDoTuChoi && (
+                <Descriptions.Item label="Lý do từ chối" span={2}>
+                  {record.lyDoTuChoi}
+                </Descriptions.Item>
+              )}
             </Descriptions>
           )}
         </Card>
 
         {/* Tài liệu đính kèm */}
         {record?.attachments && record.attachments.length > 0 && (
-          <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
+          <Card style={{ marginBottom: '24px' }}>
             <h3>Tài liệu đính kèm</h3>
             <AttachmentList attachments={record.attachments} readonly={true} />
           </Card>
@@ -270,7 +303,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
 
         {/* Approval Action Bar */}
         {record && (
-          <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
+          <Card style={{ marginBottom: '24px' }}>
             <ApprovalActionBar
               currentStatus={record.trangThai as any}
               permissions={userPermissions}
@@ -285,7 +318,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
 
         {/* History Timeline */}
         {record && (
-          <Card bordered={!isModalMode}>
+          <Card>
             <h3>Lịch sử phê duyệt</h3>
             <HistoryTimeline
               history={history}
@@ -294,7 +327,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
               onRetry={() => {
                 setIsLoadingHistory(true);
                 tramRadarApproval
-                  .getHistory(id)
+                  .getHistory(id!)
                   .then(setHistory)
                   .catch((err) => setHistoryError(err instanceof Error ? err.message : 'Lỗi'))
                   .finally(() => setIsLoadingHistory(false));
@@ -302,7 +335,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
             />
           </Card>
         )}
-      </Spin>
+      </>
     );
 
     if (isModalMode) {
@@ -310,13 +343,15 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
         <Modal
           title="Chi tiết Trạm Radar"
           open={open}
-          onCancel={onCancel}
+          onCancel={handleCloseModal}
           footer={null}
           width={900}
           destroyOnClose
           maskClosable={false}
         >
-          {detailContent}
+          <Spin spinning={isLoading}>
+            {detailContent}
+          </Spin>
         </Modal>
       );
     }
@@ -334,7 +369,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
       <Modal
         title={isCreateMode ? 'Tạo mới Trạm Radar' : 'Chỉnh sửa Trạm Radar'}
         open={open}
-        onCancel={onCancel}
+        onCancel={handleCloseModal}
         footer={null}
         destroyOnClose
         maskClosable={false}

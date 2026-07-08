@@ -41,17 +41,17 @@ export interface HeThongVTSFormProps {
 
 export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess }: HeThongVTSFormProps = {}) {
   const navigate = useNavigate();
-  const routeParams = useParams<{ id: string }>();
+  const { id: routeId } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
 
   const isModalMode = open !== undefined;
-  const id = isModalMode ? (editId || undefined) : routeParams.id;
-  const isEditMode = isModalMode ? (mode === 'edit') : searchParams.get('mode') === 'edit';
-  const isDetailMode = isModalMode ? (mode === 'detail') : (!!id && !isEditMode);
-  const isCreateMode = isModalMode ? (mode === 'create') : !id;
+  const id = isModalMode ? (editId || undefined) : routeId;
+  const isEditMode = isModalMode ? mode === 'edit' : searchParams.get('mode') === 'edit';
+  const isDetailMode = isModalMode ? mode === 'detail' : (!!id && !isEditMode);
+  const isCreateMode = isModalMode ? mode === 'create' : !id;
 
   const [record, setRecord] = useState<HeThongVTSResponse | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -60,6 +60,13 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setHasChanges(false);
+    }
+  }, [open]);
 
   // Fetch detail data
   useEffect(() => {
@@ -70,14 +77,16 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
         try {
           const data = await heThongVTSCRUD.getById(id);
           setRecord(data);
-          form.setFieldsValue({
-            tenHeThong: data.tenHeThong,
-            viTri: data.viTri,
-            tinhTrang: data.tinhTrang,
-            mucDoPhuTrach: data.mucDoPhuTrach,
-            nguonGoc: data.nguonGoc,
-            doiTac: data.doiTac,
-          });
+          if (!isEditMode) {
+            form.setFieldsValue({
+              tenHeThong: data.tenHeThong,
+              viTri: data.viTri,
+              tinhTrang: data.tinhTrang,
+              mucDoPhuTrach: data.mucDoPhuTrach,
+              nguonGoc: data.nguonGoc,
+              doiTac: data.doiTac,
+            });
+          }
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
         } finally {
@@ -85,11 +94,8 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
         }
       };
       loadData();
-    } else {
-      form.resetFields();
-      setRecord(null);
     }
-  }, [id, isEditMode, form, open]);
+  }, [id, isEditMode, form]);
 
   // Fetch history
   useEffect(() => {
@@ -108,7 +114,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
       };
       loadHistory();
     }
-  }, [id, isDetailMode, open]);
+  }, [id, isDetailMode]);
 
   const handleSubmitForm = async (values: any) => {
     setIsSubmitting(true);
@@ -125,19 +131,11 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
       if (isCreateMode) {
         const newRecord = await heThongVTSCRUD.create(payload as CreateHeThongVTSRequest);
         message.success('Tạo mới thành công');
-        if (isModalMode) {
-          onSuccess?.();
-        } else {
-          navigate(`/he-thong-vts/${newRecord.id}`);
-        }
+        navigate(`/he-thong-vts/${newRecord.id}`);
       } else if (id && isEditMode) {
         await heThongVTSCRUD.update(id, payload as UpdateHeThongVTSRequest);
         message.success('Cập nhật thành công');
-        if (isModalMode) {
-          onSuccess?.();
-        } else {
-          navigate(`/he-thong-vts/${id}`);
-        }
+        navigate(`/he-thong-vts/${id}`);
       }
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
@@ -161,6 +159,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
         const updated = await heThongVTSApproval.approveC1(id, pheDuyetData);
         message.success('Phê duyệt C1 thành công');
         setRecord(updated);
+        setHasChanges(true);
       } else if (action === 'approveC2') {
         const pheDuyetData: PheDuyetRequest = {
           quyetDinh: 'APPROVED',
@@ -168,6 +167,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
         const updated = await heThongVTSApproval.approveC2(id, pheDuyetData);
         message.success('Phê duyệt C2 thành công');
         setRecord(updated);
+        setHasChanges(true);
       } else if (action === 'reject') {
         const pheDuyetData: PheDuyetRequest = {
           quyetDinh: 'REJECTED',
@@ -183,15 +183,28 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
         message.success('Từ chối thành công');
         const updated = { ...record, lyDoTuChoi: payload?.lyDo as string };
         setRecord(updated);
+        setHasChanges(true);
       } else if (action === 'delete') {
         await heThongVTSCRUD.delete(id);
         message.success('Xóa thành công');
-        navigate('/he-thong-vts');
+        if (isModalMode && onSuccess) {
+          onSuccess();
+        } else {
+          navigate('/he-thong-vts');
+        }
       }
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Lỗi thực hiện thao tác');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    if (hasChanges && onSuccess) {
+      onSuccess();
+    } else if (onCancel) {
+      onCancel();
     }
   };
 
@@ -225,9 +238,9 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
   // Detail/Read-only view
   if (isDetailMode) {
     const detailContent = (
-      <Spin spinning={isLoading}>
-        <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
-          {!isModalMode && <h2>Chi tiết Hệ thống VTS</h2>}
+      <>
+        <Card style={{ marginBottom: '24px' }}>
+          <h2>Chi tiết Hệ thống VTS</h2>
           {record && (
             <Descriptions column={2} bordered size="small">
               <Descriptions.Item label="Tên hệ thống">{record.tenHeThong ?? '—'}</Descriptions.Item>
@@ -254,7 +267,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
 
         {/* Tài liệu đính kèm */}
         {record?.attachments && record.attachments.length > 0 && (
-          <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
+          <Card style={{ marginBottom: '24px' }}>
             <h3>Tài liệu đính kèm</h3>
             <AttachmentList attachments={record.attachments} readonly={true} />
           </Card>
@@ -262,7 +275,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
 
         {/* Approval Action Bar */}
         {record && (
-          <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
+          <Card style={{ marginBottom: '24px' }}>
             <ApprovalActionBar
               currentStatus={record.trangThai as ApprovalStatus}
               permissions={userPermissions}
@@ -277,7 +290,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
 
         {/* History Timeline */}
         {record && (
-          <Card bordered={!isModalMode}>
+          <Card>
             <h3>Lịch sử phê duyệt</h3>
             <HistoryTimeline
               history={history}
@@ -295,7 +308,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
             />
           </Card>
         )}
-      </Spin>
+      </>
     );
 
     if (isModalMode) {
@@ -303,13 +316,15 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
         <Modal
           title="Chi tiết Hệ thống VTS"
           open={open}
-          onCancel={onCancel}
+          onCancel={handleCloseModal}
           footer={null}
           width={900}
           destroyOnClose
           maskClosable={false}
         >
-          {detailContent}
+          <Spin spinning={isLoading}>
+            {detailContent}
+          </Spin>
         </Modal>
       );
     }
@@ -327,7 +342,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
       <Modal
         title={isCreateMode ? 'Tạo mới Hệ thống VTS' : 'Chỉnh sửa Hệ thống VTS'}
         open={open}
-        onCancel={onCancel}
+        onCancel={handleCloseModal}
         footer={null}
         destroyOnClose
         maskClosable={false}
@@ -402,7 +417,6 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
       </Modal>
     );
   }
-
   // Create/Edit form view
   return (
     <div style={{ padding: '24px' }}>

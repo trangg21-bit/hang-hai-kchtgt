@@ -146,8 +146,17 @@ public class VanBanPhapLyService {
                                                   String tinhTrang, LocalDate yearStart,
                                                   LocalDate yearEnd, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "ngayTao"));
+        
+        com.hanghai.kchtg.vanban.entity.LoaiVanBan loaiEnum = (loai != null && !loai.isEmpty()) 
+                ? com.hanghai.kchtg.vanban.entity.LoaiVanBan.valueOf(loai) : null;
+        com.hanghai.kchtg.vanban.entity.TinhTrangHieuLuc tinhTrangEnum = (tinhTrang != null && !tinhTrang.isEmpty()) 
+                ? com.hanghai.kchtg.vanban.entity.TinhTrangHieuLuc.valueOf(tinhTrang) : null;
+
+        String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
+        String coQuanLike = (coQuan != null && !coQuan.trim().isEmpty()) ? "%" + coQuan.trim().toLowerCase() + "%" : null;
+
         Page<VanBanPhapLy> result = vanBanPhapLyRepository.searchDocuments(
-                keyword, coQuan, loai, tinhTrang, yearStart, yearEnd, pageable);
+                keywordLike, coQuanLike, loaiEnum, tinhTrangEnum, yearStart, yearEnd, pageable);
         return KetQuaTimKiemResponse.builder()
                 .results(result.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(result.getTotalElements())

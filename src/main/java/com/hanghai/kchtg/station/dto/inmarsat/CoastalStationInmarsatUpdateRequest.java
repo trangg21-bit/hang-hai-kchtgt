@@ -6,6 +6,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -14,6 +17,14 @@ public class CoastalStationInmarsatUpdateRequest {
 
     private String deviceCode;
     private String stationName;
+
+    @DecimalMin(value = "-90.0", message = "Vĩ độ phải từ -90 đến 90")
+    @DecimalMax(value = "90.0", message = "Vĩ độ phải từ -90 đến 90")
+    private Double latitude;
+
+    @DecimalMin(value = "-180.0", message = "Kinh độ phải từ -180 đến 180")
+    @DecimalMax(value = "180.0", message = "Kinh độ phải từ -180 đến 180")
+    private Double longitude;
     private String modemType;
     private String frequency;
     private String coverageZone;

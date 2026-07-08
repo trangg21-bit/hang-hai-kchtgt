@@ -41,33 +41,37 @@ export interface CoastalStationVTSResponse {
 }
 
 export interface CoastalStationInmarsatRequest {
-  stationCode: string;
+  deviceCode: string;
   stationName: string;
-  latitude: number;
-  longitude: number;
-  equipmentType: string;
-  satelliteName: string;
-  locationAddress: string;
-  contactPerson: string;
-  contactPhone: string;
+  latitude?: number;
+  longitude?: number;
+  modemType?: string;
+  frequency?: string;
+  coverageZone?: string;
+  sarCode?: string;
+  locationAddress?: string;
+  contactPerson?: string;
+  contactPhone?: string;
   status: string;
 }
 
 export interface CoastalStationInmarsatResponse {
   id: string;
-  stationCode: string;
+  deviceCode: string;
   stationName: string;
-  latitude: number;
-  longitude: number;
-  equipmentType: string;
-  satelliteName: string;
-  locationAddress: string;
-  contactPerson: string;
-  contactPhone: string;
+  latitude?: number;
+  longitude?: number;
+  modemType?: string;
+  frequency?: string;
+  coverageZone?: string;
+  sarCode?: string;
+  locationAddress?: string;
+  contactPerson?: string;
+  contactPhone?: string;
   status: string;
   approvalStatus: string;
-  createdBy: string;
-  createdByName: string;
-  createdAt: string;
-  updatedAt: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

@@ -38,6 +38,10 @@ export default function NhaTramDenList() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // Filter states
+  const [filterKeyword, setFilterKeyword] = useState('');
+  const [filterType, setFilterType] = useState<string | undefined>(undefined);
+
   // Form states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<NhaTramDenResponse | null>(null);
@@ -49,6 +53,8 @@ export default function NhaTramDenList() {
       const res = await fetchNhaTramDenList({
         page: page - 1,
         size: pageSize,
+        name: filterKeyword ? filterKeyword.trim() : undefined,
+        type: filterType || undefined,
       });
       setDataSource(res.content || []);
       setTotal(res.totalElements || 0);
@@ -57,7 +63,7 @@ export default function NhaTramDenList() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize]);
+  }, [page, pageSize, filterKeyword, filterType]);
 
   useEffect(() => {
     loadData();
@@ -209,7 +215,7 @@ export default function NhaTramDenList() {
 
   return (
     <Card
-      title="Quản lý nhà trạm đèn biển"
+      title="Danh sách nhà trạm đèn biển"
       extra={
         <Space>
           <Button icon={<ReloadOutlined />} onClick={loadData} />
@@ -223,6 +229,44 @@ export default function NhaTramDenList() {
         </Space>
       }
     >
+      <div style={{ marginBottom: 16 }}>
+        <Space wrap>
+          <Input
+            placeholder="Tìm theo tên nhà trạm..."
+            value={filterKeyword}
+            onChange={(e) => {
+              setFilterKeyword(e.target.value);
+              setPage(1);
+            }}
+            style={{ width: 250 }}
+          />
+          <Select
+            placeholder="Loại đèn biển"
+            value={filterType}
+            onChange={(val) => {
+              setFilterType(val);
+              setPage(1);
+            }}
+            style={{ width: 200 }}
+            allowClear
+            options={[
+              { label: 'Hải đăng', value: 'LIGHTHOUSE' },
+              { label: 'Đèn báo', value: 'BEACON_LIGHT' },
+              { label: 'Cọc tiêu', value: 'BEACON_MARK' },
+            ]}
+          />
+          <Button
+            onClick={() => {
+              setFilterKeyword('');
+              setFilterType(undefined);
+              setPage(1);
+            }}
+          >
+            Xóa bộ lọc
+          </Button>
+        </Space>
+      </div>
+
       <Table
         dataSource={dataSource}
         columns={columns}

@@ -33,6 +33,7 @@ export default function SpecialStationList() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [searchText, setSearchText] = useState('');
 
   // Form states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,6 +46,7 @@ export default function SpecialStationList() {
       const res = await fetchInmarsatList({
         page: page - 1,
         size: pageSize,
+        keyword: searchText ? searchText.trim() : undefined,
       });
       setDataSource(res.content || []);
       setTotal(res.totalElements || 0);
@@ -53,7 +55,7 @@ export default function SpecialStationList() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize]);
+  }, [page, pageSize, searchText]);
 
   useEffect(() => {
     loadData();
@@ -63,12 +65,14 @@ export default function SpecialStationList() {
     if (record) {
       setEditingItem(record);
       form.setFieldsValue({
-        stationCode: record.stationCode,
+        deviceCode: record.deviceCode,
         stationName: record.stationName,
         latitude: record.latitude,
         longitude: record.longitude,
-        equipmentType: record.equipmentType,
-        satelliteName: record.satelliteName,
+        modemType: record.modemType,
+        frequency: record.frequency,
+        coverageZone: record.coverageZone,
+        sarCode: record.sarCode,
         locationAddress: record.locationAddress,
         contactPerson: record.contactPerson,
         contactPhone: record.contactPhone,
@@ -121,9 +125,9 @@ export default function SpecialStationList() {
 
   const columns = [
     {
-      title: 'Mã đài',
-      dataIndex: 'stationCode',
-      key: 'stationCode',
+      title: 'Mã thiết bị',
+      dataIndex: 'deviceCode',
+      key: 'deviceCode',
     },
     {
       title: 'Tên đài Inmarsat',
@@ -131,14 +135,34 @@ export default function SpecialStationList() {
       key: 'stationName',
     },
     {
-      title: 'Vệ tinh kết nối',
-      dataIndex: 'satelliteName',
-      key: 'satelliteName',
+      title: 'Vĩ độ',
+      dataIndex: 'latitude',
+      key: 'latitude',
     },
     {
-      title: 'Thiết bị trạm mặt đất',
-      dataIndex: 'equipmentType',
-      key: 'equipmentType',
+      title: 'Kinh độ',
+      dataIndex: 'longitude',
+      key: 'longitude',
+    },
+    {
+      title: 'Loại Modem',
+      dataIndex: 'modemType',
+      key: 'modemType',
+    },
+    {
+      title: 'Tần số',
+      dataIndex: 'frequency',
+      key: 'frequency',
+    },
+    {
+      title: 'Vùng phủ sóng',
+      dataIndex: 'coverageZone',
+      key: 'coverageZone',
+    },
+    {
+      title: 'Mã nhận dạng SAR',
+      dataIndex: 'sarCode',
+      key: 'sarCode',
     },
     {
       title: 'Địa chỉ lắp đặt',
@@ -208,6 +232,18 @@ export default function SpecialStationList() {
         </Space>
       }
     >
+      <div style={{ marginBottom: 16 }}>
+        <Input.Search
+          placeholder="Tìm kiếm theo mã đài, tên đài..."
+          allowClear
+          onSearch={(value) => {
+            setSearchText(value);
+            setPage(1);
+          }}
+          style={{ width: 300 }}
+        />
+      </div>
+
       <Table
         dataSource={dataSource}
         columns={columns}
@@ -222,6 +258,7 @@ export default function SpecialStationList() {
             setPageSize(s);
           },
           showSizeChanger: true,
+          showTotal: (total) => `Tổng ${total} bản ghi`,
         }}
       />
 
@@ -237,9 +274,9 @@ export default function SpecialStationList() {
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Space size="large" style={{ display: 'flex', width: '100%' }}>
             <Form.Item
-              name="stationCode"
-              label="Mã đài"
-              rules={[{ required: true, message: 'Vui lòng nhập mã đài' }]}
+              name="deviceCode"
+              label="Mã thiết bị"
+              rules={[{ required: true, message: 'Vui lòng nhập mã thiết bị' }]}
               style={{ width: 300 }}
             >
               <Input placeholder="Ví dụ: IM-HAIPHONG-01" />
@@ -262,7 +299,13 @@ export default function SpecialStationList() {
               rules={[{ required: true, message: 'Vui lòng nhập vĩ độ' }]}
               style={{ width: 300 }}
             >
-              <InputNumber style={{ width: '100%' }} placeholder="Ví dụ: 20.8415" />
+              <InputNumber
+                min={-90}
+                max={90}
+                precision={6}
+                style={{ width: '100%' }}
+                placeholder="Ví dụ: 20.8415"
+              />
             </Form.Item>
 
             <Form.Item
@@ -271,22 +314,49 @@ export default function SpecialStationList() {
               rules={[{ required: true, message: 'Vui lòng nhập kinh độ' }]}
               style={{ width: 300 }}
             >
-              <InputNumber style={{ width: '100%' }} placeholder="Ví dụ: 106.6912" />
+              <InputNumber
+                min={-180}
+                max={180}
+                precision={6}
+                style={{ width: '100%' }}
+                placeholder="Ví dụ: 106.6912"
+              />
             </Form.Item>
           </Space>
 
           <Space size="large" style={{ display: 'flex', width: '100%' }}>
             <Form.Item
-              name="satelliteName"
-              label="Vệ tinh liên kết"
-              rules={[{ required: true, message: 'Vui lòng nhập tên vệ tinh' }]}
+              name="modemType"
+              label="Loại Modem Inmarsat"
               style={{ width: 300 }}
             >
-              <Input placeholder="Ví dụ: Inmarsat-4 F1, Inmarsat-5..." />
+              <Input placeholder="Ví dụ: Inmarsat-C, FleetBroadband..." />
             </Form.Item>
 
-            <Form.Item name="equipmentType" label="Loại anten / máy thu phát vệ tinh" style={{ width: 300 }}>
-              <Input placeholder="Ví dụ: Inmarsat-C, FleetBroadband..." />
+            <Form.Item
+              name="frequency"
+              label="Tần số liên lạc"
+              style={{ width: 300 }}
+            >
+              <Input placeholder="Ví dụ: 1.6 GHz, 1.5 GHz..." />
+            </Form.Item>
+          </Space>
+
+          <Space size="large" style={{ display: 'flex', width: '100%' }}>
+            <Form.Item
+              name="coverageZone"
+              label="Vùng phủ sóng"
+              style={{ width: 300 }}
+            >
+              <Input placeholder="Ví dụ: AOR-E, IOR, POR..." />
+            </Form.Item>
+
+            <Form.Item
+              name="sarCode"
+              label="Mã nhận dạng cứu nạn (SAR Code)"
+              style={{ width: 300 }}
+            >
+              <Input placeholder="Ví dụ: 445701110..." />
             </Form.Item>
           </Space>
 

@@ -22,7 +22,10 @@ public class CoastalStationInmarsatService {
     public CoastalStationInmarsat createStation(CoastalStationInmarsatRequest request) {
         CoastalStationInmarsat entity = new CoastalStationInmarsat();
         entity.setDeviceCode(request.getDeviceCode());
+        entity.setCode(request.getDeviceCode());
         entity.setName(request.getStationName());
+        entity.setLatitude(request.getLatitude());
+        entity.setLongitude(request.getLongitude());
         entity.setModemType(request.getModemType());
         entity.setFrequency(request.getFrequency());
         entity.setCoverageZone(request.getCoverageZone());
@@ -49,7 +52,10 @@ public class CoastalStationInmarsatService {
                 .orElseThrow(() -> new RuntimeException("Inmarsat station not found with id: " + id));
 
         entity.setDeviceCode(request.getDeviceCode());
+        entity.setCode(request.getDeviceCode());
         entity.setName(request.getStationName());
+        entity.setLatitude(request.getLatitude());
+        entity.setLongitude(request.getLongitude());
         entity.setModemType(request.getModemType());
         entity.setFrequency(request.getFrequency());
         entity.setCoverageZone(request.getCoverageZone());
@@ -200,6 +206,8 @@ public class CoastalStationInmarsatService {
                 .id(entity.getId())
                 .deviceCode(entity.getDeviceCode())
                 .stationName(entity.getName())
+                .latitude(entity.getLatitude())
+                .longitude(entity.getLongitude())
                 .modemType(entity.getModemType())
                 .frequency(entity.getFrequency())
                 .coverageZone(entity.getCoverageZone())

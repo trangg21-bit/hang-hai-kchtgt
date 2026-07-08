@@ -89,7 +89,7 @@ class LuongHangHaiServiceTest {
     @Test void getById_shouldThrowWhenNotFound() {
         when(repo.findById(99L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.getById(99L))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Khong tim thay");
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Không tìm thấy");
     }
 
     @Test void findAll_shouldReturnSorted() {
@@ -131,7 +131,7 @@ class LuongHangHaiServiceTest {
     @Test void softDelete_shouldThrowWhenNotApproved() {
         when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
         assertThatThrownBy(() -> service.softDelete(1L))
-                .isInstanceOf(IllegalStateException.class).hasMessageContaining("Chi co luong hang hai da duyet");
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("Chỉ có luồng hàng hải đã phê duyệt mới có thể xóa mềm");
     }
 
     @Test void softDelete_shouldThrowWhenNotFound() {
@@ -215,7 +215,7 @@ class LuongHangHaiServiceTest {
                 .trangThai("APPROVED")
                 .build(), "user1"))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
+                .hasMessageContaining("Người phê duyệt C2 không được trùng với người phê duyệt C1");
     }
 
     @Test void reject_shouldRejectAndSetLyDo() {
@@ -265,7 +265,7 @@ class LuongHangHaiServiceTest {
 
     @Test void searchDocuments_shouldReturnPaginated() {
         Page<LuongHangHai> p = new PageImpl<>(List.of(testEntity));
-        when(repo.searchDocuments(eq("Tau"), eq("12:00"), eq("1000"),
+        when(repo.searchDocuments(eq("%tau%"), eq("12:00"), eq("1000"),
                 eq(LuongHangHaiApprovalStatus.APPROVED), any(Pageable.class))).thenReturn(p);
         KetQuaTimKiemResponse r = service.searchDocuments("Tau", "12:00", "1000", "APPROVED", 0, 20);
         assertThat(r.getTotalElements()).isEqualTo(1);

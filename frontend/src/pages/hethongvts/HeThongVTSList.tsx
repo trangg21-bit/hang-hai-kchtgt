@@ -123,7 +123,29 @@ export default function HeThongVTSList() {
       dataIndex: 'tinhTrang',
       key: 'tinhTrang',
       width: 120,
-      render: (val: string) => (val ? <span style={{ color: '#52c41a' }}>{val}</span> : '—'),
+      render: (val: string) => {
+        if (!val) return '—';
+        const colorMap: Record<string, string> = {
+          'Tốt': '#52c41a',
+          'TOT': '#52c41a',
+          'Xuống cấp': '#fa8c16',
+          'XUONG_CAP': '#fa8c16',
+          'Hư hỏng': '#f5222d',
+          'HU_HOng': '#f5222d',
+          'HU_HOING': '#f5222d',
+          'HU_HONG': '#f5222d',
+        };
+        const textMap: Record<string, string> = {
+          'TOT': 'Tốt',
+          'XUONG_CAP': 'Xuống cấp',
+          'HU_HOng': 'Hư hỏng',
+          'HU_HOING': 'Hư hỏng',
+          'HU_HONG': 'Hư hỏng',
+        };
+        const displayVal = textMap[val] || val;
+        const color = colorMap[val] || colorMap[displayVal] || 'inherit';
+        return <span style={{ color, fontWeight: 500 }}>{displayVal}</span>;
+      },
     },
     {
       title: 'Mức độ phủ trách',

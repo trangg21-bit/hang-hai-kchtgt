@@ -33,6 +33,7 @@ export default function CoastalStationList() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [searchText, setSearchText] = useState('');
 
   // Form states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,6 +46,7 @@ export default function CoastalStationList() {
       const res = await fetchCoastalVTSList({
         page: page - 1,
         size: pageSize,
+        keyword: searchText ? searchText.trim() : undefined,
       });
       setDataSource(res.content || []);
       setTotal(res.totalElements || 0);
@@ -53,7 +55,7 @@ export default function CoastalStationList() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize]);
+  }, [page, pageSize, searchText]);
 
   useEffect(() => {
     loadData();
@@ -209,6 +211,18 @@ export default function CoastalStationList() {
         </Space>
       }
     >
+      <div style={{ marginBottom: 16 }}>
+        <Input.Search
+          placeholder="Tìm kiếm theo mã đài, tên đài..."
+          allowClear
+          onSearch={(value) => {
+            setSearchText(value);
+            setPage(1);
+          }}
+          style={{ width: 300 }}
+        />
+      </div>
+
       <Table
         dataSource={dataSource}
         columns={columns}
@@ -223,6 +237,7 @@ export default function CoastalStationList() {
             setPageSize(s);
           },
           showSizeChanger: true,
+          showTotal: (total) => `Tổng ${total} bản ghi`,
         }}
       />
 
@@ -263,7 +278,13 @@ export default function CoastalStationList() {
               rules={[{ required: true, message: 'Vui lòng nhập vĩ độ' }]}
               style={{ width: 300 }}
             >
-              <InputNumber style={{ width: '100%' }} placeholder="Ví dụ: 20.8415" />
+              <InputNumber
+                min={-90}
+                max={90}
+                precision={6}
+                style={{ width: '100%' }}
+                placeholder="Ví dụ: 20.8415"
+              />
             </Form.Item>
 
             <Form.Item
@@ -272,7 +293,13 @@ export default function CoastalStationList() {
               rules={[{ required: true, message: 'Vui lòng nhập kinh độ' }]}
               style={{ width: 300 }}
             >
-              <InputNumber style={{ width: '100%' }} placeholder="Ví dụ: 106.6912" />
+              <InputNumber
+                min={-180}
+                max={180}
+                precision={6}
+                style={{ width: '100%' }}
+                placeholder="Ví dụ: 106.6912"
+              />
             </Form.Item>
           </Space>
 

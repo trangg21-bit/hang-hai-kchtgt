@@ -78,8 +78,8 @@ class SuCoControllerTest {
                         .param("page", "0").param("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data").isArray())
-                .andExpect(jsonPath("$.data[0].viTri").value("Bến Cảng A - Khu vực xếp dỡ"));
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.content[0].viTri").value("Bến Cảng A - Khu vực xếp dỡ"));
     }
 
     @Test

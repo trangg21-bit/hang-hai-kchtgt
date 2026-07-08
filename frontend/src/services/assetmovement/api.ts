@@ -136,11 +136,13 @@ export async function fetchKhaiThacList(params: {
   page?: number;
   size?: number;
   taiSanId?: string;
+  namKhaiThac?: number;
 }): Promise<PageResponse<KhaiThacTaiSanResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
   if (params.taiSanId) sp.set('taiSanId', params.taiSanId);
+  if (params.namKhaiThac !== undefined) sp.set('namKhaiThac', String(params.namKhaiThac));
 
   const res = await api.get(`/v1/asset/khai-thac?${sp}`);
   return res.data.data;
@@ -149,6 +151,10 @@ export async function fetchKhaiThacList(params: {
 export async function createKhaiThac(payload: KhaiThacTaiSanRequest): Promise<KhaiThacTaiSanResponse> {
   const res = await api.post('/v1/asset/khai-thac', payload);
   return res.data.data;
+}
+
+export async function deleteKhaiThac(id: string): Promise<void> {
+  await api.delete(`/v1/asset/khai-thac/${id}`);
 }
 
 // ==========================================
@@ -212,6 +218,36 @@ export async function approveYeuCauGiam(id: string, remarks?: string): Promise<Y
 
 export async function rejectYeuCauGiam(id: string, remarks?: string): Promise<YeuCauGiamTaiSanResponse> {
   const res = await api.post(`/v1/asset/yeu-cau-giam/${id}/reject`, { remarks });
+  return res.data.data;
+}
+
+export async function approveKeHoachKiemKe(id: string, remarks?: string): Promise<KeHoachKiemKeResponse> {
+  const res = await api.post(`/v1/asset/ke-hoach-kiem-ke/${id}/approve`, { remarks });
+  return res.data.data;
+}
+
+export async function rejectKeHoachKiemKe(id: string, remarks?: string): Promise<KeHoachKiemKeResponse> {
+  const res = await api.post(`/v1/asset/ke-hoach-kiem-ke/${id}/reject`, { remarks });
+  return res.data.data;
+}
+
+export async function startKeHoachKiemKe(id: string): Promise<KeHoachKiemKeResponse> {
+  const res = await api.post(`/v1/asset/ke-hoach-kiem-ke/${id}/start`);
+  return res.data.data;
+}
+
+export async function completeKeHoachKiemKe(id: string): Promise<KeHoachKiemKeResponse> {
+  const res = await api.post(`/v1/asset/ke-hoach-kiem-ke/${id}/complete`);
+  return res.data.data;
+}
+
+export async function approveBaoCaoKiemKe(id: string, remarks?: string): Promise<BaoCaoKiemKeResponse> {
+  const res = await api.post(`/v1/asset/bao-cao-kiem-ke/${id}/approve`, { remarks });
+  return res.data.data;
+}
+
+export async function rejectBaoCaoKiemKe(id: string, remarks?: string): Promise<BaoCaoKiemKeResponse> {
+  const res = await api.post(`/v1/asset/bao-cao-kiem-ke/${id}/reject`, { remarks });
   return res.data.data;
 }
 

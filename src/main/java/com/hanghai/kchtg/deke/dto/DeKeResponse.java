@@ -24,6 +24,7 @@ public class DeKeResponse {
     private Double chieuCao;
     private String matVatLieu;
     private String tinhTrang;
+    private String ghiChu;
     private DeKeApprovalStatus trangThaiPheDuyet;
     private Boolean pheDuyetC1;
     private String nguoiPheDuyetC1;

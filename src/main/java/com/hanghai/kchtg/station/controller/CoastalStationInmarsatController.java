@@ -25,7 +25,7 @@ public class CoastalStationInmarsatController {
 
     private final CoastalStationInmarsatService service;
 
-    @PostMapping("/create")
+    @PostMapping
     @Operation(summary = "Create a new Inmarsat station")
     public ResponseEntity<CoastalStationInmarsat> createStation(@Valid @RequestBody CoastalStationInmarsatRequest request) {
         CoastalStationInmarsat created = service.createStation(request);

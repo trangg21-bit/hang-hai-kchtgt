@@ -15,14 +15,21 @@ export async function fetchNhaTramDenList(params: {
   size?: number;
   code?: string;
   name?: string;
+  type?: string;
+  status?: string;
 }): Promise<PageResponse<NhaTramDenResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
   if (params.code) sp.set('code', params.code);
   if (params.name) sp.set('name', params.name);
+  if (params.type) sp.set('type', params.type);
+  if (params.status) sp.set('status', params.status);
 
-  const res = await api.get(`/v1/nhatram/den?${sp}`);
+  const hasFilter = params.code || params.name || params.type || params.status;
+  const url = hasFilter ? '/v1/nhatram/den/search' : '/v1/nhatram/den';
+
+  const res = await api.get(`${url}?${sp}`);
   const list = res.data.data || [];
   return {
     content: list,
@@ -60,14 +67,21 @@ export async function fetchNhaTramPhaoList(params: {
   size?: number;
   code?: string;
   name?: string;
+  type?: string;
+  status?: string;
 }): Promise<PageResponse<NhaTramPhaoResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
   if (params.code) sp.set('code', params.code);
   if (params.name) sp.set('name', params.name);
+  if (params.type) sp.set('type', params.type);
+  if (params.status) sp.set('status', params.status);
 
-  const res = await api.get(`/v1/nhatram/phao?${sp}`);
+  const hasFilter = params.code || params.name || params.type || params.status;
+  const url = hasFilter ? '/v1/nhatram/phao/search' : '/v1/nhatram/phao';
+
+  const res = await api.get(`${url}?${sp}`);
   const list = res.data.data || [];
   return {
     content: list,

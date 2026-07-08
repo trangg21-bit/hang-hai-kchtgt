@@ -122,13 +122,13 @@ public class SuCoService {
     @Transactional(readOnly = true)
     public Page<SuCoResponse> searchByViTriContaining(String viTri, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "ngayTao"));
-        return suCoRepository.findByViTriContaining(viTri, pageable).map(this::toResponse);
+        return suCoRepository.findByViTriContainingIgnoreCase(viTri, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
     public Page<SuCoResponse> searchByMoTaContaining(String moTa, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "ngayTao"));
-        return suCoRepository.findByMoTaContaining(moTa, pageable).map(this::toResponse);
+        return suCoRepository.findByMoTaContainingIgnoreCase(moTa, pageable).map(this::toResponse);
     }
 
     // ── Progress Updates ──────────────────────────────────────────────

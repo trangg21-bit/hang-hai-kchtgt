@@ -12,16 +12,27 @@ import {
   Select,
   message,
   Tabs,
+  Tooltip,
 } from 'antd';
 import {
   PlusOutlined,
   ReloadOutlined,
+  CheckOutlined,
+  CloseOutlined,
+  PlayCircleOutlined,
+  CheckCircleOutlined,
 } from '@ant-design/icons';
 import {
   fetchKeHoachKiemKeList,
   createKeHoachKiemKe,
   fetchBaoCaoKiemKeList,
   createBaoCaoKiemKe,
+  approveKeHoachKiemKe,
+  rejectKeHoachKiemKe,
+  startKeHoachKiemKe,
+  completeKeHoachKiemKe,
+  approveBaoCaoKiemKe,
+  rejectBaoCaoKiemKe,
 } from '../../services/assetmovement/api';
 import type { KeHoachKiemKeResponse, KeHoachKiemKeRequest, BaoCaoKiemKeResponse, BaoCaoKiemKeRequest } from '../../services/assetmovement/types';
 import dayjs from 'dayjs';
@@ -49,6 +60,92 @@ export default function InventoryList() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [planForm] = Form.useForm();
   const [reportForm] = Form.useForm();
+
+  // Reject Plan states
+  const [isRejectPlanModalOpen, setIsRejectPlanModalOpen] = useState(false);
+  const [rejectingPlanId, setRejectingPlanId] = useState<string | null>(null);
+  const [rejectPlanRemarks, setRejectPlanRemarks] = useState('');
+
+  // Reject Report states
+  const [isRejectReportModalOpen, setIsRejectReportModalOpen] = useState(false);
+  const [rejectingReportId, setRejectingReportId] = useState<string | null>(null);
+  const [rejectReportRemarks, setRejectReportRemarks] = useState('');
+
+  const handleApprovePlan = async (id: string) => {
+    try {
+      await approveKeHoachKiemKe(id);
+      message.success('Đã phê duyệt kế hoạch kiểm kê!');
+      loadPlans();
+    } catch (err: any) {
+      message.error(err.message || 'Lỗi khi phê duyệt kế hoạch');
+    }
+  };
+
+  const handleOpenRejectPlanModal = (id: string) => {
+    setRejectingPlanId(id);
+    setRejectPlanRemarks('');
+    setIsRejectPlanModalOpen(true);
+  };
+
+  const handleRejectPlanConfirm = async () => {
+    if (!rejectingPlanId) return;
+    try {
+      await rejectKeHoachKiemKe(rejectingPlanId, rejectPlanRemarks);
+      message.success('Đã từ chối kế hoạch kiểm kê!');
+      setIsRejectPlanModalOpen(false);
+      loadPlans();
+    } catch (err: any) {
+      message.error(err.message || 'Lỗi khi từ chối kế hoạch');
+    }
+  };
+
+  const handleStartPlan = async (id: string) => {
+    try {
+      await startKeHoachKiemKe(id);
+      message.success('Kế hoạch kiểm kê đã bắt đầu thực hiện!');
+      loadPlans();
+    } catch (err: any) {
+      message.error(err.message || 'Lỗi khi bắt đầu kế hoạch');
+    }
+  };
+
+  const handleCompletePlan = async (id: string) => {
+    try {
+      await completeKeHoachKiemKe(id);
+      message.success('Kế hoạch kiểm kê đã hoàn thành!');
+      loadPlans();
+    } catch (err: any) {
+      message.error(err.message || 'Lỗi khi hoàn thành kế hoạch');
+    }
+  };
+
+  const handleApproveReport = async (id: string) => {
+    try {
+      await approveBaoCaoKiemKe(id);
+      message.success('Đã phê duyệt báo cáo kiểm kê!');
+      loadReports();
+    } catch (err: any) {
+      message.error(err.message || 'Lỗi khi phê duyệt báo cáo');
+    }
+  };
+
+  const handleOpenRejectReportModal = (id: string) => {
+    setRejectingReportId(id);
+    setRejectReportRemarks('');
+    setIsRejectReportModalOpen(true);
+  };
+
+  const handleRejectReportConfirm = async () => {
+    if (!rejectingReportId) return;
+    try {
+      await rejectBaoCaoKiemKe(rejectingReportId, rejectReportRemarks);
+      message.success('Đã từ chối báo cáo kiểm kê!');
+      setIsRejectReportModalOpen(false);
+      loadReports();
+    } catch (err: any) {
+      message.error(err.message || 'Lỗi khi từ chối báo cáo');
+    }
+  };
 
   const loadPlans = useCallback(async () => {
     setLoading(true);
@@ -124,6 +221,24 @@ export default function InventoryList() {
     }
   };
 
+  const getPlanStatusTag = (status: string) => {
+    const s = status ? status.trim().toUpperCase() : 'CHO_PHE_DUYET';
+    if (s === 'CHO_PHE_DUYET') return <Tag color="warning">Chờ phê duyệt</Tag>;
+    if (s === 'DA_PHE_DUYET') return <Tag color="blue">Đã phê duyệt</Tag>;
+    if (s === 'DANG_THUC_HIEN') return <Tag color="processing">Đang thực hiện</Tag>;
+    if (s === 'HOAN_THANH' || s === 'COMPLETED') return <Tag color="success">Hoàn thành</Tag>;
+    if (s === 'TU_CHOI' || s === 'REJECTED') return <Tag color="error">Từ chối</Tag>;
+    return <Tag>{status}</Tag>;
+  };
+
+  const getReportStatusTag = (status: string) => {
+    const s = status ? status.trim().toUpperCase() : 'CHO_PHE_DUYET';
+    if (s === 'CHO_PHE_DUYET') return <Tag color="warning">Chờ phê duyệt</Tag>;
+    if (s === 'DA_PHE_DUYET' || s === 'APPROVED') return <Tag color="success">Đã phê duyệt</Tag>;
+    if (s === 'TU_CHOI' || s === 'REJECTED') return <Tag color="error">Từ chối</Tag>;
+    return <Tag>{status}</Tag>;
+  };
+
   const planColumns = [
     {
       title: 'Tên kế hoạch',
@@ -139,16 +254,63 @@ export default function InventoryList() {
       title: 'Trạng thái',
       dataIndex: 'trangThai',
       key: 'trangThai',
-      render: (status: string) => (
-        <Tag color={status === 'COMPLETED' ? 'success' : 'warning'}>
-          {status === 'COMPLETED' ? 'Hoàn thành' : 'Đang thực hiện'}
-        </Tag>
-      ),
+      render: (status: string) => getPlanStatusTag(status),
     },
     {
       title: 'Người lập',
       dataIndex: 'createdByName',
       key: 'createdByName',
+    },
+    {
+      title: 'Thao tác',
+      key: 'action',
+      render: (_: any, record: KeHoachKiemKeResponse) => {
+        const s = record.trangThai ? record.trangThai.toUpperCase() : 'CHO_PHE_DUYET';
+        return (
+          <Space size="middle">
+            {s === 'CHO_PHE_DUYET' && (
+              <>
+                <Tooltip title="Duyệt">
+                  <Button
+                    type="text"
+                    style={{ color: '#52c41a' }}
+                    icon={<CheckOutlined />}
+                    onClick={() => handleApprovePlan(record.id)}
+                  />
+                </Tooltip>
+                <Tooltip title="Từ chối">
+                  <Button
+                    type="text"
+                    danger
+                    icon={<CloseOutlined />}
+                    onClick={() => handleOpenRejectPlanModal(record.id)}
+                  />
+                </Tooltip>
+              </>
+            )}
+            {s === 'DA_PHE_DUYET' && (
+              <Tooltip title="Bắt đầu thực hiện">
+                <Button
+                  type="text"
+                  style={{ color: '#1890ff' }}
+                  icon={<PlayCircleOutlined />}
+                  onClick={() => handleStartPlan(record.id)}
+                />
+              </Tooltip>
+            )}
+            {s === 'DANG_THUC_HIEN' && (
+              <Tooltip title="Hoàn thành kiểm kê">
+                <Button
+                  type="text"
+                  style={{ color: '#52c41a' }}
+                  icon={<CheckCircleOutlined />}
+                  onClick={() => handleCompletePlan(record.id)}
+                />
+              </Tooltip>
+            )}
+          </Space>
+        );
+      },
     },
   ];
 
@@ -157,6 +319,7 @@ export default function InventoryList() {
       title: 'Tên báo cáo',
       dataIndex: 'tenBaoCao',
       key: 'tenBaoCao',
+      render: (val: string, record: BaoCaoKiemKeResponse) => val || `Báo cáo kiểm kê - ${record.id.substring(0, 8)}`,
     },
     {
       title: 'Tổng số lượng kiểm',
@@ -177,6 +340,7 @@ export default function InventoryList() {
       title: 'Kết quả kiểm kê',
       dataIndex: 'ketQua',
       key: 'ketQua',
+      render: (status: string) => getReportStatusTag(status),
     },
     {
       title: 'Mô tả chi tiết',
@@ -187,6 +351,37 @@ export default function InventoryList() {
       title: 'Người lập báo cáo',
       dataIndex: 'createdByName',
       key: 'createdByName',
+    },
+    {
+      title: 'Thao tác',
+      key: 'action',
+      render: (_: any, record: BaoCaoKiemKeResponse) => {
+        const s = record.ketQua ? record.ketQua.toUpperCase() : 'CHO_PHE_DUYET';
+        return (
+          <Space size="middle">
+            {s === 'CHO_PHE_DUYET' && (
+              <>
+                <Tooltip title="Duyệt">
+                  <Button
+                    type="text"
+                    style={{ color: '#52c41a' }}
+                    icon={<CheckOutlined />}
+                    onClick={() => handleApproveReport(record.id)}
+                  />
+                </Tooltip>
+                <Tooltip title="Từ chối">
+                  <Button
+                    type="text"
+                    danger
+                    icon={<CloseOutlined />}
+                    onClick={() => handleOpenRejectReportModal(record.id)}
+                  />
+                </Tooltip>
+              </>
+            )}
+          </Space>
+        );
+      },
     },
   ];
 
@@ -311,7 +506,18 @@ export default function InventoryList() {
           <Form.Item
             name="ngayKetThuc"
             label="Ngày kết thúc"
-            rules={[{ required: true, message: 'Vui lòng chọn ngày kết thúc' }]}
+            dependencies={['ngayBatDau']}
+            rules={[
+              { required: true, message: 'Vui lòng chọn ngày kết thúc' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || !getFieldValue('ngayBatDau') || value.isAfter(getFieldValue('ngayBatDau')) || value.isSame(getFieldValue('ngayBatDau'), 'day')) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu'));
+                },
+              }),
+            ]}
           >
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
@@ -390,6 +596,46 @@ export default function InventoryList() {
             <Input.TextArea placeholder="Nhập các đề xuất khắc phục..." rows={3} />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Reject Plan Modal */}
+      <Modal
+        title="Lý do từ chối kế hoạch kiểm kê"
+        open={isRejectPlanModalOpen}
+        onOk={handleRejectPlanConfirm}
+        onCancel={() => setIsRejectPlanModalOpen(false)}
+        okText="Xác nhận từ chối"
+        cancelText="Hủy"
+        okButtonProps={{ danger: true }}
+      >
+        <div style={{ marginTop: 16 }}>
+          <Input.TextArea
+            rows={4}
+            value={rejectPlanRemarks}
+            onChange={(e) => setRejectPlanRemarks(e.target.value)}
+            placeholder="Nhập lý do từ chối kế hoạch kiểm kê tại đây..."
+          />
+        </div>
+      </Modal>
+
+      {/* Reject Report Modal */}
+      <Modal
+        title="Lý do từ chối báo cáo kiểm kê"
+        open={isRejectReportModalOpen}
+        onOk={handleRejectReportConfirm}
+        onCancel={() => setIsRejectReportModalOpen(false)}
+        okText="Xác nhận từ chối"
+        cancelText="Hủy"
+        okButtonProps={{ danger: true }}
+      >
+        <div style={{ marginTop: 16 }}>
+          <Input.TextArea
+            rows={4}
+            value={rejectReportRemarks}
+            onChange={(e) => setRejectReportRemarks(e.target.value)}
+            placeholder="Nhập lý do từ chối báo cáo kiểm kê tại đây..."
+          />
+        </div>
       </Modal>
     </Card>
   );

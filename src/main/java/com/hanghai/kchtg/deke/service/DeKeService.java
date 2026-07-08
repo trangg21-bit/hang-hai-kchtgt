@@ -37,6 +37,7 @@ public class DeKeService {
                 .chieuCao(req.getChieuCao())
                 .matVatLieu(req.getMatVatLieu())
                 .tinhTrang(req.getTinhTrang())
+                .ghiChu(req.getGhiChu())
                 .trangThaiPheDuyet(DeKeApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
@@ -109,6 +110,7 @@ public class DeKeService {
         if (req.getChieuCao() != null) d.setChieuCao(req.getChieuCao());
         if (req.getMatVatLieu() != null) d.setMatVatLieu(req.getMatVatLieu());
         if (req.getTinhTrang() != null) d.setTinhTrang(req.getTinhTrang());
+        if (req.getGhiChu() != null) d.setGhiChu(req.getGhiChu());
         d.setUpdatedBy(username);
 
         return toResponse(repo.save(d));
@@ -304,6 +306,7 @@ public class DeKeService {
                 .chieuCao(d.getChieuCao())
                 .matVatLieu(d.getMatVatLieu())
                 .tinhTrang(d.getTinhTrang())
+                .ghiChu(d.getGhiChu())
                 .trangThaiPheDuyet(d.getTrangThaiPheDuyet())
                 .pheDuyetC1(d.getPheDuyetC1())
                 .nguoiPheDuyetC1(d.getNguoiPheDuyetC1())

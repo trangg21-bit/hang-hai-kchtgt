@@ -37,6 +37,10 @@ export default function QuyHoachList() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // Filter states
+  const [filterKeyword, setFilterKeyword] = useState('');
+  const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
+
   // Form states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<QuyHoachBenCangResponse | null>(null);
@@ -48,6 +52,8 @@ export default function QuyHoachList() {
       const res = await fetchQuyHoachList({
         page: page - 1,
         size: pageSize,
+        keyword: filterKeyword ? filterKeyword.trim() : undefined,
+        status: filterStatus || undefined,
       });
       setDataSource(res.content || []);
       setTotal(res.totalElements || 0);
@@ -56,7 +62,7 @@ export default function QuyHoachList() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize]);
+  }, [page, pageSize, filterKeyword, filterStatus]);
 
   useEffect(() => {
     loadData();
@@ -194,7 +200,7 @@ export default function QuyHoachList() {
 
   return (
     <Card
-      title="Quản lý quy hoạch bến cảng hàng hải"
+      title="Danh sách quy hoạch bến cảng hàng hải"
       extra={
         <Space>
           <Button icon={<ReloadOutlined />} onClick={loadData} />
@@ -208,6 +214,44 @@ export default function QuyHoachList() {
         </Space>
       }
     >
+      <div style={{ marginBottom: 16 }}>
+        <Space wrap>
+          <Input
+            placeholder="Tìm theo tên đồ án..."
+            value={filterKeyword}
+            onChange={(e) => {
+              setFilterKeyword(e.target.value);
+              setPage(1);
+            }}
+            style={{ width: 250 }}
+          />
+          <Select
+            placeholder="Tình trạng quy hoạch"
+            value={filterStatus}
+            onChange={(val) => {
+              setFilterStatus(val);
+              setPage(1);
+            }}
+            style={{ width: 200 }}
+            allowClear
+            options={[
+              { label: 'Hiện hành', value: 'HIEN_HANH' },
+              { label: 'Đã thay thế', value: 'DA_THAY_THE' },
+              { label: 'Lịch sử', value: 'LICH_SU' },
+            ]}
+          />
+          <Button
+            onClick={() => {
+              setFilterKeyword('');
+              setFilterStatus(undefined);
+              setPage(1);
+            }}
+          >
+            Xóa bộ lọc
+          </Button>
+        </Space>
+      </div>
+
       <Table
         dataSource={dataSource}
         columns={columns}

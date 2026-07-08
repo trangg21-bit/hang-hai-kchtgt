@@ -37,6 +37,12 @@ public class YeuCauTangTaiSanServiceTest {
     @Mock
     private YeuCauTangTaiSanRepository repository;
 
+    @Mock
+    private com.hanghai.kchtg.assetmovement.repository.TaiSanKCHTRepository taiSanRepository;
+
+    @Mock
+    private com.hanghai.kchtg.user.repository.UserRepository userRepository;
+
     private UUID testId;
     private UUID taiSanId;
     private YeuCauTangTaiSan testEntity;
@@ -59,6 +65,9 @@ public class YeuCauTangTaiSanServiceTest {
 
         testRequest = new YeuCauTangTaiSanRequest();
         testRequest.setTaiSanId(taiSanId);
+
+        lenient().when(taiSanRepository.findById(any())).thenReturn(Optional.empty());
+
         testRequest.setTenTaiSan("GPS Receiver");
         testRequest.setLyDo("Mua mới thiết bị định vị GPS");
         testRequest.setSoLuong(2);

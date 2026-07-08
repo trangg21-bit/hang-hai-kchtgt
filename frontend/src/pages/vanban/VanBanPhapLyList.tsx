@@ -12,6 +12,8 @@ import {
   Popconfirm,
   Tooltip,
   Select,
+  Row,
+  Col,
 } from 'antd';
 import {
   PlusOutlined,
@@ -35,6 +37,12 @@ export default function VanBanPhapLyList() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // Filter states
+  const [filterKeyword, setFilterKeyword] = useState('');
+  const [filterCoQuan, setFilterCoQuan] = useState('');
+  const [filterLoai, setFilterLoai] = useState<string | undefined>(undefined);
+  const [filterStatus, setFilterStatus] = useState<string | undefined>(undefined);
+
   // Form states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<VanBanPhapLyResponse | null>(null);
@@ -46,6 +54,10 @@ export default function VanBanPhapLyList() {
       const res = await fetchVanBanList({
         page: page - 1,
         size: pageSize,
+        keyword: filterKeyword ? filterKeyword.trim() : undefined,
+        coQuan: filterCoQuan ? filterCoQuan.trim() : undefined,
+        loai: filterLoai || undefined,
+        tinhTrang: filterStatus || undefined,
       });
       setDataSource(res.content || []);
       setTotal(res.totalElements || 0);
@@ -54,7 +66,7 @@ export default function VanBanPhapLyList() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize]);
+  }, [page, pageSize, filterKeyword, filterCoQuan, filterLoai, filterStatus]);
 
   useEffect(() => {
     loadData();
@@ -194,7 +206,7 @@ export default function VanBanPhapLyList() {
 
   return (
     <Card
-      title="Quản lý văn bản pháp lý hàng hải"
+      title="Danh sách văn bản pháp lý"
       extra={
         <Space>
           <Button icon={<ReloadOutlined />} onClick={loadData} />
@@ -208,6 +220,71 @@ export default function VanBanPhapLyList() {
         </Space>
       }
     >
+      <div style={{ marginBottom: 16 }}>
+        <Space wrap>
+          <Input
+            placeholder="Tìm theo tên/tóm tắt..."
+            value={filterKeyword}
+            onChange={(e) => {
+              setFilterKeyword(e.target.value);
+              setPage(1);
+            }}
+            style={{ width: 180 }}
+          />
+          <Input
+            placeholder="Cơ quan ban hành..."
+            value={filterCoQuan}
+            onChange={(e) => {
+              setFilterCoQuan(e.target.value);
+              setPage(1);
+            }}
+            style={{ width: 150 }}
+          />
+          <Select
+            placeholder="Loại văn bản"
+            value={filterLoai}
+            onChange={(val) => {
+              setFilterLoai(val);
+              setPage(1);
+            }}
+            style={{ width: 140 }}
+            allowClear
+            options={[
+              { label: 'Quyết định', value: 'QUYET_DINH' },
+              { label: 'Thông tư', value: 'THONG_TU' },
+              { label: 'Nghị định', value: 'NGHI_DINH' },
+              { label: 'Luật', value: 'LUAT' },
+            ]}
+          />
+          <Select
+            placeholder="Trạng thái hiệu lực"
+            value={filterStatus}
+            onChange={(val) => {
+              setFilterStatus(val);
+              setPage(1);
+            }}
+            style={{ width: 160 }}
+            allowClear
+            options={[
+              { label: 'Còn hiệu lực', value: 'CON_HIEU_LUC' },
+              { label: 'Sắp hết hiệu lực', value: 'SAP_HET_HIEU_LUC' },
+              { label: 'Đã hết hiệu lực', value: 'DA_HET_HIEU_LUC' },
+            ]}
+          />
+          <Button
+            onClick={() => {
+              setFilterKeyword('');
+              setFilterCoQuan('');
+              setFilterLoai(undefined);
+              setFilterStatus(undefined);
+              setPage(1);
+            }}
+          >
+            Xóa bộ lọc
+          </Button>
+        </Space>
+      </div>
+
       <Table
         dataSource={dataSource}
         columns={columns}

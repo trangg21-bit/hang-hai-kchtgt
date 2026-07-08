@@ -35,6 +35,9 @@ export default function SuCoList() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // Filter states
+  const [filterViTri, setFilterViTri] = useState('');
+
   // Form states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<SuCoResponse | null>(null);
@@ -46,6 +49,7 @@ export default function SuCoList() {
       const res = await fetchSuCoList({
         page: page - 1,
         size: pageSize,
+        viTri: filterViTri ? filterViTri.trim() : undefined,
       });
       setDataSource(res.content || []);
       setTotal(res.totalElements || 0);
@@ -54,7 +58,7 @@ export default function SuCoList() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize]);
+  }, [page, pageSize, filterViTri]);
 
   useEffect(() => {
     loadData();
@@ -193,7 +197,7 @@ export default function SuCoList() {
 
   return (
     <Card
-      title="Quản lý hồ sơ sự cố hàng hải"
+      title="Danh sách hồ sơ sự cố hàng hải"
       extra={
         <Space>
           <Button icon={<ReloadOutlined />} onClick={loadData} />
@@ -207,6 +211,28 @@ export default function SuCoList() {
         </Space>
       }
     >
+      <div style={{ marginBottom: 16 }}>
+        <Space wrap>
+          <Input
+            placeholder="Tìm theo vị trí sự cố..."
+            value={filterViTri}
+            onChange={(e) => {
+              setFilterViTri(e.target.value);
+              setPage(1);
+            }}
+            style={{ width: 300 }}
+          />
+          <Button
+            onClick={() => {
+              setFilterViTri('');
+              setPage(1);
+            }}
+          >
+            Xóa bộ lọc
+          </Button>
+        </Space>
+      </div>
+
       <Table
         dataSource={dataSource}
         columns={columns}

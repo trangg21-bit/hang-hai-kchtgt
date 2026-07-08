@@ -4,7 +4,6 @@ import com.hanghai.kchtg.assetmovement.dto.KhaiThacTaiSanRequest;
 import com.hanghai.kchtg.assetmovement.dto.KhaiThacTaiSanResponse;
 import com.hanghai.kchtg.assetmovement.entity.KhaiThacTaiSan;
 import com.hanghai.kchtg.assetmovement.repository.KhaiThacTaiSanRepository;
-import com.hanghai.kchtg.assetmovement.repository.TaiSanKCHTRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,6 +17,10 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
 
+import com.hanghai.kchtg.assetmovement.repository.TaiSanKCHTRepository;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.user.entity.User;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -25,21 +28,37 @@ public class KhaiThacTaiSanService {
 
     private final KhaiThacTaiSanRepository repository;
     private final TaiSanKCHTRepository taiSanRepository;
+    private final UserRepository userRepository;
+
+    private UUID getCurrentUserId() {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            String username = authentication.getName();
+            return userRepository.findByUsername(username)
+                    .map(User::getId)
+                    .orElse(null);
+        }
+        return null;
+    }
 
     @Transactional
     public KhaiThacTaiSanResponse create(KhaiThacTaiSanRequest request) {
         validateRequest(request);
 
+        UUID currentUserId = getCurrentUserId();
         KhaiThacTaiSan entity = KhaiThacTaiSan.builder()
                 .taiSanId(request.getTaiSanId())
-                .thoiGianHoatDong(24) // Default fallback
-                .mucDoKhaiThac(BigDecimal.valueOf(100.0))
-                .chiPhiVanHanh(request.getDoanhThu()) // map doanhThu -> chiPhiVanHanh
-                .chiPhiBaoDuong(request.getHaoMon())   // map haoMon -> chiPhiBaoDuong
-                .tinhTrangKyThuat("Bình thường")
-                .thangKhaiThac(LocalDateTime.now().getMonthValue())
+                .thoiGianHoatDong(null)
+                .mucDoKhaiThac(null)
+                .chiPhiVanHanh(null)
+                .chiPhiBaoDuong(null)
+                .tinhTrangKyThuat(null)
+                .thangKhaiThac(null)
                 .namKhaiThac(request.getNamKhaiThac())
                 .moTa(request.getMoTa())
+                .createdBy(currentUserId)
+                .updatedBy(currentUserId)
                 .deleted(false)
                 .build();
 
@@ -86,14 +105,11 @@ public class KhaiThacTaiSanService {
         if (request.getTaiSanId() != null) {
             entity.setTaiSanId(request.getTaiSanId());
         }
+        if (request.getTenTaiSan() != null) {
+            entity.setMoTa(request.getTenTaiSan());
+        }
         if (request.getNamKhaiThac() != null) {
             entity.setNamKhaiThac(request.getNamKhaiThac());
-        }
-        if (request.getDoanhThu() != null) {
-            entity.setChiPhiVanHanh(request.getDoanhThu());
-        }
-        if (request.getHaoMon() != null) {
-            entity.setChiPhiBaoDuong(request.getHaoMon());
         }
         if (request.getMoTa() != null) {
             entity.setMoTa(request.getMoTa());
@@ -105,10 +121,10 @@ public class KhaiThacTaiSanService {
 
     @Transactional
     public void delete(UUID id) {
-        KhaiThacTaiSan entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thông tin khai thác tài sản với id: " + id));
-        entity.setDeleted(true);
-        repository.save(entity);
+        if (!repository.existsById(id)) {
+            throw new EntityNotFoundException("Không tìm thấy thông tin khai thác tài sản với id: " + id);
+        }
+        repository.deleteById(id);
     }
 
     public BigDecimal calculateHaoMon(UUID taiSanId) {
@@ -143,6 +159,17 @@ public class KhaiThacTaiSanService {
             }
         }
 
+        String createdByName = null;
+        if (entity.getCreatedBy() != null) {
+            java.util.Optional<User> userOpt = userRepository.findById(entity.getCreatedBy());
+            if (userOpt.isPresent()) {
+                createdByName = userOpt.get().getFullName();
+                if (createdByName == null || createdByName.isEmpty()) {
+                    createdByName = userOpt.get().getUsername();
+                }
+            }
+        }
+
         return KhaiThacTaiSanResponse.builder()
                 .id(entity.getId())
                 .taiSanId(entity.getTaiSanId())
@@ -152,6 +179,7 @@ public class KhaiThacTaiSanService {
                 .haoMon(entity.getChiPhiBaoDuong())
                 .moTa(entity.getMoTa())
                 .createdBy(entity.getCreatedBy())
+                .createdByName(createdByName)
                 .createdAt(toLocalDateTime(entity.getCreatedAt()))
                 .updatedAt(toLocalDateTime(entity.getUpdatedAt()))
                 .build();

@@ -38,6 +38,10 @@ export default function NhaTramPhaoList() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // Filter states
+  const [filterKeyword, setFilterKeyword] = useState('');
+  const [filterType, setFilterType] = useState<string | undefined>(undefined);
+
   // Form states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<NhaTramPhaoResponse | null>(null);
@@ -49,6 +53,8 @@ export default function NhaTramPhaoList() {
       const res = await fetchNhaTramPhaoList({
         page: page - 1,
         size: pageSize,
+        name: filterKeyword ? filterKeyword.trim() : undefined,
+        type: filterType || undefined,
       });
       setDataSource(res.content || []);
       setTotal(res.totalElements || 0);
@@ -57,7 +63,7 @@ export default function NhaTramPhaoList() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize]);
+  }, [page, pageSize, filterKeyword, filterType]);
 
   useEffect(() => {
     loadData();
@@ -211,7 +217,7 @@ export default function NhaTramPhaoList() {
 
   return (
     <Card
-      title="Quản lý nhà trạm phao tiêu hàng hải"
+      title="Danh sách nhà trạm phao tiêu hàng hải"
       extra={
         <Space>
           <Button icon={<ReloadOutlined />} onClick={loadData} />
@@ -225,6 +231,46 @@ export default function NhaTramPhaoList() {
         </Space>
       }
     >
+      <div style={{ marginBottom: 16 }}>
+        <Space wrap>
+          <Input
+            placeholder="Tìm theo tên nhà trạm phao..."
+            value={filterKeyword}
+            onChange={(e) => {
+              setFilterKeyword(e.target.value);
+              setPage(1);
+            }}
+            style={{ width: 250 }}
+          />
+          <Select
+            placeholder="Loại phao tiêu"
+            value={filterType}
+            onChange={(val) => {
+              setFilterType(val);
+              setPage(1);
+            }}
+            style={{ width: 200 }}
+            allowClear
+            options={[
+              { label: 'Phao hướng (Cardinal)', value: 'CARDINAL' },
+              { label: 'Phao phân khu (Sector)', value: 'SECTOR' },
+              { label: 'Phao đặc biệt (Special)', value: 'SPECIAL' },
+              { label: 'Phao vùng nước an toàn', value: 'SAFE_WATER' },
+              { label: 'Phao nguy hiểm cô lập', value: 'ISOLATED_DANGER' },
+            ]}
+          />
+          <Button
+            onClick={() => {
+              setFilterKeyword('');
+              setFilterType(undefined);
+              setPage(1);
+            }}
+          >
+            Xóa bộ lọc
+          </Button>
+        </Space>
+      </div>
+
       <Table
         dataSource={dataSource}
         columns={columns}

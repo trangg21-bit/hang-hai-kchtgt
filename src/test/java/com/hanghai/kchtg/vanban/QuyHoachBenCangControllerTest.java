@@ -78,8 +78,8 @@ class QuyHoachBenCangControllerTest {
                         .param("page", "0").param("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data").isArray())
-                .andExpect(jsonPath("$.data[0].tenDoAn").value("Quy hoạch Bến Cảng A giai đoạn 2"));
+                .andExpect(jsonPath("$.data.content").isArray())
+                .andExpect(jsonPath("$.data.content[0].tenDoAn").value("Quy hoạch Bến Cảng A giai đoạn 2"));
     }
 
     @Test

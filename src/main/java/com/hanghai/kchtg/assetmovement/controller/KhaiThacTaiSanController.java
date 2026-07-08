@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.UUID;
 
 /**
@@ -29,7 +30,7 @@ public class KhaiThacTaiSanController {
     @PostMapping
     @PreAuthorize("@auth.check(authentication, 'asset:khai-thac')")
     public ResponseEntity<ApiResponse<KhaiThacTaiSanResponse>> create(
-            @RequestBody KhaiThacTaiSanRequest request) {
+            @Valid @RequestBody KhaiThacTaiSanRequest request) {
         KhaiThacTaiSanResponse response = khaiThacService.create(request);
         return ResponseEntity.status(201).body(ApiResponse.success("Khai thac da duoc tao", response));
     }

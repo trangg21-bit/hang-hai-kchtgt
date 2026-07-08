@@ -13,17 +13,25 @@ import type {
 export async function fetchCoastalVTSList(params: {
   page?: number;
   size?: number;
-  code?: string;
-  name?: string;
+  keyword?: string;
 }): Promise<PageResponse<CoastalStationVTSResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
-  if (params.code) sp.set('stationCode', params.code);
-  if (params.name) sp.set('stationName', params.name);
 
-  const res = await api.get(`/v1/stations/coastal?${sp}`);
-  const list = res.data || [];
+  let url = '/v1/stations/coastal';
+  if (params.keyword) {
+    sp.set('keyword', params.keyword);
+    url = '/v1/stations/coastal/search';
+  }
+
+  const res = await api.get(`${url}?${sp}`);
+  const rawList = res.data || [];
+  const list = rawList.map((item: any) => ({
+    ...item,
+    stationCode: item.stationCode || item.code,
+    stationName: item.stationName || item.name,
+  }));
   return {
     content: list,
     totalElements: list.length,
@@ -58,17 +66,26 @@ export async function deleteCoastalVTS(id: string): Promise<void> {
 export async function fetchInmarsatList(params: {
   page?: number;
   size?: number;
-  code?: string;
-  name?: string;
+  keyword?: string;
 }): Promise<PageResponse<CoastalStationInmarsatResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
-  if (params.code) sp.set('stationCode', params.code);
-  if (params.name) sp.set('stationName', params.name);
 
-  const res = await api.get(`/v1/stations/inmarsat/list?${sp}`);
-  const list = res.data || [];
+  let url = '/v1/stations/inmarsat/list';
+  if (params.keyword) {
+    sp.set('keyword', params.keyword);
+    url = '/v1/stations/inmarsat/search';
+  }
+
+  const res = await api.get(`${url}?${sp}`);
+  const rawList = res.data || [];
+  const list = rawList.map((item: any) => ({
+    ...item,
+    deviceCode: item.deviceCode || item.code,
+    stationCode: item.deviceCode || item.code,
+    stationName: item.stationName || item.name,
+  }));
   return {
     content: list,
     totalElements: list.length,
