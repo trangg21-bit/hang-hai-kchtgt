@@ -17,6 +17,7 @@ export interface DeKeResponse {
   chieuCao?: number;
   matVatLieu?: string;
   tinhTrang?: string;
+  ghiChu?: string;
   trangThaiPheDuyet: ApprovalStatus;
   pheDuyetC1?: boolean;
   nguoiPheDuyetC1?: string;

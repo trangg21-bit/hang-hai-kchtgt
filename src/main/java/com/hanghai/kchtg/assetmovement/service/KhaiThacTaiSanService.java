@@ -17,17 +17,36 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
 
+import com.hanghai.kchtg.assetmovement.repository.TaiSanKCHTRepository;
+import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.user.entity.User;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class KhaiThacTaiSanService {
 
     private final KhaiThacTaiSanRepository repository;
+    private final TaiSanKCHTRepository taiSanRepository;
+    private final UserRepository userRepository;
+
+    private UUID getCurrentUserId() {
+        org.springframework.security.core.Authentication authentication =
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            String username = authentication.getName();
+            return userRepository.findByUsername(username)
+                    .map(User::getId)
+                    .orElse(null);
+        }
+        return null;
+    }
 
     @Transactional
     public KhaiThacTaiSanResponse create(KhaiThacTaiSanRequest request) {
         validateRequest(request);
 
+        UUID currentUserId = getCurrentUserId();
         KhaiThacTaiSan entity = KhaiThacTaiSan.builder()
                 .taiSanId(request.getTaiSanId())
                 .thoiGianHoatDong(null)
@@ -38,6 +57,8 @@ public class KhaiThacTaiSanService {
                 .thangKhaiThac(null)
                 .namKhaiThac(request.getNamKhaiThac())
                 .moTa(request.getMoTa())
+                .createdBy(currentUserId)
+                .updatedBy(currentUserId)
                 .deleted(false)
                 .build();
 
@@ -130,15 +151,35 @@ public class KhaiThacTaiSanService {
     }
 
     private KhaiThacTaiSanResponse toResponse(KhaiThacTaiSan entity) {
+        String tenTaiSan = null;
+        if (entity.getTaiSanId() != null) {
+            var taiSanOpt = taiSanRepository.findById(entity.getTaiSanId());
+            if (taiSanOpt.isPresent()) {
+                tenTaiSan = taiSanOpt.get().getTenTaiSan();
+            }
+        }
+
+        String createdByName = null;
+        if (entity.getCreatedBy() != null) {
+            java.util.Optional<User> userOpt = userRepository.findById(entity.getCreatedBy());
+            if (userOpt.isPresent()) {
+                createdByName = userOpt.get().getFullName();
+                if (createdByName == null || createdByName.isEmpty()) {
+                    createdByName = userOpt.get().getUsername();
+                }
+            }
+        }
+
         return KhaiThacTaiSanResponse.builder()
                 .id(entity.getId())
                 .taiSanId(entity.getTaiSanId())
-                .tenTaiSan(entity.getMoTa())
+                .tenTaiSan(tenTaiSan)
                 .namKhaiThac(entity.getNamKhaiThac())
-                .doanhThu(null)
-                .haoMon(null)
+                .doanhThu(entity.getChiPhiVanHanh())
+                .haoMon(entity.getChiPhiBaoDuong())
                 .moTa(entity.getMoTa())
                 .createdBy(entity.getCreatedBy())
+                .createdByName(createdByName)
                 .createdAt(toLocalDateTime(entity.getCreatedAt()))
                 .updatedAt(toLocalDateTime(entity.getUpdatedAt()))
                 .build();

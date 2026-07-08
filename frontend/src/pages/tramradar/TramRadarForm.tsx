@@ -13,6 +13,7 @@ import {
   Space,
   message,
   Breadcrumb,
+  Modal,
 } from 'antd';
 import { tramRadarCRUD, tramRadarApproval } from '../../services/tramRadarService';
 import type {
@@ -27,17 +28,40 @@ import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 
-export default function TramRadarForm() {
+const LOAI_TRAM_MAP: Record<string, string> = {
+  'MAIN': 'Trạm radar chính',
+  'SECONDARY': 'Trạm radar phụ',
+  'ASSIST': 'Trạm radar hỗ trợ',
+  'KAC': 'Khác',
+};
+
+const TINH_TRANG_MAP: Record<string, string> = {
+  'TOT': 'Hoạt động tốt',
+  'KEM': 'Hoạt động kém',
+  'NGUNG': 'Ngừng hoạt động',
+};
+
+export interface TramRadarFormProps {
+  open?: boolean;
+  editId?: string | null;
+  mode?: 'create' | 'edit' | 'detail';
+  onCancel?: () => void;
+  onSuccess?: () => void;
+}
+
+export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess }: TramRadarFormProps = {}) {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const { id: routeId } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
 
-  const isEditMode = searchParams.get('mode') === 'edit';
-  const isDetailMode = !!id && !isEditMode;
-  const isCreateMode = !id;
+  const isModalMode = open !== undefined;
+  const id = isModalMode ? (editId || undefined) : routeId;
+  const isEditMode = isModalMode ? mode === 'edit' : searchParams.get('mode') === 'edit';
+  const isDetailMode = isModalMode ? mode === 'detail' : (!!id && !isEditMode);
+  const isCreateMode = isModalMode ? mode === 'create' : !id;
 
   const [record, setRecord] = useState<TramRadarResponse | null>(null);
   const [history, setHistory] = useState<any[]>([]);
@@ -46,6 +70,13 @@ export default function TramRadarForm() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setHasChanges(false);
+    }
+  }, [open]);
 
   // Fetch detail data
   useEffect(() => {
@@ -144,6 +175,7 @@ export default function TramRadarForm() {
         await tramRadarApproval.approveC1(id, pheDuyetData);
         message.success('Phê duyệt C1 thành công');
         setRecord({ ...record, trangThai: 'UNDER_REVIEW' });
+        setHasChanges(true);
       } else if (action === 'approveC2') {
         const pheDuyetData: PheDuyetRequest = {
           quyetDinh: 'APPROVED',
@@ -151,6 +183,7 @@ export default function TramRadarForm() {
         await tramRadarApproval.approveC2(id, pheDuyetData);
         message.success('Phê duyệt C2 thành công');
         setRecord({ ...record, trangThai: 'APPROVED' });
+        setHasChanges(true);
       } else if (action === 'reject') {
         const pheDuyetData: PheDuyetRequest = {
           quyetDinh: 'REJECTED',
@@ -169,15 +202,28 @@ export default function TramRadarForm() {
           trangThai: 'REJECTED',
           lyDoTuChoi: payload?.lyDo as string,
         });
+        setHasChanges(true);
       } else if (action === 'delete') {
         await tramRadarCRUD.delete(id);
         message.success('Xóa thành công');
-        navigate('/tram-radar');
+        if (isModalMode && onSuccess) {
+          onSuccess();
+        } else {
+          navigate('/tram-radar');
+        }
       }
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Lỗi thực hiện thao tác');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    if (hasChanges && onSuccess) {
+      onSuccess();
+    } else if (onCancel) {
+      onCancel();
     }
   };
 
@@ -210,9 +256,8 @@ export default function TramRadarForm() {
 
   // Detail/Read-only view
   if (isDetailMode) {
-    return (
-      <div style={{ padding: '24px' }}>
-        <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />
+    const detailContent = (
+      <>
         <Card style={{ marginBottom: '24px' }}>
           <h2>Chi tiết Trạm Radar</h2>
           {record && (
@@ -225,18 +270,25 @@ export default function TramRadarForm() {
               <Descriptions.Item label="Vĩ độ">
                 {record.viDo !== undefined ? record.viDo.toFixed(6) : '—'}
               </Descriptions.Item>
-              <Descriptions.Item label="Loại trạm">{record.loaiTram ?? '—'}</Descriptions.Item>
+              <Descriptions.Item label="Loại trạm">
+                {LOAI_TRAM_MAP[record.loaiTram] || record.loaiTram || '—'}
+              </Descriptions.Item>
               <Descriptions.Item label="Cơ trình">{record.coTrinh ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Diện tích phát xạ (m²)">
-                {record.dienTichPhaXa !== undefined ? record.dienTichPhaXa : '—'}
+                {record.dienTichPhaXa !== undefined ? record.dienTichPhaXa.toFixed(2) : '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Nguồn gốc">{record.nguonGoc ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Tình trạng">
-                {record.tinhTrang ?? '—'}
+                {TINH_TRANG_MAP[record.tinhTrang] || record.tinhTrang || '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
-                <ApprovalStatusBadge status={record.trangThai} />
+                <ApprovalStatusBadge status={record.trangThaiPheDuyet} />
               </Descriptions.Item>
+              {record.lyDoTuChoi && (
+                <Descriptions.Item label="Lý do từ chối" span={2}>
+                  {record.lyDoTuChoi}
+                </Descriptions.Item>
+              )}
             </Descriptions>
           )}
         </Card>
@@ -275,7 +327,7 @@ export default function TramRadarForm() {
               onRetry={() => {
                 setIsLoadingHistory(true);
                 tramRadarApproval
-                  .getHistory(id)
+                  .getHistory(id!)
                   .then(setHistory)
                   .catch((err) => setHistoryError(err instanceof Error ? err.message : 'Lỗi'))
                   .finally(() => setIsLoadingHistory(false));
@@ -283,7 +335,179 @@ export default function TramRadarForm() {
             />
           </Card>
         )}
+      </>
+    );
+
+    if (isModalMode) {
+      return (
+        <Modal
+          title="Chi tiết Trạm Radar"
+          open={open}
+          onCancel={handleCloseModal}
+          footer={null}
+          width={900}
+          destroyOnClose
+          maskClosable={false}
+        >
+          <Spin spinning={isLoading}>
+            {detailContent}
+          </Spin>
+        </Modal>
+      );
+    }
+
+    return (
+      <div style={{ padding: '24px' }}>
+        <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />
+        {detailContent}
       </div>
+    );
+  }
+
+  if (isModalMode) {
+    return (
+      <Modal
+        title={isCreateMode ? 'Tạo mới Trạm Radar' : 'Chỉnh sửa Trạm Radar'}
+        open={open}
+        onCancel={handleCloseModal}
+        footer={null}
+        destroyOnClose
+        maskClosable={false}
+      >
+        <Spin spinning={isLoading}>
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmitForm}
+            autoComplete="off"
+          >
+            <Form.Item label="Tên trạm" name="tenTram">
+              <Input placeholder="Nhập tên trạm (không bắt buộc)" />
+            </Form.Item>
+
+            <Form.Item
+              label="Vị trí"
+              name="viTri"
+              rules={[{ required: true, message: 'Vui lòng nhập vị trí' }]}
+            >
+              <Input placeholder="Nhập vị trí" />
+            </Form.Item>
+
+            <Form.Item
+              label="Kinh độ"
+              name="kinhDo"
+              rules={[
+                {
+                  validator: (_, value) => {
+                    if (!value && value !== 0) return Promise.resolve();
+                    if (value < -180 || value > 180) {
+                      return Promise.reject(new Error('Kinh độ phải trong khoảng -180 đến 180'));
+                    }
+                    return Promise.resolve();
+                  },
+                },
+              ]}
+              validateTrigger="onChange"
+            >
+              <InputNumber
+                min={-180}
+                max={180}
+                step={0.000001}
+                precision={6}
+                placeholder="Nhập kinh độ (WGS84)"
+                style={{ width: '100%' }}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="Vĩ độ"
+              name="viDo"
+              rules={[
+                {
+                  validator: (_, value) => {
+                    if (!value && value !== 0) return Promise.resolve();
+                    if (value < -90 || value > 90) {
+                      return Promise.reject(new Error('Vĩ độ phải trong khoảng -90 đến 90'));
+                    }
+                    return Promise.resolve();
+                  },
+                },
+              ]}
+              validateTrigger="onChange"
+            >
+              <InputNumber
+                min={-90}
+                max={90}
+                step={0.000001}
+                precision={6}
+                placeholder="Nhập vĩ độ (WGS84)"
+                style={{ width: '100%' }}
+              />
+            </Form.Item>
+
+            <Form.Item label="Loại trạm" name="loaiTram">
+              <Select
+                placeholder="Chọn loại trạm"
+                options={[
+                  { label: 'Trạm radar chính', value: 'MAIN' },
+                  { label: 'Trạm radar phụ', value: 'SECONDARY' },
+                  { label: 'Trạm radar hỗ trợ', value: 'ASSIST' },
+                  { label: 'Khác', value: 'KAC' },
+                ]}
+              />
+            </Form.Item>
+
+            <Form.Item label="Cơ trình" name="coTrinh">
+              <Input placeholder="Nhập cơ trình" />
+            </Form.Item>
+
+            <Form.Item
+              label="Diện tích phát xạ (m²)"
+              name="dienTichPhaXa"
+              rules={[
+                {
+                  validator: (_, value) => {
+                    if (!value && value !== 0) return Promise.resolve();
+                    if (value <= 0) return Promise.reject(new Error('Phải > 0'));
+                    return Promise.resolve();
+                  },
+                },
+              ]}
+            >
+              <InputNumber
+                min={0}
+                step={1}
+                placeholder="Nhập diện tích phát xạ"
+                style={{ width: '100%' }}
+              />
+            </Form.Item>
+
+            <Form.Item label="Nguồn gốc" name="nguonGoc">
+              <Input placeholder="Nhập nguồn gốc" />
+            </Form.Item>
+
+            <Form.Item label="Tình trạng" name="tinhTrang">
+              <Select
+                placeholder="Chọn tình trạng"
+                options={[
+                  { label: 'Hoạt động tốt', value: 'TOT' },
+                  { label: 'Hoạt động kém', value: 'KEM' },
+                  { label: 'Ngừng hoạt động', value: 'NGUNG' },
+                ]}
+              />
+            </Form.Item>
+
+            <Form.Item>
+              <Space style={{ display: 'flex', justifyContent: 'end', marginTop: 16 }}>
+                <Button onClick={onCancel}>Hủy</Button>
+                <Button type="primary" htmlType="submit" loading={isSubmitting}>
+                  {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Spin>
+      </Modal>
     );
   }
 

@@ -122,7 +122,16 @@ export default function DeKeList() {
       dataIndex: 'loaiDe',
       key: 'loaiDe',
       width: 120,
-      render: (val: string) => <span style={{ fontWeight: 500 }}>{val}</span>,
+      render: (val: string) => {
+        const textMap: Record<string, string> = {
+          'DE_DAT': 'Đê đất',
+          'DE_BETONG': 'Đê bê tông',
+          'KE_DA': 'Kè đá',
+          'KE_BETONG': 'Kè bê tông',
+          'KAC': 'Khác',
+        };
+        return <span style={{ fontWeight: 500 }}>{textMap[val] || val}</span>;
+      },
     },
     {
       title: 'Vị trí',
@@ -168,9 +177,18 @@ export default function DeKeList() {
         const colorMap: Record<string, string> = {
           TOT: 'green',
           XUONG_CAP: 'orange',
+          HU_HOng: 'red',
           HU_HOING: 'red',
+          HU_HONG: 'red',
         };
-        return <span style={{ color: colorMap[val] || 'inherit', fontWeight: 500 }}>{val}</span>;
+        const textMap: Record<string, string> = {
+          TOT: 'Tốt',
+          XUONG_CAP: 'Xuống cấp',
+          HU_HOng: 'Hư hỏng',
+          HU_HOING: 'Hư hỏng',
+          HU_HONG: 'Hư hỏng',
+        };
+        return <span style={{ color: colorMap[val] || 'inherit', fontWeight: 500 }}>{textMap[val] || val}</span>;
       },
     },
     {

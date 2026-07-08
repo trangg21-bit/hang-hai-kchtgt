@@ -76,8 +76,8 @@ class VanBanPhapLyControllerTest {
                                 .param("page", "0").param("size", "20"))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.success").value(true))
-                                .andExpect(jsonPath("$.data").isArray())
-                                .andExpect(jsonPath("$.data[0].tenVanBan").value("Luật Giao thông đường thủy nội địa"));
+                                .andExpect(jsonPath("$.data.content").isArray())
+                                .andExpect(jsonPath("$.data.content[0].tenVanBan").value("Luật Giao thông đường thủy nội địa"));
         }
 
         @Test

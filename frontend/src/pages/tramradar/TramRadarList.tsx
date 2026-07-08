@@ -138,7 +138,15 @@ export default function TramRadarList() {
       dataIndex: 'loaiTram',
       key: 'loaiTram',
       width: 120,
-      render: (val: string) => (val ? <Tag color="blue">{val}</Tag> : '—'),
+      render: (val: string) => {
+        const textMap: Record<string, string> = {
+          'MAIN': 'Trạm radar chính',
+          'SECONDARY': 'Trạm radar phụ',
+          'ASSIST': 'Trạm radar hỗ trợ',
+          'KAC': 'Khác',
+        };
+        return val ? <Tag color="blue">{textMap[val] || val}</Tag> : '—';
+      },
     },
     {
       title: 'Tình trạng',
@@ -148,11 +156,19 @@ export default function TramRadarList() {
       render: (val: string) => {
         if (!val) return '—';
         const colorMap: Record<string, string> = {
+          'TOT': 'success',
+          'KEM': 'warning',
+          'NGUNG': 'error',
           'Hoạt động tốt': 'success',
           'Hoạt động kém': 'warning',
           'Ngừng hoạt động': 'error',
         };
-        return <Tag color={colorMap[val] || 'default'}>{val}</Tag>;
+        const textMap: Record<string, string> = {
+          'TOT': 'Hoạt động tốt',
+          'KEM': 'Hoạt động kém',
+          'NGUNG': 'Ngừng hoạt động',
+        };
+        return <Tag color={colorMap[val] || 'default'}>{textMap[val] || val}</Tag>;
       },
     },
     {

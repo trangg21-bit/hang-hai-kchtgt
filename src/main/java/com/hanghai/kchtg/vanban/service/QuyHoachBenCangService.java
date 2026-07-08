@@ -116,8 +116,14 @@ public class QuyHoachBenCangService {
     public KetQuaTraCuuResponse traCuu(String keyword, String status, LocalDate yearStart,
                                         LocalDate yearEnd, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "ngayTao"));
+        
+        TinhTrangQuyHoach statusEnum = (status != null && !status.isEmpty()) 
+                ? TinhTrangQuyHoach.valueOf(status) : null;
+
+        String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
+
         Page<QuyHoachBenCang> result = quyHoachBenCangRepository.findAllWithSearch(
-                keyword, status, yearStart, yearEnd, pageable);
+                keywordLike, statusEnum, yearStart, yearEnd, pageable);
         return KetQuaTraCuuResponse.builder()
                 .results(result.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(result.getTotalElements())

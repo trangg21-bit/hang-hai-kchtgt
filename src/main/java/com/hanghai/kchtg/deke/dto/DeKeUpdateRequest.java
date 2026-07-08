@@ -20,4 +20,5 @@ public class DeKeUpdateRequest {
     private Double chieuCao;
     private String matVatLieu;
     private String tinhTrang;
+    private String ghiChu;
 }

@@ -83,7 +83,7 @@ class LuongHangHaiControllerTest {
                 .content(objectMapper.writeValueAsString(createReq)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Tao luong hang hai thanh cong"))
+                .andExpect(jsonPath("$.message").value("Tạo mới thành công"))
                 .andExpect(jsonPath("$.data.loaiTau").value("Tau ca cuoc Hai Phong"));
     }
 

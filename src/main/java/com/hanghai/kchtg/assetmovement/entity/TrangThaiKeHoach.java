@@ -7,5 +7,6 @@ public enum TrangThaiKeHoach {
     CHO_PHE_DUYET,
     DA_PHE_DUYET,
     DANG_THUC_HIEN,
-    HOAN_THANH
+    HOAN_THANH,
+    TU_CHOI
 }

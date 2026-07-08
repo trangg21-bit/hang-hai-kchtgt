@@ -5,5 +5,5 @@ package com.hanghai.kchtg.assetmovement.entity;
  */
 public enum LoaiKiemKe {
     DINH_KY,
-    DOT_XU
+    DOT_XUAT
 }

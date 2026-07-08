@@ -22,6 +22,8 @@ public class CoastalStationInmarsatResponse {
     private UUID id;
     private String deviceCode;
     private String stationName;
+    private Double latitude;
+    private Double longitude;
     private String modemType;
     private String frequency;
     private String coverageZone;

@@ -242,29 +242,29 @@ class CoSuaChuaDongTauControllerTest {
 
     @Test
     void testSearch_WithKeyword() {
-        when(service.search("ABC", null, null)).thenReturn(Arrays.asList(response));
+        when(service.search("ABC", null, null, null)).thenReturn(Arrays.asList(response));
 
-        ResponseEntity<?> result = controller.search("ABC", null, null);
+        ResponseEntity<?> result = controller.search("ABC", null, null, null);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        verify(service, times(1)).search("ABC", null, null);
+        verify(service, times(1)).search("ABC", null, null, null);
     }
 
     @Test
     void testSearch_WithAllParams() {
-        when(service.search("ABC", "Hà Nội", "APPROVED")).thenReturn(Collections.emptyList());
+        when(service.search("ABC", "Hà Nội", "APPROVED", null)).thenReturn(Collections.emptyList());
 
-        ResponseEntity<?> result = controller.search("ABC", "Hà Nội", "APPROVED");
+        ResponseEntity<?> result = controller.search("ABC", "Hà Nội", "APPROVED", null);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        verify(service, times(1)).search("ABC", "Hà Nội", "APPROVED");
+        verify(service, times(1)).search("ABC", "Hà Nội", "APPROVED", null);
     }
 
     @Test
     void testSearch_Empty() {
-        when(service.search(null, null, null)).thenReturn(Collections.emptyList());
+        when(service.search(null, null, null, null)).thenReturn(Collections.emptyList());
 
-        ResponseEntity<?> result = controller.search(null, null, null);
+        ResponseEntity<?> result = controller.search(null, null, null, null);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }

@@ -24,6 +24,9 @@ public class KeHoachKiemKe {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(name = "ten_ke_hoach", length = 200)
+    private String tenKeHoach;
+
     @Enumerated(EnumType.STRING)
     @Column(length = 50)
     private LoaiKiemKe loaiKiemKe;

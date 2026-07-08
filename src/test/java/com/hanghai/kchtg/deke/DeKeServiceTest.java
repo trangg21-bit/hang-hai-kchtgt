@@ -97,7 +97,7 @@ class DeKeServiceTest {
         when(repo.findById(99L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.getById(99L))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Khong tim thay");
+                .hasMessageContaining("Không tìm thấy");
     }
 
     // ── findAll ─────────────────────────────────────────────────────────
@@ -147,7 +147,7 @@ class DeKeServiceTest {
         when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
         assertThatThrownBy(() -> service.softDelete(1L))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Chi co de ke da duyet");
+                .hasMessageContaining("Chỉ có đê kè đã phê duyệt mới có thể xóa mềm");
     }
 
     @Test void softDelete_shouldThrowWhenNotFound() {
@@ -254,7 +254,7 @@ class DeKeServiceTest {
                 .nguoiPheDuyet("user1")
                 .build()))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
+                .hasMessageContaining("Người phê duyệt C2 không được trùng với người phê duyệt C1");
     }
 
     // ── reject ──────────────────────────────────────────────────────────
@@ -322,7 +322,7 @@ class DeKeServiceTest {
 
     @Test void searchDocuments_shouldReturnPaginated() {
         Page<DeKe> p = new PageImpl<>(List.of(testEntity));
-        when(repo.searchDocuments(eq("De ke"), eq(null), eq(null), eq(null), any(Pageable.class)))
+        when(repo.searchDocuments(eq("%de ke%"), eq(null), eq(null), eq(null), any(Pageable.class)))
                 .thenReturn(p);
         KetQuaTimKiemResponse r = service.searchDocuments("De ke", null, null, null, 0, 20);
         assertThat(r.getTotalElements()).isEqualTo(1);
