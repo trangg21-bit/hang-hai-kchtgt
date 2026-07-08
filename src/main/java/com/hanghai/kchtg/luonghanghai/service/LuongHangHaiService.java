@@ -236,10 +236,13 @@ public class LuongHangHaiService {
     @Transactional(readOnly = true)
     public KetQuaTimKiemResponse searchDocuments(String kw, String gioDien, String taiTrong, String trangThaiStr, int page, int size) {
         LuongHangHaiApprovalStatus trangThai = null;
-        if (trangThaiStr != null && !trangThaiStr.isEmpty()) {
-            try { trangThai = LuongHangHaiApprovalStatus.valueOf(trangThaiStr); } catch (Exception ignored) {}
+        if (trangThaiStr != null && !trangThaiStr.trim().isEmpty()) {
+            try { trangThai = LuongHangHaiApprovalStatus.valueOf(trangThaiStr.trim()); } catch (Exception ignored) {}
         }
-        Page<LuongHangHai> r = repo.searchDocuments(kw, gioDien, taiTrong, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
+        String gioDienVal = (gioDien != null && !gioDien.trim().isEmpty()) ? gioDien.trim() : null;
+        String taiTrongVal = (taiTrong != null && !taiTrong.trim().isEmpty()) ? taiTrong.trim() : null;
+        Page<LuongHangHai> r = repo.searchDocuments(keywordLike, gioDienVal, taiTrongVal, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         return KetQuaTimKiemResponse.builder()
                 .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())

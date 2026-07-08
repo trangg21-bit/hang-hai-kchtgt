@@ -365,151 +365,172 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
     );
   }
 
+  const formContent = (
+    <Form
+      form={form}
+      layout="vertical"
+      onFinish={handleSubmitForm}
+      autoComplete="off"
+    >
+      <Form.Item
+        label="Loại đê"
+        name="loaiDe"
+        rules={[{ required: true, message: 'Vui lòng nhập loại đê' }]}
+      >
+        <Select
+          placeholder="Chọn loại đê"
+          options={[
+            { label: 'Đê đất', value: 'DE_DAT' },
+            { label: 'Đê bê tông', value: 'DE_BETONG' },
+            { label: 'Kè đá', value: 'KE_DA' },
+            { label: 'Kè bê tông', value: 'KE_BETONG' },
+            { label: 'Khác', value: 'KAC' },
+          ]}
+        />
+      </Form.Item>
+
+      <Form.Item
+        label="Vị trí"
+        name="viTri"
+        rules={[{ required: true, message: 'Vui lòng nhập vị trí' }]}
+      >
+        <Input placeholder="Nhập vị trí" />
+      </Form.Item>
+
+      <Form.Item
+        label="Chiều dài (m)"
+        name="chieuDai"
+        rules={[
+          {
+            validator: (_, value) => {
+              if (!value && value !== 0) return Promise.resolve();
+              if (value < 0) return Promise.reject(new Error('Phải >= 0'));
+              return Promise.resolve();
+            },
+          },
+        ]}
+      >
+        <InputNumber
+          min={0}
+          placeholder="Nhập chiều dài"
+          style={{ width: '100%' }}
+          precision={2}
+        />
+      </Form.Item>
+
+      <Form.Item
+        label="Chiều rộng (m)"
+        name="chieuRong"
+        rules={[
+          {
+            validator: (_, value) => {
+              if (!value && value !== 0) return Promise.resolve();
+              if (value < 0) return Promise.reject(new Error('Phải >= 0'));
+              return Promise.resolve();
+            },
+          },
+        ]}
+      >
+        <InputNumber
+          min={0}
+          placeholder="Nhập chiều rộng"
+          style={{ width: '100%' }}
+          precision={2}
+        />
+      </Form.Item>
+
+      <Form.Item
+        label="Chiều cao (m)"
+        name="chieuCao"
+        rules={[
+          {
+            validator: (_, value) => {
+              if (!value && value !== 0) return Promise.resolve();
+              if (value < 0) return Promise.reject(new Error('Phải >= 0'));
+              return Promise.resolve();
+            },
+          },
+        ]}
+      >
+        <InputNumber
+          min={0}
+          placeholder="Nhập chiều cao"
+          style={{ width: '100%' }}
+          precision={2}
+        />
+      </Form.Item>
+
+      <Form.Item label="Mặt vật liệu" name="matVatLieu">
+        <Input placeholder="Nhập mặt vật liệu" />
+      </Form.Item>
+
+      <Form.Item label="Tình trạng" name="tinhTrang">
+        <Select
+          placeholder="Chọn tình trạng"
+          options={[
+            { label: 'Tốt', value: 'TOT' },
+            { label: 'Xuống cấp', value: 'XUONG_CAP' },
+            { label: 'Hư hỏng', value: 'HU_HOng' },
+          ]}
+        />
+      </Form.Item>
+
+      <Form.Item
+        label="Ghi chú"
+        name="ghiChu"
+      >
+        <Input.TextArea
+          placeholder="Nhập ghi chú"
+          maxLength={500}
+          showCount
+          rows={4}
+        />
+      </Form.Item>
+
+      <Form.Item label="Tài liệu đính kèm">
+        <AttachmentList
+          attachments={record?.attachments || []}
+          readonly={false}
+        />
+      </Form.Item>
+
+      <Form.Item>
+        <Space>
+          <Button type="primary" htmlType="submit" loading={isSubmitting}>
+            {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
+          </Button>
+          <Button onClick={isModalMode ? onCancel : () => navigate('/de-ke')}>
+            Hủy
+          </Button>
+        </Space>
+      </Form.Item>
+    </Form>
+  );
+
+  if (isModalMode) {
+    return (
+      <Modal
+        title={isCreateMode ? 'Tạo mới Đê/Kè' : 'Chỉnh sửa Đê/Kè'}
+        open={open}
+        onCancel={handleCloseModal}
+        footer={null}
+        destroyOnClose
+        maskClosable={false}
+      >
+        <Spin spinning={isLoading}>
+          {formContent}
+        </Spin>
+      </Modal>
+    );
+  }
+
   // Create/Edit form view
   return (
     <div style={{ padding: '24px' }}>
       <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />
       <Card style={{ maxWidth: '800px' }}>
         <h2>{isCreateMode ? 'Tạo mới Đê/Kè' : 'Chỉnh sửa Đê/Kè'}</h2>
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSubmitForm}
-          autoComplete="off"
-        >
-          <Form.Item
-            label="Loại đê"
-            name="loaiDe"
-            rules={[{ required: true, message: 'Vui lòng chọn loại đê' }]}
-          >
-            <Select
-              placeholder="Chọn loại đê"
-              options={[
-                { label: 'Đê đất', value: 'DE_DAT' },
-                { label: 'Đê bê tông', value: 'DE_BETONG' },
-                { label: 'Kè đá', value: 'KE_DA' },
-                { label: 'Kè bê tông', value: 'KE_BETONG' },
-                { label: 'Khác', value: 'KAC' },
-              ]}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="Vị trí"
-            name="viTri"
-            rules={[{ required: true, message: 'Vui lòng nhập vị trí' }]}
-          >
-            <Input placeholder="Nhập vị trí" />
-          </Form.Item>
-
-          <Form.Item
-            label="Chiều dài (m)"
-            name="chieuDai"
-            rules={[
-              {
-                validator: (_, value) => {
-                  if (!value && value !== 0) return Promise.resolve();
-                  if (value < 0) return Promise.reject(new Error('Phải >= 0'));
-                  return Promise.resolve();
-                },
-              },
-            ]}
-          >
-            <InputNumber
-              min={0}
-              placeholder="Nhập chiều dài"
-              style={{ width: '100%' }}
-              precision={2}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="Chiều rộng (m)"
-            name="chieuRong"
-            rules={[
-              {
-                validator: (_, value) => {
-                  if (!value && value !== 0) return Promise.resolve();
-                  if (value < 0) return Promise.reject(new Error('Phải >= 0'));
-                  return Promise.resolve();
-                },
-              },
-            ]}
-          >
-            <InputNumber
-              min={0}
-              placeholder="Nhập chiều rộng"
-              style={{ width: '100%' }}
-              precision={2}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="Chiều cao (m)"
-            name="chieuCao"
-            rules={[
-              {
-                validator: (_, value) => {
-                  if (!value && value !== 0) return Promise.resolve();
-                  if (value < 0) return Promise.reject(new Error('Phải >= 0'));
-                  return Promise.resolve();
-                },
-              },
-            ]}
-          >
-            <InputNumber
-              min={0}
-              placeholder="Nhập chiều cao"
-              style={{ width: '100%' }}
-              precision={2}
-            />
-          </Form.Item>
-
-          <Form.Item label="Mặt vật liệu" name="matVatLieu">
-            <Input placeholder="Nhập mặt vật liệu" />
-          </Form.Item>
-
-          <Form.Item label="Tình trạng" name="tinhTrang">
-            <Select
-              placeholder="Chọn tình trạng"
-              options={[
-                { label: 'Tốt', value: 'TOT' },
-                { label: 'Xuống cấp', value: 'XUONG_CAP' },
-                { label: 'Hư hỏng', value: 'HU_HOng' },
-              ]}
-            />
-          </Form.Item>
-
-          <Form.Item
-            label="Ghi chú"
-            name="ghiChu"
-          >
-            <Input.TextArea
-              placeholder="Nhập ghi chú"
-              maxLength={500}
-              showCount
-              rows={4}
-            />
-          </Form.Item>
-
-          <Form.Item label="Tài liệu đính kèm">
-            <AttachmentList
-              attachments={record?.attachments || []}
-              readonly={false}
-            />
-          </Form.Item>
-
-          <Form.Item>
-            <Space>
-              <Button type="primary" htmlType="submit" loading={isSubmitting}>
-                {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
-              </Button>
-              <Button onClick={() => navigate('/de-ke')}>
-                Hủy
-              </Button>
-            </Space>
-          </Form.Item>
-        </Form>
+        {formContent}
       </Card>
     </div>
   );
