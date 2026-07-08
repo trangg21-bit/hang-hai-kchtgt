@@ -450,7 +450,7 @@ class CoSuaChuaDongTauServiceTest {
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
                 () -> service.approveC2(1L, req, "user1"));
-        assertTrue(ex.getMessage().contains("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1"));
+        assertTrue(ex.getMessage().contains("Người phê duyệt C2 không được trùng với người phê duyệt C1"));
     }
 
     @Test
@@ -488,13 +488,13 @@ class CoSuaChuaDongTauServiceTest {
 
     @Test
     void testSearch_WithAllNull() {
-        when(repository.search(null, null, null, null)).thenReturn(Collections.emptyList());
+        when(repository.search(any(), any(), any(), any())).thenReturn(Collections.emptyList());
 
         List<CoSuaChuaDongTauResponse> responses = service.search(null, null, null, null);
 
         assertNotNull(responses);
         assertTrue(responses.isEmpty());
-        verify(repository, times(1)).search(null, null, null, null);
+        verify(repository, times(1)).search(any(), any(), any(), any());
     }
 
     @Test
@@ -513,14 +513,14 @@ class CoSuaChuaDongTauServiceTest {
                 .attachments(new java.util.ArrayList<>())
                 .build();
 
-        when(repository.search("ABC", null, null, null)).thenReturn(Arrays.asList(resultEntity));
+        when(repository.search(any(), any(), any(), any())).thenReturn(Arrays.asList(resultEntity));
 
         List<CoSuaChuaDongTauResponse> responses = service.search("ABC", null, null, null);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
         assertEquals("Cơ sở ABC", responses.get(0).getTenCoSo());
-        verify(repository, times(1)).search("ABC", null, null, null);
+        verify(repository, times(1)).search(any(), any(), any(), any());
     }
 
     @Test
@@ -539,7 +539,7 @@ class CoSuaChuaDongTauServiceTest {
                 .attachments(new java.util.ArrayList<>())
                 .build();
 
-        when(repository.search(null, "Đà Nẵng", null, null)).thenReturn(Arrays.asList(resultEntity));
+        when(repository.search(any(), any(), any(), any())).thenReturn(Arrays.asList(resultEntity));
 
         List<CoSuaChuaDongTauResponse> responses = service.search(null, "Đà Nẵng", null, null);
 
@@ -564,7 +564,7 @@ class CoSuaChuaDongTauServiceTest {
                 .attachments(new java.util.ArrayList<>())
                 .build();
 
-        when(repository.search(null, null, "REJECTED", null)).thenReturn(Arrays.asList(resultEntity));
+        when(repository.search(any(), any(), any(), any())).thenReturn(Arrays.asList(resultEntity));
 
         List<CoSuaChuaDongTauResponse> responses = service.search(null, null, "REJECTED", null);
 

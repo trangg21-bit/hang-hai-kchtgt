@@ -6,7 +6,7 @@ status: implemented
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
-last-updated: 2026-07-02T12:00:00Z
+last-updated: 2026-07-08T01:10:43Z
 current-stage: final
 output-mode: lean
 repo-type: mini
@@ -81,4 +81,5 @@ none
 |---|---|---|
 | 2026-07-01 | QA wave-1 Fail — SF-001..004 closed (0 unprotected), but: LuongHangHai test ctx-load fail (19), CoSuaChua test ClassCast (ApiResponse unwrap), RBAC deny-path tests missing (5 domains) | dev-wave-2 test rework #1 |
 | 2026-07-01 | security-review Changes requested: RBAC enforced (0 unprotected) but 4 HIGH: @Valid missing (3 ctrls), mass-assignment (createdBy/updatedBy/approvalStatus), C1/C2 self-approval, IDOR org-scope. IDOR=false-positive (M-003 has no orgUnitId field, national assets, no org-scope requirement). | dev-wave-3 rework #2: fix @Valid + mass-assignment + C1/C2 guard; IDOR N/A |
+| 2026-07-07 | Audit (Trịnh Thùy Trang): 9 findings (6 confirmed, 3 rejected). B1 HIGH — approver identity client-controllable (luonghanghai + deke bind from body, C1/C2 guard bypassable). F1 HIGH — ApiResponse envelope not unwrapped in resilient.ts (VTS + LHH + DeKe list broken). E1 MEDIUM — E2E specs stale (placeholder). S1-S3 registry drift. | fix/m-003-audit: 8 commits. Bind approver from Authentication (luonghanghai, deke). unwrapEnvelope() in resilient.ts. Rewrite 5 E2E specs. Fix module-map + implementations.yaml. Delete orphan M-003-quan-ly-tau-be. +2 B1 regression tests. Verified: 241/241 backend tests pass, tsc 0 errors. |
 
