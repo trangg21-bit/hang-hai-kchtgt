@@ -60,9 +60,8 @@ public class NhaTramPhaoService {
 
     @Transactional
     public NhaTramPhaoResponse create(CreateNhaTramPhaoRequest request) {
-        if (phaoRepo.existsByCode(request.getCode())
-                || denRepo.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Đã tồn tại: " + request.getCode());
+        if (phaoRepo.existsByCode(request.getCode())) {
+            throw new IllegalArgumentException("Mã nhà trạm phao tiêu đã tồn tại: " + request.getCode());
         }
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
@@ -125,7 +124,7 @@ public class NhaTramPhaoService {
         if (request.getType() != null && request.getType() != entity.getType()) {
             if (isApprovedStatus(entity.getStatus())) {
                 throw new IllegalArgumentException(
-                        "Loai nhà trạm phao khong the thay doi khi da duoc phê duyệt.");
+                        "Loại nhà trạm phao không thể thay đổi khi đã được phê duyệt.");
             }
             entity.setType(request.getType());
         }
@@ -283,7 +282,7 @@ public class NhaTramPhaoService {
 
         if (rejectReason == null || rejectReason.length() < 10) {
             throw new IllegalArgumentException(
-                    "Lý do từ chối phai co ít nhất 10 ký tự");
+                    "Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
         entity.setStatus(NhaTramStatus.DRAFT);
@@ -416,6 +415,7 @@ public class NhaTramPhaoService {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private String getChangedFields(String oldJson, String newJson) {
         try {
             Map<String, Object> oldMap = objectMapper.readValue(oldJson, Map.class);

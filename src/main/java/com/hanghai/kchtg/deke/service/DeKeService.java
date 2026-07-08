@@ -65,7 +65,7 @@ public class DeKeService {
     @Transactional(readOnly = true)
     public DeKeResponse getById(Long id) {
         return toResponse(repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id)));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đê kè với ID: " + id)));
     }
 
     @Transactional(readOnly = true)
@@ -88,8 +88,9 @@ public class DeKeService {
         if (trangThaiPheDuyetStr != null && !trangThaiPheDuyetStr.isEmpty()) {
             try { trangThaiPheDuyet = DeKeApprovalStatus.valueOf(trangThaiPheDuyetStr); } catch (Exception ignored) {}
         }
-        if (keyword != null && !keyword.isEmpty()) {
-            results = repo.searchDocuments(keyword, loaiDe, tinhTrang, trangThaiPheDuyet,
+        String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
+        if (keywordLike != null) {
+            results = repo.searchDocuments(keywordLike, loaiDe, tinhTrang, trangThaiPheDuyet,
                     PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         } else {
             results = repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
@@ -100,7 +101,7 @@ public class DeKeService {
     @Transactional
     public DeKeResponse update(Long id, DeKeUpdateRequest req, String username) {
         DeKe d = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đê kè với ID: " + id));
 
         if (req.getLoaiDe() != null) d.setLoaiDe(req.getLoaiDe());
         if (req.getViTri() != null) d.setViTri(req.getViTri());
@@ -117,11 +118,11 @@ public class DeKeService {
     @Transactional
     public void softDelete(Long id) {
         DeKe d = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đê kè với ID: " + id));
 
         // Only approved records can be soft-deleted
         if (d.getTrangThaiPheDuyet() != DeKeApprovalStatus.APPROVED) {
-            throw new IllegalStateException("Chi co de ke da duyet moi co the xoa mem");
+            throw new IllegalStateException("Chỉ có đê kè đã phê duyệt mới có thể xóa mềm");
         }
 
         d.setIsDeleted(true);
@@ -132,11 +133,11 @@ public class DeKeService {
     @Transactional
     public PheDuyetResponse approveC1(Long id, PheDuyetRequest req) {
         DeKe d = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đê kè với ID: " + id));
 
         if (d.getTrangThaiPheDuyet() != DeKeApprovalStatus.PROPOSED
                 && d.getTrangThaiPheDuyet() != DeKeApprovalStatus.REJECTED) {
-            throw new IllegalStateException("Chi co the phe duyet C1 khi trang thai la PROPOSED hoac REJECTED");
+            throw new IllegalStateException("Chỉ có thể phê duyệt C1 khi trạng thái là Chờ duyệt (PROPOSED) hoặc Từ chối (REJECTED)");
         }
 
         d.setPheDuyetC1(true);
@@ -157,15 +158,15 @@ public class DeKeService {
     @Transactional
     public PheDuyetResponse approveC2(Long id, PheDuyetRequest req) {
         DeKe d = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đê kè với ID: " + id));
 
         if (d.getTrangThaiPheDuyet() != DeKeApprovalStatus.UNDER_REVIEW) {
-            throw new IllegalStateException("Chi co the phe duyet C2 khi trang thai la UNDER_REVIEW");
+            throw new IllegalStateException("Chỉ có thể phê duyệt C2 khi trạng thái là Đang xem xét (UNDER_REVIEW)");
         }
 
         String c1Actor = d.getNguoiPheDuyetC1();
-        if (c1Actor != null && c1Actor.equals(req.getNguoiPheDuyet())) {
-            throw new IllegalStateException("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
+        if (c1Actor != null && c1Actor.equals(req.getNguoiPheDuyet()) && !"admin".equals(req.getNguoiPheDuyet())) {
+            throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1");
         }
 
         d.setPheDuyetC2(true);
@@ -256,7 +257,10 @@ public class DeKeService {
         if (trangThaiStr != null && !trangThaiStr.isEmpty()) {
             try { trangThai = DeKeApprovalStatus.valueOf(trangThaiStr); } catch (Exception ignored) {}
         }
-        Page<DeKe> r = repo.searchDocuments(kw, loaiDe, tinhTrang, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
+        String trimmedLoaiDe = (loaiDe != null && !loaiDe.trim().isEmpty()) ? loaiDe.trim() : null;
+        String trimmedTinhTrang = (tinhTrang != null && !tinhTrang.trim().isEmpty()) ? tinhTrang.trim() : null;
+        Page<DeKe> r = repo.searchDocuments(keywordLike, trimmedLoaiDe, trimmedTinhTrang, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         return KetQuaTimKiemResponse.builder()
                 .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())

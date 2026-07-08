@@ -6,6 +6,7 @@ import {
   Input,
   InputNumber,
   DatePicker,
+  TimePicker,
   Card,
   Spin,
   Empty,
@@ -13,6 +14,7 @@ import {
   Space,
   message,
   Breadcrumb,
+  Modal,
 } from 'antd';
 import dayjs from 'dayjs';
 import { luongHangHaiCRUD, luongHangHaiApproval } from '../../services/luongHangHaiService';
@@ -29,17 +31,27 @@ import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 
-export default function LuongHangHaiForm() {
+export interface LuongHangHaiFormProps {
+  open?: boolean;
+  editId?: string | null;
+  mode?: 'create' | 'edit' | 'detail';
+  onCancel?: () => void;
+  onSuccess?: () => void;
+}
+
+export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSuccess }: LuongHangHaiFormProps = {}) {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const routeParams = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
 
-  const isEditMode = searchParams.get('mode') === 'edit';
-  const isDetailMode = !!id && !isEditMode;
-  const isCreateMode = !id;
+  const isModalMode = open !== undefined;
+  const id = isModalMode ? (editId || undefined) : routeParams.id;
+  const isEditMode = isModalMode ? (mode === 'edit') : searchParams.get('mode') === 'edit';
+  const isDetailMode = isModalMode ? (mode === 'detail') : (!!id && !isEditMode);
+  const isCreateMode = isModalMode ? (mode === 'create') : !id;
 
   const [record, setRecord] = useState<LuongHangHaiResponse | null>(null);
   const [history, setHistory] = useState<any[]>([]);
@@ -58,17 +70,15 @@ export default function LuongHangHaiForm() {
         try {
           const data = await luongHangHaiCRUD.getById(id);
           setRecord(data);
-          if (!isEditMode) {
-            form.setFieldsValue({
-              loaiTau: data.loaiTau,
-              soLuong: data.soLuong,
-              ngayGhiNhan: data.ngayGhiNhan ? dayjs(data.ngayGhiNhan) : null,
-              gioDien: data.gioDien,
-              taiTrong: data.taiTrong,
-              dienTichDangBo: data.dienTichDangBo,
-              ghiChu: data.ghiChu,
-            });
-          }
+          form.setFieldsValue({
+            loaiTau: data.loaiTau,
+            soLuong: data.soLuong,
+            ngayGhiNhan: data.ngayGhiNhan ? dayjs(data.ngayGhiNhan) : null,
+            gioDien: data.gioDien ? dayjs(data.gioDien, 'HH:mm') : null,
+            taiTrong: data.taiTrong,
+            dienTichDangBo: data.dienTichDangBo,
+            ghiChu: data.ghiChu,
+          });
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
         } finally {
@@ -76,8 +86,11 @@ export default function LuongHangHaiForm() {
         }
       };
       loadData();
+    } else {
+      form.resetFields();
+      setRecord(null);
     }
-  }, [id, isEditMode, form]);
+  }, [id, isEditMode, form, open]);
 
   // Fetch history
   useEffect(() => {
@@ -96,7 +109,7 @@ export default function LuongHangHaiForm() {
       };
       loadHistory();
     }
-  }, [id, isDetailMode]);
+  }, [id, isDetailMode, open]);
 
   const handleSubmitForm = async (values: any) => {
     setIsSubmitting(true);
@@ -105,7 +118,7 @@ export default function LuongHangHaiForm() {
         loaiTau: values.loaiTau,
         soLuong: values.soLuong,
         ngayGhiNhan: values.ngayGhiNhan ? values.ngayGhiNhan.format('YYYY-MM-DD') : undefined,
-        gioDien: values.gioDien,
+        gioDien: values.gioDien ? values.gioDien.format('HH:mm') : undefined,
         taiTrong: values.taiTrong,
         dienTichDangBo: values.dienTichDangBo,
         ghiChu: values.ghiChu,
@@ -114,11 +127,19 @@ export default function LuongHangHaiForm() {
       if (isCreateMode) {
         const newRecord = await luongHangHaiCRUD.create(payload as CreateLuongHangHaiRequest);
         message.success('Tạo mới thành công');
-        navigate(`/luong-hang-hai/${newRecord.id}`);
+        if (isModalMode) {
+          onSuccess?.();
+        } else {
+          navigate(`/luong-hang-hai/${newRecord.id}`);
+        }
       } else if (id && isEditMode) {
         await luongHangHaiCRUD.update(id, payload as UpdateLuongHangHaiRequest);
         message.success('Cập nhật thành công');
-        navigate(`/luong-hang-hai/${id}`);
+        if (isModalMode) {
+          onSuccess?.();
+        } else {
+          navigate(`/luong-hang-hai/${id}`);
+        }
       }
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
@@ -214,11 +235,10 @@ export default function LuongHangHaiForm() {
 
   // Detail/Read-only view
   if (isDetailMode) {
-    return (
-      <div style={{ padding: '24px' }}>
-        <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />
-        <Card style={{ marginBottom: '24px' }}>
-          <h2>Chi tiết Luồng Hàng Hải</h2>
+    const detailContent = (
+      <Spin spinning={isLoading}>
+        <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
+          {!isModalMode && <h2>Chi tiết Luồng Hàng Hải</h2>}
           {record && (
             <Descriptions column={2} bordered size="small">
               <Descriptions.Item label="Loại tàu">{record.loaiTau}</Descriptions.Item>
@@ -241,7 +261,7 @@ export default function LuongHangHaiForm() {
 
         {/* Tài liệu đính kèm */}
         {record?.attachments && record.attachments.length > 0 && (
-          <Card style={{ marginBottom: '24px' }}>
+          <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
             <h3>Tài liệu đính kèm</h3>
             <AttachmentList attachments={record.attachments} readonly={true} />
           </Card>
@@ -249,7 +269,7 @@ export default function LuongHangHaiForm() {
 
         {/* Approval Action Bar */}
         {record && (
-          <Card style={{ marginBottom: '24px' }}>
+          <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
             <ApprovalActionBar
               currentStatus={record.approvalStatus as ApprovalStatus}
               permissions={userPermissions}
@@ -264,7 +284,7 @@ export default function LuongHangHaiForm() {
 
         {/* History Timeline */}
         {record && (
-          <Card>
+          <Card bordered={!isModalMode}>
             <h3>Lịch sử phê duyệt</h3>
             <HistoryTimeline
               history={history}
@@ -281,7 +301,133 @@ export default function LuongHangHaiForm() {
             />
           </Card>
         )}
+      </Spin>
+    );
+
+    if (isModalMode) {
+      return (
+        <Modal
+          title="Chi tiết Luồng Hàng Hải"
+          open={open}
+          onCancel={onCancel}
+          footer={null}
+          width={900}
+          destroyOnClose
+          maskClosable={false}
+        >
+          {detailContent}
+        </Modal>
+      );
+    }
+
+    return (
+      <div style={{ padding: '24px' }}>
+        <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />
+        {detailContent}
       </div>
+    );
+  }
+
+  if (isModalMode) {
+    return (
+      <Modal
+        title={isCreateMode ? 'Tạo mới Luồng Hàng Hải' : 'Chỉnh sửa Luồng Hàng Hải'}
+        open={open}
+        onCancel={onCancel}
+        footer={null}
+        destroyOnClose
+        maskClosable={false}
+      >
+        <Spin spinning={isLoading}>
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmitForm}
+            autoComplete="off"
+          >
+            <Form.Item
+              label="Loại tàu"
+              name="loaiTau"
+              rules={[{ required: true, message: 'Vui lòng nhập loại tàu' }]}
+            >
+              <Input placeholder="Nhập loại tàu" />
+            </Form.Item>
+
+            <Form.Item
+              label="Số lượng"
+              name="soLuong"
+              rules={[
+                { pattern: /^\d+$/, message: 'Phải là số nguyên' },
+                {
+                  validator: (_, value) => {
+                    if (value === null || value === undefined || value === '') return Promise.resolve();
+                    if (Number(value) > 2147483647) {
+                      return Promise.reject(new Error('Số lượng không được vượt quá 2,147,483,647'));
+                    }
+                    return Promise.resolve();
+                  }
+                }
+              ]}
+            >
+              <InputNumber min={0} max={2147483647} placeholder="Nhập số lượng" style={{ width: '100%' }} />
+            </Form.Item>
+
+            <Form.Item
+              label="Ngày ghi nhận"
+              name="ngayGhiNhan"
+              rules={[
+                {
+                  validator: (_, value) => {
+                    if (!value) return Promise.resolve();
+                    if (dayjs(value).isAfter(dayjs())) {
+                      return Promise.reject(new Error('Ngày ghi nhận không được là ngày tương lai'));
+                    }
+                    return Promise.resolve();
+                  },
+                },
+              ]}
+            >
+              <DatePicker placeholder="Chọn ngày ghi nhận" />
+            </Form.Item>
+
+            <Form.Item label="Giờ điện" name="gioDien">
+              <TimePicker format="HH:mm" placeholder="Chọn giờ điện" style={{ width: '100%' }} />
+            </Form.Item>
+
+            <Form.Item
+              label="Tải trọng (DWT)"
+              name="taiTrong"
+            >
+              <InputNumber min={0} max={999999999999} placeholder="Nhập tải trọng" style={{ width: '100%' }} />
+            </Form.Item>
+
+            <Form.Item
+              label="Diện tích đăng bộ"
+              name="dienTichDangBo"
+            >
+              <InputNumber min={0} max={999999999999} placeholder="Nhập diện tích đăng bộ" style={{ width: '100%' }} />
+            </Form.Item>
+
+            <Form.Item label="Ghi chú" name="ghiChu">
+              <Input.TextArea
+                placeholder="Nhập ghi chú"
+                maxLength={500}
+                showCount
+                rows={4}
+              />
+            </Form.Item>
+
+            <Form.Item>
+              <Space style={{ display: 'flex', justifyContent: 'end', marginTop: 16 }}>
+                <Button onClick={onCancel}>Hủy</Button>
+                <Button type="primary" htmlType="submit" loading={isSubmitting}>
+                  {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Spin>
+      </Modal>
     );
   }
 
@@ -310,9 +456,18 @@ export default function LuongHangHaiForm() {
             name="soLuong"
             rules={[
               { pattern: /^\d+$/, message: 'Phải là số nguyên' },
+              {
+                validator: (_, value) => {
+                  if (value === null || value === undefined || value === '') return Promise.resolve();
+                  if (Number(value) > 2147483647) {
+                    return Promise.reject(new Error('Số lượng không được vượt quá 2,147,483,647'));
+                  }
+                  return Promise.resolve();
+                }
+              }
             ]}
           >
-            <InputNumber min={0} placeholder="Nhập số lượng" />
+            <InputNumber min={0} max={2147483647} placeholder="Nhập số lượng" style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
@@ -334,23 +489,21 @@ export default function LuongHangHaiForm() {
           </Form.Item>
 
           <Form.Item label="Giờ điện" name="gioDien">
-            <Input placeholder="Nhập giờ điện" />
+            <TimePicker format="HH:mm" placeholder="Chọn giờ điện" style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
             label="Tải trọng (DWT)"
             name="taiTrong"
-            rules={[{ pattern: /^\d+(\.\d+)?$/, message: 'Phải là số' }]}
           >
-            <InputNumber min={0} placeholder="Nhập tải trọng" />
+            <InputNumber min={0} max={999999999999} placeholder="Nhập tải trọng" style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item
             label="Diện tích đăng bộ"
             name="dienTichDangBo"
-            rules={[{ pattern: /^\d+(\.\d+)?$/, message: 'Phải là số' }]}
           >
-            <InputNumber min={0} placeholder="Nhập diện tích đăng bộ" />
+            <InputNumber min={0} max={999999999999} placeholder="Nhập diện tích đăng bộ" style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item label="Ghi chú" name="ghiChu">

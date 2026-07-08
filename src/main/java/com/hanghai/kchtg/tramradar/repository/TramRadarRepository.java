@@ -18,9 +18,9 @@ public interface TramRadarRepository extends JpaRepository<TramRadar, Long> {
     @Query("""
         SELECT t FROM TramRadar t
         WHERE (:keyword IS NULL OR
-            LOWER(t.tenTram) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
-            LOWER(t.viTri) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
-            LOWER(t.loaiTram) LIKE LOWER(CONCAT('%', :keyword, '%')))
+            LOWER(t.tenTram) LIKE :keyword OR
+            LOWER(t.viTri) LIKE :keyword OR
+            LOWER(t.loaiTram) LIKE :keyword)
           AND (:tinhTrang IS NULL OR t.tinhTrang = :tinhTrang)
           AND (:trangThai IS NULL OR t.trangThai = :trangThai)
         ORDER BY t.ngayTao DESC

@@ -39,11 +39,11 @@ public class VanBanPhapLyController {
      */
     @GetMapping
     @PreAuthorize("@auth.check(authentication, 'vanban:read')")
-    public ResponseEntity<ApiResponse<List<VanBanPhapLyResponse>>> listVanBan(
+    public ResponseEntity<ApiResponse<Page<VanBanPhapLyResponse>>> listVanBan(
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
         Page<VanBanPhapLyResponse> result = vanBanPhapLyService.findAll(page, size);
-        return ResponseEntity.ok(ApiResponse.success(result.getContent()));
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     /**

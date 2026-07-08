@@ -9,6 +9,8 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.hibernate.annotations.SQLRestriction;
+
 /**
  * Entity kế hoạch kiểm kê tài sản KCHTGT (F-125).
  */
@@ -18,6 +20,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@SQLRestriction("deleted = false")
 public class KeHoachKiemKe {
 
     @Id

@@ -38,9 +38,12 @@ public class HeThongVTSController {
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
     @GetMapping
     public ResponseEntity<ApiResponse<Page<HeThongVTSResponse>>> findAll(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String tinhTrang,
+            @RequestParam(required = false) String trangThai,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<HeThongVTSResponse> responses = service.findAll(page, size);
+        Page<HeThongVTSResponse> responses = service.findAllWithSearch(keyword, tinhTrang, trangThai, page, size);
         return ResponseEntity.ok(ApiResponse.success("Danh sách hệ thống VTS", responses));
     }
 
@@ -123,6 +126,6 @@ public class HeThongVTSController {
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
             @PathVariable Long id) {
         List<HistoryEntry> entries = service.getHistory(id);
-        return ResponseEntity.ok(ApiResponse.success("Lịch sử thành công", entries));
+        return ResponseEntity.ok(ApiResponse.success("Lịch sử phê duyệt thành công", entries));
     }
 }

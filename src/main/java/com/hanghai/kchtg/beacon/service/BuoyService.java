@@ -9,7 +9,6 @@ import com.hanghai.kchtg.beacon.entity.*;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
-import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +26,7 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@SuppressWarnings("null")
 public class BuoyService {
 
     private final BuoyRepository buoyRepo;
@@ -291,7 +291,7 @@ public class BuoyService {
 
         if (rejectReason == null || rejectReason.length() < 10) {
             throw new IllegalArgumentException(
-                    "Lý do từ chối phai co ít nhất 10 ký tự");
+                    "Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
         entity.setStatus(BeaconStatus.DRAFT);
@@ -352,7 +352,7 @@ public class BuoyService {
         String unitName = null;
         if (entity.getUnitId() != null) {
             unitName = orgUnitRepo.findById(entity.getUnitId())
-                    .map(OrgUnit::getName)
+                    .map(unit -> unit.getName())
                     .orElse(null);
         }
 
@@ -435,6 +435,7 @@ public class BuoyService {
 
     // -- BUG FIX #3: Actual field diff instead of static string --
 
+    @SuppressWarnings("unchecked")
     private String getChangedFields(String oldJson, String newJson) {
         try {
             Map<String, Object> oldMap = objectMapper.readValue(oldJson, Map.class);

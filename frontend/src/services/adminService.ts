@@ -77,14 +77,14 @@ function extractData<T>(response: any): T {
 }
 
 // ============================================================
-// Service -- real API calls
+// Service -- real API calls mapped to backend /users
 // ============================================================
 
 export const adminService = {
   /**
-   * GET /api/admin-accounts
-   * Note: Backend returns flat list (no pagination endpoint).
-   * Frontend applies pagination client-side for UI consistency.
+   * GET /api/users
+   * Note: Backend returns paginated list of users.
+   * We request a large size=100 to get a list and filter client-side for consistency with existing code.
    */
   async list(
     params?: {
@@ -95,8 +95,9 @@ export const adminService = {
       status?: Status;
     }
   ): Promise<PaginatedResponse<Admin>> {
-    const resp = await api.get("/admin-accounts");
-    const items: any[] = extractData(resp) ?? [];
+    const resp = await api.get("/users?size=100");
+    const pageData: any = extractData(resp);
+    const items: any[] = pageData?.content ?? [];
 
     // Client-side filtering (backend has no paginated/list filters yet)
     let filtered: any[] = [...items];
@@ -153,12 +154,12 @@ export const adminService = {
   },
 
   /**
-   * GET /api/admin-accounts/:id
+   * GET /api/users/:id
    */
   async getById(id: string): Promise<Admin> {
-    const resp = await api.get(`/admin-accounts/${id}`);
+    const resp = await api.get(`/users/${id}`);
     const item: any = extractData(resp);
-    if (!item) throw new Error("Quáº£n trá»‹ viÃªn khÃ´ng tá»“n táº¡i");
+    if (!item) throw new Error("Quản trị viên không tồn tại");
 
     return {
       id: item.id ?? String(item.userId),
@@ -180,11 +181,10 @@ export const adminService = {
   },
 
   /**
-   * POST /api/admin-accounts
-   * Now: Backend CreateAdminWithUserRequest expects { username, password, fullName, email, phone, role }.
+   * POST /api/users
    */
   async create(payload: CreateAdminPayload): Promise<Admin> {
-    const resp = await api.post("/admin-accounts", {
+    const resp = await api.post("/users", {
       username: payload.username,
       password: payload.password,
       fullName: payload.fullName,
@@ -209,16 +209,14 @@ export const adminService = {
   },
 
   /**
-   * PUT /api/admin-accounts/:id
+   * PUT /api/users/:id
    */
   async update(id: string, payload: UpdateAdminPayload): Promise<Admin> {
-    const resp = await api.put(`/admin-accounts/${id}`, {
-      role: payload.roleId,
-      status: payload.status?.toUpperCase(),
+    const resp = await api.put(`/users/${id}`, {
       fullName: payload.fullName,
       email: payload.email,
       phone: payload.phone,
-      modules: [],
+      role: payload.roleId,
     });
     const item: any = extractData(resp);
 
@@ -242,24 +240,25 @@ export const adminService = {
   },
 
   /**
-   * DELETE /api/admin-accounts/:id
+   * DELETE /api/users/:id
    */
   async delete(id: string): Promise<void> {
-    await api.delete(`/admin-accounts/${id}`);
+    await api.delete(`/users/${id}`);
   },
 
   /**
-   * Toggle admin lock status -> maps to PUT /admin-accounts/:id with status update.
+   * Toggle admin lock status -> maps to POST /users/:id/lock or /users/:id/unlock
    */
   async toggleLock(id: string): Promise<Admin> {
-    // Fetch current status first
     const current = await this.getById(id);
     const newStatus = current.status === "locked" ? "active" : "locked";
 
-    const resp = await api.put(`/admin-accounts/${id}`, {
-      status: newStatus.toUpperCase(),
-      modules: [],
-    });
+    let resp;
+    if (newStatus === "locked") {
+      resp = await api.post(`/users/${id}/lock`);
+    } else {
+      resp = await api.post(`/users/${id}/unlock`);
+    }
     const item: any = extractData(resp);
 
     return {
@@ -274,8 +273,9 @@ export const adminService = {
       createdAt: item.createdAt
         ? new Date(item.createdAt).toISOString()
         : current.createdAt,
-      updatedAt:
-        item.updatedAt?.toISOString() ?? new Date().toISOString(),
+      updatedAt: item.updatedAt
+        ? new Date(item.updatedAt).toISOString()
+        : new Date().toISOString(),
     };
   },
 

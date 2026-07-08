@@ -15,6 +15,9 @@ import java.util.List;
 @Repository
 public interface VanBanPhapLyRepository extends JpaRepository<VanBanPhapLy, Long> {
 
+    boolean existsBySoHieu(String soHieu);
+    boolean existsBySoHieuAndIdNot(String soHieu, Long id);
+
     /** Find by legal status */
     List<VanBanPhapLy> findByTinhTrangHieuLuc(TinhTrangHieuLuc tinhTrangHieuLuc);
 

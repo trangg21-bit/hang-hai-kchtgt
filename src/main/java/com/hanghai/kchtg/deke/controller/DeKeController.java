@@ -29,13 +29,13 @@ public class DeKeController {
     public ResponseEntity<ApiResponse<DeKeResponse>> create(
             @RequestBody @Valid DeKeCreateRequest req,
             Authentication authentication) {
-        return ResponseEntity.ok(ApiResponse.success("Tao de ke thanh cong", service.create(req, authentication.getName())));
+        return ResponseEntity.ok(ApiResponse.success("Tạo mới thành công", service.create(req, authentication.getName())));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'deke:read')")
     public ResponseEntity<ApiResponse<DeKeResponse>> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(service.getById(id)));
+        return ResponseEntity.ok(ApiResponse.success("Xem chi tiết thành công", service.getById(id)));
     }
 
     @GetMapping
@@ -43,7 +43,7 @@ public class DeKeController {
     public ResponseEntity<ApiResponse<List<DeKeResponse>>> list(
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.success(service.findAll(page, size).getContent()));
+        return ResponseEntity.ok(ApiResponse.success("Danh sách đê kè", service.findAll(page, size).getContent()));
     }
 
     @PutMapping("/{id}")
@@ -52,14 +52,14 @@ public class DeKeController {
             @PathVariable Long id,
             @RequestBody @Valid DeKeUpdateRequest req,
             Authentication authentication) {
-        return ResponseEntity.ok(ApiResponse.success("Cap nhat de ke thanh cong", service.update(id, req, authentication.getName())));
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", service.update(id, req, authentication.getName())));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'deke:delete')")
     public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable Long id) {
         service.softDelete(id);
-        return ResponseEntity.ok(ApiResponse.success("Xoa mem de ke thanh cong", null));
+        return ResponseEntity.ok(ApiResponse.success("Xóa thành công", null));
     }
 
     @PostMapping("/{id}/approve/c1")
@@ -67,7 +67,7 @@ public class DeKeController {
     public ResponseEntity<ApiResponse<PheDuyetResponse>> approveC1(
             @PathVariable Long id,
             @RequestBody @Valid PheDuyetRequest req) {
-        return ResponseEntity.ok(ApiResponse.success("Phe duyet C1 thanh cong", service.approveC1(id, req)));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", service.approveC1(id, req)));
     }
 
     @PostMapping("/{id}/approve/c2")
@@ -75,19 +75,19 @@ public class DeKeController {
     public ResponseEntity<ApiResponse<PheDuyetResponse>> approveC2(
             @PathVariable Long id,
             @RequestBody @Valid PheDuyetRequest req) {
-        return ResponseEntity.ok(ApiResponse.success("Phe duyet C2 thanh cong", service.approveC2(id, req)));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", service.approveC2(id, req)));
     }
 
     @GetMapping("/{id}/history")
     @PreAuthorize("@auth.check(authentication, 'deke:read')")
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getApprovalHistory(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(service.getApprovalHistory(id)));
+        return ResponseEntity.ok(ApiResponse.success("Lịch sử phê duyệt thành công", service.getApprovalHistory(id)));
     }
 
     @GetMapping("/status-phe-duyet/{trangThai}")
     @PreAuthorize("@auth.check(authentication, 'deke:read')")
     public ResponseEntity<ApiResponse<List<DeKeResponse>>> filterByStatus(@PathVariable String trangThai) {
-        return ResponseEntity.ok(ApiResponse.success(service.findByTrangThaiPheDuyet(DeKeApprovalStatus.valueOf(trangThai))));
+        return ResponseEntity.ok(ApiResponse.success("Danh sách đê kè theo trạng thái", service.findByTrangThaiPheDuyet(DeKeApprovalStatus.valueOf(trangThai))));
     }
 
     @GetMapping("/search")
@@ -99,6 +99,6 @@ public class DeKeController {
             @RequestParam(name = "trangThaiPheDuyet", required = false) String trangThaiPheDuyet,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.success(service.searchDocuments(keyword, loaiDe, tinhTrang, trangThaiPheDuyet, page, size)));
+        return ResponseEntity.ok(ApiResponse.success("Tìm kiếm thành công", service.searchDocuments(keyword, loaiDe, tinhTrang, trangThaiPheDuyet, page, size)));
     }
 }

@@ -20,6 +20,7 @@ public class SuCoCreateRequest {
     @NotBlank(message = "Vị trí không được để trống")
     private String viTri;
 
+    private String thoiGianPhatHien;
     private String moTa;
     private MucDoNghiemTrong mucDoNghiemTrong;
     private TinhTrangXuLy tinhTrangXuLy;

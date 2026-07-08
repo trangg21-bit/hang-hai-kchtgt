@@ -30,13 +30,13 @@ public class LuongHangHaiController {
             @RequestBody @Valid LuongHangHaiCreateRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("Tao luong hang hai thanh cong", service.create(req, username)));
+        return ResponseEntity.ok(ApiResponse.success("Tạo mới thành công", service.create(req, username)));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'luonghanghai:read')")
     public ResponseEntity<ApiResponse<LuongHangHaiResponse>> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(service.getById(id)));
+        return ResponseEntity.ok(ApiResponse.success("Xem chi tiết thành công", service.getById(id)));
     }
 
     @GetMapping
@@ -44,7 +44,7 @@ public class LuongHangHaiController {
     public ResponseEntity<ApiResponse<List<LuongHangHaiResponse>>> list(
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.success(service.findAll(page, size).getContent()));
+        return ResponseEntity.ok(ApiResponse.success("Danh sách luồng hàng hải", service.findAll(page, size).getContent()));
     }
 
     @PutMapping("/{id}")
@@ -54,14 +54,14 @@ public class LuongHangHaiController {
             @RequestBody @Valid LuongHangHaiUpdateRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("Cap nhat luong hang hai thanh cong", service.update(id, req, username)));
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", service.update(id, req, username)));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'luonghanghai:delete')")
     public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable Long id) {
         service.softDelete(id);
-        return ResponseEntity.ok(ApiResponse.success("Xoa mem luong hang hai thanh cong", null));
+        return ResponseEntity.ok(ApiResponse.success("Xóa thành công", null));
     }
 
     @PostMapping("/{id}/approve/c1")
@@ -69,7 +69,7 @@ public class LuongHangHaiController {
     public ResponseEntity<ApiResponse<PheDuyetResponse>> approveC1(
             @PathVariable Long id,
             @RequestBody @Valid PheDuyetRequest req) {
-        return ResponseEntity.ok(ApiResponse.success("Phe duyet C1 thanh cong", service.approveC1(id, req)));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", service.approveC1(id, req)));
     }
 
     @PostMapping("/{id}/approve/c2")
@@ -77,19 +77,19 @@ public class LuongHangHaiController {
     public ResponseEntity<ApiResponse<PheDuyetResponse>> approveC2(
             @PathVariable Long id,
             @RequestBody @Valid PheDuyetRequest req) {
-        return ResponseEntity.ok(ApiResponse.success("Phe duyet C2 thanh cong", service.approveC2(id, req)));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", service.approveC2(id, req)));
     }
 
     @GetMapping("/{id}/history")
     @PreAuthorize("@auth.check(authentication, 'luonghanghai:read')")
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getApprovalHistory(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.success(service.getApprovalHistory(id)));
+        return ResponseEntity.ok(ApiResponse.success("Lịch sử phê duyệt thành công", service.getApprovalHistory(id)));
     }
 
     @GetMapping("/status-phe-duyet/{trangThai}")
     @PreAuthorize("@auth.check(authentication, 'luonghanghai:read')")
     public ResponseEntity<ApiResponse<List<LuongHangHaiResponse>>> filterByStatus(@PathVariable String trangThai) {
-        return ResponseEntity.ok(ApiResponse.success(service.findByApprovalStatus(LuongHangHaiApprovalStatus.valueOf(trangThai))));
+        return ResponseEntity.ok(ApiResponse.success("Danh sách luồng hàng hải theo trạng thái", service.findByApprovalStatus(LuongHangHaiApprovalStatus.valueOf(trangThai))));
     }
 
     @GetMapping("/search")
@@ -101,6 +101,6 @@ public class LuongHangHaiController {
             @RequestParam(name = "trangThaiPheDuyet", required = false) String trangThaiPheDuyet,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.success(service.searchDocuments(keyword, gioDien, taiTrong, trangThaiPheDuyet, page, size)));
+        return ResponseEntity.ok(ApiResponse.success("Tìm kiếm thành công", service.searchDocuments(keyword, gioDien, taiTrong, trangThaiPheDuyet, page, size)));
     }
 }

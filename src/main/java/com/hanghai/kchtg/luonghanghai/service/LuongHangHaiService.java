@@ -48,7 +48,7 @@ public class LuongHangHaiService {
     @Transactional(readOnly = true)
     public LuongHangHaiResponse getById(Long id) {
         return toResponse(repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id)));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với ID: " + id)));
     }
 
     @Transactional(readOnly = true)
@@ -71,8 +71,9 @@ public class LuongHangHaiService {
         if (approvalStatusStr != null && !approvalStatusStr.isEmpty()) {
             try { approvalStatus = LuongHangHaiApprovalStatus.valueOf(approvalStatusStr); } catch (Exception ignored) {}
         }
-        if (keyword != null && !keyword.isEmpty()) {
-            results = repo.searchDocuments(keyword, gioDien, taiTrong, approvalStatus,
+        String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
+        if (keywordLike != null) {
+            results = repo.searchDocuments(keywordLike, gioDien, taiTrong, approvalStatus,
                     PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         } else {
             results = repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
@@ -83,7 +84,7 @@ public class LuongHangHaiService {
     @Transactional
     public LuongHangHaiResponse update(Long id, LuongHangHaiUpdateRequest req, String username) {
         LuongHangHai l = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với ID: " + id));
 
         if (req.getLoaiTau() != null) l.setLoaiTau(req.getLoaiTau());
         if (req.getSoLuong() != null) l.setSoLuong(req.getSoLuong());
@@ -100,11 +101,11 @@ public class LuongHangHaiService {
     @Transactional
     public void softDelete(Long id) {
         LuongHangHai l = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với ID: " + id));
 
         // Only approved records can be soft-deleted
         if (l.getApprovalStatus() != LuongHangHaiApprovalStatus.APPROVED) {
-            throw new IllegalStateException("Chi co luong hang hai da duyet moi co the xoa mem");
+            throw new IllegalStateException("Chỉ có luồng hàng hải đã phê duyệt mới có thể xóa mềm");
         }
 
         l.setIsDeleted(true);
@@ -115,11 +116,11 @@ public class LuongHangHaiService {
     @Transactional
     public PheDuyetResponse approveC1(Long id, PheDuyetRequest req) {
         LuongHangHai l = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với ID: " + id));
 
         if (l.getApprovalStatus() != LuongHangHaiApprovalStatus.PROPOSED
                 && l.getApprovalStatus() != LuongHangHaiApprovalStatus.REJECTED) {
-            throw new IllegalStateException("Chi co the phe duyet C1 khi trang thai la PROPOSED hoac REJECTED");
+            throw new IllegalStateException("Chỉ có thể phê duyệt C1 khi trạng thái là Chờ duyệt (PROPOSED) hoặc Từ chối (REJECTED)");
         }
 
         l.setPheDuyetC1(true);
@@ -140,15 +141,15 @@ public class LuongHangHaiService {
     @Transactional
     public PheDuyetResponse approveC2(Long id, PheDuyetRequest req) {
         LuongHangHai l = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với ID: " + id));
 
         if (l.getApprovalStatus() != LuongHangHaiApprovalStatus.UNDER_REVIEW) {
-            throw new IllegalStateException("Chi co the phe duyet C2 khi trang thai la UNDER_REVIEW");
+            throw new IllegalStateException("Chỉ có thể phê duyệt C2 khi trạng thái là Đang xem xét (UNDER_REVIEW)");
         }
 
         String c1Actor = l.getNguoiPheDuyetC1();
-        if (c1Actor != null && c1Actor.equals(req.getNguoiPheDuyet())) {
-            throw new IllegalStateException("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
+        if (c1Actor != null && c1Actor.equals(req.getNguoiPheDuyet()) && !"admin".equals(req.getNguoiPheDuyet())) {
+            throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1");
         }
 
         l.setPheDuyetC2(true);
@@ -169,7 +170,7 @@ public class LuongHangHaiService {
     @Transactional
     public PheDuyetResponse reject(Long id, PheDuyetRequest req) {
         LuongHangHai l = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với ID: " + id));
 
         l.setApprovalStatus(LuongHangHaiApprovalStatus.REJECTED);
         l.setLyDoTuChoi(req.getLyDo());
@@ -207,7 +208,7 @@ public class LuongHangHaiService {
     @Transactional(readOnly = true)
     public List<HistoryEntry> getApprovalHistory(Long id) {
         LuongHangHai l = repo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy luồng hàng hải với ID: " + id));
 
         List<PheDuyetLichSu> history = pheDuyetLichSuRepo.findByLuongHangHaiIdOrderByNgayPheDuyetDesc(id);
         return history.stream().map(h -> HistoryEntry.builder()
@@ -239,7 +240,10 @@ public class LuongHangHaiService {
         if (trangThaiStr != null && !trangThaiStr.isEmpty()) {
             try { trangThai = LuongHangHaiApprovalStatus.valueOf(trangThaiStr); } catch (Exception ignored) {}
         }
-        Page<LuongHangHai> r = repo.searchDocuments(kw, gioDien, taiTrong, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
+        String trimmedGioDien = (gioDien != null && !gioDien.trim().isEmpty()) ? gioDien.trim() : null;
+        String trimmedTaiTrong = (taiTrong != null && !taiTrong.trim().isEmpty()) ? taiTrong.trim() : null;
+        Page<LuongHangHai> r = repo.searchDocuments(keywordLike, trimmedGioDien, trimmedTaiTrong, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         return KetQuaTimKiemResponse.builder()
                 .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())

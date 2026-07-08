@@ -112,6 +112,42 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles {@link org.springframework.http.converter.HttpMessageNotReadableException} - typically thrown when
+     * JSON payload is malformed, field values are out of bounds or types don't match.
+     */
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<String>> handleHttpMessageNotReadable(
+            org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        log.debug("Http message not readable: {}", ex.getMessage());
+        String msg = "Dữ liệu yêu cầu không hợp lệ hoặc sai định dạng";
+        
+        Throwable cause = ex.getCause();
+        boolean foundSpecific = false;
+        while (cause != null) {
+            if (cause instanceof com.fasterxml.jackson.databind.exc.InvalidFormatException) {
+                com.fasterxml.jackson.databind.exc.InvalidFormatException ife = 
+                        (com.fasterxml.jackson.databind.exc.InvalidFormatException) cause;
+                msg += ": giá trị '" + ife.getValue() + "' không đúng định dạng mong muốn";
+                foundSpecific = true;
+                break;
+            } else if (cause instanceof com.fasterxml.jackson.core.exc.InputCoercionException) {
+                msg += ": giá trị số vượt quá giới hạn cho phép";
+                foundSpecific = true;
+                break;
+            }
+            cause = cause.getCause();
+        }
+        
+        if (!foundSpecific && ex.getCause() != null) {
+            msg += ": Vui lòng kiểm tra lại kiểu dữ liệu của các trường";
+        }
+        
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(msg));
+    }
+
+    /**
      * Handles UnauthorizedIntegrationException when pre-shared token is invalid or missing.
      */
     @ExceptionHandler(UnauthorizedIntegrationException.class)

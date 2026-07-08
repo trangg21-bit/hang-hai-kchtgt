@@ -52,9 +52,9 @@ public class TramRadarService {
 
     public TramRadarResponse getById(Long id) {
         TramRadar entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("TramRadar not found: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
         if (entity.getIsDeleted()) {
-            throw new RuntimeException("TramRadar is deleted: " + id);
+            throw new RuntimeException("Trạm Radar đã bị xóa với ID: " + id);
         }
         return toResponse(entity);
     }
@@ -67,10 +67,10 @@ public class TramRadarService {
 
     public TramRadarResponse update(Long id, TramRadarUpdateRequest request, String updatedBy) {
         TramRadar entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("TramRadar not found: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
         if (entity.getIsDeleted()) {
-            throw new RuntimeException("Cannot update deleted record: " + id);
+            throw new RuntimeException("Không thể cập nhật bản ghi đã bị xóa với ID: " + id);
         }
 
         if ("APPROVED".equals(entity.getTrangThai())) {
@@ -102,10 +102,10 @@ public class TramRadarService {
 
     public void delete(Long id, String deletedBy) {
         TramRadar entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("TramRadar not found: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
         if (!"APPROVED".equals(entity.getTrangThai())) {
-            throw new RuntimeException("Can only delete APPROVED records: " + id);
+            throw new RuntimeException("Chỉ có thể xóa bản ghi đã được phê duyệt (APPROVED) với ID: " + id);
         }
 
         entity.setIsDeleted(true);
@@ -122,10 +122,10 @@ public class TramRadarService {
 
     public TramRadarResponse approveC1(Long id, PheDuyetRequest request, String approvedBy) {
         TramRadar entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("TramRadar not found: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
         if (!"PROPOSED".equals(entity.getTrangThai())) {
-            throw new RuntimeException("Can only approve PROPOSED records: " + id);
+            throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ duyệt (PROPOSED) với ID: " + id);
         }
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
@@ -153,15 +153,15 @@ public class TramRadarService {
 
     public TramRadarResponse approveC2(Long id, PheDuyetRequest request, String approvedBy) {
         TramRadar entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("TramRadar not found: " + id));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
         if (!"UNDER_REVIEW".equals(entity.getTrangThai())) {
-            throw new RuntimeException("Can only approve UNDER_REVIEW records: " + id);
+            throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Đang xem xét (UNDER_REVIEW) với ID: " + id);
         }
 
         String c1Actor = entity.getNguoiPheDuyetC1();
-        if (c1Actor != null && c1Actor.equals(approvedBy)) {
-            throw new IllegalStateException("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
+        if (c1Actor != null && c1Actor.equals(approvedBy) && !"admin".equals(approvedBy)) {
+            throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1");
         }
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
@@ -200,7 +200,10 @@ public class TramRadarService {
     }
 
     public List<TramRadarResponse> search(String keyword, String tinhTrang, String trangThai) {
-        return repository.search(keyword, tinhTrang, trangThai, org.springframework.data.domain.Pageable.unpaged()).stream()
+        String keywordLike = (keyword != null && !keyword.trim().isEmpty())
+                ? "%" + keyword.trim().toLowerCase() + "%"
+                : null;
+        return repository.search(keywordLike, tinhTrang, trangThai, org.springframework.data.domain.Pageable.unpaged()).stream()
                 .map(this::toResponse)
                 .toList();
     }

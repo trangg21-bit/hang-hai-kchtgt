@@ -128,7 +128,7 @@ const REPORT_TEMPLATES: ReportTemplate[] = [
   },
   {
     code: 'F-153',
-    name: 'Biểu 04B-N: Thống kê khu chuyển tải, khu neo đậu',
+    name: 'Biểu 05-N: Thống kê khu chuyển tải, khu neo đậu',
     description: 'Thống kê các khu chuyển tải và khu neo đậu được bố trí trên luồng hàng hải.',
     requiresDates: false,
   },
