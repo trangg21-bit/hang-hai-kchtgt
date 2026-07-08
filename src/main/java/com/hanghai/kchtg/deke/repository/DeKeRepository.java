@@ -22,7 +22,7 @@ public interface DeKeRepository extends JpaRepository<DeKe, Long> {
     List<DeKe> findByViTriContainingAndIsDeletedFalse(String viTri);
 
     @Query("SELECT d FROM DeKe d WHERE " +
-            "(:keyword IS NULL OR d.loaiDe LIKE %:keyword% OR d.viTri LIKE %:keyword%) AND " +
+            "(:keyword IS NULL OR LOWER(d.loaiDe) LIKE :keyword OR LOWER(d.viTri) LIKE :keyword) AND " +
             "(:loaiDe IS NULL OR d.loaiDe = :loaiDe) AND " +
             "(:tinhTrang IS NULL OR d.tinhTrang = :tinhTrang) AND " +
             "(:trangThaiPheDuyet IS NULL OR d.trangThaiPheDuyet = :trangThaiPheDuyet) AND " +

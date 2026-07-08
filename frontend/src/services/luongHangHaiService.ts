@@ -31,6 +31,8 @@ export const luongHangHaiCRUD = {
         gioDien: params?.gioDien,
         taiTrong: params?.taiTrong,
         trangThaiPheDuyet: params?.trangThaiPheDuyet,
+        page: params?.page || 0,
+        size: params?.size || 20,
       },
     });
     const data = res.data || {};

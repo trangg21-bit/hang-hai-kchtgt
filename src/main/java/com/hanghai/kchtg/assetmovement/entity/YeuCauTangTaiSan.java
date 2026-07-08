@@ -10,6 +10,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.hibernate.annotations.SQLRestriction;
+
 /**
  * Entity yêu cầu tăng tài sản KCHTGT (F-122).
  */
@@ -19,6 +21,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@SQLRestriction("deleted = false")
 public class YeuCauTangTaiSan {
 
     @Id

@@ -26,6 +26,7 @@ import { coSuaChuaCRUD } from '../../services/coSuaChuaService';
 import type { CoSuaChuaResponse, ListParams } from '../../types/coSuaChua';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import CoSuaChuaForm from './CoSuaChuaForm';
 
 const APPROVAL_STATUS_OPTIONS = [
   { label: 'Chờ duyệt', value: 'PROPOSED' },
@@ -34,6 +35,14 @@ const APPROVAL_STATUS_OPTIONS = [
   { label: 'Từ chối', value: 'REJECTED' },
 ];
 
+const LOAI_CO_SO_MAP: Record<string, string> = {
+  'CS_SUA_CHUA': 'Cơ sở sửa chữa',
+  'CS_DONG_TAU': 'Cơ sở đóng tàu',
+  'CS_SUA_CHUA_DONG_TAU': 'Cơ sở sửa chữa & đóng tàu',
+  'KAC': 'Khác',
+};
+
+
 export default function CoSuaChuaList() {
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
@@ -41,11 +50,15 @@ export default function CoSuaChuaList() {
 
   const [filterKeyword, setFilterKeyword] = useState('');
   const [filterTinhThanh, setFilterTinhThanh] = useState<string | undefined>();
-  const [filterTrangThai, setFilterTrangThai] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [dataSource, setDataSource] = useState<CoSuaChuaResponse[]>([]);
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [isLoading, setIsLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -56,7 +69,6 @@ export default function CoSuaChuaList() {
       const params: ListParams = {
         keyword: filterKeyword || undefined,
         tinhThanh: filterTinhThanh,
-        trangThai: filterTrangThai,
         trangThaiPheDuyet: filterStatus,
       };
       const res = await coSuaChuaCRUD.search(params);
@@ -69,7 +81,7 @@ export default function CoSuaChuaList() {
     } finally {
       setIsLoading(false);
     }
-  }, [filterKeyword, filterTinhThanh, filterTrangThai, filterStatus]);
+  }, [filterKeyword, filterTinhThanh, filterStatus]);
 
   useEffect(() => {
     fetchData();
@@ -78,8 +90,8 @@ export default function CoSuaChuaList() {
   const handleReset = useCallback(() => {
     setFilterKeyword('');
     setFilterTinhThanh(undefined);
-    setFilterTrangThai(undefined);
     setFilterStatus(undefined);
+    setPage(1);
   }, []);
 
   const handleDelete = async (id: number) => {
@@ -123,7 +135,7 @@ export default function CoSuaChuaList() {
       dataIndex: 'loaiCoSo',
       key: 'loaiCoSo',
       width: 140,
-      render: (val: string) => <span style={{ fontWeight: 500 }}>{val}</span>,
+      render: (val: string) => <span style={{ fontWeight: 500 }}>{LOAI_CO_SO_MAP[val] || val || '—'}</span>,
     },
     {
       title: 'Điện thoại',
@@ -163,24 +175,21 @@ export default function CoSuaChuaList() {
                 type="link"
                 size="small"
                 icon={<EyeOutlined />}
-                onClick={() => navigate(`/co-so-sua-chua/${record.id}`)}
+                onClick={() => { setEditingId(String(record.id)); setModalMode('detail'); setIsModalOpen(true); }}
                 title="Xem chi tiết"
                 aria-label="Xem chi tiết"
-              >
-                Xem
-              </Button>
+              />
+            
             )}
             {canUpdate && isProposed && (
               <Button
                 type="link"
                 size="small"
                 icon={<EditOutlined />}
-                onClick={() => navigate(`/co-so-sua-chua/${record.id}?mode=edit`)}
+                onClick={() => { setEditingId(String(record.id)); setModalMode('edit'); setIsModalOpen(true); }}
                 title="Chỉnh sửa"
                 aria-label="Chỉnh sửa"
-              >
-                Sửa
-              </Button>
+              />
             )}
             {canDelete && record.trangThai === 'APPROVED' && (
               <Popconfirm
@@ -190,9 +199,7 @@ export default function CoSuaChuaList() {
                 okText="Xóa"
                 cancelText="Hủy"
               >
-                <Button type="link" danger size="small" icon={<DeleteOutlined />}>
-                  Xóa
-                </Button>
+              <Button type="link" danger size="small" icon={<DeleteOutlined />} />
               </Popconfirm>
             )}
           </Space>
@@ -208,25 +215,18 @@ export default function CoSuaChuaList() {
         <Row gutter={[12, 12]} align="middle">
           <Col xs={24} md={16}>
             <Space wrap>
-              <Input.Search
+               <Input.Search
                 placeholder="Tìm kiếm tên cơ sở..."
                 allowClear
                 value={filterKeyword}
-                onSearch={(val) => { setFilterKeyword(val); fetchData(); }}
+                onSearch={(val) => { setFilterKeyword(val); setPage(1); }}
                 onChange={(e) => setFilterKeyword(e.target.value)}
                 style={{ width: 200 }}
               />
               <Input
                 placeholder="Tỉnh/thành"
                 value={filterTinhThanh || ''}
-                onChange={(e) => setFilterTinhThanh(e.target.value || undefined)}
-                allowClear
-                style={{ width: 150 }}
-              />
-              <Select
-                placeholder="Trạng thái"
-                value={filterTrangThai}
-                onChange={(val) => { setFilterTrangThai(val); fetchData(); }}
+                onChange={(e) => { setFilterTinhThanh(e.target.value || undefined); setPage(1); }}
                 allowClear
                 style={{ width: 150 }}
               />
@@ -234,7 +234,7 @@ export default function CoSuaChuaList() {
                 placeholder="Trạng thái phê duyệt"
                 options={APPROVAL_STATUS_OPTIONS}
                 value={filterStatus}
-                onChange={(val) => { setFilterStatus(val); fetchData(); }}
+                onChange={(val) => { setFilterStatus(val); setPage(1); }}
                 allowClear
                 style={{ width: 180 }}
               />
@@ -245,7 +245,7 @@ export default function CoSuaChuaList() {
               <Tooltip title="Tải lại">
                 <Button icon={<ReloadOutlined />} onClick={fetchData} />
               </Tooltip>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/co-so-sua-chua/create')}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingId(null); setModalMode('create'); setIsModalOpen(true); }}>
                 Thêm mới
               </Button>
             </Space>
@@ -270,15 +270,37 @@ export default function CoSuaChuaList() {
           <Empty description="Không có dữ liệu" />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (
-          <Table
+           <Table
             columns={columns}
             dataSource={dataSource.map((item) => ({ ...item, key: item.id }))}
             loading={false}
+            pagination={{
+              current: page,
+              pageSize,
+              total,
+              showSizeChanger: true,
+              showTotal: (total) => `Tổng ${total} bản ghi`,
+              onChange: (p, ps) => { setPage(p); setPageSize(ps); },
+            }}
             size="small"
             scroll={{ x: 1200 }}
           />
         )}
       </Card>
+      <CoSuaChuaForm
+        open={isModalOpen}
+        editId={editingId}
+        mode={modalMode}
+        onCancel={() => {
+          setIsModalOpen(false);
+          setEditingId(null);
+        }}
+        onSuccess={() => {
+          setIsModalOpen(false);
+          setEditingId(null);
+          fetchData();
+        }}
+      />
     </>
   );
 }

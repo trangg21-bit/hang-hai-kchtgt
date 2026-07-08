@@ -58,7 +58,7 @@ export default function ReportViewer() {
   const [selectedYear, setSelectedYear] = useState<dayjs.Dayjs | null>(dayjs());
   const [nguonDuLieu, setNguonDuLieu] = useState<string>('1');
   const [selectedBcNoiDung, setSelectedBcNoiDung] = useState<string | undefined>('1');
-  const [selectedNhomCangBien, setSelectedNhomCangBien] = useState<number | undefined>(undefined);
+  const [selectedNhomCangBien, setSelectedNhomCangBien] = useState<string | undefined>(undefined);
 
   const isYearReport = useMemo(() => {
     if (reportCode === 'F-142') return true;
@@ -419,7 +419,7 @@ export default function ReportViewer() {
                 />
               </Col>
  
-              {(reportCode === 'F-149' || reportCode === 'F-148') && (
+              {reportCode === 'F-149' && (
                 <Col xs={24} sm={12} md={5} lg={5}>
                   <div style={{ marginBottom: 6 }}>
                     <Text strong>Nhóm cảng biển</Text>
@@ -430,11 +430,11 @@ export default function ReportViewer() {
                     value={selectedNhomCangBien}
                     onChange={(val) => setSelectedNhomCangBien(val)}
                     options={[
-                      { value: 1, label: 'Nhóm 1' },
-                      { value: 2, label: 'Nhóm 2' },
-                      { value: 3, label: 'Nhóm 3' },
-                      { value: 4, label: 'Nhóm 4' },
-                      { value: 5, label: 'Nhóm 5' },
+                      { value: '1', label: 'Nhóm 1' },
+                      { value: '2', label: 'Nhóm 2' },
+                      { value: '3', label: 'Nhóm 3' },
+                      { value: '4', label: 'Nhóm 4' },
+                      { value: '5', label: 'Nhóm 5' },
                     ]}
                     allowClear
                   />

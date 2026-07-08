@@ -12,6 +12,7 @@ import {
   Space,
   message,
   Breadcrumb,
+  Modal,
 } from 'antd';
 import { coSuaChuaCRUD, coSuaChuaApproval } from '../../services/coSuaChuaService';
 import type {
@@ -26,17 +27,34 @@ import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 
-export default function CoSuaChuaForm() {
+const LOAI_CO_SO_MAP: Record<string, string> = {
+  'CS_SUA_CHUA': 'Cơ sở sửa chữa',
+  'CS_DONG_TAU': 'Cơ sở đóng tàu',
+  'CS_SUA_CHUA_DONG_TAU': 'Cơ sở sửa chữa & đóng tàu',
+  'KAC': 'Khác',
+};
+
+export interface CoSuaChuaFormProps {
+  open?: boolean;
+  editId?: string | null;
+  mode?: 'create' | 'edit' | 'detail';
+  onCancel?: () => void;
+  onSuccess?: () => void;
+}
+
+export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess }: CoSuaChuaFormProps = {}) {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const routeParams = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
 
-  const isEditMode = searchParams.get('mode') === 'edit';
-  const isDetailMode = !!id && !isEditMode;
-  const isCreateMode = !id;
+  const isModalMode = open !== undefined;
+  const id = isModalMode ? (editId || undefined) : routeParams.id;
+  const isEditMode = isModalMode ? (mode === 'edit') : searchParams.get('mode') === 'edit';
+  const isDetailMode = isModalMode ? (mode === 'detail') : (!!id && !isEditMode);
+  const isCreateMode = isModalMode ? (mode === 'create') : !id;
 
   const [record, setRecord] = useState<CoSuaChuaResponse | null>(null);
   const [history, setHistory] = useState<any[]>([]);
@@ -55,18 +73,16 @@ export default function CoSuaChuaForm() {
         try {
           const data = await coSuaChuaCRUD.getById(id);
           setRecord(data);
-          if (!isEditMode) {
-            form.setFieldsValue({
-              tenCoSo: data.tenCoSo,
-              diaChi: data.diaChi,
-              tinhThanh: data.tinhThanh,
-              soDienThoai: data.soDienThoai,
-              email: data.email,
-              loaiCoSo: data.loaiCoSo,
-              khaNang: data.khaNang,
-              chuQuan: data.chuQuan,
-            });
-          }
+          form.setFieldsValue({
+            tenCoSo: data.tenCoSo,
+            diaChi: data.diaChi,
+            tinhThanh: data.tinhThanh,
+            soDienThoai: data.soDienThoai,
+            email: data.email,
+            loaiCoSo: data.loaiCoSo,
+            khaNang: data.khaNang,
+            chuQuan: data.chuQuan,
+          });
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
         } finally {
@@ -74,8 +90,11 @@ export default function CoSuaChuaForm() {
         }
       };
       loadData();
+    } else {
+      form.resetFields();
+      setRecord(null);
     }
-  }, [id, isEditMode, form]);
+  }, [id, isEditMode, form, open]);
 
   // Fetch history
   useEffect(() => {
@@ -94,7 +113,7 @@ export default function CoSuaChuaForm() {
       };
       loadHistory();
     }
-  }, [id, isDetailMode]);
+  }, [id, isDetailMode, open]);
 
   const handleSubmitForm = async (values: any) => {
     setIsSubmitting(true);
@@ -113,11 +132,19 @@ export default function CoSuaChuaForm() {
       if (isCreateMode) {
         const newRecord = await coSuaChuaCRUD.create(payload as CreateCoSuaChuaRequest);
         message.success('Tạo mới thành công');
-        navigate(`/co-so-sua-chua/${newRecord.id}`);
+        if (isModalMode) {
+          onSuccess?.();
+        } else {
+          navigate(`/co-so-sua-chua/${newRecord.id}`);
+        }
       } else if (id && isEditMode) {
         await coSuaChuaCRUD.update(id, payload as UpdateCoSuaChuaRequest);
         message.success('Cập nhật thành công');
-        navigate(`/co-so-sua-chua/${id}`);
+        if (isModalMode) {
+          onSuccess?.();
+        } else {
+          navigate(`/co-so-sua-chua/${id}`);
+        }
       }
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
@@ -209,11 +236,10 @@ export default function CoSuaChuaForm() {
 
   // Detail/Read-only view
   if (isDetailMode) {
-    return (
-      <div style={{ padding: '24px' }}>
-        <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />
-        <Card style={{ marginBottom: '24px' }}>
-          <h2>Chi tiết Cơ sở Sửa chữa / Đóng tàu</h2>
+    const detailContent = (
+      <Spin spinning={isLoading}>
+        <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
+          {!isModalMode && <h2>Chi tiết Cơ sở Sửa chữa / Đóng tàu</h2>}
           {record && (
             <Descriptions column={2} bordered size="small">
               <Descriptions.Item label="Tên cơ sở">{record.tenCoSo}</Descriptions.Item>
@@ -225,7 +251,7 @@ export default function CoSuaChuaForm() {
               <Descriptions.Item label="Email">
                 {record.email ?? '—'}
               </Descriptions.Item>
-              <Descriptions.Item label="Loại cơ sở">{record.loaiCoSo}</Descriptions.Item>
+              <Descriptions.Item label="Loại cơ sở">{LOAI_CO_SO_MAP[record.loaiCoSo] || record.loaiCoSo}</Descriptions.Item>
               <Descriptions.Item label="Khả năng" span={2}>
                 {record.khaNang ?? '—'}
               </Descriptions.Item>
@@ -241,7 +267,7 @@ export default function CoSuaChuaForm() {
 
         {/* Tài liệu đính kèm */}
         {record?.attachments && record.attachments.length > 0 && (
-          <Card style={{ marginBottom: '24px' }}>
+          <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
             <h3>Tài liệu đính kèm</h3>
             <AttachmentList attachments={record.attachments} readonly={true} />
           </Card>
@@ -249,7 +275,7 @@ export default function CoSuaChuaForm() {
 
         {/* Approval Action Bar */}
         {record && (
-          <Card style={{ marginBottom: '24px' }}>
+          <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
             <ApprovalActionBar
               currentStatus={record.trangThai as any}
               permissions={userPermissions}
@@ -264,7 +290,7 @@ export default function CoSuaChuaForm() {
 
         {/* History Timeline */}
         {record && (
-          <Card>
+          <Card bordered={!isModalMode}>
             <h3>Lịch sử phê duyệt</h3>
             <HistoryTimeline
               history={history}
@@ -281,7 +307,141 @@ export default function CoSuaChuaForm() {
             />
           </Card>
         )}
+      </Spin>
+    );
+
+    if (isModalMode) {
+      return (
+        <Modal
+          title="Chi tiết Cơ sở Sửa chữa / Đóng tàu"
+          open={open}
+          onCancel={onCancel}
+          footer={null}
+          width={900}
+          destroyOnClose
+          maskClosable={false}
+        >
+          {detailContent}
+        </Modal>
+      );
+    }
+
+    return (
+      <div style={{ padding: '24px' }}>
+        <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />
+        {detailContent}
       </div>
+    );
+  }
+
+  if (isModalMode) {
+    return (
+      <Modal
+        title={isCreateMode ? 'Tạo mới Cơ sở Sửa chữa' : 'Chỉnh sửa Cơ sở Sửa chữa'}
+        open={open}
+        onCancel={onCancel}
+        footer={null}
+        destroyOnClose
+        maskClosable={false}
+      >
+        <Spin spinning={isLoading}>
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmitForm}
+            autoComplete="off"
+          >
+            <Form.Item
+              label="Tên cơ sở"
+              name="tenCoSo"
+              rules={[{ required: true, message: 'Vui lòng nhập tên cơ sở' }]}
+            >
+              <Input placeholder="Nhập tên cơ sở" />
+            </Form.Item>
+
+            <Form.Item
+              label="Địa chỉ"
+              name="diaChi"
+              rules={[{ required: true, message: 'Vui lòng nhập địa chỉ' }]}
+            >
+              <Input placeholder="Nhập địa chỉ" />
+            </Form.Item>
+
+            <Form.Item
+              label="Tỉnh/thành"
+              name="tinhThanh"
+              rules={[{ required: true, message: 'Vui lòng nhập tỉnh/thành' }]}
+            >
+              <Input placeholder="Nhập tỉnh/thành" />
+            </Form.Item>
+
+            <Form.Item
+              label="Số điện thoại"
+              name="soDienThoai"
+              rules={[
+                {
+                  pattern: /^[0-9+\-\s()]{6,15}$/,
+                  message: 'Số điện thoại không hợp lệ',
+                },
+              ]}
+            >
+              <Input placeholder="Nhập số điện thoại" />
+            </Form.Item>
+
+            <Form.Item
+              label="Email"
+              name="email"
+              rules={[
+                {
+                  type: 'email',
+                  message: 'Email không hợp lệ',
+                },
+              ]}
+            >
+              <Input placeholder="Nhập email" />
+            </Form.Item>
+
+            <Form.Item
+              label="Loại cơ sở"
+              name="loaiCoSo"
+              rules={[{ required: true, message: 'Vui lòng chọn loại cơ sở' }]}
+            >
+              <Select
+                placeholder="Chọn loại cơ sở"
+                options={[
+                  { label: 'Cơ sở sửa chữa', value: 'CS_SUA_CHUA' },
+                  { label: 'Cơ sở đóng tàu', value: 'CS_DONG_TAU' },
+                  { label: 'Cơ sở sửa chữa & đóng tàu', value: 'CS_SUA_CHUA_DONG_TAU' },
+                  { label: 'Khác', value: 'KAC' },
+                ]}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="Khả năng"
+              name="khaNang"
+            >
+              <Input.TextArea
+                placeholder="Mô tả khả năng cơ sở"
+                rows={4}
+              />
+            </Form.Item>
+
+            <Form.Item label="Chủ quản" name="chuQuan">
+              <Input placeholder="Nhập chủ quản" />
+            </Form.Item>
+
+            <Form.Item>
+              <Space style={{ display: 'flex', justifyContent: 'end', marginTop: 16 }}>
+                <Button onClick={onCancel}>Hủy</Button>
+                <Button type="primary" htmlType="submit" loading={isSubmitting}>
+                  {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Spin>
+      </Modal>
     );
   }
 

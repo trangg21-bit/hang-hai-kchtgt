@@ -20,7 +20,7 @@ public class PheDuyetLichSu {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "he_thong_vts_id", nullable = false)
+    @Column(name = "he_thong_vts_id", nullable = true)
     private Long heThongVTSId;
 
     @Column(name = "cap_phe_duyet", nullable = false)

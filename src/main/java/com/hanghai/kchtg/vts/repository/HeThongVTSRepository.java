@@ -18,8 +18,8 @@ public interface HeThongVTSRepository extends JpaRepository<HeThongVTS, Long> {
     @Query("""
         SELECT t FROM HeThongVTS t
         WHERE (:keyword IS NULL OR
-            LOWER(t.tenHeThong) LIKE LOWER(CONCAT('%', :keyword, '%')) OR
-            LOWER(t.viTri) LIKE LOWER(CONCAT('%', :keyword, '%')))
+            LOWER(t.tenHeThong) LIKE :keyword OR
+            LOWER(t.viTri) LIKE :keyword)
           AND (:tinhTrang IS NULL OR t.tinhTrang = :tinhTrang)
           AND (:trangThai IS NULL OR t.trangThai = :trangThai)
         ORDER BY t.ngayTao DESC

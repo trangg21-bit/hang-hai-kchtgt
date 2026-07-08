@@ -58,9 +58,8 @@ public class NhaTramDenService {
 
     @Transactional
     public NhaTramDenResponse create(CreateNhaTramDenRequest request) {
-        if (denRepo.existsByCode(request.getCode())
-                || phaoRepo.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Đã tồn tại: " + request.getCode());
+        if (denRepo.existsByCode(request.getCode())) {
+            throw new IllegalArgumentException("Mã nhà trạm đèn biển đã tồn tại: " + request.getCode());
         }
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
@@ -123,7 +122,7 @@ public class NhaTramDenService {
         if (request.getType() != null && request.getType() != entity.getType()) {
             if (isApprovedStatus(entity.getStatus())) {
                 throw new IllegalArgumentException(
-                        "Loai nhà trạm đèn khong the thay doi khi da duoc phê duyệt.");
+                        "Loại nhà trạm đèn không thể thay đổi khi đã được phê duyệt.");
             }
             entity.setType(request.getType());
         }
@@ -281,7 +280,7 @@ public class NhaTramDenService {
 
         if (rejectReason == null || rejectReason.length() < 10) {
             throw new IllegalArgumentException(
-                    "Lý do từ chối phai co ít nhất 10 ký tự");
+                    "Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
         entity.setStatus(NhaTramStatus.DRAFT);
@@ -414,6 +413,7 @@ public class NhaTramDenService {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private String getChangedFields(String oldJson, String newJson) {
         try {
             Map<String, Object> oldMap = objectMapper.readValue(oldJson, Map.class);

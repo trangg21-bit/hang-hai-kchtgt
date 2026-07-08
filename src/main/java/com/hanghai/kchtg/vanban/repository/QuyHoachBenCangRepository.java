@@ -15,6 +15,9 @@ import java.util.List;
 @Repository
 public interface QuyHoachBenCangRepository extends JpaRepository<QuyHoachBenCang, Long> {
 
+    boolean existsByTenDoAn(String tenDoAn);
+    boolean existsByTenDoAnAndIdNot(String tenDoAn, Long id);
+
     /** Find by planning status */
     List<QuyHoachBenCang> findByTinhTrang(TinhTrangQuyHoach tinhTrang);
 

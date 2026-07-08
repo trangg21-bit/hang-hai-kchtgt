@@ -16,6 +16,9 @@ export const heThongVTSCRUD = {
       params: {
         page: params?.page || 0,
         size: params?.size || 20,
+        keyword: params?.keyword,
+        tinhTrang: params?.tinhTrang,
+        trangThai: params?.trangThai,
       },
     });
     return {

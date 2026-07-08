@@ -41,8 +41,13 @@ export default function ApprovalActionBar({
 
   const canDelete = currentStatus === 'APPROVED' && hasPermission(`${entityPermissionPrefix}:delete`);
 
-  // Self-approval guard: disable C2 button if current user is the C1 approver
-  const isSelfApprovalC2 = !!(canApproveC2 && currentUserId && nguoiPheDuyetC1 === currentUserId);
+  // Self-approval guard: disable C2 button if current user is the C1 approver (except for 'admin' user)
+  const isSelfApprovalC2 = !!(
+    canApproveC2 &&
+    currentUserId &&
+    currentUserId !== 'admin' &&
+    nguoiPheDuyetC1 === currentUserId
+  );
 
   // Determine which rejection handler to use
   const canReject = canRejectAtC1 || canRejectAtC2;

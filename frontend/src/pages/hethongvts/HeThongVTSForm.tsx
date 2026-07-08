@@ -12,6 +12,7 @@ import {
   Space,
   message,
   Breadcrumb,
+  Modal,
 } from 'antd';
 import dayjs from 'dayjs';
 import { heThongVTSCRUD, heThongVTSApproval } from '../../services/heThongVtsService';
@@ -30,17 +31,27 @@ import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 
-export default function HeThongVTSForm() {
+export interface HeThongVTSFormProps {
+  open?: boolean;
+  editId?: string | null;
+  mode?: 'create' | 'edit' | 'detail';
+  onCancel?: () => void;
+  onSuccess?: () => void;
+}
+
+export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess }: HeThongVTSFormProps = {}) {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const routeParams = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
 
-  const isEditMode = searchParams.get('mode') === 'edit';
-  const isDetailMode = !!id && !isEditMode;
-  const isCreateMode = !id;
+  const isModalMode = open !== undefined;
+  const id = isModalMode ? (editId || undefined) : routeParams.id;
+  const isEditMode = isModalMode ? (mode === 'edit') : searchParams.get('mode') === 'edit';
+  const isDetailMode = isModalMode ? (mode === 'detail') : (!!id && !isEditMode);
+  const isCreateMode = isModalMode ? (mode === 'create') : !id;
 
   const [record, setRecord] = useState<HeThongVTSResponse | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -59,16 +70,14 @@ export default function HeThongVTSForm() {
         try {
           const data = await heThongVTSCRUD.getById(id);
           setRecord(data);
-          if (!isEditMode) {
-            form.setFieldsValue({
-              tenHeThong: data.tenHeThong,
-              viTri: data.viTri,
-              tinhTrang: data.tinhTrang,
-              mucDoPhuTrach: data.mucDoPhuTrach,
-              nguonGoc: data.nguonGoc,
-              doiTac: data.doiTac,
-            });
-          }
+          form.setFieldsValue({
+            tenHeThong: data.tenHeThong,
+            viTri: data.viTri,
+            tinhTrang: data.tinhTrang,
+            mucDoPhuTrach: data.mucDoPhuTrach,
+            nguonGoc: data.nguonGoc,
+            doiTac: data.doiTac,
+          });
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
         } finally {
@@ -76,8 +85,11 @@ export default function HeThongVTSForm() {
         }
       };
       loadData();
+    } else {
+      form.resetFields();
+      setRecord(null);
     }
-  }, [id, isEditMode, form]);
+  }, [id, isEditMode, form, open]);
 
   // Fetch history
   useEffect(() => {
@@ -96,7 +108,7 @@ export default function HeThongVTSForm() {
       };
       loadHistory();
     }
-  }, [id, isDetailMode]);
+  }, [id, isDetailMode, open]);
 
   const handleSubmitForm = async (values: any) => {
     setIsSubmitting(true);
@@ -113,11 +125,19 @@ export default function HeThongVTSForm() {
       if (isCreateMode) {
         const newRecord = await heThongVTSCRUD.create(payload as CreateHeThongVTSRequest);
         message.success('Tạo mới thành công');
-        navigate(`/he-thong-vts/${newRecord.id}`);
+        if (isModalMode) {
+          onSuccess?.();
+        } else {
+          navigate(`/he-thong-vts/${newRecord.id}`);
+        }
       } else if (id && isEditMode) {
         await heThongVTSCRUD.update(id, payload as UpdateHeThongVTSRequest);
         message.success('Cập nhật thành công');
-        navigate(`/he-thong-vts/${id}`);
+        if (isModalMode) {
+          onSuccess?.();
+        } else {
+          navigate(`/he-thong-vts/${id}`);
+        }
       }
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
@@ -204,11 +224,10 @@ export default function HeThongVTSForm() {
 
   // Detail/Read-only view
   if (isDetailMode) {
-    return (
-      <div style={{ padding: '24px' }}>
-        <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />
-        <Card style={{ marginBottom: '24px' }}>
-          <h2>Chi tiết Hệ thống VTS</h2>
+    const detailContent = (
+      <Spin spinning={isLoading}>
+        <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
+          {!isModalMode && <h2>Chi tiết Hệ thống VTS</h2>}
           {record && (
             <Descriptions column={2} bordered size="small">
               <Descriptions.Item label="Tên hệ thống">{record.tenHeThong ?? '—'}</Descriptions.Item>
@@ -235,7 +254,7 @@ export default function HeThongVTSForm() {
 
         {/* Tài liệu đính kèm */}
         {record?.attachments && record.attachments.length > 0 && (
-          <Card style={{ marginBottom: '24px' }}>
+          <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
             <h3>Tài liệu đính kèm</h3>
             <AttachmentList attachments={record.attachments} readonly={true} />
           </Card>
@@ -243,7 +262,7 @@ export default function HeThongVTSForm() {
 
         {/* Approval Action Bar */}
         {record && (
-          <Card style={{ marginBottom: '24px' }}>
+          <Card style={{ marginBottom: '24px' }} bordered={!isModalMode}>
             <ApprovalActionBar
               currentStatus={record.trangThai as ApprovalStatus}
               permissions={userPermissions}
@@ -258,7 +277,7 @@ export default function HeThongVTSForm() {
 
         {/* History Timeline */}
         {record && (
-          <Card>
+          <Card bordered={!isModalMode}>
             <h3>Lịch sử phê duyệt</h3>
             <HistoryTimeline
               history={history}
@@ -276,7 +295,111 @@ export default function HeThongVTSForm() {
             />
           </Card>
         )}
+      </Spin>
+    );
+
+    if (isModalMode) {
+      return (
+        <Modal
+          title="Chi tiết Hệ thống VTS"
+          open={open}
+          onCancel={onCancel}
+          footer={null}
+          width={900}
+          destroyOnClose
+          maskClosable={false}
+        >
+          {detailContent}
+        </Modal>
+      );
+    }
+
+    return (
+      <div style={{ padding: '24px' }}>
+        <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />
+        {detailContent}
       </div>
+    );
+  }
+
+  if (isModalMode) {
+    return (
+      <Modal
+        title={isCreateMode ? 'Tạo mới Hệ thống VTS' : 'Chỉnh sửa Hệ thống VTS'}
+        open={open}
+        onCancel={onCancel}
+        footer={null}
+        destroyOnClose
+        maskClosable={false}
+      >
+        <Spin spinning={isLoading}>
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSubmitForm}
+            autoComplete="off"
+          >
+            <Form.Item
+              label="Tên hệ thống"
+              name="tenHeThong"
+            >
+              <Input placeholder="Nhập tên hệ thống" />
+            </Form.Item>
+
+            <Form.Item
+              label="Vị trí"
+              name="viTri"
+              rules={[{ required: true, message: 'Vui lòng nhập vị trí' }]}
+            >
+              <Input placeholder="Nhập vị trí" />
+            </Form.Item>
+
+            <Form.Item
+              label="Tình trạng"
+              name="tinhTrang"
+            >
+              <Select
+                placeholder="Chọn tình trạng"
+                options={[
+                  { label: 'Tốt', value: 'Tốt' },
+                  { label: 'Xuống cấp', value: 'Xuống cấp' },
+                  { label: 'Hư hỏng', value: 'Hư hỏng' },
+                ]}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="Mức độ phủ trách"
+              name="mucDoPhuTrach"
+            >
+              <Input placeholder="Nhập mức độ phủ trách" />
+            </Form.Item>
+
+            <Form.Item
+              label="Nguồn gốc"
+              name="nguonGoc"
+            >
+              <Input placeholder="Nhập nguồn gốc" />
+            </Form.Item>
+
+            <Form.Item
+              label="Đối tác"
+              name="doiTac"
+            >
+              <Input placeholder="Nhập đối tác" />
+            </Form.Item>
+
+            <Form.Item>
+              <Space style={{ display: 'flex', justifyContent: 'end', marginTop: 16 }}>
+                <Button onClick={onCancel}>Hủy</Button>
+                <Button type="primary" htmlType="submit" loading={isSubmitting}>
+                  {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Spin>
+      </Modal>
     );
   }
 

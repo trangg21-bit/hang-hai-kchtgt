@@ -9,6 +9,8 @@ import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDate;
 
+import org.hibernate.annotations.SQLRestriction;
+
 @Entity
 @Table(name = "nha_tram_phao")
 @Data
@@ -17,6 +19,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
+@SQLRestriction("deleted_at IS NULL")
 public class NhaTramPhao extends BaseNhaTram {
     @Enumerated(EnumType.STRING)
     private BuoyType type;

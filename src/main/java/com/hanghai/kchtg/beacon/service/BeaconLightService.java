@@ -9,7 +9,6 @@ import com.hanghai.kchtg.beacon.entity.*;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
-import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +26,7 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@SuppressWarnings("null")
 public class BeaconLightService {
 
     private final BeaconLightRepository beaconLightRepo;
@@ -353,7 +353,7 @@ public class BeaconLightService {
         String unitName = null;
         if (entity.getUnitId() != null) {
             unitName = orgUnitRepo.findById(entity.getUnitId())
-                    .map(OrgUnit::getName)
+                    .map(unit -> unit.getName())
                     .orElse(null);
         }
 
@@ -436,6 +436,7 @@ public class BeaconLightService {
 
     // -- BUG FIX #3: Actual field diff instead of static string --
 
+    @SuppressWarnings("unchecked")
     private String getChangedFields(String oldJson, String newJson) {
         try {
             Map<String, Object> oldMap = objectMapper.readValue(oldJson, Map.class);

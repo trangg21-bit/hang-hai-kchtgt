@@ -4,6 +4,7 @@ import com.hanghai.kchtg.assetmovement.dto.KhaiThacTaiSanRequest;
 import com.hanghai.kchtg.assetmovement.dto.KhaiThacTaiSanResponse;
 import com.hanghai.kchtg.assetmovement.entity.KhaiThacTaiSan;
 import com.hanghai.kchtg.assetmovement.repository.KhaiThacTaiSanRepository;
+import com.hanghai.kchtg.assetmovement.repository.TaiSanKCHTRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,6 +24,7 @@ import java.util.UUID;
 public class KhaiThacTaiSanService {
 
     private final KhaiThacTaiSanRepository repository;
+    private final TaiSanKCHTRepository taiSanRepository;
 
     @Transactional
     public KhaiThacTaiSanResponse create(KhaiThacTaiSanRequest request) {
@@ -30,12 +32,12 @@ public class KhaiThacTaiSanService {
 
         KhaiThacTaiSan entity = KhaiThacTaiSan.builder()
                 .taiSanId(request.getTaiSanId())
-                .thoiGianHoatDong(null)
-                .mucDoKhaiThac(null)
-                .chiPhiVanHanh(null)
-                .chiPhiBaoDuong(null)
-                .tinhTrangKyThuat(null)
-                .thangKhaiThac(null)
+                .thoiGianHoatDong(24) // Default fallback
+                .mucDoKhaiThac(BigDecimal.valueOf(100.0))
+                .chiPhiVanHanh(request.getDoanhThu()) // map doanhThu -> chiPhiVanHanh
+                .chiPhiBaoDuong(request.getHaoMon())   // map haoMon -> chiPhiBaoDuong
+                .tinhTrangKyThuat("Bình thường")
+                .thangKhaiThac(LocalDateTime.now().getMonthValue())
                 .namKhaiThac(request.getNamKhaiThac())
                 .moTa(request.getMoTa())
                 .deleted(false)
@@ -84,11 +86,14 @@ public class KhaiThacTaiSanService {
         if (request.getTaiSanId() != null) {
             entity.setTaiSanId(request.getTaiSanId());
         }
-        if (request.getTenTaiSan() != null) {
-            entity.setMoTa(request.getTenTaiSan());
-        }
         if (request.getNamKhaiThac() != null) {
             entity.setNamKhaiThac(request.getNamKhaiThac());
+        }
+        if (request.getDoanhThu() != null) {
+            entity.setChiPhiVanHanh(request.getDoanhThu());
+        }
+        if (request.getHaoMon() != null) {
+            entity.setChiPhiBaoDuong(request.getHaoMon());
         }
         if (request.getMoTa() != null) {
             entity.setMoTa(request.getMoTa());
@@ -100,10 +105,10 @@ public class KhaiThacTaiSanService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("Không tìm thấy thông tin khai thác tài sản với id: " + id);
-        }
-        repository.deleteById(id);
+        KhaiThacTaiSan entity = repository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy thông tin khai thác tài sản với id: " + id));
+        entity.setDeleted(true);
+        repository.save(entity);
     }
 
     public BigDecimal calculateHaoMon(UUID taiSanId) {
@@ -130,13 +135,21 @@ public class KhaiThacTaiSanService {
     }
 
     private KhaiThacTaiSanResponse toResponse(KhaiThacTaiSan entity) {
+        String tenTaiSan = null;
+        if (entity.getTaiSanId() != null) {
+            var taiSanOpt = taiSanRepository.findById(entity.getTaiSanId());
+            if (taiSanOpt.isPresent()) {
+                tenTaiSan = taiSanOpt.get().getTenTaiSan();
+            }
+        }
+
         return KhaiThacTaiSanResponse.builder()
                 .id(entity.getId())
                 .taiSanId(entity.getTaiSanId())
-                .tenTaiSan(entity.getMoTa())
+                .tenTaiSan(tenTaiSan)
                 .namKhaiThac(entity.getNamKhaiThac())
-                .doanhThu(null)
-                .haoMon(null)
+                .doanhThu(entity.getChiPhiVanHanh())
+                .haoMon(entity.getChiPhiBaoDuong())
                 .moTa(entity.getMoTa())
                 .createdBy(entity.getCreatedBy())
                 .createdAt(toLocalDateTime(entity.getCreatedAt()))
