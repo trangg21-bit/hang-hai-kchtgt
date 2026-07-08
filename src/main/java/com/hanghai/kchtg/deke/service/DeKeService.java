@@ -255,10 +255,13 @@ public class DeKeService {
     @Transactional(readOnly = true)
     public KetQuaTimKiemResponse searchDocuments(String kw, String loaiDe, String tinhTrang, String trangThaiStr, int page, int size) {
         DeKeApprovalStatus trangThai = null;
-        if (trangThaiStr != null && !trangThaiStr.isEmpty()) {
-            try { trangThai = DeKeApprovalStatus.valueOf(trangThaiStr); } catch (Exception ignored) {}
+        if (trangThaiStr != null && !trangThaiStr.trim().isEmpty()) {
+            try { trangThai = DeKeApprovalStatus.valueOf(trangThaiStr.trim()); } catch (Exception ignored) {}
         }
-        Page<DeKe> r = repo.searchDocuments(kw, loaiDe, tinhTrang, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
+        String loaiDeVal = (loaiDe != null && !loaiDe.trim().isEmpty()) ? loaiDe.trim() : null;
+        String tinhTrangVal = (tinhTrang != null && !tinhTrang.trim().isEmpty()) ? tinhTrang.trim() : null;
+        Page<DeKe> r = repo.searchDocuments(keywordLike, loaiDeVal, tinhTrangVal, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         return KetQuaTimKiemResponse.builder()
                 .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())
