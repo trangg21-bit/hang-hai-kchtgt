@@ -1,0 +1,14 @@
+feature_id: F-112
+module_id: M-004
+slug: quan-ly-dai-lrit-xoa
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: "src/main/java/com/hanghai/kchtg/station/controller/CoastalStationLRITController.java -> deleteStation()"
+  consumers:
+    - "src/main/java/com/hanghai/kchtg/station/service/CoastalStationLRITService.java"
+
+# Cross-cutting: features consumed by multiple modules
+consumed_by_modules: []

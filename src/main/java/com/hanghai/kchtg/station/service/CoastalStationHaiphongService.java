@@ -53,9 +53,8 @@ public class CoastalStationHaiphongService {
 
     public CoastalStationHaiphong updateStation(UUID id, CoastalStationHaiphongUpdateRequest request) {
         CoastalStationHaiphong entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Haiphong station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Haiphong station not found with id: " + id));
 
-        entity.setCode(request.getStationCode());
         entity.setName(request.getStationName());
         entity.setPortName(request.getPortName());
         entity.setDistrict(request.getDistrict());
@@ -87,7 +86,7 @@ public class CoastalStationHaiphongService {
 
     public void deleteStation(UUID id) {
         CoastalStationHaiphong entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Haiphong station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Haiphong station not found with id: " + id));
 
         String stationCode = entity.getCode();
         entity.softDelete();
@@ -105,7 +104,7 @@ public class CoastalStationHaiphongService {
 
     public CoastalStationHaiphong getStationById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Haiphong station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Haiphong station not found with id: " + id));
     }
 
     public List<CoastalStationHaiphong> getAllStations() {
@@ -122,7 +121,7 @@ public class CoastalStationHaiphongService {
 
     public CoastalStationHaiphong approveStation(UUID id, boolean approved, Long userId) {
         CoastalStationHaiphong entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Haiphong station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Haiphong station not found with id: " + id));
 
         if (approved) {
             Integer currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel() : 0;
@@ -171,7 +170,7 @@ public class CoastalStationHaiphongService {
 
     public CoastalStationHaiphong rejectStation(UUID id, String rejectionReason, Long userId) {
         CoastalStationHaiphong entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Haiphong station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Haiphong station not found with id: " + id));
 
         entity.setApprovalStatus(StationApprovalStatus.PENDING);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
@@ -194,7 +193,7 @@ public class CoastalStationHaiphongService {
 
     public List<CoastalStationHaiphongHistoryResponse> getHistory(UUID id) {
         CoastalStationHaiphong entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Haiphong station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Haiphong station not found with id: " + id));
         return historyService.getHistory(entity.getCode()).stream()
                 .map(h -> {
                     CoastalStationHaiphongHistoryResponse r = new CoastalStationHaiphongHistoryResponse();

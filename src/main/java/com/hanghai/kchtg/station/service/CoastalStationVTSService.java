@@ -48,11 +48,10 @@ public class CoastalStationVTSService {
 
     public CoastalStationVTS updateStation(UUID id, CoastalStationVTSUpdateRequest request) {
         CoastalStationVTS entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Station not found with id: " + id));
 
         String previousCode = entity.getCode();
 
-        entity.setCode(request.getStationCode());
         entity.setName(request.getStationName());
         entity.setLatitude(request.getLatitude());
         entity.setLongitude(request.getLongitude());
@@ -78,7 +77,7 @@ public class CoastalStationVTSService {
 
     public void deleteStation(UUID id) {
         CoastalStationVTS entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Station not found with id: " + id));
 
         String stationCode = entity.getCode();
         entity.softDelete();
@@ -96,7 +95,7 @@ public class CoastalStationVTSService {
 
     public CoastalStationVTS getStationById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Station not found with id: " + id));
     }
 
     public List<CoastalStationVTS> getAllStations() {
@@ -113,7 +112,7 @@ public class CoastalStationVTSService {
 
     public CoastalStationVTS approveStation(UUID id, boolean approved, Long userId) {
         CoastalStationVTS entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Station not found with id: " + id));
 
         if (approved) {
             Integer currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel() : 0;
@@ -164,7 +163,7 @@ public class CoastalStationVTSService {
 
     public CoastalStationVTS rejectStation(UUID id, String rejectionReason, Long userId) {
         CoastalStationVTS entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Station not found with id: " + id));
 
         entity.setApprovalStatus(StationApprovalStatus.PENDING);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
@@ -187,7 +186,7 @@ public class CoastalStationVTSService {
 
     public List<CoastalStationVTSHistoryResponse> getHistory(UUID id) {
         CoastalStationVTS entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Station not found with id: " + id));
         return historyService.getHistory(entity.getCode());
     }
 

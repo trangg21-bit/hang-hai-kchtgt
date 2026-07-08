@@ -7,15 +7,75 @@ slug: quan-ly-tai-san-bao-hieu-thong-tin
 # Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
 implementations:
   apps: []
-  services: []
+  services:
+    - name: beacon-service
+      path: src/main/java/com/hanghai/kchtg/beacon
+      type: backend-package
+      entities:
+        - BeaconLight
+        - Buoy
+        - BeaconHistory
+      features: [F-068, F-069, F-070, F-071, F-072, F-073, F-074, F-075, F-076, F-077, F-078, F-079]
+    - name: nhatram-service
+      path: src/main/java/com/hanghai/kchtg/nhatram
+      type: backend-package
+      entities:
+        - NhaTramPhao
+        - NhaTramDen
+        - NhaTramHistory
+      features: [F-080, F-081, F-082, F-083, F-084, F-085, F-086, F-087, F-088, F-089, F-090, F-091]
+    - name: station-service
+      path: src/main/java/com/hanghai/kchtg/station
+      type: backend-package
+      entities:
+        - CoastalStationVTS
+        - CoastalStationInmarsat
+        - CoastalStationCospasSarsat
+        - CoastalStationLRIT
+        - CoastalStationHaiphong
+      features: [F-092, F-093, F-094, F-095, F-096, F-097, F-098, F-099, F-100, F-101, F-102, F-103, F-104, F-105, F-106, F-107, F-108, F-109, F-110, F-111, F-112, F-113, F-114, F-115, F-116, F-117, F-118, F-119, F-120, F-121]
+    - name: beacon-frontend
+      path: frontend/src/pages/beacons
+      type: frontend-pages
+      features: [F-068, F-069, F-070, F-071, F-072]
+    - name: buoy-frontend
+      path: frontend/src/pages/buoys
+      type: frontend-pages
+      features: [F-074, F-075, F-076, F-077, F-078]
+    - name: beacon-history-frontend
+      path: frontend/src/pages/history
+      type: frontend-pages
+      features: [F-073, F-079]
+    - name: nhatram-frontend
+      path: frontend/src/pages/nhatram
+      type: frontend-pages
+      features: [F-080, F-081, F-082, F-083, F-084, F-085, F-086, F-087, F-088, F-089, F-090, F-091]
+    - name: station-frontend
+      path: frontend/src/pages/station
+      type: frontend-pages
+      features: [F-092, F-093, F-094, F-095, F-096, F-097, F-098, F-099, F-100, F-101, F-102, F-103]
+      # NOTE: F-104..F-121 (CospasSarsat, LRIT, Haiphong) have no frontend pages - known gap
+    - name: beacon-service-frontend
+      path: frontend/src/services
+      type: frontend-service
+      features: [F-068, F-069, F-070, F-071, F-072, F-073, F-074, F-075, F-076, F-077, F-078, F-079]
+    - name: station-service-frontend
+      path: frontend/src/services/station
+      type: frontend-service
+      features: [F-092, F-093, F-094, F-095, F-096, F-097, F-098, F-099, F-100, F-101, F-102, F-103]
+      # NOTE: F-104..F-121 (CospasSarsat, LRIT, Haiphong) no frontend service functions exist - known gap
+    - name: nhatram-service-frontend
+      path: frontend/src/services/nhatram
+      type: frontend-service
+      features: [F-080, F-081, F-082, F-083, F-084, F-085, F-086, F-087, F-088, F-089, F-090, F-091]
   libs: []
   packages: []
 
-# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
+# Stakeholder roster
 stakeholders:
-  business-owner: ""
-  tech-lead: ""
-  qa-lead: ""
+  business-owner: "TBD - see project charter"
+  tech-lead: "assigned via tech-lead/04-plan.md"
+  qa-lead: "TBD - future wave"
 
 # Cross-references
 depends_on: []
