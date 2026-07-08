@@ -155,14 +155,14 @@ export default function BenCangHistoryPage() {
                 )}
 
                 {/* Old/New value */}
-                {record.oldValue !== undefined && record.oldValue !== null && (
+                {record.oldValue !== undefined && record.oldValue != null && (
                   <div style={{ marginBottom: 2 }}>
                     <Text type="secondary" style={{ textDecoration: 'line-through', color: '#ff4d4f' }}>
                       cũ: {record.oldValue}
                     </Text>
                   </div>
                 )}
-                {record.newValue !== undefined && record.newValue !== null && (
+                {record.newValue !== undefined && record.newValue != null && (
                   <div>
                     <Text type="secondary">mới:</Text>{' '}
                     <Text style={{ color: '#52c41a', fontWeight: 500 }}>{record.newValue}</Text>

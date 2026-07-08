@@ -4,6 +4,8 @@ import com.hanghai.kchtg.assetmovement.dto.BaoCaoKiemKeRequest;
 import com.hanghai.kchtg.assetmovement.dto.BaoCaoKiemKeResponse;
 import com.hanghai.kchtg.assetmovement.service.BaoCaoKiemKeService;
 import com.hanghai.kchtg.common.dto.ApiResponse;
+
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,7 +31,7 @@ public class BaoCaoKiemKeController {
     @PostMapping
     @PreAuthorize("@auth.check(authentication, 'asset:bao-cao-kiem-ke')")
     public ResponseEntity<ApiResponse<BaoCaoKiemKeResponse>> create(
-            @RequestBody BaoCaoKiemKeRequest request) {
+            @Valid @RequestBody BaoCaoKiemKeRequest request) {
         BaoCaoKiemKeResponse response = baoCaoService.create(request);
         return ResponseEntity.status(201).body(ApiResponse.success("Bao cao da duoc tao", response));
     }
@@ -74,5 +76,25 @@ public class BaoCaoKiemKeController {
             @PathVariable UUID id) {
         baoCaoService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Bao cao da duoc xoa", null));
+    }
+
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("@auth.check(authentication, 'asset:bao-cao-kiem-ke')")
+    public ResponseEntity<ApiResponse<BaoCaoKiemKeResponse>> approve(
+            @PathVariable UUID id,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        String remarks = body != null ? body.get("remarks") : null;
+        BaoCaoKiemKeResponse response = baoCaoService.approve(id, remarks);
+        return ResponseEntity.ok(ApiResponse.success("Bao cao da duoc phe duyet", response));
+    }
+
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("@auth.check(authentication, 'asset:bao-cao-kiem-ke')")
+    public ResponseEntity<ApiResponse<BaoCaoKiemKeResponse>> reject(
+            @PathVariable UUID id,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        String remarks = body != null ? body.get("remarks") : null;
+        BaoCaoKiemKeResponse response = baoCaoService.reject(id, remarks);
+        return ResponseEntity.ok(ApiResponse.success("Bao cao da bi tu choi", response));
     }
 }

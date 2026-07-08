@@ -82,7 +82,7 @@ export default function CauCangUpdatePage() {
       }
 
       const payload = {
-        id: values.id,
+        id,
         tenCau: values.tenCau,
         benCangId: values.benCangId,
         chieuDai: values.chieuDai,

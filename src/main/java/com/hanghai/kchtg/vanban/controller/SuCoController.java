@@ -26,11 +26,11 @@ public class SuCoController {
 
     @GetMapping
     @PreAuthorize("@auth.check(authentication, 'vanban:read')")
-    public ResponseEntity<ApiResponse<List<SuCoResponse>>> listIncidents(
+    public ResponseEntity<ApiResponse<Page<SuCoResponse>>> listIncidents(
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
         Page<SuCoResponse> result = suCoService.findAll(page, size);
-        return ResponseEntity.ok(ApiResponse.success(result.getContent()));
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping

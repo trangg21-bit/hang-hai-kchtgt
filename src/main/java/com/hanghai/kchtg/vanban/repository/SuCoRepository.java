@@ -20,8 +20,8 @@ public interface SuCoRepository extends JpaRepository<SuCo, Long> {
     List<SuCo> findByMucDoNghiemTrong(MucDoNghiemTrong mucDoNghiemTrong);
 
     /** Search by location (partial match) */
-    Page<SuCo> findByViTriContaining(String viTri, Pageable pageable);
+    Page<SuCo> findByViTriContainingIgnoreCase(String viTri, Pageable pageable);
 
     /** Search by description (partial match) */
-    Page<SuCo> findByMoTaContaining(String moTa, Pageable pageable);
+    Page<SuCo> findByMoTaContainingIgnoreCase(String moTa, Pageable pageable);
 }

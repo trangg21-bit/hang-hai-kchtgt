@@ -127,6 +127,7 @@ public class JwtUtil {
                 .permissions(permissions)
                 .claim("role_level", resolveRoleLevel(role))
                 .claim("totp_enabled", Boolean.TRUE.equals(user.getTotpEnabled()))
+                .claim("permission_version", user.getPermissionVersion())
                 .build();
 
         return Jwts.builder()
@@ -208,6 +209,21 @@ public class JwtUtil {
             return (Boolean) totpEnabled;
         }
         return false;
+    }
+
+    /**
+     * Lay permission_version claim tu JWT.
+     * <p>
+     * Dung cho co che thu hoi quyen tuc thi: token mang phien ban permission tai
+     * thoi diem phat hanh; neu lech voi phien ban hien tai cua user thi token da cu.
+     *
+     * @return gia tri phien ban, hoac {@code null} neu token khong co claim nay
+     *         (token cu phat hanh truoc khi tinh nang duoc bat - bo qua kiem tra).
+     */
+    public Integer extractPermissionVersion(String token) {
+        Claims claims = validateToken(token);
+        Object version = claims.get("permission_version");
+        return version instanceof Number number ? number.intValue() : null;
     }
 
     /**

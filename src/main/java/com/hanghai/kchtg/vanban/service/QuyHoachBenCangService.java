@@ -17,9 +17,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import java.util.Objects;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class QuyHoachBenCangService {
 
     private final QuyHoachBenCangRepository quyHoachBenCangRepository;
@@ -32,6 +35,11 @@ public class QuyHoachBenCangService {
     @Transactional
     public QuyHoachBenCangResponse create(QuyHoachBenCangCreateRequest request) {
         log.info("Creating QuyHoachBenCang: {}", request.getTenDoAn());
+
+        if (request.getTenDoAn() != null && quyHoachBenCangRepository.existsByTenDoAn(request.getTenDoAn())) {
+            throw new IllegalArgumentException("Tên đồ án quy hoạch bến cảng đã tồn tại: " + request.getTenDoAn());
+        }
+
         QuyHoachBenCang qh = QuyHoachBenCang.builder()
                 .tenDoAn(request.getTenDoAn())
                 .coQuanPheDuyet(request.getCoQuanPheDuyet())
@@ -42,7 +50,7 @@ public class QuyHoachBenCangService {
                 .duongDanFile(request.getDuongDanFile())
                 .nguoiTao(request.getNguoiTao())
                 .build();
-        return toResponse(quyHoachBenCangRepository.save(qh));
+        return toResponse(Objects.requireNonNull(quyHoachBenCangRepository.save(qh)));
     }
 
     @Transactional(readOnly = true)
@@ -69,15 +77,21 @@ public class QuyHoachBenCangService {
         QuyHoachBenCang qh = quyHoachBenCangRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy quy hoạch với id: " + id));
 
-        if (request.getTenDoAn() != null) qh.setTenDoAn(request.getTenDoAn());
+        if (request.getTenDoAn() != null) {
+            if (quyHoachBenCangRepository.existsByTenDoAnAndIdNot(request.getTenDoAn(), id)) {
+                throw new IllegalArgumentException("Tên đồ án quy hoạch bến cảng đã tồn tại: " + request.getTenDoAn());
+            }
+            qh.setTenDoAn(request.getTenDoAn());
+        }
         if (request.getCoQuanPheDuyet() != null) qh.setCoQuanPheDuyet(request.getCoQuanPheDuyet());
         if (request.getNgayPheDuyet() != null) qh.setNgayPheDuyet(request.getNgayPheDuyet());
         if (request.getPhamViApDung() != null) qh.setPhamViApDung(request.getPhamViApDung());
         if (request.getTiLeBanDo() != null) qh.setTiLeBanDo(request.getTiLeBanDo());
         if (request.getTinhTrang() != null) qh.setTinhTrang(request.getTinhTrang());
         if (request.getDuongDanFile() != null) qh.setDuongDanFile(request.getDuongDanFile());
+        if (request.getNguoiTao() != null) qh.setNguoiSuaDoi(request.getNguoiTao());
 
-        return toResponse(quyHoachBenCangRepository.save(qh));
+        return toResponse(Objects.requireNonNull(quyHoachBenCangRepository.save(qh)));
     }
 
     @Transactional
@@ -116,8 +130,14 @@ public class QuyHoachBenCangService {
     public KetQuaTraCuuResponse traCuu(String keyword, String status, LocalDate yearStart,
                                         LocalDate yearEnd, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "ngayTao"));
+        
+        TinhTrangQuyHoach statusEnum = (status != null && !status.isEmpty()) 
+                ? TinhTrangQuyHoach.valueOf(status) : null;
+
+        String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
+
         Page<QuyHoachBenCang> result = quyHoachBenCangRepository.findAllWithSearch(
-                keyword, status, yearStart, yearEnd, pageable);
+                keywordLike, statusEnum, yearStart, yearEnd, pageable);
         return KetQuaTraCuuResponse.builder()
                 .results(result.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(result.getTotalElements())

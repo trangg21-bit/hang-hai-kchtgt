@@ -317,7 +317,7 @@ export default function CangCanDetailPage() {
             >
               Xóa
             </Button>
-            {data.trangThaiPheDuyet === 'CHỜ_PHE_DUYỆT' && (
+            {data.trangThaiPheDuyet === 'CHO_PHE_DUYET' && (
               <>
                 <Popconfirm
                   title="Phê duyệt cảng cạn?"

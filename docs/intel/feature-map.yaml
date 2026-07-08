@@ -383,3 +383,483 @@ features:
     visibility: [PRIVATE]
     consumed_by_modules: []
     depends_on: []
+  F-068:
+    id: F-068
+    slug: ui-ql-cb-danh-sach
+    name: Danh sách Cảng biển
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-068-ui-ql-cb-danh-sach/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-069:
+    id: F-069
+    slug: ui-xem-cb-chi-tiet
+    name: Chi tiết Cảng biển
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-069-ui-xem-cb-chi-tiet/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-070:
+    id: F-070
+    slug: ui-ql-cb-tao-moi
+    name: Tạo mới Cảng biển
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-070-ui-ql-cb-tao-moi/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-071:
+    id: F-071
+    slug: ui-ql-cb-cap-nhat
+    name: Cập nhật Cảng biển
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-071-ui-ql-cb-cap-nhat/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-072:
+    id: F-072
+    slug: ui-phe-duyet-cb
+    name: Phê duyệt Cảng biển
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-072-ui-phe-duyet-cb/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-073:
+    id: F-073
+    slug: ui-ql-bc-danh-sach
+    name: Danh sách Bến cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-073-ui-ql-bc-danh-sach/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-074:
+    id: F-074
+    slug: ui-xem-bc-chi-tiet
+    name: Chi tiết Bến cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-074-ui-xem-bc-chi-tiet/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-075:
+    id: F-075
+    slug: ui-ql-bc-tao-moi
+    name: Tạo mới Bến cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-075-ui-ql-bc-tao-moi/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-076:
+    id: F-076
+    slug: ui-ql-bc-cap-nhat
+    name: Cập nhật Bến cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-076-ui-ql-bc-cap-nhat/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-077:
+    id: F-077
+    slug: ui-phe-duyet-bc
+    name: Phê duyệt Bến cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-077-ui-phe-duyet-bc/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-078:
+    id: F-078
+    slug: ui-ql-cc-danh-sach
+    name: Danh sách Cầu cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-078-ui-ql-cc-danh-sach/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-079:
+    id: F-079
+    slug: ui-xem-cc-chi-tiet
+    name: Chi tiết Cầu cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-079-ui-xem-cc-chi-tiet/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-080:
+    id: F-080
+    slug: ui-ql-cc-tao-moi
+    name: Tạo mới Cầu cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-080-ui-ql-cc-tao-moi/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-081:
+    id: F-081
+    slug: ui-ql-cc-cap-nhat
+    name: Cập nhật Cầu cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-081-ui-ql-cc-cap-nhat/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-082:
+    id: F-082
+    slug: ui-phe-duyet-cc
+    name: Phê duyệt Cầu cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-082-ui-phe-duyet-cc/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-083:
+    id: F-083
+    slug: ui-ql-cct-danh-sach
+    name: Danh sách Cảng cạn
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-083-ui-ql-cct-danh-sach/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-084:
+    id: F-084
+    slug: ui-xem-cct-chi-tiet
+    name: Chi tiết Cảng cạn
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-084-ui-xem-cct-chi-tiet/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-085:
+    id: F-085
+    slug: ui-ql-cct-tao-moi
+    name: Tạo mới Cảng cạn
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-085-ui-ql-cct-tao-moi/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-086:
+    id: F-086
+    slug: ui-ql-cct-cap-nhat
+    name: Cập nhật Cảng cạn
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-086-ui-ql-cct-cap-nhat/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-087:
+    id: F-087
+    slug: ui-phe-duyet-cct
+    name: Phê duyệt Cảng cạn
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-087-ui-phe-duyet-cct/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-088:
+    id: F-088
+    slug: ui-ql-vn-danh-sach
+    name: Danh sách Vùng nước
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-088-ui-ql-vn-danh-sach/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-089:
+    id: F-089
+    slug: ui-xem-vn-chi-tiet
+    name: Chi tiết Vùng nước
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-089-ui-xem-vn-chi-tiet/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-090:
+    id: F-090
+    slug: ui-ql-vn-tao-moi
+    name: Tạo mới Vùng nước
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-090-ui-ql-vn-tao-moi/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-091:
+    id: F-091
+    slug: ui-ql-vn-cap-nhat
+    name: Cập nhật Vùng nước
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-091-ui-ql-vn-cap-nhat/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-092:
+    id: F-092
+    slug: ui-phe-duyet-vn
+    name: Phê duyệt Vùng nước
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-092-ui-phe-duyet-vn/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-093:
+    id: F-093
+    slug: ui-ql-cb-xoa
+    name: Xóa Cảng biển
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-093-ui-ql-cb-xoa/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-094:
+    id: F-094
+    slug: ui-ql-cb-lich-su
+    name: Lịch sử Cảng biển
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-094-ui-ql-cb-lich-su/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-095:
+    id: F-095
+    slug: ui-ql-bc-xoa
+    name: Xóa Bến cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-095-ui-ql-bc-xoa/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-096:
+    id: F-096
+    slug: ui-ql-bc-lich-su
+    name: Lịch sử Bến cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-096-ui-ql-bc-lich-su/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-097:
+    id: F-097
+    slug: ui-ql-cc-xoa
+    name: Xóa Cầu cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-097-ui-ql-cc-xoa/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-098:
+    id: F-098
+    slug: ui-ql-cc-lich-su
+    name: Lịch sử Cầu cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-098-ui-ql-cc-lich-su/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-099:
+    id: F-099
+    slug: ui-ql-cct-xoa
+    name: Xóa Cảng cạn
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-099-ui-ql-cct-xoa/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-100:
+    id: F-100
+    slug: ui-ql-cct-lich-su
+    name: Lịch sử Cảng cạn
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-100-ui-ql-cct-lich-su/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-101:
+    id: F-101
+    slug: ui-ql-vn-xoa
+    name: Xóa Vùng nước
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-101-ui-ql-vn-xoa/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-102:
+    id: F-102
+    slug: ui-ql-vn-lich-su
+    name: Lịch sử Vùng nước
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-102-ui-ql-vn-lich-su/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-103:
+    id: F-103
+    slug: ui-upload-giayto-cb
+    name: Upload GiayTo Cảng biển
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-103-ui-upload-giayto-cb/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-104:
+    id: F-104
+    slug: ui-upload-giayto-bc
+    name: Upload GiayTo Bến cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-104-ui-upload-giayto-bc/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-105:
+    id: F-105
+    slug: ui-upload-giayto-cc
+    name: Upload GiayTo Cầu cảng
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-105-ui-upload-giayto-cc/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-106:
+    id: F-106
+    slug: ui-upload-giayto-cct
+    name: Upload GiayTo Cảng cạn
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-106-ui-upload-giayto-cct/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []
+  F-107:
+    id: F-107
+    slug: ui-upload-giayto-vn
+    name: Upload GiayTo Vùng nước
+    path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-107-ui-upload-giayto-vn/
+    status: proposed
+    classification: local
+    confidence: high
+    version: 1
+    visibility: [PRIVATE]
+    consumed_by_modules: []
+    depends_on: []

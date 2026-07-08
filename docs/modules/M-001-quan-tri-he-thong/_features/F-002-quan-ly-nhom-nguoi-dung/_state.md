@@ -4,7 +4,7 @@ feature-name: Quản lý nhóm người dùng
 module-id: M-001
 pipeline-type: sdlc
 status: closed
-current-stage: reviewer
+current-stage: closed
 depends-on: []
 blocked-by: []
 created: 2026-06-28

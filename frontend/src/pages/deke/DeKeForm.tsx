@@ -13,6 +13,7 @@ import {
   Space,
   message,
   Breadcrumb,
+  Modal,
 } from 'antd';
 import { dekeCRUD, deKeApproval } from '../../services/deKeService';
 import type {
@@ -28,17 +29,43 @@ import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 
-export default function DeKeForm() {
+const LOAI_DE_MAP: Record<string, string> = {
+  'DE_DAT': 'Đê đất',
+  'DE_BETONG': 'Đê bê tông',
+  'KE_DA': 'Kè đá',
+  'KE_BETONG': 'Kè bê tông',
+  'KAC': 'Khác',
+};
+
+const TINH_TRANG_MAP: Record<string, string> = {
+  'TOT': 'Tốt',
+  'XUONG_CAP': 'Xuống cấp',
+  'HU_HOng': 'Hư hỏng',
+  'HU_HOING': 'Hư hỏng',
+  'HU_HONG': 'Hư hỏng',
+};
+
+export interface DeKeFormProps {
+  open?: boolean;
+  editId?: string | null;
+  mode?: 'create' | 'edit' | 'detail';
+  onCancel?: () => void;
+  onSuccess?: () => void;
+}
+
+export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: DeKeFormProps = {}) {
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
+  const { id: routeId } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const [form] = Form.useForm();
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
 
-  const isEditMode = searchParams.get('mode') === 'edit';
-  const isDetailMode = !!id && !isEditMode;
-  const isCreateMode = !id;
+  const isModalMode = open !== undefined;
+  const id = isModalMode ? (editId || undefined) : routeId;
+  const isEditMode = isModalMode ? mode === 'edit' : searchParams.get('mode') === 'edit';
+  const isDetailMode = isModalMode ? mode === 'detail' : (!!id && !isEditMode);
+  const isCreateMode = isModalMode ? mode === 'create' : !id;
 
   const [record, setRecord] = useState<DeKeResponse | null>(null);
   const [history, setHistory] = useState<any[]>([]);
@@ -47,6 +74,13 @@ export default function DeKeForm() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setHasChanges(false);
+    }
+  }, [open]);
 
   // Fetch detail data
   useEffect(() => {
@@ -57,17 +91,16 @@ export default function DeKeForm() {
         try {
           const data = await dekeCRUD.getById(id);
           setRecord(data);
-          if (!isEditMode) {
-            form.setFieldsValue({
-              loaiDe: data.loaiDe,
-              viTri: data.viTri,
-              chieuDai: data.chieuDai,
-              chieuRong: data.chieuRong,
-              chieuCao: data.chieuCao,
-              matVatLieu: data.matVatLieu,
-              tinhTrang: data.tinhTrang,
-            });
-          }
+          form.setFieldsValue({
+            loaiDe: data.loaiDe,
+            viTri: data.viTri,
+            chieuDai: data.chieuDai,
+            chieuRong: data.chieuRong,
+            chieuCao: data.chieuCao,
+            matVatLieu: data.matVatLieu,
+            tinhTrang: data.tinhTrang,
+            ghiChu: data.ghiChu,
+          });
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
         } finally {
@@ -145,6 +178,7 @@ export default function DeKeForm() {
         await deKeApproval.approveC1(id, pheDuyetData);
         message.success('Phê duyệt C1 thành công');
         setRecord({ ...record, trangThaiPheDuyet: 'UNDER_REVIEW' });
+        setHasChanges(true);
       } else if (action === 'approveC2') {
         const pheDuyetData: PheDuyetRequest = {
           nguoiPheDuyet: currentUser?.username || 'unknown',
@@ -153,6 +187,7 @@ export default function DeKeForm() {
         await deKeApproval.approveC2(id, pheDuyetData);
         message.success('Phê duyệt C2 thành công');
         setRecord({ ...record, trangThaiPheDuyet: 'APPROVED' });
+        setHasChanges(true);
       } else if (action === 'reject') {
         const pheDuyetData: PheDuyetRequest = {
           nguoiPheDuyet: currentUser?.username || 'unknown',
@@ -172,15 +207,28 @@ export default function DeKeForm() {
           trangThaiPheDuyet: 'REJECTED',
           lyDoTuChoi: payload?.lyDo as string,
         });
+        setHasChanges(true);
       } else if (action === 'delete') {
         await dekeCRUD.delete(id);
         message.success('Xóa thành công');
-        navigate('/de-ke');
+        if (isModalMode && onSuccess) {
+          onSuccess();
+        } else {
+          navigate('/de-ke');
+        }
       }
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Lỗi thực hiện thao tác');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    if (hasChanges && onSuccess) {
+      onSuccess();
+    } else if (onCancel) {
+      onCancel();
     }
   };
 
@@ -213,9 +261,8 @@ export default function DeKeForm() {
 
   // Detail/Read-only view
   if (isDetailMode) {
-    return (
-      <div style={{ padding: '24px' }}>
-        <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />
+    const detailContent = (
+      <>
         <Card style={{ marginBottom: '24px' }}>
           <h2>Chi tiết Đê/Kè</h2>
           {record && (
@@ -234,7 +281,9 @@ export default function DeKeForm() {
               <Descriptions.Item label="Mặt vật liệu">
                 {record.matVatLieu ?? '—'}
               </Descriptions.Item>
-              <Descriptions.Item label="Tình trạng">{record.tinhTrang ?? '—'}</Descriptions.Item>
+              <Descriptions.Item label="Tình trạng">
+                {TINH_TRANG_MAP[record.tinhTrang] || record.tinhTrang || '—'}
+              </Descriptions.Item>
               <Descriptions.Item label="Ghi chú" span={2}>
                 {(record as any).ghiChu ?? '—'}
               </Descriptions.Item>
@@ -287,6 +336,31 @@ export default function DeKeForm() {
             />
           </Card>
         )}
+      </>
+    );
+
+    if (isModalMode) {
+      return (
+        <Modal
+          title="Chi tiết Đê/Kè"
+          open={open}
+          onCancel={handleCloseModal}
+          footer={null}
+          width={900}
+          destroyOnClose
+          maskClosable={false}
+        >
+          <Spin spinning={isLoading}>
+            {detailContent}
+          </Spin>
+        </Modal>
+      );
+    }
+
+    return (
+      <div style={{ padding: '24px' }}>
+        <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />
+        {detailContent}
       </div>
     );
   }

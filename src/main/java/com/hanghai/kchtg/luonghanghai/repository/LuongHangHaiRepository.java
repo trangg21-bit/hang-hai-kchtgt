@@ -19,7 +19,7 @@ public interface LuongHangHaiRepository extends JpaRepository<LuongHangHai, Long
     List<LuongHangHai> findByLoaiTauContainingAndIsDeletedFalse(String loaiTau);
 
     @Query("SELECT l FROM LuongHangHai l WHERE " +
-            "(:keyword IS NULL OR l.loaiTau LIKE %:keyword%) AND " +
+            "(:keyword IS NULL OR LOWER(l.loaiTau) LIKE :keyword) AND " +
             "(:gioDien IS NULL OR l.gioDien = :gioDien) AND " +
             "(:taiTrong IS NULL OR l.taiTrong = :taiTrong) AND " +
             "(:trangThaiPheDuyet IS NULL OR l.approvalStatus = :trangThaiPheDuyet) AND " +

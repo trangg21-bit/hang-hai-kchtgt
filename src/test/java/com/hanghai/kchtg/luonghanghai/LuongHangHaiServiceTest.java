@@ -89,7 +89,7 @@ class LuongHangHaiServiceTest {
     @Test void getById_shouldThrowWhenNotFound() {
         when(repo.findById(99L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.getById(99L))
-                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Khong tim thay");
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Không tìm thấy");
     }
 
     @Test void findAll_shouldReturnSorted() {
@@ -131,7 +131,7 @@ class LuongHangHaiServiceTest {
     @Test void softDelete_shouldThrowWhenNotApproved() {
         when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
         assertThatThrownBy(() -> service.softDelete(1L))
-                .isInstanceOf(IllegalStateException.class).hasMessageContaining("Chi co luong hang hai da duyet");
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("Chỉ có luồng hàng hải đã phê duyệt mới có thể xóa mềm");
     }
 
     @Test void softDelete_shouldThrowWhenNotFound() {
@@ -146,9 +146,8 @@ class LuongHangHaiServiceTest {
         when(pheDuyetLichSuRepo.save(any())).thenReturn(hist);
         PheDuyetResponse r = service.approveC1(1L, PheDuyetRequest.builder()
                 .trangThai("APPROVED")
-                .nguoiPheDuyet("Truong Phong")
                 .lyDo("Phe cap 1")
-                .build());
+                .build(), "Truong Phong");
         assertThat(r.getTrangThai()).isEqualTo("UNDER_REVIEW");
         assertThat(r.getCapPheDuyet()).isEqualTo(1);
     }
@@ -159,9 +158,8 @@ class LuongHangHaiServiceTest {
         when(pheDuyetLichSuRepo.save(any())).thenReturn(hist);
         PheDuyetResponse r = service.approveC1(1L, PheDuyetRequest.builder()
                 .trangThai("REJECTED")
-                .nguoiPheDuyet("Truong Phong")
                 .lyDo("Tu choi cap 1")
-                .build());
+                .build(), "Truong Phong");
         assertThat(r.getTrangThai()).isEqualTo("REJECTED");
     }
 
@@ -172,9 +170,8 @@ class LuongHangHaiServiceTest {
         when(pheDuyetLichSuRepo.save(any())).thenReturn(hist);
         PheDuyetResponse r = service.approveC2(1L, PheDuyetRequest.builder()
                 .trangThai("APPROVED")
-                .nguoiPheDuyet("Giam Doc")
                 .lyDo("Phe cap 2")
-                .build());
+                .build(), "Giam Doc");
         assertThat(r.getTrangThai()).isEqualTo("APPROVED");
         assertThat(r.getCapPheDuyet()).isEqualTo(2);
     }
@@ -186,28 +183,27 @@ class LuongHangHaiServiceTest {
         when(pheDuyetLichSuRepo.save(any())).thenReturn(hist);
         PheDuyetResponse r = service.approveC2(1L, PheDuyetRequest.builder()
                 .trangThai("REJECTED")
-                .nguoiPheDuyet("Giam Doc")
                 .lyDo("Tu choi cap 2")
-                .build());
+                .build(), "Giam Doc");
         assertThat(r.getTrangThai()).isEqualTo("REJECTED");
     }
 
     @Test void approveC2_shouldThrowWhenNotUnderReview() {
         testEntity.setApprovalStatus(LuongHangHaiApprovalStatus.PROPOSED);
         when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
-        assertThatThrownBy(() -> service.approveC2(1L, PheDuyetRequest.builder().build()))
+        assertThatThrownBy(() -> service.approveC2(1L, PheDuyetRequest.builder().build(), "system"))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("UNDER_REVIEW");
     }
 
     @Test void approveC1_shouldThrowWhenNotFound() {
         when(repo.findById(99L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.approveC1(99L, PheDuyetRequest.builder().build()))
+        assertThatThrownBy(() -> service.approveC1(99L, PheDuyetRequest.builder().build(), "system"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test void approveC2_shouldThrowWhenNotFound() {
         when(repo.findById(99L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.approveC2(99L, PheDuyetRequest.builder().build()))
+        assertThatThrownBy(() -> service.approveC2(99L, PheDuyetRequest.builder().build(), "system"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -217,10 +213,9 @@ class LuongHangHaiServiceTest {
         when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
         assertThatThrownBy(() -> service.approveC2(1L, PheDuyetRequest.builder()
                 .trangThai("APPROVED")
-                .nguoiPheDuyet("user1")
-                .build()))
+                .build(), "user1"))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
+                .hasMessageContaining("Người phê duyệt C2 không được trùng với người phê duyệt C1");
     }
 
     @Test void reject_shouldRejectAndSetLyDo() {
@@ -231,9 +226,8 @@ class LuongHangHaiServiceTest {
         PheDuyetResponse r = service.reject(1L, PheDuyetRequest.builder()
                 .capPheDuyet(2)
                 .trangThai("REJECTED")
-                .nguoiPheDuyet("Giam Doc")
                 .lyDo("Tu choi")
-                .build());
+                .build(), "Giam Doc");
         assertThat(r.getTrangThai()).isEqualTo("REJECTED");
         assertThat(r.getCapPheDuyet()).isEqualTo(2);
     }
@@ -271,7 +265,7 @@ class LuongHangHaiServiceTest {
 
     @Test void searchDocuments_shouldReturnPaginated() {
         Page<LuongHangHai> p = new PageImpl<>(List.of(testEntity));
-        when(repo.searchDocuments(eq("Tau"), eq("12:00"), eq("1000"),
+        when(repo.searchDocuments(eq("%tau%"), eq("12:00"), eq("1000"),
                 eq(LuongHangHaiApprovalStatus.APPROVED), any(Pageable.class))).thenReturn(p);
         KetQuaTimKiemResponse r = service.searchDocuments("Tau", "12:00", "1000", "APPROVED", 0, 20);
         assertThat(r.getTotalElements()).isEqualTo(1);

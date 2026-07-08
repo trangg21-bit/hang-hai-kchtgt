@@ -25,6 +25,7 @@ public class DeKeCreateRequest {
     private Double chieuCao;
     private String matVatLieu;
     private String tinhTrang;
+    private String ghiChu;
 
     private List<DeKeAttachmentCreate> attachments;
 

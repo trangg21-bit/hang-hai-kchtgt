@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Layout,
@@ -89,6 +89,8 @@ const pageTitles: Record<string, string> = {
   '/gis/permits': 'Giấy phép S-63',
   '/beacons': 'Đèn biển',
   '/buoys': 'Phao tiêu',
+  '/nhatram/den': 'Nhà trạm đèn biển',
+  '/nhatram/phao': 'Nhà trạm phao tiêu',
   '/history': 'Lịch sử thay đổi',
   '/cangbien': 'Cảng biển',
   '/bencang': 'Bến cảng',
@@ -104,17 +106,70 @@ const pageTitles: Record<string, string> = {
   '/reports': 'Báo cáo & Thống kê',
   '/settings': 'Cấu hình hệ thống',
   '/logs': 'Nhật ký hệ thống',
+  '/vanban/phaply': 'Văn bản pháp lý',
+  '/vanban/suco': 'Sự cố hàng hải',
+  '/vanban/quyhoach': 'Quy hoạch bến cảng',
+  '/station/coastal': 'Đài duyên hải VTS',
+  '/station/special': 'Đài vệ tinh Inmarsat',
+  '/asset/increase': 'Yêu cầu tăng tài sản',
+  '/asset/decrease': 'Yêu cầu giảm tài sản',
+  '/asset/inventory': 'Kiểm kê tài sản',
+  '/asset/exploitation': 'Khai thác tài sản',
 };
 
 export default function AppLayout() {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [siderWidth, setSiderWidth] = useState(256);
+  const [openKeys, setOpenKeys] = useState<string[]>([]);
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const screens = useBreakpoint();
   const { token } = theme.useToken();
+
+  // Match top-level section: extract first two path segments for GIS submenus
+  const pathSegments = location.pathname.split('/').filter(Boolean);
+  let selectedKey: string;
+  if (pathSegments[0] === 'gis') {
+    // For GIS, select the deepest valid key: /gis/points, /gis/lines, etc.
+    const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
+    selectedKey = deepKey;
+  } else if (pathSegments[0] === 'nhatram' || pathSegments[0] === 'vanban' || pathSegments[0] === 'station' || pathSegments[0] === 'asset') {
+    const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
+    selectedKey = deepKey;
+  } else if (pathSegments[0] === 'cangbien' || pathSegments[0] === 'bencang' || pathSegments[0] === 'caucang' || pathSegments[0] === 'cangcan' || pathSegments[0] === 'vungnuoc') {
+    selectedKey = '/' + pathSegments[0];
+  } else if (pathSegments[0] === 'luong-hang-hai' || pathSegments[0] === 'de-ke' || pathSegments[0] === 'co-so-sua-chua' || pathSegments[0] === 'tram-radar' || pathSegments[0] === 'he-thong-vts') {
+    selectedKey = '/' + pathSegments[0];
+  } else if (pathSegments[0] === 'reports') {
+    selectedKey = location.pathname;
+  } else {
+    selectedKey = '/' + pathSegments[0];
+  }
+
+  useEffect(() => {
+    if (selectedKey) {
+      if (selectedKey.startsWith('/nhatram') || selectedKey === '/beacons' || selectedKey === '/buoys' || selectedKey === '/history') {
+        setOpenKeys(['beacon']);
+      } else if (selectedKey.startsWith('/gis')) {
+        setOpenKeys(['gis']);
+      } else if (['/cangbien', '/bencang', '/caucang', '/cangcan', '/vungnuoc'].includes(selectedKey)) {
+        setOpenKeys(['cangben']);
+      } else if (selectedKey.startsWith('/asset')) {
+        setOpenKeys(['asset-movement']);
+      } else if (selectedKey.startsWith('/vanban')) {
+        setOpenKeys(['vanban-suco']);
+      } else if (['/luong-hang-hai', '/de-ke', '/co-so-sua-chua', '/tram-radar', '/he-thong-vts'].includes(selectedKey)) {
+        setOpenKeys(['khu-nuoc-vts']);
+      } else if (selectedKey.startsWith('/station')) {
+        setOpenKeys(['stations']);
+      } else if (selectedKey.startsWith('/reports')) {
+        setOpenKeys(['reports-parent', 'reports-chung', 'reports-kcht']);
+      }
+    }
+  }, [selectedKey]);
 
   const menuItems: MenuProps['items'] = [
     { key: '/', icon: <DashboardOutlined />, label: 'Trang chủ' },
@@ -147,6 +202,8 @@ export default function AppLayout() {
       children: [
         canAccessMenu('/beacons') ? { key: '/beacons', label: 'Đèn biển' } : null,
         canAccessMenu('/buoys') ? { key: '/buoys', label: 'Phao tiêu' } : null,
+        canAccessMenu('/nhatram/den') ? { key: '/nhatram/den', label: 'Nhà trạm đèn biển' } : null,
+        canAccessMenu('/nhatram/phao') ? { key: '/nhatram/phao', label: 'Nhà trạm phao tiêu' } : null,
         canAccessMenu('/history') ? { key: '/history', label: 'Lịch sử thay đổi' } : null,
       ].filter(Boolean),
     },
@@ -163,6 +220,27 @@ export default function AppLayout() {
         canAccessMenu('/vungnuoc') ? { key: '/vungnuoc', label: 'Vùng nước' } : null,
       ].filter(Boolean),
     },
+    {
+      key: 'asset-movement',
+      icon: <ContainerOutlined />,
+      label: 'Biến động tài sản',
+      children: [
+        canAccessMenu('/asset/increase') ? { key: '/asset/increase', label: 'Yêu cầu tăng tài sản' } : null,
+        canAccessMenu('/asset/decrease') ? { key: '/asset/decrease', label: 'Yêu cầu giảm tài sản' } : null,
+        canAccessMenu('/asset/inventory') ? { key: '/asset/inventory', label: 'Kiểm kê tài sản' } : null,
+        canAccessMenu('/asset/exploitation') ? { key: '/asset/exploitation', label: 'Khai thác tài sản' } : null,
+      ].filter(Boolean),
+    },
+    {
+      key: 'vanban-suco',
+      icon: <ContainerOutlined />,
+      label: 'Văn bản & Sự cố',
+      children: [
+        canAccessMenu('/vanban/phaply') ? { key: '/vanban/phaply', label: 'Văn bản pháp lý' } : null,
+        canAccessMenu('/vanban/suco') ? { key: '/vanban/suco', label: 'Sự cố hàng hải' } : null,
+        canAccessMenu('/vanban/quyhoach') ? { key: '/vanban/quyhoach', label: 'Quy hoạch bến cảng' } : null,
+      ].filter(Boolean),
+    },
     { type: 'divider' as const },
     {
       key: 'khu-nuoc-vts',
@@ -176,23 +254,121 @@ export default function AppLayout() {
         canAccessMenu('/he-thong-vts') ? { key: '/he-thong-vts', label: 'Hệ thống VTS' } : null,
       ].filter(Boolean),
     },
+    {
+      key: 'stations',
+      icon: <SettingOutlined />,
+      label: 'Đài duyên hải & Vệ tinh',
+      children: [
+        canAccessMenu('/station/coastal') ? { key: '/station/coastal', label: 'Đài duyên hải VTS' } : null,
+        canAccessMenu('/station/special') ? { key: '/station/special', label: 'Đài vệ tinh Inmarsat' } : null,
+      ].filter(Boolean),
+    },
     { type: 'divider' as const },
     canAccessMenu('/reports') ? {
       key: 'reports-parent',
       icon: <BarChartOutlined />,
       label: 'BÁO CÁO THỐNG KÊ',
       children: [
+        { key: '/reports', label: 'Tất cả báo cáo' },
         {
           key: 'reports-chung',
           label: 'Báo cáo thống kê chung',
           children: [
             { key: '/reports/F-141', label: 'Báo cáo thống kê tăng giảm tài sản' },
-            { key: '/reports/F-142', label: 'Mẫu B04a/BCTC: Thuyết minh chi tiết số liệu tài sản KCHT đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng' },
+            { key: '/reports/F-142', label: 'Mẫu B04a/BCTC: Thuyết minh chi tiết số liệu tài sản kết cấu hạ tầng đơn vị được giao quản lý nhưng không trực tiếp khai thác, sử dụng' },
             { key: '/reports/F-143', label: 'Mẫu số 02: Báo cáo kê khai tài sản kết cấu hạ tầng hàng hải' },
             { key: '/reports/F-144', label: 'Mẫu số 03: Báo cáo tình hình quản lý tài sản kết cấu hạ tầng hàng hải' },
             { key: '/reports/F-145', label: 'Mẫu số 04: Báo cáo tình hình xử lý tài sản kết cấu hạ tầng hàng hải' },
             { key: '/reports/F-146', label: 'Mẫu số 05: Báo cáo tình hình khai thác tài sản kết cấu hạ tầng hàng hải' },
             { key: '/reports/F-147', label: 'Mẫu số 06: Tổng hợp danh mục TS KCHTGT hàng hải đề nghị xử lý' }
+          ]
+        },
+        {
+          key: 'reports-kcht',
+          label: 'Nhóm chỉ tiêu kết cấu hạ tầng',
+          children: [
+            { key: '/reports/F-148', label: 'Biểu 01-N: Năng lực thông qua bến cảng, cầu cảng' },
+            { key: '/reports/F-149', label: 'Biểu 02-N: Năng lực thông qua cảng biển' },
+            { key: '/reports/F-150', label: 'Biểu 03-N: Thống kê cầu cảng' },
+            { key: '/reports/F-151', label: 'Biểu 04-N: Thống kê luồng hàng hải' },
+            { key: '/reports/F-152', label: 'Biểu 06-N: Thống kê vùng đón trả hoa tiêu, vùng quay trở tàu, ga tránh tàu, khu neo tránh trú bão' },
+            { key: '/reports/F-153', label: 'Biểu 05-N: Thống kê khu chuyển tải, khu neo đậu' },
+            { key: '/reports/F-154', label: 'Biểu 07-N: Thống kê bến phao, khu neo đậu' },
+            { key: '/reports/F-155', label: 'Biểu 08-N: Thống kê hệ thống đèn biển' },
+            { key: '/reports/F-156', label: 'Biểu 09-6T/N: Thống kê về hệ thống phao tiêu, báo hiệu trên luồng' },
+            { key: '/reports/F-157', label: 'Biểu 10-6T/N: Thống kê phao tiêu, báo hiệu trên luồng' },
+            { key: '/reports/F-158', label: 'Biểu 11-N: Thống kê về hệ thống giám sát và điều phối giao thông hàng hải (VTS)' },
+            { key: '/reports/F-159', label: 'Biểu 12-N: Hệ thống các đài thông tin duyên hải' },
+            { key: '/reports/F-160', label: 'Biểu 13-N: Thống kê về hệ thống đê, kè chắn sóng, chắn cát' }
+          ]
+        },
+        {
+          key: 'reports-dl',
+          label: 'Nhóm chỉ tiêu đo lường',
+          children: [
+            { key: '/reports/F-161', label: 'Biểu 14-T: Báo cáo chi tiết tàu biển ra, vào cảng biển' },
+            { key: '/reports/F-162', label: 'Biểu 15-T: Báo cáo chi tiết phương tiện thủy nội địa ra, vào cảng biển' },
+            { key: '/reports/F-163', label: 'Biểu 16-Q: Thống kê tàu biển nước ngoài đến, rời tại khu vực cảng biển' },
+            { key: '/reports/F-164', label: 'Biểu 17-Q: Thống kê tàu biển Việt Nam vận tải quốc tế tại khu vực cảng biển' },
+            { key: '/reports/F-165', label: 'Biểu 12-T: Khối lượng hàng hóa, hành khách thông qua cảng' },
+            { key: '/reports/F-166', label: 'Biểu 12-N: Khối lượng hàng hóa, hành khách thông qua cảng biển theo năm' },
+            { key: '/reports/F-167', label: 'Biểu 13-T: Lượt tàu thuyền ra, vào cảng' },
+            { key: '/reports/F-168', label: 'Biểu 14-T: Khối lượng hàng hóa thông qua cảng biển bằng đội tàu biển Việt Nam và phương tiện thủy nội địa' },
+            { key: '/reports/F-169', label: 'Biểu 15-T: Khối lượng hàng hóa, lượt tàu thông qua cảng biển, bến trong khu vực quản lý' }
+          ]
+        },
+        {
+          key: 'reports-pttv',
+          label: 'Nhóm chỉ tiêu phương tiện và thuyền viên',
+          children: [
+            { key: '/reports/F-170', label: 'Biểu 21-6T/N: Thống kê thuyền viên, hoa tiêu hàng hải' },
+            { key: '/reports/F-171', label: 'Biểu 22-6T/N: Thống kê tàu biển mang cờ quốc tịch Việt Nam' },
+            { key: '/reports/F-172', label: 'Biểu 28-N: Thống kê tàu thuyền hoạt động dịch vụ lai dắt' }
+          ]
+        },
+        {
+          key: 'reports-dn',
+          label: 'Nhóm chỉ tiêu về doanh nghiệp',
+          children: [
+            { key: '/reports/F-173', label: 'Biểu 36–N: Thống kê cơ sở đóng mới, sửa chữa, phá dỡ tàu biển' },
+            { key: '/reports/F-174', label: 'Biểu 46-6T/N: Tổng hợp khối lượng hàng hóa thông qua cảng biển' }
+          ]
+        },
+        {
+          key: 'reports-tt48',
+          label: 'Nhóm báo cáo thông tư 48/2017/TT-BGTVT',
+          children: [
+            { key: '/reports/F-175', label: 'Biểu số 06-N: Năng lực thông qua bến cảng, cầu cảng thông tư 48/2017/TT-BGTVT' },
+            { key: '/reports/F-176', label: 'Biểu 07-N: Năng lực thông qua cảng biển, cảng bến thủy nội địa địa phương và doanh nghiệp quản lý' },
+            { key: '/reports/F-177', label: 'Biểu 28-T: Khối lượng hàng hóa thông qua cảng' },
+            { key: '/reports/F-178', label: 'Biểu 29-N: Khối lượng hàng hóa thông qua cảng' },
+            { key: '/reports/F-179', label: 'Biểu 33-N: Sản lượng dịch vụ vận tải, doanh nghiệp và các hoạt động hỗ trợ vận tải đường sắt, đường thủy nội địa, đường biển' }
+          ]
+        },
+        {
+          key: 'reports-ccndb',
+          label: 'Nhóm chỉ tiêu chuyên ngành bảo đảm',
+          children: [
+            { key: '/reports/F-180', label: 'Biểu Tổng hợp thông tin chung' },
+            { key: '/reports/F-181', label: 'Biểu Tổng hợp thông tin kết cấu hạ tầng giao thông hàng hải' },
+            { key: '/reports/F-182', label: 'Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải' },
+            { key: '/reports/F-183', label: 'Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Cầu cảng' },
+            { key: '/reports/F-184', label: 'Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Luồng hàng hải' },
+            { key: '/reports/F-185', label: 'Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Phao tiêu báo hiệu và nhà trạm quản lý vận hành' },
+            { key: '/reports/F-186', label: 'Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Đèn biển và nhà trạm gắn với đèn biển' },
+            { key: '/reports/F-187', label: 'Biểu Tổng hợp thông tin bảo trì kết cấu hạ tầng giao thông hàng hải- Đê, kè' },
+            { key: '/reports/F-188', label: 'Báo cáo kê khai, tình hình quản lý TS KCHTGT hàng hải' },
+            { key: '/reports/F-189', label: 'Báo cáo tình hình hoạt động của báo hiệu hàng hải và công trình đê, kè' }
+          ]
+        },
+        {
+          key: 'reports-thtn',
+          label: 'Báo cáo tổng hợp theo ngày',
+          children: [
+            { key: '/reports/F-180N', label: 'Biểu 12-T: Khối lượng hàng hóa, hành khách thông qua cảng biển theo ngày' },
+            { key: '/reports/F-182N', label: 'Biểu 13-T: Lượt tàu thuyền vào, rời cảng biển theo ngày' },
+            { key: '/reports/F-183N', label: 'Biểu 14-T: Khối lượng hàng hóa, hành khách, lượt tàu thông qua cảng biển bằng đội tàu Việt Nam theo ngày' },
+            { key: '/reports/F-184N', label: 'Biểu 15-T: Khối lượng hàng hóa, hành khách thông qua qua cảng biển, bến cảng, khu chuyển tải trong khu vực quản lý theo ngày' }
           ]
         }
       ]
@@ -235,23 +411,6 @@ export default function AppLayout() {
     }
   };
 
-  // Match top-level section: extract first two path segments for GIS submenus
-  const pathSegments = location.pathname.split('/').filter(Boolean);
-  let selectedKey: string;
-  if (pathSegments[0] === 'gis') {
-    // For GIS, select the deepest valid key: /gis/points, /gis/lines, etc.
-    const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
-    selectedKey = deepKey;
-  } else if (pathSegments[0] === 'cangbien' || pathSegments[0] === 'bencang' || pathSegments[0] === 'caucang' || pathSegments[0] === 'cangcan' || pathSegments[0] === 'vungnuoc') {
-    selectedKey = '/' + pathSegments[0];
-  } else if (pathSegments[0] === 'luong-hang-hai' || pathSegments[0] === 'de-ke' || pathSegments[0] === 'co-so-sua-chua' || pathSegments[0] === 'tram-radar' || pathSegments[0] === 'he-thong-vts') {
-    selectedKey = '/' + pathSegments[0];
-  } else if (pathSegments[0] === 'reports') {
-    selectedKey = location.pathname;
-  } else {
-    selectedKey = '/' + pathSegments[0];
-  }
-
   const sidebarContent = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Logo area */}
@@ -286,6 +445,8 @@ export default function AppLayout() {
       <Menu
         mode="inline"
         selectedKeys={[selectedKey]}
+        openKeys={openKeys}
+        onOpenChange={setOpenKeys}
         items={menuItems}
         onClick={handleMenuClick}
         style={{ borderInlineEnd: 'none', flex: 1, paddingTop: 8 }}
@@ -301,14 +462,45 @@ export default function AppLayout() {
           collapsible
           collapsed={collapsed}
           onCollapse={setCollapsed}
-          width={240}
+          width={siderWidth}
           style={{
             background: token.colorBgContainer,
             borderRight: `1px solid ${token.colorBorderSecondary}`,
+            position: 'relative',
           }}
           breakpoint="lg"
         >
           {sidebarContent}
+          {!collapsed && (
+            <div
+              onMouseDown={(e) => {
+                e.preventDefault();
+                const handleMouseMove = (moveEvent: MouseEvent) => {
+                  const newWidth = Math.max(200, Math.min(600, moveEvent.clientX));
+                  setSiderWidth(newWidth);
+                };
+                const handleMouseUp = () => {
+                  document.removeEventListener('mousemove', handleMouseMove);
+                  document.removeEventListener('mouseup', handleMouseUp);
+                };
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+              }}
+              style={{
+                width: '6px',
+                cursor: 'col-resize',
+                position: 'absolute',
+                top: 0,
+                right: -3,
+                bottom: 0,
+                zIndex: 1000,
+                backgroundColor: 'transparent',
+                transition: 'background-color 0.2s',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = token.colorPrimary)}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+            />
+          )}
         </Sider>
       )}
 

@@ -15,11 +15,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class SuCoService {
 
     private final SuCoRepository suCoRepository;
@@ -31,14 +33,25 @@ public class SuCoService {
     @Transactional
     public SuCoResponse create(SuCoCreateRequest request) {
         log.info("Creating SuCo: {}", request.getViTri());
+        LocalDateTime thoiGian = null;
+        if (request.getThoiGianPhatHien() != null && !request.getThoiGianPhatHien().isBlank()) {
+            try {
+                thoiGian = java.time.Instant.parse(request.getThoiGianPhatHien())
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .toLocalDateTime();
+            } catch (Exception e) {
+                log.warn("Failed to parse thoiGianPhatHien: {}", request.getThoiGianPhatHien());
+            }
+        }
         SuCo sc = SuCo.builder()
+                .thoiGianPhatHien(thoiGian)
                 .viTri(request.getViTri())
                 .moTa(request.getMoTa())
                 .mucDoNghiemTrong(request.getMucDoNghiemTrong())
                 .tinhTrangXuLy(request.getTinhTrangXuLy() != null ? request.getTinhTrangXuLy() : TinhTrangXuLy.TIEP_NHAN)
                 .nguoiBaoCao(request.getNguoiBaoCao())
                 .build();
-        return toResponse(suCoRepository.save(sc));
+        return toResponse(Objects.requireNonNull(suCoRepository.save(sc)));
     }
 
     @Transactional(readOnly = true)
@@ -65,13 +78,22 @@ public class SuCoService {
         SuCo sc = suCoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy sự cố với id: " + id));
 
+        if (request.getThoiGianPhatHien() != null && !request.getThoiGianPhatHien().isBlank()) {
+            try {
+                sc.setThoiGianPhatHien(java.time.Instant.parse(request.getThoiGianPhatHien())
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .toLocalDateTime());
+            } catch (Exception e) {
+                log.warn("Failed to parse thoiGianPhatHien: {}", request.getThoiGianPhatHien());
+            }
+        }
         if (request.getViTri() != null) sc.setViTri(request.getViTri());
         if (request.getMoTa() != null) sc.setMoTa(request.getMoTa());
         if (request.getMucDoNghiemTrong() != null) sc.setMucDoNghiemTrong(request.getMucDoNghiemTrong());
         if (request.getTinhTrangXuLy() != null) sc.setTinhTrangXuLy(request.getTinhTrangXuLy());
         if (request.getNguoiBaoCao() != null) sc.setNguoiBaoCao(request.getNguoiBaoCao());
-
-        return toResponse(suCoRepository.save(sc));
+ 
+        return toResponse(Objects.requireNonNull(suCoRepository.save(sc)));
     }
 
     @Transactional
@@ -100,13 +122,13 @@ public class SuCoService {
     @Transactional(readOnly = true)
     public Page<SuCoResponse> searchByViTriContaining(String viTri, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "ngayTao"));
-        return suCoRepository.findByViTriContaining(viTri, pageable).map(this::toResponse);
+        return suCoRepository.findByViTriContainingIgnoreCase(viTri, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
     public Page<SuCoResponse> searchByMoTaContaining(String moTa, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "ngayTao"));
-        return suCoRepository.findByMoTaContaining(moTa, pageable).map(this::toResponse);
+        return suCoRepository.findByMoTaContainingIgnoreCase(moTa, pageable).map(this::toResponse);
     }
 
     // ── Progress Updates ──────────────────────────────────────────────

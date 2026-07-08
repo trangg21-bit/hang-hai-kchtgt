@@ -77,7 +77,6 @@ import VungNuocCreatePage from './app/vungnuoc/VungNuocCreatePage';
 import VungNuocUpdatePage from './app/vungnuoc/VungNuocUpdatePage';
 import VungNuocDetailPage from './app/vungnuoc/VungNuocDetailPage';
 import VungNuocApprovePage from './app/vungnuoc/VungNuocApprovePage';
-import VungNuocDeleteConfirm from './app/vungnuoc/VungNuocDeleteConfirm';
 import VungNuocHistoryPage from './app/vungnuoc/VungNuocHistoryPage';
 
 import GiayToUploadPage from './app/giayto/GiayToUploadPage';
@@ -93,6 +92,21 @@ import TramRadarList from './pages/tramradar/TramRadarList';
 import TramRadarForm from './pages/tramradar/TramRadarForm';
 import HeThongVTSList from './pages/hethongvts/HeThongVTSList';
 import HeThongVTSForm from './pages/hethongvts/HeThongVTSForm';
+
+// M-005 & M-006: Biến động tài sản & Văn bản pháp lý
+import AssetIncreaseList from './pages/assetmovement/AssetIncreaseList';
+import AssetDecreaseList from './pages/assetmovement/AssetDecreaseList';
+import InventoryList from './pages/assetmovement/InventoryList';
+import AssetExploitationList from './pages/assetmovement/AssetExploitationList';
+import VanBanPhapLyList from './pages/vanban/VanBanPhapLyList';
+import SuCoList from './pages/vanban/SuCoList';
+import QuyHoachList from './pages/vanban/QuyHoachList';
+
+// M-014 & M-015: Nhà trạm & Đài duyên hải
+import NhaTramDenList from './pages/nhatram/NhaTramDenList';
+import NhaTramPhaoList from './pages/nhatram/NhaTramPhaoList';
+import CoastalStationList from './pages/station/CoastalStationList';
+import SpecialStationList from './pages/station/SpecialStationList';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -236,7 +250,6 @@ export default function App() {
                 <Route path="/vungnuoc/:id" element={<PermissionGuard permission="vungnuoc:read"><VungNuocDetailPage /></PermissionGuard>} />
                 <Route path="/vungnuoc/:id/edit" element={<PermissionGuard permission="vungnuoc:update"><VungNuocUpdatePage /></PermissionGuard>} />
                 <Route path="/vungnuoc/:id/approve" element={<PermissionGuard permission="vungnuoc:approve"><VungNuocApprovePage /></PermissionGuard>} />
-                <Route path="/vungnuoc/:id/delete" element={<PermissionGuard permission="vungnuoc:delete"><VungNuocDeleteConfirm /></PermissionGuard>} />
                 <Route path="/vungnuoc/:id/history" element={<PermissionGuard permission="vungnuoc:read"><VungNuocHistoryPage /></PermissionGuard>} />
 
                 <Route path="/giayto/upload/:entityType/:entityId" element={<PermissionGuard permission="cangben:read"><GiayToUploadPage /></PermissionGuard>} />
@@ -267,6 +280,25 @@ export default function App() {
                 <Route path="/he-thong-vts" element={<PermissionGuard permission="vts:read"><HeThongVTSList /></PermissionGuard>} />
                 <Route path="/he-thong-vts/create" element={<PermissionGuard permission="vts:create"><HeThongVTSForm /></PermissionGuard>} />
                 <Route path="/he-thong-vts/:id" element={<PermissionGuard permission="vts:read"><HeThongVTSForm /></PermissionGuard>} />
+
+                {/* M-005: Biến động tài sản */}
+                <Route path="/asset/increase" element={<PermissionGuard permission="asset:yeu-cau-tang"><AssetIncreaseList /></PermissionGuard>} />
+                <Route path="/asset/decrease" element={<PermissionGuard permission="asset:yeu-cau-giam"><AssetDecreaseList /></PermissionGuard>} />
+                <Route path="/asset/inventory" element={<PermissionGuard permission="asset:kiem-ke"><InventoryList /></PermissionGuard>} />
+                <Route path="/asset/exploitation" element={<PermissionGuard permission="asset:khai-thac"><AssetExploitationList /></PermissionGuard>} />
+
+                {/* M-006: Văn bản pháp lý */}
+                <Route path="/vanban/phaply" element={<PermissionGuard permission="vanban:manage"><VanBanPhapLyList /></PermissionGuard>} />
+                <Route path="/vanban/suco" element={<PermissionGuard permission="vanban:manage"><SuCoList /></PermissionGuard>} />
+                <Route path="/vanban/quyhoach" element={<PermissionGuard permission="vanban:manage"><QuyHoachList /></PermissionGuard>} />
+
+                {/* M-014: Quản lý Nhà trạm */}
+                <Route path="/nhatram/den" element={<PermissionGuard permission="nhatram:read"><NhaTramDenList /></PermissionGuard>} />
+                <Route path="/nhatram/phao" element={<PermissionGuard permission="nhatram:read"><NhaTramPhaoList /></PermissionGuard>} />
+
+                {/* M-015: Đài duyên hải */}
+                <Route path="/station/coastal" element={<PermissionGuard permission="station:read"><CoastalStationList /></PermissionGuard>} />
+                <Route path="/station/special" element={<PermissionGuard permission="station:read"><SpecialStationList /></PermissionGuard>} />
 
                 {/* Nhật ký & Backup */}
                 <Route path="/logs" element={<PermissionGuard permission="log:manage"><LogsPage /></PermissionGuard>} />

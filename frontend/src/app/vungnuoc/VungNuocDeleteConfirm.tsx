@@ -1,69 +1,80 @@
-import { Modal, Space, Typography, Card, Descriptions } from 'antd';
-import { WarningOutlined } from '@ant-design/icons';
+import { useEffect, useState } from 'react';
+import { Card, Button, Space, Typography, Alert, Checkbox, Descriptions } from 'antd';
+import { WarningOutlined, DeleteOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { useNavigate, useParams } from 'react-router-dom';
 import type { VungNuoc } from './types';
+import { vungNuocApi } from './api';
+import toast from '../../components/ToastNotification';
 
-/**
- * VungNuocDeleteConfirm — reusable delete confirmation modal.
- * Used by VungNuocDetailPage and VungNuocListPage.
- */
-interface VungNuocDeleteConfirmProps {
-  open: boolean;
-  data: VungNuoc;
-  onConfirm: () => void;
-  onCancel: () => void;
-  confirmLoading?: boolean;
-}
+export default function VungNuocDeleteConfirm() {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const [data, setData] = useState<VungNuoc | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-export default function VungNuocDeleteConfirm({
-  open,
-  data,
-  onConfirm,
-  onCancel,
-  confirmLoading,
-}: VungNuocDeleteConfirmProps) {
+  useEffect(() => {
+    if (!id) return;
+    vungNuocApi.findById(id)
+      .then(setData)
+      .catch(() => { toast.error('Không thể tải thông tin vùng nước'); navigate('/vungnuoc'); });
+  }, [id, navigate]);
+
+  const handleDelete = async () => {
+    if (!id || !confirmed) return;
+    try {
+      setLoading(true);
+      await vungNuocApi.delete(id);
+      toast.success('Xóa thành công');
+      navigate('/vungnuoc');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!data) return <div style={{ padding: 40, textAlign: 'center' }}>Đang tải...</div>;
+
   return (
-    <Modal
-      open={open}
-      title="Xác nhận xóa"
-      onCancel={onCancel}
-      onOk={onConfirm}
-      confirmLoading={confirmLoading}
-      centered
-      width={480}
-      icon={<WarningOutlined style={{ color: '#fa8c16' }} />}
-      okButtonProps={{ danger: true }}
-      okText="Xóa"
-      cancelText="Hủy"
-    >
-      <Space direction="vertical" style={{ width: '100%' }} size="large">
-        {/* DeleteInfoCard */}
-        <Card size="small">
-          <Descriptions bordered column={1} size="small">
-            <Descriptions.Item label="Mã vùng nước">
-              <Typography.Text strong>{data.maVungNuoc}</Typography.Text>
-            </Descriptions.Item>
-            <Descriptions.Item label="Tên vùng nước">{data.tenVungNuoc}</Descriptions.Item>
-            <Descriptions.Item label="Cảng biển chủ">{data.cangBienId}</Descriptions.Item>
-            <Descriptions.Item label="Loại vùng nước">
-              {data.loaiVungNuoc || '—'}
-            </Descriptions.Item>
-            <Descriptions.Item label="Người tạo">{data.createdBy}</Descriptions.Item>
-            <Descriptions.Item label="Ngày tạo">
-              {new Date(data.createdAt).toLocaleString('vi-VN')}
-            </Descriptions.Item>
-          </Descriptions>
-        </Card>
+    <>
+      <Card style={{ marginBottom: 16 }}>
+        <Space>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/vungnuoc/${id}`)}>Quay lại</Button>
+          <Space>
+            <WarningOutlined style={{ color: '#faad14', fontSize: 24 }} />
+            <Typography.Title level={5} style={{ margin: 0 }}>Xác nhận xóa</Typography.Title>
+          </Space>
+        </Space>
+      </Card>
 
-        {/* WarningCallout */}
-        <Typography.Text type="warning">
-          ⚠️ Dữ liệu sẽ được ẩn (soft-delete) nhưng vẫn được lưu trữ.
-        </Typography.Text>
+      <Card style={{ maxWidth: 600, margin: '0 auto' }}>
+        <Descriptions bordered column={1} size="small" style={{ marginBottom: 16 }}>
+          <Descriptions.Item label="Mã vùng nước"><Typography.Text strong>{data.maVungNuoc}</Typography.Text></Descriptions.Item>
+          <Descriptions.Item label="Tên vùng nước">{data.tenVungNuoc}</Descriptions.Item>
+          <Descriptions.Item label="Loại vùng nước">{data.loaiVungNuoc || '—'}</Descriptions.Item>
+        </Descriptions>
 
-        {/* CheckboxConfirm */}
-        <Typography.Text>
+        <Alert
+          message="Dữ liệu sẽ được ẩn (soft-delete) nhưng vẫn được lưu trữ trong hệ thống."
+          type="warning" showIcon style={{ marginBottom: 16 }}
+        />
+
+        <Checkbox
+          checked={confirmed}
+          onChange={(e) => setConfirmed(e.target.checked)}
+          aria-label="Tôi xác nhận muốn xóa vùng nước này"
+        >
           Tôi xác nhận muốn xóa vùng nước này
-        </Typography.Text>
-      </Space>
-    </Modal>
+        </Checkbox>
+
+        <Space style={{ width: '100%', justifyContent: 'flex-end', marginTop: 16 }}>
+          <Button onClick={() => navigate(`/vungnuoc/${id}`)}>Hủy</Button>
+          <Button type="primary" danger icon={<DeleteOutlined />} loading={loading} disabled={!confirmed} onClick={handleDelete}>
+            Xóa
+          </Button>
+        </Space>
+      </Card>
+    </>
   );
 }

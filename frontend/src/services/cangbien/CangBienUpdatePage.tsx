@@ -14,10 +14,11 @@ export default function CangBienUpdatePage() {
   const [submitting, setSubmitting] = useState(false);
   const [entityData, setEntityData] = useState<CangBienResponse | null>(null);
 
-  const [viDo, kinhDo] = Form.useWatch(['viDo', 'kinhDo'], form);
+  const viDo = Form.useWatch('viDo', form);
+  const kinhDo = Form.useWatch('kinhDo', form);
   const gpsPairedWarning =
-    ((viDo !== undefined && viDo !== null && !Number.isNaN(viDo)) !==
-      (kinhDo !== undefined && kinhDo !== null && !Number.isNaN(kinhDo)));
+    ((viDo !== undefined && viDo != null && !Number.isNaN(viDo)) !==
+      (kinhDo !== undefined && kinhDo != null && !Number.isNaN(kinhDo)));
 
   useEffect(() => {
     if (!id) return;
@@ -30,10 +31,10 @@ export default function CangBienUpdatePage() {
           maCang: data.maCang,
           tenCang: data.tenCang,
           tinhThanhPho: data.tinhThanhPho || undefined,
-          viDo: data.viDo !== null ? data.viDo : undefined,
-          kinhDo: data.kinhDo !== null ? data.kinhDo : undefined,
-          dienTich: data.dienTich !== null ? data.dienTich : undefined,
-          khaNangTiepNhan: data.khaNangTiepNhan !== null ? data.khaNangTiepNhan : undefined,
+          viDo: data.viDo != null ? data.viDo : undefined,
+          kinhDo: data.kinhDo != null ? data.kinhDo : undefined,
+          dienTich: data.dienTich != null ? data.dienTich : undefined,
+          khaNangTiepNhan: data.khaNangTiepNhan != null ? data.khaNangTiepNhan : undefined,
           trangThaiHoatDong: data.trangThaiHoatDong || undefined,
         });
       } catch (err) {
@@ -48,22 +49,22 @@ export default function CangBienUpdatePage() {
     // GPS paired check
     const vi = values.viDo as number;
     const jd = values.kinhDo as number;
-    if ((vi !== undefined && vi !== null && !Number.isNaN(vi)) !==
-        (jd !== undefined && jd !== null && !Number.isNaN(jd))) {
+    if ((vi !== undefined && vi != null && !Number.isNaN(vi)) !==
+        (jd !== undefined && jd != null && !Number.isNaN(jd))) {
       toast.error('Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau');
       return;
     }
     // Validate ranges
-    if (vi !== undefined && vi !== null && !Number.isNaN(vi) && (vi < -90 || vi > 90)) {
+    if (vi !== undefined && vi != null && !Number.isNaN(vi) && (vi < -90 || vi > 90)) {
       toast.error('Vĩ độ phải từ -90 đến 90');
       return;
     }
-    if (jd !== undefined && jd !== null && !Number.isNaN(jd) && (jd < -180 || jd > 180)) {
+    if (jd !== undefined && jd != null && !Number.isNaN(jd) && (jd < -180 || jd > 180)) {
       toast.error('Kinh độ phải từ -180 đến 180');
       return;
     }
     const dienTich = values.dienTich as number;
-    if (dienTich !== undefined && dienTich !== null && !Number.isNaN(dienTich) && dienTich <= 0) {
+    if (dienTich !== undefined && dienTich != null && !Number.isNaN(dienTich) && dienTich <= 0) {
       toast.error('Diện tích phải lớn hơn 0');
       return;
     }
@@ -71,7 +72,7 @@ export default function CangBienUpdatePage() {
     setSubmitting(true);
     try {
       const payload = {
-        id: String(values.id),
+        id: String(id),
         tenCang: (values.tenCang as string) || undefined,
         tinhThanhPho: (values.tinhThanhPho as string) || undefined,
         viDo: values.viDo as number | undefined,
@@ -82,7 +83,7 @@ export default function CangBienUpdatePage() {
       };
       await updateCangBien(payload);
       toast.success('Cập nhật thành công');
-      navigate(`/cangbien/${String(values.id)}`);
+      navigate(`/cangbien/${String(id)}`);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Cập nhật thất bại');
     } finally {

@@ -5,5 +5,6 @@ package com.hanghai.kchtg.assetmovement.entity;
  */
 public enum TrangThaiBaoCao {
     CHO_PHE_DUYET,
-    DA_PHE_DUYET
+    DA_PHE_DUYET,
+    TU_CHOI
 }

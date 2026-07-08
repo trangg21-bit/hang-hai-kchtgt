@@ -27,6 +27,7 @@ import { tramRadarCRUD } from '../../services/tramRadarService';
 import type { TramRadarResponse, ListParams } from '../../types/tramRadar';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import TramRadarForm from './TramRadarForm';
 
 const APPROVAL_STATUS_OPTIONS = [
   { label: 'Chờ duyệt', value: 'PROPOSED' },
@@ -56,6 +57,9 @@ export default function TramRadarList() {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -138,7 +142,15 @@ export default function TramRadarList() {
       dataIndex: 'loaiTram',
       key: 'loaiTram',
       width: 120,
-      render: (val: string) => (val ? <Tag color="blue">{val}</Tag> : '—'),
+      render: (val: string) => {
+        const textMap: Record<string, string> = {
+          'MAIN': 'Trạm radar chính',
+          'SECONDARY': 'Trạm radar phụ',
+          'ASSIST': 'Trạm radar hỗ trợ',
+          'KAC': 'Khác',
+        };
+        return val ? <Tag color="blue">{textMap[val] || val}</Tag> : '—';
+      },
     },
     {
       title: 'Tình trạng',
@@ -148,11 +160,19 @@ export default function TramRadarList() {
       render: (val: string) => {
         if (!val) return '—';
         const colorMap: Record<string, string> = {
+          'TOT': 'success',
+          'KEM': 'warning',
+          'NGUNG': 'error',
           'Hoạt động tốt': 'success',
           'Hoạt động kém': 'warning',
           'Ngừng hoạt động': 'error',
         };
-        return <Tag color={colorMap[val] || 'default'}>{val}</Tag>;
+        const textMap: Record<string, string> = {
+          'TOT': 'Hoạt động tốt',
+          'KEM': 'Hoạt động kém',
+          'NGUNG': 'Ngừng hoạt động',
+        };
+        return <Tag color={colorMap[val] || 'default'}>{textMap[val] || val}</Tag>;
       },
     },
     {
@@ -179,24 +199,20 @@ export default function TramRadarList() {
                 type="link"
                 size="small"
                 icon={<EyeOutlined />}
-                onClick={() => navigate(`/tram-radar/${record.id}`)}
+                onClick={() => { setEditingId(String(record.id)); setModalMode('detail'); setIsModalOpen(true); }}
                 title="Xem chi tiết"
                 aria-label="Xem chi tiết"
-              >
-                Xem
-              </Button>
+              />
             )}
             {canUpdate && isProposed && (
               <Button
                 type="link"
                 size="small"
                 icon={<EditOutlined />}
-                onClick={() => navigate(`/tram-radar/${record.id}?mode=edit`)}
+                onClick={() => { setEditingId(String(record.id)); setModalMode('edit'); setIsModalOpen(true); }}
                 title="Chỉnh sửa"
                 aria-label="Chỉnh sửa"
-              >
-                Sửa
-              </Button>
+              />
             )}
             {canDelete && record.trangThai === 'APPROVED' && (
               <Popconfirm
@@ -206,9 +222,7 @@ export default function TramRadarList() {
                 okText="Xóa"
                 cancelText="Hủy"
               >
-                <Button type="link" danger size="small" icon={<DeleteOutlined />}>
-                  Xóa
-                </Button>
+                <Button type="link" danger size="small" icon={<DeleteOutlined />} title="Xóa" aria-label="Xóa" />
               </Popconfirm>
             )}
           </Space>
@@ -255,7 +269,7 @@ export default function TramRadarList() {
               <Tooltip title="Tải lại">
                 <Button icon={<ReloadOutlined />} onClick={fetchData} />
               </Tooltip>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/tram-radar/create')}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingId(null); setModalMode('create'); setIsModalOpen(true); }}>
                 Thêm mới
               </Button>
             </Space>
@@ -297,6 +311,20 @@ export default function TramRadarList() {
           />
         )}
       </Card>
+      <TramRadarForm
+        open={isModalOpen}
+        editId={editingId}
+        mode={modalMode}
+        onCancel={() => {
+          setIsModalOpen(false);
+          setEditingId(null);
+        }}
+        onSuccess={() => {
+          setIsModalOpen(false);
+          setEditingId(null);
+          fetchData();
+        }}
+      />
     </>
   );
 }

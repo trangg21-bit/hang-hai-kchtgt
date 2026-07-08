@@ -15,11 +15,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class VanBanPhapLyService {
 
     private final VanBanPhapLyRepository vanBanPhapLyRepository;
@@ -34,6 +36,10 @@ public class VanBanPhapLyService {
     public VanBanPhapLyResponse create(VanBanPhapLyCreateRequest request) {
         log.info("Creating VanBanPhapLy: {}", request.getTenVanBan());
 
+        if (request.getSoHieu() != null && vanBanPhapLyRepository.existsBySoHieu(request.getSoHieu())) {
+            throw new IllegalArgumentException("Số hiệu văn bản pháp lý đã tồn tại: " + request.getSoHieu());
+        }
+
         VanBanPhapLy vb = VanBanPhapLy.builder()
                 .tenVanBan(request.getTenVanBan())
                 .soHieu(request.getSoHieu())
@@ -44,10 +50,12 @@ public class VanBanPhapLyService {
                 .loaiVanBan(request.getLoaiVanBan())
                 .linhVucApDung(request.getLinhVucApDung())
                 .tinhTrangHieuLuc(request.getTinhTrangHieuLuc())
+                .nguoiKy(request.getNguoiKy())
+                .moTa(request.getMoTa())
                 .nguoiTao(request.getNguoiTao())
                 .build();
 
-        VanBanPhapLy saved = vanBanPhapLyRepository.save(vb);
+        VanBanPhapLy saved = Objects.requireNonNull(vanBanPhapLyRepository.save(vb));
         return toResponse(saved);
     }
 
@@ -76,7 +84,12 @@ public class VanBanPhapLyService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy văn bản với id: " + id));
 
         if (request.getTenVanBan() != null) vb.setTenVanBan(request.getTenVanBan());
-        if (request.getSoHieu() != null) vb.setSoHieu(request.getSoHieu());
+        if (request.getSoHieu() != null) {
+            if (vanBanPhapLyRepository.existsBySoHieuAndIdNot(request.getSoHieu(), id)) {
+                throw new IllegalArgumentException("Số hiệu văn bản pháp lý đã tồn tại: " + request.getSoHieu());
+            }
+            vb.setSoHieu(request.getSoHieu());
+        }
         if (request.getCoQuanBanHanh() != null) vb.setCoQuanBanHanh(request.getCoQuanBanHanh());
         if (request.getNgayBanHanh() != null) vb.setNgayBanHanh(request.getNgayBanHanh());
         if (request.getNgayCoHieuLuc() != null) vb.setNgayCoHieuLuc(request.getNgayCoHieuLuc());
@@ -84,8 +97,10 @@ public class VanBanPhapLyService {
         if (request.getLoaiVanBan() != null) vb.setLoaiVanBan(request.getLoaiVanBan());
         if (request.getLinhVucApDung() != null) vb.setLinhVucApDung(request.getLinhVucApDung());
         if (request.getTinhTrangHieuLuc() != null) vb.setTinhTrangHieuLuc(request.getTinhTrangHieuLuc());
+        if (request.getNguoiKy() != null) vb.setNguoiKy(request.getNguoiKy());
+        if (request.getMoTa() != null) vb.setMoTa(request.getMoTa());
 
-        return toResponse(vanBanPhapLyRepository.save(vb));
+        return toResponse(Objects.requireNonNull(vanBanPhapLyRepository.save(vb)));
     }
 
     @Transactional
@@ -131,8 +146,17 @@ public class VanBanPhapLyService {
                                                   String tinhTrang, LocalDate yearStart,
                                                   LocalDate yearEnd, int page, int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "ngayTao"));
+        
+        com.hanghai.kchtg.vanban.entity.LoaiVanBan loaiEnum = (loai != null && !loai.isEmpty()) 
+                ? com.hanghai.kchtg.vanban.entity.LoaiVanBan.valueOf(loai) : null;
+        com.hanghai.kchtg.vanban.entity.TinhTrangHieuLuc tinhTrangEnum = (tinhTrang != null && !tinhTrang.isEmpty()) 
+                ? com.hanghai.kchtg.vanban.entity.TinhTrangHieuLuc.valueOf(tinhTrang) : null;
+
+        String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
+        String coQuanLike = (coQuan != null && !coQuan.trim().isEmpty()) ? "%" + coQuan.trim().toLowerCase() + "%" : null;
+
         Page<VanBanPhapLy> result = vanBanPhapLyRepository.searchDocuments(
-                keyword, coQuan, loai, tinhTrang, yearStart, yearEnd, pageable);
+                keywordLike, coQuanLike, loaiEnum, tinhTrangEnum, yearStart, yearEnd, pageable);
         return KetQuaTimKiemResponse.builder()
                 .results(result.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(result.getTotalElements())
@@ -192,6 +216,8 @@ public class VanBanPhapLyService {
                 .loaiVanBan(vb.getLoaiVanBan())
                 .linhVucApDung(vb.getLinhVucApDung())
                 .tinhTrangHieuLuc(vb.getTinhTrangHieuLuc())
+                .nguoiKy(vb.getNguoiKy())
+                .moTa(vb.getMoTa())
                 .nguoiTao(vb.getNguoiTao())
                 .ngayTao(vb.getNgayTao())
                 .nguoiSuaDoi(vb.getNguoiSuaDoi())

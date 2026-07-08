@@ -14,11 +14,13 @@ public interface CoSuaChuaDongTauRepository extends JpaRepository<CoSuaChuaDongT
     List<CoSuaChuaDongTau> findByTrangThaiAndIsDeletedFalse(String trangThai);
 
     @Query("SELECT c FROM CoSuaChuaDongTau c WHERE " +
-           "(:keyword IS NULL OR c.tenCoSo LIKE %:keyword% OR c.diaChi LIKE %:keyword% OR c.tinhThanh LIKE %:keyword%) AND " +
-           "(:tinhThanh IS NULL OR c.tinhThanh = :tinhThanh) AND " +
-           "(:trangThai IS NULL OR c.trangThai = :trangThai) AND " +
-           "c.isDeleted = false")
+            "(:keyword IS NULL OR LOWER(c.tenCoSo) LIKE :keyword OR LOWER(c.diaChi) LIKE :keyword OR LOWER(c.tinhThanh) LIKE :keyword) AND " +
+            "(:tinhThanh IS NULL OR LOWER(c.tinhThanh) LIKE :tinhThanh) AND " +
+            "(:trangThai IS NULL OR c.trangThai = :trangThai) AND " +
+            "(:trangThaiPheDuyet IS NULL OR c.trangThai = :trangThaiPheDuyet) AND " +
+            "c.isDeleted = false")
     List<CoSuaChuaDongTau> search(@Param("keyword") String keyword,
-                                   @Param("tinhThanh") String tinhThanh,
-                                   @Param("trangThai") String trangThai);
+                                    @Param("tinhThanh") String tinhThanh,
+                                    @Param("trangThai") String trangThai,
+                                    @Param("trangThaiPheDuyet") String trangThaiPheDuyet);
 }

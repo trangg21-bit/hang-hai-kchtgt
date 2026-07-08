@@ -88,4 +88,7 @@ public class PointObject extends BaseEntity {
 
     @Column(name = "approved_date")
     private java.time.LocalDateTime approvedDate;
+
+    @Column(name = "cong_nang_khai_thac", length = 255)
+    private String congNangKhaiThac;
 }

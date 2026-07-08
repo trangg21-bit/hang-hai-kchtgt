@@ -83,7 +83,7 @@ class LuongHangHaiControllerTest {
                 .content(objectMapper.writeValueAsString(createReq)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").value("Tao luong hang hai thanh cong"))
+                .andExpect(jsonPath("$.message").value("Tạo mới thành công"))
                 .andExpect(jsonPath("$.data.loaiTau").value("Tau ca cuoc Hai Phong"));
     }
 
@@ -126,10 +126,9 @@ class LuongHangHaiControllerTest {
                 .trangThai("UNDER_REVIEW")
                 .nguoiPheDuyet("Truong Phong")
                 .build();
-        when(service.approveC1(eq(1L), any())).thenReturn(resp);
+        when(service.approveC1(eq(1L), any(), anyString())).thenReturn(resp);
         PheDuyetRequest req = PheDuyetRequest.builder()
                 .trangThai("APPROVED")
-                .nguoiPheDuyet("Truong Phong")
                 .lyDo("Phe cap 1")
                 .build();
         mockMvc.perform(post("/api/v1/luong-hang-hai/1/approve/c1")
@@ -146,10 +145,9 @@ class LuongHangHaiControllerTest {
                 .trangThai("APPROVED")
                 .nguoiPheDuyet("Giam Doc")
                 .build();
-        when(service.approveC2(eq(1L), any())).thenReturn(resp);
+        when(service.approveC2(eq(1L), any(), anyString())).thenReturn(resp);
         PheDuyetRequest req = PheDuyetRequest.builder()
                 .trangThai("APPROVED")
-                .nguoiPheDuyet("Giam Doc")
                 .lyDo("Phe cap 2")
                 .build();
         mockMvc.perform(post("/api/v1/luong-hang-hai/1/approve/c2")
@@ -157,6 +155,24 @@ class LuongHangHaiControllerTest {
                 .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.trangThai").value("APPROVED"));
+    }
+
+    // B1 regression: approver identity must come from the authenticated principal,
+    // NOT from the request body. Posts a spoofed 'nguoiPheDuyet' and asserts the
+    // service still receives the authenticated username ("admin" per @WithMockUser).
+    @Test void approveC1_bindsApproverFromAuthentication_ignoresClientSuppliedName() throws Exception {
+        when(service.approveC1(eq(1L), any(), anyString()))
+                .thenReturn(PheDuyetResponse.builder().luongHangHaiId(1L).capPheDuyet(1).trangThai("UNDER_REVIEW").build());
+        // Raw body includes a spoofed approver name that no longer exists on PheDuyetRequest.
+        String spoofedBody = "{\"trangThai\":\"APPROVED\",\"nguoiPheDuyet\":\"HACKER\",\"lyDo\":\"x\"}";
+        var principal = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("admin", null);
+        mockMvc.perform(post("/api/v1/luong-hang-hai/1/approve/c1")
+                .principal(principal)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(spoofedBody))
+                .andExpect(status().isOk());
+        verify(service).approveC1(eq(1L), any(), eq("admin"));
+        verify(service, never()).approveC1(eq(1L), any(), eq("HACKER"));
     }
 
     @Test void history_shouldReturnEntries() throws Exception {
@@ -205,8 +221,8 @@ class LuongHangHaiControllerTest {
     }
 
     @Test void approveC1_shouldThrowWhenNotFound() throws Exception {
-        when(service.approveC1(eq(99L), any())).thenThrow(new IllegalArgumentException("Khong tim thay"));
-        PheDuyetRequest req = PheDuyetRequest.builder().nguoiPheDuyet("Truong").build();
+        when(service.approveC1(eq(99L), any(), anyString())).thenThrow(new IllegalArgumentException("Khong tim thay"));
+        PheDuyetRequest req = PheDuyetRequest.builder().trangThai("APPROVED").build();
         mockMvc.perform(post("/api/v1/luong-hang-hai/99/approve/c1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)))

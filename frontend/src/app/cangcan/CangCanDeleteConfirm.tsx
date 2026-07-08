@@ -1,134 +1,82 @@
-import { useState } from 'react';
-import { Modal, Button, Typography, Space, Alert, Checkbox, Form } from 'antd';
-import { WarningOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useEffect, useState } from 'react';
+import { Card, Button, Typography, Space, Alert, Checkbox } from 'antd';
+import { WarningOutlined, DeleteOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { useNavigate, useParams } from 'react-router-dom';
 import type { CangCan } from './types';
-import { deleteCangCan } from './api';
+import { fetchCangCanById, deleteCangCan } from './api';
+import toast from '../../components/ToastNotification';
 
-interface CangCanDeleteConfirmProps {
-  open: boolean;
-  data: CangCan | null;
-  onClose: () => void;
-  onConfirm: () => void;
-}
-
-export default function CangCanDeleteConfirm({
-  open,
-  data,
-  onClose,
-  onConfirm,
-}: CangCanDeleteConfirmProps) {
-  const [form] = Form.useForm();
+export default function CangCanDeleteConfirm() {
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const [data, setData] = useState<CangCan | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleDelete = async () => {
-    if (!data) return;
-    const confirmed = form.getFieldValue('confirmed');
-    if (confirmed !== true) return;
+  useEffect(() => {
+    if (!id) return;
+    fetchCangCanById(id)
+      .then(setData)
+      .catch(() => { toast.error('Không thể tải thông tin cảng cạn'); navigate('/cangcan'); });
+  }, [id, navigate]);
 
+  const handleDelete = async () => {
+    if (!id || !confirmed) return;
     try {
       setLoading(true);
-      await deleteCangCan(data.id);
-      Modal.success({
-        title: 'Xóa thành công',
-        content: `Cảng cạn "${data.maCangCan}" đã được xóa.`,
-        onOk: () => { onClose(); onConfirm(); },
-      });
+      await deleteCangCan(id);
+      toast.success('Xóa thành công');
+      navigate('/cangcan');
     } catch (err: unknown) {
-      Modal.error({
-        title: 'Xóa thất bại',
-        content: err instanceof Error ? err.message : 'Có lỗi xảy ra',
-      });
+      toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
     } finally {
       setLoading(false);
     }
   };
 
-  if (!data) return null;
+  if (!data) return <div style={{ padding: 40, textAlign: 'center' }}>Đang tải...</div>;
 
   return (
-    <Modal
-      open={open}
-      title={null}
-      onCancel={onClose}
-      footer={null}
-      centered
-      width={480}
-      destroyOnClose
-    >
-      {/* Header */}
-      <Space style={{ marginBottom: 16 }}>
-        <WarningOutlined style={{ color: '#faad14', fontSize: 24 }} />
-        <Typography.Title level={5} style={{ margin: 0 }}>
-          Xác nhận xóa
-        </Typography.Title>
-      </Space>
-
-      {/* Info Card */}
-      <div style={{ background: '#fafafa', padding: 16, borderRadius: 8, marginBottom: 16 }}>
-        <Space direction="vertical" style={{ width: '100%' }} size="small">
-          <div>
-            <Typography.Text type="secondary">Mã cảng cạn</Typography.Text>
-            <Typography.Text strong>{data.maCangCan}</Typography.Text>
-          </div>
-          <div>
-            <Typography.Text type="secondary">Tên cảng cạn</Typography.Text>
-            <Typography.Text>{data.tenCangCan}</Typography.Text>
-          </div>
-          <div>
-            <Typography.Text type="secondary">Tỉnh/thành phố</Typography.Text>
-            <Typography.Text>{data.tinhThanhPho || '—'}</Typography.Text>
-          </div>
-          <div>
-            <Typography.Text type="secondary">Người tạo</Typography.Text>
-            <Typography.Text>{data.createdBy || '—'}</Typography.Text>
-          </div>
-          <div>
-            <Typography.Text type="secondary">Ngày tạo</Typography.Text>
-            <Typography.Text>{data.createdAt ? new Date(data.createdAt).toLocaleString('vi-VN') : '—'}</Typography.Text>
-          </div>
+    <>
+      <Card style={{ marginBottom: 16 }}>
+        <Space>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/cangcan/${id}`)}>Quay lại</Button>
+          <Space>
+            <WarningOutlined style={{ color: '#faad14', fontSize: 24 }} />
+            <Typography.Title level={5} style={{ margin: 0 }}>Xác nhận xóa</Typography.Title>
+          </Space>
         </Space>
-      </div>
+      </Card>
 
-      {/* Warning */}
-      <Alert
-        message="Dữ liệu sẽ được ẩn (soft-delete) nhưng vẫn được lưu trữ trong hệ thống."
-        type="warning"
-        showIcon
-        style={{ marginBottom: 16 }}
-      />
+      <Card style={{ maxWidth: 600, margin: '0 auto' }}>
+        <div style={{ background: '#fafafa', padding: 16, borderRadius: 8, marginBottom: 16 }}>
+          <Space direction="vertical" style={{ width: '100%' }} size="small">
+            <div><Typography.Text type="secondary">Mã cảng cạn: </Typography.Text><Typography.Text strong>{data.maCangCan}</Typography.Text></div>
+            <div><Typography.Text type="secondary">Tên cảng cạn: </Typography.Text><Typography.Text>{data.tenCangCan}</Typography.Text></div>
+            <div><Typography.Text type="secondary">Tỉnh/thành phố: </Typography.Text><Typography.Text>{data.tinhThanhPho || '—'}</Typography.Text></div>
+          </Space>
+        </div>
 
-      {/* Checkbox */}
-      <Form form={form}>
-        <Form.Item
-          name="confirmed"
-          valuePropName="checked"
-          rules={[
-            {
-              validator: (_, value) =>
-                value === true
-                  ? Promise.resolve()
-                  : Promise.reject(new Error('Bạn cần xác nhận để xóa')),
-            },
-          ]}
+        <Alert
+          message="Dữ liệu sẽ được ẩn (soft-delete) nhưng vẫn được lưu trữ trong hệ thống."
+          type="warning" showIcon style={{ marginBottom: 16 }}
+        />
+
+        <Checkbox
+          checked={confirmed}
+          onChange={(e) => setConfirmed(e.target.checked)}
+          aria-label="Tôi xác nhận muốn xóa cảng cạn này"
         >
-          <Checkbox>Tôi xác nhận muốn xóa cảng cạn này</Checkbox>
-        </Form.Item>
-      </Form>
+          Tôi xác nhận muốn xóa cảng cạn này
+        </Checkbox>
 
-      {/* Footer */}
-      <Space style={{ width: '100%', justifyContent: 'flex-end', marginTop: 16 }}>
-        <Button onClick={onClose}>Hủy</Button>
-        <Button
-          type="primary"
-          danger
-          icon={<DeleteOutlined />}
-          loading={loading}
-          disabled={form.getFieldValue('confirmed') !== true}
-          onClick={handleDelete}
-        >
-          Xóa
-        </Button>
-      </Space>
-    </Modal>
+        <Space style={{ width: '100%', justifyContent: 'flex-end', marginTop: 16 }}>
+          <Button onClick={() => navigate(`/cangcan/${id}`)}>Hủy</Button>
+          <Button type="primary" danger icon={<DeleteOutlined />} loading={loading} disabled={!confirmed} onClick={handleDelete}>
+            Xóa
+          </Button>
+        </Space>
+      </Card>
+    </>
   );
 }

@@ -5,6 +5,8 @@ import com.hanghai.kchtg.assetmovement.dto.KeHoachKiemKeResponse;
 import com.hanghai.kchtg.assetmovement.entity.TrangThaiKeHoach;
 import com.hanghai.kchtg.assetmovement.service.KeHoachKiemKeService;
 import com.hanghai.kchtg.common.dto.ApiResponse;
+
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,7 +28,7 @@ public class KeHoachKiemKeController {
     @PostMapping
     @PreAuthorize("@auth.check(authentication, 'asset:ke-hoach-kiem-ke')")
     public ResponseEntity<ApiResponse<KeHoachKiemKeResponse>> create(
-            @RequestBody KeHoachKiemKeRequest request) {
+            @Valid @RequestBody KeHoachKiemKeRequest request) {
         KeHoachKiemKeResponse response = keHoachService.create(request);
         return ResponseEntity.status(201).body(ApiResponse.success("Ke hoach da duoc tao", response));
     }
@@ -71,5 +73,41 @@ public class KeHoachKiemKeController {
             @PathVariable UUID id) {
         keHoachService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Ke hoach da duoc xoa", null));
+    }
+
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("@auth.check(authentication, 'asset:ke-hoach-kiem-ke')")
+    public ResponseEntity<ApiResponse<KeHoachKiemKeResponse>> approve(
+            @PathVariable UUID id,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        String remarks = body != null ? body.get("remarks") : null;
+        KeHoachKiemKeResponse response = keHoachService.approve(id, remarks);
+        return ResponseEntity.ok(ApiResponse.success("Ke hoach da duoc phe duyet", response));
+    }
+
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("@auth.check(authentication, 'asset:ke-hoach-kiem-ke')")
+    public ResponseEntity<ApiResponse<KeHoachKiemKeResponse>> reject(
+            @PathVariable UUID id,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        String remarks = body != null ? body.get("remarks") : null;
+        KeHoachKiemKeResponse response = keHoachService.reject(id, remarks);
+        return ResponseEntity.ok(ApiResponse.success("Ke hoach da bi tu choi", response));
+    }
+
+    @PostMapping("/{id}/start")
+    @PreAuthorize("@auth.check(authentication, 'asset:ke-hoach-kiem-ke')")
+    public ResponseEntity<ApiResponse<KeHoachKiemKeResponse>> start(
+            @PathVariable UUID id) {
+        KeHoachKiemKeResponse response = keHoachService.startExecution(id);
+        return ResponseEntity.ok(ApiResponse.success("Ke hoach da bat dau thuc hien", response));
+    }
+
+    @PostMapping("/{id}/complete")
+    @PreAuthorize("@auth.check(authentication, 'asset:ke-hoach-kiem-ke')")
+    public ResponseEntity<ApiResponse<KeHoachKiemKeResponse>> complete(
+            @PathVariable UUID id) {
+        KeHoachKiemKeResponse response = keHoachService.completeExecution(id);
+        return ResponseEntity.ok(ApiResponse.success("Ke hoach da hoan thanh", response));
     }
 }

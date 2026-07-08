@@ -8,7 +8,7 @@ import type {
   BenCangOption,
 } from './types';
 
-const BASE = '/api/v1/cau-cang';
+const BASE = '/v1/cau-cang';
 
 // ── List ───────────────────────────────────────────────────────────────────
 export async function fetchCauCangList(query: CauCangListQuery) {
@@ -24,31 +24,31 @@ export async function fetchCauCangList(query: CauCangListQuery) {
   params.set('pageSize', String(query.pageSize));
 
   const { data } = await api.get(`${BASE}`, { params });
-  return data as { content: CauCang[]; totalElements: number; page: number; pageSize: number };
+  return data.data as { content: CauCang[]; totalElements: number; page: number; pageSize: number };
 }
 
 // ── Get by ID ──────────────────────────────────────────────────────────────
 export async function fetchCauCangById(id: string) {
   const { data } = await api.get(`${BASE}/${id}`);
-  return data as CauCang;
+  return data.data as CauCang;
 }
 
 // ── Get by Code ────────────────────────────────────────────────────────────
 export async function fetchCauCangByCode(maCau: string) {
   const { data } = await api.get(`${BASE}/code/${maCau}`);
-  return data as CauCang;
+  return data.data as CauCang;
 }
 
 // ── Create ─────────────────────────────────────────────────────────────────
 export async function createCauCang(payload: CauCangCreateRequest) {
   const { data } = await api.post(BASE, payload);
-  return data as CauCang;
+  return data.data as CauCang;
 }
 
 // ── Update ─────────────────────────────────────────────────────────────────
 export async function updateCauCang(payload: CauCangUpdateRequest) {
   const { data } = await api.put(BASE, payload);
-  return data as CauCang;
+  return data.data as CauCang;
 }
 
 // ── Delete (soft) ──────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ export async function deleteCauCang(id: string) {
 // ── Approve ────────────────────────────────────────────────────────────────
 export async function approveCauCang(id: string) {
   const { data } = await api.post(`${BASE}/${id}/approve`);
-  return data as CauCang;
+  return data.data as CauCang;
 }
 
 // ── Reject ─────────────────────────────────────────────────────────────────
@@ -67,19 +67,19 @@ export async function rejectCauCang(id: string, reason: string) {
   const { data } = await api.post(`${BASE}/${id}/reject`, null, {
     params: { reason },
   });
-  return data as CauCang;
+  return data.data as CauCang;
 }
 
 // ── History ────────────────────────────────────────────────────────────────
 export async function fetchCauCangHistory(id: string) {
   const { data } = await api.get(`${BASE}/${id}/history`);
-  return data as CauCangHistoryRecord[];
+  return data.data as CauCangHistoryRecord[];
 }
 
 // ── BenCang options (for select dropdown) ──────────────────────────────────
 export async function fetchBenCangOptions() {
-  const { data } = await api.get('/api/v1/ben-cang', {
+  const { data } = await api.get('/v1/ben-cang', {
     params: { pageSize: 200, sortBy: 'tenBen', sortOrder: 'asc' },
   });
-  return data as { content: BenCangOption[] };
+  return data.data as { content: BenCangOption[] };
 }

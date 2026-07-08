@@ -30,31 +30,31 @@ public class CreateNhaTramPhaoRequest {
     @NotNull(message = "Loại phao không được để trống")
     private BuoyType type;
 
-    @NotNull
-    @DecimalMin("-90.0")
-    @DecimalMax("90.0")
+    @NotNull(message = "Vĩ độ không được để trống")
+    @DecimalMin(value = "-90.0", message = "Vĩ độ phải lớn hơn hoặc bằng -90.0")
+    @DecimalMax(value = "90.0", message = "Vĩ độ phải nhỏ hơn hoặc bằng 90.0")
     private Double latitude;
 
-    @NotNull
-    @DecimalMin("-180.0")
-    @DecimalMax("180.0")
+    @NotNull(message = "Kinh độ không được để trống")
+    @DecimalMin(value = "-180.0", message = "Kinh độ phải lớn hơn hoặc bằng -180.0")
+    @DecimalMax(value = "180.0", message = "Kinh độ phải nhỏ hơn hoặc bằng 180.0")
     private Double longitude;
 
-    @Size(max = 50)
+    @Size(max = 50, message = "Màu sắc không được vượt quá 50 ký tự")
     private String color;
 
-    @Size(max = 50)
+    @Size(max = 50, message = "Hình dáng không được vượt quá 50 ký tự")
     private String shape;
 
-    @Size(max = 100)
+    @Size(max = 100, message = "Đặc tính ánh sáng không được vượt quá 100 ký tự")
     private String lightCharacteristic;
 
-    @NotNull
-    @DecimalMin("0.01")
-    @DecimalMax("100.0")
+    @NotNull(message = "Tầm nhìn xa không được để trống")
+    @DecimalMin(value = "0.01", message = "Tầm nhìn xa phải lớn hơn hoặc bằng 0.01 hải lý")
+    @DecimalMax(value = "100.0", message = "Tầm nhìn xa phải nhỏ hơn hoặc bằng 100.0 hải lý")
     private Double range;
 
-    @Size(max = 1000)
+    @Size(max = 1000, message = "Ghi chú không được vượt quá 1000 ký tự")
     private String description;
 
     private java.util.UUID unitId;

@@ -158,7 +158,7 @@ class HeThongVTSDataServiceTest {
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
                 () -> service.approveC2(1L, req, "user1"));
-        assertTrue(ex.getMessage().contains("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1"));
+        assertTrue(ex.getMessage().contains("Người phê duyệt C2 không được trùng với người phê duyệt C1"));
     }
 
     @Test

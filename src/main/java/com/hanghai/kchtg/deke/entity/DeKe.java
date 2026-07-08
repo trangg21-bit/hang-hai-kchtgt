@@ -34,6 +34,9 @@ public class DeKe {
     @Column(name = "tinh_trang", length = 100)
     private String tinhTrang;
 
+    @Column(name = "ghi_chu", length = 500)
+    private String ghiChu;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "trang_thai_phe_duyet", nullable = false, length = 30)
     private DeKeApprovalStatus trangThaiPheDuyet;

@@ -113,7 +113,7 @@ public class LuongHangHaiService {
     }
 
     @Transactional
-    public PheDuyetResponse approveC1(Long id, PheDuyetRequest req) {
+    public PheDuyetResponse approveC1(Long id, PheDuyetRequest req, String approvedBy) {
         LuongHangHai l = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -123,7 +123,7 @@ public class LuongHangHaiService {
         }
 
         l.setPheDuyetC1(true);
-        l.setNguoiPheDuyetC1(req.getNguoiPheDuyet());
+        l.setNguoiPheDuyetC1(approvedBy);
         l.setNgayPheDuyetC1(LocalDate.now());
 
         if ("APPROVED".equalsIgnoreCase(req.getTrangThai())) {
@@ -133,12 +133,12 @@ public class LuongHangHaiService {
             l.setLyDoTuChoi(req.getLyDo());
         }
 
-        saveApprovalHistory(l, 1, req.getTrangThai(), req.getNguoiPheDuyet(), req.getLyDo());
+        saveApprovalHistory(l, 1, req.getTrangThai(), approvedBy, req.getLyDo());
         return buildPheDuyetResponse(l, 1);
     }
 
     @Transactional
-    public PheDuyetResponse approveC2(Long id, PheDuyetRequest req) {
+    public PheDuyetResponse approveC2(Long id, PheDuyetRequest req, String approvedBy) {
         LuongHangHai l = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -147,12 +147,12 @@ public class LuongHangHaiService {
         }
 
         String c1Actor = l.getNguoiPheDuyetC1();
-        if (c1Actor != null && c1Actor.equals(req.getNguoiPheDuyet())) {
+        if (c1Actor != null && c1Actor.equals(approvedBy)) {
             throw new IllegalStateException("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
         }
 
         l.setPheDuyetC2(true);
-        l.setNguoiPheDuyetC2(req.getNguoiPheDuyet());
+        l.setNguoiPheDuyetC2(approvedBy);
         l.setNgayPheDuyetC2(LocalDate.now());
 
         if ("APPROVED".equalsIgnoreCase(req.getTrangThai())) {
@@ -162,12 +162,12 @@ public class LuongHangHaiService {
             l.setLyDoTuChoi(req.getLyDo());
         }
 
-        saveApprovalHistory(l, 2, req.getTrangThai(), req.getNguoiPheDuyet(), req.getLyDo());
+        saveApprovalHistory(l, 2, req.getTrangThai(), approvedBy, req.getLyDo());
         return buildPheDuyetResponse(l, 2);
     }
 
     @Transactional
-    public PheDuyetResponse reject(Long id, PheDuyetRequest req) {
+    public PheDuyetResponse reject(Long id, PheDuyetRequest req, String approvedBy) {
         LuongHangHai l = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -175,7 +175,7 @@ public class LuongHangHaiService {
         l.setLyDoTuChoi(req.getLyDo());
 
         Integer cap = req.getCapPheDuyet() != null ? req.getCapPheDuyet() : 1;
-        saveApprovalHistory(l, cap, "REJECTED", req.getNguoiPheDuyet(), req.getLyDo());
+        saveApprovalHistory(l, cap, "REJECTED", approvedBy, req.getLyDo());
         return buildPheDuyetResponse(l, cap);
     }
 

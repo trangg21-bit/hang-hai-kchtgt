@@ -69,7 +69,7 @@ class DeKeControllerTest {
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody().isSuccess()).isTrue();
-        assertThat(resp.getBody().getMessage()).isEqualTo("Tao de ke thanh cong");
+        assertThat(resp.getBody().getMessage()).isEqualTo("Tạo mới thành công");
         assertThat(resp.getBody().getData().getLoaiDe()).isEqualTo("De ke son");
         verify(service, times(1)).create(any(), anyString());
     }
@@ -123,7 +123,7 @@ class DeKeControllerTest {
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody().isSuccess()).isTrue();
-        assertThat(resp.getBody().getMessage()).isEqualTo("Xoa mem de ke thanh cong");
+        assertThat(resp.getBody().getMessage()).isEqualTo("Xóa thành công");
         verify(service, times(1)).softDelete(1L);
     }
 
@@ -136,18 +136,17 @@ class DeKeControllerTest {
                 .trangThai("UNDER_REVIEW")
                 .nguoiPheDuyet("Truong Phong")
                 .build();
-        when(service.approveC1(eq(1L), any())).thenReturn(resp);
+        when(service.approveC1(eq(1L), any(), anyString())).thenReturn(resp);
 
         var ctrlResp = controller.approveC1(1L, PheDuyetRequest.builder()
                 .quyetDinh("APPROVED")
-                .nguoiPheDuyet("Truong Phong")
                 .lyDo("Phe cap 1")
-                .build());
+                .build(), null);
 
         assertThat(ctrlResp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(ctrlResp.getBody().getData().getTrangThai()).isEqualTo("UNDER_REVIEW");
         assertThat(ctrlResp.getBody().getData().getCapPheDuyet()).isEqualTo(1);
-        verify(service, times(1)).approveC1(eq(1L), any());
+        verify(service, times(1)).approveC1(eq(1L), any(), anyString());
     }
 
     // ── approveC2 ───────────────────────────────────────────────────────
@@ -159,21 +158,29 @@ class DeKeControllerTest {
                 .trangThai("APPROVED")
                 .nguoiPheDuyet("Giam Doc")
                 .build();
-        when(service.approveC2(eq(1L), any())).thenReturn(resp);
+        when(service.approveC2(eq(1L), any(), anyString())).thenReturn(resp);
 
         var ctrlResp = controller.approveC2(1L, PheDuyetRequest.builder()
                 .quyetDinh("APPROVED")
-                .nguoiPheDuyet("Giam Doc")
                 .lyDo("Phe cap 2")
-                .build());
+                .build(), null);
 
         assertThat(ctrlResp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(ctrlResp.getBody().getData().getTrangThai()).isEqualTo("APPROVED");
         assertThat(ctrlResp.getBody().getData().getCapPheDuyet()).isEqualTo(2);
-        verify(service, times(1)).approveC2(eq(1L), any());
+        verify(service, times(1)).approveC2(eq(1L), any(), anyString());
     }
 
-    // ── getApprovalHistory ──────────────────────────────────────────────
+    // B1 regression: approver identity is bound from the authenticated principal
+    // (authentication.getName() == "testuser"), never from the request body — the
+    // PheDuyetRequest no longer carries an approver field, so spoofing is impossible.
+    @Test void approveC1_bindsApproverFromAuthentication() {
+        when(service.approveC1(eq(1L), any(), anyString()))
+                .thenReturn(PheDuyetResponse.builder().deKeId(1L).capPheDuyet(1).trangThai("UNDER_REVIEW").build());
+        controller.approveC1(1L, PheDuyetRequest.builder().quyetDinh("APPROVED").build(), authentication);
+        verify(service).approveC1(eq(1L), any(), eq("testuser"));
+    }
+
 
     @Test void getApprovalHistory_shouldReturnEntries() {
         when(service.getApprovalHistory(1L)).thenReturn(List.of(
@@ -237,14 +244,13 @@ class DeKeControllerTest {
     // ── error propagation ───────────────────────────────────────────────
 
     @Test void approveC1_shouldThrowWhenNotFound() {
-        when(service.approveC1(eq(99L), any())).thenThrow(new IllegalArgumentException("Khong tim thay"));
+        when(service.approveC1(eq(99L), any(), anyString())).thenThrow(new IllegalArgumentException("Khong tim thay"));
 
         assertThatThrownBy(() -> controller.approveC1(99L, PheDuyetRequest.builder()
                 .quyetDinh("APPROVED")
-                .nguoiPheDuyet("Truong")
-                .build()))
+                .build(), null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Khong tim thay");
-        verify(service, times(1)).approveC1(eq(99L), any());
+        verify(service, times(1)).approveC1(eq(99L), any(), anyString());
     }
 }
