@@ -14,6 +14,55 @@ This project is built on **spring-boot**. Its CLI/generator is `mvn`. Prefer the
 - When unsure of the exact command or its current-version syntax, resolve live docs via context7 (`resolve-library-id` → `get-library-docs`) BEFORE generating.
 - Main / project manager MUST carry these constraints into every worker task brief (workers do not read this file).
 
+## UI Theme Convention (MANDATORY — mọi agent làm frontend PHẢI đọc)
+
+### Single source of truth
+
+Toàn bộ token thiết kế, CSS class, và cấu trúc layout được định nghĩa tại **3 file**:
+
+| Thứ tự đọc | File | Vai trò | Agent nào phải đọc |
+|---|---|---|---|
+| 1 | `frontend/src/theme.ts` | Design tokens + AntD ConfigProvider + globalCssVars + Rules 1-14 | **Tất cả** (BA, Dev, QA, Auditor) |
+| 2 | `frontend/src/components/AppLayout.tsx` | Layout chung cho 22 module (Sidebar + Topbar) | **Dev, QA** |
+| 3 | `docs/intel/ui-audit-report.md` | Danh sách pass/fail từng UI component | **PMO lead** trước khi dispatch |
+
+### Cách dùng theme token
+
+```ts
+// ✅ ĐÚNG — dùng token từ theme.ts
+import { colors } from '../theme';
+style={{ color: colors.sidebarBg }}
+
+// ✅ ĐÚNG — dùng CSS variable
+className="sidebar-header"
+
+// ❌ SAI — hardcode màu
+style={{ color: '#12468C' }}
+```
+
+### Quy tắc bắt buộc
+
+1. **KHÔNG hardcode màu hex**, spacing, font-size trong component
+2. **KHÔNG tự tạo Layout/Sider/Menu riêng** — dùng chung `AppLayout.tsx`
+3. **KHÔNG tự bịa class CSS** — tất cả class chuẩn đã có trong `theme.ts` globalCssVars
+4. **Trước khi viết bất kỳ component UI nào**, developer PHẢI đọc `theme.ts` để biết có sẵn những class nào
+5. **Trước khi dispatch developer**, PMO lead PHẢI đọc `docs/intel/ui-audit-report.md` để biết trạng thái UI hiện tại
+
+### Agent workflow
+
+```
+PMO Lead
+  ├── Đọc AGENTS.md (file này)
+  ├── Đọc docs/intel/ui-audit-report.md → biết pass/fail UI
+  └── Dispatch Dev → PHẢI chép các constraints sau vào prompt:
+        "Trước khi code, đọc frontend/src/theme.ts để biết token + class chuẩn.
+         Đọc frontend/src/components/AppLayout.tsx để biết cấu trúc layout.
+         KHÔNG hardcode màu hex. KHÔNG tự tạo Layout/Sider/Menu.
+         Dùng class BEM có sẵn trong globalCssVars."
+```
+
+**⚠️ PMO LEAD: workers KHÔNG đọc AGENTS.md. Bạn PHẢI copy các quy tắc trên vào từng brief developer. Nếu không, developer sẽ hardcode màu và tự bịa Layout.**
+
 ## SDLC convention
 
 All SDLC scaffolding goes through `ai-kit` CLI (ADR-005).

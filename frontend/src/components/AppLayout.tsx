@@ -11,7 +11,6 @@ import {
   Drawer,
   Typography,
   Space,
-  Badge,
 } from 'antd';
 import {
   MenuOutlined,
@@ -27,9 +26,12 @@ import {
   BarChartOutlined,
   ApiOutlined,
   ContainerOutlined,
+  LeftOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
 import { usePermissionStore } from '../store/permissionStore';
+import { layout } from '../theme';
 import type { MenuProps } from 'antd';
 
 const { Header, Sider, Content } = Layout;
@@ -74,7 +76,7 @@ const canAccessMenu = (path: string): boolean => {
 };
 
 const pageTitles: Record<string, string> = {
-  '/': 'Trang chủ',
+  '/': 'HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI',
   '/users': 'Quản lý người dùng',
   '/organizations': 'Quản lý đơn vị',
   '/groups': 'Quản lý nhóm',
@@ -120,7 +122,6 @@ const pageTitles: Record<string, string> = {
 export default function AppLayout() {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [siderWidth, setSiderWidth] = useState(256);
   const [openKeys, setOpenKeys] = useState<string[]>([]);
   const navigate = useNavigate();
   const location = useLocation();
@@ -132,7 +133,9 @@ export default function AppLayout() {
   // Match top-level section: extract first two path segments for GIS submenus
   const pathSegments = location.pathname.split('/').filter(Boolean);
   let selectedKey: string;
-  if (pathSegments[0] === 'gis') {
+  if (pathSegments.length === 0) {
+    selectedKey = '/';
+  } else if (pathSegments[0] === 'gis') {
     // For GIS, select the deepest valid key: /gis/points, /gis/lines, etc.
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
@@ -376,7 +379,7 @@ export default function AppLayout() {
     { type: 'divider' as const },
     canAccessMenu('/connections') ? { key: '/connections', icon: <ApiOutlined />, label: 'Liên thông dữ liệu' } : null,
     { type: 'divider' as const },
-    canAccessMenu('/settings') ? { key: '/settings', icon: <SettingOutlined />, label: 'Cấu hình hệ thống', disabled: true } : null,
+    canAccessMenu('/settings') ? { key: '/settings', icon: <SettingOutlined />, label: 'Cấu hình hệ thống' } : null,
     canAccessMenu('/logs') ? { key: '/logs', icon: <DashboardOutlined />, label: 'Nhật ký hệ thống' } : null,
   ].filter(Boolean) as MenuProps['items'];
 
@@ -413,110 +416,73 @@ export default function AppLayout() {
 
   const sidebarContent = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Logo area */}
-      <div
-        onClick={() => navigate('/')}
-        style={{
-          height: 60,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          padding: '0 16px',
-          gap: 10,
-          cursor: 'pointer',
-        }}
-      >
-        <img
-          src="/images/Logo_Cục_Hàng_hải_Việt_Nam.jpg"
-          alt="Cục Hàng hải Việt Nam"
-          style={{ width: 32, height: 25, objectFit: 'contain', flexShrink: 0 }}
-        />
-        {!collapsed && (
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-            <Typography.Text
-              strong
-              style={{
-                fontSize: 12,
-                whiteSpace: 'nowrap',
-                color: '#fff',
-                letterSpacing: 0.5,
-              }}
-            >
-              CỤC HÀNG HẢI
-            </Typography.Text>
-            <Typography.Text
-              style={{
-                fontSize: 9,
-                whiteSpace: 'nowrap',
-                color: '#565674',
-                letterSpacing: 0.3,
-              }}
-            >
-              VIỆT NAM
-            </Typography.Text>
-          </div>
-        )}
+      {/* Header — chỉ logo căn giữa */}
+      <div className="sidebar-header" onClick={() => navigate('/')} style={{ cursor: 'pointer', justifyContent: 'center' }}>
+        <div className="sidebar-header__logo-box">
+          <img src="/images/logo-vinamarine.png" alt="Logo" />
+        </div>
       </div>
 
-      <Menu
-        mode="inline"
-        selectedKeys={[selectedKey]}
-        openKeys={openKeys}
-        onOpenChange={setOpenKeys}
-        items={menuItems}
-        onClick={handleMenuClick}
-        style={{ borderInlineEnd: 'none', flex: 1, paddingTop: 8 }}
-      />
+      {/* Ô tìm kiếm — pill trong mờ, ngay dưới header */}
+      {!collapsed && (
+        <div className="sidebar-search">
+          <SearchOutlined />
+          <input placeholder="Tìm kiếm" />
+        </div>
+      )}
+
+      <div className="sidebar-menu-scroll">
+        <Menu
+          theme="dark"
+          mode="inline"
+          inlineCollapsed={collapsed}
+          selectedKeys={[selectedKey]}
+          openKeys={openKeys}
+          onOpenChange={setOpenKeys}
+          items={menuItems}
+          onClick={handleMenuClick}
+          style={{ borderInlineEnd: 'none', paddingTop: 4 }}
+        />
+      </div>
+
+      {/* Footer — text + nút tròn floating */}
+      <div className="sidebar-footer">
+        {!collapsed && (
+          <div className="sidebar-header__text">
+            <span className="sidebar-footer__version">Cục Hàng Hải và Đường Thủy</span>
+            <span className="sidebar-footer__version">Việt Nam</span>
+          </div>
+        )}
+        <button
+          className={`sidebar-footer__collapse-btn${collapsed ? ' sidebar-footer__collapse-btn--collapsed' : ''}`}
+          onClick={() => setCollapsed(!collapsed)}
+        >
+          <LeftOutlined />
+        </button>
+      </div>
     </div>
   );
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <>
+      <Layout style={{ minHeight: '100vh' }}>
       {/* Desktop Sidebar */}
       {!isMobile && (
         <Sider
           collapsible
+          trigger={null}
           collapsed={collapsed}
           onCollapse={setCollapsed}
-          width={siderWidth}
+          width={layout.sidebarWidth}
+          collapsedWidth={layout.sidebarCollapsedWidth}
           style={{
             borderRight: '1px solid rgba(255,255,255,0.06)',
             position: 'relative',
+            background: 'var(--bg-sidebar, #1E2129)',
           }}
           breakpoint="lg"
         >
           {sidebarContent}
-          {!collapsed && (
-            <div
-              onMouseDown={(e) => {
-                e.preventDefault();
-                const handleMouseMove = (moveEvent: MouseEvent) => {
-                  const newWidth = Math.max(200, Math.min(600, moveEvent.clientX));
-                  setSiderWidth(newWidth);
-                };
-                const handleMouseUp = () => {
-                  document.removeEventListener('mousemove', handleMouseMove);
-                  document.removeEventListener('mouseup', handleMouseUp);
-                };
-                document.addEventListener('mousemove', handleMouseMove);
-                document.addEventListener('mouseup', handleMouseUp);
-              }}
-              style={{
-                width: '6px',
-                cursor: 'col-resize',
-                position: 'absolute',
-                top: 0,
-                right: -3,
-                bottom: 0,
-                zIndex: 1000,
-                backgroundColor: 'transparent',
-                transition: 'background-color 0.2s',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = token.colorPrimary)}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-            />
-          )}
         </Sider>
       )}
 
@@ -526,7 +492,7 @@ export default function AppLayout() {
           placement="left"
           open={mobileDrawerOpen}
           onClose={() => setMobileDrawerOpen(false)}
-          styles={{ body: { padding: 0 }, wrapper: { width: 260 } }}
+          styles={{ body: { padding: 0, background: 'var(--bg-sidebar, #1E2129)' }, wrapper: { width: 260 } }}
         >
           {sidebarContent}
         </Drawer>
@@ -553,7 +519,7 @@ export default function AppLayout() {
                 onClick={() => setMobileDrawerOpen(true)}
               />
             )}
-            <Typography.Title level={5} style={{ margin: 0 }}>
+            <Typography.Title level={5} style={{ margin: 0, color: '#12468C' }}>
               {pageTitles[selectedKey] ?? 'Quản trị hệ thống'}
             </Typography.Title>
           </Space>
@@ -562,27 +528,29 @@ export default function AppLayout() {
             menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
             trigger={['click']}
           >
-            <Space style={{ cursor: 'pointer' }}>
-              <Badge status="success" dot offset={[-2, 30]}>
+            <div className="topbar-user">
+              <div className="topbar-user__avatar-wrap">
                 <Avatar
                   icon={<UserOutlined />}
+                  className="topbar-user__avatar"
                   style={{ backgroundColor: token.colorPrimary }}
                 />
-              </Badge>
+                <span className="topbar-user__status-dot" />
+              </div>
               {!isMobile && (
                 <>
-                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 'normal', justifyContent: 'center' }}>
-                    <Typography.Text strong style={{ fontSize: 14 }}>
+                  <div className="topbar-user__info">
+                    <span className="topbar-user__name">
                       {user?.fullName || 'Admin'}
-                    </Typography.Text>
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    </span>
+                    <span className="topbar-user__role">
                       {user?.role?.replace('ROLE_', '') || 'Administrator'}
-                    </Typography.Text>
+                    </span>
                   </div>
-                  <DownOutlined style={{ fontSize: 10, color: token.colorTextSecondary }} />
+                  <DownOutlined className="topbar-user__arrow" />
                 </>
               )}
-            </Space>
+            </div>
           </Dropdown>
         </Header>
 
@@ -598,5 +566,6 @@ export default function AppLayout() {
         </Content>
       </Layout>
     </Layout>
+    </>
   );
 }

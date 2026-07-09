@@ -1,5 +1,5 @@
 /**
- * theme.ts
+ * theme.ts (v4)
  * ------------------------------------------------------------------
  * Bộ theme Ant Design v5 mô phỏng phong cách Metronic 8
  * Dùng cho: Hệ thống Quản trị kết cấu hạ tầng giao thông đường thủy & hàng hải
@@ -18,6 +18,16 @@
 import type { ThemeConfig } from 'antd';
 
 // ============================================================
+// 0. LAYOUT DIMENSIONS (single source of truth for sidebar, header, footer)
+// ============================================================
+export const layout = {
+  sidebarWidth: 272,
+  sidebarCollapsedWidth: 80,
+  headerHeight: 64,
+  footerHeight: 56,
+};
+
+// ============================================================
 // 1. DESIGN TOKENS GỐC (single source of truth — đổi ở đây là đổi toàn hệ thống)
 // ============================================================
 export const colors = {
@@ -33,8 +43,9 @@ export const colors = {
   // Nền
   bodyBg: '#F5F8FA',         // nền layout tổng (xám rất nhạt đặc trưng Metronic)
   containerBg: '#FFFFFF',
-  sidebarBg: '#1E2129',      // nền sidebar tối
-  sidebarActiveBg: 'rgba(27, 132, 255, 0.12)',
+  sidebarBg: '#12468C',      // nền sidebar xanh dương đồng nhất (v3)
+  sidebarActiveBg: '#1B84FF', // pill active màu xanh dương sáng
+  sidebarSearchBg: 'rgba(255, 255, 255, 0.12)', // nền ô tìm kiếm trong sidebar
 
   // Border
   borderLight: '#EFF2F5',
@@ -154,7 +165,7 @@ export const metronicTheme: ThemeConfig = {
     },
 
     Menu: {
-      // Sidebar tối kiểu Metronic
+      // Sidebar xanh dương đồng nhất — active item dạng PILL, không border-left
       darkItemBg: colors.sidebarBg,
       darkSubMenuItemBg: colors.sidebarBg,
       darkItemColor: colors.textOnDarkMuted,
@@ -162,12 +173,12 @@ export const metronicTheme: ThemeConfig = {
       darkItemSelectedColor: '#FFFFFF',
       darkItemSelectedBg: colors.sidebarActiveBg,
       itemHeight: 46,
-      itemMarginInline: 8,
-      itemBorderRadius: radius.sm,
+      itemMarginInline: 10,
+      itemBorderRadius: radius.md,
       iconSize: 18,
       collapsedIconSize: 18,
-      // Lưu ý cho AI: item đang active cần thêm border-left 3px solid var(--color-primary)
-      // AntD token không hỗ trợ border-left riêng => xử lý bằng CSS override (xem globalCssVars mục .ant-menu-item-selected)
+      // Lưu ý cho AI: item đang active là PILL màu xanh dương sáng, KHÔNG có border-left.
+      // Xem CSS .ant-menu-dark .ant-menu-item-selected để biết box-shadow glow.
     },
 
     Card: {
@@ -257,6 +268,8 @@ export const globalCssVars = `
   --bg-body: ${colors.bodyBg};
   --bg-container: ${colors.containerBg};
   --bg-sidebar: ${colors.sidebarBg};
+  --sidebar-active-bg: ${colors.sidebarActiveBg};
+  --sidebar-search-bg: ${colors.sidebarSearchBg};
 
   --border-light: ${colors.borderLight};
   --border-base: ${colors.borderBase};
@@ -282,78 +295,170 @@ export const globalCssVars = `
   --font-family: ${fontFamily};
 }
 
-/* ---------- Sidebar: header (logo) + footer (nút thu gọn) BẮT BUỘC cùng 1 màu nền với menu ---------- */
-/* Lý do phải khai báo tường minh: nếu không, AI hay tự set nền trắng cho header logo
-   hoặc nền navy khác cho footer, gây ra 3 mảng màu tối khác nhau trong 1 sidebar. */
-.sidebar-header,
-.sidebar-footer,
-.ant-layout-sider,
-.ant-menu-dark {
-  background: var(--bg-sidebar) !important;
-}
+/* ---------- Sidebar: 1 MÀU XANH DƯƠNG ĐỒNG NHẤT (Rule 8 v3) ---------- */
+/* Header, Menu, Footer đều chung nền xanh #12468C — active item là PILL, không border-left. */
+
+/* --- Brand zone (BLUE — đồng nhất với menu) --- */
 .sidebar-header {
   display: flex;
   align-items: center;
   gap: 10px;
   height: 64px;
   padding: 0 20px;
+  background: var(--bg-sidebar);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
 }
 .sidebar-header__logo-box {
-  /* Chỉ riêng icon logo (lá cờ) mới có khối nền, KHÔNG kéo nền trắng ra cả thanh ngang */
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  background: #FFFFFF;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  overflow: hidden;
+}
+.sidebar-header__logo-box img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+}
+.sidebar-header__text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
 }
 .sidebar-header__title {
   color: #FFFFFF;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.3;
+  white-space: nowrap;
 }
 .sidebar-header__subtitle {
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 11px;
-  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 1.3;
+  margin-top: 2px;
+  white-space: nowrap;
 }
+
+/* --- Search box (trong sidebar) --- */
+.sidebar-search {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  height: 40px;
+  margin: 4px 12px 8px;
+  border-radius: 999px;
+  background: var(--sidebar-search-bg);
+}
+.sidebar-search input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #FFFFFF;
+  font-size: 13px;
+}
+.sidebar-search input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
+.sidebar-search .anticon {
+  color: rgba(255, 255, 255, 0.55);
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+/* --- Scrollable menu area --- */
+.ant-layout-sider {
+  position: relative;
+}
+.ant-layout-sider-children {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-menu-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.sidebar-menu-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-menu-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+.sidebar-menu-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* --- Navigation zone (BLUE — đồng nhất) --- */
+.sidebar-footer,
+.ant-layout-sider,
+.ant-menu-dark {
+  background: var(--bg-sidebar) !important;
+}
+
+/* Active item: PILL với box-shadow glow, KHÔNG có border-left */
+.ant-menu-dark .ant-menu-item-selected {
+  position: relative;
+  font-weight: 600;
+  box-shadow: 0 0 12px rgba(27, 132, 255, 0.4);
+}
+
+/* Footer với nút collapse dạng FLOATING */
 .sidebar-footer {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   height: 56px;
+  padding: 0 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.55);
-  cursor: pointer;
-  transition: color 0.2s ease;
+  flex-shrink: 0;
 }
-.sidebar-footer:hover {
+.sidebar-footer__version {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.sidebar-footer__collapse-btn {
+  position: absolute;
+  right: -16px;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #FFFFFF;
+  color: var(--color-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  transform: translateY(-50%);
+}
+.sidebar-footer__collapse-btn:hover {
+  background: var(--color-primary);
   color: #FFFFFF;
 }
-
-/* ---------- Sidebar: border trái cho item đang active (đặc trưng Metronic) ---------- */
-.ant-menu-dark .ant-menu-item-selected {
-  position: relative;
-  font-weight: 600;
-}
-.ant-menu-dark .ant-menu-item-selected::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  border-radius: 0 4px 4px 0;
-  background: var(--color-primary);
+.sidebar-footer__collapse-btn--collapsed svg {
+  transform: rotate(180deg);
 }
 
 /* ---------- Status badge (Hoạt động / Ngừng hoạt động...) — dùng cho MỌI bảng dữ liệu ---------- */
-/* Thay cho việc để chữ trần màu xanh/đỏ như hiện tại */
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -388,7 +493,6 @@ export const globalCssVars = `
 }
 
 /* ---------- Tag vai trò / phân loại — MỖI vai trò 1 màu cố định, không dùng chung 1 màu ---------- */
-/* Quy ước màu theo Ý NGHĨA vai trò, áp dụng nhất quán cho toàn bộ 22 module có khái niệm "vai trò/loại" */
 .role-tag {
   display: inline-flex;
   align-items: center;
@@ -414,10 +518,12 @@ export const globalCssVars = `
   color: var(--text-secondary);
   background: rgba(0, 0, 0, 0.045);
 }
+.role-tag--user {           /* Người dùng thường / USER */
+  color: #0AA5C2;
+  background: #E6F9FC;
+}
 
 /* ---------- Icon hành động trong bảng (sửa / khóa / xem / xoá) ---------- */
-/* Quy tắc: hành động trung tính dùng 1 màu xám-xanh đồng nhất; CHỈ hành động xoá mới đỏ.
-   Không tô mỗi icon 1 màu sặc sỡ như hiện tại. */
 .table-actions {
   display: inline-flex;
   align-items: center;
@@ -478,7 +584,6 @@ export const globalCssVars = `
   align-items: center;
   justify-content: center;
 }
-/* Badge % tăng/giảm — thay cho progress bar phẳng vô nghĩa */
 .kpi-card__delta {
   display: inline-flex;
   align-items: center;
@@ -498,7 +603,7 @@ export const globalCssVars = `
   background: rgba(241, 65, 108, 0.1);
 }
 
-/* ---------- Feature card ("Chức năng chính") ---------- */
+/* ---------- Feature card (\"Chức năng chính\") ---------- */
 .feature-card {
   background: var(--bg-container);
   border: 1px solid var(--border-light);
@@ -522,6 +627,57 @@ export const globalCssVars = `
 }
 .feature-card__link:hover {
   background: var(--icon-bg-blue);
+}
+
+/* ---------- Topbar user (avatar + tên + vai trò góc phải header) ---------- */
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.topbar-user__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.topbar-user__info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.topbar-user__name {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.topbar-user__role {
+  color: var(--text-secondary) !important;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.topbar-user__arrow {
+  color: var(--text-tertiary);
+  font-size: 10px;
+  margin-left: 2px;
+}
+.topbar-user__avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.topbar-user__status-dot {
+  position: absolute;
+  top: 50%;
+  right: -4px;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success);
+  border: 2px solid var(--bg-container);
 }
 
 /* ---------- Body background ---------- */
@@ -559,11 +715,8 @@ body, .ant-layout {
  * 7. Toàn bộ 22 module phải import `metronicTheme` gián tiếp qua ConfigProvider ở root,
  *    KHÔNG được wrap thêm ConfigProvider theme khác ở cấp module (tránh theme bị override lệch nhau).
  *
- * 8. Sidebar PHẢI có đúng 3 vùng dùng chung 1 class nền: `.sidebar-header` (logo),
- *    phần menu (Menu component theme="dark" — tự nhận var(--bg-sidebar) qua token Layout.siderBg),
- *    và `.sidebar-footer` (nút thu gọn). CẤM set background-color/hex riêng cho từng vùng này.
- *    Icon logo (lá cờ) chỉ bọc trong `.sidebar-header__logo-box` (khối nhỏ 36x36 nền trắng),
- *    KHÔNG để nền trắng tràn cả thanh ngang header.
+ * 8. Sidebar: 1 MÀU XANH DƯƠNG ĐỒNG NHẤT (#12468C) cho header, menu, footer.
+ *    Active menu item là PILL màu xanh dương sáng (#1B84FF), KHÔNG có border-left.
  *
  * 9. MỌI cột "Trạng thái" trong MỌI bảng dữ liệu (Table) của 22 module phải dùng class
  *    `.status-badge` + 1 trong 4 biến thể: `--active`, `--inactive`, `--locked`, `--pending`.
@@ -578,4 +731,40 @@ body, .ant-layout {
  *     mỗi icon là `.table-actions__btn` (icon sửa/khóa/xem dùng màu trung tính mặc định),
  *     riêng icon xoá thêm class `.table-actions__btn--danger`. CẤM tô mỗi icon 1 màu ngẫu nhiên
  *     (tím/xanh/cam lẫn lộn không theo quy tắc) như hiện tại đang bị.
+ *
+ * 12. JSX template cho sidebar (AppLayout.tsx):
+ *     <Sider width={layout.sidebarWidth} collapsedWidth={layout.sidebarCollapsedWidth} ...>
+ *       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+ *         <div className="sidebar-header">
+ *           <div className="sidebar-header__logo-box">
+ *             <img src="/images/logo-hanghai.svg" alt="Logo" />
+ *           </div>
+ *           <div className="sidebar-header__text">
+ *             <span className="sidebar-header__title">Cuc Hang Hai</span>
+ *             <span className="sidebar-header__subtitle">Viet Nam</span>
+ *           </div>
+ *         </div>
+ *         <div className="sidebar-search">
+ *           <SearchOutlined />
+ *           <input type="text" placeholder="Tim kiem..." />
+ *         </div>
+ *         <div className="sidebar-menu-scroll">
+ *           <Menu theme="dark" mode="inline" selectedKeys={...} items={...} ... />
+ *         </div>
+ *         <div className="sidebar-footer">
+ *           <button className="sidebar-footer__collapse-btn ...">
+ *             <LeftOutlined />
+ *           </button>
+ *         </div>
+ *       </div>
+ *     </Sider>
+ *     Nut collapse o footer la FLOATING (absolute, right: -14px, top: 50%, transform: translateY(-50%)),
+ *     nen trang, icon xanh. Kich thuoc 32x32.
+ *
+ * 13. Import bat buoc trong AppLayout.tsx:
+ *     import { metronicTheme, layout } from '../theme';
+ *     Su dung layout.sidebarWidth va layout.sidebarCollapsedWidth cho Sider props.
+ *
+ * 14. Khi sidebar collapsed, ẩn `.sidebar-header__text` và `.sidebar-search` theo điều kiện
+ *     `!collapsed && (...)`.
  */
