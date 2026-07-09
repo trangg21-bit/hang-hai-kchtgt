@@ -30,9 +30,9 @@
       "attributesJson": "{\"RCID\":18785,\"OBJL\":116,\"PRIM\":2,\"GRUP\":2,\"AGEN\":1512,\"FIDN\":1747971889,\"FIDS\":252}"
     },
     {
-      "featureCode": "UNKNOWN_23",
+      "featureCode": "CBLOHD",
       "geometryType": "LINE",
-      "featureName": "UNKNOWN_23",
+      "featureName": "CBLOHD",
       "coordinates": "LINESTRING(106.801979 10.600831, 106.80206 10.600869)",
       "attributesJson": "{\"RCID\":18821,\"OBJL\":23,\"PRIM\":2,\"GRUP\":2,\"AGEN\":1512,\"FIDN\":1747971890,\"FIDS\":33}"
     },
