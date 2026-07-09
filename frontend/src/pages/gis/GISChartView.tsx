@@ -380,6 +380,7 @@ export default function GISChartView() {
             color: strokeColor,
             weight: strokeWidth,
             dashArray: strokeDashArray,
+            interactive: featureCode !== 'M_COVR' && featureCode !== 'M_QUAL',
           });
         }
 
