@@ -155,7 +155,7 @@ export default function CangCanListPage() {
     {
       title: 'Vĩ độ',
       dataIndex: 'viDo',
-      width: 100,
+      width: 110,
       render: (v: number | null) => (v != null ? v.toFixed(6) : '—'),
     },
     {
@@ -167,14 +167,14 @@ export default function CangCanListPage() {
     {
       title: 'Diện tích (m²)',
       dataIndex: 'dienTich',
-      width: 120,
+      width: 140,
       align: 'right' as const,
       render: (v: number) => v?.toFixed(2) || '—',
     },
     {
       title: 'Công suất TEU',
       dataIndex: 'congSuatTEU',
-      width: 120,
+      width: 140,
       align: 'right' as const,
       render: (v: number | null) => (v != null ? v.toFixed(2) : '—'),
     },
