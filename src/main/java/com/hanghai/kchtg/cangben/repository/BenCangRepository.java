@@ -34,4 +34,24 @@ public interface BenCangRepository extends JpaRepository<BenCang, UUID> {
      */
     @Query("SELECT b FROM BenCang b WHERE b.deletedAt IS NULL AND b.cangBienId = :cangBienId")
     Page<BenCang> findByCangBienId(@Param("cangBienId") UUID cangBienId, Pageable pageable);
+
+    @Query("SELECT b FROM BenCang b WHERE b.deletedAt IS NULL " +
+            "AND (:orgUnitId IS NULL OR b.orgUnitId = :orgUnitId) " +
+            "AND (CAST(:maBen AS string) IS NULL OR LOWER(b.maBen) LIKE LOWER(CONCAT('%', CAST(:maBen AS string), '%'))) " +
+            "AND (CAST(:tenBen AS string) IS NULL OR LOWER(b.tenBen) LIKE LOWER(CONCAT('%', CAST(:tenBen AS string), '%'))) " +
+            "AND (:cangBienId IS NULL OR b.cangBienId = :cangBienId) " +
+            "AND (CAST(:tuyenDuongThuy AS string) IS NULL OR LOWER(b.tuyenDuongThuy) LIKE LOWER(CONCAT('%', CAST(:tuyenDuongThuy AS string), '%'))) " +
+            "AND (CAST(:loaiBen AS string) IS NULL OR LOWER(b.loaiBen) LIKE LOWER(CONCAT('%', CAST(:loaiBen AS string), '%'))) " +
+            "AND (CAST(:trangThaiHoatDong AS string) IS NULL OR LOWER(b.trangThaiHoatDong) = LOWER(CAST(:trangThaiHoatDong AS string))) " +
+            "AND (CAST(:trangThaiPheDuyet AS string) IS NULL OR LOWER(b.trangThaiPheDuyet) = LOWER(CAST(:trangThaiPheDuyet AS string)))")
+    Page<BenCang> searchBenCang(
+            @Param("orgUnitId") UUID orgUnitId,
+            @Param("maBen") String maBen,
+            @Param("tenBen") String tenBen,
+            @Param("cangBienId") UUID cangBienId,
+            @Param("tuyenDuongThuy") String tuyenDuongThuy,
+            @Param("loaiBen") String loaiBen,
+            @Param("trangThaiHoatDong") String trangThaiHoatDong,
+            @Param("trangThaiPheDuyet") String trangThaiPheDuyet,
+            Pageable pageable);
 }

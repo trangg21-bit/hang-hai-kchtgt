@@ -21,4 +21,17 @@ public interface CangCanRepository extends JpaRepository<CangCan, UUID> {
     @Query("SELECT c FROM CangCan c WHERE c.deletedAt IS NULL " +
             "AND (:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId)")
     Page<CangCan> findAllActive(@Param("orgUnitId") UUID orgUnitId, Pageable pageable);
+
+    @Query("SELECT c FROM CangCan c WHERE c.deletedAt IS NULL " +
+            "AND (:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId) " +
+            "AND (CAST(:search AS string) IS NULL OR LOWER(c.maCangCan) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+            "     OR LOWER(c.tenCangCan) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
+            "AND (CAST(:status AS string) IS NULL OR LOWER(c.trangThaiHoatDong) = LOWER(CAST(:status AS string))) " +
+            "AND (CAST(:approvalStatus AS string) IS NULL OR LOWER(c.trangThaiPheDuyet) = LOWER(CAST(:approvalStatus AS string)))")
+    Page<CangCan> searchCangCan(
+            @Param("orgUnitId") UUID orgUnitId,
+            @Param("search") String search,
+            @Param("status") String status,
+            @Param("approvalStatus") String approvalStatus,
+            Pageable pageable);
 }

@@ -34,4 +34,19 @@ public interface CauCangRepository extends JpaRepository<CauCang, UUID> {
      */
     @Query("SELECT c FROM CauCang c WHERE c.deletedAt IS NULL AND c.benCangId = :benCangId")
     Page<CauCang> findByBenCangId(@Param("benCangId") UUID benCangId, Pageable pageable);
+
+    @Query("SELECT c FROM CauCang c WHERE c.deletedAt IS NULL " +
+            "AND (:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId) " +
+            "AND (CAST(:search AS string) IS NULL OR LOWER(c.maCau) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+            "     OR LOWER(c.tenCau) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
+            "AND (:benCangId IS NULL OR c.benCangId = :benCangId) " +
+            "AND (CAST(:status AS string) IS NULL OR LOWER(c.trangThaiHoatDong) = LOWER(CAST(:status AS string))) " +
+            "AND (CAST(:approvalStatus AS string) IS NULL OR LOWER(c.trangThaiPheDuyet) = LOWER(CAST(:approvalStatus AS string)))")
+    Page<CauCang> searchCauCang(
+            @Param("orgUnitId") UUID orgUnitId,
+            @Param("search") String search,
+            @Param("benCangId") UUID benCangId,
+            @Param("status") String status,
+            @Param("approvalStatus") String approvalStatus,
+            Pageable pageable);
 }

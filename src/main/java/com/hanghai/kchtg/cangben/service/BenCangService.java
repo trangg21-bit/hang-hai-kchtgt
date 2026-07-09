@@ -75,9 +75,18 @@ public class BenCangService {
 
     @Transactional(readOnly = true)
     public Page<BenCangResponse> findAll(int page, int size, UUID orgUnitId) {
+        return findAll(page, size, orgUnitId, null, null, null, null, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<BenCangResponse> findAll(int page, int size, UUID orgUnitId,
+                                         String maBen, String tenBen, UUID cangBienId,
+                                         String tuyenDuongThuy, String loaiBen,
+                                         String trangThaiHoatDong, String trangThaiPheDuyet) {
         int pageSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
-        return benCangRepository.findAllActive(orgUnitId, pageable).map(this::toResponse);
+        return benCangRepository.searchBenCang(orgUnitId, maBen, tenBen, cangBienId,
+                tuyenDuongThuy, loaiBen, trangThaiHoatDong, trangThaiPheDuyet, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)

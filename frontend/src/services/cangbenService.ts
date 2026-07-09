@@ -130,7 +130,9 @@ export const benCangCRUD = {
     tenBen?: string;
     cangBienId?: string;
     loaiBen?: string;
+    tuyenDuongThuy?: string;
     trangThaiHoatDong?: string;
+    trangThaiPheDuyet?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<BenCang>> {
@@ -139,7 +141,9 @@ export const benCangCRUD = {
       tenBen: params?.tenBen,
       cangBienId: params?.cangBienId,
       loaiBen: params?.loaiBen,
+      tuyenDuongThuy: params?.tuyenDuongThuy,
       trangThaiHoatDong: params?.trangThaiHoatDong,
+      trangThaiPheDuyet: params?.trangThaiPheDuyet,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });

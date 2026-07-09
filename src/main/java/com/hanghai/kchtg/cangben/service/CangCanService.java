@@ -60,9 +60,16 @@ public class CangCanService {
 
     @Transactional(readOnly = true)
     public Page<CangCanResponse> findAll(int page, int size, UUID orgUnitId) {
+        return findAll(page, size, orgUnitId, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CangCanResponse> findAll(int page, int size, UUID orgUnitId,
+                                         String search, String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
-        return cangCanRepository.findAllActive(orgUnitId, pageable).map(this::toResponse);
+        return cangCanRepository.searchCangCan(orgUnitId, search, status, approvalStatus, pageable)
+                .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)

@@ -51,14 +51,18 @@ public class VungNuocService {
         return findAll(page, size, orgUnitId, null);
     }
 
-    /**
-     * List VungNuoc with optional orgUnitId and parent cangBienId filter (INT-004).
-     */
     @Transactional(readOnly = true)
     public Page<VungNuocResponse> findAll(int page, int size, UUID orgUnitId, UUID cangBienId) {
+        return findAll(page, size, orgUnitId, cangBienId, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<VungNuocResponse> findAll(int page, int size, UUID orgUnitId, UUID cangBienId,
+                                         String search, String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
-        return vungNuocRepository.findAllActive(orgUnitId, cangBienId, pageable).map(this::toResponse);
+        return vungNuocRepository.searchVungNuoc(orgUnitId, cangBienId, search, status, approvalStatus, pageable)
+                .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)

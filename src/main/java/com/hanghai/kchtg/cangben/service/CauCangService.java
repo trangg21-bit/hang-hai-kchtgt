@@ -61,9 +61,17 @@ public class CauCangService {
 
     @Transactional(readOnly = true)
     public Page<CauCangResponse> findAll(int page, int size, UUID orgUnitId) {
+        return findAll(page, size, orgUnitId, null, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CauCangResponse> findAll(int page, int size, UUID orgUnitId,
+                                         String search, UUID benCangId,
+                                         String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
-        return cauCangRepository.findAllActive(orgUnitId, pageable).map(this::toResponse);
+        return cauCangRepository.searchCauCang(orgUnitId, search, benCangId, status, approvalStatus, pageable)
+                .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)

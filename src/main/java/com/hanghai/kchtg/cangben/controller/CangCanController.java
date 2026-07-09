@@ -67,9 +67,13 @@ public class CangCanController {
     public ResponseEntity<ApiResponse<Page<CangCanResponse>>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) UUID orgUnitId) {
-        log.info("Listing CangCan: page={}, size={}, orgUnitId={}", page, size, orgUnitId);
-        Page<CangCanResponse> result = cangCanService.findAll(page, size, orgUnitId);
+            @RequestParam(required = false) UUID orgUnitId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String approvalStatus) {
+        log.info("Listing CangCan: page={}, size={}, orgUnitId={}, search={}, status={}, approvalStatus={}",
+                page, size, orgUnitId, search, status, approvalStatus);
+        Page<CangCanResponse> result = cangCanService.findAll(page, size, orgUnitId, search, status, approvalStatus);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cảng cạn thành công", result));
     }
 

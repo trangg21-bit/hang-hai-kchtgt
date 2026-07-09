@@ -38,4 +38,19 @@ public interface VungNuocRepository extends JpaRepository<VungNuoc, UUID> {
 
     @Query("SELECT COUNT(v) FROM VungNuoc v WHERE v.deletedAt IS NULL AND v.cangBienId = :cangBienId")
     long countByCangBienIdAndDeletedAtIsNull(@Param("cangBienId") UUID cangBienId);
+
+    @Query("SELECT v FROM VungNuoc v WHERE v.deletedAt IS NULL " +
+            "AND (:orgUnitId IS NULL OR v.orgUnitId = :orgUnitId) " +
+            "AND (:cangBienId IS NULL OR v.cangBienId = :cangBienId) " +
+            "AND (CAST(:search AS string) IS NULL OR LOWER(v.maVungNuoc) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+            "     OR LOWER(v.tenVungNuoc) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
+            "AND (CAST(:status AS string) IS NULL OR LOWER(v.trangThaiHoatDong) = LOWER(CAST(:status AS string))) " +
+            "AND (CAST(:approvalStatus AS string) IS NULL OR LOWER(v.trangThaiPheDuyet) = LOWER(CAST(:approvalStatus AS string)))")
+    Page<VungNuoc> searchVungNuoc(
+            @Param("orgUnitId") UUID orgUnitId,
+            @Param("cangBienId") UUID cangBienId,
+            @Param("search") String search,
+            @Param("status") String status,
+            @Param("approvalStatus") String approvalStatus,
+            Pageable pageable);
 }

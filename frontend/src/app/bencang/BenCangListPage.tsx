@@ -50,7 +50,9 @@ export default function BenCangListPage() {
         maBen: filterMaBen || undefined,
         tenBen: filterTenBen || undefined,
         loaiBen: filterLoaiBen || undefined,
+        tuyenDuongThuy: filterTuyenDuongThuy || undefined,
         trangThaiHoatDong: filterStatus,
+        trangThaiPheDuyet: filterApprovalStatus,
       });
       setDataSource(res.data);
       setTotal(res.total);
@@ -60,7 +62,7 @@ export default function BenCangListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterMaBen, filterTenBen, filterLoaiBen, filterStatus]);
+  }, [page, pageSize, filterMaBen, filterTenBen, filterLoaiBen, filterTuyenDuongThuy, filterStatus, filterApprovalStatus]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
