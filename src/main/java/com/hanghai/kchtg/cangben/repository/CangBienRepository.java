@@ -42,7 +42,8 @@ public interface CangBienRepository extends JpaRepository<CangBien, UUID> {
             "AND (CAST(:tenCang AS string) IS NULL OR LOWER(c.tenCang) LIKE LOWER(CONCAT('%', CAST(:tenCang AS string), '%'))) " +
             "AND (CAST(:tinhThanhPho AS string) IS NULL OR LOWER(c.tinhThanhPho) LIKE LOWER(CONCAT('%', CAST(:tinhThanhPho AS string), '%'))) " +
             "AND (CAST(:trangThaiHoatDong AS string) IS NULL OR LOWER(c.trangThaiHoatDong) = LOWER(CAST(:trangThaiHoatDong AS string))) " +
-            "AND (CAST(:trangThaiPheDuyet AS string) IS NULL OR LOWER(c.trangThaiPheDuyet) = LOWER(CAST(:trangThaiPheDuyet AS string)))")
+            "AND (CAST(:trangThaiPheDuyet AS string) IS NULL OR LOWER(c.trangThaiPheDuyet) = LOWER(CAST(:trangThaiPheDuyet AS string))) " +
+            "AND (CAST(:search AS string) IS NULL OR LOWER(c.maCang) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(c.tenCang) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))")
     Page<CangBien> searchCangBien(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("maCang") String maCang,
@@ -50,6 +51,7 @@ public interface CangBienRepository extends JpaRepository<CangBien, UUID> {
             @Param("tinhThanhPho") String tinhThanhPho,
             @Param("trangThaiHoatDong") String trangThaiHoatDong,
             @Param("trangThaiPheDuyet") String trangThaiPheDuyet,
+            @Param("search") String search,
             Pageable pageable);
 
 }

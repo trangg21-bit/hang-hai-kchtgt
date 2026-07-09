@@ -18,6 +18,7 @@ export async function fetchCangBienList(params: {
   page?: number;
   size?: number;
   orgUnitId?: string;
+  search?: string;
   maCang?: string;
   tenCang?: string;
   tinhThanhPho?: string;
@@ -30,6 +31,7 @@ export async function fetchCangBienList(params: {
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
   if (params.orgUnitId) sp.set('orgUnitId', params.orgUnitId);
+  if (params.search) sp.set('search', params.search);
   if (params.maCang) sp.set('maCang', params.maCang);
   if (params.tenCang) sp.set('tenCang', params.tenCang);
   if (params.tinhThanhPho) sp.set('tinhThanhPho', params.tinhThanhPho);

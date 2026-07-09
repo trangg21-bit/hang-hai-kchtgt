@@ -85,18 +85,19 @@ public class CangBienService {
      */
     @Transactional(readOnly = true)
     public Page<CangBienResponse> findAll(int page, int size, UUID orgUnitId) {
-        return findAll(page, size, orgUnitId, null, null, null, null, null);
+        return findAll(page, size, orgUnitId, null, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public Page<CangBienResponse> findAll(int page, int size, UUID orgUnitId,
                                           String maCang, String tenCang, String tinhThanhPho,
-                                          String trangThaiHoatDong, String trangThaiPheDuyet) {
+                                          String trangThaiHoatDong, String trangThaiPheDuyet,
+                                          String search) {
         int pageSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
 
         Page<CangBien> results = cangBienRepository.searchCangBien(
-                orgUnitId, maCang, tenCang, tinhThanhPho, trangThaiHoatDong, trangThaiPheDuyet, pageable);
+                orgUnitId, maCang, tenCang, tinhThanhPho, trangThaiHoatDong, trangThaiPheDuyet, search, pageable);
         return results.map(this::toResponse);
     }
 

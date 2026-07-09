@@ -215,6 +215,7 @@ export default function CangBienListPage() {
       const res = await fetchCangBienList({
         page: page - 1,
         size: pageSize,
+        search: search || undefined,
         maCang: filterMaCang || undefined,
         tenCang: filterTenCang || undefined,
         tinhThanhPho: filterTinhThanhPho || undefined,
@@ -232,15 +233,12 @@ export default function CangBienListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterMaCang, filterTenCang, filterTinhThanhPho, filterStatus, filterApprovalStatus]);
+  }, [page, pageSize, search, filterMaCang, filterTenCang, filterTinhThanhPho, filterStatus, filterApprovalStatus]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);
-    setFilterMaCang(value);
-    setFilterTenCang(value);
-    setFilterTinhThanhPho(value);
     setPage(1);
   }, []);
 
@@ -250,9 +248,6 @@ export default function CangBienListPage() {
     setSearch(value);
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
-      setFilterMaCang(value);
-      setFilterTenCang(value);
-      setFilterTinhThanhPho(value);
       setPage(1);
     }, 500);
   }, []);
