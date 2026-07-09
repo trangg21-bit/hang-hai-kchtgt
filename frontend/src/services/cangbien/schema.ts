@@ -112,7 +112,7 @@ export const trangThaiHoatDongBadge = (status: string): { color: string; label: 
   const norm = String(status || '').normalize('NFC').toUpperCase().trim();
   if (
     norm === 'HIEN_HANH' ||
-    norm === 'HIỆN_HÀNH'.normalize('NFC') ||
+    norm === 'HIỆN_HÀNH'.normalize('NFC').toUpperCase() ||
     norm === 'ACTIVE' ||
     norm === 'RUNNING'
   ) {
@@ -120,7 +120,7 @@ export const trangThaiHoatDongBadge = (status: string): { color: string; label: 
   }
   if (
     norm === 'TAM_NGUNG' ||
-    norm === 'TẠM_NGỪNG'.normalize('NFC') ||
+    norm === 'TẠM_NGỪNG'.normalize('NFC').toUpperCase() ||
     norm === 'INACTIVE' ||
     norm === 'STOPPED'
   ) {
@@ -134,21 +134,21 @@ export const trangThaiPheDuyetBadge = (status: string): { color: string; label: 
   if (
     norm === 'CHO_PHE_DUYET' ||
     norm === 'PENDING' ||
-    norm === 'CHỜ_PHÊ_DUYỆT'.normalize('NFC')
+    norm === 'CHỜ_PHÊ_DUYỆT'.normalize('NFC').toUpperCase()
   ) {
     return { color: 'orange', label: 'Chờ phê duyệt' };
   }
   if (
     norm === 'DUOC_PHE_DUYET' ||
     norm === 'APPROVED' ||
-    norm === 'ĐƯỢC_PHÊ_DUYỆT'.normalize('NFC')
+    norm === 'ĐƯỢC_PHÊ_DUYỆT'.normalize('NFC').toUpperCase()
   ) {
     return { color: 'green', label: 'Được phê duyệt' };
   }
   if (
     norm === 'TU_CHOI' ||
     norm === 'REJECTED' ||
-    norm === 'TỪ_CHỐI'.normalize('NFC')
+    norm === 'TỪ_CHỐI'.normalize('NFC').toUpperCase()
   ) {
     return { color: 'red', label: 'Từ chối' };
   }
