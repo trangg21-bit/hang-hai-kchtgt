@@ -37,6 +37,15 @@ public class S52StyleService {
         String code = feature.getFeatureCode().toUpperCase();
 
         switch (code) {
+            case "M_COVR": // Chart Coverage Area
+            case "M_QUAL": // Quality of data Area
+                style.iconSymbol = "none";
+                style.strokeColor = isDay ? "#888888" : "#444444";
+                style.strokeWidth = 1;
+                style.fillColor = "none";
+                style.fillOpacity = 0.0;
+                break;
+
             case "BOYSPP": // Buoy Special Purpose
                 style.iconSymbol = "special-buoy";
                 style.strokeColor = isDay ? "#ffff00" : (isDusk ? "#cccc00" : "#888800"); // Yellow buoy
@@ -72,7 +81,7 @@ public class S52StyleService {
                 style.iconSymbol = "none";
                 style.strokeColor = isDay ? "#996633" : (isDusk ? "#734d26" : "#4d331a"); // Brown land fill
                 style.fillColor = isDay ? "#f5f5dc" : (isDusk ? "#d2b48c" : "#2f4f4f");
-                style.fillOpacity = 0.7;
+                style.fillOpacity = 0.15;
                 style.strokeWidth = 1;
                 break;
 
@@ -99,7 +108,7 @@ public class S52StyleService {
                     style.iconSymbol = "none";
                     style.strokeColor = isDay ? "#666666" : "#999999";
                     style.fillColor = isDay ? "#cccccc" : "#333333";
-                    style.fillOpacity = 0.4;
+                    style.fillOpacity = 0.15;
                 }
                 break;
         }
