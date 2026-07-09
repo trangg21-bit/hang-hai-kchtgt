@@ -109,10 +109,17 @@ export type DeleteFormValues = z.infer<typeof deleteConfirmSchema>;
 // ── Badge / colour helpers ─
 
 export const trangThaiHoatDongBadge = (status: string): { color: string; label: string } => {
-  switch (status) {
+  const norm = String(status || '').toUpperCase().trim();
+  switch (norm) {
     case 'HIEN_HANH':
+    case 'HIỆN_HÀNH':
+    case 'ACTIVE':
+    case 'RUNNING':
       return { color: 'green', label: 'Hiện hành' };
     case 'TAM_NGUNG':
+    case 'TẠM_NGỪNG':
+    case 'INACTIVE':
+    case 'STOPPED':
       return { color: 'orange', label: 'Tạm ngừng' };
     default:
       return { color: 'default', label: status };
@@ -120,12 +127,19 @@ export const trangThaiHoatDongBadge = (status: string): { color: string; label: 
 };
 
 export const trangThaiPheDuyetBadge = (status: string): { color: string; label: string } => {
-  switch (status) {
+  const norm = String(status || '').toUpperCase().trim();
+  switch (norm) {
     case 'CHO_PHE_DUYET':
+    case 'PENDING':
+    case 'CHỜ_PHÊ_DUYỆT':
       return { color: 'orange', label: 'Chờ phê duyệt' };
     case 'DUOC_PHE_DUYET':
+    case 'APPROVED':
+    case 'ĐƯỢC_PHÊ_DUYỆT':
       return { color: 'green', label: 'Được phê duyệt' };
     case 'TU_CHOI':
+    case 'REJECTED':
+    case 'TỪ_CHỐI':
       return { color: 'red', label: 'Từ chối' };
     default:
       return { color: 'default', label: status };

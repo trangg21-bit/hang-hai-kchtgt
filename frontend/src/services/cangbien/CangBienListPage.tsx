@@ -12,6 +12,10 @@ import {
   Popconfirm,
   Table,
   Spin,
+  Modal,
+  Form,
+  InputNumber,
+  Typography,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -24,6 +28,8 @@ import {
   CloseCircleOutlined,
   EyeOutlined,
   HistoryOutlined,
+  UploadOutlined,
+  DownloadOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -31,10 +37,12 @@ import {
   deleteCangBien,
   approveCangBien,
   rejectCangBien,
+  fetchCangBienById,
 } from './api';
-import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge } from './schema';
+import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge, TRANG_THAI_HOAT_DONG_OPTIONS } from './schema';
 import type { CangBienResponse } from './types';
 import toast from '../../components/ToastNotification';
+import { giayToApi } from '../../app/giayto/api';
 
 // ── Helper: format date ─────────────────────────────────────────────
 
@@ -73,6 +81,132 @@ export default function CangBienListPage() {
 
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Modals Visibility
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [updateModalVisible, setUpdateModalVisible] = useState(false);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<CangBienResponse | null>(null);
+  const [detailFiles, setDetailFiles] = useState<any[]>([]);
+
+  // Forms definition
+  const [createForm] = Form.useForm();
+  const [updateForm] = Form.useForm();
+  const [submitting, setSubmitting] = useState(false);
+
+  // Form Watches
+  const createViDo = Form.useWatch('viDo', createForm);
+  const createKinhDo = Form.useWatch('kinhDo', createForm);
+  const createGpsPairedWarning =
+    (createViDo !== undefined && createViDo != null && !Number.isNaN(createViDo)) !==
+    (createKinhDo !== undefined && createKinhDo != null && !Number.isNaN(createKinhDo));
+
+  const updateViDo = Form.useWatch('viDo', updateForm);
+  const updateKinhDo = Form.useWatch('kinhDo', updateForm);
+  const updateGpsPairedWarning =
+    (updateViDo !== undefined && updateViDo != null && !Number.isNaN(updateViDo)) !==
+    (updateKinhDo !== undefined && updateKinhDo != null && !Number.isNaN(updateKinhDo));
+
+  const handleCreateFinish = async (values: Record<string, unknown>) => {
+    const maCang = String(values.maCang).trim();
+    const tenCang = String(values.tenCang).trim();
+    if (!maCang) { toast.error('Mã cảng không được để trống'); return; }
+    if (maCang.length > 50) { toast.error('Mã cảng tối đa 50 ký tự'); return; }
+    if (!tenCang) { toast.error('Tên cảng không được để trống'); return; }
+    if (tenCang.length > 255) { toast.error('Tên cảng tối đa 255 ký tự'); return; }
+    const vi = values.viDo as number;
+    const jd = values.kinhDo as number;
+    const viPresent = vi !== undefined && vi != null && !Number.isNaN(vi);
+    const jdPresent = jd !== undefined && jd != null && !Number.isNaN(jd);
+    if (viPresent !== jdPresent) {
+      toast.error('Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau');
+      return;
+    }
+    if (viPresent && (vi < -90 || vi > 90)) { toast.error('Vĩ độ phải từ -90 đến 90'); return; }
+    if (jdPresent && (jd < -180 || jd > 180)) { toast.error('Kinh độ phải từ -180 đến 180'); return; }
+    const dienTich = values.dienTich as number;
+    if (dienTich === undefined || dienTich === null || dienTich <= 0) {
+      toast.error('Diện tích phải lớn hơn 0'); return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        maCang,
+        tenCang,
+        tinhThanhPho: (values.tinhThanhPho as string) || undefined,
+        viDo: viPresent ? vi : undefined,
+        kinhDo: jdPresent ? jd : undefined,
+        dienTich,
+        khaNangTiepNhan: values.khaNangTiepNhan as number | undefined,
+        trangThaiHoatDong: (values.trangThaiHoatDong as string) || undefined,
+        trangThaiPheDuyet: (values.trangThaiPheDuyet as string) || 'CHO_PHE_DUYET',
+      };
+      await import('./api').then(m => m.createCangBien(payload));
+      toast.success('Tạo mới thành công — chờ phê duyệt');
+      setCreateModalVisible(false);
+      fetchData();
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        const msg = err.message;
+        if (msg.includes('mã cảng') || msg.includes('Ma cang') || msg.includes('Duplicate')) {
+          toast.error('Mã cảng đã tồn tại. Vui lòng nhập mã khác.');
+        } else {
+          toast.error(msg);
+        }
+      } else {
+        toast.error('Có lỗi xảy ra khi tạo mới');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUpdateFinish = async (values: Record<string, unknown>) => {
+    if (!selectedRecord) return;
+    const vi = values.viDo as number;
+    const jd = values.kinhDo as number;
+    if ((vi !== undefined && vi != null && !Number.isNaN(vi)) !==
+        (jd !== undefined && jd != null && !Number.isNaN(jd))) {
+      toast.error('Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau');
+      return;
+    }
+    if (vi !== undefined && vi != null && !Number.isNaN(vi) && (vi < -90 || vi > 90)) {
+      toast.error('Vĩ độ phải từ -90 đến 90');
+      return;
+    }
+    if (jd !== undefined && jd != null && !Number.isNaN(jd) && (jd < -180 || jd > 180)) {
+      toast.error('Kinh độ phải từ -180 đến 180');
+      return;
+    }
+    const dienTich = values.dienTich as number;
+    if (dienTich !== undefined && dienTich != null && !Number.isNaN(dienTich) && dienTich <= 0) {
+      toast.error('Diện tích phải lớn hơn 0');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        id: selectedRecord.id,
+        tenCang: (values.tenCang as string) || undefined,
+        tinhThanhPho: (values.tinhThanhPho as string) || undefined,
+        viDo: values.viDo as number | undefined,
+        kinhDo: values.kinhDo as number | undefined,
+        dienTich: values.dienTich as number | undefined,
+        khaNangTiepNhan: values.khaNangTiepNhan as number | undefined,
+        trangThaiHoatDong: (values.trangThaiHoatDong as string) || undefined,
+      };
+      await import('./api').then(m => m.updateCangBien(payload));
+      toast.success('Cập nhật thành công');
+      setUpdateModalVisible(false);
+      fetchData();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Cập nhật thất bại');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -267,7 +401,20 @@ export default function CangBienListPage() {
               type="link"
               size="small"
               icon={<EyeOutlined />}
-              onClick={() => navigate(`/cangbien/${record.id}`)}
+              onClick={async () => {
+                try {
+                  setIsLoading(true);
+                  const data = await fetchCangBienById(record.id);
+                  setSelectedRecord(data);
+                  const fileRes = await giayToApi.listByEntity('cang-bien', record.id, { page: 1, size: 20 });
+                  setDetailFiles(fileRes.data || []);
+                  setDetailModalVisible(true);
+                } catch (err) {
+                  toast.error('Không thể tải thông tin chi tiết cảng biển');
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
             />
           </Tooltip>
           <Tooltip title="Chỉnh sửa">
@@ -275,7 +422,29 @@ export default function CangBienListPage() {
               type="link"
               size="small"
               icon={<EditOutlined />}
-              onClick={() => navigate(`/cangbien/${record.id}/edit`)}
+              onClick={async () => {
+                try {
+                  setIsLoading(true);
+                  const data = await fetchCangBienById(record.id);
+                  setSelectedRecord(data);
+                  updateForm.setFieldsValue({
+                    id: data.id,
+                    maCang: data.maCang,
+                    tenCang: data.tenCang,
+                    tinhThanhPho: data.tinhThanhPho || undefined,
+                    viDo: data.viDo != null ? data.viDo : undefined,
+                    kinhDo: data.kinhDo != null ? data.kinhDo : undefined,
+                    dienTich: data.dienTich != null ? data.dienTich : undefined,
+                    khaNangTiepNhan: data.khaNangTiepNhan != null ? data.khaNangTiepNhan : undefined,
+                    trangThaiHoatDong: data.trangThaiHoatDong || undefined,
+                  });
+                  setUpdateModalVisible(true);
+                } catch (err) {
+                  toast.error('Không thể tải thông tin chỉnh sửa cảng biển');
+                } finally {
+                  setIsLoading(false);
+                }
+              }}
             />
           </Tooltip>
           {record.trangThaiPheDuyet === 'CHO_PHE_DUYET' && (
@@ -401,7 +570,11 @@ export default function CangBienListPage() {
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
-                onClick={() => navigate('/cangbien/create')}
+                onClick={() => {
+                  createForm.resetFields();
+                  createForm.setFieldsValue({ trangThaiPheDuyet: 'CHO_PHE_DUYET' });
+                  setCreateModalVisible(true);
+                }}
                 aria-label="Tạo mới cảng biển"
               >
                 Tạo cảng biển
@@ -410,7 +583,7 @@ export default function CangBienListPage() {
           </Col>
         </Row>
       </Card>
-
+ 
       <Card>
         <Spin spinning={isLoading} tip="Đang tải...">
           {isError && (
@@ -427,7 +600,14 @@ export default function CangBienListPage() {
                   : 'Chưa có cảng biển nào.'}
               </p>
               {!search && !filterMaCang && !filterTenCang && (
-                <Button type="primary" onClick={() => navigate('/cangbien/create')}>
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    createForm.resetFields();
+                    createForm.setFieldsValue({ trangThaiPheDuyet: 'CHO_PHE_DUYET' });
+                    setCreateModalVisible(true);
+                  }}
+                >
                   Tạo cảng biển đầu tiên
                 </Button>
               )}
@@ -456,6 +636,349 @@ export default function CangBienListPage() {
           )}
         </Spin>
       </Card>
+
+      {/* Create Modal */}
+      <Modal
+        title="Tạo mới Cảng biển"
+        open={createModalVisible}
+        onCancel={() => setCreateModalVisible(false)}
+        footer={null}
+        width={800}
+      >
+        <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} initialValues={{ trangThaiPheDuyet: 'CHO_PHE_DUYET' }}>
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
+            Thông tin chung
+          </Typography.Text>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item
+                label="Mã cảng *"
+                name="maCang"
+                rules={[{ required: true, message: 'Mã cảng không được để trống' }, { max: 50, message: 'Mã cảng tối đa 50 ký tự' }]}
+              >
+                <Input placeholder="VD: CB-HAIPHONG-001" maxLength={50} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Tên cảng *"
+                name="tenCang"
+                rules={[{ required: true, message: 'Tên cảng không được để trống' }, { max: 255, message: 'Tên cảng tối đa 255 ký tự' }]}
+              >
+                <Input placeholder="VD: Cảng biển Hải Phòng" maxLength={255} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row>
+            <Col span={24}>
+              <Form.Item label="Tỉnh/thành phố" name="tinhThanhPho" rules={[{ max: 100, message: 'Tỉnh/thành phố tối đa 100 ký tự' }]}>
+                <Input placeholder="VD: Hải Phòng" maxLength={100} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
+            Thông tin địa lý
+          </Typography.Text>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Vĩ độ (Latitude)" name="viDo">
+                <InputNumber min={-90} max={90} step={0.000001} precision={6} placeholder="VD: 20.9" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Kinh độ (Longitude)" name="kinhDo">
+                <InputNumber min={-180} max={180} step={0.000001} precision={6} placeholder="VD: -106.7" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          {createGpsPairedWarning && (
+            <Card size="small" style={{ marginBottom: 16, backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
+              <Typography.Text type="warning">⚠️ Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau.</Typography.Text>
+            </Card>
+          )}
+
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
+            Thống kê
+          </Typography.Text>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Diện tích (m²) *" name="dienTich" rules={[{ required: true, message: 'Diện tích phải lớn hơn 0' }]}>
+                <InputNumber min={0.01} step={0.01} precision={2} placeholder="VD: 100.00" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Khả năng tiếp nhận" name="khaNangTiepNhan">
+                <InputNumber step={0.01} precision={2} placeholder="VD: 500000" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
+            Trạng thái
+          </Typography.Text>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Trạng thái hoạt động" name="trangThaiHoatDong">
+                <Select placeholder="Chọn trạng thái" options={TRANG_THAI_HOAT_DONG_OPTIONS} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Trạng thái phê duyệt" name="trangThaiPheDuyet" rules={[{ required: true, message: 'Vui lòng chọn trạng thái phê duyệt' }]}>
+                <Select options={[{ label: 'Chờ phê duyệt', value: 'CHO_PHE_DUYET' }, { label: 'Được phê duyệt', value: 'DUOC_PHE_DUYET' }, { label: 'Từ chối', value: 'TU_CHOI' }]} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={() => setCreateModalVisible(false)}>Hủy</Button>
+              <Button type="primary" htmlType="submit" loading={submitting}>Tạo cảng biển</Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal
+        title={selectedRecord ? `Chỉnh sửa: ${selectedRecord.maCang} — ${selectedRecord.tenCang}` : 'Chỉnh sửa cảng biển'}
+        open={updateModalVisible}
+        onCancel={() => setUpdateModalVisible(false)}
+        footer={null}
+        width={800}
+      >
+        <Form form={updateForm} layout="vertical" onFinish={handleUpdateFinish}>
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
+            Thông tin chung
+          </Typography.Text>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Mã cảng" name="maCang">
+                <Input disabled aria-readonly="true" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Tên cảng"
+                name="tenCang"
+                rules={[{ max: 255, message: 'Tên cảng tối đa 255 ký tự' }]}
+              >
+                <Input placeholder="VD: Cảng biển Hải Phòng" maxLength={255} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row>
+            <Col span={24}>
+              <Form.Item
+                label="Tỉnh/thành phố"
+                name="tinhThanhPho"
+                rules={[{ max: 100, message: 'Tỉnh/thành phố tối đa 100 ký tự' }]}
+              >
+                <Input placeholder="VD: Hải Phòng" maxLength={100} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
+            Thông tin địa lý
+          </Typography.Text>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Vĩ độ (Latitude)" name="viDo">
+                <InputNumber min={-90} max={90} step={0.000001} precision={6} placeholder="VD: 20.9" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Kinh độ (Longitude)" name="kinhDo">
+                <InputNumber min={-180} max={180} step={0.000001} precision={6} placeholder="VD: -106.7" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          {updateGpsPairedWarning && (
+            <Card size="small" style={{ marginBottom: 16, backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
+              <Typography.Text type="warning">
+                ⚠️ Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau.
+              </Typography.Text>
+            </Card>
+          )}
+
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
+            Thống kê
+          </Typography.Text>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Diện tích (m²)" name="dienTich">
+                <InputNumber min={0.01} step={0.01} precision={2} placeholder="VD: 100.00" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Khả năng tiếp nhận" name="khaNangTiepNhan">
+                <InputNumber step={0.01} precision={2} placeholder="VD: 500000" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
+            Trạng thái
+          </Typography.Text>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Trạng thái hoạt động" name="trangThaiHoatDong">
+                <Select placeholder="Chọn trạng thái" options={TRANG_THAI_HOAT_DONG_OPTIONS} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Trạng thái phê duyệt">
+                <Input disabled value={selectedRecord?.trangThaiPheDuyet || '—'} aria-readonly="true" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={() => setUpdateModalVisible(false)}>Hủy</Button>
+              <Button type="primary" htmlType="submit" loading={submitting}>Cập nhật</Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Detail Modal */}
+      <Modal
+        title={selectedRecord ? `Chi tiết cảng biển: ${selectedRecord.maCang} — ${selectedRecord.tenCang}` : 'Chi tiết cảng biển'}
+        open={detailModalVisible}
+        onCancel={() => setDetailModalVisible(false)}
+        footer={null}
+        width={800}
+      >
+        {selectedRecord && (
+          <div>
+            <Row gutter={[16, 16]}>
+              <Col span={16}>
+                <Card title="Thông tin chung" size="small" style={{ height: '100%' }}>
+                  <Row gutter={[12, 12]}>
+                    <Col span={12}>
+                      <Typography.Text strong>Mã cảng:</Typography.Text>
+                      <br />
+                      <Tag color="cyan">{selectedRecord.maCang}</Tag>
+                    </Col>
+                    <Col span={12}>
+                      <Typography.Text strong>Tên cảng:</Typography.Text>
+                      <br />
+                      <Typography.Text>{selectedRecord.tenCang}</Typography.Text>
+                    </Col>
+                    <Col span={24} style={{ marginTop: 8 }}>
+                      <Typography.Text strong>Tỉnh/thành phố:</Typography.Text>
+                      <br />
+                      <Typography.Text>{selectedRecord.tinhThanhPho || '—'}</Typography.Text>
+                    </Col>
+                  </Row>
+                </Card>
+              </Col>
+              <Col span={8}>
+                <Card title="Thống kê" size="small" style={{ height: '100%' }}>
+                  <Typography.Text strong>Diện tích (m²):</Typography.Text>
+                  <br />
+                  <Typography.Text>{selectedRecord.dienTich != null ? selectedRecord.dienTich.toFixed(2) : '—'}</Typography.Text>
+                  <br />
+                  <Typography.Text strong style={{ marginTop: 8, display: 'block' }}>Khả năng tiếp nhận:</Typography.Text>
+                  <Typography.Text>{selectedRecord.khaNangTiepNhan != null ? selectedRecord.khaNangTiepNhan.toFixed(2) : '—'}</Typography.Text>
+                </Card>
+              </Col>
+              <Col span={16}>
+                <Card title="Thông tin địa lý" size="small" style={{ height: '100%' }}>
+                  <Row gutter={[12, 12]}>
+                    <Col span={12}>
+                      <Typography.Text strong>Vĩ độ:</Typography.Text>
+                      <br />
+                      <Typography.Text>{selectedRecord.viDo != null ? selectedRecord.viDo.toFixed(6) : '—'}</Typography.Text>
+                    </Col>
+                    <Col span={12}>
+                      <Typography.Text strong>Kinh độ:</Typography.Text>
+                      <br />
+                      <Typography.Text>{selectedRecord.kinhDo != null ? selectedRecord.kinhDo.toFixed(6) : '—'}</Typography.Text>
+                    </Col>
+                  </Row>
+                </Card>
+              </Col>
+              <Col span={8}>
+                <Card title="Trạng thái" size="small" style={{ height: '100%' }}>
+                  <Typography.Text strong>Hoạt động:</Typography.Text>
+                  <br />
+                  {selectedRecord.trangThaiHoatDong && (
+                    <Tag color={trangThaiHoatDongBadge(selectedRecord.trangThaiHoatDong).color}>
+                      {trangThaiHoatDongBadge(selectedRecord.trangThaiHoatDong).label}
+                    </Tag>
+                  )}
+                  <br />
+                  <Typography.Text strong style={{ marginTop: 8, display: 'block' }}>Phê duyệt:</Typography.Text>
+                  {selectedRecord.trangThaiPheDuyet && (
+                    <Tag color={trangThaiPheDuyetBadge(selectedRecord.trangThaiPheDuyet).color}>
+                      {trangThaiPheDuyetBadge(selectedRecord.trangThaiPheDuyet).label}
+                    </Tag>
+                  )}
+                </Card>
+              </Col>
+              <Col span={24}>
+                <Card title="Tài liệu đính kèm" size="small">
+                  {detailFiles.length === 0 ? (
+                    <span style={{ color: '#bfbfbf' }}>Không có tài liệu đính kèm</span>
+                  ) : (
+                    <div>
+                      {detailFiles.map((f) => (
+                        <div key={f.id} style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <Typography.Text strong>{f.fileName}</Typography.Text>
+                            <br />
+                            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                              {f.fileSize} bytes — {new Date(f.createdAt).toLocaleString('vi-VN')}
+                            </Typography.Text>
+                          </div>
+                          <Button
+                            type="link"
+                            icon={<DownloadOutlined />}
+                            onClick={() => window.open(giayToApi.downloadUrl(f.minioKey), '_blank')}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              </Col>
+            </Row>
+ 
+            <div style={{ marginTop: 24, textAlign: 'right' }}>
+              <Space>
+                <Button icon={<UploadOutlined />} onClick={() => { setDetailModalVisible(false); navigate(`/giayto/upload/cang-bien/${selectedRecord.id}`); }}>
+                  Upload Giấy tờ
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  onClick={() => {
+                    setDetailModalVisible(false);
+                    updateForm.setFieldsValue({
+                      id: selectedRecord.id,
+                      maCang: selectedRecord.maCang,
+                      tenCang: selectedRecord.tenCang,
+                      tinhThanhPho: selectedRecord.tinhThanhPho || undefined,
+                      viDo: selectedRecord.viDo != null ? selectedRecord.viDo : undefined,
+                      kinhDo: selectedRecord.kinhDo != null ? selectedRecord.kinhDo : undefined,
+                      dienTich: selectedRecord.dienTich != null ? selectedRecord.dienTich : undefined,
+                      khaNangTiepNhan: selectedRecord.khaNangTiepNhan != null ? selectedRecord.khaNangTiepNhan : undefined,
+                      trangThaiHoatDong: selectedRecord.trangThaiHoatDong || undefined,
+                    });
+                    setUpdateModalVisible(true);
+                  }}
+                >
+                  Chỉnh sửa
+                </Button>
+                <Button onClick={() => setDetailModalVisible(false)}>Đóng</Button>
+              </Space>
+            </div>
+          </div>
+        )}
+      </Modal>
     </>
   );
 }

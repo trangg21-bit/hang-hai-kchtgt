@@ -22,6 +22,7 @@ import {
   approveCauCang,
   rejectCauCang,
 } from './api';
+import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge } from '../../services/cangbien/schema';
 import type { CauCang, CauCangListQuery, BenCangOption } from './types';
 
 
@@ -206,8 +207,8 @@ export default function CauCangListPage() {
         dataIndex: 'trangThaiHoatDong',
         width: 100,
         render: (v: string) => {
-          const s = STATUS_MAP[v];
-          return s ? <Tag color={s.color}>{s.label}</Tag> : <Tag>{v}</Tag>;
+          const badge = trangThaiHoatDongBadge(v);
+          return <Tag color={badge.color}>{badge.label}</Tag>;
         },
       },
       {
@@ -215,8 +216,8 @@ export default function CauCangListPage() {
         dataIndex: 'trangThaiPheDuyet',
         width: 110,
         render: (v: string) => {
-          const s = APPROVAL_MAP[v];
-          return s ? <Tag color={s.color}>{s.label}</Tag> : <Tag>{v}</Tag>;
+          const badge = trangThaiPheDuyetBadge(v);
+          return <Tag color={badge.color}>{badge.label}</Tag>;
         },
       },
       {

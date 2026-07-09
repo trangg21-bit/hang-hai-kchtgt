@@ -21,6 +21,7 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
+import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge } from '../../services/cangbien/schema';
 
 export default function BenCangListPage() {
   const navigate = useNavigate();
@@ -194,8 +195,8 @@ export default function BenCangListPage() {
       dataIndex: 'trangThaiHoatDong',
       width: 130,
       render: (status?: string) => {
-        const s = ACTIVITY_STATUS_MAP[status as keyof typeof ACTIVITY_STATUS_MAP];
-        return s ? <Tag color={s.color}>{s.label}</Tag> : <Tag>{status || '—'}</Tag>;
+        const badge = trangThaiHoatDongBadge(status || '');
+        return <Tag color={badge.color}>{badge.label}</Tag>;
       },
     },
     {
@@ -203,8 +204,8 @@ export default function BenCangListPage() {
       dataIndex: 'trangThaiPheDuyet',
       width: 140,
       render: (status?: string) => {
-        const s = APPROVAL_STATUS_MAP[status as keyof typeof APPROVAL_STATUS_MAP];
-        return s ? <Tag color={s.color}>{s.label}</Tag> : <Tag>{status || '—'}</Tag>;
+        const badge = trangThaiPheDuyetBadge(status || '');
+        return <Tag color={badge.color}>{badge.label}</Tag>;
       },
     },
     {
