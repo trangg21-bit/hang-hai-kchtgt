@@ -26,6 +26,5 @@ public class CreateVungNuocRequest {
     private BigDecimal doSauMax;
     private BigDecimal doSauTrungBinh;
     private String loaiVungNuoc;
-    @jakarta.validation.constraints.Pattern(regexp = "^(HIEN_HANH|TAM_NGUNG)$", message = "Trạng thái hoạt động không hợp lệ. Chỉ chấp nhận HIEN_HANH hoặc TAM_NGUNG")
-    private String trangThaiHoatDong;
+    private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
 }

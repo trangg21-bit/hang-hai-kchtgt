@@ -1,6 +1,8 @@
 package com.hanghai.kchtg.cangben.repository;
 
 import com.hanghai.kchtg.cangben.entity.VungNuoc;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -44,13 +46,13 @@ public interface VungNuocRepository extends JpaRepository<VungNuoc, UUID> {
             "AND (:cangBienId IS NULL OR v.cangBienId = :cangBienId) " +
             "AND (CAST(:search AS string) IS NULL OR LOWER(v.maVungNuoc) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
             "     OR LOWER(v.tenVungNuoc) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
-            "AND (CAST(:status AS string) IS NULL OR LOWER(v.trangThaiHoatDong) = LOWER(CAST(:status AS string))) " +
-            "AND (CAST(:approvalStatus AS string) IS NULL OR LOWER(v.trangThaiPheDuyet) = LOWER(CAST(:approvalStatus AS string)))")
+            "AND (:status IS NULL OR v.trangThaiHoatDong = :status) " +
+            "AND (:approvalStatus IS NULL OR v.trangThaiPheDuyet = :approvalStatus)")
     Page<VungNuoc> searchVungNuoc(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("cangBienId") UUID cangBienId,
             @Param("search") String search,
-            @Param("status") String status,
-            @Param("approvalStatus") String approvalStatus,
+            @Param("status") TrangThaiHoatDong status,
+            @Param("approvalStatus") TrangThaiPheDuyet approvalStatus,
             Pageable pageable);
 }

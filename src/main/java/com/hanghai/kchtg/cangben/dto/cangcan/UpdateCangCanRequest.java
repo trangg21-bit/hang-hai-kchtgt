@@ -30,8 +30,7 @@ public class UpdateCangCanRequest {
     private BigDecimal dienTich;
 
     private BigDecimal congSuatTEU;
-    @jakarta.validation.constraints.Pattern(regexp = "^(HIEN_HANH|TAM_NGUNG)$", message = "Trạng thái hoạt động không hợp lệ. Chỉ chấp nhận HIEN_HANH hoặc TAM_NGUNG")
-    private String trangThaiHoatDong;
+    private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
 
     /**
      * GPS paired-field constraint: viDo and kinhDo must both be present or both be absent.

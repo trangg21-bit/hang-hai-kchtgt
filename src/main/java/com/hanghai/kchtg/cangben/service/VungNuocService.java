@@ -2,6 +2,8 @@ package com.hanghai.kchtg.cangben.service;
 
 import com.hanghai.kchtg.cangben.dto.vungnuoc.*;
 import com.hanghai.kchtg.cangben.entity.VungNuoc;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import com.hanghai.kchtg.cangben.repository.VungNuocRepository;
 import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
 import jakarta.persistence.EntityNotFoundException;
@@ -34,7 +36,7 @@ public class VungNuocService {
                 .cangBienId(request.getCangBienId()).dienTich(request.getDienTich())
                 .doSauMax(request.getDoSauMax()).doSauTrungBinh(request.getDoSauTrungBinh())
                 .loaiVungNuoc(request.getLoaiVungNuoc()).trangThaiHoatDong(request.getTrangThaiHoatDong())
-                .trangThaiPheDuyet("CHO_PHE_DUYET").build();
+                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET).build();
         VungNuoc saved = vungNuocRepository.save(entity);
         log.info("Created VungNuoc [{}] code={}", saved.getId(), saved.getMaVungNuoc());
         return toResponse(saved);
@@ -61,7 +63,9 @@ public class VungNuocService {
                                          String search, String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
-        return vungNuocRepository.searchVungNuoc(orgUnitId, cangBienId, search, status, approvalStatus, pageable)
+        TrangThaiHoatDong statusEnum = status != null ? TrangThaiHoatDong.fromString(status) : null;
+        TrangThaiPheDuyet approvalEnum = approvalStatus != null ? TrangThaiPheDuyet.fromString(approvalStatus) : null;
+        return vungNuocRepository.searchVungNuoc(orgUnitId, cangBienId, search, statusEnum, approvalEnum, pageable)
                 .map(this::toResponse);
     }
 
@@ -91,7 +95,7 @@ public class VungNuocService {
         if (request.getDoSauTrungBinh() != null) entity.setDoSauTrungBinh(request.getDoSauTrungBinh());
         if (request.getLoaiVungNuoc() != null) entity.setLoaiVungNuoc(request.getLoaiVungNuoc());
         if (request.getTrangThaiHoatDong() != null) entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
-        entity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+        entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
         VungNuoc saved = vungNuocRepository.save(entity);
 

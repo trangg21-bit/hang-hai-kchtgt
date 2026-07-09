@@ -1,6 +1,8 @@
 package com.hanghai.kchtg.cangben.repository;
 
 import com.hanghai.kchtg.cangben.entity.BenCang;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -42,8 +44,8 @@ public interface BenCangRepository extends JpaRepository<BenCang, UUID> {
             "AND (:cangBienId IS NULL OR b.cangBienId = :cangBienId) " +
             "AND (CAST(:tuyenDuongThuy AS string) IS NULL OR LOWER(b.tuyenDuongThuy) LIKE LOWER(CONCAT('%', CAST(:tuyenDuongThuy AS string), '%'))) " +
             "AND (CAST(:loaiBen AS string) IS NULL OR LOWER(b.loaiBen) LIKE LOWER(CONCAT('%', CAST(:loaiBen AS string), '%'))) " +
-            "AND (CAST(:trangThaiHoatDong AS string) IS NULL OR LOWER(b.trangThaiHoatDong) = LOWER(CAST(:trangThaiHoatDong AS string))) " +
-            "AND (CAST(:trangThaiPheDuyet AS string) IS NULL OR LOWER(b.trangThaiPheDuyet) = LOWER(CAST(:trangThaiPheDuyet AS string)))")
+            "AND (:trangThaiHoatDong IS NULL OR b.trangThaiHoatDong = :trangThaiHoatDong) " +
+            "AND (:trangThaiPheDuyet IS NULL OR b.trangThaiPheDuyet = :trangThaiPheDuyet)")
     Page<BenCang> searchBenCang(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("maBen") String maBen,
@@ -51,7 +53,7 @@ public interface BenCangRepository extends JpaRepository<BenCang, UUID> {
             @Param("cangBienId") UUID cangBienId,
             @Param("tuyenDuongThuy") String tuyenDuongThuy,
             @Param("loaiBen") String loaiBen,
-            @Param("trangThaiHoatDong") String trangThaiHoatDong,
-            @Param("trangThaiPheDuyet") String trangThaiPheDuyet,
+            @Param("trangThaiHoatDong") TrangThaiHoatDong trangThaiHoatDong,
+            @Param("trangThaiPheDuyet") TrangThaiPheDuyet trangThaiPheDuyet,
             Pageable pageable);
 }

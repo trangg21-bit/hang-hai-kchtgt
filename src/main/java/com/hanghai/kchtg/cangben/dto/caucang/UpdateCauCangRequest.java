@@ -17,6 +17,5 @@ public class UpdateCauCangRequest {
     private BigDecimal chieuDai;
     private BigDecimal taiTrong;
     private String loaiCau;
-    @jakarta.validation.constraints.Pattern(regexp = "^(HIEN_HANH|TAM_NGUNG)$", message = "Trạng thái hoạt động không hợp lệ. Chỉ chấp nhận HIEN_HANH hoặc TAM_NGUNG")
-    private String trangThaiHoatDong;
+    private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
 }

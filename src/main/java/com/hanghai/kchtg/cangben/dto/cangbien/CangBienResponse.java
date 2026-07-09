@@ -22,8 +22,8 @@ public class CangBienResponse {
     private BigDecimal kinhDo;
     private BigDecimal dienTich;
     private BigDecimal khaNangTiepNhan;
-    private String trangThaiHoatDong;
-    private String trangThaiPheDuyet;
+    private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
+    private com.hanghai.kchtg.common.entity.TrangThaiPheDuyet trangThaiPheDuyet;
     private UUID orgUnitId;
     private String createdBy;
     private String updatedBy;

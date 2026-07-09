@@ -21,8 +21,8 @@ public class BenCangResponse {
     private BigDecimal chieuRong;
     private String loaiBen;
     private BigDecimal doSauLuong;
-    private String trangThaiHoatDong;
-    private String trangThaiPheDuyet;
+    private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
+    private com.hanghai.kchtg.common.entity.TrangThaiPheDuyet trangThaiPheDuyet;
     private UUID orgUnitId;
     private String createdBy;
     private String updatedBy;

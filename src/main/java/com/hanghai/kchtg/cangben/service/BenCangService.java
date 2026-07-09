@@ -2,6 +2,8 @@ package com.hanghai.kchtg.cangben.service;
 
 import com.hanghai.kchtg.cangben.dto.bencang.*;
 import com.hanghai.kchtg.cangben.entity.BenCang;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import com.hanghai.kchtg.cangben.entity.CangBien;
 import com.hanghai.kchtg.cangben.repository.BenCangRepository;
 import com.hanghai.kchtg.cangben.repository.CangBienRepository;
@@ -61,7 +63,7 @@ public class BenCangService {
                 .chieuDai(request.getChieuDai()).chieuRong(request.getChieuRong())
                 .loaiBen(request.getLoaiBen()).doSauLuong(request.getDoSauLuong())
                 .trangThaiHoatDong(request.getTrangThaiHoatDong())
-                .trangThaiPheDuyet("CHO_PHE_DUYET").build();
+                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET).build();
         BenCang saved = benCangRepository.save(entity);
         log.info("Created BenCang [{}] code={}", saved.getId(), saved.getMaBen());
         return toResponse(saved);
@@ -85,8 +87,10 @@ public class BenCangService {
                                          String trangThaiHoatDong, String trangThaiPheDuyet) {
         int pageSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
+        TrangThaiHoatDong statusEnum = trangThaiHoatDong != null ? TrangThaiHoatDong.fromString(trangThaiHoatDong) : null;
+        TrangThaiPheDuyet approvalEnum = trangThaiPheDuyet != null ? TrangThaiPheDuyet.fromString(trangThaiPheDuyet) : null;
         return benCangRepository.searchBenCang(orgUnitId, maBen, tenBen, cangBienId,
-                tuyenDuongThuy, loaiBen, trangThaiHoatDong, trangThaiPheDuyet, pageable).map(this::toResponse);
+                tuyenDuongThuy, loaiBen, statusEnum, approvalEnum, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -128,7 +132,7 @@ public class BenCangService {
         if (request.getLoaiBen() != null) entity.setLoaiBen(request.getLoaiBen());
         if (request.getDoSauLuong() != null) entity.setDoSauLuong(request.getDoSauLuong());
         if (request.getTrangThaiHoatDong() != null) entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
-        entity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+        entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
         BenCang saved = benCangRepository.save(entity);
 

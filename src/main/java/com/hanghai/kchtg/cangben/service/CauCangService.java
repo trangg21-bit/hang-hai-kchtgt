@@ -3,6 +3,8 @@ package com.hanghai.kchtg.cangben.service;
 import com.hanghai.kchtg.cangben.dto.caucang.*;
 import com.hanghai.kchtg.cangben.entity.BenCang;
 import com.hanghai.kchtg.cangben.entity.CauCang;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import com.hanghai.kchtg.cangben.repository.BenCangRepository;
 import com.hanghai.kchtg.cangben.repository.CauCangRepository;
 import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
@@ -37,7 +39,7 @@ public class CauCangService {
         BenCang parent = benCangRepository.findById(request.getBenCangId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Bến cảng không tồn tại: " + request.getBenCangId()));
-        if (!"HIEN_HANH".equals(parent.getTrangThaiHoatDong())) {
+        if (parent.getTrangThaiHoatDong() != TrangThaiHoatDong.HIEN_HANH) {
             throw new IllegalArgumentException(
                     "Không thể tạo cầu cảng: bến cảng cha phải ở trạng thái hoạt động (HIEN_HANH)");
         }
@@ -47,7 +49,7 @@ public class CauCangService {
                 .benCangId(request.getBenCangId()).chieuDai(request.getChieuDai())
                 .taiTrong(request.getTaiTrong()).loaiCau(request.getLoaiCau())
                 .trangThaiHoatDong(request.getTrangThaiHoatDong())
-                .trangThaiPheDuyet("CHO_PHE_DUYET").build();
+                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET).build();
         CauCang saved = cauCangRepository.save(entity);
         log.info("Created CauCang [{}] code={}", saved.getId(), saved.getMaCau());
         return toResponse(saved);
@@ -70,7 +72,9 @@ public class CauCangService {
                                          String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
-        return cauCangRepository.searchCauCang(orgUnitId, search, benCangId, status, approvalStatus, pageable)
+        TrangThaiHoatDong statusEnum = status != null ? TrangThaiHoatDong.fromString(status) : null;
+        TrangThaiPheDuyet approvalEnum = approvalStatus != null ? TrangThaiPheDuyet.fromString(approvalStatus) : null;
+        return cauCangRepository.searchCauCang(orgUnitId, search, benCangId, statusEnum, approvalEnum, pageable)
                 .map(this::toResponse);
     }
 
@@ -99,7 +103,7 @@ public class CauCangService {
         if (request.getTaiTrong() != null) entity.setTaiTrong(request.getTaiTrong());
         if (request.getLoaiCau() != null) entity.setLoaiCau(request.getLoaiCau());
         if (request.getTrangThaiHoatDong() != null) entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
-        entity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+        entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
         CauCang saved = cauCangRepository.save(entity);
 
