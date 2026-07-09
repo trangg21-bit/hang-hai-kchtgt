@@ -11,4 +11,5 @@ import java.util.UUID;
 public interface ChartFeatureRepository extends JpaRepository<ChartFeature, UUID> {
     List<ChartFeature> findByCellId(UUID cellId);
     List<ChartFeature> findByFeatureCode(String featureCode);
+    boolean existsByCellId(UUID cellId);
 }

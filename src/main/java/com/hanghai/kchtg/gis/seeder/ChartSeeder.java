@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.gis.seeder;
 
 import com.hanghai.kchtg.gis.repository.ChartCellRepository;
+import com.hanghai.kchtg.gis.repository.ChartFeatureRepository;
 import com.hanghai.kchtg.gis.service.ChartIntegrationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ public class ChartSeeder implements CommandLineRunner {
 
     private final ChartIntegrationService chartIntegrationService;
     private final ChartCellRepository cellRepository;
+    private final ChartFeatureRepository featureRepository;
     private final EntityManager entityManager;
     private final PlatformTransactionManager transactionManager;
 
@@ -64,9 +66,9 @@ public class ChartSeeder implements CommandLineRunner {
 
             String cellName = filename.toUpperCase().replace(".JSON", "");
 
-            // Check if this cell is already imported with valid coordinates (not mock null coordinates)
+            // Check if this cell is already imported with actual S-57 features
             java.util.Optional<com.hanghai.kchtg.gis.entity.ChartCell> existingCell = cellRepository.findByCellName(cellName);
-            if (existingCell.isPresent() && existingCell.get().getLatitude() != null) {
+            if (existingCell.isPresent() && featureRepository.existsByCellId(existingCell.get().getId())) {
                 skippedCount++;
                 continue;
             }
