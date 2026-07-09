@@ -141,6 +141,61 @@ const FEATURE_ZOOM_RULES: Record<string, number> = {
   'SOUNDG': 13 // soundings are dense, only show when close
 };
 
+const FEATURE_NAMES_VI: Record<string, string> = {
+  'ACHARE': 'Khu vực neo đậu (ACHARE)',
+  'ACHBRT': 'Điểm neo tàu (ACHBRT)',
+  'BCNCAR': 'Tiêu báo hiệu Cardinal (BCNCAR)',
+  'BCNLAT': 'Tiêu giới hạn luồng (BCNLAT)',
+  'BCNSPP': 'Tiêu chuyên dùng (BCNSPP)',
+  'BRIDGE': 'Cầu (BRIDGE)',
+  'BUAARE': 'Khu vực dân cư (BUAARE)',
+  'BOYCAR': 'Phao báo hiệu Cardinal (BOYCAR)',
+  'BOYLAT': 'Phao giới hạn luồng (BOYLAT)',
+  'BOYSAW': 'Phao vùng nước an toàn (BOYSAW)',
+  'BOYSPP': 'Phao chuyên dùng (BOYSPP)',
+  'COALNE': 'Đường bờ biển (COALNE)',
+  'CTSARE': 'Khu vực hải quan (CTSARE)',
+  'DEPARE': 'Vùng độ sâu (DEPARE)',
+  'DEPCNT': 'Đường đẳng sâu (DEPCNT)',
+  'DAYMAR': 'Mốc báo hiệu ban ngày (DAYMAR)',
+  'FSHGRD': 'Ngư trường (FSHGRD)',
+  'HRBFAC': 'Công trình cảng (HRBFAC)',
+  'LNDARE': 'Đất liền / Đảo (LNDARE)',
+  'LNDELV': 'Điểm cao độ mặt đất (LNDELV)',
+  'LNDRGN': 'Vùng địa hình đặc trưng (LNDRGN)',
+  'LIMITS': 'Giới hạn nguy hiểm (LIMITS)',
+  'LIGHTS': 'Đèn biển / Hải đăng (LIGHTS)',
+  'LNDMRK': 'Mốc nhận dạng nổi bật (LNDMRK)',
+  'MARCUL': 'Vùng nuôi trồng thủy sản (MARCUL)',
+  'MIPARE': 'Khu diễn tập quân sự (MIPARE)',
+  'MORFAC': 'Công trình buộc tàu (MORFAC)',
+  'NAVLNE': 'Tuyến luồng tàu chạy (NAVLNE)',
+  'OBSTRN': 'Chướng ngại vật (OBSTRN)',
+  'PILPNT': 'Điểm đón trả hoa tiêu (PILPNT)',
+  'RECTRC': 'Tuyến luồng khuyến nghị (RECTRC)',
+  'RESARE': 'Khu vực hạn chế (RESARE)',
+  'ROADWY': 'Đường bộ (ROADWY)',
+  'SBDARE': 'Chất đất đáy biển (SBDARE)',
+  'SEAARE': 'Vùng biển đặt tên (SEAARE)',
+  'SLCONS': 'Kè bờ / Đê chắn sóng (SLCONS)',
+  'SMCGDW': 'Trạm tín hiệu cảnh báo (SMCGDW)',
+  'SOUNDG': 'Điểm đo độ sâu (SOUNDG)',
+  'TSSLPT': 'Luồng phân luồng (TSSLPT)',
+  'UWTROC': 'Bãi đá ngầm (UWTROC)',
+  'UNSARE': 'Vùng chưa khảo sát (UNSARE)',
+  'WRECKS': 'Xác tàu đắm (WRECKS)',
+  'M_COVR': 'Vùng bao phủ hải đồ (M_COVR)',
+  'M_QUAL': 'Vùng đánh giá chất lượng (M_QUAL)',
+};
+
+function getFeatureNameVi(featureCode: string, originalName?: string): string {
+  if (originalName && originalName !== featureCode && !originalName.startsWith('UNKNOWN_')) {
+    return originalName;
+  }
+  const cleanCode = featureCode.toUpperCase();
+  return FEATURE_NAMES_VI[cleanCode] || featureCode;
+}
+
 export default function GISChartView() {
   const [loading, setLoading] = useState(false);
   const [cells, setCells] = useState<ChartCell[]>([]);
@@ -387,7 +442,7 @@ export default function GISChartView() {
         if (layer) {
           // Popups with S-57 tags
           layer.bindPopup(`
-            <strong>${featureName || featureCode}</strong><br/>
+            <strong>${getFeatureNameVi(featureCode, featureName)}</strong><br/>
             Mã S-57: <code>${featureCode}</code><br/>
             Hình học: <code>${geometryType}</code>
           `);
@@ -756,7 +811,7 @@ function DescriptionsPanel({ feature }: { feature: ChartFeature }) {
   return (
     <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
       <Typography.Paragraph style={{ marginBottom: 4 }}>
-        <strong>Tên:</strong> {featureName || 'Không tên'}
+        <strong>Tên:</strong> {getFeatureNameVi(featureCode, featureName)}
       </Typography.Paragraph>
       <Typography.Paragraph style={{ marginBottom: 4 }}>
         <strong>Mã đối tượng:</strong> <Tag color="orange">{featureCode}</Tag>
