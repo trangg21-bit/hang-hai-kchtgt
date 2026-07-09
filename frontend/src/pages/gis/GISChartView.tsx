@@ -160,6 +160,7 @@ export default function GISChartView() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const geoJsonGroupRef = useRef<any>(null);
   const calibratorMarkerRef = useRef<any>(null);
+  const lastFittedCellIdRef = useRef<string | null>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
 
   // 1. Dynamic Leaflet Loader
@@ -397,16 +398,19 @@ export default function GISChartView() {
       }
     });
 
-    // Zoom map to fit cell features bounds
-    try {
-      const bounds = geoJsonGroupRef.current.getBounds();
-      if (bounds.isValid()) {
-        mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+    // Zoom map to fit cell features bounds only once when the active cell changes
+    if (selectedCellId && lastFittedCellIdRef.current !== selectedCellId) {
+      try {
+        const bounds = geoJsonGroupRef.current.getBounds();
+        if (bounds.isValid()) {
+          mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+          lastFittedCellIdRef.current = selectedCellId;
+        }
+      } catch {
+        // skip zooming
       }
-    } catch {
-      // skip zooming
     }
-  }, [features]);
+  }, [features, selectedCellId]);
 
   // 5. Load features when cell or palette changes
   useEffect(() => {
