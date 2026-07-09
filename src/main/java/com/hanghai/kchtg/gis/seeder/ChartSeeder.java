@@ -64,8 +64,9 @@ public class ChartSeeder implements CommandLineRunner {
 
             String cellName = filename.toUpperCase().replace(".JSON", "");
 
-            // Check if this cell is already imported
-            if (cellRepository.findByCellName(cellName).isPresent()) {
+            // Check if this cell is already imported with valid coordinates (not mock null coordinates)
+            java.util.Optional<com.hanghai.kchtg.gis.entity.ChartCell> existingCell = cellRepository.findByCellName(cellName);
+            if (existingCell.isPresent() && existingCell.get().getLatitude() != null) {
                 skippedCount++;
                 continue;
             }
