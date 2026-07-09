@@ -36,4 +36,20 @@ public interface CangBienRepository extends JpaRepository<CangBien, UUID> {
             "AND (:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId)")
     Page<CangBien> findAllActive(@Param("orgUnitId") UUID orgUnitId, Pageable pageable);
 
+    @Query("SELECT c FROM CangBien c WHERE c.deletedAt IS NULL " +
+            "AND (:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId) " +
+            "AND (:maCang IS NULL OR LOWER(c.maCang) LIKE LOWER(CONCAT('%', :maCang, '%'))) " +
+            "AND (:tenCang IS NULL OR LOWER(c.tenCang) LIKE LOWER(CONCAT('%', :tenCang, '%'))) " +
+            "AND (:tinhThanhPho IS NULL OR LOWER(c.tinhThanhPho) LIKE LOWER(CONCAT('%', :tinhThanhPho, '%'))) " +
+            "AND (:trangThaiHoatDong IS NULL OR LOWER(c.trangThaiHoatDong) = LOWER(:trangThaiHoatDong)) " +
+            "AND (:trangThaiPheDuyet IS NULL OR LOWER(c.trangThaiPheDuyet) = LOWER(:trangThaiPheDuyet))")
+    Page<CangBien> searchCangBien(
+            @Param("orgUnitId") UUID orgUnitId,
+            @Param("maCang") String maCang,
+            @Param("tenCang") String tenCang,
+            @Param("tinhThanhPho") String tinhThanhPho,
+            @Param("trangThaiHoatDong") String trangThaiHoatDong,
+            @Param("trangThaiPheDuyet") String trangThaiPheDuyet,
+            Pageable pageable);
+
 }
