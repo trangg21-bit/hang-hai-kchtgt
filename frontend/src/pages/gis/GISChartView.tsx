@@ -109,6 +109,38 @@ function getCenterByCellName(cellName: string): [number, number] | null {
   return [lat, lon];
 }
 
+const FEATURE_ZOOM_RULES: Record<string, number> = {
+  // Level 0: Always show (general map view)
+  'M_COVR': 0,
+  'ACHARE': 0,
+  'ACHBRT': 0,
+  'FAIRWY': 0,
+
+  // Level 1: Zoom >= 7 (areas, safety routes, wrecks/obstacles)
+  'DEPARE': 7,
+  'RESARE': 7,
+  'WRECKS': 7,
+  'OBSTRN': 7,
+  'NAVLNE': 7,
+  'PILPNT': 7,
+
+  // Level 2: Zoom >= 10 (navigation signals, lights, depth contours)
+  'BCNCAR': 10,
+  'BCNLAT': 10,
+  'BOYCAR': 10,
+  'BOYLAT': 10,
+  'BOYSAW': 10,
+  'BOYSPP': 10,
+  'LIGHTS': 10,
+  'DEPCNT': 10,
+
+  // Level 3: Zoom >= 13 (bridges, landmarks, sounding depths, details)
+  'BRIDGE': 13,
+  'LNDMRK': 13,
+  'TOPMAR': 13,
+  'SOUNDG': 13 // soundings are dense, only show when close
+};
+
 export default function GISChartView() {
   const [loading, setLoading] = useState(false);
   const [cells, setCells] = useState<ChartCell[]>([]);
@@ -116,6 +148,7 @@ export default function GISChartView() {
   const [palette, setPalette] = useState<string>('DAY');
   const [features, setFeatures] = useState<ChartFeature[]>([]);
   const [selectedFeature, setSelectedFeature] = useState<ChartFeature | null>(null);
+  const [mapZoom, setMapZoom] = useState(6);
 
   // Coordinate Calibrator State
   const [calibrationForm] = Form.useForm();
@@ -200,12 +233,17 @@ export default function GISChartView() {
       attribution: '© Google Maps',
     }).addTo(map);
 
+    // Track map zoom events
+    map.on('zoomend', () => {
+      setMapZoom(map.getZoom());
+    });
 
     // Feature group for vector charts
     geoJsonGroupRef.current = L.featureGroup().addTo(map);
 
     return () => {
       if (mapRef.current) {
+        mapRef.current.off('zoomend');
         mapRef.current.remove();
         mapRef.current = null;
       }
@@ -222,6 +260,8 @@ export default function GISChartView() {
 
     // Clear previous vector layers
     geoJsonGroupRef.current.clearLayers();
+
+    const zoom = mapRef.current.getZoom();
 
     // Render the chart cell marker using a map/chart folded icon
     const activeCell = cells.find((c) => c.id === selectedCellId);
@@ -278,6 +318,11 @@ export default function GISChartView() {
 
     features.forEach((feature) => {
       const { geometryType, coordinates, s52Style, featureName, featureCode } = feature;
+
+      // Zoom-based visibility filter mimicking the legacy geoserver zoom rules
+      const minZoom = FEATURE_ZOOM_RULES[featureCode] ?? 13;
+      if (zoom < minZoom) return;
+
       const { fillColor, strokeColor, strokeWidth, strokeDashArray, iconSymbol, fillOpacity } = s52Style;
 
       // Basic S-52 SVG icons for specific symbols
@@ -403,7 +448,7 @@ export default function GISChartView() {
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [leafletLoaded, features, renderChartFeatures]);
+  }, [leafletLoaded, features, renderChartFeatures, mapZoom]);
 
   // 6. Coordinate Calibration Form Submission
   const handleCalibrate = useCallback(async (values: any) => {
