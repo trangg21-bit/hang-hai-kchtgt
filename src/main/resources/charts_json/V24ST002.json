@@ -86,9 +86,9 @@
       "attributesJson": "{\"RCID\":8,\"OBJL\":75,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_107\":\"2\",\"ATTL_133\":\"119999\",\"ATTL_141\":\"(1)\",\"ATTL_142\":\"3\",\"ATTL_178\":\"2.5\",\"AGEN\":11308,\"FIDN\":8846,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.8148771 10.2277879)",
       "attributesJson": "{\"RCID\":10,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_133\":\"119999\",\"ATTL_171\":\"5\",\"AGEN\":11308,\"FIDN\":8857,\"FIDS\":1}"
     },
@@ -100,9 +100,9 @@
       "attributesJson": "{\"RCID\":11,\"OBJL\":75,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_107\":\"2\",\"ATTL_133\":\"119999\",\"ATTL_141\":\"(1)\",\"ATTL_142\":\"3\",\"ATTL_178\":\"2.5\",\"AGEN\":11308,\"FIDN\":8840,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.8327769 10.224732)",
       "attributesJson": "{\"RCID\":13,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"4\",\"ATTL_133\":\"119999\",\"ATTL_171\":\"1\",\"AGEN\":11308,\"FIDN\":8860,\"FIDS\":1}"
     },
@@ -114,9 +114,9 @@
       "attributesJson": "{\"RCID\":15,\"OBJL\":75,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"4\",\"ATTL_107\":\"2\",\"ATTL_133\":\"119999\",\"ATTL_141\":\"(1)\",\"ATTL_142\":\"3\",\"ATTL_178\":\"2.5\",\"AGEN\":11308,\"FIDN\":8838,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.7695984 10.2513141)",
       "attributesJson": "{\"RCID\":16,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"4\",\"ATTL_133\":\"119999\",\"ATTL_171\":\"1\",\"AGEN\":11308,\"FIDN\":8853,\"FIDS\":1}"
     },
@@ -142,16 +142,16 @@
       "attributesJson": "{\"RCID\":20,\"OBJL\":129,\"PRIM\":1,\"GRUP\":2,\"ATTL_133\":\"17999\",\"ATTL_147\":\"201707\",\"ATTL_148\":\"VN,V2,reprt,NM 150/20170808\",\"ATTL_156\":\"1\",\"AGEN\":11308,\"FIDN\":8891,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.7686545 10.2497703)",
       "attributesJson": "{\"RCID\":21,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_133\":\"119999\",\"ATTL_171\":\"5\",\"AGEN\":11308,\"FIDN\":8848,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.7978985 10.2343484)",
       "attributesJson": "{\"RCID\":23,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"4\",\"ATTL_133\":\"119999\",\"ATTL_171\":\"1\",\"AGEN\":11308,\"FIDN\":8851,\"FIDS\":1}"
     },
@@ -177,30 +177,30 @@
       "attributesJson": "{\"RCID\":27,\"OBJL\":75,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"4\",\"ATTL_107\":\"2\",\"ATTL_133\":\"119999\",\"ATTL_141\":\"(1)\",\"ATTL_142\":\"3\",\"ATTL_178\":\"2.5\",\"AGEN\":11308,\"FIDN\":8839,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.7553515 10.2598642)",
       "attributesJson": "{\"RCID\":31,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"4\",\"ATTL_133\":\"119999\",\"ATTL_171\":\"1\",\"AGEN\":11308,\"FIDN\":8847,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.8373055 10.2085556)",
       "attributesJson": "{\"RCID\":33,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"2\",\"ATTL_102\":\"Notice 293, 15/12/2020\",\"ATTL_133\":\"179999\",\"ATTL_171\":\"4\",\"AGEN\":11308,\"FIDN\":8856,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.7829006 10.2412288)",
       "attributesJson": "{\"RCID\":34,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_133\":\"119999\",\"ATTL_171\":\"5\",\"AGEN\":11308,\"FIDN\":8859,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.7401051 10.266897)",
       "attributesJson": "{\"RCID\":35,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_133\":\"119999\",\"ATTL_171\":\"5\",\"AGEN\":11308,\"FIDN\":8854,\"FIDS\":1}"
     },
@@ -219,9 +219,9 @@
       "attributesJson": "{\"RCID\":38,\"OBJL\":75,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_107\":\"2\",\"ATTL_133\":\"119999\",\"ATTL_141\":\"(1)\",\"ATTL_142\":\"3\",\"ATTL_178\":\"2.5\",\"AGEN\":11308,\"FIDN\":8835,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.7408576 10.2685588)",
       "attributesJson": "{\"RCID\":39,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"4\",\"ATTL_133\":\"119999\",\"ATTL_171\":\"1\",\"AGEN\":11308,\"FIDN\":8850,\"FIDS\":1}"
     },
@@ -247,9 +247,9 @@
       "attributesJson": "{\"RCID\":43,\"OBJL\":75,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_107\":\"2\",\"ATTL_133\":\"119999\",\"ATTL_141\":\"(1)\",\"ATTL_142\":\"3\",\"ATTL_178\":\"2.5\",\"AGEN\":11308,\"FIDN\":8831,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.8496995 10.218188)",
       "attributesJson": "{\"RCID\":44,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_133\":\"119999\",\"ATTL_171\":\"5\",\"AGEN\":11308,\"FIDN\":8827,\"FIDS\":1}"
     },
@@ -261,9 +261,9 @@
       "attributesJson": "{\"RCID\":45,\"OBJL\":75,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_107\":\"2\",\"ATTL_133\":\"119999\",\"ATTL_141\":\"(2+1)\",\"ATTL_142\":\"10\",\"ATTL_178\":\"2.5\",\"AGEN\":11308,\"FIDN\":8832,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.7971641 10.2326686)",
       "attributesJson": "{\"RCID\":46,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_133\":\"119999\",\"ATTL_171\":\"5\",\"AGEN\":11308,\"FIDN\":8849,\"FIDS\":1}"
     },
@@ -289,30 +289,30 @@
       "attributesJson": "{\"RCID\":52,\"OBJL\":75,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_107\":\"2\",\"ATTL_133\":\"119999\",\"ATTL_141\":\"(1)\",\"ATTL_142\":\"3\",\"ATTL_178\":\"2.5\",\"AGEN\":11308,\"FIDN\":8829,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.7838537 10.2427816)",
       "attributesJson": "{\"RCID\":53,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"4\",\"ATTL_133\":\"119999\",\"ATTL_171\":\"1\",\"AGEN\":11308,\"FIDN\":8861,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.8322886 10.2229884)",
       "attributesJson": "{\"RCID\":56,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_133\":\"119999\",\"ATTL_171\":\"5\",\"AGEN\":11308,\"FIDN\":8858,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.8153653 10.2295315)",
       "attributesJson": "{\"RCID\":57,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"4\",\"ATTL_133\":\"119999\",\"ATTL_171\":\"1\",\"AGEN\":11308,\"FIDN\":8855,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.7544076 10.2583203)",
       "attributesJson": "{\"RCID\":60,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_133\":\"119999\",\"ATTL_171\":\"5\",\"AGEN\":11308,\"FIDN\":8852,\"FIDS\":1}"
     },
@@ -331,23 +331,23 @@
       "attributesJson": "{\"RCID\":63,\"OBJL\":75,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"4\",\"ATTL_107\":\"2\",\"ATTL_133\":\"119999\",\"ATTL_141\":\"(2+1)\",\"ATTL_142\":\"10\",\"ATTL_178\":\"2.5\",\"AGEN\":11308,\"FIDN\":8828,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_90",
+      "featureCode": "PILPNT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_90",
+      "featureName": "PILPNT",
       "coordinates": "POINT(106.8373055 10.2085556)",
       "attributesJson": "{\"RCID\":64,\"OBJL\":90,\"PRIM\":1,\"GRUP\":2,\"AGEN\":11308,\"FIDN\":8866,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_109",
+      "featureCode": "RECTRC",
       "geometryType": "LINE",
-      "featureName": "UNKNOWN_109",
+      "featureName": "RECTRC",
       "coordinates": "LINESTRING(106.7404359 10.2677678, 106.7333333 10.2698826)",
       "attributesJson": "{\"RCID\":65,\"OBJL\":109,\"PRIM\":2,\"GRUP\":2,\"ATTL_54\":\"2\",\"ATTL_117\":\"287\",\"ATTL_133\":\"119999\",\"ATTL_172\":\"4\",\"AGEN\":11308,\"FIDN\":8887,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_90",
+      "featureCode": "PILPNT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_90",
+      "featureName": "PILPNT",
       "coordinates": "POINT(106.8326167 10.2526223)",
       "attributesJson": "{\"RCID\":66,\"OBJL\":90,\"PRIM\":1,\"GRUP\":2,\"AGEN\":11308,\"FIDN\":8867,\"FIDS\":1}"
     },
@@ -366,16 +366,16 @@
       "attributesJson": "{\"RCID\":70,\"OBJL\":43,\"PRIM\":2,\"GRUP\":2,\"ATTL_133\":\"89999\",\"ATTL_174\":\"0\",\"AGEN\":11308,\"FIDN\":8899,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_109",
+      "featureCode": "RECTRC",
       "geometryType": "LINE",
-      "featureName": "UNKNOWN_109",
+      "featureName": "RECTRC",
       "coordinates": "LINESTRING(106.85 10.219057, 106.7976435 10.2334956)",
       "attributesJson": "{\"RCID\":71,\"OBJL\":109,\"PRIM\":2,\"GRUP\":2,\"ATTL_54\":\"2\",\"ATTL_117\":\"285\",\"ATTL_133\":\"119999\",\"ATTL_172\":\"4\",\"AGEN\":11308,\"FIDN\":8889,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_109",
+      "featureCode": "RECTRC",
       "geometryType": "LINE",
-      "featureName": "UNKNOWN_109",
+      "featureName": "RECTRC",
       "coordinates": "LINESTRING(106.7976435 10.2334956, 106.7404359 10.2677678)",
       "attributesJson": "{\"RCID\":73,\"OBJL\":109,\"PRIM\":2,\"GRUP\":2,\"ATTL_54\":\"2\",\"ATTL_117\":\"301\",\"ATTL_133\":\"119999\",\"ATTL_172\":\"4\",\"AGEN\":11308,\"FIDN\":8888,\"FIDS\":1}"
     },
@@ -394,9 +394,9 @@
       "attributesJson": "{\"RCID\":75,\"OBJL\":119,\"PRIM\":3,\"GRUP\":2,\"ATTL_116\":\"E   A   S   T          S   E   A\",\"ATTL_133\":\"59999\",\"AGEN\":11308,\"FIDN\":8878,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_90",
+      "featureCode": "PILPNT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_90",
+      "featureName": "PILPNT",
       "coordinates": "POINT(106.809325 10.2576)",
       "attributesJson": "{\"RCID\":76,\"OBJL\":90,\"PRIM\":1,\"GRUP\":2,\"AGEN\":11308,\"FIDN\":8870,\"FIDS\":1}"
     },
@@ -443,9 +443,9 @@
       "attributesJson": "{\"RCID\":82,\"OBJL\":22,\"PRIM\":2,\"GRUP\":2,\"ATTL_11\":\"1\",\"ATTL_102\":\"Notice: 190, 30/8/2022\",\"ATTL_133\":\"119999\",\"AGEN\":11308,\"FIDN\":8873,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_90",
+      "featureCode": "PILPNT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_90",
+      "featureName": "PILPNT",
       "coordinates": "POINT(106.8093028 10.2491722)",
       "attributesJson": "{\"RCID\":83,\"OBJL\":90,\"PRIM\":1,\"GRUP\":2,\"AGEN\":11308,\"FIDN\":8868,\"FIDS\":1}"
     },
@@ -457,16 +457,16 @@
       "attributesJson": "{\"RCID\":84,\"OBJL\":129,\"PRIM\":1,\"GRUP\":2,\"ATTL_102\":\"So hoa tu cac ban do dia hinh day bien: C-48-46-B, C-48-46-D, C48-47-A, C-48-47-C cua Bo TN & MT, xuat ban nam 2010\",\"ATTL_133\":\"89999\",\"ATTL_147\":\"2010\",\"AGEN\":11308,\"FIDN\":8871,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_73",
+      "featureCode": "LNDRGN",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_73",
+      "featureName": "LNDRGN",
       "coordinates": "POINT(106.7438725 10.2294873)",
       "attributesJson": "{\"RCID\":85,\"OBJL\":73,\"PRIM\":1,\"GRUP\":2,\"ATTL_116\":\"Phu Tan commune\",\"ATTL_133\":\"59999\",\"AGEN\":11308,\"FIDN\":8825,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_73",
+      "featureCode": "LNDRGN",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_73",
+      "featureName": "LNDRGN",
       "coordinates": "POINT(106.7439401 10.2329693)",
       "attributesJson": "{\"RCID\":86,\"OBJL\":73,\"PRIM\":1,\"GRUP\":2,\"ATTL_116\":\"Tien Giang province\",\"ATTL_133\":\"59999\",\"AGEN\":11308,\"FIDN\":8824,\"FIDS\":1}"
     },
@@ -513,9 +513,9 @@
       "attributesJson": "{\"RCID\":93,\"OBJL\":129,\"PRIM\":1,\"GRUP\":2,\"ATTL_102\":\"So hoa tu hai do I-100-091 ty le 1/100000 cua Hai quan Nhan dan Viet Nam, xuat ban nam 2015\",\"ATTL_133\":\"89999\",\"ATTL_147\":\"2015\",\"AGEN\":11308,\"FIDN\":8872,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_90",
+      "featureCode": "PILPNT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_90",
+      "featureName": "PILPNT",
       "coordinates": "POINT(106.8325694 10.2315584)",
       "attributesJson": "{\"RCID\":94,\"OBJL\":90,\"PRIM\":1,\"GRUP\":2,\"AGEN\":11308,\"FIDN\":8869,\"FIDS\":1}"
     },
@@ -646,9 +646,9 @@
       "attributesJson": "{\"RCID\":117,\"OBJL\":42,\"PRIM\":3,\"GRUP\":1,\"ATTL_87\":\"5\",\"ATTL_88\":\"10\",\"AGEN\":11308,\"FIDN\":8811,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_73",
+      "featureCode": "LNDRGN",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_73",
+      "featureName": "LNDRGN",
       "coordinates": "POINT(106.7438725 10.231273)",
       "attributesJson": "{\"RCID\":118,\"OBJL\":73,\"PRIM\":1,\"GRUP\":2,\"ATTL_116\":\"Go Cong Dong district\",\"ATTL_133\":\"59999\",\"AGEN\":11308,\"FIDN\":8823,\"FIDS\":1}"
     },
@@ -674,16 +674,16 @@
       "attributesJson": "{\"RCID\":123,\"OBJL\":43,\"PRIM\":2,\"GRUP\":2,\"ATTL_133\":\"21999\",\"ATTL_174\":\"2\",\"AGEN\":11308,\"FIDN\":8933,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_74",
+      "featureCode": "LIMITS",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_74",
+      "featureName": "LIMITS",
       "coordinates": "POINT(106.8326167 10.2526223)",
       "attributesJson": "{\"RCID\":7,\"OBJL\":74,\"PRIM\":1,\"GRUP\":2,\"ATTL_35\":\"19\",\"ATTL_83\":\"1\",\"ATTL_94\":\"33\",\"ATTL_102\":\"Notice: 118, 27/5/2022\",\"ATTL_116\":\"WTG4\",\"ATTL_133\":\"179999\",\"AGEN\":11308,\"FIDN\":8805,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_74",
+      "featureCode": "LIMITS",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_74",
+      "featureName": "LIMITS",
       "coordinates": "POINT(106.8325694 10.2315584)",
       "attributesJson": "{\"RCID\":9,\"OBJL\":74,\"PRIM\":1,\"GRUP\":2,\"ATTL_35\":\"19\",\"ATTL_83\":\"1\",\"ATTL_94\":\"33\",\"ATTL_102\":\"Notice: 118, 27/5/2022\",\"ATTL_116\":\"WTG9\",\"ATTL_133\":\"179999\",\"AGEN\":11308,\"FIDN\":8802,\"FIDS\":1}"
     },
@@ -744,16 +744,16 @@
       "attributesJson": "{\"RCID\":32,\"OBJL\":17,\"PRIM\":1,\"GRUP\":2,\"ATTL_4\":\"4\",\"ATTL_36\":\"2\",\"ATTL_75\":\"4\",\"ATTL_116\":\"15\",\"ATTL_133\":\"119999\",\"AGEN\":11308,\"FIDN\":8799,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_74",
+      "featureCode": "LIMITS",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_74",
+      "featureName": "LIMITS",
       "coordinates": "POINT(106.8093028 10.2491722)",
       "attributesJson": "{\"RCID\":37,\"OBJL\":74,\"PRIM\":1,\"GRUP\":2,\"ATTL_35\":\"19\",\"ATTL_83\":\"1\",\"ATTL_94\":\"33\",\"ATTL_102\":\"Notice: 118, 27/5/2022\",\"ATTL_116\":\"WTG3\",\"ATTL_133\":\"179999\",\"AGEN\":11308,\"FIDN\":8804,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_74",
+      "featureCode": "LIMITS",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_74",
+      "featureName": "LIMITS",
       "coordinates": "POINT(106.809325 10.2576)",
       "attributesJson": "{\"RCID\":42,\"OBJL\":74,\"PRIM\":1,\"GRUP\":2,\"ATTL_35\":\"19\",\"ATTL_83\":\"1\",\"ATTL_94\":\"33\",\"ATTL_102\":\"Notice: 118, 27/5/2022\",\"ATTL_116\":\"WTG1\",\"ATTL_133\":\"179999\",\"AGEN\":11308,\"FIDN\":8807,\"FIDS\":1}"
     },
@@ -786,9 +786,9 @@
       "attributesJson": "{\"RCID\":54,\"OBJL\":17,\"PRIM\":1,\"GRUP\":2,\"ATTL_4\":\"4\",\"ATTL_36\":\"1\",\"ATTL_75\":\"3\",\"ATTL_116\":\"24\",\"ATTL_133\":\"119999\",\"AGEN\":11308,\"FIDN\":8791,\"FIDS\":1}"
     },
     {
-      "featureCode": "UNKNOWN_74",
+      "featureCode": "LIMITS",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_74",
+      "featureName": "LIMITS",
       "coordinates": "POINT(106.8373055 10.2085556)",
       "attributesJson": "{\"RCID\":55,\"OBJL\":74,\"PRIM\":1,\"GRUP\":2,\"ATTL_35\":\"17\",\"ATTL_83\":\"1\",\"ATTL_94\":\"33\",\"ATTL_116\":\"Old CUA TIEU Linght house\",\"ATTL_133\":\"179999\",\"AGEN\":11308,\"FIDN\":8801,\"FIDS\":1}"
     },

@@ -72,9 +72,9 @@
       "attributesJson": "{\"RCID\":320,\"OBJL\":81,\"PRIM\":3,\"GRUP\":2,\"ATTL_130\":\"2025\",\"ATTL_133\":\"29999\",\"ATTL_147\":\"20250331\",\"ATTL_148\":\"VN,V2,graph,https://www.ngdc.noaa.gov/\",\"ATTL_173\":\"1\",\"ATTL_176\":\"-0.63\",\"AGEN\":1512,\"FIDN\":1748396747,\"FIDS\":13}"
     },
     {
-      "featureCode": "UNKNOWN_51",
+      "featureCode": "DAYMAR",
       "geometryType": "POLYGON",
-      "featureName": "UNKNOWN_51",
+      "featureName": "DAYMAR",
       "coordinates": "POLYGON((106.925 10.2910609, 106.925 10.2917898, 106.925 10.2925189, 106.9707354 10.2868694, 106.9706448 10.2861516, 106.9705543 10.2854339, 106.925 10.2910609))",
       "attributesJson": "{\"RCID\":322,\"OBJL\":51,\"PRIM\":3,\"GRUP\":2,\"ATTL_116\":\"Soai Rap Channel\",\"ATTL_133\":\"59999\",\"ATTL_172\":\"4\",\"AGEN\":1512,\"FIDN\":1748396747,\"FIDS\":15}"
     },
@@ -114,23 +114,23 @@
       "attributesJson": "{\"RCID\":344,\"OBJL\":75,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_107\":\"2\",\"ATTL_133\":\"59999\",\"ATTL_141\":\"(1)\",\"ATTL_142\":\"3\",\"ATTL_147\":\"2019\",\"ATTL_148\":\"VN,V2,publn, List of AtoN SYSTEM/2019\",\"ATTL_178\":\"3\",\"AGEN\":1512,\"FIDN\":1748396747,\"FIDS\":37}"
     },
     {
-      "featureCode": "UNKNOWN_109",
+      "featureCode": "RECTRC",
       "geometryType": "LINE",
-      "featureName": "UNKNOWN_109",
+      "featureName": "RECTRC",
       "coordinates": "LINESTRING(106.925 10.2917898, 106.9706448 10.2861516)",
       "attributesJson": "{\"RCID\":349,\"OBJL\":109,\"PRIM\":2,\"GRUP\":2,\"ATTL_54\":\"2\",\"ATTL_117\":\"276.94\",\"ATTL_133\":\"59999\",\"ATTL_172\":\"4\",\"AGEN\":1512,\"FIDN\":1748396747,\"FIDS\":42}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.9391111 10.2912355)",
       "attributesJson": "{\"RCID\":401,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"4\",\"ATTL_133\":\"59999\",\"ATTL_171\":\"1\",\"AGEN\":1512,\"FIDN\":1748396747,\"FIDS\":94}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.9388056 10.2889029)",
       "attributesJson": "{\"RCID\":402,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_133\":\"59999\",\"ATTL_171\":\"5\",\"AGEN\":1512,\"FIDN\":1748396747,\"FIDS\":95}"
     },
@@ -310,23 +310,23 @@
       "attributesJson": "{\"RCID\":708,\"OBJL\":75,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_107\":\"2\",\"ATTL_133\":\"59999\",\"ATTL_141\":\"(1)\",\"ATTL_142\":\"3\",\"ATTL_147\":\"2019\",\"ATTL_148\":\"VN,V2,publn, List of AtoN SYSTEM/2019\",\"ATTL_178\":\"2.5\",\"AGEN\":1512,\"FIDN\":1748397098,\"FIDS\":188}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.9617334 10.2884374)",
       "attributesJson": "{\"RCID\":953,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"4\",\"ATTL_133\":\"59999\",\"ATTL_171\":\"1\",\"AGEN\":1512,\"FIDN\":1748397099,\"FIDS\":178}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.9614395 10.286105)",
       "attributesJson": "{\"RCID\":954,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_133\":\"59999\",\"ATTL_171\":\"5\",\"AGEN\":1512,\"FIDN\":1748397099,\"FIDS\":179}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.9757277 10.2853811)",
       "attributesJson": "{\"RCID\":955,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_133\":\"59999\",\"ATTL_171\":\"3\",\"AGEN\":1512,\"FIDN\":1748397099,\"FIDS\":180}"
     },
@@ -422,9 +422,9 @@
       "attributesJson": "{\"RCID\":1118,\"OBJL\":129,\"PRIM\":1,\"GRUP\":2,\"ATTL_133\":\"29999\",\"ATTL_147\":\"201710\",\"ATTL_148\":\"VN,V2,reprt,NM 185/20171020\",\"ATTL_156\":\"1\",\"AGEN\":1512,\"FIDN\":1748397100,\"FIDS\":88}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.9578334 10.2461389)",
       "attributesJson": "{\"RCID\":1196,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"2\",\"ATTL_133\":\"89999\",\"ATTL_171\":\"4\",\"AGEN\":1512,\"FIDN\":1748397100,\"FIDS\":166}"
     },
@@ -443,44 +443,44 @@
       "attributesJson": "{\"RCID\":1291,\"OBJL\":129,\"PRIM\":1,\"GRUP\":2,\"ATTL_133\":\"29999\",\"ATTL_147\":\"202110\",\"ATTL_148\":\"VN,V2,reprt,NM 247/20211025\",\"ATTL_156\":\"1\",\"AGEN\":1512,\"FIDN\":1748397101,\"FIDS\":6}"
     },
     {
-      "featureCode": "UNKNOWN_51",
+      "featureCode": "DAYMAR",
       "geometryType": "POLYGON",
-      "featureName": "UNKNOWN_51",
+      "featureName": "DAYMAR",
       "coordinates": "POLYGON((106.9688219 10.2277778, 107.0083333 10.2451383, 107.0083333 10.2323632, 107.0083333 10.225, 107.0069693 10.225, 107.0003734 10.225, 106.9936962 10.225, 106.9717846 10.225, 106.9625 10.225, 106.9688219 10.2277778))",
       "attributesJson": "{\"RCID\":1307,\"OBJL\":51,\"PRIM\":3,\"GRUP\":2,\"ATTL_116\":\"Coastal Traffic Zone\",\"ATTL_133\":\"59999\",\"ATTL_147\":\"20140905\",\"ATTL_148\":\"VN,V2,reprt,QD 3365/QD-BGTVT/20140905\",\"AGEN\":1512,\"FIDN\":1748397101,\"FIDS\":22}"
     },
     {
-      "featureCode": "UNKNOWN_55",
+      "featureCode": "FSHGRD",
       "geometryType": "LINE",
-      "featureName": "UNKNOWN_55",
+      "featureName": "FSHGRD",
       "coordinates": "LINESTRING(106.9695593 10.2687389, 106.9702763 10.2710069)",
       "attributesJson": "{\"RCID\":1308,\"OBJL\":55,\"PRIM\":2,\"GRUP\":2,\"ATTL_26\":\"1\",\"ATTL_133\":\"44999\",\"ATTL_147\":\"202203\",\"AGEN\":1512,\"FIDN\":1748397101,\"FIDS\":23}"
     },
     {
-      "featureCode": "UNKNOWN_55",
+      "featureCode": "FSHGRD",
       "geometryType": "LINE",
-      "featureName": "UNKNOWN_55",
+      "featureName": "FSHGRD",
       "coordinates": "LINESTRING(106.9749443 10.2721519, 106.9738406 10.2709266)",
       "attributesJson": "{\"RCID\":1309,\"OBJL\":55,\"PRIM\":2,\"GRUP\":2,\"ATTL_26\":\"1\",\"ATTL_133\":\"44999\",\"ATTL_147\":\"202203\",\"AGEN\":1512,\"FIDN\":1748397101,\"FIDS\":24}"
     },
     {
-      "featureCode": "UNKNOWN_55",
+      "featureCode": "FSHGRD",
       "geometryType": "LINE",
-      "featureName": "UNKNOWN_55",
+      "featureName": "FSHGRD",
       "coordinates": "LINESTRING(106.9821875 10.2960764, 106.9810389 10.2945258)",
       "attributesJson": "{\"RCID\":1311,\"OBJL\":55,\"PRIM\":2,\"GRUP\":2,\"ATTL_26\":\"1\",\"ATTL_133\":\"44999\",\"ATTL_147\":\"202203\",\"AGEN\":1512,\"FIDN\":1748397101,\"FIDS\":26}"
     },
     {
-      "featureCode": "UNKNOWN_55",
+      "featureCode": "FSHGRD",
       "geometryType": "LINE",
-      "featureName": "UNKNOWN_55",
+      "featureName": "FSHGRD",
       "coordinates": "LINESTRING(106.9838003 10.2989093, 106.9820756 10.2967837)",
       "attributesJson": "{\"RCID\":1312,\"OBJL\":55,\"PRIM\":2,\"GRUP\":2,\"ATTL_26\":\"1\",\"ATTL_133\":\"44999\",\"ATTL_147\":\"202203\",\"AGEN\":1512,\"FIDN\":1748397101,\"FIDS\":27}"
     },
     {
-      "featureCode": "UNKNOWN_55",
+      "featureCode": "FSHGRD",
       "geometryType": "LINE",
-      "featureName": "UNKNOWN_55",
+      "featureName": "FSHGRD",
       "coordinates": "LINESTRING(106.9831457 10.2903472, 106.9845256 10.2922877)",
       "attributesJson": "{\"RCID\":1313,\"OBJL\":55,\"PRIM\":2,\"GRUP\":2,\"ATTL_26\":\"1\",\"ATTL_133\":\"44999\",\"ATTL_147\":\"202203\",\"AGEN\":1512,\"FIDN\":1748397101,\"FIDS\":28}"
     },

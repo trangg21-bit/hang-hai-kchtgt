@@ -39,6 +39,10 @@ public class ChartSeeder implements CommandLineRunner {
         var definition = new DefaultTransactionDefinition();
         var txStatus = transactionManager.getTransaction(definition);
 
+        // Clear database records to force a clean re-import with the new S-57 acronym mappings
+        featureRepository.deleteAll();
+        cellRepository.deleteAll();
+
         ResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         Resource[] resources;
         try {

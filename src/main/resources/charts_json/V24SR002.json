@@ -79,9 +79,9 @@
       "attributesJson": "{\"RCID\":320,\"OBJL\":81,\"PRIM\":3,\"GRUP\":2,\"ATTL_130\":\"2025\",\"ATTL_133\":\"29999\",\"ATTL_147\":\"20250331\",\"ATTL_148\":\"VN,V2,graph,https://www.ngdc.noaa.gov/\",\"ATTL_173\":\"1\",\"ATTL_176\":\"-0.63\",\"AGEN\":1512,\"FIDN\":1748346591,\"FIDS\":13}"
     },
     {
-      "featureCode": "UNKNOWN_51",
+      "featureCode": "DAYMAR",
       "geometryType": "POLYGON",
-      "featureName": "UNKNOWN_51",
+      "featureName": "DAYMAR",
       "coordinates": "POLYGON((106.8804561 10.325, 106.901812 10.3012514, 106.9062478 10.2978173, 106.9112322 10.2952243, 106.9166046 10.293556, 106.925 10.2925189, 106.925 10.2917898, 106.925 10.2910609, 106.9133211 10.2925036, 106.9028003 10.2979768, 106.8784998 10.325, 106.8794688 10.325, 106.8804561 10.325))",
       "attributesJson": "{\"RCID\":322,\"OBJL\":51,\"PRIM\":3,\"GRUP\":2,\"ATTL_116\":\"Soai Rap Channel\",\"ATTL_133\":\"59999\",\"ATTL_172\":\"4\",\"AGEN\":1512,\"FIDN\":1748346591,\"FIDS\":15}"
     },
@@ -149,23 +149,23 @@
       "attributesJson": "{\"RCID\":348,\"OBJL\":75,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_107\":\"2\",\"ATTL_133\":\"59999\",\"ATTL_141\":\"(2+1)\",\"ATTL_142\":\"10\",\"ATTL_147\":\"2019\",\"ATTL_148\":\"VN,V2,publn, List of AtoN SYSTEM/2019\",\"ATTL_178\":\"6\",\"AGEN\":1512,\"FIDN\":1748346591,\"FIDS\":41}"
     },
     {
-      "featureCode": "UNKNOWN_109",
+      "featureCode": "RECTRC",
       "geometryType": "LINE",
-      "featureName": "UNKNOWN_109",
+      "featureName": "RECTRC",
       "coordinates": "LINESTRING(106.9135432 10.2932051, 106.925 10.2917898)",
       "attributesJson": "{\"RCID\":349,\"OBJL\":109,\"PRIM\":2,\"GRUP\":2,\"ATTL_54\":\"2\",\"ATTL_117\":\"276.94\",\"ATTL_133\":\"59999\",\"ATTL_172\":\"4\",\"AGEN\":1512,\"FIDN\":1748346591,\"FIDS\":42}"
     },
     {
-      "featureCode": "UNKNOWN_109",
+      "featureCode": "RECTRC",
       "geometryType": "LINE",
-      "featureName": "UNKNOWN_109",
+      "featureName": "RECTRC",
       "coordinates": "LINESTRING(106.9032575 10.2985559, 106.9135432 10.2932051)",
       "attributesJson": "{\"RCID\":350,\"OBJL\":109,\"PRIM\":2,\"GRUP\":2,\"ATTL_54\":\"2\",\"ATTL_117\":\"117.9\",\"ATTL_133\":\"59999\",\"ATTL_172\":\"4\",\"AGEN\":1512,\"FIDN\":1748346591,\"FIDS\":43}"
     },
     {
-      "featureCode": "UNKNOWN_109",
+      "featureCode": "RECTRC",
       "geometryType": "LINE",
-      "featureName": "UNKNOWN_109",
+      "featureName": "RECTRC",
       "coordinates": "LINESTRING(106.8794688 10.325, 106.9032575 10.2985559)",
       "attributesJson": "{\"RCID\":351,\"OBJL\":109,\"PRIM\":2,\"GRUP\":2,\"ATTL_54\":\"2\",\"ATTL_117\":\"318.16\",\"ATTL_133\":\"59999\",\"ATTL_172\":\"4\",\"AGEN\":1512,\"FIDN\":1748346591,\"FIDS\":44}"
     },
@@ -226,44 +226,44 @@
       "attributesJson": "{\"RCID\":384,\"OBJL\":43,\"PRIM\":2,\"GRUP\":2,\"ATTL_133\":\"44999\",\"ATTL_174\":\"2\",\"AGEN\":1512,\"FIDN\":1748346591,\"FIDS\":77}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.9138889 10.2948611)",
       "attributesJson": "{\"RCID\":397,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"4\",\"ATTL_133\":\"59999\",\"ATTL_171\":\"1\",\"AGEN\":1512,\"FIDN\":1748346591,\"FIDS\":90}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.9045 10.29975)",
       "attributesJson": "{\"RCID\":398,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"4\",\"ATTL_133\":\"59999\",\"ATTL_171\":\"1\",\"AGEN\":1512,\"FIDN\":1748346591,\"FIDS\":91}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.9152778 10.2918091)",
       "attributesJson": "{\"RCID\":399,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_133\":\"59999\",\"ATTL_171\":\"5\",\"AGEN\":1512,\"FIDN\":1748346591,\"FIDS\":92}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.9010833 10.2990892)",
       "attributesJson": "{\"RCID\":400,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_133\":\"59999\",\"ATTL_171\":\"5\",\"AGEN\":1512,\"FIDN\":1748346591,\"FIDS\":93}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.8876944 10.3141325)",
       "attributesJson": "{\"RCID\":403,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"3\",\"ATTL_133\":\"59999\",\"ATTL_171\":\"5\",\"AGEN\":1512,\"FIDN\":1748346591,\"FIDS\":96}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.8893889 10.3157661)",
       "attributesJson": "{\"RCID\":404,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"4\",\"ATTL_133\":\"59999\",\"ATTL_171\":\"1\",\"AGEN\":1512,\"FIDN\":1748346591,\"FIDS\":97}"
     },
@@ -527,16 +527,16 @@
       "attributesJson": "{\"RCID\":516,\"OBJL\":42,\"PRIM\":3,\"GRUP\":1,\"ATTL_87\":\"10\",\"ATTL_88\":\"20\",\"AGEN\":1512,\"FIDN\":1748346591,\"FIDS\":209}"
     },
     {
-      "featureCode": "UNKNOWN_55",
+      "featureCode": "FSHGRD",
       "geometryType": "LINE",
-      "featureName": "UNKNOWN_55",
+      "featureName": "FSHGRD",
       "coordinates": "LINESTRING(106.8838372 10.3226951, 106.8842256 10.3231447)",
       "attributesJson": "{\"RCID\":519,\"OBJL\":55,\"PRIM\":2,\"GRUP\":2,\"ATTL_26\":\"2\",\"ATTL_133\":\"44999\",\"ATTL_147\":\"202505\",\"ATTL_148\":\"VN,V2,graph,MAP 202504\",\"AGEN\":1512,\"FIDN\":1748346591,\"FIDS\":212}"
     },
     {
-      "featureCode": "UNKNOWN_55",
+      "featureCode": "FSHGRD",
       "geometryType": "LINE",
-      "featureName": "UNKNOWN_55",
+      "featureName": "FSHGRD",
       "coordinates": "LINESTRING(106.8841348 10.3215639, 106.8847474 10.3220062)",
       "attributesJson": "{\"RCID\":520,\"OBJL\":55,\"PRIM\":2,\"GRUP\":2,\"ATTL_26\":\"2\",\"ATTL_133\":\"44999\",\"ATTL_147\":\"202505\",\"ATTL_148\":\"VN,V2,graph,MAP 202504\",\"AGEN\":1512,\"FIDN\":1748346591,\"FIDS\":213}"
     },
@@ -583,16 +583,16 @@
       "attributesJson": "{\"RCID\":534,\"OBJL\":42,\"PRIM\":3,\"GRUP\":1,\"ATTL_87\":\"2\",\"ATTL_88\":\"5\",\"AGEN\":1512,\"FIDN\":1748393909,\"FIDS\":14}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.8513111 10.2290361)",
       "attributesJson": "{\"RCID\":586,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"6\",\"ATTL_133\":\"59999\",\"ATTL_171\":\"7\",\"AGEN\":1512,\"FIDN\":1748393909,\"FIDS\":66}"
     },
     {
-      "featureCode": "UNKNOWN_144",
+      "featureCode": "TSSLPT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_144",
+      "featureName": "TSSLPT",
       "coordinates": "POINT(106.8599472 10.2409194)",
       "attributesJson": "{\"RCID\":587,\"OBJL\":144,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"6\",\"ATTL_133\":\"44999\",\"ATTL_171\":\"7\",\"AGEN\":1512,\"FIDN\":1748393909,\"FIDS\":67}"
     },
@@ -625,16 +625,16 @@
       "attributesJson": "{\"RCID\":591,\"OBJL\":75,\"PRIM\":1,\"GRUP\":2,\"ATTL_75\":\"6\",\"ATTL_107\":\"12\",\"ATTL_133\":\"59999\",\"ATTL_141\":\"(U)\",\"ATTL_142\":\"15\",\"ATTL_147\":\"20220527\",\"ATTL_148\":\"VN,V2,reprt,NM 118/20220527\",\"ATTL_178\":\"5\",\"AGEN\":1512,\"FIDN\":1748393909,\"FIDS\":71}"
     },
     {
-      "featureCode": "UNKNOWN_90",
+      "featureCode": "PILPNT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_90",
+      "featureName": "PILPNT",
       "coordinates": "POINT(106.8558806 10.2350056)",
       "attributesJson": "{\"RCID\":592,\"OBJL\":90,\"PRIM\":1,\"GRUP\":2,\"ATTL_133\":\"59999\",\"AGEN\":1512,\"FIDN\":1748393909,\"FIDS\":72}"
     },
     {
-      "featureCode": "UNKNOWN_90",
+      "featureCode": "PILPNT",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_90",
+      "featureName": "PILPNT",
       "coordinates": "POINT(106.8558916 10.2434333)",
       "attributesJson": "{\"RCID\":593,\"OBJL\":90,\"PRIM\":1,\"GRUP\":2,\"ATTL_133\":\"59999\",\"AGEN\":1512,\"FIDN\":1748393909,\"FIDS\":73}"
     },
@@ -772,16 +772,16 @@
       "attributesJson": "{\"RCID\":611,\"OBJL\":19,\"PRIM\":1,\"GRUP\":2,\"ATTL_4\":\"4\",\"ATTL_66\":\"2\",\"ATTL_75\":\"6\",\"ATTL_102\":\"Notice: 118, 27/5/2022\",\"ATTL_116\":\"T4\",\"ATTL_133\":\"44999\",\"ATTL_147\":\"20220527\",\"ATTL_148\":\"VN,V2,reprt,NM 118/20220527\",\"AGEN\":1512,\"FIDN\":1748393909,\"FIDS\":91}"
     },
     {
-      "featureCode": "UNKNOWN_74",
+      "featureCode": "LIMITS",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_74",
+      "featureName": "LIMITS",
       "coordinates": "POINT(106.8558916 10.2434333)",
       "attributesJson": "{\"RCID\":612,\"OBJL\":74,\"PRIM\":1,\"GRUP\":2,\"ATTL_35\":\"19\",\"ATTL_83\":\"1\",\"ATTL_94\":\"33\",\"ATTL_116\":\"WTG10\",\"ATTL_133\":\"59999\",\"ATTL_147\":\"20220527\",\"ATTL_148\":\"VN,V2,reprt,NM 118/20220527\",\"AGEN\":1512,\"FIDN\":1748393909,\"FIDS\":92}"
     },
     {
-      "featureCode": "UNKNOWN_74",
+      "featureCode": "LIMITS",
       "geometryType": "POINT",
-      "featureName": "UNKNOWN_74",
+      "featureName": "LIMITS",
       "coordinates": "POINT(106.8558806 10.2350056)",
       "attributesJson": "{\"RCID\":613,\"OBJL\":74,\"PRIM\":1,\"GRUP\":2,\"ATTL_35\":\"19\",\"ATTL_83\":\"1\",\"ATTL_94\":\"33\",\"ATTL_116\":\"WTG12\",\"ATTL_133\":\"59999\",\"ATTL_147\":\"20220527\",\"ATTL_148\":\"VN,V2,reprt,NM 118/20220527\",\"AGEN\":1512,\"FIDN\":1748393909,\"FIDS\":93}"
     },
