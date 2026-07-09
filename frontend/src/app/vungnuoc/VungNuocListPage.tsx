@@ -17,6 +17,7 @@ import {
   VUNGNUOC_HOAT_DONG_MAP,
   VUNGNUOC_PHE_DUYET_MAP,
 } from './types';
+import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge } from '../../services/cangbien/schema';
 import DataTable from '../../components/DataTable';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
@@ -143,8 +144,8 @@ export default function VungNuocListPage() {
       dataIndex: 'trangThaiHoatDong',
       width: 100,
       render: (status: VungNuocTrangThaiHoatDong) => {
-        const info = VUNGNUOC_HOAT_DONG_MAP[status] || { color: 'default', label: status };
-        return <Tag color={info.color}>{info.label}</Tag>;
+        const badge = trangThaiHoatDongBadge(status);
+        return <Tag color={badge.color}>{badge.label}</Tag>;
       },
     },
     {
@@ -152,8 +153,8 @@ export default function VungNuocListPage() {
       dataIndex: 'trangThaiPheDuyet',
       width: 110,
       render: (status: VungNuocTrangThaiPheDuyet) => {
-        const info = VUNGNUOC_PHE_DUYET_MAP[status] || { color: 'default', label: status };
-        return <Tag color={info.color}>{info.label}</Tag>;
+        const badge = trangThaiPheDuyetBadge(status);
+        return <Tag color={badge.color}>{badge.label}</Tag>;
       },
     },
     {
