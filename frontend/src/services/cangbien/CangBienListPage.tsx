@@ -319,9 +319,38 @@ export default function CangBienListPage() {
       render: (text: string, record: CangBienResponse) => (
         <button
           type="button"
-          style={{ background: 'none', border: 'none', color: '#1677ff', cursor: 'pointer', padding: 0 }}
-          onClick={() => navigate(`/cangbien/${record.id}`)}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/cangbien/${record.id}`); } }}
+          style={{ background: 'none', border: 'none', color: '#1677ff', cursor: 'pointer', padding: 0, textAlign: 'left' }}
+          onClick={async () => {
+            try {
+              setIsLoading(true);
+              const data = await fetchCangBienById(record.id);
+              setSelectedRecord(data);
+              const fileRes = await giayToApi.listByEntity('cang-bien', record.id, { page: 1, size: 20 });
+              setDetailFiles(fileRes.data || []);
+              setDetailModalVisible(true);
+            } catch (err) {
+              toast.error('Không thể tải thông tin chi tiết cảng biển');
+            } finally {
+              setIsLoading(false);
+            }
+          }}
+          onKeyDown={async (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              try {
+                setIsLoading(true);
+                const data = await fetchCangBienById(record.id);
+                setSelectedRecord(data);
+                const fileRes = await giayToApi.listByEntity('cang-bien', record.id, { page: 1, size: 20 });
+                setDetailFiles(fileRes.data || []);
+                setDetailModalVisible(true);
+              } catch (err) {
+                toast.error('Không thể tải thông tin chi tiết cảng biển');
+              } finally {
+                setIsLoading(false);
+              }
+            }
+          }}
           aria-label={`Xem chi tiết ${text}`}
         >
           {text}

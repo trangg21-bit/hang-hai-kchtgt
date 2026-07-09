@@ -40,6 +40,21 @@ export default function VungNuocListPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [cangBienOptions, setCangBienOptions] = useState<Array<{ id: string; tenCang: string }>>([]);
+
+  const fetchCangBienOptions = useCallback(async () => {
+    try {
+      const { fetchCangBienList } = await import('../../services/cangbien/api');
+      const res = await fetchCangBienList({ page: 0, size: 1000 });
+      setCangBienOptions(res.content.map((c) => ({ id: c.id, tenCang: c.tenCang })));
+    } catch (err) {
+      console.error('Failed to fetch CangBien options:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchCangBienOptions();
+  }, [fetchCangBienOptions]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -107,9 +122,15 @@ export default function VungNuocListPage() {
       title: 'Cảng biển chủ',
       dataIndex: 'cangBienId',
       width: 180,
-      render: (cangBienId: string) => (cangBienId ? (
-        <a onClick={() => navigate(`/cangbien/${cangBienId}`)}>{cangBienId.substring(0, 12)}...</a>
-      ) : '—'),
+      render: (cangBienId: string) => {
+        if (!cangBienId) return '—';
+        const opt = cangBienOptions.find((o) => o.id === cangBienId);
+        return opt ? (
+          <a onClick={() => navigate(`/cangbien/${cangBienId}`)}>{opt.tenCang}</a>
+        ) : (
+          <a onClick={() => navigate(`/cangbien/${cangBienId}`)}>{cangBienId.substring(0, 12)}...</a>
+        );
+      },
     },
     {
       title: 'Diện tích (m²)',
