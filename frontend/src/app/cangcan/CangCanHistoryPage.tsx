@@ -83,8 +83,8 @@ export default function CangCanHistoryPage() {
 
   const getActionIcon = (field: string, record: CangCanHistoryRecord) => {
     if (field === 'trangThaiPheDuyet') {
-      if (record.newValue === 'ĐƯỢC_PHE_DUYỆT') return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
-      if (record.newValue === 'TỪ_CHỐI') return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
+      if (record.newValue === 'DUOC_PHE_DUYET') return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
+      if (record.newValue === 'TU_CHOI') return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
     }
     return <EditOutlined style={{ color: '#1677ff' }} />;
   };
@@ -156,7 +156,7 @@ export default function CangCanHistoryPage() {
           <Timeline
             items={history.map((record) => ({
               key: record.id,
-              color: record.newValue === 'TỪ_CHỐI' ? 'red' : record.newValue === 'ĐƯỢC_PHE_DUYỆT' ? 'green' : 'blue',
+              color: record.newValue === 'TU_CHOI' ? 'red' : record.newValue === 'DUOC_PHE_DUYET' ? 'green' : 'blue',
               dot: getActionIcon(record.fieldChanged, record),
               children: (
                 <div>

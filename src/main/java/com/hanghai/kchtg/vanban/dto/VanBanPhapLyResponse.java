@@ -30,6 +30,8 @@ public class VanBanPhapLyResponse {
     private LoaiVanBan loaiVanBan;
     private String linhVucApDung;
     private TinhTrangHieuLuc tinhTrangHieuLuc;
+    private String nguoiKy;
+    private String moTa;
     private String nguoiTao;
     private LocalDateTime ngayTao;
     private String nguoiSuaDoi;

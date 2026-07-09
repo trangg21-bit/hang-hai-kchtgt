@@ -19,6 +19,9 @@ public interface CoastalStationVTSRepository extends JpaRepository<CoastalStatio
     @Query("SELECT c FROM CoastalStationVTS c WHERE c.deletedAt IS NULL")
     List<CoastalStationVTS> findAllActive();
 
+    @Query("SELECT c FROM CoastalStationVTS c WHERE c.id = :id")
+    Optional<CoastalStationVTS> findByIdIgnoreDeleted(@Param("id") UUID id);
+
     @Query("SELECT c FROM CoastalStationVTS c WHERE c.deletedAt IS NULL AND (LOWER(c.name) LIKE LOWER(CONCAT('%', :keyword, '%')) OR LOWER(c.code) LIKE LOWER(CONCAT('%', :keyword, '%')))")
     List<CoastalStationVTS> search(@Param("keyword") String keyword);
 }

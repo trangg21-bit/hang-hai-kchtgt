@@ -49,7 +49,7 @@ public class BenCangService {
                 .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getCangBienId()));
 
         // Guard: parent CangBien must be in hien_hanh (active) status
-        if (!parent.getTrangThaiHoatDong().equals("HIEN_HANH")) {
+        if (!"HIEN_HANH".equals(parent.getTrangThaiHoatDong())) {
             throw new IllegalArgumentException(
                     "Không thể tạo bến cảng: cảng biển cha phải ở trạng thái hoạt động (HIEN_HANH)");
         }

@@ -123,7 +123,7 @@ public class TramRadarController {
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(@PathVariable Long id) {
         try {
             List<HistoryEntry> history = service.getHistory(id);
-            return ResponseEntity.ok(ApiResponse.success("Lịch sử thành công", history));
+            return ResponseEntity.ok(ApiResponse.success("Lịch sử phê duyệt thành công", history));
         } catch (Exception e) {
             log.error("Error getting history for TramRadar id {}: {}", id, e.getMessage(), e);
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));

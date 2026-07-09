@@ -49,9 +49,8 @@ public class CoastalStationCospasSarsatService {
 
     public CoastalStationCospasSarsat updateStation(UUID id, CoastalStationCospasSarsatUpdateRequest request) {
         CoastalStationCospasSarsat entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cospas-Sarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
 
-        entity.setCode(request.getStationCode());
         entity.setName(request.getStationName());
         entity.setFrequency(request.getFrequency());
         entity.setCoverageArea(request.getCoverageArea());
@@ -78,7 +77,7 @@ public class CoastalStationCospasSarsatService {
 
     public void deleteStation(UUID id) {
         CoastalStationCospasSarsat entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cospas-Sarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
 
         String stationCode = entity.getCode();
         entity.softDelete();
@@ -96,7 +95,7 @@ public class CoastalStationCospasSarsatService {
 
     public CoastalStationCospasSarsat getStationById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cospas-Sarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
     }
 
     public List<CoastalStationCospasSarsat> getAllStations() {
@@ -113,7 +112,7 @@ public class CoastalStationCospasSarsatService {
 
     public CoastalStationCospasSarsat approveStation(UUID id, boolean approved, Long userId) {
         CoastalStationCospasSarsat entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cospas-Sarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
 
         if (approved) {
             Integer currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel() : 0;
@@ -162,7 +161,7 @@ public class CoastalStationCospasSarsatService {
 
     public CoastalStationCospasSarsat rejectStation(UUID id, String rejectionReason, Long userId) {
         CoastalStationCospasSarsat entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cospas-Sarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
 
         entity.setApprovalStatus(StationApprovalStatus.PENDING);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
@@ -185,7 +184,7 @@ public class CoastalStationCospasSarsatService {
 
     public List<CoastalStationCospasSarsatHistoryResponse> getHistory(UUID id) {
         CoastalStationCospasSarsat entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Cospas-Sarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
         return historyService.getHistory(entity.getCode()).stream()
                 .map(h -> {
                     CoastalStationCospasSarsatHistoryResponse r = new CoastalStationCospasSarsatHistoryResponse();

@@ -26,6 +26,7 @@ import { dekeCRUD } from '../../services/deKeService';
 import type { DeKeResponse, ListParams } from '../../types/deKe';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import DeKeForm from './DeKeForm';
 
 const APPROVAL_STATUS_OPTIONS = [
   { label: 'Chờ duyệt', value: 'PROPOSED' },
@@ -64,6 +65,9 @@ export default function DeKeList() {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -215,24 +219,20 @@ export default function DeKeList() {
                 type="link"
                 size="small"
                 icon={<EyeOutlined />}
-                onClick={() => navigate(`/de-ke/${record.id}`)}
+                onClick={() => { setEditingId(String(record.id)); setModalMode('detail'); setIsModalOpen(true); }}
                 title="Xem chi tiết"
                 aria-label="Xem chi tiết"
-              >
-                Xem
-              </Button>
+              />
             )}
             {canUpdate && isProposed && (
               <Button
                 type="link"
                 size="small"
                 icon={<EditOutlined />}
-                onClick={() => navigate(`/de-ke/${record.id}?mode=edit`)}
+                onClick={() => { setEditingId(String(record.id)); setModalMode('edit'); setIsModalOpen(true); }}
                 title="Chỉnh sửa"
                 aria-label="Chỉnh sửa"
-              >
-                Sửa
-              </Button>
+              />
             )}
             {canDelete && record.trangThaiPheDuyet === 'APPROVED' && (
               <Popconfirm
@@ -242,9 +242,7 @@ export default function DeKeList() {
                 okText="Xóa"
                 cancelText="Hủy"
               >
-                <Button type="link" danger size="small" icon={<DeleteOutlined />}>
-                  Xóa
-                </Button>
+                <Button type="link" danger size="small" icon={<DeleteOutlined />} title="Xóa" aria-label="Xóa" />
               </Popconfirm>
             )}
           </Space>
@@ -299,7 +297,7 @@ export default function DeKeList() {
               <Tooltip title="Tải lại">
                 <Button icon={<ReloadOutlined />} onClick={fetchData} />
               </Tooltip>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/de-ke/create')}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingId(null); setModalMode('create'); setIsModalOpen(true); }}>
                 Thêm mới
               </Button>
             </Space>
@@ -341,6 +339,20 @@ export default function DeKeList() {
           />
         )}
       </Card>
+      <DeKeForm
+        open={isModalOpen}
+        editId={editingId}
+        mode={modalMode}
+        onCancel={() => {
+          setIsModalOpen(false);
+          setEditingId(null);
+        }}
+        onSuccess={() => {
+          setIsModalOpen(false);
+          setEditingId(null);
+          fetchData();
+        }}
+      />
     </>
   );
 }

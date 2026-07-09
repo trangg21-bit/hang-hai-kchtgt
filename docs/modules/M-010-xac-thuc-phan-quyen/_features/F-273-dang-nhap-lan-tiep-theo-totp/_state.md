@@ -1,3 +1,16 @@
+---
+status: proposed
+last-updated: 2026-07-03T11:57:50Z
+completed-stages:
+  engineering-business-analyst:
+    verdict: skipped-targeted-fix
+    artifact: N/A
+    completed-at: 2026-07-03
+  engineering-technical-lead:
+    verdict: approved-targeted-fix
+    artifact: N/A
+    completed-at: 2026-07-03
+---
 ﻿---
 id: F-273
 name: Dang nhap lan tiep theo + TOTP
@@ -95,3 +108,8 @@ Total F-273: 27 tests, all passing.
 5. MfaChallengeResponse has both requiresMfa and totpRequired fields with subtle semantic overlap — could be simplified.
 
 ### Verdict: PASS
+
+## Stage Progress
+
+| engineering-business-analyst | engineering-business-analyst | skipped-targeted-fix | N/A | 2026-07-03 |
+| engineering-technical-lead | engineering-technical-lead | approved-targeted-fix | N/A | 2026-07-03 |

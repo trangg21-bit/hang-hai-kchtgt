@@ -14,9 +14,6 @@ public class PheDuyetRequest {
 
     private Integer capPheDuyet;
 
-    @NotBlank(message = "Nguoi phe duyet khong duoc de trong")
-    private String nguoiPheDuyet;
-
     @NotBlank(message = "Trang thai khong duoc de trong")
     private String trangThai;
 

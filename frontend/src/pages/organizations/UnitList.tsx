@@ -339,8 +339,9 @@ export default function UnitList() {
       dataIndex: 'status',
       width: 120,
       render: (status: string) => {
-        const s = STATUS_MAP[status] || { color: 'default', label: status };
-        return <Tag color={s.color}>{s.label}</Tag>;
+        const variant = status === 'approved' ? 'active' : status === 'rejected' ? 'locked' : status === 'pending' ? 'pending' : 'inactive';
+        const label = STATUS_MAP[status]?.label || status;
+        return <span className={`status-badge status-badge--${variant}`}>{label}</span>;
       },
     },
     {

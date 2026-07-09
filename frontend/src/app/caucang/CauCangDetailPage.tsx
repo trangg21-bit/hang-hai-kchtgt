@@ -125,12 +125,12 @@ export default function CauCangDetailPage() {
               <Col span={8}>
                 <Typography.Text type="secondary">Chiều dài:</Typography.Text>
                 <br />
-                <Typography.Text strong>{chieuDai !== null ? `${chieuDai.toFixed(2)} m` : '—'}</Typography.Text>
+                <Typography.Text strong>{chieuDai != null ? `${chieuDai.toFixed(2)} m` : '—'}</Typography.Text>
               </Col>
               <Col span={8}>
                 <Typography.Text type="secondary">Tải trọng:</Typography.Text>
                 <br />
-                <Typography.Text strong>{taiTrong !== null ? `${taiTrong.toFixed(2)} tấn` : '—'}</Typography.Text>
+                <Typography.Text strong>{taiTrong != null ? `${taiTrong.toFixed(2)} tấn` : '—'}</Typography.Text>
               </Col>
               <Col span={8}>
                 <Typography.Text type="secondary">Loại cầu:</Typography.Text>

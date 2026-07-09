@@ -71,4 +71,24 @@ public class YeuCauTangTaiSanController {
         yeuCauService.delete(id);
         return ResponseEntity.ok(ApiResponse.success("Yeu cau tang da duoc xoa", null));
     }
+
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("@auth.check(authentication, 'asset:yeu-cau-tang')")
+    public ResponseEntity<ApiResponse<YeuCauTangTaiSanResponse>> approve(
+            @PathVariable UUID id,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        String remarks = body != null ? body.get("remarks") : null;
+        YeuCauTangTaiSanResponse response = yeuCauService.approve(id, remarks);
+        return ResponseEntity.ok(ApiResponse.success("Yeu cau tang da duoc phe duyet", response));
+    }
+
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("@auth.check(authentication, 'asset:yeu-cau-tang')")
+    public ResponseEntity<ApiResponse<YeuCauTangTaiSanResponse>> reject(
+            @PathVariable UUID id,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        String remarks = body != null ? body.get("remarks") : null;
+        YeuCauTangTaiSanResponse response = yeuCauService.reject(id, remarks);
+        return ResponseEntity.ok(ApiResponse.success("Yeu cau tang da bi tu choi", response));
+    }
 }

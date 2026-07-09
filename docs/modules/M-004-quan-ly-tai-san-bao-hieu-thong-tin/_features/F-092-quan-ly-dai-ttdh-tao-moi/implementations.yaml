@@ -1,0 +1,14 @@
+feature_id: F-092
+module_id: M-004
+slug: quan-ly-dai-ttdh-tao-moi
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: "src/main/java/com/hanghai/kchtg/station/controller/CoastalStationVTSController.java -> createStation()"
+  consumers:
+    - "src/main/java/com/hanghai/kchtg/station/service/CoastalStationVTSService.java"
+
+# Cross-cutting: features consumed by multiple modules
+consumed_by_modules: []

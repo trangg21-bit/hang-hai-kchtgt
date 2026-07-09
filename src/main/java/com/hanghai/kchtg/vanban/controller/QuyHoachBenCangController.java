@@ -26,11 +26,11 @@ public class QuyHoachBenCangController {
 
     @GetMapping
     @PreAuthorize("@auth.check(authentication, 'vanban:read')")
-    public ResponseEntity<ApiResponse<List<QuyHoachBenCangResponse>>> listPlans(
+    public ResponseEntity<ApiResponse<Page<QuyHoachBenCangResponse>>> listPlans(
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
         Page<QuyHoachBenCangResponse> result = quyHoachBenCangService.findAll(page, size);
-        return ResponseEntity.ok(ApiResponse.success(result.getContent()));
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping

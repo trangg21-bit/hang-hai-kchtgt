@@ -164,9 +164,8 @@ class DeKeServiceTest {
         when(pheDuyetLichSuRepo.save(any())).thenReturn(hist);
         PheDuyetResponse r = service.approveC1(1L, PheDuyetRequest.builder()
                 .quyetDinh("APPROVED")
-                .nguoiPheDuyet("Truong Phong")
                 .lyDo("Phe cap 1")
-                .build());
+                .build(), "Truong Phong");
         assertThat(r.getTrangThai()).isEqualTo("UNDER_REVIEW");
         assertThat(r.getCapPheDuyet()).isEqualTo(1);
     }
@@ -177,9 +176,8 @@ class DeKeServiceTest {
         when(pheDuyetLichSuRepo.save(any())).thenReturn(hist);
         PheDuyetResponse r = service.approveC1(1L, PheDuyetRequest.builder()
                 .quyetDinh("REJECTED")
-                .nguoiPheDuyet("Truong Phong")
                 .lyDo("Tu choi cap 1")
-                .build());
+                .build(), "Truong Phong");
         assertThat(r.getTrangThai()).isEqualTo("REJECTED");
     }
 
@@ -190,15 +188,14 @@ class DeKeServiceTest {
         when(pheDuyetLichSuRepo.save(any())).thenReturn(hist);
         PheDuyetResponse r = service.approveC1(1L, PheDuyetRequest.builder()
                 .quyetDinh("APPROVED")
-                .nguoiPheDuyet("Truong Phong")
                 .lyDo("Phe cap 1")
-                .build());
+                .build(), "Truong Phong");
         assertThat(r.getTrangThai()).isEqualTo("UNDER_REVIEW");
     }
 
     @Test void approveC1_shouldThrowWhenNotFound() {
         when(repo.findById(99L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.approveC1(99L, PheDuyetRequest.builder().build()))
+        assertThatThrownBy(() -> service.approveC1(99L, PheDuyetRequest.builder().build(), "system"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -211,9 +208,8 @@ class DeKeServiceTest {
         when(pheDuyetLichSuRepo.save(any())).thenReturn(hist);
         PheDuyetResponse r = service.approveC2(1L, PheDuyetRequest.builder()
                 .quyetDinh("APPROVED")
-                .nguoiPheDuyet("Giam Doc")
                 .lyDo("Phe cap 2")
-                .build());
+                .build(), "Giam Doc");
         assertThat(r.getTrangThai()).isEqualTo("APPROVED");
         assertThat(r.getCapPheDuyet()).isEqualTo(2);
     }
@@ -225,23 +221,22 @@ class DeKeServiceTest {
         when(pheDuyetLichSuRepo.save(any())).thenReturn(hist);
         PheDuyetResponse r = service.approveC2(1L, PheDuyetRequest.builder()
                 .quyetDinh("REJECTED")
-                .nguoiPheDuyet("Giam Doc")
                 .lyDo("Tu choi cap 2")
-                .build());
+                .build(), "Giam Doc");
         assertThat(r.getTrangThai()).isEqualTo("REJECTED");
     }
 
     @Test void approveC2_shouldThrowWhenNotUnderReview() {
         testEntity.setTrangThaiPheDuyet(DeKeApprovalStatus.PROPOSED);
         when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
-        assertThatThrownBy(() -> service.approveC2(1L, PheDuyetRequest.builder().build()))
+        assertThatThrownBy(() -> service.approveC2(1L, PheDuyetRequest.builder().build(), "system"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("UNDER_REVIEW");
     }
 
     @Test void approveC2_shouldThrowWhenNotFound() {
         when(repo.findById(99L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.approveC2(99L, PheDuyetRequest.builder().build()))
+        assertThatThrownBy(() -> service.approveC2(99L, PheDuyetRequest.builder().build(), "system"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -251,8 +246,7 @@ class DeKeServiceTest {
         when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
         assertThatThrownBy(() -> service.approveC2(1L, PheDuyetRequest.builder()
                 .quyetDinh("APPROVED")
-                .nguoiPheDuyet("user1")
-                .build()))
+                .build(), "user1"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Nguoi phe duyet C2 khong duoc trung");
     }
@@ -267,16 +261,15 @@ class DeKeServiceTest {
         PheDuyetResponse r = service.reject(1L, PheDuyetRequest.builder()
                 .capPheDuyet(2)
                 .quyetDinh("REJECTED")
-                .nguoiPheDuyet("Giam Doc")
                 .lyDo("Tu choi")
-                .build());
+                .build(), "Giam Doc");
         assertThat(r.getTrangThai()).isEqualTo("REJECTED");
         assertThat(r.getCapPheDuyet()).isEqualTo(2);
     }
 
     @Test void reject_shouldThrowWhenNotFound() {
         when(repo.findById(99L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.reject(99L, PheDuyetRequest.builder().build()))
+        assertThatThrownBy(() -> service.reject(99L, PheDuyetRequest.builder().build(), "system"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

@@ -56,6 +56,12 @@ public class VanBanPhapLy {
     @Column(name = "tinh_trang_hieu_luc", length = 30)
     private TinhTrangHieuLuc tinhTrangHieuLuc;
 
+    @Column(name = "nguoi_ky", length = 100)
+    private String nguoiKy;
+
+    @Column(name = "mo_ta", length = 500)
+    private String moTa;
+
     @Column(name = "nguoi_tao", length = 100)
     private String nguoiTao;
 

@@ -13,6 +13,7 @@ import {
   Popconfirm,
   Table,
   Empty,
+  TimePicker,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -27,6 +28,7 @@ import { luongHangHaiCRUD } from '../../services/luongHangHaiService';
 import type { LuongHangHaiResponse, ListParams } from '../../types/luongHangHai';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import LuongHangHaiForm from './LuongHangHaiForm';
 
 const APPROVAL_STATUS_OPTIONS = [
   { label: 'Chờ duyệt', value: 'PROPOSED' },
@@ -41,13 +43,16 @@ export default function LuongHangHaiList() {
   const userPermissions = currentUser?.permissions || [];
 
   const [filterKeyword, setFilterKeyword] = useState('');
-  const [filterGioDien, setFilterGioDien] = useState<string | undefined>();
+  const [filterGioDien, setFilterGioDien] = useState<dayjs.Dayjs | null>(null);
   const [filterTaiTrong, setFilterTaiTrong] = useState<number | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<LuongHangHaiResponse[]>([]);
   const [total, setTotal] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -60,7 +65,7 @@ export default function LuongHangHaiList() {
         page: page - 1,
         size: pageSize,
         keyword: filterKeyword || undefined,
-        gioDien: filterGioDien,
+        gioDien: filterGioDien ? filterGioDien.format('HH:mm') : undefined,
         taiTrong: filterTaiTrong,
         trangThaiPheDuyet: filterStatus as any,
       };
@@ -81,7 +86,7 @@ export default function LuongHangHaiList() {
 
   const handleReset = useCallback(() => {
     setFilterKeyword('');
-    setFilterGioDien(undefined);
+    setFilterGioDien(null);
     setFilterTaiTrong(undefined);
     setFilterStatus(undefined);
     setPage(1);
@@ -167,20 +172,20 @@ export default function LuongHangHaiList() {
                 type="link"
                 size="small"
                 icon={<EyeOutlined />}
-                onClick={() => navigate(`/luong-hang-hai/${record.id}`)}
-              >
-                Xem
-              </Button>
+                onClick={() => { setEditingId(String(record.id)); setModalMode('detail'); setIsModalOpen(true); }}
+                title="Xem chi tiết"
+                aria-label="Xem chi tiết"
+              />
             )}
             {canUpdate && isProposed && (
               <Button
                 type="link"
                 size="small"
                 icon={<EditOutlined />}
-                onClick={() => navigate(`/luong-hang-hai/${record.id}?mode=edit`)}
-              >
-                Sửa
-              </Button>
+                onClick={() => { setEditingId(String(record.id)); setModalMode('edit'); setIsModalOpen(true); }}
+                title="Chỉnh sửa"
+                aria-label="Chỉnh sửa"
+              />
             )}
             {canDelete && isApproved && (
               <Popconfirm
@@ -190,9 +195,7 @@ export default function LuongHangHaiList() {
                 okText="Xóa"
                 cancelText="Hủy"
               >
-                <Button type="link" danger size="small" icon={<DeleteOutlined />}>
-                  Xóa
-                </Button>
+                <Button type="link" danger size="small" icon={<DeleteOutlined />} title="Xóa" aria-label="Xóa" />
               </Popconfirm>
             )}
           </Space>
@@ -216,10 +219,11 @@ export default function LuongHangHaiList() {
                 onChange={(e) => setFilterKeyword(e.target.value)}
                 style={{ width: 200 }}
               />
-              <Input
+              <TimePicker
                 placeholder="Giờ điện"
-                value={filterGioDien || ''}
-                onChange={(e) => setFilterGioDien(e.target.value || undefined)}
+                format="HH:mm"
+                value={filterGioDien}
+                onChange={(val) => { setFilterGioDien(val); setPage(1); }}
                 allowClear
                 style={{ width: 150 }}
               />
@@ -246,7 +250,7 @@ export default function LuongHangHaiList() {
               <Tooltip title="Tải lại">
                 <Button icon={<ReloadOutlined />} onClick={fetchData} />
               </Tooltip>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/luong-hang-hai/create')}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingId(null); setModalMode('create'); setIsModalOpen(true); }}>
                 Thêm mới
               </Button>
             </Space>
@@ -288,6 +292,20 @@ export default function LuongHangHaiList() {
           />
         )}
       </Card>
+      <LuongHangHaiForm
+        open={isModalOpen}
+        editId={editingId}
+        mode={modalMode}
+        onCancel={() => {
+          setIsModalOpen(false);
+          setEditingId(null);
+        }}
+        onSuccess={() => {
+          setIsModalOpen(false);
+          setEditingId(null);
+          fetchData();
+        }}
+      />
     </>
   );
 }

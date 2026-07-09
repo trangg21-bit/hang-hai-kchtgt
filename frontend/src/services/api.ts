@@ -45,7 +45,10 @@ api.interceptors.response.use(
       friendlyMsg = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.';
     } else if (status === 400) {
       const serverMsg = error.response?.data?.message;
-      if (serverMsg === 'Account is locked') {
+      const validationData = error.response?.data?.data;
+      if (serverMsg === 'Validation failed' && validationData && typeof validationData === 'object') {
+        friendlyMsg = Object.values(validationData).join(', ');
+      } else if (serverMsg === 'Account is locked') {
         friendlyMsg = 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.';
       } else if (serverMsg?.startsWith('Account is locked until')) {
         friendlyMsg = 'Tài khoản của bạn đang tạm thời bị khóa. Vui lòng thử lại sau.';
@@ -111,7 +114,8 @@ api.interceptors.response.use(
         }
       }
     } else {
-      if (!isAuthRequest) {
+      // Do not auto-toast 400 validation errors to avoid double toasts (let the component catch block handle it)
+      if (!isAuthRequest && status !== 400) {
         showUniqueError(friendlyMsg);
       }
     }

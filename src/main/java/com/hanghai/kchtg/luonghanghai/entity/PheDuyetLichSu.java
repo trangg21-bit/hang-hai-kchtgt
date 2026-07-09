@@ -21,7 +21,7 @@ public class PheDuyetLichSu {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "luong_hang_hai_id", nullable = false)
+    @JoinColumn(name = "luong_hang_hai_id", nullable = true)
     private LuongHangHai luongHangHai;
 
     @Column(name = "cap_phe_duyet")

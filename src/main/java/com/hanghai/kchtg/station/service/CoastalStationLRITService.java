@@ -51,9 +51,8 @@ public class CoastalStationLRITService {
 
     public CoastalStationLRIT updateStation(UUID id, CoastalStationLRITUpdateRequest request) {
         CoastalStationLRIT entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("LRIT station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("LRIT station not found with id: " + id));
 
-        entity.setCode(request.getStationCode());
         entity.setName(request.getStationName());
         entity.setTerminalId(request.getTerminalId());
         entity.setImoNumber(request.getImoNumber());
@@ -82,7 +81,7 @@ public class CoastalStationLRITService {
 
     public void deleteStation(UUID id) {
         CoastalStationLRIT entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("LRIT station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("LRIT station not found with id: " + id));
 
         String stationCode = entity.getCode();
         entity.softDelete();
@@ -100,7 +99,7 @@ public class CoastalStationLRITService {
 
     public CoastalStationLRIT getStationById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("LRIT station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("LRIT station not found with id: " + id));
     }
 
     public List<CoastalStationLRIT> getAllStations() {
@@ -121,7 +120,7 @@ public class CoastalStationLRITService {
 
     public CoastalStationLRIT approveStation(UUID id, boolean approved, Long userId) {
         CoastalStationLRIT entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("LRIT station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("LRIT station not found with id: " + id));
 
         if (approved) {
             Integer currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel() : 0;
@@ -170,7 +169,7 @@ public class CoastalStationLRITService {
 
     public CoastalStationLRIT rejectStation(UUID id, String rejectionReason, Long userId) {
         CoastalStationLRIT entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("LRIT station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("LRIT station not found with id: " + id));
 
         entity.setApprovalStatus(StationApprovalStatus.PENDING);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
@@ -193,7 +192,7 @@ public class CoastalStationLRITService {
 
     public List<CoastalStationLRITHistoryResponse> getHistory(UUID id) {
         CoastalStationLRIT entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("LRIT station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("LRIT station not found with id: " + id));
         return historyService.getHistory(entity.getCode()).stream()
                 .map(h -> {
                     CoastalStationLRITHistoryResponse r = new CoastalStationLRITHistoryResponse();

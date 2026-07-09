@@ -1,0 +1,17 @@
+feature_id: F-081
+module_id: M-004
+slug: quan-ly-nha-tram-phao-cap-nhat
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: "src/main/java/com/hanghai/kchtg/nhatram/controller/NhaTramPhaoController.java"
+  consumers:
+    - "src/main/java/com/hanghai/kchtg/nhatram/service/NhaTramPhaoService.java"
+    - "src/main/java/com/hanghai/kchtg/nhatram/dto/phao/UpdateNhaTramPhaoRequest.java"
+    - "src/main/java/com/hanghai/kchtg/nhatram/dto/phao/NhaTramPhaoResponse.java"
+    - "src/main/java/com/hanghai/kchtg/nhatram/entity/NhaTramPhao.java"
+
+# Cross-cutting: features consumed by other modules
+consumed_by_modules: []

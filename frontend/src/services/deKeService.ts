@@ -31,6 +31,8 @@ export const dekeCRUD = {
         loaiDe: params?.loaiDe,
         tinhTrang: params?.tinhTrang,
         trangThaiPheDuyet: params?.trangThaiPheDuyet,
+        page: params?.page || 0,
+        size: params?.size || 20,
       },
     });
     const data = res.data || {};

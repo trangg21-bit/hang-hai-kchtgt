@@ -1,13 +1,14 @@
-import { Card, Row, Col, Typography, Space, Button, Statistic } from 'antd';
+import { Row, Col, Typography, Space } from 'antd';
 import {
-  CompassOutlined,
+  ContainerOutlined,
+  EnvironmentOutlined,
+  AimOutlined,
   UserOutlined,
-  SettingOutlined,
+  CompassOutlined,
   BarChartOutlined,
   ApiOutlined,
-  DashboardOutlined,
-  InfoCircleOutlined,
-  CheckCircleOutlined,
+  ThunderboltOutlined,
+  ArrowUpOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
@@ -27,261 +28,134 @@ export default function HomePage() {
     return 'Chào buổi tối';
   };
 
+  // KPI stats — dùng class .kpi-card từ theme chuẩn
+  const kpiStats = [
+    {
+      key: 'ports', label: 'CẢNG BIỂN', value: 48, delta: { text: '8.2%', up: true },
+      icon: <ContainerOutlined />, iconBg: 'var(--icon-bg-blue)', iconColor: 'var(--color-primary)',
+    },
+    {
+      key: 'beacons', label: 'ĐÈN BIỂN', value: 235, delta: { text: '5.1%', up: true },
+      icon: <AimOutlined />, iconBg: 'var(--icon-bg-green)', iconColor: 'var(--color-success)',
+    },
+    {
+      key: 'channels', label: 'LUỒNG HÀNG HẢI', value: 32, delta: { text: '2.3%', up: false },
+      icon: <EnvironmentOutlined />, iconBg: 'var(--icon-bg-orange)', iconColor: 'var(--color-warning)',
+    },
+    {
+      key: 'users', label: 'NGƯỜI DÙNG', value: 16, delta: { text: '12.5%', up: true },
+      icon: <UserOutlined />, iconBg: 'var(--icon-bg-purple)', iconColor: 'var(--color-info)',
+    },
+  ];
+
+  // Module feature cards — dùng class .feature-card từ theme chuẩn
+  const modules = [
+    {
+      key: 'gis', title: 'GIS & Bản đồ hàng hải',
+      desc: 'Tra cứu tọa độ, hải đồ S-57/S-63, lớp bản đồ, giấy phép S-63',
+      icon: <CompassOutlined />, perm: 'data:read', link: '/gis/map',
+      color: 'var(--color-primary)', iconBg: 'var(--icon-bg-blue)',
+    },
+    {
+      key: 'beacon', title: 'Báo hiệu hàng hải',
+      desc: 'Đèn biển, phao tiêu, nhà trạm, lịch sử thay đổi thiết bị báo hiệu',
+      icon: <AimOutlined />, perm: 'data:read', link: '/beacons',
+      color: 'var(--color-success)', iconBg: 'var(--icon-bg-green)',
+    },
+    {
+      key: 'port', title: 'Tài sản KCHTGT',
+      desc: 'Cảng biển, bến cảng, cầu cảng, cảng cạn, vùng nước',
+      icon: <ContainerOutlined />, perm: 'data:read', link: '/cangbien',
+      color: 'var(--color-warning)', iconBg: 'var(--icon-bg-orange)',
+    },
+    {
+      key: 'vts', title: 'Khu nước & VTS',
+      desc: 'Luồng, đê/kè, cơ sở sửa chữa, trạm radar, hệ thống VTS',
+      icon: <ThunderboltOutlined />, perm: 'data:read', link: '/luong-hang-hai',
+      color: 'var(--color-error)', iconBg: 'var(--icon-bg-red)',
+    },
+    {
+      key: 'reports', title: 'Báo cáo & Thống kê',
+      desc: '49 mẫu báo cáo KCHTGT, xuất PDF/Excel, lưu trữ lịch sử',
+      icon: <BarChartOutlined />, perm: 'report:read', link: '/reports',
+      color: 'var(--color-info)', iconBg: 'var(--icon-bg-purple)',
+    },
+    {
+      key: 'connect', title: 'Liên thông & Tích hợp',
+      desc: 'Kết nối LGSP, NDXP, dịch vụ công, giám sát trạng thái',
+      icon: <ApiOutlined />, perm: 'connection:read', link: '/connections',
+      color: 'var(--color-primary)', iconBg: 'var(--icon-bg-blue)',
+    },
+  ];
+
+  const visibleModules = modules.filter((m) => hasPerm(m.perm));
+
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '12px 0 24px 0' }}>
-      {/* Welcome Banner */}
-      <Card
-        style={{
-          background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
-          border: 'none',
-          borderRadius: 12,
-          color: '#fff',
-          padding: '24px 16px',
-          marginBottom: 24,
-          boxShadow: '0 4px 12px rgba(24, 144, 255, 0.25)',
-        }}
-      >
-        <Space direction="vertical" size="small">
-          <Title level={2} style={{ color: '#fff', margin: 0, fontWeight: 700 }}>
-            {getGreeting()}, {user?.fullName || 'Người dùng'}
-          </Title>
-          <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 16 }}>
-            Chào mừng bạn đến với Hệ thống Quản trị kết cấu hạ tầng giao thông đường thủy và hàng hải.
-          </Text>
-        </Space>
-      </Card>
+    <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+      {/* ===== Welcome ===== */}
+      <div style={{ marginBottom: 24 }}>
+        <Title level={3} style={{ marginBottom: 2, fontWeight: 700, letterSpacing: -0.3 }}>
+          {getGreeting()}, {user?.fullName || 'Người dùng'}
+        </Title>
+        <Text type="secondary" style={{ fontSize: 14 }}>
+          Hệ thống Quản trị kết cấu hạ tầng giao thông đường thủy và hàng hải
+        </Text>
+      </div>
 
-      {/* Grid of Main Modules */}
-      <Title level={4} style={{ marginBottom: 16 }}>Chức năng chính</Title>
-      
-      <Row gutter={[16, 16]}>
-        {/* GIS & Bản đồ */}
-        {hasPerm('data:read') && (
-          <Col xs={24} sm={12} md={8}>
-            <Card
-              hoverable
-              actions={[
-                <Button 
-                  type="primary" 
-                  icon={<CompassOutlined />} 
-                  onClick={() => navigate('/gis/map')}
-                  key="go"
-                >
-                  Xem Bản đồ
-                </Button>
-              ]}
-            >
-              <Card.Meta
-                avatar={<CompassOutlined style={{ fontSize: 32, color: '#1890ff' }} />}
-                title="GIS & Bản đồ hàng hải"
-                description="Tra cứu tọa độ, xem hải đồ điện tử S-57/S-63 và thông tin không gian hàng hải."
-              />
-              <div style={{ marginTop: 16 }}>
-                <Row gutter={8}>
-                  <Col span={8}>
-                    <Statistic title="Điểm" value={2540} valueStyle={{ fontSize: 16 }} />
-                  </Col>
-                  <Col span={8}>
-                    <Statistic title="Đường" value={120} valueStyle={{ fontSize: 16 }} />
-                  </Col>
-                  <Col span={8}>
-                    <Statistic title="Vùng" value={45} valueStyle={{ fontSize: 16 }} />
-                  </Col>
-                </Row>
+      {/* ===== KPI Cards ===== */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 32 }}>
+        {kpiStats.map((s) => (
+          <Col xs={24} sm={12} md={6} key={s.key}>
+            <div className="kpi-card" style={{ cursor: 'default' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                <div>
+                  <div className="kpi-card__label">{s.label}</div>
+                  <div className="kpi-card__value">{s.value.toLocaleString()}</div>
+                  {s.delta && (
+                    <div className={`kpi-card__delta ${s.delta.up ? 'kpi-card__delta--up' : 'kpi-card__delta--down'}`}>
+                      <ArrowUpOutlined style={{ fontSize: 10, transform: s.delta.up ? 'none' : 'rotate(180deg)' }} />
+                      {s.delta.text}
+                    </div>
+                  )}
+                </div>
+                <div className="kpi-card__icon-box" style={{ background: s.iconBg, color: s.iconColor, fontSize: 22 }}>
+                  {s.icon}
+                </div>
               </div>
-            </Card>
+            </div>
           </Col>
-        )}
-
-        {/* Thiết bị báo hiệu */}
-        {hasPerm('data:read') && (
-          <Col xs={24} sm={12} md={8}>
-            <Card
-              hoverable
-              actions={[
-                <Button 
-                  type="primary" 
-                  icon={<SettingOutlined />} 
-                  onClick={() => navigate('/beacons')}
-                  key="go"
-                >
-                  Xem Thiết bị
-                </Button>
-              ]}
-            >
-              <Card.Meta
-                avatar={<SettingOutlined style={{ fontSize: 32, color: '#52c41a' }} />}
-                title="Báo hiệu hàng hải"
-                description="Quản lý thông số kỹ thuật, lịch sử thay đổi của hệ thống phao tiêu và đèn hiệu."
-              />
-              <div style={{ marginTop: 16 }}>
-                <Row gutter={8}>
-                  <Col span={12}>
-                    <Statistic title="Đèn biển" value={85} valueStyle={{ fontSize: 16 }} />
-                  </Col>
-                  <Col span={12}>
-                    <Statistic title="Phao tiêu" value={150} valueStyle={{ fontSize: 16 }} />
-                  </Col>
-                </Row>
-              </div>
-            </Card>
-          </Col>
-        )}
-
-        {/* Quản trị đơn vị & người dùng */}
-        {(hasPerm('user:manage') || hasPerm('user:read')) && (
-          <Col xs={24} sm={12} md={8}>
-            <Card
-              hoverable
-              actions={[
-                <Button 
-                  type="primary" 
-                  icon={<UserOutlined />} 
-                  onClick={() => navigate('/users')}
-                  key="go"
-                >
-                  Quản lý tài khoản
-                </Button>
-              ]}
-            >
-              <Card.Meta
-                avatar={<UserOutlined style={{ fontSize: 32, color: '#722ed1' }} />}
-                title="Tài khoản & Đơn vị"
-                description="Quản lý danh sách tài khoản người dùng, đơn vị tổ chức và phân quyền hệ thống."
-              />
-              <div style={{ marginTop: 16 }}>
-                <Row gutter={8}>
-                  <Col span={12}>
-                    <Statistic title="Người dùng" value={16} valueStyle={{ fontSize: 16 }} />
-                  </Col>
-                  <Col span={12}>
-                    <Statistic title="Vai trò" value={8} valueStyle={{ fontSize: 16 }} />
-                  </Col>
-                </Row>
-              </div>
-            </Card>
-          </Col>
-        )}
-
-        {/* Liên thông & tích hợp */}
-        {hasPerm('connection:read') && (
-          <Col xs={24} sm={12} md={8}>
-            <Card
-              hoverable
-              actions={[
-                <Button 
-                  type="primary" 
-                  icon={<ApiOutlined />} 
-                  onClick={() => navigate('/connections')}
-                  key="go"
-                >
-                  Cấu hình kết nối
-                </Button>
-              ]}
-            >
-              <Card.Meta
-                avatar={<ApiOutlined style={{ fontSize: 32, color: '#fa8c16' }} />}
-                title="Liên thông dữ liệu"
-                description="Quản lý và giám sát trạng thái kết nối các cổng dịch vụ công, LGSP, NDXP."
-              />
-              <div style={{ marginTop: 16 }}>
-                <Row gutter={8}>
-                  <Col span={12}>
-                    <Statistic title="Kết nối" value="12/15" valueStyle={{ fontSize: 16 }} />
-                  </Col>
-                  <Col span={12}>
-                    <Statistic title="Trạng thái" value="Ổn định" valueStyle={{ fontSize: 16, color: '#52c41a' }} />
-                  </Col>
-                </Row>
-              </div>
-            </Card>
-          </Col>
-        )}
-
-        {/* Báo cáo thống kê */}
-        {hasPerm('report:read') && (
-          <Col xs={24} sm={12} md={8}>
-            <Card
-              hoverable
-              actions={[
-                <Button 
-                  type="primary" 
-                  icon={<BarChartOutlined />} 
-                  onClick={() => navigate('/reports')}
-                  key="go"
-                >
-                  Xem Báo cáo
-                </Button>
-              ]}
-            >
-              <Card.Meta
-                avatar={<BarChartOutlined style={{ fontSize: 32, color: '#eb2f96' }} />}
-                title="Báo cáo & Thống kê"
-                description="Xuất báo cáo kết cấu hạ tầng giao thông hàng hải, lưu giữ lịch sử kiểm tra định kỳ."
-              />
-              <div style={{ marginTop: 16 }}>
-                <Row gutter={8}>
-                  <Col span={12}>
-                    <Statistic title="Báo cáo mẫu" value={6} valueStyle={{ fontSize: 16 }} />
-                  </Col>
-                  <Col span={12}>
-                    <Statistic title="Xuất file" value="PDF/Excel" valueStyle={{ fontSize: 16 }} />
-                  </Col>
-                </Row>
-              </div>
-            </Card>
-          </Col>
-        )}
-
-        {/* Nhật ký hệ thống */}
-        {hasPerm('log:manage') && (
-          <Col xs={24} sm={12} md={8}>
-            <Card
-              hoverable
-              actions={[
-                <Button 
-                  type="primary" 
-                  icon={<DashboardOutlined />} 
-                  onClick={() => navigate('/logs')}
-                  key="go"
-                >
-                  Xem Nhật ký
-                </Button>
-              ]}
-            >
-              <Card.Meta
-                avatar={<DashboardOutlined style={{ fontSize: 32, color: '#2f54eb' }} />}
-                title="Nhật ký hệ thống"
-                description="Theo dõi hoạt động của người dùng, log đăng nhập, các thao tác chỉnh sửa hạ tầng."
-              />
-              <div style={{ marginTop: 16 }}>
-                <Row gutter={8}>
-                  <Col span={12}>
-                    <Statistic title="Mức độ log" value="DEBUG" valueStyle={{ fontSize: 16 }} />
-                  </Col>
-                  <Col span={12}>
-                    <Statistic title="Trạng thái" value="Đang ghi" valueStyle={{ fontSize: 16, color: '#52c41a' }} />
-                  </Col>
-                </Row>
-              </div>
-            </Card>
-          </Col>
-        )}
+        ))}
       </Row>
 
-      {/* Quick guide card */}
-      <Card style={{ marginTop: 24, borderRadius: 8 }}>
-        <Space size="middle" align="start">
-          <InfoCircleOutlined style={{ fontSize: 24, color: '#1890ff', marginTop: 4 }} />
-          <div>
-            <Title level={5} style={{ margin: 0 }}>Hướng dẫn nhanh</Title>
-            <Text type="secondary">
-              Sử dụng thanh menu bên trái để truy cập nhanh các chức năng tương ứng với quyền hạn của bạn. 
-              Nếu cần thêm quyền hạn truy cập thông tin, vui lòng liên hệ với Quản trị viên của Cục Hàng Hải.
-            </Text>
-          </div>
-        </Space>
-      </Card>
+      {/* ===== Section Title ===== */}
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Title level={4} style={{ margin: 0, fontWeight: 700 }}>
+          Chức năng chính
+        </Title>
+        <Text type="secondary" style={{ fontSize: 13 }}>{visibleModules.length} chức năng khả dụng</Text>
+      </div>
+
+      {/* ===== Feature Cards ===== */}
+      <Row gutter={[16, 16]}>
+        {visibleModules.map((m) => (
+          <Col xs={24} sm={12} lg={8} key={m.key}>
+            <div className="feature-card" onClick={() => navigate(m.link)}>
+              <div style={{ display: 'flex', gap: 14, marginBottom: 12 }}>
+                <div className="kpi-card__icon-box" style={{ background: m.iconBg, color: m.color, fontSize: 22, minWidth: 44 }}>
+                  {m.icon}
+                </div>
+                <div>
+                  <Text strong style={{ fontSize: 15, display: 'block', marginBottom: 4 }}>{m.title}</Text>
+                  <Text type="secondary" style={{ fontSize: 13, lineHeight: 1.5 }}>{m.desc}</Text>
+                </div>
+              </div>
+              <span className="feature-card__link" style={{ color: m.color }}>
+                Truy cập <ArrowUpOutlined style={{ fontSize: 10, transform: 'rotate(45deg)' }} />
+              </span>
+            </div>
+          </Col>
+        ))}
+      </Row>
     </div>
   );
 }

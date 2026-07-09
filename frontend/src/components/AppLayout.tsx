@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   Layout,
@@ -89,6 +89,8 @@ const pageTitles: Record<string, string> = {
   '/gis/permits': 'Giấy phép S-63',
   '/beacons': 'Đèn biển',
   '/buoys': 'Phao tiêu',
+  '/nhatram/den': 'Nhà trạm đèn biển',
+  '/nhatram/phao': 'Nhà trạm phao tiêu',
   '/history': 'Lịch sử thay đổi',
   '/cangbien': 'Cảng biển',
   '/bencang': 'Bến cảng',
@@ -104,18 +106,70 @@ const pageTitles: Record<string, string> = {
   '/reports': 'Báo cáo & Thống kê',
   '/settings': 'Cấu hình hệ thống',
   '/logs': 'Nhật ký hệ thống',
+  '/vanban/phaply': 'Văn bản pháp lý',
+  '/vanban/suco': 'Sự cố hàng hải',
+  '/vanban/quyhoach': 'Quy hoạch bến cảng',
+  '/station/coastal': 'Đài duyên hải VTS',
+  '/station/special': 'Đài vệ tinh Inmarsat',
+  '/asset/increase': 'Yêu cầu tăng tài sản',
+  '/asset/decrease': 'Yêu cầu giảm tài sản',
+  '/asset/inventory': 'Kiểm kê tài sản',
+  '/asset/exploitation': 'Khai thác tài sản',
 };
 
 export default function AppLayout() {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [siderWidth, setSiderWidth] = useState(256);
+  const [openKeys, setOpenKeys] = useState<string[]>([]);
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const screens = useBreakpoint();
   const { token } = theme.useToken();
+
+  // Match top-level section: extract first two path segments for GIS submenus
+  const pathSegments = location.pathname.split('/').filter(Boolean);
+  let selectedKey: string;
+  if (pathSegments[0] === 'gis') {
+    // For GIS, select the deepest valid key: /gis/points, /gis/lines, etc.
+    const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
+    selectedKey = deepKey;
+  } else if (pathSegments[0] === 'nhatram' || pathSegments[0] === 'vanban' || pathSegments[0] === 'station' || pathSegments[0] === 'asset') {
+    const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
+    selectedKey = deepKey;
+  } else if (pathSegments[0] === 'cangbien' || pathSegments[0] === 'bencang' || pathSegments[0] === 'caucang' || pathSegments[0] === 'cangcan' || pathSegments[0] === 'vungnuoc') {
+    selectedKey = '/' + pathSegments[0];
+  } else if (pathSegments[0] === 'luong-hang-hai' || pathSegments[0] === 'de-ke' || pathSegments[0] === 'co-so-sua-chua' || pathSegments[0] === 'tram-radar' || pathSegments[0] === 'he-thong-vts') {
+    selectedKey = '/' + pathSegments[0];
+  } else if (pathSegments[0] === 'reports') {
+    selectedKey = location.pathname;
+  } else {
+    selectedKey = '/' + pathSegments[0];
+  }
+
+  useEffect(() => {
+    if (selectedKey) {
+      if (selectedKey.startsWith('/nhatram') || selectedKey === '/beacons' || selectedKey === '/buoys' || selectedKey === '/history') {
+        setOpenKeys(['beacon']);
+      } else if (selectedKey.startsWith('/gis')) {
+        setOpenKeys(['gis']);
+      } else if (['/cangbien', '/bencang', '/caucang', '/cangcan', '/vungnuoc'].includes(selectedKey)) {
+        setOpenKeys(['cangben']);
+      } else if (selectedKey.startsWith('/asset')) {
+        setOpenKeys(['asset-movement']);
+      } else if (selectedKey.startsWith('/vanban')) {
+        setOpenKeys(['vanban-suco']);
+      } else if (['/luong-hang-hai', '/de-ke', '/co-so-sua-chua', '/tram-radar', '/he-thong-vts'].includes(selectedKey)) {
+        setOpenKeys(['khu-nuoc-vts']);
+      } else if (selectedKey.startsWith('/station')) {
+        setOpenKeys(['stations']);
+      } else if (selectedKey.startsWith('/reports')) {
+        setOpenKeys(['reports-parent', 'reports-chung', 'reports-kcht']);
+      }
+    }
+  }, [selectedKey]);
 
   const menuItems: MenuProps['items'] = [
     { key: '/', icon: <DashboardOutlined />, label: 'Trang chủ' },
@@ -148,6 +202,8 @@ export default function AppLayout() {
       children: [
         canAccessMenu('/beacons') ? { key: '/beacons', label: 'Đèn biển' } : null,
         canAccessMenu('/buoys') ? { key: '/buoys', label: 'Phao tiêu' } : null,
+        canAccessMenu('/nhatram/den') ? { key: '/nhatram/den', label: 'Nhà trạm đèn biển' } : null,
+        canAccessMenu('/nhatram/phao') ? { key: '/nhatram/phao', label: 'Nhà trạm phao tiêu' } : null,
         canAccessMenu('/history') ? { key: '/history', label: 'Lịch sử thay đổi' } : null,
       ].filter(Boolean),
     },
@@ -164,6 +220,27 @@ export default function AppLayout() {
         canAccessMenu('/vungnuoc') ? { key: '/vungnuoc', label: 'Vùng nước' } : null,
       ].filter(Boolean),
     },
+    {
+      key: 'asset-movement',
+      icon: <ContainerOutlined />,
+      label: 'Biến động tài sản',
+      children: [
+        canAccessMenu('/asset/increase') ? { key: '/asset/increase', label: 'Yêu cầu tăng tài sản' } : null,
+        canAccessMenu('/asset/decrease') ? { key: '/asset/decrease', label: 'Yêu cầu giảm tài sản' } : null,
+        canAccessMenu('/asset/inventory') ? { key: '/asset/inventory', label: 'Kiểm kê tài sản' } : null,
+        canAccessMenu('/asset/exploitation') ? { key: '/asset/exploitation', label: 'Khai thác tài sản' } : null,
+      ].filter(Boolean),
+    },
+    {
+      key: 'vanban-suco',
+      icon: <ContainerOutlined />,
+      label: 'Văn bản & Sự cố',
+      children: [
+        canAccessMenu('/vanban/phaply') ? { key: '/vanban/phaply', label: 'Văn bản pháp lý' } : null,
+        canAccessMenu('/vanban/suco') ? { key: '/vanban/suco', label: 'Sự cố hàng hải' } : null,
+        canAccessMenu('/vanban/quyhoach') ? { key: '/vanban/quyhoach', label: 'Quy hoạch bến cảng' } : null,
+      ].filter(Boolean),
+    },
     { type: 'divider' as const },
     {
       key: 'khu-nuoc-vts',
@@ -175,6 +252,15 @@ export default function AppLayout() {
         canAccessMenu('/co-so-sua-chua') ? { key: '/co-so-sua-chua', label: 'Cơ sở sửa chữa & đóng tàu' } : null,
         canAccessMenu('/tram-radar') ? { key: '/tram-radar', label: 'Trạm Radar' } : null,
         canAccessMenu('/he-thong-vts') ? { key: '/he-thong-vts', label: 'Hệ thống VTS' } : null,
+      ].filter(Boolean),
+    },
+    {
+      key: 'stations',
+      icon: <SettingOutlined />,
+      label: 'Đài duyên hải & Vệ tinh',
+      children: [
+        canAccessMenu('/station/coastal') ? { key: '/station/coastal', label: 'Đài duyên hải VTS' } : null,
+        canAccessMenu('/station/special') ? { key: '/station/special', label: 'Đài vệ tinh Inmarsat' } : null,
       ].filter(Boolean),
     },
     { type: 'divider' as const },
@@ -325,57 +411,59 @@ export default function AppLayout() {
     }
   };
 
-  // Match top-level section: extract first two path segments for GIS submenus
-  const pathSegments = location.pathname.split('/').filter(Boolean);
-  let selectedKey: string;
-  if (pathSegments[0] === 'gis') {
-    // For GIS, select the deepest valid key: /gis/points, /gis/lines, etc.
-    const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
-    selectedKey = deepKey;
-  } else if (pathSegments[0] === 'cangbien' || pathSegments[0] === 'bencang' || pathSegments[0] === 'caucang' || pathSegments[0] === 'cangcan' || pathSegments[0] === 'vungnuoc') {
-    selectedKey = '/' + pathSegments[0];
-  } else if (pathSegments[0] === 'luong-hang-hai' || pathSegments[0] === 'de-ke' || pathSegments[0] === 'co-so-sua-chua' || pathSegments[0] === 'tram-radar' || pathSegments[0] === 'he-thong-vts') {
-    selectedKey = '/' + pathSegments[0];
-  } else if (pathSegments[0] === 'reports') {
-    selectedKey = location.pathname;
-  } else {
-    selectedKey = '/' + pathSegments[0];
-  }
-
   const sidebarContent = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Logo area */}
       <div
         onClick={() => navigate('/')}
         style={{
-          height: 64,
+          height: 60,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          borderBottom: `1px solid ${token.colorBorderSecondary}`,
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
           padding: '0 16px',
-          gap: 8,
+          gap: 10,
           cursor: 'pointer',
         }}
       >
-        <TeamOutlined style={{ fontSize: 22, color: token.colorPrimary }} />
+        <img
+          src="/images/Logo_Cục_Hàng_hải_Việt_Nam.jpg"
+          alt="Cục Hàng hải Việt Nam"
+          style={{ width: 32, height: 25, objectFit: 'contain', flexShrink: 0 }}
+        />
         {!collapsed && (
-          <Typography.Text
-            strong
-            style={{
-              fontSize: 16,
-              whiteSpace: 'nowrap',
-              color: token.colorPrimary,
-            }}
-          >
-            Quản trị hệ thống
-          </Typography.Text>
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+            <Typography.Text
+              strong
+              style={{
+                fontSize: 12,
+                whiteSpace: 'nowrap',
+                color: '#fff',
+                letterSpacing: 0.5,
+              }}
+            >
+              CỤC HÀNG HẢI
+            </Typography.Text>
+            <Typography.Text
+              style={{
+                fontSize: 9,
+                whiteSpace: 'nowrap',
+                color: '#565674',
+                letterSpacing: 0.3,
+              }}
+            >
+              VIỆT NAM
+            </Typography.Text>
+          </div>
         )}
       </div>
 
       <Menu
         mode="inline"
         selectedKeys={[selectedKey]}
+        openKeys={openKeys}
+        onOpenChange={setOpenKeys}
         items={menuItems}
         onClick={handleMenuClick}
         style={{ borderInlineEnd: 'none', flex: 1, paddingTop: 8 }}
@@ -393,8 +481,7 @@ export default function AppLayout() {
           onCollapse={setCollapsed}
           width={siderWidth}
           style={{
-            background: token.colorBgContainer,
-            borderRight: `1px solid ${token.colorBorderSecondary}`,
+            borderRight: '1px solid rgba(255,255,255,0.06)',
             position: 'relative',
           }}
           breakpoint="lg"
@@ -449,13 +536,10 @@ export default function AppLayout() {
         {/* Header */}
         <Header
           style={{
-            background: token.colorBgContainer,
             padding: '0 24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            borderBottom: `1px solid ${token.colorBorderSecondary}`,
-            height: 64,
             position: 'sticky',
             top: 0,
             zIndex: 100,
@@ -506,8 +590,7 @@ export default function AppLayout() {
         <Content
           style={{
             padding: 24,
-            background: token.colorBgLayout,
-            minHeight: 'calc(100vh - 64px)',
+            minHeight: 'calc(100vh - 56px)',
             overflow: 'auto',
           }}
         >

@@ -26,6 +26,7 @@ import { heThongVTSCRUD } from '../../services/heThongVtsService';
 import type { HeThongVTSResponse, ListParams } from '../../types/heThongVts';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import HeThongVTSForm from './HeThongVTSForm';
 
 const APPROVAL_STATUS_OPTIONS = [
   { label: 'Chờ duyệt', value: 'PROPOSED' },
@@ -49,6 +50,9 @@ export default function HeThongVTSList() {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -183,10 +187,8 @@ export default function HeThongVTSList() {
                 icon={<EyeOutlined />}
                 title="Xem chi tiết"
                 aria-label="Xem chi tiết"
-                onClick={() => navigate(`/he-thong-vts/${record.id}`)}
-              >
-                Xem
-              </Button>
+                onClick={() => { setEditingId(String(record.id)); setModalMode('detail'); setIsModalOpen(true); }}
+              />
             )}
             {canUpdate && isProposed && (
               <Button
@@ -195,10 +197,8 @@ export default function HeThongVTSList() {
                 icon={<EditOutlined />}
                 title="Chỉnh sửa"
                 aria-label="Chỉnh sửa"
-                onClick={() => navigate(`/he-thong-vts/${record.id}?mode=edit`)}
-              >
-                Sửa
-              </Button>
+                onClick={() => { setEditingId(String(record.id)); setModalMode('edit'); setIsModalOpen(true); }}
+              />
             )}
             {canDelete && isApproved && (
               <Popconfirm
@@ -208,9 +208,7 @@ export default function HeThongVTSList() {
                 okText="Xóa"
                 cancelText="Hủy"
               >
-                <Button type="link" danger size="small" icon={<DeleteOutlined />} title="Xóa" aria-label="Xóa">
-                  Xóa
-                </Button>
+                <Button type="link" danger size="small" icon={<DeleteOutlined />} title="Xóa" aria-label="Xóa" />
               </Popconfirm>
             )}
           </Space>
@@ -261,7 +259,7 @@ export default function HeThongVTSList() {
               <Tooltip title="Tải lại">
                 <Button icon={<ReloadOutlined />} onClick={fetchData} />
               </Tooltip>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/he-thong-vts/create')}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingId(null); setModalMode('create'); setIsModalOpen(true); }}>
                 Thêm mới
               </Button>
             </Space>
@@ -303,6 +301,20 @@ export default function HeThongVTSList() {
           />
         )}
       </Card>
+      <HeThongVTSForm
+        open={isModalOpen}
+        editId={editingId}
+        mode={modalMode}
+        onCancel={() => {
+          setIsModalOpen(false);
+          setEditingId(null);
+        }}
+        onSuccess={() => {
+          setIsModalOpen(false);
+          setEditingId(null);
+          fetchData();
+        }}
+      />
     </>
   );
 }

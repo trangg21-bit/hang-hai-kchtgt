@@ -49,10 +49,9 @@ public class CoastalStationInmarsatService {
 
     public CoastalStationInmarsat updateStation(UUID id, CoastalStationInmarsatUpdateRequest request) {
         CoastalStationInmarsat entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Inmarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
 
         entity.setDeviceCode(request.getDeviceCode());
-        entity.setCode(request.getDeviceCode());
         entity.setName(request.getStationName());
         entity.setLatitude(request.getLatitude());
         entity.setLongitude(request.getLongitude());
@@ -78,7 +77,7 @@ public class CoastalStationInmarsatService {
 
     public void deleteStation(UUID id) {
         CoastalStationInmarsat entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Inmarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
 
         String deviceCode = entity.getDeviceCode();
         entity.softDelete();
@@ -96,7 +95,7 @@ public class CoastalStationInmarsatService {
 
     public CoastalStationInmarsat getStationById(UUID id) {
         return repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Inmarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
     }
 
     public List<CoastalStationInmarsat> getAllStations() {
@@ -113,7 +112,7 @@ public class CoastalStationInmarsatService {
 
     public CoastalStationInmarsat approveStation(UUID id, boolean approved, Long userId) {
         CoastalStationInmarsat entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Inmarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
 
         if (approved) {
             Integer currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel() : 0;
@@ -162,7 +161,7 @@ public class CoastalStationInmarsatService {
 
     public CoastalStationInmarsat rejectStation(UUID id, String rejectionReason, Long userId) {
         CoastalStationInmarsat entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Inmarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
 
         entity.setApprovalStatus(StationApprovalStatus.PENDING);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
@@ -185,7 +184,7 @@ public class CoastalStationInmarsatService {
 
     public List<CoastalStationInmarsatHistoryResponse> getHistory(UUID id) {
         CoastalStationInmarsat entity = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Inmarsat station not found with id: " + id));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
         return historyService.getHistory(entity.getDeviceCode()).stream()
                 .map(h -> {
                     CoastalStationInmarsatHistoryResponse r = new CoastalStationInmarsatHistoryResponse();

@@ -30,29 +30,29 @@ public class CreateNhaTramDenRequest {
     @NotNull(message = "Loại đèn không được để trống")
     private BeaconLightType type;
 
-    @NotNull
-    @DecimalMin("-90.0")
-    @DecimalMax("90.0")
+    @NotNull(message = "Vĩ độ không được để trống")
+    @DecimalMin(value = "-90.0", message = "Vĩ độ phải lớn hơn hoặc bằng -90.0")
+    @DecimalMax(value = "90.0", message = "Vĩ độ phải nhỏ hơn hoặc bằng 90.0")
     private Double latitude;
 
-    @NotNull
-    @DecimalMin("-180.0")
-    @DecimalMax("180.0")
+    @NotNull(message = "Kinh độ không được để trống")
+    @DecimalMin(value = "-180.0", message = "Kinh độ phải lớn hơn hoặc bằng -180.0")
+    @DecimalMax(value = "180.0", message = "Kinh độ phải nhỏ hơn hoặc bằng 180.0")
     private Double longitude;
 
-    @NotNull
-    @DecimalMin("0.01")
-    @DecimalMax("60.0")
+    @NotNull(message = "Tầm hiệu lực ánh sáng không được để trống")
+    @DecimalMin(value = "0.01", message = "Tầm hiệu lực ánh sáng phải lớn hơn hoặc bằng 0.01 hải lý")
+    @DecimalMax(value = "60.0", message = "Tầm hiệu lực ánh sáng phải nhỏ hơn hoặc bằng 60.0 hải lý")
     private Double lightRange;
 
-    @Size(max = 50)
+    @Size(max = 50, message = "Màu ánh sáng không được vượt quá 50 ký tự")
     private String lightColor;
 
-    @Size(max = 100)
+    @Size(max = 100, message = "Đặc tính ánh sáng không được vượt quá 100 ký tự")
     private String lightCharacteristic;
 
-    @DecimalMin("0.01")
-    @DecimalMax("100.0")
+    @DecimalMin(value = "0.01", message = "Tầm nhìn xa phải lớn hơn hoặc bằng 0.01 hải lý")
+    @DecimalMax(value = "100.0", message = "Tầm nhìn xa phải nhỏ hơn hoặc bằng 100.0 hải lý")
     private Double range;
 
     @Size(max = 1000)
