@@ -38,6 +38,9 @@ public class ChartIntegrationService {
      */
     @Transactional
     public ChartCell importS57(byte[] fileBytes, String filename) throws IOException {
+        if (filename != null && filename.toLowerCase().endsWith(".json")) {
+            return importJsonChart(fileBytes, filename);
+        }
         S57Parser.ParsedCellData parsedData = s57Parser.parse(fileBytes, filename);
 
         // Save cell metadata
@@ -72,6 +75,58 @@ public class ChartIntegrationService {
         }
 
         // Automatically create or update a corresponding MapLayer entry
+        syncToMapLayers(savedCell);
+
+        return savedCell;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Transactional
+    public ChartCell importJsonChart(byte[] fileBytes, String filename) throws IOException {
+        Map<String, Object> data = objectMapper.readValue(fileBytes, Map.class);
+        String cellName = (String) data.get("cellName");
+
+        ChartCell cell = cellRepository.findByCellName(cellName)
+                .orElse(new ChartCell());
+        cell.setCellName(cellName);
+        cell.setProducer((String) data.get("producer"));
+        cell.setEdition((Integer) data.get("edition"));
+        cell.setScale((Integer) data.get("scale"));
+        cell.setUpdateNumber((Integer) data.get("updateNumber"));
+
+        String releaseDateStr = (String) data.get("releaseDate");
+        if (releaseDateStr != null) {
+            cell.setReleaseDate(java.time.LocalDate.parse(releaseDateStr));
+        }
+
+        cell.setIsEncrypted(false);
+        cell.setStatus(ChartCell.Status.ACTIVE);
+
+        cell.setLatitude(((Number) data.get("latitude")).doubleValue());
+        cell.setLongitude(((Number) data.get("longitude")).doubleValue());
+
+        ChartCell savedCell = cellRepository.save(cell);
+
+        List<ChartFeature> oldFeatures = featureRepository.findByCellId(savedCell.getId());
+        if (!oldFeatures.isEmpty()) {
+            featureRepository.deleteAll(oldFeatures);
+        }
+
+        List<Map<String, Object>> featuresList = (List<Map<String, Object>>) data.get("features");
+        if (featuresList != null) {
+            for (Map<String, Object> fMap : featuresList) {
+                ChartFeature feature = ChartFeature.builder()
+                        .cellId(savedCell.getId())
+                        .featureCode((String) fMap.get("featureCode"))
+                        .geometryType(ChartFeature.GeometryType.valueOf((String) fMap.get("geometryType")))
+                        .featureName((String) fMap.get("featureName"))
+                        .coordinates((String) fMap.get("coordinates"))
+                        .attributesJson((String) fMap.get("attributesJson"))
+                        .build();
+                featureRepository.save(feature);
+            }
+        }
+
         syncToMapLayers(savedCell);
 
         return savedCell;
