@@ -19,7 +19,8 @@ import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 /**
  * Automatically seeds the database with the electronic chart cell (.000) files
- * located in classpath:charts/ on application startup if they do not already exist.
+ * located in classpath:charts/ on application startup if they do not already
+ * exist.
  */
 @Component
 @RequiredArgsConstructor
@@ -39,10 +40,6 @@ public class ChartSeeder implements CommandLineRunner {
         var definition = new DefaultTransactionDefinition();
         var txStatus = transactionManager.getTransaction(definition);
 
-        // Clear database records to force a clean re-import with the new S-57 acronym mappings
-        featureRepository.deleteAll();
-        cellRepository.deleteAll();
-
         ResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         Resource[] resources;
         try {
@@ -57,7 +54,8 @@ public class ChartSeeder implements CommandLineRunner {
             return;
         }
 
-        log.info("Tìm thấy {} tệp hải đồ (.json) trong classpath. Bắt đầu đối chiếu với cơ sở dữ liệu...", resources.length);
+        log.info("Tìm thấy {} tệp hải đồ (.json) trong classpath. Bắt đầu đối chiếu với cơ sở dữ liệu...",
+                resources.length);
 
         int importedCount = 0;
         int skippedCount = 0;
@@ -71,7 +69,8 @@ public class ChartSeeder implements CommandLineRunner {
             String cellName = filename.toUpperCase().replace(".JSON", "");
 
             // Check if this cell is already imported with actual S-57 features
-            java.util.Optional<com.hanghai.kchtg.gis.entity.ChartCell> existingCell = cellRepository.findByCellName(cellName);
+            java.util.Optional<com.hanghai.kchtg.gis.entity.ChartCell> existingCell = cellRepository
+                    .findByCellName(cellName);
             if (existingCell.isPresent() && featureRepository.existsByCellId(existingCell.get().getId())) {
                 skippedCount++;
                 continue;
@@ -99,4 +98,3 @@ public class ChartSeeder implements CommandLineRunner {
                 importedCount, skippedCount);
     }
 }
-
