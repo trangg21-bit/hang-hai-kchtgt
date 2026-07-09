@@ -187,7 +187,7 @@ export default function LuongHangHaiForm() {
 
   const breadcrumbs = [
     { title: 'Trang chủ', onClick: () => navigate('/') },
-    { title: 'Luồng hàng hải', onClick: () => navigate('/luong-hang-hai') },
+    { title: 'Lượng hàng hải', onClick: () => navigate('/luong-hang-hai') },
     { title: isCreateMode ? 'Tạo mới' : isEditMode ? 'Chỉnh sửa' : 'Chi tiết' },
   ];
 

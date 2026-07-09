@@ -605,7 +605,42 @@ export default function ReportViewer() {
             }
             style={{ minHeight: 380 }}
           >
-            {loadingPreview ? (
+            {['F-151', 'F-152', 'F-153', 'F-154', 'F-155', 'F-156', 'F-157', 'F-158', 'F-159', 'F-160'].includes(reportCode) ? (
+              <div style={{ padding: '10px 0' }}>
+                <Alert
+                  message="Lưu ý về nguồn dữ liệu báo cáo"
+                  description={
+                    reportCode === 'F-151' ? (
+                      <div>
+                        <p>Hệ thống hiện tại chưa cấu hình các bảng thực thể nghiệp vụ chi tiết cho từng loại kết cấu tuyến luồng như dự án gốc <strong>hh.csdl</strong> (ví dụ: các trường độ sâu thiết kế, mái dốc, tĩnh không, trạm quản lý,...).</p>
+                        <p>Toàn bộ thông tin tuyến luồng hàng hải hiện tại được lấy từ các đối tượng hình học dạng đường (<strong>LineObject</strong>) tại màn hình <strong>Đối tượng đường</strong> (<code>/gis/lines</code>) đã được chuẩn hóa đúng từ <strong>"Luồng hàng hải"</strong> thành <strong>"Lượng hàng hải"</strong>.</p>
+                        <p>Do cấu trúc dữ liệu GIS hiện tại chỉ lưu trữ các trường cơ bản như tên, mã và chiều dài nên các thông số kỹ thuật chi tiết khác sẽ hiển thị trống trên báo cáo.</p>
+                      </div>
+                    ) : reportCode === 'F-155' ? (
+                      <div>
+                        <p>Hệ thống hiện tại chưa cấu hình đầy đủ các bảng thuộc tính hạ tầng kỹ thuật chi tiết của đèn biển như dự án gốc <strong>hh.csdl</strong> (ví dụ: các trường hình dáng, kết cấu, chiều cao tháp đèn, chiều cao tâm sáng, chủng loại thiết bị đèn chính/phụ,...).</p>
+                        <p>Toàn bộ dữ liệu đèn biển hiện tại được lấy từ bảng thực thể <strong>Nhà trạm đèn biển</strong> (<code>nha_tram_den</code>) tại màn hình <strong>Nhà trạm đèn biển</strong> (<code>/nhatram/den</code>).</p>
+                        <p>Do cấu trúc dữ liệu hiện tại chỉ lưu trữ các trường cơ bản (tên, mã, tầm hiệu lực ánh sáng, màu sắc ánh sáng, ngày bảo trì) nên các thông số kỹ thuật chi tiết khác sẽ hiển thị trống trên báo cáo.</p>
+                      </div>
+                    ) : ['F-156', 'F-157', 'F-158', 'F-159', 'F-160'].includes(reportCode) ? (
+                      <div>
+                        <p>Hệ thống hiện tại chưa cấu hình các bảng thực thể nghiệp vụ chi tiết cho nhóm hạ tầng kỹ thuật tương ứng như phao tiêu báo hiệu, trạm VTS, đài thông tin duyên hải, hay công trình đê kè như dự án gốc <strong>hh.csdl</strong>.</p>
+                        <p>Toàn bộ thông tin hạ tầng này hiện tại được lấy từ các đối tượng hình học dạng điểm (<strong>PointObject</strong>) tại màn hình <strong>Đối tượng điểm</strong> (<code>/gis/points</code>).</p>
+                        <p>Do cấu trúc dữ liệu GIS hiện tại chỉ lưu trữ các trường tọa độ cơ bản, tên và mã nên các thông số kỹ thuật chi tiết khác sẽ hiển thị trống trên báo cáo.</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p>Hệ thống hiện tại chưa cấu hình các bảng thực thể nghiệp vụ chi tiết cho các vùng (neo đậu, quay trở, tránh trú bão,...) như dự án gốc <strong>hh.csdl</strong> (ví dụ: các trường kích thước hình dạng, độ sâu thiết kế, cỡ tàu thiết kế,...).</p>
+                        <p>Toàn bộ thông tin các vùng này hiện tại được lấy từ các đối tượng hình học dạng vùng (<strong>PolygonObject</strong>) tại màn hình <strong>Đối tượng vùng</strong> (<code>/gis/polygons</code>).</p>
+                        <p>Do cấu trúc dữ liệu GIS hiện tại chỉ lưu trữ các trường cơ bản như tên, mã và tọa độ đa giác nên các thông số kỹ thuật chi tiết khác sẽ hiển thị trống trên báo cáo.</p>
+                      </div>
+                    )
+                  }
+                  type="info"
+                  showIcon
+                />
+              </div>
+            ) : loadingPreview ? (
               <div style={{ padding: '60px 0', textAlign: 'center' }}>
                 <SearchOutlined spin style={{ fontSize: 28, color: '#1677ff', marginBottom: 16 }} />
                 <div>Đang tính toán số liệu thống kê...</div>
