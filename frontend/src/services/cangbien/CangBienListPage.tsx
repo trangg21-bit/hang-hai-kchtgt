@@ -315,6 +315,7 @@ export default function CangBienListPage() {
     {
       title: 'Tên cảng',
       dataIndex: 'tenCang',
+      width: 250,
       ellipsis: true,
       render: (text: string, record: CangBienResponse) => (
         <button
