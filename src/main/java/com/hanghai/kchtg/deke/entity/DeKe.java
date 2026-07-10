@@ -37,8 +37,8 @@ public class DeKe {
     @Column(name = "ghi_chu", length = 500)
     private String ghiChu;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "trang_thai_phe_duyet", nullable = false, length = 30)
+    @Column(name = "trang_thai_phe_duyet", nullable = false)
+    @Convert(converter = DeKeApprovalStatusConverter.class)
     private DeKeApprovalStatus trangThaiPheDuyet;
 
     @Column(name = "phe_duyet_c1", nullable = false)

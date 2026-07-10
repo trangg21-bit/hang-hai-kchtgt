@@ -3,6 +3,8 @@ package com.hanghai.kchtg.cangben.service;
 import com.hanghai.kchtg.cangben.dto.caucang.*;
 import com.hanghai.kchtg.cangben.entity.BenCang;
 import com.hanghai.kchtg.cangben.entity.CauCang;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import com.hanghai.kchtg.cangben.repository.BenCangRepository;
 import com.hanghai.kchtg.cangben.repository.CauCangRepository;
 import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
@@ -37,7 +39,7 @@ public class CauCangService {
         BenCang parent = benCangRepository.findById(request.getBenCangId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Bến cảng không tồn tại: " + request.getBenCangId()));
-        if (!"HIEN_HANH".equals(parent.getTrangThaiHoatDong())) {
+        if (parent.getTrangThaiHoatDong() != TrangThaiHoatDong.HIEN_HANH) {
             throw new IllegalArgumentException(
                     "Không thể tạo cầu cảng: bến cảng cha phải ở trạng thái hoạt động (HIEN_HANH)");
         }
@@ -46,8 +48,11 @@ public class CauCangService {
                 .maCau(request.getMaCau()).tenCau(request.getTenCau())
                 .benCangId(request.getBenCangId()).chieuDai(request.getChieuDai())
                 .taiTrong(request.getTaiTrong()).loaiCau(request.getLoaiCau())
+                .congNangKhaiThac(request.getCongNangKhaiThac())
                 .trangThaiHoatDong(request.getTrangThaiHoatDong())
-                .trangThaiPheDuyet("CHO_PHE_DUYET").build();
+                .orgUnitId(parent.getOrgUnitId())
+                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .bieuTuongId(request.getBieuTuongId()).build();
         CauCang saved = cauCangRepository.save(entity);
         log.info("Created CauCang [{}] code={}", saved.getId(), saved.getMaCau());
         return toResponse(saved);
@@ -61,9 +66,19 @@ public class CauCangService {
 
     @Transactional(readOnly = true)
     public Page<CauCangResponse> findAll(int page, int size, UUID orgUnitId) {
+        return findAll(page, size, orgUnitId, null, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CauCangResponse> findAll(int page, int size, UUID orgUnitId,
+            String search, UUID benCangId,
+            String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
-        return cauCangRepository.findAllActive(orgUnitId, pageable).map(this::toResponse);
+        TrangThaiHoatDong statusEnum = status != null ? TrangThaiHoatDong.fromString(status) : null;
+        TrangThaiPheDuyet approvalEnum = approvalStatus != null ? TrangThaiPheDuyet.fromString(approvalStatus) : null;
+        return cauCangRepository.searchCauCang(orgUnitId, search, benCangId, statusEnum, approvalEnum, pageable)
+                .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -79,19 +94,41 @@ public class CauCangService {
 
         // Capture pre-mutation snapshot (INT-003c)
         CauCang snapshot = CauCang.builder()
+                .maCau(entity.getMaCau())
                 .tenCau(entity.getTenCau()).benCangId(entity.getBenCangId())
                 .chieuDai(entity.getChieuDai()).taiTrong(entity.getTaiTrong())
-                .loaiCau(entity.getLoaiCau()).trangThaiHoatDong(entity.getTrangThaiHoatDong())
+                .loaiCau(entity.getLoaiCau()).congNangKhaiThac(entity.getCongNangKhaiThac())
+                .trangThaiHoatDong(entity.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
+                .orgUnitId(entity.getOrgUnitId())
+                .bieuTuongId(entity.getBieuTuongId())
                 .build();
 
-        if (request.getTenCau() != null) entity.setTenCau(request.getTenCau());
-        if (request.getBenCangId() != null) entity.setBenCangId(request.getBenCangId());
-        if (request.getChieuDai() != null) entity.setChieuDai(request.getChieuDai());
-        if (request.getTaiTrong() != null) entity.setTaiTrong(request.getTaiTrong());
-        if (request.getLoaiCau() != null) entity.setLoaiCau(request.getLoaiCau());
-        if (request.getTrangThaiHoatDong() != null) entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
-        entity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+        if (request.getTenCau() != null)
+            entity.setTenCau(request.getTenCau());
+        if (request.getBenCangId() != null) {
+            entity.setBenCangId(request.getBenCangId());
+            BenCang parent = benCangRepository.findById(request.getBenCangId())
+                    .orElseThrow(
+                            () -> new EntityNotFoundException("Bến cảng không tồn tại: " + request.getBenCangId()));
+            entity.setOrgUnitId(parent.getOrgUnitId());
+        } else if (entity.getOrgUnitId() == null && entity.getBenCangId() != null) {
+            benCangRepository.findById(entity.getBenCangId()).ifPresent(p -> {
+                entity.setOrgUnitId(p.getOrgUnitId());
+            });
+        }
+        if (request.getChieuDai() != null)
+            entity.setChieuDai(request.getChieuDai());
+        if (request.getTaiTrong() != null)
+            entity.setTaiTrong(request.getTaiTrong());
+        if (request.getLoaiCau() != null)
+            entity.setLoaiCau(request.getLoaiCau());
+        if (request.getCongNangKhaiThac() != null)
+            entity.setCongNangKhaiThac(request.getCongNangKhaiThac());
+        if (request.getTrangThaiHoatDong() != null)
+            entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
+        entity.setBieuTuongId(request.getBieuTuongId());
+        entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
         CauCang saved = cauCangRepository.save(entity);
 
@@ -116,7 +153,12 @@ public class CauCangService {
                 .id(e.getId()).maCau(e.getMaCau()).tenCau(e.getTenCau())
                 .benCangId(e.getBenCangId()).chieuDai(e.getChieuDai())
                 .taiTrong(e.getTaiTrong()).loaiCau(e.getLoaiCau())
+                .congNangKhaiThac(e.getCongNangKhaiThac())
                 .trangThaiHoatDong(e.getTrangThaiHoatDong()).trangThaiPheDuyet(e.getTrangThaiPheDuyet())
-                .orgUnitId(e.getOrgUnitId()).createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();
+                .orgUnitId(e.getOrgUnitId())
+                .bieuTuongId(e.getBieuTuongId())
+                .createdBy(e.getCreatedBy())
+                .updatedBy(e.getUpdatedBy())
+                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();
     }
 }

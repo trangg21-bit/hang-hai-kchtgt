@@ -46,7 +46,7 @@ class HeThongVTSControllerTest {
                 .id(1L)
                 .tenHeThong("VTS ABC")
                 .viTri("Hà Nội")
-                .trangThai("APPROVED")
+                .trangThai(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.APPROVED)
                 .build();
     }
 

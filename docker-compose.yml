@@ -1,36 +1,6 @@
-
 services:
-  postgres:
-    image: postgis/postgis:17-3.5
-    environment:
-      - POSTGRES_DB=${DB_NAME:-kchtg_m001}
-      - POSTGRES_USER=${DB_USER:-kchtg}
-      - POSTGRES_PASSWORD=${DB_PASS:-kchtg}
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    restart: always
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-kchtg} -d ${DB_NAME:-kchtg_m001}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    build:
-      context: .
-      dockerfile: Dockerfile.redis
-    ports:
-      - "6379:6379"
-    restart: always
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  backend:
+  vmd-csdl-v2:
+    image: registry.etc.vn/hang-hai-kchtgt-backend:latest
     build:
       context: .
       dockerfile: Dockerfile.backend
@@ -39,32 +9,40 @@ services:
       - JWT_SECRET=${JWT_SECRET:-Chuyen-Doi-So-2026-QuanTriHeThong-JWT-Secret-Key-256bit}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-Q3V0-Loc-2026-AES-256-Encryption-Key-B64}
       - REDIS_HOST=redis
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=${DB_NAME:-kchtg_m001}
-      - DB_USER=${DB_USER:-kchtg}
-      - DB_PASS=${DB_PASS:-kchtg}
+      - DB_HOST=${DB_HOST:-10.0.229.20}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-vmd_csdl_v2}
+      - DB_USER=${DB_USER:-vmd_mtis_geo}
+      - DB_PASS=${DB_PASS:-VmdMtisPostgis@123}
     ports:
       - "8080:8080"
     restart: always
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
 
+  redis:
+    image: registry.etc.vn/library/redis:8.0.2-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.redis
+    ports:
+      - "6379:6379"
+    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   frontend:
-    image: hang-hai-kchtgt-frontend:latest
+    image: registry.etc.vn/hang-hai-kchtgt-frontend:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
     ports:
       - "3001:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     restart: always
     depends_on:
-      backend:
-        condition: service_started
-    profiles:
-      - full
-
-volumes:
-  pgdata:
+      vmd-csdl-v2:
+        condition: service_healthy

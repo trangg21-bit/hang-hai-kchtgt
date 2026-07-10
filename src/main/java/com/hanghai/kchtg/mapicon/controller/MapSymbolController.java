@@ -4,6 +4,7 @@ import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.mapicon.dto.CreateMapSymbolRequest;
 import com.hanghai.kchtg.mapicon.dto.MapSymbolResponse;
 import com.hanghai.kchtg.mapicon.dto.UpdateMapSymbolRequest;
+import com.hanghai.kchtg.mapicon.entity.MapSymbolStatus;
 import com.hanghai.kchtg.mapicon.service.MapSymbolService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,12 +29,14 @@ public class MapSymbolController {
     @GetMapping
     public ResponseEntity<ApiResponse<Page<MapSymbolResponse>>> search(
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) String category,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        return ResponseEntity.ok(ApiResponse.success(service.search(search, category, status, pageable)));
+        MapSymbolStatus symbolStatus = (status != null && !status.trim().isEmpty())
+                ? MapSymbolStatus.fromString(status)
+                : null;
+        return ResponseEntity.ok(ApiResponse.success(service.search(search, symbolStatus, pageable)));
     }
 
     @GetMapping("/{id}")

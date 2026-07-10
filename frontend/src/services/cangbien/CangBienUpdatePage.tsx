@@ -6,6 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { fetchCangBienById, updateCangBien } from './api';
 import { TRANG_THAI_HOAT_DONG_OPTIONS } from './schema';
 import type { CangBienResponse } from './types';
+import { VIETNAM_PROVINCES } from '../../types/common';
 
 export default function CangBienUpdatePage() {
   const navigate = useNavigate();
@@ -135,9 +136,14 @@ export default function CangBienUpdatePage() {
               <Form.Item
                 label="Tỉnh/thành phố"
                 name="tinhThanhPho"
-                rules={[{ max: 100, message: 'Tỉnh/thành phố tối đa 100 ký tự' }]}
+                rules={[{ required: false }]}
               >
-                <Input placeholder="VD: Hải Phòng" maxLength={100} />
+                <Select
+                  showSearch
+                  placeholder="Chọn tỉnh/thành phố..."
+                  filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                  options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))}
+                />
               </Form.Item>
             </Col>
           </Row>

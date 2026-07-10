@@ -60,7 +60,7 @@ public class PolygonObject extends BaseEntity {
     private Long categoryId;
 
     @Column(name = "fill_symbol_id")
-    private Long fillSymbolId;
+    private java.util.UUID fillSymbolId;
 
     @Column(name = "coordinates", nullable = false, columnDefinition = "TEXT")
     private String coordinates;

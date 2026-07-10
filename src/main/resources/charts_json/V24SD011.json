@@ -1,0 +1,19 @@
+{
+  "cellName": "V24SD011",
+  "producer": "VMS-N",
+  "edition": 1,
+  "scale": 25000,
+  "updateNumber": 0,
+  "releaseDate": "2026-07-09",
+  "latitude": 10.570833350000001,
+  "longitude": 106.9020833,
+  "features": [
+    {
+      "featureCode": "M_COVR",
+      "geometryType": "POLYGON",
+      "featureName": "M_COVR",
+      "coordinates": "POLYGON((106.8708333 10.6, 106.9333333 10.6, 106.9333333 10.5416667, 106.8708333 10.5416667, 106.8708333 10.6))",
+      "attributesJson": "{\"RCID\":1,\"OBJL\":302,\"PRIM\":3,\"GRUP\":2,\"ATTL_18\":\"1\",\"AGEN\":1512,\"FIDN\":1748231927,\"FIDS\":1}"
+    }
+  ]
+}

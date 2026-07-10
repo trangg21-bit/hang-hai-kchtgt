@@ -47,6 +47,15 @@ public class LichSuThayDoiService {
             return List.of();
         }
 
+        String actualActor = changedBy;
+        if ("system".equals(changedBy) || changedBy == null || changedBy.trim().isEmpty()) {
+            org.springframework.security.core.Authentication auth =
+                    org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getName() != null && !"anonymousUser".equals(auth.getName())) {
+                actualActor = auth.getName();
+            }
+        }
+
         List<String> changedFields = new ArrayList<>();
         Class<?> clazz = oldEntity.getClass();
 
@@ -76,7 +85,7 @@ public class LichSuThayDoiService {
                             .fieldName(fieldName)
                             .oldValue(oldValueStr)
                             .newValue(newValueStr)
-                            .changedBy(changedBy)
+                            .changedBy(actualActor)
                             .changedAt(LocalDateTime.now())
                             .createdAt(LocalDateTime.now())
                             .build();
@@ -111,6 +120,15 @@ public class LichSuThayDoiService {
         }
         if (a instanceof List<?> la && b instanceof List<?> lb) {
             return la.equals(lb);
+        }
+        if (a instanceof Number && b instanceof Number) {
+            try {
+                java.math.BigDecimal da = new java.math.BigDecimal(a.toString());
+                java.math.BigDecimal db = new java.math.BigDecimal(b.toString());
+                return da.compareTo(db) == 0;
+            } catch (NumberFormatException e) {
+                return ((Number) a).doubleValue() == ((Number) b).doubleValue();
+            }
         }
         return a.equals(b);
     }

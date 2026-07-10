@@ -27,10 +27,12 @@ function parsePage<T>(res: any): { data: T[]; total: number; page: number; pageS
 export const vungNuocApi = {
   async list(params?: Partial<VungNuocFilters>) {
     const sp = new URLSearchParams();
-    // BE VungNuocController.findAll only accepts: page, size, orgUnitId, cangBienId
     if (params?.page !== undefined) sp.set("page", String((params.page ?? 1) - 1)); // 1-based → 0-based
     if (params?.pageSize !== undefined) sp.set("size", String(params.pageSize));
     if (params?.cangBienId) sp.set("cangBienId", params.cangBienId);
+    if (params?.search) sp.set("search", params.search);
+    if (params?.trangThaiHoatDong) sp.set("status", params.trangThaiHoatDong);
+    if (params?.trangThaiPheDuyet) sp.set("approvalStatus", params.trangThaiPheDuyet);
     const res = await api.get(`/v1/vung-nuoc?${sp}`);
     return parsePage<VungNuoc>(res);
   },

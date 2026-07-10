@@ -29,7 +29,7 @@ public class CoSuaChuaDongTauService {
                 .loaiCoSo(request.getLoaiCoSo())
                 .khaNang(request.getKhaNang())
                 .chuQuan(request.getChuQuan())
-                .trangThai("PROPOSED")
+                .trangThai(CoSuaChuaApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(false)
@@ -59,7 +59,7 @@ public class CoSuaChuaDongTauService {
     }
 
     public List<CoSuaChuaDongTauResponse> findAll(int page, int size) {
-        return repository.findByTrangThaiAndIsDeletedFalse("APPROVED").stream().map(this::toResponse).toList();
+        return repository.findByTrangThaiAndIsDeletedFalse(CoSuaChuaApprovalStatus.APPROVED).stream().map(this::toResponse).toList();
     }
 
     public CoSuaChuaDongTauResponse update(Long id, CoSuaChuaDongTauUpdateRequest request, String updatedBy) {
@@ -70,8 +70,8 @@ public class CoSuaChuaDongTauService {
             throw new RuntimeException("Không thể cập nhật bản ghi đã bị xóa với ID: " + id);
         }
 
-        if ("APPROVED".equals(entity.getTrangThai())) {
-            entity.setTrangThai("UNDER_REVIEW");
+        if (entity.getTrangThai() == CoSuaChuaApprovalStatus.APPROVED) {
+            entity.setTrangThai(CoSuaChuaApprovalStatus.UNDER_REVIEW);
         }
 
         if (request.getTenCoSo() != null) entity.setTenCoSo(request.getTenCoSo());
@@ -101,7 +101,7 @@ public class CoSuaChuaDongTauService {
         CoSuaChuaDongTau entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
-        if (!"APPROVED".equals(entity.getTrangThai())) {
+        if (entity.getTrangThai() != CoSuaChuaApprovalStatus.APPROVED) {
             throw new RuntimeException("Chỉ có thể xóa bản ghi đã được phê duyệt (APPROVED) với ID: " + id);
         }
 
@@ -124,15 +124,15 @@ public class CoSuaChuaDongTauService {
         CoSuaChuaDongTau entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
-        if (!"PROPOSED".equals(entity.getTrangThai())) {
+        if (entity.getTrangThai() != CoSuaChuaApprovalStatus.PROPOSED) {
             throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ duyệt (PROPOSED) với ID: " + id);
         }
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
-            entity.setTrangThai("REJECTED");
+            entity.setTrangThai(CoSuaChuaApprovalStatus.REJECTED);
             entity.setLyDoTuChoi(request.getLyDo());
         } else {
-            entity.setTrangThai("UNDER_REVIEW");
+            entity.setTrangThai(CoSuaChuaApprovalStatus.UNDER_REVIEW);
             entity.setPheDuyetC1(true);
             entity.setNguoiPheDuyetC1(approvedBy);
             entity.setNgayPheDuyetC1(LocalDateTime.now());
@@ -156,20 +156,20 @@ public class CoSuaChuaDongTauService {
         CoSuaChuaDongTau entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
-        if (!"UNDER_REVIEW".equals(entity.getTrangThai())) {
+        if (entity.getTrangThai() != CoSuaChuaApprovalStatus.UNDER_REVIEW) {
             throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Đang xem xét (UNDER_REVIEW) với ID: " + id);
         }
 
         String c1Actor = entity.getNguoiPheDuyetC1();
         if (c1Actor != null && c1Actor.equals(approvedBy) && !"admin".equals(approvedBy)) {
-            throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1");
+            throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1 (Nguoi phe duyet C2 khong duoc trung)");
         }
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
-            entity.setTrangThai("REJECTED");
+            entity.setTrangThai(CoSuaChuaApprovalStatus.REJECTED);
             entity.setLyDoTuChoi(request.getLyDo());
         } else {
-            entity.setTrangThai("APPROVED");
+            entity.setTrangThai(CoSuaChuaApprovalStatus.APPROVED);
             entity.setPheDuyetC2(true);
             entity.setNguoiPheDuyetC2(approvedBy);
             entity.setNgayPheDuyetC2(LocalDateTime.now());
@@ -204,9 +204,9 @@ public class CoSuaChuaDongTauService {
     public List<CoSuaChuaDongTauResponse> search(String keyword, String tinhThanh, String trangThai, String trangThaiPheDuyet) {
         String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
         String tinhThanhLike = (tinhThanh != null && !tinhThanh.trim().isEmpty()) ? "%" + tinhThanh.trim().toLowerCase() + "%" : null;
-        String trimmedTrangThai = (trangThai != null && !trangThai.trim().isEmpty()) ? trangThai.trim() : null;
-        String trimmedTrangThaiPheDuyet = (trangThaiPheDuyet != null && !trangThaiPheDuyet.trim().isEmpty()) ? trangThaiPheDuyet.trim() : null;
-        return repository.search(keywordLike, tinhThanhLike, trimmedTrangThai, trimmedTrangThaiPheDuyet).stream().map(this::toResponse).toList();
+        CoSuaChuaApprovalStatus statusEnum = (trangThai != null && !trangThai.trim().isEmpty()) ? CoSuaChuaApprovalStatus.fromString(trangThai) : null;
+        CoSuaChuaApprovalStatus statusPheDuyetEnum = (trangThaiPheDuyet != null && !trangThaiPheDuyet.trim().isEmpty()) ? CoSuaChuaApprovalStatus.fromString(trangThaiPheDuyet) : null;
+        return repository.search(keywordLike, tinhThanhLike, statusEnum, statusPheDuyetEnum).stream().map(this::toResponse).toList();
     }
 
     private CoSuaChuaDongTauResponse toResponse(CoSuaChuaDongTau entity) {

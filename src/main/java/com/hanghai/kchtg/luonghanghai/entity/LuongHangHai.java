@@ -17,7 +17,9 @@ public class LuongHangHai {
     @Column(name = "tai_trong", length = 100) private String taiTrong;
     @Column(name = "dien_tich_dang_bo", length = 100) private String dienTichDangBo;
     @Column(name = "ghi_chu", length = 500) private String ghiChu;
-    @Enumerated(EnumType.STRING) @Column(name = "trang_thai_phe_duyet", nullable = false, length = 30) private LuongHangHaiApprovalStatus approvalStatus;
+    @Column(name = "trang_thai_phe_duyet", nullable = false)
+    @Convert(converter = LuongHangHaiApprovalStatusConverter.class)
+    private LuongHangHaiApprovalStatus approvalStatus;
     @Column(name = "phe_duyet_c1", nullable = false) private Boolean pheDuyetC1;
     @Column(name = "nguoi_phe_duyet_c1", length = 100) private String nguoiPheDuyetC1;
     @Column(name = "ngay_phe_duyet_c1") private LocalDate ngayPheDuyetC1;

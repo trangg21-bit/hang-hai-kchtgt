@@ -36,7 +36,7 @@ public class HeThongVTSDataService {
                 .mucDoPhuTrach(request.getMucDoPhuTrach())
                 .nguonGoc(request.getNguonGoc())
                 .doiTac(request.getDoiTac())
-                .trangThai("PROPOSED")
+                .trangThai(HeThongVTSApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(false)
@@ -72,14 +72,15 @@ public class HeThongVTSDataService {
         String trimmedTinhTrang = (tinhTrang != null && !tinhTrang.trim().isEmpty()) ? tinhTrang.trim() : null;
         String trimmedTrangThai = (trangThai != null && !trangThai.trim().isEmpty()) ? trangThai.trim() : null;
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "ngayTao"));
-        return repository.search(keywordLike, trimmedTinhTrang, trimmedTrangThai, pageable).map(this::toResponse);
+        HeThongVTSApprovalStatus statusEnum = (trimmedTrangThai != null) ? HeThongVTSApprovalStatus.fromString(trimmedTrangThai) : null;
+        return repository.search(keywordLike, trimmedTinhTrang, statusEnum, pageable).map(this::toResponse);
     }
 
     public HeThongVTSResponse update(Long id, HeThongVTSUpdateRequest request, String username) {
         HeThongVTS entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
-        boolean wasApproved = "APPROVED".equals(entity.getTrangThai());
+        boolean wasApproved = entity.getTrangThai() == HeThongVTSApprovalStatus.APPROVED;
 
         if (request.getTenHeThong() != null) entity.setTenHeThong(request.getTenHeThong());
         if (request.getViTri() != null) entity.setViTri(request.getViTri());
@@ -91,7 +92,7 @@ public class HeThongVTSDataService {
         entity.setNguoiSuaDoi(username);
 
         if (wasApproved) {
-            entity.setTrangThai("UNDER_REVIEW");
+            entity.setTrangThai(HeThongVTSApprovalStatus.UNDER_REVIEW);
         }
 
         HeThongVTS saved = repository.save(entity);
@@ -111,7 +112,7 @@ public class HeThongVTSDataService {
         HeThongVTS entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
-        if (!"APPROVED".equals(entity.getTrangThai())) {
+        if (entity.getTrangThai() != HeThongVTSApprovalStatus.APPROVED) {
             throw new RuntimeException("Chỉ có thể xóa bản ghi đã được phê duyệt (APPROVED)");
         }
 
@@ -132,15 +133,15 @@ public class HeThongVTSDataService {
         HeThongVTS entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
-        if (!"PROPOSED".equals(entity.getTrangThai())) {
+        if (entity.getTrangThai() != HeThongVTSApprovalStatus.PROPOSED) {
             throw new RuntimeException("Chỉ có thể phê duyệt từ trạng thái Chờ duyệt (PROPOSED)");
         }
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
-            entity.setTrangThai("REJECTED");
+            entity.setTrangThai(HeThongVTSApprovalStatus.REJECTED);
             entity.setLyDoTuChoi(request.getLyDo());
         } else {
-            entity.setTrangThai("UNDER_REVIEW");
+            entity.setTrangThai(HeThongVTSApprovalStatus.UNDER_REVIEW);
         }
 
         entity.setPheDuyetC1(true);
@@ -164,20 +165,20 @@ public class HeThongVTSDataService {
         HeThongVTS entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
-        if (!"UNDER_REVIEW".equals(entity.getTrangThai())) {
+        if (entity.getTrangThai() != HeThongVTSApprovalStatus.UNDER_REVIEW) {
             throw new RuntimeException("Chỉ có thể phê duyệt từ trạng thái Đang xem xét (UNDER_REVIEW)");
         }
 
         String c1Actor = entity.getNguoiPheDuyetC1();
         if (c1Actor != null && c1Actor.equals(username) && !"admin".equals(username)) {
-            throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1");
+            throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1 (Nguoi phe duyet C2 khong duoc trung)");
         }
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
-            entity.setTrangThai("REJECTED");
+            entity.setTrangThai(HeThongVTSApprovalStatus.REJECTED);
             entity.setLyDoTuChoi(request.getLyDo());
         } else {
-            entity.setTrangThai("APPROVED");
+            entity.setTrangThai(HeThongVTSApprovalStatus.APPROVED);
         }
 
         entity.setPheDuyetC2(true);
@@ -217,7 +218,8 @@ public class HeThongVTSDataService {
         String trimmedTinhTrang = (tinhTrang != null && !tinhTrang.trim().isEmpty()) ? tinhTrang.trim() : null;
         String trimmedTrangThai = (trangThai != null && !trangThai.trim().isEmpty()) ? trangThai.trim() : null;
         Pageable pageable = PageRequest.of(0, 100);
-        Page<HeThongVTS> pageResult = repository.search(keywordLike, trimmedTinhTrang, trimmedTrangThai, pageable);
+        HeThongVTSApprovalStatus statusEnum = (trimmedTrangThai != null) ? HeThongVTSApprovalStatus.fromString(trimmedTrangThai) : null;
+        Page<HeThongVTS> pageResult = repository.search(keywordLike, trimmedTinhTrang, statusEnum, pageable);
         return pageResult.getContent().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());

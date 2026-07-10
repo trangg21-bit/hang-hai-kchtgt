@@ -60,10 +60,14 @@ public class VungNuocController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) UUID orgUnitId,
-            @RequestParam(required = false) UUID cangBienId) {
-        log.info("Listing VungNuoc: page={}, size={}, orgUnitId={}, cangBienId={}", page, size, orgUnitId, cangBienId);
+            @RequestParam(required = false) UUID cangBienId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String approvalStatus) {
+        log.info("Listing VungNuoc: page={}, size={}, orgUnitId={}, cangBienId={}, search={}, status={}, approvalStatus={}",
+                page, size, orgUnitId, cangBienId, search, status, approvalStatus);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách vùng nước thành công",
-                vungNuocService.findAll(page, size, orgUnitId, cangBienId)));
+                vungNuocService.findAll(page, size, orgUnitId, cangBienId, search, status, approvalStatus)));
     }
 
     @GetMapping("/code/{maVungNuoc}")

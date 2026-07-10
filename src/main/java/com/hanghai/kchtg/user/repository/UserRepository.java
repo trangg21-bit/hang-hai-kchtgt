@@ -57,7 +57,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      */
     @Query("SELECT DISTINCT u FROM User u "
             + "LEFT JOIN FETCH u.orgUnit "
-            + "LEFT JOIN FETCH u.groups")
+            + "LEFT JOIN FETCH u.groups "
+            + "LEFT JOIN FETCH u.roles")
     List<User> findAllWithRelations();
 
     /**
@@ -66,6 +67,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT u FROM User u "
             + "LEFT JOIN FETCH u.orgUnit "
             + "LEFT JOIN FETCH u.groups "
+            + "LEFT JOIN FETCH u.roles "
             + "WHERE u.id = :id")
     Optional<User> findByIdWithRelations(UUID id);
 
@@ -75,6 +77,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT u FROM User u "
             + "LEFT JOIN FETCH u.orgUnit "
             + "LEFT JOIN FETCH u.groups "
+            + "LEFT JOIN FETCH u.roles "
             + "WHERE u.username = :username")
     Optional<User> findByUsernameWithRelations(String username);
 

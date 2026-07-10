@@ -27,7 +27,9 @@ export const createSchema = z.object({
   chieuRong: z.coerce.number().optional().or(z.nan()),
   loaiBen: z.string().max(100, "Loại bến tối đa 100 ký tự").optional().or(z.literal("")),
   doSauLuong: z.coerce.number().optional().or(z.nan()),
+  congNangKhaiThac: z.string().optional().or(z.literal("")),
   trangThaiHoatDong: z.enum(["HIEN_HANH", "TAM_NGUNG"]).optional().default("HIEN_HANH"),
+  bieuTuongId: z.string().uuid().optional().or(z.literal("")),
 });
 
 export type CreateForm = z.infer<typeof createSchema>;
@@ -44,7 +46,9 @@ export const updateSchema = z.object({
   chieuRong: z.coerce.number().optional().or(z.nan()),
   loaiBen: z.string().max(100, "Loại bến tối đa 100 ký tự").optional().or(z.literal("")),
   doSauLuong: z.coerce.number().optional().or(z.nan()),
+  congNangKhaiThac: z.string().optional().or(z.literal("")),
   trangThaiHoatDong: z.enum(["HIEN_HANH", "TAM_NGUNG"]).optional(),
+  bieuTuongId: z.string().uuid().optional().nullable(),
 });
 
 export type UpdateForm = z.infer<typeof updateSchema>;

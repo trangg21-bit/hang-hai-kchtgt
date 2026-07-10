@@ -45,8 +45,9 @@ public class CoSuaChuaDongTau {
     @Column(name = "chu_quan", length = 255)
     private String chuQuan;
 
-    @Column(name = "trang_thai", nullable = false, length = 30)
-    private String trangThai;
+    @Column(name = "trang_thai", nullable = false)
+    @Convert(converter = CoSuaChuaApprovalStatusConverter.class)
+    private CoSuaChuaApprovalStatus trangThai;
 
     @Column(name = "phe_duyet_c1", nullable = false)
     @Builder.Default
@@ -96,7 +97,7 @@ public class CoSuaChuaDongTau {
     @PrePersist
     public void prePersist() {
         if (this.trangThai == null) {
-            this.trangThai = "PROPOSED";
+            this.trangThai = CoSuaChuaApprovalStatus.PROPOSED;
         }
         if (this.pheDuyetC1 == null) {
             this.pheDuyetC1 = false;

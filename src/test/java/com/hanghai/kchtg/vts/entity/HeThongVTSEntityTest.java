@@ -32,13 +32,13 @@ class HeThongVTSEntityTest {
         entity.setId(1L);
         entity.setTenHeThong("VTS ABC");
         entity.setViTri("Hà Nội");
-        entity.setTrangThai("APPROVED");
+        entity.setTrangThai(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.APPROVED);
         entity.setNguoiSuaDoi("admin");
         entity.setNgaySuaDoi(LocalDateTime.now());
 
         assertEquals(1L, entity.getId());
         assertEquals("VTS ABC", entity.getTenHeThong());
-        assertEquals("APPROVED", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.APPROVED, entity.getTrangThai());
         assertNotNull(entity.getNgaySuaDoi());
     }
 
@@ -65,10 +65,10 @@ class HeThongVTSEntityTest {
         assertNull(entity.getTrangThai());  // null before persist
         assertFalse(entity.getPheDuyetC1());
 
-        entity.setTrangThai("APPROVED");
+        entity.setTrangThai(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.APPROVED);
         entity.setPheDuyetC1(true);
         entity.setPheDuyetC2(true);
-        assertEquals("APPROVED", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.APPROVED, entity.getTrangThai());
 
         entity.setIsDeleted(true);
         assertTrue(entity.getIsDeleted());

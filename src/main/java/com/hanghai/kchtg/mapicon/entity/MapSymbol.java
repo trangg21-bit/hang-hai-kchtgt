@@ -31,22 +31,12 @@ public class MapSymbol extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @NotBlank(message = "Nhóm ký hiệu không được để trống")
-    @Column(nullable = false, length = 50)
-    private String category;
+    @NotBlank(message = "Hình ảnh không được để trống")
+    @Column(name = "hinh_anh", columnDefinition = "TEXT", nullable = false)
+    private String hinhAnh;
 
-    @NotBlank(message = "Icon không được để trống")
-    @Column(nullable = false, length = 50)
-    private String icon;
-
-    @Column(length = 20)
-    private String color;
-
-    @Column(name = "symbol_value", length = 50)
-    private String value;
-
-    @Column(nullable = false, length = 20)
-    private String status;
+    @Column(nullable = false)
+    private MapSymbolStatus status;
 
     @Column(name = "created_by", length = 50)
     private String createdBy;

@@ -1,0 +1,14 @@
+feature_id: F-121
+module_id: M-004
+slug: quan-ly-dai-tt-hang-hai-hn-lich-su
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: "src/main/java/com/hanghai/kchtg/station/controller/CoastalStationHaiphongController.java -> getHistory()"
+  consumers:
+    - "src/main/java/com/hanghai/kchtg/station/service/CoastalStationHaiphongService.java"
+
+# Cross-cutting: features consumed by multiple modules
+consumed_by_modules: []

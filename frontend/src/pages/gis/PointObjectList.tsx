@@ -42,6 +42,8 @@ import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
 import FormField from '../../components/FormField';
+import { symbolService } from '../../services/symbolService';
+import type { Symbol } from '../../services/symbolService';
 
 export default function PointObjectList() {
   const navigate = useNavigate();
@@ -62,6 +64,20 @@ export default function PointObjectList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<PointObject | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [symbols, setSymbols] = useState<Symbol[]>([]);
+
+  const fetchSymbols = useCallback(async () => {
+    try {
+      const res = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' });
+      setSymbols(res.data);
+    } catch (err) {
+      console.error('Failed to load symbols', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchSymbols();
+  }, [fetchSymbols]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -547,13 +563,15 @@ export default function PointObjectList() {
                 name="iconId"
                 label="Biểu tượng bản đồ"
                 placeholder="Tùy chọn biểu tượng"
-                options={[
-                  { label: 'Icon Cảng biển', value: 1 },
-                  { label: 'Icon Đèn biển', value: 2 },
-                  { label: 'Icon Phao tiêu', value: 3 },
-                  { label: 'Icon Đèn hiệu', value: 4 },
-                  { label: 'Icon Khác (Default)', value: 5 },
-                ]}
+                options={symbols.map(s => ({
+                  label: (
+                    <Space>
+                      {s.hinhAnh && <img src={s.hinhAnh} alt={s.name} style={{ width: 16, height: 16, objectFit: 'contain' }} />}
+                      <span>{s.name} ({s.code})</span>
+                    </Space>
+                  ),
+                  value: s.id
+                }))}
               />
             </Col>
           </Row>

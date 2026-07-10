@@ -59,9 +59,15 @@ public class CauCangController {
     public ResponseEntity<ApiResponse<Page<CauCangResponse>>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) UUID orgUnitId) {
+            @RequestParam(required = false) UUID orgUnitId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) UUID benCangId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String approvalStatus) {
+        log.info("Listing CauCang: page={}, size={}, orgUnitId={}, search={}, benCangId={}, status={}, approvalStatus={}",
+                page, size, orgUnitId, search, benCangId, status, approvalStatus);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cầu cảng thành công",
-                cauCangService.findAll(page, size, orgUnitId)));
+                cauCangService.findAll(page, size, orgUnitId, search, benCangId, status, approvalStatus)));
     }
 
     @GetMapping("/code/{maCau}")

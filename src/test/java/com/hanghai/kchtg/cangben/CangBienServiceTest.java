@@ -21,6 +21,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -66,8 +68,8 @@ class CangBienServiceTest {
         testEntity.setViDo(new BigDecimal("20.845"));
         testEntity.setKinhDo(new BigDecimal("106.688"));
         testEntity.setDienTich(new BigDecimal("5000.00"));
-        testEntity.setTrangThaiHoatDong("HIEN_HANH");
-        testEntity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+        testEntity.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
+        testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
     }
 
     // ── CREATE (F-008) ─────────────────────────────────────────────────────
@@ -90,7 +92,7 @@ class CangBienServiceTest {
         assertNotNull(result);
         assertEquals("CB-002", result.getMaCang());
         assertEquals("Cảng mới", result.getTenCang());
-        assertEquals("CHO_PHE_DUYET", result.getTrangThaiPheDuyet());
+        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getTrangThaiPheDuyet());
         verify(cangBienRepository).save(any(CangBien.class));
     }
 
@@ -133,23 +135,23 @@ class CangBienServiceTest {
     @DisplayName("F-012: findAll — pagination honored, defaults max 100")
     void findAll_paginationHonored() {
         Page<CangBien> mockPage = new PageImpl<>(List.of(testEntity));
-        when(cangBienRepository.findAllActive(isNull(), any(Pageable.class))).thenReturn(mockPage);
+        when(cangBienRepository.searchCangBien(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
 
         Page<CangBienResponse> result = service.findAll(0, 20, null);
 
         assertEquals(1, result.getTotalElements());
-        verify(cangBienRepository).findAllActive(isNull(), any(Pageable.class));
+        verify(cangBienRepository).searchCangBien(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
     }
 
     @Test
     @DisplayName("F-012: findAll — size capped at 100")
     void findAll_sizeCappedAt100() {
         Page<CangBien> mockPage = new PageImpl<>(List.of());
-        when(cangBienRepository.findAllActive(any(), any(Pageable.class))).thenReturn(mockPage);
+        when(cangBienRepository.searchCangBien(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
 
         service.findAll(0, 999, null);
 
-        verify(cangBienRepository).findAllActive(isNull(), argThat(p -> p.getPageSize() == 100));
+        verify(cangBienRepository).searchCangBien(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), argThat(p -> p.getPageSize() == 100));
     }
 
     // ── UPDATE (F-009) ─────────────────────────────────────────────────────
@@ -157,7 +159,7 @@ class CangBienServiceTest {
     @Test
     @DisplayName("F-009: update — applies mutable fields, resets approval to CHO_PHE_DUYET")
     void update_appliesMutableFields() {
-        testEntity.setTrangThaiPheDuyet("DUOC_PHE_DUYET"); // was approved
+        testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.DUOC_PHE_DUYET); // was approved
 
         when(cangBienRepository.findById(testId)).thenReturn(Optional.of(testEntity));
         when(cangBienRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -170,7 +172,7 @@ class CangBienServiceTest {
         CangBienResponse result = service.update(request);
 
         assertEquals("Cảng Đã Cập Nhật", result.getTenCang());
-        assertEquals("CHO_PHE_DUYET", result.getTrangThaiPheDuyet()); // reset
+        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getTrangThaiPheDuyet()); // reset
         assertEquals("CB-001", result.getMaCang()); // code unchanged
     }
 
@@ -259,7 +261,7 @@ class CangBienServiceTest {
         req.setViDo(viDo);
         req.setKinhDo(kinhDo);
         req.setDienTich(dienTich);
-        req.setTrangThaiHoatDong("HIEN_HANH");
+        req.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
         return req;
     }
 }

@@ -48,6 +48,7 @@ export const createSchema = z.object({
   khaNangTiepNhan: z.coerce.number().optional().or(z.nan()),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
   trangThaiPheDuyet: z.enum(['CHO_PHE_DUYET', 'DUOC_PHE_DUYET', 'TU_CHOI']).default('CHO_PHE_DUYET'),
+  bieuTuongId: z.string().uuid().optional().or(z.literal('')),
 }).refine(
   (data) => (data.viDo === undefined || Number.isNaN(data.viDo)) === (data.kinhDo === undefined || Number.isNaN(data.kinhDo)),
   {
@@ -70,6 +71,7 @@ export const updateSchema = z.object({
   dienTich: z.coerce.number().positive('Diện tích phải lớn hơn 0').optional().or(z.nan()),
   khaNangTiepNhan: z.coerce.number().optional().or(z.nan()),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
+  bieuTuongId: z.string().uuid().optional().nullable(),
 }).refine(
   (data) => (data.viDo === undefined || Number.isNaN(data.viDo)) === (data.kinhDo === undefined || Number.isNaN(data.kinhDo)),
   {
@@ -109,25 +111,48 @@ export type DeleteFormValues = z.infer<typeof deleteConfirmSchema>;
 // ── Badge / colour helpers ─
 
 export const trangThaiHoatDongBadge = (status: string): { color: string; label: string } => {
-  switch (status) {
-    case 'HIEN_HANH':
-      return { color: 'green', label: 'Hiện hành' };
-    case 'TAM_NGUNG':
-      return { color: 'orange', label: 'Tạm ngừng' };
-    default:
-      return { color: 'default', label: status };
+  const norm = String(status || '').normalize('NFC').toUpperCase().trim();
+  if (
+    norm === 'HIEN_HANH' ||
+    norm === 'HIỆN_HÀNH'.normalize('NFC').toUpperCase() ||
+    norm === 'ACTIVE' ||
+    norm === 'RUNNING'
+  ) {
+    return { color: 'green', label: 'Hiện hành' };
   }
+  if (
+    norm === 'TAM_NGUNG' ||
+    norm === 'TẠM_NGỪNG'.normalize('NFC').toUpperCase() ||
+    norm === 'INACTIVE' ||
+    norm === 'STOPPED'
+  ) {
+    return { color: 'orange', label: 'Tạm ngừng' };
+  }
+  return { color: 'default', label: status };
 };
 
 export const trangThaiPheDuyetBadge = (status: string): { color: string; label: string } => {
-  switch (status) {
-    case 'CHO_PHE_DUYET':
-      return { color: 'orange', label: 'Chờ phê duyệt' };
-    case 'DUOC_PHE_DUYET':
-      return { color: 'green', label: 'Được phê duyệt' };
-    case 'TU_CHOI':
-      return { color: 'red', label: 'Từ chối' };
-    default:
-      return { color: 'default', label: status };
+  const norm = String(status || '').normalize('NFC').toUpperCase().trim();
+  if (
+    norm === 'CHO_PHE_DUYET' ||
+    norm === 'PENDING' ||
+    norm === 'CHỜ_PHÊ_DUYỆT'.normalize('NFC').toUpperCase()
+  ) {
+    return { color: 'orange', label: 'Chờ phê duyệt' };
   }
+  if (
+    norm === 'DUOC_PHE_DUYET' ||
+    norm === 'APPROVED' ||
+    norm === 'ĐƯỢC_PHÊ_DUYỆT'.normalize('NFC').toUpperCase()
+  ) {
+    return { color: 'green', label: 'Được phê duyệt' };
+  }
+  if (
+    norm === 'TU_CHOI' ||
+    norm === 'REJECTED' ||
+    norm === 'TỪ_CHỐI'.normalize('NFC').toUpperCase()
+  ) {
+    return { color: 'red', label: 'Từ chối' };
+  }
+  return { color: 'default', label: status };
 };

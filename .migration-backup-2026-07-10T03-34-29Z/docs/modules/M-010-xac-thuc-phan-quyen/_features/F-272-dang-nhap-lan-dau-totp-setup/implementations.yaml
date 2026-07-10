@@ -1,0 +1,16 @@
+feature_id: F-272
+module_id: M-010
+slug: dang-nhap-lan-dau-totp-setup
+stage: done
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: "com.hanghai.kchtg.user.service.TotpSetupService"
+  consumers:
+    - "com.hanghai.kchtg.user.controller.TotpSetupController"
+    - "com.hanghai.kchtg.user.controller.AuthController"
+
+# Cross-cutting: features consumed by multiple modules
+consumed_by_modules: []

@@ -1,6 +1,10 @@
 package com.hanghai.kchtg.cangben.entity;
 
 import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDongConverter;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyetConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -46,12 +50,17 @@ public class CangCan extends BaseEntity {
     @Column(name = "cong_suat_teu", precision = 15, scale = 2)
     private BigDecimal congSuatTEU;
 
-    @Column(name = "trang_thai_hoat_dong", length = 50)
-    private String trangThaiHoatDong;
+    @Column(name = "trang_thai_hoat_dong")
+    @Convert(converter = TrangThaiHoatDongConverter.class)
+    private TrangThaiHoatDong trangThaiHoatDong;
 
-    @Column(name = "trang_thai_phe_duyet", nullable = false, length = 50)
-    private String trangThaiPheDuyet;
+    @Column(name = "trang_thai_phe_duyet", nullable = false)
+    @Convert(converter = TrangThaiPheDuyetConverter.class)
+    private TrangThaiPheDuyet trangThaiPheDuyet;
 
     @Column(name = "org_unit_id")
     private UUID orgUnitId;
+
+    @Column(name = "bieu_tuong_id")
+    private java.util.UUID bieuTuongId;
 }

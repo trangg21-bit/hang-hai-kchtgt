@@ -49,7 +49,7 @@ class CoSuaChuaDongTauControllerTest {
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
                 .loaiCoSo("Sửa chữa")
-                .trangThai("APPROVED")
+                .trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED)
                 .pheDuyetC1(true)
                 .pheDuyetC2(true)
                 .isDeleted(false)
@@ -196,7 +196,7 @@ class CoSuaChuaDongTauControllerTest {
                 .lyDo("Không đủ điều kiện")
                 .build();
         CoSuaChuaDongTauResponse rejectedResponse = CoSuaChuaDongTauResponse.builder()
-                .id(1L).trangThai("REJECTED").lyDoTuChoi("Không đủ điều kiện").build();
+                .id(1L).trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.REJECTED).lyDoTuChoi("Không đủ điều kiện").build();
         when(service.approveC1(eq(1L), eq(req), anyString())).thenReturn(rejectedResponse);
 
         ResponseEntity<?> result = controller.approveC1(1L, req, mockAuth());

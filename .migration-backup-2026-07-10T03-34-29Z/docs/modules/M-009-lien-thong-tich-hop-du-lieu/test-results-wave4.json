@@ -1,0 +1,152 @@
+﻿{
+  "wave": "wave4",
+  "module": "M-009-lien-thong-tich-hop-du-lieu",
+  "date": "2026-06-23T10:07:08+07:00",
+  "environment": {
+    "java_version": "17.0.18",
+    "maven_version": "3.9.14",
+    "spring_boot_version": "3.3.6"
+  },
+  "wave_features": {
+    "F-227": {
+      "name": "Berth Infrastructure Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/berth/sync",
+      "test_method": "syncBerth_admin_success",
+      "status": "implemented"
+    },
+    "F-228": {
+      "name": "Wharf Infrastructure Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/wharf/sync",
+      "test_method": "syncWharf_systemAdmin_success",
+      "status": "implemented"
+    },
+    "F-229": {
+      "name": "Buoy Infrastructure Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/buoy/sync",
+      "test_method": "syncBuoy_success",
+      "status": "implemented"
+    },
+    "F-230": {
+      "name": "Danger Zone Infrastructure Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/danger-zone/sync",
+      "test_method": "syncDangerZone_success",
+      "status": "implemented"
+    },
+    "F-231": {
+      "name": "Transport Zone Infrastructure Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/transport-zone/sync",
+      "test_method": "syncTransportZone_success",
+      "status": "implemented"
+    },
+    "F-232": {
+      "name": "Anchorage Infrastructure Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/anchorage/sync",
+      "test_method": "syncAnchorage_success",
+      "status": "implemented"
+    },
+    "F-233": {
+      "name": "Repair Facility Infrastructure Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/repair-facility/sync",
+      "test_method": "syncRepairFacility_success",
+      "status": "implemented"
+    },
+    "F-234": {
+      "name": "Beacon Info Infrastructure Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/beacon-info/sync",
+      "test_method": "syncBeaconInfo_success",
+      "status": "implemented"
+    },
+    "F-235": {
+      "name": "Buoy Signal Infrastructure Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/buoy-signal/sync",
+      "test_method": "syncBuoySignal_success",
+      "status": "implemented"
+    },
+    "F-236": {
+      "name": "VTS Infrastructure Sync",
+      "endpoint": "POST /api/v1/integration/kchtgt/vts/sync",
+      "test_method": "syncVts_success",
+      "status": "implemented"
+    }
+  },
+  "summary": {
+    "total": 25,
+    "passed": 25,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "pass_rate": 100.0
+  },
+  "build": {
+    "status": "SUCCESS",
+    "duration_seconds": 27.570
+  },
+  "test_classes": [
+    {
+      "class": "com.hanghai.kchtg.integration.PortCargoIntegrationControllerTest",
+      "features": "F-227..F-236",
+      "total_tests": 13,
+      "wave_specific": 10,
+      "shared": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "wave_specific_tests": [
+        "syncBerth_admin_success",
+        "syncWharf_systemAdmin_success",
+        "syncBuoy_success",
+        "syncDangerZone_success",
+        "syncTransportZone_success",
+        "syncAnchorage_success",
+        "syncRepairFacility_success",
+        "syncBeaconInfo_success",
+        "syncBuoySignal_success",
+        "syncVts_success"
+      ],
+      "shared_tests": [
+        "syncEndpoint_unauthenticated_forbiddenOrUnauthorized",
+        "syncEndpoint_insufficientRoles_forbidden",
+        "retrySync_success"
+      ]
+    },
+    {
+      "class": "com.hanghai.kchtg.integration.PortCargoIntegrationServiceTest",
+      "features": "shared-infrastructure",
+      "total_tests": 6,
+      "wave_specific": 0,
+      "shared": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "wave_specific_tests": [],
+      "shared_tests": [
+        "executeSync_connectionNotFound_throws",
+        "executeSync_emptyUrl_fails",
+        "executeSync_disallowedUrlScheme_fails",
+        "retrySyncJob_jobNotFound_throws",
+        "retrySyncJob_maxRetryReached_throws",
+        "retrySyncJob_incrementRetryCount"
+      ]
+    },
+    {
+      "class": "com.hanghai.kchtg.integration.PortCargoShareControllerTest",
+      "features": "shared-infrastructure",
+      "total_tests": 6,
+      "wave_specific": 0,
+      "shared": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "wave_specific_tests": [],
+      "shared_tests": [
+        "missingToken_unauthorized",
+        "getPortStatuses_success",
+        "getAssetStatus_success",
+        "getComprehensiveInfo_success",
+        "getPortCargoTotal_success",
+        "getCargoSummary_success"
+      ]
+    }
+  ],
+  "verdict": "PASS"
+}

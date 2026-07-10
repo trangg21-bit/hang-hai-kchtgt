@@ -44,7 +44,7 @@ class TramRadarControllerTest {
                 .id(1L)
                 .tenTram("Tram ABC")
                 .viTri("Hà Nội")
-                .trangThai("APPROVED")
+                .trangThai(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.APPROVED)
                 .build();
     }
 

@@ -1,0 +1,843 @@
+{
+  "module_id": "M-004",
+  "module_name": "Quan ly tai san Bao hieu & Thong tin",
+  "description": "Quan ly den bien (94), phao tieu (1452), nha tram, dai thong tin (9 dai)",
+  "stack": [
+    "Spring Boot 17+",
+    "MSSQL Server 2022",
+    "ReactJS 18+",
+    "Nginx",
+    "MinIO",
+    "GeoServer"
+  ],
+  "actors": [
+    "A-002",
+    "A-003",
+    "A-004"
+  ],
+  "features": [
+    {
+      "id": "F-068",
+      "name": "Quan ly Den bien - Tao moi",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3302, line ~3302",
+      "scope": "Chuyen vien - Tao moi Den bien",
+      "business_rules": [
+        "Den bien phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Den bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-069",
+      "name": "Quan ly Den bien - Cap nhat",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3302, line ~3302",
+      "scope": "Chuyen vien - Cap nhat Den bien",
+      "business_rules": [
+        "Cap nhat Den bien phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Den bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-070",
+      "name": "Quan ly Den bien - Xoa",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3302, line ~3302",
+      "scope": "Chuyen vien - Xoa Den bien",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Den bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-071",
+      "name": "Phe duyet Den bien",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3302, line ~3302",
+      "scope": "Lanh dao - Phe duyet Den bien",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Den bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-072",
+      "name": "Xem chi tiet Den bien",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3302, line ~3302",
+      "scope": "Tat ca roles - Xem chi tiet",
+      "business_rules": [
+        "Tra cuu, xem chi tiet, van ban dinh kem"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Den bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-073",
+      "name": "Quan ly Den bien - Lich su",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3302, line ~3302",
+      "scope": "Chuyen vien - Xem lich su thay doi",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Den bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-074",
+      "name": "Quan ly Phao tieu - Tao moi",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3305, line ~3305",
+      "scope": "Chuyen vien - Tao moi Phao tieu",
+      "business_rules": [
+        "Phao tieu phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Phao tieu thanh cong"
+      ]
+    },
+    {
+      "id": "F-075",
+      "name": "Quan ly Phao tieu - Cap nhat",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3305, line ~3305",
+      "scope": "Chuyen vien - Cap nhat Phao tieu",
+      "business_rules": [
+        "Cap nhat Phao tieu phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Phao tieu thanh cong"
+      ]
+    },
+    {
+      "id": "F-076",
+      "name": "Quan ly Phao tieu - Xoa",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3305, line ~3305",
+      "scope": "Chuyen vien - Xoa Phao tieu",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Phao tieu thanh cong"
+      ]
+    },
+    {
+      "id": "F-077",
+      "name": "Phe duyet Phao tieu",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3305, line ~3305",
+      "scope": "Lanh dao - Phe duyet Phao tieu",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Phao tieu thanh cong"
+      ]
+    },
+    {
+      "id": "F-078",
+      "name": "Xem chi tiet Phao tieu",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3305, line ~3305",
+      "scope": "Tat ca roles - Xem chi tiet",
+      "business_rules": [
+        "Tra cuu, xem chi tiet, van ban dinh kem"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Phao tieu thanh cong"
+      ]
+    },
+    {
+      "id": "F-079",
+      "name": "Quan ly Phao tieu - Lich su",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3305, line ~3305",
+      "scope": "Chuyen vien - Xem lich su thay doi",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Phao tieu thanh cong"
+      ]
+    },
+    {
+      "id": "F-080",
+      "name": "Quan ly Nha tram phao - Tao moi",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "Phu luc 05, line ~4870",
+      "scope": "Chuyen vien - Tao moi Nha tram phao",
+      "business_rules": [
+        "Nha tram phao phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Nha tram phao thanh cong"
+      ]
+    },
+    {
+      "id": "F-081",
+      "name": "Quan ly Nha tram phao - Cap nhat",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "Phu luc 05, line ~4870",
+      "scope": "Chuyen vien - Cap nhat Nha tram phao",
+      "business_rules": [
+        "Cap nhat Nha tram phao phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Nha tram phao thanh cong"
+      ]
+    },
+    {
+      "id": "F-082",
+      "name": "Quan ly Nha tram phao - Xoa",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "Phu luc 05, line ~4870",
+      "scope": "Chuyen vien - Xoa Nha tram phao",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Nha tram phao thanh cong"
+      ]
+    },
+    {
+      "id": "F-083",
+      "name": "Phe duyet Nha tram phao",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "Phu luc 05, line ~4870",
+      "scope": "Lanh dao - Phe duyet Nha tram phao",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Nha tram phao thanh cong"
+      ]
+    },
+    {
+      "id": "F-084",
+      "name": "Xem chi tiet Nha tram phao",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "Phu luc 05, line ~4870",
+      "scope": "Tat ca roles - Xem chi tiet",
+      "business_rules": [
+        "Tra cuu, xem chi tiet, van ban dinh kem"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Nha tram phao thanh cong"
+      ]
+    },
+    {
+      "id": "F-085",
+      "name": "Quan ly Nha tram phao - Lich su",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "Phu luc 05, line ~4870",
+      "scope": "Chuyen vien - Xem lich su thay doi",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Nha tram phao thanh cong"
+      ]
+    },
+    {
+      "id": "F-086",
+      "name": "Quan ly Nha tram den - Tao moi",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "Phu luc 05, line ~4880",
+      "scope": "Chuyen vien - Tao moi Nha tram den",
+      "business_rules": [
+        "Nha tram den phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Nha tram den thanh cong"
+      ]
+    },
+    {
+      "id": "F-087",
+      "name": "Quan ly Nha tram den - Cap nhat",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "Phu luc 05, line ~4880",
+      "scope": "Chuyen vien - Cap nhat Nha tram den",
+      "business_rules": [
+        "Cap nhat Nha tram den phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Nha tram den thanh cong"
+      ]
+    },
+    {
+      "id": "F-088",
+      "name": "Quan ly Nha tram den - Xoa",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "Phu luc 05, line ~4880",
+      "scope": "Chuyen vien - Xoa Nha tram den",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Nha tram den thanh cong"
+      ]
+    },
+    {
+      "id": "F-089",
+      "name": "Phe duyet Nha tram den",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "Phu luc 05, line ~4880",
+      "scope": "Lanh dao - Phe duyet Nha tram den",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Nha tram den thanh cong"
+      ]
+    },
+    {
+      "id": "F-090",
+      "name": "Xem chi tiet Nha tram den",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "Phu luc 05, line ~4880",
+      "scope": "Tat ca roles - Xem chi tiet",
+      "business_rules": [
+        "Tra cuu, xem chi tiet, van ban dinh kem"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Nha tram den thanh cong"
+      ]
+    },
+    {
+      "id": "F-091",
+      "name": "Quan ly Nha tram den - Lich su",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "Phu luc 05, line ~4880",
+      "scope": "Chuyen vien - Xem lich su thay doi",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Nha tram den thanh cong"
+      ]
+    },
+    {
+      "id": "F-092",
+      "name": "Quan ly Dai TTDH - Tao moi",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3348, line ~3348",
+      "scope": "Chuyen vien - Tao moi Dai TTDH",
+      "business_rules": [
+        "Dai TTDH phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Dai TTDH thanh cong"
+      ]
+    },
+    {
+      "id": "F-093",
+      "name": "Quan ly Dai TTDH - Cap nhat",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3348, line ~3348",
+      "scope": "Chuyen vien - Cap nhat Dai TTDH",
+      "business_rules": [
+        "Cap nhat Dai TTDH phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Dai TTDH thanh cong"
+      ]
+    },
+    {
+      "id": "F-094",
+      "name": "Quan ly Dai TTDH - Xoa",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3348, line ~3348",
+      "scope": "Chuyen vien - Xoa Dai TTDH",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Dai TTDH thanh cong"
+      ]
+    },
+    {
+      "id": "F-095",
+      "name": "Phe duyet Dai TTDH",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3348, line ~3348",
+      "scope": "Lanh dao - Phe duyet Dai TTDH",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Dai TTDH thanh cong"
+      ]
+    },
+    {
+      "id": "F-096",
+      "name": "Xem chi tiet Dai TTDH",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3348, line ~3348",
+      "scope": "Tat ca roles - Xem chi tiet",
+      "business_rules": [
+        "Tra cuu, xem chi tiet, van ban dinh kem"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Dai TTDH thanh cong"
+      ]
+    },
+    {
+      "id": "F-097",
+      "name": "Quan ly Dai TTDH - Lich su",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3348, line ~3348",
+      "scope": "Chuyen vien - Xem lich su thay doi",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Dai TTDH thanh cong"
+      ]
+    },
+    {
+      "id": "F-098",
+      "name": "Quan ly Dai Inmarsat - Tao moi",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3351, line ~3351",
+      "scope": "Chuyen vien - Tao moi Dai Inmarsat",
+      "business_rules": [
+        "Dai Inmarsat phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Dai Inmarsat thanh cong"
+      ]
+    },
+    {
+      "id": "F-099",
+      "name": "Quan ly Dai Inmarsat - Cap nhat",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3351, line ~3351",
+      "scope": "Chuyen vien - Cap nhat Dai Inmarsat",
+      "business_rules": [
+        "Cap nhat Dai Inmarsat phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Dai Inmarsat thanh cong"
+      ]
+    },
+    {
+      "id": "F-100",
+      "name": "Quan ly Dai Inmarsat - Xoa",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3351, line ~3351",
+      "scope": "Chuyen vien - Xoa Dai Inmarsat",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Dai Inmarsat thanh cong"
+      ]
+    },
+    {
+      "id": "F-101",
+      "name": "Phe duyet Dai Inmarsat",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3351, line ~3351",
+      "scope": "Lanh dao - Phe duyet Dai Inmarsat",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Dai Inmarsat thanh cong"
+      ]
+    },
+    {
+      "id": "F-102",
+      "name": "Xem chi tiet Dai Inmarsat",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3351, line ~3351",
+      "scope": "Tat ca roles - Xem chi tiet",
+      "business_rules": [
+        "Tra cuu, xem chi tiet, van ban dinh kem"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Dai Inmarsat thanh cong"
+      ]
+    },
+    {
+      "id": "F-103",
+      "name": "Quan ly Dai Inmarsat - Lich su",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3351, line ~3351",
+      "scope": "Chuyen vien - Xem lich su thay doi",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Dai Inmarsat thanh cong"
+      ]
+    },
+    {
+      "id": "F-104",
+      "name": "Quan ly Dai Cospas-Sarsat - Tao moi",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3354, line ~3354",
+      "scope": "Chuyen vien - Tao moi Dai Cospas-Sarsat",
+      "business_rules": [
+        "Dai Cospas-Sarsat phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Dai Cospas-Sarsat thanh cong"
+      ]
+    },
+    {
+      "id": "F-105",
+      "name": "Quan ly Dai Cospas-Sarsat - Cap nhat",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3354, line ~3354",
+      "scope": "Chuyen vien - Cap nhat Dai Cospas-Sarsat",
+      "business_rules": [
+        "Cap nhat Dai Cospas-Sarsat phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Dai Cospas-Sarsat thanh cong"
+      ]
+    },
+    {
+      "id": "F-106",
+      "name": "Quan ly Dai Cospas-Sarsat - Xoa",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3354, line ~3354",
+      "scope": "Chuyen vien - Xoa Dai Cospas-Sarsat",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Dai Cospas-Sarsat thanh cong"
+      ]
+    },
+    {
+      "id": "F-107",
+      "name": "Phe duyet Dai Cospas-Sarsat",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3354, line ~3354",
+      "scope": "Lanh dao - Phe duyet Dai Cospas-Sarsat",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Dai Cospas-Sarsat thanh cong"
+      ]
+    },
+    {
+      "id": "F-108",
+      "name": "Xem chi tiet Dai Cospas-Sarsat",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3354, line ~3354",
+      "scope": "Tat ca roles - Xem chi tiet",
+      "business_rules": [
+        "Tra cuu, xem chi tiet, van ban dinh kem"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Dai Cospas-Sarsat thanh cong"
+      ]
+    },
+    {
+      "id": "F-109",
+      "name": "Quan ly Dai Cospas-Sarsat - Lich su",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3354, line ~3354",
+      "scope": "Chuyen vien - Xem lich su thay doi",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Dai Cospas-Sarsat thanh cong"
+      ]
+    },
+    {
+      "id": "F-110",
+      "name": "Quan ly Dai LRIT - Tao moi",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3357, line ~3357",
+      "scope": "Chuyen vien - Tao moi Dai LRIT",
+      "business_rules": [
+        "Dai LRIT phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Dai LRIT thanh cong"
+      ]
+    },
+    {
+      "id": "F-111",
+      "name": "Quan ly Dai LRIT - Cap nhat",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3357, line ~3357",
+      "scope": "Chuyen vien - Cap nhat Dai LRIT",
+      "business_rules": [
+        "Cap nhat Dai LRIT phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Dai LRIT thanh cong"
+      ]
+    },
+    {
+      "id": "F-112",
+      "name": "Quan ly Dai LRIT - Xoa",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3357, line ~3357",
+      "scope": "Chuyen vien - Xoa Dai LRIT",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Dai LRIT thanh cong"
+      ]
+    },
+    {
+      "id": "F-113",
+      "name": "Phe duyet Dai LRIT",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3357, line ~3357",
+      "scope": "Lanh dao - Phe duyet Dai LRIT",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Dai LRIT thanh cong"
+      ]
+    },
+    {
+      "id": "F-114",
+      "name": "Xem chi tiet Dai LRIT",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3357, line ~3357",
+      "scope": "Tat ca roles - Xem chi tiet",
+      "business_rules": [
+        "Tra cuu, xem chi tiet, van ban dinh kem"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Dai LRIT thanh cong"
+      ]
+    },
+    {
+      "id": "F-115",
+      "name": "Quan ly Dai LRIT - Lich su",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3357, line ~3357",
+      "scope": "Chuyen vien - Xem lich su thay doi",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Dai LRIT thanh cong"
+      ]
+    },
+    {
+      "id": "F-116",
+      "name": "Quan ly Dai TT hang hai HN - Tao moi",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3360, line ~3360",
+      "scope": "Chuyen vien - Tao moi Dai TT hang hai HN",
+      "business_rules": [
+        "Dai TT hang hai HN phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Dai TT hang hai HN thanh cong"
+      ]
+    },
+    {
+      "id": "F-117",
+      "name": "Quan ly Dai TT hang hai HN - Cap nhat",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3360, line ~3360",
+      "scope": "Chuyen vien - Cap nhat Dai TT hang hai HN",
+      "business_rules": [
+        "Cap nhat Dai TT hang hai HN phai duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Dai TT hang hai HN thanh cong"
+      ]
+    },
+    {
+      "id": "F-118",
+      "name": "Quan ly Dai TT hang hai HN - Xoa",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3360, line ~3360",
+      "scope": "Chuyen vien - Xoa Dai TT hang hai HN",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Dai TT hang hai HN thanh cong"
+      ]
+    },
+    {
+      "id": "F-119",
+      "name": "Phe duyet Dai TT hang hai HN",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3360, line ~3360",
+      "scope": "Lanh dao - Phe duyet Dai TT hang hai HN",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Dai TT hang hai HN thanh cong"
+      ]
+    },
+    {
+      "id": "F-120",
+      "name": "Xem chi tiet Dai TT hang hai HN",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3360, line ~3360",
+      "scope": "Tat ca roles - Xem chi tiet",
+      "business_rules": [
+        "Tra cuu, xem chi tiet, van ban dinh kem"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Dai TT hang hai HN thanh cong"
+      ]
+    },
+    {
+      "id": "F-121",
+      "name": "Quan ly Dai TT hang hai HN - Lich su",
+      "module": "M-004",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3360, line ~3360",
+      "scope": "Chuyen vien - Xem lich su thay doi",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Dai TT hang hai HN thanh cong"
+      ]
+    }
+  ],
+  "cross_references": {
+    "catalog_ref": "docs/intel/catalog.json#M-004",
+    "brief_ref": "docs/intel/doc-brief.md"
+  },
+  "do_d": {
+    "api_contract_complete": false,
+    "entity_schema_defined": false,
+    "business_rules_mapped": true,
+    "test_data_ready": false,
+    "acceptance_criteria_written": true,
+    "priority_assigned": true,
+    "source_traced": true
+  }
+}

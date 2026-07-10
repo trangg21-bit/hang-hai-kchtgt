@@ -16,6 +16,7 @@ import {
   Form,
   Spin,
   InputNumber,
+  Tree,
 } from 'antd';
 import {
   PlusOutlined,
@@ -53,10 +54,6 @@ export default function UnitList() {
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-  const [dataSource, setDataSource] = useState<Organization[]>([]);
-  const [total, setTotal] = useState(0);
   const [allOrgs, setAllOrgs] = useState<Organization[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
@@ -69,6 +66,16 @@ export default function UnitList() {
   const selectedType = Form.useWatch('type', form);
   const [submitting, setSubmitting] = useState(false);
 
+  const openCreateChildModal = useCallback((parentOrg: Organization) => {
+    setEditingOrg(null);
+    form.resetFields();
+    form.setFieldsValue({
+      parentId: parentOrg.id,
+      type: 'CUC'
+    });
+    setModalOpen(true);
+  }, [form]);
+
   const fetchOrgs = useCallback(async () => {
     setIsLoading(true);
     setIsError(false);
@@ -77,31 +84,13 @@ export default function UnitList() {
       const allRes = await organizationService.list({ page: 1, pageSize: 9999 });
       const fullList = allRes.data || [];
       setAllOrgs(fullList);
-
-      // Apply search and status filter locally for list view
-      let filtered = [...fullList];
-      if (search) {
-        const q = search.toLowerCase();
-        filtered = filtered.filter(
-          (o) => o.name.toLowerCase().includes(q) || (o.address || "").toLowerCase().includes(q)
-        );
-      }
-      if (filterStatus) {
-        filtered = filtered.filter(
-          (o) => o.status.toLowerCase() === filterStatus.toLowerCase()
-        );
-      }
-
-      const start = (page - 1) * pageSize;
-      setDataSource(filtered.slice(start, start + pageSize));
-      setTotal(filtered.length);
     } catch (err: unknown) {
       setIsError(true);
       setError(err instanceof Error ? err : new Error('Không thể tải danh sách đơn vị'));
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, search, filterStatus]);
+  }, []);
 
   useEffect(() => {
     fetchOrgs();
@@ -109,12 +98,6 @@ export default function UnitList() {
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);
-    setPage(1);
-  }, []);
-
-  const handleTableChange = useCallback((pag: { current?: number; pageSize?: number }) => {
-    setPage(pag.current || 1);
-    setPageSize(pag.pageSize || 10);
   }, []);
 
   // ---- Modal handlers ----
@@ -288,139 +271,136 @@ export default function UnitList() {
     [fetchOrgs],
   );
 
-  const columns = [
-    {
-      title: '#',
-      width: 60,
-      render: (_, __, idx: number) => (page - 1) * pageSize + idx + 1,
-    },
-    {
-      title: 'Tên đơn vị',
-      dataIndex: 'name',
-      render: (text: string, record: Organization) => (
-        <Space>
-          <Badge status={record.status === 'approved' ? 'success' : record.status === 'rejected' ? 'error' : 'default'} />
-          <Typography.Text strong>{text}</Typography.Text>
-        </Space>
-      ),
-    },
-    {
-      title: 'Cấp',
-      dataIndex: 'level',
-      width: 80,
-      render: (level: number) => <Tag color="blue">C{level}</Tag>,
-    },
-    {
-      title: 'Hệ số',
-      dataIndex: 'coefficient',
-      width: 100,
-      render: (val?: number) => val !== undefined ? val.toFixed(2) : '—',
-    },
-    {
-      title: 'Đơn vị cha',
-      dataIndex: 'parentOrgName',
-      width: 200,
-      render: (text?: string) => text || <Typography.Text type="secondary">—</Typography.Text>,
-    },
-    {
-      title: 'Trụ sở',
-      dataIndex: 'address',
-      width: 180,
-      render: (text?: string) => text || <Typography.Text type="secondary">—</Typography.Text>,
-    },
-    {
-      title: 'Trưởng đơn vị',
-      dataIndex: 'contactPerson',
-      width: 160,
-      render: (text?: string) => text || <Typography.Text type="secondary">—</Typography.Text>,
-    },
-    {
-      title: 'Tr. thái',
-      dataIndex: 'status',
-      width: 120,
-      render: (status: string) => {
-        const variant = status === 'approved' ? 'active' : status === 'rejected' ? 'locked' : status === 'pending' ? 'pending' : 'inactive';
-        const label = STATUS_MAP[status]?.label || status;
-        return <span className={`status-badge status-badge--${variant}`}>{label}</span>;
-      },
-    },
-    {
-      title: 'Cập nhật',
-      dataIndex: 'updatedAt',
-      width: 160,
-      render: (text: string) => text ? dayjs(text).format('DD/MM/YYYY HH:mm') : '—',
-    },
-    {
-      title: 'Thao tác',
-      key: 'actions',
-      width: 240,
-      fixed: 'right' as const,
-      render: (_: unknown, record: Organization) => (
-        <Space size="small">
-          <Tooltip title="Xem cây">
-            <Button
-              type="link"
-              size="small"
-              icon={<BranchesOutlined />}
-              onClick={() => navigate(`/organizations/tree/${record.id}`)}
-            />
-          </Tooltip>
-          {hasPerm('org.edit') && (
-            <Tooltip title="Sửa">
-              <Button
-                type="link"
-                size="small"
-                icon={<EditOutlined />}
-                onClick={() => openEditModal(record)}
-              />
-            </Tooltip>
-          )}
-          {hasPerm('org.edit') && (record.status === 'draft' || record.status === 'rejected') && (
-            <Tooltip title="Trình duyệt">
-              <Button
-                type="link"
-                size="small"
-                icon={<SendOutlined />}
-                onClick={() => handleSubmitApproval(record)}
-              />
-            </Tooltip>
-          )}
-          {hasPerm('org.approve') && record.status === 'pending' && (
-            <>
-              <Tooltip title="Phê duyệt">
-                <Button
-                  type="link"
-                  size="small"
-                  icon={<CheckOutlined />}
-                  onClick={() => handleApprove(record)}
-                />
-              </Tooltip>
-              <Tooltip title="Từ chối">
-                <Button
-                  type="link"
-                  size="small"
-                  danger
-                  icon={<CloseOutlined />}
-                  onClick={() => handleReject(record)}
-                />
-              </Tooltip>
-            </>
-          )}
-          {hasPerm('org.delete') && (
-            <Tooltip title="Xóa">
-              <Button
-                type="link"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => handleDelete(record)}
-              />
-            </Tooltip>
-          )}
-        </Space>
-      ),
-    },
-  ];
+  const buildTreeData = useCallback((orgs: Organization[], parentId?: string): any[] => {
+    return orgs
+      .filter((o) => parentId ? o.parentId === parentId : !o.parentId)
+      .sort((a, b) => {
+        const levelDiff = (a.level || 1) - (b.level || 1);
+        if (levelDiff !== 0) return levelDiff;
+        return a.name.localeCompare(b.name, 'vi');
+      })
+      .map((org) => {
+        return {
+          key: org.id,
+          title: (
+            <Space size={8}>
+              <Typography.Text strong>{org.name}</Typography.Text>
+              {org.code && <Typography.Text type="secondary" style={{ fontSize: 12 }}>({org.code})</Typography.Text>}
+              <Tag color="blue">C{org.level}</Tag>
+              <Tag color={STATUS_MAP[org.status]?.color || 'default'}>
+                {STATUS_MAP[org.status]?.label || org.status}
+              </Tag>
+              
+              <Space size={4} style={{ marginLeft: 16 }}>
+                {hasPerm('org.edit') && (
+                  <Tooltip title="Sửa">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<EditOutlined />}
+                      onClick={(e) => { e.stopPropagation(); openEditModal(org); }}
+                      style={{ color: '#1890ff', padding: '0 4px', height: 'auto' }}
+                    />
+                  </Tooltip>
+                )}
+                {hasPerm('org.create') && (
+                  <Tooltip title="Thêm đơn vị con">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<PlusOutlined />}
+                      onClick={(e) => { e.stopPropagation(); openCreateChildModal(org); }}
+                      style={{ color: '#52c41a', padding: '0 4px', height: 'auto' }}
+                    />
+                  </Tooltip>
+                )}
+                {hasPerm('org.edit') && (org.status === 'draft' || org.status === 'rejected') && (
+                  <Tooltip title="Trình duyệt">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<SendOutlined />}
+                      onClick={(e) => { e.stopPropagation(); handleSubmitApproval(org); }}
+                      style={{ color: '#1890ff', padding: '0 4px', height: 'auto' }}
+                    />
+                  </Tooltip>
+                )}
+                {hasPerm('org.approve') && org.status === 'pending' && (
+                  <>
+                    <Tooltip title="Phê duyệt">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CheckOutlined />}
+                        onClick={(e) => { e.stopPropagation(); handleApprove(org); }}
+                        style={{ color: '#52c41a', padding: '0 4px', height: 'auto' }}
+                      />
+                    </Tooltip>
+                    <Tooltip title="Từ chối">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CloseOutlined />}
+                        onClick={(e) => { e.stopPropagation(); handleReject(org); }}
+                        style={{ color: '#ff4d4f', padding: '0 4px', height: 'auto' }}
+                      />
+                    </Tooltip>
+                  </>
+                )}
+                {hasPerm('org.delete') && (
+                  <Tooltip title="Xóa">
+                    <Button
+                      type="text"
+                      size="small"
+                      danger
+                      icon={<DeleteOutlined />}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(org); }}
+                      style={{ padding: '0 4px', height: 'auto' }}
+                    />
+                  </Tooltip>
+                )}
+              </Space>
+            </Space>
+          ),
+          children: buildTreeData(orgs, org.id)
+        };
+      });
+  }, [hasPerm, openEditModal, openCreateChildModal, handleSubmitApproval, handleApprove, handleReject, handleDelete]);
+
+  const getFilteredOrgs = useCallback(() => {
+    if (!search && !filterStatus) return allOrgs;
+    
+    const matchedIds = new Set<string>();
+    allOrgs.forEach(o => {
+      const matchesSearch = !search || o.name.toLowerCase().includes(search.toLowerCase()) || (o.address || "").toLowerCase().includes(search.toLowerCase());
+      const matchesStatus = !filterStatus || o.status.toLowerCase() === filterStatus.toLowerCase();
+      if (matchesSearch && matchesStatus) {
+        matchedIds.add(o.id);
+      }
+    });
+    
+    const resultIds = new Set<string>();
+    const addNodeAndAncestors = (org: Organization) => {
+      if (resultIds.has(org.id)) return;
+      resultIds.add(org.id);
+      if (org.parentId) {
+        const parent = allOrgs.find(o => o.id === org.parentId);
+        if (parent) {
+          addNodeAndAncestors(parent);
+        }
+      }
+    };
+    
+    allOrgs.forEach(o => {
+      if (matchedIds.has(o.id)) {
+        addNodeAndAncestors(o);
+      }
+    });
+    
+    return allOrgs.filter(o => resultIds.has(o.id));
+  }, [allOrgs, search, filterStatus]);
+
+  const filteredOrgs = getFilteredOrgs();
 
   return (
     <>
@@ -440,10 +420,7 @@ export default function UnitList() {
                 allowClear
                 style={{ width: 150 }}
                 value={filterStatus}
-                onChange={(val) => {
-                  setFilterStatus(val);
-                  setPage(1);
-                }}
+                onChange={(val) => setFilterStatus(val)}
                 options={[
                   { value: 'draft', label: 'Bản nháp' },
                   { value: 'pending', label: 'Chờ duyệt' },
@@ -469,39 +446,26 @@ export default function UnitList() {
       </Card>
 
       <Card>
-        {isLoading && <LoadingSkeleton rows={8} type="table" />}
+        {isLoading && <LoadingSkeleton rows={8} type="card" />}
         {isError && (
           <ErrorState
             message={error?.message || 'Không thể tải danh sách đơn vị'}
             onRetry={fetchOrgs}
           />
         )}
-        {!isLoading && !isError && dataSource.length === 0 && (
+        {!isLoading && !isError && filteredOrgs.length === 0 && (
           <EmptyState
             description={search || filterStatus ? 'Không tìm thấy đơn vị' : 'Chưa có đơn vị nào'}
             ctaText="Thêm đơn vị đầu tiên"
             onCta={openCreateModal}
           />
         )}
-        {!isLoading && !isError && dataSource.length > 0 && (
-          <DataTable<Organization>
-            columns={columns}
-            dataSource={dataSource}
-            rowKey="id"
-            scroll={{ x: 'max-content' }}
-            onChange={handleTableChange}
-            pagination={{
-              current: page,
-              pageSize,
-              total,
-              onChange: (p, sz) => {
-                setPage(p);
-                if (sz) setPageSize(sz);
-              },
-              showSizeChanger: true,
-              showTotal: (t) => `Tổng ${t} đơn vị`,
-              pageSizeOptions: ['10', '20', '50'],
-            }}
+        {!isLoading && !isError && filteredOrgs.length > 0 && (
+          <Tree
+            treeData={buildTreeData(filteredOrgs)}
+            defaultExpandedAll
+            showLine
+            showIcon={false}
           />
         )}
       </Card>

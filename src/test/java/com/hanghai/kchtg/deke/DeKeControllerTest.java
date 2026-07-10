@@ -69,7 +69,7 @@ class DeKeControllerTest {
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody().isSuccess()).isTrue();
-        assertThat(resp.getBody().getMessage()).isEqualTo("Tạo mới thành công");
+        assertThat(resp.getBody().getMessage()).isEqualTo("Tạo đê kè thành công");
         assertThat(resp.getBody().getData().getLoaiDe()).isEqualTo("De ke son");
         verify(service, times(1)).create(any(), anyString());
     }
@@ -123,7 +123,7 @@ class DeKeControllerTest {
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody().isSuccess()).isTrue();
-        assertThat(resp.getBody().getMessage()).isEqualTo("Xóa thành công");
+        assertThat(resp.getBody().getMessage()).isEqualTo("Xóa mềm đê kè thành công");
         verify(service, times(1)).softDelete(1L);
     }
 

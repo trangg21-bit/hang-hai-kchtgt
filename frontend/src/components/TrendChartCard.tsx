@@ -1,6 +1,21 @@
 import { Card, Skeleton, Button } from 'antd';
 import { WarningOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { ReactNode } from 'react';
+import {
+  statusCritical,
+  radiusSm,
+  radiusMd,
+  spaceSm,
+  spaceMd,
+  spaceLg,
+  fontSizeSm,
+  fontSizeMd,
+  fontSizeLg,
+  fontSizeXl,
+  fontWeightMedium,
+  textSecondary,
+  cardStyle,
+} from '../tokens';
 
 // ============================================================
 // Types
@@ -30,12 +45,11 @@ export default function TrendChartCard({
   children,
 }: TrendChartCardProps) {
   const cardBodyStyle: React.CSSProperties = {
-    padding: 14,
+    padding: spaceMd,
   };
 
-  const cardStyle: React.CSSProperties = {
-    borderRadius: 12,
-    border: '0.5px solid #E5E7EB',
+  const outerCardStyle: React.CSSProperties = {
+    ...cardStyle,
     height: '100%',
   };
 
@@ -53,13 +67,13 @@ export default function TrendChartCard({
             alignItems: 'center',
             justifyContent: 'center',
             height,
-            gap: 8,
+            gap: spaceSm,
           }}
         >
-          <WarningOutlined style={{ fontSize: 24, color: '#E34948' }} />
-          <span style={{ fontSize: 13, color: '#6B7280' }}>Đã xảy ra lỗi</span>
+          <WarningOutlined style={{ fontSize: fontSizeXl, color: statusCritical }} />
+          <span style={{ fontSize: fontSizeMd, color: textSecondary }}>Đã xảy ra lỗi</span>
           {onRetry && (
-            <Button size="small" icon={<ReloadOutlined />} onClick={onRetry}>
+            <Button size="small" type="primary" icon={<ReloadOutlined />} onClick={onRetry}>
               Thử lại
             </Button>
           )}
@@ -76,11 +90,11 @@ export default function TrendChartCard({
             alignItems: 'center',
             justifyContent: 'center',
             height,
-            gap: 8,
+            gap: spaceSm,
           }}
         >
-          <span style={{ fontSize: 24, opacity: 0.3 }}>📭</span>
-          <span style={{ fontSize: 13, color: '#6B7280' }}>Không có dữ liệu</span>
+          <span style={{ fontSize: fontSizeXl, opacity: 0.3 }}>📭</span>
+          <span style={{ fontSize: fontSizeMd, color: textSecondary }}>Không có dữ liệu</span>
         </div>
       );
     }
@@ -91,9 +105,9 @@ export default function TrendChartCard({
   return (
     <Card
       title={
-        <span style={{ fontSize: 14, fontWeight: 500 }}>{title}</span>
+        <span style={{ fontSize: fontSizeLg, fontWeight: fontWeightMedium }}>{title}</span>
       }
-      style={cardStyle}
+      style={outerCardStyle}
       styles={{ body: cardBodyStyle }}
     >
       {/* Custom legend */}
@@ -102,27 +116,27 @@ export default function TrendChartCard({
           style={{
             display: 'flex',
             flexDirection: 'row',
-            gap: 16,
-            marginBottom: 12,
+            gap: spaceLg,
+            marginBottom: spaceMd,
             flexWrap: 'wrap',
           }}
         >
           {legendItems.map((item, idx) => (
             <div
               key={idx}
-              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{ display: 'flex', alignItems: 'center', gap: spaceSm }}
             >
               <span
                 style={{
                   display: 'inline-block',
                   width: 8,
                   height: 8,
-                  borderRadius: 2,
+                  borderRadius: radiusSm,
                   backgroundColor: item.color,
                   flexShrink: 0,
                 }}
               />
-              <span style={{ fontSize: 12, color: '#6B7280' }}>{item.label}</span>
+              <span style={{ fontSize: fontSizeSm, color: textSecondary }}>{item.label}</span>
             </div>
           ))}
         </div>

@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.cangben.service;
 
 import com.hanghai.kchtg.cangben.entity.CauCang;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import com.hanghai.kchtg.cangben.entity.LichSuThayDoi;
 import com.hanghai.kchtg.cangben.entity.PheDuyetLog;
 import com.hanghai.kchtg.cangben.repository.CauCangRepository;
@@ -54,19 +55,20 @@ public class CauCangApprovalService {
         CauCang entity = cauCangRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cầu cảng với id: " + id));
 
-        String currentStatus = entity.getTrangThaiPheDuyet();
+        TrangThaiPheDuyet currentStatus = entity.getTrangThaiPheDuyet();
+        String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
 
         if (reason == null || reason.isBlank()) {
             // APPROVE
-            approvalWorkflowService.approve(currentStatus, "CauCang", id.toString(), userId);
-            entity.setTrangThaiPheDuyet("DUOC_PHE_DUYET");
+            approvalWorkflowService.approve(currentStatusStr, "CauCang", id.toString(), userId);
+            entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.DUOC_PHE_DUYET);
             cauCangRepository.save(entity);
             log.info("CauCang [{}] approved by {}", id, userId);
             notificationService.sendApprovalNotification("CauCang", id.toString(), userId, null);
         } else {
             // REJECT
-            approvalWorkflowService.reject(currentStatus, "CauCang", id.toString(), userId, reason);
-            entity.setTrangThaiPheDuyet("TU_CHOI");
+            approvalWorkflowService.reject(currentStatusStr, "CauCang", id.toString(), userId, reason);
+            entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.TU_CHOI);
             cauCangRepository.save(entity);
             log.info("CauCang [{}] rejected by {}: {}", id, userId, reason);
         }

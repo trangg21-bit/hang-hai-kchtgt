@@ -36,13 +36,13 @@ class TramRadarEntityTest {
         entity.setKinhDo(new java.math.BigDecimal("105.8"));
         entity.setViDo(new java.math.BigDecimal("21.0"));
         entity.setLoaiTram("Radar X");
-        entity.setTrangThai("APPROVED");
+        entity.setTrangThai(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.APPROVED);
         entity.setNguoiSuaDoi("admin");
         entity.setNgaySuaDoi(LocalDateTime.now());
 
         assertEquals(1L, entity.getId());
         assertEquals("Tram ABC", entity.getTenTram());
-        assertEquals("APPROVED", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.APPROVED, entity.getTrangThai());
         assertNotNull(entity.getNgaySuaDoi());
     }
 
@@ -69,10 +69,10 @@ class TramRadarEntityTest {
         assertNull(entity.getTrangThai());  // null before persist
         assertFalse(entity.getPheDuyetC1());
 
-        entity.setTrangThai("APPROVED");
+        entity.setTrangThai(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.APPROVED);
         entity.setPheDuyetC1(true);
         entity.setPheDuyetC2(true);
-        assertEquals("APPROVED", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.APPROVED, entity.getTrangThai());
 
         entity.setIsDeleted(true);
         assertTrue(entity.getIsDeleted());

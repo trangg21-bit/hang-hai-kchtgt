@@ -25,5 +25,7 @@ public class CreateCauCangRequest {
     private BigDecimal chieuDai;
     private BigDecimal taiTrong;
     private String loaiCau;
-    private String trangThaiHoatDong;
+    private String congNangKhaiThac;
+    private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
+    private UUID bieuTuongId;
 }

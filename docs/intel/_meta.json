@@ -268,6 +268,21 @@
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
       "version": 1
     },
+    "docs/modules/M-022-trang-chu-dashboard/_state.md": {
+      "content_hash": "sha256:79ea7aca4c70714ffea8e4e1bff15f23e10931d2ff6b2b6f227f187444498cb7",
+      "last_modified": "2026-07-10T08:21:50Z",
+      "last_producer": "ai-kit/update_state(stage_rollback)",
+      "version": 1
+    },
+    "docs/modules/M-022-trang-chu-dashboard/qa/07-qa-report-w1.md": {
+      "content_hash": "sha256:e4514fa6c3b4562afe879f6a209c944b9642852dc25e90fe517aad71f4d71ff5",
+      "last_modified": "2026-07-10T09:05:20Z",
+      "last_producer": "ai-kit/state-update(auto-lock-qa)",
+      "locked_fields": [
+        "content_hash"
+      ],
+      "version": 1
+    },
     "feature-catalog.json": {
       "content_hash": "sha256:c43f373f413835fdd1318e4533bdd6e1cf51d5fd939b0feccefd92caa699948f",
       "last_modified": "2026-06-16T05:08:25Z",

@@ -24,6 +24,9 @@ import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -100,8 +103,8 @@ class CangBienControllerTest {
                 .viDo(new BigDecimal("20.845"))
                 .kinhDo(new BigDecimal("106.688"))
                 .dienTich(new BigDecimal("5000.00"))
-                .trangThaiHoatDong("HIEN_HANH")
-                .trangThaiPheDuyet("CHO_PHE_DUYET")
+                .trangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH)
+                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
                 .build();
     }
 
@@ -112,7 +115,7 @@ class CangBienControllerTest {
     void findAll_returns200WithPagedList() throws Exception {
         UUID id = UUID.randomUUID();
         Page<CangBienResponse> page = new PageImpl<>(List.of(makeResponse(id)));
-        when(cangBienService.findAll(0, 20, null)).thenReturn(page);
+        when(cangBienService.findAll(0, 20, null, null, null, null, null, null, null)).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/cang-bien")
                         .param("page", "0")
@@ -121,7 +124,7 @@ class CangBienControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].maCang").value("CB-001"));
 
-        verify(cangBienService).findAll(0, 20, null);
+        verify(cangBienService).findAll(0, 20, null, null, null, null, null, null, null);
     }
 
     @Test
@@ -130,7 +133,7 @@ class CangBienControllerTest {
         UUID someUuid = UUID.randomUUID();
         String uuidStr = someUuid.toString();
         Page<CangBienResponse> page = new PageImpl<>(List.of());
-        when(cangBienService.findAll(2, 10, someUuid)).thenReturn(page);
+        when(cangBienService.findAll(2, 10, someUuid, null, null, null, null, null, null)).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/cang-bien")
                         .param("page", "2")
@@ -138,7 +141,7 @@ class CangBienControllerTest {
                         .param("orgUnitId", uuidStr))
                 .andExpect(status().isOk());
 
-        verify(cangBienService).findAll(2, 10, someUuid);
+        verify(cangBienService).findAll(2, 10, someUuid, null, null, null, null, null, null);
     }
 
     // ── GET /api/v1/cang-bien/{id} ────────────────────────────────────────

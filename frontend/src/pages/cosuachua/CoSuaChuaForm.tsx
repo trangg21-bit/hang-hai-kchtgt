@@ -216,7 +216,7 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
   if (isLoading) {
     return (
       <div style={{ padding: '24px' }}>
-        <Spin fullscreen tip="Đang tải..." />
+        <Spin fullscreen description="Đang tải..." />
       </div>
     );
   }

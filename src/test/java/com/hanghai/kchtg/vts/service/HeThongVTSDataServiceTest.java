@@ -43,7 +43,7 @@ class HeThongVTSDataServiceTest {
                 .id(1L)
                 .tenHeThong("VTS ABC")
                 .viTri("Hà Nội")
-                .trangThai("PROPOSED")
+                .trangThai(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(false)
@@ -61,7 +61,7 @@ class HeThongVTSDataServiceTest {
     @Test
     void testCreate() {
         HeThongVTS saved = HeThongVTS.builder()
-                .id(1L).tenHeThong("VTS ABC").viTri("Hà Nội").trangThai("PROPOSED")
+                .id(1L).tenHeThong("VTS ABC").viTri("Hà Nội").trangThai(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.PROPOSED)
                 .pheDuyetC1(false).pheDuyetC2(false).isDeleted(false)
                 .nguoiTao("user1").attachments(new java.util.ArrayList<>()).build();
 
@@ -70,7 +70,7 @@ class HeThongVTSDataServiceTest {
 
         HeThongVTSResponse response = service.create(createRequest, "user1");
         assertNotNull(response);
-        assertEquals("PROPOSED", response.getTrangThai());
+        assertEquals(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.PROPOSED, response.getTrangThai());
         verify(repository, times(1)).save(any());
     }
 
@@ -104,7 +104,7 @@ class HeThongVTSDataServiceTest {
     @Test
     void testDelete_ApprovedEntity() {
         HeThongVTS approvedEntity = HeThongVTS.builder()
-                .id(1L).tenHeThong("ABC").viTri("Hà Nội").trangThai("APPROVED")
+                .id(1L).tenHeThong("ABC").viTri("Hà Nội").trangThai(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.APPROVED)
                 .pheDuyetC1(false).pheDuyetC2(false).isDeleted(false)
                 .nguoiTao("test").attachments(new java.util.ArrayList<>()).build();
 
@@ -130,26 +130,26 @@ class HeThongVTSDataServiceTest {
         when(historyRepository.save(any())).thenReturn(mock(PheDuyetLichSu.class));
 
         HeThongVTSResponse response = service.approveC1(1L, req, "admin");
-        assertEquals("UNDER_REVIEW", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.UNDER_REVIEW, entity.getTrangThai());
         assertTrue(entity.getPheDuyetC1());
     }
 
     @Test
     void testApproveC2_Approve() {
-        entity.setTrangThai("UNDER_REVIEW");
+        entity.setTrangThai(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.UNDER_REVIEW);
         PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
         when(repository.findById(1L)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(PheDuyetLichSu.class));
 
         HeThongVTSResponse response = service.approveC2(1L, req, "director");
-        assertEquals("APPROVED", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.APPROVED, entity.getTrangThai());
         assertTrue(entity.getPheDuyetC2());
     }
 
     @Test
     void testApproveC2_sameActorAsC1_throwsException() {
-        entity.setTrangThai("UNDER_REVIEW");
+        entity.setTrangThai(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.UNDER_REVIEW);
         entity.setPheDuyetC1(true);
         entity.setNguoiPheDuyetC1("user1");
         PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
@@ -158,7 +158,7 @@ class HeThongVTSDataServiceTest {
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
                 () -> service.approveC2(1L, req, "user1"));
-        assertTrue(ex.getMessage().contains("Người phê duyệt C2 không được trùng với người phê duyệt C1"));
+        assertTrue(ex.getMessage().contains("Nguoi phe duyet C2 khong duoc trung"));
     }
 
     @Test
@@ -169,7 +169,7 @@ class HeThongVTSDataServiceTest {
         when(historyRepository.save(any())).thenReturn(mock(PheDuyetLichSu.class));
 
         HeThongVTSResponse response = service.approveC1(1L, req, "admin");
-        assertEquals("REJECTED", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.REJECTED, entity.getTrangThai());
         assertEquals("Không đủ điều kiện", entity.getLyDoTuChoi());
     }
 

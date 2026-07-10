@@ -19,13 +19,15 @@ public class BenCangResponse {
     private BigDecimal kinhDo;
     private BigDecimal chieuDai;
     private BigDecimal chieuRong;
-    private String loaiBen;
+    private com.hanghai.kchtg.cangben.entity.LoaiBen loaiBen;
     private BigDecimal doSauLuong;
-    private String trangThaiHoatDong;
-    private String trangThaiPheDuyet;
+    private String congNangKhaiThac;
+    private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
+    private com.hanghai.kchtg.common.entity.TrangThaiPheDuyet trangThaiPheDuyet;
     private UUID orgUnitId;
     private String createdBy;
     private String updatedBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private UUID bieuTuongId;
 }

@@ -32,7 +32,7 @@ interface DataTableProps<T> {
  * DataTable component v?i sticky header, hover row, v� action column.
  * H? tr? c�c h�nh d?ng edit/delete trong action column.
  */
-export default function DataTable<T extends Record<string, unknown>>({
+export default function DataTable<T extends object>({
   columns,
   dataSource,
   loading,

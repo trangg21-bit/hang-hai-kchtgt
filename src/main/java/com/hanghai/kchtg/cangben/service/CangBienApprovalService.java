@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.cangben.service;
 
 import com.hanghai.kchtg.cangben.entity.CangBien;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import com.hanghai.kchtg.cangben.entity.LichSuThayDoi;
 import com.hanghai.kchtg.cangben.entity.PheDuyetLog;
 import com.hanghai.kchtg.cangben.repository.CangBienRepository;
@@ -54,19 +55,20 @@ public class CangBienApprovalService {
         CangBien entity = cangBienRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + id));
 
-        String currentStatus = entity.getTrangThaiPheDuyet();
+        TrangThaiPheDuyet currentStatus = entity.getTrangThaiPheDuyet();
+        String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
 
         if (reason == null || reason.isBlank()) {
             // APPROVE
-            approvalWorkflowService.approve(currentStatus, "CangBien", id.toString(), userId);
-            entity.setTrangThaiPheDuyet("DUOC_PHE_DUYET");
+            approvalWorkflowService.approve(currentStatusStr, "CangBien", id.toString(), userId);
+            entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.DUOC_PHE_DUYET);
             cangBienRepository.save(entity);
             log.info("CangBien [{}] approved by {}", id, userId);
             notificationService.sendApprovalNotification("CangBien", id.toString(), userId, null);
         } else {
             // REJECT
-            approvalWorkflowService.reject(currentStatus, "CangBien", id.toString(), userId, reason);
-            entity.setTrangThaiPheDuyet("TU_CHOI");
+            approvalWorkflowService.reject(currentStatusStr, "CangBien", id.toString(), userId, reason);
+            entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.TU_CHOI);
             cangBienRepository.save(entity);
             log.info("CangBien [{}] rejected by {}: {}", id, userId, reason);
         }

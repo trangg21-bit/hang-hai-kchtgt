@@ -27,7 +27,7 @@ public class CreatePointObjectRequest {
     private ObjectType objectType;
 
     private Long categoryId;
-    private Long iconId;
+    private java.util.UUID iconId;
 
     @NotNull(message = "Kinh độ không được để trống")
     @DecimalMin(value = "-180.0", message = "Kinh độ phải trong khoảng -180~180")

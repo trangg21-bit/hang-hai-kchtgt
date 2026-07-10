@@ -9,10 +9,7 @@ export interface Symbol {
   code: string;
   name: string;
   description?: string;
-  category: string;
-  icon?: string;
-  color?: string;
-  value?: string;
+  hinhAnh: string;
   status: 'active' | 'inactive' | 'deprecated';
   createdBy: string;
   createdAt: string;
@@ -23,25 +20,18 @@ export interface CreateSymbolPayload {
   code: string;
   name: string;
   description?: string;
-  category: string;
-  icon?: string;
-  color?: string;
-  value?: string;
+  hinhAnh: string;
 }
 
 export interface UpdateSymbolPayload {
   name?: string;
   description?: string;
-  category?: string;
-  icon?: string;
-  color?: string;
-  value?: string;
+  hinhAnh?: string;
   status?: 'active' | 'inactive' | 'deprecated';
 }
 
 export interface SymbolFilters {
   search?: string;
-  category?: string;
   status?: string;
 }
 
@@ -58,10 +48,7 @@ function mapSymbol(item: any): Symbol {
     code: item.code ?? '',
     name: item.name ?? '',
     description: item.description ?? '',
-    category: item.category ?? '',
-    icon: item.icon ?? '',
-    color: item.color ?? '',
-    value: item.value ?? '',
+    hinhAnh: item.hinhAnh ?? '',
     status: (item.status?.toLowerCase() as Symbol['status']) || 'active',
     createdBy: item.createdBy ?? '',
     createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : '',
@@ -70,13 +57,12 @@ function mapSymbol(item: any): Symbol {
 }
 
 export const symbolService = {
-  async list(params?: { page?: number; pageSize?: number; search?: string; category?: string; status?: string }): Promise<PaginatedResponse<Symbol>> {
+  async list(params?: { page?: number; pageSize?: number; search?: string; status?: string }): Promise<PaginatedResponse<Symbol>> {
     const backendPage = params?.page ? params.page - 1 : 0;
 
     const resp = await api.get('/symbols', {
       params: {
         search: params?.search,
-        category: params?.category,
         status: params?.status ? params.status.toUpperCase() : undefined,
         page: backendPage,
         size: params?.pageSize || 10,
@@ -132,16 +118,6 @@ export const symbolService = {
 
   async delete(id: string): Promise<void> {
     await api.delete(`/symbols/${id}`);
-  },
-
-  async getCategories(): Promise<string[]> {
-    const resp = await api.get('/symbols', { params: { size: 100 } });
-    const rawData: any = extractData(resp);
-    const items: any[] = Array.isArray(rawData)
-      ? rawData
-      : (rawData && Array.isArray(rawData.content) ? rawData.content : []);
-    const cats = new Set(items.map((s: any) => s.category).filter(Boolean));
-    return Array.from(cats);
   },
 
   async searchByValue(value: string): Promise<Symbol[]> {

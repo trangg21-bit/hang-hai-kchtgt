@@ -2,6 +2,8 @@ package com.hanghai.kchtg.cangben.service;
 
 import com.hanghai.kchtg.cangben.dto.bencang.*;
 import com.hanghai.kchtg.cangben.entity.BenCang;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import com.hanghai.kchtg.cangben.entity.CangBien;
 import com.hanghai.kchtg.cangben.repository.BenCangRepository;
 import com.hanghai.kchtg.cangben.repository.CangBienRepository;
@@ -49,7 +51,7 @@ public class BenCangService {
                 .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getCangBienId()));
 
         // Guard: parent CangBien must be in hien_hanh (active) status
-        if (!"HIEN_HANH".equals(parent.getTrangThaiHoatDong())) {
+        if (parent.getTrangThaiHoatDong() != TrangThaiHoatDong.HIEN_HANH) {
             throw new IllegalArgumentException(
                     "Không thể tạo bến cảng: cảng biển cha phải ở trạng thái hoạt động (HIEN_HANH)");
         }
@@ -60,8 +62,11 @@ public class BenCangService {
                 .viDo(request.getViDo()).kinhDo(request.getKinhDo())
                 .chieuDai(request.getChieuDai()).chieuRong(request.getChieuRong())
                 .loaiBen(request.getLoaiBen()).doSauLuong(request.getDoSauLuong())
+                .congNangKhaiThac(request.getCongNangKhaiThac())
                 .trangThaiHoatDong(request.getTrangThaiHoatDong())
-                .trangThaiPheDuyet("CHO_PHE_DUYET").build();
+                .orgUnitId(parent.getOrgUnitId())
+                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .bieuTuongId(request.getBieuTuongId()).build();
         BenCang saved = benCangRepository.save(entity);
         log.info("Created BenCang [{}] code={}", saved.getId(), saved.getMaBen());
         return toResponse(saved);
@@ -75,9 +80,30 @@ public class BenCangService {
 
     @Transactional(readOnly = true)
     public Page<BenCangResponse> findAll(int page, int size, UUID orgUnitId) {
+        return findAll(page, size, orgUnitId, null, null, null, null, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<BenCangResponse> findAll(int page, int size, UUID orgUnitId,
+            String maBen, String tenBen, UUID cangBienId,
+            String tuyenDuongThuy, String loaiBen,
+            String trangThaiHoatDong, String trangThaiPheDuyet) {
         int pageSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
-        return benCangRepository.findAllActive(orgUnitId, pageable).map(this::toResponse);
+        TrangThaiHoatDong statusEnum = trangThaiHoatDong != null ? TrangThaiHoatDong.fromString(trangThaiHoatDong)
+                : null;
+        TrangThaiPheDuyet approvalEnum = trangThaiPheDuyet != null ? TrangThaiPheDuyet.fromString(trangThaiPheDuyet)
+                : null;
+        com.hanghai.kchtg.cangben.entity.LoaiBen loaiBenEnum = null;
+        if (loaiBen != null && !loaiBen.trim().isEmpty()) {
+            try {
+                loaiBenEnum = com.hanghai.kchtg.cangben.entity.LoaiBen.valueOf(loaiBen.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                // ignore or leave as null if invalid enum string
+            }
+        }
+        return benCangRepository.searchBenCang(orgUnitId, maBen, tenBen, cangBienId,
+                tuyenDuongThuy, loaiBenEnum, statusEnum, approvalEnum, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -101,25 +127,51 @@ public class BenCangService {
 
         // Capture pre-mutation snapshot BEFORE applying changes (INT-003c fix)
         BenCang snapshot = BenCang.builder()
+                .maBen(entity.getMaBen())
                 .tenBen(entity.getTenBen()).cangBienId(entity.getCangBienId())
                 .tuyenDuongThuy(entity.getTuyenDuongThuy()).viDo(entity.getViDo())
                 .kinhDo(entity.getKinhDo()).chieuDai(entity.getChieuDai())
                 .chieuRong(entity.getChieuRong()).loaiBen(entity.getLoaiBen())
-                .doSauLuong(entity.getDoSauLuong()).trangThaiHoatDong(entity.getTrangThaiHoatDong())
+                .doSauLuong(entity.getDoSauLuong()).congNangKhaiThac(entity.getCongNangKhaiThac())
+                .trangThaiHoatDong(entity.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
+                .orgUnitId(entity.getOrgUnitId())
+                .bieuTuongId(entity.getBieuTuongId())
                 .build();
 
-        if (request.getTenBen() != null) entity.setTenBen(request.getTenBen());
-        if (request.getCangBienId() != null) entity.setCangBienId(request.getCangBienId());
-        if (request.getTuyenDuongThuy() != null) entity.setTuyenDuongThuy(request.getTuyenDuongThuy());
-        if (request.getViDo() != null) entity.setViDo(request.getViDo());
-        if (request.getKinhDo() != null) entity.setKinhDo(request.getKinhDo());
-        if (request.getChieuDai() != null) entity.setChieuDai(request.getChieuDai());
-        if (request.getChieuRong() != null) entity.setChieuRong(request.getChieuRong());
-        if (request.getLoaiBen() != null) entity.setLoaiBen(request.getLoaiBen());
-        if (request.getDoSauLuong() != null) entity.setDoSauLuong(request.getDoSauLuong());
-        if (request.getTrangThaiHoatDong() != null) entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
-        entity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+        if (request.getTenBen() != null)
+            entity.setTenBen(request.getTenBen());
+        if (request.getCangBienId() != null) {
+            entity.setCangBienId(request.getCangBienId());
+            CangBien parent = cangBienRepository.findById(request.getCangBienId())
+                    .orElseThrow(
+                            () -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getCangBienId()));
+            entity.setOrgUnitId(parent.getOrgUnitId());
+        } else if (entity.getOrgUnitId() == null && entity.getCangBienId() != null) {
+            cangBienRepository.findById(entity.getCangBienId()).ifPresent(p -> {
+                entity.setOrgUnitId(p.getOrgUnitId());
+            });
+        }
+        if (request.getTuyenDuongThuy() != null)
+            entity.setTuyenDuongThuy(request.getTuyenDuongThuy());
+        if (request.getViDo() != null)
+            entity.setViDo(request.getViDo());
+        if (request.getKinhDo() != null)
+            entity.setKinhDo(request.getKinhDo());
+        if (request.getChieuDai() != null)
+            entity.setChieuDai(request.getChieuDai());
+        if (request.getChieuRong() != null)
+            entity.setChieuRong(request.getChieuRong());
+        if (request.getLoaiBen() != null)
+            entity.setLoaiBen(request.getLoaiBen());
+        if (request.getDoSauLuong() != null)
+            entity.setDoSauLuong(request.getDoSauLuong());
+        if (request.getCongNangKhaiThac() != null)
+            entity.setCongNangKhaiThac(request.getCongNangKhaiThac());
+        if (request.getTrangThaiHoatDong() != null)
+            entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
+        entity.setBieuTuongId(request.getBieuTuongId());
+        entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
         BenCang saved = benCangRepository.save(entity);
 
@@ -147,8 +199,12 @@ public class BenCangService {
                 .cangBienId(e.getCangBienId()).tuyenDuongThuy(e.getTuyenDuongThuy())
                 .viDo(e.getViDo()).kinhDo(e.getKinhDo()).chieuDai(e.getChieuDai())
                 .chieuRong(e.getChieuRong()).loaiBen(e.getLoaiBen())
-                .doSauLuong(e.getDoSauLuong()).trangThaiHoatDong(e.getTrangThaiHoatDong())
-                .trangThaiPheDuyet(e.getTrangThaiPheDuyet())                .orgUnitId(e.getOrgUnitId())
+                .doSauLuong(e.getDoSauLuong()).congNangKhaiThac(e.getCongNangKhaiThac())
+                .trangThaiHoatDong(e.getTrangThaiHoatDong())
+                .trangThaiPheDuyet(e.getTrangThaiPheDuyet()).orgUnitId(e.getOrgUnitId())
+                .bieuTuongId(e.getBieuTuongId())
+                .createdBy(e.getCreatedBy())
+                .updatedBy(e.getUpdatedBy())
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();
     }
 }

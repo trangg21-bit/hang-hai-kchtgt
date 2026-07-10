@@ -67,6 +67,7 @@ const MENU_PERMISSION_MAP: Record<string, string> = {
   '/reports': 'report:read',
   '/settings': 'admin:manage',
   '/logs': 'log:manage',
+  '/symbols': 'data:read',
 };
 
 const canAccessMenu = (path: string): boolean => {
@@ -99,7 +100,7 @@ const pageTitles: Record<string, string> = {
   '/caucang': 'Cầu cảng',
   '/cangcan': 'Cảng cạn',
   '/vungnuoc': 'Vùng nước',
-  '/luong-hang-hai': 'Luồng hàng hải',
+  '/luong-hang-hai': 'Lượng hàng hải',
   '/de-ke': 'Đê/Kè',
   '/co-so-sua-chua': 'Cơ sở sửa chữa & đóng tàu',
   '/tram-radar': 'Trạm Radar',
@@ -108,6 +109,7 @@ const pageTitles: Record<string, string> = {
   '/reports': 'Báo cáo & Thống kê',
   '/settings': 'Cấu hình hệ thống',
   '/logs': 'Nhật ký hệ thống',
+  '/symbols': 'Biểu tượng bản đồ',
   '/vanban/phaply': 'Văn bản pháp lý',
   '/vanban/suco': 'Sự cố hàng hải',
   '/vanban/quyhoach': 'Quy hoạch bến cảng',
@@ -250,7 +252,7 @@ export default function AppLayout() {
       icon: <SettingOutlined />,
       label: 'Khu nước & VTS',
       children: [
-        canAccessMenu('/luong-hang-hai') ? { key: '/luong-hang-hai', label: 'Luồng hàng hải' } : null,
+        canAccessMenu('/luong-hang-hai') ? { key: '/luong-hang-hai', label: 'Lượng hàng hải' } : null,
         canAccessMenu('/de-ke') ? { key: '/de-ke', label: 'Đê/Kè' } : null,
         canAccessMenu('/co-so-sua-chua') ? { key: '/co-so-sua-chua', label: 'Cơ sở sửa chữa & đóng tàu' } : null,
         canAccessMenu('/tram-radar') ? { key: '/tram-radar', label: 'Trạm Radar' } : null,
@@ -293,16 +295,16 @@ export default function AppLayout() {
             { key: '/reports/F-148', label: 'Biểu 01-N: Năng lực thông qua bến cảng, cầu cảng' },
             { key: '/reports/F-149', label: 'Biểu 02-N: Năng lực thông qua cảng biển' },
             { key: '/reports/F-150', label: 'Biểu 03-N: Thống kê cầu cảng' },
-            { key: '/reports/F-151', label: 'Biểu 04-N: Thống kê luồng hàng hải' },
-            { key: '/reports/F-152', label: 'Biểu 06-N: Thống kê vùng đón trả hoa tiêu, vùng quay trở tàu, ga tránh tàu, khu neo tránh trú bão' },
-            { key: '/reports/F-153', label: 'Biểu 05-N: Thống kê khu chuyển tải, khu neo đậu' },
-            { key: '/reports/F-154', label: 'Biểu 07-N: Thống kê bến phao, khu neo đậu' },
-            { key: '/reports/F-155', label: 'Biểu 08-N: Thống kê hệ thống đèn biển' },
-            { key: '/reports/F-156', label: 'Biểu 09-6T/N: Thống kê về hệ thống phao tiêu, báo hiệu trên luồng' },
-            { key: '/reports/F-157', label: 'Biểu 10-6T/N: Thống kê phao tiêu, báo hiệu trên luồng' },
-            { key: '/reports/F-158', label: 'Biểu 11-N: Thống kê về hệ thống giám sát và điều phối giao thông hàng hải (VTS)' },
-            { key: '/reports/F-159', label: 'Biểu 12-N: Hệ thống các đài thông tin duyên hải' },
-            { key: '/reports/F-160', label: 'Biểu 13-N: Thống kê về hệ thống đê, kè chắn sóng, chắn cát' }
+            { key: '/reports/F-151', label: <span style={{ color: 'red' }}>Biểu 04-N: Thống kê luồng hàng hải</span> },
+            { key: '/reports/F-152', label: <span style={{ color: 'red' }}>Biểu 06-N: Thống kê vùng đón trả hoa tiêu, vùng quay trở tàu, ga tránh tàu, khu neo tránh trú bão</span> },
+            { key: '/reports/F-153', label: <span style={{ color: 'red' }}>Biểu 05-N: Thống kê khu chuyển tải, khu neo đậu</span> },
+            { key: '/reports/F-154', label: <span style={{ color: 'red' }}>Biểu 07-N: Thống kê bến phao, khu neo đậu</span> },
+            { key: '/reports/F-155', label: <span style={{ color: 'red' }}>Biểu 08-N: Thống kê hệ thống đèn biển</span> },
+            { key: '/reports/F-156', label: <span style={{ color: 'red' }}>Biểu 09-6T/N: Thống kê về hệ thống phao tiêu, báo hiệu trên luồng</span> },
+            { key: '/reports/F-157', label: <span style={{ color: 'red' }}>Biểu 10-6T/N: Thống kê phao tiêu, báo hiệu trên luồng</span> },
+            { key: '/reports/F-158', label: <span style={{ color: 'red' }}>Biểu 11-N: Thống kê về hệ thống giám sát và điều phối giao thông hàng hải (VTS)</span> },
+            { key: '/reports/F-159', label: <span style={{ color: 'red' }}>Biểu 12-N: Hệ thống các đài thông tin duyên hải</span> },
+            { key: '/reports/F-160', label: <span style={{ color: 'red' }}>Biểu 13-N: Thống kê về hệ thống đê, kè chắn sóng, chắn cát</span> }
           ]
         },
         {
@@ -379,6 +381,7 @@ export default function AppLayout() {
     { type: 'divider' as const },
     canAccessMenu('/connections') ? { key: '/connections', icon: <ApiOutlined />, label: 'Liên thông dữ liệu' } : null,
     { type: 'divider' as const },
+    canAccessMenu('/symbols') ? { key: '/symbols', icon: <CompassOutlined />, label: 'Biểu tượng bản đồ' } : null,
     canAccessMenu('/settings') ? { key: '/settings', icon: <SettingOutlined />, label: 'Cấu hình hệ thống' } : null,
     canAccessMenu('/logs') ? { key: '/logs', icon: <DashboardOutlined />, label: 'Nhật ký hệ thống' } : null,
   ].filter(Boolean) as MenuProps['items'];

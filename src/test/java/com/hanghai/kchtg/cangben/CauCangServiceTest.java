@@ -18,6 +18,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -57,8 +59,8 @@ class CauCangServiceTest {
         ReflectionTestUtils.setField(activeBenCang, "id", parentId);
         activeBenCang.setMaBen("BEN-001");
         activeBenCang.setTenBen("Bến Cảng Demo");
-        activeBenCang.setTrangThaiHoatDong("HIEN_HANH");
-        activeBenCang.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+        activeBenCang.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
+        activeBenCang.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
         testEntity = new CauCang();
         ReflectionTestUtils.setField(testEntity, "id", testId);
@@ -67,8 +69,8 @@ class CauCangServiceTest {
         testEntity.setBenCangId(parentId);
         testEntity.setChieuDai(new BigDecimal("200.00"));
         testEntity.setTaiTrong(new BigDecimal("50000.00"));
-        testEntity.setTrangThaiHoatDong("HIEN_HANH");
-        testEntity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+        testEntity.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
+        testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
     }
 
     // ── CREATE — INT-005 parent guard ──────────────────────────────────────
@@ -87,7 +89,7 @@ class CauCangServiceTest {
     @Test
     @DisplayName("INT-005: create — parent BenCang not HIEN_HANH → IllegalArgumentException")
     void create_parentNotHienHanh_throwsIllegalArg() {
-        activeBenCang.setTrangThaiHoatDong("DUNG_HOAT_DONG");
+        activeBenCang.setTrangThaiHoatDong(TrangThaiHoatDong.TAM_NGUNG);
         CreateCauCangRequest request = buildCreateRequest("CAU-NEW", "Cầu mới", parentId);
         when(cauCangRepository.existsByMaCau("CAU-NEW")).thenReturn(false);
         when(benCangRepository.findById(parentId)).thenReturn(Optional.of(activeBenCang));
@@ -128,7 +130,7 @@ class CauCangServiceTest {
         assertNotNull(result);
         assertEquals("CAU-NEW", result.getMaCau());
         assertEquals("Cầu mới", result.getTenCau());
-        assertEquals("CHO_PHE_DUYET", result.getTrangThaiPheDuyet());
+        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getTrangThaiPheDuyet());
         verify(cauCangRepository).save(any(CauCang.class));
     }
 
@@ -137,7 +139,7 @@ class CauCangServiceTest {
     @Test
     @DisplayName("update — applies mutable fields, resets to CHO_PHE_DUYET, calls recordChanges")
     void update_appliesMutableFields_resetsApproval() {
-        testEntity.setTrangThaiPheDuyet("DUOC_PHE_DUYET");
+        testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.DUOC_PHE_DUYET);
         when(cauCangRepository.findById(testId)).thenReturn(Optional.of(testEntity));
         when(cauCangRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -149,7 +151,7 @@ class CauCangServiceTest {
         CauCangResponse result = service.update(request);
 
         assertEquals("Cầu Đã Cập Nhật", result.getTenCau());
-        assertEquals("CHO_PHE_DUYET", result.getTrangThaiPheDuyet());
+        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getTrangThaiPheDuyet());
         assertEquals("CAU-001", result.getMaCau()); // code unchanged
         verify(lichSuThayDoiService).recordChanges(eq("CauCang"), any(), any(), any(), any());
     }
@@ -193,7 +195,7 @@ class CauCangServiceTest {
         req.setMaCau(maCau);
         req.setTenCau(tenCau);
         req.setBenCangId(benCangId);
-        req.setTrangThaiHoatDong("HIEN_HANH");
+        req.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
         return req;
     }
 }

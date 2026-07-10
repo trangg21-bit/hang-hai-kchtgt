@@ -13,6 +13,7 @@ export const createCangCanSchema = z
     congSuatTEU: z.coerce.number().optional(),
     trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
     trangThaiPheDuyet: z.enum(['CHO_PHE_DUYET', 'DUOC_PHE_DUYET', 'TU_CHOI']).optional().default('CHO_PHE_DUYET'),
+    bieuTuongId: z.string().uuid().optional().or(z.literal('')),
   })
   .refine(
     (data) => (data.viDo === undefined) === (data.kinhDo === undefined),
@@ -35,6 +36,7 @@ export const updateCangCanSchema = z
     dienTich: z.coerce.number().positive('Diện tích phải lớn hơn 0').optional(),
     congSuatTEU: z.coerce.number().optional(),
     trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
+    bieuTuongId: z.string().uuid().optional().nullable(),
   })
   .refine(
     (data: any) => (data.viDo === undefined || data.viDo === null) === (data.kinhDo === undefined || data.kinhDo === null),

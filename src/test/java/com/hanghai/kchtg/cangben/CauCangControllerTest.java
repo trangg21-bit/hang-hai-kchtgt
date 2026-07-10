@@ -24,6 +24,9 @@ import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -95,8 +98,8 @@ class CauCangControllerTest {
                 .tenCau("Cầu Cảng Demo")
                 .chieuDai(new BigDecimal("200.00"))
                 .taiTrong(new BigDecimal("50000.00"))
-                .trangThaiHoatDong("HIEN_HANH")
-                .trangThaiPheDuyet("CHO_PHE_DUYET")
+                .trangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH)
+                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
                 .build();
     }
 
@@ -128,7 +131,7 @@ class CauCangControllerTest {
     void findAll_returns200WithPagedList() throws Exception {
         UUID id = UUID.randomUUID();
         Page<CauCangResponse> page = new PageImpl<>(List.of(makeResponse(id)));
-        when(cauCangService.findAll(0, 20, null)).thenReturn(page);
+        when(cauCangService.findAll(0, 20, null, null, null, null, null)).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/cau-cang")
                         .param("page", "0")
@@ -137,7 +140,7 @@ class CauCangControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].maCau").value("CAU-001"));
 
-        verify(cauCangService).findAll(0, 20, null);
+        verify(cauCangService).findAll(0, 20, null, null, null, null, null);
     }
 
     // ── GET /api/v1/cau-cang/{id} ────────────────────────────────────────

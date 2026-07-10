@@ -19,7 +19,9 @@ public class UpdateBenCangRequest {
     private BigDecimal kinhDo;
     private BigDecimal chieuDai;
     private BigDecimal chieuRong;
-    private String loaiBen;
+    private com.hanghai.kchtg.cangben.entity.LoaiBen loaiBen;
     private BigDecimal doSauLuong;
-    private String trangThaiHoatDong;
+    private String congNangKhaiThac;
+    private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
+    private UUID bieuTuongId;
 }

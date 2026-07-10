@@ -32,12 +32,27 @@ public class ChartIntegrationService {
     private final S63Decryptor s63Decryptor;
     private final S52StyleService s52StyleService;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private List<ChartFeature> cachedFeatures = null;
+
+    private synchronized List<ChartFeature> getCachedFeatures() {
+        if (cachedFeatures == null) {
+            cachedFeatures = featureRepository.findAll();
+        }
+        return cachedFeatures;
+    }
+
+    private synchronized void clearFeaturesCache() {
+        cachedFeatures = null;
+    }
 
     /**
      * Imports a standard S-57 chart cell (.000).
      */
     @Transactional
     public ChartCell importS57(byte[] fileBytes, String filename) throws IOException {
+        if (filename != null && filename.toLowerCase().endsWith(".json")) {
+            return importJsonChart(fileBytes, filename);
+        }
         S57Parser.ParsedCellData parsedData = s57Parser.parse(fileBytes, filename);
 
         // Save cell metadata
@@ -60,19 +75,71 @@ public class ChartIntegrationService {
         ChartCell savedCell = cellRepository.save(cell);
 
         // Delete old features if updating existing cell
-        List<ChartFeature> oldFeatures = featureRepository.findByCellId(savedCell.getId());
-        if (!oldFeatures.isEmpty()) {
-            featureRepository.deleteAll(oldFeatures);
-        }
+        featureRepository.deleteByCellId(savedCell.getId());
 
         // Save features
         for (ChartFeature feature : parsedData.features) {
             feature.setCellId(savedCell.getId());
-            featureRepository.save(feature);
         }
+        featureRepository.saveAll(parsedData.features);
 
         // Automatically create or update a corresponding MapLayer entry
         syncToMapLayers(savedCell);
+
+        clearFeaturesCache();
+
+        return savedCell;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Transactional
+    public ChartCell importJsonChart(byte[] fileBytes, String filename) throws IOException {
+        Map<String, Object> data = objectMapper.readValue(fileBytes, Map.class);
+        String cellName = (String) data.get("cellName");
+
+        ChartCell cell = cellRepository.findByCellName(cellName)
+                .orElse(new ChartCell());
+        cell.setCellName(cellName);
+        cell.setProducer((String) data.get("producer"));
+        cell.setEdition((Integer) data.get("edition"));
+        cell.setScale((Integer) data.get("scale"));
+        cell.setUpdateNumber((Integer) data.get("updateNumber"));
+
+        String releaseDateStr = (String) data.get("releaseDate");
+        if (releaseDateStr != null) {
+            cell.setReleaseDate(java.time.LocalDate.parse(releaseDateStr));
+        }
+
+        cell.setIsEncrypted(false);
+        cell.setStatus(ChartCell.Status.ACTIVE);
+
+        cell.setLatitude(((Number) data.get("latitude")).doubleValue());
+        cell.setLongitude(((Number) data.get("longitude")).doubleValue());
+
+        ChartCell savedCell = cellRepository.save(cell);
+
+        featureRepository.deleteByCellId(savedCell.getId());
+
+        List<Map<String, Object>> featuresList = (List<Map<String, Object>>) data.get("features");
+        if (featuresList != null) {
+            List<ChartFeature> newFeatures = new java.util.ArrayList<>();
+            for (Map<String, Object> fMap : featuresList) {
+                ChartFeature feature = ChartFeature.builder()
+                        .cellId(savedCell.getId())
+                        .featureCode((String) fMap.get("featureCode"))
+                        .geometryType(ChartFeature.GeometryType.valueOf((String) fMap.get("geometryType")))
+                        .featureName((String) fMap.get("featureName"))
+                        .coordinates((String) fMap.get("coordinates"))
+                        .attributesJson((String) fMap.get("attributesJson"))
+                        .build();
+                newFeatures.add(feature);
+            }
+            featureRepository.saveAll(newFeatures);
+        }
+
+        syncToMapLayers(savedCell);
+
+        clearFeaturesCache();
 
         return savedCell;
     }
@@ -112,18 +179,17 @@ public class ChartIntegrationService {
         ChartCell savedCell = cellRepository.save(cell);
 
         // Delete old features if updating
-        List<ChartFeature> oldFeatures = featureRepository.findByCellId(savedCell.getId());
-        if (!oldFeatures.isEmpty()) {
-            featureRepository.deleteAll(oldFeatures);
-        }
+        featureRepository.deleteByCellId(savedCell.getId());
 
         // Save features
         for (ChartFeature feature : parsedData.features) {
             feature.setCellId(savedCell.getId());
-            featureRepository.save(feature);
         }
+        featureRepository.saveAll(parsedData.features);
 
         syncToMapLayers(savedCell);
+
+        clearFeaturesCache();
 
         return savedCell;
     }
@@ -214,6 +280,129 @@ public class ChartIntegrationService {
 
         return result;
     }
+
+    public List<Map<String, Object>> getAllS52StyledFeatures(String palette) {
+        List<ChartFeature> features = featureRepository.findAll();
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (ChartFeature f : features) {
+            S52StyleService.S52Style style = s52StyleService.getStyle(f, palette);
+            Map<String, Object> featureMap = new HashMap<>();
+            featureMap.put("id", f.getId());
+            featureMap.put("cellId", f.getCellId());
+            featureMap.put("featureName", f.getFeatureName());
+            featureMap.put("featureCode", f.getFeatureCode());
+            featureMap.put("geometryType", f.getGeometryType().name());
+            featureMap.put("coordinates", f.getCoordinates());
+
+            try {
+                featureMap.put("attributes", objectMapper.readValue(f.getAttributesJson(), Map.class));
+            } catch (Exception e) {
+                featureMap.put("attributes", new HashMap<>());
+            }
+
+            Map<String, Object> styleMap = new HashMap<>();
+            styleMap.put("fillColor", style.fillColor);
+            styleMap.put("strokeColor", style.strokeColor);
+            styleMap.put("strokeWidth", style.strokeWidth);
+            styleMap.put("strokeDashArray", style.strokeDashArray);
+            styleMap.put("iconSymbol", style.iconSymbol);
+            styleMap.put("fillOpacity", style.fillOpacity);
+
+            featureMap.put("s52Style", styleMap);
+            result.add(featureMap);
+        }
+
+        return result;
+    }
+
+    public List<Map<String, Object>> getS52StyledFeaturesInBounds(
+            String palette, double minLon, double minLat, double maxLon, double maxLat) {
+        List<ChartFeature> features;
+        try {
+            features = featureRepository.findFeaturesInBoundingBox(minLon, minLat, maxLon, maxLat);
+        } catch (Exception e) {
+            // Fallback to fast in-memory cache filtering if PostGIS geom column is not available
+            List<ChartFeature> allFeatures = getCachedFeatures();
+            features = new ArrayList<>();
+            for (ChartFeature f : allFeatures) {
+                if (isFeatureInBounds(f.getCoordinates(), minLon, minLat, maxLon, maxLat)) {
+                    features.add(f);
+                }
+            }
+        }
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (ChartFeature f : features) {
+            S52StyleService.S52Style style = s52StyleService.getStyle(f, palette);
+            Map<String, Object> featureMap = new HashMap<>();
+            featureMap.put("id", f.getId());
+            featureMap.put("cellId", f.getCellId());
+            featureMap.put("featureName", f.getFeatureName());
+            featureMap.put("featureCode", f.getFeatureCode());
+            featureMap.put("geometryType", f.getGeometryType().name());
+            featureMap.put("coordinates", f.getCoordinates());
+
+            try {
+                featureMap.put("attributes", objectMapper.readValue(f.getAttributesJson(), Map.class));
+            } catch (Exception e) {
+                featureMap.put("attributes", new HashMap<>());
+            }
+
+            Map<String, Object> styleMap = new HashMap<>();
+            styleMap.put("fillColor", style.fillColor);
+            styleMap.put("strokeColor", style.strokeColor);
+            styleMap.put("strokeWidth", style.strokeWidth);
+            styleMap.put("strokeDashArray", style.strokeDashArray);
+            styleMap.put("iconSymbol", style.iconSymbol);
+            styleMap.put("fillOpacity", style.fillOpacity);
+
+            featureMap.put("s52Style", styleMap);
+            result.add(featureMap);
+        }
+
+        return result;
+    }
+
+    private boolean isFeatureInBounds(String wkt, double minLon, double minLat, double maxLon, double maxLat) {
+        if (wkt == null || wkt.isEmpty()) {
+            return false;
+        }
+
+        double featMinLon = Double.MAX_VALUE;
+        double featMaxLon = -Double.MAX_VALUE;
+        double featMinLat = Double.MAX_VALUE;
+        double featMaxLat = -Double.MAX_VALUE;
+
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("-?\\d+\\.\\d+|-?\\d+");
+        java.util.regex.Matcher matcher = pattern.matcher(wkt);
+
+        boolean hasPoints = false;
+        while (matcher.find()) {
+            try {
+                double lon = Double.parseDouble(matcher.group());
+                if (!matcher.find()) {
+                    break;
+                }
+                double lat = Double.parseDouble(matcher.group());
+
+                if (lon < featMinLon) featMinLon = lon;
+                if (lon > featMaxLon) featMaxLon = lon;
+                if (lat < featMinLat) featMinLat = lat;
+                if (lat > featMaxLat) featMaxLat = lat;
+                hasPoints = true;
+            } catch (Exception e) {
+                // skip
+            }
+        }
+
+        if (!hasPoints) {
+            return false;
+        }
+
+        return featMinLon <= maxLon && featMaxLon >= minLon && featMinLat <= maxLat && featMaxLat >= minLat;
+    }
+
 
     private void syncToMapLayers(ChartCell cell) {
         String code = "CHART-" + cell.getCellName();

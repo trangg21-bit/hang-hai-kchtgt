@@ -72,9 +72,17 @@ public class CangBienController {
     public ResponseEntity<ApiResponse<Page<CangBienResponse>>> findAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) UUID orgUnitId) {
-        log.info("Listing CangBien: page={}, size={}, orgUnitId={}", page, size, orgUnitId);
-        Page<CangBienResponse> result = cangBienService.findAll(page, size, orgUnitId);
+            @RequestParam(required = false) UUID orgUnitId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String maCang,
+            @RequestParam(required = false) String tenCang,
+            @RequestParam(required = false) String tinhThanhPho,
+            @RequestParam(required = false) String trangThaiHoatDong,
+            @RequestParam(required = false) String trangThaiPheDuyet) {
+        log.info("Listing CangBien: page={}, size={}, orgUnitId={}, search={}, maCang={}, tenCang={}, tinhThanhPho={}, status={}, approvalStatus={}",
+                page, size, orgUnitId, search, maCang, tenCang, tinhThanhPho, trangThaiHoatDong, trangThaiPheDuyet);
+        Page<CangBienResponse> result = cangBienService.findAll(
+                page, size, orgUnitId, maCang, tenCang, tinhThanhPho, trangThaiHoatDong, trangThaiPheDuyet, search);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cảng biển thành công", result));
     }
 

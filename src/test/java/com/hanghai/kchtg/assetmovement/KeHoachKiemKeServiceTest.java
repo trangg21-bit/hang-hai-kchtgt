@@ -123,7 +123,7 @@ public class KeHoachKiemKeServiceTest {
         KeHoachKiemKeResponse response = service.reject(testId, "Từ chối do thiếu thông tin");
 
         assertNotNull(response);
-        assertEquals("CHO_PHE_DUYET", response.getTrangThai());
+        assertEquals("TU_CHOI", response.getTrangThai());
         verify(repository, times(1)).save(any(KeHoachKiemKe.class));
     }
 

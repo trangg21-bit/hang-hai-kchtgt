@@ -1,0 +1,15 @@
+feature_id: F-070
+module_id: M-004
+slug: quan-ly-den-bien-xoa
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: "src/main/java/com/hanghai/kchtg/beacon/service/BeaconLightService.java#delete"
+  consumers:
+    - "src/main/java/com/hanghai/kchtg/beacon/controller/BeaconLightController.java#delete"
+    - "src/main/java/com/hanghai/kchtg/beacon/service/PointObjectSyncService.java#hideFromMap"
+
+# Cross-cutting: features consumed by multiple modules
+consumed_by_modules: []

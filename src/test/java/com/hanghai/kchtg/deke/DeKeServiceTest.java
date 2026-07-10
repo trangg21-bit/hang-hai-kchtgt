@@ -97,7 +97,7 @@ class DeKeServiceTest {
         when(repo.findById(99L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.getById(99L))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Không tìm thấy");
+                .hasMessageContaining("Khong tim thay");
     }
 
     // ── findAll ─────────────────────────────────────────────────────────
@@ -147,7 +147,7 @@ class DeKeServiceTest {
         when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
         assertThatThrownBy(() -> service.softDelete(1L))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Chỉ có đê kè đã phê duyệt mới có thể xóa mềm");
+                .hasMessageContaining("Chi co de ke da duyet moi co the xoa mem");
     }
 
     @Test void softDelete_shouldThrowWhenNotFound() {
@@ -248,7 +248,7 @@ class DeKeServiceTest {
                 .quyetDinh("APPROVED")
                 .build(), "user1"))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Người phê duyệt C2 không được trùng với người phê duyệt C1");
+                .hasMessageContaining("Nguoi phe duyet C2 khong duoc trung");
     }
 
     // ── reject ──────────────────────────────────────────────────────────

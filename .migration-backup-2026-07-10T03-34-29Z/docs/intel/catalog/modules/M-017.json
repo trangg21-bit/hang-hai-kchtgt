@@ -1,0 +1,437 @@
+{
+  "entry": {
+    "aggregate_size_status": "yellow",
+    "depends_on": [],
+    "feature_count": 28,
+    "features": {
+      "F-148": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-148",
+        "name": "Bieu 01-N: Nang luc thong qua ben cang, cau cang",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-148-bieu-01-n-nang-luc-ben-cang-cau-cang/",
+        "slug": "bieu-01-n-nang-luc-ben-cang-cau-cang",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-149": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-149",
+        "name": "Bieu 01B-N: Nang luc thong qua cang bien",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-149-bieu-01b-n-nang-luc-cang-bien/",
+        "slug": "bieu-01b-n-nang-luc-cang-bien",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-150": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-150",
+        "name": "Bieu 02-N: Thong ke cau cang",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-150-bieu-02-n-thong-ke-cau-cang/",
+        "slug": "bieu-02-n-thong-ke-cau-cang",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-151": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-151",
+        "name": "Bieu 03-Q/N: Thong ke luong hang hai",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-151-bieu-03-q-n-thong-ke-luong-hang-hai/",
+        "slug": "bieu-03-q-n-thong-ke-luong-hang-hai",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-152": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-152",
+        "name": "Bieu 04-6T/N: Thong ke vung do/tra hieu, vung quay tro",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-152-bieu-04-6t-n-thong-ke-vung-do/",
+        "slug": "bieu-04-6t-n-thong-ke-vung-do",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-153": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-153",
+        "name": "Bieu 04B-N: Thong ke khu chuyen tai, khu neo dau",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-153-bieu-04b-n-thong-ke-khu-chuyen-tai/",
+        "slug": "bieu-04b-n-thong-ke-khu-chuyen-tai",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-154": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-154",
+        "name": "Bieu 05-N: Thong ke ben phao, khu neo dau",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-154-bieu-05-n-thong-ke-ben-phao/",
+        "slug": "bieu-05-n-thong-ke-ben-phao",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-155": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-155",
+        "name": "Bieu 06-N: Thong ke he thong den bien",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-155-bieu-06-n-thong-ke-he-thong-den-bien/",
+        "slug": "bieu-06-n-thong-ke-he-thong-den-bien",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-156": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-156",
+        "name": "Bieu 07-6T/N: Thong ke he thong phao tieu",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-156-bieu-07-6t-n-thong-ke-he-thong-phao-tieu/",
+        "slug": "bieu-07-6t-n-thong-ke-he-thong-phao-tieu",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-157": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-157",
+        "name": "Bieu 07B-6T/N: Thong ke phao tieu bao hieu",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-157-bieu-07b-6t-n-thong-ke-phao-tieu-bao-hieu/",
+        "slug": "bieu-07b-6t-n-thong-ke-phao-tieu-bao-hieu",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-158": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-158",
+        "name": "Bieu 08-N: Thong ke he thong giam sat VTS",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-158-bieu-08-n-thong-ke-he-thong-giam-sat-vts/",
+        "slug": "bieu-08-n-thong-ke-he-thong-giam-sat-vts",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-159": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-159",
+        "name": "Bieu 09-N: He thong dai thong tin duyen hai",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-159-bieu-09-n-he-thong-dai-thong-tin-duyen-hai/",
+        "slug": "bieu-09-n-he-thong-dai-thong-tin-duyen-hai",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-160": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-160",
+        "name": "Bieu 10-N: Thong ke he thong de, ke chan song",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-160-bieu-10-n-thong-ke-he-thong-de-ke-chan-song/",
+        "slug": "bieu-10-n-thong-ke-he-thong-de-ke-chan-song",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-161": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-161",
+        "name": "Bieu 11-T: Bao cao chi tiet tau bien ra vao cang",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-161-bieu-11-t-bao-cao-chi-tiet-tau-bien/",
+        "slug": "bieu-11-t-bao-cao-chi-tiet-tau-bien",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-162": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-162",
+        "name": "Bieu 11B-T: Bao cao chi tiet phuong tien thuy noi dia",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-162-bieu-11b-t-phuong-tien-thuy-noi-dia/",
+        "slug": "bieu-11b-t-phuong-tien-thuy-noi-dia",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-163": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-163",
+        "name": "Bieu 16-Q: Thong ke tau bien nuoc ngoai den, roi",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-163-bieu-16-q-thong-ke-tau-bien-nuoc-ngoai/",
+        "slug": "bieu-16-q-thong-ke-tau-bien-nuoc-ngoai",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-164": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-164",
+        "name": "Bieu 17-Q: Thong ke tau bien VN van tai quoc te",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-164-bieu-17-q-thong-ke-tau-bien-vn-van-tai/",
+        "slug": "bieu-17-q-thong-ke-tau-bien-vn-van-tai",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-165": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-165",
+        "name": "Bieu 12-T: Khoi luong hang hoa, hanh khach theo thang",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-165-bieu-12-t-khoi-luong-hang-hoa-hanh-khach/",
+        "slug": "bieu-12-t-khoi-luong-hang-hoa-hanh-khach",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-166": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-166",
+        "name": "Bieu 12-N: Khoi luong hang hoa theo nam",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-166-bieu-12-n-khoi-luong-hang-hoa-theo-nam/",
+        "slug": "bieu-12-n-khoi-luong-hang-hoa-theo-nam",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-167": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-167",
+        "name": "Bieu 13-T: Luot tau thuyen vao roi cang bien",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-167-bieu-13-t-luot-tau-thuyen-vao-roi/",
+        "slug": "bieu-13-t-luot-tau-thuyen-vao-roi",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-168": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-168",
+        "name": "Bieu 14-T: Khoi luong hang hoa, hanh khach, luot tau",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-168-bieu-14-t-khoi-luong-hang-hoa-hanh-khach-luot-tau/",
+        "slug": "bieu-14-t-khoi-luong-hang-hoa-hanh-khach-luot-tau",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-169": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-169",
+        "name": "Bieu 15-T: Khoi luong hang hoa trong khu quan ly",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-169-bieu-15-t-khoi-luong-hang-hoa-trong-khu-quan-ly/",
+        "slug": "bieu-15-t-khoi-luong-hang-hoa-trong-khu-quan-ly",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-170": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-170",
+        "name": "Bieu 21-6T/N: Thong ke thuyen vien, hieu",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-170-bieu-21-6t-n-thong-ke-thuyen-vien-hieu/",
+        "slug": "bieu-21-6t-n-thong-ke-thuyen-vien-hieu",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-171": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-171",
+        "name": "Bieu 22-6T/N: Thong ke tau bien quoc tich VN",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-171-bieu-22-6t-n-thong-ke-tau-bien-quoc-tich/",
+        "slug": "bieu-22-6t-n-thong-ke-tau-bien-quoc-tich",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-172": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-172",
+        "name": "Bieu 23-N: Thong ke tau thuyen hoat dong lai dat",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-172-bieu-23-n-thong-ke-tau-thuyen-lai-dat/",
+        "slug": "bieu-23-n-thong-ke-tau-thuyen-lai-dat",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-173": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-173",
+        "name": "Bieu 31-N: Thong ke co so dong moi, sua chua, pha do tau",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-173-bieu-31-n-thong-ke-co-so-dong-moi/",
+        "slug": "bieu-31-n-thong-ke-co-so-dong-moi",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-175": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-175",
+        "name": "Bieu so 06-N: Nang luc thong qua ben cang thong tu 48",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-175-bieu-so-06-n-nang-luc-thong-tu-48/",
+        "slug": "bieu-so-06-n-nang-luc-thong-tu-48",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-176": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-176",
+        "name": "Bieu 07-N: Nang luc thong qua cang bien, thuy noi dia",
+        "path": "docs/modules/M-017-thong-ke-chuyen-de/_features/F-176-bieu-07-n-nang-luc-cang-bien-thuy-noi/",
+        "slug": "bieu-07-n-nang-luc-cang-bien-thuy-noi",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      }
+    },
+    "id": "M-017",
+    "name": "Thống kê chuyên đề",
+    "path": "docs/modules/M-017-thong-ke-chuyen-de/",
+    "slug": "thong-ke-chuyen-de",
+    "status": "in-progress",
+    "version": 1
+  },
+  "module_id": "M-017",
+  "schema_version": "1.0"
+}

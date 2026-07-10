@@ -1,0 +1,126 @@
+{
+  "module_id": "M-005",
+  "module_name": "Quan ly bien dong tai san KCHTGT",
+  "description": "Quan ly bien dong: tang, giam, xu ly, kiem ke, khai thac tai san",
+  "stack": [
+    "Spring Boot 17+",
+    "MSSQL Server 2022",
+    "ReactJS 18+",
+    "Nginx",
+    "MinIO",
+    "GeoServer"
+  ],
+  "actors": [
+    "A-002",
+    "A-003",
+    "A-004"
+  ],
+  "features": [
+    {
+      "id": "F-122",
+      "name": "Tang tai san KCHT",
+      "module": "M-005",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "line 4246-4248, UC-146",
+      "scope": "Tang tai san khi co phat sinh moi tai don vi",
+      "business_rules": [
+        "Tang khi co tai san phat sinh moi",
+        "Tu dong cap nhat nguyen gia"
+      ],
+      "acceptance_criteria": [
+        "Tang tai san thanh cong"
+      ]
+    },
+    {
+      "id": "F-123",
+      "name": "Giam tai san KCHT",
+      "module": "M-005",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "line 4248, UC-146",
+      "scope": "Giam nguyen gia tai san",
+      "business_rules": [
+        "Giam nguyen gia",
+        "Tu dong cap nhat hao mon luy ke, gia tri con lai"
+      ],
+      "acceptance_criteria": [
+        "Giam tai san thanh cong"
+      ]
+    },
+    {
+      "id": "F-124",
+      "name": "Xu ly tai san KCHT",
+      "module": "M-005",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "line 4248, UC-146-147",
+      "scope": "Xu ly tai san (xoa, ban, huy) - de nghi xu ly",
+      "business_rules": [
+        "Xu ly phai duoc phe duyet",
+        "Lanh dao phe duyet xu ly"
+      ],
+      "acceptance_criteria": [
+        "Xu ly tai san thanh cong"
+      ]
+    },
+    {
+      "id": "F-125",
+      "name": "Kiem ke tai san KCHT",
+      "module": "M-005",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-150, line 3756",
+      "scope": "Chuyen vien - Kiem ke tai san theo chuan",
+      "business_rules": [
+        "Kiem ke theo chuan"
+      ],
+      "acceptance_criteria": [
+        "Kiem ke thanh cong"
+      ]
+    },
+    {
+      "id": "F-126",
+      "name": "Khai thac tai san KCHT",
+      "module": "M-005",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "line 4248, UC-148",
+      "scope": "Cap nhat thong tin khai thac tai san",
+      "business_rules": [
+        "Tu dong cap nhat hao mon luy ke, gia tri con lai"
+      ],
+      "acceptance_criteria": [
+        "Khai thac thanh cong"
+      ]
+    },
+    {
+      "id": "F-127",
+      "name": "Phe duyet bien dong tai san",
+      "module": "M-005",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "line 4248, UC-147",
+      "scope": "Lanh dao - Phe duyet bien dong tai san KCHT",
+      "business_rules": [
+        "Lanh dao phe duyet bien dong tai san"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet bien dong thanh cong"
+      ]
+    }
+  ],
+  "cross_references": {
+    "catalog_ref": "docs/intel/catalog.json#M-005",
+    "brief_ref": "docs/intel/doc-brief.md"
+  },
+  "do_d": {
+    "api_contract_complete": false,
+    "entity_schema_defined": false,
+    "business_rules_mapped": true,
+    "test_data_ready": false,
+    "acceptance_criteria_written": true,
+    "priority_assigned": true,
+    "source_traced": true
+  }
+}

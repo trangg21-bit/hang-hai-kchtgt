@@ -37,7 +37,12 @@ public class UpdateCangBienRequest {
 
     private BigDecimal khaNangTiepNhan;
 
-    private String trangThaiHoatDong;
+    private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
+
+    private UUID orgUnitId;
+
+    private Integer nhomCangBien;
+    private java.util.UUID bieuTuongId;
 
     /**
      * GPS paired-field constraint: viDo and kinhDo must both be present or both be absent.

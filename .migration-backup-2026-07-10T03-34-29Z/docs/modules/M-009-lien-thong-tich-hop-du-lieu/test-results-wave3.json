@@ -1,0 +1,123 @@
+﻿{
+  "wave": "wave3",
+  "module": "M-009-lien-thong-tich-hop-du-lieu",
+  "date": "2026-06-22T17:08:10+07:00",
+  "environment": {
+    "java_version": "17.0.3",
+    "java_home": "C:\\Program Files\\ojdkbuild\\java-17-openjdk-17.0.3.0.6-1",
+    "maven_version": "3.9.14",
+    "spring_boot_version": "3.3.6"
+  },
+  "summary": {
+    "total": 206,
+    "passed": 206,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "pass_rate": 100.0
+  },
+  "build": {
+    "status": "SUCCESS",
+    "duration_seconds": 13.214
+  },
+  "test_classes": [
+    {
+      "class": "com.hanghai.kchtg.admin.AdminServiceTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "com.hanghai.kchtg.dataconnection.DataConnectionServiceTest",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "com.hanghai.kchtg.gis.layer.MapLayerControllerTest",
+      "tests": 26,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "com.hanghai.kchtg.gis.layer.MapLayerServiceTest",
+      "tests": 40,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "com.hanghai.kchtg.gis.line.LineObjectControllerTest",
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "com.hanghai.kchtg.gis.line.LineObjectServiceTest",
+      "tests": 28,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "com.hanghai.kchtg.gis.point.PointObjectControllerTest",
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "com.hanghai.kchtg.gis.point.PointObjectServiceTest",
+      "tests": 42,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "com.hanghai.kchtg.integration.IntegrationShareControllerEnhancedTest",
+      "tests": 17,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "com.hanghai.kchtg.integration.IntegrationShareControllerTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "class": "com.hanghai.kchtg.integration.IntegrationSyncServiceTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "excluded_tests": [
+    "AccessLogServiceTest.java",
+    "UserGroupServiceTest.java",
+    "MapIconServiceTest.java",
+    "OrganizationServiceTest.java",
+    "PolygonObjectControllerTest.java",
+    "PolygonObjectServiceTest.java",
+    "SearchControllerTest.java",
+    "SearchServiceTest.java",
+    "UserServiceTest.java",
+    "JwtAuthFilterTest.java",
+    "JwtUtilTest.java",
+    "RoleServiceTest.java",
+    "UserControllerTest.java"
+  ],
+  "security_config_verification": {
+    "prePostEnabled": true,
+    "api_routes_authenticated": true,
+    "no_regression": true
+  },
+  "verdict": "PASS"
+}

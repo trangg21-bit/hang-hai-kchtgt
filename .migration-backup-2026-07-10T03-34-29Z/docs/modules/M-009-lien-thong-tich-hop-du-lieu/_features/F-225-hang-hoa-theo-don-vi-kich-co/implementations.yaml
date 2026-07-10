@@ -1,0 +1,13 @@
+feature_id: F-225
+module_id: M-009
+slug: hang-hoa-theo-don-vi-kich-co
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: PortCargoShareController
+  consumers: []
+
+# Cross-cutting: features consumed by multiple modules
+consumed_by_modules: []

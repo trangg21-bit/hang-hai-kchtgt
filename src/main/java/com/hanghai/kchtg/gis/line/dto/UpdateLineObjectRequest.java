@@ -17,7 +17,7 @@ public class UpdateLineObjectRequest {
     private String code;
     private ObjectType objectType;
     private Long categoryId;
-    private Long lineSymbolId;
+    private java.util.UUID lineSymbolId;
     private String coordinates;
     private String description;
     private Status status;

@@ -2,6 +2,8 @@ package com.hanghai.kchtg.cangben.service;
 
 import com.hanghai.kchtg.cangben.dto.cangbien.*;
 import com.hanghai.kchtg.cangben.entity.CangBien;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import com.hanghai.kchtg.cangben.repository.BenCangRepository;
 import com.hanghai.kchtg.cangben.repository.CangBienRepository;
 import com.hanghai.kchtg.cangben.repository.VungNuocRepository;
@@ -59,7 +61,10 @@ public class CangBienService {
                 .dienTich(request.getDienTich())
                 .khaNangTiepNhan(request.getKhaNangTiepNhan())
                 .trangThaiHoatDong(request.getTrangThaiHoatDong())
-                .trangThaiPheDuyet("CHO_PHE_DUYET")
+                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .orgUnitId(request.getOrgUnitId())
+                .nhomCangBien(request.getNhomCangBien())
+                .bieuTuongId(request.getBieuTuongId())
                 .build();
 
         CangBien saved = cangBienRepository.save(entity);
@@ -85,10 +90,21 @@ public class CangBienService {
      */
     @Transactional(readOnly = true)
     public Page<CangBienResponse> findAll(int page, int size, UUID orgUnitId) {
+        return findAll(page, size, orgUnitId, null, null, null, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CangBienResponse> findAll(int page, int size, UUID orgUnitId,
+                                          String maCang, String tenCang, String tinhThanhPho,
+                                          String trangThaiHoatDong, String trangThaiPheDuyet,
+                                          String search) {
         int pageSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
 
-        Page<CangBien> results = cangBienRepository.findAllActive(orgUnitId, pageable);
+        TrangThaiHoatDong statusEnum = trangThaiHoatDong != null ? TrangThaiHoatDong.fromString(trangThaiHoatDong) : null;
+        TrangThaiPheDuyet approvalEnum = trangThaiPheDuyet != null ? TrangThaiPheDuyet.fromString(trangThaiPheDuyet) : null;
+        Page<CangBien> results = cangBienRepository.searchCangBien(
+                orgUnitId, maCang, tenCang, tinhThanhPho, statusEnum, approvalEnum, search, pageable);
         return results.map(this::toResponse);
     }
 
@@ -104,13 +120,21 @@ public class CangBienService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + request.getId()));
 
         // Capture pre-mutation snapshot before applying changes (INT-003c)
-        String oldTenCang = entity.getTenCang();
-        String oldTinhThanhPho = entity.getTinhThanhPho();
-        BigDecimal oldViDo = entity.getViDo();
-        BigDecimal oldKinhDo = entity.getKinhDo();
-        BigDecimal oldDienTich = entity.getDienTich();
-        BigDecimal oldKhaNangTiepNhan = entity.getKhaNangTiepNhan();
-        String oldTrangThaiHoatDong = entity.getTrangThaiHoatDong();
+        CangBien preImage = CangBien.builder()
+                .id(entity.getId())
+                .maCang(entity.getMaCang())
+                .tenCang(entity.getTenCang())
+                .tinhThanhPho(entity.getTinhThanhPho())
+                .viDo(entity.getViDo())
+                .kinhDo(entity.getKinhDo())
+                .dienTich(entity.getDienTich())
+                .khaNangTiepNhan(entity.getKhaNangTiepNhan())
+                .orgUnitId(entity.getOrgUnitId())
+                .nhomCangBien(entity.getNhomCangBien())
+                .trangThaiHoatDong(entity.getTrangThaiHoatDong())
+                .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
+                .bieuTuongId(entity.getBieuTuongId())
+                .build();
 
         // Update mutable fields — code (maCang) is immutable
         if (request.getTenCang() != null) entity.setTenCang(request.getTenCang());
@@ -119,23 +143,16 @@ public class CangBienService {
         if (request.getKinhDo() != null) entity.setKinhDo(request.getKinhDo());
         if (request.getDienTich() != null) entity.setDienTich(request.getDienTich());
         if (request.getKhaNangTiepNhan() != null) entity.setKhaNangTiepNhan(request.getKhaNangTiepNhan());
-        if (request.getTrangThaiHoatDong() != null) entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
-
-        // Reset approval status — changes require re-approval
-        entity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+        if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
+        if (request.getNhomCangBien() != null) entity.setNhomCangBien(request.getNhomCangBien());
+        entity.setBieuTuongId(request.getBieuTuongId());
+        entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong() != null ? request.getTrangThaiHoatDong() : entity.getTrangThaiHoatDong());
+        entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
         CangBien saved = cangBienRepository.save(entity);
 
-        // Build detached snapshot of old state to diff against (INT-003c)
-        CangBien snapshot = CangBien.builder()
-                .tenCang(oldTenCang).tinhThanhPho(oldTinhThanhPho)
-                .viDo(oldViDo).kinhDo(oldKinhDo).dienTich(oldDienTich)
-                .khaNangTiepNhan(oldKhaNangTiepNhan).trangThaiHoatDong(oldTrangThaiHoatDong)
-                .trangThaiPheDuyet(saved.getTrangThaiPheDuyet())
-                .build();
-
         // Record field-level change history (INT-003b)
-        lichSuThayDoiService.recordChanges("CangBien", saved.getId().toString(), "system", snapshot, saved);
+        lichSuThayDoiService.recordChanges("CangBien", saved.getId().toString(), "system", preImage, saved);
 
         log.info("Updated CangBien [{}] code={}", saved.getId(), saved.getMaCang());
         return toResponse(saved);
@@ -193,6 +210,10 @@ public class CangBienService {
                 .trangThaiHoatDong(entity.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
                 .orgUnitId(entity.getOrgUnitId())
+                .nhomCangBien(entity.getNhomCangBien())
+                .bieuTuongId(entity.getBieuTuongId())
+                .createdBy(entity.getCreatedBy())
+                .updatedBy(entity.getUpdatedBy())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.cosuachua.repository;
 
 import com.hanghai.kchtg.cosuachua.entity.CoSuaChuaDongTau;
+import com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,7 +12,7 @@ import java.util.List;
 @Repository
 public interface CoSuaChuaDongTauRepository extends JpaRepository<CoSuaChuaDongTau, Long> {
 
-    List<CoSuaChuaDongTau> findByTrangThaiAndIsDeletedFalse(String trangThai);
+    List<CoSuaChuaDongTau> findByTrangThaiAndIsDeletedFalse(CoSuaChuaApprovalStatus trangThai);
 
     @Query("SELECT c FROM CoSuaChuaDongTau c WHERE " +
             "(:keyword IS NULL OR LOWER(c.tenCoSo) LIKE :keyword OR LOWER(c.diaChi) LIKE :keyword OR LOWER(c.tinhThanh) LIKE :keyword) AND " +
@@ -21,6 +22,6 @@ public interface CoSuaChuaDongTauRepository extends JpaRepository<CoSuaChuaDongT
             "c.isDeleted = false")
     List<CoSuaChuaDongTau> search(@Param("keyword") String keyword,
                                     @Param("tinhThanh") String tinhThanh,
-                                    @Param("trangThai") String trangThai,
-                                    @Param("trangThaiPheDuyet") String trangThaiPheDuyet);
+                                    @Param("trangThai") CoSuaChuaApprovalStatus trangThai,
+                                    @Param("trangThaiPheDuyet") CoSuaChuaApprovalStatus trangThaiPheDuyet);
 }

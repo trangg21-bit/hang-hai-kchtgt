@@ -26,5 +26,6 @@ public class CreateVungNuocRequest {
     private BigDecimal doSauMax;
     private BigDecimal doSauTrungBinh;
     private String loaiVungNuoc;
-    private String trangThaiHoatDong;
+    private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
+    private java.util.UUID bieuTuongId;
 }

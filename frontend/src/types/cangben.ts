@@ -36,6 +36,7 @@ export interface CangBien {
   trangThaiHoatDong: string;
   trangThaiPheDuyet: string;
   orgUnitId: string;
+  bieuTuongId?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: string;
@@ -53,6 +54,7 @@ export interface CreateCangBienRequest {
   trangThaiHoatDong: string;
   trangThaiPheDuyet: string;
   orgUnitId: string;
+  bieuTuongId?: string;
 }
 
 export interface UpdateCangBienRequest {
@@ -63,6 +65,7 @@ export interface UpdateCangBienRequest {
   kinhDo?: number;
   dienTich?: number;
   khaNangTiepNhan?: number;
+  bieuTuongId?: string | null;
   trangThaiHoatDong?: string;
   trangThaiPheDuyet?: string;
 }
@@ -83,9 +86,11 @@ export interface BenCang {
   chieuRong?: number;
   loaiBen?: string;
   doSauLuong?: number;
+  congNangKhaiThac?: string;
   trangThaiHoatDong?: string;
   trangThaiPheDuyet: string;
   orgUnitId?: string;
+  bieuTuongId?: string;
   createdBy?: string;
   updatedBy?: string;
   createdAt?: string;
@@ -103,7 +108,9 @@ export interface CreateBenCangRequest {
   chieuRong?: number;
   loaiBen?: string;
   doSauLuong?: number;
+  congNangKhaiThac?: string;
   trangThaiHoatDong?: string;
+  bieuTuongId?: string;
 }
 
 export interface UpdateBenCangRequest {
@@ -117,7 +124,9 @@ export interface UpdateBenCangRequest {
   chieuRong?: number;
   loaiBen?: string;
   doSauLuong?: number;
+  congNangKhaiThac?: string;
   trangThaiHoatDong?: string;
+  bieuTuongId?: string | null;
 }
 
 // ── 3. Cầu Cảng ──────────────────────────────────────────────────────
@@ -133,6 +142,7 @@ export interface CauCang {
   trangThaiHoatDong: string;
   trangThaiPheDuyet: string;
   orgUnitId: string;
+  bieuTuongId?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: string;
@@ -149,6 +159,7 @@ export interface CreateCauCangRequest {
   trangThaiHoatDong: string;
   trangThaiPheDuyet: string;
   orgUnitId: string;
+  bieuTuongId?: string;
 }
 
 export interface UpdateCauCangRequest {
@@ -160,6 +171,7 @@ export interface UpdateCauCangRequest {
   loaiCau?: string;
   trangThaiHoatDong?: string;
   trangThaiPheDuyet?: string;
+  bieuTuongId?: string | null;
 }
 
 // ── 4. Cảng cạn ──────────────────────────────────────────────────────
@@ -176,6 +188,7 @@ export interface CangCan {
   trangThaiHoatDong: string;
   trangThaiPheDuyet: string;
   orgUnitId: string;
+  bieuTuongId?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: string;
@@ -193,6 +206,7 @@ export interface CreateCangCanRequest {
   trangThaiHoatDong: string;
   trangThaiPheDuyet: string;
   orgUnitId: string;
+  bieuTuongId?: string;
 }
 
 export interface UpdateCangCanRequest {
@@ -205,6 +219,7 @@ export interface UpdateCangCanRequest {
   congSuatTEU?: number;
   trangThaiHoatDong?: string;
   trangThaiPheDuyet?: string;
+  bieuTuongId?: string | null;
 }
 
 // ── 5. Vùng nước ─────────────────────────────────────────────────────
@@ -221,6 +236,7 @@ export interface VungNuoc {
   trangThaiHoatDong: string;
   trangThaiPheDuyet: string;
   orgUnitId: string;
+  bieuTuongId?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: string;
@@ -238,6 +254,7 @@ export interface CreateVungNuocRequest {
   trangThaiHoatDong: string;
   trangThaiPheDuyet: string;
   orgUnitId: string;
+  bieuTuongId?: string;
 }
 
 export interface UpdateVungNuocRequest {
@@ -250,4 +267,5 @@ export interface UpdateVungNuocRequest {
   loaiVungNuoc?: string;
   trangThaiHoatDong?: string;
   trangThaiPheDuyet?: string;
+  bieuTuongId?: string | null;
 }

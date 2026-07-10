@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.mapicon.dto;
 
 import com.hanghai.kchtg.mapicon.entity.MapSymbol;
+import com.hanghai.kchtg.mapicon.entity.MapSymbolStatus;
 import lombok.Builder;
 import lombok.Data;
 
@@ -14,11 +15,8 @@ public class MapSymbolResponse {
     private String code;
     private String name;
     private String description;
-    private String category;
-    private String icon;
-    private String color;
-    private String value;
-    private String status;
+    private String hinhAnh;
+    private MapSymbolStatus status;
     private String createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -30,10 +28,7 @@ public class MapSymbolResponse {
                 .code(symbol.getCode())
                 .name(symbol.getName())
                 .description(symbol.getDescription())
-                .category(symbol.getCategory())
-                .icon(symbol.getIcon())
-                .color(symbol.getColor())
-                .value(symbol.getValue())
+                .hinhAnh(symbol.getHinhAnh())
                 .status(symbol.getStatus())
                 .createdBy(symbol.getCreatedBy())
                 .createdAt(symbol.getCreatedAt())

@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.gis.seeder;
 
 import com.hanghai.kchtg.gis.repository.ChartCellRepository;
+import com.hanghai.kchtg.gis.repository.ChartFeatureRepository;
 import com.hanghai.kchtg.gis.service.ChartIntegrationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +19,8 @@ import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 /**
  * Automatically seeds the database with the electronic chart cell (.000) files
- * located in classpath:charts/ on application startup if they do not already exist.
+ * located in classpath:charts/ on application startup if they do not already
+ * exist.
  */
 @Component
 @RequiredArgsConstructor
@@ -27,6 +29,7 @@ public class ChartSeeder implements CommandLineRunner {
 
     private final ChartIntegrationService chartIntegrationService;
     private final ChartCellRepository cellRepository;
+    private final ChartFeatureRepository featureRepository;
     private final EntityManager entityManager;
     private final PlatformTransactionManager transactionManager;
 
@@ -40,18 +43,19 @@ public class ChartSeeder implements CommandLineRunner {
         ResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         Resource[] resources;
         try {
-            resources = resolver.getResources("classpath:charts/*.000");
+            resources = resolver.getResources("classpath:charts_json/*.json");
         } catch (Exception e) {
-            log.warn("Không thể quét thư mục classpath:charts/*.000: {}", e.getMessage());
+            log.warn("Không thể quét thư mục classpath:charts_json/*.json: {}", e.getMessage());
             return;
         }
 
         if (resources == null || resources.length == 0) {
-            log.warn("Không tìm thấy tệp tin hải đồ (.000) nào trong thư mục classpath:charts/");
+            log.warn("Không tìm thấy tệp tin hải đồ (.json) nào trong thư mục classpath:charts_json/");
             return;
         }
 
-        log.info("Tìm thấy {} tệp hải đồ (.000) trong classpath. Bắt đầu đối chiếu với cơ sở dữ liệu...", resources.length);
+        log.info("Tìm thấy {} tệp hải đồ (.json) trong classpath. Bắt đầu đối chiếu với cơ sở dữ liệu...",
+                resources.length);
 
         int importedCount = 0;
         int skippedCount = 0;
@@ -62,10 +66,12 @@ public class ChartSeeder implements CommandLineRunner {
                 continue;
             }
 
-            String cellName = filename.toUpperCase().replace(".000", "");
+            String cellName = filename.toUpperCase().replace(".JSON", "");
 
-            // Check if this cell is already imported
-            if (cellRepository.findByCellName(cellName).isPresent()) {
+            // Check if this cell is already imported with actual S-57 features
+            java.util.Optional<com.hanghai.kchtg.gis.entity.ChartCell> existingCell = cellRepository
+                    .findByCellName(cellName);
+            if (existingCell.isPresent() && featureRepository.existsByCellId(existingCell.get().getId())) {
                 skippedCount++;
                 continue;
             }
@@ -92,4 +98,3 @@ public class ChartSeeder implements CommandLineRunner {
                 importedCount, skippedCount);
     }
 }
-

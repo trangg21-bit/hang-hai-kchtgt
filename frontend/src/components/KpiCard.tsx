@@ -1,4 +1,21 @@
 import { ArrowUpOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import {
+  actionPrimary,
+  statusOperational,
+  statusCritical,
+  textPrimary,
+  textSecondary,
+  surfaceCard,
+  borderDefault,
+  radiusLg,
+  spaceXs,
+  spaceSm,
+  spaceMd,
+  fontSizeSm,
+  fontSizeStat,
+  fontWeightMedium,
+  fontWeightBold,
+} from '../tokens';
 
 // ============================================================
 // Types
@@ -27,41 +44,44 @@ export default function KpiCard({ label, value, subLabel, trend, variant = 'defa
   const isWarning = variant === 'warning';
 
   const cardStyle: React.CSSProperties = {
-    background: isWarning ? '#FFF8E1' : '#FFFFFF',
-    border: isWarning ? '0.5px solid #FFD54F' : '0.5px solid #E5E7EB',
-    borderRadius: 12,
-    padding: 14,
+    background: isWarning ? '#FFF8E1' : surfaceCard,
+    border: isAction
+      ? `0.5px solid ${actionPrimary}`
+      : isWarning
+        ? '0.5px solid #FFD54F'
+        : `0.5px solid ${borderDefault}`,
+    borderRadius: radiusLg,
+    padding: spaceMd,
     cursor: isAction ? 'pointer' : 'default',
     transition: 'box-shadow 0.2s ease',
-    ...(isAction ? {} : {}),
   };
 
-  const valueColor = isWarning ? '#F57F17' : '#1F2937';
+  const valueColor = isWarning ? '#F57F17' : isAction ? actionPrimary : textPrimary;
 
   return (
     <div
       style={cardStyle}
       onClick={onClick}
       onMouseEnter={(e) => {
-        if (isAction) (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)';
+        if (isAction) (e.currentTarget as HTMLDivElement).style.boxShadow = `0 2px 8px ${actionPrimary}33`;
       }}
       onMouseLeave={(e) => {
         if (isAction) (e.currentTarget as HTMLDivElement).style.boxShadow = '';
       }}
     >
       {/* Label */}
-      <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 4 }}>
+      <div style={{ fontSize: fontSizeSm, color: textSecondary, marginBottom: spaceXs }}>
         {label}
       </div>
 
       {/* Value */}
-      <div style={{ fontSize: 24, fontWeight: 500, color: valueColor, lineHeight: 1.3 }}>
+      <div style={{ fontSize: fontSizeStat, fontWeight: fontWeightMedium, color: valueColor, lineHeight: 1.3 }}>
         {formatNumber(value)}
       </div>
 
       {/* Sub-label */}
       {subLabel && (
-        <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+        <div style={{ fontSize: fontSizeSm, color: textSecondary, marginTop: spaceXs }}>
           {subLabel}
         </div>
       )}
@@ -72,17 +92,17 @@ export default function KpiCard({ label, value, subLabel, trend, variant = 'defa
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 4,
-            fontSize: 12,
-            fontWeight: 600,
-            color: trend.isUp ? '#1BAF7A' : '#E34948',
-            marginTop: 6,
+            gap: spaceXs,
+            fontSize: fontSizeSm,
+            fontWeight: fontWeightBold,
+            color: trend.isUp ? statusOperational : statusCritical,
+            marginTop: spaceSm,
           }}
         >
           {trend.isUp ? (
-            <ArrowUpOutlined style={{ fontSize: 10 }} />
+            <ArrowUpOutlined style={{ fontSize: fontSizeSm }} />
           ) : (
-            <ArrowDownOutlined style={{ fontSize: 10 }} />
+            <ArrowDownOutlined style={{ fontSize: fontSizeSm }} />
           )}
           {trend.value.toFixed(1)}%
         </div>

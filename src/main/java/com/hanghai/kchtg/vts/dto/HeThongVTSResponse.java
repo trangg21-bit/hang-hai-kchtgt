@@ -17,7 +17,7 @@ public class HeThongVTSResponse {
     private String mucDoPhuTrach;
     private String nguonGoc;
     private String doiTac;
-    private String trangThai;
+    private com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus trangThai;
     private Boolean pheDuyetC1;
     private String nguoiPheDuyetC1;
     private LocalDateTime ngayPheDuyetC1;

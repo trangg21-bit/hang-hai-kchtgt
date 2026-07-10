@@ -1,0 +1,21 @@
+feature_id: F-086
+module_id: M-004
+slug: quan-ly-nha-tram-den-tao-moi
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: "src/main/java/com/hanghai/kchtg/nhatram/controller/NhaTramDenController.java"
+  consumers:
+    - "src/main/java/com/hanghai/kchtg/nhatram/service/NhaTramDenService.java"
+    - "src/main/java/com/hanghai/kchtg/nhatram/dto/den/CreateNhaTramDenRequest.java"
+    - "src/main/java/com/hanghai/kchtg/nhatram/dto/den/NhaTramDenResponse.java"
+    - "src/main/java/com/hanghai/kchtg/nhatram/entity/NhaTramDen.java"
+    - "src/main/java/com/hanghai/kchtg/nhatram/entity/BaseNhaTram.java"
+    - "src/main/java/com/hanghai/kchtg/nhatram/repository/NhaTramDenRepository.java"
+
+# Cross-cutting: features consumed by other modules
+consumed_by_modules:
+  - module: M-007
+    description: "GIS point object sync — when nhà trạm đèn is approved to L2/PUBLISHED, its location is synced to point_objects table"

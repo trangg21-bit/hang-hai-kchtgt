@@ -36,10 +36,10 @@ public abstract class BaseTai {
     @Enumerated(EnumType.STRING)
     private TaiType taiType;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = TaiStatusConverter.class)
     private TaiStatus status;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = TaiApprovalStatusConverter.class)
     private TaiApprovalStatus approvalStatus;
 
     private UUID approvedBy;

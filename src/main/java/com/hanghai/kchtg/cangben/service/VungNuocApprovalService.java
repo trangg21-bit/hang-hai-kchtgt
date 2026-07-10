@@ -3,6 +3,7 @@ package com.hanghai.kchtg.cangben.service;
 import com.hanghai.kchtg.cangben.entity.LichSuThayDoi;
 import com.hanghai.kchtg.cangben.entity.PheDuyetLog;
 import com.hanghai.kchtg.cangben.entity.VungNuoc;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import com.hanghai.kchtg.cangben.repository.LichSuThayDoiRepository;
 import com.hanghai.kchtg.cangben.repository.PheDuyetLogRepository;
 import com.hanghai.kchtg.cangben.repository.VungNuocRepository;
@@ -54,19 +55,20 @@ public class VungNuocApprovalService {
         VungNuoc entity = vungNuocRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy vùng nước với id: " + id));
 
-        String currentStatus = entity.getTrangThaiPheDuyet();
+        TrangThaiPheDuyet currentStatus = entity.getTrangThaiPheDuyet();
+        String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
 
         if (reason == null || reason.isBlank()) {
             // APPROVE
-            approvalWorkflowService.approve(currentStatus, "VungNuoc", id.toString(), userId);
-            entity.setTrangThaiPheDuyet("DUOC_PHE_DUYET");
+            approvalWorkflowService.approve(currentStatusStr, "VungNuoc", id.toString(), userId);
+            entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.DUOC_PHE_DUYET);
             vungNuocRepository.save(entity);
             log.info("VungNuoc [{}] approved by {}", id, userId);
             notificationService.sendApprovalNotification("VungNuoc", id.toString(), userId, null);
         } else {
             // REJECT
-            approvalWorkflowService.reject(currentStatus, "VungNuoc", id.toString(), userId, reason);
-            entity.setTrangThaiPheDuyet("TU_CHOI");
+            approvalWorkflowService.reject(currentStatusStr, "VungNuoc", id.toString(), userId, reason);
+            entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.TU_CHOI);
             vungNuocRepository.save(entity);
             log.info("VungNuoc [{}] rejected by {}: {}", id, userId, reason);
         }

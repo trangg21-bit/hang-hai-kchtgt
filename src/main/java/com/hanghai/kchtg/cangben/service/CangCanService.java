@@ -2,6 +2,8 @@ package com.hanghai.kchtg.cangben.service;
 
 import com.hanghai.kchtg.cangben.dto.cangcan.*;
 import com.hanghai.kchtg.cangben.entity.CangCan;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import com.hanghai.kchtg.cangben.repository.CangCanRepository;
 import com.hanghai.kchtg.cangben.service.shared.AuditLogService;
 import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
@@ -46,7 +48,8 @@ public class CangCanService {
                 .tinhThanhPho(request.getTinhThanhPho()).viDo(request.getViDo())
                 .kinhDo(request.getKinhDo()).dienTich(request.getDienTich())
                 .congSuatTEU(request.getCongSuatTEU()).trangThaiHoatDong(request.getTrangThaiHoatDong())
-                .trangThaiPheDuyet("CHO_PHE_DUYET").build();
+                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .bieuTuongId(request.getBieuTuongId()).build();
         CangCan saved = cangCanRepository.save(entity);
         log.info("Created CangCan [{}] code={}", saved.getId(), saved.getMaCangCan());
         return toResponse(saved);
@@ -60,9 +63,18 @@ public class CangCanService {
 
     @Transactional(readOnly = true)
     public Page<CangCanResponse> findAll(int page, int size, UUID orgUnitId) {
+        return findAll(page, size, orgUnitId, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CangCanResponse> findAll(int page, int size, UUID orgUnitId,
+                                         String search, String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 100);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
-        return cangCanRepository.findAllActive(orgUnitId, pageable).map(this::toResponse);
+        TrangThaiHoatDong statusEnum = status != null ? TrangThaiHoatDong.fromString(status) : null;
+        TrangThaiPheDuyet approvalEnum = approvalStatus != null ? TrangThaiPheDuyet.fromString(approvalStatus) : null;
+        return cangCanRepository.searchCangCan(orgUnitId, search, statusEnum, approvalEnum, pageable)
+                .map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
@@ -78,10 +90,13 @@ public class CangCanService {
 
         // Capture pre-mutation snapshot BEFORE applying changes (INT-003c fix)
         CangCan snapshot = CangCan.builder()
+                .maCangCan(entity.getMaCangCan())
                 .tenCangCan(entity.getTenCangCan()).tinhThanhPho(entity.getTinhThanhPho())
                 .viDo(entity.getViDo()).kinhDo(entity.getKinhDo()).dienTich(entity.getDienTich())
                 .congSuatTEU(entity.getCongSuatTEU()).trangThaiHoatDong(entity.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
+                .orgUnitId(entity.getOrgUnitId())
+                .bieuTuongId(entity.getBieuTuongId())
                 .build();
 
         if (request.getTenCangCan() != null) entity.setTenCangCan(request.getTenCangCan());
@@ -91,9 +106,9 @@ public class CangCanService {
         if (request.getDienTich() != null) entity.setDienTich(request.getDienTich());
         if (request.getCongSuatTEU() != null) entity.setCongSuatTEU(request.getCongSuatTEU());
         if (request.getTrangThaiHoatDong() != null) entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
-
+        entity.setBieuTuongId(request.getBieuTuongId());
         // Reset approval status — changes require re-approval
-        entity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+        entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
         CangCan saved = cangCanRepository.save(entity);
 
@@ -120,6 +135,10 @@ public class CangCanService {
                 .tinhThanhPho(e.getTinhThanhPho()).viDo(e.getViDo()).kinhDo(e.getKinhDo())
                 .dienTich(e.getDienTich()).congSuatTEU(e.getCongSuatTEU())
                 .trangThaiHoatDong(e.getTrangThaiHoatDong()).trangThaiPheDuyet(e.getTrangThaiPheDuyet())
-                .orgUnitId(e.getOrgUnitId()).createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();
+                .orgUnitId(e.getOrgUnitId())
+                .bieuTuongId(e.getBieuTuongId())
+                .createdBy(e.getCreatedBy())
+                .updatedBy(e.getUpdatedBy())
+                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();
     }
 }

@@ -18,6 +18,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -28,6 +30,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import com.hanghai.kchtg.cangben.entity.CangBien;
+import com.hanghai.kchtg.cangben.repository.CangBienRepository;
+
 @ExtendWith(MockitoExtension.class)
 @DisplayName("VungNuocService unit tests — INT-004 / CRUD")
 class VungNuocServiceTest {
@@ -37,6 +42,9 @@ class VungNuocServiceTest {
 
     @Mock
     private VungNuocRepository vungNuocRepository;
+
+    @Mock
+    private CangBienRepository cangBienRepository;
 
     @Mock
     private LichSuThayDoiService lichSuThayDoiService;
@@ -61,8 +69,8 @@ class VungNuocServiceTest {
         testEntity.setDoSauMax(new BigDecimal("15.00"));
         testEntity.setDoSauTrungBinh(new BigDecimal("12.00"));
         testEntity.setLoaiVungNuoc("CANG_BIEN");
-        testEntity.setTrangThaiHoatDong("HIEN_HANH");
-        testEntity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+        testEntity.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
+        testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
     }
 
     // ── findAll — INT-004 two-filter overload ─────────────────────────────
@@ -71,28 +79,26 @@ class VungNuocServiceTest {
     @DisplayName("INT-004: findAll(page,size,orgUnitId,cangBienId) → calls 2-filter repo overload")
     void findAll_withCangBienIdFilter_callsOverloadedRepo() {
         Page<VungNuoc> mockPage = new PageImpl<>(List.of(testEntity));
-        when(vungNuocRepository.findAllActive(eq(orgUnitId), eq(cangBienId), any(Pageable.class)))
+        when(vungNuocRepository.searchVungNuoc(eq(orgUnitId), eq(cangBienId), isNull(), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(mockPage);
 
         Page<VungNuocResponse> result = service.findAll(0, 20, orgUnitId, cangBienId);
 
         assertEquals(1, result.getTotalElements());
-        verify(vungNuocRepository).findAllActive(eq(orgUnitId), eq(cangBienId), any(Pageable.class));
-        // ensure the single-filter overload is NOT called
-        verify(vungNuocRepository, never()).findAllActive(any(UUID.class), any(Pageable.class));
+        verify(vungNuocRepository).searchVungNuoc(eq(orgUnitId), eq(cangBienId), isNull(), isNull(), isNull(), any(Pageable.class));
     }
 
     @Test
     @DisplayName("INT-004: findAll(page,size,orgUnitId) → delegates to 4-arg with cangBienId=null")
     void findAll_withoutCangBienId_callsSingleFilter() {
         Page<VungNuoc> mockPage = new PageImpl<>(List.of());
-        when(vungNuocRepository.findAllActive(eq(orgUnitId), isNull(), any(Pageable.class)))
+        when(vungNuocRepository.searchVungNuoc(eq(orgUnitId), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(mockPage);
 
         Page<VungNuocResponse> result = service.findAll(0, 20, orgUnitId);
 
         assertEquals(0, result.getTotalElements());
-        verify(vungNuocRepository).findAllActive(eq(orgUnitId), isNull(), any(Pageable.class));
+        verify(vungNuocRepository).searchVungNuoc(eq(orgUnitId), isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
     }
 
     // ── CREATE ────────────────────────────────────────────────────────────────
@@ -101,6 +107,9 @@ class VungNuocServiceTest {
     @DisplayName("create — saves and returns response")
     void create_success() {
         CreateVungNuocRequest request = buildCreateRequest("VN-NEW", "Vùng nước mới");
+        CangBien parent = new CangBien();
+        parent.setOrgUnitId(orgUnitId);
+        when(cangBienRepository.findById(cangBienId)).thenReturn(Optional.of(parent));
         when(vungNuocRepository.existsByMaVungNuoc("VN-NEW")).thenReturn(false);
         when(vungNuocRepository.save(any(VungNuoc.class))).thenAnswer(inv -> {
             VungNuoc saved = inv.getArgument(0);
@@ -113,7 +122,7 @@ class VungNuocServiceTest {
         assertNotNull(result);
         assertEquals("VN-NEW", result.getMaVungNuoc());
         assertEquals("Vùng nước mới", result.getTenVungNuoc());
-        assertEquals("CHO_PHE_DUYET", result.getTrangThaiPheDuyet());
+        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getTrangThaiPheDuyet());
         verify(vungNuocRepository).save(any(VungNuoc.class));
     }
 
@@ -156,7 +165,7 @@ class VungNuocServiceTest {
         req.setMaVungNuoc(maVungNuoc);
         req.setTenVungNuoc(tenVungNuoc);
         req.setCangBienId(cangBienId);
-        req.setTrangThaiHoatDong("HIEN_HANH");
+        req.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
         return req;
     }
 }

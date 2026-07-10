@@ -11,6 +11,9 @@ import {
   Select,
   Tooltip,
   Modal,
+  Form,
+  Descriptions,
+  Upload,
 } from 'antd';
 import {
   PlusOutlined,
@@ -20,22 +23,78 @@ import {
   ReloadOutlined,
   EyeOutlined,
   ExclamationCircleOutlined,
+  UploadOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { symbolService } from '../../services/symbolService';
-import type { Symbol } from '../../services/symbolService';
+import type { Symbol, CreateSymbolPayload, UpdateSymbolPayload } from '../../services/symbolService';
 import { usePermissionStore } from '../../store/permissionStore';
 import DataTable from '../../components/DataTable';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
+import FormField from '../../components/FormField';
 import toast from '../../components/ToastNotification';
 
 const STATUS_MAP: Record<string, { color: string; label: string }> = {
-  active: { color: 'green', label: 'Hoạt động' },
-  inactive: { color: 'default', label: 'Không hoạt động' },
+  active: { color: 'green', label: 'Sử dụng' },
+  inactive: { color: 'default', label: 'Không sử dụng' },
   deprecated: { color: 'red', label: 'Ngừng sử dụng' },
+};
+
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Sử dụng' },
+  { value: 'inactive', label: 'Không sử dụng' },
+  { value: 'deprecated', label: 'Ngừng sử dụng' },
+];
+
+interface UploadImageInputProps {
+  value?: string;
+  onChange?: (value: string) => void;
+}
+
+const UploadImageInput: React.FC<UploadImageInputProps> = ({ value, onChange }) => {
+  const handleUpload = (file: any) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        onChange?.(e.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+    return false; // prevent automatic upload
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div
+        style={{
+          width: 60,
+          height: 60,
+          border: '1px solid #d9d9d9',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#fafafa',
+          overflow: 'hidden',
+        }}
+      >
+        {value ? (
+          <img src={value} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        ) : (
+          <div style={{ color: '#bfbfbf', fontSize: 12 }}>Trống</div>
+        )}
+      </div>
+      <Upload
+        accept="image/png, image/jpeg, image/jpg"
+        beforeUpload={handleUpload}
+        showUploadList={false}
+      >
+        <Button icon={<UploadOutlined />}>Chọn hình ảnh</Button>
+      </Upload>
+    </div>
+  );
 };
 
 export default function SymbolList() {
@@ -43,7 +102,6 @@ export default function SymbolList() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const [search, setSearch] = useState('');
-  const [filterCategory, setFilterCategory] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -53,6 +111,14 @@ export default function SymbolList() {
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
+  // Modal states
+  const [formOpen, setFormOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [editingSymbol, setEditingSymbol] = useState<Symbol | null>(null);
+  const [previewSymbol, setPreviewSymbol] = useState<Symbol | null>(null);
+  const [form] = Form.useForm();
+  const [submitting, setSubmitting] = useState(false);
+
   const fetchSymbols = useCallback(async () => {
     setIsLoading(true);
     setIsError(false);
@@ -61,7 +127,6 @@ export default function SymbolList() {
         page,
         pageSize,
         search: search || undefined,
-        category: filterCategory,
         status: filterStatus,
       });
       setDataSource(res.data);
@@ -72,7 +137,7 @@ export default function SymbolList() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, search, filterCategory, filterStatus]);
+  }, [page, pageSize, search, filterStatus]);
 
   useEffect(() => { void fetchSymbols(); }, [fetchSymbols]);
 
@@ -80,6 +145,61 @@ export default function SymbolList() {
     setSearch(value);
     setPage(1);
   }, []);
+
+  const openCreateModal = useCallback(() => {
+    setEditingSymbol(null);
+    form.resetFields();
+    setFormOpen(true);
+  }, [form]);
+
+  const openEditModal = useCallback((record: Symbol) => {
+    setEditingSymbol(record);
+    form.setFieldsValue({
+      code: record.code,
+      name: record.name,
+      description: record.description,
+      hinhAnh: record.hinhAnh,
+      status: record.status,
+    });
+    setFormOpen(true);
+  }, [form]);
+
+  const openPreviewModal = useCallback((record: Symbol) => {
+    setPreviewSymbol(record);
+    setPreviewOpen(true);
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    try {
+      const values = await form.validateFields();
+      setSubmitting(true);
+      if (editingSymbol) {
+        const payload: UpdateSymbolPayload = {
+          name: values.name,
+          description: values.description,
+          hinhAnh: values.hinhAnh,
+          status: values.status,
+        };
+        await symbolService.update(editingSymbol.id, payload);
+        toast.success('Đã cập nhật biểu tượng');
+      } else {
+        const payload: CreateSymbolPayload = {
+          code: values.code,
+          name: values.name,
+          description: values.description,
+          hinhAnh: values.hinhAnh,
+        };
+        await symbolService.create(payload);
+        toast.success('Đã tạo biểu tượng');
+      }
+      setFormOpen(false);
+      fetchSymbols();
+    } catch {
+      // validation or connection error
+    } finally {
+      setSubmitting(false);
+    }
+  }, [editingSymbol, form, fetchSymbols]);
 
   const handleDelete = useCallback(
     async (symbol: Symbol) => {
@@ -131,34 +251,24 @@ export default function SymbolList() {
       title: 'Tên',
       dataIndex: 'name',
       ellipsis: true,
-      render: (text: string, record: Symbol) => (
-        <Space>
-          <Typography.Text strong>{text}</Typography.Text>
-          {record.color && (
-            <span
-              style={{
-                display: 'inline-block',
-                width: 12,
-                height: 12,
-                borderRadius: '50%',
-                backgroundColor: record.color,
-              }}
-            />
-          )}
-        </Space>
-      ),
+      render: (text: string) => <Typography.Text strong>{text}</Typography.Text>,
     },
     {
-      title: 'Giá trị',
-      dataIndex: 'value',
-      width: 100,
-      render: (v?: string) => v ? <Tag>{v}</Tag> : <Typography.Text type="secondary">—</Typography.Text>,
-    },
-    {
-      title: 'Danh mục',
-      dataIndex: 'category',
+      title: 'Hình ảnh',
+      dataIndex: 'hinhAnh',
       width: 120,
-      render: (text: string) => <Tag>{text}</Tag>,
+      align: 'center' as const,
+      render: (src?: string) => (
+        src ? (
+          <img
+            src={src}
+            alt="Biểu tượng"
+            style={{ maxHeight: 30, maxWidth: 60, objectFit: 'contain' }}
+          />
+        ) : (
+          <Typography.Text type="secondary">—</Typography.Text>
+        )
+      ),
     },
     {
       title: 'Trạng thái',
@@ -187,7 +297,7 @@ export default function SymbolList() {
               type="link"
               size="small"
               icon={<EyeOutlined />}
-              onClick={() => navigate(`/symbols/${record.id}/preview`)}
+              onClick={() => openPreviewModal(record)}
             />
           </Tooltip>
           {hasPerm('symbol.edit') && (
@@ -196,7 +306,7 @@ export default function SymbolList() {
                 type="link"
                 size="small"
                 icon={<EditOutlined />}
-                onClick={() => navigate(`/symbols/${record.id}/edit`)}
+                onClick={() => openEditModal(record)}
               />
             </Tooltip>
           )}
@@ -229,20 +339,14 @@ export default function SymbolList() {
                 prefix={<SearchOutlined />}
                 onSearch={handleSearch}
               />
-              <Select placeholder="Danh mục" allowClear style={{ width: 150 }} value={filterCategory} onChange={(val) => { setFilterCategory(val); setPage(1); }} options={[
-                { value: 'navigation', label: 'Điều hướng' },
-                { value: 'road', label: 'Đường' },
-                { value: 'position', label: 'Vị trí' },
-                { value: 'division', label: 'Phân chia' },
-                { value: 'building', label: 'Công trình' },
-                { value: 'transport', label: 'Giao thông' },
-                { value: 'location', label: 'Địa điểm' },
-              ]} />
-              <Select placeholder="Trạng thái" allowClear style={{ width: 150 }} value={filterStatus} onChange={(val) => { setFilterStatus(val); setPage(1); }} options={[
-                { value: 'active', label: 'Hoạt động' },
-                { value: 'inactive', label: 'Không hoạt động' },
-                { value: 'deprecated', label: 'Ngừng sử dụng' },
-              ]} />
+              <Select
+                placeholder="Trạng thái"
+                allowClear
+                style={{ width: 150 }}
+                value={filterStatus}
+                onChange={(val) => { setFilterStatus(val); setPage(1); }}
+                options={STATUS_OPTIONS}
+              />
             </Space>
           </Col>
           <Col xs={24} md={8} style={{ textAlign: 'right' }}>
@@ -251,7 +355,7 @@ export default function SymbolList() {
                 <Button icon={<ReloadOutlined />} onClick={fetchSymbols} />
               </Tooltip>
               {hasPerm('symbol.create') && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/symbols/create')}>
+                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
                   Thêm biểu tượng
                 </Button>
               )}
@@ -270,9 +374,9 @@ export default function SymbolList() {
         )}
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
-            description={search || filterCategory ? 'Không tìm thấy biểu tượng' : 'Chưa có biểu tượng nào'}
+            description={search ? 'Không tìm thấy biểu tượng' : 'Chưa có biểu tượng nào'}
             ctaText="Thêm biểu tượng đầu tiên"
-            onCta={() => navigate('/symbols/create')}
+            onCta={openCreateModal}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (
@@ -296,6 +400,143 @@ export default function SymbolList() {
           />
         )}
       </Card>
+
+      {/* Create / Edit Modal */}
+      <Modal
+        title={editingSymbol ? 'Chỉnh sửa biểu tượng' : 'Thêm biểu tượng mới'}
+        open={formOpen}
+        onOk={handleSave}
+        onCancel={() => setFormOpen(false)}
+        confirmLoading={submitting}
+        okText={editingSymbol ? 'Cập nhật' : 'Tạo mới'}
+        cancelText="Hủy"
+        width={650}
+        destroyOnClose
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{ status: 'active' }}
+          style={{ marginTop: 16 }}
+        >
+          <Row gutter={16}>
+            <Col span={12}>
+              <FormField
+                type="text"
+                name="code"
+                label="Mã biểu tượng"
+                required
+                disabled={!!editingSymbol}
+                placeholder="Mã biểu tượng"
+                maxLength={10}
+              />
+            </Col>
+            <Col span={12}>
+              <FormField
+                type="text"
+                name="name"
+                label="Tên biểu tượng"
+                required
+                placeholder="Tên biểu tượng"
+                maxLength={255}
+              />
+            </Col>
+          </Row>
+
+          <Form.Item
+            name="hinhAnh"
+            label="Hình ảnh"
+            required
+            rules={[{ required: true, message: 'Hình ảnh không được để trống' }]}
+            style={{ marginBottom: 20 }}
+          >
+            <UploadImageInput />
+          </Form.Item>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <FormField
+                type="select"
+                name="status"
+                label="Trạng thái"
+                required
+                options={STATUS_OPTIONS}
+              />
+            </Col>
+            <Col span={12}>
+              <FormField
+                type="textarea"
+                name="description"
+                label="Ghi chú"
+                placeholder="Ghi chú"
+                maxLength={500}
+                rows={2}
+              />
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
+
+      {/* Preview Modal */}
+      <Modal
+        title="Xem trước chi tiết biểu tượng"
+        open={previewOpen}
+        onCancel={() => setPreviewOpen(false)}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setPreviewOpen(false)}>
+            Đóng
+          </Button>
+        ]}
+        width={650}
+        destroyOnClose
+      >
+        {previewSymbol && (
+          <div style={{ marginTop: 16 }}>
+            {/* Visual Preview */}
+            <Card style={{ textAlign: 'center', marginBottom: 16, backgroundColor: '#fafafa' }}>
+              <Typography.Title level={4} style={{ margin: 0 }}>{previewSymbol.name}</Typography.Title>
+              <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
+                <Tag color="cyan" style={{ fontSize: 16, padding: '4px 12px' }}>{previewSymbol.code}</Tag>
+                {previewSymbol.hinhAnh && (
+                  <div
+                    style={{
+                      height: 60,
+                      margin: '12px auto',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <img
+                      src={previewSymbol.hinhAnh}
+                      alt="Preview"
+                      style={{ maxHeight: '100%', objectFit: 'contain' }}
+                    />
+                  </div>
+                )}
+              </Space>
+            </Card>
+
+            {/* Details table */}
+            <Descriptions bordered column={2} size="small">
+              <Descriptions.Item label="Mã ký hiệu">{previewSymbol.code}</Descriptions.Item>
+              <Descriptions.Item label="Tên">{previewSymbol.name}</Descriptions.Item>
+              <Descriptions.Item label="Trạng thái" span={2}>
+                {(() => {
+                  const s = STATUS_MAP[previewSymbol.status] || { color: 'default', label: previewSymbol.status };
+                  return <Tag color={s.color}>{s.label}</Tag>;
+                })()}
+              </Descriptions.Item>
+              {previewSymbol.description && (
+                <Descriptions.Item label="Ghi chú" span={2}>{previewSymbol.description}</Descriptions.Item>
+              )}
+              <Descriptions.Item label="Tạo bởi">{previewSymbol.createdBy}</Descriptions.Item>
+              <Descriptions.Item label="Tạo lúc">{dayjs(previewSymbol.createdAt).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
+              <Descriptions.Item label="Cập nhật lúc" span={2}>{dayjs(previewSymbol.updatedAt).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
+            </Descriptions>
+          </div>
+        )}
+      </Modal>
     </>
   );
 }

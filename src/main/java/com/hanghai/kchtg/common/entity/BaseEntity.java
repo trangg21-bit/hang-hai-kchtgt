@@ -62,12 +62,14 @@ public abstract class BaseEntity {
     /**
      * User ID who created the entity.
      */
+    @org.springframework.data.annotation.CreatedBy
     @Column(name = "created_by", length = 36)
     private String createdBy;
 
     /**
      * User ID who last updated the entity.
      */
+    @org.springframework.data.annotation.LastModifiedBy
     @Column(name = "updated_by", length = 36)
     private String updatedBy;
 

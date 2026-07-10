@@ -6,6 +6,7 @@ import { cangBienCRUD, cangBienApproval } from '../../services/cangbenService';
 import type { CreateCangBienRequest, UpdateCangBienRequest } from '../../types/cangben';
 import { BECBANG_STATUS_MAP } from '../../types/cangben';
 import FormField from '../../components/FormField';
+import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
 
 export default function CangBienForm() {
@@ -203,10 +204,11 @@ export default function CangBienForm() {
           />
 
           <FormField
-            type="text"
+            type="select"
             name="tinhThanhPho"
             label="Tỉnh/thành phố"
-            placeholder="VD: Hải Phòng"
+            placeholder="Chọn tỉnh/thành phố..."
+            options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))}
           />
 
           <Row style={{ display: 'flex', gap: 16 }}>

@@ -20,3 +20,13 @@ body {
 
 /* ---- Table row transition (không có trong globalCssVars) ---- */
 .ant-table-row { transition: background 0.15s; }
+
+/* ---- GIS Map: Sidebar tabs fill height ---- */
+.gis-sidebar-tabs .ant-tabs-content-holder {
+  flex: 1;
+  overflow-y: auto;
+}
+.gis-sidebar-tabs .ant-tabs-content,
+.gis-sidebar-tabs .ant-tabs-tabpane {
+  height: 100%;
+}
