@@ -39,8 +39,6 @@ import BuoyList from './pages/buoys/BuoyList';
 import BuoyForm from './pages/buoys/BuoyForm';
 import BeaconHistoryList from './pages/history/BeaconHistoryList';
 import SymbolList from './pages/symbols/SymbolList';
-import SymbolForm from './pages/symbols/SymbolForm';
-import SymbolPreview from './pages/symbols/SymbolPreview';
 import HomePage from './pages/Home';
 import PermissionGuard from './components/PermissionGuard';
 import PasswordResetPage from './pages/PasswordResetPage';
@@ -253,9 +251,6 @@ export default function App() {
 
                 {/* Symbols — Biểu tượng bản đồ */}
                 <Route path="/symbols" element={<PermissionGuard permission="data:read"><SymbolList /></PermissionGuard>} />
-                <Route path="/symbols/create" element={<PermissionGuard permission="data:read"><SymbolForm /></PermissionGuard>} />
-                <Route path="/symbols/:id/edit" element={<PermissionGuard permission="data:read"><SymbolForm /></PermissionGuard>} />
-                <Route path="/symbols/:id/preview" element={<PermissionGuard permission="data:read"><SymbolPreview /></PermissionGuard>} />
 
                 {/* Nhật ký & Backup */}
                 <Route path="/logs" element={<PermissionGuard permission="log:manage"><LogsPage /></PermissionGuard>} />
