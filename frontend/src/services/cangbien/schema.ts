@@ -48,6 +48,7 @@ export const createSchema = z.object({
   khaNangTiepNhan: z.coerce.number().optional().or(z.nan()),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
   trangThaiPheDuyet: z.enum(['CHO_PHE_DUYET', 'DUOC_PHE_DUYET', 'TU_CHOI']).default('CHO_PHE_DUYET'),
+  bieuTuongId: z.string().uuid().optional().or(z.literal('')),
 }).refine(
   (data) => (data.viDo === undefined || Number.isNaN(data.viDo)) === (data.kinhDo === undefined || Number.isNaN(data.kinhDo)),
   {
@@ -70,6 +71,7 @@ export const updateSchema = z.object({
   dienTich: z.coerce.number().positive('Diện tích phải lớn hơn 0').optional().or(z.nan()),
   khaNangTiepNhan: z.coerce.number().optional().or(z.nan()),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
+  bieuTuongId: z.string().uuid().optional().nullable(),
 }).refine(
   (data) => (data.viDo === undefined || Number.isNaN(data.viDo)) === (data.kinhDo === undefined || Number.isNaN(data.kinhDo)),
   {

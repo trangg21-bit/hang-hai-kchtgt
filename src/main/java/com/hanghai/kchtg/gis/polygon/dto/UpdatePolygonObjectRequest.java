@@ -17,7 +17,7 @@ public class UpdatePolygonObjectRequest {
     private String code;
     private ObjectType objectType;
     private Long categoryId;
-    private Long fillSymbolId;
+    private java.util.UUID fillSymbolId;
     private String coordinates;
     private String description;
     private Status status;

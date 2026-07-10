@@ -23,4 +23,5 @@ public class UpdateBenCangRequest {
     private BigDecimal doSauLuong;
     private String congNangKhaiThac;
     private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
+    private UUID bieuTuongId;
 }

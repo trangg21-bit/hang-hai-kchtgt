@@ -19,4 +19,5 @@ public class UpdateCauCangRequest {
     private String loaiCau;
     private String congNangKhaiThac;
     private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
+    private UUID bieuTuongId;
 }

@@ -39,6 +39,8 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
+import { symbolService } from '../../services/symbolService';
+import type { Symbol } from '../../services/symbolService';
 import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge } from '../../services/cangbien/schema';
 import { giayToApi } from '../giayto/api';
 import { z } from 'zod';
@@ -111,7 +113,11 @@ export const translateFieldName = (fieldName: string): string => {
     trangThaiHoatDong: 'Trạng thái hoạt động',
     trangThaiPheDuyet: 'Trạng thái phê duyệt',
     orgUnitId: 'Đơn vị quản lý',
-    congNangKhaiThac: 'Công năng khai thác'
+    congNangKhaiThac: 'Công năng khai thác',
+    bieuTuongId: 'Biểu tượng bản đồ',
+    iconId: 'Biểu tượng bản đồ',
+    lineSymbolId: 'Ký hiệu đường',
+    fillSymbolId: 'Ký hiệu vùng',
   };
   return map[fieldName] || fieldName;
 };
@@ -161,9 +167,32 @@ export default function BenCangListPage() {
     }
   }, []);
 
+  const [symbols, setSymbols] = useState<Symbol[]>([]);
+
+  const fetchSymbols = useCallback(async () => {
+    try {
+      const res = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' });
+      setSymbols(res.data);
+    } catch (err) {
+      console.error('Failed to load symbols', err);
+    }
+  }, []);
+
   useEffect(() => {
     void fetchCangBienOptions();
-  }, [fetchCangBienOptions]);
+    void fetchSymbols();
+  }, [fetchCangBienOptions, fetchSymbols]);
+
+  const translateValue = useCallback((fieldName: string, val: string | null): string => {
+    if (!val || val === '(null)' || val === 'null') {
+      return '(trống)';
+    }
+    if (['bieuTuongId', 'iconId', 'lineSymbolId', 'fillSymbolId'].includes(fieldName)) {
+      const sym = symbols.find(s => s.id === val);
+      return sym ? `${sym.name} (${sym.code})` : val;
+    }
+    return val;
+  }, [symbols]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -268,6 +297,7 @@ export default function BenCangListPage() {
         doSauLuong: values.doSauLuong || undefined,
         congNangKhaiThac: values.congNangKhaiThac ? values.congNangKhaiThac.join(', ') : undefined,
         trangThaiHoatDong: values.trangThaiHoatDong || 'HIEN_HANH',
+        bieuTuongId: values.bieuTuongId || undefined,
       });
 
       setSubmitting(true);
@@ -306,6 +336,7 @@ export default function BenCangListPage() {
         doSauLuong: values.doSauLuong,
         congNangKhaiThac: values.congNangKhaiThac ? values.congNangKhaiThac.join(', ') : undefined,
         trangThaiHoatDong: values.trangThaiHoatDong,
+        bieuTuongId: values.bieuTuongId || null,
       });
 
       setSubmitting(true);
@@ -462,6 +493,7 @@ export default function BenCangListPage() {
                     doSauLuong: data.doSauLuong,
                     congNangKhaiThac: data.congNangKhaiThac ? data.congNangKhaiThac.split(',').map(s => s.trim()) : [],
                     trangThaiHoatDong: data.trangThaiHoatDong,
+                    bieuTuongId: data.bieuTuongId,
                   });
                   setUpdateModalVisible(true);
                 } catch (err) {
@@ -768,6 +800,25 @@ export default function BenCangListPage() {
                 <Select placeholder="Chọn trạng thái" options={ACTIVITY_STATUS_OPTIONS} />
               </Form.Item>
             </Col>
+            <Col span={12}>
+              <Form.Item label="Biểu tượng bản đồ" name="bieuTuongId">
+                <Select
+                  placeholder="Chọn biểu tượng bản đồ"
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  options={symbols.map(s => ({
+                    label: (
+                      <Space>
+                        {s.hinhAnh && <img src={s.hinhAnh} alt={s.name} style={{ width: 16, height: 16, objectFit: 'contain' }} />}
+                        <span>{s.name} ({s.code})</span>
+                      </Space>
+                    ),
+                    value: s.id
+                  }))}
+                />
+              </Form.Item>
+            </Col>
           </Row>
 
           <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
@@ -902,6 +953,27 @@ export default function BenCangListPage() {
             <Col span={12}>
               <Form.Item label="Trạng thái phê duyệt">
                 <Input disabled value={selectedRecord?.trangThaiPheDuyet ? trangThaiPheDuyetBadge(selectedRecord.trangThaiPheDuyet).label : '—'} aria-readonly="true" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Biểu tượng bản đồ" name="bieuTuongId">
+                <Select
+                  placeholder="Chọn biểu tượng bản đồ"
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  options={symbols.map(s => ({
+                    label: (
+                      <Space>
+                        {s.hinhAnh && <img src={s.hinhAnh} alt={s.name} style={{ width: 16, height: 16, objectFit: 'contain' }} />}
+                        <span>{s.name} ({s.code})</span>
+                      </Space>
+                    ),
+                    value: s.id
+                  }))}
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -1155,14 +1227,16 @@ export default function BenCangListPage() {
                 {record.oldValue !== undefined && record.oldValue != null && (
                   <div style={{ marginBottom: 2 }}>
                     <Typography.Text type="secondary" style={{ textDecoration: 'line-through', color: '#ff4d4f' }}>
-                      cũ: {record.oldValue}
+                      cũ: {translateValue(record.fieldName || record.fieldChanged, record.oldValue)}
                     </Typography.Text>
                   </div>
                 )}
                 {record.newValue !== undefined && record.newValue != null && (
                   <div>
                     <Typography.Text type="secondary">mới: </Typography.Text>
-                    <Typography.Text style={{ color: '#52c41a', fontWeight: 500 }}>{record.newValue}</Typography.Text>
+                    <Typography.Text style={{ color: '#52c41a', fontWeight: 500 }}>
+                      {translateValue(record.fieldName || record.fieldChanged, record.newValue)}
+                    </Typography.Text>
                   </div>
                 )}
 

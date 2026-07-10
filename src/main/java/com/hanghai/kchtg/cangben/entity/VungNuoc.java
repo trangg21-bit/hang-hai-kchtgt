@@ -61,4 +61,7 @@ public class VungNuoc extends BaseEntity {
 
     @Column(name = "org_unit_id")
     private UUID orgUnitId;
+
+    @Column(name = "bieu_tuong_id")
+    private java.util.UUID bieuTuongId;
 }

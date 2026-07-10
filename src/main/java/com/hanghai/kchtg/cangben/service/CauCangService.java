@@ -51,7 +51,8 @@ public class CauCangService {
                 .congNangKhaiThac(request.getCongNangKhaiThac())
                 .trangThaiHoatDong(request.getTrangThaiHoatDong())
                 .orgUnitId(parent.getOrgUnitId())
-                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET).build();
+                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .bieuTuongId(request.getBieuTuongId()).build();
         CauCang saved = cauCangRepository.save(entity);
         log.info("Created CauCang [{}] code={}", saved.getId(), saved.getMaCau());
         return toResponse(saved);
@@ -100,6 +101,7 @@ public class CauCangService {
                 .trangThaiHoatDong(entity.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
                 .orgUnitId(entity.getOrgUnitId())
+                .bieuTuongId(entity.getBieuTuongId())
                 .build();
 
         if (request.getTenCau() != null)
@@ -125,6 +127,7 @@ public class CauCangService {
             entity.setCongNangKhaiThac(request.getCongNangKhaiThac());
         if (request.getTrangThaiHoatDong() != null)
             entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
+        entity.setBieuTuongId(request.getBieuTuongId());
         entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
         CauCang saved = cauCangRepository.save(entity);
@@ -153,6 +156,7 @@ public class CauCangService {
                 .congNangKhaiThac(e.getCongNangKhaiThac())
                 .trangThaiHoatDong(e.getTrangThaiHoatDong()).trangThaiPheDuyet(e.getTrangThaiPheDuyet())
                 .orgUnitId(e.getOrgUnitId())
+                .bieuTuongId(e.getBieuTuongId())
                 .createdBy(e.getCreatedBy())
                 .updatedBy(e.getUpdatedBy())
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();

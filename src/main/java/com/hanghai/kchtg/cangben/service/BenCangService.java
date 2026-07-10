@@ -65,7 +65,8 @@ public class BenCangService {
                 .congNangKhaiThac(request.getCongNangKhaiThac())
                 .trangThaiHoatDong(request.getTrangThaiHoatDong())
                 .orgUnitId(parent.getOrgUnitId())
-                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET).build();
+                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .bieuTuongId(request.getBieuTuongId()).build();
         BenCang saved = benCangRepository.save(entity);
         log.info("Created BenCang [{}] code={}", saved.getId(), saved.getMaBen());
         return toResponse(saved);
@@ -135,6 +136,7 @@ public class BenCangService {
                 .trangThaiHoatDong(entity.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
                 .orgUnitId(entity.getOrgUnitId())
+                .bieuTuongId(entity.getBieuTuongId())
                 .build();
 
         if (request.getTenBen() != null)
@@ -168,6 +170,7 @@ public class BenCangService {
             entity.setCongNangKhaiThac(request.getCongNangKhaiThac());
         if (request.getTrangThaiHoatDong() != null)
             entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
+        entity.setBieuTuongId(request.getBieuTuongId());
         entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
         BenCang saved = benCangRepository.save(entity);
@@ -199,6 +202,7 @@ public class BenCangService {
                 .doSauLuong(e.getDoSauLuong()).congNangKhaiThac(e.getCongNangKhaiThac())
                 .trangThaiHoatDong(e.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(e.getTrangThaiPheDuyet()).orgUnitId(e.getOrgUnitId())
+                .bieuTuongId(e.getBieuTuongId())
                 .createdBy(e.getCreatedBy())
                 .updatedBy(e.getUpdatedBy())
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();

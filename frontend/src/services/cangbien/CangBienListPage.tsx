@@ -48,6 +48,8 @@ import EmptyState from '../../components/EmptyState';
 import { organizationService } from '../../services/organizationService';
 import { giayToApi } from '../../app/giayto/api';
 import GiayToUploadModal from '../../app/giayto/GiayToUploadModal';
+import { symbolService } from '../symbolService';
+import type { Symbol } from '../symbolService';
 import { VIETNAM_PROVINCES } from '../../types/common';
 
 // ── Helper: format date ─────────────────────────────────────────────
@@ -107,7 +109,11 @@ export const translateFieldName = (fieldName: string): string => {
     trangThaiHoatDong: 'Trạng thái hoạt động',
     trangThaiPheDuyet: 'Trạng thái phê duyệt',
     orgUnitId: 'Đơn vị quản lý',
-    congNangKhaiThac: 'Công năng khai thác'
+    congNangKhaiThac: 'Công năng khai thác',
+    bieuTuongId: 'Biểu tượng bản đồ',
+    iconId: 'Biểu tượng bản đồ',
+    lineSymbolId: 'Ký hiệu đường',
+    fillSymbolId: 'Ký hiệu vùng',
   };
   return map[fieldName] || fieldName;
 };
@@ -147,6 +153,16 @@ export default function CangBienListPage() {
   const [updateForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
+  const [symbols, setSymbols] = useState<Symbol[]>([]);
+
+  const fetchSymbols = useCallback(async () => {
+    try {
+      const res = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' });
+      setSymbols(res.data);
+    } catch (err) {
+      console.error('Failed to load symbols', err);
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -157,7 +173,19 @@ export default function CangBienListPage() {
         console.error('Failed to load org units', err);
       }
     })();
-  }, []);
+    void fetchSymbols();
+  }, [fetchSymbols]);
+
+  const translateValue = useCallback((fieldName: string, val: string | null): string => {
+    if (!val || val === '(null)' || val === 'null') {
+      return '(trống)';
+    }
+    if (['bieuTuongId', 'iconId', 'lineSymbolId', 'fillSymbolId'].includes(fieldName)) {
+      const sym = symbols.find(s => s.id === val);
+      return sym ? `${sym.name} (${sym.code})` : val;
+    }
+    return val;
+  }, [symbols]);
 
   // Form Watches
   const createViDo = Form.useWatch('viDo', createForm);
@@ -208,6 +236,7 @@ export default function CangBienListPage() {
         trangThaiPheDuyet: (values.trangThaiPheDuyet as string) || 'CHO_PHE_DUYET',
         orgUnitId: (values.orgUnitId as string) || undefined,
         nhomCangBien: values.nhomCangBien ? Number(values.nhomCangBien) : undefined,
+        bieuTuongId: (values.bieuTuongId as string) || undefined,
       };
       await import('./api').then(m => m.createCangBien(payload));
       toast.success('Tạo mới thành công — chờ phê duyệt');
@@ -265,6 +294,7 @@ export default function CangBienListPage() {
         trangThaiHoatDong: (values.trangThaiHoatDong as string) || undefined,
         orgUnitId: (values.orgUnitId as string) || undefined,
         nhomCangBien: values.nhomCangBien ? Number(values.nhomCangBien) : undefined,
+        bieuTuongId: (values.bieuTuongId as string) || null,
       };
       await import('./api').then(m => m.updateCangBien(payload));
       toast.success('Cập nhật thành công');
@@ -655,7 +685,7 @@ export default function CangBienListPage() {
       </Card>
  
       <Card>
-        <Spin spinning={isLoading} tip="Đang tải...">
+        <Spin spinning={isLoading} description="Đang tải...">
           {isError && (
             <div>
               <p>Đã xảy ra lỗi khi tải danh sách.</p>
@@ -833,6 +863,28 @@ export default function CangBienListPage() {
               </Form.Item>
             </Col>
           </Row>
+          <Row gutter={24}>
+            <Col span={24}>
+              <Form.Item name="bieuTuongId" label="Biểu tượng bản đồ">
+                <Select placeholder="Chọn biểu tượng hiển thị" allowClear showSearch optionFilterProp="label">
+                  {symbols.map((sym) => (
+                    <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
+                      <Space>
+                        {sym.hinhAnh && (
+                          <img
+                            src={sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}
+                            alt={sym.name}
+                            style={{ width: 20, height: 20, objectFit: 'contain' }}
+                          />
+                        )}
+                        <span>{sym.name} ({sym.code})</span>
+                      </Space>
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
             <Space>
@@ -968,6 +1020,28 @@ export default function CangBienListPage() {
             <Col span={12}>
               <Form.Item label="Trạng thái phê duyệt">
                 <Input disabled value={selectedRecord?.trangThaiPheDuyet ? trangThaiPheDuyetBadge(selectedRecord.trangThaiPheDuyet).label : '—'} aria-readonly="true" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={24}>
+              <Form.Item name="bieuTuongId" label="Biểu tượng bản đồ">
+                <Select placeholder="Chọn biểu tượng hiển thị" allowClear showSearch optionFilterProp="label">
+                  {symbols.map((sym) => (
+                    <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
+                      <Space>
+                        {sym.hinhAnh && (
+                          <img
+                            src={sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}
+                            alt={sym.name}
+                            style={{ width: 20, height: 20, objectFit: 'contain' }}
+                          />
+                        )}
+                        <span>{sym.name} ({sym.code})</span>
+                      </Space>
+                    </Select.Option>
+                  ))}
+                </Select>
               </Form.Item>
             </Col>
           </Row>
@@ -1135,6 +1209,7 @@ export default function CangBienListPage() {
                       trangThaiHoatDong: selectedRecord.trangThaiHoatDong || undefined,
                       orgUnitId: selectedRecord.orgUnitId || undefined,
                       nhomCangBien: selectedRecord.nhomCangBien != null ? selectedRecord.nhomCangBien : undefined,
+                      bieuTuongId: selectedRecord.bieuTuongId || undefined,
                     });
                     setUpdateModalVisible(true);
                   }}
@@ -1204,14 +1279,16 @@ export default function CangBienListPage() {
                     {record.oldValue !== undefined && record.oldValue != null && (
                       <div style={{ marginBottom: 2 }}>
                         <Typography.Text type="secondary" style={{ textDecoration: 'line-through', color: '#ff4d4f' }}>
-                          cũ: {record.oldValue}
+                          cũ: {translateValue(record.fieldName || record.fieldChanged, record.oldValue)}
                         </Typography.Text>
                       </div>
                     )}
                     {record.newValue !== undefined && record.newValue != null && (
                       <div>
                         <Typography.Text type="secondary">mới: </Typography.Text>
-                        <Typography.Text style={{ color: '#52c41a', fontWeight: 500 }}>{record.newValue}</Typography.Text>
+                        <Typography.Text style={{ color: '#52c41a', fontWeight: 500 }}>
+                          {translateValue(record.fieldName || record.fieldChanged, record.newValue)}
+                        </Typography.Text>
                       </div>
                     )}
 

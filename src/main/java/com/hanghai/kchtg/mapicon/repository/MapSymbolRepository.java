@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.mapicon.repository;
 
 import com.hanghai.kchtg.mapicon.entity.MapSymbol;
+import com.hanghai.kchtg.mapicon.entity.MapSymbolStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -20,6 +21,6 @@ public interface MapSymbolRepository extends JpaRepository<MapSymbol, UUID> {
            "AND (:status IS NULL OR s.status = :status) " +
            "AND s.deletedAt IS NULL")
     Page<MapSymbol> search(@Param("search") String search,
-                           @Param("status") Integer status,
+                           @Param("status") MapSymbolStatus status,
                            Pageable pageable);
 }

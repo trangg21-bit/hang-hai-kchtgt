@@ -17,6 +17,7 @@ export interface BenCangEntity {
   trangThaiHoatDong?: string;
   trangThaiPheDuyet: string;
   orgUnitId?: string;
+  bieuTuongId?: string;
   createdBy?: string;
   updatedBy?: string;
   createdAt?: string;

@@ -25,7 +25,7 @@ public class CreateLineObjectRequest {
     private ObjectType objectType;
 
     private Long categoryId;
-    private Long lineSymbolId;
+    private java.util.UUID lineSymbolId;
 
     @NotBlank(message = "Tọa độ WKT/GeoJSON không được để trống")
     private String coordinates;

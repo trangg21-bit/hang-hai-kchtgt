@@ -64,6 +64,7 @@ public class CangBienService {
                 .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
                 .orgUnitId(request.getOrgUnitId())
                 .nhomCangBien(request.getNhomCangBien())
+                .bieuTuongId(request.getBieuTuongId())
                 .build();
 
         CangBien saved = cangBienRepository.save(entity);
@@ -132,6 +133,7 @@ public class CangBienService {
                 .nhomCangBien(entity.getNhomCangBien())
                 .trangThaiHoatDong(entity.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
+                .bieuTuongId(entity.getBieuTuongId())
                 .build();
 
         // Update mutable fields — code (maCang) is immutable
@@ -143,6 +145,7 @@ public class CangBienService {
         if (request.getKhaNangTiepNhan() != null) entity.setKhaNangTiepNhan(request.getKhaNangTiepNhan());
         if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
         if (request.getNhomCangBien() != null) entity.setNhomCangBien(request.getNhomCangBien());
+        entity.setBieuTuongId(request.getBieuTuongId());
         entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong() != null ? request.getTrangThaiHoatDong() : entity.getTrangThaiHoatDong());
         entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
@@ -208,6 +211,7 @@ public class CangBienService {
                 .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
                 .orgUnitId(entity.getOrgUnitId())
                 .nhomCangBien(entity.getNhomCangBien())
+                .bieuTuongId(entity.getBieuTuongId())
                 .createdBy(entity.getCreatedBy())
                 .updatedBy(entity.getUpdatedBy())
                 .createdAt(entity.getCreatedAt())

@@ -22,7 +22,7 @@ public class PointObjectResponse {
     private String code;
     private ObjectType objectType;
     private Long categoryId;
-    private Long iconId;
+    private UUID iconId;
     private Double longitude;
     private Double latitude;
     private String description;

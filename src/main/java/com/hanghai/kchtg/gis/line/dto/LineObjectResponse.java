@@ -22,7 +22,7 @@ public class LineObjectResponse {
     private String code;
     private ObjectType objectType;
     private Long categoryId;
-    private Long lineSymbolId;
+    private UUID lineSymbolId;
     private String coordinates;
     private String description;
     private Status status;

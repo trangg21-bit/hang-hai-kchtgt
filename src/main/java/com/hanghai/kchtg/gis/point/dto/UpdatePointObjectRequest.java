@@ -19,7 +19,7 @@ public class UpdatePointObjectRequest {
     private String code;
     private ObjectType objectType;
     private Long categoryId;
-    private Long iconId;
+    private java.util.UUID iconId;
 
     @DecimalMin(value = "-180.0", message = "Kinh độ phải trong khoảng -180~180")
     @DecimalMax(value = "180.0", message = "Kinh độ phải trong khoảng -180~180")

@@ -39,6 +39,8 @@ import api from '../../services/api';
 import { organizationService } from '../../services/organizationService';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
+import { symbolService } from '../../services/symbolService';
+import type { Symbol } from '../../services/symbolService';
 import EmptyState from '../../components/EmptyState';
 import Flatbush from 'flatbush';
 
@@ -319,6 +321,7 @@ export default function GISChartView() {
   const [selectedFeature, setSelectedFeature] = useState<ChartFeature | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [visibleLayers, setVisibleLayers] = useState<Record<string, boolean>>({});
+  const [showChart, setShowChart] = useState(false);
 
   // Get static S-57 feature codes from translation map dictionary keys
   const uniqueFeatureCodes = useMemo(() => {
@@ -332,7 +335,7 @@ export default function GISChartView() {
       let changed = false;
       uniqueFeatureCodes.forEach(code => {
         if (next[code] === undefined) {
-          next[code] = true;
+          next[code] = false;
           changed = true;
         }
       });
@@ -360,9 +363,23 @@ export default function GISChartView() {
   const [totalSearchElements, setTotalSearchElements] = useState(0);
   const [searchPage, setSearchPage] = useState(1);
   const [searchPageSize, setSearchPageSize] = useState(20);
+  const [symbols, setSymbols] = useState<Symbol[]>([]);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [showPlanning, setShowPlanning] = useState(false);
+  const [planningFeatures, setPlanningFeatures] = useState<any[]>([]);
+
+  const fetchSymbols = useCallback(async () => {
+    try {
+      const res = await symbolService.list({ page: 1, pageSize: 1000 });
+      setSymbols(res.data || []);
+    } catch (err) {
+      console.error('Failed to load symbols in map', err);
+    }
+  }, []);
 
   const handleSearchInfrastructure = useCallback(async () => {
     setSearchingInfrastructure(true);
+    setSelectedRowKeys([]);
     try {
       const values = searchForm.getFieldsValue();
       const orgUnitId = !values || values.orgUnitId === 'all' ? undefined : values.orgUnitId;
@@ -681,7 +698,7 @@ export default function GISChartView() {
     }
   }, [searchForm, searchPage, searchPageSize]);
 
-  // Load Org Units on Mount
+  // Load Org Units & Symbols on Mount
   useEffect(() => {
     (async () => {
       try {
@@ -691,7 +708,8 @@ export default function GISChartView() {
         console.error('Failed to load org units', err);
       }
     })();
-  }, []);
+    void fetchSymbols();
+  }, [fetchSymbols]);
 
   // Trigger search on pagination changes
   useEffect(() => {
@@ -706,7 +724,7 @@ export default function GISChartView() {
       const lat = parseFloat(rawLat as any);
       const lon = parseFloat(rawLon as any);
       
-      if (!isNaN(lat) && !isNaN(lon) && mapRef.current) {
+      if (!isNaN(lat) && !isNaN(lon) && lat >= 5.0 && lat <= 26.0 && lon >= 99.0 && lon <= 118.0 && mapRef.current) {
         mapRef.current.setView([lat, lon], 15);
         
         const popupContent = `
@@ -724,22 +742,29 @@ export default function GISChartView() {
             .setContent(popupContent)
             .openOn(mapRef.current);
         }
+        setSelectedRowKeys((prev) => {
+          if (prev.includes(record.id)) return prev;
+          return [...prev, record.id];
+        });
       } else {
-        toast.info('Đối tượng này chưa cấu hình tọa độ trên bản đồ');
+        toast.info(`Đối tượng này có tọa độ không hợp lệ trên bản đồ Việt Nam: [Vĩ độ: ${lat}, Kinh độ: ${lon}]`);
       }
     } else {
-      toast.info('Đối tượng này chưa cấu hình tọa độ trên bản đồ');
+      toast.info('Đối tượng này chưa được cấu hình tọa độ trên bản đồ');
     }
-  }, []);
+  }, [setSelectedRowKeys]);
 
   // Map elements refs
   const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const geoJsonGroupRef = useRef<any>(null);
+  const searchMarkersGroupRef = useRef<any>(null);
+  const planningGroupRef = useRef<any>(null);
   const calibratorMarkerRef = useRef<any>(null);
   const lastFittedCellIdRef = useRef<string | null>(null);
   const renderChartFeaturesRef = useRef<() => void>();
   const fetchFeaturesInViewportRef = useRef<() => Promise<void>>();
+  const fetchPlanningFeaturesRef = useRef<() => Promise<void>>();
   const moveEndTimeoutRef = useRef<any>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
 
@@ -797,7 +822,10 @@ export default function GISChartView() {
   }, [fetchCells]);
 
   const fetchFeaturesInViewport = useCallback(async () => {
-    if (!mapRef.current) return;
+    if (!mapRef.current || !showChart) {
+      setFeatures(prev => prev.length === 0 ? prev : []);
+      return;
+    }
     const zoom = mapRef.current.getZoom();
     if (zoom < 12) {
       // Only trigger re-render if features are not already empty
@@ -823,11 +851,269 @@ export default function GISChartView() {
     } catch (err) {
       console.error('Failed to load chart features in bounds', err);
     }
-  }, [palette]);
+  }, [palette, showChart]);
+
+  const fetchPlanningFeatures = useCallback(async () => {
+    if (!mapRef.current || !showPlanning) {
+      setPlanningFeatures(prev => prev.length === 0 ? prev : []);
+      return;
+    }
+    const zoom = mapRef.current.getZoom();
+    if (zoom < 12) {
+      setPlanningFeatures(prev => prev.length === 0 ? prev : []);
+      return;
+    }
+    const bounds = mapRef.current.getBounds();
+    const pad = 0.02;
+    const minLat = bounds.getSouth() - pad;
+    const maxLat = bounds.getNorth() + pad;
+    const minLon = bounds.getWest() - pad;
+    const maxLon = bounds.getEast() + pad;
+
+    try {
+      const res = await api.get('/gis/planning/features', {
+        params: { minLon, minLat, maxLon, maxLat }
+      });
+      setPlanningFeatures(res.data?.data || []);
+    } catch (err) {
+      console.error('Failed to fetch planning features', err);
+    }
+  }, [showPlanning]);
 
   useEffect(() => {
     fetchFeaturesInViewportRef.current = fetchFeaturesInViewport;
   }, [fetchFeaturesInViewport]);
+
+  useEffect(() => {
+    fetchPlanningFeaturesRef.current = fetchPlanningFeatures;
+  }, [fetchPlanningFeatures]);
+
+  // Load planning features on load or visibility change
+  useEffect(() => {
+    if (leafletLoaded && showPlanning) {
+      void fetchPlanningFeatures();
+    } else {
+      setPlanningFeatures([]);
+    }
+  }, [leafletLoaded, showPlanning, fetchPlanningFeatures]);
+
+  // Render planning features as vector layers on the map
+  useEffect(() => {
+    const L = window.L;
+    if (!L || !mapRef.current || !planningGroupRef.current) return;
+
+    planningGroupRef.current.clearLayers();
+
+    if (!showPlanning || planningFeatures.length === 0) return;
+
+    const layers: any[] = [];
+    
+    // AutoCAD Color Index mapping to Hex
+    const getAciColor = (colorIndex?: number) => {
+      if (!colorIndex) return '#1890ff';
+      const ACI_COLORS: Record<number, string> = {
+        1: '#ff4d4f', // Red
+        2: '#faad14', // Yellow
+        3: '#52c41a', // Green
+        4: '#13c2c2', // Cyan
+        5: '#2f54eb', // Blue
+        6: '#eb2f96', // Magenta
+        7: '#722ed1', // Purple
+        8: '#595959', // Dark grey
+        9: '#8c8c8c', // Grey
+        10: '#d9d9d9', // Light grey
+      };
+      return ACI_COLORS[colorIndex] || '#1890ff';
+    };
+
+    planningFeatures.forEach((feature) => {
+      if (!feature.geojson) return;
+      try {
+        const geojsonObj = JSON.parse(feature.geojson);
+        const color = getAciColor(feature.color);
+        
+        const layer = L.geoJSON(geojsonObj, {
+          pane: 'planningPane',
+          style: () => ({
+            color: color,
+            weight: feature.geomType === 'LINE' ? 2 : 1.5,
+            fillColor: color,
+            fillOpacity: feature.geomType === 'AREA' ? 0.35 : 0,
+          }),
+          pointToLayer: (geoJsonFeature: any, latlng: any) => {
+            return L.circleMarker(latlng, {
+              pane: 'planningPane',
+              radius: 5,
+              fillColor: color,
+              color: '#ffffff',
+              weight: 1,
+              fillOpacity: 0.8,
+            });
+          }
+        });
+
+        // Direct click event to open aggregated details popup
+        layer.on('click', async (e: any) => {
+          L.DomEvent.stopPropagation(e); // stop event bubbling to map
+          
+          const latlng = e.latlng;
+          
+          const getStatusTagStyle = (statusText?: string) => {
+            const txt = (statusText || '').toLowerCase();
+            if (txt.includes('hiện hữu') || txt.includes('hiện trạng')) {
+              return 'background-color: #fffb8f; border: 1px solid #fadb14; color: rgba(0, 0, 0, 0.85);';
+            }
+            if (txt.includes('2030')) {
+              return 'background-color: #b7eb8f; border: 1px solid #73d13d; color: rgba(0, 0, 0, 0.85);';
+            }
+            if (txt.includes('điều kiện')) {
+              return 'background-color: #ffccc7; border: 1px solid #ff7875; color: rgba(0, 0, 0, 0.85);';
+            }
+            if (txt.includes('2050')) {
+              return 'background-color: #d3adf7; border: 1px solid #9254de; color: rgba(0, 0, 0, 0.85);';
+            }
+            return 'background-color: #fffb8f; border: 1px solid #fadb14; color: rgba(0, 0, 0, 0.85);';
+          };
+
+          const getStandardizedStatus = (statusText?: string) => {
+            const txt = (statusText || '').toLowerCase();
+            if (txt.includes('hiện hữu') || txt.includes('hiện trạng')) {
+              return 'Bến cảng hiện hữu';
+            }
+            if (txt.includes('2030')) {
+              return 'Bến cảng quy hoạch đến năm 2030';
+            }
+            if (txt.includes('điều kiện')) {
+              return 'Bến cảng phát triển có điều kiện';
+            }
+            if (txt.includes('2050')) {
+              return 'Bến cảng quy hoạch tầm nhìn đến năm 2050';
+            }
+            return statusText || 'Bến cảng hiện hữu';
+          };
+
+          try {
+            const res = await api.get('/gis/planning/features/at-point', {
+              params: { lat: latlng.lat, lon: latlng.lng }
+            });
+            const featuresAtPoint = res.data?.data || [];
+            if (featuresAtPoint.length === 0) return;
+
+            const itemsHtml = featuresAtPoint.map((feat: any, idx: number) => {
+              const currentStatus = feat.status || 'Bến cảng hiện hữu';
+              const cleanStatus = getStandardizedStatus(currentStatus);
+              const formattedLat = feat.lat ? `${feat.lat.toFixed(5)}°N` : '—';
+              const formattedLon = feat.lon ? `${feat.lon.toFixed(5)}°E` : '—';
+              const agencyName = feat.agency || 'Cục Hàng hải và Đường thủy Việt Nam';
+              
+              const isAreaOrPoint = feat.geomType === 'AREA' || feat.geomType === 'POINT';
+
+              const isActive = (optText: string) => {
+                return cleanStatus === optText;
+              };
+
+              return `
+                <div style="border-left: 3px solid #1890ff; padding-left: 12px; margin-bottom: ${idx === featuresAtPoint.length - 1 ? '0' : '20px'}; position: relative;">
+                  <div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                    <span style="border: 1px solid #1890ff; background-color: #e6f7ff; color: #1890ff; padding: 4px 10px; border-radius: 4px; font-weight: 600; font-size: 13px; max-width: 190px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${feat.name || 'Đối tượng quy hoạch'}">
+                      ${feat.name || 'Đối tượng quy hoạch'}
+                    </span>
+                    <span style="background-color: #f5f5f5; border: 1px solid #d9d9d9; padding: 3px 8px; border-radius: 4px; font-size: 11px; color: #666; font-weight: 500;">
+                      ${feat.geomType === 'AREA' ? 'Quy hoạch' : 'Hiện trạng'}
+                    </span>
+                  </div>
+
+                  <div style="font-size: 12px; color: #666; margin-bottom: 12px; display: flex; align-items: center; gap: 4px;">
+                    <span>📍</span> <span>${formattedLat}, ${formattedLon}</span>
+                  </div>
+
+                  <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; margin-bottom: 12px;">
+                    <div style="display: flex;">
+                      <span style="width: 100px; color: #888; flex-shrink: 0;">Tên đối tượng:</span>
+                      <span style="font-weight: 500;">${feat.name || '—'}</span>
+                    </div>
+                    <div style="display: flex;">
+                      <span style="width: 100px; color: #888; flex-shrink: 0;">Cơ quan QL:</span>
+                      <span>${agencyName}</span>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                      <span style="width: 100px; color: #888; flex-shrink: 0;">Trạng thái QH:</span>
+                      <span style="padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; ${getStatusTagStyle(cleanStatus)}">
+                        ${cleanStatus}
+                      </span>
+                    </div>
+                  </div>
+
+                  ${isAreaOrPoint ? `
+                    <div style="border-top: 1px dashed #d9d9d9; margin: 12px 0;"></div>
+
+                    <div style="font-size: 11px; font-weight: bold; color: #8c8c8c; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                      CẬP NHẬT TRẠNG THÁI QUY HOẠCH
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 8px; user-select: none; -webkit-user-select: none;">
+                      <div class="planning-status-option ${isActive('Bến cảng hiện hữu') ? 'active-opt' : ''}" 
+                           data-status="Bến cảng hiện hữu" data-color="2" data-fid="${feat.fid}" data-geomtype="${feat.geomType}"
+                           style="cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid ${isActive('Bến cảng hiện hữu') ? '#1890ff' : '#d9d9d9'}; background-color: ${isActive('Bến cảng hiện hữu') ? '#e6f7ff' : '#fff'}; border-radius: 6px; transition: all 0.2s;">
+                        <div style="width: 16px; height: 16px; border-radius: 3px; background-color: #ffff00; border: 1px solid #d9d9d9; flex-shrink: 0;"></div>
+                        <span style="font-size: 13px; font-weight: ${isActive('Bến cảng hiện hữu') ? '600' : 'normal'};">Bến cảng hiện hữu</span>
+                      </div>
+
+                      <div class="planning-status-option ${isActive('Bến cảng quy hoạch đến năm 2030') ? 'active-opt' : ''}" 
+                           data-status="Bến cảng quy hoạch đến năm 2030" data-color="3" data-fid="${feat.fid}" data-geomtype="${feat.geomType}"
+                           style="cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid ${isActive('Bến cảng quy hoạch đến năm 2030') ? '#1890ff' : '#d9d9d9'}; background-color: ${isActive('Bến cảng quy hoạch đến năm 2030') ? '#e6f7ff' : '#fff'}; border-radius: 6px; transition: all 0.2s;">
+                        <div style="width: 16px; height: 16px; border-radius: 3px; background-color: #00ff00; border: 1px solid #d9d9d9; flex-shrink: 0;"></div>
+                        <span style="font-size: 13px; font-weight: ${isActive('Bến cảng quy hoạch đến năm 2030') ? '600' : 'normal'};">Bến cảng quy hoạch đến năm 2030</span>
+                      </div>
+
+                      <div class="planning-status-option ${isActive('Bến cảng phát triển có điều kiện') ? 'active-opt' : ''}" 
+                           data-status="Bến cảng phát triển có điều kiện" data-color="1" data-fid="${feat.fid}" data-geomtype="${feat.geomType}"
+                           style="cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid ${isActive('Bến cảng phát triển có điều kiện') ? '#1890ff' : '#d9d9d9'}; background-color: ${isActive('Bến cảng phát triển có điều kiện') ? '#e6f7ff' : '#fff'}; border-radius: 6px; transition: all 0.2s;">
+                        <div style="width: 16px; height: 16px; border-radius: 3px; background-color: #ff9999; border: 1px solid #d9d9d9; flex-shrink: 0;"></div>
+                        <span style="font-size: 13px; font-weight: ${isActive('Bến cảng phát triển có điều kiện') ? '600' : 'normal'};">Bến cảng phát triển có điều kiện</span>
+                      </div>
+
+                      <div class="planning-status-option ${isActive('Bến cảng quy hoạch tầm nhìn đến năm 2050') ? 'active-opt' : ''}" 
+                           data-status="Bến cảng quy hoạch tầm nhìn đến năm 2050" data-color="7" data-fid="${feat.fid}" data-geomtype="${feat.geomType}"
+                           style="cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 1px solid ${isActive('Bến cảng quy hoạch tầm nhìn đến năm 2050') ? '#1890ff' : '#d9d9d9'}; background-color: ${isActive('Bến cảng quy hoạch tầm nhìn đến năm 2050') ? '#e6f7ff' : '#fff'}; border-radius: 6px; transition: all 0.2s;">
+                        <div style="width: 16px; height: 16px; border-radius: 3px; background-color: #b399ff; border: 1px solid #d9d9d9; flex-shrink: 0;"></div>
+                        <span style="font-size: 13px; font-weight: ${isActive('Bến cảng quy hoạch tầm nhìn đến năm 2050') ? '600' : 'normal'};">Bến cảng quy hoạch tầm nhìn đến năm 2050</span>
+                      </div>
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            }).join('');
+
+            const aggregatedContent = `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 4px; width: 330px; color: #333; max-height: 380px; overflow-y: auto; padding-right: 6px;">
+                ${itemsHtml}
+              </div>
+            `;
+
+            if (mapRef.current) {
+              L.popup({ minWidth: 340, maxWidth: 360 })
+                .setLatLng(latlng)
+                .setContent(aggregatedContent)
+                .openOn(mapRef.current);
+            }
+
+          } catch (err) {
+            console.error('Failed to load planning details at click point', err);
+          }
+        });
+
+        layers.push(layer);
+      } catch (err) {
+        // skip
+      }
+    });
+
+    if (layers.length > 0) {
+      const tempGroup = L.layerGroup(layers);
+      planningGroupRef.current.addLayer(tempGroup);
+    }
+  }, [planningFeatures, showPlanning]);
 
 
 
@@ -839,6 +1125,10 @@ export default function GISChartView() {
     // Create map centered on Vietnam (incorporating East Sea / Sovereignty area)
     const map = L.map(mapContainerRef.current, { preferCanvas: true }).setView([16.0, 108.0], 5);
     mapRef.current = map;
+
+    // Create a high-priority pane for QHCB planning layers so they render above ENC layers
+    const planningPane = map.createPane('planningPane');
+    planningPane.style.zIndex = '550';
 
     // Use Google Maps tile layer with Vietnamese localization (hl=vi, gl=vn)
     // Use {s} subdomain rotation (mt0-mt3) for parallel tile downloads (4x6=24 concurrent connections)
@@ -860,11 +1150,59 @@ export default function GISChartView() {
         if (fetchFeaturesInViewportRef.current) {
           void fetchFeaturesInViewportRef.current();
         }
+        if (fetchPlanningFeaturesRef.current) {
+          void fetchPlanningFeaturesRef.current();
+        }
       }, 300);
     });
 
     // Feature group for vector charts
     geoJsonGroupRef.current = L.featureGroup().addTo(map);
+
+    // Feature group for search markers
+    searchMarkersGroupRef.current = L.featureGroup().addTo(map);
+
+    // Feature group for planning features
+    planningGroupRef.current = L.featureGroup().addTo(map);
+
+
+
+    // Global capture-phase click listener for planning status options
+    const handleGlobalClick = async (evt: any) => {
+      const opt = evt.target.closest('.planning-status-option');
+      if (!opt) return;
+
+      evt.preventDefault();
+      evt.stopPropagation();
+
+      const status = opt.getAttribute('data-status');
+      const color = opt.getAttribute('data-color');
+      const fid = opt.getAttribute('data-fid');
+      const geomType = opt.getAttribute('data-geomtype');
+
+      if (!status || !color || !fid || !geomType) {
+        return;
+      }
+
+      try {
+        const colorInt = parseInt(color, 10);
+        await api.put(`/gis/planning/features/${geomType}/${fid}/status`, null, {
+          params: { status, color: colorInt }
+        });
+        toast.success('Cập nhật trạng thái quy hoạch thành công');
+        
+        if (mapRef.current) {
+          mapRef.current.closePopup();
+        }
+        if (fetchPlanningFeaturesRef.current) {
+          await fetchPlanningFeaturesRef.current();
+        }
+      } catch (err) {
+        toast.error('Lỗi khi cập nhật trạng thái quy hoạch');
+      }
+    };
+
+    document.addEventListener('click', handleGlobalClick, true);
 
     // Invalidate size once after container renders to ensure correct sizing
     setTimeout(() => {
@@ -872,6 +1210,7 @@ export default function GISChartView() {
     }, 200);
 
     return () => {
+      document.removeEventListener('click', handleGlobalClick, true);
       if (moveEndTimeoutRef.current) {
         clearTimeout(moveEndTimeoutRef.current);
       }
@@ -882,6 +1221,124 @@ export default function GISChartView() {
       }
     };
   }, [leafletLoaded]);
+
+  // Render search results as markers on the map using assigned symbols
+  useEffect(() => {
+    const L = window.L;
+    if (!L || !mapRef.current || !searchMarkersGroupRef.current) return;
+
+    // Clear old search markers
+    searchMarkersGroupRef.current.clearLayers();
+
+    if (infrastructureResults.length === 0) return;
+
+    const selectedRecords = infrastructureResults.filter((record) => selectedRowKeys.includes(record.id));
+    if (selectedRecords.length === 0) return;
+
+    const markers: any[] = [];
+    selectedRecords.forEach((record) => {
+      const rawLat = record.viDo ?? record.latitude;
+      const rawLon = record.kinhDo ?? record.longitude;
+      
+      if (rawLat !== undefined && rawLat !== null && rawLon !== undefined && rawLon !== null) {
+        const lat = parseFloat(rawLat as any);
+        const lon = parseFloat(rawLon as any);
+        
+        if (!isNaN(lat) && !isNaN(lon) && lat >= 5.0 && lat <= 26.0 && lon >= 99.0 && lon <= 118.0) {
+          // Find symbol
+          const symId = record.bieuTuongId || record.iconId;
+          const sym = symbols.find((s) => s.id === symId);
+
+          let markerIcon;
+          if (sym && sym.hinhAnh) {
+            // Create a custom divIcon containing the Base64 image
+            markerIcon = L.divIcon({
+              html: `
+                <div style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  width: 32px;
+                  height: 32px;
+                  background: white;
+                  border: 2px solid #1890ff;
+                  border-radius: 50%;
+                  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                  overflow: hidden;
+                ">
+                  <img src="${sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}"
+                       style="width: 22px; height: 22px; object-fit: contain;" />
+                </div>
+              `,
+              className: 'custom-map-icon',
+              iconSize: [32, 32],
+              iconAnchor: [16, 16],
+              popupAnchor: [0, -16],
+            });
+          } else {
+            // Default Leaflet marker or colored circle marker
+            markerIcon = L.divIcon({
+              html: `
+                <div style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  width: 24px;
+                  height: 24px;
+                  background: #1890ff;
+                  border: 2px solid white;
+                  border-radius: 50%;
+                  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                ">
+                  <span style="color: white; font-size: 10px; font-weight: bold;">
+                    ${record.kchtTypeLabel ? record.kchtTypeLabel.charAt(0) : '•'}
+                  </span>
+                </div>
+              `,
+              className: 'default-map-icon',
+              iconSize: [24, 24],
+              iconAnchor: [12, 12],
+              popupAnchor: [0, -12],
+            });
+          }
+
+          const popupContent = `
+            <div style="font-family: sans-serif; padding: 4px; min-width: 180px;">
+              <h4 style="margin: 0 0 6px 0; color: #1890ff; font-size: 14px;">${record.tenCang || record.tenBen || record.tenCau || record.tenCangCan || record.tenVungNuoc || record.name || 'Chi tiết'}</h4>
+              <p style="margin: 0 0 4px 0; font-size: 12px;"><b>Loại KCHT:</b> ${record.kchtTypeLabel}</p>
+              <p style="margin: 0 0 4px 0; font-size: 12px;"><b>Đơn vị quản lý:</b> ${record.orgName}</p>
+              <p style="margin: 0; font-size: 12px;"><b>Địa điểm:</b> ${record.diaDiem || '—'}</p>
+            </div>
+          `;
+
+          const marker = L.marker([lat, lon], { icon: markerIcon })
+            .bindPopup(popupContent);
+
+          marker.on('click', (e: any) => {
+            L.DomEvent.stopPropagation(e);
+            marker.openPopup();
+          });
+
+          markers.push(marker);
+        }
+      }
+    });
+
+    if (markers.length > 0) {
+      const tempGroup = L.layerGroup(markers);
+      searchMarkersGroupRef.current.addLayer(tempGroup);
+      
+      // Optionally fit bounds if there are markers
+      try {
+        const groupBounds = searchMarkersGroupRef.current.getBounds();
+        if (groupBounds.isValid()) {
+          mapRef.current.fitBounds(groupBounds, { padding: [50, 50], maxZoom: 15 });
+        }
+      } catch (e) {
+        // skip
+      }
+    }
+  }, [infrastructureResults, symbols, selectedRowKeys]);
 
   const [parsedLayers, setParsedLayers] = useState<Array<{
     minZoom: number;
@@ -1032,6 +1489,8 @@ export default function GISChartView() {
 
     geoJsonGroupRef.current.clearLayers();
 
+    if (!showChart) return;
+
     const zoom = mapRef.current.getZoom();
     if (zoom < 12) return;
 
@@ -1039,7 +1498,7 @@ export default function GISChartView() {
 
     const activeLayers: any[] = [];
     parsedLayers.forEach(({ minZoom, layer, featureCode }) => {
-      const isVisible = visibleLayers[featureCode] ?? true;
+      const isVisible = visibleLayers[featureCode] ?? false;
       if (zoom >= minZoom && isVisible) {
         activeLayers.push(layer);
       }
@@ -1049,7 +1508,7 @@ export default function GISChartView() {
       const tempGroup = L.layerGroup(activeLayers);
       geoJsonGroupRef.current.addLayer(tempGroup);
     }
-  }, [parsedLayers, visibleLayers]);
+  }, [parsedLayers, visibleLayers, showChart]);
 
   useEffect(() => {
     renderChartFeaturesRef.current = renderChartFeatures;
@@ -1087,7 +1546,7 @@ export default function GISChartView() {
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [leafletLoaded, parsedLayers, renderChartFeatures, visibleLayers]);
+  }, [leafletLoaded, parsedLayers, renderChartFeatures, visibleLayers, showChart]);
 
   // 6. Coordinate Calibration Form Submission
   const handleCalibrate = useCallback(async (values: any) => {
@@ -1358,14 +1817,13 @@ export default function GISChartView() {
                     <Table
                       rowSelection={{
                         type: 'checkbox',
+                        selectedRowKeys: selectedRowKeys,
+                        onChange: (keys) => {
+                          setSelectedRowKeys(keys);
+                        },
                         onSelect: (record, selected) => {
                           if (selected) {
                             handleRowClick(record);
-                          }
-                        },
-                        onSelectAll: (selected, selectedRows) => {
-                          if (selected && selectedRows.length > 0) {
-                            handleRowClick(selectedRows[0]);
                           }
                         }
                       }}
@@ -1456,22 +1914,31 @@ export default function GISChartView() {
                         }}
                       </Form.Item>
 
-                      <Collapse size="small" bordered={false} style={{ marginBottom: 16 }}>
-                        <Collapse.Panel header="Sai số hiệu chuẩn (Calibration offset)" key="1">
-                          <Row gutter={8}>
-                            <Col span={12}>
-                              <Form.Item name="dx" label="Độ lệch dX (m / deg)">
-                                <InputNumber style={{ width: '100%' }} />
-                              </Form.Item>
-                            </Col>
-                            <Col span={12}>
-                              <Form.Item name="dy" label="Độ lệch dY (m / deg)">
-                                <InputNumber style={{ width: '100%' }} />
-                              </Form.Item>
-                            </Col>
-                          </Row>
-                        </Collapse.Panel>
-                      </Collapse>
+                      <Collapse 
+                        size="small" 
+                        bordered={false} 
+                        style={{ marginBottom: 16 }}
+                        items={[
+                          {
+                            key: '1',
+                            label: 'Sai số hiệu chuẩn (Calibration offset)',
+                            children: (
+                              <Row gutter={8}>
+                                <Col span={12}>
+                                  <Form.Item name="dx" label="Độ lệch dX (m / deg)">
+                                    <InputNumber style={{ width: '100%' }} />
+                                  </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                  <Form.Item name="dy" label="Độ lệch dY (m / deg)">
+                                    <InputNumber style={{ width: '100%' }} />
+                                  </Form.Item>
+                                </Col>
+                              </Row>
+                            )
+                          }
+                        ]}
+                      />
 
                       <Form.Item style={{ marginBottom: 0 }}>
                         <Button
@@ -1541,25 +2008,41 @@ export default function GISChartView() {
         size="default"
       >
         <Space orientation="vertical" style={{ width: '100%' }} size={16}>
-          <Checkbox 
-            checked={uniqueFeatureCodes.length > 0 && uniqueFeatureCodes.every(code => visibleLayers[code] ?? true)}
-            indeterminate={
-              uniqueFeatureCodes.some(code => visibleLayers[code] ?? true) && 
-              !uniqueFeatureCodes.every(code => visibleLayers[code] ?? true)
-            }
-            onChange={(e) => {
-              const checked = e.target.checked;
-              const next: Record<string, boolean> = {};
-              uniqueFeatureCodes.forEach(code => {
-                next[code] = checked;
-              });
-              setVisibleLayers(next);
-            }}
-          >
-            <strong>ENC - Hải đồ điện tử</strong>
-          </Checkbox>
+          <div>
+            <Typography.Text type="secondary" strong style={{ display: 'block', marginBottom: '12px', fontSize: '13px' }}>
+              Lớp dữ liệu (Overlay)
+            </Typography.Text>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <Checkbox 
+                checked={showChart}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setShowChart(checked);
+                  const next: Record<string, boolean> = {};
+                  uniqueFeatureCodes.forEach(code => {
+                    next[code] = checked;
+                  });
+                  setVisibleLayers(next);
+                }}
+              >
+                <Space size={6}>
+                  <span>🗺️</span>
+                  <span>ENC - Hải đồ điện tử</span>
+                </Space>
+              </Checkbox>
 
-          <Divider style={{ margin: '8px 0' }} />
+              <Checkbox 
+                checked={showPlanning}
+                onChange={(e) => setShowPlanning(e.target.checked)}
+              >
+                <Space size={6}>
+                  <span>🏢</span>
+                  <span>QHCB - Quy hoạch cảng biển</span>
+                </Space>
+              </Checkbox>
+            </div>
+          </div>
 
           <Typography.Text type="secondary" strong>
             Chi tiết Hải đồ (Lọc theo lớp)
@@ -1569,13 +2052,19 @@ export default function GISChartView() {
             {uniqueFeatureCodes.map(code => {
               const label = getFeatureNameVi(code);
               const icon = LAYER_ICONS[code] || '🌐';
-              const isChecked = visibleLayers[code] ?? true;
+              const isChecked = visibleLayers[code] ?? false;
 
               return (
                 <div key={code} style={{ padding: '6px 0', display: 'flex', alignItems: 'center' }}>
                   <Checkbox 
                     checked={isChecked}
-                    onChange={(e) => handleToggleLayer(code, e.target.checked)}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      handleToggleLayer(code, checked);
+                      if (checked) {
+                        setShowChart(true);
+                      }
+                    }}
                   >
                     <Space size={8}>
                       <span>{icon}</span>

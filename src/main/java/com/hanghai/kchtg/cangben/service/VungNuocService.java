@@ -43,7 +43,8 @@ public class VungNuocService {
                 .doSauMax(request.getDoSauMax()).doSauTrungBinh(request.getDoSauTrungBinh())
                 .loaiVungNuoc(request.getLoaiVungNuoc()).trangThaiHoatDong(request.getTrangThaiHoatDong())
                 .orgUnitId(parent.getOrgUnitId())
-                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET).build();
+                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .bieuTuongId(request.getBieuTuongId()).build();
         VungNuoc saved = vungNuocRepository.save(entity);
         log.info("Created VungNuoc [{}] code={}", saved.getId(), saved.getMaVungNuoc());
         return toResponse(saved);
@@ -95,6 +96,7 @@ public class VungNuocService {
                 .doSauTrungBinh(entity.getDoSauTrungBinh()).loaiVungNuoc(entity.getLoaiVungNuoc())
                 .trangThaiHoatDong(entity.getTrangThaiHoatDong()).trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
                 .orgUnitId(entity.getOrgUnitId())
+                .bieuTuongId(entity.getBieuTuongId())
                 .build();
 
         if (request.getTenVungNuoc() != null) entity.setTenVungNuoc(request.getTenVungNuoc());
@@ -113,6 +115,7 @@ public class VungNuocService {
         if (request.getDoSauTrungBinh() != null) entity.setDoSauTrungBinh(request.getDoSauTrungBinh());
         if (request.getLoaiVungNuoc() != null) entity.setLoaiVungNuoc(request.getLoaiVungNuoc());
         if (request.getTrangThaiHoatDong() != null) entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
+        entity.setBieuTuongId(request.getBieuTuongId());
         entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
         VungNuoc saved = vungNuocRepository.save(entity);
@@ -139,7 +142,8 @@ public class VungNuocService {
                 .cangBienId(e.getCangBienId()).dienTich(e.getDienTich())
                 .doSauMax(e.getDoSauMax()).doSauTrungBinh(e.getDoSauTrungBinh())
                 .loaiVungNuoc(e.getLoaiVungNuoc()).trangThaiHoatDong(e.getTrangThaiHoatDong())
-                .trangThaiPheDuyet(e.getTrangThaiPheDuyet())                .orgUnitId(e.getOrgUnitId())
+                .trangThaiPheDuyet(e.getTrangThaiPheDuyet()).orgUnitId(e.getOrgUnitId())
+                .bieuTuongId(e.getBieuTuongId())
                 .createdBy(e.getCreatedBy())
                 .updatedBy(e.getUpdatedBy())
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();

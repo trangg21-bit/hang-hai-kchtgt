@@ -23,9 +23,10 @@ public class MapSymbolServiceImpl implements MapSymbolService {
 
     @Override
     public Page<MapSymbolResponse> search(String search, MapSymbolStatus status, Pageable pageable) {
+        String trimmedSearch = search != null ? search.trim() : null;
         return repository.search(
-                search != null && search.trim().isEmpty() ? null : search,
-                status != null ? status.getValue() : null,
+                trimmedSearch != null && trimmedSearch.isEmpty() ? null : trimmedSearch,
+                status,
                 pageable
         ).map(MapSymbolResponse::from);
     }

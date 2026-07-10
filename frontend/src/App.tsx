@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ConfigProvider, App as AntApp, theme } from 'antd';
 import { metronicTheme } from './theme';
 import viVN from 'antd/locale/vi_VN';
+import { setStaticMessage } from './components/ToastNotification';
 import AppLayout from './components/AppLayout';
 import UsersPage from './pages/UsersPage';
 import RolesPage from './pages/RolesPage';
@@ -260,8 +262,17 @@ export default function App() {
               <Route path="*" element={<Navigate to="/login" />} />
             </Routes>
           </BrowserRouter>
+          <RegisterAntdStatic />
         </AntApp>
       </ConfigProvider>
     </QueryClientProvider>
   );
+}
+
+function RegisterAntdStatic() {
+  const { message } = AntApp.useApp();
+  useEffect(() => {
+    setStaticMessage(message);
+  }, [message]);
+  return null;
 }

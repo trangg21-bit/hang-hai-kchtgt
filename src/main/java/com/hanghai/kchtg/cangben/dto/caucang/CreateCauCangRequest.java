@@ -27,4 +27,5 @@ public class CreateCauCangRequest {
     private String loaiCau;
     private String congNangKhaiThac;
     private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
+    private UUID bieuTuongId;
 }

@@ -41,6 +41,8 @@ import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
 import FormField from '../../components/FormField';
+import { symbolService } from '../../services/symbolService';
+import type { Symbol } from '../../services/symbolService';
 
 export default function PolygonObjectList() {
   const navigate = useNavigate();
@@ -61,6 +63,20 @@ export default function PolygonObjectList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<PolygonObject | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [symbols, setSymbols] = useState<Symbol[]>([]);
+
+  const fetchSymbols = useCallback(async () => {
+    try {
+      const res = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' });
+      setSymbols(res.data);
+    } catch (err) {
+      console.error('Failed to load symbols', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchSymbols();
+  }, [fetchSymbols]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -561,13 +577,15 @@ export default function PolygonObjectList() {
                 name="fillSymbolId"
                 label="Ký hiệu vùng"
                 placeholder="Tùy chọn ký hiệu"
-                options={[
-                  { label: 'Symbol Vùng nước cảng biển', value: 1 },
-                  { label: 'Symbol Luồng hàng hải', value: 2 },
-                  { label: 'Symbol Vùng đón trả hoa tiêu', value: 3 },
-                  { label: 'Symbol Vùng hạn chế', value: 4 },
-                  { label: 'Symbol Khác', value: 5 },
-                ]}
+                options={symbols.map(s => ({
+                  label: (
+                    <Space>
+                      {s.hinhAnh && <img src={s.hinhAnh} alt={s.name} style={{ width: 16, height: 16, objectFit: 'contain' }} />}
+                      <span>{s.name} ({s.code})</span>
+                    </Space>
+                  ),
+                  value: s.id
+                }))}
               />
             </Col>
             <Col span={12} />

@@ -59,7 +59,7 @@ public class PointObject extends BaseEntity {
     private Long categoryId;
 
     @Column(name = "icon_id")
-    private Long iconId;
+    private java.util.UUID iconId;
 
     @Column(name = "longitude", nullable = false)
     private Double longitude;

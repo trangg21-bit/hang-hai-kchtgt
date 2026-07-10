@@ -42,6 +42,7 @@ public class UpdateCangBienRequest {
     private UUID orgUnitId;
 
     private Integer nhomCangBien;
+    private java.util.UUID bieuTuongId;
 
     /**
      * GPS paired-field constraint: viDo and kinhDo must both be present or both be absent.

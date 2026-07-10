@@ -25,7 +25,7 @@ const STATUS_COLOR_MAP: Record<string, string> = {
 
 export default function HistoryTimeline({ history, loading, error, onRetry }: HistoryTimelineProps) {
   if (loading) {
-    return <Spin tip="Đang tải lịch sử..." />;
+    return <Spin description="Đang tải lịch sử..." />;
   }
 
   if (error) {

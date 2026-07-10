@@ -19,6 +19,7 @@ export const vungNuocCreateSchema = z.object({
   doSauTrungBinh: z.coerce.number().optional().nullable(),
   loaiVungNuoc: z.string().max(100, 'Loại vùng nước tối đa 100 ký tự').optional().nullable(),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional().default('HIEN_HANH'),
+  bieuTuongId: z.string().uuid().optional().or(z.literal('')),
 });
 
 export type VungNuocCreateValues = z.infer<typeof vungNuocCreateSchema>;
@@ -38,6 +39,7 @@ export const vungNuocUpdateSchema = z.object({
   doSauTrungBinh: z.coerce.number().optional().nullable(),
   loaiVungNuoc: z.string().max(100, 'Loại vùng nước tối đa 100 ký tự').optional().nullable(),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
+  bieuTuongId: z.string().uuid().optional().nullable(),
 });
 
 export type VungNuocUpdateValues = z.infer<typeof vungNuocUpdateSchema>;

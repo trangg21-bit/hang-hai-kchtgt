@@ -74,5 +74,8 @@ public class BenCang extends BaseEntity {
 
     @Column(name = "cong_nang_khai_thac", length = 255)
     private String congNangKhaiThac;
+
+    @Column(name = "bieu_tuong_id")
+    private java.util.UUID bieuTuongId;
 }
 

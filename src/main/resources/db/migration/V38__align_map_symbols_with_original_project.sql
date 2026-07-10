@@ -1,4 +1,4 @@
--- V37: Align map_symbols table structure with the original project
+-- V38: Align map_symbols table structure with the original project
 ALTER TABLE map_symbols DROP COLUMN IF EXISTS category;
 ALTER TABLE map_symbols DROP COLUMN IF EXISTS icon;
 ALTER TABLE map_symbols DROP COLUMN IF EXISTS color;

@@ -67,5 +67,8 @@ public class CangBien extends BaseEntity {
 
     @Column(name = "nhom_cang_bien")
     private Integer nhomCangBien;
+
+    @Column(name = "bieu_tuong_id")
+    private java.util.UUID bieuTuongId;
 }
 

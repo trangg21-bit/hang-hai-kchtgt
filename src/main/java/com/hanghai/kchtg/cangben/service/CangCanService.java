@@ -48,7 +48,8 @@ public class CangCanService {
                 .tinhThanhPho(request.getTinhThanhPho()).viDo(request.getViDo())
                 .kinhDo(request.getKinhDo()).dienTich(request.getDienTich())
                 .congSuatTEU(request.getCongSuatTEU()).trangThaiHoatDong(request.getTrangThaiHoatDong())
-                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET).build();
+                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .bieuTuongId(request.getBieuTuongId()).build();
         CangCan saved = cangCanRepository.save(entity);
         log.info("Created CangCan [{}] code={}", saved.getId(), saved.getMaCangCan());
         return toResponse(saved);
@@ -95,6 +96,7 @@ public class CangCanService {
                 .congSuatTEU(entity.getCongSuatTEU()).trangThaiHoatDong(entity.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
                 .orgUnitId(entity.getOrgUnitId())
+                .bieuTuongId(entity.getBieuTuongId())
                 .build();
 
         if (request.getTenCangCan() != null) entity.setTenCangCan(request.getTenCangCan());
@@ -104,7 +106,7 @@ public class CangCanService {
         if (request.getDienTich() != null) entity.setDienTich(request.getDienTich());
         if (request.getCongSuatTEU() != null) entity.setCongSuatTEU(request.getCongSuatTEU());
         if (request.getTrangThaiHoatDong() != null) entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
-
+        entity.setBieuTuongId(request.getBieuTuongId());
         // Reset approval status — changes require re-approval
         entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
@@ -134,6 +136,7 @@ public class CangCanService {
                 .dienTich(e.getDienTich()).congSuatTEU(e.getCongSuatTEU())
                 .trangThaiHoatDong(e.getTrangThaiHoatDong()).trangThaiPheDuyet(e.getTrangThaiPheDuyet())
                 .orgUnitId(e.getOrgUnitId())
+                .bieuTuongId(e.getBieuTuongId())
                 .createdBy(e.getCreatedBy())
                 .updatedBy(e.getUpdatedBy())
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();

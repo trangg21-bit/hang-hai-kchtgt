@@ -25,7 +25,7 @@ public class CreatePolygonObjectRequest {
     private ObjectType objectType;
 
     private Long categoryId;
-    private Long fillSymbolId;
+    private java.util.UUID fillSymbolId;
 
     @NotBlank(message = "Tọa độ WKT/GeoJSON không được để trống")
     private String coordinates;

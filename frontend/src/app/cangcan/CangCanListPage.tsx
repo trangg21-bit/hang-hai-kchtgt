@@ -53,6 +53,8 @@ import {
   rejectCangCan,
 } from './api';
 import type { CangCanListParams } from './api';
+import { symbolService } from '../../services/symbolService';
+import type { Symbol } from '../../services/symbolService';
 import { giayToApi } from '../giayto/api';
 import { z } from 'zod';
 import { createCangCanSchema, updateCangCanSchema } from './schema';
@@ -95,7 +97,11 @@ export const translateFieldName = (fieldName: string): string => {
     trangThaiHoatDong: 'Trạng thái hoạt động',
     trangThaiPheDuyet: 'Trạng thái phê duyệt',
     orgUnitId: 'Đơn vị quản lý',
-    congNangKhaiThac: 'Công năng khai thác'
+    congNangKhaiThac: 'Công năng khai thác',
+    bieuTuongId: 'Biểu tượng bản đồ',
+    iconId: 'Biểu tượng bản đồ',
+    lineSymbolId: 'Ký hiệu đường',
+    fillSymbolId: 'Ký hiệu vùng',
   };
   return map[fieldName] || fieldName;
 };
@@ -128,6 +134,27 @@ export default function CangCanListPage() {
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const [symbols, setSymbols] = useState<Symbol[]>([]);
+
+  const fetchSymbols = useCallback(async () => {
+    try {
+      const res = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' });
+      setSymbols(res.data);
+    } catch (err) {
+      console.error('Failed to load symbols', err);
+    }
+  }, []);
+
+  const translateValue = useCallback((fieldName: string, val: string | null): string => {
+    if (!val || val === '(null)' || val === 'null') {
+      return '(trống)';
+    }
+    if (['bieuTuongId', 'iconId', 'lineSymbolId', 'fillSymbolId'].includes(fieldName)) {
+      const sym = symbols.find(s => s.id === val);
+      return sym ? `${sym.name} (${sym.code})` : val;
+    }
+    return val;
+  }, [symbols]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -153,7 +180,8 @@ export default function CangCanListPage() {
 
   useEffect(() => {
     void fetchData();
-  }, [fetchData]);
+    void fetchSymbols();
+  }, [fetchData, fetchSymbols]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);
@@ -224,6 +252,7 @@ export default function CangCanListPage() {
         dienTich: values.dienTich,
         congSuatTEU: values.congSuatTEU != null && !Number.isNaN(values.congSuatTEU) ? values.congSuatTEU : undefined,
         trangThaiHoatDong: values.trangThaiHoatDong || 'HIEN_HANH',
+        bieuTuongId: values.bieuTuongId || undefined,
       });
 
       setSubmitting(true);
@@ -258,6 +287,7 @@ export default function CangCanListPage() {
         dienTich: values.dienTich,
         congSuatTEU: values.congSuatTEU,
         trangThaiHoatDong: values.trangThaiHoatDong,
+        bieuTuongId: values.bieuTuongId || null,
       });
 
       setSubmitting(true);
@@ -651,6 +681,28 @@ export default function CangCanListPage() {
               </Form.Item>
             </Col>
           </Row>
+          <Row gutter={24}>
+            <Col span={24}>
+              <Form.Item name="bieuTuongId" label="Biểu tượng bản đồ">
+                <Select placeholder="Chọn biểu tượng hiển thị" allowClear showSearch optionFilterProp="label">
+                  {symbols.map((sym) => (
+                    <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
+                      <Space>
+                        {sym.hinhAnh && (
+                          <img
+                            src={sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}
+                            alt={sym.name}
+                            style={{ width: 20, height: 20, objectFit: 'contain' }}
+                          />
+                        )}
+                        <span>{sym.name} ({sym.code})</span>
+                      </Space>
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
             <Space>
@@ -751,6 +803,28 @@ export default function CangCanListPage() {
             <Col span={12}>
               <Form.Item label="Trạng thái phê duyệt">
                 <Input disabled value={selectedRecord?.trangThaiPheDuyet ? trangThaiPheDuyetBadge(selectedRecord.trangThaiPheDuyet).label : '—'} aria-readonly="true" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={24}>
+              <Form.Item name="bieuTuongId" label="Biểu tượng bản đồ">
+                <Select placeholder="Chọn biểu tượng hiển thị" allowClear showSearch optionFilterProp="label">
+                  {symbols.map((sym) => (
+                    <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
+                      <Space>
+                        {sym.hinhAnh && (
+                          <img
+                            src={sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}
+                            alt={sym.name}
+                            style={{ width: 20, height: 20, objectFit: 'contain' }}
+                          />
+                        )}
+                        <span>{sym.name} ({sym.code})</span>
+                      </Space>
+                    </Select.Option>
+                  ))}
+                </Select>
               </Form.Item>
             </Col>
           </Row>
@@ -913,6 +987,7 @@ export default function CangCanListPage() {
                       dienTich: selectedRecord.dienTich,
                       congSuatTEU: selectedRecord.congSuatTEU,
                       trangThaiHoatDong: selectedRecord.trangThaiHoatDong,
+                      bieuTuongId: selectedRecord.bieuTuongId,
                     });
                     setUpdateModalVisible(true);
                   }}
@@ -982,14 +1057,16 @@ export default function CangCanListPage() {
                     {record.oldValue !== undefined && record.oldValue != null && (
                       <div style={{ marginBottom: 2 }}>
                         <Typography.Text type="secondary" style={{ textDecoration: 'line-through', color: '#ff4d4f' }}>
-                          cũ: {record.oldValue}
+                          cũ: {translateValue(record.fieldName || record.fieldChanged, record.oldValue)}
                         </Typography.Text>
                       </div>
                     )}
                     {record.newValue !== undefined && record.newValue != null && (
                       <div>
                         <Typography.Text type="secondary">mới: </Typography.Text>
-                        <Typography.Text style={{ color: '#52c41a', fontWeight: 500 }}>{record.newValue}</Typography.Text>
+                        <Typography.Text style={{ color: '#52c41a', fontWeight: 500 }}>
+                          {translateValue(record.fieldName || record.fieldChanged, record.newValue)}
+                        </Typography.Text>
                       </div>
                     )}
 

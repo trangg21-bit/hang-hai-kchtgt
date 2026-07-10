@@ -58,7 +58,7 @@ public class LineObject extends BaseEntity {
     private Long categoryId;
 
     @Column(name = "line_symbol_id")
-    private Long lineSymbolId;
+    private java.util.UUID lineSymbolId;
 
     @Column(name = "coordinates", nullable = false, columnDefinition = "TEXT")
     private String coordinates;
