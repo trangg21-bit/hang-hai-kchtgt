@@ -45,8 +45,8 @@ public class MapSymbol extends BaseEntity {
     @Column(name = "symbol_value", length = 50)
     private String value;
 
-    @Column(nullable = false, length = 20)
-    private String status;
+    @Column(nullable = false)
+    private MapSymbolStatus status;
 
     @Column(name = "created_by", length = 50)
     private String createdBy;

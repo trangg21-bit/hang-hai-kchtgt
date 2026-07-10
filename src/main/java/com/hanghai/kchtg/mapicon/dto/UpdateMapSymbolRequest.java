@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.mapicon.dto;
 
+import com.hanghai.kchtg.mapicon.entity.MapSymbolStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -21,6 +22,6 @@ public class UpdateMapSymbolRequest {
     private String color;
     private String value;
 
-    @NotBlank(message = "Trạng thái không được để trống")
-    private String status;
+    @jakarta.validation.constraints.NotNull(message = "Trạng thái không được để trống")
+    private MapSymbolStatus status;
 }

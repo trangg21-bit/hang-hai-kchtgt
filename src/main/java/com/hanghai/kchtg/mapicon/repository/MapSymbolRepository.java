@@ -18,10 +18,10 @@ public interface MapSymbolRepository extends JpaRepository<MapSymbol, UUID> {
            "OR LOWER(s.code) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
            "OR LOWER(s.description) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
            "AND (CAST(:category AS string) IS NULL OR s.category = CAST(:category AS string)) " +
-           "AND (CAST(:status AS string) IS NULL OR s.status = CAST(:status AS string)) " +
+           "AND (:status IS NULL OR s.status = :status) " +
            "AND s.deletedAt IS NULL")
     Page<MapSymbol> search(@Param("search") String search,
                            @Param("category") String category,
-                           @Param("status") String status,
+                           @Param("status") Integer status,
                            Pageable pageable);
 }
