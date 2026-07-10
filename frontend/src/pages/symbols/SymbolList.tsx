@@ -13,6 +13,7 @@ import {
   Modal,
   Form,
   Descriptions,
+  Upload,
 } from 'antd';
 import {
   PlusOutlined,
@@ -22,6 +23,7 @@ import {
   ReloadOutlined,
   EyeOutlined,
   ExclamationCircleOutlined,
+  UploadOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -36,44 +38,70 @@ import FormField from '../../components/FormField';
 import toast from '../../components/ToastNotification';
 
 const STATUS_MAP: Record<string, { color: string; label: string }> = {
-  active: { color: 'green', label: 'Hoạt động' },
-  inactive: { color: 'default', label: 'Không hoạt động' },
+  active: { color: 'green', label: 'Sử dụng' },
+  inactive: { color: 'default', label: 'Không sử dụng' },
   deprecated: { color: 'red', label: 'Ngừng sử dụng' },
 };
 
-const CATEGORY_OPTIONS = [
-  { value: 'navigation', label: 'Điều hướng' },
-  { value: 'road', label: 'Đường' },
-  { value: 'position', label: 'Vị trí' },
-  { value: 'division', label: 'Phân chia' },
-  { value: 'building', label: 'Công trình' },
-  { value: 'transport', label: 'Giao thông' },
-  { value: 'location', label: 'Địa điểm' },
-];
-
 const STATUS_OPTIONS = [
-  { value: 'active', label: 'Hoạt động' },
-  { value: 'inactive', label: 'Không hoạt động' },
+  { value: 'active', label: 'Sử dụng' },
+  { value: 'inactive', label: 'Không sử dụng' },
   { value: 'deprecated', label: 'Ngừng sử dụng' },
 ];
 
-const COLORS = [
-  { value: '#1677ff', label: 'Xanh dương' },
-  { value: '#52c41a', label: 'Xanh lá' },
-  { value: '#faad14', label: 'Vàng' },
-  { value: '#f5222d', label: 'Đỏ' },
-  { value: '#722ed1', label: 'Tím' },
-  { value: '#13c2c2', label: 'Cyan' },
-  { value: '#eb2f96', label: 'Hồng' },
-  { value: '#fa8c16', label: 'Cam' },
-];
+interface UploadImageInputProps {
+  value?: string;
+  onChange?: (value: string) => void;
+}
+
+const UploadImageInput: React.FC<UploadImageInputProps> = ({ value, onChange }) => {
+  const handleUpload = (file: any) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        onChange?.(e.target.result as string);
+      }
+    };
+    reader.readAsDataURL(file);
+    return false; // prevent automatic upload
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div
+        style={{
+          width: 60,
+          height: 60,
+          border: '1px solid #d9d9d9',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#fafafa',
+          overflow: 'hidden',
+        }}
+      >
+        {value ? (
+          <img src={value} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+        ) : (
+          <div style={{ color: '#bfbfbf', fontSize: 12 }}>Trống</div>
+        )}
+      </div>
+      <Upload
+        accept="image/png, image/jpeg, image/jpg"
+        beforeUpload={handleUpload}
+        showUploadList={false}
+      >
+        <Button icon={<UploadOutlined />}>Chọn hình ảnh</Button>
+      </Upload>
+    </div>
+  );
+};
 
 export default function SymbolList() {
   const navigate = useNavigate();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const [search, setSearch] = useState('');
-  const [filterCategory, setFilterCategory] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -99,7 +127,6 @@ export default function SymbolList() {
         page,
         pageSize,
         search: search || undefined,
-        category: filterCategory,
         status: filterStatus,
       });
       setDataSource(res.data);
@@ -110,7 +137,7 @@ export default function SymbolList() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, search, filterCategory, filterStatus]);
+  }, [page, pageSize, search, filterStatus]);
 
   useEffect(() => { void fetchSymbols(); }, [fetchSymbols]);
 
@@ -131,10 +158,7 @@ export default function SymbolList() {
       code: record.code,
       name: record.name,
       description: record.description,
-      category: record.category,
-      icon: record.icon,
-      color: record.color,
-      value: record.value,
+      hinhAnh: record.hinhAnh,
       status: record.status,
     });
     setFormOpen(true);
@@ -153,10 +177,7 @@ export default function SymbolList() {
         const payload: UpdateSymbolPayload = {
           name: values.name,
           description: values.description,
-          category: values.category,
-          icon: values.icon,
-          color: values.color,
-          value: values.value,
+          hinhAnh: values.hinhAnh,
           status: values.status,
         };
         await symbolService.update(editingSymbol.id, payload);
@@ -166,10 +187,7 @@ export default function SymbolList() {
           code: values.code,
           name: values.name,
           description: values.description,
-          category: values.category,
-          icon: values.icon,
-          color: values.color,
-          value: values.value,
+          hinhAnh: values.hinhAnh,
         };
         await symbolService.create(payload);
         toast.success('Đã tạo biểu tượng');
@@ -233,34 +251,24 @@ export default function SymbolList() {
       title: 'Tên',
       dataIndex: 'name',
       ellipsis: true,
-      render: (text: string, record: Symbol) => (
-        <Space>
-          <Typography.Text strong>{text}</Typography.Text>
-          {record.color && (
-            <span
-              style={{
-                display: 'inline-block',
-                width: 12,
-                height: 12,
-                borderRadius: '50%',
-                backgroundColor: record.color,
-              }}
-            />
-          )}
-        </Space>
-      ),
+      render: (text: string) => <Typography.Text strong>{text}</Typography.Text>,
     },
     {
-      title: 'Giá trị',
-      dataIndex: 'value',
-      width: 100,
-      render: (v?: string) => v ? <Tag>{v}</Tag> : <Typography.Text type="secondary">—</Typography.Text>,
-    },
-    {
-      title: 'Danh mục',
-      dataIndex: 'category',
+      title: 'Hình ảnh',
+      dataIndex: 'hinhAnh',
       width: 120,
-      render: (text: string) => <Tag>{text}</Tag>,
+      align: 'center' as const,
+      render: (src?: string) => (
+        src ? (
+          <img
+            src={src}
+            alt="Biểu tượng"
+            style={{ maxHeight: 30, maxWidth: 60, objectFit: 'contain' }}
+          />
+        ) : (
+          <Typography.Text type="secondary">—</Typography.Text>
+        )
+      ),
     },
     {
       title: 'Trạng thái',
@@ -331,20 +339,14 @@ export default function SymbolList() {
                 prefix={<SearchOutlined />}
                 onSearch={handleSearch}
               />
-              <Select placeholder="Danh mục" allowClear style={{ width: 150 }} value={filterCategory} onChange={(val) => { setFilterCategory(val); setPage(1); }} options={[
-                { value: 'navigation', label: 'Điều hướng' },
-                { value: 'road', label: 'Đường' },
-                { value: 'position', label: 'Vị trí' },
-                { value: 'division', label: 'Phân chia' },
-                { value: 'building', label: 'Công trình' },
-                { value: 'transport', label: 'Giao thông' },
-                { value: 'location', label: 'Địa điểm' },
-              ]} />
-              <Select placeholder="Trạng thái" allowClear style={{ width: 150 }} value={filterStatus} onChange={(val) => { setFilterStatus(val); setPage(1); }} options={[
-                { value: 'active', label: 'Hoạt động' },
-                { value: 'inactive', label: 'Không hoạt động' },
-                { value: 'deprecated', label: 'Ngừng sử dụng' },
-              ]} />
+              <Select
+                placeholder="Trạng thái"
+                allowClear
+                style={{ width: 150 }}
+                value={filterStatus}
+                onChange={(val) => { setFilterStatus(val); setPage(1); }}
+                options={STATUS_OPTIONS}
+              />
             </Space>
           </Col>
           <Col xs={24} md={8} style={{ textAlign: 'right' }}>
@@ -372,7 +374,7 @@ export default function SymbolList() {
         )}
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
-            description={search || filterCategory ? 'Không tìm thấy biểu tượng' : 'Chưa có biểu tượng nào'}
+            description={search ? 'Không tìm thấy biểu tượng' : 'Chưa có biểu tượng nào'}
             ctaText="Thêm biểu tượng đầu tiên"
             onCta={openCreateModal}
           />
@@ -408,7 +410,7 @@ export default function SymbolList() {
         confirmLoading={submitting}
         okText={editingSymbol ? 'Cập nhật' : 'Tạo mới'}
         cancelText="Hủy"
-        width={600}
+        width={650}
         destroyOnClose
       >
         <Form
@@ -417,75 +419,61 @@ export default function SymbolList() {
           initialValues={{ status: 'active' }}
           style={{ marginTop: 16 }}
         >
-          <FormField
-            type="text"
-            name="code"
-            label="Mã ký hiệu"
-            required
-            disabled={!!editingSymbol}
-            placeholder="VD: SYM-HD"
-            help="Mã định danh duy nhất cho biểu tượng"
-          />
-
-          <FormField
-            type="text"
-            name="name"
-            label="Tên biểu tượng"
-            required
-            placeholder="VD: Hướng đi"
-          />
-
-          <FormField
-            type="textarea"
-            name="description"
-            label="Mô tả"
-            placeholder="Mô tả về biểu tượng..."
-          />
-
-          <FormField
-            type="select"
-            name="category"
-            label="Danh mục"
-            required
-            options={CATEGORY_OPTIONS}
-          />
-
           <Row gutter={16}>
             <Col span={12}>
               <FormField
                 type="text"
-                name="icon"
-                label="Icon (tên)"
-                placeholder="VD: ArrowRightOutlined"
+                name="code"
+                label="Mã biểu tượng"
+                required
+                disabled={!!editingSymbol}
+                placeholder="Mã biểu tượng"
+                maxLength={10}
               />
             </Col>
             <Col span={12}>
               <FormField
-                type="select"
-                name="color"
-                label="Màu sắc"
-                options={COLORS}
+                type="text"
+                name="name"
+                label="Tên biểu tượng"
+                required
+                placeholder="Tên biểu tượng"
+                maxLength={255}
               />
             </Col>
           </Row>
 
-          <FormField
-            type="text"
-            name="value"
-            label="Giá trị"
-            placeholder="Giá trị hiển thị (VD: HD)"
-            help="Giá trị ngắn gọn dùng để hiển thị"
-          />
+          <Form.Item
+            name="hinhAnh"
+            label="Hình ảnh"
+            required
+            rules={[{ required: true, message: 'Hình ảnh không được để trống' }]}
+            style={{ marginBottom: 20 }}
+          >
+            <UploadImageInput />
+          </Form.Item>
 
-          {editingSymbol && (
-            <FormField
-              type="select"
-              name="status"
-              label="Trạng thái"
-              required
-              options={STATUS_OPTIONS}
-            />
-          )}
+          <Row gutter={16}>
+            <Col span={12}>
+              <FormField
+                type="select"
+                name="status"
+                label="Trạng thái"
+                required
+                options={STATUS_OPTIONS}
+              />
+            </Col>
+            <Col span={12}>
+              <FormField
+                type="textarea"
+                name="description"
+                label="Ghi chú"
+                placeholder="Ghi chú"
+                maxLength={500}
+                rows={2}
+              />
+            </Col>
+          </Row>
         </Form>
       </Modal>
 
@@ -509,26 +497,21 @@ export default function SymbolList() {
               <Typography.Title level={4} style={{ margin: 0 }}>{previewSymbol.name}</Typography.Title>
               <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
                 <Tag color="cyan" style={{ fontSize: 16, padding: '4px 12px' }}>{previewSymbol.code}</Tag>
-                {previewSymbol.value && <Tag style={{ fontSize: 16, padding: '4px 12px' }}>{previewSymbol.value}</Tag>}
-                {previewSymbol.color && (
+                {previewSymbol.hinhAnh && (
                   <div
                     style={{
-                      width: 60,
                       height: 60,
-                      borderRadius: '50%',
-                      backgroundColor: previewSymbol.color,
                       margin: '12px auto',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: '#fff',
-                      fontWeight: 'bold',
-                      fontSize: 16,
-                      border: '2px solid #fff',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
                     }}
                   >
-                    {previewSymbol.value || previewSymbol.code.substring(0, 3)}
+                    <img
+                      src={previewSymbol.hinhAnh}
+                      alt="Preview"
+                      style={{ maxHeight: '100%', objectFit: 'contain' }}
+                    />
                   </div>
                 )}
               </Space>
@@ -537,28 +520,7 @@ export default function SymbolList() {
             {/* Details table */}
             <Descriptions bordered column={2} size="small">
               <Descriptions.Item label="Mã ký hiệu">{previewSymbol.code}</Descriptions.Item>
-              <Descriptions.Item label="Giá trị">{previewSymbol.value || '—'}</Descriptions.Item>
               <Descriptions.Item label="Tên">{previewSymbol.name}</Descriptions.Item>
-              <Descriptions.Item label="Danh mục">
-                <Tag>{previewSymbol.category}</Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Màu sắc" span={2}>
-                <Space>
-                  {previewSymbol.color && (
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        width: 16,
-                        height: 16,
-                        borderRadius: 4,
-                        backgroundColor: previewSymbol.color,
-                        border: '1px solid #d9d9d9',
-                      }}
-                    />
-                  )}
-                  <Typography.Text>{previewSymbol.color || '—'}</Typography.Text>
-                </Space>
-              </Descriptions.Item>
               <Descriptions.Item label="Trạng thái" span={2}>
                 {(() => {
                   const s = STATUS_MAP[previewSymbol.status] || { color: 'default', label: previewSymbol.status };
@@ -566,10 +528,7 @@ export default function SymbolList() {
                 })()}
               </Descriptions.Item>
               {previewSymbol.description && (
-                <Descriptions.Item label="Mô tả" span={2}>{previewSymbol.description}</Descriptions.Item>
-              )}
-              {previewSymbol.icon && (
-                <Descriptions.Item label="Icon" span={2}>{previewSymbol.icon}</Descriptions.Item>
+                <Descriptions.Item label="Ghi chú" span={2}>{previewSymbol.description}</Descriptions.Item>
               )}
               <Descriptions.Item label="Tạo bởi">{previewSymbol.createdBy}</Descriptions.Item>
               <Descriptions.Item label="Tạo lúc">{dayjs(previewSymbol.createdAt).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>

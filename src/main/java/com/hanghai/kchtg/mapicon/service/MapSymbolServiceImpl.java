@@ -22,10 +22,9 @@ public class MapSymbolServiceImpl implements MapSymbolService {
     private final MapSymbolRepository repository;
 
     @Override
-    public Page<MapSymbolResponse> search(String search, String category, MapSymbolStatus status, Pageable pageable) {
+    public Page<MapSymbolResponse> search(String search, MapSymbolStatus status, Pageable pageable) {
         return repository.search(
                 search != null && search.trim().isEmpty() ? null : search,
-                category != null && category.trim().isEmpty() ? null : category,
                 status != null ? status.getValue() : null,
                 pageable
         ).map(MapSymbolResponse::from);
@@ -48,10 +47,7 @@ public class MapSymbolServiceImpl implements MapSymbolService {
                 .code(request.getCode())
                 .name(request.getName())
                 .description(request.getDescription())
-                .category(request.getCategory())
-                .icon(request.getIcon())
-                .color(request.getColor())
-                .value(request.getValue())
+                .hinhAnh(request.getHinhAnh())
                 .status(request.getStatus())
                 .createdBy(username)
                 .build();
@@ -65,10 +61,7 @@ public class MapSymbolServiceImpl implements MapSymbolService {
                 .orElseThrow(() -> new IllegalArgumentException("Ký hiệu không tồn tại: " + id));
         symbol.setName(request.getName());
         symbol.setDescription(request.getDescription());
-        symbol.setCategory(request.getCategory());
-        symbol.setIcon(request.getIcon());
-        symbol.setColor(request.getColor());
-        symbol.setValue(request.getValue());
+        symbol.setHinhAnh(request.getHinhAnh());
         symbol.setStatus(request.getStatus());
         return MapSymbolResponse.from(repository.save(symbol));
     }

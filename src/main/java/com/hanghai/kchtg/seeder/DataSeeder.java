@@ -524,22 +524,23 @@ public class DataSeeder implements CommandLineRunner {
 
         log.info("📦 Seeding MapSymbols...");
 
+        String defaultImg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMCIgaGVpZ2h0PSIzMCI+PGNpcmNsZSBjeD0iMTUiIGN5PSIxNSIgcj0iMTAiIGZpbGw9IiMxNjc3ZmYiLz48L3N2Zz4=";
         List<MapSymbol> symbols = List.of(
-            MapSymbol.builder().code("SYM-HD").name("Hướng đi").description("Ký hiệu hướng đi của tàu thuyền").category("navigation").icon("ArrowRightOutlined").color("#1677ff").value("HD").status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-DC").name("Đường chính").description("Ký hiệu luồng hàng hải chính").category("road").icon("LineOutlined").color("#52c41a").value("DC").status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-TT").name("Tọa độ").description("Ký hiệu điểm mốc tọa độ hải văn").category("position").icon("MapOutlined").color("#faad14").value("TT").status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-CC").name("Chia cắt").description("Ký hiệu phân làn giao thông hàng hải").category("division").icon("DividerOutlined").color("#f5222d").value("CC").status(MapSymbolStatus.INACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-CT").name("Cửa tầng").description("Ký hiệu cửa thu nước cảng biển").category("building").icon("DoorOutlined").color("#722ed1").value("CT").status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-BN").name("Bến ngầm").description("Ký hiệu bến đậu ngầm của tàu ngầm").category("transport").icon("ShipOutlined").color("#13c2c2").value("BN").status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-OD").name("Địa điểm").description("Ký hiệu địa điểm cảng vụ").category("location").icon("EnvironmentOutlined").color("#eb2f96").value("OD").status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-PTA").name("Phao loại A").description("Ký hiệu phao tiêu chỉ giới loại A").category("navigation").icon("InfoCircleOutlined").color("#2f54eb").value("PTA").status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-PTB").name("Phao loại B").description("Ký hiệu phao tiêu chỉ giới loại B").category("navigation").icon("InfoCircleFilled").color("#722ed1").value("PTB").status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-DB1").name("Đèn biển chính").description("Hải đăng cấp 1 khu vực ven bờ").category("navigation").icon("BulbOutlined").color("#fa8c16").value("DB1").status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-DB2").name("Đèn biển phụ").description("Đèn báo hiệu phụ lối vào luồng").category("navigation").icon("BulbFilled").color("#fadb14").value("DB2").status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-VTC").name("Vùng cấm").description("Ký hiệu vùng cấm neo đậu hàng hải").category("division").icon("StopOutlined").color("#ff4d4f").value("VTC").status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-VQD").name("Vùng quay đầu").description("Ký hiệu vùng dành cho tàu quay đầu").category("navigation").icon("SyncOutlined").color("#52c41a").value("VQD").status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-NBD").name("Neo bão").description("Ký hiệu khu vực trú bão của tàu").category("location").icon("HomeOutlined").color("#13c2c2").value("NBD").status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-QY").name("Quét lôi").description("Ký hiệu khu vực đang rà quét chướng ngại vật").category("navigation").icon("RadarChartOutlined").color("#faad14").value("QY").status(MapSymbolStatus.ACTIVE).createdBy("admin").build()
+            MapSymbol.builder().code("SYM-HD").name("Hướng đi").description("Ký hiệu hướng đi của tàu thuyền").hinhAnh(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
+            MapSymbol.builder().code("SYM-DC").name("Đường chính").description("Ký hiệu luồng hàng hải chính").hinhAnh(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
+            MapSymbol.builder().code("SYM-TT").name("Tọa độ").description("Ký hiệu điểm mốc tọa độ hải văn").hinhAnh(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
+            MapSymbol.builder().code("SYM-CC").name("Chia cắt").description("Ký hiệu phân làn giao thông hàng hải").hinhAnh(defaultImg).status(MapSymbolStatus.INACTIVE).createdBy("admin").build(),
+            MapSymbol.builder().code("SYM-CT").name("Cửa tầng").description("Ký hiệu cửa thu nước cảng biển").hinhAnh(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
+            MapSymbol.builder().code("SYM-BN").name("Bến ngầm").description("Ký hiệu bến đậu ngầm của tàu ngầm").hinhAnh(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
+            MapSymbol.builder().code("SYM-OD").name("Địa điểm").description("Ký hiệu địa điểm cảng vụ").hinhAnh(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
+            MapSymbol.builder().code("SYM-PTA").name("Phao loại A").description("Ký hiệu phao tiêu chỉ giới loại A").hinhAnh(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
+            MapSymbol.builder().code("SYM-PTB").name("Phao loại B").description("Ký hiệu phao tiêu chỉ giới loại B").hinhAnh(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
+            MapSymbol.builder().code("SYM-DB1").name("Đèn biển chính").description("Hải đăng cấp 1 khu vực ven bờ").hinhAnh(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
+            MapSymbol.builder().code("SYM-DB2").name("Đèn biển phụ").description("Đèn báo hiệu phụ lối vào luồng").hinhAnh(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
+            MapSymbol.builder().code("SYM-VTC").name("Vùng cấm").description("Ký hiệu vùng cấm neo đậu hàng hải").hinhAnh(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
+            MapSymbol.builder().code("SYM-VQD").name("Vùng quay đầu").description("Ký hiệu vùng dành cho tàu quay đầu").hinhAnh(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
+            MapSymbol.builder().code("SYM-NBD").name("Neo bão").description("Ký hiệu khu vực trú bão của tàu").hinhAnh(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
+            MapSymbol.builder().code("SYM-QY").name("Quét lôi").description("Ký hiệu khu vực đang rà quét chướng ngại vật").hinhAnh(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build()
         );
 
         mapSymbolRepo.saveAll(symbols);
