@@ -67,6 +67,7 @@ const MENU_PERMISSION_MAP: Record<string, string> = {
   '/reports': 'report:read',
   '/settings': 'admin:manage',
   '/logs': 'log:manage',
+  '/symbols': 'data:read',
 };
 
 const canAccessMenu = (path: string): boolean => {
@@ -108,6 +109,7 @@ const pageTitles: Record<string, string> = {
   '/reports': 'Báo cáo & Thống kê',
   '/settings': 'Cấu hình hệ thống',
   '/logs': 'Nhật ký hệ thống',
+  '/symbols': 'Biểu tượng bản đồ',
   '/vanban/phaply': 'Văn bản pháp lý',
   '/vanban/suco': 'Sự cố hàng hải',
   '/vanban/quyhoach': 'Quy hoạch bến cảng',
@@ -379,6 +381,7 @@ export default function AppLayout() {
     { type: 'divider' as const },
     canAccessMenu('/connections') ? { key: '/connections', icon: <ApiOutlined />, label: 'Liên thông dữ liệu' } : null,
     { type: 'divider' as const },
+    canAccessMenu('/symbols') ? { key: '/symbols', icon: <CompassOutlined />, label: 'Biểu tượng bản đồ' } : null,
     canAccessMenu('/settings') ? { key: '/settings', icon: <SettingOutlined />, label: 'Cấu hình hệ thống' } : null,
     canAccessMenu('/logs') ? { key: '/logs', icon: <DashboardOutlined />, label: 'Nhật ký hệ thống' } : null,
   ].filter(Boolean) as MenuProps['items'];
