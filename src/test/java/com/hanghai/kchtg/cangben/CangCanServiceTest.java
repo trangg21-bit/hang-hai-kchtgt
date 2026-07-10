@@ -23,6 +23,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -70,8 +72,8 @@ class CangCanServiceTest {
             testEntity.setKinhDo(new BigDecimal("105.854"));
             testEntity.setDienTich(new BigDecimal("10000.00"));
             testEntity.setCongSuatTEU(new BigDecimal("50000.00"));
-            testEntity.setTrangThaiHoatDong("HIEN_HANH");
-            testEntity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+            testEntity.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
+            testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
         }
 
         @Test
@@ -90,7 +92,7 @@ class CangCanServiceTest {
             assertNotNull(result);
             assertEquals("CC-NEW", result.getMaCangCan());
             assertEquals("Cảng cạn mới", result.getTenCangCan());
-            assertEquals("CHO_PHE_DUYET", result.getTrangThaiPheDuyet());
+            assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getTrangThaiPheDuyet());
             verify(cangCanRepository).save(any(CangCan.class));
         }
 
@@ -109,7 +111,7 @@ class CangCanServiceTest {
         @Test
         @DisplayName("F-027: update — applies mutable fields, resets to CHO_PHE_DUYET, calls recordChanges")
         void update_appliesMutableFields() {
-            testEntity.setTrangThaiPheDuyet("DUOC_PHE_DUYET");
+            testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.DUOC_PHE_DUYET);
             when(cangCanRepository.findById(testId)).thenReturn(Optional.of(testEntity));
             when(cangCanRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -161,7 +163,7 @@ class CangCanServiceTest {
             req.setMaCangCan(maCangCan);
             req.setTenCangCan(tenCangCan);
             req.setTinhThanhPho("Hà Nội");
-            req.setTrangThaiHoatDong("HIEN_HANH");
+            req.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
             return req;
         }
     }
@@ -200,7 +202,7 @@ class CangCanServiceTest {
             ReflectionTestUtils.setField(testEntity, "id", testId);
             testEntity.setMaCangCan("CC-001");
             testEntity.setTenCangCan("Cảng Cạn Demo");
-            testEntity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+            testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
         }
 
         @Test
@@ -211,7 +213,7 @@ class CangCanServiceTest {
 
             approvalService.approve(testId, "admin-user", null);
 
-            assertEquals("DUOC_PHE_DUYET", testEntity.getTrangThaiPheDuyet());
+            assertEquals(TrangThaiPheDuyet.DUOC_PHE_DUYET, testEntity.getTrangThaiPheDuyet());
             verify(approvalWorkflowService).approve(eq("CHO_PHE_DUYET"), eq("CangCan"),
                     eq(testId.toString()), eq("admin-user"));
             verify(cangCanRepository).save(testEntity);
@@ -225,7 +227,7 @@ class CangCanServiceTest {
 
             approvalService.approve(testId, "admin-user", "Hồ sơ chưa đầy đủ");
 
-            assertEquals("TU_CHOI", testEntity.getTrangThaiPheDuyet());
+            assertEquals(TrangThaiPheDuyet.TU_CHOI, testEntity.getTrangThaiPheDuyet());
             verify(approvalWorkflowService).reject(eq("CHO_PHE_DUYET"), eq("CangCan"),
                     eq(testId.toString()), eq("admin-user"), eq("Hồ sơ chưa đầy đủ"));
             verify(cangCanRepository).save(testEntity);
@@ -234,7 +236,7 @@ class CangCanServiceTest {
         @Test
         @DisplayName("F-030: approve on already approved entity → approvalWorkflowService.approve throws IllegalStateException")
         void doubleApprove_throwsIllegalState() {
-            testEntity.setTrangThaiPheDuyet("DUOC_PHE_DUYET");
+            testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.DUOC_PHE_DUYET);
             when(cangCanRepository.findById(testId)).thenReturn(Optional.of(testEntity));
             when(approvalWorkflowService.approve(eq("DUOC_PHE_DUYET"), any(), any(), any()))
                     .thenThrow(new IllegalStateException("Cannot approve: state is DUOC_PHE_DUYET"));

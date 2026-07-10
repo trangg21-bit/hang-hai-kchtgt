@@ -62,6 +62,8 @@ public class CangBienService {
                 .khaNangTiepNhan(request.getKhaNangTiepNhan())
                 .trangThaiHoatDong(request.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .orgUnitId(request.getOrgUnitId())
+                .nhomCangBien(request.getNhomCangBien())
                 .build();
 
         CangBien saved = cangBienRepository.save(entity);
@@ -117,13 +119,20 @@ public class CangBienService {
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + request.getId()));
 
         // Capture pre-mutation snapshot before applying changes (INT-003c)
-        String oldTenCang = entity.getTenCang();
-        String oldTinhThanhPho = entity.getTinhThanhPho();
-        BigDecimal oldViDo = entity.getViDo();
-        BigDecimal oldKinhDo = entity.getKinhDo();
-        BigDecimal oldDienTich = entity.getDienTich();
-        BigDecimal oldKhaNangTiepNhan = entity.getKhaNangTiepNhan();
-        TrangThaiHoatDong oldTrangThaiHoatDong = entity.getTrangThaiHoatDong();
+        CangBien preImage = CangBien.builder()
+                .id(entity.getId())
+                .maCang(entity.getMaCang())
+                .tenCang(entity.getTenCang())
+                .tinhThanhPho(entity.getTinhThanhPho())
+                .viDo(entity.getViDo())
+                .kinhDo(entity.getKinhDo())
+                .dienTich(entity.getDienTich())
+                .khaNangTiepNhan(entity.getKhaNangTiepNhan())
+                .orgUnitId(entity.getOrgUnitId())
+                .nhomCangBien(entity.getNhomCangBien())
+                .trangThaiHoatDong(entity.getTrangThaiHoatDong())
+                .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
+                .build();
 
         // Update mutable fields — code (maCang) is immutable
         if (request.getTenCang() != null) entity.setTenCang(request.getTenCang());
@@ -132,19 +141,12 @@ public class CangBienService {
         if (request.getKinhDo() != null) entity.setKinhDo(request.getKinhDo());
         if (request.getDienTich() != null) entity.setDienTich(request.getDienTich());
         if (request.getKhaNangTiepNhan() != null) entity.setKhaNangTiepNhan(request.getKhaNangTiepNhan());
+        if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
+        if (request.getNhomCangBien() != null) entity.setNhomCangBien(request.getNhomCangBien());
         entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong() != null ? request.getTrangThaiHoatDong() : entity.getTrangThaiHoatDong());
         entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
         CangBien saved = cangBienRepository.save(entity);
-
-        // Snapshot details
-        CangBien preImage = CangBien.builder()
-                .id(entity.getId()).maCang(entity.getMaCang()).tenCang(oldTenCang)
-                .tinhThanhPho(oldTinhThanhPho).viDo(oldViDo).kinhDo(oldKinhDo)
-                .dienTich(oldDienTich).khaNangTiepNhan(oldKhaNangTiepNhan)
-                .trangThaiHoatDong(oldTrangThaiHoatDong)
-                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
-                .build();
 
         // Record field-level change history (INT-003b)
         lichSuThayDoiService.recordChanges("CangBien", saved.getId().toString(), "system", preImage, saved);
@@ -205,6 +207,9 @@ public class CangBienService {
                 .trangThaiHoatDong(entity.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
                 .orgUnitId(entity.getOrgUnitId())
+                .nhomCangBien(entity.getNhomCangBien())
+                .createdBy(entity.getCreatedBy())
+                .updatedBy(entity.getUpdatedBy())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

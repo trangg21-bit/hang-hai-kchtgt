@@ -79,7 +79,7 @@ export async function fetchCauCangHistory(id: string) {
 // ── BenCang options (for select dropdown) ──────────────────────────────────
 export async function fetchBenCangOptions() {
   const { data } = await api.get('/v1/ben-cang', {
-    params: { pageSize: 200, sortBy: 'tenBen', sortOrder: 'asc' },
+    params: { pageSize: 200, sortBy: 'tenBen', sortOrder: 'asc', trangThaiHoatDong: 'HIEN_HANH' },
   });
   return data.data as { content: BenCangOption[] };
 }

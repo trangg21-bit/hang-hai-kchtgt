@@ -24,6 +24,9 @@ import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -100,8 +103,8 @@ class CangBienControllerTest {
                 .viDo(new BigDecimal("20.845"))
                 .kinhDo(new BigDecimal("106.688"))
                 .dienTich(new BigDecimal("5000.00"))
-                .trangThaiHoatDong("HIEN_HANH")
-                .trangThaiPheDuyet("CHO_PHE_DUYET")
+                .trangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH)
+                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
                 .build();
     }
 

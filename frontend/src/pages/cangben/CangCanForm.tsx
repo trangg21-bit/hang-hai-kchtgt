@@ -9,6 +9,7 @@ import {
   type CangBenStatus,
 } from '../../types/cangben';
 import FormField from '../../components/FormField';
+import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
 
 export default function CangCanForm() {
@@ -200,11 +201,12 @@ export default function CangCanForm() {
           />
 
           <FormField
-            type="text"
+            type="select"
             name="tinhThanhPho"
             label="Tỉnh / Thành phố"
             required
-            placeholder="VD: Hà Nội"
+            placeholder="Chọn tỉnh/thành phố..."
+            options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))}
           />
 
            <Row style={{ display: 'flex', gap: 16 }}>

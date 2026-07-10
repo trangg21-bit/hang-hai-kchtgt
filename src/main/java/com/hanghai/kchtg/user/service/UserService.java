@@ -87,8 +87,17 @@ public class UserService {
         if (actualSize > MAX_PAGE_SIZE || actualSize <= 0) {
             actualSize = MAX_PAGE_SIZE;
         }
-        Pageable cappedPageable = Pageable.ofSize(actualSize);
-        cappedPageable = cappedPageable.withPage(pageable.getPageNumber());
+        
+        org.springframework.data.domain.Sort sort = pageable.getSort();
+        if (sort == null || sort.isUnsorted()) {
+            sort = org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt");
+        }
+        
+        Pageable cappedPageable = org.springframework.data.domain.PageRequest.of(
+                pageable.getPageNumber(),
+                actualSize,
+                sort
+        );
         
         // We always use searchUsers if we have search, roleCode, or status filters, or we can use it universally!
         return userRepository.searchUsers(

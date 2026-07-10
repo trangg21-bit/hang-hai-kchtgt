@@ -17,5 +17,6 @@ public class UpdateCauCangRequest {
     private BigDecimal chieuDai;
     private BigDecimal taiTrong;
     private String loaiCau;
+    private String congNangKhaiThac;
     private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
 }

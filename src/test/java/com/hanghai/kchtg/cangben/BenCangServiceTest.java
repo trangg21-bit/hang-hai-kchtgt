@@ -18,6 +18,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -61,23 +63,23 @@ class BenCangServiceTest {
         ReflectionTestUtils.setField(parentHienHanh, "id", parentId);
         parentHienHanh.setMaCang("CB-001");
         parentHienHanh.setTenCang("Cảng Cha Hoạt Động");
-        parentHienHanh.setTrangThaiHoatDong("HIEN_HANH");
-        parentHienHanh.setTrangThaiPheDuyet("DUOC_PHE_DUYET");
+        parentHienHanh.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
+        parentHienHanh.setTrangThaiPheDuyet(TrangThaiPheDuyet.DUOC_PHE_DUYET);
 
         parentNotActive = new CangBien();
         ReflectionTestUtils.setField(parentNotActive, "id", parentId);
         parentNotActive.setMaCang("CB-002");
         parentNotActive.setTenCang("Cảng Cha Không Hoạt Động");
-        parentNotActive.setTrangThaiHoatDong("NGUNG_HOAT_DONG");
-        parentNotActive.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+        parentNotActive.setTrangThaiHoatDong(TrangThaiHoatDong.TAM_NGUNG);
+        parentNotActive.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
         testBenCang = new BenCang();
         ReflectionTestUtils.setField(testBenCang, "id", testId);
         testBenCang.setMaBen("BEN-001");
         testBenCang.setTenBen("Bến Cảng Test");
         testBenCang.setCangBienId(parentId);
-        testBenCang.setTrangThaiHoatDong("HIEN_HANH");
-        testBenCang.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+        testBenCang.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
+        testBenCang.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
     }
 
     // ── CREATE (F-014) ─────────────────────────────────────────────────────
@@ -122,7 +124,7 @@ class BenCangServiceTest {
     @Test
     @DisplayName("F-014: create — rejected when parent CangBien in draft status")
     void create_parentDraft_throws() {
-        parentHienHanh.setTrangThaiHoatDong("DRAFT");
+        parentHienHanh.setTrangThaiHoatDong(TrangThaiHoatDong.TAM_NGUNG);
         CreateBenCangRequest request = buildCreateRequest("BEN-004", "Bến từ chối draft", parentId);
 
         when(benCangRepository.existsByMaBen("BEN-004")).thenReturn(false);
@@ -207,7 +209,7 @@ class BenCangServiceTest {
         req.setMaBen(maBen);
         req.setTenBen(tenBen);
         req.setCangBienId(cangBienId);
-        req.setTrangThaiHoatDong("HIEN_HANH");
+        req.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
         return req;
     }
 }

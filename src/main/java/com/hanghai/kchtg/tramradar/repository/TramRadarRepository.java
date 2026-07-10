@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.tramradar.repository;
 
 import com.hanghai.kchtg.tramradar.entity.TramRadar;
+import com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,7 +14,7 @@ import java.util.List;
 @Repository
 public interface TramRadarRepository extends JpaRepository<TramRadar, Long> {
 
-    List<TramRadar> findByTrangThaiAndIsDeletedFalse(String trangThai);
+    List<TramRadar> findByTrangThaiAndIsDeletedFalse(TramRadarApprovalStatus trangThai);
 
     @Query("""
         SELECT t FROM TramRadar t
@@ -28,7 +29,7 @@ public interface TramRadarRepository extends JpaRepository<TramRadar, Long> {
     Page<TramRadar> search(
         @Param("keyword") String keyword,
         @Param("tinhTrang") String tinhTrang,
-        @Param("trangThai") String trangThai,
+        @Param("trangThai") TramRadarApprovalStatus trangThai,
         Pageable pageable
     );
 }

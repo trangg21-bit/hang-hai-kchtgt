@@ -39,8 +39,9 @@ public class HeThongVTS {
     @Column(name = "doi_tac", length = 255)
     private String doiTac;
 
-    @Column(name = "trang_thai", nullable = false, length = 20)
-    private String trangThai;
+    @Column(name = "trang_thai", nullable = false)
+    @Convert(converter = HeThongVTSApprovalStatusConverter.class)
+    private HeThongVTSApprovalStatus trangThai;
 
     @Column(name = "phe_duyet_c1")
     @Builder.Default
@@ -87,7 +88,7 @@ public class HeThongVTS {
 
     @PrePersist
     protected void onCreate() {
-        if (trangThai == null) trangThai = "PROPOSED";
+        if (trangThai == null) trangThai = HeThongVTSApprovalStatus.PROPOSED;
         if (ngayTao == null) ngayTao = LocalDateTime.now();
         if (pheDuyetC1 == null) pheDuyetC1 = false;
         if (pheDuyetC2 == null) pheDuyetC2 = false;

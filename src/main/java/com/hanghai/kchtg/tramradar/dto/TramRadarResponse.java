@@ -20,7 +20,7 @@ public class TramRadarResponse {
     private BigDecimal dienTichPhaXa;
     private String nguonGoc;
     private String tinhTrang;
-    private String trangThai;
+    private com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus trangThai;
     private Boolean pheDuyetC1;
     private String nguoiPheDuyetC1;
     private LocalDateTime ngayPheDuyetC1;

@@ -37,10 +37,10 @@ public abstract class BaseNhaTram {
 
     private Boolean isActive;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = NhaTramStatusConverter.class)
     private NhaTramStatus status;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = NhaTramApprovalStatusConverter.class)
     private NhaTramApprovalStatus approvalStatus;
 
     private Integer approvalLevel;

@@ -56,7 +56,7 @@ class CoSuaChuaDongTauEntityTest {
         entity.setLoaiCoSo("Sửa chữa");
         entity.setKhaNang("Khả năng 100");
         entity.setChuQuan("Bộ Quốc phòng");
-        entity.setTrangThai("APPROVED");
+        entity.setTrangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED);
         entity.setPheDuyetC1(true);
         entity.setNguoiPheDuyetC1("admin1");
         entity.setNgayPheDuyetC1(LocalDateTime.now());
@@ -75,7 +75,7 @@ class CoSuaChuaDongTauEntityTest {
         assertEquals("Sửa chữa", entity.getLoaiCoSo());
         assertEquals("Khả năng 100", entity.getKhaNang());
         assertEquals("Bộ Quốc phòng", entity.getChuQuan());
-        assertEquals("APPROVED", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED, entity.getTrangThai());
         assertTrue(entity.getPheDuyetC1());
         assertEquals("admin1", entity.getNguoiPheDuyetC1());
         assertNotNull(entity.getNgayPheDuyetC1());
@@ -172,7 +172,7 @@ class CoSuaChuaDongTauEntityTest {
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
                 .loaiCoSo("Sửa chữa")
-                .trangThai("UNDER_REVIEW")
+                .trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.UNDER_REVIEW)
                 .pheDuyetC1(true)
                 .pheDuyetC2(false)
                 .isDeleted(false)
@@ -181,7 +181,7 @@ class CoSuaChuaDongTauEntityTest {
 
         entity.prePersist();
 
-        assertEquals("UNDER_REVIEW", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.UNDER_REVIEW, entity.getTrangThai());
         assertTrue(entity.getPheDuyetC1());
         assertFalse(entity.getPheDuyetC2());
         assertFalse(entity.getIsDeleted());
@@ -200,13 +200,13 @@ class CoSuaChuaDongTauEntityTest {
 
         entity.prePersist();
 
-        assertEquals("PROPOSED", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.PROPOSED, entity.getTrangThai());
         assertFalse(entity.getPheDuyetC1());
         assertFalse(entity.getPheDuyetC2());
         assertFalse(entity.getIsDeleted());
 
         // Update
-        entity.setTrangThai("APPROVED");
+        entity.setTrangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED);
         entity.setPheDuyetC1(true);
         entity.setNguoiPheDuyetC1("admin1");
         entity.setPheDuyetC2(true);
@@ -214,7 +214,7 @@ class CoSuaChuaDongTauEntityTest {
         entity.setNguoiSuaDoi("admin");
         entity.setNgaySuaDoi(LocalDateTime.now());
 
-        assertEquals("APPROVED", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED, entity.getTrangThai());
         assertTrue(entity.getPheDuyetC1());
         assertEquals("admin1", entity.getNguoiPheDuyetC1());
         assertTrue(entity.getPheDuyetC2());
@@ -222,8 +222,8 @@ class CoSuaChuaDongTauEntityTest {
         assertEquals("admin", entity.getNguoiSuaDoi());
 
         // Revert to under review
-        entity.setTrangThai("UNDER_REVIEW");
-        assertEquals("UNDER_REVIEW", entity.getTrangThai());
+        entity.setTrangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.UNDER_REVIEW);
+        assertEquals(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.UNDER_REVIEW, entity.getTrangThai());
 
         // Soft delete
         entity.setIsDeleted(true);
@@ -250,7 +250,7 @@ class CoSuaChuaDongTauEntityTest {
     void testAllArgsConstructor() {
         CoSuaChuaDongTau entity = new CoSuaChuaDongTau(
                 1L, "ABC", "Hà Nội", "Hà Nội", "0123456789", "test@test.com",
-                "Sửa chữa", "Khả năng 100", "Bộ Quốc phòng", "APPROVED",
+                "Sửa chữa", "Khả năng 100", "Bộ Quốc phòng", com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED,
                 true, "admin1", LocalDateTime.now(),
                 true, "director", LocalDateTime.now(),
                 null, "user1", LocalDateTime.now(),
@@ -270,7 +270,7 @@ class CoSuaChuaDongTauEntityTest {
         java.util.List<CoSuaChuaDongTauAttachment> emptyList = new java.util.ArrayList<>();
         CoSuaChuaDongTau entity = new CoSuaChuaDongTau(
                 1L, "ABC", "Hà Nội", "Hà Nội", "0123456789", "test@test.com",
-                "Sửa chữa", "Khả năng 100", "Bộ Quốc phòng", "APPROVED",
+                "Sửa chữa", "Khả năng 100", "Bộ Quốc phòng", com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED,
                 true, "admin1", LocalDateTime.now(),
                 true, "director", LocalDateTime.now(),
                 null, "user1", LocalDateTime.now(),

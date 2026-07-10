@@ -93,6 +93,9 @@ export default function LoginPage() {
         return;
       }
 
+      // Save last successfully used username for browser auto-fill mapping
+      localStorage.setItem('last_username', values.identifier);
+
       const mfaData = data as MfaChallengeData;
       if (mfaData.requiresMfa && !mfaData.skipTotp) {
         setUserId(mfaData.userId || '');
@@ -413,21 +416,21 @@ export default function LoginPage() {
                   layout="vertical"
                   onFinish={handleLogin}
                   className="login-form"
-                  initialValues={{ identifier: 'admin', password: 'admin123' }}
+                  initialValues={{ identifier: localStorage.getItem('last_username') || '' }}
                 >
                   <Form.Item
                     name="identifier"
-                    label="Email"
+                    label="Tài khoản"
                     rules={[{ required: true, message: 'Vui lòng nhập tài khoản' }]}
                   >
-                    <Input prefix={<UserOutlined />} placeholder="Nhập email, số điện thoại hoặc tên đăng nhập" />
+                    <Input prefix={<UserOutlined />} placeholder="Nhập email, số điện thoại hoặc tên đăng nhập" autoComplete="username" />
                   </Form.Item>
                   <Form.Item
                     name="password"
                     label="Mật khẩu"
                     rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }]}
                   >
-                    <Input.Password prefix={<LockOutlined />} placeholder="Mật khẩu" />
+                    <Input.Password prefix={<LockOutlined />} placeholder="Mật khẩu" autoComplete="current-password" />
                   </Form.Item>
 
                   <div className="forgot" onClick={() => navigate('/forgot-password')}>

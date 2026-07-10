@@ -30,7 +30,7 @@ public class TramRadarService {
                 .dienTichPhaXa(request.getDienTichPhaXa())
                 .nguonGoc(request.getNguonGoc())
                 .tinhTrang(request.getTinhTrang())
-                .trangThai("PROPOSED")
+                .trangThai(TramRadarApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(false)
@@ -60,7 +60,7 @@ public class TramRadarService {
     }
 
     public List<TramRadarResponse> findAll(int page, int size) {
-        return repository.findByTrangThaiAndIsDeletedFalse("APPROVED").stream()
+        return repository.findByTrangThaiAndIsDeletedFalse(TramRadarApprovalStatus.APPROVED).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -73,8 +73,8 @@ public class TramRadarService {
             throw new RuntimeException("Không thể cập nhật bản ghi đã bị xóa với ID: " + id);
         }
 
-        if ("APPROVED".equals(entity.getTrangThai())) {
-            entity.setTrangThai("UNDER_REVIEW");
+        if (entity.getTrangThai() == TramRadarApprovalStatus.APPROVED) {
+            entity.setTrangThai(TramRadarApprovalStatus.UNDER_REVIEW);
         }
 
         if (request.getTenTram() != null) entity.setTenTram(request.getTenTram());
@@ -124,15 +124,15 @@ public class TramRadarService {
         TramRadar entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
-        if (!"PROPOSED".equals(entity.getTrangThai())) {
+        if (entity.getTrangThai() != TramRadarApprovalStatus.PROPOSED) {
             throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Chờ duyệt (PROPOSED) với ID: " + id);
         }
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
-            entity.setTrangThai("REJECTED");
+            entity.setTrangThai(TramRadarApprovalStatus.REJECTED);
             entity.setLyDoTuChoi(request.getLyDo());
         } else {
-            entity.setTrangThai("UNDER_REVIEW");
+            entity.setTrangThai(TramRadarApprovalStatus.UNDER_REVIEW);
             entity.setPheDuyetC1(true);
             entity.setNguoiPheDuyetC1(approvedBy);
             entity.setNgayPheDuyetC1(LocalDateTime.now());
@@ -155,7 +155,7 @@ public class TramRadarService {
         TramRadar entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
-        if (!"UNDER_REVIEW".equals(entity.getTrangThai())) {
+        if (entity.getTrangThai() != TramRadarApprovalStatus.UNDER_REVIEW) {
             throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Đang xem xét (UNDER_REVIEW) với ID: " + id);
         }
 
@@ -165,10 +165,10 @@ public class TramRadarService {
         }
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
-            entity.setTrangThai("REJECTED");
+            entity.setTrangThai(TramRadarApprovalStatus.REJECTED);
             entity.setLyDoTuChoi(request.getLyDo());
         } else {
-            entity.setTrangThai("APPROVED");
+            entity.setTrangThai(TramRadarApprovalStatus.APPROVED);
             entity.setPheDuyetC2(true);
             entity.setNguoiPheDuyetC2(approvedBy);
             entity.setNgayPheDuyetC2(LocalDateTime.now());
@@ -203,7 +203,8 @@ public class TramRadarService {
         String keywordLike = (keyword != null && !keyword.trim().isEmpty())
                 ? "%" + keyword.trim().toLowerCase() + "%"
                 : null;
-        return repository.search(keywordLike, tinhTrang, trangThai, org.springframework.data.domain.Pageable.unpaged()).stream()
+        TramRadarApprovalStatus statusEnum = (trangThai != null && !trangThai.trim().isEmpty()) ? TramRadarApprovalStatus.fromString(trangThai) : null;
+        return repository.search(keywordLike, tinhTrang, statusEnum, org.springframework.data.domain.Pageable.unpaged()).stream()
                 .map(this::toResponse)
                 .toList();
     }

@@ -83,6 +83,7 @@ export interface BenCang {
   chieuRong?: number;
   loaiBen?: string;
   doSauLuong?: number;
+  congNangKhaiThac?: string;
   trangThaiHoatDong?: string;
   trangThaiPheDuyet: string;
   orgUnitId?: string;
@@ -103,6 +104,7 @@ export interface CreateBenCangRequest {
   chieuRong?: number;
   loaiBen?: string;
   doSauLuong?: number;
+  congNangKhaiThac?: string;
   trangThaiHoatDong?: string;
 }
 
@@ -117,6 +119,7 @@ export interface UpdateBenCangRequest {
   chieuRong?: number;
   loaiBen?: string;
   doSauLuong?: number;
+  congNangKhaiThac?: string;
   trangThaiHoatDong?: string;
 }
 

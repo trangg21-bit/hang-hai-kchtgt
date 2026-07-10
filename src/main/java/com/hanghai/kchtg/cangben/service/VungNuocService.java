@@ -6,6 +6,8 @@ import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
 import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import com.hanghai.kchtg.cangben.repository.VungNuocRepository;
 import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
+import com.hanghai.kchtg.cangben.entity.CangBien;
+import com.hanghai.kchtg.cangben.repository.CangBienRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +26,7 @@ import java.util.UUID;
 public class VungNuocService {
 
     private final VungNuocRepository vungNuocRepository;
+    private final CangBienRepository cangBienRepository;
     private final LichSuThayDoiService lichSuThayDoiService;
 
     @Transactional
@@ -31,11 +34,15 @@ public class VungNuocService {
         if (vungNuocRepository.existsByMaVungNuoc(request.getMaVungNuoc())) {
             throw new IllegalArgumentException("Mã " + request.getMaVungNuoc() + " đã tồn tại");
         }
+        CangBien parent = cangBienRepository.findById(request.getCangBienId())
+                .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getCangBienId()));
+
         VungNuoc entity = VungNuoc.builder()
                 .maVungNuoc(request.getMaVungNuoc()).tenVungNuoc(request.getTenVungNuoc())
                 .cangBienId(request.getCangBienId()).dienTich(request.getDienTich())
                 .doSauMax(request.getDoSauMax()).doSauTrungBinh(request.getDoSauTrungBinh())
                 .loaiVungNuoc(request.getLoaiVungNuoc()).trangThaiHoatDong(request.getTrangThaiHoatDong())
+                .orgUnitId(parent.getOrgUnitId())
                 .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET).build();
         VungNuoc saved = vungNuocRepository.save(entity);
         log.info("Created VungNuoc [{}] code={}", saved.getId(), saved.getMaVungNuoc());
@@ -82,14 +89,25 @@ public class VungNuocService {
 
         // Capture pre-mutation snapshot (INT-003c)
         VungNuoc snapshot = VungNuoc.builder()
+                .maVungNuoc(entity.getMaVungNuoc())
                 .tenVungNuoc(entity.getTenVungNuoc()).cangBienId(entity.getCangBienId())
                 .dienTich(entity.getDienTich()).doSauMax(entity.getDoSauMax())
                 .doSauTrungBinh(entity.getDoSauTrungBinh()).loaiVungNuoc(entity.getLoaiVungNuoc())
                 .trangThaiHoatDong(entity.getTrangThaiHoatDong()).trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
+                .orgUnitId(entity.getOrgUnitId())
                 .build();
 
         if (request.getTenVungNuoc() != null) entity.setTenVungNuoc(request.getTenVungNuoc());
-        if (request.getCangBienId() != null) entity.setCangBienId(request.getCangBienId());
+        if (request.getCangBienId() != null) {
+            entity.setCangBienId(request.getCangBienId());
+            CangBien parent = cangBienRepository.findById(request.getCangBienId())
+                    .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getCangBienId()));
+            entity.setOrgUnitId(parent.getOrgUnitId());
+        } else if (entity.getOrgUnitId() == null && entity.getCangBienId() != null) {
+            cangBienRepository.findById(entity.getCangBienId()).ifPresent(p -> {
+                entity.setOrgUnitId(p.getOrgUnitId());
+            });
+        }
         if (request.getDienTich() != null) entity.setDienTich(request.getDienTich());
         if (request.getDoSauMax() != null) entity.setDoSauMax(request.getDoSauMax());
         if (request.getDoSauTrungBinh() != null) entity.setDoSauTrungBinh(request.getDoSauTrungBinh());
@@ -122,6 +140,8 @@ public class VungNuocService {
                 .doSauMax(e.getDoSauMax()).doSauTrungBinh(e.getDoSauTrungBinh())
                 .loaiVungNuoc(e.getLoaiVungNuoc()).trangThaiHoatDong(e.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(e.getTrangThaiPheDuyet())                .orgUnitId(e.getOrgUnitId())
+                .createdBy(e.getCreatedBy())
+                .updatedBy(e.getUpdatedBy())
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();
     }
 }

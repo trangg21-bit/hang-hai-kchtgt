@@ -18,6 +18,7 @@ export interface ChartCell {
 
 export interface ChartFeature {
   id: string;
+  cellId?: string;
   featureName?: string;
   featureCode: string;
   geometryType: 'POINT' | 'LINE' | 'POLYGON';
@@ -91,6 +92,18 @@ export const chartService = {
     const res = await api.get(`/gis/charts/cells/${cellId}/s52-styled`, {
       params: { palette },
     });
+    return res.data.data || [];
+  },
+
+  async getAllS52StyledFeatures(palette = 'DAY', bounds?: { minLon: number; minLat: number; maxLon: number; maxLat: number }): Promise<ChartFeature[]> {
+    const params: any = { palette };
+    if (bounds) {
+      params.minLon = bounds.minLon;
+      params.minLat = bounds.minLat;
+      params.maxLon = bounds.maxLon;
+      params.maxLat = bounds.maxLat;
+    }
+    const res = await api.get('/gis/charts/features/s52-styled', { params });
     return res.data.data || [];
   },
 

@@ -39,6 +39,10 @@ public class UpdateCangBienRequest {
 
     private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
 
+    private UUID orgUnitId;
+
+    private Integer nhomCangBien;
+
     /**
      * GPS paired-field constraint: viDo and kinhDo must both be present or both be absent.
      */

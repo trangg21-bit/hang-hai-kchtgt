@@ -43,7 +43,7 @@ class TramRadarServiceTest {
                 .id(1L)
                 .tenTram("Tram ABC")
                 .viTri("Hà Nội")
-                .trangThai("PROPOSED")
+                .trangThai(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(false)
@@ -61,7 +61,7 @@ class TramRadarServiceTest {
     @Test
     void testCreate() {
         TramRadar saved = TramRadar.builder()
-                .id(1L).tenTram("Tram ABC").viTri("Hà Nội").trangThai("PROPOSED")
+                .id(1L).tenTram("Tram ABC").viTri("Hà Nội").trangThai(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.PROPOSED)
                 .pheDuyetC1(false).pheDuyetC2(false).isDeleted(false)
                 .nguoiTao("user1").attachments(new java.util.ArrayList<>()).build();
 
@@ -70,7 +70,7 @@ class TramRadarServiceTest {
 
         TramRadarResponse response = service.create(createRequest, "user1");
         assertNotNull(response);
-        assertEquals("PROPOSED", response.getTrangThai());
+        assertEquals(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.PROPOSED, response.getTrangThai());
         verify(repository, times(1)).save(any());
     }
 
@@ -104,7 +104,7 @@ class TramRadarServiceTest {
     @Test
     void testDelete_ApprovedEntity() {
         TramRadar approvedEntity = TramRadar.builder()
-                .id(1L).tenTram("ABC").viTri("Hà Nội").trangThai("APPROVED")
+                .id(1L).tenTram("ABC").viTri("Hà Nội").trangThai(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.APPROVED)
                 .pheDuyetC1(false).pheDuyetC2(false).isDeleted(false)
                 .nguoiTao("test").attachments(new java.util.ArrayList<>()).build();
 
@@ -130,26 +130,26 @@ class TramRadarServiceTest {
         when(historyRepository.save(any())).thenReturn(mock(PheDuyetLichSu.class));
 
         TramRadarResponse response = service.approveC1(1L, req, "admin");
-        assertEquals("UNDER_REVIEW", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.UNDER_REVIEW, entity.getTrangThai());
         assertTrue(entity.getPheDuyetC1());
     }
 
     @Test
     void testApproveC2_Approve() {
-        entity.setTrangThai("UNDER_REVIEW");
+        entity.setTrangThai(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.UNDER_REVIEW);
         PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
         when(repository.findById(1L)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(PheDuyetLichSu.class));
 
         TramRadarResponse response = service.approveC2(1L, req, "director");
-        assertEquals("APPROVED", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.APPROVED, entity.getTrangThai());
         assertTrue(entity.getPheDuyetC2());
     }
 
     @Test
     void testApproveC2_sameActorAsC1_throwsException() {
-        entity.setTrangThai("UNDER_REVIEW");
+        entity.setTrangThai(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.UNDER_REVIEW);
         entity.setPheDuyetC1(true);
         entity.setNguoiPheDuyetC1("user1");
         PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();

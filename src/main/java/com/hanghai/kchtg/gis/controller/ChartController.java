@@ -73,6 +73,21 @@ public class ChartController {
         return ResponseEntity.ok(ApiResponse.success(chartIntegrationService.getS52StyledFeatures(id, palette)));
     }
 
+    @GetMapping("/features/s52-styled")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getAllS52StyledFeatures(
+            @RequestParam(defaultValue = "DAY") String palette,
+            @RequestParam(required = false) Double minLon,
+            @RequestParam(required = false) Double minLat,
+            @RequestParam(required = false) Double maxLon,
+            @RequestParam(required = false) Double maxLat) {
+        if (minLon != null && minLat != null && maxLon != null && maxLat != null) {
+            return ResponseEntity.ok(ApiResponse.success(
+                chartIntegrationService.getS52StyledFeaturesInBounds(palette, minLon, minLat, maxLon, maxLat)
+            ));
+        }
+        return ResponseEntity.ok(ApiResponse.success(chartIntegrationService.getAllS52StyledFeatures(palette)));
+    }
+
     // ========================================================================
     // S-63 Permits Management Endpoints
     // ========================================================================

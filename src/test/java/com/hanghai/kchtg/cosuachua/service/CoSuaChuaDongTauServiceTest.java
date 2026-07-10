@@ -46,7 +46,7 @@ class CoSuaChuaDongTauServiceTest {
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
                 .loaiCoSo("Sửa chữa")
-                .trangThai("PROPOSED")
+                .trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(false)
@@ -73,7 +73,7 @@ class CoSuaChuaDongTauServiceTest {
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
                 .loaiCoSo("Sửa chữa")
-                .trangThai("PROPOSED")
+                .trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(false)
@@ -87,7 +87,7 @@ class CoSuaChuaDongTauServiceTest {
         CoSuaChuaDongTauResponse response = service.create(createRequest, "user1");
 
         assertNotNull(response);
-        assertEquals("PROPOSED", response.getTrangThai());
+        assertEquals(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.PROPOSED, response.getTrangThai());
         assertEquals("user1", response.getNguoiTao());
         verify(repository, times(1)).save(any());
         verify(historyRepository, times(1)).save(any());
@@ -116,7 +116,7 @@ class CoSuaChuaDongTauServiceTest {
                 .email("test@example.com")
                 .khaNang("Khả năng 100")
                 .chuQuan("Bộ Quốc phòng")
-                .trangThai("PROPOSED")
+                .trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(false)
@@ -145,7 +145,7 @@ class CoSuaChuaDongTauServiceTest {
         assertNotNull(response);
         assertEquals(1L, response.getId());
         assertEquals("Cơ sở ABC", response.getTenCoSo());
-        assertEquals("PROPOSED", response.getTrangThai());
+        assertEquals(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.PROPOSED, response.getTrangThai());
     }
 
     @Test
@@ -163,7 +163,7 @@ class CoSuaChuaDongTauServiceTest {
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
                 .loaiCoSo("Sửa chữa")
-                .trangThai("APPROVED")
+                .trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(true)
@@ -184,7 +184,7 @@ class CoSuaChuaDongTauServiceTest {
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
                 .loaiCoSo("Sửa chữa")
-                .trangThai("APPROVED")
+                .trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED)
                 .pheDuyetC1(true)
                 .pheDuyetC2(true)
                 .isDeleted(false)
@@ -193,19 +193,19 @@ class CoSuaChuaDongTauServiceTest {
                 .build();
 
         List<CoSuaChuaDongTau> entities = Arrays.asList(approvedEntity);
-        when(repository.findByTrangThaiAndIsDeletedFalse("APPROVED")).thenReturn(entities);
+        when(repository.findByTrangThaiAndIsDeletedFalse(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED)).thenReturn(entities);
 
         List<CoSuaChuaDongTauResponse> responses = service.findAll(0, 20);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
-        assertEquals("APPROVED", responses.get(0).getTrangThai());
-        verify(repository, times(1)).findByTrangThaiAndIsDeletedFalse("APPROVED");
+        assertEquals(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED, responses.get(0).getTrangThai());
+        verify(repository, times(1)).findByTrangThaiAndIsDeletedFalse(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED);
     }
 
     @Test
     void testFindAll_Empty() {
-        when(repository.findByTrangThaiAndIsDeletedFalse("APPROVED")).thenReturn(Collections.emptyList());
+        when(repository.findByTrangThaiAndIsDeletedFalse(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED)).thenReturn(Collections.emptyList());
 
         List<CoSuaChuaDongTauResponse> responses = service.findAll(0, 20);
 
@@ -227,7 +227,7 @@ class CoSuaChuaDongTauServiceTest {
                 .diaChi("Đà Nẵng")
                 .tinhThanh("Hà Nội")
                 .loaiCoSo("Sửa chữa")
-                .trangThai("PROPOSED")
+                .trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(false)
@@ -254,7 +254,7 @@ class CoSuaChuaDongTauServiceTest {
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
                 .loaiCoSo("Sửa chữa")
-                .trangThai("APPROVED")
+                .trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED)
                 .pheDuyetC1(true)
                 .pheDuyetC2(true)
                 .isDeleted(false)
@@ -271,7 +271,7 @@ class CoSuaChuaDongTauServiceTest {
 
         CoSuaChuaDongTauResponse response = service.update(1L, updateReqDto, "user1");
 
-        assertEquals("UNDER_REVIEW", response.getTrangThai());
+        assertEquals(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.UNDER_REVIEW, response.getTrangThai());
         assertEquals("ABC mới", response.getTenCoSo());
         verify(repository, times(1)).save(any());
     }
@@ -284,7 +284,7 @@ class CoSuaChuaDongTauServiceTest {
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
                 .loaiCoSo("Sửa chữa")
-                .trangThai("APPROVED")
+                .trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(true)
@@ -315,7 +315,7 @@ class CoSuaChuaDongTauServiceTest {
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
                 .loaiCoSo("Sửa chữa")
-                .trangThai("APPROVED")
+                .trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(false)
@@ -351,7 +351,7 @@ class CoSuaChuaDongTauServiceTest {
 
     @Test
     void testApproveC1_Approve() {
-        entity.setTrangThai("PROPOSED");
+        entity.setTrangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.PROPOSED);
         PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
 
         when(repository.findById(1L)).thenReturn(Optional.of(entity));
@@ -360,7 +360,7 @@ class CoSuaChuaDongTauServiceTest {
 
         CoSuaChuaDongTauResponse response = service.approveC1(1L, req, "admin");
 
-        assertEquals("UNDER_REVIEW", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.UNDER_REVIEW, entity.getTrangThai());
         assertTrue(entity.getPheDuyetC1());
         assertEquals("admin", entity.getNguoiPheDuyetC1());
         verify(repository, times(1)).save(any());
@@ -368,7 +368,7 @@ class CoSuaChuaDongTauServiceTest {
 
     @Test
     void testApproveC1_Reject() {
-        entity.setTrangThai("PROPOSED");
+        entity.setTrangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.PROPOSED);
         PheDuyetRequest req = PheDuyetRequest.builder()
                 .quyetDinh("REJECTED")
                 .lyDo("Không đủ điều kiện")
@@ -380,13 +380,13 @@ class CoSuaChuaDongTauServiceTest {
 
         CoSuaChuaDongTauResponse response = service.approveC1(1L, req, "admin");
 
-        assertEquals("REJECTED", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.REJECTED, entity.getTrangThai());
         assertEquals("Không đủ điều kiện", entity.getLyDoTuChoi());
     }
 
     @Test
     void testApproveC1_WrongStatus_Throws() {
-        entity.setTrangThai("UNDER_REVIEW");
+        entity.setTrangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.UNDER_REVIEW);
         PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
 
         when(repository.findById(1L)).thenReturn(Optional.of(entity));
@@ -396,7 +396,7 @@ class CoSuaChuaDongTauServiceTest {
 
     @Test
     void testApproveC2_Approve() {
-        entity.setTrangThai("UNDER_REVIEW");
+        entity.setTrangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.UNDER_REVIEW);
         PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
 
         when(repository.findById(1L)).thenReturn(Optional.of(entity));
@@ -405,7 +405,7 @@ class CoSuaChuaDongTauServiceTest {
 
         CoSuaChuaDongTauResponse response = service.approveC2(1L, req, "director");
 
-        assertEquals("APPROVED", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED, entity.getTrangThai());
         assertTrue(entity.getPheDuyetC2());
         assertEquals("director", entity.getNguoiPheDuyetC2());
         verify(repository, times(1)).save(any());
@@ -413,7 +413,7 @@ class CoSuaChuaDongTauServiceTest {
 
     @Test
     void testApproveC2_Reject() {
-        entity.setTrangThai("UNDER_REVIEW");
+        entity.setTrangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.UNDER_REVIEW);
         PheDuyetRequest req = PheDuyetRequest.builder()
                 .quyetDinh("REJECTED")
                 .lyDo("Không phù hợp")
@@ -425,13 +425,13 @@ class CoSuaChuaDongTauServiceTest {
 
         CoSuaChuaDongTauResponse response = service.approveC2(1L, req, "director");
 
-        assertEquals("REJECTED", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.REJECTED, entity.getTrangThai());
         assertEquals("Không phù hợp", entity.getLyDoTuChoi());
     }
 
     @Test
     void testApproveC2_WrongStatus_Throws() {
-        entity.setTrangThai("PROPOSED");
+        entity.setTrangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.PROPOSED);
         PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
 
         when(repository.findById(1L)).thenReturn(Optional.of(entity));
@@ -441,7 +441,7 @@ class CoSuaChuaDongTauServiceTest {
 
     @Test
     void testApproveC2_sameActorAsC1_throwsException() {
-        entity.setTrangThai("UNDER_REVIEW");
+        entity.setTrangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.UNDER_REVIEW);
         entity.setPheDuyetC1(true);
         entity.setNguoiPheDuyetC1("user1");
         PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
@@ -488,13 +488,13 @@ class CoSuaChuaDongTauServiceTest {
 
     @Test
     void testSearch_WithAllNull() {
-        when(repository.search(null, null, null)).thenReturn(Collections.emptyList());
+        when(repository.search(null, null, null, null)).thenReturn(Collections.emptyList());
 
-        List<CoSuaChuaDongTauResponse> responses = service.search(null, null, null);
+        List<CoSuaChuaDongTauResponse> responses = service.search(null, null, null, null);
 
         assertNotNull(responses);
         assertTrue(responses.isEmpty());
-        verify(repository, times(1)).search(null, null, null);
+        verify(repository, times(1)).search(null, null, null, null);
     }
 
     @Test
@@ -505,7 +505,7 @@ class CoSuaChuaDongTauServiceTest {
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
                 .loaiCoSo("Sửa chữa")
-                .trangThai("APPROVED")
+                .trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(false)
@@ -513,14 +513,14 @@ class CoSuaChuaDongTauServiceTest {
                 .attachments(new java.util.ArrayList<>())
                 .build();
 
-        when(repository.search("ABC", null, null)).thenReturn(Arrays.asList(resultEntity));
+        when(repository.search("ABC", null, null, null)).thenReturn(Arrays.asList(resultEntity));
 
-        List<CoSuaChuaDongTauResponse> responses = service.search("ABC", null, null);
+        List<CoSuaChuaDongTauResponse> responses = service.search("ABC", null, null, null);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
         assertEquals("Cơ sở ABC", responses.get(0).getTenCoSo());
-        verify(repository, times(1)).search("ABC", null, null);
+        verify(repository, times(1)).search("ABC", null, null, null);
     }
 
     @Test
@@ -531,7 +531,7 @@ class CoSuaChuaDongTauServiceTest {
                 .diaChi("Hà Nội")
                 .tinhThanh("Đà Nẵng")
                 .loaiCoSo("Sửa chữa")
-                .trangThai("APPROVED")
+                .trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(false)
@@ -539,9 +539,9 @@ class CoSuaChuaDongTauServiceTest {
                 .attachments(new java.util.ArrayList<>())
                 .build();
 
-        when(repository.search(null, "Đà Nẵng", null)).thenReturn(Arrays.asList(resultEntity));
+        when(repository.search(null, "Đà Nẵng", null, null)).thenReturn(Arrays.asList(resultEntity));
 
-        List<CoSuaChuaDongTauResponse> responses = service.search(null, "Đà Nẵng", null);
+        List<CoSuaChuaDongTauResponse> responses = service.search(null, "Đà Nẵng", null, null);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
@@ -556,7 +556,7 @@ class CoSuaChuaDongTauServiceTest {
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
                 .loaiCoSo("Sửa chữa")
-                .trangThai("REJECTED")
+                .trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.REJECTED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(false)
@@ -564,12 +564,12 @@ class CoSuaChuaDongTauServiceTest {
                 .attachments(new java.util.ArrayList<>())
                 .build();
 
-        when(repository.search(null, null, "REJECTED")).thenReturn(Arrays.asList(resultEntity));
+        when(repository.search(null, null, com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.REJECTED, null)).thenReturn(Arrays.asList(resultEntity));
 
-        List<CoSuaChuaDongTauResponse> responses = service.search(null, null, "REJECTED");
+        List<CoSuaChuaDongTauResponse> responses = service.search(null, null, "REJECTED", null);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
-        assertEquals("REJECTED", responses.get(0).getTrangThai());
+        assertEquals(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.REJECTED, responses.get(0).getTrangThai());
     }
 }

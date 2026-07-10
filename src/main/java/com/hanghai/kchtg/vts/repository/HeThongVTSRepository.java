@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.vts.repository;
 
 import com.hanghai.kchtg.vts.entity.HeThongVTS;
+import com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,7 +14,7 @@ import java.util.List;
 @Repository
 public interface HeThongVTSRepository extends JpaRepository<HeThongVTS, Long> {
 
-    List<HeThongVTS> findByTrangThaiAndIsDeletedFalse(String trangThai);
+    List<HeThongVTS> findByTrangThaiAndIsDeletedFalse(HeThongVTSApprovalStatus trangThai);
 
     @Query("""
         SELECT t FROM HeThongVTS t
@@ -27,7 +28,7 @@ public interface HeThongVTSRepository extends JpaRepository<HeThongVTS, Long> {
     Page<HeThongVTS> search(
         @Param("keyword") String keyword,
         @Param("tinhTrang") String tinhTrang,
-        @Param("trangThai") String trangThai,
+        @Param("trangThai") HeThongVTSApprovalStatus trangThai,
         Pageable pageable
     );
 }

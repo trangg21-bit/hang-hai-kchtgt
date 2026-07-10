@@ -13,6 +13,7 @@ export interface CangBienResponse {
   trangThaiHoatDong: string | null;
   trangThaiPheDuyet: string | null;
   orgUnitId: string | null;
+  nhomCangBien: number | null;
   createdBy: string | null;
   updatedBy: string | null;
   createdAt: string | null;
@@ -31,6 +32,8 @@ export interface CreateCangBienRequest {
   khaNangTiepNhan?: number | null;
   trangThaiHoatDong?: string | null;
   trangThaiPheDuyet?: string | null;
+  orgUnitId?: string | null;
+  nhomCangBien?: number | null;
 }
 
 // ── UpdateCangBienRequest (matches UpdateCangBienRequest.java) ─
@@ -44,6 +47,8 @@ export interface UpdateCangBienRequest {
   dienTich?: number | null;
   khaNangTiepNhan?: number | null;
   trangThaiHoatDong?: string | null;
+  orgUnitId?: string | null;
+  nhomCangBien?: number | null;
 }
 
 // ── ChangeHistory record (matches LichSuThayDoi.java) ─

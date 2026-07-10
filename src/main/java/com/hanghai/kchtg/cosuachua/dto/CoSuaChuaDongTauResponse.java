@@ -19,7 +19,7 @@ public class CoSuaChuaDongTauResponse {
     private String loaiCoSo;
     private String khaNang;
     private String chuQuan;
-    private String trangThai;
+    private com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus trangThai;
     private Boolean pheDuyetC1;
     private String nguoiPheDuyetC1;
     private LocalDateTime ngayPheDuyetC1;

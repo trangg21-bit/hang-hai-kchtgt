@@ -18,6 +18,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -61,8 +63,8 @@ class VungNuocServiceTest {
         testEntity.setDoSauMax(new BigDecimal("15.00"));
         testEntity.setDoSauTrungBinh(new BigDecimal("12.00"));
         testEntity.setLoaiVungNuoc("CANG_BIEN");
-        testEntity.setTrangThaiHoatDong("HIEN_HANH");
-        testEntity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+        testEntity.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
+        testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
     }
 
     // ── findAll — INT-004 two-filter overload ─────────────────────────────
@@ -156,7 +158,7 @@ class VungNuocServiceTest {
         req.setMaVungNuoc(maVungNuoc);
         req.setTenVungNuoc(tenVungNuoc);
         req.setCangBienId(cangBienId);
-        req.setTrangThaiHoatDong("HIEN_HANH");
+        req.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
         return req;
     }
 }

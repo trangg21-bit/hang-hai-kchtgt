@@ -9,6 +9,7 @@ import com.hanghai.kchtg.cangben.repository.PheDuyetLogRepository;
 import com.hanghai.kchtg.cangben.service.CangBienApprovalService;
 import com.hanghai.kchtg.cangben.service.shared.ApprovalWorkflowService;
 import com.hanghai.kchtg.cangben.service.shared.CangBenNotificationService;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -62,7 +63,7 @@ class CangBienApprovalServiceTest {
         ReflectionTestUtils.setField(testEntity, "id", testId);
         testEntity.setMaCang("CB-001");
         testEntity.setTenCang("Cảng Test");
-        testEntity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+        testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
     }
 
     // ── APPROVE (F-011) ────────────────────────────────────────────────────
@@ -75,7 +76,7 @@ class CangBienApprovalServiceTest {
 
         approvalService.approve(testId, "user-1", null); // null reason = approve
 
-        assertEquals("DUOC_PHE_DUYET", testEntity.getTrangThaiPheDuyet());
+        assertEquals(TrangThaiPheDuyet.DUOC_PHE_DUYET, testEntity.getTrangThaiPheDuyet());
         verify(cangBienRepository).save(testEntity);
         verify(approvalWorkflowService).approve(eq("CHO_PHE_DUYET"), eq("CangBien"), eq(testId.toString()), eq("user-1"));
         verify(notificationService).sendApprovalNotification(eq("CangBien"), eq(testId.toString()), eq("user-1"), eq(null));
@@ -89,7 +90,7 @@ class CangBienApprovalServiceTest {
 
         approvalService.approve(testId, "user-1", "  "); // blank = approve
 
-        assertEquals("DUOC_PHE_DUYET", testEntity.getTrangThaiPheDuyet());
+        assertEquals(TrangThaiPheDuyet.DUOC_PHE_DUYET, testEntity.getTrangThaiPheDuyet());
         verify(approvalWorkflowService).approve(any(), any(), any(), any());
     }
 
@@ -101,7 +102,7 @@ class CangBienApprovalServiceTest {
 
         approvalService.approve(testId, "user-1", "Thiếu tài liệu"); // non-blank reason = reject
 
-        assertEquals("TU_CHOI", testEntity.getTrangThaiPheDuyet());
+        assertEquals(TrangThaiPheDuyet.TU_CHOI, testEntity.getTrangThaiPheDuyet());
         verify(cangBienRepository).save(testEntity);
         verify(approvalWorkflowService).reject(eq("CHO_PHE_DUYET"), eq("CangBien"), eq(testId.toString()),
                 eq("user-1"), eq("Thiếu tài liệu"));
@@ -118,7 +119,7 @@ class CangBienApprovalServiceTest {
     @Test
     @DisplayName("F-011: approve — throws IllegalStateException when not in CHO_PHE_DUYET (via workflow)")
     void approve_wrongStatus_throwsViaWorkflow() {
-        testEntity.setTrangThaiPheDuyet("DUOC_PHE_DUYET");
+        testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.DUOC_PHE_DUYET);
         when(cangBienRepository.findById(testId)).thenReturn(Optional.of(testEntity));
         doThrow(new IllegalStateException("Cannot approve: already approved"))
                 .when(approvalWorkflowService).approve(eq("DUOC_PHE_DUYET"), any(), any(), any());

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Card,
   Row,
@@ -17,6 +17,9 @@ import {
   Divider,
   List,
   Collapse,
+  Drawer,
+  Checkbox,
+  Table,
 } from 'antd';
 import {
   CompassOutlined,
@@ -26,11 +29,18 @@ import {
   GlobalOutlined,
   InfoCircleOutlined,
   SlidersOutlined,
+  AppstoreOutlined,
+  SearchOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import { chartService } from '../../services/chartService';
 import type { ChartCell, ChartFeature } from '../../services/chartService';
+import api from '../../services/api';
+import { organizationService } from '../../services/organizationService';
+import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
 import EmptyState from '../../components/EmptyState';
+import Flatbush from 'flatbush';
 
 declare global {
   interface Window {
@@ -147,12 +157,14 @@ const FEATURE_NAMES_VI: Record<string, string> = {
   'BCNCAR': 'Tiêu báo hiệu Cardinal',
   'BCNLAT': 'Tiêu giới hạn luồng',
   'BCNSPP': 'Tiêu chuyên dùng',
+  'BCNSAW': 'Tiêu vùng nước an toàn',
   'BRIDGE': 'Cầu',
   'BUAARE': 'Khu vực dân cư',
   'BOYCAR': 'Phao báo hiệu Cardinal',
   'BOYLAT': 'Phao giới hạn luồng',
   'BOYSAW': 'Phao vùng nước an toàn',
   'BOYSPP': 'Phao chuyên dùng',
+  'BOYISD': 'Phao nguy hiểm cô lập',
   'COALNE': 'Đường bờ biển',
   'CTSARE': 'Khu vực hải quan',
   'DEPARE': 'Vùng độ sâu',
@@ -172,6 +184,7 @@ const FEATURE_NAMES_VI: Record<string, string> = {
   'NAVLNE': 'Tuyến luồng tàu chạy',
   'OBSTRN': 'Chướng ngại vật',
   'PILPNT': 'Điểm đón trả hoa tiêu',
+  'PILBOP': 'Trạm hoa tiêu',
   'RECTRC': 'Tuyến luồng khuyến nghị',
   'RESARE': 'Khu vực hạn chế',
   'ROADWY': 'Đường bộ',
@@ -186,6 +199,88 @@ const FEATURE_NAMES_VI: Record<string, string> = {
   'WRECKS': 'Xác tàu đắm',
   'M_COVR': 'Vùng bao phủ hải đồ',
   'M_QUAL': 'Vùng đánh giá chất lượng',
+  'PIPOHC': 'Đường ống dẫn trên bờ',
+  'PIPSOL': 'Đường ống dưới đáy biển',
+  'PRCARE': 'Vùng cảnh báo phòng ngừa',
+  'PRDARE': 'Vùng sản xuất / lưu chứa',
+  'PRDPNT': 'Điểm khai thác / giếng dầu',
+  'RADRFL': 'Thiết bị phản xạ radar',
+  'RDOSTA': 'Trạm vô tuyến hàng hải',
+  'CBLARE': 'Vùng cáp ngầm',
+  'CBLOHD': 'Cáp treo trên cao',
+  'CBLSUB': 'Cáp ngầm dưới biển',
+  'TSSBND': 'Ranh giới phân làn giao thông',
+  'TSEZNE': 'Khu vực phân làn giao thông',
+  'RADRNG': 'Tầm phủ radar',
+  'RDODFM': 'Trạm vô tuyến định vị',
+  'RSCSTA': 'Trạm cứu hộ hàng hải',
+  'OFSPLF': 'Giàn khoan ngoài khơi',
+  'ZONEEX': 'Vùng đặc quyền kinh tế / đặc biệt',
+};
+
+const LAYER_ICONS: Record<string, string> = {
+  'ACHARE': '⚓',
+  'ACHBRT': '⛵',
+  'BRIDGE': '🌉',
+  'CTNARE': '📦',
+  'DEPARE': '🌊',
+  'FAIRWY': '🛣️',
+  'M_COVR': '🗺️',
+  'MARCUL': '🐟',
+  'OBSTRN': '⚠️',
+  'OFSPLF': '🏗️',
+  'PILPNT': '☸️',
+  'PILBOP': '🧭',
+  'SLCONS': '🧱',
+  'RESARE': '🚫',
+  'WRECKS': '☠️',
+  'CBLOHD': '⚡',
+  'CBLSUB': '🔌',
+  'DEPCNT': '〰️',
+  'FSHFAC': '🎣',
+  'NAVLNE': '🚢',
+  'BOYCAR': '🧭',
+  'BOYLAT': '🟢',
+  'BOYSAW': '🛟',
+  'BOYISD': '🛑',
+  'BOYSPP': '🟡',
+  'BCNCAR': '🗼',
+  'BCNLAT': '🔴',
+  'BCNSAW': '⛳',
+  'BCNSPP': '🚩',
+  'BUAARE': '🏡',
+  'CBLARE': '🕸️',
+  'CONVYR': '⚙️',
+  'CTSARE': '🛂',
+  'DAYMAR': '☀️',
+  'LIGHTS': '💡',
+  'LNDARE': '🏝️',
+  'COALNE': '〰️',
+  'LNDMRK': '🏰',
+  'ROADWY': '🚗',
+  'SBDARE': '🪨',
+  'SEAARE': '🌐',
+  'SMCGDW': '🚨',
+  'SOUNDG': '📉',
+  'TSSLPT': '🔄',
+  'UWTROC': '🪨',
+  'UNSARE': '❓',
+  'LNDRGN': '⛰️',
+  'MIPARE': '🪖',
+  'MORFAC': '🪝',
+  'M_NPUB': '📖',
+  'M_NSYS': '📡',
+  'M_QUAL': '🛡️',
+  'PIPOHC': '🚰',
+  'PIPSOL': '⛓️',
+  'PRCARE': '🔔',
+  'PRDARE': '🏭',
+  'PRDPNT': '🔥',
+  'RADRFL': '🎯',
+  'RDOSTA': '📻',
+  'RECTRC': '🛤️',
+  'ZONEEX': '🔰',
+  'TSSBND': '🚧',
 };
 
 function getFeatureNameVi(featureCode: string, originalName?: string): string {
@@ -196,6 +291,25 @@ function getFeatureNameVi(featureCode: string, originalName?: string): string {
   return FEATURE_NAMES_VI[cleanCode] || featureCode;
 }
 
+function getFeatureIcon(featureCode: string, fillColor: string, strokeColor: string): string {
+  const codeUpper = featureCode.toUpperCase();
+  const emoji = LAYER_ICONS[codeUpper] || '🌐';
+  
+  return `
+    <div style="
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      font-size: 20px;
+      line-height: 1;
+      filter: drop-shadow(0px 1px 2px rgba(0,0,0,0.4));
+    ">
+      ${emoji}
+    </div>
+  `;
+}
 export default function GISChartView() {
   const [loading, setLoading] = useState(false);
   const [cells, setCells] = useState<ChartCell[]>([]);
@@ -203,12 +317,420 @@ export default function GISChartView() {
   const [palette, setPalette] = useState<string>('DAY');
   const [features, setFeatures] = useState<ChartFeature[]>([]);
   const [selectedFeature, setSelectedFeature] = useState<ChartFeature | null>(null);
-  const [mapZoom, setMapZoom] = useState(6);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [visibleLayers, setVisibleLayers] = useState<Record<string, boolean>>({});
+
+  // Get static S-57 feature codes from translation map dictionary keys
+  const uniqueFeatureCodes = useMemo(() => {
+    return Object.keys(FEATURE_NAMES_VI).sort();
+  }, []);
+
+  // Initialize visibleLayers when uniqueFeatureCodes is loaded/updated
+  useEffect(() => {
+    setVisibleLayers(prev => {
+      const next = { ...prev };
+      let changed = false;
+      uniqueFeatureCodes.forEach(code => {
+        if (next[code] === undefined) {
+          next[code] = true;
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [uniqueFeatureCodes]);
+
+  const handleToggleLayer = useCallback((code: string, checked: boolean) => {
+    setVisibleLayers(prev => ({
+      ...prev,
+      [code]: checked
+    }));
+  }, []);
 
   // Coordinate Calibrator State
   const [calibrationForm] = Form.useForm();
   const [calibrating, setCalibrating] = useState(false);
   const [calibratedPoint, setCalibratedPoint] = useState<{ lon: number; lat: number } | null>(null);
+
+  // Infrastructure Search States
+  const [searchForm] = Form.useForm();
+  const [orgUnits, setOrgUnits] = useState<any[]>([]);
+  const [searchingInfrastructure, setSearchingInfrastructure] = useState(false);
+  const [infrastructureResults, setInfrastructureResults] = useState<any[]>([]);
+  const [totalSearchElements, setTotalSearchElements] = useState(0);
+  const [searchPage, setSearchPage] = useState(1);
+  const [searchPageSize, setSearchPageSize] = useState(20);
+
+  const handleSearchInfrastructure = useCallback(async () => {
+    setSearchingInfrastructure(true);
+    try {
+      const values = searchForm.getFieldsValue();
+      const orgUnitId = !values || values.orgUnitId === 'all' ? undefined : values.orgUnitId;
+      const kchtType = !values || !values.kchtType ? 'CANGBIEN' : values.kchtType;
+      const tinhThanhPho = !values ? '' : values.tinhThanhPho;
+
+      let list: any[] = [];
+      let total = 0;
+
+      if (kchtType === 'CANGBIEN') {
+        const res = await api.get('/v1/cang-bien', {
+          params: {
+            page: searchPage - 1,
+            size: searchPageSize,
+            orgUnitId,
+            tinhThanhPho
+          }
+        });
+        const pageData = res.data.data;
+        list = (pageData.content || []).map((x: any) => ({
+          ...x,
+          id: x.id,
+          orgName: x.orgUnitName || 'Cục Hàng hải và Đường thủy Việt Nam',
+          kchtTypeLabel: 'Cảng biển',
+          diaDiem: x.tinhThanhPho || x.address || ''
+        }));
+        total = pageData.totalElements || list.length;
+      } else if (kchtType === 'BENCANG') {
+        const res = await api.get('/v1/ben-cang', {
+          params: {
+            page: searchPage - 1,
+            size: searchPageSize,
+            orgUnitId
+          }
+        });
+        const pageData = res.data.data;
+        list = (pageData.content || []).map((x: any) => ({
+          ...x,
+          id: x.id,
+          orgName: x.orgUnitName || 'Cục Hàng hải và Đường thủy Việt Nam',
+          kchtTypeLabel: 'Bến cảng',
+          diaDiem: x.diaDiem || x.address || ''
+        }));
+        total = pageData.totalElements || list.length;
+      } else if (kchtType === 'CAUCANG') {
+        const res = await api.get('/v1/cau-cang', {
+          params: {
+            page: searchPage - 1,
+            pageSize: searchPageSize,
+            orgUnitId
+          }
+        });
+        const pageData = res.data.data;
+        list = (pageData.content || []).map((x: any) => ({
+          ...x,
+          id: x.id,
+          orgName: x.orgUnitName || 'Cục Hàng hải và Đường thủy Việt Nam',
+          kchtTypeLabel: 'Cầu cảng',
+          diaDiem: x.diaChi || x.address || ''
+        }));
+        total = pageData.totalElements || list.length;
+      } else if (kchtType === 'CANGCAN') {
+        const res = await api.get('/v1/cang-can', {
+          params: {
+            page: searchPage - 1,
+            size: searchPageSize,
+            orgUnitId
+          }
+        });
+        const pageData = res.data.data;
+        list = (pageData.content || []).map((x: any) => ({
+          ...x,
+          id: x.id,
+          orgName: x.orgUnitName || 'Cục Hàng hải và Đường thủy Việt Nam',
+          kchtTypeLabel: 'Cảng cạn',
+          diaDiem: x.address || ''
+        }));
+        total = pageData.totalElements || list.length;
+      } else if (kchtType === 'VUNGNUOC') {
+        const res = await api.get('/v1/vung-nuoc', {
+          params: {
+            page: searchPage - 1,
+            size: searchPageSize,
+            orgUnitId
+          }
+        });
+        const pageData = res.data.data;
+        list = (pageData.content || []).map((x: any) => ({
+          ...x,
+          id: x.id,
+          name: x.tenVungNuoc || x.name || `Vùng nước ${x.id}`,
+          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
+          kchtTypeLabel: 'Vùng nước',
+          diaDiem: x.address || ''
+        }));
+        total = pageData.totalElements || list.length;
+      } else if (kchtType === 'LUONGHANGHAI') {
+        const res = await api.get('/v1/luong-hang-hai', {
+          params: {
+            page: 0,
+            size: 9999
+          }
+        });
+        const listData = Array.isArray(res.data.data) ? res.data.data : [];
+        list = listData.map((x: any) => ({
+          ...x,
+          id: x.id,
+          name: x.tenLuong || x.name || `Luồng hàng hải ${x.id}`,
+          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
+          kchtTypeLabel: 'Luồng hàng hải',
+          diaDiem: x.address || ''
+        }));
+        total = list.length;
+      } else if (kchtType === 'DEKE') {
+        const res = await api.get('/v1/de-ke', {
+          params: {
+            page: 0,
+            size: 9999
+          }
+        });
+        const listData = Array.isArray(res.data.data) ? res.data.data : [];
+        list = listData.map((x: any) => ({
+          ...x,
+          id: x.id,
+          name: x.tenDe || x.name || `Đê kè ${x.id}`,
+          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
+          kchtTypeLabel: 'Đê kè',
+          diaDiem: x.viTri || x.address || ''
+        }));
+        total = list.length;
+      } else if (kchtType === 'DENBIEN') {
+        const res = await api.get('/v1/nhatram/den');
+        const listData = Array.isArray(res.data.data) ? res.data.data : [];
+        list = listData.map((x: any) => ({
+          ...x,
+          id: x.id,
+          name: x.tenTram || x.name || `Đèn biển ${x.id}`,
+          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
+          kchtTypeLabel: 'Đèn biển',
+          diaDiem: x.diaDiemDatTram || x.address || ''
+        }));
+        total = list.length;
+      } else if (kchtType === 'PHAOTIEU') {
+        const res = await api.get('/v1/nhatram/phao');
+        const listData = Array.isArray(res.data.data) ? res.data.data : [];
+        list = listData.map((x: any) => ({
+          ...x,
+          id: x.id,
+          name: x.tenTram || x.name || `Phao tiêu ${x.id}`,
+          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
+          kchtTypeLabel: 'Phao tiêu',
+          diaDiem: x.diaDiemDatTram || x.address || ''
+        }));
+        total = list.length;
+      } else if (kchtType === 'BENPHAO') {
+        const res = await api.get('/v1/vung-nuoc', {
+          params: { page: 0, size: 9999, orgUnitId }
+        });
+        const pageData = res.data.data;
+        const allVungNuoc = pageData?.content || [];
+        list = allVungNuoc
+          .filter((x: any) => x.loaiVungNuoc?.toLowerCase().includes('phao'))
+          .map((x: any) => ({
+            ...x,
+            id: x.id,
+            name: x.tenVungNuoc || x.name || `Bến phao ${x.id}`,
+            orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
+            kchtTypeLabel: 'Bến phao',
+            diaDiem: x.address || ''
+          }));
+        total = list.length;
+      } else if (kchtType === 'KHUNEO_DAU') {
+        const res = await api.get('/v1/vung-nuoc', {
+          params: { page: 0, size: 9999, orgUnitId }
+        });
+        const pageData = res.data.data;
+        const allVungNuoc = pageData?.content || [];
+        list = allVungNuoc
+          .filter((x: any) => x.loaiVungNuoc?.toLowerCase().includes('neo'))
+          .map((x: any) => ({
+            ...x,
+            id: x.id,
+            name: x.tenVungNuoc || x.name || `Khu neo đậu ${x.id}`,
+            orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
+            kchtTypeLabel: 'Khu neo đậu',
+            diaDiem: x.address || ''
+          }));
+        total = list.length;
+      } else if (kchtType === 'KHUCHUYEN_TAI') {
+        const res = await api.get('/v1/vung-nuoc', {
+          params: { page: 0, size: 9999, orgUnitId }
+        });
+        const pageData = res.data.data;
+        const allVungNuoc = pageData?.content || [];
+        list = allVungNuoc
+          .filter((x: any) => x.loaiVungNuoc?.toLowerCase().includes('chuyển'))
+          .map((x: any) => ({
+            ...x,
+            id: x.id,
+            name: x.tenVungNuoc || x.name || `Khu chuyển tải ${x.id}`,
+            orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
+            kchtTypeLabel: 'Khu chuyển tải',
+            diaDiem: x.address || ''
+          }));
+        total = list.length;
+      } else if (kchtType === 'KHUTRANH_TRU_BAO') {
+        const res = await api.get('/v1/vung-nuoc', {
+          params: { page: 0, size: 9999, orgUnitId }
+        });
+        const pageData = res.data.data;
+        const allVungNuoc = pageData?.content || [];
+        list = allVungNuoc
+          .filter((x: any) => x.loaiVungNuoc?.toLowerCase().includes('tránh') || x.loaiVungNuoc?.toLowerCase().includes('bão') || x.loaiVungNuoc?.toLowerCase().includes('trú'))
+          .map((x: any) => ({
+            ...x,
+            id: x.id,
+            name: x.tenVungNuoc || x.name || `Khu tránh trú bão ${x.id}`,
+            orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
+            kchtTypeLabel: 'Khu tránh trú bão',
+            diaDiem: x.address || ''
+          }));
+        total = list.length;
+      } else if (kchtType === 'COSO_SUACHUA') {
+        const res = await api.get('/v1/co-so-sua-chua', {
+          params: {
+            page: 0,
+            size: 9999
+          }
+        });
+        const listData = Array.isArray(res.data.data) ? res.data.data : [];
+        list = listData.map((x: any) => ({
+          ...x,
+          id: x.id,
+          name: x.tenCoSo || x.name || `Cơ sở sửa chữa ${x.id}`,
+          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
+          kchtTypeLabel: 'Cơ sở sửa chữa',
+          diaDiem: x.diaChi || x.address || ''
+        }));
+        total = list.length;
+      } else if (kchtType === 'HE_THONG_VTS') {
+        const res = await api.get('/v1/he-thong-vts', {
+          params: {
+            page: searchPage - 1,
+            size: searchPageSize
+          }
+        });
+        const pageData = res.data.data;
+        list = (pageData.content || []).map((x: any) => ({
+          ...x,
+          id: x.id,
+          name: x.tenHeThong || x.name || `Hệ thống VTS ${x.id}`,
+          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
+          kchtTypeLabel: 'Hệ thống VTS',
+          diaDiem: x.viTri || x.address || ''
+        }));
+        total = pageData.totalElements || list.length;
+      } else if (kchtType === 'TRAM_RADAR') {
+        const res = await api.get('/v1/tram-radar', {
+          params: {
+            page: 0,
+            size: 9999
+          }
+        });
+        const listData = Array.isArray(res.data.data) ? res.data.data : [];
+        list = listData.map((x: any) => ({
+          ...x,
+          id: x.id,
+          name: x.tenTram || x.name || `Trạm Radar ${x.id}`,
+          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
+          kchtTypeLabel: 'Trạm radar',
+          diaDiem: x.viTri || x.address || ''
+        }));
+        total = list.length;
+      } else {
+        const res = await api.get('/v1/cang-bien', {
+          params: {
+            page: searchPage - 1,
+            size: searchPageSize,
+            orgUnitId,
+            tinhThanhPho
+          }
+        });
+        const pageData = res.data.data;
+        list = (pageData.content || []).map((x: any) => ({
+          ...x,
+          id: x.id,
+          name: x.tenCang || x.name || `Cảng biển ${x.id}`,
+          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
+          kchtTypeLabel: 'Cảng biển',
+          diaDiem: x.tinhThanhPho || x.address || ''
+        }));
+        total = pageData.totalElements || list.length;
+      }
+
+      // For APIs that return full datasets without server-side pagination,
+      // apply client-side pagination by slicing the list
+      const needsClientPagination = [
+        'LUONGHANGHAI', 'DEKE', 'DENBIEN', 'PHAOTIEU', 'TIEU_SONG', 'CHAM_TIEU',
+        'KHUNEO_DAU', 'KHUCHUYEN_TAI', 'KHUTRANH_TRU_BAO', 'BENPHAO',
+        'COSO_SUACHUA', 'TRAM_RADAR'
+      ].includes(kchtType);
+
+      if (needsClientPagination && list.length > 0) {
+        total = list.length;
+        const startIdx = (searchPage - 1) * searchPageSize;
+        const endIdx = startIdx + searchPageSize;
+        list = list.slice(startIdx, endIdx);
+      }
+
+      setInfrastructureResults(list);
+      setTotalSearchElements(total);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSearchingInfrastructure(false);
+    }
+  }, [searchForm, searchPage, searchPageSize]);
+
+  // Load Org Units on Mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await organizationService.list();
+        setOrgUnits(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load org units', err);
+      }
+    })();
+  }, []);
+
+  // Trigger search on pagination changes
+  useEffect(() => {
+    handleSearchInfrastructure();
+  }, [searchPage, searchPageSize, handleSearchInfrastructure]);
+
+  const handleRowClick = useCallback((record: any) => {
+    const rawLat = record.viDo ?? record.latitude;
+    const rawLon = record.kinhDo ?? record.longitude;
+    
+    if (rawLat !== undefined && rawLat !== null && rawLon !== undefined && rawLon !== null) {
+      const lat = parseFloat(rawLat as any);
+      const lon = parseFloat(rawLon as any);
+      
+      if (!isNaN(lat) && !isNaN(lon) && mapRef.current) {
+        mapRef.current.setView([lat, lon], 15);
+        
+        const popupContent = `
+          <div style="font-family: sans-serif; padding: 4px; min-width: 180px;">
+            <h4 style="margin: 0 0 6px 0; color: #1890ff; font-size: 14px;">${record.tenCang || record.tenBen || record.tenCau || record.tenCangCan || record.tenVungNuoc || 'Chi tiết'}</h4>
+            <p style="margin: 0 0 4px 0; font-size: 12px;"><b>Loại KCHT:</b> ${record.kchtTypeLabel}</p>
+            <p style="margin: 0 0 4px 0; font-size: 12px;"><b>Đơn vị quản lý:</b> ${record.orgName}</p>
+            <p style="margin: 0; font-size: 12px;"><b>Địa điểm:</b> ${record.diaDiem || '—'}</p>
+          </div>
+        `;
+        
+        if (window.L) {
+          window.L.popup()
+            .setLatLng([lat, lon])
+            .setContent(popupContent)
+            .openOn(mapRef.current);
+        }
+      } else {
+        toast.info('Đối tượng này chưa cấu hình tọa độ trên bản đồ');
+      }
+    } else {
+      toast.info('Đối tượng này chưa cấu hình tọa độ trên bản đồ');
+    }
+  }, []);
 
   // Map elements refs
   const mapRef = useRef<any>(null);
@@ -216,6 +738,9 @@ export default function GISChartView() {
   const geoJsonGroupRef = useRef<any>(null);
   const calibratorMarkerRef = useRef<any>(null);
   const lastFittedCellIdRef = useRef<string | null>(null);
+  const renderChartFeaturesRef = useRef<() => void>();
+  const fetchFeaturesInViewportRef = useRef<() => Promise<void>>();
+  const moveEndTimeoutRef = useRef<any>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
 
   // 1. Dynamic Leaflet Loader
@@ -260,19 +785,51 @@ export default function GISChartView() {
     try {
       const data = await chartService.getAllCells();
       setCells(data);
-      if (data.length > 0 && !selectedCellId) {
-        setSelectedCellId(data[0].id);
-      }
     } catch {
       toast.error('Không thể tải danh sách cell hải đồ');
     } finally {
       setLoading(false);
     }
-  }, [selectedCellId]);
+  }, []);
 
   useEffect(() => {
     void fetchCells();
   }, [fetchCells]);
+
+  const fetchFeaturesInViewport = useCallback(async () => {
+    if (!mapRef.current) return;
+    const zoom = mapRef.current.getZoom();
+    if (zoom < 12) {
+      // Only trigger re-render if features are not already empty
+      setFeatures(prev => prev.length === 0 ? prev : []);
+      return;
+    }
+
+    const bounds = mapRef.current.getBounds();
+    const pad = 0.02;
+    const minLat = bounds.getSouth() - pad;
+    const maxLat = bounds.getNorth() + pad;
+    const minLon = bounds.getWest() - pad;
+    const maxLon = bounds.getEast() + pad;
+
+    try {
+      const data = await chartService.getAllS52StyledFeatures(palette, {
+        minLon,
+        minLat,
+        maxLon,
+        maxLat
+      });
+      setFeatures(data);
+    } catch (err) {
+      console.error('Failed to load chart features in bounds', err);
+    }
+  }, [palette]);
+
+  useEffect(() => {
+    fetchFeaturesInViewportRef.current = fetchFeaturesInViewport;
+  }, [fetchFeaturesInViewport]);
+
+
 
   // 3. Initialize Leaflet Map
   useEffect(() => {
@@ -280,142 +837,145 @@ export default function GISChartView() {
 
     const L = window.L;
     // Create map centered on Vietnam (incorporating East Sea / Sovereignty area)
-    const map = L.map(mapContainerRef.current).setView([16.0, 108.0], 6);
+    const map = L.map(mapContainerRef.current, { preferCanvas: true }).setView([16.0, 108.0], 5);
     mapRef.current = map;
 
     // Use Google Maps tile layer with Vietnamese localization (hl=vi, gl=vn)
-    L.tileLayer('https://mt1.google.com/vt/lyrs=m&hl=vi&gl=vn&x={x}&y={y}&z={z}', {
+    // Use {s} subdomain rotation (mt0-mt3) for parallel tile downloads (4x6=24 concurrent connections)
+    L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&hl=vi&gl=vn&x={x}&y={y}&z={z}', {
       maxZoom: 20,
+      subdomains: '0123',
       attribution: '© Google Maps',
+      keepBuffer: 4,               // Cache 4 screen-widths of tiles offscreen
+      updateWhenZooming: false,     // Don't load new tiles mid-zoom animation
+      updateWhenIdle: true,         // Only load tiles after movement stops
     }).addTo(map);
 
-    // Track map zoom events
-    map.on('zoomend', () => {
-      setMapZoom(map.getZoom());
+    // Track map zoom and move events for viewport filtering with 300ms debounce
+    map.on('moveend', () => {
+      if (moveEndTimeoutRef.current) {
+        clearTimeout(moveEndTimeoutRef.current);
+      }
+      moveEndTimeoutRef.current = setTimeout(() => {
+        if (fetchFeaturesInViewportRef.current) {
+          void fetchFeaturesInViewportRef.current();
+        }
+      }, 300);
     });
 
     // Feature group for vector charts
     geoJsonGroupRef.current = L.featureGroup().addTo(map);
 
+    // Invalidate size once after container renders to ensure correct sizing
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+
     return () => {
+      if (moveEndTimeoutRef.current) {
+        clearTimeout(moveEndTimeoutRef.current);
+      }
       if (mapRef.current) {
-        mapRef.current.off('zoomend');
+        mapRef.current.off('moveend');
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
   }, [leafletLoaded]);
 
-  // 4. Render S-57 Features onto Leaflet using S-52 Styling
-  const renderChartFeatures = useCallback(() => {
+  const [parsedLayers, setParsedLayers] = useState<Array<{
+    minZoom: number;
+    layer: any;
+    minLat: number;
+    minLon: number;
+    maxLat: number;
+    maxLon: number;
+    featureCode: string;
+  }>>([]);
+  
+  const flatbushIndexRef = useRef<Flatbush | null>(null);
+  const layersCacheRef = useRef<Record<string, any>>({});
+  const prevPaletteRef = useRef<string>('DAY');
+
+  // Pre-build Leaflet layers once when features are loaded or palette changes
+  useEffect(() => {
     const L = window.L;
-    if (!L || !mapRef.current || !geoJsonGroupRef.current) return;
-
-    // Ensure map size is updated before drawing/projecting
-    mapRef.current.invalidateSize();
-
-    // Clear previous vector layers
-    geoJsonGroupRef.current.clearLayers();
-
-    const zoom = mapRef.current.getZoom();
-
-    // Render the chart cell marker using a map/chart folded icon
-    const activeCell = cells.find((c) => c.id === selectedCellId);
-    if (activeCell) {
-      const center = (activeCell.latitude !== undefined && activeCell.latitude !== null &&
-                     activeCell.longitude !== undefined && activeCell.longitude !== null)
-        ? [activeCell.latitude, activeCell.longitude] as [number, number]
-        : getCenterByCellName(activeCell.cellName);
-      if (center) {
-        const scaleVal = activeCell.scale || 25000;
-        const chartIcon = L.divIcon({
-          html: `
-            <div style="
-              background-color: #1890ff; 
-              color: white; 
-              border: 2px solid white; 
-              border-radius: 50%; 
-              width: 32px; 
-              height: 32px; 
-              display: flex; 
-              align-items: center; 
-              justify-content: center; 
-              box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            ">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
-                <line x1="9" y1="3" x2="9" y2="18"/>
-                <line x1="15" y1="6" x2="15" y2="21"/>
-              </svg>
-            </div>
-          `,
-          className: 'custom-chart-marker',
-          iconSize: [32, 32],
-          iconAnchor: [16, 16],
-          popupAnchor: [0, -16],
-        });
-
-        const markerLayer = L.marker(center, { icon: chartIcon });
-        markerLayer.bindPopup(`
-          <div style="font-family: sans-serif; font-size: 12px; min-width: 180px;">
-            <strong style="color: #1890ff; font-size: 13px;">Hải đồ: ${activeCell.cellName}</strong><br/>
-            <hr style="margin: 6px 0; border: none; border-top: 1px solid #eee;" />
-            <strong>Nhà sản xuất:</strong> ${activeCell.producer || 'VMS-N'}<br/>
-            <strong>Tỷ lệ:</strong> 1:${scaleVal}<br/>
-            <strong>Tọa độ tâm:</strong> ${center[0].toFixed(4)}°, ${center[1].toFixed(4)}°<br/>
-            <strong>Trạng thái:</strong> <span style="color: green; font-weight: bold;">Hoạt động</span>
-          </div>
-        `);
-        geoJsonGroupRef.current.addLayer(markerLayer);
-      }
+    if (!L || features.length === 0) {
+      setParsedLayers([]);
+      flatbushIndexRef.current = null;
+      return;
     }
 
-    if (features.length === 0) return;
+    if (prevPaletteRef.current !== palette) {
+      layersCacheRef.current = {};
+      prevPaletteRef.current = palette;
+    }
+
+    const tempLayers: Array<{
+      minZoom: number;
+      layer: any;
+      minLat: number;
+      minLon: number;
+      maxLat: number;
+      maxLon: number;
+      featureCode: string;
+    }> = [];
 
     features.forEach((feature) => {
-      const { geometryType, coordinates, s52Style, featureName, featureCode } = feature;
-
-      // Zoom-based visibility filter mimicking the legacy geoserver zoom rules
-      const minZoom = FEATURE_ZOOM_RULES[featureCode] ?? 13;
-      if (zoom < minZoom) return;
-
-      const { fillColor, strokeColor, strokeWidth, strokeDashArray, iconSymbol, fillOpacity } = s52Style;
-
-      // Basic S-52 SVG icons for specific symbols
-      let iconMarkup = '';
-      if (iconSymbol === 'special-buoy') {
-        iconMarkup = `<svg viewBox="0 0 24 24" width="24" height="24"><polygon points="12,2 22,20 2,20" fill="${fillColor}" stroke="${strokeColor}" stroke-width="2"/><circle cx="12" cy="14" r="3" fill="#000"/></svg>`;
-      } else if (iconSymbol === 'lighthouse-beacon') {
-        iconMarkup = `<svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 2 L8 22 L16 22 Z" fill="#999" stroke="${strokeColor}" stroke-width="2"/><circle cx="12" cy="7" r="5" fill="${fillColor}"/><path d="M12 7 L24 7 M12 7 L0 7" stroke="${fillColor}" stroke-width="1.5" stroke-dasharray="2,2"/></svg>`;
-      } else {
-        iconMarkup = `<svg viewBox="0 0 24 24" width="24" height="24"><circle cx="12" cy="12" r="6" fill="${fillColor}" stroke="${strokeColor}" stroke-width="2"/></svg>`;
+      // Check cache first!
+      const cached = layersCacheRef.current[feature.id];
+      if (cached) {
+        tempLayers.push(cached);
+        return;
       }
 
-      const customIcon = L.divIcon({
-        html: iconMarkup,
-        className: 's52-custom-icon',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-      });
+      const { geometryType, coordinates, s52Style, featureName, featureCode } = feature;
+      const minZoom = FEATURE_ZOOM_RULES[featureCode] ?? 13;
+      const { fillColor, strokeColor, strokeWidth, strokeDashArray, iconSymbol, fillOpacity } = s52Style;
 
-      // Parse WKT (Well-Known Text) representation to Leaflet layer
+      // Determine circle radius dynamically based on feature type
+      let radius = 5;
+      const codeUpper = featureCode.toUpperCase();
+      if (codeUpper === 'LIGHTS') {
+        radius = 7;
+      } else if (['ACHBRT', 'PILPNT', 'PILBOP', 'WRECKS', 'OBSTRN'].includes(codeUpper)) {
+        radius = 6;
+      } else if (codeUpper.startsWith('BOY') || codeUpper.startsWith('BCN')) {
+        radius = 6;
+      }
+
       try {
         let layer: any = null;
+        let minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
 
         if (geometryType === 'POINT') {
-          // Extract POINT(lon lat)
           const match = coordinates.match(/POINT\s*\(\s*(-?\d+\.?\d*)\s+(-?\d+\.?\d*)\s*\)/i);
           if (match) {
             const lon = parseFloat(match[1]);
             const lat = parseFloat(match[2]);
-            layer = L.marker([lat, lon], { icon: customIcon });
+            // Use circleMarker (rendered on Canvas via preferCanvas:true) instead of
+            // L.marker+divIcon (DOM element) to avoid layout thrashing with thousands of points
+            layer = L.circleMarker([lat, lon], {
+              radius: radius,
+              fillColor: fillColor || '#3388ff',
+              color: strokeColor || '#333',
+              weight: 1.5,
+              fillOpacity: 0.85,
+            });
+            minLat = maxLat = lat;
+            minLon = maxLon = lon;
           }
         } else if (geometryType === 'LINE') {
-          // Extract LINESTRING(lon lat, lon lat, ...)
           const coordsStr = coordinates.replace(/LINESTRING\s*\(/i, '').replace(/\)/, '');
           const points = coordsStr.split(',').map((pStr: string) => {
             const parts = pStr.trim().split(/\s+/);
-            return [parseFloat(parts[1]), parseFloat(parts[0])]; // lat, lon
+            const lat = parseFloat(parts[1]);
+            const lon = parseFloat(parts[0]);
+            if (lat < minLat) minLat = lat;
+            if (lat > maxLat) maxLat = lat;
+            if (lon < minLon) minLon = lon;
+            if (lon > maxLon) maxLon = lon;
+            return [lat, lon];
           });
           layer = L.polyline(points, {
             color: strokeColor,
@@ -423,11 +983,16 @@ export default function GISChartView() {
             dashArray: strokeDashArray,
           });
         } else if (geometryType === 'POLYGON') {
-          // Extract POLYGON((lon lat, lon lat, ...))
           const coordsStr = coordinates.replace(/POLYGON\s*\(\s*\(/i, '').replace(/\)\s*\)/, '');
           const points = coordsStr.split(',').map((pStr: string) => {
             const parts = pStr.trim().split(/\s+/);
-            return [parseFloat(parts[1]), parseFloat(parts[0])]; // lat, lon
+            const lat = parseFloat(parts[1]);
+            const lon = parseFloat(parts[0]);
+            if (lat < minLat) minLat = lat;
+            if (lat > maxLat) maxLat = lat;
+            if (lon < minLon) minLon = lon;
+            if (lon > maxLon) maxLon = lon;
+            return [lat, lon];
           });
           layer = L.polygon(points, {
             fillColor: fillColor,
@@ -440,47 +1005,61 @@ export default function GISChartView() {
         }
 
         if (layer) {
-          // Popups with S-57 tags
           layer.bindPopup(`
             <strong>${getFeatureNameVi(featureCode, featureName)}</strong><br/>
             Mã S-57: <code>${featureCode}</code><br/>
             Hình học: <code>${geometryType}</code>
           `);
           layer.on('click', () => setSelectedFeature(feature));
-          geoJsonGroupRef.current.addLayer(layer);
+          const parsedItem = { minZoom, layer, minLat, minLon, maxLat, maxLon, featureCode };
+          
+          // Write to cache
+          layersCacheRef.current[feature.id] = parsedItem;
+          tempLayers.push(parsedItem);
         }
       } catch (err) {
-        // silently skip geometries that fail to parse
+        // skip
       }
     });
 
-    // Zoom map to fit cell features bounds only once when the active cell changes
-    if (selectedCellId && lastFittedCellIdRef.current !== selectedCellId) {
-      try {
-        const bounds = geoJsonGroupRef.current.getBounds();
-        if (bounds.isValid()) {
-          mapRef.current.fitBounds(bounds, { padding: [50, 50] });
-          lastFittedCellIdRef.current = selectedCellId;
-        }
-      } catch {
-        // skip zooming
+    setParsedLayers(tempLayers);
+  }, [features, leafletLoaded, palette]);
+
+  // 4. Render S-57 Features onto Leaflet using S-52 Styling
+  const renderChartFeatures = useCallback(() => {
+    const L = window.L;
+    if (!L || !mapRef.current || !geoJsonGroupRef.current) return;
+
+    geoJsonGroupRef.current.clearLayers();
+
+    const zoom = mapRef.current.getZoom();
+    if (zoom < 12) return;
+
+    if (parsedLayers.length === 0) return;
+
+    const activeLayers: any[] = [];
+    parsedLayers.forEach(({ minZoom, layer, featureCode }) => {
+      const isVisible = visibleLayers[featureCode] ?? true;
+      if (zoom >= minZoom && isVisible) {
+        activeLayers.push(layer);
       }
+    });
+
+    if (activeLayers.length > 0) {
+      const tempGroup = L.layerGroup(activeLayers);
+      geoJsonGroupRef.current.addLayer(tempGroup);
     }
-  }, [features, selectedCellId]);
+  }, [parsedLayers, visibleLayers]);
 
-  // 5. Load features when cell or palette changes
   useEffect(() => {
-    if (!selectedCellId) return;
+    renderChartFeaturesRef.current = renderChartFeatures;
+  }, [renderChartFeatures]);
 
-    (async () => {
-      try {
-        const data = await chartService.getS52StyledFeatures(selectedCellId, palette);
-        setFeatures(data);
-      } catch {
-        toast.error('Không thể tải các đối tượng của hải đồ');
-      }
-    })();
-  }, [selectedCellId, palette]);
+  // 5. Load features in viewport when cells list, palette, or map zoom changes
+  useEffect(() => {
+    if (cells.length === 0 || !leafletLoaded) return;
+    void fetchFeaturesInViewport();
+  }, [cells.length, palette, leafletLoaded, fetchFeaturesInViewport]);
 
   // Center and zoom map on cell selection with smooth panning/flying instead of instant jump
   useEffect(() => {
@@ -508,7 +1087,7 @@ export default function GISChartView() {
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [leafletLoaded, features, renderChartFeatures, mapZoom]);
+  }, [leafletLoaded, parsedLayers, renderChartFeatures, visibleLayers]);
 
   // 6. Coordinate Calibration Form Submission
   const handleCalibrate = useCallback(async (values: any) => {
@@ -602,7 +1181,7 @@ export default function GISChartView() {
     <div style={{ padding: '0px' }}>
       <Row gutter={[16, 16]}>
         {/* Main Map Viewer */}
-        <Col xs={24} lg={17}>
+        <Col xs={24} lg={17} style={{ order: 2 }}>
           <Card
             title={
               <Space>
@@ -622,59 +1201,209 @@ export default function GISChartView() {
             }
             styles={{ body: { padding: 0 } }}
           >
-            {/* The Map Div */}
-            <div
-              ref={mapContainerRef}
-              id="leaflet-map-container"
-              style={{
-                height: '620px',
-                width: '100%',
-                backgroundColor: palette === 'NIGHT' ? '#110000' : '#f0f2f5',
-                filter: palette === 'NIGHT' ? 'brightness(0.85) contrast(1.1)' : 'none',
-              }}
-            />
+            {/* The Map Div and Floating Control */}
+            <div style={{ position: 'relative', height: 'calc(100vh - 180px)' }}>
+              <div
+                ref={mapContainerRef}
+                id="leaflet-map-container"
+                style={{
+                  height: '100%',
+                  width: '100%',
+                  backgroundColor: palette === 'NIGHT' ? '#110000' : '#f0f2f5',
+                  filter: palette === 'NIGHT' ? 'brightness(0.85) contrast(1.1)' : 'none',
+                }}
+              />
+              {/* Overlay Grid Button (AppstoreOutlined) */}
+              <Button
+                type="primary"
+                icon={<AppstoreOutlined style={{ fontSize: '18px' }} />}
+                onClick={() => setDrawerVisible(true)}
+                style={{
+                  position: 'absolute',
+                  top: '10px',
+                  right: '10px',
+                  zIndex: 1000,
+                  width: '40px',
+                  height: '40px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                }}
+              />
+            </div>
           </Card>
         </Col>
 
         {/* Sidebar panels */}
-        <Col xs={24} lg={7}>
+        <Col xs={24} lg={7} style={{ order: 1 }}>
           <Tabs
+            className="gis-sidebar-tabs"
             defaultActiveKey="1"
             type="card"
+            style={{ height: 'calc(100vh - 130px)', display: 'flex', flexDirection: 'column' }}
             items={[
               {
                 key: '1',
-                label: 'Hải đồ & Lớp',
+                label: 'Tra cứu',
                 children: (
-                  <Card variant="borderless">
-                    <Form layout="vertical">
-                      <Form.Item label="Chọn Hải đồ hoạt động">
+                  <Card variant="borderless" styles={{ body: { padding: '12px' } }}>
+                    <Typography.Title level={4} style={{ fontSize: '15px', fontWeight: 600, marginBottom: '16px', color: '#111' }}>
+                      Tra cứu thông tin kết cấu hạ tầng hàng hải trên bản đồ
+                    </Typography.Title>
+                    <Form form={searchForm} layout="vertical" onFinish={handleSearchInfrastructure} initialValues={{ orgUnitId: 'all', kchtType: 'CANGBIEN', tinhThanhPho: '' }}>
+                      <Form.Item name="orgUnitId" label="Đơn vị quản lý *" rules={[{ required: true }]}>
                         <Select
-                          placeholder="Chọn cell hải đồ..."
-                          value={selectedCellId}
-                          onChange={(val) => { setSelectedCellId(val); setSelectedFeature(null); }}
-                          loading={loading}
-                          options={cells.map((c) => ({
-                            value: c.id,
-                            label: `${c.cellName} (${c.isEncrypted ? 'S-63' : 'S-57'}) - Quy mô: 1:${c.scale}`,
-                          }))}
+                          showSearch
+                          filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                          options={[
+                            { value: 'all', label: '---Tất cả---' },
+                            ...orgUnits.map(u => ({ value: u.id, label: u.name }))
+                          ]}
                         />
                       </Form.Item>
+
+                       <Form.Item name="kchtType" label="Loại kết cấu hạ tầng">
+                        <Select
+                          placeholder="Chọn loại kết cấu..."
+                          options={[
+                            { value: 'BENCANG', label: 'Bến cảng' },
+                            { value: 'BENPHAO', label: 'Bến phao' },
+                            { value: 'CANGBIEN', label: 'Cảng biển' },
+                            { value: 'CANGCAN', label: 'Cảng cạn' },
+                            { value: 'CAUCANG', label: 'Cầu cảng' },
+                            { value: 'COSO_SUACHUA', label: 'Cơ sở sửa chữa' },
+                            { value: 'DEKE', label: 'Đê kè' },
+                            { value: 'DENBIEN', label: 'Đèn biển' },
+                            { value: 'HE_THONG_VTS', label: 'Hệ thống VTS' },
+                            { value: 'KHUCHUYEN_TAI', label: 'Khu chuyển tải' },
+                            { value: 'KHUNEO_DAU', label: 'Khu neo đậu' },
+                            { value: 'KHUTRANH_TRU_BAO', label: 'Khu tránh trú bão' },
+                            { value: 'LUONGHANGHAI', label: 'Luồng hàng hải' },
+                            { value: 'PHAOTIEU', label: 'Phao tiêu' },
+                            { value: 'TRAM_RADAR', label: 'Trạm radar' },
+                            { value: 'VUNGNUOC', label: 'Vùng nước' },
+                          ]}
+                        />
+                      </Form.Item>
+
+                      <Form.Item name="tinhThanhPho" label="Địa điểm (Tỉnh/Thành phố)">
+                        <Select
+                          showSearch
+                          placeholder="Chọn tỉnh/thành phố..."
+                          filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                          options={[
+                            { value: '', label: '---Tất cả---' },
+                            ...VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))
+                          ]}
+                        />
+                      </Form.Item>
+
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+                        <Button 
+                          type="primary" 
+                          htmlType="submit" 
+                          icon={<SearchOutlined />}
+                          loading={searchingInfrastructure}
+                          style={{ flex: 1 }}
+                        >
+                          Tìm kiếm
+                        </Button>
+                        <Button 
+                          icon={<DeleteOutlined />} 
+                          onClick={() => {
+                            searchForm.resetFields();
+                            setInfrastructureResults([]);
+                            setTotalSearchElements(0);
+                          }}
+                          style={{ borderColor: '#ff4d4f', color: '#ff4d4f' }}
+                        >
+                          Xóa tìm kiếm
+                        </Button>
+                        <Button icon={<SlidersOutlined />} />
+                      </div>
                     </Form>
 
-                    <Divider style={{ margin: '12px 0' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '16px 0 8px 0', fontSize: '13px' }}>
+                      <span>{totalSearchElements > 0 ? `${(searchPage - 1) * searchPageSize + 1}-${Math.min(searchPage * searchPageSize, totalSearchElements)} trong ${totalSearchElements}` : '0 trong 0'}</span>
+                      <Space size={4}>
+                        <Button 
+                          size="small" 
+                          disabled={searchPage <= 1} 
+                          onClick={() => { setSearchPage(p => p - 1); }}
+                        >
+                          &lt;
+                        </Button>
+                        <Button 
+                          size="small" 
+                          disabled={searchPage * searchPageSize >= totalSearchElements} 
+                          onClick={() => { setSearchPage(p => p + 1); }}
+                        >
+                          &gt;
+                        </Button>
+                        <Select
+                          size="small"
+                          value={searchPageSize}
+                          onChange={(val) => { setSearchPageSize(val); setSearchPage(1); }}
+                          options={[
+                            { value: 10, label: '10 / trang' },
+                            { value: 20, label: '20 / trang' },
+                            { value: 50, label: '50 / trang' },
+                          ]}
+                          style={{ width: 105 }}
+                        />
+                      </Space>
+                    </div>
 
-                    {/* Selected Feature Inspector */}
-                    {selectedFeature ? (
-                      <div>
-                        <Typography.Title level={5} style={{ marginBottom: 8 }}>
-                          <InfoCircleOutlined /> Chi tiết đối tượng
-                        </Typography.Title>
-                        <DescriptionsPanel feature={selectedFeature} />
-                      </div>
-                    ) : (
-                      <EmptyState description="Click vào một đối tượng trên bản đồ để xem thông tin thuộc tính S-57." />
-                    )}
+                    <Table
+                      rowSelection={{
+                        type: 'checkbox',
+                        onSelect: (record, selected) => {
+                          if (selected) {
+                            handleRowClick(record);
+                          }
+                        },
+                        onSelectAll: (selected, selectedRows) => {
+                          if (selected && selectedRows.length > 0) {
+                            handleRowClick(selectedRows[0]);
+                          }
+                        }
+                      }}
+                      columns={[
+                        {
+                          title: 'STT',
+                          dataIndex: 'stt',
+                          key: 'stt',
+                          width: 50,
+                          render: (_text, _record, index) => (searchPage - 1) * searchPageSize + index + 1,
+                        },
+                        {
+                          title: 'Đơn vị quản lý',
+                          dataIndex: 'orgName',
+                          key: 'orgName',
+                        },
+                        {
+                          title: 'Loại KCHT',
+                          dataIndex: 'kchtTypeLabel',
+                          key: 'kchtTypeLabel',
+                        },
+                        {
+                          title: 'Địa điểm',
+                          dataIndex: 'diaDiem',
+                          key: 'diaDiem',
+                        }
+                      ]}
+                      dataSource={infrastructureResults}
+                      rowKey="id"
+                      pagination={false}
+                      size="small"
+                      bordered
+                      onRow={(record) => ({
+                        onClick: () => handleRowClick(record),
+                        style: { cursor: 'pointer' }
+                      })}
+                      style={{ marginTop: 12 }}
+                    />
                   </Card>
                 ),
               },
@@ -772,7 +1501,7 @@ export default function GISChartView() {
                 label: 'Nhập hải đồ',
                 children: (
                   <Card variant="borderless">
-                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                    <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                       <Card size="small" title="Nhập hải đồ thường (S-57)" style={{ width: '100%' }}>
                         <Typography.Paragraph type="secondary" style={{ fontSize: '13px' }}>
                           Tải lên file hải đồ định dạng tiêu chuẩn S-57 (`.000`). Hệ thống sẽ tự động phân tích và trích xuất các đối tượng.
@@ -802,6 +1531,63 @@ export default function GISChartView() {
           />
         </Col>
       </Row>
+
+      {/* Drawer for Map Layer Management */}
+      <Drawer
+        title="Quản lý lớp bản đồ"
+        placement="right"
+        onClose={() => setDrawerVisible(false)}
+        open={drawerVisible}
+        size="default"
+      >
+        <Space orientation="vertical" style={{ width: '100%' }} size={16}>
+          <Checkbox 
+            checked={uniqueFeatureCodes.length > 0 && uniqueFeatureCodes.every(code => visibleLayers[code] ?? true)}
+            indeterminate={
+              uniqueFeatureCodes.some(code => visibleLayers[code] ?? true) && 
+              !uniqueFeatureCodes.every(code => visibleLayers[code] ?? true)
+            }
+            onChange={(e) => {
+              const checked = e.target.checked;
+              const next: Record<string, boolean> = {};
+              uniqueFeatureCodes.forEach(code => {
+                next[code] = checked;
+              });
+              setVisibleLayers(next);
+            }}
+          >
+            <strong>ENC - Hải đồ điện tử</strong>
+          </Checkbox>
+
+          <Divider style={{ margin: '8px 0' }} />
+
+          <Typography.Text type="secondary" strong>
+            Chi tiết Hải đồ (Lọc theo lớp)
+          </Typography.Text>
+
+          <div style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+            {uniqueFeatureCodes.map(code => {
+              const label = getFeatureNameVi(code);
+              const icon = LAYER_ICONS[code] || '🌐';
+              const isChecked = visibleLayers[code] ?? true;
+
+              return (
+                <div key={code} style={{ padding: '6px 0', display: 'flex', alignItems: 'center' }}>
+                  <Checkbox 
+                    checked={isChecked}
+                    onChange={(e) => handleToggleLayer(code, e.target.checked)}
+                  >
+                    <Space size={8}>
+                      <span>{icon}</span>
+                      <span>{label}</span>
+                    </Space>
+                  </Checkbox>
+                </div>
+              );
+            })}
+          </div>
+        </Space>
+      </Drawer>
     </div>
   );
 }

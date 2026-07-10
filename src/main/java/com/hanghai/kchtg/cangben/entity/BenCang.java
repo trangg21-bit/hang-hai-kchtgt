@@ -54,8 +54,9 @@ public class BenCang extends BaseEntity {
     @Column(name = "chieu_rong", precision = 15, scale = 2)
     private BigDecimal chieuRong;
 
-    @Column(name = "loai_ben", length = 100)
-    private String loaiBen;
+    @Column(name = "loai_ben")
+    @Convert(converter = LoaiBenConverter.class)
+    private LoaiBen loaiBen;
 
     @Column(name = "do_sau_luong", precision = 10, scale = 2)
     private BigDecimal doSauLuong;

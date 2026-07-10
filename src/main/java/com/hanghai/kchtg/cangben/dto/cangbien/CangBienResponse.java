@@ -25,6 +25,7 @@ public class CangBienResponse {
     private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
     private com.hanghai.kchtg.common.entity.TrangThaiPheDuyet trangThaiPheDuyet;
     private UUID orgUnitId;
+    private Integer nhomCangBien;
     private String createdBy;
     private String updatedBy;
     private LocalDateTime createdAt;

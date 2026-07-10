@@ -49,8 +49,9 @@ public class TramRadar {
     @Column(name = "tinh_trang", length = 50)
     private String tinhTrang;
 
-    @Column(name = "trang_thai", nullable = false, length = 20)
-    private String trangThai;
+    @Column(name = "trang_thai", nullable = false)
+    @Convert(converter = TramRadarApprovalStatusConverter.class)
+    private TramRadarApprovalStatus trangThai;
 
     @Column(name = "phe_duyet_c1")
     @Builder.Default
@@ -97,7 +98,7 @@ public class TramRadar {
 
     @PrePersist
     protected void onCreate() {
-        if (trangThai == null) trangThai = "PROPOSED";
+        if (trangThai == null) trangThai = TramRadarApprovalStatus.PROPOSED;
         if (ngayTao == null) ngayTao = LocalDateTime.now();
         if (pheDuyetC1 == null) pheDuyetC1 = false;
         if (pheDuyetC2 == null) pheDuyetC2 = false;

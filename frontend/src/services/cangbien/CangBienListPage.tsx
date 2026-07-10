@@ -16,6 +16,7 @@ import {
   Form,
   InputNumber,
   Typography,
+  Descriptions,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -42,7 +43,12 @@ import {
 import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge, TRANG_THAI_HOAT_DONG_OPTIONS } from './schema';
 import type { CangBienResponse } from './types';
 import toast from '../../components/ToastNotification';
+import LoadingSkeleton from '../../components/LoadingSkeleton';
+import EmptyState from '../../components/EmptyState';
+import { organizationService } from '../../services/organizationService';
 import { giayToApi } from '../../app/giayto/api';
+import GiayToUploadModal from '../../app/giayto/GiayToUploadModal';
+import { VIETNAM_PROVINCES } from '../../types/common';
 
 // ── Helper: format date ─────────────────────────────────────────────
 
@@ -62,6 +68,49 @@ function formatDate(dateStr: string | null): string {
 }
 
 // ── List Page ───────────────────────────────────────────────────────
+
+export const translateFieldName = (fieldName: string): string => {
+  const map: Record<string, string> = {
+    maCang: 'Mã cảng biển',
+    tenCang: 'Tên cảng biển',
+    tinhThanhPho: 'Tỉnh/Thành phố',
+    viDo: 'Vĩ độ',
+    kinhDo: 'Kinh độ',
+    dienTich: 'Diện tích (ha)',
+    khaNangTiepNhan: 'Khả năng tiếp nhận',
+    nhomCangBien: 'Nhóm cảng biển',
+    maBen: 'Mã bến cảng',
+    tenBen: 'Tên bến cảng',
+    cangBienId: 'Cảng biển chủ',
+    tuyenDuongThuy: 'Tuyến đường thủy',
+    chieuRong: 'Chiều rộng (m)',
+    loaiBen: 'Loại bến',
+    doSauLuong: 'Độ sâu luồng (m)',
+    maCau: 'Mã cầu cảng',
+    tenCau: 'Tên cầu cảng',
+    benCangId: 'Bến cảng chủ',
+    chieuDai: 'Chiều dài (m)',
+    taiTrong: 'Tải trọng (tấn)',
+    loaiCau: 'Loại cầu',
+    maCangCan: 'Mã cảng cạn',
+    tenCangCan: 'Tên cảng cạn',
+    viTri: 'Vị trí',
+    dienTichDat: 'Diện tích đất (ha)',
+    dienTichNuoc: 'Diện tích nước (ha)',
+    nangLucThongQua: 'Năng lực thông qua',
+    maVungNuoc: 'Mã vùng nước',
+    tenVungNuoc: 'Tên vùng nước',
+    viTriVungNuoc: 'Vị trí vùng nước',
+    chieuDaiVungNuoc: 'Chiều dài vùng nước (m)',
+    chieuRongVungNuoc: 'Chiều rộng vùng nước (m)',
+    doSauVungNuoc: 'Độ sâu vùng nước (m)',
+    trangThaiHoatDong: 'Trạng thái hoạt động',
+    trangThaiPheDuyet: 'Trạng thái phê duyệt',
+    orgUnitId: 'Đơn vị quản lý',
+    congNangKhaiThac: 'Công năng khai thác'
+  };
+  return map[fieldName] || fieldName;
+};
 
 export default function CangBienListPage() {
   const navigate = useNavigate();
@@ -86,13 +135,29 @@ export default function CangBienListPage() {
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [updateModalVisible, setUpdateModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<CangBienResponse | null>(null);
   const [detailFiles, setDetailFiles] = useState<any[]>([]);
+  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Forms definition
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const [orgUnits, setOrgUnits] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await organizationService.list();
+        setOrgUnits(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load org units', err);
+      }
+    })();
+  }, []);
 
   // Form Watches
   const createViDo = Form.useWatch('viDo', createForm);
@@ -141,6 +206,8 @@ export default function CangBienListPage() {
         khaNangTiepNhan: values.khaNangTiepNhan as number | undefined,
         trangThaiHoatDong: (values.trangThaiHoatDong as string) || undefined,
         trangThaiPheDuyet: (values.trangThaiPheDuyet as string) || 'CHO_PHE_DUYET',
+        orgUnitId: (values.orgUnitId as string) || undefined,
+        nhomCangBien: values.nhomCangBien ? Number(values.nhomCangBien) : undefined,
       };
       await import('./api').then(m => m.createCangBien(payload));
       toast.success('Tạo mới thành công — chờ phê duyệt');
@@ -196,6 +263,8 @@ export default function CangBienListPage() {
         dienTich: values.dienTich as number | undefined,
         khaNangTiepNhan: values.khaNangTiepNhan as number | undefined,
         trangThaiHoatDong: (values.trangThaiHoatDong as string) || undefined,
+        orgUnitId: (values.orgUnitId as string) || undefined,
+        nhomCangBien: values.nhomCangBien ? Number(values.nhomCangBien) : undefined,
       };
       await import('./api').then(m => m.updateCangBien(payload));
       toast.success('Cập nhật thành công');
@@ -317,46 +386,6 @@ export default function CangBienListPage() {
       dataIndex: 'tenCang',
       width: 250,
       ellipsis: true,
-      render: (text: string, record: CangBienResponse) => (
-        <button
-          type="button"
-          style={{ background: 'none', border: 'none', color: '#1677ff', cursor: 'pointer', padding: 0, textAlign: 'left' }}
-          onClick={async () => {
-            try {
-              setIsLoading(true);
-              const data = await fetchCangBienById(record.id);
-              setSelectedRecord(data);
-              const fileRes = await giayToApi.listByEntity('cang-bien', record.id, { page: 1, size: 20 });
-              setDetailFiles(fileRes.data || []);
-              setDetailModalVisible(true);
-            } catch (err) {
-              toast.error('Không thể tải thông tin chi tiết cảng biển');
-            } finally {
-              setIsLoading(false);
-            }
-          }}
-          onKeyDown={async (e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              try {
-                setIsLoading(true);
-                const data = await fetchCangBienById(record.id);
-                setSelectedRecord(data);
-                const fileRes = await giayToApi.listByEntity('cang-bien', record.id, { page: 1, size: 20 });
-                setDetailFiles(fileRes.data || []);
-                setDetailModalVisible(true);
-              } catch (err) {
-                toast.error('Không thể tải thông tin chi tiết cảng biển');
-              } finally {
-                setIsLoading(false);
-              }
-            }
-          }}
-          aria-label={`Xem chi tiết ${text}`}
-        >
-          {text}
-        </button>
-      ),
     },
     {
       title: 'Tỉnh/thành phố',
@@ -463,6 +492,8 @@ export default function CangBienListPage() {
                     dienTich: data.dienTich != null ? data.dienTich : undefined,
                     khaNangTiepNhan: data.khaNangTiepNhan != null ? data.khaNangTiepNhan : undefined,
                     trangThaiHoatDong: data.trangThaiHoatDong || undefined,
+                    orgUnitId: data.orgUnitId || undefined,
+                    nhomCangBien: data.nhomCangBien != null ? data.nhomCangBien : undefined,
                   });
                   setUpdateModalVisible(true);
                 } catch (err) {
@@ -514,7 +545,20 @@ export default function CangBienListPage() {
               type="link"
               size="small"
               icon={<HistoryOutlined />}
-              onClick={() => navigate(`/cangbien/${record.id}/history`)}
+              onClick={async () => {
+                try {
+                  setLoadingHistory(true);
+                  setSelectedRecord(record);
+                  setHistoryModalVisible(true);
+                  const { fetchCangBienHistory } = await import('./api');
+                  const histData = await fetchCangBienHistory(record.id, { page: 0, size: 200 });
+                  setHistoryRecords(histData.changeHistory || []);
+                } catch (err) {
+                  toast.error('Không thể tải lịch sử thay đổi');
+                } finally {
+                  setLoadingHistory(false);
+                }
+              }}
             />
           </Tooltip>
         </Space>
@@ -670,6 +714,7 @@ export default function CangBienListPage() {
         onCancel={() => setCreateModalVisible(false)}
         footer={null}
         width={800}
+        forceRender
       >
         <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} initialValues={{ trangThaiPheDuyet: 'CHO_PHE_DUYET' }}>
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
@@ -697,8 +742,41 @@ export default function CangBienListPage() {
           </Row>
           <Row>
             <Col span={24}>
-              <Form.Item label="Tỉnh/thành phố" name="tinhThanhPho" rules={[{ max: 100, message: 'Tỉnh/thành phố tối đa 100 ký tự' }]}>
-                <Input placeholder="VD: Hải Phòng" maxLength={100} />
+              <Form.Item label="Tỉnh/thành phố" name="tinhThanhPho" rules={[{ required: false }]}>
+                <Select
+                  showSearch
+                  placeholder="Chọn tỉnh/thành phố..."
+                  filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                  options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Đơn vị quản lý" name="orgUnitId">
+                <Select
+                  placeholder="Chọn đơn vị quản lý"
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  options={orgUnits.map(o => ({ label: o.name, value: o.id }))}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Nhóm cảng biển" name="nhomCangBien">
+                <Select
+                  placeholder="Chọn nhóm cảng biển"
+                  allowClear
+                  options={[
+                    { label: 'Cấp I. Nhóm 1', value: 1 },
+                    { label: 'Cấp II. Nhóm 2', value: 2 },
+                    { label: 'Cấp III. Nhóm 3', value: 3 },
+                    { label: 'Cấp IV. Nhóm 4', value: 4 },
+                    { label: 'Cấp V. Nhóm 5', value: 5 },
+                  ]}
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -772,6 +850,7 @@ export default function CangBienListPage() {
         onCancel={() => setUpdateModalVisible(false)}
         footer={null}
         width={800}
+        forceRender
       >
         <Form form={updateForm} layout="vertical" onFinish={handleUpdateFinish}>
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
@@ -798,9 +877,42 @@ export default function CangBienListPage() {
               <Form.Item
                 label="Tỉnh/thành phố"
                 name="tinhThanhPho"
-                rules={[{ max: 100, message: 'Tỉnh/thành phố tối đa 100 ký tự' }]}
+                rules={[{ required: false }]}
               >
-                <Input placeholder="VD: Hải Phòng" maxLength={100} />
+                <Select
+                  showSearch
+                  placeholder="Chọn tỉnh/thành phố..."
+                  filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                  options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Đơn vị quản lý" name="orgUnitId">
+                <Select
+                  placeholder="Chọn đơn vị quản lý"
+                  allowClear
+                  showSearch
+                  optionFilterProp="label"
+                  options={orgUnits.map(o => ({ label: o.name, value: o.id }))}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Nhóm cảng biển" name="nhomCangBien">
+                <Select
+                  placeholder="Chọn nhóm cảng biển"
+                  allowClear
+                  options={[
+                    { label: 'Cấp I. Nhóm 1', value: 1 },
+                    { label: 'Cấp II. Nhóm 2', value: 2 },
+                    { label: 'Cấp III. Nhóm 3', value: 3 },
+                    { label: 'Cấp IV. Nhóm 4', value: 4 },
+                    { label: 'Cấp V. Nhóm 5', value: 5 },
+                  ]}
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -855,7 +967,7 @@ export default function CangBienListPage() {
             </Col>
             <Col span={12}>
               <Form.Item label="Trạng thái phê duyệt">
-                <Input disabled value={selectedRecord?.trangThaiPheDuyet || '—'} aria-readonly="true" />
+                <Input disabled value={selectedRecord?.trangThaiPheDuyet ? trangThaiPheDuyetBadge(selectedRecord.trangThaiPheDuyet).label : '—'} aria-readonly="true" />
               </Form.Item>
             </Col>
           </Row>
@@ -897,6 +1009,24 @@ export default function CangBienListPage() {
                       <Typography.Text strong>Tỉnh/thành phố:</Typography.Text>
                       <br />
                       <Typography.Text>{selectedRecord.tinhThanhPho || '—'}</Typography.Text>
+                    </Col>
+                    <Col span={12} style={{ marginTop: 8 }}>
+                      <Typography.Text strong>Đơn vị quản lý:</Typography.Text>
+                      <br />
+                      <Typography.Text>
+                        {selectedRecord.orgUnitId 
+                          ? (orgUnits.find(o => o.id === selectedRecord.orgUnitId)?.name || selectedRecord.orgUnitId) 
+                          : '—'}
+                      </Typography.Text>
+                    </Col>
+                    <Col span={12} style={{ marginTop: 8 }}>
+                      <Typography.Text strong>Nhóm cảng biển:</Typography.Text>
+                      <br />
+                      <Typography.Text>
+                        {selectedRecord.nhomCangBien 
+                          ? `Cấp ${selectedRecord.nhomCangBien === 1 ? 'I' : selectedRecord.nhomCangBien === 2 ? 'II' : selectedRecord.nhomCangBien === 3 ? 'III' : selectedRecord.nhomCangBien === 4 ? 'IV' : 'V'}. Nhóm ${selectedRecord.nhomCangBien}`
+                          : '—'}
+                      </Typography.Text>
                     </Col>
                   </Row>
                 </Card>
@@ -971,11 +1101,21 @@ export default function CangBienListPage() {
                   )}
                 </Card>
               </Col>
+              <Col span={24}>
+                <Card title="Thông tin hệ thống" size="small">
+                  <Descriptions bordered column={2} size="small">
+                    <Descriptions.Item label="Người tạo">{selectedRecord.createdBy || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Ngày tạo">{selectedRecord.createdAt ? new Date(selectedRecord.createdAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Cập nhật bởi">{selectedRecord.updatedBy || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Ngày cập nhật">{selectedRecord.updatedAt ? new Date(selectedRecord.updatedAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
+                  </Descriptions>
+                </Card>
+              </Col>
             </Row>
  
             <div style={{ marginTop: 24, textAlign: 'right' }}>
               <Space>
-                <Button icon={<UploadOutlined />} onClick={() => { setDetailModalVisible(false); navigate(`/giayto/upload/cang-bien/${selectedRecord.id}`); }}>
+                <Button icon={<UploadOutlined />} onClick={() => { setDetailModalVisible(false); setUploadModalVisible(true); }}>
                   Upload Giấy tờ
                 </Button>
                 <Button
@@ -993,6 +1133,8 @@ export default function CangBienListPage() {
                       dienTich: selectedRecord.dienTich != null ? selectedRecord.dienTich : undefined,
                       khaNangTiepNhan: selectedRecord.khaNangTiepNhan != null ? selectedRecord.khaNangTiepNhan : undefined,
                       trangThaiHoatDong: selectedRecord.trangThaiHoatDong || undefined,
+                      orgUnitId: selectedRecord.orgUnitId || undefined,
+                      nhomCangBien: selectedRecord.nhomCangBien != null ? selectedRecord.nhomCangBien : undefined,
                     });
                     setUpdateModalVisible(true);
                   }}
@@ -1005,6 +1147,96 @@ export default function CangBienListPage() {
           </div>
         )}
       </Modal>
+
+      {/* History Modal */}
+      <Modal
+        title={selectedRecord ? `Lịch sử thay đổi: ${selectedRecord.maCang} — ${selectedRecord.tenCang}` : 'Lịch sử thay đổi'}
+        open={historyModalVisible}
+        onCancel={() => setHistoryModalVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setHistoryModalVisible(false)}>
+            Đóng
+          </Button>
+        ]}
+        width={700}
+      >
+        {loadingHistory ? (
+          <LoadingSkeleton rows={5} />
+        ) : historyRecords.length === 0 ? (
+          <EmptyState description="Chưa có thay đổi nào được ghi nhận." />
+        ) : (
+          <div style={{ borderLeft: '2px solid #f0f0f0', paddingLeft: 24, marginLeft: 8, marginTop: 16, maxHeight: '60vh', overflowY: 'auto' }}>
+            {historyRecords
+              .sort((a, b) => new Date(b.changedAt || b.createdAt).getTime() - new Date(a.changedAt || a.createdAt).getTime())
+              .map((record: any, idx: number) => {
+                return (
+                  <div key={record.id || idx} style={{ position: 'relative', marginBottom: 24, paddingBottom: 12, borderBottom: idx < historyRecords.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
+                    {/* Timeline dot */}
+                    <div style={{ position: 'absolute', left: -29, top: 4, width: 12, height: 12, borderRadius: '50%', background: '#1890ff', border: '2px solid #fff', boxShadow: '0 0 0 2px #1890ff' }} />
+                    
+                    {/* Timestamp */}
+                    <div style={{ marginBottom: 4 }}>
+                      <Typography.Text strong>
+                        {record.changedAt || record.createdAt ? new Date(record.changedAt || record.createdAt).toLocaleString('vi-VN') : '—'}
+                      </Typography.Text>
+                      {record.actionType && (
+                        <Tag color="blue" style={{ marginLeft: 8 }}>{record.actionType}</Tag>
+                      )}
+                    </div>
+
+                    {/* Actor */}
+                    {record.changedBy && (
+                      <div style={{ marginBottom: 4 }}>
+                        <Typography.Text type="secondary">Người thực hiện: </Typography.Text>
+                        <Typography.Text strong>{record.changedBy}</Typography.Text>
+                      </div>
+                    )}
+
+                    {/* Field change */}
+                    {(record.fieldName || record.fieldChanged) && (
+                      <div style={{ marginBottom: 4 }}>
+                        <Typography.Text type="secondary">Trường thay đổi: </Typography.Text>
+                        <Typography.Text strong>{translateFieldName(record.fieldName || record.fieldChanged)}</Typography.Text>
+                      </div>
+                    )}
+
+                    {/* Old/New value */}
+                    {record.oldValue !== undefined && record.oldValue != null && (
+                      <div style={{ marginBottom: 2 }}>
+                        <Typography.Text type="secondary" style={{ textDecoration: 'line-through', color: '#ff4d4f' }}>
+                          cũ: {record.oldValue}
+                        </Typography.Text>
+                      </div>
+                    )}
+                    {record.newValue !== undefined && record.newValue != null && (
+                      <div>
+                        <Typography.Text type="secondary">mới: </Typography.Text>
+                        <Typography.Text style={{ color: '#52c41a', fontWeight: 500 }}>{record.newValue}</Typography.Text>
+                      </div>
+                    )}
+
+                    {/* Reason */}
+                    {record.reason && (
+                      <div style={{ marginTop: 8, padding: 8, background: '#fff2f0', borderRadius: 4 }}>
+                        <Typography.Text type="secondary">Lý do: </Typography.Text>
+                        <Typography.Text>{record.reason}</Typography.Text>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        )}
+      </Modal>
+
+      {selectedRecord && (
+        <GiayToUploadModal
+          entityType="cang-bien"
+          entityId={selectedRecord.id}
+          open={uploadModalVisible}
+          onCancel={() => setUploadModalVisible(false)}
+        />
+      )}
     </>
   );
 }

@@ -3,7 +3,6 @@ import type {
   CangBienResponse,
   CreateCangBienRequest,
   UpdateCangBienRequest,
-  ChangeHistory,
   PageResponse,
   ApprovalResult,
 } from './types';
@@ -79,7 +78,7 @@ export async function rejectCangBien(id: string, reason: string): Promise<Approv
 export async function fetchCangBienHistory(
   id: string,
   params?: { page?: number; size?: number },
-): Promise<PageResponse<ChangeHistory>> {
+): Promise<any> {
   const sp = new URLSearchParams();
   if (params?.page !== undefined) sp.set('page', String(params.page));
   if (params?.size !== undefined) sp.set('size', String(params.size));

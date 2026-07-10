@@ -21,6 +21,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -66,8 +68,8 @@ class CangBienServiceTest {
         testEntity.setViDo(new BigDecimal("20.845"));
         testEntity.setKinhDo(new BigDecimal("106.688"));
         testEntity.setDienTich(new BigDecimal("5000.00"));
-        testEntity.setTrangThaiHoatDong("HIEN_HANH");
-        testEntity.setTrangThaiPheDuyet("CHO_PHE_DUYET");
+        testEntity.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
+        testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
     }
 
     // ── CREATE (F-008) ─────────────────────────────────────────────────────
@@ -157,7 +159,7 @@ class CangBienServiceTest {
     @Test
     @DisplayName("F-009: update — applies mutable fields, resets approval to CHO_PHE_DUYET")
     void update_appliesMutableFields() {
-        testEntity.setTrangThaiPheDuyet("DUOC_PHE_DUYET"); // was approved
+        testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.DUOC_PHE_DUYET); // was approved
 
         when(cangBienRepository.findById(testId)).thenReturn(Optional.of(testEntity));
         when(cangBienRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -259,7 +261,7 @@ class CangBienServiceTest {
         req.setViDo(viDo);
         req.setKinhDo(kinhDo);
         req.setDienTich(dienTich);
-        req.setTrangThaiHoatDong("HIEN_HANH");
+        req.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
         return req;
     }
 }

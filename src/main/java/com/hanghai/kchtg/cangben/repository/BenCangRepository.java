@@ -43,7 +43,7 @@ public interface BenCangRepository extends JpaRepository<BenCang, UUID> {
             "AND (CAST(:tenBen AS string) IS NULL OR LOWER(b.tenBen) LIKE LOWER(CONCAT('%', CAST(:tenBen AS string), '%'))) " +
             "AND (:cangBienId IS NULL OR b.cangBienId = :cangBienId) " +
             "AND (CAST(:tuyenDuongThuy AS string) IS NULL OR LOWER(b.tuyenDuongThuy) LIKE LOWER(CONCAT('%', CAST(:tuyenDuongThuy AS string), '%'))) " +
-            "AND (CAST(:loaiBen AS string) IS NULL OR LOWER(b.loaiBen) LIKE LOWER(CONCAT('%', CAST(:loaiBen AS string), '%'))) " +
+            "AND (:loaiBen IS NULL OR b.loaiBen = :loaiBen) " +
             "AND (:trangThaiHoatDong IS NULL OR b.trangThaiHoatDong = :trangThaiHoatDong) " +
             "AND (:trangThaiPheDuyet IS NULL OR b.trangThaiPheDuyet = :trangThaiPheDuyet)")
     Page<BenCang> searchBenCang(
@@ -52,7 +52,7 @@ public interface BenCangRepository extends JpaRepository<BenCang, UUID> {
             @Param("tenBen") String tenBen,
             @Param("cangBienId") UUID cangBienId,
             @Param("tuyenDuongThuy") String tuyenDuongThuy,
-            @Param("loaiBen") String loaiBen,
+            @Param("loaiBen") com.hanghai.kchtg.cangben.entity.LoaiBen loaiBen,
             @Param("trangThaiHoatDong") TrangThaiHoatDong trangThaiHoatDong,
             @Param("trangThaiPheDuyet") TrangThaiPheDuyet trangThaiPheDuyet,
             Pageable pageable);

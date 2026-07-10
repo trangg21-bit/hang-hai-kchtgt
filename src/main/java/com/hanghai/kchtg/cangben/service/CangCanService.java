@@ -89,10 +89,12 @@ public class CangCanService {
 
         // Capture pre-mutation snapshot BEFORE applying changes (INT-003c fix)
         CangCan snapshot = CangCan.builder()
+                .maCangCan(entity.getMaCangCan())
                 .tenCangCan(entity.getTenCangCan()).tinhThanhPho(entity.getTinhThanhPho())
                 .viDo(entity.getViDo()).kinhDo(entity.getKinhDo()).dienTich(entity.getDienTich())
                 .congSuatTEU(entity.getCongSuatTEU()).trangThaiHoatDong(entity.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
+                .orgUnitId(entity.getOrgUnitId())
                 .build();
 
         if (request.getTenCangCan() != null) entity.setTenCangCan(request.getTenCangCan());
@@ -131,6 +133,9 @@ public class CangCanService {
                 .tinhThanhPho(e.getTinhThanhPho()).viDo(e.getViDo()).kinhDo(e.getKinhDo())
                 .dienTich(e.getDienTich()).congSuatTEU(e.getCongSuatTEU())
                 .trangThaiHoatDong(e.getTrangThaiHoatDong()).trangThaiPheDuyet(e.getTrangThaiPheDuyet())
-                .orgUnitId(e.getOrgUnitId()).createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();
+                .orgUnitId(e.getOrgUnitId())
+                .createdBy(e.getCreatedBy())
+                .updatedBy(e.getUpdatedBy())
+                .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();
     }
 }
