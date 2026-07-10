@@ -104,7 +104,7 @@ public class TramRadarService {
         TramRadar entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
-        if (!"APPROVED".equals(entity.getTrangThai())) {
+        if (entity.getTrangThai() != TramRadarApprovalStatus.APPROVED) {
             throw new RuntimeException("Chỉ có thể xóa bản ghi đã được phê duyệt (APPROVED) với ID: " + id);
         }
 
@@ -161,7 +161,7 @@ public class TramRadarService {
 
         String c1Actor = entity.getNguoiPheDuyetC1();
         if (c1Actor != null && c1Actor.equals(approvedBy) && !"admin".equals(approvedBy)) {
-            throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1");
+            throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1 (Nguoi phe duyet C2 khong duoc trung)");
         }
 
         if ("REJECTED".equals(request.getQuyetDinh())) {

@@ -29,7 +29,7 @@ public class DeKeController {
     public ResponseEntity<ApiResponse<DeKeResponse>> create(
             @RequestBody @Valid DeKeCreateRequest req,
             Authentication authentication) {
-        return ResponseEntity.ok(ApiResponse.success("Tao de ke thanh cong", service.create(req, authentication.getName())));
+        return ResponseEntity.ok(ApiResponse.success("Tạo đê kè thành công", service.create(req, authentication.getName())));
     }
 
     @GetMapping("/{id}")
@@ -52,14 +52,14 @@ public class DeKeController {
             @PathVariable Long id,
             @RequestBody @Valid DeKeUpdateRequest req,
             Authentication authentication) {
-        return ResponseEntity.ok(ApiResponse.success("Cap nhat de ke thanh cong", service.update(id, req, authentication.getName())));
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật đê kè thành công", service.update(id, req, authentication.getName())));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'deke:delete')")
     public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable Long id) {
         service.softDelete(id);
-        return ResponseEntity.ok(ApiResponse.success("Xoa mem de ke thanh cong", null));
+        return ResponseEntity.ok(ApiResponse.success("Xóa mềm đê kè thành công", null));
     }
 
     @PostMapping("/{id}/approve/c1")
@@ -69,7 +69,7 @@ public class DeKeController {
             @RequestBody @Valid PheDuyetRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("Phe duyet C1 thanh cong", service.approveC1(id, req, username)));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt C1 thành công", service.approveC1(id, req, username)));
     }
 
     @PostMapping("/{id}/approve/c2")
@@ -79,7 +79,7 @@ public class DeKeController {
             @RequestBody @Valid PheDuyetRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("Phe duyet C2 thanh cong", service.approveC2(id, req, username)));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt C2 thành công", service.approveC2(id, req, username)));
     }
 
     @GetMapping("/{id}/history")

@@ -123,7 +123,7 @@ class CangCanServiceTest {
             CangCanResponse result = service.update(request);
 
             assertEquals("Cảng Cạn Cập Nhật", result.getTenCangCan());
-            assertEquals("CHO_PHE_DUYET", result.getTrangThaiPheDuyet());
+            assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getTrangThaiPheDuyet());
             assertEquals("CC-001", result.getMaCangCan()); // code unchanged
             verify(lichSuThayDoiService).recordChanges(eq("CangCan"), any(), any(), any(), any());
         }

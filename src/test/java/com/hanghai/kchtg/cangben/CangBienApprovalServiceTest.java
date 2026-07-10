@@ -166,7 +166,7 @@ class CangBienApprovalServiceTest {
         assertNotNull(result);
         assertEquals(testId.toString(), result.get("entityId"));
         assertEquals("CangBien", result.get("entityType"));
-        assertEquals("CHO_PHE_DUYET", result.get("currentApprovalStatus"));
+        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.get("currentApprovalStatus"));
 
         @SuppressWarnings("unchecked")
         List<LichSuThayDoi> history = (List<LichSuThayDoi>) result.get("changeHistory");

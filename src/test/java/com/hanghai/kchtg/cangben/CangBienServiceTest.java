@@ -92,7 +92,7 @@ class CangBienServiceTest {
         assertNotNull(result);
         assertEquals("CB-002", result.getMaCang());
         assertEquals("Cảng mới", result.getTenCang());
-        assertEquals("CHO_PHE_DUYET", result.getTrangThaiPheDuyet());
+        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getTrangThaiPheDuyet());
         verify(cangBienRepository).save(any(CangBien.class));
     }
 
@@ -135,23 +135,23 @@ class CangBienServiceTest {
     @DisplayName("F-012: findAll — pagination honored, defaults max 100")
     void findAll_paginationHonored() {
         Page<CangBien> mockPage = new PageImpl<>(List.of(testEntity));
-        when(cangBienRepository.findAllActive(isNull(), any(Pageable.class))).thenReturn(mockPage);
+        when(cangBienRepository.searchCangBien(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
 
         Page<CangBienResponse> result = service.findAll(0, 20, null);
 
         assertEquals(1, result.getTotalElements());
-        verify(cangBienRepository).findAllActive(isNull(), any(Pageable.class));
+        verify(cangBienRepository).searchCangBien(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
     }
 
     @Test
     @DisplayName("F-012: findAll — size capped at 100")
     void findAll_sizeCappedAt100() {
         Page<CangBien> mockPage = new PageImpl<>(List.of());
-        when(cangBienRepository.findAllActive(any(), any(Pageable.class))).thenReturn(mockPage);
+        when(cangBienRepository.searchCangBien(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
 
         service.findAll(0, 999, null);
 
-        verify(cangBienRepository).findAllActive(isNull(), argThat(p -> p.getPageSize() == 100));
+        verify(cangBienRepository).searchCangBien(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), argThat(p -> p.getPageSize() == 100));
     }
 
     // ── UPDATE (F-009) ─────────────────────────────────────────────────────
@@ -172,7 +172,7 @@ class CangBienServiceTest {
         CangBienResponse result = service.update(request);
 
         assertEquals("Cảng Đã Cập Nhật", result.getTenCang());
-        assertEquals("CHO_PHE_DUYET", result.getTrangThaiPheDuyet()); // reset
+        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getTrangThaiPheDuyet()); // reset
         assertEquals("CB-001", result.getMaCang()); // code unchanged
     }
 

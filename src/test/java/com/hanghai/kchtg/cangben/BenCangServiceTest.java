@@ -102,7 +102,7 @@ class BenCangServiceTest {
         assertNotNull(result);
         assertEquals("BEN-002", result.getMaBen());
         assertEquals("Bến mới", result.getTenBen());
-        assertEquals("CHO_PHE_DUYET", result.getTrangThaiPheDuyet());
+        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getTrangThaiPheDuyet());
         verify(benCangRepository).save(any(BenCang.class));
     }
 

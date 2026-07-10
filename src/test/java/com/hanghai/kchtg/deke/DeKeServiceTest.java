@@ -315,7 +315,7 @@ class DeKeServiceTest {
 
     @Test void searchDocuments_shouldReturnPaginated() {
         Page<DeKe> p = new PageImpl<>(List.of(testEntity));
-        when(repo.searchDocuments(eq("De ke"), eq(null), eq(null), eq(null), any(Pageable.class)))
+        when(repo.searchDocuments(eq("%de ke%"), eq(null), eq(null), eq(null), any(Pageable.class)))
                 .thenReturn(p);
         KetQuaTimKiemResponse r = service.searchDocuments("De ke", null, null, null, 0, 20);
         assertThat(r.getTotalElements()).isEqualTo(1);

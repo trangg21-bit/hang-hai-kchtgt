@@ -100,7 +100,7 @@ class CoSuaChuaDongTauEntityTest {
         entity.setTrangThai(null);
         entity.prePersist();
 
-        assertEquals("PROPOSED", entity.getTrangThai());
+        assertEquals(CoSuaChuaApprovalStatus.PROPOSED, entity.getTrangThai());
     }
 
     @Test

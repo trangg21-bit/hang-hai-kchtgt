@@ -127,7 +127,7 @@ public class BaoCaoKiemKeServiceTest {
         BaoCaoKiemKeResponse response = service.reject(testId, "Từ chối báo cáo do chênh lệch chưa làm rõ");
 
         assertNotNull(response);
-        assertEquals("CHO_PHE_DUYET", response.getKetQua());
+        assertEquals("TU_CHOI", response.getKetQua());
         verify(repository, times(1)).save(any(BaoCaoKiemKe.class));
     }
 }

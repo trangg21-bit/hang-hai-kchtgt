@@ -129,7 +129,7 @@ class BenCangControllerTest {
         UUID id = UUID.randomUUID();
         UUID parentId = UUID.randomUUID();
         Page<BenCangResponse> page = new PageImpl<>(List.of(makeResponse(id, parentId)));
-        when(benCangService.findAll(0, 20, null)).thenReturn(page);
+        when(benCangService.findAll(0, 20, null, null, null, null, null, null, null, null)).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/ben-cang")
                         .param("page", "0")
@@ -145,7 +145,7 @@ class BenCangControllerTest {
         UUID someUuid = UUID.randomUUID();
         String uuidStr = someUuid.toString();
         Page<BenCangResponse> page = new PageImpl<>(List.of());
-        when(benCangService.findAll(1, 5, someUuid)).thenReturn(page);
+        when(benCangService.findAll(1, 5, someUuid, null, null, null, null, null, null, null)).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/ben-cang")
                         .param("page", "1")
@@ -153,7 +153,7 @@ class BenCangControllerTest {
                         .param("orgUnitId", uuidStr))
                 .andExpect(status().isOk());
 
-        verify(benCangService).findAll(1, 5, someUuid);
+        verify(benCangService).findAll(1, 5, someUuid, null, null, null, null, null, null, null);
     }
 
     // ── GET /api/v1/ben-cang/{id} ────────────────────────────────────────

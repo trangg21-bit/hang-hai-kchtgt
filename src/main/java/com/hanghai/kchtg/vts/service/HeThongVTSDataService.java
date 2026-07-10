@@ -171,7 +171,7 @@ public class HeThongVTSDataService {
 
         String c1Actor = entity.getNguoiPheDuyetC1();
         if (c1Actor != null && c1Actor.equals(username) && !"admin".equals(username)) {
-            throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1");
+            throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1 (Nguoi phe duyet C2 khong duoc trung)");
         }
 
         if ("REJECTED".equals(request.getQuyetDinh())) {

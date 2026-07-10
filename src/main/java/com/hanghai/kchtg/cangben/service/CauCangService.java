@@ -41,7 +41,7 @@ public class CauCangService {
                         "Bến cảng không tồn tại: " + request.getBenCangId()));
         if (parent.getTrangThaiHoatDong() != TrangThaiHoatDong.HIEN_HANH) {
             throw new IllegalArgumentException(
-                    "Không thể tạo cầu cảng: bến cảng cha phải ở trạng thái hoạt động");
+                    "Không thể tạo cầu cảng: bến cảng cha phải ở trạng thái hoạt động (HIEN_HANH)");
         }
 
         CauCang entity = CauCang.builder()

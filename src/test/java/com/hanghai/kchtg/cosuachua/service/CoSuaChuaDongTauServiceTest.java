@@ -513,14 +513,14 @@ class CoSuaChuaDongTauServiceTest {
                 .attachments(new java.util.ArrayList<>())
                 .build();
 
-        when(repository.search("ABC", null, null, null)).thenReturn(Arrays.asList(resultEntity));
+        when(repository.search("%abc%", null, null, null)).thenReturn(Arrays.asList(resultEntity));
 
         List<CoSuaChuaDongTauResponse> responses = service.search("ABC", null, null, null);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
         assertEquals("Cơ sở ABC", responses.get(0).getTenCoSo());
-        verify(repository, times(1)).search("ABC", null, null, null);
+        verify(repository, times(1)).search("%abc%", null, null, null);
     }
 
     @Test
@@ -539,7 +539,7 @@ class CoSuaChuaDongTauServiceTest {
                 .attachments(new java.util.ArrayList<>())
                 .build();
 
-        when(repository.search(null, "Đà Nẵng", null, null)).thenReturn(Arrays.asList(resultEntity));
+        when(repository.search(null, "%đà nẵng%", null, null)).thenReturn(Arrays.asList(resultEntity));
 
         List<CoSuaChuaDongTauResponse> responses = service.search(null, "Đà Nẵng", null, null);
 

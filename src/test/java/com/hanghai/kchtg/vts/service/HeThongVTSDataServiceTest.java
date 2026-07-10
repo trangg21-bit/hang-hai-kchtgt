@@ -169,7 +169,7 @@ class HeThongVTSDataServiceTest {
         when(historyRepository.save(any())).thenReturn(mock(PheDuyetLichSu.class));
 
         HeThongVTSResponse response = service.approveC1(1L, req, "admin");
-        assertEquals("REJECTED", entity.getTrangThai());
+        assertEquals(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.REJECTED, entity.getTrangThai());
         assertEquals("Không đủ điều kiện", entity.getLyDoTuChoi());
     }
 

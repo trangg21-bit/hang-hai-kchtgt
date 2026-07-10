@@ -53,7 +53,7 @@ public class BenCangService {
         // Guard: parent CangBien must be in hien_hanh (active) status
         if (parent.getTrangThaiHoatDong() != TrangThaiHoatDong.HIEN_HANH) {
             throw new IllegalArgumentException(
-                    "Không thể tạo bến cảng: cảng biển cha phải ở trạng thái hoạt động");
+                    "Không thể tạo bến cảng: cảng biển cha phải ở trạng thái hoạt động (HIEN_HANH)");
         }
 
         BenCang entity = BenCang.builder()

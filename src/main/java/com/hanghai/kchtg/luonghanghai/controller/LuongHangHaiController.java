@@ -30,7 +30,7 @@ public class LuongHangHaiController {
             @RequestBody @Valid LuongHangHaiCreateRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("Tao luong hang hai thanh cong", service.create(req, username)));
+        return ResponseEntity.ok(ApiResponse.success("Tạo luồng hàng hải thành công", service.create(req, username)));
     }
 
     @GetMapping("/{id}")
@@ -54,14 +54,14 @@ public class LuongHangHaiController {
             @RequestBody @Valid LuongHangHaiUpdateRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("Cap nhat luong hang hai thanh cong", service.update(id, req, username)));
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật luồng hàng hải thành công", service.update(id, req, username)));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'luonghanghai:delete')")
     public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable Long id) {
         service.softDelete(id);
-        return ResponseEntity.ok(ApiResponse.success("Xoa mem luong hang hai thanh cong", null));
+        return ResponseEntity.ok(ApiResponse.success("Xóa mềm luồng hàng hải thành công", null));
     }
 
     @PostMapping("/{id}/approve/c1")
@@ -71,7 +71,7 @@ public class LuongHangHaiController {
             @RequestBody @Valid PheDuyetRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("Phe duyet C1 thanh cong", service.approveC1(id, req, username)));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt C1 thành công", service.approveC1(id, req, username)));
     }
 
     @PostMapping("/{id}/approve/c2")
@@ -81,7 +81,7 @@ public class LuongHangHaiController {
             @RequestBody @Valid PheDuyetRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("Phe duyet C2 thanh cong", service.approveC2(id, req, username)));
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt C2 thành công", service.approveC2(id, req, username)));
     }
 
     @GetMapping("/{id}/history")
