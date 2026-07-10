@@ -14,11 +14,11 @@ public interface MapSymbolRepository extends JpaRepository<MapSymbol, UUID> {
     Optional<MapSymbol> findByCode(String code);
 
     @Query("SELECT s FROM MapSymbol s WHERE " +
-           "(:search IS NULL OR LOWER(s.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(s.code) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(s.description) LIKE LOWER(CONCAT('%', :search, '%'))) " +
-           "AND (:category IS NULL OR s.category = :category) " +
-           "AND (:status IS NULL OR s.status = :status) " +
+           "(CAST(:search AS string) IS NULL OR LOWER(s.name) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+           "OR LOWER(s.code) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+           "OR LOWER(s.description) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
+           "AND (CAST(:category AS string) IS NULL OR s.category = CAST(:category AS string)) " +
+           "AND (CAST(:status AS string) IS NULL OR s.status = CAST(:status AS string)) " +
            "AND s.deletedAt IS NULL")
     Page<MapSymbol> search(@Param("search") String search,
                            @Param("category") String category,
