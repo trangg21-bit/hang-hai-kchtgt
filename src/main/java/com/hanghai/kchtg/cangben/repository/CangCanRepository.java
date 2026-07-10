@@ -21,4 +21,6 @@ public interface CangCanRepository extends JpaRepository<CangCan, UUID> {
     @Query("SELECT c FROM CangCan c WHERE c.deletedAt IS NULL " +
             "AND (:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId)")
     Page<CangCan> findAllActive(@Param("orgUnitId") UUID orgUnitId, Pageable pageable);
+
+    long countByTrangThaiPheDuyetAndDeletedAtIsNull(String trangThaiPheDuyet);
 }

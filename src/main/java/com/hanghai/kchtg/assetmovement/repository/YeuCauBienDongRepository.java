@@ -26,4 +26,6 @@ public interface YeuCauBienDongRepository extends JpaRepository<YeuCauBienDong, 
     Page<YeuCauBienDong> findByLoaiBienDongAndTrangThai(LoaiBienDong loaiBienDong, TrangThaiYeuCau trangThai, Pageable pageable);
 
     List<YeuCauBienDong> findByNguoiTao(UUID nguoiTao);
+
+    long countByTrangThaiAndDeletedFalse(TrangThaiYeuCau trangThai);
 }

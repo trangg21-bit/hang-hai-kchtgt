@@ -36,4 +36,5 @@ public interface CangBienRepository extends JpaRepository<CangBien, UUID> {
             "AND (:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId)")
     Page<CangBien> findAllActive(@Param("orgUnitId") UUID orgUnitId, Pageable pageable);
 
+    long countByTrangThaiPheDuyetAndDeletedAtIsNull(String trangThaiPheDuyet);
 }

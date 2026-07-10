@@ -63,6 +63,55 @@ PMO Lead
 
 **⚠️ PMO LEAD: workers KHÔNG đọc AGENTS.md. Bạn PHẢI copy các quy tắc trên vào từng brief developer. Nếu không, developer sẽ hardcode màu và tự bịa Layout.**
 
+## Semantic Token System (MANDATORY — áp dụng cho MỌI component UI mới)
+
+`frontend/src/tokens.ts` là kiến trúc token ngữ nghĩa, bổ sung cho `theme.ts`. Trong khi `theme.ts` quản lý AntD ConfigProvider + Layout + Sidebar, thì `tokens.ts` quản lý **vai trò** của màu sắc và thang số trong component.
+
+### 7 nguyên lý (bắt buộc tuân thủ)
+
+| # | Nguyên lý | Ý nghĩa |
+|---|---|---|
+| 1 | **Token vai trò, không giá trị** | `statusOperational` — không phải `greenColor`. Token trả lời "tại sao", không phải "cái gì" |
+| 2 | **Palette đóng (13 màu)** | Không thêm token màu mới nếu không design review |
+| 3 | **Thang số — cấm giá trị giữa** | Radius: 4/8/12/999. Font: 11/13/15/20/28. Weight: 400/500/600. Spacing: 4/8/12/16/24/32. Cấm 6, 7, 10, 14, 18 |
+| 4 | **Thứ bậc text** | `textPrimary` (số KPI) → `textSecondary` (nhãn) → `textTertiary` (metadata) — nhất quán mọi màn |
+| 5 | **Accent budget ≤ 3** | `actionPrimary` xuất hiện tối đa 3 lần/màn hình |
+| 6 | **Nhiệt độ màu** | Tất cả surface xám dùng chung undertone lạnh |
+| 7 | **Quy ước loại ND → cách thể hiện** | metadata → `metaStyle`, card → `cardStyle`, action → `actionStyle`, badge → `badgeBaseStyle` |
+
+### Cách dùng
+
+```ts
+// ✅ ĐÚNG — dùng semantic token từ tokens.ts
+import { statusOperational, fontSizeStat, spaceMd, cardStyle } from '../tokens';
+style={{ color: statusOperational, fontSize: fontSizeStat }}
+
+// ❌ SAI — hardcode giá trị dù đúng visual
+style={{ color: '#1BAF7A', fontSize: 28 }}
+```
+
+### Cách dùng chung với theme.ts
+
+```ts
+// tokens.ts: semantic role tokens (cho component nội dung)
+import { statusOperational, textPrimary, spaceMd } from '../tokens';
+
+// theme.ts: layout/infrastructure tokens (cho sidebar, header, AntD config)
+import { colors, layout } from '../theme';
+```
+
+### Agent workflow cho UI mới
+
+```
+PMO Lead
+  ├── Đọc tokens.ts → biết 13 token màu + thang số
+  └── Dispatch Dev → PHẢI chép constraints vào prompt:
+        "Trước khi code, đọc frontend/src/tokens.ts để biết semantic token.
+         Import từ tokens.ts (không hardcode hex/spacing/font-size).
+         Tuân thủ accent budget ≤ 3 lần actionPrimary/màn.
+         Cấm dùng giá trị ngoài thang: radius 6/7/10, font 12/14/16/18/24, spacing 10/14/18."
+```
+
 ## SDLC convention
 
 All SDLC scaffolding goes through `ai-kit` CLI (ADR-005).

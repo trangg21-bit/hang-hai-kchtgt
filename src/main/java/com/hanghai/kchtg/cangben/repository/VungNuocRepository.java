@@ -38,4 +38,6 @@ public interface VungNuocRepository extends JpaRepository<VungNuoc, UUID> {
 
     @Query("SELECT COUNT(v) FROM VungNuoc v WHERE v.deletedAt IS NULL AND v.cangBienId = :cangBienId")
     long countByCangBienIdAndDeletedAtIsNull(@Param("cangBienId") UUID cangBienId);
+
+    long countByTrangThaiPheDuyetAndDeletedAtIsNull(String trangThaiPheDuyet);
 }

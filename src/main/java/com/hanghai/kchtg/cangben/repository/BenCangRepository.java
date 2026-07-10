@@ -34,4 +34,6 @@ public interface BenCangRepository extends JpaRepository<BenCang, UUID> {
      */
     @Query("SELECT b FROM BenCang b WHERE b.deletedAt IS NULL AND b.cangBienId = :cangBienId")
     Page<BenCang> findByCangBienId(@Param("cangBienId") UUID cangBienId, Pageable pageable);
+
+    long countByTrangThaiPheDuyetAndDeletedAtIsNull(String trangThaiPheDuyet);
 }
