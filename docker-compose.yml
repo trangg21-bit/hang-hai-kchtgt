@@ -1,18 +1,6 @@
 services:
-  redis:
-    build:
-      context: .
-      dockerfile: Dockerfile.redis
-    ports:
-      - "6379:6379"
-    restart: always
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  backend:
+  vmd-csdl-v2:
+    image: registry.etc.vn/hang-hai-kchtgt-backend:latest
     build:
       context: .
       dockerfile: Dockerfile.backend
@@ -33,18 +21,28 @@ services:
       redis:
         condition: service_healthy
 
+  redis:
+    image: registry.etc.vn/library/redis:8.0.2-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.redis
+    ports:
+      - "6379:6379"
+    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   frontend:
-    image: hang-hai-kchtgt-frontend:latest
+    image: registry.etc.vn/hang-hai-kchtgt-frontend:latest
     build:
       context: .
       dockerfile: Dockerfile.frontend
     ports:
       - "3001:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
     restart: always
     depends_on:
-      backend:
-        condition: service_started
-    profiles:
-      - full
+      vmd-csdl-v2:
+        condition: service_healthy
