@@ -104,6 +104,11 @@ modules:
     path: docs/modules/M-021-chia-se-du-lieu-kchtgt-tong-hop
     slug: chia-se-du-lieu-kchtgt-tong-hop
     status: in-progress
+  M-022:
+    name: Trang chủ Dashboard
+    path: docs/modules/M-022-trang-chu-dashboard
+    slug: trang-chu-dashboard
+    status: proposed
   M-999:
     name: Test
     path: docs/modules/M-999-test-write
