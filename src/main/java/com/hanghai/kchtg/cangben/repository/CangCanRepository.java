@@ -28,14 +28,13 @@ public interface CangCanRepository extends JpaRepository<CangCan, UUID> {
 
     @Query("SELECT c FROM CangCan c WHERE c.deletedAt IS NULL " +
             "AND (:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId) " +
-            "AND (CAST(:search AS string) IS NULL OR LOWER(c.maCangCan) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
-            "     OR LOWER(c.tenCangCan) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
-            "AND (:status IS NULL OR c.trangThaiHoatDong = :status) " +
-            "AND (:approvalStatus IS NULL OR c.trangThaiPheDuyet = :approvalStatus)")
+            "AND (CAST(:search AS string) IS NULL OR (LOWER(c.maCangCan) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(c.tenCangCan) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
+            "AND (:trangThaiHoatDong IS NULL OR c.trangThaiHoatDong = :trangThaiHoatDong) " +
+            "AND (:trangThaiPheDuyet IS NULL OR c.trangThaiPheDuyet = :trangThaiPheDuyet)")
     Page<CangCan> searchCangCan(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("search") String search,
-            @Param("status") TrangThaiHoatDong status,
-            @Param("approvalStatus") TrangThaiPheDuyet approvalStatus,
+            @Param("trangThaiHoatDong") TrangThaiHoatDong trangThaiHoatDong,
+            @Param("trangThaiPheDuyet") TrangThaiPheDuyet trangThaiPheDuyet,
             Pageable pageable);
 }

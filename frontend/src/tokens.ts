@@ -37,7 +37,7 @@ export const dataSea0 = '#123a63';
 export const dataSea1 = '#2769b3';
 export const dataSea2 = '#4f9bd8';
 export const dataSea3 = '#9ecdf0';
-export const dataTeal = '#0ea5a3';
+export const dataTeal = '#bedaf2';    // icy light blue — continues sea gradient past dataSea3 (was teal #0ea5a3)
 
 // Font families
 export const fontSans = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";

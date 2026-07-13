@@ -47,7 +47,7 @@ public interface CangBienRepository extends JpaRepository<CangBien, UUID> {
             "AND (CAST(:tinhThanhPho AS string) IS NULL OR LOWER(c.tinhThanhPho) LIKE LOWER(CONCAT('%', CAST(:tinhThanhPho AS string), '%'))) " +
             "AND (:trangThaiHoatDong IS NULL OR c.trangThaiHoatDong = :trangThaiHoatDong) " +
             "AND (:trangThaiPheDuyet IS NULL OR c.trangThaiPheDuyet = :trangThaiPheDuyet) " +
-            "AND (CAST(:search AS string) IS NULL OR LOWER(c.maCang) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(c.tenCang) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))")
+            "AND (CAST(:search AS string) IS NULL OR (LOWER(c.maCang) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(c.tenCang) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))))")
     Page<CangBien> searchCangBien(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("maCang") String maCang,

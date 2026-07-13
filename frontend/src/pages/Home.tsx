@@ -13,7 +13,7 @@ import {
   radiusXl, radiusSm, radiusPill,
   shadowMd,
   fontMono,
-  fontSizeSm, fontSizeMd, fontSizeHeading, fontSizeDisplay,
+  fontSizeSm, fontSizeMd, fontSizeLg, fontSizeHeading, fontSizeDisplay,
   chartGrid, chartTooltip, chartTextStyle,
   dataNavy, dataSea0, dataSea1, dataSea2, dataSea3,
   statusOperational, statusCritical,
@@ -33,6 +33,7 @@ const ink = textPrimary;
 const ink2 = textSecondary;
 const rCard = radiusXl;
 const rSm = radiusSm;
+const rPill = radiusPill;
 const sea0 = dataSea0;
 const sea1 = dataSea1;
 const sea2 = dataSea2;

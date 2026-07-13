@@ -3,36 +3,42 @@
 // Inherits from tokens.ts, adds dashboard-specific aliases only
 // ============================================================
 
-export {
-  // Status
+// Explicit import required — Vite dev mode does not resolve re-export bindings
+// for use in the same module body (ReferenceError: dataNavy is not defined)
+import {
   statusOperational, statusAttention, statusCritical, statusDraft,
-  // Action
   actionPrimary, actionHover,
-  // Radius scale
   radiusSm, radiusMd, radiusLg, radiusXl, radiusPill,
-  // Spacing scale
   spaceXs, spaceSm, spaceMd, spaceLg, spaceXl, spaceXxl,
-  // Font weight scale
   fontWeightNormal, fontWeightMedium, fontWeightBold,
-  // Font size scale
   fontSizeSm, fontSizeMd, fontSizeLg, fontSizeXl, fontSizeHeading, fontSizeDisplay, fontSizeStat,
-  // Font families
   fontSans, fontMono,
-  // Shadows
   shadowSm, shadowMd, shadowLg,
-  // Chart config
   chartGrid, chartTooltip, chartTextStyle,
-  // Surface
   surfacePage, surfaceCard,
-  // Text
   textPrimary, textSecondary, textTertiary,
-  // Border
   borderDefault,
-  // Content conventions
   cardStyle, badgeBaseStyle, metaStyle,
-  // Data colors
   dataNavy, dataSea0, dataSea1, dataSea2, dataSea3, dataTeal,
 } from './tokens';
+
+// Re-export for downstream consumers
+export {
+  statusOperational, statusAttention, statusCritical, statusDraft,
+  actionPrimary, actionHover,
+  radiusSm, radiusMd, radiusLg, radiusXl, radiusPill,
+  spaceXs, spaceSm, spaceMd, spaceLg, spaceXl, spaceXxl,
+  fontWeightNormal, fontWeightMedium, fontWeightBold,
+  fontSizeSm, fontSizeMd, fontSizeLg, fontSizeXl, fontSizeHeading, fontSizeDisplay, fontSizeStat,
+  fontSans, fontMono,
+  shadowSm, shadowMd, shadowLg,
+  chartGrid, chartTooltip, chartTextStyle,
+  surfacePage, surfaceCard,
+  textPrimary, textSecondary, textTertiary,
+  borderDefault,
+  cardStyle, badgeBaseStyle, metaStyle,
+  dataNavy, dataSea0, dataSea1, dataSea2, dataSea3, dataTeal,
+};
 
 // --- Dashboard-specific aliases ---
 

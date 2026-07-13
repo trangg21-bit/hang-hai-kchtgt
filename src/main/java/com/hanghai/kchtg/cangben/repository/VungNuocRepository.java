@@ -46,15 +46,14 @@ public interface VungNuocRepository extends JpaRepository<VungNuoc, UUID> {
     @Query("SELECT v FROM VungNuoc v WHERE v.deletedAt IS NULL " +
             "AND (:orgUnitId IS NULL OR v.orgUnitId = :orgUnitId) " +
             "AND (:cangBienId IS NULL OR v.cangBienId = :cangBienId) " +
-            "AND (CAST(:search AS string) IS NULL OR LOWER(v.maVungNuoc) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
-            "     OR LOWER(v.tenVungNuoc) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
-            "AND (:status IS NULL OR v.trangThaiHoatDong = :status) " +
-            "AND (:approvalStatus IS NULL OR v.trangThaiPheDuyet = :approvalStatus)")
+            "AND (CAST(:search AS string) IS NULL OR (LOWER(v.maVungNuoc) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(v.tenVungNuoc) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
+            "AND (:trangThaiHoatDong IS NULL OR v.trangThaiHoatDong = :trangThaiHoatDong) " +
+            "AND (:trangThaiPheDuyet IS NULL OR v.trangThaiPheDuyet = :trangThaiPheDuyet)")
     Page<VungNuoc> searchVungNuoc(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("cangBienId") UUID cangBienId,
             @Param("search") String search,
-            @Param("status") TrangThaiHoatDong status,
-            @Param("approvalStatus") TrangThaiPheDuyet approvalStatus,
+            @Param("trangThaiHoatDong") TrangThaiHoatDong trangThaiHoatDong,
+            @Param("trangThaiPheDuyet") TrangThaiPheDuyet trangThaiPheDuyet,
             Pageable pageable);
 }
