@@ -1,6 +1,8 @@
 package com.hanghai.kchtg.cangben.repository;
 
 import com.hanghai.kchtg.cangben.entity.VungNuoc;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -39,5 +41,19 @@ public interface VungNuocRepository extends JpaRepository<VungNuoc, UUID> {
     @Query("SELECT COUNT(v) FROM VungNuoc v WHERE v.deletedAt IS NULL AND v.cangBienId = :cangBienId")
     long countByCangBienIdAndDeletedAtIsNull(@Param("cangBienId") UUID cangBienId);
 
-    long countByTrangThaiPheDuyetAndDeletedAtIsNull(String trangThaiPheDuyet);
+    long countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet trangThaiPheDuyet);
+
+    @Query("SELECT v FROM VungNuoc v WHERE v.deletedAt IS NULL " +
+            "AND (:orgUnitId IS NULL OR v.orgUnitId = :orgUnitId) " +
+            "AND (:cangBienId IS NULL OR v.cangBienId = :cangBienId) " +
+            "AND (CAST(:search AS string) IS NULL OR (LOWER(v.maVungNuoc) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(v.tenVungNuoc) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
+            "AND (:trangThaiHoatDong IS NULL OR v.trangThaiHoatDong = :trangThaiHoatDong) " +
+            "AND (:trangThaiPheDuyet IS NULL OR v.trangThaiPheDuyet = :trangThaiPheDuyet)")
+    Page<VungNuoc> searchVungNuoc(
+            @Param("orgUnitId") UUID orgUnitId,
+            @Param("cangBienId") UUID cangBienId,
+            @Param("search") String search,
+            @Param("trangThaiHoatDong") TrangThaiHoatDong trangThaiHoatDong,
+            @Param("trangThaiPheDuyet") TrangThaiPheDuyet trangThaiPheDuyet,
+            Pageable pageable);
 }

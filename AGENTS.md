@@ -6,6 +6,23 @@ stack: none
 framework: spring-boot
 cli: mvn
 
+## Vite Dev-Mode Re-Export Bug (MANDATORY — read before touching tokens or re-exports)
+
+Vite v8 dev mode does **NOT** resolve `export { x } from './module'` bindings when `x` is referenced in the same module body. This throws `ReferenceError: x is not defined` at browser runtime, but **production build (`vite build`) passes without error**.
+
+```ts
+// ❌ BROKEN in Vite dev (ReferenceError at runtime):
+export { dataNavy } from './tokens';
+export const colors = [dataNavy]; // dataNavy is not defined!
+
+// ✅ FIX — explicit import, then re-export:
+import { dataNavy } from './tokens';
+export { dataNavy };
+export const colors = [dataNavy]; // works
+```
+
+**Always use import-then-export pattern** when the same file needs to both re-export a token AND use it in computed values. Applies to `tokens-dashboard.ts`, `tokens.ts` layers, and any barrel file that computes derived values from re-exports.
+
 ## Framework discipline (MANDATORY — read before delegating code work)
 
 This project is built on **spring-boot**. Its CLI/generator is `mvn`. Prefer the framework's CLI/generators over hand-writing files:

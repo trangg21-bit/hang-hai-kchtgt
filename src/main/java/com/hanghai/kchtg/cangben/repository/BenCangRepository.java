@@ -1,6 +1,9 @@
 package com.hanghai.kchtg.cangben.repository;
 
 import com.hanghai.kchtg.cangben.entity.BenCang;
+import com.hanghai.kchtg.cangben.entity.LoaiBen;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -35,5 +38,25 @@ public interface BenCangRepository extends JpaRepository<BenCang, UUID> {
     @Query("SELECT b FROM BenCang b WHERE b.deletedAt IS NULL AND b.cangBienId = :cangBienId")
     Page<BenCang> findByCangBienId(@Param("cangBienId") UUID cangBienId, Pageable pageable);
 
-    long countByTrangThaiPheDuyetAndDeletedAtIsNull(String trangThaiPheDuyet);
+    long countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet trangThaiPheDuyet);
+
+    @Query("SELECT b FROM BenCang b WHERE b.deletedAt IS NULL " +
+            "AND (:orgUnitId IS NULL OR b.orgUnitId = :orgUnitId) " +
+            "AND (CAST(:maBen AS string) IS NULL OR LOWER(b.maBen) LIKE LOWER(CONCAT('%', CAST(:maBen AS string), '%'))) " +
+            "AND (CAST(:tenBen AS string) IS NULL OR LOWER(b.tenBen) LIKE LOWER(CONCAT('%', CAST(:tenBen AS string), '%'))) " +
+            "AND (:cangBienId IS NULL OR b.cangBienId = :cangBienId) " +
+            "AND (CAST(:tuyenDuongThuy AS string) IS NULL OR LOWER(b.tuyenDuongThuy) LIKE LOWER(CONCAT('%', CAST(:tuyenDuongThuy AS string), '%'))) " +
+            "AND (:loaiBen IS NULL OR b.loaiBen = :loaiBen) " +
+            "AND (:trangThaiHoatDong IS NULL OR b.trangThaiHoatDong = :trangThaiHoatDong) " +
+            "AND (:trangThaiPheDuyet IS NULL OR b.trangThaiPheDuyet = :trangThaiPheDuyet)")
+    Page<BenCang> searchBenCang(
+            @Param("orgUnitId") UUID orgUnitId,
+            @Param("maBen") String maBen,
+            @Param("tenBen") String tenBen,
+            @Param("cangBienId") UUID cangBienId,
+            @Param("tuyenDuongThuy") String tuyenDuongThuy,
+            @Param("loaiBen") LoaiBen loaiBen,
+            @Param("trangThaiHoatDong") TrangThaiHoatDong trangThaiHoatDong,
+            @Param("trangThaiPheDuyet") TrangThaiPheDuyet trangThaiPheDuyet,
+            Pageable pageable);
 }
