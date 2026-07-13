@@ -7,6 +7,7 @@ import com.hanghai.kchtg.cangben.repository.CangCanRepository;
 import com.hanghai.kchtg.cangben.repository.CauCangRepository;
 import com.hanghai.kchtg.cangben.repository.VungNuocRepository;
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,23 +37,23 @@ public class DashboardController {
      */
     @GetMapping("/approval-kcht")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getKchtApprovalStats() {
-        long approved = cangBienRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull("DUOC_PHE_DUYET")
-                + benCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull("DUOC_PHE_DUYET")
-                + cauCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull("DUOC_PHE_DUYET")
-                + cangCanRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull("DUOC_PHE_DUYET")
-                + vungNuocRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull("DUOC_PHE_DUYET");
+        long approved = cangBienRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.DUOC_PHE_DUYET)
+                + benCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.DUOC_PHE_DUYET)
+                + cauCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.DUOC_PHE_DUYET)
+                + cangCanRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.DUOC_PHE_DUYET)
+                + vungNuocRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.DUOC_PHE_DUYET);
 
-        long pending = cangBienRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull("CHO_PHE_DUYET")
-                + benCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull("CHO_PHE_DUYET")
-                + cauCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull("CHO_PHE_DUYET")
-                + cangCanRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull("CHO_PHE_DUYET")
-                + vungNuocRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull("CHO_PHE_DUYET");
+        long pending = cangBienRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                + benCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                + cauCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                + cangCanRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                + vungNuocRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
-        long rejected = cangBienRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull("TU_CHOI")
-                + benCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull("TU_CHOI")
-                + cauCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull("TU_CHOI")
-                + cangCanRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull("TU_CHOI")
-                + vungNuocRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull("TU_CHOI");
+        long rejected = cangBienRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.TU_CHOI)
+                + benCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.TU_CHOI)
+                + cauCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.TU_CHOI)
+                + cangCanRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.TU_CHOI)
+                + vungNuocRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.TU_CHOI);
 
         long total = approved + pending + rejected;
 
