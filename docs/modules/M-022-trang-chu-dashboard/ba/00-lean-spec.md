@@ -2,7 +2,7 @@
 feature-id: M-022
 document: lean-spec
 output-mode: full
-last-updated: 2026-07-10
+last-updated: 2026-07-12
 ---
 
 # M-022 Trang chủ Dashboard — API Integration Lean Spec
@@ -886,3 +886,181 @@ export const MOCK_DATA: DashboardData = {
 | Q3: Approach clear from existing architecture? | **Yes** — Pattern is well-established: Frontend API call → transform → ECharts option; FilterContext → useEffect → refetch | Routes to `engineering-technical-lead` for implementation planning |
 
 **Triage Verdict**: `engineering-technical-lead` — the architecture is clear and all changes are in the frontend API integration layer (no new aggregates, no backend changes needed within M-022 scope).
+
+---
+
+## Phase 3 — Token System Refactoring
+
+> **Phase 3 — Design Token Migration.** Replaces all hardcoded hex colors across the dashboard UI layer with a two-tier semantic token architecture: base tokens (`tokens.ts`) → dashboard-specific aliases (`tokens-dashboard.ts`). All 5 dashboard components now consume tokens exclusively. Zero hardcoded hex colors remain.
+
+---
+
+### 8.1 Motivation
+
+The Phase 2 API integration introduced new visual elements (approval status bars, pending pills, cargo chart series) that used scattered inline hex values. This created:
+
+- **Visual drift** — similar elements (e.g., "pending" status) rendered in slightly different blues across components
+- **No access budget** — the accent blue (`#0E6FD6`) appeared more than 3 times per screen
+- **No hierarchy encoding** — text colors did not consistently distinguish KPI values from labels from metadata
+- **High maintenance cost** — a palette change required editing every component individually
+
+Phase 3 addresses all four issues by introducing a closed token system.
+
+---
+
+### 8.2 Token Architecture
+
+```
+tokens.ts (base layer — 13-color palette, 7 font sizes, 5 radii, 6 spacing)
+  │
+  └──► tokens-dashboard.ts (dashboard layer — inherits ALL + adds aliases)
+         cargoSeriesColors[]       — 6-series sea gradient for stacked bar
+         approvalApproved          — approval approved bar color
+         approvalPending           — approval pending bar color
+         approvalRejected          — approval rejected bar color
+         pendingZeroBg             — zero-count pending pill background
+         pendingZeroColor          — zero-count pending pill text color
+         pendingActiveBg           — active-count pending pill background
+         pendingActiveColor        — active-count pending pill text color
+         approvalBarTrack          — approval bar track (unfilled portion)
+```
+
+#### 8.2.1 Base Layer (`frontend/src/tokens.ts`)
+
+| Category | Tokens | Count |
+|---|---|---|
+| **Action** | `actionPrimary`, `actionHover` | 2 |
+| **Status** | `statusOperational`, `statusAttention`, `statusCritical`, `statusDraft` | 4 |
+| **Data series** | `dataPrimary`, `dataSecondary`, `dataNavy`, `dataSea0–3`, `dataTeal` | 8 |
+| **Surface** | `surfaceCard`, `surfacePage` | 2 |
+| **Text hierarchy** | `textPrimary`, `textSecondary`, `textTertiary` | 3 |
+| **Border** | `borderDefault` | 1 |
+| **Shadow** | `shadowSm`, `shadowMd`, `shadowLg` | 3 |
+| **Radius scale** | `radiusSm`(4) — `radiusPill`(999) | 5 |
+| **Spacing scale** | `spaceXs`(4) — `spaceXxl`(48) | 6 |
+| **Font size scale** | `fontSizeSm`(10) — `fontSizeStat`(34) | 7 |
+| **Font weight scale** | `fontWeightNormal`(400) — `fontWeightBold`(600) | 3 |
+
+The base palette uses a **blue-ish sea tone** with a deep navy undertone (`#0b2e4f`) as the dominant shadow and heading color. Six data-series colors form a gradient from `dataNavy` → `dataSea0` → `dataSea1` → `dataSea2` → `dataSea3` → `dataTeal`, providing a natural ocean-themed progression for chart series.
+
+Content-type conventions (`cardStyle`, `badgeBaseStyle`, `metaStyle`, `actionStyle`, `dividerStyle`) and ECharts defaults (`chartGrid`, `chartTooltip`, `chartTextStyle`) are also defined at this layer.
+
+**Accent budget rule**: `actionPrimary` appears **≤ 3 times per screen**. Current dashboard usage:
+1. `KpiCard` variant="action" (Hồ sơ chờ duyệt card) — action border/color
+2. `TrendChartCard` error state "Thử lại" button
+3. (reserved for future)
+
+#### 8.2.2 Dashboard Layer (`frontend/src/tokens-dashboard.ts`)
+
+Re-exports all base tokens from `tokens.ts` and adds 8 dashboard-specific aliases:
+
+| Token | Value (mapped from base) | Purpose |
+|---|---|---|
+| `cargoSeriesColors` | `[dataNavy, dataSea0, dataSea1, dataSea2, dataSea3, dataTeal]` | 6-series sea gradient for the cargo stacked bar chart |
+| `approvalApproved` | `dataSea0` | Approval bar segment: "Đã duyệt" (dark blue) |
+| `approvalPending` | `dataSea2` | Approval bar segment: "Chờ duyệt" (medium blue) |
+| `approvalRejected` | `dataSea3` | Approval bar segment: "Từ chối" (light blue) |
+| `pendingZeroBg` | `dataSea3` | Pending pill when count = 0: background |
+| `pendingZeroColor` | `dataSea1` | Pending pill when count = 0: text |
+| `pendingActiveBg` | `rgba(79,155,216,0.12)` | Pending pill when count > 0: background |
+| `pendingActiveColor` | `dataSea0` | Pending pill when count > 0: text |
+| `approvalBarTrack` | `rgba(11,46,79,0.09)` | Approval bar unfilled track |
+
+The naming follows the **role-over-value** principle: `approvalApproved` tells you *what* it represents, not *which* color it is. If the palette changes, only `tokens.ts` values are updated — aliases remain semantically correct.
+
+---
+
+### 8.3 Updated Components
+
+All 5 dashboard components now import exclusively from `tokens-dashboard.ts`:
+
+| Component | File | Tokens Used | Key Changes |
+|---|---|---|---|
+| **Home.tsx** | `frontend/src/pages/Home.tsx` | 34 tokens | All inline hex removed. Cargo series use `cargoSeriesColors[]`. Approval bars use `approvalApproved/Pending/Rejected`. Pending pills use `pendingActiveBg/Color` and `pendingZeroBg/Color`. Status deltas use `statusOperational`/`statusCritical`. Chart configs use `chartGrid`/`chartTooltip`/`chartTextStyle`. Card containers use `CARD_BASE` composed from `surface`, `shadowMd`, `borderDefault`. |
+| **FilterBar.tsx** | `frontend/src/components/FilterBar.tsx` | 8 tokens | Border uses `borderDefault`. Background uses `surfacePage`. All text uses `textSecondary`/`textTertiary`. Spacing uses `spaceSm`/`spaceMd`. Font sizes use `fontSizeSm`/`fontSizeMd`. |
+| **KpiCard.tsx** | `frontend/src/components/KpiCard.tsx` | 14 tokens | Variant-based theming: `actionPrimary` border for action variant, `statusAttention` for warning variant. Trend arrow uses `statusOperational` (up) / `statusCritical` (down). Value text inherits variant color. All spacing uses `spaceXs/Sm/Md` from tokens. |
+| **TrendChartCard.tsx** | `frontend/src/components/TrendChartCard.tsx` | 12 tokens | Error icon uses `statusCritical`. Card uses `cardStyle` composition. All loading/empty/error states use token-based spacing and text colors. Legend circles use `item.color` (from parent). |
+| **DashboardMap.tsx** | `frontend/src/components/DashboardMap.tsx` | 1 token | `radiusMd` for map container border-radius. Map tiles and controls are Leaflet-native; no hardcoded UI colors. |
+
+### 8.3.1 Token Usage Patterns Observed
+
+**Pattern 1 — Composed card containers** (Home.tsx, TrendChartCard.tsx):
+```typescript
+const CARD_BASE: React.CSSProperties = {
+  background: surface,
+  borderRadius: rCard,
+  padding: '16px 20px',
+  border: `1px solid ${line}`,
+  boxShadow: shadowMd,
+};
+```
+All cards reference the same composed style; a visual update needs one change.
+
+**Pattern 2 — Semantic variant theming** (KpiCard.tsx):
+```typescript
+const valueColor = isWarning ? statusAttention : isAction ? actionPrimary : textPrimary;
+```
+Color is derived from a semantic variant, not from a literal color name.
+
+**Pattern 3 — Chart series via aliased array** (Home.tsx cargo bar):
+```typescript
+color: cargoSeriesColors[0..5]
+```
+6-series colors are indexed, not repeated. Reordering the palette is a single array change.
+
+**Pattern 4 — Alpha modifiers via template literals** (Home.tsx sparklines):
+```typescript
+color: `${dataSea1}33`  // 20% opacity via 2-hex alpha suffix
+```
+Tokens support alpha compositing without separate token definitions.
+
+---
+
+### 8.4 Remaining Hardcoded Colors (Intentional Exceptions)
+
+One intentional exception remains in the dashboard:
+
+| Location | Value | Reason |
+|---|---|---|
+| `Home.tsx` HeroCard gradient text | `#eaf4fc` | Light-colored text on a `linear-gradient(135deg, ${navy}, ${sea0})` dark background. The gradient is dynamically composed from tokens; the text color must be a light/white tone for contrast. This is a one-off accessibility requirement, not a design drift. |
+
+All other non-dashboard components (AppLayout, GISChartView, Login, LogsPage, etc.) are out of scope for this phase and retain their existing styling. Future phases should migrate them progressively.
+
+---
+
+### 8.5 Verification
+
+| Check | Result |
+|---|---|
+| **Zero hardcoded hex colors** in all 5 dashboard components | ✅ Confirmed via grep — no unreferenced `#[0-9a-f]{3,6}` values in `Home.tsx`, `FilterBar.tsx`, `KpiCard.tsx`, `TrendChartCard.tsx`, `DashboardMap.tsx` (one intentional exception documented in §8.4) |
+| **All imports** from `tokens-dashboard.ts`, not directly from `tokens.ts` | ✅ Each component imports from `'../tokens-dashboard'` |
+| **Accent budget** `actionPrimary` ≤ 3 per screen | ✅ 2 uses documented |
+| **TypeScript build** (`npx tsc --noEmit`) | ✅ Passes with zero errors |
+
+---
+
+### 8.6 Design Principles Enforced
+
+This phase enforces the 7 semantic token principles from the project's design system:
+
+| # | Principle | Dashboard Compliance |
+|---|---|---|
+| 1 | **Token role, not value** | `approvalApproved` (role) not `dataSea0` (value); role is preserved even if palette changes |
+| 2 | **Closed palette (13 colors)** | No new color tokens added; all dashboard colors map to existing palette |
+| 3 | **Number scale — no in-between values** | Radius: 4/8/12/18/999 only. Font: 10/13/15/18/22/28/34 only. Spacing: 4/6/16/24/32/48 only. No 6px, 7px, 10px, 14px, 18px values used |
+| 4 | **Text hierarchy** | `textPrimary` (KPI numbers) → `textSecondary` (labels) → `textTertiary` (metadata) consistently across all cards |
+| 5 | **Accent budget ≤ 3** | `actionPrimary` appears exactly 2 times per screen |
+| 6 | **Cool undertone** | All surface grays use the `#0b2e4f`-based cool undertone |
+| 7 | **Content-type conventions** | Card → `cardStyle`, metadata → `metaStyle`, badge → `badgeBaseStyle` |
+
+---
+
+### 8.7 Phase 3 Triage
+
+| Question | Answer | Rationale |
+|---|---|---|
+| Q1: Creates new domain elements? | **No** — token files are strictly UI infrastructure; no new aggregates, entities, or backend concepts |
+| Q2: Affects system architecture? | **No** — component structure, data flow, and FilterContext integration remain unchanged |
+| Q3: Approach clear from existing architecture? | **Yes** — pattern is well-established: base tokens → domain-specific aliases → component consumption; project-wide `tokens.ts` governance already exists |
+
+**Triage Verdict**: `engineering-technical-lead` — this is a frontend-only styling refactoring with no backend or architecture implications.

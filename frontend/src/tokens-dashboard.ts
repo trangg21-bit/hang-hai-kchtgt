@@ -1,73 +1,54 @@
 // ============================================================
-// tokens-dashboard.ts — Dashboard design tokens (light mode)
-// Principle: TWO color families, never mixed
-//   - Sea gradient (navy→light): quantitative DATA ONLY
-//   - Status (st-*): approval WORKFLOW ONLY
+// tokens-dashboard.ts — Dashboard-specialized token layer
+// Inherits from tokens.ts, adds dashboard-specific aliases only
 // ============================================================
 
-// --- Background & Surface ---
-export const bg = '#eaf0f6';
-export const bgTint = '#f4f8fc';
-export const surface = '#ffffff';
+export {
+  // Status
+  statusOperational, statusAttention, statusCritical, statusDraft,
+  // Action
+  actionPrimary, actionHover,
+  // Radius scale
+  radiusSm, radiusMd, radiusLg, radiusXl, radiusPill,
+  // Spacing scale
+  spaceXs, spaceSm, spaceMd, spaceLg, spaceXl, spaceXxl,
+  // Font weight scale
+  fontWeightNormal, fontWeightMedium, fontWeightBold,
+  // Font size scale
+  fontSizeSm, fontSizeMd, fontSizeLg, fontSizeXl, fontSizeHeading, fontSizeDisplay, fontSizeStat,
+  // Font families
+  fontSans, fontMono,
+  // Shadows
+  shadowSm, shadowMd, shadowLg,
+  // Chart config
+  chartGrid, chartTooltip, chartTextStyle,
+  // Surface
+  surfacePage, surfaceCard,
+  // Text
+  textPrimary, textSecondary, textTertiary,
+  // Border
+  borderDefault,
+  // Content conventions
+  cardStyle, badgeBaseStyle, metaStyle,
+  // Data colors
+  dataNavy, dataSea0, dataSea1, dataSea2, dataSea3, dataTeal,
+} from './tokens';
 
-// --- Navy → Sea gradient (QUANTITATIVE DATA) ---
-export const navy = '#0b2e4f';
-export const sea0 = '#123a63';
-export const sea1 = '#2769b3';
-export const sea2 = '#4f9bd8';
-export const sea3 = '#9ecdf0';
-export const teal = '#0ea5a3';
+// --- Dashboard-specific aliases ---
 
-// --- Status (APPROVAL WORKFLOW ONLY) ---
-export const stApproved = '#16a37a';
-export const stPending = '#e8912e';   // ALSO the accent color — intentional
-export const stRejected = '#e05a4c';
-export const stDraft = '#93a3b3';
+// Cargo chart 6-series colors
+export const cargoSeriesColors = [dataNavy, dataSea0, dataSea1, dataSea2, dataSea3, dataTeal];
 
-// --- Text ---
-export const ink = '#0c2438';
-export const ink2 = '#566a7c';
-export const ink3 = '#93a3b3';
+// Approval status → sea gradient
+export const approvalApproved = dataSea0;
+export const approvalPending = dataSea2;
+export const approvalRejected = dataSea3;
 
-// --- Borders / Radius / Shadow ---
-export const line = 'rgba(11,46,79,0.09)';
-export const rCard = 18;
-export const rSm = 12;
-export const rPill = 999;
-export const shadowMd = '0 2px 4px rgba(11,46,79,0.05), 0 12px 28px rgba(11,46,79,0.07)';
-export const shadowLg = '0 8px 24px rgba(11,46,79,0.12), 0 24px 60px rgba(11,46,79,0.14)';
+// Pending pill states
+export const pendingZeroBg = dataSea3;
+export const pendingZeroColor = dataSea1;
+export const pendingActiveBg = 'rgba(79,155,216,0.12)';
+export const pendingActiveColor = dataSea0;
 
-// --- Typography ---
-export const fontSans = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
-export const fontMono = "'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace";
-
-// --- ECharts global defaults (apply to all chart instances) ---
-export const chartGrid = {
-  top: 16,
-  right: 16,
-  bottom: 16,
-  left: 16,
-  containLabel: true,
-};
-
-export const chartTooltip = {
-  backgroundColor: navy,
-  borderColor: 'transparent',
-  textStyle: {
-    color: '#eaf4fc',
-    fontFamily: fontMono,
-    fontSize: 12,
-  },
-  extraCssText: 'border-radius:10px;padding:10px 14px;box-shadow:none;',
-};
-
-export const chartTextStyle = {
-  fontFamily: fontSans,
-  fontSize: 11,
-  color: ink3,
-};
-
-// --- Accent budget: orange (stPending) MAX 3 uses ---
-// 1. Hero alert "Hồ sơ chờ duyệt"
-// 2. H-Bar "Chờ duyệt" segment
-// 3. Donut phê duyệt "Chờ duyệt" slice
+// Approval bar track
+export const approvalBarTrack = 'rgba(11,46,79,0.09)';

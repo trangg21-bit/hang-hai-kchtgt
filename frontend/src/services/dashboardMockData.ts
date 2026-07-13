@@ -19,14 +19,14 @@ import type {
 
 // --- Color tokens from tokens-dashboard.ts ---
 import {
-  sea0,
-  sea1,
-  sea2,
-  sea3,
-  stApproved,
-  stPending,
-  stRejected,
-  stDraft,
+  dataSea0,
+  dataSea1,
+  dataSea2,
+  dataSea3,
+  approvalApproved,
+  approvalPending,
+  approvalRejected,
+  statusDraft,
 } from '../tokens-dashboard';
 
 // ============================================================
@@ -99,10 +99,10 @@ const alertCard: AlertCardData = {
 const stackedBar: MonthlyCargoSeries = {
   months: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'],
   series: [
-    { name: 'Nội địa', data: [5800, 5200, 6100, 6300, 6500, 6700, 6800, 6650, 6400, 6900, 7100, 7300], color: sea0 },
-    { name: 'Xuất khẩu', data: [3400, 3000, 3600, 3800, 3900, 4000, 4100, 3950, 3800, 4200, 4300, 4500], color: sea1 },
-    { name: 'Nhập khẩu', data: [2300, 2100, 2500, 2600, 2700, 2800, 2850, 2780, 2650, 2900, 3000, 3100], color: sea2 },
-    { name: 'Chuyển tải', data: [1250, 1100, 1350, 1400, 1450, 1500, 1520, 1480, 1420, 1580, 1620, 1700], color: sea3 },
+    { name: 'Nội địa', data: [5800, 5200, 6100, 6300, 6500, 6700, 6800, 6650, 6400, 6900, 7100, 7300], color: dataSea0 },
+    { name: 'Xuất khẩu', data: [3400, 3000, 3600, 3800, 3900, 4000, 4100, 3950, 3800, 4200, 4300, 4500], color: dataSea1 },
+    { name: 'Nhập khẩu', data: [2300, 2100, 2500, 2600, 2700, 2800, 2850, 2780, 2650, 2900, 3000, 3100], color: dataSea2 },
+    { name: 'Chuyển tải', data: [1250, 1100, 1350, 1400, 1450, 1500, 1520, 1480, 1420, 1580, 1620, 1700], color: dataSea3 },
   ],
 };
 
@@ -120,10 +120,10 @@ const linePassenger: PassengerMonthlySeries = {
 // DONUT PHƯƠNG TIỆN — Cơ cấu lượt phương tiện
 // ============================================================
 const donutPhuongTien: DonutSegment[] = [
-  { value: 12850, name: 'Tàu biển (cỡ lớn)', color: sea0 },
-  { value: 9200, name: 'Tàu biển (cỡ nhỏ)', color: sea1 },
-  { value: 15630, name: 'PT thủy NĐ (hàng hóa)', color: sea2 },
-  { value: 12197, name: 'PT thủy NĐ (hành khách)', color: sea3 },
+  { value: 12850, name: 'Tàu biển (cỡ lớn)', color: dataSea0 },
+  { value: 9200, name: 'Tàu biển (cỡ nhỏ)', color: dataSea1 },
+  { value: 15630, name: 'PT thủy NĐ (hàng hóa)', color: dataSea2 },
+  { value: 12197, name: 'PT thủy NĐ (hành khách)', color: dataSea3 },
 ];
 
 // ============================================================
@@ -161,10 +161,10 @@ const hBarApproval: ApprovalByCategory[] = [
 // DONUT PHÊ DUYỆT — Trạng thái đề nghị phê duyệt
 // ============================================================
 const donutPheDuyet: DonutSegment[] = [
-  { value: 2140, name: 'Đã duyệt', color: stApproved },
-  { value: 892, name: 'Chờ duyệt', color: stPending },
-  { value: 426, name: 'Từ chối', color: stRejected },
-  { value: 718, name: 'Lưu tạm', color: stDraft },
+  { value: 2140, name: 'Đã duyệt', color: approvalApproved },
+  { value: 892, name: 'Chờ duyệt', color: approvalPending },
+  { value: 426, name: 'Từ chối', color: approvalRejected },
+  { value: 718, name: 'Lưu tạm', color: statusDraft },
 ];
 
 // ============================================================

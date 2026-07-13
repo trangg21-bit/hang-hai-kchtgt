@@ -2,12 +2,12 @@
 feature-id: M-022
 feature-name: Trang chủ Dashboard
 pipeline-type: sdlc
-status: in-progress
+status: done
 current-stage: engineering-business-analyst
 depends-on: []
 blocked-by: []
 created: 2026-07-09T00:00:00Z
-last-updated: 2026-07-10T09:13:00Z
+last-updated: 2026-07-12T02:31:47Z
 output-mode: lean
 repo-type: mini
 repo-path: .
@@ -18,11 +18,11 @@ completed-stages:
   engineering-business-analyst:
     verdict: Pass
     artifact: ba/00-lean-spec.md
-    completed-at: 2026-07-10
+    completed-at: 2026-07-12
   engineering-technical-lead:
     verdict: Pass
     artifact: tech-lead/04-plan.md
-    completed-at: 2026-07-10
+    completed-at: 2026-07-12
   engineering-implementor:
     verdict: Pass
     artifact: dev/05-fe-dev-w1-api-wiring.md
@@ -30,11 +30,19 @@ completed-stages:
   engineering-qa-engineer-wave-1:
     verdict: Pass
     artifact: qa/07-qa-report-w1.md
-    completed-at: 2026-07-10
+    completed-at: 2026-07-12
   engineering-code-review:
     verdict: Pass
     artifact: reviewer/08-review-report.md
     completed-at: 2026-07-10
+  engineering-frontend-developer-wave-1:
+    verdict: Pass
+    artifact: dev/05-fe-dev-w1-token-refactoring.md
+    completed-at: 2026-07-12
+  engineering-code-reviewer:
+    verdict: Pass
+    artifact: reviewer/08-review-report.md
+    completed-at: 2026-07-12
 stages-queue:
   - engineering-business-analyst
   - engineering-technical-lead
@@ -67,6 +75,7 @@ children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
 agent-flags: {}
+released: true
 ---
 # Pipeline State: Trang chủ Dashboard (M-022)
 
@@ -99,3 +108,8 @@ none
 | engineering-implementor | engineering-implementor | Pass | dev/05-fe-dev-w1-api-wiring.md | 2026-07-10 |
 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | Pass | qa/07-qa-report-w1.md | 2026-07-10 |
 | engineering-code-review | engineering-code-review | Pass | reviewer/08-review-report.md | 2026-07-10 |
+| engineering-business-analyst | engineering-business-analyst | Pass | ba/00-lean-spec.md | 2026-07-12 |
+| engineering-technical-lead | engineering-technical-lead | Pass | tech-lead/04-plan.md | 2026-07-12 |
+| engineering-frontend-developer-wave-1 | engineering-frontend-developer-wave-1 | Pass | dev/05-fe-dev-w1-token-refactoring.md | 2026-07-12 |
+| engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | Pass | qa/07-qa-report-w1.md | 2026-07-12 |
+| engineering-code-reviewer | engineering-code-reviewer | Pass | reviewer/08-review-report.md | 2026-07-12 |

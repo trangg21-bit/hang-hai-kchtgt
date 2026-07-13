@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { radiusMd } from '../tokens-dashboard';
 
 export default function DashboardMap() {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -43,5 +44,5 @@ export default function DashboardMap() {
     };
   }, [loaded]);
 
-  return <div ref={mapRef} style={{ width: '100%', height: '100%', borderRadius: 8 }} />;
+  return <div ref={mapRef} style={{ width: '100%', height: '100%', borderRadius: radiusMd }} />;
 }

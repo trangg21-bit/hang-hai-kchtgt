@@ -15,7 +15,7 @@ import {
   fontWeightMedium,
   textSecondary,
   cardStyle,
-} from '../tokens';
+} from '../tokens-dashboard';
 
 // ============================================================
 // Types

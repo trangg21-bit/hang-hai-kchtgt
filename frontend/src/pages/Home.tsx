@@ -7,14 +7,21 @@ import DashboardMap from '../components/DashboardMap';
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
 import {
-  bg, bgTint, surface,
-  navy, sea0, sea1, sea2, sea3, teal,
-  stApproved, stPending, stRejected, stDraft,
-  ink, ink2, ink3,
-  line, rCard, rSm, rPill,
-  shadowMd, shadowLg,
-  fontSans, fontMono,
+  surfaceCard as surface,
+  textPrimary, textSecondary, textTertiary as ink3,
+  borderDefault as line,
+  radiusXl, radiusSm, radiusPill,
+  shadowMd,
+  fontMono,
+  fontSizeSm, fontSizeMd, fontSizeHeading, fontSizeDisplay,
   chartGrid, chartTooltip, chartTextStyle,
+  dataNavy, dataSea0, dataSea1, dataSea2, dataSea3,
+  statusOperational, statusCritical,
+  cargoSeriesColors,
+  approvalApproved, approvalPending, approvalRejected,
+  approvalBarTrack,
+  pendingActiveBg, pendingActiveColor,
+  pendingZeroBg, pendingZeroColor,
 } from '../tokens-dashboard';
 import { dashboardApi, MOCK_DATA } from '../services/dashboardApi';
 import type { DashboardData } from '../services/dashboardTypes';
@@ -22,12 +29,22 @@ import type { DashboardData } from '../services/dashboardTypes';
 // ============================================================
 // Shared style tokens
 // ============================================================
+const ink = textPrimary;
+const ink2 = textSecondary;
+const rCard = radiusXl;
+const rSm = radiusSm;
+const sea0 = dataSea0;
+const sea1 = dataSea1;
+const sea2 = dataSea2;
+const sea3 = dataSea3;
+const navy = dataNavy;
+
 const CHART_TITLE_STYLE: React.CSSProperties = {
-  color: '#12468C',
-  fontSize: 14,
+  color: textPrimary,
+  fontSize: fontSizeMd,
   fontWeight: 500,
   margin: 0,
-  marginBottom: 8,
+  marginBottom: 6,
 };
 
 const CARD_BASE: React.CSSProperties = {
@@ -40,9 +57,7 @@ const CARD_BASE: React.CSSProperties = {
 
 // ============================================================
 // 6-series monthly cargo data (01-07 data, 08-12 null)
-// Colors: matching spec exactly
 // ============================================================
-const CARGO_SERIES_COLORS = ['#0f3a63', '#1e5e97', '#3f8fcf', '#6fb0e0', '#a3cfec', '#cbe2f4'];
 
 const CARGO_MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
 
@@ -50,32 +65,32 @@ const CARGO_SERIES = [
   {
     name: 'Nội địa',
     data: [6500, 6100, 7000, 7200, 7400, 7600, 7700, null, null, null, null, null],
-    color: CARGO_SERIES_COLORS[0],
+    color: cargoSeriesColors[0],
   },
   {
     name: 'Nhập khẩu',
     data: [3100, 2900, 3400, 3500, 3600, 3700, 3750, null, null, null, null, null],
-    color: CARGO_SERIES_COLORS[1],
+    color: cargoSeriesColors[1],
   },
   {
     name: 'Xuất khẩu',
     data: [3800, 3500, 4100, 4300, 4400, 4500, 4600, null, null, null, null, null],
-    color: CARGO_SERIES_COLORS[2],
+    color: cargoSeriesColors[2],
   },
   {
     name: 'Chuyển tải',
     data: [1800, 1600, 1900, 1950, 2000, 2050, 2100, null, null, null, null, null],
-    color: CARGO_SERIES_COLORS[3],
+    color: cargoSeriesColors[3],
   },
   {
     name: 'Quá cảnh (bốc dỡ)',
     data: [1200, 1050, 1300, 1350, 1400, 1450, 1480, null, null, null, null, null],
-    color: CARGO_SERIES_COLORS[4],
+    color: cargoSeriesColors[4],
   },
   {
     name: 'Quá cảnh (K bốc dỡ)',
     data: [950, 820, 1000, 1050, 1080, 1120, 1150, null, null, null, null, null],
-    color: CARGO_SERIES_COLORS[5],
+    color: cargoSeriesColors[5],
   },
 ];
 
@@ -115,7 +130,7 @@ function pillBadge(count: number, activeColor: string, activeBg: string, zeroBg:
           display: 'inline-block',
           borderRadius: rPill,
           padding: '1px 8px',
-          fontSize: 11,
+          fontSize: fontSizeSm,
           background: zeroBg,
           color: ink3,
           fontWeight: 500,
@@ -131,7 +146,7 @@ function pillBadge(count: number, activeColor: string, activeBg: string, zeroBg:
         display: 'inline-block',
         borderRadius: rPill,
         padding: '1px 8px',
-        fontSize: 11,
+        fontSize: fontSizeSm,
         background: activeBg,
         color: activeColor,
         fontWeight: 500,
@@ -164,7 +179,7 @@ const infraColumns = [
     width: 70,
     align: 'center' as const,
     render: (v: number) =>
-      pillBadge(v, sea0, `${sea0}18`, bg),
+      pillBadge(v, sea0, `${sea0}18`, surface),
   },
   {
     title: <span><span style={{display:'inline-block',width:6,height:6,borderRadius:3,background:sea0,marginRight:4}} />Đang</span>,
@@ -173,7 +188,7 @@ const infraColumns = [
     width: 70,
     align: 'center' as const,
     render: (v: number) =>
-      pillBadge(v, surface, sea0, bg),
+      pillBadge(v, surface, sea0, surface),
   },
   {
     title: <span><span style={{display:'inline-block',width:6,height:6,borderRadius:3,background:sea2,marginRight:4}} />Dừng</span>,
@@ -182,7 +197,7 @@ const infraColumns = [
     width: 70,
     align: 'center' as const,
     render: (v: number) =>
-      pillBadge(v, sea0, sea3, bg),
+      pillBadge(v, sea0, sea3, surface),
   },
   {
     title: '',
@@ -208,10 +223,10 @@ function ApprovalCard({ label, stats }: ApprovalCardProps) {
 
   return (
     <div style={CARD_BASE}>
-      <div style={{ fontSize: 12, color: ink2, marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 26, fontFamily: fontMono, color: ink, fontWeight: 600, lineHeight: 1.2 }}>
+      <div style={{ fontSize: fontSizeSm, color: ink2, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: fontSizeDisplay, fontFamily: fontMono, color: ink, fontWeight: 600, lineHeight: 1.2 }}>
         {stats.total.toLocaleString('vi-VN')}{' '}
-        <span style={{ fontSize: 13, fontWeight: 400, color: ink2 }}>đã xử lý</span>
+        <span style={{ fontSize: fontSizeMd, fontWeight: 400, color: ink2 }}>đã xử lý</span>
       </div>
 
       {/* Status bar */}
@@ -219,25 +234,25 @@ function ApprovalCard({ label, stats }: ApprovalCardProps) {
         style={{
           height: 8,
           borderRadius: 4,
-          background: line,
+          background: approvalBarTrack,
           display: 'flex',
           overflow: 'hidden',
-          marginTop: 10,
+          marginTop: 16,
         }}
       >
         {approvedPct > 0 && (
-          <div style={{ width: `${approvedPct}%`, background: sea0, transition: 'width 0.4s' }} />
+          <div style={{ width: `${approvedPct}%`, background: approvalApproved, transition: 'width 0.4s' }} />
         )}
         {pendingPct > 0 && (
-          <div style={{ width: `${pendingPct}%`, background: sea2, transition: 'width 0.4s' }} />
+          <div style={{ width: `${pendingPct}%`, background: approvalPending, transition: 'width 0.4s' }} />
         )}
         {rejectedPct > 0 && (
-          <div style={{ width: `${rejectedPct}%`, background: sea3, transition: 'width 0.4s' }} />
+          <div style={{ width: `${rejectedPct}%`, background: approvalRejected, transition: 'width 0.4s' }} />
         )}
       </div>
 
       {/* Legend */}
-      <div style={{ display: 'flex', gap: 12, marginTop: 6, fontSize: 10.5, color: ink2 }}>
+      <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: fontSizeSm, color: ink2 }}>
         {stats.approved > 0 && (
           <span>
             <span
@@ -246,7 +261,7 @@ function ApprovalCard({ label, stats }: ApprovalCardProps) {
                 width: 8,
                 height: 8,
                 borderRadius: 2,
-                background: sea0,
+                background: approvalApproved,
                 marginRight: 4,
                 verticalAlign: 'middle',
               }}
@@ -262,7 +277,7 @@ function ApprovalCard({ label, stats }: ApprovalCardProps) {
                 width: 8,
                 height: 8,
                 borderRadius: 2,
-                background: sea3,
+                background: approvalRejected,
                 marginRight: 4,
                 verticalAlign: 'middle',
               }}
@@ -273,17 +288,17 @@ function ApprovalCard({ label, stats }: ApprovalCardProps) {
       </div>
 
       {/* Pending pill */}
-      <div style={{ marginTop: 8 }}>
+      <div style={{ marginTop: 6 }}>
         {stats.pending === 0 ? (
           <span
             style={{
               display: 'inline-block',
               borderRadius: rPill,
               padding: '2px 10px',
-              fontSize: 11,
+              fontSize: fontSizeSm,
               fontWeight: 500,
-              background: sea3,
-              color: sea1,
+              background: pendingZeroBg,
+              color: pendingZeroColor,
             }}
           >
             ✓ {stats.pending} chờ
@@ -294,10 +309,10 @@ function ApprovalCard({ label, stats }: ApprovalCardProps) {
               display: 'inline-block',
               borderRadius: rPill,
               padding: '2px 10px',
-              fontSize: 11,
+              fontSize: fontSizeSm,
               fontWeight: 500,
-              background: '#FFF3E0',
-              color: stPending,
+              background: pendingActiveBg,
+              color: pendingActiveColor,
             }}
           >
             ⏳ {stats.pending} chờ
@@ -320,27 +335,27 @@ function HeroCard({ heroKpi, year }: { heroKpi: any; year: number }) {
         ...CARD_BASE,
         background: `linear-gradient(135deg, ${navy}, ${sea0})`,
         border: 'none',
-        color: '#eaf4fc',
+        color: '#eaf4fc', /* one-off: light text on dark gradient */
       }}
     >
-      <div style={{ fontSize: 11, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+      <div style={{ fontSize: fontSizeSm, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
         SẢN LƯỢNG CHỦ ĐẠO · {year}
       </div>
-      <div style={{ fontSize: 28, fontFamily: fontMono, fontWeight: 700, lineHeight: 1.1 }}>
+      <div style={{ fontSize: fontSizeDisplay, fontFamily: fontMono, fontWeight: 600, lineHeight: 1.1 }}>
         {heroKpi.value.toLocaleString('vi-VN')}
       </div>
-      <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>{heroKpi.unit}</div>
-      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div style={{ fontSize: fontSizeMd, opacity: 0.7, marginTop: 2 }}>{heroKpi.unit}</div>
+      <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
         <span
           style={{
-            fontSize: 13,
+            fontSize: fontSizeMd,
             fontWeight: 600,
-            color: isUp ? '#6EE7B7' : '#FCA5A5',
+            color: isUp ? statusOperational : statusCritical,
           }}
         >
           {isUp ? '▲' : '▼'} {heroKpi.deltaPercent}%
         </span>
-        <span style={{ fontSize: 11, opacity: 0.6 }}>so với {heroKpi.previousYearValue.toLocaleString('vi-VN')}</span>
+        <span style={{ fontSize: fontSizeSm, opacity: 0.6 }}>so với {heroKpi.previousYearValue.toLocaleString('vi-VN')}</span>
       </div>
       {/* Sparkline */}
       <div style={{ marginTop: 10, height: 36 }}>
@@ -355,14 +370,14 @@ function HeroCard({ heroKpi, year }: { heroKpi: any; year: number }) {
                 data: heroKpi.sparklineData,
                 smooth: true,
                 symbol: 'none',
-                lineStyle: { color: '#7dd3fc', width: 1.5 },
+                lineStyle: { color: dataSea3, width: 1.5 },
                 areaStyle: {
                   color: {
                     type: 'linear',
                     x: 0, y: 0, x2: 0, y2: 1,
                     colorStops: [
-                      { offset: 0, color: 'rgba(125,211,252,0.35)' },
-                      { offset: 1, color: 'rgba(125,211,252,0.02)' },
+                      { offset: 0, color: `${dataSea3}59` },
+                      { offset: 1, color: `${dataSea3}05` },
                     ],
                   },
                 },
@@ -386,12 +401,12 @@ function MiniKpiCard({ card }: { card: any }) {
 
   return (
     <div style={CARD_BASE}>
-      <div style={{ fontSize: 12, color: ink2, marginBottom: 4 }}>{card.label}</div>
-      <div style={{ fontSize: 22, fontFamily: fontMono, color: ink, fontWeight: 600, lineHeight: 1.2 }}>
+      <div style={{ fontSize: fontSizeMd, color: ink2, marginBottom: 4 }}>{card.label}</div>
+      <div style={{ fontSize: fontSizeHeading, fontFamily: fontMono, color: ink, fontWeight: 600, lineHeight: 1.2 }}>
         {card.value}
       </div>
       {card.deltaPercent !== undefined && (
-        <div style={{ marginTop: 4, fontSize: 12, color: isUp ? stApproved : isDown ? stRejected : ink2 }}>
+        <div style={{ marginTop: 4, fontSize: fontSizeMd, color: isUp ? statusOperational : isDown ? statusCritical : textSecondary }}>
           {isUp ? '▲' : isDown ? '▼' : '→'} {Math.abs(card.deltaPercent)}%
         </div>
       )}
@@ -408,16 +423,16 @@ function MiniKpiCard({ card }: { card: any }) {
                   data: card.sparklineData,
                   smooth: true,
                   symbol: 'none',
-                  lineStyle: { color: sea1, width: 1.5 },
-                  itemStyle: { color: sea1 },
+                  lineStyle: { color: dataSea1, width: 1.5 },
+                  itemStyle: { color: dataSea1 },
                   areaStyle: card.sparklineType !== 'bar'
                     ? {
                         color: {
                           type: 'linear',
                           x: 0, y: 0, x2: 0, y2: 1,
                           colorStops: [
-                            { offset: 0, color: 'rgba(39,105,179,0.2)' },
-                            { offset: 1, color: 'rgba(39,105,179,0.02)' },
+                            { offset: 0, color: `${dataSea1}33` },
+                            { offset: 1, color: `${dataSea1}05` },
                           ],
                         },
                       }
@@ -468,13 +483,13 @@ function HomeDashboard() {
       formatter: (params: any) => {
         if (!Array.isArray(params)) return '';
         let total = 0;
-        let html = `<div style="font-weight:600;margin-bottom:4px">Tháng ${params[0].axisValue}</div>`;
+        let html = `<div style=\"font-weight:600;margin-bottom:4px\">Tháng ${params[0].axisValue}</div>`;
         params.forEach((p: any) => {
           const v = p.value ?? 0;
           total += v;
-          html += `<div style="display:flex;justify-content:space-between;gap:12px"><span>${p.marker} ${p.seriesName}</span><span style="font-weight:600">${v.toLocaleString('vi-VN')}</span></div>`;
+          html += `<div style=\"display:flex;justify-content:space-between;gap:12px\"><span>${p.marker} ${p.seriesName}</span><span style=\"font-weight:600\">${v.toLocaleString('vi-VN')}</span></div>`;
         });
-        html += `<div style="border-top:1px solid rgba(255,255,255,0.2);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between"><span>Tổng</span><span style="font-weight:700">${total.toLocaleString('vi-VN')}</span></div>`;
+        html += `<div style=\"border-top:1px solid rgba(255,255,255,0.2);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between\"><span>Tổng</span><span style=\"font-weight:700\">${total.toLocaleString('vi-VN')}</span></div>`;
         return html;
       },
     },
@@ -483,7 +498,7 @@ function HomeDashboard() {
       icon: 'roundRect',
       itemWidth: 10,
       itemHeight: 10,
-      textStyle: { ...chartTextStyle, fontSize: 11 },
+      textStyle: { ...chartTextStyle, fontSize: fontSizeSm },
     },
     grid: { ...chartGrid, bottom: 40 },
     xAxis: {
@@ -510,7 +525,7 @@ function HomeDashboard() {
       data: s.data,
       itemStyle: {
         color: s.color,
-        borderRadius: idx === CARGO_SERIES.length - 1 ? [6, 6, 0, 0] : 0,
+        borderRadius: idx === CARGO_SERIES.length - 1 ? [radiusSm, radiusSm, 0, 0] : 0,
       },
     })),
   };
@@ -529,7 +544,7 @@ function HomeDashboard() {
       icon: 'roundRect',
       itemWidth: 10,
       itemHeight: 10,
-      textStyle: { ...chartTextStyle, fontSize: 11 },
+      textStyle: { ...chartTextStyle, fontSize: fontSizeSm },
     },
     polar: {
       radius: ['18%', '78%'],
@@ -562,12 +577,12 @@ function HomeDashboard() {
             type: 'linear',
             x: 0, y: 0, x2: 1, y2: 0,
             colorStops: [
-              { offset: 0, color: '#123a63' },
-              { offset: 1, color: '#2769b3' },
+              { offset: 0, color: dataSea0 },
+              { offset: 1, color: dataSea1 },
             ],
           },
         },
-        emphasis: { itemStyle: { color: '#2769b3' } },
+        emphasis: { itemStyle: { color: dataSea1 } },
       },
       {
         type: 'bar',
@@ -576,17 +591,17 @@ function HomeDashboard() {
         stack: 'a',
         data: passengerMonthly?.departure || [],
         itemStyle: {
-          borderRadius: [6, 6, 0, 0],
+          borderRadius: [radiusSm, radiusSm, 0, 0],
           color: {
             type: 'linear',
             x: 0, y: 0, x2: 1, y2: 0,
             colorStops: [
-              { offset: 0, color: '#4f9bd8' },
-              { offset: 1, color: '#79b6e6' },
+              { offset: 0, color: dataSea2 },
+              { offset: 1, color: dataSea2 },
             ],
           },
         },
-        emphasis: { itemStyle: { color: '#79b6e6' } },
+        emphasis: { itemStyle: { color: dataSea2 } },
       },
     ],
   };
@@ -606,7 +621,7 @@ function HomeDashboard() {
       icon: 'roundRect',
       itemWidth: 10,
       itemHeight: 10,
-      textStyle: { ...chartTextStyle, fontSize: 11 },
+      textStyle: { ...chartTextStyle, fontSize: fontSizeSm },
     },
     grid: { ...chartGrid, left: 100, bottom: 40 },
     xAxis: {
@@ -627,7 +642,7 @@ function HomeDashboard() {
         name: 'Đã duyệt',
         stack: 'total',
         data: [...(hBarData || [])].reverse().map((d) => d.approved),
-        itemStyle: { color: stApproved },
+        itemStyle: { color: approvalApproved },
         barWidth: 20,
       },
       {
@@ -635,14 +650,14 @@ function HomeDashboard() {
         name: 'Chờ duyệt',
         stack: 'total',
         data: [...(hBarData || [])].reverse().map((d) => d.pending),
-        itemStyle: { color: stPending },
+        itemStyle: { color: approvalPending },
       },
       {
         type: 'bar',
         name: 'Từ chối',
         stack: 'total',
         data: [...(hBarData || [])].reverse().map((d) => d.rejected),
-        itemStyle: { color: stRejected, borderRadius: [0, 6, 6, 0] },
+        itemStyle: { color: approvalRejected, borderRadius: [0, radiusSm, radiusSm, 0] },
       },
     ],
   };
@@ -662,7 +677,7 @@ function HomeDashboard() {
       icon: 'roundRect',
       itemWidth: 10,
       itemHeight: 10,
-      textStyle: { ...chartTextStyle, fontSize: 11 },
+      textStyle: { ...chartTextStyle, fontSize: fontSizeSm },
     },
     series: [
       {
@@ -671,13 +686,13 @@ function HomeDashboard() {
         center: ['50%', '45%'],
         avoidLabelOverlap: false,
         itemStyle: {
-          borderRadius: 6,
+          borderRadius: radiusSm,
           borderColor: surface,
           borderWidth: 2,
         },
         label: { show: false },
         emphasis: {
-          label: { show: true, fontSize: 14, fontWeight: 'bold' },
+          label: { show: true, fontSize: fontSizeLg, fontWeight: 'bold' },
         },
         data: donutData.map((d) => ({
           value: d.value,
@@ -701,8 +716,8 @@ function HomeDashboard() {
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 12,
-          marginBottom: 12,
+          gap: 16,
+          marginBottom: 16,
         }}
       >
         {/* KPI Card 1: Lượt tàu */}
@@ -725,7 +740,7 @@ function HomeDashboard() {
       </div>
 
       {/* Row 1 — Cargo chart + Polar passenger */}
-      <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} md={16}>
           <div style={{ ...CARD_BASE, height: '100%' }}>
             <h4 style={CHART_TITLE_STYLE}>Hàng hóa thông qua cảng theo tháng</h4>
@@ -741,7 +756,7 @@ function HomeDashboard() {
       </Row>
 
       {/* Row 2 — Map + Table */}
-      <Row gutter={[12, 12]} style={{ marginBottom: 12, alignItems: 'stretch' }}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 16, alignItems: 'stretch' }}>
         <Col xs={24} md={12}>
           <div style={{ ...CARD_BASE, height: '100%' }}>
             <h4 style={CHART_TITLE_STYLE}>Bản đồ tra cứu Kết cấu hạ tầng</h4>

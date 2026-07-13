@@ -3,11 +3,13 @@ import {
   actionPrimary,
   statusOperational,
   statusCritical,
+  statusAttention,
   textPrimary,
   textSecondary,
   surfaceCard,
   borderDefault,
   radiusLg,
+  shadowSm,
   spaceXs,
   spaceSm,
   spaceMd,
@@ -15,7 +17,7 @@ import {
   fontSizeStat,
   fontWeightMedium,
   fontWeightBold,
-} from '../tokens';
+} from '../tokens-dashboard';
 
 // ============================================================
 // Types
@@ -44,11 +46,11 @@ export default function KpiCard({ label, value, subLabel, trend, variant = 'defa
   const isWarning = variant === 'warning';
 
   const cardStyle: React.CSSProperties = {
-    background: isWarning ? '#FFF8E1' : surfaceCard,
+    background: isWarning ? `${statusAttention}18` : surfaceCard,
     border: isAction
       ? `0.5px solid ${actionPrimary}`
       : isWarning
-        ? '0.5px solid #FFD54F'
+        ? `0.5px solid ${statusAttention}`
         : `0.5px solid ${borderDefault}`,
     borderRadius: radiusLg,
     padding: spaceMd,
@@ -56,14 +58,14 @@ export default function KpiCard({ label, value, subLabel, trend, variant = 'defa
     transition: 'box-shadow 0.2s ease',
   };
 
-  const valueColor = isWarning ? '#F57F17' : isAction ? actionPrimary : textPrimary;
+  const valueColor = isWarning ? statusAttention : isAction ? actionPrimary : textPrimary;
 
   return (
     <div
       style={cardStyle}
       onClick={onClick}
       onMouseEnter={(e) => {
-        if (isAction) (e.currentTarget as HTMLDivElement).style.boxShadow = `0 2px 8px ${actionPrimary}33`;
+        if (isAction) (e.currentTarget as HTMLDivElement).style.boxShadow = shadowSm;
       }}
       onMouseLeave={(e) => {
         if (isAction) (e.currentTarget as HTMLDivElement).style.boxShadow = '';

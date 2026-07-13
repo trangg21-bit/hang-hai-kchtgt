@@ -276,12 +276,12 @@
     },
     "docs/modules/M-022-trang-chu-dashboard/qa/07-qa-report-w1.md": {
       "content_hash": "sha256:e4514fa6c3b4562afe879f6a209c944b9642852dc25e90fe517aad71f4d71ff5",
-      "last_modified": "2026-07-10T09:05:20Z",
+      "last_modified": "2026-07-12T02:29:46Z",
       "last_producer": "ai-kit/state-update(auto-lock-qa)",
       "locked_fields": [
         "content_hash"
       ],
-      "version": 1
+      "version": 2
     },
     "feature-catalog.json": {
       "content_hash": "sha256:c43f373f413835fdd1318e4533bdd6e1cf51d5fd939b0feccefd92caa699948f",
