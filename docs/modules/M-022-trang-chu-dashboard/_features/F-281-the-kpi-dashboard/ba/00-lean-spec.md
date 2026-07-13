@@ -2,7 +2,7 @@
 feature-id: F-281
 document: lean-spec
 output-mode: retrospective
-last-updated: 2026-07-10
+last-updated: 2026-07-13
 ---
 
 # Lean Spec — Thẻ KPI Dashboard (F-281)
@@ -59,7 +59,9 @@ interface KpiCardProps {
 | `warning` | #FFF8E1 (light yellow) | 0.5px #FFD54F | #F57F17 (amber) | default | none |
 | `action` | `surfaceCard` (#FFFFFF) | 0.5px `actionPrimary` (#1B84FF) | `actionPrimary` (#1B84FF) | pointer | box-shadow glow on enter |
 
-**Discrepancy with feature-brief.md:** The brief specifies card #5 with "nền vàng nhạt" (yellow bg) which maps to `variant="warning"`, but the code uses `variant="action"` (blue border, white bg). The implemented behavior takes precedence in this retrospective spec.
+**BA Decision (2026-07-13):** The `action` variant (blue) is the CORRECT implementation. Card #5 uses `variant="action"` with blue border and blue value color. The feature brief's mention of yellow background is obsolete — update the brief, not the code.
+
+**Discrepancy with feature-brief.md:** Resolved by BA decision (2026-07-13). The `action` variant (blue) is confirmed as correct. The feature brief's specification of yellow background for card #5 is obsolete and should be updated.
 
 ## 6. Trend Display
 
@@ -79,7 +81,7 @@ interface KpiCardProps {
 | **Error** | Message + Retry button (brief AC #10) | ❌ Not implemented — no error state in component |
 | **Edge: negative trend** | `isUp: false` → red down-arrow | ✅ Handled |
 
-**Note:** Loading/empty/error states are described in the feature brief's acceptance criteria but have **zero implementation** in the current `KpiCard.tsx`. These are gaps for future waves.
+**Note:** Loading/empty/error states are described in the feature brief's acceptance criteria but have **zero implementation** in the current `KpiCard.tsx`. These are gaps for future waves. Deferred to Phase 2 — KPI cards render with mock data; state machine will be added when API integration reaches KPI cards.
 
 ## 8. Token Compliance
 
@@ -131,7 +133,7 @@ Examples: 28450 → "28.450", 112480 → "112.480", 8.9 → "8,9%"
 
 ## 12. Key Gaps (for Backlog)
 
-1. **Warning variant unused** — `variant="warning"` is defined in code (`KpiCard.tsx:63-65`) but never instantiated in `Home.tsx`. The dashboard only uses `default` and `action` variants.
+1. **Warning variant unused** — ✅ RESOLVED — action variant is correct per BA decision. Warning variant is intentionally unused (no yellow cards on dashboard).
 2. **Loading/empty/error states missing** — Three of the 10 AC items from the feature brief have zero implementation.
 3. **Mock data only** — All 5 cards use hardcoded values; no API/backend binding exists.
 4. **No FilterContext dependency** — KPI cards are siblings of FilterBar but do not consume filter state.

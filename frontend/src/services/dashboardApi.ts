@@ -188,12 +188,14 @@ async function fetchYearOverYear(
   const currentRes = await api.get<ApiResponse<Page<CargoAggregate>>>(
     `${INTEGRATION_BASE}/cargo/summary?periodType=${periodType}&page=0&size=200`
   );
+  if (!currentRes.data.success) throw new Error(currentRes.data.message || 'API returned unsuccessful response');
   const currentData = currentRes.data.data.content.filter((c) =>
     c.periodStart.startsWith(String(year))
   );
   const previousRes = await api.get<ApiResponse<Page<CargoAggregate>>>(
     `${INTEGRATION_BASE}/cargo/summary?periodType=${periodType}&page=0&size=200`
   );
+  if (!previousRes.data.success) throw new Error(previousRes.data.message || 'API returned unsuccessful response');
   const previousData = previousRes.data.data.content.filter((c) =>
     c.periodStart.startsWith(String(year - 1))
   );
@@ -446,6 +448,7 @@ async function fetchAll(
     cargoManagedArea,
     assetStatus,
     approvals,
+    yearOverYear,
   ] = await Promise.allSettled([
     fetchCargoTotal(year),
     fetchCargoMonthly(year),
@@ -455,6 +458,7 @@ async function fetchAll(
     fetchCargoManagedArea(year),
     fetchAssetStatus(),
     fetchApprovals(0, 500),
+    fetchYearOverYear(year, 'ANNUAL'),
   ]);
 
   const data: Partial<DashboardData> = {};
@@ -462,7 +466,16 @@ async function fetchAll(
   // Hero KPI + KPI Card 1 (from cargoTotal or cargoAnnual)
   if (cargoTotal.status === 'fulfilled') {
     const transformResult = transformCargoTotals(cargoTotal.value, year);
-    data.heroKpi = transformResult.heroKpi;
+    if (yearOverYear.status === 'fulfilled') {
+      data.heroKpi = {
+        ...transformResult.heroKpi,
+        deltaPercent: yearOverYear.value.deltaPercent,
+        deltaDirection: yearOverYear.value.deltaDirection === 'flat' ? 'up' : yearOverYear.value.deltaDirection,
+        previousYearValue: yearOverYear.value.previousValue,
+      };
+    } else {
+      data.heroKpi = transformResult.heroKpi;
+    }
     states.heroKpi = { state: 'data', isMockFallback: false };
   } else {
     data.heroKpi = MOCK_DATA.heroKpi;

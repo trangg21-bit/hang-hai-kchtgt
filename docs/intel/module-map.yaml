@@ -108,7 +108,7 @@ modules:
     name: Trang chủ Dashboard
     path: docs/modules/M-022-trang-chu-dashboard
     slug: trang-chu-dashboard
-    status: proposed
+    status: done
   M-999:
     name: Test
     path: docs/modules/M-999-test-write

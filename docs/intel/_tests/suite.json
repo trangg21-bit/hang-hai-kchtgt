@@ -1,9 +1,810 @@
 {
   "created_at": "2026-06-29T09:08:09.022Z",
-  "description": "Test suite for M-003 — LuongHangHai features (F-038→F-043) removed.",
-  "feature_groups": [],
+  "description": "E2E smoke + functional test suite for M-022 Dashboard. Verifies FilterBar, 6-card stats row, cargo/passenger charts, map/table section, approval cards, and ErrorBoundary. Uses Playwright with admin/admin123 auth against localhost:3001.",
+  "feature_groups": [
+    {
+      "description": "Trang chủ Dashboard hiển thị tổng quan chỉ số KCHTGT hàng hải qua FilterBar, 6 thẻ KPI, biểu đồ xu hướng, approval cards, bản đồ và bảng chi tiết.",
+      "name": "M-022 Trang chủ Dashboard",
+      "sections": [
+        {
+          "name": "Dashboard Initial Load",
+          "test_cases": [
+            {
+              "expected": [
+                {
+                  "expected": "Login page loads with Đăng nhập button visible",
+                  "no": 1
+                },
+                {
+                  "expected": "Username and password fields accept input",
+                  "no": 2
+                },
+                {
+                  "expected": "Form submits successfully",
+                  "no": 3
+                },
+                {
+                  "expected": "Redirected to / — dashboard home page",
+                  "no": 4
+                },
+                {
+                  "expected": "No error overlay or blank screen. Dashboard content visible",
+                  "no": 5
+                }
+              ],
+              "feature_id": "F-281",
+              "labels": [
+                "smoke",
+                "dashboard",
+                "login"
+              ],
+              "name": "Dashboard page renders without crash after login",
+              "origin": "agent",
+              "preconditions": "Frontend dev server running on port 3001. Backend running on port 8080. Auth state empty.",
+              "priority": "Critical",
+              "steps": [
+                {
+                  "action": "Navigate to /login",
+                  "data": "baseURL=http://localhost:3001",
+                  "no": 1
+                },
+                {
+                  "action": "Fill login credentials: admin / admin123",
+                  "data": "Tài khoản: admin, Mật khẩu: admin123",
+                  "no": 2
+                },
+                {
+                  "action": "Click Đăng nhập button",
+                  "data": "getByRole button name Đăng nhập",
+                  "no": 3
+                },
+                {
+                  "action": "Wait for redirect to dashboard (/)",
+                  "data": "URL should not contain /login",
+                  "no": 4
+                },
+                {
+                  "action": "Verify no React error overlay visible",
+                  "data": "Check for .react-error-overlay or blank white screen",
+                  "no": 5
+                }
+              ],
+              "tc_id": "TC-M022-001",
+              "technique": "exploratory",
+              "test_type": "smoke"
+            },
+            {
+              "expected": [
+                {
+                  "expected": "ErrorBoundary class defined with componentDidCatch",
+                  "no": 1
+                },
+                {
+                  "expected": "Dashboard renders successfully",
+                  "no": 2
+                },
+                {
+                  "expected": "All dashboard sections render within ErrorBoundary",
+                  "no": 3
+                },
+                {
+                  "expected": "No uncaught errors in console. No ReferenceError from Vite re-export bug.",
+                  "no": 4
+                }
+              ],
+              "feature_id": "F-281",
+              "labels": [
+                "smoke",
+                "error-boundary",
+                "vite"
+              ],
+              "name": "ErrorBoundary catches rendering errors gracefully",
+              "origin": "agent",
+              "preconditions": "Source code has ErrorBoundary at main.tsx:15. Vite re-export bug (AGENTS.md) fixed in tokens-dashboard.ts.",
+              "priority": "Critical",
+              "steps": [
+                {
+                  "action": "Verify ErrorBoundary component exists in main.tsx",
+                  "data": "Check frontend/src/main.tsx for class ErrorBoundary",
+                  "no": 1
+                },
+                {
+                  "action": "Navigate to dashboard (logged in)",
+                  "data": "URL /",
+                  "no": 2
+                },
+                {
+                  "action": "Verify dashboard renders inside ErrorBoundary wrapper",
+                  "data": "No uncaught React errors in console",
+                  "no": 3
+                },
+                {
+                  "action": "Check browser console for uncaught errors",
+                  "data": "No ReferenceError, TypeError, or unhandled rejections",
+                  "no": 4
+                }
+              ],
+              "tc_id": "TC-M022-002",
+              "technique": "error-guessing",
+              "test_type": "smoke"
+            }
+          ]
+        },
+        {
+          "name": "KPI Cards & Stats Row",
+          "test_cases": [
+            {
+              "expected": [
+                {
+                  "expected": "Dashboard loads without error",
+                  "no": 1
+                },
+                {
+                  "expected": "Grid container renders with gap:16px",
+                  "no": 2
+                },
+                {
+                  "expected": "Exactly 6 cards visible in the first content row below FilterBar",
+                  "no": 3
+                },
+                {
+                  "expected": "3 KPI labels visible (Lượt tàu, Hành khách, KCHT), 2 approval labels (Phê duyệt tài sản, Phê duyệt KCHT), 1 Hero (SẢN LƯỢNG CHỦ ĐẠO)",
+                  "no": 4
+                }
+              ],
+              "feature_id": "F-281",
+              "labels": [
+                "smoke",
+                "kpi",
+                "cards"
+              ],
+              "name": "All 6 stats cards render in the grid row",
+              "origin": "agent",
+              "preconditions": "Logged in as admin. Dashboard mocked data loads successfully.",
+              "priority": "Critical",
+              "steps": [
+                {
+                  "action": "Navigate to dashboard (/) after login",
+                  "data": "",
+                  "no": 1
+                },
+                {
+                  "action": "Verify stats grid container exists",
+                  "data": "CSS grid with repeat(auto-fit, minmax(200px, 1fr))",
+                  "no": 2
+                },
+                {
+                  "action": "Count visible cards in the stats row",
+                  "data": "6 cards expected",
+                  "no": 3
+                },
+                {
+                  "action": "Verify card types present: MiniKpiCard x3, ApprovalCard x2, HeroCard x1",
+                  "data": "Check for KPI labels and approval labels",
+                  "no": 4
+                }
+              ],
+              "tc_id": "TC-M022-003",
+              "technique": "exploratory",
+              "test_type": "smoke"
+            },
+            {
+              "expected": [
+                {
+                  "expected": "Dashboard loads",
+                  "no": 1
+                },
+                {
+                  "expected": "Label 'Lượt tàu' displayed in secondary color",
+                  "no": 2
+                },
+                {
+                  "expected": "Large font-size value (fontSizeHeading) with mono font",
+                  "no": 3
+                },
+                {
+                  "expected": "Delta shows ▲ for up (green #1BAF7A) or ▼ for down (red #E34948)",
+                  "no": 4
+                },
+                {
+                  "expected": "Each MiniKpiCard has a small ECharts sparkline (28px height)",
+                  "no": 5
+                }
+              ],
+              "feature_id": "F-281",
+              "labels": [
+                "kpi",
+                "mini-card",
+                "sparkline"
+              ],
+              "name": "MiniKpiCard displays correct KPI data",
+              "origin": "agent",
+              "preconditions": "Logged in. MOCK_DATA or API returns valid kpiCards array.",
+              "priority": "Major",
+              "steps": [
+                {
+                  "action": "Navigate to dashboard (/)",
+                  "data": "",
+                  "no": 1
+                },
+                {
+                  "action": "Verify first MiniKpiCard label",
+                  "data": "Text: Lượt tàu",
+                  "no": 2
+                },
+                {
+                  "action": "Verify large KPI value visible",
+                  "data": "Numeric value with font-mono formatting",
+                  "no": 3
+                },
+                {
+                  "action": "Verify delta percentage with arrow indicator",
+                  "data": "▲ or ▼ symbol with percentage",
+                  "no": 4
+                },
+                {
+                  "action": "Verify sparkline chart renders in each MiniKpiCard",
+                  "data": "ECharts line/bar sparkline",
+                  "no": 5
+                }
+              ],
+              "tc_id": "TC-M022-004",
+              "technique": "exploratory",
+              "test_type": "functional"
+            },
+            {
+              "expected": [
+                {
+                  "expected": "Dashboard loads",
+                  "no": 1
+                },
+                {
+                  "expected": "'SẢN LƯỢNG CHỦ ĐẠO · 2026' text visible, uppercase, light color on dark gradient",
+                  "no": 2
+                },
+                {
+                  "expected": "Large number e.g. 112.480 displayed with toLocaleString formatting",
+                  "no": 3
+                },
+                {
+                  "expected": "Delta shows ▲13.9% in green (statusOperational) with comparison text",
+                  "no": 4
+                },
+                {
+                  "expected": "Sparkline renders with dataSea3 line on navy-to-sea gradient background",
+                  "no": 5
+                }
+              ],
+              "feature_id": "F-281",
+              "labels": [
+                "kpi",
+                "hero-card",
+                "sparkline"
+              ],
+              "name": "HeroCard renders with correct structure",
+              "origin": "agent",
+              "preconditions": "Logged in. heroKpi data available in dashboardData.",
+              "priority": "Major",
+              "steps": [
+                {
+                  "action": "Navigate to dashboard",
+                  "data": "",
+                  "no": 1
+                },
+                {
+                  "action": "Verify HeroCard text 'SẢN LƯỢNG CHỦ ĐẠO · {year}'",
+                  "data": "Uppercase label with year",
+                  "no": 2
+                },
+                {
+                  "action": "Verify large KPI number displayed",
+                  "data": "fontSizeDisplay, fontMono, fontWeight 600",
+                  "no": 3
+                },
+                {
+                  "action": "Verify delta percentage visible",
+                  "data": "▲ or ▼ with %",
+                  "no": 4
+                },
+                {
+                  "action": "Verify sparkline renders on dark gradient background",
+                  "data": "ECharts line chart with dataSea3 color",
+                  "no": 5
+                }
+              ],
+              "tc_id": "TC-M022-005",
+              "technique": "exploratory",
+              "test_type": "functional"
+            },
+            {
+              "expected": [
+                {
+                  "expected": "Dashboard loads",
+                  "no": 1
+                },
+                {
+                  "expected": "Card shows 'Phê duyệt tài sản' label, total count, status bar",
+                  "no": 2
+                },
+                {
+                  "expected": "Card shows 'Phê duyệt KCHT' label, total count, status bar",
+                  "no": 3
+                },
+                {
+                  "expected": "8px height status bar with approvalApproved/approvalPending/approvalRejected segments",
+                  "no": 4
+                },
+                {
+                  "expected": "Legend shows Đã duyệt count and Từ chối count with colored square indicators",
+                  "no": 5
+                },
+                {
+                  "expected": "Pending pill shows ⏳ N chờ (active) or ✓ 0 chờ (zero state)",
+                  "no": 6
+                }
+              ],
+              "feature_id": "F-283",
+              "labels": [
+                "approval",
+                "progress-bar",
+                "pending"
+              ],
+              "name": "ApprovalCards render with progress bars and legends",
+              "origin": "agent",
+              "preconditions": "Logged in. assetStats and kchtStats populated from API or defaults.",
+              "priority": "Major",
+              "steps": [
+                {
+                  "action": "Navigate to dashboard",
+                  "data": "",
+                  "no": 1
+                },
+                {
+                  "action": "Verify 'Phê duyệt tài sản' card visible",
+                  "data": "ApprovalCard with label",
+                  "no": 2
+                },
+                {
+                  "action": "Verify 'Phê duyệt KCHT' card visible",
+                  "data": "ApprovalCard with label",
+                  "no": 3
+                },
+                {
+                  "action": "Verify status bar renders with 3 color segments",
+                  "data": "approvalApproved, approvalPending, approvalRejected colors",
+                  "no": 4
+                },
+                {
+                  "action": "Verify legend with Đã duyệt / Từ chối counts",
+                  "data": "Colored dots + numbers",
+                  "no": 5
+                },
+                {
+                  "action": "Verify pending pill visible",
+                  "data": "⏳ or ✓ with pending count",
+                  "no": 6
+                }
+              ],
+              "tc_id": "TC-M022-006",
+              "technique": "exploratory",
+              "test_type": "functional"
+            }
+          ]
+        },
+        {
+          "name": "Charts — Cargo & Passenger",
+          "test_cases": [
+            {
+              "expected": [
+                {
+                  "expected": "Dashboard loads",
+                  "no": 1
+                },
+                {
+                  "expected": "h4 title 'Hàng hóa thông qua cảng theo tháng' visible in chart card",
+                  "no": 2
+                },
+                {
+                  "expected": "ECharts stacked bar chart renders with 12 months on x-axis",
+                  "no": 3
+                },
+                {
+                  "expected": "6 legend items with correct naming",
+                  "no": 4
+                },
+                {
+                  "expected": "Bar segments use correct cargoSeriesColors. No hardcoded hex colors. Top segment has borderRadius.",
+                  "no": 5
+                }
+              ],
+              "feature_id": "F-282",
+              "labels": [
+                "chart",
+                "cargo",
+                "stacked-bar",
+                "echarts"
+              ],
+              "name": "Stacked bar chart 'Hàng hóa thông qua cảng theo tháng' renders",
+              "origin": "agent",
+              "preconditions": "Logged in. CARGO_SERIES (6 series, 01-07 data, 08-12 null) used in cargoOption.",
+              "priority": "Major",
+              "steps": [
+                {
+                  "action": "Navigate to dashboard",
+                  "data": "",
+                  "no": 1
+                },
+                {
+                  "action": "Verify chart title visible",
+                  "data": "Text: Hàng hóa thông qua cảng theo tháng",
+                  "no": 2
+                },
+                {
+                  "action": "Verify ECharts canvas renders",
+                  "data": "ReactECharts component in cargo card",
+                  "no": 3
+                },
+                {
+                  "action": "Verify 6 series legend visible",
+                  "data": "Nội địa, Nhập khẩu, Xuất khẩu, Chuyển tải, Quá cảnh (bốc dỡ), Quá cảnh (K bốc dỡ)",
+                  "no": 4
+                },
+                {
+                  "action": "Verify chart uses cargoSeriesColors (6 colors from tokens-dashboard)",
+                  "data": "Colors: cargoSeriesColors[0]=#2A78D6 through [5]",
+                  "no": 5
+                }
+              ],
+              "tc_id": "TC-M022-007",
+              "technique": "exploratory",
+              "test_type": "functional"
+            },
+            {
+              "expected": [
+                {
+                  "expected": "Dashboard loads",
+                  "no": 1
+                },
+                {
+                  "expected": "h4 title 'Lượt hành khách qua cảng' visible",
+                  "no": 2
+                },
+                {
+                  "expected": "ECharts polar bar chart renders with T1-T12 angle axis",
+                  "no": 3
+                },
+                {
+                  "expected": "Two stacked bars per month: Đến cảng (dataSea0→dataSea1 gradient) and Rời cảng (dataSea2)",
+                  "no": 4
+                },
+                {
+                  "expected": "Polar chart has correct radius range and starts at 90° (top)",
+                  "no": 5
+                }
+              ],
+              "feature_id": "F-282",
+              "labels": [
+                "chart",
+                "passenger",
+                "polar",
+                "echarts"
+              ],
+              "name": "Polar passenger chart 'Lượt hành khách qua cảng' renders",
+              "origin": "agent",
+              "preconditions": "Logged in. passengerMonthly data (arrival/departure arrays) available.",
+              "priority": "Major",
+              "steps": [
+                {
+                  "action": "Navigate to dashboard",
+                  "data": "",
+                  "no": 1
+                },
+                {
+                  "action": "Verify chart title visible",
+                  "data": "Text: Lượt hành khách qua cảng",
+                  "no": 2
+                },
+                {
+                  "action": "Verify ECharts polar bar renders",
+                  "data": "ReactECharts with polar coordinate system",
+                  "no": 3
+                },
+                {
+                  "action": "Verify 2 series: Đến cảng and Rời cảng",
+                  "data": "Polar stacked bar with 12 months",
+                  "no": 4
+                },
+                {
+                  "action": "Verify polar radius 18%-78% and startAngle 90",
+                  "data": "Chart appears as radial/polar layout",
+                  "no": 5
+                }
+              ],
+              "tc_id": "TC-M022-008",
+              "technique": "exploratory",
+              "test_type": "functional"
+            }
+          ]
+        },
+        {
+          "name": "Map & Table Section",
+          "test_cases": [
+            {
+              "expected": [
+                {
+                  "expected": "Dashboard loads",
+                  "no": 1
+                },
+                {
+                  "expected": "h4 title 'Bản đồ tra cứu Kết cấu hạ tầng' visible",
+                  "no": 2
+                },
+                {
+                  "expected": "Map container visible with 380px height and rounded corners (radiusSm)",
+                  "no": 3
+                },
+                {
+                  "expected": "No map-related console errors. DashboardMap component renders successfully.",
+                  "no": 4
+                }
+              ],
+              "feature_id": "F-284",
+              "labels": [
+                "map",
+                "dashboard-map"
+              ],
+              "name": "Map section 'Bản đồ tra cứu Kết cấu hạ tầng' renders",
+              "origin": "agent",
+              "preconditions": "Logged in. DashboardMap component imported and functional.",
+              "priority": "Normal",
+              "steps": [
+                {
+                  "action": "Navigate to dashboard",
+                  "data": "",
+                  "no": 1
+                },
+                {
+                  "action": "Verify map card title visible",
+                  "data": "Text: Bản đồ tra cứu Kết cấu hạ tầng",
+                  "no": 2
+                },
+                {
+                  "action": "Verify DashboardMap component renders",
+                  "data": "DashboardMap inside 380px height container",
+                  "no": 3
+                },
+                {
+                  "action": "Verify map has no console errors",
+                  "data": "No failed tile loads or JS errors",
+                  "no": 4
+                }
+              ],
+              "tc_id": "TC-M022-009",
+              "technique": "exploratory",
+              "test_type": "smoke"
+            },
+            {
+              "expected": [
+                {
+                  "expected": "Dashboard loads",
+                  "no": 1
+                },
+                {
+                  "expected": "h4 title 'Bảng chi tiết thông số kỹ thuật Kết cấu hạ tầng' visible",
+                  "no": 2
+                },
+                {
+                  "expected": "Table with 6 columns: Loại KCHT, Tổng SL, Chưa, Đang, Dừng, action (eye icon)",
+                  "no": 3
+                },
+                {
+                  "expected": "10 infrastructure type rows: Bến cảng, Bến phao, Cầu cảng, Khu neo đậu, Khu chuyển tải, Luồng hàng hải, Đèn biển, Phao tiêu, Đê chắn sóng, Kè bảo vệ bờ",
+                  "no": 4
+                },
+                {
+                  "expected": "Status columns show pill badges: zero count=gray pill, non-zero=colored pill",
+                  "no": 5
+                }
+              ],
+              "feature_id": "F-284",
+              "labels": [
+                "table",
+                "infrastructure",
+                "pill-badge"
+              ],
+              "name": "Infrastructure table renders 10 rows with pill badges",
+              "origin": "agent",
+              "preconditions": "Logged in. INFRA_DATA array with 10 rows available.",
+              "priority": "Normal",
+              "steps": [
+                {
+                  "action": "Navigate to dashboard",
+                  "data": "",
+                  "no": 1
+                },
+                {
+                  "action": "Verify table title visible",
+                  "data": "Text: Bảng chi tiết thông số kỹ thuật Kết cấu hạ tầng",
+                  "no": 2
+                },
+                {
+                  "action": "Verify Ant Design Table renders",
+                  "data": "Table component with columns: Loại KCHT, Tổng SL, Chưa, Đang, Dừng",
+                  "no": 3
+                },
+                {
+                  "action": "Count data rows",
+                  "data": "10 rows expected (Bến cảng through Kè bảo vệ bờ)",
+                  "no": 4
+                },
+                {
+                  "action": "Verify pill badge rendering for status columns",
+                  "data": "pillBadge with activeBg/zeroBg styling",
+                  "no": 5
+                }
+              ],
+              "tc_id": "TC-M022-010",
+              "technique": "equivalence",
+              "test_type": "functional"
+            }
+          ]
+        },
+        {
+          "name": "FilterBar Functionality",
+          "test_cases": [
+            {
+              "expected": [
+                {
+                  "expected": "Dashboard loads",
+                  "no": 1
+                },
+                {
+                  "expected": "FilterBar renders as full-width horizontal bar below header",
+                  "no": 2
+                },
+                {
+                  "expected": "Year dropdown visible, defaults to 2026",
+                  "no": 3
+                },
+                {
+                  "expected": "Province dropdown visible, defaults to 'Tất cả'",
+                  "no": 4
+                },
+                {
+                  "expected": "Infrastructure type dropdown visible, defaults to 'Tất cả'",
+                  "no": 5
+                },
+                {
+                  "expected": "'Cập nhật lúc ...' timestamp label visible",
+                  "no": 6
+                }
+              ],
+              "feature_id": "F-280",
+              "labels": [
+                "filter",
+                "filterbar",
+                "dropdown"
+              ],
+              "name": "FilterBar renders with 3 dropdowns + timestamp",
+              "origin": "agent",
+              "preconditions": "Logged in. FilterProvider wraps HomeDashboard.",
+              "priority": "Major",
+              "steps": [
+                {
+                  "action": "Navigate to dashboard",
+                  "data": "",
+                  "no": 1
+                },
+                {
+                  "action": "Verify FilterBar component visible",
+                  "data": "FilterBar component below header",
+                  "no": 2
+                },
+                {
+                  "action": "Verify Năm dropdown present",
+                  "data": "Dropdown with default year (2026)",
+                  "no": 3
+                },
+                {
+                  "action": "Verify Tỉnh/TP dropdown present",
+                  "data": "Dropdown with 'Tất cả' default",
+                  "no": 4
+                },
+                {
+                  "action": "Verify Loại KCHT dropdown present",
+                  "data": "Dropdown with 'Tất cả' default",
+                  "no": 5
+                },
+                {
+                  "action": "Verify timestamp label visible",
+                  "data": "Text: Cập nhật lúc {timestamp}",
+                  "no": 6
+                }
+              ],
+              "tc_id": "TC-M022-011",
+              "technique": "equivalence",
+              "test_type": "functional"
+            },
+            {
+              "expected": [
+                {
+                  "expected": "Dashboard loads with default year data",
+                  "no": 1
+                },
+                {
+                  "expected": "Initial KPI values visible",
+                  "no": 2
+                },
+                {
+                  "expected": "Year dropdown value changes",
+                  "no": 3
+                },
+                {
+                  "expected": "fetchWithFallback called with new year param",
+                  "no": 4
+                },
+                {
+                  "expected": "Dashboard re-renders with data for selected year (or mock fallback if API unavailable). No crash or blank state.",
+                  "no": 5
+                }
+              ],
+              "feature_id": "F-280",
+              "labels": [
+                "filter",
+                "year",
+                "refresh"
+              ],
+              "name": "FilterBar year change triggers data refresh",
+              "origin": "agent",
+              "preconditions": "Logged in. useEffect dependency on year triggers refetch.",
+              "priority": "Major",
+              "steps": [
+                {
+                  "action": "Navigate to dashboard",
+                  "data": "",
+                  "no": 1
+                },
+                {
+                  "action": "Note current KPI values visible",
+                  "data": "Record heroKpi value and KPI card values",
+                  "no": 2
+                },
+                {
+                  "action": "Change year dropdown to different year",
+                  "data": "Select a different year value from dropdown",
+                  "no": 3
+                },
+                {
+                  "action": "Wait for data refresh",
+                  "data": "useEffect triggers on year change",
+                  "no": 4
+                },
+                {
+                  "action": "Verify dashboard data updated",
+                  "data": "KPI values may change or remain same (mock fallback)",
+                  "no": 5
+                }
+              ],
+              "tc_id": "TC-M022-012",
+              "technique": "state-transition",
+              "test_type": "functional"
+            }
+          ]
+        }
+      ]
+    }
+  ],
   "id": "suite",
   "schema_version": "1.0",
-  "title": "M-003 Quản lý Tài sản KCHT Test Suite",
-  "updated_at": "2026-06-29T09:19:29.027Z"
+  "sources": [
+    "docs/modules/M-022-trang-chu-dashboard/ba/00-lean-spec.md",
+    "docs/modules/M-022-trang-chu-dashboard/_features/F-280-thanh-bo-loc-dashboard/feature-brief.md",
+    "docs/modules/M-022-trang-chu-dashboard/_features/F-281-the-kpi-dashboard/feature-brief.md",
+    "docs/modules/M-022-trang-chu-dashboard/_features/F-282-bieu-do-xu-huong-dashboard/feature-brief.md",
+    "docs/modules/M-022-trang-chu-dashboard/_features/F-283-phe-duyet-tinh-trang-khai-thac/feature-brief.md",
+    "docs/modules/M-022-trang-chu-dashboard/_features/F-284-ban-do-bang-chi-tiet-dashboard/feature-brief.md",
+    "frontend/src/pages/Home.tsx"
+  ],
+  "title": "M-022 Trang chủ Dashboard Test Suite",
+  "updated_at": "2026-07-13T03:33:04.052Z"
 }

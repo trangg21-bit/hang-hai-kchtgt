@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Row, Col, Table, Tag, Select, Input, Button } from 'antd';
-import { EnvironmentOutlined, EyeOutlined, SearchOutlined } from '@ant-design/icons';
+import { Row, Col, Table, Tag } from 'antd';
+import { EyeOutlined } from '@ant-design/icons';
 import { FilterProvider, useFilter } from '../context/FilterContext';
-import { VIETNAM_PROVINCES } from '../types/common';
 import FilterBar from '../components/FilterBar';
 import DashboardMap from '../components/DashboardMap';
 import ReactECharts from 'echarts-for-react';
@@ -25,8 +23,9 @@ import {
   pendingActiveBg, pendingActiveColor,
   pendingZeroBg, pendingZeroColor,
 } from '../tokens-dashboard';
-import { dashboardApi, MOCK_DATA } from '../services/dashboardApi';
-import type { DashboardData } from '../services/dashboardTypes';
+import { dashboardApi } from '../services/dashboardApi';
+import { MOCK_DATA } from '../services/dashboardMockData';
+import type { DashboardData, BlockState } from '../services/dashboardTypes';
 
 // ============================================================
 // Shared style tokens
@@ -37,8 +36,6 @@ const rCard = radiusXl;
 const rSm = radiusSm;
 const rPill = radiusPill;
 const sea0 = dataSea0;
-const sea1 = dataSea1;
-const sea2 = dataSea2;
 const sea3 = dataSea3;
 const navy = dataNavy;
 
@@ -164,9 +161,9 @@ function pillBadge(count: number, activeColor: string, activeBg: string, zeroBg:
 // Infrastructure table columns
 // ============================================================
 const infraColumns = [
-  { title: 'Loại KCHT', dataIndex: 'loai', key: 'loai', width: 150 },
+  { title: '', dataIndex: 'loai', key: 'loai', width: 150 },
   {
-    title: 'Tổng SL',
+    title: 'Tổng số lượng',
     dataIndex: 'tongSL',
     key: 'tongSL',
     width: 80,
@@ -176,7 +173,7 @@ const infraColumns = [
     ),
   },
   {
-    title: <span><span style={{display:'inline-block',width:6,height:6,borderRadius:3,background:sea3,marginRight:4}} />Chưa</span>,
+    title: <span>Chưa khai thác/<br/>vận hành</span>,
     dataIndex: 'chuaKhaiThac',
     key: 'chuaKhaiThac',
     width: 70,
@@ -185,7 +182,7 @@ const infraColumns = [
       pillBadge(v, sea0, `${sea0}18`, surface),
   },
   {
-    title: <span><span style={{display:'inline-block',width:6,height:6,borderRadius:3,background:sea0,marginRight:4}} />Đang</span>,
+    title: <span>Đang khai thác/<br/>vận hành</span>,
     dataIndex: 'dangKhaiThac',
     key: 'dangKhaiThac',
     width: 70,
@@ -194,7 +191,7 @@ const infraColumns = [
       pillBadge(v, surface, sea0, surface),
   },
   {
-    title: <span><span style={{display:'inline-block',width:6,height:6,borderRadius:3,background:sea2,marginRight:4}} />Dừng</span>,
+    title: <span>Dừng khai thác/<br/>vận hành</span>,
     dataIndex: 'dungKhaiThac',
     key: 'dungKhaiThac',
     width: 70,
@@ -457,29 +454,17 @@ function MiniKpiCard({ card }: { card: any }) {
 // ============================================================
 function HomeDashboard() {
   const { year } = useFilter();
-  const navigate = useNavigate();
 
   const [dashboardData, setDashboardData] = useState<DashboardData>(MOCK_DATA);
+  const [blockStates, setBlockStates] = useState<Record<string, BlockState>>({});
   const [assetStats, setAssetStats] = useState({ total: 466, approved: 448, pending: 0, rejected: 18 });
   const [kchtStats, setKchtStats] = useState({ total: 4176, approved: 4149, pending: 0, rejected: 27 });
-
-  const [selectedProvince, setSelectedProvince] = useState<string | undefined>();
-  const [selectedKchtType, setSelectedKchtType] = useState<string[]>([]);
-  const [searchKeyword, setSearchKeyword] = useState<string>('');
-
-  const handleMapSearch = () => {
-    const params = new URLSearchParams();
-    if (selectedProvince) params.set('province', selectedProvince);
-    if (selectedKchtType && selectedKchtType.length > 0) params.set('kchtType', selectedKchtType.join(','));
-    if (searchKeyword) params.set('search', searchKeyword);
-    navigate(`/gis/map?${params.toString()}`);
-  };
 
   // Fetch dashboard data on mount & year change
   useEffect(() => {
     dashboardApi
       .fetchWithFallback({ year, province: null, infraType: null }, MOCK_DATA)
-      .then(({ data }) => setDashboardData(data))
+      .then(({ data, states }) => { setDashboardData(data); setBlockStates(states || {}); })
       .catch(() => setDashboardData(MOCK_DATA));
 
     dashboardApi.fetchAssetApprovalStats().then((s) => setAssetStats(s));
@@ -759,13 +744,17 @@ function HomeDashboard() {
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} md={16}>
           <div style={{ ...CARD_BASE, height: '100%' }}>
-            <h4 style={CHART_TITLE_STYLE}>Hàng hóa thông qua cảng theo tháng</h4>
+            <h4 style={CHART_TITLE_STYLE}>Hàng hóa thông qua cảng theo tháng
+              {blockStates.stackedBar?.isMockFallback && <Tag color="orange" style={{ marginLeft: 8, fontSize: 11 }}>Dữ liệu mẫu</Tag>}
+            </h4>
             <ReactECharts option={cargoOption} style={{ height: 320 }} notMerge />
           </div>
         </Col>
         <Col xs={24} md={8}>
           <div style={{ ...CARD_BASE, height: '100%' }}>
-            <h4 style={CHART_TITLE_STYLE}>Lượt hành khách qua cảng</h4>
+            <h4 style={CHART_TITLE_STYLE}>Lượt hành khách qua cảng
+              {blockStates.linePassenger?.isMockFallback && <Tag color="orange" style={{ marginLeft: 8, fontSize: 11 }}>Dữ liệu mẫu</Tag>}
+            </h4>
             <ReactECharts option={polarOption} style={{ height: 320 }} notMerge />
           </div>
         </Col>
@@ -776,76 +765,6 @@ function HomeDashboard() {
         <Col xs={24} md={12}>
           <div style={{ ...CARD_BASE, height: '100%' }}>
             <h4 style={CHART_TITLE_STYLE}>Bản đồ tra cứu Kết cấu hạ tầng</h4>
-            {/* Filter Bar placed right above the map */}
-            <div
-              style={{
-                background: '#ffffff',
-                borderRadius: radiusSm,
-                padding: '4px 0',
-                display: 'flex',
-                gap: 8,
-                alignItems: 'center',
-                marginBottom: 12,
-              }}
-            >
-              <Select
-                showSearch
-                placeholder="Địa điểm (Tỉnh/TP)"
-                style={{ width: '30%', minWidth: 140 }}
-                value={selectedProvince}
-                onChange={setSelectedProvince}
-                allowClear
-                filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                }
-                options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
-              />
-              <Select
-                mode="multiple"
-                placeholder="Loại kết cấu hạ tầng"
-                style={{ width: '35%', minWidth: 180 }}
-                value={selectedKchtType}
-                onChange={setSelectedKchtType}
-                allowClear
-                options={[
-                  { value: 'BENCANG', label: 'Bến cảng' },
-                  { value: 'BENPHAO', label: 'Bến phao' },
-                  { value: 'CANGBIEN', label: 'Cảng biển' },
-                  { value: 'CANGCAN', label: 'Cảng cạn' },
-                  { value: 'CAUCANG', label: 'Cầu cảng' },
-                  { value: 'COSO_SUACHUA', label: 'Cơ sở sửa chữa' },
-                  { value: 'DEKE', label: 'Đê kè' },
-                  { value: 'DENBIEN', label: 'Đèn biển' },
-                  { value: 'HE_THONG_VTS', label: 'Hệ thống VTS' },
-                  { value: 'KHUCHUYEN_TAI', label: 'Khu chuyển tải' },
-                  { value: 'KHUNEO_DAU', label: 'Khu neo đậu' },
-                  { value: 'KHUTRANH_TRU_BAO', label: 'Khu tránh trú bão' },
-                  { value: 'LUONGHANGHAI', label: 'Luồng hàng hải' },
-                  { value: 'PHAOTIEU', label: 'Phao tiêu' },
-                  { value: 'TRAM_RADAR', label: 'Trạm radar' },
-                  { value: 'VUNGNUOC', label: 'Vùng nước' },
-                ]}
-              />
-              <Input
-                placeholder="Kết cấu hạ tầng"
-                maxLength={255}
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                suffix={
-                  <span style={{ fontSize: '11px', color: '#999', userSelect: 'none' }}>
-                    {searchKeyword.length}/255
-                  </span>
-                }
-                style={{ flex: 1 }}
-                onPressEnter={handleMapSearch}
-              />
-              <Button
-                type="primary"
-                icon={<SearchOutlined />}
-                onClick={handleMapSearch}
-              />
-            </div>
-            {/* Map container below */}
             <div style={{ height: 380, borderRadius: rSm, overflow: 'hidden' }}>
               <DashboardMap />
             </div>
@@ -853,7 +772,9 @@ function HomeDashboard() {
         </Col>
         <Col xs={24} md={12}>
           <div style={{ ...CARD_BASE, height: '100%' }}>
-              <h4 style={CHART_TITLE_STYLE}>Bảng chi tiết thông số kỹ thuật Kết cấu hạ tầng</h4>
+              <h4 style={CHART_TITLE_STYLE}>Bảng chi tiết thông số kỹ thuật Kết cấu hạ tầng
+              {blockStates.infraTable?.isMockFallback && <Tag color="orange" style={{ marginLeft: 8, fontSize: 11 }}>Dữ liệu mẫu</Tag>}
+            </h4>
             <Table
               columns={infraColumns}
               dataSource={INFRA_DATA}
@@ -862,6 +783,27 @@ function HomeDashboard() {
               size="small"
               scroll={{ x: 480, y: 340 }}
             />
+          </div>
+        </Col>
+      </Row>
+      {/* Row 3 — Approval chart + Donut */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} md={12}>
+          <div style={{ ...CARD_BASE, height: '100%' }}>
+            <h4 style={CHART_TITLE_STYLE}>
+              Phê duyệt theo hạng mục
+              {blockStates.hBarApproval?.isMockFallback && <Tag color="orange" style={{ marginLeft: 8, fontSize: 11 }}>Dữ liệu mẫu</Tag>}
+            </h4>
+            <ReactECharts option={hBarOption} style={{ height: 320 }} notMerge />
+          </div>
+        </Col>
+        <Col xs={24} md={12}>
+          <div style={{ ...CARD_BASE, height: '100%' }}>
+            <h4 style={CHART_TITLE_STYLE}>
+              Trạng thái phê duyệt
+              {blockStates.donutPheDuyet?.isMockFallback && <Tag color="orange" style={{ marginLeft: 8, fontSize: 11 }}>Dữ liệu mẫu</Tag>}
+            </h4>
+            <ReactECharts option={donutOption} style={{ height: 320 }} notMerge />
           </div>
         </Col>
       </Row>
