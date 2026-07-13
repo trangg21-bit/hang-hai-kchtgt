@@ -131,7 +131,7 @@ class CauCangControllerTest {
     void findAll_returns200WithPagedList() throws Exception {
         UUID id = UUID.randomUUID();
         Page<CauCangResponse> page = new PageImpl<>(List.of(makeResponse(id)));
-        when(cauCangService.findAll(0, 20, null, null, null, null, null)).thenReturn(page);
+        when(cauCangService.findAll(0, 20, null, null, null, null, null, null)).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/cau-cang")
                         .param("page", "0")
@@ -140,7 +140,7 @@ class CauCangControllerTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.content[0].maCau").value("CAU-001"));
 
-        verify(cauCangService).findAll(0, 20, null, null, null, null, null);
+        verify(cauCangService).findAll(0, 20, null, null, null, null, null, null);
     }
 
     // ── GET /api/v1/cau-cang/{id} ────────────────────────────────────────

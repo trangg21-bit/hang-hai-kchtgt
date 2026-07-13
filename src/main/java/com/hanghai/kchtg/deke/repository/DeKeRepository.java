@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.deke.repository;
 
 import com.hanghai.kchtg.deke.entity.DeKe;
+import com.hanghai.kchtg.deke.entity.LoaiDe;
 import com.hanghai.kchtg.deke.entity.DeKeApprovalStatus;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.repository.*;
@@ -17,17 +18,17 @@ public interface DeKeRepository extends JpaRepository<DeKe, Long> {
 
     Page<DeKe> findByIsDeletedFalse(Pageable pageable);
 
-    List<DeKe> findByLoaiDeContainingAndIsDeletedFalse(String loaiDe);
+    List<DeKe> findByLoaiDeAndIsDeletedFalse(LoaiDe loaiDe);
 
     List<DeKe> findByViTriContainingAndIsDeletedFalse(String viTri);
 
     @Query("SELECT d FROM DeKe d WHERE " +
-            "(:keyword IS NULL OR LOWER(d.loaiDe) LIKE :keyword OR LOWER(d.viTri) LIKE :keyword) AND " +
+            "(:keyword IS NULL OR LOWER(d.viTri) LIKE :keyword) AND " +
             "(:loaiDe IS NULL OR d.loaiDe = :loaiDe) AND " +
             "(:tinhTrang IS NULL OR d.tinhTrang = :tinhTrang) AND " +
             "(:trangThaiPheDuyet IS NULL OR d.trangThaiPheDuyet = :trangThaiPheDuyet) AND " +
             "d.isDeleted = false")
     Page<DeKe> searchDocuments(
-            String keyword, String loaiDe, String tinhTrang, DeKeApprovalStatus trangThaiPheDuyet,
+            String keyword, LoaiDe loaiDe, String tinhTrang, DeKeApprovalStatus trangThaiPheDuyet,
             Pageable pageable);
 }

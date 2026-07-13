@@ -22,6 +22,7 @@ import type {
   UpdateDeKeRequest,
   PheDuyetRequest,
   ApprovalStatus,
+  LoaiDe,
 } from '../../types/deKe';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalActionBar from '../../components/shared/ApprovalActionBar';
@@ -267,7 +268,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
           <h2>Chi tiết Đê/Kè</h2>
           {record && (
             <Descriptions column={2} bordered size="small">
-              <Descriptions.Item label="Loại đê">{record.loaiDe}</Descriptions.Item>
+              <Descriptions.Item label="Loại đê">{LOAI_DE_MAP[record.loaiDe] || record.loaiDe}</Descriptions.Item>
               <Descriptions.Item label="Vị trí">{record.viTri}</Descriptions.Item>
               <Descriptions.Item label="Chiều dài (m)">
                 {record.chieuDai !== undefined ? record.chieuDai.toFixed(2) : '—'}

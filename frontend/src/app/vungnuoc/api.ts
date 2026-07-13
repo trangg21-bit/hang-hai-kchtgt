@@ -33,6 +33,7 @@ export const vungNuocApi = {
     if (params?.search) sp.set("search", params.search);
     if (params?.trangThaiHoatDong) sp.set("status", params.trangThaiHoatDong);
     if (params?.trangThaiPheDuyet) sp.set("approvalStatus", params.trangThaiPheDuyet);
+    if (params?.loaiVungNuoc) sp.set("loaiVungNuoc", params.loaiVungNuoc);
     const res = await api.get(`/v1/vung-nuoc?${sp}`);
     return parsePage<VungNuoc>(res);
   },

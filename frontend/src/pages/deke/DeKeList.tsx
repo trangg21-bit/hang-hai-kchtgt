@@ -23,7 +23,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import { dekeCRUD } from '../../services/deKeService';
-import type { DeKeResponse, ListParams } from '../../types/deKe';
+import type { DeKeResponse, ListParams, LoaiDe } from '../../types/deKe';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import DeKeForm from './DeKeForm';
@@ -55,7 +55,7 @@ export default function DeKeList() {
   const userPermissions = currentUser?.permissions || [];
 
   const [filterKeyword, setFilterKeyword] = useState('');
-  const [filterLoaiDe, setFilterLoaiDe] = useState<string | undefined>();
+  const [filterLoaiDe, setFilterLoaiDe] = useState<LoaiDe | undefined>();
   const [filterTinhTrang, setFilterTinhTrang] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);

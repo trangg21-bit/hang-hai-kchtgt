@@ -16,7 +16,7 @@ public class UpdateCauCangRequest {
     private UUID benCangId;
     private BigDecimal chieuDai;
     private BigDecimal taiTrong;
-    private String loaiCau;
+    private com.hanghai.kchtg.cangben.entity.LoaiCau loaiCau;
     private String congNangKhaiThac;
     private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
     private UUID bieuTuongId;

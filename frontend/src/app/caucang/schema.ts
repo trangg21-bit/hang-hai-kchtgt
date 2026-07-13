@@ -7,7 +7,7 @@ export const cauCangCreateSchema = z.object({
   benCangId: z.string().uuid('Bến cảng chủ không được để trống'),
   chieuDai: z.coerce.number().min(0, 'Chiều dài phải ≥ 0').optional().or(z.literal('')),
   taiTrong: z.coerce.number().min(0, 'Tải trọng phải ≥ 0').optional().or(z.literal('')),
-  loaiCau: z.string().max(100, 'Loại cầu tối đa 100 ký tự').optional().or(z.literal('')),
+  loaiCau: z.enum(['CONTAINER', 'TONG_HOP', 'HANH_KHACH', 'CHUYEN_DUNG_XANG_DAU', 'CHUYEN_DUNG_ROI_QUANG', 'KHAC']).optional().or(z.literal('')),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional().default('HIEN_HANH'),
   bieuTuongId: z.string().uuid().optional().or(z.literal('')),
 });
@@ -21,7 +21,7 @@ export const cauCangUpdateSchema = z.object({
   benCangId: z.string().uuid('ID bến cảng chủ không hợp lệ').optional(),
   chieuDai: z.coerce.number().min(0, 'Chiều dài phải ≥ 0').optional().or(z.literal('')),
   taiTrong: z.coerce.number().min(0, 'Tải trọng phải ≥ 0').optional().or(z.literal('')),
-  loaiCau: z.string().max(100, 'Loại cầu tối đa 100 ký tự').optional().or(z.literal('')),
+  loaiCau: z.enum(['CONTAINER', 'TONG_HOP', 'HANH_KHACH', 'CHUYEN_DUNG_XANG_DAU', 'CHUYEN_DUNG_ROI_QUANG', 'KHAC']).optional().or(z.literal('')),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
   bieuTuongId: z.string().uuid().optional().nullable(),
 });

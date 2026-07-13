@@ -17,7 +17,7 @@ import java.util.List;
 public class DeKeResponse {
 
     private Long id;
-    private String loaiDe;
+    private com.hanghai.kchtg.deke.entity.LoaiDe loaiDe;
     private String viTri;
     private Double chieuDai;
     private Double chieuRong;

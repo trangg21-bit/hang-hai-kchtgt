@@ -45,8 +45,9 @@ public class CauCang extends BaseEntity {
     @Column(name = "tai_trong", precision = 15, scale = 2)
     private BigDecimal taiTrong;
 
-    @Column(name = "loai_cau", length = 100)
-    private String loaiCau;
+    @Column(name = "loai_cau")
+    @Convert(converter = LoaiCauConverter.class)
+    private LoaiCau loaiCau;
 
     @Column(name = "trang_thai_hoat_dong")
     @Convert(converter = TrangThaiHoatDongConverter.class)

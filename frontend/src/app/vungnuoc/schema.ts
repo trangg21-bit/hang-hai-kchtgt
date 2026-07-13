@@ -17,7 +17,7 @@ export const vungNuocCreateSchema = z.object({
   dienTich: z.coerce.number().optional().nullable(),
   doSauMax: z.coerce.number().optional().nullable(),
   doSauTrungBinh: z.coerce.number().optional().nullable(),
-  loaiVungNuoc: z.string().max(100, 'Loại vùng nước tối đa 100 ký tự').optional().nullable(),
+  loaiVungNuoc: z.enum(['NEO_DAU', 'KIEM_DICH', 'DON_TRA_HOA_TIEU', 'QUAY_TRO_TAU', 'BEN_PHAO', 'CHUYEN_TAI', 'TRANH_BAO']).optional().nullable(),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional().default('HIEN_HANH'),
   bieuTuongId: z.string().uuid().optional().or(z.literal('')),
 });
@@ -37,7 +37,7 @@ export const vungNuocUpdateSchema = z.object({
   dienTich: z.coerce.number().optional().nullable(),
   doSauMax: z.coerce.number().optional().nullable(),
   doSauTrungBinh: z.coerce.number().optional().nullable(),
-  loaiVungNuoc: z.string().max(100, 'Loại vùng nước tối đa 100 ký tự').optional().nullable(),
+  loaiVungNuoc: z.enum(['NEO_DAU', 'KIEM_DICH', 'DON_TRA_HOA_TIEU', 'QUAY_TRO_TAU', 'BEN_PHAO', 'CHUYEN_TAI', 'TRANH_BAO']).optional().nullable(),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
   bieuTuongId: z.string().uuid().optional().nullable(),
 });

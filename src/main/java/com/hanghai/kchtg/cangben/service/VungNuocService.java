@@ -2,6 +2,7 @@ package com.hanghai.kchtg.cangben.service;
 
 import com.hanghai.kchtg.cangben.dto.vungnuoc.*;
 import com.hanghai.kchtg.cangben.entity.VungNuoc;
+import com.hanghai.kchtg.cangben.entity.LoaiVungNuoc;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
 import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import com.hanghai.kchtg.cangben.repository.VungNuocRepository;
@@ -63,17 +64,23 @@ public class VungNuocService {
 
     @Transactional(readOnly = true)
     public Page<VungNuocResponse> findAll(int page, int size, UUID orgUnitId, UUID cangBienId) {
-        return findAll(page, size, orgUnitId, cangBienId, null, null, null);
+        return findAll(page, size, orgUnitId, cangBienId, null, (LoaiVungNuoc) null, null, null);
     }
 
     @Transactional(readOnly = true)
     public Page<VungNuocResponse> findAll(int page, int size, UUID orgUnitId, UUID cangBienId,
                                          String search, String status, String approvalStatus) {
-        int pageSize = Math.min(Math.max(size, 1), 100);
+        return findAll(page, size, orgUnitId, cangBienId, search, (LoaiVungNuoc) null, status, approvalStatus);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<VungNuocResponse> findAll(int page, int size, UUID orgUnitId, UUID cangBienId,
+                                         String search, LoaiVungNuoc loaiVungNuoc, String status, String approvalStatus) {
+        int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
         TrangThaiHoatDong statusEnum = status != null ? TrangThaiHoatDong.fromString(status) : null;
         TrangThaiPheDuyet approvalEnum = approvalStatus != null ? TrangThaiPheDuyet.fromString(approvalStatus) : null;
-        return vungNuocRepository.searchVungNuoc(orgUnitId, cangBienId, search, statusEnum, approvalEnum, pageable)
+        return vungNuocRepository.searchVungNuoc(orgUnitId, cangBienId, search, loaiVungNuoc, statusEnum, approvalEnum, pageable)
                 .map(this::toResponse);
     }
 

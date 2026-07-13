@@ -2,6 +2,7 @@ package com.hanghai.kchtg.cangben.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.cangben.dto.vungnuoc.*;
+import com.hanghai.kchtg.cangben.entity.LoaiVungNuoc;
 import com.hanghai.kchtg.cangben.service.VungNuocApprovalService;
 import com.hanghai.kchtg.cangben.service.VungNuocService;
 import jakarta.validation.Valid;
@@ -62,12 +63,13 @@ public class VungNuocController {
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) UUID cangBienId,
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) LoaiVungNuoc loaiVungNuoc,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String approvalStatus) {
-        log.info("Listing VungNuoc: page={}, size={}, orgUnitId={}, cangBienId={}, search={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, cangBienId, search, status, approvalStatus);
+        log.info("Listing VungNuoc: page={}, size={}, orgUnitId={}, cangBienId={}, search={}, loaiVungNuoc={}, status={}, approvalStatus={}",
+                page, size, orgUnitId, cangBienId, search, loaiVungNuoc, status, approvalStatus);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách vùng nước thành công",
-                vungNuocService.findAll(page, size, orgUnitId, cangBienId, search, status, approvalStatus)));
+                vungNuocService.findAll(page, size, orgUnitId, cangBienId, search, loaiVungNuoc, status, approvalStatus)));
     }
 
     @GetMapping("/code/{maVungNuoc}")

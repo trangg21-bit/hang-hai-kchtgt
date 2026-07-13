@@ -68,7 +68,7 @@ class VungNuocServiceTest {
         testEntity.setDienTich(new BigDecimal("500.00"));
         testEntity.setDoSauMax(new BigDecimal("15.00"));
         testEntity.setDoSauTrungBinh(new BigDecimal("12.00"));
-        testEntity.setLoaiVungNuoc("CANG_BIEN");
+        testEntity.setLoaiVungNuoc(com.hanghai.kchtg.cangben.entity.LoaiVungNuoc.NEO_DAU);
         testEntity.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
         testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
     }
@@ -79,26 +79,26 @@ class VungNuocServiceTest {
     @DisplayName("INT-004: findAll(page,size,orgUnitId,cangBienId) → calls 2-filter repo overload")
     void findAll_withCangBienIdFilter_callsOverloadedRepo() {
         Page<VungNuoc> mockPage = new PageImpl<>(List.of(testEntity));
-        when(vungNuocRepository.searchVungNuoc(eq(orgUnitId), eq(cangBienId), isNull(), isNull(), isNull(), any(Pageable.class)))
+        when(vungNuocRepository.searchVungNuoc(eq(orgUnitId), eq(cangBienId), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(mockPage);
 
         Page<VungNuocResponse> result = service.findAll(0, 20, orgUnitId, cangBienId);
 
         assertEquals(1, result.getTotalElements());
-        verify(vungNuocRepository).searchVungNuoc(eq(orgUnitId), eq(cangBienId), isNull(), isNull(), isNull(), any(Pageable.class));
+        verify(vungNuocRepository).searchVungNuoc(eq(orgUnitId), eq(cangBienId), isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
     }
 
     @Test
     @DisplayName("INT-004: findAll(page,size,orgUnitId) → delegates to 4-arg with cangBienId=null")
     void findAll_withoutCangBienId_callsSingleFilter() {
         Page<VungNuoc> mockPage = new PageImpl<>(List.of());
-        when(vungNuocRepository.searchVungNuoc(eq(orgUnitId), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
+        when(vungNuocRepository.searchVungNuoc(eq(orgUnitId), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(mockPage);
 
         Page<VungNuocResponse> result = service.findAll(0, 20, orgUnitId);
 
         assertEquals(0, result.getTotalElements());
-        verify(vungNuocRepository).searchVungNuoc(eq(orgUnitId), isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
+        verify(vungNuocRepository).searchVungNuoc(eq(orgUnitId), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
     }
 
     // ── CREATE ────────────────────────────────────────────────────────────────

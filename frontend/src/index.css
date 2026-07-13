@@ -24,9 +24,37 @@ body {
 /* ---- GIS Map: Sidebar tabs fill height ---- */
 .gis-sidebar-tabs .ant-tabs-content-holder {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
 }
 .gis-sidebar-tabs .ant-tabs-content,
 .gis-sidebar-tabs .ant-tabs-tabpane {
   height: 100%;
+}
+
+/* Custom scrollbar for search results table body to make it darker, wider, and highly visible */
+.gis-sidebar-tabs .ant-table-virtual-holder::-webkit-scrollbar,
+.gis-sidebar-tabs .rc-virtual-list-holder::-webkit-scrollbar,
+.gis-sidebar-tabs .ant-table-body::-webkit-scrollbar {
+  width: 10px !important;
+  height: 10px !important;
+  display: block !important;
+}
+.gis-sidebar-tabs .ant-table-virtual-holder::-webkit-scrollbar-track,
+.gis-sidebar-tabs .rc-virtual-list-holder::-webkit-scrollbar-track,
+.gis-sidebar-tabs .ant-table-body::-webkit-scrollbar-track {
+  background: #f1f2f5 !important;
+  border-radius: 4px !important;
+}
+.gis-sidebar-tabs .ant-table-virtual-holder::-webkit-scrollbar-thumb,
+.gis-sidebar-tabs .rc-virtual-list-holder::-webkit-scrollbar-thumb,
+.gis-sidebar-tabs .ant-table-body::-webkit-scrollbar-thumb {
+  background: #777777 !important;
+  border: 1px solid #f1f2f5 !important;
+  border-radius: 6px !important;
+  transition: background 0.15s !important;
+}
+.gis-sidebar-tabs .ant-table-virtual-holder::-webkit-scrollbar-thumb:hover,
+.gis-sidebar-tabs .rc-virtual-list-holder::-webkit-scrollbar-thumb:hover,
+.gis-sidebar-tabs .ant-table-body::-webkit-scrollbar-thumb:hover {
+  background: #444444 !important;
 }

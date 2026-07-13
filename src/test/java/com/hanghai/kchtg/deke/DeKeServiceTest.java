@@ -44,7 +44,7 @@ class DeKeServiceTest {
         service = new DeKeService(repo, attachmentRepo, pheDuyetLichSuRepo);
         testEntity = DeKe.builder()
                 .id(1L)
-                .loaiDe("De ke son")
+                .loaiDe(LoaiDe.DE_DAT)
                 .viTri("Bac Giang")
                 .chieuDai(150.5)
                 .chieuRong(10.0)
@@ -59,7 +59,7 @@ class DeKeServiceTest {
                 .createdAt(LocalDateTime.of(2026, 6, 1, 10, 0))
                 .build();
         createReq = DeKeCreateRequest.builder()
-                .loaiDe("De ke tre")
+                .loaiDe(LoaiDe.DE_BETONG)
                 .viTri("Ha Noi")
                 .chieuDai(200.0)
                 .chieuRong(20.0)
@@ -75,7 +75,7 @@ class DeKeServiceTest {
         when(repo.save(any())).thenReturn(testEntity);
         DeKeResponse r = service.create(createReq, "testuser");
         assertThat(r).isNotNull();
-        assertThat(r.getLoaiDe()).isEqualTo("De ke son");
+        assertThat(r.getLoaiDe()).isEqualTo(LoaiDe.DE_DAT);
         assertThat(r.getTrangThaiPheDuyet()).isEqualTo(DeKeApprovalStatus.PROPOSED);
         verify(repo, times(1)).save(any());
     }
@@ -90,7 +90,7 @@ class DeKeServiceTest {
 
     @Test void getById_shouldReturnResponse() {
         when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
-        assertThat(service.getById(1L).getLoaiDe()).isEqualTo("De ke son");
+        assertThat(service.getById(1L).getLoaiDe()).isEqualTo(LoaiDe.DE_DAT);
     }
 
     @Test void getById_shouldThrowWhenNotFound() {
@@ -117,13 +117,13 @@ class DeKeServiceTest {
 
     @Test void update_shouldUpdateFields() {
         DeKeUpdateRequest ur = DeKeUpdateRequest.builder()
-                .loaiDe("Da cap nhat")
+                .loaiDe(LoaiDe.KE_DA)
                 .viTri("Da Nang")
                 .build();
         when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
         when(repo.save(any())).thenReturn(testEntity);
         DeKeResponse r = service.update(1L, ur, "testuser");
-        assertThat(r.getLoaiDe()).isEqualTo("Da cap nhat");
+        assertThat(r.getLoaiDe()).isEqualTo(LoaiDe.KE_DA);
         verify(repo, times(1)).save(any());
     }
 
@@ -305,10 +305,10 @@ class DeKeServiceTest {
 
     // ── searchByLoaiDeContaining ────────────────────────────────────────
 
-    @Test void searchByLoaiDeContaining_shouldReturnResults() {
-        when(repo.findByLoaiDeContainingAndIsDeletedFalse("De ke"))
+    @Test void searchByLoaiDe_shouldReturnResults() {
+        when(repo.findByLoaiDeAndIsDeletedFalse(LoaiDe.DE_DAT))
                 .thenReturn(List.of(testEntity));
-        assertThat(service.searchByLoaiDeContaining("De ke")).hasSize(1);
+        assertThat(service.searchByLoaiDe(LoaiDe.DE_DAT)).hasSize(1);
     }
 
     // ── searchDocuments ─────────────────────────────────────────────────

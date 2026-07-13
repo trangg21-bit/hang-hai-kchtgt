@@ -18,6 +18,7 @@ export async function fetchCauCangList(query: CauCangListQuery) {
   if (query.approvalStatus) params.set('approvalStatus', query.approvalStatus);
   if (query.benCangId) params.set('benCangId', query.benCangId);
   if (query.orgUnitId) params.set('orgUnitId', query.orgUnitId);
+  if (query.loaiCau) params.set('loaiCau', query.loaiCau);
   if (query.sortBy) params.set('sortBy', query.sortBy);
   if (query.sortOrder) params.set('sortOrder', query.sortOrder);
   params.set('page', String(query.page));

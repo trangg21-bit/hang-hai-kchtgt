@@ -17,7 +17,7 @@ public class UpdateVungNuocRequest {
     private BigDecimal dienTich;
     private BigDecimal doSauMax;
     private BigDecimal doSauTrungBinh;
-    private String loaiVungNuoc;
+    private com.hanghai.kchtg.cangben.entity.LoaiVungNuoc loaiVungNuoc;
     private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
     private java.util.UUID bieuTuongId;
 }

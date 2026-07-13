@@ -46,7 +46,8 @@ import {
   fetchBenCangOptions,
 } from './api';
 import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge } from '../../services/cangbien/schema';
-import type { CauCang, CauCangListQuery, BenCangOption } from './types';
+import type { CauCang, CauCangListQuery, BenCangOption, LoaiCau } from './types';
+import { LOAI_CAU_OPTIONS, translateLoaiCau } from './types';
 import { giayToApi } from '../giayto/api';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol } from '../../services/symbolService';
@@ -128,6 +129,7 @@ export default function CauCangListPage() {
   const [filterStatus, setFilterStatus] = useState<string>();
   const [filterApproval, setFilterApproval] = useState<string>();
   const [filterBenCangId, setFilterBenCangId] = useState<string>();
+  const [filterLoaiCau, setFilterLoaiCau] = useState<LoaiCau>();
   const sortBy = 'createdAt';
   const sortOrder = 'desc';
   const [page, setPage] = useState(0);
@@ -174,6 +176,7 @@ export default function CauCangListPage() {
         status: filterStatus as any,
         approvalStatus: filterApproval as any,
         benCangId: filterBenCangId || undefined,
+        loaiCau: filterLoaiCau,
         sortBy: sortBy as any,
         sortOrder: sortOrder as any,
         page,
@@ -189,7 +192,7 @@ export default function CauCangListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [search, filterStatus, filterApproval, filterBenCangId, sortBy, sortOrder, page, pageSize]);
+  }, [search, filterStatus, filterApproval, filterBenCangId, filterLoaiCau, sortBy, sortOrder, page, pageSize]);
 
   const loadBenCangOptions = useCallback(async () => {
     try {
@@ -387,7 +390,7 @@ export default function CauCangListPage() {
         dataIndex: 'loaiCau',
         width: 120,
         ellipsis: true,
-        render: (v: string) => v || '—',
+        render: (v: string) => translateLoaiCau(v),
       },
       {
         title: 'Trạng thái HĐ',
@@ -565,6 +568,14 @@ export default function CauCangListPage() {
                 options={Object.entries(APPROVAL_MAP).map(([v, { label }]) => ({ value: v, label }))}
               />
               <Select
+                placeholder="Loại cầu"
+                allowClear
+                style={{ width: 160 }}
+                value={filterLoaiCau}
+                onChange={(val) => { setFilterLoaiCau(val as LoaiCau); setPage(0); }}
+                options={LOAI_CAU_OPTIONS}
+              />
+              <Select
                 placeholder="Bến cảng chủ"
                 allowClear
                 style={{ width: 200 }}
@@ -671,12 +682,8 @@ export default function CauCangListPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
-                label="Loại cầu"
-                name="loaiCau"
-                rules={[{ max: 100, message: 'Loại cầu tối đa 100 ký tự' }]}
-              >
-                <Input placeholder="VD: Cầu nước, Cầu bờ..." maxLength={100} />
+              <Form.Item label="Loại cầu" name="loaiCau">
+                <Select placeholder="Chọn loại cầu cảng" allowClear options={LOAI_CAU_OPTIONS} />
               </Form.Item>
             </Col>
           </Row>
@@ -795,12 +802,8 @@ export default function CauCangListPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
-                label="Loại cầu"
-                name="loaiCau"
-                rules={[{ max: 100, message: 'Loại cầu tối đa 100 ký tự' }]}
-              >
-                <Input placeholder="VD: Cầu nước, Cầu bờ..." maxLength={100} />
+              <Form.Item label="Loại cầu" name="loaiCau">
+                <Select placeholder="Chọn loại cầu cảng" allowClear options={LOAI_CAU_OPTIONS} />
               </Form.Item>
             </Col>
           </Row>

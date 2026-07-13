@@ -331,31 +331,22 @@ public class F150ReportHandler extends BaseReportHandler {
         return list;
     }
 
-    private String classifyCauCang(String loaiCau, String congNang) {
+    private String classifyCauCang(com.hanghai.kchtg.cangben.entity.LoaiCau loaiCau, String congNang) {
         if (loaiCau == null) return "KHAC";
-        String lc = loaiCau.toUpperCase();
-        if (lc.contains("CONTAINER")) {
-            return "CONTAINER";
-        }
-        if (lc.contains("TONG_HOP") || lc.contains("TỔNG HỢP")) {
-            return "TONG_HOP";
-        }
-        if (lc.contains("HANH_KHACH") || lc.contains("HÀNH KHÁCH")) {
-            return "HANH_KHACH";
-        }
-        if (lc.contains("CHUYEN_DUNG") || lc.contains("CHUYÊN DỤNG") || lc.contains("CHUYEN_MON")) {
-            String cn = congNang != null ? congNang.toLowerCase() : "";
-            if (cn.contains("xăng") || cn.contains("dầu") || cn.contains("khí") || cn.contains("gas") || cn.contains("lỏng")) {
-                return "CHUYEN_DUNG_XANG_DAU";
-            }
-            if (cn.contains("rời") || cn.contains("quặng") || cn.contains("than") || cn.contains("nông sản") || cn.contains("rác")) {
-                return "CHUYEN_DUNG_HANG_ROI";
-            }
-            if (cn.contains("hành khách") || cn.contains("khách")) {
+        switch (loaiCau) {
+            case CONTAINER:
+                return "CONTAINER";
+            case TONG_HOP:
+                return "TONG_HOP";
+            case HANH_KHACH:
                 return "HANH_KHACH";
-            }
-            return "CHUYEN_DUNG_KHAC";
+            case CHUYEN_DUNG_XANG_DAU:
+                return "CHUYEN_DUNG_XANG_DAU";
+            case CHUYEN_DUNG_ROI_QUANG:
+                return "CHUYEN_DUNG_HANG_ROI";
+            case KHAC:
+            default:
+                return "KHAC";
         }
-        return "KHAC";
     }
 }

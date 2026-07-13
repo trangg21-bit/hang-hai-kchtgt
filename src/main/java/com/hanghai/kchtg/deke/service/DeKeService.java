@@ -82,14 +82,14 @@ public class DeKeService {
     }
 
     @Transactional(readOnly = true)
-    public Page<DeKeResponse> search(String keyword, String loaiDe, String tinhTrang,
+    public Page<DeKeResponse> search(String keyword, LoaiDe loaiDe, String tinhTrang,
                                       String trangThaiPheDuyetStr, int page, int size) {
         Page<DeKe> results;
         DeKeApprovalStatus trangThaiPheDuyet = null;
         if (trangThaiPheDuyetStr != null && !trangThaiPheDuyetStr.isEmpty()) {
             try { trangThaiPheDuyet = DeKeApprovalStatus.valueOf(trangThaiPheDuyetStr); } catch (Exception ignored) {}
         }
-        if (keyword != null && !keyword.isEmpty()) {
+        if (keyword != null && !keyword.isEmpty() || loaiDe != null || tinhTrang != null || trangThaiPheDuyet != null) {
             results = repo.searchDocuments(keyword, loaiDe, tinhTrang, trangThaiPheDuyet,
                     PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         } else {
@@ -113,7 +113,10 @@ public class DeKeService {
         if (req.getGhiChu() != null) d.setGhiChu(req.getGhiChu());
         d.setUpdatedBy(username);
 
-        return toResponse(repo.save(d));
+        DeKe saved = repo.save(d);
+
+        log.info("Updated DeKe id={}, user={}", id, username);
+        return toResponse(saved);
     }
 
     @Transactional
@@ -247,21 +250,20 @@ public class DeKeService {
     }
 
     @Transactional(readOnly = true)
-    public List<DeKeResponse> searchByLoaiDeContaining(String kw) {
-        return repo.findByLoaiDeContainingAndIsDeletedFalse(kw)
+    public List<DeKeResponse> searchByLoaiDe(LoaiDe loaiDe) {
+        return repo.findByLoaiDeAndIsDeletedFalse(loaiDe)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public KetQuaTimKiemResponse searchDocuments(String kw, String loaiDe, String tinhTrang, String trangThaiStr, int page, int size) {
+    public KetQuaTimKiemResponse searchDocuments(String kw, LoaiDe loaiDe, String tinhTrang, String trangThaiStr, int page, int size) {
         DeKeApprovalStatus trangThai = null;
         if (trangThaiStr != null && !trangThaiStr.trim().isEmpty()) {
             try { trangThai = DeKeApprovalStatus.valueOf(trangThaiStr.trim()); } catch (Exception ignored) {}
         }
         String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
-        String loaiDeVal = (loaiDe != null && !loaiDe.trim().isEmpty()) ? loaiDe.trim() : null;
         String tinhTrangVal = (tinhTrang != null && !tinhTrang.trim().isEmpty()) ? tinhTrang.trim() : null;
-        Page<DeKe> r = repo.searchDocuments(keywordLike, loaiDeVal, tinhTrangVal, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        Page<DeKe> r = repo.searchDocuments(keywordLike, loaiDe, tinhTrangVal, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         return KetQuaTimKiemResponse.builder()
                 .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())

@@ -48,8 +48,9 @@ public class VungNuoc extends BaseEntity {
     @Column(name = "do_sau_trung_binh", precision = 10, scale = 2)
     private BigDecimal doSauTrungBinh;
 
-    @Column(name = "loai_vung_nuoc", length = 100)
-    private String loaiVungNuoc;
+    @Column(name = "loai_vung_nuoc")
+    @Convert(converter = LoaiVungNuocConverter.class)
+    private LoaiVungNuoc loaiVungNuoc;
 
     @Column(name = "trang_thai_hoat_dong")
     @Convert(converter = TrangThaiHoatDongConverter.class)

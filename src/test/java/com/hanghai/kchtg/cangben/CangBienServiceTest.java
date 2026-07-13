@@ -144,14 +144,14 @@ class CangBienServiceTest {
     }
 
     @Test
-    @DisplayName("F-012: findAll — size capped at 100")
-    void findAll_sizeCappedAt100() {
+    @DisplayName("F-012: findAll — size capped at 5000")
+    void findAll_sizeCappedAt5000() {
         Page<CangBien> mockPage = new PageImpl<>(List.of());
         when(cangBienRepository.searchCangBien(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
 
-        service.findAll(0, 999, null);
+        service.findAll(0, 9999, null);
 
-        verify(cangBienRepository).searchCangBien(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), argThat(p -> p.getPageSize() == 100));
+        verify(cangBienRepository).searchCangBien(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), argThat(p -> p.getPageSize() == 5000));
     }
 
     // ── UPDATE (F-009) ─────────────────────────────────────────────────────

@@ -20,7 +20,9 @@ import {
   Drawer,
   Checkbox,
   Table,
+  Cascader,
 } from 'antd';
+import { useSearchParams } from 'react-router-dom';
 import {
   CompassOutlined,
   UploadOutlined,
@@ -32,6 +34,7 @@ import {
   AppstoreOutlined,
   SearchOutlined,
   DeleteOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import { chartService } from '../../services/chartService';
 import type { ChartCell, ChartFeature } from '../../services/chartService';
@@ -312,6 +315,53 @@ function getFeatureIcon(featureCode: string, fillColor: string, strokeColor: str
     </div>
   `;
 }
+
+const buildTreeData = (items: any[]): any[] => {
+  const itemMap = new Map<string, any>();
+  const roots: any[] = [];
+
+  // Create initial nodes
+  items.forEach(item => {
+    itemMap.set(item.id, {
+      value: item.id,
+      label: item.code ? `${item.code} - ${item.name}` : item.name,
+      parentId: item.parentId,
+      children: []
+    });
+  });
+
+  // Link children
+  items.forEach(item => {
+    const mapped = itemMap.get(item.id);
+    if (item.parentId && itemMap.has(item.parentId)) {
+      const parent = itemMap.get(item.parentId);
+      parent.children.push(mapped);
+    } else {
+      roots.push(mapped);
+    }
+  });
+
+  // Clean up empty children and add "---Tất cả---" to nodes with children
+  const processNodes = (nodes: any[]) => {
+    nodes.forEach(node => {
+      if (node.children.length === 0) {
+        delete node.children;
+      } else {
+        // Prepend "---Tất cả---" option to children list
+        node.children.unshift({
+          value: node.value,
+          label: '---Tất cả---'
+        });
+        // Process original children recursively
+        processNodes(node.children.filter((n: any) => n.parentId !== undefined));
+      }
+    });
+  };
+  processNodes(roots);
+
+  return roots;
+};
+
 export default function GISChartView() {
   const [loading, setLoading] = useState(false);
   const [cells, setCells] = useState<ChartCell[]>([]);
@@ -355,9 +405,23 @@ export default function GISChartView() {
   const [calibrating, setCalibrating] = useState(false);
   const [calibratedPoint, setCalibratedPoint] = useState<{ lon: number; lat: number } | null>(null);
 
+  const [searchParams] = useSearchParams();
+  const urlProvince = searchParams.get('province') || '';
+  const urlKchtType = searchParams.get('kchtType') ? searchParams.get('kchtType')!.split(',') : [];
+  const urlSearch = searchParams.get('search') || '';
+
   // Infrastructure Search States
   const [searchForm] = Form.useForm();
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const selectedKchtType = Form.useWatch('kchtType', searchForm);
+  const searchVal = Form.useWatch('search', searchForm) || '';
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
+  const treeOptions = useMemo(() => {
+    return [
+      { value: 'all', label: '---Tất cả---' },
+      ...buildTreeData(orgUnits)
+    ];
+  }, [orgUnits]);
   const [searchingInfrastructure, setSearchingInfrastructure] = useState(false);
   const [infrastructureResults, setInfrastructureResults] = useState<any[]>([]);
   const [totalSearchElements, setTotalSearchElements] = useState(0);
@@ -365,8 +429,26 @@ export default function GISChartView() {
   const [searchPageSize, setSearchPageSize] = useState(20);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [searchPanelVisible, setSearchPanelVisible] = useState(true);
+  const [tableHeight, setTableHeight] = useState(350);
   const [showPlanning, setShowPlanning] = useState(false);
   const [planningFeatures, setPlanningFeatures] = useState<any[]>([]);
+
+  // Measure actual available height for table body using ResizeObserver on the wrapper div
+  useEffect(() => {
+    const el = tableWrapperRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // Subtract ~39px for the table header row
+        const available = entry.contentRect.height - 39;
+        setTableHeight(Math.max(100, Math.floor(available)));
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const fetchSymbols = useCallback(async () => {
     try {
@@ -382,315 +464,42 @@ export default function GISChartView() {
     setSelectedRowKeys([]);
     try {
       const values = searchForm.getFieldsValue();
-      const orgUnitId = !values || values.orgUnitId === 'all' ? undefined : values.orgUnitId;
-      const kchtType = !values || !values.kchtType ? 'CANGBIEN' : values.kchtType;
+      const orgUnitValue = !values ? undefined : values.orgUnitId;
+      const selectedOrgId = Array.isArray(orgUnitValue) ? orgUnitValue[orgUnitValue.length - 1] : orgUnitValue;
+      const orgUnitId = !selectedOrgId || selectedOrgId === 'all' ? undefined : selectedOrgId;
+      const kchtTypeVal = !values || !values.kchtType ? [] : values.kchtType;
+      const kchtTypes = Array.isArray(kchtTypeVal) ? kchtTypeVal : [kchtTypeVal];
       const tinhThanhPho = !values ? '' : values.tinhThanhPho;
+      const search = !values ? '' : values.search;
+      const objectType = !values || !values.objectType ? undefined : values.objectType;
 
-      let list: any[] = [];
-      let total = 0;
+      const res = await api.get('/v1/kchtgis/kchtgis_155/search', {
+        params: {
+          page: searchPage - 1,
+          size: searchPageSize,
+          orgUnitId,
+          kchtType: kchtTypes.join(','),
+          tinhThanhPho,
+          search,
+          objectType
+        }
+      });
 
-      if (kchtType === 'CANGBIEN') {
-        const res = await api.get('/v1/cang-bien', {
-          params: {
-            page: searchPage - 1,
-            size: searchPageSize,
-            orgUnitId,
-            tinhThanhPho
-          }
-        });
-        const pageData = res.data.data;
-        list = (pageData.content || []).map((x: any) => ({
-          ...x,
-          id: x.id,
-          orgName: x.orgUnitName || 'Cục Hàng hải và Đường thủy Việt Nam',
-          kchtTypeLabel: 'Cảng biển',
-          diaDiem: x.tinhThanhPho || x.address || ''
-        }));
-        total = pageData.totalElements || list.length;
-      } else if (kchtType === 'BENCANG') {
-        const res = await api.get('/v1/ben-cang', {
-          params: {
-            page: searchPage - 1,
-            size: searchPageSize,
-            orgUnitId
-          }
-        });
-        const pageData = res.data.data;
-        list = (pageData.content || []).map((x: any) => ({
-          ...x,
-          id: x.id,
-          orgName: x.orgUnitName || 'Cục Hàng hải và Đường thủy Việt Nam',
-          kchtTypeLabel: 'Bến cảng',
-          diaDiem: x.diaDiem || x.address || ''
-        }));
-        total = pageData.totalElements || list.length;
-      } else if (kchtType === 'CAUCANG') {
-        const res = await api.get('/v1/cau-cang', {
-          params: {
-            page: searchPage - 1,
-            pageSize: searchPageSize,
-            orgUnitId
-          }
-        });
-        const pageData = res.data.data;
-        list = (pageData.content || []).map((x: any) => ({
-          ...x,
-          id: x.id,
-          orgName: x.orgUnitName || 'Cục Hàng hải và Đường thủy Việt Nam',
-          kchtTypeLabel: 'Cầu cảng',
-          diaDiem: x.diaChi || x.address || ''
-        }));
-        total = pageData.totalElements || list.length;
-      } else if (kchtType === 'CANGCAN') {
-        const res = await api.get('/v1/cang-can', {
-          params: {
-            page: searchPage - 1,
-            size: searchPageSize,
-            orgUnitId
-          }
-        });
-        const pageData = res.data.data;
-        list = (pageData.content || []).map((x: any) => ({
-          ...x,
-          id: x.id,
-          orgName: x.orgUnitName || 'Cục Hàng hải và Đường thủy Việt Nam',
-          kchtTypeLabel: 'Cảng cạn',
-          diaDiem: x.address || ''
-        }));
-        total = pageData.totalElements || list.length;
-      } else if (kchtType === 'VUNGNUOC') {
-        const res = await api.get('/v1/vung-nuoc', {
-          params: {
-            page: searchPage - 1,
-            size: searchPageSize,
-            orgUnitId
-          }
-        });
-        const pageData = res.data.data;
-        list = (pageData.content || []).map((x: any) => ({
-          ...x,
-          id: x.id,
-          name: x.tenVungNuoc || x.name || `Vùng nước ${x.id}`,
-          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
-          kchtTypeLabel: 'Vùng nước',
-          diaDiem: x.address || ''
-        }));
-        total = pageData.totalElements || list.length;
-      } else if (kchtType === 'LUONGHANGHAI') {
-        const res = await api.get('/v1/luong-hang-hai', {
-          params: {
-            page: 0,
-            size: 9999
-          }
-        });
-        const listData = Array.isArray(res.data.data) ? res.data.data : [];
-        list = listData.map((x: any) => ({
-          ...x,
-          id: x.id,
-          name: x.tenLuong || x.name || `Luồng hàng hải ${x.id}`,
-          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
-          kchtTypeLabel: 'Luồng hàng hải',
-          diaDiem: x.address || ''
-        }));
-        total = list.length;
-      } else if (kchtType === 'DEKE') {
-        const res = await api.get('/v1/de-ke', {
-          params: {
-            page: 0,
-            size: 9999
-          }
-        });
-        const listData = Array.isArray(res.data.data) ? res.data.data : [];
-        list = listData.map((x: any) => ({
-          ...x,
-          id: x.id,
-          name: x.tenDe || x.name || `Đê kè ${x.id}`,
-          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
-          kchtTypeLabel: 'Đê kè',
-          diaDiem: x.viTri || x.address || ''
-        }));
-        total = list.length;
-      } else if (kchtType === 'DENBIEN') {
-        const res = await api.get('/v1/nhatram/den');
-        const listData = Array.isArray(res.data.data) ? res.data.data : [];
-        list = listData.map((x: any) => ({
-          ...x,
-          id: x.id,
-          name: x.tenTram || x.name || `Đèn biển ${x.id}`,
-          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
-          kchtTypeLabel: 'Đèn biển',
-          diaDiem: x.diaDiemDatTram || x.address || ''
-        }));
-        total = list.length;
-      } else if (kchtType === 'PHAOTIEU') {
-        const res = await api.get('/v1/nhatram/phao');
-        const listData = Array.isArray(res.data.data) ? res.data.data : [];
-        list = listData.map((x: any) => ({
-          ...x,
-          id: x.id,
-          name: x.tenTram || x.name || `Phao tiêu ${x.id}`,
-          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
-          kchtTypeLabel: 'Phao tiêu',
-          diaDiem: x.diaDiemDatTram || x.address || ''
-        }));
-        total = list.length;
-      } else if (kchtType === 'BENPHAO') {
-        const res = await api.get('/v1/vung-nuoc', {
-          params: { page: 0, size: 9999, orgUnitId }
-        });
-        const pageData = res.data.data;
-        const allVungNuoc = pageData?.content || [];
-        list = allVungNuoc
-          .filter((x: any) => x.loaiVungNuoc?.toLowerCase().includes('phao'))
-          .map((x: any) => ({
-            ...x,
-            id: x.id,
-            name: x.tenVungNuoc || x.name || `Bến phao ${x.id}`,
-            orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
-            kchtTypeLabel: 'Bến phao',
-            diaDiem: x.address || ''
-          }));
-        total = list.length;
-      } else if (kchtType === 'KHUNEO_DAU') {
-        const res = await api.get('/v1/vung-nuoc', {
-          params: { page: 0, size: 9999, orgUnitId }
-        });
-        const pageData = res.data.data;
-        const allVungNuoc = pageData?.content || [];
-        list = allVungNuoc
-          .filter((x: any) => x.loaiVungNuoc?.toLowerCase().includes('neo'))
-          .map((x: any) => ({
-            ...x,
-            id: x.id,
-            name: x.tenVungNuoc || x.name || `Khu neo đậu ${x.id}`,
-            orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
-            kchtTypeLabel: 'Khu neo đậu',
-            diaDiem: x.address || ''
-          }));
-        total = list.length;
-      } else if (kchtType === 'KHUCHUYEN_TAI') {
-        const res = await api.get('/v1/vung-nuoc', {
-          params: { page: 0, size: 9999, orgUnitId }
-        });
-        const pageData = res.data.data;
-        const allVungNuoc = pageData?.content || [];
-        list = allVungNuoc
-          .filter((x: any) => x.loaiVungNuoc?.toLowerCase().includes('chuyển'))
-          .map((x: any) => ({
-            ...x,
-            id: x.id,
-            name: x.tenVungNuoc || x.name || `Khu chuyển tải ${x.id}`,
-            orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
-            kchtTypeLabel: 'Khu chuyển tải',
-            diaDiem: x.address || ''
-          }));
-        total = list.length;
-      } else if (kchtType === 'KHUTRANH_TRU_BAO') {
-        const res = await api.get('/v1/vung-nuoc', {
-          params: { page: 0, size: 9999, orgUnitId }
-        });
-        const pageData = res.data.data;
-        const allVungNuoc = pageData?.content || [];
-        list = allVungNuoc
-          .filter((x: any) => x.loaiVungNuoc?.toLowerCase().includes('tránh') || x.loaiVungNuoc?.toLowerCase().includes('bão') || x.loaiVungNuoc?.toLowerCase().includes('trú'))
-          .map((x: any) => ({
-            ...x,
-            id: x.id,
-            name: x.tenVungNuoc || x.name || `Khu tránh trú bão ${x.id}`,
-            orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
-            kchtTypeLabel: 'Khu tránh trú bão',
-            diaDiem: x.address || ''
-          }));
-        total = list.length;
-      } else if (kchtType === 'COSO_SUACHUA') {
-        const res = await api.get('/v1/co-so-sua-chua', {
-          params: {
-            page: 0,
-            size: 9999
-          }
-        });
-        const listData = Array.isArray(res.data.data) ? res.data.data : [];
-        list = listData.map((x: any) => ({
-          ...x,
-          id: x.id,
-          name: x.tenCoSo || x.name || `Cơ sở sửa chữa ${x.id}`,
-          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
-          kchtTypeLabel: 'Cơ sở sửa chữa',
-          diaDiem: x.diaChi || x.address || ''
-        }));
-        total = list.length;
-      } else if (kchtType === 'HE_THONG_VTS') {
-        const res = await api.get('/v1/he-thong-vts', {
-          params: {
-            page: searchPage - 1,
-            size: searchPageSize
-          }
-        });
-        const pageData = res.data.data;
-        list = (pageData.content || []).map((x: any) => ({
-          ...x,
-          id: x.id,
-          name: x.tenHeThong || x.name || `Hệ thống VTS ${x.id}`,
-          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
-          kchtTypeLabel: 'Hệ thống VTS',
-          diaDiem: x.viTri || x.address || ''
-        }));
-        total = pageData.totalElements || list.length;
-      } else if (kchtType === 'TRAM_RADAR') {
-        const res = await api.get('/v1/tram-radar', {
-          params: {
-            page: 0,
-            size: 9999
-          }
-        });
-        const listData = Array.isArray(res.data.data) ? res.data.data : [];
-        list = listData.map((x: any) => ({
-          ...x,
-          id: x.id,
-          name: x.tenTram || x.name || `Trạm Radar ${x.id}`,
-          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
-          kchtTypeLabel: 'Trạm radar',
-          diaDiem: x.viTri || x.address || ''
-        }));
-        total = list.length;
-      } else {
-        const res = await api.get('/v1/cang-bien', {
-          params: {
-            page: searchPage - 1,
-            size: searchPageSize,
-            orgUnitId,
-            tinhThanhPho
-          }
-        });
-        const pageData = res.data.data;
-        list = (pageData.content || []).map((x: any) => ({
-          ...x,
-          id: x.id,
-          name: x.tenCang || x.name || `Cảng biển ${x.id}`,
-          orgName: x.orgUnitName || 'Cục Hàng hải Việt Nam',
-          kchtTypeLabel: 'Cảng biển',
-          diaDiem: x.tinhThanhPho || x.address || ''
-        }));
-        total = pageData.totalElements || list.length;
-      }
-
-      // For APIs that return full datasets without server-side pagination,
-      // apply client-side pagination by slicing the list
-      const needsClientPagination = [
-        'LUONGHANGHAI', 'DEKE', 'DENBIEN', 'PHAOTIEU', 'TIEU_SONG', 'CHAM_TIEU',
-        'KHUNEO_DAU', 'KHUCHUYEN_TAI', 'KHUTRANH_TRU_BAO', 'BENPHAO',
-        'COSO_SUACHUA', 'TRAM_RADAR'
-      ].includes(kchtType);
-
-      if (needsClientPagination && list.length > 0) {
-        total = list.length;
-        const startIdx = (searchPage - 1) * searchPageSize;
-        const endIdx = startIdx + searchPageSize;
-        list = list.slice(startIdx, endIdx);
-      }
+      const pageData = res.data.data;
+      const list = (pageData.content || []).map((x: any) => ({
+        ...x,
+        id: x.id,
+        name: x.name,
+        ma: x.ma,
+        orgName: x.orgName,
+        kchtTypeLabel: x.kchtTypeLabel,
+        diaDiem: x.diaDiem,
+        viDo: x.latitude,
+        kinhDo: x.longitude
+      }));
 
       setInfrastructureResults(list);
-      setTotalSearchElements(total);
+      setTotalSearchElements(pageData.totalElements || list.length);
     } catch (err) {
       console.error(err);
     } finally {
@@ -715,6 +524,15 @@ export default function GISChartView() {
   useEffect(() => {
     handleSearchInfrastructure();
   }, [searchPage, searchPageSize, handleSearchInfrastructure]);
+
+  // Update map size when search panel is shown/hidden
+  useEffect(() => {
+    if (mapRef.current) {
+      setTimeout(() => {
+        mapRef.current.invalidateSize();
+      }, 200);
+    }
+  }, [searchPanelVisible]);
 
   const handleRowClick = useCallback((record: any) => {
     const rawLat = record.viDo ?? record.latitude;
@@ -761,6 +579,7 @@ export default function GISChartView() {
   const searchMarkersGroupRef = useRef<any>(null);
   const planningGroupRef = useRef<any>(null);
   const calibratorMarkerRef = useRef<any>(null);
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
   const lastFittedCellIdRef = useRef<string | null>(null);
   const renderChartFeaturesRef = useRef<() => void>();
   const fetchFeaturesInViewportRef = useRef<() => Promise<void>>();
@@ -1123,7 +942,7 @@ export default function GISChartView() {
 
     const L = window.L;
     // Create map centered on Vietnam (incorporating East Sea / Sovereignty area)
-    const map = L.map(mapContainerRef.current, { preferCanvas: true }).setView([16.0, 108.0], 5);
+    const map = L.map(mapContainerRef.current, { preferCanvas: true, attributionControl: false }).setView([16.0, 108.0], 5);
     mapRef.current = map;
 
     // Create a high-priority pane for QHCB planning layers so they render above ENC layers
@@ -1230,12 +1049,12 @@ export default function GISChartView() {
     // Clear old search markers
     searchMarkersGroupRef.current.clearLayers();
 
-    if (infrastructureResults.length === 0) return;
-
     const selectedRecords = infrastructureResults.filter((record) => selectedRowKeys.includes(record.id));
     if (selectedRecords.length === 0) return;
 
     const markers: any[] = [];
+    const useCircle = selectedRecords.length > 200;
+
     selectedRecords.forEach((record) => {
       const rawLat = record.viDo ?? record.latitude;
       const rawLon = record.kinhDo ?? record.longitude;
@@ -1249,59 +1068,6 @@ export default function GISChartView() {
           const symId = record.bieuTuongId || record.iconId;
           const sym = symbols.find((s) => s.id === symId);
 
-          let markerIcon;
-          if (sym && sym.hinhAnh) {
-            // Create a custom divIcon containing the Base64 image
-            markerIcon = L.divIcon({
-              html: `
-                <div style="
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  width: 32px;
-                  height: 32px;
-                  background: white;
-                  border: 2px solid #1890ff;
-                  border-radius: 50%;
-                  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-                  overflow: hidden;
-                ">
-                  <img src="${sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}"
-                       style="width: 22px; height: 22px; object-fit: contain;" />
-                </div>
-              `,
-              className: 'custom-map-icon',
-              iconSize: [32, 32],
-              iconAnchor: [16, 16],
-              popupAnchor: [0, -16],
-            });
-          } else {
-            // Default Leaflet marker or colored circle marker
-            markerIcon = L.divIcon({
-              html: `
-                <div style="
-                  display: flex;
-                  align-items: center;
-                  justify-content: center;
-                  width: 24px;
-                  height: 24px;
-                  background: #1890ff;
-                  border: 2px solid white;
-                  border-radius: 50%;
-                  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-                ">
-                  <span style="color: white; font-size: 10px; font-weight: bold;">
-                    ${record.kchtTypeLabel ? record.kchtTypeLabel.charAt(0) : '•'}
-                  </span>
-                </div>
-              `,
-              className: 'default-map-icon',
-              iconSize: [24, 24],
-              iconAnchor: [12, 12],
-              popupAnchor: [0, -12],
-            });
-          }
-
           const popupContent = `
             <div style="font-family: sans-serif; padding: 4px; min-width: 180px;">
               <h4 style="margin: 0 0 6px 0; color: #1890ff; font-size: 14px;">${record.tenCang || record.tenBen || record.tenCau || record.tenCangCan || record.tenVungNuoc || record.name || 'Chi tiết'}</h4>
@@ -1311,8 +1077,78 @@ export default function GISChartView() {
             </div>
           `;
 
-          const marker = L.marker([lat, lon], { icon: markerIcon })
-            .bindPopup(popupContent);
+          let marker;
+          if (useCircle) {
+            let fillColor = '#1890ff';
+            const kchtType = record.kchtTypeLabel || '';
+            if (kchtType.includes('Cảng biển')) fillColor = '#1890ff';
+            else if (kchtType.includes('Bến cảng')) fillColor = '#52c41a';
+            else if (kchtType.includes('Cầu cảng')) fillColor = '#faad14';
+            else if (kchtType.includes('Cảng cạn')) fillColor = '#722ed1';
+            else fillColor = '#13c2c2';
+
+            marker = L.circleMarker([lat, lon], {
+              radius: 6,
+              fillColor: fillColor,
+              color: '#fff',
+              weight: 1.5,
+              fillOpacity: 0.9,
+            }).bindPopup(popupContent);
+          } else {
+            let markerIcon;
+            if (sym && sym.hinhAnh) {
+              // Create a custom divIcon containing the Base64 image
+              markerIcon = L.divIcon({
+                html: `
+                  <div style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 32px;
+                    height: 32px;
+                    background: white;
+                    border: 2px solid #1890ff;
+                    border-radius: 50%;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                    overflow: hidden;
+                  ">
+                    <img src="${sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}"
+                         style="width: 22px; height: 22px; object-fit: contain;" />
+                  </div>
+                `,
+                className: 'custom-map-icon',
+                iconSize: [32, 32],
+                iconAnchor: [16, 16],
+                popupAnchor: [0, -16],
+              });
+            } else {
+              // Default Leaflet marker or colored circle marker
+              markerIcon = L.divIcon({
+                html: `
+                  <div style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 24px;
+                    height: 24px;
+                    background: #1890ff;
+                    border: 2px solid white;
+                    border-radius: 50%;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                  ">
+                    <span style="color: white; font-size: 10px; font-weight: bold;">
+                      ${record.kchtTypeLabel ? record.kchtTypeLabel.charAt(0) : '•'}
+                    </span>
+                  </div>
+                `,
+                className: 'default-map-icon',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12],
+                popupAnchor: [0, -12],
+              });
+            }
+            marker = L.marker([lat, lon], { icon: markerIcon }).bindPopup(popupContent);
+          }
 
           marker.on('click', (e: any) => {
             L.DomEvent.stopPropagation(e);
@@ -1320,6 +1156,7 @@ export default function GISChartView() {
           });
 
           markers.push(marker);
+          console.log(`[Map] Vẽ điểm #${markers.length} thành công — lat: ${lat}, lon: ${lon}`);
         }
       }
     });
@@ -1637,10 +1474,10 @@ export default function GISChartView() {
   };
 
   return (
-    <div style={{ padding: '0px' }}>
+    <div style={{ padding: '16px', height: 'calc(100vh - 64px)', boxSizing: 'border-box', overflow: 'hidden' }}>
       <Row gutter={[16, 16]}>
         {/* Main Map Viewer */}
-        <Col xs={24} lg={17} style={{ order: 2 }}>
+        <Col xs={24} lg={searchPanelVisible ? 17 : 24} style={{ order: 2 }}>
           <Card
             title={
               <Space>
@@ -1661,7 +1498,7 @@ export default function GISChartView() {
             styles={{ body: { padding: 0 } }}
           >
             {/* The Map Div and Floating Control */}
-            <div style={{ position: 'relative', height: 'calc(100vh - 180px)' }}>
+            <div style={{ position: 'relative', height: 'calc(100vh - 146px)' }}>
               <div
                 ref={mapContainerRef}
                 id="leaflet-map-container"
@@ -1690,40 +1527,72 @@ export default function GISChartView() {
                   boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
                 }}
               />
+              {/* Floating Search Button when panel is hidden */}
+              {!searchPanelVisible && (
+                <Button
+                  type="primary"
+                  icon={<SearchOutlined />}
+                  onClick={() => setSearchPanelVisible(true)}
+                  style={{
+                    position: 'absolute',
+                    top: '10px',
+                    left: '10px',
+                    zIndex: 1000,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  }}
+                >
+                  Tìm kiếm
+                </Button>
+              )}
             </div>
           </Card>
         </Col>
 
         {/* Sidebar panels */}
-        <Col xs={24} lg={7} style={{ order: 1 }}>
-          <Tabs
-            className="gis-sidebar-tabs"
-            defaultActiveKey="1"
-            type="card"
-            style={{ height: 'calc(100vh - 130px)', display: 'flex', flexDirection: 'column' }}
-            items={[
-              {
-                key: '1',
-                label: 'Tra cứu',
-                children: (
-                  <Card variant="borderless" styles={{ body: { padding: '12px' } }}>
-                    <Typography.Title level={4} style={{ fontSize: '15px', fontWeight: 600, marginBottom: '16px', color: '#111' }}>
-                      Tra cứu thông tin kết cấu hạ tầng hàng hải trên bản đồ
-                    </Typography.Title>
-                    <Form form={searchForm} layout="vertical" onFinish={handleSearchInfrastructure} initialValues={{ orgUnitId: 'all', kchtType: 'CANGBIEN', tinhThanhPho: '' }}>
-                      <Form.Item name="orgUnitId" label="Đơn vị quản lý *" rules={[{ required: true }]}>
-                        <Select
-                          showSearch
-                          filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                          options={[
-                            { value: 'all', label: '---Tất cả---' },
-                            ...orgUnits.map(u => ({ value: u.id, label: u.name }))
-                          ]}
+        {searchPanelVisible && (
+          <Col xs={24} lg={7} style={{ order: 1 }}>
+            <Tabs
+              className="gis-sidebar-tabs"
+              defaultActiveKey="1"
+              type="card"
+              style={{ height: 'calc(100vh - 96px)', display: 'flex', flexDirection: 'column' }}
+              items={[
+                {
+                  key: '1',
+                  label: 'Tra cứu',
+                  children: (
+                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                      {/* Fixed top section: title + form + pagination */}
+                      <div style={{ flexShrink: 0, padding: '12px 12px 0 12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <Typography.Title level={4} style={{ fontSize: '15px', fontWeight: 600, margin: 0, color: '#111' }}>
+                          Tra cứu thông tin kết cấu hạ tầng hàng hải trên bản đồ
+                        </Typography.Title>
+                        <Button
+                          type="text"
+                          icon={<CloseOutlined style={{ fontSize: '16px', color: '#999' }} />}
+                          onClick={() => setSearchPanelVisible(false)}
+                          style={{ padding: 0, border: 'none', background: 'transparent', height: 'auto', width: 'auto', display: 'flex', alignItems: 'center' }}
+                          title="Đóng"
+                        />
+                      </div>
+                      <Form form={searchForm} layout="vertical" onFinish={handleSearchInfrastructure} initialValues={{ orgUnitId: ['all'], kchtType: urlKchtType, tinhThanhPho: urlProvince, search: urlSearch, objectType: '' }}>
+                        <Form.Item name="orgUnitId" label="Đơn vị quản lý">
+                        <Cascader
+                          options={treeOptions}
+                          changeOnSelect
+                          expandTrigger="hover"
+                          placeholder="Chọn đơn vị quản lý..."
+                          showSearch={{
+                            filter: (inputValue, path) =>
+                              path.some(option => (option.label as string).toLowerCase().includes(inputValue.toLowerCase()))
+                          }}
                         />
                       </Form.Item>
 
-                       <Form.Item name="kchtType" label="Loại kết cấu hạ tầng">
+                      <Form.Item name="kchtType" label="Loại kết cấu hạ tầng">
                         <Select
+                          mode="multiple"
                           placeholder="Chọn loại kết cấu..."
                           options={[
                             { value: 'BENCANG', label: 'Bến cảng' },
@@ -1758,6 +1627,34 @@ export default function GISChartView() {
                         />
                       </Form.Item>
 
+                      <div style={{ display: showAdvancedSearch ? 'block' : 'none' }}>
+                        <Form.Item name="search" label="Kết cấu hạ tầng">
+                          <Input
+                            placeholder="Kết cấu hạ tầng"
+                            maxLength={255}
+                            suffix={
+                              <span style={{ fontSize: '12px', color: '#999' }}>
+                                {searchVal.length} / 255
+                              </span>
+                            }
+                            allowClear
+                          />
+                        </Form.Item>
+
+                        <Form.Item name="objectType" label="Loại đối tượng">
+                          <Select
+                            placeholder="Loại đối tượng"
+                            allowClear
+                            options={[
+                              { value: '', label: '---Tất cả---' },
+                              { value: 'POINT', label: 'Đối tượng điểm' },
+                              { value: 'LINE', label: 'Đối tượng đường' },
+                              { value: 'POLYGON', label: 'Đối tượng vùng' }
+                            ]}
+                          />
+                        </Form.Item>
+                      </div>
+
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
                         <Button 
                           type="primary" 
@@ -1779,7 +1676,14 @@ export default function GISChartView() {
                         >
                           Xóa tìm kiếm
                         </Button>
-                        <Button icon={<SlidersOutlined />} />
+                        <Button 
+                          icon={<SlidersOutlined />} 
+                          onClick={() => setShowAdvancedSearch(prev => !prev)}
+                          style={{
+                            borderColor: showAdvancedSearch ? '#1890ff' : undefined,
+                            color: showAdvancedSearch ? '#1890ff' : undefined,
+                          }}
+                        />
                       </div>
                     </Form>
 
@@ -1805,18 +1709,24 @@ export default function GISChartView() {
                           value={searchPageSize}
                           onChange={(val) => { setSearchPageSize(val); setSearchPage(1); }}
                           options={[
-                            { value: 10, label: '10 / trang' },
                             { value: 20, label: '20 / trang' },
                             { value: 50, label: '50 / trang' },
+                            { value: 100, label: '100 / trang' },
+                            { value: 5000, label: '5000 / trang' },
                           ]}
-                          style={{ width: 105 }}
+                          style={{ width: 120 }}
                         />
                       </Space>
                     </div>
+                      </div>
 
+                      {/* Table fills all remaining vertical space */}
+                      <div ref={tableWrapperRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: '0 12px 12px 12px' }}>
                     <Table
                       rowSelection={{
                         type: 'checkbox',
+                        fixed: true,
+                        columnWidth: 50,
                         selectedRowKeys: selectedRowKeys,
                         onChange: (keys) => {
                           setSelectedRowKeys(keys);
@@ -1832,23 +1742,38 @@ export default function GISChartView() {
                           title: 'STT',
                           dataIndex: 'stt',
                           key: 'stt',
-                          width: 50,
+                          width: 60,
                           render: (_text, _record, index) => (searchPage - 1) * searchPageSize + index + 1,
                         },
                         {
                           title: 'Đơn vị quản lý',
                           dataIndex: 'orgName',
                           key: 'orgName',
+                          width: 200,
                         },
                         {
                           title: 'Loại KCHT',
                           dataIndex: 'kchtTypeLabel',
                           key: 'kchtTypeLabel',
+                          width: 120,
                         },
                         {
-                          title: 'Địa điểm',
+                          title: 'Địa điểm (Tỉnh/Thành phố)',
                           dataIndex: 'diaDiem',
                           key: 'diaDiem',
+                          width: 180,
+                        },
+                        {
+                          title: 'Địa chỉ chi tiết',
+                          dataIndex: 'diaChiChiTiet',
+                          key: 'diaChiChiTiet',
+                          width: 220,
+                        },
+                        {
+                          title: 'KCHT',
+                          dataIndex: 'name',
+                          key: 'name',
+                          width: 200,
                         }
                       ]}
                       dataSource={infrastructureResults}
@@ -1856,15 +1781,17 @@ export default function GISChartView() {
                       pagination={false}
                       size="small"
                       bordered
+                      virtual={searchPageSize > 100}
+                      scroll={{ x: 980, y: tableHeight }}
                       onRow={(record) => ({
                         onClick: () => handleRowClick(record),
                         style: { cursor: 'pointer' }
                       })}
-                      style={{ marginTop: 12 }}
                     />
-                  </Card>
-                ),
-              },
+                      </div>
+                    </div>
+                  ),
+                },
               {
                 key: '2',
                 label: 'Hiệu chỉnh tọa độ',
@@ -1997,6 +1924,7 @@ export default function GISChartView() {
             ]}
           />
         </Col>
+        )}
       </Row>
 
       {/* Drawer for Map Layer Management */}

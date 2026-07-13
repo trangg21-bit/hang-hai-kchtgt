@@ -69,7 +69,7 @@ public class CangCanService {
     @Transactional(readOnly = true)
     public Page<CangCanResponse> findAll(int page, int size, UUID orgUnitId,
                                          String search, String status, String approvalStatus) {
-        int pageSize = Math.min(Math.max(size, 1), 100);
+        int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
         TrangThaiHoatDong statusEnum = status != null ? TrangThaiHoatDong.fromString(status) : null;
         TrangThaiPheDuyet approvalEnum = approvalStatus != null ? TrangThaiPheDuyet.fromString(approvalStatus) : null;

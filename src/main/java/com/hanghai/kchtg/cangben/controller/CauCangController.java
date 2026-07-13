@@ -2,6 +2,7 @@ package com.hanghai.kchtg.cangben.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.cangben.dto.caucang.*;
+import com.hanghai.kchtg.cangben.entity.LoaiCau;
 import com.hanghai.kchtg.cangben.service.CauCangApprovalService;
 import com.hanghai.kchtg.cangben.service.CauCangService;
 import jakarta.validation.Valid;
@@ -62,12 +63,13 @@ public class CauCangController {
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) UUID benCangId,
+            @RequestParam(required = false) LoaiCau loaiCau,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String approvalStatus) {
-        log.info("Listing CauCang: page={}, size={}, orgUnitId={}, search={}, benCangId={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, search, benCangId, status, approvalStatus);
+        log.info("Listing CauCang: page={}, size={}, orgUnitId={}, search={}, benCangId={}, loaiCau={}, status={}, approvalStatus={}",
+                page, size, orgUnitId, search, benCangId, loaiCau, status, approvalStatus);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cầu cảng thành công",
-                cauCangService.findAll(page, size, orgUnitId, search, benCangId, status, approvalStatus)));
+                cauCangService.findAll(page, size, orgUnitId, search, benCangId, loaiCau, status, approvalStatus)));
     }
 
     @GetMapping("/code/{maCau}")

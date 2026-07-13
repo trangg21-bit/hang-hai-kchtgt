@@ -32,10 +32,12 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { vungNuocApi } from './api';
-import type { VungNuoc, VungNuocTrangThaiHoatDong, VungNuocTrangThaiPheDuyet } from './types';
+import type { VungNuoc, VungNuocTrangThaiHoatDong, VungNuocTrangThaiPheDuyet, LoaiVungNuoc } from './types';
 import {
   VUNGNUOC_HOAT_DONG_MAP,
   VUNGNUOC_PHE_DUYET_MAP,
+  LOAI_VUNG_NUOC_OPTIONS,
+  translateLoaiVungNuoc,
 } from './types';
 import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge } from '../../services/cangbien/schema';
 import DataTable from '../../components/DataTable';
@@ -105,6 +107,7 @@ export default function VungNuocListPage() {
   const [filterHoatDong, setFilterHoatDong] = useState<VungNuocTrangThaiHoatDong | undefined>();
   const [filterPheDuyet, setFilterPheDuyet] = useState<VungNuocTrangThaiPheDuyet | undefined>();
   const [cangBienIdFilter, setCangBienIdFilter] = useState<string | undefined>();
+  const [filterLoaiVungNuoc, setFilterLoaiVungNuoc] = useState<LoaiVungNuoc | undefined>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [dataSource, setDataSource] = useState<VungNuoc[]>([]);
@@ -176,6 +179,7 @@ export default function VungNuocListPage() {
         trangThaiHoatDong: filterHoatDong,
         trangThaiPheDuyet: filterPheDuyet,
         cangBienId: cangBienIdFilter,
+        loaiVungNuoc: filterLoaiVungNuoc,
       });
       setDataSource(res.data);
       setTotal(res.total);
@@ -185,7 +189,7 @@ export default function VungNuocListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, search, filterMaVung, filterTenVung, filterHoatDong, filterPheDuyet, cangBienIdFilter]);
+  }, [page, pageSize, search, filterMaVung, filterTenVung, filterHoatDong, filterPheDuyet, cangBienIdFilter, filterLoaiVungNuoc]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
@@ -368,7 +372,7 @@ export default function VungNuocListPage() {
       dataIndex: 'loaiVungNuoc',
       width: 150,
       ellipsis: true,
-      render: (loaiVungNuoc: string | null) => loaiVungNuoc || '—',
+      render: (loaiVungNuoc: string | null) => translateLoaiVungNuoc(loaiVungNuoc),
     },
     {
       title: 'Trạng thái HĐ',
@@ -546,6 +550,14 @@ export default function VungNuocListPage() {
                 options={Object.entries(VUNGNUOC_PHE_DUYET_MAP).map(([value, { label }]) => ({ value, label }))}
               />
               <Select
+                placeholder="Loại vùng nước"
+                allowClear
+                style={{ width: 180 }}
+                value={filterLoaiVungNuoc}
+                onChange={(val) => { setFilterLoaiVungNuoc(val as LoaiVungNuoc | undefined); setPage(1); }}
+                options={LOAI_VUNG_NUOC_OPTIONS}
+              />
+              <Select
                 placeholder="Cảng biển chủ"
                 allowClear
                 style={{ width: 200 }}
@@ -655,8 +667,8 @@ export default function VungNuocListPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item label="Loại vùng nước" name="loaiVungNuoc" rules={[{ max: 100, message: 'Loại vùng nước tối đa 100 ký tự' }]}>
-                <Input placeholder="VD: Vùng neo đậu, Vùng đón hoa tiêu..." maxLength={100} />
+              <Form.Item label="Loại vùng nước" name="loaiVungNuoc">
+                <Select placeholder="Chọn loại vùng nước" allowClear options={LOAI_VUNG_NUOC_OPTIONS} />
               </Form.Item>
             </Col>
           </Row>
@@ -769,8 +781,8 @@ export default function VungNuocListPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item label="Loại vùng nước" name="loaiVungNuoc" rules={[{ max: 100, message: 'Loại vùng nước tối đa 100 ký tự' }]}>
-                <Input placeholder="VD: Vùng neo đậu, Vùng đón hoa tiêu..." maxLength={100} />
+              <Form.Item label="Loại vùng nước" name="loaiVungNuoc">
+                <Select placeholder="Chọn loại vùng nước" allowClear options={LOAI_VUNG_NUOC_OPTIONS} />
               </Form.Item>
             </Col>
           </Row>

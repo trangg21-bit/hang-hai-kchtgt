@@ -14,10 +14,10 @@ import java.util.List;
 @Builder
 public class DeKeCreateRequest {
 
-    @NotBlank(message = "Loai de khong duoc de trong")
-    private String loaiDe;
+    @jakarta.validation.constraints.NotNull(message = "Loại đê không được để trống")
+    private com.hanghai.kchtg.deke.entity.LoaiDe loaiDe;
 
-    @NotBlank(message = "Vi tri khong duoc de trong")
+    @NotBlank(message = "Vị trí không được để trống")
     private String viTri;
 
     private Double chieuDai;

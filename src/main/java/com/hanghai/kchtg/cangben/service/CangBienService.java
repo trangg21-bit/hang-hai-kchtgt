@@ -98,7 +98,7 @@ public class CangBienService {
                                           String maCang, String tenCang, String tinhThanhPho,
                                           String trangThaiHoatDong, String trangThaiPheDuyet,
                                           String search) {
-        int pageSize = Math.min(Math.max(size, 1), 100);
+        int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
 
         TrangThaiHoatDong statusEnum = trangThaiHoatDong != null ? TrangThaiHoatDong.fromString(trangThaiHoatDong) : null;

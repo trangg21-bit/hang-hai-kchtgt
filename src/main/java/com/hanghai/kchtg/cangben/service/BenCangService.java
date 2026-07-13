@@ -88,7 +88,7 @@ public class BenCangService {
             String maBen, String tenBen, UUID cangBienId,
             String tuyenDuongThuy, String loaiBen,
             String trangThaiHoatDong, String trangThaiPheDuyet) {
-        int pageSize = Math.min(Math.max(size, 1), 100);
+        int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
         TrangThaiHoatDong statusEnum = trangThaiHoatDong != null ? TrangThaiHoatDong.fromString(trangThaiHoatDong)
                 : null;

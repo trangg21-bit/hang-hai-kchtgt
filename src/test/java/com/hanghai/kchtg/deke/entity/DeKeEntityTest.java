@@ -28,8 +28,8 @@ class DeKeEntityTest {
         entity.setId(42L);
         assertEquals(42L, entity.getId());
 
-        entity.setLoaiDe("De ke son");
-        assertEquals("De ke son", entity.getLoaiDe());
+        entity.setLoaiDe(LoaiDe.DE_DAT);
+        assertEquals(LoaiDe.DE_DAT, entity.getLoaiDe());
 
         entity.setViTri("Bac Giang");
         assertEquals("Bac Giang", entity.getViTri());
@@ -87,7 +87,7 @@ class DeKeEntityTest {
 
     @Test void builder_sets_all_fields() {
         DeKe d = DeKe.builder()
-                .loaiDe("De ke tre")
+                .loaiDe(LoaiDe.DE_BETONG)
                 .viTri("Ha Noi")
                 .chieuDai(200.0)
                 .chieuRong(20.0)
@@ -100,7 +100,7 @@ class DeKeEntityTest {
                 .createdBy("system")
                 .build();
 
-        assertEquals("De ke tre", d.getLoaiDe());
+        assertEquals(LoaiDe.DE_BETONG, d.getLoaiDe());
         assertEquals("Ha Noi", d.getViTri());
         assertEquals(200.0, d.getChieuDai());
         assertEquals(DeKeApprovalStatus.APPROVED, d.getTrangThaiPheDuyet());
@@ -113,7 +113,7 @@ class DeKeEntityTest {
 
     @Test void builder_collections_are_empty_lists_not_null() {
         DeKe d = DeKe.builder()
-                .loaiDe("test")
+                .loaiDe(LoaiDe.DE_DAT)
                 .viTri("test")
                 .build();
 
@@ -135,7 +135,7 @@ class DeKeEntityTest {
     // ── Builder default values ───────────────────────────────────────
 
     @Test void builder_defaults_are_false_and_null() {
-        DeKe d = DeKe.builder().loaiDe("x").viTri("y").build();
+        DeKe d = DeKe.builder().loaiDe(LoaiDe.DE_DAT).viTri("y").build();
 
         assertFalse(d.getPheDuyetC1());
         assertFalse(d.getPheDuyetC2());
@@ -175,8 +175,8 @@ class DeKeEntityTest {
     // ── equals / hashCode / toString (Lombok) ────────────────────────
 
     @Test void twoEntitiesWithSameId_areEqual() {
-        DeKe a = DeKe.builder().loaiDe("a").viTri("b").build();
-        DeKe b = DeKe.builder().loaiDe("a").viTri("b").build();
+        DeKe a = DeKe.builder().loaiDe(LoaiDe.DE_DAT).viTri("b").build();
+        DeKe b = DeKe.builder().loaiDe(LoaiDe.DE_DAT).viTri("b").build();
         // Lombok @Data generates equals based on ALL fields,
         // so these won't be equal unless all fields match.
         // We verify identity-based equality works when id is set.
@@ -184,7 +184,7 @@ class DeKeEntityTest {
 
     @Test void toString_doesNotThrow() {
         DeKe d = DeKe.builder()
-                .loaiDe("De ke test")
+                .loaiDe(LoaiDe.DE_DAT)
                 .viTri("Ha Noi")
                 .trangThaiPheDuyet(DeKeApprovalStatus.UNDER_REVIEW)
                 .build();

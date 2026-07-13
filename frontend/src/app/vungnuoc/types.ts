@@ -80,6 +80,7 @@ export interface VungNuocFilters {
   trangThaiHoatDong?: VungNuocTrangThaiHoatDong;
   trangThaiPheDuyet?: VungNuocTrangThaiPheDuyet;
   cangBienId?: string;
+  loaiVungNuoc?: LoaiVungNuoc;
   sortBy?: 'maVungNuoc' | 'tenVungNuoc' | 'createdAt' | 'updatedAt';
   sortOrder?: 'asc' | 'desc';
   page: number;
@@ -97,4 +98,22 @@ export const VUNGNUOC_PHE_DUYET_MAP: Record<VungNuocTrangThaiPheDuyet, { color: 
   'CHO_PHE_DUYET': { color: 'orange', label: 'Chờ phê duyệt' },
   'DUOC_PHE_DUYET': { color: 'green', label: 'Được phê duyệt' },
   'TU_CHOI': { color: 'red', label: 'Từ chối' },
+};
+
+export type LoaiVungNuoc = 'NEO_DAU' | 'KIEM_DICH' | 'DON_TRA_HOA_TIEU' | 'QUAY_TRO_TAU' | 'BEN_PHAO' | 'CHUYEN_TAI' | 'TRANH_BAO';
+
+export const LOAI_VUNG_NUOC_OPTIONS = [
+  { value: 'NEO_DAU', label: 'Khu neo đậu' },
+  { value: 'KIEM_DICH', label: 'Khu kiểm dịch' },
+  { value: 'DON_TRA_HOA_TIEU', label: 'Khu đón trả hoa tiêu' },
+  { value: 'QUAY_TRO_TAU', label: 'Vùng quay trở tàu' },
+  { value: 'BEN_PHAO', label: 'Bến phao' },
+  { value: 'CHUYEN_TAI', label: 'Khu chuyển tải' },
+  { value: 'TRANH_BAO', label: 'Khu tránh trú bão' },
+];
+
+export const translateLoaiVungNuoc = (val: string | null): string => {
+  if (!val) return '—';
+  const found = LOAI_VUNG_NUOC_OPTIONS.find(o => o.value === val);
+  return found ? found.label : val;
 };

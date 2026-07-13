@@ -13,7 +13,7 @@ import java.time.LocalDate;
 @Builder
 public class DeKeUpdateRequest {
 
-    private String loaiDe;
+    private com.hanghai.kchtg.deke.entity.LoaiDe loaiDe;
     private String viTri;
     private Double chieuDai;
     private Double chieuRong;

@@ -13,8 +13,9 @@ public class DeKe {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "loai_de", nullable = false, length = 100)
-    private String loaiDe;
+    @Column(name = "loai_de")
+    @Convert(converter = LoaiDeConverter.class)
+    private LoaiDe loaiDe;
 
     @Column(name = "vi_tri", nullable = false, length = 200)
     private String viTri;

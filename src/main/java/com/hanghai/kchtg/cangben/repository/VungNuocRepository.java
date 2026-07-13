@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.cangben.repository;
 
 import com.hanghai.kchtg.cangben.entity.VungNuoc;
+import com.hanghai.kchtg.cangben.entity.LoaiVungNuoc;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
 import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import org.springframework.data.domain.Page;
@@ -47,12 +48,14 @@ public interface VungNuocRepository extends JpaRepository<VungNuoc, UUID> {
             "AND (:orgUnitId IS NULL OR v.orgUnitId = :orgUnitId) " +
             "AND (:cangBienId IS NULL OR v.cangBienId = :cangBienId) " +
             "AND (CAST(:search AS string) IS NULL OR (LOWER(v.maVungNuoc) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(v.tenVungNuoc) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
+            "AND (:loaiVungNuoc IS NULL OR v.loaiVungNuoc = :loaiVungNuoc) " +
             "AND (:trangThaiHoatDong IS NULL OR v.trangThaiHoatDong = :trangThaiHoatDong) " +
             "AND (:trangThaiPheDuyet IS NULL OR v.trangThaiPheDuyet = :trangThaiPheDuyet)")
     Page<VungNuoc> searchVungNuoc(
             @Param("orgUnitId") UUID orgUnitId,
             @Param("cangBienId") UUID cangBienId,
             @Param("search") String search,
+            @Param("loaiVungNuoc") LoaiVungNuoc loaiVungNuoc,
             @Param("trangThaiHoatDong") TrangThaiHoatDong trangThaiHoatDong,
             @Param("trangThaiPheDuyet") TrangThaiPheDuyet trangThaiPheDuyet,
             Pageable pageable);

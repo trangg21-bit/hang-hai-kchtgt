@@ -3,6 +3,7 @@ package com.hanghai.kchtg.cangben.service;
 import com.hanghai.kchtg.cangben.dto.caucang.*;
 import com.hanghai.kchtg.cangben.entity.BenCang;
 import com.hanghai.kchtg.cangben.entity.CauCang;
+import com.hanghai.kchtg.cangben.entity.LoaiCau;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
 import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import com.hanghai.kchtg.cangben.repository.BenCangRepository;
@@ -66,18 +67,25 @@ public class CauCangService {
 
     @Transactional(readOnly = true)
     public Page<CauCangResponse> findAll(int page, int size, UUID orgUnitId) {
-        return findAll(page, size, orgUnitId, null, null, null, null);
+        return findAll(page, size, orgUnitId, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public Page<CauCangResponse> findAll(int page, int size, UUID orgUnitId,
             String search, UUID benCangId,
             String status, String approvalStatus) {
-        int pageSize = Math.min(Math.max(size, 1), 100);
+        return findAll(page, size, orgUnitId, search, benCangId, (LoaiCau) null, status, approvalStatus);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CauCangResponse> findAll(int page, int size, UUID orgUnitId,
+            String search, UUID benCangId, LoaiCau loaiCau,
+            String status, String approvalStatus) {
+        int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
         TrangThaiHoatDong statusEnum = status != null ? TrangThaiHoatDong.fromString(status) : null;
         TrangThaiPheDuyet approvalEnum = approvalStatus != null ? TrangThaiPheDuyet.fromString(approvalStatus) : null;
-        return cauCangRepository.searchCauCang(orgUnitId, search, benCangId, statusEnum, approvalEnum, pageable)
+        return cauCangRepository.searchCauCang(orgUnitId, search, benCangId, loaiCau, statusEnum, approvalEnum, pageable)
                 .map(this::toResponse);
     }
 

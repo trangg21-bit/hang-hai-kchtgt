@@ -124,6 +124,7 @@ const pageTitles: Record<string, string> = {
 export default function AppLayout() {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [sidebarHidden, setSidebarHidden] = useState(false);
   const [openKeys, setOpenKeys] = useState<string[]>([]);
   const navigate = useNavigate();
   const location = useLocation();
@@ -419,11 +420,20 @@ export default function AppLayout() {
 
   const sidebarContent = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header — chỉ logo căn giữa */}
-      <div className="sidebar-header" onClick={() => navigate('/')} style={{ cursor: 'pointer', justifyContent: 'center' }}>
-        <div className="sidebar-header__logo-box">
-          <img src="/images/logo-vinamarine.png" alt="Logo" />
+      {/* Header — logo và nút thu gọn menu */}
+      <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', cursor: 'pointer' }}>
+        <div className="sidebar-header__logo-box" onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center' }}>
+          <img src="/images/logo-vinamarine.png" alt="Logo" style={{ maxHeight: '35px' }} />
         </div>
+        {!collapsed && (
+          <Button
+            type="text"
+            icon={<span style={{ display: 'inline-flex', alignItems: 'center', fontSize: '14px', letterSpacing: '-1px', color: '#fff', fontWeight: 'bold' }}>|↔|</span>}
+            onClick={(e) => { e.stopPropagation(); setSidebarHidden(true); }}
+            style={{ padding: 0 }}
+            title="Thu gọn menu"
+          />
+        )}
       </div>
 
       {/* Ô tìm kiếm — pill trong mờ, ngay dưới header */}
@@ -470,7 +480,7 @@ export default function AppLayout() {
     <>
       <Layout style={{ minHeight: '100vh' }}>
       {/* Desktop Sidebar */}
-      {!isMobile && (
+      {!isMobile && !sidebarHidden && (
         <Sider
           collapsible
           trigger={null}
@@ -515,11 +525,19 @@ export default function AppLayout() {
           }}
         >
           <Space>
-            {isMobile && (
+            {isMobile ? (
               <Button
                 type="text"
                 icon={<MenuOutlined />}
                 onClick={() => setMobileDrawerOpen(true)}
+              />
+            ) : (
+              <Button
+                type="text"
+                icon={<MenuOutlined />}
+                onClick={() => setSidebarHidden(!sidebarHidden)}
+                style={{ fontSize: '18px', padding: '4px 8px' }}
+                title={sidebarHidden ? "Mở menu" : "Thu gọn menu"}
               />
             )}
             <Typography.Title level={5} style={{ margin: 0, color: '#12468C' }}>
@@ -527,42 +545,60 @@ export default function AppLayout() {
             </Typography.Title>
           </Space>
 
-          <Dropdown
-            menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
-            trigger={['click']}
-          >
-            <div className="topbar-user">
-              <div className="topbar-user__avatar-wrap">
-                <Avatar
-                  icon={<UserOutlined />}
-                  className="topbar-user__avatar"
-                  style={{ backgroundColor: token.colorPrimary }}
-                />
-                <span className="topbar-user__status-dot" />
-              </div>
-              {!isMobile && (
-                <>
-                  <div className="topbar-user__info">
-                    <span className="topbar-user__name">
-                      {user?.fullName || 'Admin'}
-                    </span>
-                    <span className="topbar-user__role">
-                      {user?.role?.replace('ROLE_', '') || 'Administrator'}
-                    </span>
-                  </div>
-                  <DownOutlined className="topbar-user__arrow" />
-                </>
-              )}
+          {sidebarHidden && (
+            <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => navigate('/')}>
+              <img src="/images/logo-vinamarine.png" alt="Logo" style={{ maxHeight: '35px' }} />
             </div>
-          </Dropdown>
+          )}
+
+          <Space size="middle" style={{ display: 'flex', alignItems: 'center' }}>
+            {sidebarHidden && (
+              <Button
+                type="text"
+                icon={<span style={{ display: 'inline-flex', alignItems: 'center', fontSize: '14px', letterSpacing: '-1px', fontWeight: 'bold' }}>|↔|</span>}
+                onClick={() => setSidebarHidden(false)}
+                title="Thu gọn menu"
+                style={{ padding: '4px 8px' }}
+              />
+            )}
+            <Dropdown
+              menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
+              trigger={['click']}
+            >
+              <div className="topbar-user">
+                <div className="topbar-user__avatar-wrap">
+                  <Avatar
+                    icon={<UserOutlined />}
+                    className="topbar-user__avatar"
+                    style={{ backgroundColor: token.colorPrimary }}
+                  />
+                  <span className="topbar-user__status-dot" />
+                </div>
+                {!isMobile && (
+                  <>
+                    <div className="topbar-user__info">
+                      <span className="topbar-user__name">
+                        {user?.fullName || 'Admin'}
+                      </span>
+                      <span className="topbar-user__role">
+                        {user?.role?.replace('ROLE_', '') || 'Administrator'}
+                      </span>
+                    </div>
+                    <DownOutlined className="topbar-user__arrow" />
+                  </>
+                )}
+              </div>
+            </Dropdown>
+          </Space>
         </Header>
 
         {/* Content */}
         <Content
           style={{
-            padding: 24,
-            minHeight: 'calc(100vh - 56px)',
-            overflow: 'auto',
+            padding: location.pathname === '/gis/map' ? 0 : 24,
+            minHeight: 'calc(100vh - 64px)',
+            height: location.pathname === '/gis/map' ? 'calc(100vh - 64px)' : undefined,
+            overflow: location.pathname === '/gis/map' ? 'hidden' : 'auto',
           }}
         >
           <Outlet />

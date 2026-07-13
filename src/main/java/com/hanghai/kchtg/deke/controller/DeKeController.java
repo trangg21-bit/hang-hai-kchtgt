@@ -3,6 +3,7 @@ package com.hanghai.kchtg.deke.controller;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.deke.dto.*;
 import com.hanghai.kchtg.deke.entity.DeKeApprovalStatus;
+import com.hanghai.kchtg.deke.entity.LoaiDe;
 import com.hanghai.kchtg.deke.service.DeKeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -98,7 +99,7 @@ public class DeKeController {
     @PreAuthorize("@auth.check(authentication, 'deke:read')")
     public ResponseEntity<ApiResponse<KetQuaTimKiemResponse>> search(
             @RequestParam(name = "keyword", required = false) String keyword,
-            @RequestParam(name = "loaiDe", required = false) String loaiDe,
+            @RequestParam(name = "loaiDe", required = false) LoaiDe loaiDe,
             @RequestParam(name = "tinhTrang", required = false) String tinhTrang,
             @RequestParam(name = "trangThaiPheDuyet", required = false) String trangThaiPheDuyet,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
