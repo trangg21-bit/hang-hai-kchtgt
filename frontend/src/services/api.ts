@@ -9,13 +9,19 @@ const api = axios.create({
   },
 });
 
-// Request interceptor — attach auth token
+// Request interceptor — attach auth token & integration token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Auto-attach integration token for share endpoints
+    if (config.url && (config.url.startsWith('/v1/integration/share') || config.url.startsWith('v1/integration/share'))) {
+      config.headers['X-Integration-Token'] = 'integration-secret-token-2026';
+    }
+
     return config;
   },
   (error) => Promise.reject(error),
@@ -86,11 +92,14 @@ api.interceptors.response.use(
     const isAuthRequest = error.config?.url?.includes('/auth/login');
 
     if (status === 401) {
-      if (!isAuthRequest) {
-        showUniqueError(friendlyMsg);
+      const isIntegrationRequest = error.config?.url?.includes('/v1/integration/share');
+      if (!isIntegrationRequest) {
+        if (!isAuthRequest) {
+          showUniqueError(friendlyMsg);
+        }
+        localStorage.removeItem('auth_token');
+        window.location.href = '/login';
       }
-      localStorage.removeItem('auth_token');
-      window.location.href = '/login';
     } else if (status === 403) {
       const serverMsg = error.response?.data?.message;
       if (serverMsg === 'Tai khoan da bi khoa' || serverMsg === 'Tai khoan da bi khoa hoac bi xoa') {

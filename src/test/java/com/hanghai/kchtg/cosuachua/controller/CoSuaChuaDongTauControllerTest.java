@@ -81,7 +81,7 @@ class CoSuaChuaDongTauControllerTest {
 
     @Test
     void testCreate_WithException() {
-        when(service.create(any(), anyString())).thenThrow(new RuntimeException("Test error"));
+        when(service.create(any(), anyString())).thenThrow(new RuntimeException("Lỗi thử nghiệm"));
 
         ResponseEntity<?> result = controller.create(createRequest, mockAuth());
 
@@ -106,7 +106,7 @@ class CoSuaChuaDongTauControllerTest {
 
     @Test
     void testGetById_NotFound() {
-        when(service.getById(999L)).thenThrow(new RuntimeException("CoSuaChuaDongTau not found: 999"));
+        when(service.getById(999L)).thenThrow(new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu: 999"));
 
         ResponseEntity<?> result = controller.getById(999L);
 
@@ -170,7 +170,7 @@ class CoSuaChuaDongTauControllerTest {
 
     @Test
     void testDelete_Throws() {
-        doThrow(new RuntimeException("Can only delete APPROVED records")).when(service).delete(eq(1L), anyString());
+        doThrow(new RuntimeException("Chỉ có thể xóa các bản ghi đã được phê duyệt")).when(service).delete(eq(1L), anyString());
 
         ResponseEntity<?> result = controller.delete(1L, mockAuth());
 

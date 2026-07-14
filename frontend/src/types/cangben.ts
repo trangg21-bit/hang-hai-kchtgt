@@ -79,6 +79,7 @@ export interface BenCang {
   maBen: string;
   tenBen: string;
   cangBienId: string;
+  tenCangBien?: string;
   tuyenDuongThuy?: string;
   viDo?: number;
   kinhDo?: number;
@@ -136,13 +137,17 @@ export interface CauCang {
   maCau: string;
   tenCau: string;
   benCangId: string;
+  tenBenCang?: string;
   chieuDai: number;
   taiTrong: number;
   loaiCau: string;
   trangThaiHoatDong: string;
   trangThaiPheDuyet: string;
-  orgUnitId: string;
+  donViId: string;
   bieuTuongId?: string;
+  khongGianId?: string;
+  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
+  toaDo?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: string;
@@ -158,11 +163,13 @@ export interface CreateCauCangRequest {
   loaiCau: string;
   trangThaiHoatDong: string;
   trangThaiPheDuyet: string;
-  orgUnitId: string;
   bieuTuongId?: string;
+  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
+  toaDo?: string;
 }
 
 export interface UpdateCauCangRequest {
+  id: string;
   maCau?: string;
   tenCau?: string;
   benCangId?: string;
@@ -172,6 +179,8 @@ export interface UpdateCauCangRequest {
   trangThaiHoatDong?: string;
   trangThaiPheDuyet?: string;
   bieuTuongId?: string | null;
+  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
+  toaDo?: string;
 }
 
 // ── 4. Cảng cạn ──────────────────────────────────────────────────────
@@ -229,14 +238,18 @@ export interface VungNuoc {
   maVungNuoc: string;
   tenVungNuoc: string;
   cangBienId: string;
+  tenCangBien?: string;
   dienTich: number;
   doSauMax: number;
   doSauTrungBinh: number;
   loaiVungNuoc: string;
   trangThaiHoatDong: string;
   trangThaiPheDuyet: string;
-  orgUnitId: string;
+  donViId: string;
   bieuTuongId?: string;
+  khongGianId?: string;
+  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
+  toaDo?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: string;
@@ -253,11 +266,13 @@ export interface CreateVungNuocRequest {
   loaiVungNuoc: string;
   trangThaiHoatDong: string;
   trangThaiPheDuyet: string;
-  orgUnitId: string;
   bieuTuongId?: string;
+  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
+  toaDo?: string;
 }
 
 export interface UpdateVungNuocRequest {
+  id: string;
   maVungNuoc?: string;
   tenVungNuoc?: string;
   cangBienId?: string;
@@ -268,4 +283,6 @@ export interface UpdateVungNuocRequest {
   trangThaiHoatDong?: string;
   trangThaiPheDuyet?: string;
   bieuTuongId?: string | null;
+  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
+  toaDo?: string;
 }

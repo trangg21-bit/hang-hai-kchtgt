@@ -4,6 +4,10 @@ import com.hanghai.kchtg.luonghanghai.dto.*;
 import com.hanghai.kchtg.luonghanghai.entity.*;
 import com.hanghai.kchtg.luonghanghai.repository.LuongHangHaiRepository;
 import com.hanghai.kchtg.luonghanghai.repository.PheDuyetLichSuRepository;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
@@ -24,6 +28,7 @@ public class LuongHangHaiService {
 
     private final LuongHangHaiRepository repo;
     private final PheDuyetLichSuRepository pheDuyetLichSuRepo;
+    private final GisSpatialObjectService gisSpatialObjectService;
 
     @Transactional
     public LuongHangHaiResponse create(LuongHangHaiCreateRequest req, String username) {
@@ -35,7 +40,7 @@ public class LuongHangHaiService {
                 .taiTrong(req.getTaiTrong())
                 .dienTichDangBo(req.getDienTichDangBo())
                 .ghiChu(req.getGhiChu())
-                .orgUnitId(req.getOrgUnitId())
+                .donViId(req.getDonViId())
                 .approvalStatus(LuongHangHaiApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
@@ -43,7 +48,28 @@ public class LuongHangHaiService {
                 .createdBy(username)
                 .build();
 
-        return toResponse(repo.save(l));
+        l = repo.save(l);
+
+        if (req.getToaDo() != null && !req.getToaDo().trim().isEmpty()) {
+            GisGeometryType geomType = req.getLoaiHinhHoc() != null ? req.getLoaiHinhHoc() : GisGeometryType.LINE;
+            GisSpatialObjectType objType = getSpatialObjectType(geomType);
+            UUID refId = UUID.nameUUIDFromBytes(("LUONGHANGHAI_" + l.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    null,
+                    "Luồng hàng hải loại tàu " + req.getLoaiTau(),
+                    "LUONG_" + l.getId(),
+                    geomType,
+                    objType,
+                    req.getToaDo(),
+                    req.getBieuTuongId(),
+                    refId,
+                    "LUONGHANGHAI"
+            );
+            l.setKhongGianId(spatialObj.getId());
+            l = repo.save(l);
+        }
+
+        return toResponse(l);
     }
 
     @Transactional(readOnly = true)
@@ -93,10 +119,51 @@ public class LuongHangHaiService {
         if (req.getTaiTrong() != null) l.setTaiTrong(req.getTaiTrong());
         if (req.getDienTichDangBo() != null) l.setDienTichDangBo(req.getDienTichDangBo());
         if (req.getGhiChu() != null) l.setGhiChu(req.getGhiChu());
-        if (req.getOrgUnitId() != null) l.setOrgUnitId(req.getOrgUnitId());
+        if (req.getDonViId() != null) l.setDonViId(req.getDonViId());
         l.setUpdatedBy(username);
 
-        return toResponse(repo.save(l));
+        if (req.getToaDo() != null) {
+            if (req.getToaDo().trim().isEmpty()) {
+                if (l.getKhongGianId() != null) {
+                    gisSpatialObjectService.delete(l.getKhongGianId());
+                    l.setKhongGianId(null);
+                }
+            } else {
+                GisGeometryType geomType = req.getLoaiHinhHoc() != null ? req.getLoaiHinhHoc() : GisGeometryType.LINE;
+                GisSpatialObjectType objType = getSpatialObjectType(geomType);
+                UUID refId = UUID.nameUUIDFromBytes(("LUONGHANGHAI_" + l.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                        l.getKhongGianId(),
+                        "Luồng hàng hải loại tàu " + l.getLoaiTau(),
+                        "LUONG_" + l.getId(),
+                        geomType,
+                        objType,
+                        req.getToaDo(),
+                        req.getBieuTuongId(),
+                        refId,
+                        "LUONGHANGHAI"
+                );
+                l.setKhongGianId(spatialObj.getId());
+            }
+        } else if (l.getKhongGianId() != null && req.getLoaiTau() != null) {
+            gisSpatialObjectService.findById(l.getKhongGianId()).ifPresent(spatialObj -> {
+                UUID refId = UUID.nameUUIDFromBytes(("LUONGHANGHAI_" + l.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                gisSpatialObjectService.createOrUpdate(
+                        spatialObj.getId(),
+                        "Luồng hàng hải loại tàu " + req.getLoaiTau(),
+                        spatialObj.getCode(),
+                        spatialObj.getGeometryType(),
+                        spatialObj.getObjectType(),
+                        spatialObj.getCoordinates(),
+                        spatialObj.getBieuTuongId(),
+                        refId,
+                        "LUONGHANGHAI"
+                );
+            });
+        }
+
+        LuongHangHai saved = repo.save(l);
+        return toResponse(saved);
     }
 
     @Transactional
@@ -110,6 +177,9 @@ public class LuongHangHaiService {
         }
 
         l.setIsDeleted(true);
+        if (l.getKhongGianId() != null) {
+            gisSpatialObjectService.delete(l.getKhongGianId());
+        }
         repo.save(l);
         log.info("Soft deleted luong hang hai id={}", id);
     }
@@ -281,6 +351,17 @@ public class LuongHangHaiService {
                         .collect(Collectors.toList())
                 : new ArrayList<>();
 
+        GisGeometryType geomType = null;
+        String coords = null;
+        if (l.getKhongGianId() != null) {
+            java.util.Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(l.getKhongGianId());
+            if (spatialOpt.isPresent()) {
+                GisSpatialObject spatial = spatialOpt.get();
+                geomType = spatial.getGeometryType();
+                coords = spatial.getCoordinates();
+            }
+        }
+
         return LuongHangHaiResponse.builder()
                 .id(l.getId())
                 .loaiTau(l.getLoaiTau())
@@ -290,7 +371,7 @@ public class LuongHangHaiService {
                 .taiTrong(l.getTaiTrong())
                 .dienTichDangBo(l.getDienTichDangBo())
                 .ghiChu(l.getGhiChu())
-                .orgUnitId(l.getOrgUnitId())
+                .donViId(l.getDonViId())
                 .approvalStatus(l.getApprovalStatus())
                 .pheDuyetC1(l.getPheDuyetC1())
                 .nguoiPheDuyetC1(l.getNguoiPheDuyetC1())
@@ -306,6 +387,24 @@ public class LuongHangHaiService {
                 .updatedBy(l.getUpdatedBy())
                 .attachments(atts)
                 .approvalHistory(hist)
+                .khongGianId(l.getKhongGianId())
+                .loaiHinhHoc(geomType)
+                .toaDo(coords)
                 .build();
+    }
+
+    private GisGeometryType parseGeometryType(String typeStr) {
+        if (typeStr == null) return GisGeometryType.LINE;
+        try {
+            return GisGeometryType.valueOf(typeStr.toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return GisGeometryType.LINE;
+        }
+    }
+
+    private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
+        if (geomType == GisGeometryType.POINT) return GisSpatialObjectType.POINT_OTHER;
+        if (geomType == GisGeometryType.POLYGON) return GisSpatialObjectType.POLYGON_OTHER;
+        return GisSpatialObjectType.LINE_SHIPPING_ROUTE;
     }
 }

@@ -16,6 +16,7 @@ export interface VungNuoc {
   maVungNuoc: string;
   tenVungNuoc: string;
   cangBienId: string;
+  tenCangBien?: string;
   dienTich: number | null;
   doSauMax: number | null;
   doSauTrungBinh: number | null;
@@ -28,6 +29,10 @@ export interface VungNuoc {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  khongGianId?: string | null;
+  loaiHinhHoc?: string | null;
+  toaDo?: string | null;
+  bieuTuongId?: string | null;
 }
 
 export interface CreateVungNuocRequest {
@@ -39,6 +44,9 @@ export interface CreateVungNuocRequest {
   doSauTrungBinh?: number | null;
   loaiVungNuoc?: string | null;
   trangThaiHoatDong?: VungNuocTrangThaiHoatDong;
+  bieuTuongId?: string | null;
+  loaiHinhHoc?: string | null;
+  toaDo?: string | null;
 }
 
 export interface UpdateVungNuocRequest {
@@ -50,6 +58,9 @@ export interface UpdateVungNuocRequest {
   doSauTrungBinh?: number | null;
   loaiVungNuoc?: string | null;
   trangThaiHoatDong?: VungNuocTrangThaiHoatDong;
+  bieuTuongId?: string | null;
+  loaiHinhHoc?: string | null;
+  toaDo?: string | null;
 }
 
 // Approval / Reject

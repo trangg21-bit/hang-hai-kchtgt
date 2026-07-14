@@ -58,11 +58,14 @@ public class CauCang extends BaseEntity {
     private TrangThaiPheDuyet trangThaiPheDuyet;
 
     @Column(name = "org_unit_id")
-    private UUID orgUnitId;
+    private UUID donViId;
 
     @Column(name = "cong_nang_khai_thac", length = 255)
     private String congNangKhaiThac;
 
     @Column(name = "bieu_tuong_id")
     private java.util.UUID bieuTuongId;
+
+    @Column(name = "spatial_id")
+    private java.util.UUID khongGianId;
 }

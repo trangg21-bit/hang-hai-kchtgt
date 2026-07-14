@@ -8,6 +8,8 @@ import java.util.List;
 /**
  * Create request for DeKe (F-044).
  */
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,9 +28,12 @@ public class DeKeCreateRequest {
     private String matVatLieu;
     private String tinhTrang;
     private String ghiChu;
-    private java.util.UUID orgUnitId;
+    private java.util.UUID donViId;
 
     private List<DeKeAttachmentCreate> attachments;
+    private GisGeometryType loaiHinhHoc;
+    private String toaDo;
+    private java.util.UUID bieuTuongId;
 
     @Data
     @NoArgsConstructor

@@ -61,8 +61,11 @@ public class VungNuoc extends BaseEntity {
     private TrangThaiPheDuyet trangThaiPheDuyet;
 
     @Column(name = "org_unit_id")
-    private UUID orgUnitId;
+    private UUID donViId;
 
     @Column(name = "bieu_tuong_id")
     private java.util.UUID bieuTuongId;
+
+    @Column(name = "spatial_id")
+    private java.util.UUID khongGianId;
 }

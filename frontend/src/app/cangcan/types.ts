@@ -11,6 +11,7 @@ export interface CangCan {
   trangThaiHoatDong: string; // 'HIEN_HANH' | 'TAM_NGUNG'
   trangThaiPheDuyet: string; // 'CHO_PHE_DUYET' | 'DUOC_PHE_DUYET' | 'TU_CHOI'
   orgUnitId: string;
+  bieuTuongId?: string | null;
   createdBy: string;
   updatedBy: string;
   createdAt: string;
@@ -27,6 +28,7 @@ export interface CreateCangCanPayload {
   congSuatTEU?: number | null;
   trangThaiHoatDong?: string;
   trangThaiPheDuyet?: string;
+  bieuTuongId?: string | null;
 }
 
 export interface UpdateCangCanPayload {
@@ -39,6 +41,7 @@ export interface UpdateCangCanPayload {
   dienTich?: number;
   congSuatTEU?: number | null;
   trangThaiHoatDong?: string;
+  bieuTuongId?: string | null;
 }
 
 export interface CangCanHistoryRecord {

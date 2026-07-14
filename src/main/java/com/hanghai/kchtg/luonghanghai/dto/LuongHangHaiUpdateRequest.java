@@ -7,6 +7,8 @@ import java.time.LocalDate;
 /**
  * Update request for LuongHangHai (F-038). All fields optional.
  */
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,5 +28,8 @@ public class LuongHangHaiUpdateRequest {
     private String dienTichDangBo;
 
     private String ghiChu;
-    private java.util.UUID orgUnitId;
+    private java.util.UUID donViId;
+    private GisGeometryType loaiHinhHoc;
+    private String toaDo;
+    private java.util.UUID bieuTuongId;
 }

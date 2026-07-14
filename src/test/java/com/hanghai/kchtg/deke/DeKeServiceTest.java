@@ -34,14 +34,15 @@ class DeKeServiceTest {
 
     @Mock DeKeRepository repo;
     @Mock DeKeAttachmentRepository attachmentRepo;
-    @Mock PheDuyetLichSuDeKeRepository pheDuyetLichSuRepo;
+    @Mock com.hanghai.kchtg.deke.repository.PheDuyetLichSuDeKeRepository pheDuyetLichSuRepo;
+    @Mock com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
     DeKeService service;
 
     private DeKe testEntity;
     private DeKeCreateRequest createReq;
 
     @BeforeEach void setUp() {
-        service = new DeKeService(repo, attachmentRepo, pheDuyetLichSuRepo);
+        service = new DeKeService(repo, attachmentRepo, pheDuyetLichSuRepo, gisSpatialObjectService);
         testEntity = DeKe.builder()
                 .id(1L)
                 .loaiDe(LoaiDe.DE_DAT)

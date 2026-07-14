@@ -8,6 +8,8 @@ import java.util.List;
 /**
  * Create request for LuongHangHai (F-038).
  */
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class LuongHangHaiCreateRequest {
     @NotBlank(message = "Loai tau khong duoc de trong") private String loaiTau;
@@ -17,5 +19,8 @@ public class LuongHangHaiCreateRequest {
     private String taiTrong;
     private String dienTichDangBo;
     private String ghiChu;
-    private java.util.UUID orgUnitId;
+    private java.util.UUID donViId;
+    private GisGeometryType loaiHinhHoc;
+    private String toaDo;
+    private java.util.UUID bieuTuongId;
 }

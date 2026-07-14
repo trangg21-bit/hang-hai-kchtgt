@@ -92,7 +92,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
             taiTrong: data.taiTrong,
             dienTichDangBo: data.dienTichDangBo,
             ghiChu: data.ghiChu,
-            orgUnitId: data.orgUnitId,
+            donViId: data.donViId,
           });
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
@@ -137,7 +137,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
         taiTrong: values.taiTrong,
         dienTichDangBo: values.dienTichDangBo,
         ghiChu: values.ghiChu,
-        orgUnitId: values.orgUnitId,
+        donViId: values.donViId,
       };
 
       if (isCreateMode) {
@@ -269,7 +269,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
                 {record.ghiChu ?? '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Đơn vị quản lý" span={2}>
-                {record.orgUnitId ? organizations.find(o => o.id === record.orgUnitId)?.name || record.orgUnitId : '—'}
+                {record.donViId ? organizations.find(o => o.id === record.donViId)?.name || record.donViId : '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
                 <ApprovalStatusBadge status={record.approvalStatus} />
@@ -429,7 +429,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
 
             <Form.Item
               label="Đơn vị quản lý"
-              name="orgUnitId"
+              name="donViId"
             >
               <Select
                 placeholder="Chọn đơn vị quản lý"
@@ -541,7 +541,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
 
           <Form.Item
             label="Đơn vị quản lý"
-            name="orgUnitId"
+            name="donViId"
           >
             <Select
               placeholder="Chọn đơn vị quản lý"

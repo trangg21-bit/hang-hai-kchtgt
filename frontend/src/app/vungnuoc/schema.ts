@@ -20,6 +20,8 @@ export const vungNuocCreateSchema = z.object({
   loaiVungNuoc: z.enum(['NEO_DAU', 'KIEM_DICH', 'DON_TRA_HOA_TIEU', 'QUAY_TRO_TAU', 'BEN_PHAO', 'CHUYEN_TAI', 'TRANH_BAO']).optional().nullable(),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional().default('HIEN_HANH'),
   bieuTuongId: z.string().uuid().optional().or(z.literal('')),
+  loaiHinhHoc: z.string().optional(),
+  toaDo: z.string().optional(),
 });
 
 export type VungNuocCreateValues = z.infer<typeof vungNuocCreateSchema>;
@@ -40,6 +42,8 @@ export const vungNuocUpdateSchema = z.object({
   loaiVungNuoc: z.enum(['NEO_DAU', 'KIEM_DICH', 'DON_TRA_HOA_TIEU', 'QUAY_TRO_TAU', 'BEN_PHAO', 'CHUYEN_TAI', 'TRANH_BAO']).optional().nullable(),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
   bieuTuongId: z.string().uuid().optional().nullable(),
+  loaiHinhHoc: z.string().optional(),
+  toaDo: z.string().optional(),
 });
 
 export type VungNuocUpdateValues = z.infer<typeof vungNuocUpdateSchema>;

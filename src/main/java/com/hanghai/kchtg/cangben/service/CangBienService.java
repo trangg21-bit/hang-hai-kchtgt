@@ -1,12 +1,17 @@
 package com.hanghai.kchtg.cangben.service;
 
-import com.hanghai.kchtg.cangben.dto.cangbien.*;
+import com.hanghai.kchtg.cangben.dto.cangbien.CangBienResponse;
+import com.hanghai.kchtg.cangben.dto.cangbien.CreateCangBienRequest;
+import com.hanghai.kchtg.cangben.dto.cangbien.UpdateCangBienRequest;
 import com.hanghai.kchtg.cangben.entity.CangBien;
-import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import com.hanghai.kchtg.cangben.repository.BenCangRepository;
 import com.hanghai.kchtg.cangben.repository.CangBienRepository;
+import com.hanghai.kchtg.cangben.repository.CauCangRepository;
 import com.hanghai.kchtg.cangben.repository.VungNuocRepository;
+import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
+import com.hanghai.kchtg.cangben.service.shared.UserResolverService;
+import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
+import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,8 +22,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
-import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
@@ -39,7 +42,10 @@ public class CangBienService {
     private final CangBienRepository cangBienRepository;
     private final BenCangRepository benCangRepository;
     private final VungNuocRepository vungNuocRepository;
+    private final CauCangRepository cauCangRepository;
     private final LichSuThayDoiService lichSuThayDoiService;
+    private final UserResolverService userResolverService;
+    private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
     // ── CREATE (F-008) ──────────────────────────────────────────────────
 
@@ -105,7 +111,28 @@ public class CangBienService {
         TrangThaiPheDuyet approvalEnum = trangThaiPheDuyet != null ? TrangThaiPheDuyet.fromString(trangThaiPheDuyet) : null;
         Page<CangBien> results = cangBienRepository.searchCangBien(
                 orgUnitId, maCang, tenCang, tinhThanhPho, statusEnum, approvalEnum, search, pageable);
-        return results.map(this::toResponse);
+
+        java.util.Set<UUID> userUuids = new java.util.HashSet<>();
+        results.getContent().forEach(e -> {
+            try {
+                if (e.getCreatedBy() != null) userUuids.add(UUID.fromString(e.getCreatedBy()));
+                if (e.getUpdatedBy() != null) userUuids.add(UUID.fromString(e.getUpdatedBy()));
+            } catch (Exception ex) {
+                // ignore
+            }
+        });
+
+        java.util.Map<String, String> userNamesMap = new java.util.HashMap<>();
+        if (!userUuids.isEmpty()) {
+            userRepository.findAllById(userUuids).forEach(usr -> {
+                String displayName = usr.getFullName() != null && !usr.getFullName().trim().isEmpty()
+                        ? usr.getFullName()
+                        : usr.getUsername();
+                userNamesMap.put(usr.getId().toString(), displayName);
+            });
+        }
+
+        return results.map(e -> toResponse(e, userNamesMap.get(e.getCreatedBy()), userNamesMap.get(e.getUpdatedBy())));
     }
 
     // ── UPDATE (F-009) ──────────────────────────────────────────────────
@@ -143,7 +170,24 @@ public class CangBienService {
         if (request.getKinhDo() != null) entity.setKinhDo(request.getKinhDo());
         if (request.getDienTich() != null) entity.setDienTich(request.getDienTich());
         if (request.getKhaNangTiepNhan() != null) entity.setKhaNangTiepNhan(request.getKhaNangTiepNhan());
-        if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
+        if (request.getOrgUnitId() != null) {
+            UUID oldOrgUnitId = entity.getOrgUnitId();
+            entity.setOrgUnitId(request.getOrgUnitId());
+            if (!request.getOrgUnitId().equals(oldOrgUnitId)) {
+                benCangRepository.findByCangBienIdAndDeletedAtIsNull(entity.getId()).forEach(bc -> {
+                    bc.setOrgUnitId(request.getOrgUnitId());
+                    benCangRepository.save(bc);
+                    cauCangRepository.findByBenCangIdAndDeletedAtIsNull(bc.getId()).forEach(cc -> {
+                        cc.setDonViId(request.getOrgUnitId());
+                        cauCangRepository.save(cc);
+                    });
+                });
+                vungNuocRepository.findByCangBienIdAndDeletedAtIsNull(entity.getId()).forEach(vn -> {
+                    vn.setDonViId(request.getOrgUnitId());
+                    vungNuocRepository.save(vn);
+                });
+            }
+        }
         if (request.getNhomCangBien() != null) entity.setNhomCangBien(request.getNhomCangBien());
         entity.setBieuTuongId(request.getBieuTuongId());
         entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong() != null ? request.getTrangThaiHoatDong() : entity.getTrangThaiHoatDong());
@@ -198,6 +242,13 @@ public class CangBienService {
     // ── Internal helpers ─────────────────────────────────────────────────
 
     private CangBienResponse toResponse(CangBien entity) {
+        return toResponse(entity, null, null);
+    }
+
+    private CangBienResponse toResponse(CangBien entity, String preResolvedCreatorName, String preResolvedUpdaterName) {
+        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName : userResolverService.resolveName(entity.getCreatedBy());
+        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName : userResolverService.resolveName(entity.getUpdatedBy());
+
         return CangBienResponse.builder()
                 .id(entity.getId())
                 .maCang(entity.getMaCang())
@@ -212,8 +263,8 @@ public class CangBienService {
                 .orgUnitId(entity.getOrgUnitId())
                 .nhomCangBien(entity.getNhomCangBien())
                 .bieuTuongId(entity.getBieuTuongId())
-                .createdBy(entity.getCreatedBy())
-                .updatedBy(entity.getUpdatedBy())
+                .createdBy(createdBy)
+                .updatedBy(updatedBy)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

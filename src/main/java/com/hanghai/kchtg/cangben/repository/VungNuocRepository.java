@@ -23,14 +23,14 @@ public interface VungNuocRepository extends JpaRepository<VungNuoc, UUID> {
     boolean existsByMaVungNuoc(String maVungNuoc);
 
     @Query("SELECT v FROM VungNuoc v WHERE v.deletedAt IS NULL " +
-            "AND (:orgUnitId IS NULL OR v.orgUnitId = :orgUnitId)")
+            "AND (:orgUnitId IS NULL OR v.donViId = :orgUnitId)")
     Page<VungNuoc> findAllActive(@Param("orgUnitId") UUID orgUnitId, Pageable pageable);
 
     /**
      * Paginated list filtered by orgUnitId and optional parent CangBien ID (INT-004).
      */
     @Query("SELECT v FROM VungNuoc v WHERE v.deletedAt IS NULL " +
-            "AND (:orgUnitId IS NULL OR v.orgUnitId = :orgUnitId) " +
+            "AND (:orgUnitId IS NULL OR v.donViId = :orgUnitId) " +
             "AND (:cangBienId IS NULL OR v.cangBienId = :cangBienId)")
     Page<VungNuoc> findAllActive(@Param("orgUnitId") UUID orgUnitId,
                                  @Param("cangBienId") UUID cangBienId,
@@ -45,7 +45,7 @@ public interface VungNuocRepository extends JpaRepository<VungNuoc, UUID> {
     long countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet trangThaiPheDuyet);
 
     @Query("SELECT v FROM VungNuoc v WHERE v.deletedAt IS NULL " +
-            "AND (:orgUnitId IS NULL OR v.orgUnitId = :orgUnitId) " +
+            "AND (:orgUnitId IS NULL OR v.donViId = :orgUnitId) " +
             "AND (:cangBienId IS NULL OR v.cangBienId = :cangBienId) " +
             "AND (CAST(:search AS string) IS NULL OR (LOWER(v.maVungNuoc) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(v.tenVungNuoc) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
             "AND (:loaiVungNuoc IS NULL OR v.loaiVungNuoc = :loaiVungNuoc) " +

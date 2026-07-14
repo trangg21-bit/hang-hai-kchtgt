@@ -17,7 +17,7 @@ export interface LuongHangHaiResponse {
   taiTrong?: string | number;
   dienTichDangBo?: string | number;
   ghiChu?: string;
-  orgUnitId?: string;
+  donViId?: string;
   approvalStatus: ApprovalStatus;
   pheDuyetC1?: boolean;
   nguoiPheDuyetC1?: string;
@@ -34,6 +34,10 @@ export interface LuongHangHaiResponse {
   attachments?: LuongHangHaiAttachment[];
   approvalHistory?: PheDuyetResponse[];
   history?: HistoryEntry[];
+  khongGianId?: string;
+  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
+  toaDo?: string;
+  bieuTuongId?: string;
 }
 
 export interface CreateLuongHangHaiRequest {
@@ -44,10 +48,15 @@ export interface CreateLuongHangHaiRequest {
   taiTrong?: string | number;
   dienTichDangBo?: string | number;
   ghiChu?: string;
-  orgUnitId?: string;
+  donViId?: string;
+  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
+  toaDo?: string;
+  bieuTuongId?: string;
 }
 
-export interface UpdateLuongHangHaiRequest extends CreateLuongHangHaiRequest {}
+export interface UpdateLuongHangHaiRequest extends CreateLuongHangHaiRequest {
+  id: number;
+}
 
 export interface PheDuyetRequest {
   capPheDuyet?: number;
@@ -77,7 +86,7 @@ export interface HistoryEntry {
 export interface ListParams {
   page?: number;
   size?: number;
-  orgUnitId?: string;
+  donViId?: string;
   keyword?: string;
   gioDien?: string;
   taiTrong?: string | number;

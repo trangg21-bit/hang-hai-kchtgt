@@ -20,7 +20,7 @@ export interface DeKeResponse {
   matVatLieu?: string;
   tinhTrang?: string;
   ghiChu?: string;
-  orgUnitId?: string;
+  donViId?: string;
   trangThaiPheDuyet: ApprovalStatus;
   pheDuyetC1?: boolean;
   nguoiPheDuyetC1?: string;
@@ -37,6 +37,10 @@ export interface DeKeResponse {
   attachments?: DeKeAttachment[];
   approvalHistory?: PheDuyetResponse[];
   history?: HistoryEntry[];
+  khongGianId?: string;
+  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
+  toaDo?: string;
+  bieuTuongId?: string;
 }
 
 export interface CreateDeKeRequest {
@@ -48,10 +52,15 @@ export interface CreateDeKeRequest {
   matVatLieu?: string;
   tinhTrang?: string;
   ghiChu?: string;
-  orgUnitId?: string;
+  donViId?: string;
+  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
+  toaDo?: string;
+  bieuTuongId?: string;
 }
 
-export interface UpdateDeKeRequest extends CreateDeKeRequest {}
+export interface UpdateDeKeRequest extends CreateDeKeRequest {
+  id: number;
+}
 
 export interface PheDuyetRequest {
   capPheDuyet?: number;
@@ -81,7 +90,7 @@ export interface HistoryEntry {
 export interface ListParams {
   page?: number;
   size?: number;
-  orgUnitId?: string;
+  donViId?: string;
   keyword?: string;
   loaiDe?: LoaiDe;
   tinhTrang?: string;

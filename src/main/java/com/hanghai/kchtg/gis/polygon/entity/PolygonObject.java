@@ -8,8 +8,8 @@ import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
 
 @Entity
-@Table(name = "polygon_objects")
-@SQLRestriction("deleted_at IS NULL")
+@Table(name = "gis_spatial_objects")
+@SQLRestriction("geometry_type = 3 AND deleted_at IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -17,29 +17,50 @@ import org.hibernate.annotations.SQLRestriction;
 @Builder
 public class PolygonObject extends BaseEntity {
 
+    @Getter
     public enum ObjectType {
-        WATER_ZONE,
-        ANCHORAGE,
-        STORM_SHELTER,
-        RESTRICTED_AREA,
-        LIMITED_ZONE,
-        OTHER
+        WATER_ZONE(30),
+        ANCHORAGE(31),
+        STORM_SHELTER(32),
+        RESTRICTED_AREA(33),
+        LIMITED_ZONE(34),
+        OTHER(35);
+
+        private final int value;
+
+        ObjectType(int value) {
+            this.value = value;
+        }
     }
 
+    @Getter
     public enum Status {
-        DRAFT,
-        PENDING_APPROVAL,
-        APPROVED_L1,
-        APPROVED_L2,
-        PUBLISHED,
-        REJECTED,
-        DELETED
+        DRAFT(0),
+        PENDING_APPROVAL(1),
+        APPROVED_L1(2),
+        APPROVED_L2(3),
+        PUBLISHED(4),
+        REJECTED(5),
+        DELETED(6);
+
+        private final int value;
+
+        Status(int value) {
+            this.value = value;
+        }
     }
 
+    @Getter
     public enum ApprovalStatus {
-        PENDING,
-        APPROVED,
-        REJECTED
+        PENDING(0),
+        APPROVED(1),
+        REJECTED(2);
+
+        private final int value;
+
+        ApprovalStatus(int value) {
+            this.value = value;
+        }
     }
 
     @NotBlank(message = "Tên đối tượng không được để trống")
@@ -52,14 +73,17 @@ public class PolygonObject extends BaseEntity {
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @Column(name = "geometry_type", nullable = false)
+    @Builder.Default
+    private Integer geometryType = 3;
+
+    @Column(name = "object_type", nullable = false)
     private ObjectType objectType;
 
     @Column(name = "category_id")
     private Long categoryId;
 
-    @Column(name = "fill_symbol_id")
+    @Column(name = "bieu_tuong_id")
     private java.util.UUID fillSymbolId;
 
     @Column(name = "coordinates", nullable = false, columnDefinition = "TEXT")
@@ -68,8 +92,7 @@ public class PolygonObject extends BaseEntity {
     @Column(length = 1000)
     private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false)
     @Builder.Default
     private Status status = Status.DRAFT;
 
@@ -85,8 +108,7 @@ public class PolygonObject extends BaseEntity {
     @Column(name = "restriction_level", length = 50)
     private String restrictionLevel;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "approval_status", length = 20)
+    @Column(name = "approval_status")
     @Builder.Default
     private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
 
@@ -95,4 +117,10 @@ public class PolygonObject extends BaseEntity {
 
     @Column(name = "approved_date")
     private java.time.LocalDateTime approvedDate;
+
+    @PrePersist
+    @PreUpdate
+    public void prePersist() {
+        this.geometryType = 3;
+    }
 }

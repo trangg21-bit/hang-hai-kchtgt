@@ -7,6 +7,7 @@ export interface BenCangEntity {
   maBen: string;
   tenBen: string;
   cangBienId: string;
+  tenCangBien?: string;
   tuyenDuongThuy?: string;
   viDo?: number;
   kinhDo?: number;

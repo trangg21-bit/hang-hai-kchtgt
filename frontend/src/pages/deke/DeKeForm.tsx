@@ -114,7 +114,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
             matVatLieu: data.matVatLieu,
             tinhTrang: data.tinhTrang,
             ghiChu: data.ghiChu,
-            orgUnitId: data.orgUnitId,
+            donViId: data.donViId,
           });
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
@@ -156,7 +156,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
         chieuCao: values.chieuCao,
         matVatLieu: values.matVatLieu,
         tinhTrang: values.tinhTrang,
-        orgUnitId: values.orgUnitId,
+        donViId: values.donViId,
       };
       if (values.ghiChu !== undefined) {
         (payload as any).ghiChu = values.ghiChu;
@@ -312,7 +312,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
                 {(record as any).ghiChu ?? '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Đơn vị quản lý" span={2}>
-                {record.orgUnitId ? organizations.find(o => o.id === record.orgUnitId)?.name || record.orgUnitId : '—'}
+                {record.donViId ? organizations.find(o => o.id === record.donViId)?.name || record.donViId : '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
                 <ApprovalStatusBadge status={record.trangThaiPheDuyet} />
@@ -504,7 +504,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
 
       <Form.Item
         label="Đơn vị quản lý"
-        name="orgUnitId"
+        name="donViId"
       >
         <Select
           placeholder="Chọn đơn vị quản lý"

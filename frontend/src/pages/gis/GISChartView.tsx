@@ -35,11 +35,21 @@ import {
   SearchOutlined,
   DeleteOutlined,
   CloseOutlined,
+  CopyOutlined,
+  EditOutlined,
 } from '@ant-design/icons';
 import { chartService } from '../../services/chartService';
 import type { ChartCell, ChartFeature } from '../../services/chartService';
 import api from '../../services/api';
+import {
+  cangBienCRUD,
+  benCangCRUD,
+  cauCangCRUD,
+  cangCanCRUD,
+  vungNuocCRUD
+} from '../../services/cangbenService';
 import { organizationService } from '../../services/organizationService';
+import { userService } from '../../services/userService';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
 import { symbolService } from '../../services/symbolService';
@@ -288,6 +298,209 @@ const LAYER_ICONS: Record<string, string> = {
   'TSSBND': '🚧',
 };
 
+const formatDateTime = (dtStr?: string) => {
+  if (!dtStr) return '—';
+  try {
+    const d = new Date(dtStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+  } catch (e) {
+    return dtStr;
+  }
+};
+
+const fetchAndFormatPopupDetails = async (record: any) => {
+  const type = record.kchtTypeLabel || '';
+  const id = record.id;
+  
+  const headerHtml = `
+    <div style="font-family: 'Segoe UI', Roboto, sans-serif; min-width: 450px; padding: 4px;">
+      <div style="max-height: 450px; overflow-y: auto; padding-right: 6px;">
+        <table style="width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; line-height: 1.5; color: #333;">
+          <thead>
+            <tr style="background: #fafafa; border-bottom: 1px solid #f0f0f0;">
+              <th style="text-align: left; padding: 8px; font-weight: 600; width: 40%; border: 1px solid #f0f0f0;">Thông tin</th>
+              <th style="text-align: left; padding: 8px; font-weight: 600; width: 60%; border: 1px solid #f0f0f0;">Giá trị</th>
+            </tr>
+          </thead>
+          <tbody>
+  `;
+  
+  const footerHtml = `
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  const getStatusText = (status?: string) => {
+    if (!status) return '—';
+    const s = status.toUpperCase();
+    if (s === 'HIEN_HANH' || s === 'ACTIVE') return 'Đang khai thác/vận hành';
+    if (s === 'TAM_NGUNG' || s === 'INACTIVE') return 'Tạm ngừng';
+    return status;
+  };
+
+  const getApprovalStatusText = (status?: string) => {
+    if (!status) return '—';
+    const s = status.toUpperCase();
+    if (s === 'DUOC_PHE_DUYET' || s === 'APPROVED') return 'Đã phê duyệt';
+    if (s === 'CHO_PHE_DUYET' || s === 'PENDING') return 'Chờ phê duyệt';
+    return status;
+  };
+
+  const formatVal = (val: any) => {
+    if (val === undefined || val === null || val === '') return '—';
+    return String(val);
+  };
+
+  const tdLabelStyle = 'padding: 8px; border: 1px solid #f0f0f0; font-weight: 500; background: #fafafa; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;';
+  const tdValStyle = 'padding: 8px; border: 1px solid #f0f0f0; word-wrap: break-word; overflow-wrap: break-word; white-space: normal;';
+
+  try {
+    let rowsHtml = '';
+    if (type === 'Cầu cảng') {
+      const data = await cauCangCRUD.findById(id);
+      
+      const getLoaiCauText = (val: string) => {
+        if (!val) return '—';
+        const v = val.toUpperCase();
+        if (v === 'CONTAINER') return 'Cảng container';
+        if (v === 'TONG_HOP') return 'Cảng tổng hợp';
+        if (v === 'HANH_KHACH') return 'Cảng hành khách';
+        if (v === 'CHUYEN_DUNG_XANG_DAU') return 'Chuyên dùng xăng dầu';
+        if (v === 'CHUYEN_DUNG_ROI_QUANG') return 'Chuyên dùng rời quặng';
+        if (v === 'KHAC') return 'Khác';
+        return val;
+      };
+
+      rowsHtml += `
+        <tr><td style="${tdLabelStyle}">Mã cầu cảng:</td><td style="${tdValStyle}">${formatVal(data.maCau)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Tên cầu cảng:</td><td style="${tdValStyle}">${formatVal(data.tenCau)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Đơn vị quản lý:</td><td style="${tdValStyle}">${formatVal(record.orgName)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Địa điểm (Tỉnh/ Thành phố):</td><td style="${tdValStyle}">${formatVal(record.diaDiem)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Ngày cập nhật:</td><td style="${tdValStyle}">${formatDateTime(data.updatedAt)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Cán bộ cập nhật:</td><td style="${tdValStyle}">${formatVal(data.updatedBy)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Thuộc cảng biển:</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Thuộc luồng hàng hải:</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Loại kết cấu cầu cảng:</td><td style="${tdValStyle}">${getLoaiCauText(data.loaiCau)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Công năng khai thác:</td><td style="${tdValStyle}">${formatVal(data.congNangKhaiThac)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Tình trạng:</td><td style="${tdValStyle}">${getStatusText(data.trangThaiHoatDong)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Trạng thái:</td><td style="${tdValStyle}">${getApprovalStatusText(data.trangThaiPheDuyet)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Thời điểm công bố mở, đưa vào sử dụng:</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Quyết định công bố/ Văn bản cho phép khai thác:</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Văn bản thỏa thuận đầu tư xây dựng:</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Thuộc bến cảng:</td><td style="${tdValStyle}">${formatVal(data.tenBenCang)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Phân cấp công trình:</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Chiều dài (m):</td><td style="${tdValStyle}">${formatVal(data.chieuDai)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Chiều rộng (m):</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Thời điểm phê duyệt quy trình bảo trì công trình:</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Thời điểm được chấp thuận hồ sơ báo cáo đánh giá an toàn công trình (gần nhất):</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Thời điểm kiểm định gần nhất:</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Số lượng cầu cảng đang khai thác:</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Số lượng cầu cảng đã công bố:</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Số lượng cầu cảng đang được thỏa thuận đầu tư xây dựng:</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Sản lượng hàng thông qua:</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Tiếp nhận tàu có trọng tải lớn hơn thông số tại quyết định công bố:</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Số văn bản:</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Ngày văn bản:</td><td style="${tdValStyle}">—</td></tr>
+        <tr><td style="${tdLabelStyle}">Phạm vi khu nước neo buộc tàu:</td><td style="${tdValStyle}">—</td></tr>
+      `;
+    } else if (type === 'Cảng biển') {
+      const data = await cangBienCRUD.findById(id);
+      rowsHtml += `
+        <tr><td style="${tdLabelStyle}">Mã cảng biển:</td><td style="${tdValStyle}">${formatVal(data.maCang)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Tên cảng biển:</td><td style="${tdValStyle}">${formatVal(data.tenCang)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Đơn vị quản lý:</td><td style="${tdValStyle}">${formatVal(record.orgName)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Địa điểm (Tỉnh/ Thành phố):</td><td style="${tdValStyle}">${formatVal(data.tinhThanhPho)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Nhóm cảng biển:</td><td style="${tdValStyle}">${formatVal(data.nhomCangBien)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Kinh độ:</td><td style="${tdValStyle}">${formatVal(data.kinhDo)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Vĩ độ:</td><td style="${tdValStyle}">${formatVal(data.viDo)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Diện tích (ha):</td><td style="${tdValStyle}">${formatVal(data.dienTich)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Khả năng tiếp nhận (tấn):</td><td style="${tdValStyle}">${formatVal(data.khaNangTiepNhan)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Tình trạng:</td><td style="${tdValStyle}">${getStatusText(data.trangThaiHoatDong)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Trạng thái:</td><td style="${tdValStyle}">${getApprovalStatusText(data.trangThaiPheDuyet)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Ngày cập nhật:</td><td style="${tdValStyle}">${formatDateTime(data.updatedAt)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Cán bộ cập nhật:</td><td style="${tdValStyle}">${formatVal(data.updatedBy)}</td></tr>
+      `;
+    } else if (type === 'Bến cảng') {
+      const data = await benCangCRUD.findById(id);
+      rowsHtml += `
+        <tr><td style="${tdLabelStyle}">Mã bến cảng:</td><td style="${tdValStyle}">${formatVal(data.maBen)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Tên bến cảng:</td><td style="${tdValStyle}">${formatVal(data.tenBen)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Đơn vị quản lý:</td><td style="${tdValStyle}">${formatVal(record.orgName)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Địa điểm (Tỉnh/ Thành phố):</td><td style="${tdValStyle}">${formatVal(record.diaDiem)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Tuyến đường thủy:</td><td style="${tdValStyle}">${formatVal(data.tuyenDuongThuy)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Kinh độ:</td><td style="${tdValStyle}">${formatVal(data.kinhDo)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Vĩ độ:</td><td style="${tdValStyle}">${formatVal(data.viDo)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Chiều dài (m):</td><td style="${tdValStyle}">${formatVal(data.chieuDai)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Chiều rộng (m):</td><td style="${tdValStyle}">${formatVal(data.chieuRong)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Loại bến:</td><td style="${tdValStyle}">${formatVal(data.loaiBen)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Độ sâu luồng (m):</td><td style="${tdValStyle}">${formatVal(data.doSauLuong)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Công năng khai thác:</td><td style="${tdValStyle}">${formatVal(data.congNangKhaiThac)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Tình trạng:</td><td style="${tdValStyle}">${getStatusText(data.trangThaiHoatDong)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Trạng thái:</td><td style="${tdValStyle}">${getApprovalStatusText(data.trangThaiPheDuyet)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Ngày cập nhật:</td><td style="${tdValStyle}">${formatDateTime(data.updatedAt)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Cán bộ cập nhật:</td><td style="${tdValStyle}">${formatVal(data.updatedBy)}</td></tr>
+      `;
+    } else if (type === 'Cảng cạn') {
+      const data = await cangCanCRUD.findById(id);
+      rowsHtml += `
+        <tr><td style="${tdLabelStyle}">Mã cảng cạn:</td><td style="${tdValStyle}">${formatVal(data.maCangCan)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Tên cảng cạn:</td><td style="${tdValStyle}">${formatVal(data.tenCangCan)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Đơn vị quản lý:</td><td style="${tdValStyle}">${formatVal(record.orgName)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Địa điểm (Tỉnh/ Thành phố):</td><td style="${tdValStyle}">${formatVal(data.tinhThanhPho)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Kinh độ:</td><td style="${tdValStyle}">${formatVal(data.kinhDo)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Vĩ độ:</td><td style="${tdValStyle}">${formatVal(data.viDo)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Diện tích (ha):</td><td style="${tdValStyle}">${formatVal(data.dienTich)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Công suất (TEU):</td><td style="${tdValStyle}">${formatVal(data.congSuatTEU)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Tình trạng:</td><td style="${tdValStyle}">${getStatusText(data.trangThaiHoatDong)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Trạng thái:</td><td style="${tdValStyle}">${getApprovalStatusText(data.trangThaiPheDuyet)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Ngày cập nhật:</td><td style="${tdValStyle}">${formatDateTime(data.updatedAt)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Cán bộ cập nhật:</td><td style="${tdValStyle}">${formatVal(data.updatedBy)}</td></tr>
+      `;
+    } else if (type === 'Vùng nước') {
+      const data = await vungNuocCRUD.findById(id);
+      rowsHtml += `
+        <tr><td style="${tdLabelStyle}">Mã vùng nước:</td><td style="${tdValStyle}">${formatVal(data.maVungNuoc)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Tên vùng nước:</td><td style="${tdValStyle}">${formatVal(data.tenVungNuoc)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Đơn vị quản lý:</td><td style="${tdValStyle}">${formatVal(record.orgName)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Diện tích (ha):</td><td style="${tdValStyle}">${formatVal(data.dienTich)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Độ sâu lớn nhất (m):</td><td style="${tdValStyle}">${formatVal(data.doSauMax)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Độ sâu trung bình (m):</td><td style="${tdValStyle}">${formatVal(data.doSauTrungBinh)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Loại vùng nước:</td><td style="${tdValStyle}">${formatVal(data.loaiVungNuoc)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Tình trạng:</td><td style="${tdValStyle}">${getStatusText(data.trangThaiHoatDong)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Trạng thái:</td><td style="${tdValStyle}">${getApprovalStatusText(data.trangThaiPheDuyet)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Ngày cập nhật:</td><td style="${tdValStyle}">${formatDateTime(data.updatedAt)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Cán bộ cập nhật:</td><td style="${tdValStyle}">${formatVal(data.updatedBy)}</td></tr>
+      `;
+    } else {
+      rowsHtml += `
+        <tr><td style="${tdLabelStyle}">Tên kết cấu:</td><td style="${tdValStyle}">${formatVal(record.name)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Mã kết cấu:</td><td style="${tdValStyle}">${formatVal(record.ma)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Loại KCHT:</td><td style="${tdValStyle}">${formatVal(record.kchtTypeLabel)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Đơn vị quản lý:</td><td style="${tdValStyle}">${formatVal(record.orgName)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Địa điểm:</td><td style="${tdValStyle}">${formatVal(record.diaDiem)}</td></tr>
+      `;
+    }
+    return headerHtml + rowsHtml + footerHtml;
+  } catch (err) {
+    console.error('Failed to build detailed popup:', err);
+    return `
+      <div style="font-family: sans-serif; padding: 4px; min-width: 180px;">
+        <h4 style="margin: 0 0 6px 0; color: #ff4d4f; font-size: 14px;">Lỗi tải chi tiết</h4>
+        <p style="margin: 0; font-size: 12px;">Không thể tải dữ liệu chi tiết của kết cấu hạ tầng này.</p>
+      </div>
+    `;
+  }
+};
+
+
 function getFeatureNameVi(featureCode: string, originalName?: string): string {
   if (originalName && originalName !== featureCode && !originalName.startsWith('UNKNOWN_')) {
     return originalName;
@@ -295,6 +508,39 @@ function getFeatureNameVi(featureCode: string, originalName?: string): string {
   const cleanCode = featureCode.toUpperCase();
   return FEATURE_NAMES_VI[cleanCode] || featureCode;
 }
+
+const parseWktToLatLngs = (wkt: string, geomType: string): [number, number][] => {
+  if (!wkt) return [];
+  try {
+    const type = (geomType || '').toUpperCase();
+    if (type === 'POINT' && wkt.startsWith('POINT(')) {
+      const match = wkt.match(/POINT\(([^)]+)\)/);
+      if (match) {
+        const parts = match[1].split(' ');
+        return [[parseFloat(parts[1]), parseFloat(parts[0])]];
+      }
+    } else if ((type === 'LINE' || type === 'POLYLINE') && wkt.startsWith('LINESTRING(')) {
+      const match = wkt.match(/LINESTRING\(([^)]+)\)/);
+      if (match) {
+        return match[1].split(',').map((pt) => {
+          const parts = pt.trim().split(' ');
+          return [parseFloat(parts[1]), parseFloat(parts[0])];
+        });
+      }
+    } else if ((type === 'POLYGON' || type === 'AREA') && wkt.startsWith('POLYGON((')) {
+      const match = wkt.match(/POLYGON\(\(([^)]+)\)\)/);
+      if (match) {
+        return match[1].split(',').map((pt) => {
+          const parts = pt.trim().split(' ');
+          return [parseFloat(parts[1]), parseFloat(parts[0])];
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Failed to parse WKT', wkt, err);
+  }
+  return [];
+};
 
 function getFeatureIcon(featureCode: string, fillColor: string, strokeColor: string): string {
   const codeUpper = featureCode.toUpperCase();
@@ -434,6 +680,13 @@ export default function GISChartView() {
   const [showPlanning, setShowPlanning] = useState(false);
   const [planningFeatures, setPlanningFeatures] = useState<any[]>([]);
 
+  // Drawing state
+  const [drawnGeometry, setDrawnGeometry] = useState<{
+    type: string;
+    wkt: string;
+    coordinates: Array<{ lat: number; lng: number }>;
+  } | null>(null);
+
   // Measure actual available height for table body using ResizeObserver on the wrapper div
   useEffect(() => {
     const el = tableWrapperRef.current;
@@ -536,7 +789,7 @@ export default function GISChartView() {
     }
   }, [searchPanelVisible]);
 
-  const handleRowClick = useCallback((record: any) => {
+  const handleRowClick = useCallback(async (record: any) => {
     const rawLat = record.viDo ?? record.latitude;
     const rawLon = record.kinhDo ?? record.longitude;
     
@@ -547,25 +800,23 @@ export default function GISChartView() {
       if (!isNaN(lat) && !isNaN(lon) && lat >= 5.0 && lat <= 26.0 && lon >= 99.0 && lon <= 118.0 && mapRef.current) {
         mapRef.current.setView([lat, lon], 15);
         
-        const popupContent = `
-          <div style="font-family: sans-serif; padding: 4px; min-width: 180px;">
-            <h4 style="margin: 0 0 6px 0; color: #1890ff; font-size: 14px;">${record.tenCang || record.tenBen || record.tenCau || record.tenCangCan || record.tenVungNuoc || 'Chi tiết'}</h4>
-            <p style="margin: 0 0 4px 0; font-size: 12px;"><b>Loại KCHT:</b> ${record.kchtTypeLabel}</p>
-            <p style="margin: 0 0 4px 0; font-size: 12px;"><b>Đơn vị quản lý:</b> ${record.orgName}</p>
-            <p style="margin: 0; font-size: 12px;"><b>Địa điểm:</b> ${record.diaDiem || '—'}</p>
-          </div>
-        `;
-        
+        let activePopup: any = null;
         if (window.L) {
-          window.L.popup()
+          activePopup = window.L.popup()
             .setLatLng([lat, lon])
-            .setContent(popupContent)
+            .setContent('<div style="padding: 10px; font-size: 13px; font-family: sans-serif;">Đang tải thông tin chi tiết...</div>')
             .openOn(mapRef.current);
         }
+        
         setSelectedRowKeys((prev) => {
           if (prev.includes(record.id)) return prev;
           return [...prev, record.id];
         });
+
+        const popupContent = await fetchAndFormatPopupDetails(record);
+        if (activePopup) {
+          activePopup.setContent(popupContent);
+        }
       } else {
         toast.info(`Đối tượng này có tọa độ không hợp lệ trên bản đồ Việt Nam: [Vĩ độ: ${lat}, Kinh độ: ${lon}]`);
       }
@@ -579,11 +830,14 @@ export default function GISChartView() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const geoJsonGroupRef = useRef<any>(null);
   const searchMarkersGroupRef = useRef<any>(null);
+  const searchVertexMarkersGroupRef = useRef<any>(null);
   const planningGroupRef = useRef<any>(null);
   const calibratorMarkerRef = useRef<any>(null);
   const tableWrapperRef = useRef<HTMLDivElement>(null);
   const lastFittedCellIdRef = useRef<string | null>(null);
   const renderChartFeaturesRef = useRef<() => void>();
+  const renderVertexMarkersRef = useRef<() => void>();
+  const renderSearchMarkersRef = useRef<() => void>();
   const fetchFeaturesInViewportRef = useRef<() => Promise<void>>();
   const fetchPlanningFeaturesRef = useRef<() => Promise<void>>();
   const moveEndTimeoutRef = useRef<any>(null);
@@ -592,76 +846,77 @@ export default function GISChartView() {
 
   // 1. Dynamic Leaflet Loader
   useEffect(() => {
-    if (window.L && (window.L as any).markerClusterGroup) {
+    if (window.L && (window.L as any).markerClusterGroup && (window.L as any).PM) {
       setLeafletLoaded(true);
       return;
     }
 
-    const loadMarkerCluster = () => {
-      // Load MarkerCluster CSS
-      if (!document.querySelector('link[href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css"]')) {
+    const loadStyle = (url: string) => {
+      if (!document.querySelector(`link[href="${url}"]`)) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css';
+        link.href = url;
         document.head.appendChild(link);
       }
-      if (!document.querySelector('link[href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css"]')) {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css';
-        document.head.appendChild(link);
-      }
+    };
 
-      // Load MarkerCluster JS
-      let mcScript = document.querySelector('script[src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"]') as HTMLScriptElement;
-      if (mcScript) {
-        if (window.L && (window.L as any).markerClusterGroup) {
-          setLeafletLoaded(true);
-        } else {
-          mcScript.addEventListener('load', () => setLeafletLoaded(true));
+    const loadScript = (url: string, checkLoaded: () => boolean): Promise<void> => {
+      return new Promise((resolve) => {
+        if (checkLoaded()) {
+          resolve();
+          return;
         }
-        return;
-      }
-
-      mcScript = document.createElement('script');
-      mcScript.src = 'https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js';
-      mcScript.async = true;
-      mcScript.onload = () => {
-        setLeafletLoaded(true);
-      };
-      document.body.appendChild(mcScript);
+        let script = document.querySelector(`script[src="${url}"]`) as HTMLScriptElement;
+        if (script) {
+          const handler = () => {
+            if (checkLoaded()) {
+              resolve();
+            } else {
+              const interval = setInterval(() => {
+                if (checkLoaded()) {
+                  clearInterval(interval);
+                  resolve();
+                }
+              }, 50);
+            }
+          };
+          script.addEventListener('load', handler);
+          script.addEventListener('error', () => resolve());
+          return;
+        }
+        script = document.createElement('script');
+        script.src = url;
+        script.async = true;
+        script.onload = () => {
+          const interval = setInterval(() => {
+            if (checkLoaded()) {
+              clearInterval(interval);
+              resolve();
+            }
+          }, 50);
+        };
+        script.onerror = () => resolve();
+        document.body.appendChild(script);
+      });
     };
 
-    if (window.L) {
-      loadMarkerCluster();
-      return;
-    }
+    const loadLeafletAndPlugins = async () => {
+      loadStyle('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+      await loadScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js', () => !!window.L);
 
-    let script = document.querySelector('script[src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"]') as HTMLScriptElement;
-    if (script) {
-      const handleLoad = () => loadMarkerCluster();
-      script.addEventListener('load', handleLoad);
-      return () => {
-        script.removeEventListener('load', handleLoad);
-      };
-    }
+      loadStyle('https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css');
+      loadStyle('https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css');
+      loadStyle('https://unpkg.com/@geoman-io/leaflet-geoman-free@2.17.0/dist/leaflet-geoman.css');
 
-    // Load Leaflet CSS
-    if (!document.querySelector('link[href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
+      await Promise.all([
+        loadScript('https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js', () => !!(window.L && (window.L as any).markerClusterGroup)),
+        loadScript('https://unpkg.com/@geoman-io/leaflet-geoman-free@2.17.0/dist/leaflet-geoman.min.js', () => !!(window.L && (window.L as any).PM))
+      ]);
 
-    // Load Leaflet JS
-    script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.async = true;
-    script.onload = () => {
-      loadMarkerCluster();
+      setLeafletLoaded(true);
     };
-    document.body.appendChild(script);
+
+    void loadLeafletAndPlugins();
 
     return () => {};
   }, []);
@@ -1025,6 +1280,12 @@ export default function GISChartView() {
         if (fetchPlanningFeaturesRef.current) {
           void fetchPlanningFeaturesRef.current();
         }
+        if (renderVertexMarkersRef.current) {
+          renderVertexMarkersRef.current();
+        }
+        if (renderSearchMarkersRef.current) {
+          renderSearchMarkersRef.current();
+        }
       }, 300);
     });
 
@@ -1037,8 +1298,34 @@ export default function GISChartView() {
       : L.featureGroup();
     searchMarkersGroupRef.current.addTo(map);
 
+    // Plain feature group for vertex markers (zoom-controlled to prevent lag)
+    searchVertexMarkersGroupRef.current = L.layerGroup();
+
+    map.on('zoomend', () => {
+      const zoom = map.getZoom();
+      if (searchVertexMarkersGroupRef.current) {
+        if (zoom >= 15) {
+          if (!map.hasLayer(searchVertexMarkersGroupRef.current)) {
+            map.addLayer(searchVertexMarkersGroupRef.current);
+          }
+        } else {
+          if (map.hasLayer(searchVertexMarkersGroupRef.current)) {
+            map.removeLayer(searchVertexMarkersGroupRef.current);
+          }
+        }
+      }
+      if (renderVertexMarkersRef.current) {
+        renderVertexMarkersRef.current();
+      }
+      if (renderSearchMarkersRef.current) {
+        renderSearchMarkersRef.current();
+      }
+    });
+
     // Feature group for planning features
     planningGroupRef.current = L.featureGroup().addTo(map);
+
+
 
 
 
@@ -1097,17 +1384,226 @@ export default function GISChartView() {
     };
   }, [leafletLoaded]);
 
-  // Render search results as markers on the map using assigned symbols
+  // 3.1 Initialize Geoman Drawing Controls when map is ready and Leaflet loads
   useEffect(() => {
+    if (!leafletLoaded || !mapRef.current) return;
+    const map = mapRef.current;
+    const pm = (map as any).pm;
+    if (!pm) return;
+
+    if (map.pm && typeof map.pm.addControls === 'function') {
+      pm.setLang('vi');
+      pm.addControls({
+        position: 'topleft',
+        drawMarker: true,
+        drawPolyline: true,
+        drawRectangle: true,
+        drawPolygon: true,
+        drawCircle: false,
+        drawCircleMarker: false,
+        editMode: true,
+        dragMode: true,
+        cutPolygon: false,
+        removalMode: true,
+      });
+
+      let activeDrawnLayer: any = null;
+
+      const updateDrawnGeometry = (layer: any, shape: string) => {
+        let geometryTypeVi = 'Điểm';
+        if (shape === 'Line' || shape === 'Polyline') geometryTypeVi = 'Đường';
+        if (shape === 'Polygon') geometryTypeVi = 'Vùng Đa giác';
+        if (shape === 'Rectangle') geometryTypeVi = 'Vùng Chữ nhật';
+
+        let result;
+        if (shape === 'Marker') {
+          const latlng = layer.getLatLng();
+          result = {
+            wkt: `POINT(${latlng.lng.toFixed(6)} ${latlng.lat.toFixed(6)})`,
+            coordinates: [{ lat: latlng.lat, lng: latlng.lng }]
+          };
+        } else if (shape === 'Line' || shape === 'Polyline') {
+          const latlngs = layer.getLatLngs();
+          const coords = latlngs.map((ll: any) => ({ lat: ll.lat, lng: ll.lng }));
+          const wktStr = coords.map((c: any) => `${c.lng.toFixed(6)} ${c.lat.toFixed(6)}`).join(', ');
+          result = {
+            wkt: `LINESTRING(${wktStr})`,
+            coordinates: coords
+          };
+        } else if (shape === 'Polygon' || shape === 'Rectangle') {
+          const rawLatLngs = layer.getLatLngs();
+          const latlngs = Array.isArray(rawLatLngs[0]) ? rawLatLngs[0] : rawLatLngs;
+          const coords = latlngs.map((ll: any) => ({ lat: ll.lat, lng: ll.lng }));
+          if (coords.length > 0) {
+            const first = coords[0];
+            const last = coords[coords.length - 1];
+            if (first.lat !== last.lat || first.lng !== last.lng) {
+              coords.push({ ...first });
+            }
+          }
+          const wktStr = coords.map((c: any) => `${c.lng.toFixed(6)} ${c.lat.toFixed(6)}`).join(', ');
+          result = {
+            wkt: `POLYGON((${wktStr}))`,
+            coordinates: coords
+          };
+        }
+
+        if (result) {
+          setDrawnGeometry({
+            type: geometryTypeVi,
+            wkt: result.wkt,
+            coordinates: result.coordinates
+          });
+        }
+      };
+
+      map.on('pm:create', (e: any) => {
+        const { layer, shape } = e;
+        
+        if (activeDrawnLayer && map.hasLayer(activeDrawnLayer)) {
+          map.removeLayer(activeDrawnLayer);
+        }
+        activeDrawnLayer = layer;
+
+        updateDrawnGeometry(layer, shape);
+
+        layer.on('pm:edit', () => {
+          updateDrawnGeometry(layer, shape);
+        });
+
+        layer.on('pm:remove', () => {
+          setDrawnGeometry(null);
+          activeDrawnLayer = null;
+        });
+      });
+
+      (window as any).clearDrawnShape = () => {
+        if (activeDrawnLayer && map.hasLayer(activeDrawnLayer)) {
+          map.removeLayer(activeDrawnLayer);
+        }
+        setDrawnGeometry(null);
+        activeDrawnLayer = null;
+      };
+    }
+  }, [leafletLoaded]);
+
+  const renderVertexMarkers = useCallback(() => {
+    const L = window.L;
+    if (!L || !mapRef.current || !searchVertexMarkersGroupRef.current) return;
+    
+    searchVertexMarkersGroupRef.current.clearLayers();
+
+    const zoom = mapRef.current.getZoom();
+    if (zoom < 15) return;
+
+    const selectedRecords = infrastructureResults.filter((record) => selectedRowKeys.includes(record.id));
+    const bounds = mapRef.current.getBounds();
+    const visibleRecords = selectedRecords.filter(record => {
+      if (!record.toaDo || !record.loaiHinhHoc) return false;
+      const geomType = record.loaiHinhHoc.toUpperCase();
+      return geomType === 'LINE' || geomType === 'POLYLINE';
+    });
+
+    const vertexMarkers: any[] = [];
+    visibleRecords.forEach(record => {
+      const shapeCoordinates = parseWktToLatLngs(record.toaDo, record.loaiHinhHoc);
+      if (shapeCoordinates.length === 0) return;
+      
+      const lineLatLngs = shapeCoordinates.map(c => L.latLng(c[0], c[1]));
+      const lineBounds = L.latLngBounds(lineLatLngs);
+      if (!bounds.intersects(lineBounds)) return;
+
+      const symId = record.bieuTuongId || record.iconId;
+      const sym = symbols.find((s) => s.id === symId);
+      
+      let markerIcon: any;
+      if (sym && sym.hinhAnh) {
+        markerIcon = L.divIcon({
+          html: `
+            <div style="
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              width: 32px;
+              height: 32px;
+              background: white;
+              border: 2px solid #1890ff;
+              border-radius: 50%;
+              box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+              overflow: hidden;
+            ">
+              <img src="${sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}"
+                   style="width: 22px; height: 22px; object-fit: contain;" />
+            </div>
+          `,
+          className: 'custom-map-icon',
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
+          popupAnchor: [0, -16],
+        });
+      } else {
+        markerIcon = L.divIcon({
+          html: `
+            <div style="
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              width: 24px;
+              height: 24px;
+              background: #1890ff;
+              border: 2px solid white;
+              border-radius: 50%;
+              box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            ">
+              <span style="color: white; font-size: 10px; font-weight: bold;">
+                ${record.kchtTypeLabel ? record.kchtTypeLabel.charAt(0) : '•'}
+              </span>
+            </div>
+          `,
+          className: 'default-map-icon',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+          popupAnchor: [0, -12],
+        });
+      }
+
+      shapeCoordinates.forEach((coord: [number, number]) => {
+        if (!bounds.contains(L.latLng(coord[0], coord[1]))) return;
+
+        const vertexMarker = L.marker(coord, { icon: markerIcon }).bindPopup('Đang tải thông tin chi tiết...', { minWidth: 460, maxWidth: 500 });
+        vertexMarker.on('click', async (e: any) => {
+          L.DomEvent.stopPropagation(e);
+          vertexMarker.openPopup();
+          const detailsHtml = await fetchAndFormatPopupDetails(record);
+          vertexMarker.setPopupContent(detailsHtml);
+        });
+        vertexMarkers.push(vertexMarker);
+      });
+    });
+
+    if (vertexMarkers.length > 0) {
+      const tempGroup = L.layerGroup(vertexMarkers);
+      searchVertexMarkersGroupRef.current.addLayer(tempGroup);
+    }
+  }, [infrastructureResults, selectedRowKeys, symbols]);
+
+  const renderSearchMarkers = useCallback(() => {
     const L = window.L;
     if (!L || !mapRef.current || !searchMarkersGroupRef.current) return;
 
-    // Clear old search markers
+    const startTime = performance.now();
+
+    // Clear old search markers and vertex markers
     searchMarkersGroupRef.current.clearLayers();
+    if (searchVertexMarkersGroupRef.current) {
+      searchVertexMarkersGroupRef.current.clearLayers();
+    }
 
     const selectedRecords = infrastructureResults.filter((record) => selectedRowKeys.includes(record.id));
     if (selectedRecords.length === 0) return;
 
+    const bounds = mapRef.current.getBounds();
+    const zoom = mapRef.current.getZoom();
     const markers: any[] = [];
     const useCircle = false;
 
@@ -1120,20 +1616,20 @@ export default function GISChartView() {
         const lon = parseFloat(rawLon as any);
         
         if (!isNaN(lat) && !isNaN(lon) && lat >= 5.0 && lat <= 26.0 && lon >= 99.0 && lon <= 118.0) {
+          const latlng = L.latLng(lat, lon);
+          
+          // Viewport bounding box check: only render if visible in current viewport bounds (with 10% padding)
+          const paddedBounds = bounds.pad(0.1);
+          if (!paddedBounds.contains(latlng)) {
+            return;
+          }
+
           // Find symbol
           const symId = record.bieuTuongId || record.iconId;
           const sym = symbols.find((s) => s.id === symId);
 
-          const popupContent = `
-            <div style="font-family: sans-serif; padding: 4px; min-width: 180px;">
-              <h4 style="margin: 0 0 6px 0; color: #1890ff; font-size: 14px;">${record.tenCang || record.tenBen || record.tenCau || record.tenCangCan || record.tenVungNuoc || record.name || 'Chi tiết'}</h4>
-              <p style="margin: 0 0 4px 0; font-size: 12px;"><b>Loại KCHT:</b> ${record.kchtTypeLabel}</p>
-              <p style="margin: 0 0 4px 0; font-size: 12px;"><b>Đơn vị quản lý:</b> ${record.orgName}</p>
-              <p style="margin: 0; font-size: 12px;"><b>Địa điểm:</b> ${record.diaDiem || '—'}</p>
-            </div>
-          `;
-
           let marker;
+          let markerIcon: any;
           if (useCircle) {
             let fillColor = '#1890ff';
             const kchtType = record.kchtTypeLabel || '';
@@ -1149,11 +1645,9 @@ export default function GISChartView() {
               color: '#fff',
               weight: 1.5,
               fillOpacity: 0.9,
-            }).bindPopup(popupContent);
+            }).bindPopup('Đang tải thông tin chi tiết...');
           } else {
-            let markerIcon;
             if (sym && sym.hinhAnh) {
-              // Create a custom divIcon containing the Base64 image
               markerIcon = L.divIcon({
                 html: `
                   <div style="
@@ -1178,7 +1672,6 @@ export default function GISChartView() {
                 popupAnchor: [0, -16],
               });
             } else {
-              // Default Leaflet marker or colored circle marker
               markerIcon = L.divIcon({
                 html: `
                   <div style="
@@ -1203,16 +1696,59 @@ export default function GISChartView() {
                 popupAnchor: [0, -12],
               });
             }
-            marker = L.marker([lat, lon], { icon: markerIcon }).bindPopup(popupContent);
+            
+            // Always create a point marker for all record types (including LINE/POLYLINE)
+            // At low zoom, users see the marker icon; at high zoom >= 10, the full polyline/polygon shape is also drawn
+            marker = L.marker([lat, lon], { icon: markerIcon }).bindPopup('Đang tải thông tin chi tiết...', { minWidth: 460, maxWidth: 500 });
+            marker.on('click', async (e: any) => {
+              L.DomEvent.stopPropagation(e);
+              marker.openPopup();
+              const detailsHtml = await fetchAndFormatPopupDetails(record);
+              marker.setPopupContent(detailsHtml);
+            });
+            markers.push(marker);
           }
 
-          marker.on('click', (e: any) => {
-            L.DomEvent.stopPropagation(e);
-            marker.openPopup();
-          });
+          // Draw spatial shape (polyline / polygon) if coordinates exist
+          // Optimization: Only render complex vector shapes at zoom >= 10 to prevent map rendering lag at low zoom levels
+          if (record.toaDo && record.loaiHinhHoc && zoom >= 10) {
+            const shapeCoordinates = parseWktToLatLngs(record.toaDo, record.loaiHinhHoc);
+            if (shapeCoordinates.length > 0) {
+              let shapeLayer;
+              const geomType = record.loaiHinhHoc.toUpperCase();
+              if (geomType === 'LINE' || geomType === 'POLYLINE') {
+                shapeLayer = L.polyline(shapeCoordinates, {
+                  color: '#1890ff',
+                  weight: 4,
+                  opacity: 0.85
+                }).bindPopup('Đang tải thông tin chi tiết...', { minWidth: 460, maxWidth: 500 });
 
-          markers.push(marker);
-          console.log(`[Map] Vẽ điểm #${markers.length} thành công — lat: ${lat}, lon: ${lon}`);
+                shapeLayer.on('click', async (e: any) => {
+                  L.DomEvent.stopPropagation(e);
+                  shapeLayer.openPopup(e.latlng);
+                  const detailsHtml = await fetchAndFormatPopupDetails(record);
+                  shapeLayer.setPopupContent(detailsHtml);
+                });
+              } else if (geomType === 'POLYGON' || geomType === 'AREA') {
+                shapeLayer = L.polygon(shapeCoordinates, {
+                  color: '#1890ff',
+                  weight: 2,
+                  fillColor: '#1890ff',
+                  fillOpacity: 0.35
+                }).bindPopup('Đang tải thông tin chi tiết...', { minWidth: 460, maxWidth: 500 });
+
+                shapeLayer.on('click', async (e: any) => {
+                  L.DomEvent.stopPropagation(e);
+                  shapeLayer.openPopup(e.latlng);
+                  const detailsHtml = await fetchAndFormatPopupDetails(record);
+                  shapeLayer.setPopupContent(detailsHtml);
+                });
+              }
+              if (shapeLayer) {
+                markers.push(shapeLayer);
+              }
+            }
+          }
         }
       }
     });
@@ -1224,18 +1760,54 @@ export default function GISChartView() {
         const tempGroup = L.layerGroup(markers);
         searchMarkersGroupRef.current.addLayer(tempGroup);
       }
-      
-      // Optionally fit bounds if there are markers
-      try {
-        const groupBounds = searchMarkersGroupRef.current.getBounds();
-        if (groupBounds.isValid()) {
-          mapRef.current.fitBounds(groupBounds, { padding: [50, 50], maxZoom: 15 });
-        }
-      } catch (e) {
-        // skip
-      }
     }
-  }, [infrastructureResults, symbols, selectedRowKeys]);
+
+    // Render dynamic vertex markers for lines in current viewport if zoom level is met
+    renderVertexMarkers();
+
+    const endTime = performance.now();
+    console.log(`[Map] Draw completed in ${(endTime - startTime).toFixed(2)} ms. Rendered ${selectedRecords.length} records (${markers.length} main layers in viewport).`);
+  }, [infrastructureResults, symbols, selectedRowKeys, renderVertexMarkers]);
+
+  useEffect(() => {
+    renderVertexMarkersRef.current = renderVertexMarkers;
+  }, [renderVertexMarkers]);
+
+  useEffect(() => {
+    renderSearchMarkersRef.current = renderSearchMarkers;
+  }, [renderSearchMarkers]);
+
+  // Trigger search result rendering whenever data or selections change
+  useEffect(() => {
+    renderSearchMarkers();
+  }, [infrastructureResults, symbols, selectedRowKeys, renderSearchMarkers]);
+
+  // Run fitBounds ONCE when the list of selected records changes (to avoid movement loop)
+  useEffect(() => {
+    if (!mapRef.current || !leafletLoaded) return;
+    const selectedRecords = infrastructureResults.filter((record) => selectedRowKeys.includes(record.id));
+    if (selectedRecords.length === 0) return;
+
+    try {
+      const L = window.L;
+      const pts: any[] = [];
+      selectedRecords.forEach(record => {
+        const rawLat = record.viDo ?? record.latitude;
+        const rawLon = record.kinhDo ?? record.longitude;
+        if (rawLat !== undefined && rawLat !== null && rawLon !== undefined && rawLon !== null) {
+          pts.push([parseFloat(rawLat), parseFloat(rawLon)]);
+        }
+      });
+      if (pts.length > 0) {
+        const bounds = L.latLngBounds(pts);
+        if (bounds.isValid()) {
+          mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [selectedRowKeys, infrastructureResults, leafletLoaded]);
 
   const [parsedLayers, setParsedLayers] = useState<Array<{
     minZoom: number;
@@ -1569,6 +2141,95 @@ export default function GISChartView() {
                   filter: palette === 'NIGHT' ? 'brightness(0.85) contrast(1.1)' : 'none',
                 }}
               />
+              {/* Drawn Geometry Info Card */}
+              {drawnGeometry && (
+                <Card
+                  size="small"
+                  title={
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Space>
+                        <EditOutlined style={{ color: '#1890ff' }} />
+                        <span style={{ fontWeight: 600 }}>Tọa độ đối tượng vẽ</span>
+                      </Space>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<CloseOutlined />}
+                        onClick={() => {
+                          if ((window as any).clearDrawnShape) {
+                            (window as any).clearDrawnShape();
+                          }
+                        }}
+                      />
+                    </Space>
+                  }
+                  style={{
+                    position: 'absolute',
+                    bottom: '20px',
+                    left: '20px',
+                    zIndex: 1000,
+                    width: '320px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    borderRadius: '8px',
+                    backdropFilter: 'blur(8px)',
+                    background: 'rgba(255, 255, 255, 0.9)',
+                  }}
+                >
+                  <div style={{ fontSize: '13px' }}>
+                    <div style={{ marginBottom: '8px' }}>
+                      <span style={{ color: '#888' }}>Loại đối tượng:</span>{' '}
+                      <span style={{ fontWeight: 600, color: '#1890ff' }}>{drawnGeometry.type}</span>
+                    </div>
+                    <div style={{ marginBottom: '8px' }}>
+                      <span style={{ color: '#888' }}>Số điểm tọa độ:</span>{' '}
+                      <span style={{ fontWeight: 600 }}>{drawnGeometry.coordinates.length}</span>
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ color: '#888', marginBottom: '4px' }}>Chuỗi WKT (Well-Known Text):</div>
+                      <div
+                        style={{
+                          backgroundColor: '#f5f5f5',
+                          border: '1px solid #d9d9d9',
+                          borderRadius: '4px',
+                          padding: '6px 8px',
+                          fontFamily: 'monospace',
+                          fontSize: '11px',
+                          maxHeight: '100px',
+                          overflowY: 'auto',
+                          wordBreak: 'break-all',
+                        }}
+                      >
+                        {drawnGeometry.wkt}
+                      </div>
+                    </div>
+                    <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+                      <Button
+                        size="small"
+                        icon={<DeleteOutlined />}
+                        danger
+                        onClick={() => {
+                          if ((window as any).clearDrawnShape) {
+                            (window as any).clearDrawnShape();
+                          }
+                        }}
+                      >
+                        Xóa nét vẽ
+                      </Button>
+                      <Button
+                        type="primary"
+                        size="small"
+                        icon={<CopyOutlined />}
+                        onClick={() => {
+                          void navigator.clipboard.writeText(drawnGeometry.wkt);
+                          toast.success('Đã sao chép chuỗi WKT vào bộ nhớ tạm!');
+                        }}
+                      >
+                        Sao chép WKT
+                      </Button>
+                    </Space>
+                  </div>
+                </Card>
+              )}
               {/* Overlay Grid Button (AppstoreOutlined) */}
               <Button
                 type="primary"
@@ -1791,11 +2452,6 @@ export default function GISChartView() {
                         selectedRowKeys: selectedRowKeys,
                         onChange: (keys) => {
                           setSelectedRowKeys(keys);
-                        },
-                        onSelect: (record, selected) => {
-                          if (selected) {
-                            handleRowClick(record);
-                          }
                         },
                         getCheckboxProps: () => ({
                           disabled: searchingInfrastructure

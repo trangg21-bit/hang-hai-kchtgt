@@ -8,6 +8,8 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+
 @Data
 public class CreateVungNuocRequest {
 
@@ -28,4 +30,6 @@ public class CreateVungNuocRequest {
     private com.hanghai.kchtg.cangben.entity.LoaiVungNuoc loaiVungNuoc;
     private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
     private java.util.UUID bieuTuongId;
+    private GisGeometryType loaiHinhHoc;
+    private String toaDo;
 }

@@ -23,7 +23,7 @@ public interface CauCangRepository extends JpaRepository<CauCang, UUID> {
     boolean existsByMaCau(String maCau);
 
     @Query("SELECT c FROM CauCang c WHERE c.deletedAt IS NULL " +
-            "AND (:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId)")
+            "AND (:orgUnitId IS NULL OR c.donViId = :orgUnitId)")
     Page<CauCang> findAllActive(@Param("orgUnitId") UUID orgUnitId, Pageable pageable);
 
     @Query("SELECT c FROM CauCang c WHERE c.deletedAt IS NULL AND c.benCangId = :benCangId")
@@ -41,7 +41,7 @@ public interface CauCangRepository extends JpaRepository<CauCang, UUID> {
     long countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet trangThaiPheDuyet);
 
     @Query("SELECT c FROM CauCang c WHERE c.deletedAt IS NULL " +
-            "AND (:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId) " +
+            "AND (:orgUnitId IS NULL OR c.donViId = :orgUnitId) " +
             "AND (CAST(:search AS string) IS NULL OR (LOWER(c.maCau) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(c.tenCau) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
             "AND (:benCangId IS NULL OR c.benCangId = :benCangId) " +
             "AND (:loaiCau IS NULL OR c.loaiCau = :loaiCau) " +

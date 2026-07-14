@@ -339,7 +339,7 @@ class BuoyControllerTest {
                 .when(buoyService).submitForApproval(id);
 
         mockMvc.perform(post("/api/buoys/{id}/submit-approval", id))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest());
     }
 
     // ── APPROVE L1 ───────────────────────────────────────────────

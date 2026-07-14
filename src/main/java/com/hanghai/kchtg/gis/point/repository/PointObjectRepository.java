@@ -17,7 +17,7 @@ public interface PointObjectRepository extends JpaRepository<PointObject, UUID> 
 
     boolean existsByCode(String code);
 
-    @Query(value = "SELECT COUNT(*) FROM point_objects WHERE code = :code", nativeQuery = true)
+    @Query(value = "SELECT COUNT(*) FROM gis_spatial_objects WHERE code = :code AND geometry_type = 1", nativeQuery = true)
     long countByCodeIncludingDeleted(@Param("code") String code);
 
     List<PointObject> findByObjectType(ObjectType objectType);
@@ -32,7 +32,8 @@ public interface PointObjectRepository extends JpaRepository<PointObject, UUID> 
 
     List<PointObject> findByCodeContainingIgnoreCase(String code);
 
-    @Query(value = "SELECT * FROM point_objects p WHERE " +
+    @Query(value = "SELECT * FROM gis_spatial_objects p WHERE " +
+            "p.geometry_type = 1 AND " +
             "(:name IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
             "(:code IS NULL OR LOWER(p.code) LIKE LOWER(CONCAT('%', :code, '%'))) AND " +
             "(:objectType IS NULL OR p.object_type = :objectType) AND " +
@@ -40,13 +41,12 @@ public interface PointObjectRepository extends JpaRepository<PointObject, UUID> 
     List<PointObject> searchFiltered(
             @Param("name") String name,
             @Param("code") String code,
-            @Param("objectType") String objectType,
-            @Param("status") String status
+            @Param("objectType") Integer objectType,
+            @Param("status") Integer status
     );
 
-    @Query("SELECT p FROM PointObject p WHERE p.status = 'PUBLISHED' AND " +
-            "ST_Distance(ST_GeomFromText(:pointWKT), " +
-            "ST_Point(p.longitude, p.latitude)) <= :radius")
+    @Query(value = "SELECT * FROM gis_spatial_objects p WHERE p.geometry_type = 1 AND p.status = 4 AND " +
+            "ST_Distance(ST_GeomFromText(:pointWKT, 4326), p.geom) <= :radius", nativeQuery = true)
     List<PointObject> findByDistance(
             @Param("pointWKT") String pointWKT,
             @Param("radius") Double radius

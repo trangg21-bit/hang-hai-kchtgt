@@ -5,6 +5,8 @@ import lombok.*;
 import java.time.*;
 import java.util.List;
 
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class LuongHangHaiResponse {
     private Long id;
@@ -15,7 +17,7 @@ public class LuongHangHaiResponse {
     private String taiTrong;
     private String dienTichDangBo;
     private String ghiChu;
-    private java.util.UUID orgUnitId;
+    private java.util.UUID donViId;
     private LuongHangHaiApprovalStatus approvalStatus;
     private Boolean pheDuyetC1;
     private String nguoiPheDuyetC1;
@@ -32,4 +34,8 @@ public class LuongHangHaiResponse {
     private List<LuongHangHaiAttachmentResponse> attachments;
     private List<PheDuyetResponse> approvalHistory;
     private List<HistoryEntry> history;
+    private java.util.UUID khongGianId;
+    private GisGeometryType loaiHinhHoc;
+    private String toaDo;
+    private java.util.UUID bieuTuongId;
 }

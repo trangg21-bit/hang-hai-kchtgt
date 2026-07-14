@@ -50,6 +50,8 @@ import { z } from 'zod';
 import { vungNuocCreateSchema, vungNuocUpdateSchema } from './schema';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol } from '../../services/symbolService';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import UserResolver from '../../components/UserResolver';
 
 export const translateFieldName = (fieldName: string): string => {
   const map: Record<string, string> = {
@@ -94,6 +96,8 @@ export const translateFieldName = (fieldName: string): string => {
     iconId: 'Biểu tượng bản đồ',
     lineSymbolId: 'Ký hiệu đường',
     fillSymbolId: 'Ký hiệu vùng',
+    khongGianId: 'Vị trí không gian',
+    spatialId: 'Vị trí không gian',
   };
   return map[fieldName] || fieldName;
 };
@@ -141,6 +145,8 @@ export default function VungNuocListPage() {
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+  const createLoaiHinhHoc = Form.useWatch('loaiHinhHoc', createForm);
+  const updateLoaiHinhHoc = Form.useWatch('loaiHinhHoc', updateForm);
 
   const fetchCangBienOptions = useCallback(async () => {
     try {
@@ -159,6 +165,29 @@ export default function VungNuocListPage() {
     if (['bieuTuongId', 'iconId', 'lineSymbolId', 'fillSymbolId'].includes(fieldName)) {
       const sym = symbols.find(s => s.id === val);
       return sym ? `${sym.name} (${sym.code})` : val;
+    }
+    if (['khongGianId', 'spatialId'].includes(fieldName)) {
+      return 'Có tọa độ bản đồ';
+    }
+    if (fieldName === 'trangThaiPheDuyet') {
+      const approvalMap: Record<string, string> = {
+        'CHO_PHE_DUYET': 'Chờ phê duyệt',
+        'DUOC_PHE_DUYET': 'Được phê duyệt',
+        'TU_CHOI': 'Từ chối',
+      };
+      return approvalMap[val.toUpperCase()] || val;
+    }
+    if (fieldName === 'trangThaiHoatDong') {
+      const statusMap: Record<string, string> = {
+        'HIEN_HANH': 'Hiện hành',
+        'TAM_NGUNG': 'Tạm ngừng',
+        'HIỆN_HÀNH': 'Hiện hành',
+        'TẠM_NGƯNG': 'Tạm ngừng',
+      };
+      return statusMap[val.toUpperCase()] || val;
+    }
+    if (fieldName === 'loaiVungNuoc') {
+      return translateLoaiVungNuoc(val);
     }
     return val;
   }, [symbols]);
@@ -195,8 +224,6 @@ export default function VungNuocListPage() {
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);
-    setFilterMaVung(value);
-    setFilterTenVung(value);
     setPage(1);
   }, []);
 
@@ -264,7 +291,9 @@ export default function VungNuocListPage() {
         doSauTrungBinh: values.doSauTrungBinh || undefined,
         loaiVungNuoc: values.loaiVungNuoc || undefined,
         trangThaiHoatDong: values.trangThaiHoatDong || 'HIEN_HANH',
-        bieuTuongId: values.bieuTuongId || undefined,
+        bieuTuongId: values.gisLocation?.bieuTuongId || values.bieuTuongId || undefined,
+        loaiHinhHoc: values.loaiHinhHoc,
+        toaDo: values.gisLocation?.toaDo,
       });
 
       setSubmitting(true);
@@ -299,7 +328,9 @@ export default function VungNuocListPage() {
         doSauTrungBinh: values.doSauTrungBinh,
         loaiVungNuoc: values.loaiVungNuoc || undefined,
         trangThaiHoatDong: values.trangThaiHoatDong,
-        bieuTuongId: values.bieuTuongId || null,
+        bieuTuongId: values.gisLocation?.bieuTuongId || values.bieuTuongId || null,
+        loaiHinhHoc: values.loaiHinhHoc,
+        toaDo: values.gisLocation?.toaDo,
       });
 
       setSubmitting(true);
@@ -338,12 +369,10 @@ export default function VungNuocListPage() {
     },
     {
       title: 'Cảng biển chủ',
-      dataIndex: 'cangBienId',
+      dataIndex: 'tenCangBien',
       width: 180,
-      render: (cangBienId: string) => {
-        if (!cangBienId) return '—';
-        const opt = cangBienOptions.find((o) => o.id === cangBienId);
-        return opt ? opt.tenCang : cangBienId.substring(0, 12) + '...';
+      render: (tenCangBien: string, record: VungNuoc) => {
+        return tenCangBien || record.cangBienId?.substring(0, 12) + '...';
       },
     },
     {
@@ -445,6 +474,13 @@ export default function VungNuocListPage() {
                     doSauTrungBinh: data.doSauTrungBinh,
                     loaiVungNuoc: data.loaiVungNuoc,
                     trangThaiHoatDong: data.trangThaiHoatDong,
+                    bieuTuongId: data.bieuTuongId,
+                    loaiHinhHoc: data.loaiHinhHoc || 'POLYGON',
+                    gisLocation: {
+                      loaiHinhHoc: data.loaiHinhHoc || 'POLYGON',
+                      toaDo: data.toaDo || '',
+                      bieuTuongId: data.bieuTuongId
+                    }
                   });
                   setUpdateModalVisible(true);
                 } catch (err) {
@@ -726,6 +762,27 @@ export default function VungNuocListPage() {
               </Form.Item>
             </Col>
           </Row>
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
+            Vị trí không gian (GIS)
+          </Typography.Text>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
+                <Select placeholder="Chọn loại đối tượng" options={[
+                  { value: 'POINT', label: 'Đối tượng điểm' },
+                  { value: 'LINE', label: 'Đối tượng đường' },
+                  { value: 'POLYGON', label: 'Đối tượng vùng' }
+                ]} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={24}>
+              <Form.Item name="gisLocation">
+                <GisLocationSelector defaultGeometryType={createLoaiHinhHoc} />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
             <Space>
@@ -845,6 +902,27 @@ export default function VungNuocListPage() {
               </Form.Item>
             </Col>
           </Row>
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
+            Vị trí không gian (GIS)
+          </Typography.Text>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
+                <Select placeholder="Chọn loại đối tượng" options={[
+                  { value: 'POINT', label: 'Đối tượng điểm' },
+                  { value: 'LINE', label: 'Đối tượng đường' },
+                  { value: 'POLYGON', label: 'Đối tượng vùng' }
+                ]} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={24}>
+              <Form.Item name="gisLocation">
+                <GisLocationSelector defaultGeometryType={updateLoaiHinhHoc} />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
             <Space>
@@ -883,13 +961,35 @@ export default function VungNuocListPage() {
                       <Typography.Text strong>Cảng biển chủ:</Typography.Text>
                       <br />
                       <Typography.Text>
-                        {cangBienOptions.find(o => o.id === selectedRecord.cangBienId)?.tenCang || selectedRecord.cangBienId}
+                        {selectedRecord.tenCangBien || selectedRecord.cangBienId}
                       </Typography.Text>
                     </Col>
                     <Col span={12} style={{ marginTop: 8 }}>
                       <Typography.Text strong>Loại vùng nước:</Typography.Text>
                       <br />
                       <Typography.Text>{selectedRecord.loaiVungNuoc || '—'}</Typography.Text>
+                    </Col>
+                    <Col span={12} style={{ marginTop: 8 }}>
+                      <Typography.Text strong>Biểu tượng bản đồ:</Typography.Text>
+                      <br />
+                      <Space>
+                        {(() => {
+                          const sym = symbols.find(s => s.id === selectedRecord.bieuTuongId);
+                          if (sym && sym.hinhAnh) {
+                            return (
+                              <img
+                                src={sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}
+                                alt={sym.name}
+                                style={{ width: 20, height: 20, objectFit: 'contain' }}
+                              />
+                            );
+                          }
+                          return null;
+                        })()}
+                        <Typography.Text>
+                          {translateValue('bieuTuongId', selectedRecord.bieuTuongId)}
+                        </Typography.Text>
+                      </Space>
                     </Col>
                   </Row>
                 </Card>
@@ -956,9 +1056,9 @@ export default function VungNuocListPage() {
               <Col span={24}>
                 <Card title="Thông tin hệ thống" size="small">
                   <Descriptions bordered column={2} size="small">
-                    <Descriptions.Item label="Người tạo">{selectedRecord.createdBy || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Người tạo"><UserResolver userId={selectedRecord.createdBy} /></Descriptions.Item>
                     <Descriptions.Item label="Ngày tạo">{selectedRecord.createdAt ? new Date(selectedRecord.createdAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
-                    <Descriptions.Item label="Cập nhật bởi">{selectedRecord.updatedBy || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Cập nhật bởi"><UserResolver userId={selectedRecord.updatedBy} /></Descriptions.Item>
                     <Descriptions.Item label="Ngày cập nhật">{selectedRecord.updatedAt ? new Date(selectedRecord.updatedAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
                   </Descriptions>
                 </Card>
@@ -1004,6 +1104,12 @@ export default function VungNuocListPage() {
                       loaiVungNuoc: selectedRecord.loaiVungNuoc,
                       trangThaiHoatDong: selectedRecord.trangThaiHoatDong,
                       bieuTuongId: selectedRecord.bieuTuongId,
+                      loaiHinhHoc: selectedRecord.loaiHinhHoc || 'POLYGON',
+                      gisLocation: {
+                        loaiHinhHoc: selectedRecord.loaiHinhHoc || 'POLYGON',
+                        toaDo: selectedRecord.toaDo || '',
+                        bieuTuongId: selectedRecord.bieuTuongId
+                      }
                     });
                     setUpdateModalVisible(true);
                   }}

@@ -14,6 +14,7 @@ public class BenCangResponse {
     private String maBen;
     private String tenBen;
     private UUID cangBienId;
+    private String tenCangBien;
     private String tuyenDuongThuy;
     private BigDecimal viDo;
     private BigDecimal kinhDo;

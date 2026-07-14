@@ -7,6 +7,8 @@ import java.time.LocalDate;
 /**
  * Update request for DeKe (F-044).
  */
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -21,5 +23,8 @@ public class DeKeUpdateRequest {
     private String matVatLieu;
     private String tinhTrang;
     private String ghiChu;
-    private java.util.UUID orgUnitId;
+    private java.util.UUID donViId;
+    private GisGeometryType loaiHinhHoc;
+    private String toaDo;
+    private java.util.UUID bieuTuongId;
 }

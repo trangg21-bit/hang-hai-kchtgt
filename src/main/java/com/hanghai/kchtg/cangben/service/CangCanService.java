@@ -7,6 +7,7 @@ import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import com.hanghai.kchtg.cangben.repository.CangCanRepository;
 import com.hanghai.kchtg.cangben.service.shared.AuditLogService;
 import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
+import com.hanghai.kchtg.cangben.service.shared.UserResolverService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,8 @@ public class CangCanService {
     private final CangCanRepository cangCanRepository;
     private final LichSuThayDoiService lichSuThayDoiService;
     private final AuditLogService auditLogService;
+    private final UserResolverService userResolverService;
+    private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
     @Transactional
     public CangCanResponse create(CreateCangCanRequest request) {
@@ -73,8 +76,29 @@ public class CangCanService {
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
         TrangThaiHoatDong statusEnum = status != null ? TrangThaiHoatDong.fromString(status) : null;
         TrangThaiPheDuyet approvalEnum = approvalStatus != null ? TrangThaiPheDuyet.fromString(approvalStatus) : null;
-        return cangCanRepository.searchCangCan(orgUnitId, search, statusEnum, approvalEnum, pageable)
-                .map(this::toResponse);
+        Page<CangCan> pageResult = cangCanRepository.searchCangCan(orgUnitId, search, statusEnum, approvalEnum, pageable);
+
+        java.util.Set<UUID> userUuids = new java.util.HashSet<>();
+        pageResult.getContent().forEach(e -> {
+            try {
+                if (e.getCreatedBy() != null) userUuids.add(UUID.fromString(e.getCreatedBy()));
+                if (e.getUpdatedBy() != null) userUuids.add(UUID.fromString(e.getUpdatedBy()));
+            } catch (Exception ex) {
+                // ignore
+            }
+        });
+
+        java.util.Map<String, String> userNamesMap = new java.util.HashMap<>();
+        if (!userUuids.isEmpty()) {
+            userRepository.findAllById(userUuids).forEach(usr -> {
+                String displayName = usr.getFullName() != null && !usr.getFullName().trim().isEmpty()
+                        ? usr.getFullName()
+                        : usr.getUsername();
+                userNamesMap.put(usr.getId().toString(), displayName);
+            });
+        }
+
+        return pageResult.map(e -> toResponse(e, userNamesMap.get(e.getCreatedBy()), userNamesMap.get(e.getUpdatedBy())));
     }
 
     @Transactional(readOnly = true)
@@ -130,6 +154,13 @@ public class CangCanService {
     }
 
     private CangCanResponse toResponse(CangCan e) {
+        return toResponse(e, null, null);
+    }
+
+    private CangCanResponse toResponse(CangCan e, String preResolvedCreatorName, String preResolvedUpdaterName) {
+        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName : userResolverService.resolveName(e.getCreatedBy());
+        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName : userResolverService.resolveName(e.getUpdatedBy());
+
         return CangCanResponse.builder()
                 .id(e.getId()).maCangCan(e.getMaCangCan()).tenCangCan(e.getTenCangCan())
                 .tinhThanhPho(e.getTinhThanhPho()).viDo(e.getViDo()).kinhDo(e.getKinhDo())
@@ -137,8 +168,8 @@ public class CangCanService {
                 .trangThaiHoatDong(e.getTrangThaiHoatDong()).trangThaiPheDuyet(e.getTrangThaiPheDuyet())
                 .orgUnitId(e.getOrgUnitId())
                 .bieuTuongId(e.getBieuTuongId())
-                .createdBy(e.getCreatedBy())
-                .updatedBy(e.getUpdatedBy())
+                .createdBy(createdBy)
+                .updatedBy(updatedBy)
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();
     }
 }

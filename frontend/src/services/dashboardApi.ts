@@ -32,8 +32,8 @@ import { MOCK_DATA } from './dashboardMockData';
 // ============================================================
 // Base URLs
 // ============================================================
-const INTEGRATION_BASE = '/api/v1/integration/share';
-const ASSET_BASE = '/api/v1/asset';
+const INTEGRATION_BASE = '/v1/integration/share';
+const ASSET_BASE = '/v1/asset';
 
 // ============================================================
 // 8 Fetch Functions
@@ -162,7 +162,7 @@ interface ApprovalStats {
  */
 async function fetchAssetApprovalStats(): Promise<ApprovalStats> {
   try {
-    const res = await api.get('/api/v1/dashboard/approval-asset');
+    const res = await api.get('/v1/dashboard/approval-asset');
     return res.data?.data || { total: 0, approved: 0, pending: 0, rejected: 0 };
   } catch { return { total: 0, approved: 0, pending: 0, rejected: 0 }; }
 }
@@ -172,7 +172,7 @@ async function fetchAssetApprovalStats(): Promise<ApprovalStats> {
  */
 async function fetchKchtApprovalStats(): Promise<ApprovalStats> {
   try {
-    const res = await api.get('/api/v1/dashboard/approval-kcht');
+    const res = await api.get('/v1/dashboard/approval-kcht');
     return res.data?.data || { total: 0, approved: 0, pending: 0, rejected: 0 };
   } catch { return { total: 0, approved: 0, pending: 0, rejected: 0 }; }
 }

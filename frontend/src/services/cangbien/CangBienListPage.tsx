@@ -114,6 +114,8 @@ export const translateFieldName = (fieldName: string): string => {
     iconId: 'Biểu tượng bản đồ',
     lineSymbolId: 'Ký hiệu đường',
     fillSymbolId: 'Ký hiệu vùng',
+    khongGianId: 'Vị trí không gian',
+    spatialId: 'Vị trí không gian',
   };
   return map[fieldName] || fieldName;
 };
@@ -183,6 +185,26 @@ export default function CangBienListPage() {
     if (['bieuTuongId', 'iconId', 'lineSymbolId', 'fillSymbolId'].includes(fieldName)) {
       const sym = symbols.find(s => s.id === val);
       return sym ? `${sym.name} (${sym.code})` : val;
+    }
+    if (['khongGianId', 'spatialId'].includes(fieldName)) {
+      return 'Có tọa độ bản đồ';
+    }
+    if (fieldName === 'trangThaiPheDuyet') {
+      const approvalMap: Record<string, string> = {
+        'CHO_PHE_DUYET': 'Chờ phê duyệt',
+        'DUOC_PHE_DUYET': 'Được phê duyệt',
+        'TU_CHOI': 'Từ chối',
+      };
+      return approvalMap[val.toUpperCase()] || val;
+    }
+    if (fieldName === 'trangThaiHoatDong') {
+      const statusMap: Record<string, string> = {
+        'HIEN_HANH': 'Hiện hành',
+        'TAM_NGUNG': 'Tạm ngừng',
+        'HIỆN_HÀNH': 'Hiện hành',
+        'TẠM_NGƯNG': 'Tạm ngừng',
+      };
+      return statusMap[val.toUpperCase()] || val;
     }
     return val;
   }, [symbols]);

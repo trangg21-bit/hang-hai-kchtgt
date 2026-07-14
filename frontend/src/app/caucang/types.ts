@@ -4,9 +4,11 @@ export interface CauCang {
   maCau: string;
   tenCau: string;
   benCangId: string;
+  tenBenCang?: string;
   chieuDai: number | null;
   taiTrong: number | null;
   loaiCau: string;
+  congNangKhaiThac?: string | null;
   trangThaiHoatDong: 'HIEN_HANH' | 'TAM_NGUNG';
   trangThaiPheDuyet: 'CHO_PHE_DUYET' | 'DUOC_PHE_DUYET' | 'TU_CHOI';
   orgUnitId: string;
@@ -15,6 +17,9 @@ export interface CauCang {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  loaiHinhHoc: string | null;
+  toaDo: string | null;
+  bieuTuongId: string | null;
 }
 
 export interface CauCangListQuery {
@@ -34,20 +39,28 @@ export interface CauCangCreateRequest {
   maCau: string;
   tenCau: string;
   benCangId: string;
-  chieuDai?: number;
-  taiTrong?: number;
+  chieuDai?: number | null | '';
+  taiTrong?: number | null | '';
   loaiCau?: string;
+  congNangKhaiThac?: string;
   trangThaiHoatDong?: 'HIEN_HANH' | 'TAM_NGUNG';
+  loaiHinhHoc?: string;
+  toaDo?: string;
+  bieuTuongId?: string;
 }
 
 export interface CauCangUpdateRequest {
   id: string;
   tenCau?: string;
   benCangId?: string;
-  chieuDai?: number;
-  taiTrong?: number;
+  chieuDai?: number | null | '';
+  taiTrong?: number | null | '';
   loaiCau?: string;
+  congNangKhaiThac?: string;
   trangThaiHoatDong?: 'HIEN_HANH' | 'TAM_NGUNG';
+  loaiHinhHoc?: string;
+  toaDo?: string;
+  bieuTuongId?: string | null;
 }
 
 export interface CauCangHistoryRecord {

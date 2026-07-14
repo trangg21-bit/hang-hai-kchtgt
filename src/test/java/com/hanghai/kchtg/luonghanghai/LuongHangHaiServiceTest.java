@@ -33,13 +33,14 @@ class LuongHangHaiServiceTest {
 
     @Mock LuongHangHaiRepository repo;
     @Mock PheDuyetLichSuRepository pheDuyetLichSuRepo;
+    @Mock com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
     LuongHangHaiService service;
 
     private LuongHangHai testEntity;
     private LuongHangHaiCreateRequest createReq;
 
     @BeforeEach void setUp() {
-        service = new LuongHangHaiService(repo, pheDuyetLichSuRepo);
+        service = new LuongHangHaiService(repo, pheDuyetLichSuRepo, gisSpatialObjectService);
         testEntity = LuongHangHai.builder()
                 .id(1L)
                 .loaiTau("Tau ca cuoc")

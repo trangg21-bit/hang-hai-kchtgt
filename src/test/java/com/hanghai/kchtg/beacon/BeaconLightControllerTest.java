@@ -342,9 +342,9 @@ class BeaconLightControllerTest {
         doThrow(new IllegalStateException("Chỉ có thể gửi phê duyệt khi status = DRAFT"))
                 .when(beaconLightService).submitForApproval(id);
 
-        // IllegalStateException is not explicitly handled → falls to catch-all → 500
+        // IllegalStateException is handled by GlobalExceptionHandler → returns 400 Bad Request
         mockMvc.perform(post("/api/beacon-lights/{id}/submit-approval", id))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest());
     }
 
     // ── APPROVE L1 ───────────────────────────────────────────────
@@ -376,7 +376,7 @@ class BeaconLightControllerTest {
 
         mockMvc.perform(post("/api/beacon-lights/{id}/approve-l1", id)
                         .param("approverId", "2"))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest());
     }
 
     // ── APPROVE L2 ───────────────────────────────────────────────

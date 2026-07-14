@@ -56,6 +56,7 @@ import type { CangCanListParams } from './api';
 import { symbolService } from '../../services/symbolService';
 import type { Symbol } from '../../services/symbolService';
 import { giayToApi } from '../giayto/api';
+import UserResolver from '../../components/UserResolver';
 import { z } from 'zod';
 import { createCangCanSchema, updateCangCanSchema } from './schema';
 
@@ -102,6 +103,8 @@ export const translateFieldName = (fieldName: string): string => {
     iconId: 'Biểu tượng bản đồ',
     lineSymbolId: 'Ký hiệu đường',
     fillSymbolId: 'Ký hiệu vùng',
+    khongGianId: 'Vị trí không gian',
+    spatialId: 'Vị trí không gian',
   };
   return map[fieldName] || fieldName;
 };
@@ -152,6 +155,26 @@ export default function CangCanListPage() {
     if (['bieuTuongId', 'iconId', 'lineSymbolId', 'fillSymbolId'].includes(fieldName)) {
       const sym = symbols.find(s => s.id === val);
       return sym ? `${sym.name} (${sym.code})` : val;
+    }
+    if (['khongGianId', 'spatialId'].includes(fieldName)) {
+      return 'Có tọa độ bản đồ';
+    }
+    if (fieldName === 'trangThaiPheDuyet') {
+      const approvalMap: Record<string, string> = {
+        'CHO_PHE_DUYET': 'Chờ phê duyệt',
+        'DUOC_PHE_DUYET': 'Được phê duyệt',
+        'TU_CHOI': 'Từ chối',
+      };
+      return approvalMap[val.toUpperCase()] || val;
+    }
+    if (fieldName === 'trangThaiHoatDong') {
+      const statusMap: Record<string, string> = {
+        'HIEN_HANH': 'Hiện hành',
+        'TAM_NGUNG': 'Tạm ngừng',
+        'HIỆN_HÀNH': 'Hiện hành',
+        'TẠM_NGƯNG': 'Tạm ngừng',
+      };
+      return statusMap[val.toUpperCase()] || val;
     }
     return val;
   }, [symbols]);
@@ -428,6 +451,7 @@ export default function CangCanListPage() {
                     dienTich: data.dienTich,
                     congSuatTEU: data.congSuatTEU,
                     trangThaiHoatDong: data.trangThaiHoatDong,
+                    bieuTuongId: data.bieuTuongId,
                   });
                   setUpdateModalVisible(true);
                 } catch (err) {
@@ -487,7 +511,7 @@ export default function CangCanListPage() {
                   setHistoryModalVisible(true);
                   const { fetchCangCanHistory } = await import('./api');
                   const histData = await fetchCangCanHistory(record.id);
-                  setHistoryRecords(histData.changeHistory || []);
+                  setHistoryRecords(histData || []);
                 } catch (err) {
                   toast.error('Không thể tải lịch sử thay đổi');
                 } finally {
@@ -862,10 +886,32 @@ export default function CangCanListPage() {
                       <br />
                       <Typography.Text>{selectedRecord.tenCangCan}</Typography.Text>
                     </Col>
-                    <Col span={24} style={{ marginTop: 8 }}>
+                    <Col span={12} style={{ marginTop: 8 }}>
                       <Typography.Text strong>Tỉnh/thành phố:</Typography.Text>
                       <br />
                       <Typography.Text>{selectedRecord.tinhThanhPho || '—'}</Typography.Text>
+                    </Col>
+                    <Col span={12} style={{ marginTop: 8 }}>
+                      <Typography.Text strong>Biểu tượng bản đồ:</Typography.Text>
+                      <br />
+                      <Space>
+                        {(() => {
+                          const sym = symbols.find(s => s.id === selectedRecord.bieuTuongId);
+                          if (sym && sym.hinhAnh) {
+                            return (
+                              <img
+                                src={sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}
+                                alt={sym.name}
+                                style={{ width: 20, height: 20, objectFit: 'contain' }}
+                              />
+                            );
+                          }
+                          return null;
+                        })()}
+                        <Typography.Text>
+                          {translateValue('bieuTuongId', selectedRecord.bieuTuongId)}
+                        </Typography.Text>
+                      </Space>
                     </Col>
                   </Row>
                 </Card>
@@ -940,9 +986,9 @@ export default function CangCanListPage() {
               <Col span={24}>
                 <Card title="Thông tin hệ thống" size="small">
                   <Descriptions bordered column={2} size="small">
-                    <Descriptions.Item label="Người tạo">{selectedRecord.createdBy || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Người tạo"><UserResolver userId={selectedRecord.createdBy} /></Descriptions.Item>
                     <Descriptions.Item label="Ngày tạo">{selectedRecord.createdAt ? new Date(selectedRecord.createdAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
-                    <Descriptions.Item label="Cập nhật bởi">{selectedRecord.updatedBy || '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Cập nhật bởi"><UserResolver userId={selectedRecord.updatedBy} /></Descriptions.Item>
                     <Descriptions.Item label="Ngày cập nhật">{selectedRecord.updatedAt ? new Date(selectedRecord.updatedAt).toLocaleString('vi-VN') : '—'}</Descriptions.Item>
                   </Descriptions>
                 </Card>

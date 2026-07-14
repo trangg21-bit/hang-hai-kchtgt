@@ -17,7 +17,7 @@ public interface LineObjectRepository extends JpaRepository<LineObject, UUID> {
 
     boolean existsByCode(String code);
 
-    @Query(value = "SELECT COUNT(*) FROM line_objects WHERE code = :code", nativeQuery = true)
+    @Query(value = "SELECT COUNT(*) FROM gis_spatial_objects WHERE code = :code AND geometry_type = 2", nativeQuery = true)
     long countByCodeIncludingDeleted(@Param("code") String code);
 
     List<LineObject> findByObjectType(ObjectType objectType);
@@ -32,7 +32,8 @@ public interface LineObjectRepository extends JpaRepository<LineObject, UUID> {
 
     List<LineObject> findByCodeContainingIgnoreCase(String code);
 
-    @Query(value = "SELECT * FROM line_objects l WHERE " +
+    @Query(value = "SELECT * FROM gis_spatial_objects l WHERE " +
+            "l.geometry_type = 2 AND " +
             "(:name IS NULL OR LOWER(l.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
             "(:code IS NULL OR LOWER(l.code) LIKE LOWER(CONCAT('%', :code, '%'))) AND " +
             "(:objectType IS NULL OR l.object_type = :objectType) AND " +
@@ -40,8 +41,8 @@ public interface LineObjectRepository extends JpaRepository<LineObject, UUID> {
     List<LineObject> searchFiltered(
             @Param("name") String name,
             @Param("code") String code,
-            @Param("objectType") String objectType,
-            @Param("status") String status
+            @Param("objectType") Integer objectType,
+            @Param("status") Integer status
     );
 
     long countByStatus(Status status);

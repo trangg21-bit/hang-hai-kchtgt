@@ -17,7 +17,7 @@ public interface PolygonObjectRepository extends JpaRepository<PolygonObject, UU
 
     boolean existsByCode(String code);
 
-    @Query(value = "SELECT COUNT(*) FROM polygon_objects WHERE code = :code", nativeQuery = true)
+    @Query(value = "SELECT COUNT(*) FROM gis_spatial_objects WHERE code = :code AND geometry_type = 3", nativeQuery = true)
     long countByCodeIncludingDeleted(@Param("code") String code);
 
     List<PolygonObject> findByObjectType(ObjectType objectType);
@@ -32,7 +32,8 @@ public interface PolygonObjectRepository extends JpaRepository<PolygonObject, UU
 
     List<PolygonObject> findByCodeContainingIgnoreCase(String code);
 
-    @Query(value = "SELECT * FROM polygon_objects p WHERE " +
+    @Query(value = "SELECT * FROM gis_spatial_objects p WHERE " +
+            "p.geometry_type = 3 AND " +
             "(:name IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
             "(:code IS NULL OR LOWER(p.code) LIKE LOWER(CONCAT('%', :code, '%'))) AND " +
             "(:objectType IS NULL OR p.object_type = :objectType) AND " +
@@ -40,8 +41,8 @@ public interface PolygonObjectRepository extends JpaRepository<PolygonObject, UU
     List<PolygonObject> searchFiltered(
             @Param("name") String name,
             @Param("code") String code,
-            @Param("objectType") String objectType,
-            @Param("status") String status
+            @Param("objectType") Integer objectType,
+            @Param("status") Integer status
     );
 
     long countByStatus(Status status);

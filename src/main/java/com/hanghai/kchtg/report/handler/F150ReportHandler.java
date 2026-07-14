@@ -27,7 +27,7 @@ public class F150ReportHandler extends BaseReportHandler {
         int reportYear = getReportYear(request);
 
         List<CauCang> berths = cauCangRepository.findAll().stream()
-                .filter(b -> skipFilter || targetUnitId.equals(b.getOrgUnitId()))
+                .filter(b -> skipFilter || targetUnitId.equals(b.getDonViId()))
                 .filter(b -> b.getCreatedAt() == null || b.getCreatedAt().getYear() <= reportYear)
                 .toList();
 
@@ -208,7 +208,7 @@ public class F150ReportHandler extends BaseReportHandler {
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
 
         List<CauCang> berths = cauCangRepository.findAll().stream()
-                .filter(b -> skipFilter || targetUnitId.equals(b.getOrgUnitId()))
+                .filter(b -> skipFilter || targetUnitId.equals(b.getDonViId()))
                 .filter(b -> b.getCreatedAt() == null || b.getCreatedAt().getYear() <= reportYear)
                 .toList();
 

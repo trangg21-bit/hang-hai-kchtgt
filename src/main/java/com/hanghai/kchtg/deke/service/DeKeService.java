@@ -5,6 +5,10 @@ import com.hanghai.kchtg.deke.entity.*;
 import com.hanghai.kchtg.deke.repository.DeKeAttachmentRepository;
 import com.hanghai.kchtg.deke.repository.DeKeRepository;
 import com.hanghai.kchtg.deke.repository.PheDuyetLichSuDeKeRepository;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
@@ -26,6 +30,7 @@ public class DeKeService {
     private final DeKeRepository repo;
     private final DeKeAttachmentRepository attachmentRepo;
     private final PheDuyetLichSuDeKeRepository pheDuyetLichSuRepo;
+    private final GisSpatialObjectService gisSpatialObjectService;
 
     @Transactional
     public DeKeResponse create(DeKeCreateRequest req, String username) {
@@ -38,13 +43,34 @@ public class DeKeService {
                 .matVatLieu(req.getMatVatLieu())
                 .tinhTrang(req.getTinhTrang())
                 .ghiChu(req.getGhiChu())
-                .orgUnitId(req.getOrgUnitId())
+                .donViId(req.getDonViId())
                 .trangThaiPheDuyet(DeKeApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
                 .isDeleted(false)
                 .createdBy(username)
                 .build();
+
+        d = repo.save(d);
+
+        if (req.getToaDo() != null && !req.getToaDo().trim().isEmpty()) {
+            GisGeometryType geomType = req.getLoaiHinhHoc() != null ? req.getLoaiHinhHoc() : GisGeometryType.LINE;
+            GisSpatialObjectType objType = getSpatialObjectType(geomType);
+            UUID refId = UUID.nameUUIDFromBytes(("DEKE_" + d.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    null,
+                    "Đê kè tại " + req.getViTri(),
+                    "DEKE_" + d.getId(),
+                    geomType,
+                    objType,
+                    req.getToaDo(),
+                    req.getBieuTuongId(),
+                    refId,
+                    "DEKE"
+            );
+            d.setKhongGianId(spatialObj.getId());
+            d = repo.save(d);
+        }
 
         // Save attachments if provided
         if (req.getAttachments() != null && !req.getAttachments().isEmpty()) {
@@ -59,9 +85,10 @@ public class DeKeService {
                         .build();
                 d.getAttachments().add(att);
             }
+            d = repo.save(d);
         }
 
-        return toResponse(repo.save(d));
+        return toResponse(d);
     }
 
     @Transactional(readOnly = true)
@@ -112,8 +139,48 @@ public class DeKeService {
         if (req.getMatVatLieu() != null) d.setMatVatLieu(req.getMatVatLieu());
         if (req.getTinhTrang() != null) d.setTinhTrang(req.getTinhTrang());
         if (req.getGhiChu() != null) d.setGhiChu(req.getGhiChu());
-        if (req.getOrgUnitId() != null) d.setOrgUnitId(req.getOrgUnitId());
+        if (req.getDonViId() != null) d.setDonViId(req.getDonViId());
         d.setUpdatedBy(username);
+
+        if (req.getToaDo() != null) {
+            if (req.getToaDo().trim().isEmpty()) {
+                if (d.getKhongGianId() != null) {
+                    gisSpatialObjectService.delete(d.getKhongGianId());
+                    d.setKhongGianId(null);
+                }
+            } else {
+                GisGeometryType geomType = req.getLoaiHinhHoc() != null ? req.getLoaiHinhHoc() : GisGeometryType.LINE;
+                GisSpatialObjectType objType = getSpatialObjectType(geomType);
+                UUID refId = UUID.nameUUIDFromBytes(("DEKE_" + d.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                        d.getKhongGianId(),
+                        "Đê kè tại " + d.getViTri(),
+                        "DEKE_" + d.getId(),
+                        geomType,
+                        objType,
+                        req.getToaDo(),
+                        req.getBieuTuongId(),
+                        refId,
+                        "DEKE"
+                );
+                d.setKhongGianId(spatialObj.getId());
+            }
+        } else if (d.getKhongGianId() != null && req.getViTri() != null) {
+            gisSpatialObjectService.findById(d.getKhongGianId()).ifPresent(spatialObj -> {
+                UUID refId = UUID.nameUUIDFromBytes(("DEKE_" + d.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                gisSpatialObjectService.createOrUpdate(
+                        spatialObj.getId(),
+                        "Đê kè tại " + req.getViTri(),
+                        spatialObj.getCode(),
+                        spatialObj.getGeometryType(),
+                        spatialObj.getObjectType(),
+                        spatialObj.getCoordinates(),
+                        spatialObj.getBieuTuongId(),
+                        refId,
+                        "DEKE"
+                );
+            });
+        }
 
         DeKe saved = repo.save(d);
 
@@ -132,6 +199,9 @@ public class DeKeService {
         }
 
         d.setIsDeleted(true);
+        if (d.getKhongGianId() != null) {
+            gisSpatialObjectService.delete(d.getKhongGianId());
+        }
         repo.save(d);
         log.info("Soft deleted de ke id={}", id);
     }
@@ -304,6 +374,17 @@ public class DeKeService {
                         .collect(Collectors.toList())
                 : new ArrayList<>();
 
+        GisGeometryType geomType = null;
+        String coords = null;
+        if (d.getKhongGianId() != null) {
+            java.util.Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(d.getKhongGianId());
+            if (spatialOpt.isPresent()) {
+                GisSpatialObject spatial = spatialOpt.get();
+                geomType = spatial.getGeometryType();
+                coords = spatial.getCoordinates();
+            }
+        }
+
         return DeKeResponse.builder()
                 .id(d.getId())
                 .loaiDe(d.getLoaiDe())
@@ -314,7 +395,7 @@ public class DeKeService {
                 .matVatLieu(d.getMatVatLieu())
                 .tinhTrang(d.getTinhTrang())
                 .ghiChu(d.getGhiChu())
-                .orgUnitId(d.getOrgUnitId())
+                .donViId(d.getDonViId())
                 .trangThaiPheDuyet(d.getTrangThaiPheDuyet())
                 .pheDuyetC1(d.getPheDuyetC1())
                 .nguoiPheDuyetC1(d.getNguoiPheDuyetC1())
@@ -330,7 +411,25 @@ public class DeKeService {
                 .updatedBy(d.getUpdatedBy())
                 .attachments(atts)
                 .approvalHistory(hist)
+                .khongGianId(d.getKhongGianId())
+                .loaiHinhHoc(geomType)
+                .toaDo(coords)
                 .build();
+    }
+
+    private GisGeometryType parseGeometryType(String typeStr) {
+        if (typeStr == null) return GisGeometryType.LINE;
+        try {
+            return GisGeometryType.valueOf(typeStr.toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return GisGeometryType.LINE;
+        }
+    }
+
+    private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
+        if (geomType == GisGeometryType.POINT) return GisSpatialObjectType.POINT_OTHER;
+        if (geomType == GisGeometryType.POLYGON) return GisSpatialObjectType.POLYGON_OTHER;
+        return GisSpatialObjectType.LINE_OTHER;
     }
 }
 

@@ -122,7 +122,7 @@ class TramRadarControllerTest {
 
     @Test
     void testCreate_WithException() {
-        when(service.create(any(), anyString())).thenThrow(new RuntimeException("Test error"));
+        when(service.create(any(), anyString())).thenThrow(new RuntimeException("Lỗi thử nghiệm"));
         ResponseEntity<?> result = controller.create(createRequest, mockAuth());
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
     }

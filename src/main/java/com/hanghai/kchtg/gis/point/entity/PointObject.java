@@ -8,8 +8,8 @@ import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
 
 @Entity
-@Table(name = "point_objects")
-@SQLRestriction("deleted_at IS NULL")
+@Table(name = "gis_spatial_objects")
+@SQLRestriction("geometry_type = 1 AND deleted_at IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -17,28 +17,49 @@ import org.hibernate.annotations.SQLRestriction;
 @Builder
 public class PointObject extends BaseEntity {
 
+    @Getter
     public enum ObjectType {
-        PORT,
-        LIGHTHOUSE,
-        BUOY,
-        BEACON,
-        OTHER
+        PORT(10),
+        LIGHTHOUSE(11),
+        BUOY(12),
+        BEACON(13),
+        OTHER(14);
+
+        private final int value;
+
+        ObjectType(int value) {
+            this.value = value;
+        }
     }
 
+    @Getter
     public enum Status {
-        DRAFT,
-        PENDING_APPROVAL,
-        APPROVED_L1,
-        APPROVED_L2,
-        PUBLISHED,
-        REJECTED,
-        DELETED
+        DRAFT(0),
+        PENDING_APPROVAL(1),
+        APPROVED_L1(2),
+        APPROVED_L2(3),
+        PUBLISHED(4),
+        REJECTED(5),
+        DELETED(6);
+
+        private final int value;
+
+        Status(int value) {
+            this.value = value;
+        }
     }
 
+    @Getter
     public enum ApprovalStatus {
-        PENDING,
-        APPROVED,
-        REJECTED
+        PENDING(0),
+        APPROVED(1),
+        REJECTED(2);
+
+        private final int value;
+
+        ApprovalStatus(int value) {
+            this.value = value;
+        }
     }
 
     @NotBlank(message = "Tên đối tượng không được để trống")
@@ -51,35 +72,39 @@ public class PointObject extends BaseEntity {
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @Column(name = "geometry_type", nullable = false)
+    @Builder.Default
+    private Integer geometryType = 1;
+
+    @Column(name = "object_type", nullable = false)
     private ObjectType objectType;
 
     @Column(name = "category_id")
     private Long categoryId;
 
-    @Column(name = "icon_id")
+    @Column(name = "bieu_tuong_id")
     private java.util.UUID iconId;
 
-    @Column(name = "longitude", nullable = false)
+    @Column(name = "coordinates", nullable = false, columnDefinition = "TEXT")
+    private String coordinates;
+
+    @Transient
     private Double longitude;
 
-    @Column(name = "latitude", nullable = false)
+    @Transient
     private Double latitude;
 
     @Column(length = 1000)
     private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false)
     @Builder.Default
     private Status status = Status.DRAFT;
 
     @Column(name = "unit_id")
     private java.util.UUID unitId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "approval_status", length = 20)
+    @Column(name = "approval_status")
     @Builder.Default
     private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
 
@@ -91,4 +116,25 @@ public class PointObject extends BaseEntity {
 
     @Column(name = "cong_nang_khai_thac", length = 255)
     private String congNangKhaiThac;
+
+    @PostLoad
+    public void postLoad() {
+        if (coordinates != null && coordinates.startsWith("POINT(")) {
+            try {
+                String temp = coordinates.substring(6, coordinates.length() - 1);
+                String[] parts = temp.split(" ");
+                this.longitude = Double.parseDouble(parts[0]);
+                this.latitude = Double.parseDouble(parts[1]);
+            } catch (Exception ignored) {}
+        }
+    }
+
+    @PrePersist
+    @PreUpdate
+    public void prePersist() {
+        this.geometryType = 1;
+        double lon = this.longitude != null ? this.longitude : 0.0;
+        double lat = this.latitude != null ? this.latitude : 0.0;
+        this.coordinates = String.format(java.util.Locale.US, "POINT(%.6f %.6f)", lon, lat);
+    }
 }

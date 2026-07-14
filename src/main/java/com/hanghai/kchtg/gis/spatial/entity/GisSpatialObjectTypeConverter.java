@@ -1,0 +1,25 @@
+package com.hanghai.kchtg.gis.spatial.entity;
+
+import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Converter;
+
+@Converter(autoApply = true)
+public class GisSpatialObjectTypeConverter implements AttributeConverter<GisSpatialObjectType, Integer> {
+    @Override
+    public Integer convertToDatabaseColumn(GisSpatialObjectType attribute) {
+        return attribute != null ? attribute.getValue() : null;
+    }
+
+    @Override
+    public GisSpatialObjectType convertToEntityAttribute(Integer dbData) {
+        if (dbData == null) {
+            return null;
+        }
+        for (GisSpatialObjectType type : GisSpatialObjectType.values()) {
+            if (type.getValue() == dbData) {
+                return type;
+            }
+        }
+        throw new IllegalArgumentException("Unknown database value for GisSpatialObjectType: " + dbData);
+    }
+}

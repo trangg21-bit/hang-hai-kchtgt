@@ -39,7 +39,7 @@ public class DeKe {
     private String ghiChu;
 
     @Column(name = "org_unit_id")
-    private UUID orgUnitId;
+    private UUID donViId;
 
     @Column(name = "trang_thai_phe_duyet", nullable = false)
     @Convert(converter = DeKeApprovalStatusConverter.class)
@@ -83,6 +83,9 @@ public class DeKe {
 
     @Column(name = "updated_by", length = 100)
     private String updatedBy;
+
+    @Column(name = "spatial_id")
+    private UUID khongGianId;
 
     @OneToMany(mappedBy = "deKe", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

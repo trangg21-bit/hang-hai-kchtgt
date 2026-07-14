@@ -29,7 +29,7 @@ public class TramRadarController {
             TramRadarResponse response = service.create(request, username);
             return ResponseEntity.ok(ApiResponse.success("Tạo mới thành công", response));
         } catch (Exception e) {
-            log.error("Error creating TramRadar: {}", e.getMessage(), e);
+            log.warn("Lỗi khi tạo trạm radar: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -41,7 +41,7 @@ public class TramRadarController {
             TramRadarResponse response = service.getById(id);
             return ResponseEntity.ok(ApiResponse.success("Xem chi tiết thành công", response));
         } catch (Exception e) {
-            log.error("Error getting TramRadar by id {}: {}", id, e.getMessage(), e);
+            log.warn("Lỗi khi lấy trạm radar theo id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -55,7 +55,7 @@ public class TramRadarController {
             List<TramRadarResponse> responses = service.findAll(page, size);
             return ResponseEntity.ok(ApiResponse.success("Danh sách trạm radar", responses));
         } catch (Exception e) {
-            log.error("Error finding all TramRadar: {}", e.getMessage(), e);
+            log.warn("Lỗi khi tìm kiếm tất cả trạm radar: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -70,7 +70,7 @@ public class TramRadarController {
             TramRadarResponse response = service.update(id, request, username);
             return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", response));
         } catch (Exception e) {
-            log.error("Error updating TramRadar id {}: {}", id, e.getMessage(), e);
+            log.warn("Lỗi khi cập nhật trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -83,7 +83,7 @@ public class TramRadarController {
             service.delete(id, username);
             return ResponseEntity.ok(ApiResponse.success("Xóa thành công", null));
         } catch (Exception e) {
-            log.error("Error deleting TramRadar id {}: {}", id, e.getMessage(), e);
+            log.warn("Lỗi khi xóa trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -98,7 +98,7 @@ public class TramRadarController {
             TramRadarResponse response = service.approveC1(id, request, username);
             return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", response));
         } catch (Exception e) {
-            log.error("Error approving C1 for TramRadar id {}: {}", id, e.getMessage(), e);
+            log.warn("Lỗi khi duyệt cấp 1 trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -113,7 +113,7 @@ public class TramRadarController {
             TramRadarResponse response = service.approveC2(id, request, username);
             return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", response));
         } catch (Exception e) {
-            log.error("Error approving C2 for TramRadar id {}: {}", id, e.getMessage(), e);
+            log.warn("Lỗi khi duyệt cấp 2 trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -125,7 +125,7 @@ public class TramRadarController {
             List<HistoryEntry> history = service.getHistory(id);
             return ResponseEntity.ok(ApiResponse.success("Lịch sử phê duyệt thành công", history));
         } catch (Exception e) {
-            log.error("Error getting history for TramRadar id {}: {}", id, e.getMessage(), e);
+            log.warn("Lỗi khi lấy lịch sử trạm radar id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -141,7 +141,7 @@ public class TramRadarController {
             List<TramRadarResponse> responses = service.search(orgUnitId, keyword, tinhTrang, trangThai);
             return ResponseEntity.ok(ApiResponse.success("Tìm kiếm thành công", responses));
         } catch (Exception e) {
-            log.error("Error searching TramRadar: {}", e.getMessage(), e);
+            log.warn("Lỗi khi tìm kiếm trạm radar: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }

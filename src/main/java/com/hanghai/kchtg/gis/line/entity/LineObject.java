@@ -8,8 +8,8 @@ import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
 
 @Entity
-@Table(name = "line_objects")
-@SQLRestriction("deleted_at IS NULL")
+@Table(name = "gis_spatial_objects")
+@SQLRestriction("geometry_type = 2 AND deleted_at IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -17,27 +17,48 @@ import org.hibernate.annotations.SQLRestriction;
 @Builder
 public class LineObject extends BaseEntity {
 
+    @Getter
     public enum ObjectType {
-        COASTLINE,
-        SHIPPING_ROUTE,
-        WATERWAY,
-        OTHER
+        COASTLINE(20),
+        SHIPPING_ROUTE(21),
+        WATERWAY(22),
+        OTHER(23);
+
+        private final int value;
+
+        ObjectType(int value) {
+            this.value = value;
+        }
     }
 
+    @Getter
     public enum Status {
-        DRAFT,
-        PENDING_APPROVAL,
-        APPROVED_L1,
-        APPROVED_L2,
-        PUBLISHED,
-        REJECTED,
-        DELETED
+        DRAFT(0),
+        PENDING_APPROVAL(1),
+        APPROVED_L1(2),
+        APPROVED_L2(3),
+        PUBLISHED(4),
+        REJECTED(5),
+        DELETED(6);
+
+        private final int value;
+
+        Status(int value) {
+            this.value = value;
+        }
     }
 
+    @Getter
     public enum ApprovalStatus {
-        PENDING,
-        APPROVED,
-        REJECTED
+        PENDING(0),
+        APPROVED(1),
+        REJECTED(2);
+
+        private final int value;
+
+        ApprovalStatus(int value) {
+            this.value = value;
+        }
     }
 
     @NotBlank(message = "Tên đối tượng không được để trống")
@@ -50,14 +71,17 @@ public class LineObject extends BaseEntity {
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @Column(name = "geometry_type", nullable = false)
+    @Builder.Default
+    private Integer geometryType = 2;
+
+    @Column(name = "object_type", nullable = false)
     private ObjectType objectType;
 
     @Column(name = "category_id")
     private Long categoryId;
 
-    @Column(name = "line_symbol_id")
+    @Column(name = "bieu_tuong_id")
     private java.util.UUID lineSymbolId;
 
     @Column(name = "coordinates", nullable = false, columnDefinition = "TEXT")
@@ -66,8 +90,7 @@ public class LineObject extends BaseEntity {
     @Column(length = 1000)
     private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false)
     @Builder.Default
     private Status status = Status.DRAFT;
 
@@ -83,8 +106,7 @@ public class LineObject extends BaseEntity {
     @Column(name = "year_built")
     private Integer yearBuilt;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "approval_status", length = 20)
+    @Column(name = "approval_status")
     @Builder.Default
     private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
 
@@ -93,4 +115,10 @@ public class LineObject extends BaseEntity {
 
     @Column(name = "approved_date")
     private java.time.LocalDateTime approvedDate;
+
+    @PrePersist
+    @PreUpdate
+    public void prePersist() {
+        this.geometryType = 2;
+    }
 }

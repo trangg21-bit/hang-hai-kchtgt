@@ -17,7 +17,7 @@ public class LuongHangHai {
     @Column(name = "tai_trong", length = 100) private String taiTrong;
     @Column(name = "dien_tich_dang_bo", length = 100) private String dienTichDangBo;
     @Column(name = "ghi_chu", length = 500) private String ghiChu;
-    @Column(name = "org_unit_id") private UUID orgUnitId;
+    @Column(name = "org_unit_id") private UUID donViId;
     @Column(name = "trang_thai_phe_duyet", nullable = false)
     @Convert(converter = LuongHangHaiApprovalStatusConverter.class)
     private LuongHangHaiApprovalStatus approvalStatus;
@@ -33,6 +33,7 @@ public class LuongHangHai {
     @Column(name = "updated_at") private LocalDateTime updatedAt;
     @Column(name = "created_by", length = 100) private String createdBy;
     @Column(name = "updated_by", length = 100) private String updatedBy;
+    @Column(name = "spatial_id") private UUID khongGianId;
     @OneToMany(mappedBy = "luongHangHai", cascade = CascadeType.ALL, orphanRemoval = true) @Builder.Default private List<LuongHangHaiAttachment> attachments = new ArrayList<>();
     @OneToMany(mappedBy = "luongHangHai", cascade = CascadeType.ALL, orphanRemoval = true) @Builder.Default private List<PheDuyetLichSu> approvalHistory = new ArrayList<>();
     @PrePersist protected void onCreate() { this.createdAt = LocalDateTime.now(); }

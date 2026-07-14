@@ -53,8 +53,8 @@ public class LineObjectService {
         return repository.searchFiltered(
                 name,
                 code,
-                objectType != null ? objectType.name() : null,
-                status != null ? status.name() : null
+                objectType != null ? objectType.getValue() : null,
+                status != null ? status.getValue() : null
         ).stream()
                 .map(this::toResponse)
                 .toList();

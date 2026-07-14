@@ -31,7 +31,7 @@ public class CoSuaChuaDongTauController {
             CoSuaChuaDongTauResponse response = service.create(request, username);
             return ResponseEntity.ok(ApiResponse.success("Tạo mới thành công", response));
         } catch (Exception e) {
-            log.error("Error creating CoSuaChuaDongTau: {}", e.getMessage(), e);
+            log.warn("Lỗi khi tạo cơ sở sửa chữa, đóng tàu: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -43,7 +43,7 @@ public class CoSuaChuaDongTauController {
             CoSuaChuaDongTauResponse response = service.getById(id);
             return ResponseEntity.ok(ApiResponse.success("Xem chi tiết thành công", response));
         } catch (Exception e) {
-            log.error("Error getting CoSuaChuaDongTau by id {}: {}", id, e.getMessage(), e);
+            log.warn("Lỗi khi lấy cơ sở sửa chữa, đóng tàu theo id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -57,7 +57,7 @@ public class CoSuaChuaDongTauController {
             List<CoSuaChuaDongTauResponse> responses = service.findAll(page, size);
             return ResponseEntity.ok(ApiResponse.success("Danh sách cơ sở sửa chữa, đóng tàu", responses));
         } catch (Exception e) {
-            log.error("Error finding all CoSuaChuaDongTau: {}", e.getMessage(), e);
+            log.warn("Lỗi khi tìm kiếm tất cả cơ sở sửa chữa, đóng tàu: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -73,7 +73,7 @@ public class CoSuaChuaDongTauController {
             CoSuaChuaDongTauResponse response = service.update(id, request, username);
             return ResponseEntity.ok(ApiResponse.success("Cập nhật thành công", response));
         } catch (Exception e) {
-            log.error("Error updating CoSuaChuaDongTau id {}: {}", id, e.getMessage(), e);
+            log.warn("Lỗi khi cập nhật cơ sở sửa chữa, đóng tàu id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -86,7 +86,7 @@ public class CoSuaChuaDongTauController {
             service.delete(id, username);
             return ResponseEntity.ok(ApiResponse.success("Xóa thành công", null));
         } catch (Exception e) {
-            log.error("Error deleting CoSuaChuaDongTau id {}: {}", id, e.getMessage(), e);
+            log.warn("Lỗi khi xóa cơ sở sửa chữa, đóng tàu id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -102,7 +102,7 @@ public class CoSuaChuaDongTauController {
             CoSuaChuaDongTauResponse response = service.approveC1(id, request, username);
             return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 1 thành công", response));
         } catch (Exception e) {
-            log.error("Error approving C1 for CoSuaChuaDongTau id {}: {}", id, e.getMessage(), e);
+            log.warn("Lỗi khi duyệt C1 cho cơ sở sửa chữa, đóng tàu id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -118,7 +118,7 @@ public class CoSuaChuaDongTauController {
             CoSuaChuaDongTauResponse response = service.approveC2(id, request, username);
             return ResponseEntity.ok(ApiResponse.success("Phê duyệt cấp 2 thành công", response));
         } catch (Exception e) {
-            log.error("Error approving C2 for CoSuaChuaDongTau id {}: {}", id, e.getMessage(), e);
+            log.warn("Lỗi khi duyệt C2 cho cơ sở sửa chữa, đóng tàu id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -130,7 +130,7 @@ public class CoSuaChuaDongTauController {
             List<HistoryEntry> history = service.getHistory(id);
             return ResponseEntity.ok(ApiResponse.success("Lịch sử phê duyệt thành công", history));
         } catch (Exception e) {
-            log.error("Error getting history for CoSuaChuaDongTau id {}: {}", id, e.getMessage(), e);
+            log.warn("Lỗi khi lấy lịch sử cho cơ sở sửa chữa, đóng tàu id {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }
@@ -147,7 +147,7 @@ public class CoSuaChuaDongTauController {
             List<CoSuaChuaDongTauResponse> responses = service.search(orgUnitId, keyword, tinhThanh, trangThai, trangThaiPheDuyet);
             return ResponseEntity.ok(ApiResponse.success("Tìm kiếm thành công", responses));
         } catch (Exception e) {
-            log.error("Error searching CoSuaChuaDongTau: {}", e.getMessage(), e);
+            log.warn("Lỗi khi tìm kiếm cơ sở sửa chữa, đóng tàu: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
     }

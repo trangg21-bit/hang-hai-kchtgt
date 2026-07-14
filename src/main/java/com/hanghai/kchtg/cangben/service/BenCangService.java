@@ -7,8 +7,10 @@ import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import com.hanghai.kchtg.cangben.entity.CangBien;
 import com.hanghai.kchtg.cangben.repository.BenCangRepository;
 import com.hanghai.kchtg.cangben.repository.CangBienRepository;
+import com.hanghai.kchtg.cangben.repository.CauCangRepository;
 import com.hanghai.kchtg.cangben.service.shared.AuditLogService;
 import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
+import com.hanghai.kchtg.cangben.service.shared.UserResolverService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,8 +41,11 @@ public class BenCangService {
 
     private final BenCangRepository benCangRepository;
     private final CangBienRepository cangBienRepository;
+    private final CauCangRepository cauCangRepository;
     private final LichSuThayDoiService lichSuThayDoiService;
     private final AuditLogService auditLogService;
+    private final UserResolverService userResolverService;
+    private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
 
     @Transactional
     public BenCangResponse create(CreateBenCangRequest request) {
@@ -102,8 +107,47 @@ public class BenCangService {
                 // ignore or leave as null if invalid enum string
             }
         }
-        return benCangRepository.searchBenCang(orgUnitId, maBen, tenBen, cangBienId,
-                tuyenDuongThuy, loaiBenEnum, statusEnum, approvalEnum, pageable).map(this::toResponse);
+        Page<BenCang> pageResult = benCangRepository.searchBenCang(orgUnitId, maBen, tenBen, cangBienId,
+                tuyenDuongThuy, loaiBenEnum, statusEnum, approvalEnum, pageable);
+
+        java.util.List<UUID> parentIds = pageResult.getContent().stream()
+                .map(BenCang::getCangBienId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .collect(java.util.stream.Collectors.toList());
+
+        java.util.Map<UUID, String> parentNameMap = new java.util.HashMap<>();
+        if (!parentIds.isEmpty()) {
+            cangBienRepository.findAllById(parentIds).forEach(cb -> {
+                parentNameMap.put(cb.getId(), cb.getTenCang());
+            });
+        }
+
+        java.util.Set<UUID> userUuids = new java.util.HashSet<>();
+        pageResult.getContent().forEach(e -> {
+            try {
+                if (e.getCreatedBy() != null) userUuids.add(UUID.fromString(e.getCreatedBy()));
+                if (e.getUpdatedBy() != null) userUuids.add(UUID.fromString(e.getUpdatedBy()));
+            } catch (Exception ex) {
+                // ignore
+            }
+        });
+
+        java.util.Map<String, String> userNamesMap = new java.util.HashMap<>();
+        if (!userUuids.isEmpty()) {
+            userRepository.findAllById(userUuids).forEach(usr -> {
+                String displayName = usr.getFullName() != null && !usr.getFullName().trim().isEmpty()
+                        ? usr.getFullName()
+                        : usr.getUsername();
+                userNamesMap.put(usr.getId().toString(), displayName);
+            });
+        }
+
+        return pageResult.map(e -> toResponse(e, 
+                parentNameMap.get(e.getCangBienId()),
+                userNamesMap.get(e.getCreatedBy()),
+                userNamesMap.get(e.getUpdatedBy())
+        ));
     }
 
     @Transactional(readOnly = true)
@@ -147,9 +191,21 @@ public class BenCangService {
                     .orElseThrow(
                             () -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getCangBienId()));
             entity.setOrgUnitId(parent.getOrgUnitId());
+            
+            // Cascade update all CauCang children
+            cauCangRepository.findByBenCangIdAndDeletedAtIsNull(entity.getId()).forEach(cc -> {
+                cc.setDonViId(parent.getOrgUnitId());
+                cauCangRepository.save(cc);
+            });
         } else if (entity.getOrgUnitId() == null && entity.getCangBienId() != null) {
             cangBienRepository.findById(entity.getCangBienId()).ifPresent(p -> {
                 entity.setOrgUnitId(p.getOrgUnitId());
+                
+                // Cascade update all CauCang children
+                cauCangRepository.findByBenCangIdAndDeletedAtIsNull(entity.getId()).forEach(cc -> {
+                    cc.setDonViId(p.getOrgUnitId());
+                    cauCangRepository.save(cc);
+                });
             });
         }
         if (request.getTuyenDuongThuy() != null)
@@ -194,17 +250,35 @@ public class BenCangService {
     }
 
     private BenCangResponse toResponse(BenCang e) {
+        return toResponse(e, null, null, null);
+    }
+
+    private BenCangResponse toResponse(BenCang e, String preResolvedTenCangBien) {
+        return toResponse(e, preResolvedTenCangBien, null, null);
+    }
+
+    private BenCangResponse toResponse(BenCang e, String preResolvedTenCangBien, String preResolvedCreatorName, String preResolvedUpdaterName) {
+        String tenCangBien = preResolvedTenCangBien;
+        if (tenCangBien == null && e.getCangBienId() != null) {
+            tenCangBien = cangBienRepository.findById(e.getCangBienId()).map(CangBien::getTenCang).orElse(null);
+        }
+
+        String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName : userResolverService.resolveName(e.getCreatedBy());
+        String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName : userResolverService.resolveName(e.getUpdatedBy());
+
         return BenCangResponse.builder()
                 .id(e.getId()).maBen(e.getMaBen()).tenBen(e.getTenBen())
-                .cangBienId(e.getCangBienId()).tuyenDuongThuy(e.getTuyenDuongThuy())
+                .cangBienId(e.getCangBienId())
+                .tenCangBien(tenCangBien)
+                .tuyenDuongThuy(e.getTuyenDuongThuy())
                 .viDo(e.getViDo()).kinhDo(e.getKinhDo()).chieuDai(e.getChieuDai())
                 .chieuRong(e.getChieuRong()).loaiBen(e.getLoaiBen())
                 .doSauLuong(e.getDoSauLuong()).congNangKhaiThac(e.getCongNangKhaiThac())
                 .trangThaiHoatDong(e.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(e.getTrangThaiPheDuyet()).orgUnitId(e.getOrgUnitId())
                 .bieuTuongId(e.getBieuTuongId())
-                .createdBy(e.getCreatedBy())
-                .updatedBy(e.getUpdatedBy())
+                .createdBy(createdBy)
+                .updatedBy(updatedBy)
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt()).build();
     }
 }

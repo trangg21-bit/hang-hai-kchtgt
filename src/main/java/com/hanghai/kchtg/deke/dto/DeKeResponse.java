@@ -10,12 +10,13 @@ import java.util.List;
 /**
  * Response DTO for DeKe (F-044 to F-049).
  */
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class DeKeResponse {
-
     private Long id;
     private com.hanghai.kchtg.deke.entity.LoaiDe loaiDe;
     private String viTri;
@@ -25,7 +26,7 @@ public class DeKeResponse {
     private String matVatLieu;
     private String tinhTrang;
     private String ghiChu;
-    private java.util.UUID orgUnitId;
+    private java.util.UUID donViId;
     private DeKeApprovalStatus trangThaiPheDuyet;
     private Boolean pheDuyetC1;
     private String nguoiPheDuyetC1;
@@ -42,4 +43,8 @@ public class DeKeResponse {
     private List<DeKeAttachmentResponse> attachments;
     private List<PheDuyetResponse> approvalHistory;
     private List<HistoryEntry> history;
+    private java.util.UUID khongGianId;
+    private GisGeometryType loaiHinhHoc;
+    private String toaDo;
+    private java.util.UUID bieuTuongId;
 }

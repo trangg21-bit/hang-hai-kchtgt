@@ -22,10 +22,16 @@ export async function fetchCauCangList(query: CauCangListQuery) {
   if (query.sortBy) params.set('sortBy', query.sortBy);
   if (query.sortOrder) params.set('sortOrder', query.sortOrder);
   params.set('page', String(query.page));
-  params.set('pageSize', String(query.pageSize));
+  params.set('size', String(query.pageSize));
 
   const { data } = await api.get(`${BASE}`, { params });
-  return data.data as { content: CauCang[]; totalElements: number; page: number; pageSize: number };
+  const pageData = data.data;
+  return {
+    content: pageData.content || [],
+    totalElements: pageData.totalElements || 0,
+    page: pageData.number || 0,
+    pageSize: pageData.size || 20,
+  };
 }
 
 // ── Get by ID ──────────────────────────────────────────────────────────────
@@ -78,9 +84,20 @@ export async function fetchCauCangHistory(id: string) {
 }
 
 // ── BenCang options (for select dropdown) ──────────────────────────────────
-export async function fetchBenCangOptions() {
+export async function fetchBenCangOptions(params?: { search?: string; size?: number }) {
   const { data } = await api.get('/v1/ben-cang', {
-    params: { pageSize: 200, sortBy: 'tenBen', sortOrder: 'asc', trangThaiHoatDong: 'HIEN_HANH' },
+    params: {
+      size: params?.size ?? 100,
+      search: params?.search,
+      sortBy: 'tenBen',
+      sortOrder: 'asc',
+      trangThaiHoatDong: 'HIEN_HANH'
+    },
   });
   return data.data as { content: BenCangOption[] };
+}
+
+export async function fetchBenCangById(id: string) {
+  const { data } = await api.get(`/v1/ben-cang/${id}`);
+  return data.data as { id: string; tenBen: string };
 }

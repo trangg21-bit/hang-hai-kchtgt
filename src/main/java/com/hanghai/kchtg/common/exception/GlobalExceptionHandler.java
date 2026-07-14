@@ -89,15 +89,25 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<String>> handleNoResourceFound(
+            org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+
+        log.debug("Resource not found: {}", ex.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error("Không tìm thấy tài nguyên: " + ex.getResourcePath()));
+    }
+
     /**
      * Handles {@code IllegalArgumentException} from service-layer guard
      * clauses (dispatched as 400 Bad Request).
      */
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiResponse<String>> handleIllegalArgument(
-            IllegalArgumentException ex) {
+    @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
+    public ResponseEntity<ApiResponse<String>> handleIllegalArgumentOrState(
+            Exception ex) {
 
-        log.debug("Illegal argument: {}", ex.getMessage());
+        log.debug("Validation state or argument exception: {}", ex.getMessage());
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(ex.getMessage()));

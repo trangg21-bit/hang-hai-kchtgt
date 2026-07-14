@@ -135,7 +135,7 @@ export default function GiayToUploadModal({
       onCancel={onCancel}
       footer={null}
       width={800}
-      destroyOnClose
+      destroyOnHidden
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
         {/* Upload Area */}

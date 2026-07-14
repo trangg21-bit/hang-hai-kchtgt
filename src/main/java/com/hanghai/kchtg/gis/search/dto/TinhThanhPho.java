@@ -73,4 +73,18 @@ public enum TinhThanhPho {
     TinhThanhPho(String displayName) {
         this.displayName = displayName;
     }
+
+    public static TinhThanhPho fromString(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        String clean = value.trim();
+        for (TinhThanhPho enumConst : TinhThanhPho.values()) {
+            if (enumConst.name().equalsIgnoreCase(clean) ||
+                enumConst.getDisplayName().equalsIgnoreCase(clean)) {
+                return enumConst;
+            }
+        }
+        return null;
+    }
 }
