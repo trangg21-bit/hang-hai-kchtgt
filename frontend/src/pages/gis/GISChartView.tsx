@@ -792,7 +792,7 @@ export default function GISChartView() {
       if (!feature.geojson) return;
 
       // Check cache first!
-      const cached = planningLayersCacheRef.current[feature.id];
+      const cached = planningLayersCacheRef.current[feature.fid];
       if (cached) {
         layers.push(cached);
         return;
@@ -974,7 +974,7 @@ export default function GISChartView() {
         });
 
         // Cache the fully parsed and built layer
-        planningLayersCacheRef.current[feature.id] = layer;
+        planningLayersCacheRef.current[feature.fid] = layer;
         layers.push(layer);
       } catch (err) {
         // skip
