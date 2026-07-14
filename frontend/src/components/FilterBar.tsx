@@ -9,7 +9,6 @@ import {
   borderDefault as line,
   spaceSm,
   spaceMd,
-  fontSizeSm,
   fontSizeMd,
 } from '../tokens-dashboard';
 
@@ -49,8 +48,8 @@ export default function FilterBar() {
       <Select size='small' value={province ?? 'Tất cả'} onChange={(val) => setProvince(val === 'Tất cả' ? null : val)} style={{ width: 180 }} options={PROVINCE_OPTIONS.map((p) => ({ value: p, label: p }))} />
       <Select size='small' value={infraType ?? 'Tất cả'} onChange={(val) => setInfraType(val === 'Tất cả' ? null : val)} style={{ width: 170 }} options={INFRA_TYPE_OPTIONS.map((t) => ({ value: t, label: t }))} />
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: spaceSm }}>
-        <ClockCircleOutlined style={{ color: textTertiary, fontSize: fontSizeSm }} />
-        <span style={{ fontSize: fontSizeSm, color: textTertiary }}>Cập nhật lúc {lastUpdated}</span>
+        <ClockCircleOutlined style={{ color: textTertiary, fontSize: fontSizeMd }} />
+        <span style={{ fontSize: fontSizeMd, color: textTertiary }}>Cập nhật lúc {lastUpdated}</span>
       </div>
     </div>
   );

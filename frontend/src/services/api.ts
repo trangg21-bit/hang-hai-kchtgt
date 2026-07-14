@@ -2,7 +2,7 @@ import axios from 'axios';
 import { message } from 'antd';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: '/api/v1',
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
@@ -16,12 +16,7 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-
-    // Auto-attach integration token for share endpoints
-    if (config.url && (config.url.startsWith('/v1/integration/share') || config.url.startsWith('v1/integration/share'))) {
-      config.headers['X-Integration-Token'] = 'integration-secret-token-2026';
-    }
-
+    config.headers.set('X-Integration-Token', import.meta.env.VITE_INTEGRATION_TOKEN || 'integration-secret-token-2026');
     return config;
   },
   (error) => Promise.reject(error),
@@ -44,6 +39,7 @@ const showUniqueError = (msg: string) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    console.error('[api] Error:', error.response?.status, error.config?.url, error.response?.data || error.message);
     const status = error.response?.status;
     let friendlyMsg = 'Có lỗi xảy ra, vui lòng thử lại.';
 

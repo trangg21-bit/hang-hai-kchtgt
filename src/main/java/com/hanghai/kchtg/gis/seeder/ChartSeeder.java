@@ -9,6 +9,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
@@ -23,6 +24,7 @@ import org.springframework.transaction.support.DefaultTransactionDefinition;
  * exist.
  */
 @Component
+@Profile({"local", "prod"})
 @RequiredArgsConstructor
 @Slf4j
 public class ChartSeeder implements CommandLineRunner {

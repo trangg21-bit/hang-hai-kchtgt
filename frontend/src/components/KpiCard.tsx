@@ -13,7 +13,7 @@ import {
   spaceXs,
   spaceSm,
   spaceMd,
-  fontSizeSm,
+  fontSizeMd,
   fontSizeStat,
   fontWeightMedium,
   fontWeightBold,
@@ -72,7 +72,7 @@ export default function KpiCard({ label, value, subLabel, trend, variant = 'defa
       }}
     >
       {/* Label */}
-      <div style={{ fontSize: fontSizeSm, color: textSecondary, marginBottom: spaceXs }}>
+      <div style={{ fontSize: fontSizeMd, color: textSecondary, marginBottom: spaceXs }}>
         {label}
       </div>
 
@@ -83,7 +83,7 @@ export default function KpiCard({ label, value, subLabel, trend, variant = 'defa
 
       {/* Sub-label */}
       {subLabel && (
-        <div style={{ fontSize: fontSizeSm, color: textSecondary, marginTop: spaceXs }}>
+        <div style={{ fontSize: fontSizeMd, color: textSecondary, marginTop: spaceXs }}>
           {subLabel}
         </div>
       )}
@@ -95,16 +95,16 @@ export default function KpiCard({ label, value, subLabel, trend, variant = 'defa
             display: 'inline-flex',
             alignItems: 'center',
             gap: spaceXs,
-            fontSize: fontSizeSm,
+            fontSize: fontSizeMd,
             fontWeight: fontWeightBold,
             color: trend.isUp ? statusOperational : statusCritical,
             marginTop: spaceSm,
           }}
         >
           {trend.isUp ? (
-            <ArrowUpOutlined style={{ fontSize: fontSizeSm }} />
+            <ArrowUpOutlined style={{ fontSize: fontSizeMd }} />
           ) : (
-            <ArrowDownOutlined style={{ fontSize: fontSizeSm }} />
+            <ArrowDownOutlined style={{ fontSize: fontSizeMd }} />
           )}
           {trend.value.toFixed(1)}%
         </div>
