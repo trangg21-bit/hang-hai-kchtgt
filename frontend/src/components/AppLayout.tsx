@@ -15,14 +15,11 @@ import {
 import {
   MenuOutlined,
   UserOutlined,
-  TeamOutlined,
   LogoutOutlined,
   DashboardOutlined,
   SettingOutlined,
-  SafetyOutlined,
   DownOutlined,
   CompassOutlined,
-  IdcardOutlined,
   BarChartOutlined,
   ApiOutlined,
   ContainerOutlined,
@@ -41,7 +38,6 @@ const MENU_PERMISSION_MAP: Record<string, string> = {
   '/users': 'user:manage',
   '/organizations': 'orgunit:manage',
   '/groups': 'group:manage',
-  '/admins': 'admin:manage',
   '/roles': 'role:manage',
   '/gis/points': 'data:read',
   '/gis/lines': 'data:read',
@@ -81,7 +77,6 @@ const pageTitles: Record<string, string> = {
   '/users': 'Quản lý người dùng',
   '/organizations': 'Quản lý đơn vị',
   '/groups': 'Quản lý nhóm',
-  '/admins': 'Quản trị viên',
   '/roles': 'Phân quyền',
   '/gis/points': 'Đối tượng điểm',
   '/gis/lines': 'Đối tượng đường',
@@ -173,6 +168,8 @@ export default function AppLayout() {
         setOpenKeys(['stations']);
       } else if (selectedKey.startsWith('/reports')) {
         setOpenKeys(['reports-parent', 'reports-chung', 'reports-kcht']);
+      } else if (['/users', '/organizations', '/groups', '/roles'].includes(selectedKey)) {
+        setOpenKeys(['system-admin']);
       }
     }
   }, [selectedKey]);
@@ -180,11 +177,17 @@ export default function AppLayout() {
   const menuItems: MenuProps['items'] = [
     { key: '/', icon: <DashboardOutlined />, label: 'Trang chủ' },
     { type: 'divider' as const },
-    canAccessMenu('/users') ? { key: '/users', icon: <UserOutlined />, label: 'Quản lý người dùng' } : null,
-    canAccessMenu('/organizations') ? { key: '/organizations', icon: <TeamOutlined />, label: 'Quản lý đơn vị' } : null,
-    canAccessMenu('/groups') ? { key: '/groups', icon: <TeamOutlined />, label: 'Quản lý nhóm' } : null,
-    canAccessMenu('/admins') ? { key: '/admins', icon: <IdcardOutlined />, label: 'Quản trị viên' } : null,
-    canAccessMenu('/roles') ? { key: '/roles', icon: <SafetyOutlined />, label: 'Phân quyền' } : null,
+    {
+      key: 'system-admin',
+      icon: <SettingOutlined />,
+      label: 'Quản trị hệ thống',
+      children: [
+        canAccessMenu('/users') ? { key: '/users', label: 'Quản lý người dùng' } : null,
+        canAccessMenu('/organizations') ? { key: '/organizations', label: 'Quản lý đơn vị' } : null,
+        canAccessMenu('/groups') ? { key: '/groups', label: 'Quản lý nhóm' } : null,
+        canAccessMenu('/roles') ? { key: '/roles', label: 'Phân quyền' } : null,
+      ].filter(Boolean),
+    },
     { type: 'divider' as const },
     {
       key: 'gis',
