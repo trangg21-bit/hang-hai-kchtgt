@@ -9,6 +9,7 @@ import com.hanghai.kchtg.cangben.repository.CangBienRepository;
 import com.hanghai.kchtg.cangben.repository.VungNuocRepository;
 import com.hanghai.kchtg.cangben.service.CangBienService;
 import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
+import com.hanghai.kchtg.cangben.service.shared.UserResolverService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -54,11 +55,19 @@ class CangBienServiceTest {
     @Mock
     private LichSuThayDoiService lichSuThayDoiService;
 
+    @Mock
+    private UserResolverService userResolverService;
+
     private UUID testId;
     private CangBien testEntity;
 
     @BeforeEach
     void setUp() {
+        lenient().when(userResolverService.resolveName(any())).thenAnswer(inv -> {
+            String arg = inv.getArgument(0);
+            return arg != null ? arg : "SYSTEM";
+        });
+
         testId = UUID.randomUUID();
         testEntity = new CangBien();
         ReflectionTestUtils.setField(testEntity, "id", testId);

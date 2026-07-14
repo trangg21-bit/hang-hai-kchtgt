@@ -13,6 +13,7 @@ import com.hanghai.kchtg.cangben.service.shared.ApprovalWorkflowService;
 import com.hanghai.kchtg.cangben.service.shared.AuditLogService;
 import com.hanghai.kchtg.cangben.service.shared.CangBenNotificationService;
 import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
+import com.hanghai.kchtg.cangben.service.shared.UserResolverService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -57,11 +58,19 @@ class CangCanServiceTest {
         @Mock
         private AuditLogService auditLogService;
 
+        @Mock
+        private UserResolverService userResolverService;
+
         private UUID testId;
         private CangCan testEntity;
 
         @BeforeEach
         void setUp() {
+            lenient().when(userResolverService.resolveName(any())).thenAnswer(inv -> {
+                String arg = inv.getArgument(0);
+                return arg != null ? arg : "SYSTEM";
+            });
+
             testId = UUID.randomUUID();
             testEntity = new CangCan();
             ReflectionTestUtils.setField(testEntity, "id", testId);

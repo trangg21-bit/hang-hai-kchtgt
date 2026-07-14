@@ -9,6 +9,7 @@ import com.hanghai.kchtg.cangben.repository.BenCangRepository;
 import com.hanghai.kchtg.cangben.repository.CauCangRepository;
 import com.hanghai.kchtg.cangben.service.CauCangService;
 import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
+import com.hanghai.kchtg.cangben.service.shared.UserResolverService;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -45,6 +46,9 @@ class CauCangServiceTest {
     @Mock
     private LichSuThayDoiService lichSuThayDoiService;
 
+    @Mock
+    private UserResolverService userResolverService;
+
     private UUID testId;
     private UUID parentId;
     private BenCang activeBenCang;
@@ -52,6 +56,11 @@ class CauCangServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(userResolverService.resolveName(any())).thenAnswer(inv -> {
+            String arg = inv.getArgument(0);
+            return arg != null ? arg : "SYSTEM";
+        });
+
         testId = UUID.randomUUID();
         parentId = UUID.randomUUID();
 
