@@ -16,6 +16,7 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    config.headers['X-Integration-Token'] = import.meta.env.VITE_INTEGRATION_TOKEN || 'integration-secret-token-2026';
     return config;
   },
   (error) => Promise.reject(error),
