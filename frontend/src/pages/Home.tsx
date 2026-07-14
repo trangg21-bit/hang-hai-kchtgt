@@ -15,7 +15,7 @@ import {
   radiusXl, radiusSm, radiusPill,
   shadowMd,
   fontMono,
-  fontSizeSm, fontSizeMd, fontSizeLg, fontSizeHeading, fontSizeDisplay,
+  fontSizeMd, fontSizeLg, fontSizeDisplay,
   chartGrid, chartTooltip, chartTextStyle,
   dataNavy, dataSea0, dataSea1, dataSea2, dataSea3,
   statusOperational, statusCritical,
@@ -45,10 +45,10 @@ const navy = dataNavy;
 
 const CHART_TITLE_STYLE: React.CSSProperties = {
   color: textPrimary,
-  fontSize: fontSizeMd,
-  fontWeight: 500,
+  fontSize: fontSizeLg,
+  fontWeight: 600,
   margin: 0,
-  marginBottom: 6,
+  marginBottom: 8,
 };
 
 const CARD_BASE: React.CSSProperties = {
@@ -134,7 +134,7 @@ function pillBadge(count: number, activeColor: string, activeBg: string, zeroBg:
           display: 'inline-block',
           borderRadius: rPill,
           padding: '1px 8px',
-          fontSize: fontSizeSm,
+          fontSize: fontSizeMd,
           background: zeroBg,
           color: ink3,
           fontWeight: 500,
@@ -150,7 +150,7 @@ function pillBadge(count: number, activeColor: string, activeBg: string, zeroBg:
         display: 'inline-block',
         borderRadius: rPill,
         padding: '1px 8px',
-        fontSize: fontSizeSm,
+        fontSize: fontSizeMd,
         background: activeBg,
         color: activeColor,
         fontWeight: 500,
@@ -165,40 +165,40 @@ function pillBadge(count: number, activeColor: string, activeBg: string, zeroBg:
 // Infrastructure table columns
 // ============================================================
 const infraColumns = [
-  { title: 'Loại KCHT', dataIndex: 'loai', key: 'loai', width: 150 },
+  { title: '', dataIndex: 'loai', key: 'loai', width: 150 },
   {
-    title: 'Tổng SL',
+    title: 'Tổng số lượng',
     dataIndex: 'tongSL',
     key: 'tongSL',
-    width: 80,
+    width: 90,
     align: 'center' as const,
     render: (v: number) => (
       <span style={{ fontWeight: 600, fontFamily: fontMono, color: ink }}>{v}</span>
     ),
   },
   {
-    title: <span><span style={{display:'inline-block',width:6,height:6,borderRadius:3,background:sea3,marginRight:4}} />Chưa</span>,
+    title: <span>Chưa khai thác/<br/>vận hành</span>,
     dataIndex: 'chuaKhaiThac',
     key: 'chuaKhaiThac',
-    width: 70,
+    width: 110,
     align: 'center' as const,
     render: (v: number) =>
       pillBadge(v, sea0, `${sea0}18`, surface),
   },
   {
-    title: <span><span style={{display:'inline-block',width:6,height:6,borderRadius:3,background:sea0,marginRight:4}} />Đang</span>,
+    title: <span>Đang khai thác/<br/>vận hành</span>,
     dataIndex: 'dangKhaiThac',
     key: 'dangKhaiThac',
-    width: 70,
+    width: 110,
     align: 'center' as const,
     render: (v: number) =>
       pillBadge(v, surface, sea0, surface),
   },
   {
-    title: <span><span style={{display:'inline-block',width:6,height:6,borderRadius:3,background:sea2,marginRight:4}} />Dừng</span>,
+    title: <span>Dừng khai thác/<br/>vận hành</span>,
     dataIndex: 'dungKhaiThac',
     key: 'dungKhaiThac',
-    width: 70,
+    width: 110,
     align: 'center' as const,
     render: (v: number) =>
       pillBadge(v, sea0, sea3, surface),
@@ -227,7 +227,7 @@ function ApprovalCard({ label, stats }: ApprovalCardProps) {
 
   return (
     <div style={CARD_BASE}>
-      <div style={{ fontSize: fontSizeSm, color: ink2, marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: fontSizeMd, color: ink2, marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: fontSizeDisplay, fontFamily: fontMono, color: ink, fontWeight: 600, lineHeight: 1.2 }}>
         {stats.total.toLocaleString('vi-VN')}{' '}
         <span style={{ fontSize: fontSizeMd, fontWeight: 400, color: ink2 }}>đã xử lý</span>
@@ -256,7 +256,7 @@ function ApprovalCard({ label, stats }: ApprovalCardProps) {
       </div>
 
       {/* Legend */}
-      <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: fontSizeSm, color: ink2 }}>
+      <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: fontSizeMd, color: ink2 }}>
         {stats.approved > 0 && (
           <span>
             <span
@@ -299,7 +299,7 @@ function ApprovalCard({ label, stats }: ApprovalCardProps) {
               display: 'inline-block',
               borderRadius: rPill,
               padding: '2px 10px',
-              fontSize: fontSizeSm,
+              fontSize: fontSizeMd,
               fontWeight: 500,
               background: pendingZeroBg,
               color: pendingZeroColor,
@@ -313,7 +313,7 @@ function ApprovalCard({ label, stats }: ApprovalCardProps) {
               display: 'inline-block',
               borderRadius: rPill,
               padding: '2px 10px',
-              fontSize: fontSizeSm,
+              fontSize: fontSizeMd,
               fontWeight: 500,
               background: pendingActiveBg,
               color: pendingActiveColor,
@@ -342,7 +342,7 @@ function HeroCard({ heroKpi, year }: { heroKpi: any; year: number }) {
         color: '#eaf4fc', /* one-off: light text on dark gradient */
       }}
     >
-      <div style={{ fontSize: fontSizeSm, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+      <div style={{ fontSize: fontSizeMd, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
         SẢN LƯỢNG CHỦ ĐẠO · {year}
       </div>
       <div style={{ fontSize: fontSizeDisplay, fontFamily: fontMono, fontWeight: 600, lineHeight: 1.1 }}>
@@ -359,7 +359,7 @@ function HeroCard({ heroKpi, year }: { heroKpi: any; year: number }) {
         >
           {isUp ? '▲' : '▼'} {heroKpi.deltaPercent}%
         </span>
-        <span style={{ fontSize: fontSizeSm, opacity: 0.6 }}>so với {heroKpi.previousYearValue.toLocaleString('vi-VN')}</span>
+        <span style={{ fontSize: fontSizeMd, opacity: 0.6 }}>so với {heroKpi.previousYearValue.toLocaleString('vi-VN')}</span>
       </div>
       {/* Sparkline */}
       <div style={{ marginTop: 10, height: 36 }}>
@@ -406,7 +406,7 @@ function MiniKpiCard({ card }: { card: any }) {
   return (
     <div style={CARD_BASE}>
       <div style={{ fontSize: fontSizeMd, color: ink2, marginBottom: 4 }}>{card.label}</div>
-      <div style={{ fontSize: fontSizeHeading, fontFamily: fontMono, color: ink, fontWeight: 600, lineHeight: 1.2 }}>
+      <div style={{ fontSize: fontSizeDisplay, fontFamily: fontMono, color: ink, fontWeight: 600, lineHeight: 1.2 }}>
         {card.value}
       </div>
       {card.deltaPercent !== undefined && (
@@ -516,7 +516,7 @@ function HomeDashboard() {
       icon: 'roundRect',
       itemWidth: 10,
       itemHeight: 10,
-      textStyle: { ...chartTextStyle, fontSize: fontSizeSm },
+      textStyle: { ...chartTextStyle, fontSize: fontSizeMd },
     },
     grid: { ...chartGrid, bottom: 40 },
     xAxis: {
@@ -562,7 +562,7 @@ function HomeDashboard() {
       icon: 'roundRect',
       itemWidth: 10,
       itemHeight: 10,
-      textStyle: { ...chartTextStyle, fontSize: fontSizeSm },
+      textStyle: { ...chartTextStyle, fontSize: fontSizeMd },
     },
     polar: {
       radius: ['18%', '78%'],
@@ -639,7 +639,7 @@ function HomeDashboard() {
       icon: 'roundRect',
       itemWidth: 10,
       itemHeight: 10,
-      textStyle: { ...chartTextStyle, fontSize: fontSizeSm },
+      textStyle: { ...chartTextStyle, fontSize: fontSizeMd },
     },
     grid: { ...chartGrid, left: 100, bottom: 40 },
     xAxis: {
@@ -695,7 +695,7 @@ function HomeDashboard() {
       icon: 'roundRect',
       itemWidth: 10,
       itemHeight: 10,
-      textStyle: { ...chartTextStyle, fontSize: fontSizeSm },
+      textStyle: { ...chartTextStyle, fontSize: fontSizeMd },
     },
     series: [
       {
@@ -762,7 +762,7 @@ function HomeDashboard() {
         <Col xs={24} md={16}>
           <div style={{ ...CARD_BASE, height: '100%' }}>
             <h4 style={CHART_TITLE_STYLE}>Hàng hóa thông qua cảng theo tháng
-              {blockStates.stackedBar?.isMockFallback && <Tag color="orange" style={{ marginLeft: 8, fontSize: 11 }}>Dữ liệu mẫu</Tag>}
+              {blockStates.stackedBar?.isMockFallback && <Tag color="orange" style={{ marginLeft: 8, fontSize: fontSizeMd }}>Dữ liệu mẫu</Tag>}
             </h4>
             <ReactECharts option={cargoOption} style={{ height: 320 }} notMerge />
           </div>
@@ -770,7 +770,7 @@ function HomeDashboard() {
         <Col xs={24} md={8}>
           <div style={{ ...CARD_BASE, height: '100%' }}>
             <h4 style={CHART_TITLE_STYLE}>Lượt hành khách qua cảng
-              {blockStates.linePassenger?.isMockFallback && <Tag color="orange" style={{ marginLeft: 8, fontSize: 11 }}>Dữ liệu mẫu</Tag>}
+              {blockStates.linePassenger?.isMockFallback && <Tag color="orange" style={{ marginLeft: 8, fontSize: fontSizeMd }}>Dữ liệu mẫu</Tag>}
             </h4>
             <ReactECharts option={polarOption} style={{ height: 320 }} notMerge />
           </div>
@@ -838,7 +838,7 @@ function HomeDashboard() {
                 value={searchKeyword}
                 onChange={(e) => setSearchKeyword(e.target.value)}
                 suffix={
-                  <span style={{ fontSize: '11px', color: '#999', userSelect: 'none' }}>
+                  <span style={{ fontSize: fontSizeMd, color: '#999', userSelect: 'none' }}>
                     {searchKeyword.length}/255
                   </span>
                 }
@@ -860,7 +860,7 @@ function HomeDashboard() {
         <Col xs={24} md={12}>
           <div style={{ ...CARD_BASE, height: '100%' }}>
               <h4 style={CHART_TITLE_STYLE}>Bảng chi tiết thông số kỹ thuật Kết cấu hạ tầng
-              {blockStates.infraTable?.isMockFallback && <Tag color="orange" style={{ marginLeft: 8, fontSize: 11 }}>Dữ liệu mẫu</Tag>}
+              {blockStates.infraTable?.isMockFallback && <Tag color="orange" style={{ marginLeft: 8, fontSize: fontSizeMd }}>Dữ liệu mẫu</Tag>}
             </h4>
             <Table
               columns={infraColumns}
@@ -868,7 +868,7 @@ function HomeDashboard() {
               rowKey="stt"
               pagination={false}
               size="small"
-              scroll={{ x: 480, y: 340 }}
+              scroll={{ x: 620, y: 340 }}
             />
           </div>
         </Col>

@@ -8,7 +8,6 @@ import {
   spaceSm,
   spaceMd,
   spaceLg,
-  fontSizeSm,
   fontSizeMd,
   fontSizeLg,
   fontSizeXl,
@@ -136,7 +135,7 @@ export default function TrendChartCard({
                   flexShrink: 0,
                 }}
               />
-              <span style={{ fontSize: fontSizeSm, color: textSecondary }}>{item.label}</span>
+              <span style={{ fontSize: fontSizeMd, color: textSecondary }}>{item.label}</span>
             </div>
           ))}
         </div>
