@@ -17,6 +17,7 @@ public class LuongHangHai {
     @Column(name = "tai_trong", length = 100) private String taiTrong;
     @Column(name = "dien_tich_dang_bo", length = 100) private String dienTichDangBo;
     @Column(name = "ghi_chu", length = 500) private String ghiChu;
+    @Column(name = "org_unit_id") private UUID orgUnitId;
     @Column(name = "trang_thai_phe_duyet", nullable = false)
     @Convert(converter = LuongHangHaiApprovalStatusConverter.class)
     private LuongHangHaiApprovalStatus approvalStatus;

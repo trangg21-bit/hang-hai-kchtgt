@@ -21,4 +21,5 @@ public class DeKeUpdateRequest {
     private String matVatLieu;
     private String tinhTrang;
     private String ghiChu;
+    private java.util.UUID orgUnitId;
 }

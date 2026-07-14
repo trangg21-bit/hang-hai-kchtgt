@@ -23,6 +23,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import { coSuaChuaCRUD } from '../../services/coSuaChuaService';
+import { organizationService } from '../../services/organizationService';
 import type { CoSuaChuaResponse, ListParams } from '../../types/coSuaChua';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
@@ -39,7 +40,7 @@ const LOAI_CO_SO_MAP: Record<string, string> = {
   'CS_SUA_CHUA': 'Cơ sở sửa chữa',
   'CS_DONG_TAU': 'Cơ sở đóng tàu',
   'CS_SUA_CHUA_DONG_TAU': 'Cơ sở sửa chữa & đóng tàu',
-  'KAC': 'Khác',
+  'KHAC': 'Khác',
 };
 
 
@@ -61,6 +62,18 @@ export default function CoSuaChuaList() {
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await organizationService.list({ pageSize: 1000 });
+        setOrganizations(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load organizations', err);
+      }
+    })();
+  }, []);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -150,6 +163,15 @@ export default function CoSuaChuaList() {
       key: 'chuQuan',
       width: 140,
       render: (val: string) => val || '—',
+    },
+    {
+      title: 'Đơn vị quản lý',
+      dataIndex: 'orgUnitId',
+      key: 'orgUnitId',
+      width: 180,
+      render: (val: string) => {
+        return organizations.find((o) => o.id === val)?.name || val || '—';
+      },
     },
     {
       title: 'Trạng thái',

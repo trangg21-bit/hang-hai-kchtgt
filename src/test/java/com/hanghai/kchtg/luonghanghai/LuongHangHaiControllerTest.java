@@ -227,7 +227,7 @@ class LuongHangHaiControllerTest {
                                 .currentPage(0)
                                 .pageSize(20)
                                 .build();
-                when(service.searchDocuments(eq("Tau"), eq(null), eq(null), eq(null), eq(0), eq(20)))
+                when(service.searchDocuments(eq(null), eq("Tau"), eq(null), eq(null), eq(null), eq(0), eq(20)))
                                 .thenReturn(sr);
                 mockMvc.perform(get("/api/v1/luong-hang-hai/search")
                                 .param("keyword", "Tau")

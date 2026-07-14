@@ -26,4 +26,5 @@ public class LuongHangHaiUpdateRequest {
     private String dienTichDangBo;
 
     private String ghiChu;
+    private java.util.UUID orgUnitId;
 }

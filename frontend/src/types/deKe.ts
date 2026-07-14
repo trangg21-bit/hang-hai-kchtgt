@@ -8,7 +8,7 @@ export interface DeKeAttachment {
   fileUrl: string;
 }
 
-export type LoaiDe = 'DE_DAT' | 'DE_BETONG' | 'KE_DA' | 'KE_BETONG' | 'KAC';
+export type LoaiDe = 'DE_DAT' | 'DE_BETONG' | 'KE_DA' | 'KE_BETONG' | 'KHAC';
 
 export interface DeKeResponse {
   id: number;
@@ -20,6 +20,7 @@ export interface DeKeResponse {
   matVatLieu?: string;
   tinhTrang?: string;
   ghiChu?: string;
+  orgUnitId?: string;
   trangThaiPheDuyet: ApprovalStatus;
   pheDuyetC1?: boolean;
   nguoiPheDuyetC1?: string;
@@ -47,6 +48,7 @@ export interface CreateDeKeRequest {
   matVatLieu?: string;
   tinhTrang?: string;
   ghiChu?: string;
+  orgUnitId?: string;
 }
 
 export interface UpdateDeKeRequest extends CreateDeKeRequest {}
@@ -79,6 +81,7 @@ export interface HistoryEntry {
 export interface ListParams {
   page?: number;
   size?: number;
+  orgUnitId?: string;
   keyword?: string;
   loaiDe?: LoaiDe;
   tinhTrang?: string;

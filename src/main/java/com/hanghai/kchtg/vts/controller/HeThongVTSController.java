@@ -38,12 +38,13 @@ public class HeThongVTSController {
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
     @GetMapping
     public ResponseEntity<ApiResponse<Page<HeThongVTSResponse>>> findAll(
+            @RequestParam(required = false) java.util.UUID orgUnitId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String tinhTrang,
             @RequestParam(required = false) String trangThai,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<HeThongVTSResponse> responses = service.findAllWithSearch(keyword, tinhTrang, trangThai, page, size);
+        Page<HeThongVTSResponse> responses = service.findAllWithSearch(orgUnitId, keyword, tinhTrang, trangThai, page, size);
         return ResponseEntity.ok(ApiResponse.success("Danh sách hệ thống VTS", responses));
     }
 
@@ -114,10 +115,11 @@ public class HeThongVTSController {
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<List<HeThongVTSResponse>>> search(
+            @RequestParam(required = false) java.util.UUID orgUnitId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String tinhTrang,
             @RequestParam(required = false) String trangThai) {
-        List<HeThongVTSResponse> responses = service.search(keyword, tinhTrang, trangThai);
+        List<HeThongVTSResponse> responses = service.search(orgUnitId, keyword, tinhTrang, trangThai);
         return ResponseEntity.ok(ApiResponse.success("Tìm kiếm thành công", responses));
     }
 

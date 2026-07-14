@@ -9,8 +9,9 @@ import lombok.*;
 public class HeThongVTSUpdateRequest {
     private String tenHeThong;
     private String viTri;
-    private String tinhTrang;
+    private com.hanghai.kchtg.vts.entity.TinhTrangVTS tinhTrang;
     private String mucDoPhuTrach;
     private String nguonGoc;
     private String doiTac;
+    private java.util.UUID orgUnitId;
 }

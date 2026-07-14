@@ -24,6 +24,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import { tramRadarCRUD } from '../../services/tramRadarService';
+import { organizationService } from '../../services/organizationService';
 import type { TramRadarResponse, ListParams } from '../../types/tramRadar';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
@@ -60,6 +61,18 @@ export default function TramRadarList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
+  const [organizations, setOrganizations] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await organizationService.list({ pageSize: 1000 });
+        setOrganizations(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load organizations', err);
+      }
+    })();
+  }, []);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -147,7 +160,7 @@ export default function TramRadarList() {
           'MAIN': 'Trạm radar chính',
           'SECONDARY': 'Trạm radar phụ',
           'ASSIST': 'Trạm radar hỗ trợ',
-          'KAC': 'Khác',
+          'KHAC': 'Khác',
         };
         return val ? <Tag color="blue">{textMap[val] || val}</Tag> : '—';
       },
@@ -173,6 +186,15 @@ export default function TramRadarList() {
           'NGUNG': 'Ngừng hoạt động',
         };
         return <Tag color={colorMap[val] || 'default'}>{textMap[val] || val}</Tag>;
+      },
+    },
+    {
+      title: 'Đơn vị quản lý',
+      dataIndex: 'orgUnitId',
+      key: 'orgUnitId',
+      width: 180,
+      render: (val: string) => {
+        return organizations.find((o) => o.id === val)?.name || val || '—';
       },
     },
     {

@@ -231,15 +231,15 @@ class DeKeControllerTest {
                 .currentPage(0)
                 .pageSize(20)
                 .build();
-        when(service.searchDocuments(eq("De ke"), eq(null), eq(null), eq(null), eq(0), eq(20)))
+        when(service.searchDocuments(eq(null), eq("De ke"), eq(null), eq(null), eq(null), eq(0), eq(20)))
                 .thenReturn(sr);
 
-        var resp = controller.search("De ke", null, null, null, 0, 20);
+        var resp = controller.search(null, "De ke", null, null, null, 0, 20);
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody().getData().getTotalElements()).isEqualTo(1);
         assertThat(resp.getBody().getData().getResults()).hasSize(1);
-        verify(service, times(1)).searchDocuments(eq("De ke"), eq(null), eq(null), eq(null), eq(0), eq(20));
+        verify(service, times(1)).searchDocuments(eq(null), eq("De ke"), eq(null), eq(null), eq(null), eq(0), eq(20));
     }
 
     // ── error propagation ───────────────────────────────────────────────

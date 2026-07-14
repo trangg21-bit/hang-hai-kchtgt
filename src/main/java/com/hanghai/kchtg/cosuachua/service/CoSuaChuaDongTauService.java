@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +30,7 @@ public class CoSuaChuaDongTauService {
                 .loaiCoSo(request.getLoaiCoSo())
                 .khaNang(request.getKhaNang())
                 .chuQuan(request.getChuQuan())
+                .orgUnitId(request.getOrgUnitId())
                 .trangThai(CoSuaChuaApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
@@ -82,6 +84,7 @@ public class CoSuaChuaDongTauService {
         if (request.getLoaiCoSo() != null) entity.setLoaiCoSo(request.getLoaiCoSo());
         if (request.getKhaNang() != null) entity.setKhaNang(request.getKhaNang());
         if (request.getChuQuan() != null) entity.setChuQuan(request.getChuQuan());
+        if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
 
         CoSuaChuaDongTau saved = repository.save(entity);
 
@@ -201,12 +204,12 @@ public class CoSuaChuaDongTauService {
                         .build()).toList();
     }
 
-    public List<CoSuaChuaDongTauResponse> search(String keyword, String tinhThanh, String trangThai, String trangThaiPheDuyet) {
+    public List<CoSuaChuaDongTauResponse> search(UUID orgUnitId, String keyword, String tinhThanh, String trangThai, String trangThaiPheDuyet) {
         String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
         String tinhThanhLike = (tinhThanh != null && !tinhThanh.trim().isEmpty()) ? "%" + tinhThanh.trim().toLowerCase() + "%" : null;
         CoSuaChuaApprovalStatus statusEnum = (trangThai != null && !trangThai.trim().isEmpty()) ? CoSuaChuaApprovalStatus.fromString(trangThai) : null;
         CoSuaChuaApprovalStatus statusPheDuyetEnum = (trangThaiPheDuyet != null && !trangThaiPheDuyet.trim().isEmpty()) ? CoSuaChuaApprovalStatus.fromString(trangThaiPheDuyet) : null;
-        return repository.search(keywordLike, tinhThanhLike, statusEnum, statusPheDuyetEnum).stream().map(this::toResponse).toList();
+        return repository.search(orgUnitId, keywordLike, tinhThanhLike, statusEnum, statusPheDuyetEnum).stream().map(this::toResponse).toList();
     }
 
     private CoSuaChuaDongTauResponse toResponse(CoSuaChuaDongTau entity) {
@@ -232,6 +235,7 @@ public class CoSuaChuaDongTauService {
                 .loaiCoSo(entity.getLoaiCoSo())
                 .khaNang(entity.getKhaNang())
                 .chuQuan(entity.getChuQuan())
+                .orgUnitId(entity.getOrgUnitId())
                 .trangThai(entity.getTrangThai())
                 .pheDuyetC1(entity.getPheDuyetC1())
                 .nguoiPheDuyetC1(entity.getNguoiPheDuyetC1())

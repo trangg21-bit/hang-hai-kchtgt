@@ -38,6 +38,7 @@ public class DeKeService {
                 .matVatLieu(req.getMatVatLieu())
                 .tinhTrang(req.getTinhTrang())
                 .ghiChu(req.getGhiChu())
+                .orgUnitId(req.getOrgUnitId())
                 .trangThaiPheDuyet(DeKeApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
@@ -82,15 +83,15 @@ public class DeKeService {
     }
 
     @Transactional(readOnly = true)
-    public Page<DeKeResponse> search(String keyword, LoaiDe loaiDe, String tinhTrang,
+    public Page<DeKeResponse> search(UUID orgUnitId, String keyword, LoaiDe loaiDe, String tinhTrang,
                                       String trangThaiPheDuyetStr, int page, int size) {
         Page<DeKe> results;
         DeKeApprovalStatus trangThaiPheDuyet = null;
         if (trangThaiPheDuyetStr != null && !trangThaiPheDuyetStr.isEmpty()) {
             try { trangThaiPheDuyet = DeKeApprovalStatus.valueOf(trangThaiPheDuyetStr); } catch (Exception ignored) {}
         }
-        if (keyword != null && !keyword.isEmpty() || loaiDe != null || tinhTrang != null || trangThaiPheDuyet != null) {
-            results = repo.searchDocuments(keyword, loaiDe, tinhTrang, trangThaiPheDuyet,
+        if (orgUnitId != null || (keyword != null && !keyword.isEmpty()) || loaiDe != null || tinhTrang != null || trangThaiPheDuyet != null) {
+            results = repo.searchDocuments(orgUnitId, keyword, loaiDe, tinhTrang, trangThaiPheDuyet,
                     PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         } else {
             results = repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
@@ -111,6 +112,7 @@ public class DeKeService {
         if (req.getMatVatLieu() != null) d.setMatVatLieu(req.getMatVatLieu());
         if (req.getTinhTrang() != null) d.setTinhTrang(req.getTinhTrang());
         if (req.getGhiChu() != null) d.setGhiChu(req.getGhiChu());
+        if (req.getOrgUnitId() != null) d.setOrgUnitId(req.getOrgUnitId());
         d.setUpdatedBy(username);
 
         DeKe saved = repo.save(d);
@@ -256,14 +258,14 @@ public class DeKeService {
     }
 
     @Transactional(readOnly = true)
-    public KetQuaTimKiemResponse searchDocuments(String kw, LoaiDe loaiDe, String tinhTrang, String trangThaiStr, int page, int size) {
+    public KetQuaTimKiemResponse searchDocuments(UUID orgUnitId, String kw, LoaiDe loaiDe, String tinhTrang, String trangThaiStr, int page, int size) {
         DeKeApprovalStatus trangThai = null;
         if (trangThaiStr != null && !trangThaiStr.trim().isEmpty()) {
             try { trangThai = DeKeApprovalStatus.valueOf(trangThaiStr.trim()); } catch (Exception ignored) {}
         }
         String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
         String tinhTrangVal = (tinhTrang != null && !tinhTrang.trim().isEmpty()) ? tinhTrang.trim() : null;
-        Page<DeKe> r = repo.searchDocuments(keywordLike, loaiDe, tinhTrangVal, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        Page<DeKe> r = repo.searchDocuments(orgUnitId, keywordLike, loaiDe, tinhTrangVal, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         return KetQuaTimKiemResponse.builder()
                 .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())
@@ -312,6 +314,7 @@ public class DeKeService {
                 .matVatLieu(d.getMatVatLieu())
                 .tinhTrang(d.getTinhTrang())
                 .ghiChu(d.getGhiChu())
+                .orgUnitId(d.getOrgUnitId())
                 .trangThaiPheDuyet(d.getTrangThaiPheDuyet())
                 .pheDuyetC1(d.getPheDuyetC1())
                 .nguoiPheDuyetC1(d.getNguoiPheDuyetC1())

@@ -45,6 +45,9 @@ public class CoSuaChuaDongTau {
     @Column(name = "chu_quan", length = 255)
     private String chuQuan;
 
+    @Column(name = "org_unit_id")
+    private java.util.UUID orgUnitId;
+
     @Column(name = "trang_thai", nullable = false)
     @Convert(converter = CoSuaChuaApprovalStatusConverter.class)
     private CoSuaChuaApprovalStatus trangThai;

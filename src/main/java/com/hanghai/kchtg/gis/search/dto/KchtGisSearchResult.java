@@ -21,4 +21,5 @@ public class KchtGisSearchResult {
     private String diaChiChiTiet;
     private Double latitude;
     private Double longitude;
+    private UUID bieuTuongId;
 }

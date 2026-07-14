@@ -115,8 +115,8 @@ class TramRadarControllerTest {
 
     @Test
     void testSearch() {
-        when(service.search(null, null, null)).thenReturn(Collections.emptyList());
-        ResponseEntity<?> result = controller.search(null, null, null);
+        when(service.search(null, null, null, null)).thenReturn(Collections.emptyList());
+        ResponseEntity<?> result = controller.search(null, null, null, null);
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 

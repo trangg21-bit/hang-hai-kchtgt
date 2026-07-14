@@ -80,6 +80,18 @@ public class KchtGis155Service {
         String searchLower = (search == null || search.trim().isEmpty()) ? null : search.toLowerCase().trim();
         String tinhThanhStr = (tinhThanhPho != null) ? tinhThanhPho.getDisplayName() : null;
 
+        boolean isRootOrg = false;
+        if (orgUnitId == null) {
+            isRootOrg = true;
+        } else {
+            String orgName = orgUnitRepository.findById(orgUnitId)
+                    .map(OrgUnit::getName)
+                    .orElse("");
+            if (orgName.contains("Cục Hàng hải Việt Nam")) {
+                isRootOrg = true;
+            }
+        }
+
         for (KchtType type : types) {
             // Filter by geometry compatibility if objectType is set
             if (objectType != null) {
@@ -114,8 +126,9 @@ public class KchtGis155Service {
                                 .kchtTypeLabel("Cảng biển")
                                 .diaDiem(cb.getTinhThanhPho() != null ? cb.getTinhThanhPho() : "")
                                 .diaChiChiTiet("")
-                                .latitude(cb.getViDo() != null ? cb.getViDo().doubleValue() : 10.0)
-                                .longitude(cb.getKinhDo() != null ? cb.getKinhDo().doubleValue() : 105.0)
+                                .latitude(cb.getViDo() != null ? cb.getViDo().doubleValue() : null)
+                                .longitude(cb.getKinhDo() != null ? cb.getKinhDo().doubleValue() : null)
+                                .bieuTuongId(cb.getBieuTuongId())
                                 .build());
                     }
                     break;
@@ -139,8 +152,9 @@ public class KchtGis155Service {
                                 .kchtTypeLabel("Bến cảng")
                                 .diaDiem(parentProvince)
                                 .diaChiChiTiet(bc.getTuyenDuongThuy() != null ? bc.getTuyenDuongThuy() : "")
-                                .latitude(bc.getViDo() != null ? bc.getViDo().doubleValue() : 10.0)
-                                .longitude(bc.getKinhDo() != null ? bc.getKinhDo().doubleValue() : 105.0)
+                                .latitude(bc.getViDo() != null ? bc.getViDo().doubleValue() : null)
+                                .longitude(bc.getKinhDo() != null ? bc.getKinhDo().doubleValue() : null)
+                                .bieuTuongId(bc.getBieuTuongId())
                                 .build());
                     }
                     break;
@@ -161,10 +175,10 @@ public class KchtGis155Service {
                                 : "";
                         Double viDo = (parentBen != null && parentBen.getViDo() != null)
                                 ? parentBen.getViDo().doubleValue()
-                                : 10.0;
+                                : null;
                         Double kinhDo = (parentBen != null && parentBen.getKinhDo() != null)
                                 ? parentBen.getKinhDo().doubleValue()
-                                : 105.0;
+                                : null;
 
                         results.add(KchtGisSearchResult.builder()
                                 .id(cc.getId())
@@ -176,6 +190,7 @@ public class KchtGis155Service {
                                 .diaChiChiTiet(cc.getLoaiCau() != null ? cc.getLoaiCau().name() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
+                                .bieuTuongId(cc.getBieuTuongId())
                                 .build());
                     }
                     break;
@@ -193,8 +208,9 @@ public class KchtGis155Service {
                                 .kchtTypeLabel("Cảng cạn")
                                 .diaDiem(cc.getTinhThanhPho() != null ? cc.getTinhThanhPho() : "")
                                 .diaChiChiTiet("")
-                                .latitude(cc.getViDo() != null ? cc.getViDo().doubleValue() : 10.0)
-                                .longitude(cc.getKinhDo() != null ? cc.getKinhDo().doubleValue() : 105.0)
+                                .latitude(cc.getViDo() != null ? cc.getViDo().doubleValue() : null)
+                                .longitude(cc.getKinhDo() != null ? cc.getKinhDo().doubleValue() : null)
+                                .bieuTuongId(cc.getBieuTuongId())
                                 .build());
                     }
                     break;
@@ -210,11 +226,8 @@ public class KchtGis155Service {
                         String parentProvince = (parent != null && parent.getTinhThanhPho() != null)
                                 ? parent.getTinhThanhPho()
                                 : "";
-                        Double viDo = (parent != null && parent.getViDo() != null) ? parent.getViDo().doubleValue()
-                                : 10.0;
-                        Double kinhDo = (parent != null && parent.getKinhDo() != null)
-                                ? parent.getKinhDo().doubleValue()
-                                : 105.0;
+                        Double viDo = null;
+                        Double kinhDo = null;
 
                         results.add(KchtGisSearchResult.builder()
                                 .id(vn.getId())
@@ -226,6 +239,7 @@ public class KchtGis155Service {
                                 .diaChiChiTiet("")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
+                                .bieuTuongId(vn.getBieuTuongId())
                                 .build());
                     }
                     break;
@@ -233,6 +247,7 @@ public class KchtGis155Service {
                 case LUONGHANGHAI:
                     List<LuongHangHai> luongList = luongHangHaiRepository.findAll().stream()
                             .filter(x -> !Boolean.TRUE.equals(x.getIsDeleted()))
+                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getOrgUnitId()))
                             .filter(x -> searchLower == null ||
                                     (x.getLoaiTau() != null && x.getLoaiTau().toLowerCase().contains(searchLower)))
                             .collect(Collectors.toList());
@@ -241,37 +256,39 @@ public class KchtGis155Service {
                                 .id(UUID.nameUUIDFromBytes(String.valueOf(l.getId()).getBytes()))
                                 .name("Luồng hàng hải " + l.getId() + " - " + l.getLoaiTau())
                                 .ma("LUONG_" + l.getId())
-                                .orgName("Cục Hàng hải Việt Nam")
+                                .orgName(getOrgName(l.getOrgUnitId()))
                                 .kchtTypeLabel("Luồng hàng hải")
                                 .diaDiem("")
                                 .diaChiChiTiet(l.getGhiChu() != null ? l.getGhiChu() : "")
-                                .latitude(10.0)
-                                .longitude(105.0)
+                                .latitude(null)
+                                .longitude(null)
                                 .build());
                     }
                     break;
-
+ 
                 case DEKE:
                     List<DeKe> deKeList = deKeRepository.searchDocuments(
-                            searchLower, null, null, DeKeApprovalStatus.APPROVED, PageRequest.of(0, 10000))
+                            orgUnitId, searchLower, null, null, DeKeApprovalStatus.APPROVED, PageRequest.of(0, 10000))
                             .getContent();
                     for (DeKe dk : deKeList) {
                         results.add(KchtGisSearchResult.builder()
                                 .id(UUID.nameUUIDFromBytes(String.valueOf(dk.getId()).getBytes()))
                                 .name("Đê kè " + dk.getId() + " - " + dk.getLoaiDe())
                                 .ma("DEKE_" + dk.getId())
-                                .orgName("Cục Hàng hải Việt Nam")
+                                .orgName(getOrgName(dk.getOrgUnitId()))
                                 .kchtTypeLabel("Đê kè")
                                 .diaDiem("")
                                 .diaChiChiTiet(dk.getViTri() != null ? dk.getViTri() : "")
-                                .latitude(10.0)
-                                .longitude(105.0)
+                                .latitude(null)
+                                .longitude(null)
                                 .build());
                     }
                     break;
-
+ 
                 case COSO_SUACHUA:
                     List<CoSuaChuaDongTau> csList = coSuaChuaDongTauRepository.findAll().stream()
+                            .filter(x -> !Boolean.TRUE.equals(x.getIsDeleted()))
+                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getOrgUnitId()))
                             .filter(x -> searchLower == null ||
                                     (x.getTenCoSo() != null && x.getTenCoSo().toLowerCase().contains(searchLower)) ||
                                     (x.getDiaChi() != null && x.getDiaChi().toLowerCase().contains(searchLower)))
@@ -281,12 +298,12 @@ public class KchtGis155Service {
                                 .id(UUID.nameUUIDFromBytes(String.valueOf(cs.getId()).getBytes()))
                                 .name(cs.getTenCoSo())
                                 .ma("COSO_" + cs.getId())
-                                .orgName("Cục Hàng hải Việt Nam")
+                                .orgName(getOrgName(cs.getOrgUnitId()))
                                 .kchtTypeLabel("Cơ sở sửa chữa")
                                 .diaDiem(cs.getTinhThanh() != null ? cs.getTinhThanh() : "")
                                 .diaChiChiTiet(cs.getDiaChi() != null ? cs.getDiaChi() : "")
-                                .latitude(10.0)
-                                .longitude(105.0)
+                                .latitude(null)
+                                .longitude(null)
                                 .build());
                     }
                     break;
@@ -308,8 +325,8 @@ public class KchtGis155Service {
                                 .kchtTypeLabel("Đèn biển")
                                 .diaDiem("")
                                 .diaChiChiTiet(den.getDescription() != null ? den.getDescription() : "")
-                                .latitude(den.getLatitude() != null ? den.getLatitude() : 10.0)
-                                .longitude(den.getLongitude() != null ? den.getLongitude() : 105.0)
+                                .latitude(den.getLatitude() != null ? den.getLatitude() : null)
+                                .longitude(den.getLongitude() != null ? den.getLongitude() : null)
                                 .build());
                     }
                     break;
@@ -331,14 +348,16 @@ public class KchtGis155Service {
                                 .kchtTypeLabel("Phao tiêu")
                                 .diaDiem("")
                                 .diaChiChiTiet(phao.getDescription() != null ? phao.getDescription() : "")
-                                .latitude(phao.getLatitude() != null ? phao.getLatitude() : 10.0)
-                                .longitude(phao.getLongitude() != null ? phao.getLongitude() : 105.0)
+                                .latitude(phao.getLatitude() != null ? phao.getLatitude() : null)
+                                .longitude(phao.getLongitude() != null ? phao.getLongitude() : null)
                                 .build());
                     }
                     break;
 
                 case HE_THONG_VTS:
                     List<HeThongVTS> vtsList = heThongVTSRepository.findAll().stream()
+                            .filter(x -> !Boolean.TRUE.equals(x.getIsDeleted()))
+                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getOrgUnitId()))
                             .filter(x -> searchLower == null ||
                                     (x.getTenHeThong() != null && x.getTenHeThong().toLowerCase().contains(searchLower))
                                     ||
@@ -349,18 +368,20 @@ public class KchtGis155Service {
                                 .id(UUID.nameUUIDFromBytes(String.valueOf(vts.getId()).getBytes()))
                                 .name(vts.getTenHeThong())
                                 .ma("VTS_" + vts.getId())
-                                .orgName("Cục Hàng hải Việt Nam")
+                                .orgName(getOrgName(vts.getOrgUnitId()))
                                 .kchtTypeLabel("Hệ thống VTS")
                                 .diaDiem("")
                                 .diaChiChiTiet(vts.getViTri() != null ? vts.getViTri() : "")
-                                .latitude(10.0)
-                                .longitude(105.0)
+                                .latitude(null)
+                                .longitude(null)
                                 .build());
                     }
                     break;
 
                 case TRAM_RADAR:
                     List<TramRadar> radarList = tramRadarRepository.findAll().stream()
+                            .filter(x -> !Boolean.TRUE.equals(x.getIsDeleted()))
+                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getOrgUnitId()))
                             .filter(x -> searchLower == null ||
                                     (x.getTenTram() != null && x.getTenTram().toLowerCase().contains(searchLower)) ||
                                     (x.getViTri() != null && x.getViTri().toLowerCase().contains(searchLower)))
@@ -370,12 +391,12 @@ public class KchtGis155Service {
                                 .id(UUID.nameUUIDFromBytes(String.valueOf(tr.getId()).getBytes()))
                                 .name(tr.getTenTram())
                                 .ma("RADAR_" + tr.getId())
-                                .orgName("Cục Hàng hải Việt Nam")
+                                .orgName(getOrgName(tr.getOrgUnitId()))
                                 .kchtTypeLabel("Trạm radar")
                                 .diaDiem("")
                                 .diaChiChiTiet(tr.getViTri() != null ? tr.getViTri() : "")
-                                .latitude(10.0)
-                                .longitude(105.0)
+                                .latitude(tr.getViDo() != null ? tr.getViDo().doubleValue() : null)
+                                .longitude(tr.getKinhDo() != null ? tr.getKinhDo().doubleValue() : null)
                                 .build());
                     }
                     break;
@@ -391,11 +412,8 @@ public class KchtGis155Service {
                         String parentProvince = (parent != null && parent.getTinhThanhPho() != null)
                                 ? parent.getTinhThanhPho()
                                 : "";
-                        Double viDo = (parent != null && parent.getViDo() != null) ? parent.getViDo().doubleValue()
-                                : 10.0;
-                        Double kinhDo = (parent != null && parent.getKinhDo() != null)
-                                ? parent.getKinhDo().doubleValue()
-                                : 105.0;
+                        Double viDo = null;
+                        Double kinhDo = null;
 
                         results.add(KchtGisSearchResult.builder()
                                 .id(vn.getId())
@@ -407,6 +425,7 @@ public class KchtGis155Service {
                                 .diaChiChiTiet("")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
+                                .bieuTuongId(vn.getBieuTuongId())
                                 .build());
                     }
                     break;
@@ -422,11 +441,8 @@ public class KchtGis155Service {
                         String parentProvince = (parent != null && parent.getTinhThanhPho() != null)
                                 ? parent.getTinhThanhPho()
                                 : "";
-                        Double viDo = (parent != null && parent.getViDo() != null) ? parent.getViDo().doubleValue()
-                                : 10.0;
-                        Double kinhDo = (parent != null && parent.getKinhDo() != null)
-                                ? parent.getKinhDo().doubleValue()
-                                : 105.0;
+                        Double viDo = null;
+                        Double kinhDo = null;
 
                         results.add(KchtGisSearchResult.builder()
                                 .id(vn.getId())
@@ -438,6 +454,7 @@ public class KchtGis155Service {
                                 .diaChiChiTiet("")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
+                                .bieuTuongId(vn.getBieuTuongId())
                                 .build());
                     }
                     break;
@@ -453,11 +470,8 @@ public class KchtGis155Service {
                         String parentProvince = (parent != null && parent.getTinhThanhPho() != null)
                                 ? parent.getTinhThanhPho()
                                 : "";
-                        Double viDo = (parent != null && parent.getViDo() != null) ? parent.getViDo().doubleValue()
-                                : 10.0;
-                        Double kinhDo = (parent != null && parent.getKinhDo() != null)
-                                ? parent.getKinhDo().doubleValue()
-                                : 105.0;
+                        Double viDo = null;
+                        Double kinhDo = null;
 
                         results.add(KchtGisSearchResult.builder()
                                 .id(vn.getId())
@@ -469,6 +483,7 @@ public class KchtGis155Service {
                                 .diaChiChiTiet("")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
+                                .bieuTuongId(vn.getBieuTuongId())
                                 .build());
                     }
                     break;
@@ -484,11 +499,8 @@ public class KchtGis155Service {
                         String parentProvince = (parent != null && parent.getTinhThanhPho() != null)
                                 ? parent.getTinhThanhPho()
                                 : "";
-                        Double viDo = (parent != null && parent.getViDo() != null) ? parent.getViDo().doubleValue()
-                                : 10.0;
-                        Double kinhDo = (parent != null && parent.getKinhDo() != null)
-                                ? parent.getKinhDo().doubleValue()
-                                : 105.0;
+                        Double viDo = null;
+                        Double kinhDo = null;
 
                         results.add(KchtGisSearchResult.builder()
                                 .id(vn.getId())
@@ -500,6 +512,7 @@ public class KchtGis155Service {
                                 .diaChiChiTiet("")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
+                                .bieuTuongId(vn.getBieuTuongId())
                                 .build());
                     }
                     break;

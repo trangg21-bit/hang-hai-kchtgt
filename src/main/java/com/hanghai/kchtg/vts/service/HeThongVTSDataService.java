@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -36,6 +37,7 @@ public class HeThongVTSDataService {
                 .mucDoPhuTrach(request.getMucDoPhuTrach())
                 .nguonGoc(request.getNguonGoc())
                 .doiTac(request.getDoiTac())
+                .orgUnitId(request.getOrgUnitId())
                 .trangThai(HeThongVTSApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
@@ -67,13 +69,14 @@ public class HeThongVTSDataService {
         return repository.findAll(pageable).map(this::toResponse);
     }
 
-    public Page<HeThongVTSResponse> findAllWithSearch(String keyword, String tinhTrang, String trangThai, int page, int size) {
+    public Page<HeThongVTSResponse> findAllWithSearch(UUID orgUnitId, String keyword, String tinhTrang, String trangThai, int page, int size) {
         String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
         String trimmedTinhTrang = (tinhTrang != null && !tinhTrang.trim().isEmpty()) ? tinhTrang.trim() : null;
         String trimmedTrangThai = (trangThai != null && !trangThai.trim().isEmpty()) ? trangThai.trim() : null;
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "ngayTao"));
         HeThongVTSApprovalStatus statusEnum = (trimmedTrangThai != null) ? HeThongVTSApprovalStatus.fromString(trimmedTrangThai) : null;
-        return repository.search(keywordLike, trimmedTinhTrang, statusEnum, pageable).map(this::toResponse);
+        com.hanghai.kchtg.vts.entity.TinhTrangVTS tinhTrangEnum = (trimmedTinhTrang != null) ? com.hanghai.kchtg.vts.entity.TinhTrangVTS.fromString(trimmedTinhTrang) : null;
+        return repository.search(orgUnitId, keywordLike, tinhTrangEnum, statusEnum, pageable).map(this::toResponse);
     }
 
     public HeThongVTSResponse update(Long id, HeThongVTSUpdateRequest request, String username) {
@@ -88,6 +91,7 @@ public class HeThongVTSDataService {
         if (request.getMucDoPhuTrach() != null) entity.setMucDoPhuTrach(request.getMucDoPhuTrach());
         if (request.getNguonGoc() != null) entity.setNguonGoc(request.getNguonGoc());
         if (request.getDoiTac() != null) entity.setDoiTac(request.getDoiTac());
+        if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
 
         entity.setNguoiSuaDoi(username);
 
@@ -213,13 +217,14 @@ public class HeThongVTSDataService {
                 .collect(Collectors.toList());
     }
 
-    public List<HeThongVTSResponse> search(String keyword, String tinhTrang, String trangThai) {
+    public List<HeThongVTSResponse> search(UUID orgUnitId, String keyword, String tinhTrang, String trangThai) {
         String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
         String trimmedTinhTrang = (tinhTrang != null && !tinhTrang.trim().isEmpty()) ? tinhTrang.trim() : null;
         String trimmedTrangThai = (trangThai != null && !trangThai.trim().isEmpty()) ? trangThai.trim() : null;
         Pageable pageable = PageRequest.of(0, 100);
         HeThongVTSApprovalStatus statusEnum = (trimmedTrangThai != null) ? HeThongVTSApprovalStatus.fromString(trimmedTrangThai) : null;
-        Page<HeThongVTS> pageResult = repository.search(keywordLike, trimmedTinhTrang, statusEnum, pageable);
+        com.hanghai.kchtg.vts.entity.TinhTrangVTS tinhTrangEnum = (trimmedTinhTrang != null) ? com.hanghai.kchtg.vts.entity.TinhTrangVTS.fromString(trimmedTinhTrang) : null;
+        Page<HeThongVTS> pageResult = repository.search(orgUnitId, keywordLike, tinhTrangEnum, statusEnum, pageable);
         return pageResult.getContent().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
@@ -246,6 +251,7 @@ public class HeThongVTSDataService {
                 .mucDoPhuTrach(entity.getMucDoPhuTrach())
                 .nguonGoc(entity.getNguonGoc())
                 .doiTac(entity.getDoiTac())
+                .orgUnitId(entity.getOrgUnitId())
                 .trangThai(entity.getTrangThai())
                 .pheDuyetC1(entity.getPheDuyetC1())
                 .nguoiPheDuyetC1(entity.getNguoiPheDuyetC1())

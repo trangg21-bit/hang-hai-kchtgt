@@ -145,7 +145,7 @@ export default function VungNuocListPage() {
   const fetchCangBienOptions = useCallback(async () => {
     try {
       const { fetchCangBienList } = await import('../../services/cangbien/api');
-      const res = await fetchCangBienList({ page: 0, size: 1000, trangThaiHoatDong: 'HIEN_HANH' });
+      const res = await fetchCangBienList({ page: 0, size: 5000, trangThaiHoatDong: 'HIEN_HANH' });
       setCangBienOptions(res.content.map((c) => ({ id: c.id, tenCang: c.tenCang })));
     } catch (err) {
       console.error('Failed to fetch CangBien options:', err);

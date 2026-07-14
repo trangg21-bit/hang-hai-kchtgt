@@ -27,6 +27,7 @@ export const luongHangHaiCRUD = {
   async search(params?: ListParams): Promise<SearchResponse<LuongHangHaiResponse>> {
     const res = await api.get('/v1/luong-hang-hai/search', {
       params: {
+        orgUnitId: params?.orgUnitId,
         keyword: params?.keyword,
         gioDien: params?.gioDien,
         taiTrong: params?.taiTrong,

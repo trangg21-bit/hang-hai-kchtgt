@@ -18,7 +18,8 @@ public interface TramRadarRepository extends JpaRepository<TramRadar, Long> {
 
     @Query("""
         SELECT t FROM TramRadar t
-        WHERE (:keyword IS NULL OR
+        WHERE (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
+          AND (:keyword IS NULL OR
             LOWER(t.tenTram) LIKE :keyword OR
             LOWER(t.viTri) LIKE :keyword OR
             LOWER(t.loaiTram) LIKE :keyword)
@@ -27,6 +28,7 @@ public interface TramRadarRepository extends JpaRepository<TramRadar, Long> {
         ORDER BY t.ngayTao DESC
     """)
     Page<TramRadar> search(
+        @Param("orgUnitId") java.util.UUID orgUnitId,
         @Param("keyword") String keyword,
         @Param("tinhTrang") String tinhTrang,
         @Param("trangThai") TramRadarApprovalStatus trangThai,

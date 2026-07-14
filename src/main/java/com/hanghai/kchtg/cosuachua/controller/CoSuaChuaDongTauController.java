@@ -138,12 +138,13 @@ public class CoSuaChuaDongTauController {
     @PreAuthorize("@auth.check(authentication, 'cosuachua:read')")
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<List<CoSuaChuaDongTauResponse>>> search(
+            @RequestParam(required = false) java.util.UUID orgUnitId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String tinhThanh,
             @RequestParam(required = false) String trangThai,
             @RequestParam(required = false) String trangThaiPheDuyet) {
         try {
-            List<CoSuaChuaDongTauResponse> responses = service.search(keyword, tinhThanh, trangThai, trangThaiPheDuyet);
+            List<CoSuaChuaDongTauResponse> responses = service.search(orgUnitId, keyword, tinhThanh, trangThai, trangThaiPheDuyet);
             return ResponseEntity.ok(ApiResponse.success("Tìm kiếm thành công", responses));
         } catch (Exception e) {
             log.error("Error searching CoSuaChuaDongTau: {}", e.getMessage(), e);

@@ -31,4 +31,5 @@ public class TramRadarCreateRequest {
 
     private String nguonGoc;
     private String tinhTrang;
+    private java.util.UUID orgUnitId;
 }

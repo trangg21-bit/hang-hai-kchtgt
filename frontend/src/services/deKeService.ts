@@ -27,6 +27,7 @@ export const dekeCRUD = {
   async search(params?: ListParams): Promise<SearchResponse<DeKeResponse>> {
     const res = await api.get('/v1/de-ke/search', {
       params: {
+        orgUnitId: params?.orgUnitId,
         keyword: params?.keyword,
         loaiDe: params?.loaiDe,
         tinhTrang: params?.tinhTrang,

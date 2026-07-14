@@ -70,8 +70,8 @@ class HeThongVTSControllerTest {
 
     @Test
     void testFindAll() {
-        when(service.findAllWithSearch(null, null, null, 0, 20)).thenReturn(org.springframework.data.domain.Page.empty());
-        ResponseEntity<?> result = controller.findAll(null, null, null, 0, 20);
+        when(service.findAllWithSearch(null, null, null, null, 0, 20)).thenReturn(org.springframework.data.domain.Page.empty());
+        ResponseEntity<?> result = controller.findAll(null, null, null, null, 0, 20);
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
@@ -116,8 +116,8 @@ class HeThongVTSControllerTest {
 
     @Test
     void testSearch() {
-        when(service.search(null, null, null)).thenReturn(Collections.emptyList());
-        ResponseEntity<?> result = controller.search(null, null, null);
+        when(service.search(null, null, null, null)).thenReturn(Collections.emptyList());
+        ResponseEntity<?> result = controller.search(null, null, null, null);
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 

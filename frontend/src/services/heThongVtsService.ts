@@ -14,6 +14,7 @@ export const heThongVTSCRUD = {
   async list(params?: ListParams): Promise<{ items: HeThongVTSResponse[]; total: number }> {
     const res = await api.get('/v1/he-thong-vts', {
       params: {
+        orgUnitId: params?.orgUnitId,
         page: params?.page || 0,
         size: params?.size || 20,
         keyword: params?.keyword,
@@ -30,6 +31,7 @@ export const heThongVTSCRUD = {
   async search(params?: ListParams): Promise<SearchResponse<HeThongVTSResponse>> {
     const res = await api.get('/v1/he-thong-vts/search', {
       params: {
+        orgUnitId: params?.orgUnitId,
         keyword: params?.keyword,
         tinhTrang: params?.tinhTrang,
         trangThai: params?.trangThai,

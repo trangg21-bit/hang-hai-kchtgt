@@ -1,4 +1,16 @@
-// HeThongVTS (Hệ thống VTS) — F-062..F-067
+export type TinhTrangVTS = 'TOT' | 'XUONG_CAP' | 'HU_HONG';
+
+export const TINH_TRANG_VTS_OPTIONS = [
+  { value: 'TOT', label: 'Tốt' },
+  { value: 'XUONG_CAP', label: 'Xuống cấp' },
+  { value: 'HU_HONG', label: 'Hư hỏng' },
+];
+
+export const TINH_TRANG_VTS_MAP: Record<TinhTrangVTS, string> = {
+  'TOT': 'Tốt',
+  'XUONG_CAP': 'Xuống cấp',
+  'HU_HONG': 'Hư hỏng',
+};
 
 export interface HeThongVTSAttachment {
   id: string;
@@ -10,10 +22,11 @@ export interface HeThongVTSResponse {
   id: number;
   tenHeThong?: string;
   viTri: string;
-  tinhTrang?: string;
+  tinhTrang?: TinhTrangVTS;
   mucDoPhuTrach?: string;
   nguonGoc?: string;
   doiTac?: string; // partner field unique to VTS
+  orgUnitId?: string;
   trangThai: string; // status as plain String
   pheDuyetC1?: boolean;
   nguoiPheDuyetC1?: string;
@@ -33,10 +46,11 @@ export interface HeThongVTSResponse {
 export interface CreateHeThongVTSRequest {
   tenHeThong?: string;
   viTri: string;
-  tinhTrang?: string;
+  tinhTrang?: TinhTrangVTS;
   mucDoPhuTrach?: string;
   nguonGoc?: string;
   doiTac?: string;
+  orgUnitId?: string;
 }
 
 export interface UpdateHeThongVTSRequest extends CreateHeThongVTSRequest {}
@@ -58,8 +72,9 @@ export interface HistoryEntry {
 export interface ListParams {
   page?: number;
   size?: number;
+  orgUnitId?: string;
   keyword?: string;
-  tinhTrang?: string;
+  tinhTrang?: TinhTrangVTS;
   trangThai?: string;
 }
 

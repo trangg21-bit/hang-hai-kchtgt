@@ -23,7 +23,9 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import { heThongVTSCRUD } from '../../services/heThongVtsService';
-import type { HeThongVTSResponse, ListParams } from '../../types/heThongVts';
+import { organizationService } from '../../services/organizationService';
+import type { HeThongVTSResponse, ListParams, TinhTrangVTS } from '../../types/heThongVts';
+import { TINH_TRANG_VTS_OPTIONS, TINH_TRANG_VTS_MAP } from '../../types/heThongVts';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import HeThongVTSForm from './HeThongVTSForm';
@@ -41,7 +43,7 @@ export default function HeThongVTSList() {
   const userPermissions = currentUser?.permissions || [];
 
   const [filterKeyword, setFilterKeyword] = useState('');
-  const [filterTinhTrang, setFilterTinhTrang] = useState<string | undefined>();
+  const [filterTinhTrang, setFilterTinhTrang] = useState<TinhTrangVTS | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -53,6 +55,18 @@ export default function HeThongVTSList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
+  const [organizations, setOrganizations] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await organizationService.list({ pageSize: 1000 });
+        setOrganizations(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load organizations', err);
+      }
+    })();
+  }, []);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -123,27 +137,15 @@ export default function HeThongVTSList() {
       dataIndex: 'tinhTrang',
       key: 'tinhTrang',
       width: 120,
-      render: (val: string) => {
+      render: (val: TinhTrangVTS) => {
         if (!val) return '—';
         const colorMap: Record<string, string> = {
-          'Tốt': '#52c41a',
           'TOT': '#52c41a',
-          'Xuống cấp': '#fa8c16',
           'XUONG_CAP': '#fa8c16',
-          'Hư hỏng': '#f5222d',
-          'HU_HOng': '#f5222d',
-          'HU_HOING': '#f5222d',
           'HU_HONG': '#f5222d',
         };
-        const textMap: Record<string, string> = {
-          'TOT': 'Tốt',
-          'XUONG_CAP': 'Xuống cấp',
-          'HU_HOng': 'Hư hỏng',
-          'HU_HOING': 'Hư hỏng',
-          'HU_HONG': 'Hư hỏng',
-        };
-        const displayVal = textMap[val] || val;
-        const color = colorMap[val] || colorMap[displayVal] || 'inherit';
+        const displayVal = TINH_TRANG_VTS_MAP[val] || val;
+        const color = colorMap[val] || 'inherit';
         return <span style={{ color, fontWeight: 500 }}>{displayVal}</span>;
       },
     },
@@ -159,6 +161,15 @@ export default function HeThongVTSList() {
       dataIndex: 'doiTac',
       key: 'doiTac',
       ellipsis: true,
+    },
+    {
+      title: 'Đơn vị quản lý',
+      dataIndex: 'orgUnitId',
+      key: 'orgUnitId',
+      width: 180,
+      render: (val: string) => {
+        return organizations.find((o) => o.id === val)?.name || val || '—';
+      },
     },
     {
       title: 'Trạng thái',
@@ -234,13 +245,9 @@ export default function HeThongVTSList() {
               />
               <Select
                 placeholder="Tình trạng"
-                options={[
-                  { label: 'Tốt', value: 'Tốt' },
-                  { label: 'Xuống cấp', value: 'Xuống cấp' },
-                  { label: 'Hư hỏng', value: 'Hư hỏng' },
-                ]}
+                options={TINH_TRANG_VTS_OPTIONS}
                 value={filterTinhTrang}
-                onChange={(val) => { setFilterTinhTrang(val); setPage(1); }}
+                onChange={(val) => { setFilterTinhTrang(val as any); setPage(1); }}
                 allowClear
                 style={{ width: 150 }}
               />

@@ -27,6 +27,7 @@ export const coSuaChuaCRUD = {
   async search(params?: ListParams): Promise<SearchResponse<CoSuaChuaResponse>> {
     const res = await api.get('/v1/co-so-sua-chua/search', {
       params: {
+        orgUnitId: params?.orgUnitId,
         keyword: params?.keyword,
         tinhThanh: params?.tinhThanh,
         trangThai: params?.trangThai,

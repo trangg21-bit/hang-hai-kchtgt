@@ -27,8 +27,9 @@ public class HeThongVTS {
     @Column(name = "vi_tri", nullable = false, length = 500)
     private String viTri;
 
-    @Column(name = "tinh_trang", length = 50)
-    private String tinhTrang;
+    @Column(name = "tinh_trang")
+    @Convert(converter = TinhTrangVTSConverter.class)
+    private TinhTrangVTS tinhTrang;
 
     @Column(name = "muc_do_phu_trach", length = 255)
     private String mucDoPhuTrach;
@@ -38,6 +39,9 @@ public class HeThongVTS {
 
     @Column(name = "doi_tac", length = 255)
     private String doiTac;
+
+    @Column(name = "org_unit_id")
+    private java.util.UUID orgUnitId;
 
     @Column(name = "trang_thai", nullable = false)
     @Convert(converter = HeThongVTSApprovalStatusConverter.class)

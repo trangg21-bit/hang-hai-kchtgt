@@ -25,6 +25,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { luongHangHaiCRUD } from '../../services/luongHangHaiService';
+import { organizationService } from '../../services/organizationService';
 import type { LuongHangHaiResponse, ListParams } from '../../types/luongHangHai';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
@@ -56,6 +57,18 @@ export default function LuongHangHaiList() {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await organizationService.list({ pageSize: 1000 });
+        setOrganizations(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load organizations', err);
+      }
+    })();
+  }, []);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -146,6 +159,15 @@ export default function LuongHangHaiList() {
       render: (val: string) => (val ? dayjs(val).format('DD/MM/YYYY') : '—'),
       sorter: true,
       width: 120,
+    },
+    {
+      title: 'Đơn vị quản lý',
+      dataIndex: 'orgUnitId',
+      key: 'orgUnitId',
+      width: 180,
+      render: (val: string) => {
+        return organizations.find((o) => o.id === val)?.name || val || '—';
+      },
     },
     {
       title: 'Trạng thái',

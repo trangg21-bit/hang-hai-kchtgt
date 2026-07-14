@@ -488,13 +488,13 @@ class CoSuaChuaDongTauServiceTest {
 
     @Test
     void testSearch_WithAllNull() {
-        when(repository.search(null, null, null, null)).thenReturn(Collections.emptyList());
+        when(repository.search(null, null, null, null, null)).thenReturn(Collections.emptyList());
 
-        List<CoSuaChuaDongTauResponse> responses = service.search(null, null, null, null);
+        List<CoSuaChuaDongTauResponse> responses = service.search(null, null, null, null, null);
 
         assertNotNull(responses);
         assertTrue(responses.isEmpty());
-        verify(repository, times(1)).search(null, null, null, null);
+        verify(repository, times(1)).search(null, null, null, null, null);
     }
 
     @Test
@@ -513,14 +513,14 @@ class CoSuaChuaDongTauServiceTest {
                 .attachments(new java.util.ArrayList<>())
                 .build();
 
-        when(repository.search("%abc%", null, null, null)).thenReturn(Arrays.asList(resultEntity));
+        when(repository.search(null, "%abc%", null, null, null)).thenReturn(Arrays.asList(resultEntity));
 
-        List<CoSuaChuaDongTauResponse> responses = service.search("ABC", null, null, null);
+        List<CoSuaChuaDongTauResponse> responses = service.search(null, "ABC", null, null, null);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
         assertEquals("Cơ sở ABC", responses.get(0).getTenCoSo());
-        verify(repository, times(1)).search("%abc%", null, null, null);
+        verify(repository, times(1)).search(null, "%abc%", null, null, null);
     }
 
     @Test
@@ -539,9 +539,9 @@ class CoSuaChuaDongTauServiceTest {
                 .attachments(new java.util.ArrayList<>())
                 .build();
 
-        when(repository.search(null, "%đà nẵng%", null, null)).thenReturn(Arrays.asList(resultEntity));
+        when(repository.search(null, null, "%đà nẵng%", null, null)).thenReturn(Arrays.asList(resultEntity));
 
-        List<CoSuaChuaDongTauResponse> responses = service.search(null, "Đà Nẵng", null, null);
+        List<CoSuaChuaDongTauResponse> responses = service.search(null, null, "Đà Nẵng", null, null);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());
@@ -564,9 +564,9 @@ class CoSuaChuaDongTauServiceTest {
                 .attachments(new java.util.ArrayList<>())
                 .build();
 
-        when(repository.search(null, null, com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.REJECTED, null)).thenReturn(Arrays.asList(resultEntity));
+        when(repository.search(null, null, null, com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.REJECTED, null)).thenReturn(Arrays.asList(resultEntity));
 
-        List<CoSuaChuaDongTauResponse> responses = service.search(null, null, "REJECTED", null);
+        List<CoSuaChuaDongTauResponse> responses = service.search(null, null, null, "REJECTED", null);
 
         assertNotNull(responses);
         assertEquals(1, responses.size());

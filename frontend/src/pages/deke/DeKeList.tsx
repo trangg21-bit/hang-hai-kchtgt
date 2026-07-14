@@ -23,6 +23,7 @@ import {
   PlusOutlined,
 } from '@ant-design/icons';
 import { dekeCRUD } from '../../services/deKeService';
+import { organizationService } from '../../services/organizationService';
 import type { DeKeResponse, ListParams, LoaiDe } from '../../types/deKe';
 import { useAuthStore } from '../../store/authStore';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
@@ -40,7 +41,7 @@ const LOAI_DE_OPTIONS = [
   { label: 'Đê bê tông', value: 'DE_BETONG' },
   { label: 'Kè đá', value: 'KE_DA' },
   { label: 'Kè bê tông', value: 'KE_BETONG' },
-  { label: 'Khác', value: 'KAC' },
+  { label: 'Khác', value: 'KHAC' },
 ];
 
 const TINH_TRANG_OPTIONS = [
@@ -68,6 +69,18 @@ export default function DeKeList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'detail'>('create');
+  const [organizations, setOrganizations] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await organizationService.list({ pageSize: 1000 });
+        setOrganizations(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load organizations', err);
+      }
+    })();
+  }, []);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -132,7 +145,7 @@ export default function DeKeList() {
           'DE_BETONG': 'Đê bê tông',
           'KE_DA': 'Kè đá',
           'KE_BETONG': 'Kè bê tông',
-          'KAC': 'Khác',
+          'KHAC': 'Khác',
         };
         return <span style={{ fontWeight: 500 }}>{textMap[val] || val}</span>;
       },
@@ -193,6 +206,15 @@ export default function DeKeList() {
           HU_HONG: 'Hư hỏng',
         };
         return <span style={{ color: colorMap[val] || 'inherit', fontWeight: 500 }}>{textMap[val] || val}</span>;
+      },
+    },
+    {
+      title: 'Đơn vị quản lý',
+      dataIndex: 'orgUnitId',
+      key: 'orgUnitId',
+      width: 180,
+      render: (val: string) => {
+        return organizations.find((o) => o.id === val)?.name || val || '—';
       },
     },
     {

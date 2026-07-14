@@ -98,12 +98,13 @@ public class DeKeController {
     @GetMapping("/search")
     @PreAuthorize("@auth.check(authentication, 'deke:read')")
     public ResponseEntity<ApiResponse<KetQuaTimKiemResponse>> search(
+            @RequestParam(name = "orgUnitId", required = false) java.util.UUID orgUnitId,
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "loaiDe", required = false) LoaiDe loaiDe,
             @RequestParam(name = "tinhTrang", required = false) String tinhTrang,
             @RequestParam(name = "trangThaiPheDuyet", required = false) String trangThaiPheDuyet,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.success(service.searchDocuments(keyword, loaiDe, tinhTrang, trangThaiPheDuyet, page, size)));
+        return ResponseEntity.ok(ApiResponse.success(service.searchDocuments(orgUnitId, keyword, loaiDe, tinhTrang, trangThaiPheDuyet, page, size)));
     }
 }

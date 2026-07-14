@@ -16,6 +16,7 @@ import {
   Modal,
 } from 'antd';
 import { dekeCRUD, deKeApproval } from '../../services/deKeService';
+import { organizationService } from '../../services/organizationService';
 import type {
   DeKeResponse,
   CreateDeKeRequest,
@@ -35,7 +36,7 @@ const LOAI_DE_MAP: Record<string, string> = {
   'DE_BETONG': 'Đê bê tông',
   'KE_DA': 'Kè đá',
   'KE_BETONG': 'Kè bê tông',
-  'KAC': 'Khác',
+  'KHAC': 'Khác',
 };
 
 const TINH_TRANG_MAP: Record<string, string> = {
@@ -76,6 +77,18 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await organizationService.list({ pageSize: 1000 });
+        setOrganizations(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load organizations', err);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -101,6 +114,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
             matVatLieu: data.matVatLieu,
             tinhTrang: data.tinhTrang,
             ghiChu: data.ghiChu,
+            orgUnitId: data.orgUnitId,
           });
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
@@ -142,19 +156,28 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
         chieuCao: values.chieuCao,
         matVatLieu: values.matVatLieu,
         tinhTrang: values.tinhTrang,
+        orgUnitId: values.orgUnitId,
       };
       if (values.ghiChu !== undefined) {
         (payload as any).ghiChu = values.ghiChu;
       }
 
       if (isCreateMode) {
-        const newRecord = await dekeCRUD.create(payload);
+        await dekeCRUD.create(payload);
         message.success('Tạo mới thành công');
-        navigate(`/de-ke/${newRecord.id}`);
+        if (isModalMode) {
+          onSuccess?.();
+        } else {
+          navigate('/de-ke');
+        }
       } else if (id && isEditMode) {
         await dekeCRUD.update(id, payload as UpdateDeKeRequest);
         message.success('Cập nhật thành công');
-        navigate(`/de-ke/${id}`);
+        if (isModalMode) {
+          onSuccess?.();
+        } else {
+          navigate('/de-ke');
+        }
       }
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
@@ -288,6 +311,9 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
               <Descriptions.Item label="Ghi chú" span={2}>
                 {(record as any).ghiChu ?? '—'}
               </Descriptions.Item>
+              <Descriptions.Item label="Đơn vị quản lý" span={2}>
+                {record.orgUnitId ? organizations.find(o => o.id === record.orgUnitId)?.name || record.orgUnitId : '—'}
+              </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
                 <ApprovalStatusBadge status={record.trangThaiPheDuyet} />
               </Descriptions.Item>
@@ -385,7 +411,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
             { label: 'Đê bê tông', value: 'DE_BETONG' },
             { label: 'Kè đá', value: 'KE_DA' },
             { label: 'Kè bê tông', value: 'KE_BETONG' },
-            { label: 'Khác', value: 'KAC' },
+            { label: 'Khác', value: 'KHAC' },
           ]}
         />
       </Form.Item>
@@ -473,6 +499,20 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
             { label: 'Xuống cấp', value: 'XUONG_CAP' },
             { label: 'Hư hỏng', value: 'HU_HOng' },
           ]}
+        />
+      </Form.Item>
+
+      <Form.Item
+        label="Đơn vị quản lý"
+        name="orgUnitId"
+      >
+        <Select
+          placeholder="Chọn đơn vị quản lý"
+          allowClear
+          options={organizations.map((org) => ({
+            value: org.id,
+            label: org.code ? `${org.code} - ${org.name}` : org.name,
+          }))}
         />
       </Form.Item>
 

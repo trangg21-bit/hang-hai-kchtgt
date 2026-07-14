@@ -190,8 +190,8 @@ class HeThongVTSDataServiceTest {
 
     @Test
     void testSearch() {
-        when(repository.search(null, null, null, org.springframework.data.domain.PageRequest.of(0, 100))).thenReturn(org.springframework.data.domain.Page.empty());
-        List<HeThongVTSResponse> responses = service.search(null, null, null);
+        when(repository.search(null, null, null, null, org.springframework.data.domain.PageRequest.of(0, 100))).thenReturn(org.springframework.data.domain.Page.empty());
+        List<HeThongVTSResponse> responses = service.search(null, null, null, null);
         assertNotNull(responses);
         assertTrue(responses.isEmpty());
     }

@@ -189,8 +189,8 @@ class TramRadarServiceTest {
 
     @Test
     void testSearch() {
-        when(repository.search(null, null, null, Pageable.unpaged())).thenReturn(org.springframework.data.domain.Page.empty());
-        List<TramRadarResponse> responses = service.search(null, null, null);
+        when(repository.search(null, null, null, null, Pageable.unpaged())).thenReturn(org.springframework.data.domain.Page.empty());
+        List<TramRadarResponse> responses = service.search(null, null, null, null);
         assertNotNull(responses);
         assertTrue(responses.isEmpty());
     }

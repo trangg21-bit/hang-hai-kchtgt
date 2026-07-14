@@ -17,6 +17,7 @@ export interface TramRadarResponse {
   dienTichPhaXa?: number;
   nguonGoc?: string;
   tinhTrang?: string;
+  orgUnitId?: string;
   trangThai: string; // status as plain String
   pheDuyetC1?: boolean;
   nguoiPheDuyetC1?: string;
@@ -43,6 +44,7 @@ export interface CreateTramRadarRequest {
   dienTichPhaXa?: number;
   nguonGoc?: string;
   tinhTrang?: string;
+  orgUnitId?: string;
 }
 
 export interface UpdateTramRadarRequest extends CreateTramRadarRequest {}
@@ -64,6 +66,7 @@ export interface HistoryEntry {
 export interface ListParams {
   page?: number;
   size?: number;
+  orgUnitId?: string;
   keyword?: string;
   tinhTrang?: string;
   trangThai?: string;

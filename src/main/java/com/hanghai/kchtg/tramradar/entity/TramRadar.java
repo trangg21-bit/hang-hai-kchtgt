@@ -49,6 +49,9 @@ public class TramRadar {
     @Column(name = "tinh_trang", length = 50)
     private String tinhTrang;
 
+    @Column(name = "org_unit_id")
+    private java.util.UUID orgUnitId;
+
     @Column(name = "trang_thai", nullable = false)
     @Convert(converter = TramRadarApprovalStatusConverter.class)
     private TramRadarApprovalStatus trangThai;

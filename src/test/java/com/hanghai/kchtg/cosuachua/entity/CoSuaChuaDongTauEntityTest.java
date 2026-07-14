@@ -250,7 +250,7 @@ class CoSuaChuaDongTauEntityTest {
     void testAllArgsConstructor() {
         CoSuaChuaDongTau entity = new CoSuaChuaDongTau(
                 1L, "ABC", "Hà Nội", "Hà Nội", "0123456789", "test@test.com",
-                "Sửa chữa", "Khả năng 100", "Bộ Quốc phòng", com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED,
+                "Sửa chữa", "Khả năng 100", "Bộ Quốc phòng", null, com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED,
                 true, "admin1", LocalDateTime.now(),
                 true, "director", LocalDateTime.now(),
                 null, "user1", LocalDateTime.now(),
@@ -270,7 +270,7 @@ class CoSuaChuaDongTauEntityTest {
         java.util.List<CoSuaChuaDongTauAttachment> emptyList = new java.util.ArrayList<>();
         CoSuaChuaDongTau entity = new CoSuaChuaDongTau(
                 1L, "ABC", "Hà Nội", "Hà Nội", "0123456789", "test@test.com",
-                "Sửa chữa", "Khả năng 100", "Bộ Quốc phòng", com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED,
+                "Sửa chữa", "Khả năng 100", "Bộ Quốc phòng", null, com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED,
                 true, "admin1", LocalDateTime.now(),
                 true, "director", LocalDateTime.now(),
                 null, "user1", LocalDateTime.now(),

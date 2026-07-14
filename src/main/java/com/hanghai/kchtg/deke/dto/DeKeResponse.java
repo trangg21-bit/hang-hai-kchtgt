@@ -25,6 +25,7 @@ public class DeKeResponse {
     private String matVatLieu;
     private String tinhTrang;
     private String ghiChu;
+    private java.util.UUID orgUnitId;
     private DeKeApprovalStatus trangThaiPheDuyet;
     private Boolean pheDuyetC1;
     private String nguoiPheDuyetC1;

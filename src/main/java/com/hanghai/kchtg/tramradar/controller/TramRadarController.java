@@ -133,11 +133,12 @@ public class TramRadarController {
     @PreAuthorize("@auth.check(authentication, 'tramradar:read')")
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<List<TramRadarResponse>>> search(
+            @RequestParam(required = false) java.util.UUID orgUnitId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String tinhTrang,
             @RequestParam(required = false) String trangThai) {
         try {
-            List<TramRadarResponse> responses = service.search(keyword, tinhTrang, trangThai);
+            List<TramRadarResponse> responses = service.search(orgUnitId, keyword, tinhTrang, trangThai);
             return ResponseEntity.ok(ApiResponse.success("Tìm kiếm thành công", responses));
         } catch (Exception e) {
             log.error("Error searching TramRadar: {}", e.getMessage(), e);

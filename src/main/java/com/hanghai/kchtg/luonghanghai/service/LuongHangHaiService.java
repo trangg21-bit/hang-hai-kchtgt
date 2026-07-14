@@ -35,6 +35,7 @@ public class LuongHangHaiService {
                 .taiTrong(req.getTaiTrong())
                 .dienTichDangBo(req.getDienTichDangBo())
                 .ghiChu(req.getGhiChu())
+                .orgUnitId(req.getOrgUnitId())
                 .approvalStatus(LuongHangHaiApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
@@ -64,15 +65,15 @@ public class LuongHangHaiService {
     }
 
     @Transactional(readOnly = true)
-    public Page<LuongHangHaiResponse> search(String keyword, String gioDien, String taiTrong,
+    public Page<LuongHangHaiResponse> search(UUID orgUnitId, String keyword, String gioDien, String taiTrong,
                                              String approvalStatusStr, int page, int size) {
         Page<LuongHangHai> results;
         LuongHangHaiApprovalStatus approvalStatus = null;
         if (approvalStatusStr != null && !approvalStatusStr.isEmpty()) {
             try { approvalStatus = LuongHangHaiApprovalStatus.valueOf(approvalStatusStr); } catch (Exception ignored) {}
         }
-        if (keyword != null && !keyword.isEmpty()) {
-            results = repo.searchDocuments(keyword, gioDien, taiTrong, approvalStatus,
+        if (orgUnitId != null || (keyword != null && !keyword.isEmpty())) {
+            results = repo.searchDocuments(orgUnitId, keyword, gioDien, taiTrong, approvalStatus,
                     PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         } else {
             results = repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
@@ -92,6 +93,7 @@ public class LuongHangHaiService {
         if (req.getTaiTrong() != null) l.setTaiTrong(req.getTaiTrong());
         if (req.getDienTichDangBo() != null) l.setDienTichDangBo(req.getDienTichDangBo());
         if (req.getGhiChu() != null) l.setGhiChu(req.getGhiChu());
+        if (req.getOrgUnitId() != null) l.setOrgUnitId(req.getOrgUnitId());
         l.setUpdatedBy(username);
 
         return toResponse(repo.save(l));
@@ -234,7 +236,7 @@ public class LuongHangHaiService {
     }
 
     @Transactional(readOnly = true)
-    public KetQuaTimKiemResponse searchDocuments(String kw, String gioDien, String taiTrong, String trangThaiStr, int page, int size) {
+    public KetQuaTimKiemResponse searchDocuments(UUID orgUnitId, String kw, String gioDien, String taiTrong, String trangThaiStr, int page, int size) {
         LuongHangHaiApprovalStatus trangThai = null;
         if (trangThaiStr != null && !trangThaiStr.trim().isEmpty()) {
             try { trangThai = LuongHangHaiApprovalStatus.valueOf(trangThaiStr.trim()); } catch (Exception ignored) {}
@@ -242,7 +244,7 @@ public class LuongHangHaiService {
         String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
         String gioDienVal = (gioDien != null && !gioDien.trim().isEmpty()) ? gioDien.trim() : null;
         String taiTrongVal = (taiTrong != null && !taiTrong.trim().isEmpty()) ? taiTrong.trim() : null;
-        Page<LuongHangHai> r = repo.searchDocuments(keywordLike, gioDienVal, taiTrongVal, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        Page<LuongHangHai> r = repo.searchDocuments(orgUnitId, keywordLike, gioDienVal, taiTrongVal, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         return KetQuaTimKiemResponse.builder()
                 .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())
@@ -288,6 +290,7 @@ public class LuongHangHaiService {
                 .taiTrong(l.getTaiTrong())
                 .dienTichDangBo(l.getDienTichDangBo())
                 .ghiChu(l.getGhiChu())
+                .orgUnitId(l.getOrgUnitId())
                 .approvalStatus(l.getApprovalStatus())
                 .pheDuyetC1(l.getPheDuyetC1())
                 .nguoiPheDuyetC1(l.getNguoiPheDuyetC1())

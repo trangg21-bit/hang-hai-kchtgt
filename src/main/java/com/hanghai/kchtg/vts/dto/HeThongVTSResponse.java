@@ -13,10 +13,11 @@ public class HeThongVTSResponse {
     private Long id;
     private String tenHeThong;
     private String viTri;
-    private String tinhTrang;
+    private com.hanghai.kchtg.vts.entity.TinhTrangVTS tinhTrang;
     private String mucDoPhuTrach;
     private String nguonGoc;
     private String doiTac;
+    private java.util.UUID orgUnitId;
     private com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus trangThai;
     private Boolean pheDuyetC1;
     private String nguoiPheDuyetC1;

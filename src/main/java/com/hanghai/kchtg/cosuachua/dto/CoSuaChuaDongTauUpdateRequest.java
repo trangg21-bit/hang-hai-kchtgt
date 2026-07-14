@@ -32,4 +32,5 @@ public class CoSuaChuaDongTauUpdateRequest {
 
     @Size(max = 255)
     private String chuQuan;
+    private java.util.UUID orgUnitId;
 }

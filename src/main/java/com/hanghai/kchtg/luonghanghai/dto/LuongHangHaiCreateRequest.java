@@ -17,4 +17,5 @@ public class LuongHangHaiCreateRequest {
     private String taiTrong;
     private String dienTichDangBo;
     private String ghiChu;
+    private java.util.UUID orgUnitId;
 }

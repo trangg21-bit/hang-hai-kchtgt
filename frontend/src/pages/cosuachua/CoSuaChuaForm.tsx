@@ -15,6 +15,7 @@ import {
   Modal,
 } from 'antd';
 import { coSuaChuaCRUD, coSuaChuaApproval } from '../../services/coSuaChuaService';
+import { organizationService } from '../../services/organizationService';
 import type {
   CoSuaChuaResponse,
   CreateCoSuaChuaRequest,
@@ -31,7 +32,7 @@ const LOAI_CO_SO_MAP: Record<string, string> = {
   'CS_SUA_CHUA': 'Cơ sở sửa chữa',
   'CS_DONG_TAU': 'Cơ sở đóng tàu',
   'CS_SUA_CHUA_DONG_TAU': 'Cơ sở sửa chữa & đóng tàu',
-  'KAC': 'Khác',
+  'KHAC': 'Khác',
 };
 
 export interface CoSuaChuaFormProps {
@@ -63,6 +64,18 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await organizationService.list({ pageSize: 1000 });
+        setOrganizations(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load organizations', err);
+      }
+    })();
+  }, []);
 
   // Fetch detail data
   useEffect(() => {
@@ -82,6 +95,7 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
             loaiCoSo: data.loaiCoSo,
             khaNang: data.khaNang,
             chuQuan: data.chuQuan,
+            orgUnitId: data.orgUnitId,
           });
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
@@ -127,15 +141,16 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
         loaiCoSo: values.loaiCoSo,
         khaNang: values.khaNang,
         chuQuan: values.chuQuan,
+        orgUnitId: values.orgUnitId,
       };
 
       if (isCreateMode) {
-        const newRecord = await coSuaChuaCRUD.create(payload as CreateCoSuaChuaRequest);
+        await coSuaChuaCRUD.create(payload as CreateCoSuaChuaRequest);
         message.success('Tạo mới thành công');
         if (isModalMode) {
           onSuccess?.();
         } else {
-          navigate(`/co-so-sua-chua/${newRecord.id}`);
+          navigate('/co-so-sua-chua');
         }
       } else if (id && isEditMode) {
         await coSuaChuaCRUD.update(id, payload as UpdateCoSuaChuaRequest);
@@ -143,7 +158,7 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
         if (isModalMode) {
           onSuccess?.();
         } else {
-          navigate(`/co-so-sua-chua/${id}`);
+          navigate('/co-so-sua-chua');
         }
       }
     } catch (err) {
@@ -257,6 +272,9 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
               </Descriptions.Item>
               <Descriptions.Item label="Chủ quản">
                 {record.chuQuan ?? '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Đơn vị quản lý" span={2}>
+                {record.orgUnitId ? organizations.find(o => o.id === record.orgUnitId)?.name || record.orgUnitId : '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
                 <ApprovalStatusBadge status={record.trangThai} />
@@ -412,7 +430,7 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
                   { label: 'Cơ sở sửa chữa', value: 'CS_SUA_CHUA' },
                   { label: 'Cơ sở đóng tàu', value: 'CS_DONG_TAU' },
                   { label: 'Cơ sở sửa chữa & đóng tàu', value: 'CS_SUA_CHUA_DONG_TAU' },
-                  { label: 'Khác', value: 'KAC' },
+                  { label: 'Khác', value: 'KHAC' },
                 ]}
               />
             </Form.Item>
@@ -429,6 +447,20 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
 
             <Form.Item label="Chủ quản" name="chuQuan">
               <Input placeholder="Nhập chủ quản" />
+            </Form.Item>
+
+            <Form.Item
+              label="Đơn vị quản lý"
+              name="orgUnitId"
+            >
+              <Select
+                placeholder="Chọn đơn vị quản lý"
+                allowClear
+                options={organizations.map((org) => ({
+                  value: org.id,
+                  label: org.code ? `${org.code} - ${org.name}` : org.name,
+                }))}
+              />
             </Form.Item>
 
             <Form.Item>
@@ -518,7 +550,7 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
                 { label: 'Cơ sở sửa chữa', value: 'CS_SUA_CHUA' },
                 { label: 'Cơ sở đóng tàu', value: 'CS_DONG_TAU' },
                 { label: 'Cơ sở sửa chữa & đóng tàu', value: 'CS_SUA_CHUA_DONG_TAU' },
-                { label: 'Khác', value: 'KAC' },
+                { label: 'Khác', value: 'KHAC' },
               ]}
             />
           </Form.Item>
@@ -535,6 +567,20 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
 
           <Form.Item label="Chủ quản" name="chuQuan">
             <Input placeholder="Nhập chủ quản" />
+          </Form.Item>
+
+          <Form.Item
+            label="Đơn vị quản lý"
+            name="orgUnitId"
+          >
+            <Select
+              placeholder="Chọn đơn vị quản lý"
+              allowClear
+              options={organizations.map((org) => ({
+                value: org.id,
+                label: org.code ? `${org.code} - ${org.name}` : org.name,
+              }))}
+            />
           </Form.Item>
 
           <Form.Item label="Tài liệu đính kèm">

@@ -16,6 +16,7 @@ import {
   Modal,
 } from 'antd';
 import { tramRadarCRUD, tramRadarApproval } from '../../services/tramRadarService';
+import { organizationService } from '../../services/organizationService';
 import type {
   TramRadarResponse,
   CreateTramRadarRequest,
@@ -32,7 +33,7 @@ const LOAI_TRAM_MAP: Record<string, string> = {
   'MAIN': 'Trạm radar chính',
   'SECONDARY': 'Trạm radar phụ',
   'ASSIST': 'Trạm radar hỗ trợ',
-  'KAC': 'Khác',
+  'KHAC': 'Khác',
 };
 
 const TINH_TRANG_MAP: Record<string, string> = {
@@ -71,6 +72,18 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await organizationService.list({ pageSize: 1000 });
+        setOrganizations(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load organizations', err);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -87,19 +100,18 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
         try {
           const data = await tramRadarCRUD.getById(id);
           setRecord(data);
-          if (!isEditMode) {
-            form.setFieldsValue({
-              tenTram: data.tenTram,
-              viTri: data.viTri,
-              kinhDo: data.kinhDo,
-              viDo: data.viDo,
-              loaiTram: data.loaiTram,
-              coTrinh: data.coTrinh,
-              dienTichPhaXa: data.dienTichPhaXa,
-              nguonGoc: data.nguonGoc,
-              tinhTrang: data.tinhTrang,
-            });
-          }
+          form.setFieldsValue({
+            tenTram: data.tenTram,
+            viTri: data.viTri,
+            kinhDo: data.kinhDo,
+            viDo: data.viDo,
+            loaiTram: data.loaiTram,
+            coTrinh: data.coTrinh,
+            dienTichPhaXa: data.dienTichPhaXa,
+            nguonGoc: data.nguonGoc,
+            tinhTrang: data.tinhTrang,
+            orgUnitId: data.orgUnitId,
+          });
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
         } finally {
@@ -142,16 +154,25 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
         dienTichPhaXa: values.dienTichPhaXa,
         nguonGoc: values.nguonGoc,
         tinhTrang: values.tinhTrang,
+        orgUnitId: values.orgUnitId,
       };
 
       if (isCreateMode) {
-        const newRecord = await tramRadarCRUD.create(payload);
+        await tramRadarCRUD.create(payload);
         message.success('Tạo mới thành công');
-        navigate(`/tram-radar/${newRecord.id}`);
+        if (isModalMode) {
+          onSuccess?.();
+        } else {
+          navigate('/tram-radar');
+        }
       } else if (id && isEditMode) {
         await tramRadarCRUD.update(id, payload as UpdateTramRadarRequest);
         message.success('Cập nhật thành công');
-        navigate(`/tram-radar/${id}`);
+        if (isModalMode) {
+          onSuccess?.();
+        } else {
+          navigate('/tram-radar');
+        }
       }
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
@@ -280,6 +301,9 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
               <Descriptions.Item label="Nguồn gốc">{record.nguonGoc ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Tình trạng">
                 {TINH_TRANG_MAP[record.tinhTrang] || record.tinhTrang || '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Đơn vị quản lý" span={2}>
+                {record.orgUnitId ? organizations.find(o => o.id === record.orgUnitId)?.name || record.orgUnitId : '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
                 <ApprovalStatusBadge status={record.trangThaiPheDuyet} />
@@ -452,7 +476,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
                   { label: 'Trạm radar chính', value: 'MAIN' },
                   { label: 'Trạm radar phụ', value: 'SECONDARY' },
                   { label: 'Trạm radar hỗ trợ', value: 'ASSIST' },
-                  { label: 'Khác', value: 'KAC' },
+                  { label: 'Khác', value: 'KHAC' },
                 ]}
               />
             </Form.Item>
@@ -494,6 +518,20 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
                   { label: 'Hoạt động kém', value: 'KEM' },
                   { label: 'Ngừng hoạt động', value: 'NGUNG' },
                 ]}
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="Đơn vị quản lý"
+              name="orgUnitId"
+            >
+              <Select
+                placeholder="Chọn đơn vị quản lý"
+                allowClear
+                options={organizations.map((org) => ({
+                  value: org.id,
+                  label: org.code ? `${org.code} - ${org.name}` : org.name,
+                }))}
               />
             </Form.Item>
 
@@ -594,7 +632,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
                 { label: 'Trạm radar chính', value: 'MAIN' },
                 { label: 'Trạm radar phụ', value: 'SECONDARY' },
                 { label: 'Trạm radar hỗ trợ', value: 'ASSIST' },
-                { label: 'Khác', value: 'KAC' },
+                { label: 'Khác', value: 'KHAC' },
               ]}
             />
           </Form.Item>
@@ -636,6 +674,20 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
                 { label: 'Hoạt động kém', value: 'KEM' },
                 { label: 'Ngừng hoạt động', value: 'NGUNG' },
               ]}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Đơn vị quản lý"
+            name="orgUnitId"
+          >
+            <Select
+              placeholder="Chọn đơn vị quản lý"
+              allowClear
+              options={organizations.map((org) => ({
+                value: org.id,
+                label: org.code ? `${org.code} - ${org.name}` : org.name,
+              }))}
             />
           </Form.Item>
 

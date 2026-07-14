@@ -27,6 +27,7 @@ export const tramRadarCRUD = {
   async search(params?: ListParams): Promise<SearchResponse<TramRadarResponse>> {
     const res = await api.get('/v1/tram-radar/search', {
       params: {
+        orgUnitId: params?.orgUnitId,
         keyword: params?.keyword,
         tinhTrang: params?.tinhTrang,
         trangThai: params?.trangThai,

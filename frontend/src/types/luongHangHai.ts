@@ -17,6 +17,7 @@ export interface LuongHangHaiResponse {
   taiTrong?: string | number;
   dienTichDangBo?: string | number;
   ghiChu?: string;
+  orgUnitId?: string;
   approvalStatus: ApprovalStatus;
   pheDuyetC1?: boolean;
   nguoiPheDuyetC1?: string;
@@ -43,6 +44,7 @@ export interface CreateLuongHangHaiRequest {
   taiTrong?: string | number;
   dienTichDangBo?: string | number;
   ghiChu?: string;
+  orgUnitId?: string;
 }
 
 export interface UpdateLuongHangHaiRequest extends CreateLuongHangHaiRequest {}
@@ -75,6 +77,7 @@ export interface HistoryEntry {
 export interface ListParams {
   page?: number;
   size?: number;
+  orgUnitId?: string;
   keyword?: string;
   gioDien?: string;
   taiTrong?: string | number;

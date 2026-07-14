@@ -495,10 +495,12 @@ export default function GISChartView() {
         kchtTypeLabel: x.kchtTypeLabel,
         diaDiem: x.diaDiem,
         viDo: x.latitude,
-        kinhDo: x.longitude
+        kinhDo: x.longitude,
+        bieuTuongId: x.bieuTuongId
       }));
 
       setInfrastructureResults(list);
+      setSelectedRowKeys([]);
       setTotalSearchElements(pageData.totalElements || list.length);
     } catch (err) {
       console.error(err);
@@ -585,18 +587,59 @@ export default function GISChartView() {
   const fetchFeaturesInViewportRef = useRef<() => Promise<void>>();
   const fetchPlanningFeaturesRef = useRef<() => Promise<void>>();
   const moveEndTimeoutRef = useRef<any>(null);
+  const planningLayersCacheRef = useRef<Record<string, any>>({});
   const [leafletLoaded, setLeafletLoaded] = useState(false);
 
   // 1. Dynamic Leaflet Loader
   useEffect(() => {
-    if (window.L) {
+    if (window.L && (window.L as any).markerClusterGroup) {
       setLeafletLoaded(true);
+      return;
+    }
+
+    const loadMarkerCluster = () => {
+      // Load MarkerCluster CSS
+      if (!document.querySelector('link[href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css"]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css';
+        document.head.appendChild(link);
+      }
+      if (!document.querySelector('link[href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css"]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css';
+        document.head.appendChild(link);
+      }
+
+      // Load MarkerCluster JS
+      let mcScript = document.querySelector('script[src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"]') as HTMLScriptElement;
+      if (mcScript) {
+        if (window.L && (window.L as any).markerClusterGroup) {
+          setLeafletLoaded(true);
+        } else {
+          mcScript.addEventListener('load', () => setLeafletLoaded(true));
+        }
+        return;
+      }
+
+      mcScript = document.createElement('script');
+      mcScript.src = 'https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js';
+      mcScript.async = true;
+      mcScript.onload = () => {
+        setLeafletLoaded(true);
+      };
+      document.body.appendChild(mcScript);
+    };
+
+    if (window.L) {
+      loadMarkerCluster();
       return;
     }
 
     let script = document.querySelector('script[src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"]') as HTMLScriptElement;
     if (script) {
-      const handleLoad = () => setLeafletLoaded(true);
+      const handleLoad = () => loadMarkerCluster();
       script.addEventListener('load', handleLoad);
       return () => {
         script.removeEventListener('load', handleLoad);
@@ -616,7 +659,7 @@ export default function GISChartView() {
     script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
     script.async = true;
     script.onload = () => {
-      setLeafletLoaded(true);
+      loadMarkerCluster();
     };
     document.body.appendChild(script);
 
@@ -747,6 +790,14 @@ export default function GISChartView() {
 
     planningFeatures.forEach((feature) => {
       if (!feature.geojson) return;
+
+      // Check cache first!
+      const cached = planningLayersCacheRef.current[feature.id];
+      if (cached) {
+        layers.push(cached);
+        return;
+      }
+
       try {
         const geojsonObj = JSON.parse(feature.geojson);
         const color = getAciColor(feature.color);
@@ -922,6 +973,8 @@ export default function GISChartView() {
           }
         });
 
+        // Cache the fully parsed and built layer
+        planningLayersCacheRef.current[feature.id] = layer;
         layers.push(layer);
       } catch (err) {
         // skip
@@ -979,7 +1032,10 @@ export default function GISChartView() {
     geoJsonGroupRef.current = L.featureGroup().addTo(map);
 
     // Feature group for search markers
-    searchMarkersGroupRef.current = L.featureGroup().addTo(map);
+    searchMarkersGroupRef.current = (L as any).markerClusterGroup 
+      ? (L as any).markerClusterGroup({ showCoverageOnHover: false }) 
+      : L.featureGroup();
+    searchMarkersGroupRef.current.addTo(map);
 
     // Feature group for planning features
     planningGroupRef.current = L.featureGroup().addTo(map);
@@ -1053,7 +1109,7 @@ export default function GISChartView() {
     if (selectedRecords.length === 0) return;
 
     const markers: any[] = [];
-    const useCircle = selectedRecords.length > 200;
+    const useCircle = false;
 
     selectedRecords.forEach((record) => {
       const rawLat = record.viDo ?? record.latitude;
@@ -1162,8 +1218,12 @@ export default function GISChartView() {
     });
 
     if (markers.length > 0) {
-      const tempGroup = L.layerGroup(markers);
-      searchMarkersGroupRef.current.addLayer(tempGroup);
+      if (searchMarkersGroupRef.current.addLayers) {
+        searchMarkersGroupRef.current.addLayers(markers);
+      } else {
+        const tempGroup = L.layerGroup(markers);
+        searchMarkersGroupRef.current.addLayer(tempGroup);
+      }
       
       // Optionally fit bounds if there are markers
       try {
@@ -1723,6 +1783,7 @@ export default function GISChartView() {
                       {/* Table fills all remaining vertical space */}
                       <div ref={tableWrapperRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: '0 12px 12px 12px' }}>
                     <Table
+                      loading={searchingInfrastructure}
                       rowSelection={{
                         type: 'checkbox',
                         fixed: true,
@@ -1735,7 +1796,10 @@ export default function GISChartView() {
                           if (selected) {
                             handleRowClick(record);
                           }
-                        }
+                        },
+                        getCheckboxProps: () => ({
+                          disabled: searchingInfrastructure
+                        })
                       }}
                       columns={[
                         {
@@ -1781,7 +1845,7 @@ export default function GISChartView() {
                       pagination={false}
                       size="small"
                       bordered
-                      virtual={searchPageSize > 100}
+                      virtual={infrastructureResults.length > 100}
                       scroll={{ x: 980, y: tableHeight }}
                       onRow={(record) => ({
                         onClick: () => handleRowClick(record),

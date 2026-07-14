@@ -16,6 +16,7 @@ import {
 } from 'antd';
 import dayjs from 'dayjs';
 import { heThongVTSCRUD, heThongVTSApproval } from '../../services/heThongVtsService';
+import { organizationService } from '../../services/organizationService';
 import type {
   HeThongVTSResponse,
   CreateHeThongVTSRequest,
@@ -23,6 +24,7 @@ import type {
   PheDuyetRequest,
   HistoryEntry,
 } from '../../types/heThongVts';
+import { TINH_TRANG_VTS_OPTIONS, TINH_TRANG_VTS_MAP } from '../../types/heThongVts';
 
 type ApprovalStatus = 'PROPOSED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
 import { useAuthStore } from '../../store/authStore';
@@ -61,6 +63,18 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await organizationService.list({ pageSize: 1000 });
+        setOrganizations(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load organizations', err);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -77,16 +91,15 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
         try {
           const data = await heThongVTSCRUD.getById(id);
           setRecord(data);
-          if (!isEditMode) {
-            form.setFieldsValue({
-              tenHeThong: data.tenHeThong,
-              viTri: data.viTri,
-              tinhTrang: data.tinhTrang,
-              mucDoPhuTrach: data.mucDoPhuTrach,
-              nguonGoc: data.nguonGoc,
-              doiTac: data.doiTac,
-            });
-          }
+          form.setFieldsValue({
+            tenHeThong: data.tenHeThong,
+            viTri: data.viTri,
+            tinhTrang: data.tinhTrang,
+            mucDoPhuTrach: data.mucDoPhuTrach,
+            nguonGoc: data.nguonGoc,
+            doiTac: data.doiTac,
+            orgUnitId: data.orgUnitId,
+          });
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
         } finally {
@@ -126,16 +139,25 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
         mucDoPhuTrach: values.mucDoPhuTrach,
         nguonGoc: values.nguonGoc,
         doiTac: values.doiTac,
+        orgUnitId: values.orgUnitId,
       };
 
       if (isCreateMode) {
-        const newRecord = await heThongVTSCRUD.create(payload as CreateHeThongVTSRequest);
+        await heThongVTSCRUD.create(payload as CreateHeThongVTSRequest);
         message.success('Tạo mới thành công');
-        navigate(`/he-thong-vts/${newRecord.id}`);
+        if (isModalMode) {
+          onSuccess?.();
+        } else {
+          navigate('/he-thong-vts');
+        }
       } else if (id && isEditMode) {
         await heThongVTSCRUD.update(id, payload as UpdateHeThongVTSRequest);
         message.success('Cập nhật thành công');
-        navigate(`/he-thong-vts/${id}`);
+        if (isModalMode) {
+          onSuccess?.();
+        } else {
+          navigate('/he-thong-vts');
+        }
       }
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
@@ -245,10 +267,15 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
             <Descriptions column={2} bordered size="small">
               <Descriptions.Item label="Tên hệ thống">{record.tenHeThong ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Vị trí">{record.viTri}</Descriptions.Item>
-              <Descriptions.Item label="Tình trạng">{record.tinhTrang ?? '—'}</Descriptions.Item>
+              <Descriptions.Item label="Tình trạng">
+                {record.tinhTrang ? (TINH_TRANG_VTS_MAP[record.tinhTrang] || record.tinhTrang) : '—'}
+              </Descriptions.Item>
               <Descriptions.Item label="Mức độ phủ trách">{record.mucDoPhuTrach ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Nguồn gốc">{record.nguonGoc ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Đối tác">{record.doiTac ?? '—'}</Descriptions.Item>
+              <Descriptions.Item label="Đơn vị quản lý" span={2}>
+                {record.orgUnitId ? organizations.find(o => o.id === record.orgUnitId)?.name || record.orgUnitId : '—'}
+              </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
                 <ApprovalStatusBadge status={record.trangThai} />
               </Descriptions.Item>
@@ -375,11 +402,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
             >
               <Select
                 placeholder="Chọn tình trạng"
-                options={[
-                  { label: 'Tốt', value: 'Tốt' },
-                  { label: 'Xuống cấp', value: 'Xuống cấp' },
-                  { label: 'Hư hỏng', value: 'Hư hỏng' },
-                ]}
+                options={TINH_TRANG_VTS_OPTIONS}
               />
             </Form.Item>
 
@@ -402,6 +425,20 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
               name="doiTac"
             >
               <Input placeholder="Nhập đối tác" />
+            </Form.Item>
+
+            <Form.Item
+              label="Đơn vị quản lý"
+              name="orgUnitId"
+            >
+              <Select
+                placeholder="Chọn đơn vị quản lý"
+                allowClear
+                options={organizations.map((org) => ({
+                  value: org.id,
+                  label: org.code ? `${org.code} - ${org.name}` : org.name,
+                }))}
+              />
             </Form.Item>
 
             <Form.Item>
@@ -477,6 +514,20 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
             name="doiTac"
           >
             <Input placeholder="Nhập đối tác" />
+          </Form.Item>
+
+          <Form.Item
+            label="Đơn vị quản lý"
+            name="orgUnitId"
+          >
+            <Select
+              placeholder="Chọn đơn vị quản lý"
+              allowClear
+              options={organizations.map((org) => ({
+                value: org.id,
+                label: org.code ? `${org.code} - ${org.name}` : org.name,
+              }))}
+            />
           </Form.Item>
 
           <Form.Item

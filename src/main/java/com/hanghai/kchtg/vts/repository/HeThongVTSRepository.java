@@ -18,7 +18,8 @@ public interface HeThongVTSRepository extends JpaRepository<HeThongVTS, Long> {
 
     @Query("""
         SELECT t FROM HeThongVTS t
-        WHERE (:keyword IS NULL OR
+        WHERE (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)
+          AND (:keyword IS NULL OR
             LOWER(t.tenHeThong) LIKE :keyword OR
             LOWER(t.viTri) LIKE :keyword)
           AND (:tinhTrang IS NULL OR t.tinhTrang = :tinhTrang)
@@ -26,8 +27,9 @@ public interface HeThongVTSRepository extends JpaRepository<HeThongVTS, Long> {
         ORDER BY t.ngayTao DESC
     """)
     Page<HeThongVTS> search(
+        @Param("orgUnitId") java.util.UUID orgUnitId,
         @Param("keyword") String keyword,
-        @Param("tinhTrang") String tinhTrang,
+        @Param("tinhTrang") com.hanghai.kchtg.vts.entity.TinhTrangVTS tinhTrang,
         @Param("trangThai") HeThongVTSApprovalStatus trangThai,
         Pageable pageable
     );

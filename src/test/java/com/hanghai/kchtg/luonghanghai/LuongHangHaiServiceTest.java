@@ -265,23 +265,23 @@ class LuongHangHaiServiceTest {
 
     @Test void searchDocuments_shouldReturnPaginated() {
         Page<LuongHangHai> p = new PageImpl<>(List.of(testEntity));
-        when(repo.searchDocuments(eq("%tau%"), eq("12:00"), eq("1000"),
+        when(repo.searchDocuments(eq(null), eq("%tau%"), eq("12:00"), eq("1000"),
                 eq(LuongHangHaiApprovalStatus.APPROVED), any(Pageable.class))).thenReturn(p);
-        KetQuaTimKiemResponse r = service.searchDocuments("Tau", "12:00", "1000", "APPROVED", 0, 20);
+        KetQuaTimKiemResponse r = service.searchDocuments(null, "Tau", "12:00", "1000", "APPROVED", 0, 20);
         assertThat(r.getTotalElements()).isEqualTo(1);
     }
 
     @Test void searchDocuments_shouldHandleNullKeyword() {
         Page<LuongHangHai> p = new PageImpl<>(List.of(testEntity));
-        when(repo.searchDocuments(eq(null), eq(null), eq(null), eq(null), any(Pageable.class))).thenReturn(p);
-        KetQuaTimKiemResponse r = service.searchDocuments(null, null, null, null, 0, 20);
+        when(repo.searchDocuments(eq(null), eq(null), eq(null), eq(null), eq(null), any(Pageable.class))).thenReturn(p);
+        KetQuaTimKiemResponse r = service.searchDocuments(null, null, null, null, null, 0, 20);
         assertThat(r).isNotNull();
     }
 
     @Test void searchDocuments_shouldHandleInvalidEnum() {
         Page<LuongHangHai> p = new PageImpl<>(List.of(testEntity));
-        when(repo.searchDocuments(eq(null), eq(null), eq(null), eq(null), any(Pageable.class))).thenReturn(p);
-        KetQuaTimKiemResponse r = service.searchDocuments(null, null, null, "INVALID", 0, 20);
+        when(repo.searchDocuments(eq(null), eq(null), eq(null), eq(null), eq(null), any(Pageable.class))).thenReturn(p);
+        KetQuaTimKiemResponse r = service.searchDocuments(null, null, null, null, "INVALID", 0, 20);
         assertThat(r).isNotNull();
     }
 }

@@ -17,4 +17,5 @@ public class TramRadarUpdateRequest {
     private BigDecimal dienTichPhaXa;
     private String nguonGoc;
     private String tinhTrang;
+    private java.util.UUID orgUnitId;
 }

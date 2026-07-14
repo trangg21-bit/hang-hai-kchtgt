@@ -315,25 +315,25 @@ class DeKeServiceTest {
 
     @Test void searchDocuments_shouldReturnPaginated() {
         Page<DeKe> p = new PageImpl<>(List.of(testEntity));
-        when(repo.searchDocuments(eq("%de ke%"), eq(null), eq(null), eq(null), any(Pageable.class)))
+        when(repo.searchDocuments(eq(null), eq("%de ke%"), eq(null), eq(null), eq(null), any(Pageable.class)))
                 .thenReturn(p);
-        KetQuaTimKiemResponse r = service.searchDocuments("De ke", null, null, null, 0, 20);
+        KetQuaTimKiemResponse r = service.searchDocuments(null, "De ke", null, null, null, 0, 20);
         assertThat(r.getTotalElements()).isEqualTo(1);
     }
 
     @Test void searchDocuments_shouldHandleNullKeyword() {
         Page<DeKe> p = new PageImpl<>(List.of(testEntity));
-        when(repo.searchDocuments(eq(null), eq(null), eq(null), eq(null), any(Pageable.class)))
+        when(repo.searchDocuments(eq(null), eq(null), eq(null), eq(null), eq(null), any(Pageable.class)))
                 .thenReturn(p);
-        KetQuaTimKiemResponse r = service.searchDocuments(null, null, null, null, 0, 20);
+        KetQuaTimKiemResponse r = service.searchDocuments(null, null, null, null, null, 0, 20);
         assertThat(r).isNotNull();
     }
 
     @Test void searchDocuments_shouldHandleInvalidEnum() {
         Page<DeKe> p = new PageImpl<>(List.of(testEntity));
-        when(repo.searchDocuments(eq(null), eq(null), eq(null), eq(null), any(Pageable.class)))
+        when(repo.searchDocuments(eq(null), eq(null), eq(null), eq(null), eq(null), any(Pageable.class)))
                 .thenReturn(p);
-        KetQuaTimKiemResponse r = service.searchDocuments(null, null, null, "INVALID", 0, 20);
+        KetQuaTimKiemResponse r = service.searchDocuments(null, null, null, null, "INVALID", 0, 20);
         assertThat(r).isNotNull();
     }
 }

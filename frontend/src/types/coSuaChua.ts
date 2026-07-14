@@ -16,6 +16,7 @@ export interface CoSuaChuaResponse {
   loaiCoSo: string;
   khaNang?: string;
   chuQuan?: string;
+  orgUnitId?: string;
   trangThai: string; // status as plain String, not enum
   pheDuyetC1?: boolean;
   nguoiPheDuyetC1?: string;
@@ -42,6 +43,7 @@ export interface CreateCoSuaChuaRequest {
   loaiCoSo: string;
   khaNang?: string;
   chuQuan?: string;
+  orgUnitId?: string;
 }
 
 export interface UpdateCoSuaChuaRequest extends CreateCoSuaChuaRequest {}
@@ -63,6 +65,7 @@ export interface HistoryEntry {
 export interface ListParams {
   page?: number;
   size?: number;
+  orgUnitId?: string;
   keyword?: string;
   tinhThanh?: string;
   trangThai?: string;

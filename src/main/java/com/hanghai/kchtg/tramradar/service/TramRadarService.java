@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +31,7 @@ public class TramRadarService {
                 .dienTichPhaXa(request.getDienTichPhaXa())
                 .nguonGoc(request.getNguonGoc())
                 .tinhTrang(request.getTinhTrang())
+                .orgUnitId(request.getOrgUnitId())
                 .trangThai(TramRadarApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
@@ -86,6 +88,7 @@ public class TramRadarService {
         if (request.getDienTichPhaXa() != null) entity.setDienTichPhaXa(request.getDienTichPhaXa());
         if (request.getNguonGoc() != null) entity.setNguonGoc(request.getNguonGoc());
         if (request.getTinhTrang() != null) entity.setTinhTrang(request.getTinhTrang());
+        if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
 
         TramRadar saved = repository.save(entity);
 
@@ -199,12 +202,12 @@ public class TramRadarService {
                         .build()).toList();
     }
 
-    public List<TramRadarResponse> search(String keyword, String tinhTrang, String trangThai) {
+    public List<TramRadarResponse> search(UUID orgUnitId, String keyword, String tinhTrang, String trangThai) {
         String keywordLike = (keyword != null && !keyword.trim().isEmpty())
                 ? "%" + keyword.trim().toLowerCase() + "%"
                 : null;
         TramRadarApprovalStatus statusEnum = (trangThai != null && !trangThai.trim().isEmpty()) ? TramRadarApprovalStatus.fromString(trangThai) : null;
-        return repository.search(keywordLike, tinhTrang, statusEnum, org.springframework.data.domain.Pageable.unpaged()).stream()
+        return repository.search(orgUnitId, keywordLike, tinhTrang, statusEnum, org.springframework.data.domain.Pageable.unpaged()).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -232,6 +235,7 @@ public class TramRadarService {
                 .dienTichPhaXa(entity.getDienTichPhaXa())
                 .nguonGoc(entity.getNguonGoc())
                 .tinhTrang(entity.getTinhTrang())
+                .orgUnitId(entity.getOrgUnitId())
                 .trangThai(entity.getTrangThai())
                 .pheDuyetC1(entity.getPheDuyetC1())
                 .nguoiPheDuyetC1(entity.getNguoiPheDuyetC1())

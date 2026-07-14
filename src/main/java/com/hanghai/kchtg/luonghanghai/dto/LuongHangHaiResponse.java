@@ -15,6 +15,7 @@ public class LuongHangHaiResponse {
     private String taiTrong;
     private String dienTichDangBo;
     private String ghiChu;
+    private java.util.UUID orgUnitId;
     private LuongHangHaiApprovalStatus approvalStatus;
     private Boolean pheDuyetC1;
     private String nguoiPheDuyetC1;

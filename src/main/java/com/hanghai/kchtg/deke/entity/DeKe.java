@@ -38,6 +38,9 @@ public class DeKe {
     @Column(name = "ghi_chu", length = 500)
     private String ghiChu;
 
+    @Column(name = "org_unit_id")
+    private UUID orgUnitId;
+
     @Column(name = "trang_thai_phe_duyet", nullable = false)
     @Convert(converter = DeKeApprovalStatusConverter.class)
     private DeKeApprovalStatus trangThaiPheDuyet;

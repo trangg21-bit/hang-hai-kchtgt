@@ -5,6 +5,7 @@ import {
   Button,
   Input,
   InputNumber,
+  Select,
   DatePicker,
   TimePicker,
   Card,
@@ -18,6 +19,7 @@ import {
 } from 'antd';
 import dayjs from 'dayjs';
 import { luongHangHaiCRUD, luongHangHaiApproval } from '../../services/luongHangHaiService';
+import { organizationService } from '../../services/organizationService';
 import type {
   LuongHangHaiResponse,
   CreateLuongHangHaiRequest,
@@ -60,6 +62,18 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await organizationService.list({ pageSize: 1000 });
+        setOrganizations(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load organizations', err);
+      }
+    })();
+  }, []);
 
   // Fetch detail data
   useEffect(() => {
@@ -78,6 +92,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
             taiTrong: data.taiTrong,
             dienTichDangBo: data.dienTichDangBo,
             ghiChu: data.ghiChu,
+            orgUnitId: data.orgUnitId,
           });
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
@@ -122,15 +137,16 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
         taiTrong: values.taiTrong,
         dienTichDangBo: values.dienTichDangBo,
         ghiChu: values.ghiChu,
+        orgUnitId: values.orgUnitId,
       };
 
       if (isCreateMode) {
-        const newRecord = await luongHangHaiCRUD.create(payload as CreateLuongHangHaiRequest);
+        await luongHangHaiCRUD.create(payload as CreateLuongHangHaiRequest);
         message.success('Tạo mới thành công');
         if (isModalMode) {
           onSuccess?.();
         } else {
-          navigate(`/luong-hang-hai/${newRecord.id}`);
+          navigate('/luong-hang-hai');
         }
       } else if (id && isEditMode) {
         await luongHangHaiCRUD.update(id, payload as UpdateLuongHangHaiRequest);
@@ -138,7 +154,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
         if (isModalMode) {
           onSuccess?.();
         } else {
-          navigate(`/luong-hang-hai/${id}`);
+          navigate('/luong-hang-hai');
         }
       }
     } catch (err) {
@@ -251,6 +267,9 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
               <Descriptions.Item label="Diện tích đăng bộ">{record.dienTichDangBo ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Ghi chú" span={2}>
                 {record.ghiChu ?? '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Đơn vị quản lý" span={2}>
+                {record.orgUnitId ? organizations.find(o => o.id === record.orgUnitId)?.name || record.orgUnitId : '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
                 <ApprovalStatusBadge status={record.approvalStatus} />
@@ -408,6 +427,20 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
               <InputNumber min={0} max={999999999999} placeholder="Nhập diện tích đăng bộ" style={{ width: '100%' }} />
             </Form.Item>
 
+            <Form.Item
+              label="Đơn vị quản lý"
+              name="orgUnitId"
+            >
+              <Select
+                placeholder="Chọn đơn vị quản lý"
+                allowClear
+                options={organizations.map((org) => ({
+                  value: org.id,
+                  label: org.code ? `${org.code} - ${org.name}` : org.name,
+                }))}
+              />
+            </Form.Item>
+
             <Form.Item label="Ghi chú" name="ghiChu">
               <Input.TextArea
                 placeholder="Nhập ghi chú"
@@ -504,6 +537,20 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
             name="dienTichDangBo"
           >
             <InputNumber min={0} max={999999999999} placeholder="Nhập diện tích đăng bộ" style={{ width: '100%' }} />
+          </Form.Item>
+
+          <Form.Item
+            label="Đơn vị quản lý"
+            name="orgUnitId"
+          >
+            <Select
+              placeholder="Chọn đơn vị quản lý"
+              allowClear
+              options={organizations.map((org) => ({
+                value: org.id,
+                label: org.code ? `${org.code} - ${org.name}` : org.name,
+              }))}
+            />
           </Form.Item>
 
           <Form.Item label="Ghi chú" name="ghiChu">
