@@ -2,7 +2,6 @@ import axios from 'axios';
 import { message } from 'antd';
 
 const api = axios.create({
-  baseURL: '/api',
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
@@ -39,6 +38,7 @@ const showUniqueError = (msg: string) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    console.error('[api] Error:', error.response?.status, error.config?.url, error.response?.data || error.message);
     const status = error.response?.status;
     let friendlyMsg = 'Có lỗi xảy ra, vui lòng thử lại.';
 
