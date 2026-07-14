@@ -31,7 +31,7 @@ export default function PasswordResetPage({ mode }: PasswordResetPageProps) {
 
   useEffect(() => {
     // Load password policy from public endpoint
-    api.get('/api/auth/password-policy')
+    api.get('/auth/password-policy')
       .then((res) => {
         if (res.data?.data) {
           setPolicy(res.data.data);

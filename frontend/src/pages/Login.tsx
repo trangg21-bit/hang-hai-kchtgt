@@ -84,7 +84,7 @@ export default function LoginPage() {
   const handleLogin = useCallback(async (values: LoginRequest) => {
     setSubmitting(true);
     try {
-      const res = await api.post('/api/auth/login', values);
+      const res = await api.post('/auth/login', values);
       const { success, data, message: msg } = res.data;
 
       if (!success) {
@@ -128,7 +128,7 @@ export default function LoginPage() {
     }
     setSubmitting(true);
     try {
-      const res = await api.post('/api/auth/login/totp', { userId, totpCode: totpCode.trim() });
+      const res = await api.post('/auth/login/totp', { userId, totpCode: totpCode.trim() });
       const { success, data, message: msg } = res.data;
 
       if (!success) {
