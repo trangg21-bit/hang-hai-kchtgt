@@ -75,10 +75,16 @@ class NhaTramPhaoControllerTest {
     }
 
     private NhaTramPhaoResponse makeResponse(UUID id, String name) {
-        return new NhaTramPhaoResponse(
-                id, "PHAO-001", name, null, 10.0, 106.0,
-                null, null, null, 15.0, "Mo ta", null, null, null, true,
-                null, null, null, null, null, null, null, null);
+        return NhaTramPhaoResponse.builder()
+                .id(id)
+                .code("PHAO-001")
+                .name(name)
+                .latitude(10.0)
+                .longitude(106.0)
+                .range(15.0)
+                .description("Mo ta")
+                .isActive(true)
+                .build();
     }
 
     @Test
