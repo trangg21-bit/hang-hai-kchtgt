@@ -7,17 +7,14 @@ import { createCangBien } from './api';
 import { TRANG_THAI_HOAT_DONG_OPTIONS } from './schema';
 import type { CreateCangBienRequest } from './types';
 import { VIETNAM_PROVINCES } from '../../types/common';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
 
 export default function CangBienCreatePage() {
   const navigate = useNavigate();
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
 
-  const viDo = Form.useWatch('viDo', form);
-  const kinhDo = Form.useWatch('kinhDo', form);
-  const gpsPairedWarning =
-    ((viDo !== undefined && viDo != null && !Number.isNaN(viDo)) !==
-      (kinhDo !== undefined && kinhDo != null && !Number.isNaN(kinhDo)));
+  const createLoaiHinhHoc = Form.useWatch('loaiHinhHoc', form) || 'POINT';
 
   const handleFinish = async (values: Record<string, unknown>) => {
     // Manual field validation
@@ -27,18 +24,7 @@ export default function CangBienCreatePage() {
     if (maCang.length > 50) { toast.error('Mã cảng tối đa 50 ký tự'); return; }
     if (!tenCang) { toast.error('Tên cảng không được để trống'); return; }
     if (tenCang.length > 255) { toast.error('Tên cảng tối đa 255 ký tự'); return; }
-    const vi = values.viDo as number;
-    const jd = values.kinhDo as number;
-    const viPresent = vi !== undefined && vi != null && !Number.isNaN(vi);
-    const jdPresent = jd !== undefined && jd != null && !Number.isNaN(jd);
-    if (viPresent !== jdPresent) {
-      toast.error('Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau');
-      return;
-    }
-    if (viPresent && vi < -90) { toast.error('Vĩ độ phải từ -90 đến 90'); return; }
-    if (viPresent && vi > 90) { toast.error('Vĩ độ phải từ -90 đến 90'); return; }
-    if (jdPresent && jd < -180) { toast.error('Kinh độ phải từ -180 đến 180'); return; }
-    if (jdPresent && jd > 180) { toast.error('Kinh độ phải từ -180 đến 180'); return; }
+    
     const dienTich = values.dienTich as number;
     if (dienTich === undefined || dienTich === null || dienTich <= 0) {
       toast.error('Diện tích phải lớn hơn 0'); return;
@@ -50,12 +36,13 @@ export default function CangBienCreatePage() {
         maCang,
         tenCang,
         tinhThanhPho: (values.tinhThanhPho as string) || undefined,
-        viDo: viPresent ? vi : undefined,
-        kinhDo: jdPresent ? jd : undefined,
         dienTich,
         khaNangTiepNhan: values.khaNangTiepNhan as number | undefined,
         trangThaiHoatDong: (values.trangThaiHoatDong as string) || undefined,
         trangThaiPheDuyet: (values.trangThaiPheDuyet as string) || 'CHO_PHE_DUYET',
+        bieuTuongId: (values.gisLocation as any)?.bieuTuongId || undefined,
+        loaiHinhHoc: values.loaiHinhHoc as string,
+        toaDo: (values.gisLocation as any)?.toaDo,
       };
       await createCangBien(payload);
       toast.success('Tạo mới thành công — chờ phê duyệt');
@@ -88,7 +75,7 @@ export default function CangBienCreatePage() {
       </Card>
 
       <Card style={{ maxWidth: 800, margin: '0 auto' }}>
-        <Form form={form} layout="vertical" onFinish={handleFinish} initialValues={{ trangThaiPheDuyet: 'CHO_PHE_DUYET' }}>
+        <Form form={form} layout="vertical" onFinish={handleFinish} initialValues={{ loaiHinhHoc: 'POINT', trangThaiPheDuyet: 'CHO_PHE_DUYET' }}>
           {/* Info Section */}
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thông tin chung
@@ -132,21 +119,22 @@ export default function CangBienCreatePage() {
           </Typography.Text>
           <Row gutter={24}>
             <Col span={12}>
-              <Form.Item label="Vĩ độ (Latitude)" name="viDo" rules={[{ validator: (_, v) => { if (v === undefined || v === null || Number.isNaN(v)) return Promise.resolve(); if (v < -90 || v > 90) return Promise.reject('Vĩ độ phải từ -90 đến 90'); return Promise.resolve(); } }]}>
-                <InputNumber min={-90} max={90} step={0.000001} precision={6} placeholder="VD: 20.9" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Kinh độ (Longitude)" name="kinhDo" rules={[{ validator: (_, v) => { if (v === undefined || v === null || Number.isNaN(v)) return Promise.resolve(); if (v < -180 || v > 180) return Promise.reject('Kinh độ phải từ -180 đến 180'); return Promise.resolve(); } }]}>
-                <InputNumber min={-180} max={180} step={0.000001} precision={6} placeholder="VD: -106.7" style={{ width: '100%' }} />
+              <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
+                <Select placeholder="Chọn loại đối tượng" options={[
+                  { value: 'POINT', label: 'Đối tượng điểm' },
+                  { value: 'LINE', label: 'Đối tượng đường' },
+                  { value: 'POLYGON', label: 'Đối tượng vùng' }
+                ]} />
               </Form.Item>
             </Col>
           </Row>
-          {gpsPairedWarning && (
-            <Card size="small" style={{ marginBottom: 16, backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
-              <Typography.Text type="warning">⚠️ Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau.</Typography.Text>
-            </Card>
-          )}
+          <Row gutter={24}>
+            <Col span={24}>
+              <Form.Item name="gisLocation">
+                <GisLocationSelector defaultGeometryType={createLoaiHinhHoc} />
+              </Form.Item>
+            </Col>
+          </Row>
 
           {/* Statistics Section */}
           <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>

@@ -95,6 +95,9 @@ public class TramRadar {
     @Builder.Default
     private Boolean isDeleted = false;
 
+    @Column(name = "spatial_id")
+    private java.util.UUID khongGianId;
+
     @OneToMany(mappedBy = "tramRadar", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<TramRadarAttachment> attachments = new ArrayList<>();

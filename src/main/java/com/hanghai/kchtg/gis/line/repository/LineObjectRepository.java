@@ -33,11 +33,11 @@ public interface LineObjectRepository extends JpaRepository<LineObject, UUID> {
     List<LineObject> findByCodeContainingIgnoreCase(String code);
 
     @Query(value = "SELECT * FROM gis_spatial_objects l WHERE " +
-            "l.geometry_type = 2 AND " +
-            "(:name IS NULL OR LOWER(l.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
-            "(:code IS NULL OR LOWER(l.code) LIKE LOWER(CONCAT('%', :code, '%'))) AND " +
-            "(:objectType IS NULL OR l.object_type = :objectType) AND " +
-            "(:status IS NULL OR l.status = :status)", nativeQuery = true)
+            "l.geometry_type = 2 AND l.ref_id IS NULL AND " +
+            "(cast(:name as text) IS NULL OR LOWER(l.name) LIKE LOWER(CONCAT('%', cast(:name as text), '%'))) AND " +
+            "(cast(:code as text) IS NULL OR LOWER(l.code) LIKE LOWER(CONCAT('%', cast(:code as text), '%'))) AND " +
+            "(cast(:objectType as integer) IS NULL OR l.object_type = cast(:objectType as integer)) AND " +
+            "(cast(:status as integer) IS NULL OR l.status = cast(:status as integer))", nativeQuery = true)
     List<LineObject> searchFiltered(
             @Param("name") String name,
             @Param("code") String code,

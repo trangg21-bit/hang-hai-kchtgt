@@ -30,6 +30,7 @@ import {
 } from '../../services/nhatram/api';
 import type { NhaTramPhaoResponse, CreateNhaTramPhaoRequest } from '../../services/nhatram/types';
 import dayjs from 'dayjs';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
 
 export default function NhaTramPhaoList() {
   const [dataSource, setDataSource] = useState<NhaTramPhaoResponse[]>([]);
@@ -46,6 +47,8 @@ export default function NhaTramPhaoList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<NhaTramPhaoResponse | null>(null);
   const [form] = Form.useForm();
+
+  const watchLoaiHinhHoc = Form.useWatch('loaiHinhHoc', form) || 'POINT';
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -76,8 +79,6 @@ export default function NhaTramPhaoList() {
         code: record.code,
         name: record.name,
         type: record.type,
-        latitude: record.latitude,
-        longitude: record.longitude,
         color: record.color,
         shape: record.shape,
         lightCharacteristic: record.lightCharacteristic,
@@ -86,10 +87,17 @@ export default function NhaTramPhaoList() {
         lastInspectionDate: record.lastInspectionDate ? dayjs(record.lastInspectionDate) : null,
         nextInspectionDate: record.nextInspectionDate ? dayjs(record.nextInspectionDate) : null,
         isActive: record.isActive,
+        loaiHinhHoc: record.loaiHinhHoc || 'POINT',
+        gisLocation: {
+          loaiHinhHoc: record.loaiHinhHoc || 'POINT',
+          toaDo: record.toaDo || '',
+          bieuTuongId: record.bieuTuongId
+        }
       });
     } else {
       setEditingItem(null);
       form.resetFields();
+      form.setFieldsValue({ loaiHinhHoc: 'POINT' });
     }
     setIsModalOpen(true);
   };
@@ -108,6 +116,9 @@ export default function NhaTramPhaoList() {
         ...values,
         lastInspectionDate: values.lastInspectionDate ? values.lastInspectionDate.format('YYYY-MM-DD') : '',
         nextInspectionDate: values.nextInspectionDate ? values.nextInspectionDate.format('YYYY-MM-DD') : '',
+        bieuTuongId: values.gisLocation?.bieuTuongId || undefined,
+        loaiHinhHoc: values.loaiHinhHoc,
+        toaDo: values.gisLocation?.toaDo,
       };
 
       if (editingItem) {
@@ -129,7 +140,7 @@ export default function NhaTramPhaoList() {
   const handleDelete = async (id: string) => {
     try {
       await deleteNhaTramPhao(id);
-      message.success('Xóa nhà trạm phao tiêu thành công!');
+      message.success('Xóa nhà trạm thành công!');
       loadData();
     } catch (err: any) {
       message.error(err.message || 'Lỗi khi xóa nhà trạm');
@@ -138,12 +149,12 @@ export default function NhaTramPhaoList() {
 
   const columns = [
     {
-      title: 'Mã trạm phao',
+      title: 'Mã trạm',
       dataIndex: 'code',
       key: 'code',
     },
     {
-      title: 'Tên nhà trạm',
+      title: 'Tên nhà trạm phao',
       dataIndex: 'name',
       key: 'name',
     },
@@ -155,8 +166,8 @@ export default function NhaTramPhaoList() {
         if (val === 'CARDINAL') return 'Phao hướng (Cardinal)';
         if (val === 'SECTOR') return 'Phao phân khu (Sector)';
         if (val === 'SPECIAL') return 'Phao đặc biệt (Special)';
-        if (val === 'SAFE_WATER') return 'Vùng nước an toàn (Safe water)';
-        if (val === 'ISOLATED_DANGER') return 'Nguy hiểm cô lập (Isolated danger)';
+        if (val === 'SAFE_WATER') return 'Phao vùng nước an toàn (Safe water)';
+        if (val === 'ISOLATED_DANGER') return 'Phao nguy hiểm cô lập (Isolated danger)';
         return val || 'Chưa xác định';
       }
     },
@@ -171,43 +182,59 @@ export default function NhaTramPhaoList() {
       key: 'longitude',
     },
     {
+      title: 'Tầm nhìn xa (Hải lý)',
+      dataIndex: 'range',
+      key: 'range',
+    },
+    {
       title: 'Màu sắc phao',
       dataIndex: 'color',
       key: 'color',
     },
     {
-      title: 'Hình dạng thiết kế',
-      dataIndex: 'shape',
-      key: 'shape',
-    },
-    {
       title: 'Trạng thái hoạt động',
       dataIndex: 'isActive',
       key: 'isActive',
-      render: (active: boolean) => (
-        <Tag color={active ? 'success' : 'error'}>{active ? 'Đang hoạt động' : 'Tạm dừng'}</Tag>
-      ),
+      render: (val: boolean) => (
+        <Tag color={val ? 'success' : 'default'}>
+          {val ? 'Hoạt động' : 'Tạm dừng'}
+        </Tag>
+      )
     },
     {
-      title: 'Thao tác',
+      title: 'Trạng thái phê duyệt',
+      dataIndex: 'status',
+      key: 'status',
+      render: (val: string) => {
+        if (val === 'DRAFT') return <Tag color="orange">Chờ phê duyệt</Tag>;
+        if (val === 'APPROVED_L1') return <Tag color="blue">Đã phê duyệt Cấp 1</Tag>;
+        if (val === 'APPROVED_L2') return <Tag color="blue">Đã phê duyệt Cấp 2</Tag>;
+        if (val === 'PUBLISHED') return <Tag color="green">Được phê duyệt</Tag>;
+        if (val === 'DELETED') return <Tag color="red">Đã xóa</Tag>;
+        return <Tag color="orange">Chờ phê duyệt</Tag>;
+      }
+    },
+    {
+      title: 'Hành động',
       key: 'action',
       render: (_: any, record: NhaTramPhaoResponse) => (
         <Space size="middle">
           <Tooltip title="Chỉnh sửa">
             <Button
-              type="text"
+              type="primary"
+              shape="circle"
               icon={<EditOutlined />}
               onClick={() => handleOpenModal(record)}
             />
           </Tooltip>
           <Popconfirm
-            title="Bạn có chắc chắn muốn xóa nhà trạm phao tiêu này?"
+            title="Bạn có chắc chắn muốn xóa nhà trạm phao này?"
             onConfirm={() => handleDelete(record.id)}
-            okText="Có"
-            cancelText="Không"
+            okText="Xóa"
+            cancelText="Hủy"
           >
             <Tooltip title="Xóa">
-              <Button type="text" danger icon={<DeleteOutlined />} />
+              <Button type="primary" danger shape="circle" icon={<DeleteOutlined />} />
             </Tooltip>
           </Popconfirm>
         </Space>
@@ -217,59 +244,35 @@ export default function NhaTramPhaoList() {
 
   return (
     <Card
-      title="Danh sách nhà trạm phao tiêu hàng hải"
+      title="Danh sách Nhà trạm phao tiêu"
       extra={
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={loadData} />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => handleOpenModal()}
-          >
-            Thêm nhà trạm
-          </Button>
-        </Space>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
+          Thêm mới
+        </Button>
       }
     >
-      <div style={{ marginBottom: 16 }}>
-        <Space wrap>
-          <Input
-            placeholder="Tìm theo tên nhà trạm phao..."
-            value={filterKeyword}
-            onChange={(e) => {
-              setFilterKeyword(e.target.value);
-              setPage(1);
-            }}
-            style={{ width: 250 }}
-          />
-          <Select
-            placeholder="Loại phao tiêu"
-            value={filterType}
-            onChange={(val) => {
-              setFilterType(val);
-              setPage(1);
-            }}
-            style={{ width: 200 }}
-            allowClear
-            options={[
-              { label: 'Phao hướng (Cardinal)', value: 'CARDINAL' },
-              { label: 'Phao phân khu (Sector)', value: 'SECTOR' },
-              { label: 'Phao đặc biệt (Special)', value: 'SPECIAL' },
-              { label: 'Phao vùng nước an toàn', value: 'SAFE_WATER' },
-              { label: 'Phao nguy hiểm cô lập', value: 'ISOLATED_DANGER' },
-            ]}
-          />
-          <Button
-            onClick={() => {
-              setFilterKeyword('');
-              setFilterType(undefined);
-              setPage(1);
-            }}
-          >
-            Xóa bộ lọc
-          </Button>
-        </Space>
-      </div>
+      <Space style={{ marginBottom: 16 }}>
+        <Input
+          placeholder="Tìm theo tên nhà trạm..."
+          value={filterKeyword}
+          onChange={(e) => setFilterKeyword(e.target.value)}
+          style={{ width: 250 }}
+        />
+        <Select
+          placeholder="Lọc theo loại..."
+          allowClear
+          value={filterType}
+          onChange={(val) => setFilterType(val)}
+          style={{ width: 200 }}
+        >
+          <Select.Option value="CARDINAL">Phao hướng (Cardinal)</Select.Option>
+          <Select.Option value="SECTOR">Phao phân khu (Sector)</Select.Option>
+          <Select.Option value="SPECIAL">Phao đặc biệt (Special)</Select.Option>
+          <Select.Option value="SAFE_WATER">Phao vùng nước an toàn (Safe water)</Select.Option>
+          <Select.Option value="ISOLATED_DANGER">Phao nguy hiểm cô lập (Isolated danger)</Select.Option>
+        </Select>
+        <Button icon={<ReloadOutlined />} onClick={loadData}>Tải lại</Button>
+      </Space>
 
       <Table
         dataSource={dataSource}
@@ -350,30 +353,18 @@ export default function NhaTramPhaoList() {
           </Space>
 
           <Space size="large" style={{ display: 'flex', width: '100%' }}>
-            <Form.Item
-              name="latitude"
-              label="Vĩ độ (Lat)"
-              rules={[
-                { required: true, message: 'Vui lòng nhập vĩ độ' },
-                { type: 'number', min: -90, max: 90, message: 'Vĩ độ phải từ -90 đến 90' }
-              ]}
-              style={{ width: 300 }}
-            >
-              <InputNumber style={{ width: '100%' }} min={-90} max={90} step={0.000001} placeholder="Ví dụ: 20.8415" />
-            </Form.Item>
-
-            <Form.Item
-              name="longitude"
-              label="Kinh độ (Long)"
-              rules={[
-                { required: true, message: 'Vui lòng nhập kinh độ' },
-                { type: 'number', min: -180, max: 180, message: 'Kinh độ phải từ -180 đến 180' }
-              ]}
-              style={{ width: 300 }}
-            >
-              <InputNumber style={{ width: '100%' }} min={-180} max={180} step={0.000001} placeholder="Ví dụ: 106.6912" />
+            <Form.Item name="loaiHinhHoc" label="Loại đối tượng" rules={[{ required: true }]} style={{ width: 300 }}>
+              <Select placeholder="Chọn loại đối tượng" options={[
+                { value: 'POINT', label: 'Đối tượng điểm' },
+                { value: 'LINE', label: 'Đối tượng đường' },
+                { value: 'POLYGON', label: 'Đối tượng vùng' }
+              ]} />
             </Form.Item>
           </Space>
+
+          <Form.Item name="gisLocation">
+            <GisLocationSelector defaultGeometryType={watchLoaiHinhHoc} />
+          </Form.Item>
 
           <Space size="large" style={{ display: 'flex', width: '100%' }}>
             <Form.Item name="color" label="Màu sắc phao" style={{ width: 300 }}>

@@ -20,6 +20,7 @@ import {
 import dayjs from 'dayjs';
 import { luongHangHaiCRUD, luongHangHaiApproval } from '../../services/luongHangHaiService';
 import { organizationService } from '../../services/organizationService';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type {
   LuongHangHaiResponse,
   CreateLuongHangHaiRequest,
@@ -93,6 +94,11 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
             dienTichDangBo: data.dienTichDangBo,
             ghiChu: data.ghiChu,
             donViId: data.donViId,
+            spatialData: {
+              loaiHinhHoc: data.loaiHinhHoc,
+              toaDo: data.toaDo,
+              bieuTuongId: data.bieuTuongId,
+            }
           });
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
@@ -129,6 +135,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
   const handleSubmitForm = async (values: any) => {
     setIsSubmitting(true);
     try {
+      const spatialData = values.spatialData;
       const payload = {
         loaiTau: values.loaiTau,
         soLuong: values.soLuong,
@@ -138,6 +145,9 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
         dienTichDangBo: values.dienTichDangBo,
         ghiChu: values.ghiChu,
         donViId: values.donViId,
+        loaiHinhHoc: spatialData?.loaiHinhHoc,
+        toaDo: spatialData?.toaDo,
+        bieuTuongId: spatialData?.bieuTuongId,
       };
 
       if (isCreateMode) {
@@ -560,6 +570,10 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
               showCount
               rows={4}
             />
+          </Form.Item>
+
+          <Form.Item label="Vị trí/Hình vẽ bản đồ" name="spatialData">
+            <GisLocationSelector defaultGeometryType="LINE" />
           </Form.Item>
 
           <Form.Item>

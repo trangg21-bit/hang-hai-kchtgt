@@ -31,6 +31,7 @@ public class NhaTramDenService {
     private final PointObjectSyncService pointObjectSyncService;
     private final NotificationService notificationService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
 
     // -- READ --
 
@@ -94,6 +95,42 @@ public class NhaTramDenService {
         }
 
         entity = denRepo.save(entity);
+
+        String toaDo = request.getToaDo();
+        if ((toaDo == null || toaDo.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+            toaDo = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
+        }
+
+        if (toaDo != null && !toaDo.trim().isEmpty()) {
+            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_LIGHTHOUSE;
+            UUID refId = entity.getId();
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    null,
+                    entity.getName(),
+                    "DENBIEN_" + entity.getCode(),
+                    geomType,
+                    objType,
+                    toaDo,
+                    request.getBieuTuongId(),
+                    refId,
+                    com.hanghai.kchtg.gis.search.dto.KchtType.DENBIEN
+            );
+            entity.setKhongGianId(spatialObj.getId());
+            if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT) {
+                try {
+                    String clean = toaDo.replace("POINT", "").replace("(", "").replace(")", "").trim();
+                    String[] parts = clean.split("\\s+");
+                    if (parts.length == 2) {
+                        entity.setLongitude(Double.parseDouble(parts[0]));
+                        entity.setLatitude(Double.parseDouble(parts[1]));
+                    }
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+            entity = denRepo.save(entity);
+        }
 
         logHistory(entity, NhaTramHistoryActionType.CREATE, null, null, toJson(entity));
         notificationService.sendApprovalNotificationDen(entity);
@@ -161,6 +198,57 @@ public class NhaTramDenService {
 
         denRepo.save(entity);
 
+        // Sync to GisSpatialObject
+        String toaDo = request.getToaDo();
+        if ((toaDo == null || toaDo.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+            toaDo = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
+        }
+
+        if (toaDo != null && !toaDo.trim().isEmpty()) {
+            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_LIGHTHOUSE;
+            UUID refId = entity.getId();
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    entity.getKhongGianId(),
+                    entity.getName(),
+                    "DENBIEN_" + entity.getCode(),
+                    geomType,
+                    objType,
+                    toaDo,
+                    request.getBieuTuongId(),
+                    refId,
+                    com.hanghai.kchtg.gis.search.dto.KchtType.DENBIEN
+            );
+            entity.setKhongGianId(spatialObj.getId());
+            if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT) {
+                try {
+                    String clean = toaDo.replace("POINT", "").replace("(", "").replace(")", "").trim();
+                    String[] parts = clean.split("\\s+");
+                    if (parts.length == 2) {
+                        entity.setLongitude(Double.parseDouble(parts[0]));
+                        entity.setLatitude(Double.parseDouble(parts[1]));
+                    }
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+            denRepo.save(entity);
+        } else if (entity.getKhongGianId() != null) {
+            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_LIGHTHOUSE;
+            gisSpatialObjectService.createOrUpdate(
+                    entity.getKhongGianId(),
+                    entity.getName(),
+                    "DENBIEN_" + entity.getCode(),
+                    geomType,
+                    objType,
+                    "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")",
+                    request.getBieuTuongId(),
+                    entity.getId(),
+                    com.hanghai.kchtg.gis.search.dto.KchtType.DENBIEN
+            );
+        }
+
         // Compare JSON for actual changes
         String newJson = toJson(entity);
         if (!compareJsonNodes(oldJson, newJson)) {
@@ -190,6 +278,9 @@ public class NhaTramDenService {
         entity.setStatus(NhaTramStatus.DELETED);
         entity.softDelete();
         denRepo.save(entity);
+        if (entity.getKhongGianId() != null) {
+            gisSpatialObjectService.delete(entity.getKhongGianId());
+        }
 
         logHistory(entity, NhaTramHistoryActionType.SOFT_DELETE, null, null, toJson(entity));
 
@@ -338,7 +429,7 @@ public class NhaTramDenService {
     }
 
     private NhaTramDenResponse toResponse(NhaTramDen entity) {
-        return NhaTramDenResponse.builder()
+        NhaTramDenResponse.NhaTramDenResponseBuilder builder = NhaTramDenResponse.builder()
                 .id(entity.getId())
                 .code(entity.getCode())
                 .name(entity.getName())
@@ -361,8 +452,17 @@ public class NhaTramDenService {
                 .approvedDate(entity.getApprovedDate())
                 .rejectionReason(entity.getRejectionReason())
                 .createdAt(entity.getCreatedAt())
-                .updatedAt(entity.getUpdatedAt())
-                .build();
+                .updatedAt(entity.getUpdatedAt());
+
+        if (entity.getKhongGianId() != null) {
+            builder.khongGianId(entity.getKhongGianId());
+            gisSpatialObjectService.findById(entity.getKhongGianId()).ifPresent(spatialObj -> {
+                builder.loaiHinhHoc(spatialObj.getGeometryType());
+                builder.toaDo(spatialObj.getCoordinates());
+                builder.bieuTuongId(spatialObj.getBieuTuongId());
+            });
+        }
+        return builder.build();
     }
 
     private boolean isApprovedStatus(NhaTramStatus status) {

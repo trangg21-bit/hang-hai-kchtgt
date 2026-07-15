@@ -342,6 +342,7 @@ public class KchtGis155Service {
             int size) {
 
         List<KchtGisSearchResult> results = new ArrayList<>();
+        Map<UUID, UUID> spatialIdMap = new HashMap<>();
         List<KchtType> types = (kchtTypes == null || kchtTypes.isEmpty()) ? Arrays.asList(KchtType.values())
                 : kchtTypes;
         String searchLower = (search == null || search.trim().isEmpty()) ? null : search.toLowerCase().trim();
@@ -369,21 +370,10 @@ public class KchtGis155Service {
             }
         }
 
-        // Log SQL queries and their execution plans (EXPLAIN ANALYZE) to console/logs
-        if (types.contains(KchtType.CANGBIEN)) {
-            explainAndLogCangBienQuery(orgUnitId, searchLower, TrangThaiHoatDong.HIEN_HANH, TrangThaiPheDuyet.DUOC_PHE_DUYET);
-        }
-        if (types.contains(KchtType.BENCANG)) {
-            explainAndLogBenCangQuery(orgUnitId, searchLower, TrangThaiHoatDong.HIEN_HANH, TrangThaiPheDuyet.DUOC_PHE_DUYET);
-        }
-        if (types.contains(KchtType.CAUCANG)) {
-            explainAndLogCauCangQuery(orgUnitId, searchLower, TrangThaiHoatDong.HIEN_HANH, TrangThaiPheDuyet.DUOC_PHE_DUYET);
-        }
-        if (types.contains(KchtType.VUNGNUOC)) {
-            explainAndLogVungNuocQuery(orgUnitId, searchLower, TrangThaiHoatDong.HIEN_HANH, TrangThaiPheDuyet.DUOC_PHE_DUYET);
-        }
+
 
         for (KchtType type : types) {
+            long tStart = System.currentTimeMillis();
             // Filter by geometry compatibility if objectType is set
             if (objectType != null) {
                 boolean isPointType = (type == KchtType.CANGBIEN || type == KchtType.BENCANG || type == KchtType.CAUCANG
@@ -408,6 +398,12 @@ public class KchtGis155Service {
                     List<CangBien> cangBiens = cangBienRepository.searchCangBien(
                             orgUnitId, null, null, tinhThanhStr, TrangThaiHoatDong.HIEN_HANH,
                             TrangThaiPheDuyet.DUOC_PHE_DUYET, searchLower, PageRequest.of(0, 10000)).getContent();
+                    Map<UUID, GisSpatialObject> cbSpatialMap = new HashMap<>();
+                    if (objectType != null && !cangBiens.isEmpty()) {
+                        List<UUID> cbIds = cangBiens.stream().map(CangBien::getId).collect(Collectors.toList());
+                        gisSpatialObjectRepository.findByRefIdInAndRefType(cbIds, KchtType.CANGBIEN)
+                                .forEach(so -> cbSpatialMap.put(so.getRefId(), so));
+                    }
                     for (CangBien cb : cangBiens) {
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(cb.getId())
@@ -421,7 +417,12 @@ public class KchtGis155Service {
                                 .longitude(cb.getKinhDo() != null ? cb.getKinhDo().doubleValue() : null)
                                 .bieuTuongId(cb.getBieuTuongId())
                                 .build();
-                        populateSpatialAndFilter(results, r, null, objectType, GisObjectType.POINT);
+                        if (objectType != null) {
+                            populateSpatialAndFilterFromMap(results, r, cb.getId(), objectType, GisObjectType.POINT, cbSpatialMap);
+                        } else {
+                            results.add(r);
+                            spatialIdMap.put(r.getId(), cb.getId());
+                        }
                     }
                     break;
 
@@ -433,6 +434,12 @@ public class KchtGis155Service {
                     Map<UUID, CangBien> bcCangBienMap = new HashMap<>();
                     if (!cbIds.isEmpty()) {
                         cangBienRepository.findAllById(cbIds).forEach(cb -> bcCangBienMap.put(cb.getId(), cb));
+                    }
+                    Map<UUID, GisSpatialObject> bcSpatialMap = new HashMap<>();
+                    if (objectType != null && !benCangs.isEmpty()) {
+                        List<UUID> bcIds = benCangs.stream().map(BenCang::getId).collect(Collectors.toList());
+                        gisSpatialObjectRepository.findByRefIdInAndRefType(bcIds, KchtType.BENCANG)
+                                .forEach(so -> bcSpatialMap.put(so.getRefId(), so));
                     }
                     for (BenCang bc : benCangs) {
                         CangBien parent = (bc.getCangBienId() != null) ? bcCangBienMap.get(bc.getCangBienId()) : null;
@@ -451,7 +458,12 @@ public class KchtGis155Service {
                                 .longitude(bc.getKinhDo() != null ? bc.getKinhDo().doubleValue() : null)
                                 .bieuTuongId(bc.getBieuTuongId())
                                 .build();
-                        populateSpatialAndFilter(results, r, null, objectType, GisObjectType.POINT);
+                        if (objectType != null) {
+                            populateSpatialAndFilterFromMap(results, r, bc.getId(), objectType, GisObjectType.POINT, bcSpatialMap);
+                        } else {
+                            results.add(r);
+                            spatialIdMap.put(r.getId(), bc.getId());
+                        }
                     }
                     break;
 
@@ -469,10 +481,12 @@ public class KchtGis155Service {
                     if (!parentCbIds.isEmpty()) {
                         cangBienRepository.findAllById(parentCbIds).forEach(cb -> cangBienMap.put(cb.getId(), cb));
                     }
-                    List<UUID> spatialIds = cauCangs.stream().map(CauCang::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, GisSpatialObject> spatialMap = new HashMap<>();
-                    if (!spatialIds.isEmpty()) {
-                        gisSpatialObjectRepository.findAllById(spatialIds).forEach(so -> spatialMap.put(so.getId(), so));
+                    if (objectType != null) {
+                        List<UUID> spatialIds = cauCangs.stream().map(CauCang::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        if (!spatialIds.isEmpty()) {
+                            gisSpatialObjectRepository.findAllById(spatialIds).forEach(so -> spatialMap.put(so.getId(), so));
+                        }
                     }
                     for (CauCang cc : cauCangs) {
                         BenCang parentBen = (cc.getBenCangId() != null) ? benCangMap.get(cc.getBenCangId()) : null;
@@ -488,12 +502,19 @@ public class KchtGis155Service {
                                 .orgName(getOrgName(cc.getDonViId(), orgNameMap))
                                 .kchtTypeLabel("Cầu cảng")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet(cc.getLoaiCau() != null ? cc.getLoaiCau().name() : "")
+                                .diaChiChiTiet(parentBen != null ? "Thuộc bến cảng: " + parentBen.getTenBen() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
                                 .bieuTuongId(cc.getBieuTuongId())
                                 .build();
-                        populateSpatialAndFilterFromMap(results, r, cc.getKhongGianId(), objectType, GisObjectType.LINE, spatialMap);
+                        if (objectType != null) {
+                            populateSpatialAndFilterFromMap(results, r, cc.getKhongGianId(), objectType, GisObjectType.LINE, spatialMap);
+                        } else {
+                            results.add(r);
+                            if (cc.getKhongGianId() != null) {
+                                spatialIdMap.put(cc.getId(), cc.getKhongGianId());
+                            }
+                        }
                     }
                     break;
 
@@ -501,6 +522,12 @@ public class KchtGis155Service {
                     List<CangCan> cangCans = cangCanRepository.searchCangCan(
                             orgUnitId, searchLower, TrangThaiHoatDong.HIEN_HANH, TrangThaiPheDuyet.DUOC_PHE_DUYET,
                             PageRequest.of(0, 10000)).getContent();
+                    Map<UUID, GisSpatialObject> ccSpatialMap = new HashMap<>();
+                    if (objectType != null && !cangCans.isEmpty()) {
+                        List<UUID> ccIds = cangCans.stream().map(CangCan::getId).collect(Collectors.toList());
+                        gisSpatialObjectRepository.findByRefIdInAndRefType(ccIds, KchtType.CANGCAN)
+                                .forEach(so -> ccSpatialMap.put(so.getRefId(), so));
+                    }
                     for (CangCan cc : cangCans) {
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(cc.getId())
@@ -514,7 +541,12 @@ public class KchtGis155Service {
                                 .longitude(cc.getKinhDo() != null ? cc.getKinhDo().doubleValue() : null)
                                 .bieuTuongId(cc.getBieuTuongId())
                                 .build();
-                        populateSpatialAndFilter(results, r, null, objectType, GisObjectType.POINT);
+                        if (objectType != null) {
+                            populateSpatialAndFilterFromMap(results, r, cc.getId(), objectType, GisObjectType.POINT, ccSpatialMap);
+                        } else {
+                            results.add(r);
+                            spatialIdMap.put(r.getId(), cc.getId());
+                        }
                     }
                     break;
 
@@ -527,10 +559,12 @@ public class KchtGis155Service {
                     if (!vnCbIds.isEmpty()) {
                         cangBienRepository.findAllById(vnCbIds).forEach(cb -> vnCangBienMap.put(cb.getId(), cb));
                     }
-                    List<UUID> vnSpatialIds = vungNuocs.stream().map(VungNuoc::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, GisSpatialObject> vnSpatialMap = new HashMap<>();
-                    if (!vnSpatialIds.isEmpty()) {
-                        gisSpatialObjectRepository.findAllById(vnSpatialIds).forEach(so -> vnSpatialMap.put(so.getId(), so));
+                    if (objectType != null) {
+                        List<UUID> vnSpatialIds = vungNuocs.stream().map(VungNuoc::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        if (!vnSpatialIds.isEmpty()) {
+                            gisSpatialObjectRepository.findAllById(vnSpatialIds).forEach(so -> vnSpatialMap.put(so.getId(), so));
+                        }
                     }
                     for (VungNuoc vn : vungNuocs) {
                         CangBien parent = (vn.getCangBienId() != null) ? vnCangBienMap.get(vn.getCangBienId()) : null;
@@ -547,12 +581,19 @@ public class KchtGis155Service {
                                 .orgName(getOrgName(vn.getDonViId(), orgNameMap))
                                 .kchtTypeLabel("Vùng nước")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet("")
+                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getTenCang() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
                                 .bieuTuongId(vn.getBieuTuongId())
                                 .build();
-                        populateSpatialAndFilterFromMap(results, r, vn.getKhongGianId(), objectType, GisObjectType.POLYGON, vnSpatialMap);
+                        if (objectType != null) {
+                            populateSpatialAndFilterFromMap(results, r, vn.getKhongGianId(), objectType, GisObjectType.POLYGON, vnSpatialMap);
+                        } else {
+                            results.add(r);
+                            if (vn.getKhongGianId() != null) {
+                                spatialIdMap.put(vn.getId(), vn.getKhongGianId());
+                            }
+                        }
                     }
                     break;
 
@@ -563,18 +604,32 @@ public class KchtGis155Service {
                             .filter(x -> searchLower == null ||
                                     (x.getLoaiTau() != null && x.getLoaiTau().toLowerCase().contains(searchLower)))
                             .collect(Collectors.toList());
+                    Map<UUID, GisSpatialObject> luongSpatialMap = new HashMap<>();
+                    if (objectType != null) {
+                        List<UUID> spatialIds = luongList.stream().map(LuongHangHai::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        if (!spatialIds.isEmpty()) {
+                            gisSpatialObjectRepository.findAllById(spatialIds).forEach(so -> luongSpatialMap.put(so.getId(), so));
+                        }
+                    }
                     for (LuongHangHai l : luongList) {
-                        results.add(KchtGisSearchResult.builder()
-                                .id(UUID.nameUUIDFromBytes(String.valueOf(l.getId()).getBytes()))
+                        UUID dtoId = UUID.nameUUIDFromBytes(String.valueOf(l.getId()).getBytes());
+                        KchtGisSearchResult r = KchtGisSearchResult.builder()
+                                .id(dtoId)
                                 .name("Luồng hàng hải " + l.getId() + " - " + l.getLoaiTau())
                                 .ma("LUONG_" + l.getId())
                                 .orgName(getOrgName(l.getDonViId(), orgNameMap))
                                 .kchtTypeLabel("Luồng hàng hải")
                                 .diaDiem("")
                                 .diaChiChiTiet(l.getGhiChu() != null ? l.getGhiChu() : "")
-                                .latitude(null)
-                                .longitude(null)
-                                .build());
+                                .build();
+                        if (objectType != null) {
+                            populateSpatialAndFilterFromMap(results, r, l.getKhongGianId(), objectType, GisObjectType.LINE, luongSpatialMap);
+                        } else {
+                            results.add(r);
+                            if (l.getKhongGianId() != null) {
+                                spatialIdMap.put(r.getId(), l.getKhongGianId());
+                            }
+                        }
                     }
                     break;
  
@@ -582,18 +637,32 @@ public class KchtGis155Service {
                     List<DeKe> deKeList = deKeRepository.searchDocuments(
                             orgUnitId, searchLower, null, null, DeKeApprovalStatus.APPROVED, PageRequest.of(0, 10000))
                             .getContent();
+                    Map<UUID, GisSpatialObject> deKeSpatialMap = new HashMap<>();
+                    if (objectType != null) {
+                        List<UUID> spatialIds = deKeList.stream().map(DeKe::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        if (!spatialIds.isEmpty()) {
+                            gisSpatialObjectRepository.findAllById(spatialIds).forEach(so -> deKeSpatialMap.put(so.getId(), so));
+                        }
+                    }
                     for (DeKe dk : deKeList) {
-                        results.add(KchtGisSearchResult.builder()
-                                .id(UUID.nameUUIDFromBytes(String.valueOf(dk.getId()).getBytes()))
+                        UUID dtoId = UUID.nameUUIDFromBytes(String.valueOf(dk.getId()).getBytes());
+                        KchtGisSearchResult r = KchtGisSearchResult.builder()
+                                .id(dtoId)
                                 .name("Đê kè " + dk.getId() + " - " + dk.getLoaiDe())
                                 .ma("DEKE_" + dk.getId())
                                 .orgName(getOrgName(dk.getDonViId(), orgNameMap))
                                 .kchtTypeLabel("Đê kè")
                                 .diaDiem("")
                                 .diaChiChiTiet(dk.getViTri() != null ? dk.getViTri() : "")
-                                .latitude(null)
-                                .longitude(null)
-                                .build());
+                                .build();
+                        if (objectType != null) {
+                            populateSpatialAndFilterFromMap(results, r, dk.getKhongGianId(), objectType, GisObjectType.LINE, deKeSpatialMap);
+                        } else {
+                            results.add(r);
+                            if (dk.getKhongGianId() != null) {
+                                spatialIdMap.put(r.getId(), dk.getKhongGianId());
+                            }
+                        }
                     }
                     break;
  
@@ -605,9 +674,17 @@ public class KchtGis155Service {
                                     (x.getTenCoSo() != null && x.getTenCoSo().toLowerCase().contains(searchLower)) ||
                                     (x.getDiaChi() != null && x.getDiaChi().toLowerCase().contains(searchLower)))
                             .collect(Collectors.toList());
+                    Map<UUID, GisSpatialObject> csSpatialMap = new HashMap<>();
+                    if (objectType != null) {
+                        List<UUID> csSpatialIds = csList.stream().map(CoSuaChuaDongTau::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        if (!csSpatialIds.isEmpty()) {
+                            gisSpatialObjectRepository.findAllById(csSpatialIds).forEach(so -> csSpatialMap.put(so.getId(), so));
+                        }
+                    }
                     for (CoSuaChuaDongTau cs : csList) {
-                        results.add(KchtGisSearchResult.builder()
-                                .id(UUID.nameUUIDFromBytes(String.valueOf(cs.getId()).getBytes()))
+                        UUID dtoId = UUID.nameUUIDFromBytes(String.valueOf(cs.getId()).getBytes());
+                        KchtGisSearchResult r = KchtGisSearchResult.builder()
+                                .id(dtoId)
                                 .name(cs.getTenCoSo())
                                 .ma("COSO_" + cs.getId())
                                 .orgName(getOrgName(cs.getOrgUnitId(), orgNameMap))
@@ -616,7 +693,15 @@ public class KchtGis155Service {
                                 .diaChiChiTiet(cs.getDiaChi() != null ? cs.getDiaChi() : "")
                                 .latitude(null)
                                 .longitude(null)
-                                .build());
+                                .build();
+                        if (objectType != null) {
+                            populateSpatialAndFilterFromMap(results, r, cs.getKhongGianId(), objectType, GisObjectType.POINT, csSpatialMap);
+                        } else {
+                            results.add(r);
+                            if (cs.getKhongGianId() != null) {
+                                spatialIdMap.put(r.getId(), cs.getKhongGianId());
+                            }
+                        }
                     }
                     break;
 
@@ -628,18 +713,30 @@ public class KchtGis155Service {
                                     (x.getName() != null && x.getName().toLowerCase().contains(searchLower)) ||
                                     (x.getCode() != null && x.getCode().toLowerCase().contains(searchLower)))
                             .collect(Collectors.toList());
+                    Map<UUID, GisSpatialObject> denSpatialMap = new HashMap<>();
+                    if (objectType != null && !denList.isEmpty()) {
+                        List<UUID> denIds = denList.stream().map(NhaTramDen::getId).collect(Collectors.toList());
+                        gisSpatialObjectRepository.findByRefIdInAndRefType(denIds, KchtType.DENBIEN)
+                                .forEach(so -> denSpatialMap.put(so.getRefId(), so));
+                    }
                     for (NhaTramDen den : denList) {
-                        results.add(KchtGisSearchResult.builder()
+                        KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(den.getId())
                                 .name(den.getName())
                                 .ma(den.getCode())
                                 .orgName(getOrgName(den.getUnitId(), orgNameMap))
                                 .kchtTypeLabel("Đèn biển")
                                 .diaDiem("")
-                                .diaChiChiTiet(den.getDescription() != null ? den.getDescription() : "")
+                                .diaChiChiTiet("Mô tả: " + (den.getDescription() != null ? den.getDescription() : "") + ", Đặc tính ánh sáng: " + (den.getLightCharacteristic() != null ? den.getLightCharacteristic() : "") + ", Tầm hiệu lực: " + (den.getLightRange() != null ? den.getLightRange() : "") + " hải lý")
                                 .latitude(den.getLatitude() != null ? den.getLatitude() : null)
                                 .longitude(den.getLongitude() != null ? den.getLongitude() : null)
-                                .build());
+                                .build();
+                        if (objectType != null) {
+                            populateSpatialAndFilterFromMap(results, r, den.getId(), objectType, GisObjectType.POINT, denSpatialMap);
+                        } else {
+                            results.add(r);
+                            spatialIdMap.put(r.getId(), den.getId());
+                        }
                     }
                     break;
 
@@ -651,18 +748,30 @@ public class KchtGis155Service {
                                     (x.getName() != null && x.getName().toLowerCase().contains(searchLower)) ||
                                     (x.getCode() != null && x.getCode().toLowerCase().contains(searchLower)))
                             .collect(Collectors.toList());
+                    Map<UUID, GisSpatialObject> phaoSpatialMap = new HashMap<>();
+                    if (objectType != null && !phaoList.isEmpty()) {
+                        List<UUID> phaoIds = phaoList.stream().map(NhaTramPhao::getId).collect(Collectors.toList());
+                        gisSpatialObjectRepository.findByRefIdInAndRefType(phaoIds, KchtType.PHAOTIEU)
+                                .forEach(so -> phaoSpatialMap.put(so.getRefId(), so));
+                    }
                     for (NhaTramPhao phao : phaoList) {
-                        results.add(KchtGisSearchResult.builder()
+                        KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(phao.getId())
                                 .name(phao.getName())
                                 .ma(phao.getCode())
                                 .orgName(getOrgName(phao.getUnitId(), orgNameMap))
                                 .kchtTypeLabel("Phao tiêu")
                                 .diaDiem("")
-                                .diaChiChiTiet(phao.getDescription() != null ? phao.getDescription() : "")
+                                .diaChiChiTiet("Mô tả: " + (phao.getDescription() != null ? phao.getDescription() : "") + ", Màu sắc: " + (phao.getColor() != null ? phao.getColor() : "") + ", Hình dạng: " + (phao.getShape() != null ? phao.getShape() : "") + ", Đặc tính ánh sáng: " + (phao.getLightCharacteristic() != null ? phao.getLightCharacteristic() : ""))
                                 .latitude(phao.getLatitude() != null ? phao.getLatitude() : null)
                                 .longitude(phao.getLongitude() != null ? phao.getLongitude() : null)
-                                .build());
+                                .build();
+                        if (objectType != null) {
+                            populateSpatialAndFilterFromMap(results, r, phao.getId(), objectType, GisObjectType.POINT, phaoSpatialMap);
+                        } else {
+                            results.add(r);
+                            spatialIdMap.put(r.getId(), phao.getId());
+                        }
                     }
                     break;
 
@@ -675,18 +784,34 @@ public class KchtGis155Service {
                                     ||
                                     (x.getViTri() != null && x.getViTri().toLowerCase().contains(searchLower)))
                             .collect(Collectors.toList());
+                    Map<UUID, GisSpatialObject> vtsSpatialMap = new HashMap<>();
+                    if (objectType != null) {
+                        List<UUID> vtsSpatialIds = vtsList.stream().map(HeThongVTS::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        if (!vtsSpatialIds.isEmpty()) {
+                            gisSpatialObjectRepository.findAllById(vtsSpatialIds).forEach(so -> vtsSpatialMap.put(so.getId(), so));
+                        }
+                    }
                     for (HeThongVTS vts : vtsList) {
-                        results.add(KchtGisSearchResult.builder()
-                                .id(UUID.nameUUIDFromBytes(String.valueOf(vts.getId()).getBytes()))
+                        UUID dtoId = UUID.nameUUIDFromBytes(String.valueOf(vts.getId()).getBytes());
+                        KchtGisSearchResult r = KchtGisSearchResult.builder()
+                                .id(dtoId)
                                 .name(vts.getTenHeThong())
                                 .ma("VTS_" + vts.getId())
                                 .orgName(getOrgName(vts.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Hệ thống VTS")
                                 .diaDiem("")
-                                .diaChiChiTiet(vts.getViTri() != null ? vts.getViTri() : "")
+                                .diaChiChiTiet("Vị trí: " + (vts.getViTri() != null ? vts.getViTri() : "") + ", Tình trạng: " + (vts.getTinhTrang() != null ? (vts.getTinhTrang() == com.hanghai.kchtg.vts.entity.TinhTrangVTS.TOT ? "Tốt" : vts.getTinhTrang() == com.hanghai.kchtg.vts.entity.TinhTrangVTS.XUONG_CAP ? "Xuống cấp" : "Hư hỏng") : "") + ", Mức độ phụ trách: " + (vts.getMucDoPhuTrach() != null ? vts.getMucDoPhuTrach() : ""))
                                 .latitude(null)
                                 .longitude(null)
-                                .build());
+                                .build();
+                        if (objectType != null) {
+                            populateSpatialAndFilterFromMap(results, r, vts.getKhongGianId(), objectType, GisObjectType.POINT, vtsSpatialMap);
+                        } else {
+                            results.add(r);
+                            if (vts.getKhongGianId() != null) {
+                                spatialIdMap.put(r.getId(), vts.getKhongGianId());
+                            }
+                        }
                     }
                     break;
 
@@ -698,18 +823,31 @@ public class KchtGis155Service {
                                     (x.getTenTram() != null && x.getTenTram().toLowerCase().contains(searchLower)) ||
                                     (x.getViTri() != null && x.getViTri().toLowerCase().contains(searchLower)))
                             .collect(Collectors.toList());
+                    Map<UUID, GisSpatialObject> radarSpatialMap = new HashMap<>();
+                    if (objectType != null && !radarList.isEmpty()) {
+                        List<UUID> radarIds = radarList.stream().map(tr -> UUID.nameUUIDFromBytes(String.valueOf(tr.getId()).getBytes())).collect(Collectors.toList());
+                        gisSpatialObjectRepository.findByRefIdInAndRefType(radarIds, KchtType.TRAM_RADAR)
+                                .forEach(so -> radarSpatialMap.put(so.getRefId(), so));
+                    }
                     for (TramRadar tr : radarList) {
-                        results.add(KchtGisSearchResult.builder()
-                                .id(UUID.nameUUIDFromBytes(String.valueOf(tr.getId()).getBytes()))
+                        UUID dtoId = UUID.nameUUIDFromBytes(String.valueOf(tr.getId()).getBytes());
+                        KchtGisSearchResult r = KchtGisSearchResult.builder()
+                                .id(dtoId)
                                 .name(tr.getTenTram())
                                 .ma("RADAR_" + tr.getId())
                                 .orgName(getOrgName(tr.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Trạm radar")
                                 .diaDiem("")
-                                .diaChiChiTiet(tr.getViTri() != null ? tr.getViTri() : "")
+                                .diaChiChiTiet("Vị trí: " + (tr.getViTri() != null ? tr.getViTri() : "") + ", Loại trạm: " + (tr.getLoaiTram() != null ? tr.getLoaiTram() : "") + ", Tình trạng: " + (tr.getTinhTrang() != null ? tr.getTinhTrang() : ""))
                                 .latitude(tr.getViDo() != null ? tr.getViDo().doubleValue() : null)
                                 .longitude(tr.getKinhDo() != null ? tr.getKinhDo().doubleValue() : null)
-                                .build());
+                                .build();
+                        if (objectType != null) {
+                            populateSpatialAndFilterFromMap(results, r, dtoId, objectType, GisObjectType.POINT, radarSpatialMap);
+                        } else {
+                            results.add(r);
+                            spatialIdMap.put(r.getId(), dtoId);
+                        }
                     }
                     break;
 
@@ -721,6 +859,13 @@ public class KchtGis155Service {
                     Map<UUID, CangBien> bpCangBienMap = new HashMap<>();
                     if (!bpCbIds.isEmpty()) {
                         cangBienRepository.findAllById(bpCbIds).forEach(cb -> bpCangBienMap.put(cb.getId(), cb));
+                    }
+                    Map<UUID, GisSpatialObject> bpSpatialMap = new HashMap<>();
+                    if (objectType != null) {
+                        List<UUID> bpSpatialIds = benPhaos.stream().map(VungNuoc::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        if (!bpSpatialIds.isEmpty()) {
+                            gisSpatialObjectRepository.findAllById(bpSpatialIds).forEach(so -> bpSpatialMap.put(so.getId(), so));
+                        }
                     }
                     for (VungNuoc vn : benPhaos) {
                         CangBien parent = (vn.getCangBienId() != null) ? bpCangBienMap.get(vn.getCangBienId()) : null;
@@ -737,12 +882,19 @@ public class KchtGis155Service {
                                 .orgName(getOrgName(vn.getDonViId(), orgNameMap))
                                 .kchtTypeLabel("Bến phao")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet("")
+                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getTenCang() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
                                 .bieuTuongId(vn.getBieuTuongId())
                                 .build();
-                        populateSpatialAndFilter(results, r, vn.getKhongGianId(), objectType, GisObjectType.POLYGON);
+                        if (objectType != null) {
+                            populateSpatialAndFilterFromMap(results, r, vn.getKhongGianId(), objectType, GisObjectType.POLYGON, bpSpatialMap);
+                        } else {
+                            results.add(r);
+                            if (vn.getKhongGianId() != null) {
+                                spatialIdMap.put(vn.getId(), vn.getKhongGianId());
+                            }
+                        }
                     }
                     break;
 
@@ -754,6 +906,13 @@ public class KchtGis155Service {
                     Map<UUID, CangBien> knCangBienMap = new HashMap<>();
                     if (!knCbIds.isEmpty()) {
                         cangBienRepository.findAllById(knCbIds).forEach(cb -> knCangBienMap.put(cb.getId(), cb));
+                    }
+                    Map<UUID, GisSpatialObject> knSpatialMap = new HashMap<>();
+                    if (objectType != null) {
+                        List<UUID> knSpatialIds = khuNeos.stream().map(VungNuoc::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        if (!knSpatialIds.isEmpty()) {
+                            gisSpatialObjectRepository.findAllById(knSpatialIds).forEach(so -> knSpatialMap.put(so.getId(), so));
+                        }
                     }
                     for (VungNuoc vn : khuNeos) {
                         CangBien parent = (vn.getCangBienId() != null) ? knCangBienMap.get(vn.getCangBienId()) : null;
@@ -770,12 +929,19 @@ public class KchtGis155Service {
                                 .orgName(getOrgName(vn.getDonViId(), orgNameMap))
                                 .kchtTypeLabel("Khu neo đậu")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet("")
+                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getTenCang() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
                                 .bieuTuongId(vn.getBieuTuongId())
                                 .build();
-                        populateSpatialAndFilter(results, r, vn.getKhongGianId(), objectType, GisObjectType.POLYGON);
+                        if (objectType != null) {
+                            populateSpatialAndFilterFromMap(results, r, vn.getKhongGianId(), objectType, GisObjectType.POLYGON, knSpatialMap);
+                        } else {
+                            results.add(r);
+                            if (vn.getKhongGianId() != null) {
+                                spatialIdMap.put(vn.getId(), vn.getKhongGianId());
+                            }
+                        }
                     }
                     break;
 
@@ -787,6 +953,13 @@ public class KchtGis155Service {
                     Map<UUID, CangBien> kcCangBienMap = new HashMap<>();
                     if (!kcCbIds.isEmpty()) {
                         cangBienRepository.findAllById(kcCbIds).forEach(cb -> kcCangBienMap.put(cb.getId(), cb));
+                    }
+                    Map<UUID, GisSpatialObject> kcSpatialMap = new HashMap<>();
+                    if (objectType != null) {
+                        List<UUID> kcSpatialIds = khuChuyens.stream().map(VungNuoc::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        if (!kcSpatialIds.isEmpty()) {
+                            gisSpatialObjectRepository.findAllById(kcSpatialIds).forEach(so -> kcSpatialMap.put(so.getId(), so));
+                        }
                     }
                     for (VungNuoc vn : khuChuyens) {
                         CangBien parent = (vn.getCangBienId() != null) ? kcCangBienMap.get(vn.getCangBienId()) : null;
@@ -803,12 +976,19 @@ public class KchtGis155Service {
                                 .orgName(getOrgName(vn.getDonViId(), orgNameMap))
                                 .kchtTypeLabel("Khu chuyển tải")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet("")
+                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getTenCang() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
                                 .bieuTuongId(vn.getBieuTuongId())
                                 .build();
-                        populateSpatialAndFilter(results, r, vn.getKhongGianId(), objectType, GisObjectType.POLYGON);
+                        if (objectType != null) {
+                            populateSpatialAndFilterFromMap(results, r, vn.getKhongGianId(), objectType, GisObjectType.POLYGON, kcSpatialMap);
+                        } else {
+                            results.add(r);
+                            if (vn.getKhongGianId() != null) {
+                                spatialIdMap.put(vn.getId(), vn.getKhongGianId());
+                            }
+                        }
                     }
                     break;
 
@@ -820,6 +1000,13 @@ public class KchtGis155Service {
                     Map<UUID, CangBien> ktCangBienMap = new HashMap<>();
                     if (!ktCbIds.isEmpty()) {
                         cangBienRepository.findAllById(ktCbIds).forEach(cb -> ktCangBienMap.put(cb.getId(), cb));
+                    }
+                    Map<UUID, GisSpatialObject> ktSpatialMap = new HashMap<>();
+                    if (objectType != null) {
+                        List<UUID> ktSpatialIds = khuTranhs.stream().map(VungNuoc::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        if (!ktSpatialIds.isEmpty()) {
+                            gisSpatialObjectRepository.findAllById(ktSpatialIds).forEach(so -> ktSpatialMap.put(so.getId(), so));
+                        }
                     }
                     for (VungNuoc vn : khuTranhs) {
                         CangBien parent = (vn.getCangBienId() != null) ? ktCangBienMap.get(vn.getCangBienId()) : null;
@@ -836,21 +1023,74 @@ public class KchtGis155Service {
                                 .orgName(getOrgName(vn.getDonViId(), orgNameMap))
                                 .kchtTypeLabel("Khu tránh trú bão")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet("")
+                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getTenCang() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
                                 .bieuTuongId(vn.getBieuTuongId())
                                 .build();
-                        populateSpatialAndFilter(results, r, vn.getKhongGianId(), objectType, GisObjectType.POLYGON);
+                        if (objectType != null) {
+                            populateSpatialAndFilterFromMap(results, r, vn.getKhongGianId(), objectType, GisObjectType.POLYGON, ktSpatialMap);
+                        } else {
+                            results.add(r);
+                            if (vn.getKhongGianId() != null) {
+                                spatialIdMap.put(vn.getId(), vn.getKhongGianId());
+                            }
+                        }
                     }
                     break;
             }
+            log.info("PERF: Type {} took {} ms, results size {}", type, System.currentTimeMillis() - tStart, results.size());
         }
 
         // Apply pagination
         int start = Math.min(page * size, results.size());
         int end = Math.min(start + size, results.size());
         List<KchtGisSearchResult> subList = results.subList(start, end);
+
+        // Populate spatial data for only the paginated subList
+        if (objectType == null && !subList.isEmpty()) {
+            List<UUID> targetIds = subList.stream()
+                    .map(r -> spatialIdMap.get(r.getId()))
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+            Map<UUID, GisSpatialObject> pageSpatialMap = new HashMap<>();
+            if (!targetIds.isEmpty()) {
+                gisSpatialObjectRepository.findAllById(targetIds).forEach(so -> {
+                    pageSpatialMap.put(so.getId(), so);
+                    if (so.getRefId() != null) {
+                        pageSpatialMap.put(so.getRefId(), so);
+                    }
+                });
+                gisSpatialObjectRepository.findByRefIdIn(targetIds).forEach(so -> {
+                    pageSpatialMap.put(so.getId(), so);
+                    if (so.getRefId() != null) {
+                        pageSpatialMap.put(so.getRefId(), so);
+                    }
+                });
+            }
+            for (KchtGisSearchResult r : subList) {
+                UUID lookupId = spatialIdMap.get(r.getId());
+                if (lookupId != null) {
+                    GisSpatialObject spatial = pageSpatialMap.get(lookupId);
+                    if (spatial != null) {
+                        String geomTypeStr = spatial.getGeometryType() != null ? spatial.getGeometryType().name() : null;
+                        r.setLoaiHinhHoc(geomTypeStr);
+                        r.setToaDo(spatial.getCoordinates());
+                        if (spatial.getBieuTuongId() != null) {
+                            r.setBieuTuongId(spatial.getBieuTuongId());
+                        }
+
+                        double[] coords = parseFirstCoordinateFromWkt(spatial.getCoordinates());
+                        if (coords != null) {
+                            r.setLatitude(coords[0]);
+                            r.setLongitude(coords[1]);
+                        }
+                    }
+                }
+            }
+        }
+
         Pageable pageable = PageRequest.of(page, size);
         return new PageImpl<>(subList, pageable, results.size());
     }

@@ -54,4 +54,8 @@ public class UpdateNhaTramPhaoRequest {
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
     private Boolean isActive;
+
+    private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
+    private String toaDo;
+    private java.util.UUID bieuTuongId;
 }

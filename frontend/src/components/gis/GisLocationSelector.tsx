@@ -502,21 +502,31 @@ export default function GisLocationSelector({
   useEffect(() => {
     if (!leafletLoaded || !mapReady || !mapRef.current) return;
 
-    mapRef.current.pm.addControls({
-      position: 'topleft',
-      drawMarker: internalGeom === 'POINT',
-      drawPolyline: internalGeom === 'LINE',
-      drawPolygon: internalGeom === 'POLYGON',
-      drawCircle: false,
-      drawRectangle: false,
-      drawCircleMarker: false,
-      drawText: false,
-      editMode: false,
-      dragMode: false,
-      cutPolygon: false,
-      removalMode: false,
-      rotateMode: false,
-    });
+    const pm = mapRef.current.pm;
+    if (pm) {
+      if (typeof pm.removeControls === 'function') {
+        try {
+          pm.removeControls();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      pm.addControls({
+        position: 'topleft',
+        drawMarker: internalGeom === 'POINT',
+        drawPolyline: internalGeom === 'LINE',
+        drawPolygon: internalGeom === 'POLYGON',
+        drawCircle: false,
+        drawRectangle: false,
+        drawCircleMarker: false,
+        drawText: false,
+        editMode: false,
+        dragMode: false,
+        cutPolygon: false,
+        removalMode: false,
+        rotateMode: false,
+      });
+    }
   }, [leafletLoaded, mapReady, internalGeom, modalOpen]);
 
   // Handle manual additions and updates to the vertices grid

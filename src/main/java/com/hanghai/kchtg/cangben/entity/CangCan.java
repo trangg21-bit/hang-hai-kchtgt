@@ -63,4 +63,7 @@ public class CangCan extends BaseEntity {
 
     @Column(name = "bieu_tuong_id")
     private java.util.UUID bieuTuongId;
+
+    @Column(name = "spatial_id")
+    private java.util.UUID khongGianId;
 }

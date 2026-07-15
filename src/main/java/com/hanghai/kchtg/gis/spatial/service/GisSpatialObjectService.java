@@ -28,7 +28,7 @@ public class GisSpatialObjectService {
             String coordinates,
             UUID bieuTuongId,
             UUID refId,
-            String refType) {
+            com.hanghai.kchtg.gis.search.dto.KchtType refType) {
         
         GisSpatialObject entity;
         if (id != null) {

@@ -43,6 +43,8 @@ public class UpdateCangBienRequest {
 
     private Integer nhomCangBien;
     private java.util.UUID bieuTuongId;
+    private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
+    private String toaDo;
 
     /**
      * GPS paired-field constraint: viDo and kinhDo must both be present or both be absent.

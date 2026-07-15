@@ -21,6 +21,6 @@ public class PointObjectTypeConverter implements AttributeConverter<ObjectType, 
                 return type;
             }
         }
-        throw new IllegalArgumentException("Unknown database value for PointObject.ObjectType: " + dbData);
+        return ObjectType.OTHER;
     }
 }

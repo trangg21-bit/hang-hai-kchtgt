@@ -56,6 +56,12 @@ import { symbolService } from '../../services/symbolService';
 import type { Symbol } from '../../services/symbolService';
 import EmptyState from '../../components/EmptyState';
 import Flatbush from 'flatbush';
+import MapToolbar from '../../components/gis/MapToolbar';
+import DrawSaveModal from '../../components/gis/DrawSaveModal';
+import type { DrawResult } from '../../components/gis/DrawSaveModal';
+import { pointObjectService } from '../../services/pointObjectService';
+import { lineObjectService } from '../../services/lineObjectService';
+import { polygonObjectService } from '../../services/polygonObjectService';
 
 declare global {
   interface Window {
@@ -700,6 +706,10 @@ export default function GISChartView() {
     coordinates: Array<{ lat: number; lng: number }>;
   } | null>(null);
 
+  // Save modal state
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [pendingDrawResult, setPendingDrawResult] = useState<DrawResult | null>(null);
+
   // Measure actual available height for table body using ResizeObserver on the wrapper div
   useEffect(() => {
     const el = tableWrapperRef.current;
@@ -840,6 +850,7 @@ export default function GISChartView() {
 
   // Map elements refs
   const mapRef = useRef<any>(null);
+  const [mapInstance, setMapInstance] = useState<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const geoJsonGroupRef = useRef<any>(null);
   const searchMarkersGroupRef = useRef<any>(null);
@@ -855,6 +866,9 @@ export default function GISChartView() {
   const fetchPlanningFeaturesRef = useRef<() => Promise<void>>();
   const moveEndTimeoutRef = useRef<any>(null);
   const planningLayersCacheRef = useRef<Record<string, any>>({});
+  const [customGisFeatures, setCustomGisFeatures] = useState<any[]>([]);
+  const fetchCustomGisFeaturesRef = useRef<() => Promise<void>>();
+  const customGisGroupRef = useRef<any>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
 
   // 1. Dynamic Leaflet Loader
@@ -1026,6 +1040,181 @@ export default function GISChartView() {
       setPlanningFeatures([]);
     }
   }, [leafletLoaded, showPlanning, fetchPlanningFeatures]);
+
+  // Helper to parse WKT geometries to GeoJSON coordinates (matching original project)
+  const parseWktToCoords = useCallback((wkt: string) => {
+    if (!wkt) return null;
+    const cleanWkt = wkt.trim().toUpperCase();
+    try {
+      if (cleanWkt.startsWith('POINT')) {
+        const match = cleanWkt.match(/\(([^)]+)\)/);
+        if (match) {
+          return match[1].trim().split(/\s+/).map(Number);
+        }
+      } else if (cleanWkt.startsWith('LINESTRING')) {
+        const match = cleanWkt.match(/\(([^)]+)\)/);
+        if (match) {
+          return match[1].split(',').map(c => c.trim().split(/\s+/).map(Number));
+        }
+      } else if (cleanWkt.startsWith('POLYGON')) {
+        const match = cleanWkt.match(/POLYGON\s*\((.*)\)/);
+        if (match) {
+          const ringsStr = match[1];
+          const rings = ringsStr.split(/\)\s*,\s*\(/).map(r => r.replace(/[()]/g, '').trim());
+          return rings.map(ring => ring.split(',').map(c => c.trim().split(/\s+/).map(Number)));
+        }
+      }
+    } catch (e) {
+      console.error('Error parsing WKT:', e);
+    }
+    return null;
+  }, []);
+
+  // Fetch manually drawn spatial features
+  const fetchCustomGisFeatures = useCallback(async () => {
+    try {
+      const [pointsRes, linesRes, polygonsRes] = await Promise.all([
+        pointObjectService.list({ status: 'PUBLISHED' }),
+        lineObjectService.list({ status: 'PUBLISHED' }),
+        polygonObjectService.list({ status: 'PUBLISHED' }),
+      ]);
+
+      const allFeatures: any[] = [];
+
+      // Map points
+      (pointsRes.data || []).forEach((item: any) => {
+        if (item.latitude && item.longitude) {
+          allFeatures.push({
+            id: item.id,
+            name: item.name,
+            code: item.code,
+            type: 'Point',
+            coordinates: [item.longitude, item.latitude],
+            objectType: item.objectType,
+            description: item.description,
+          });
+        }
+      });
+
+      // Map lines
+      (linesRes.data || []).forEach((item: any) => {
+        if (item.coordinates) {
+          const coords = parseWktToCoords(item.coordinates);
+          if (coords) {
+            allFeatures.push({
+              id: item.id,
+              name: item.name,
+              code: item.code,
+              type: 'LineString',
+              coordinates: coords,
+              objectType: item.objectType,
+              description: item.description,
+            });
+          }
+        }
+      });
+
+      // Map polygons
+      (polygonsRes.data || []).forEach((item: any) => {
+        if (item.coordinates) {
+          const coords = parseWktToCoords(item.coordinates);
+          if (coords) {
+            allFeatures.push({
+              id: item.id,
+              name: item.name,
+              code: item.code,
+              type: 'Polygon',
+              coordinates: coords,
+              objectType: item.objectType,
+              description: item.description,
+            });
+          }
+        }
+      });
+
+      setCustomGisFeatures(allFeatures);
+    } catch (err) {
+      console.error('Failed to load custom GIS features:', err);
+    }
+  }, [parseWktToCoords]);
+
+  useEffect(() => {
+    fetchCustomGisFeaturesRef.current = fetchCustomGisFeatures;
+  }, [fetchCustomGisFeatures]);
+
+  // Load custom GIS features on mount
+  useEffect(() => {
+    if (leafletLoaded) {
+      void fetchCustomGisFeatures();
+    }
+  }, [leafletLoaded, fetchCustomGisFeatures]);
+
+  // Render custom manual GIS features on the Leaflet map
+  useEffect(() => {
+    const L = window.L;
+    if (!L || !mapRef.current || !customGisGroupRef.current) return;
+
+    customGisGroupRef.current.clearLayers();
+    if (customGisFeatures.length === 0) return;
+
+    const tempGroup = L.featureGroup();
+
+    customGisFeatures.forEach((feature) => {
+      try {
+        let layer: any = null;
+        if (feature.type === 'Point') {
+          layer = L.circleMarker([feature.coordinates[1], feature.coordinates[0]], {
+            radius: 7,
+            color: '#13c2c2', // Teal-cyan for points
+            fillColor: '#13c2c2',
+            fillOpacity: 0.85,
+            weight: 2,
+          });
+        } else if (feature.type === 'LineString') {
+          const latlngs = feature.coordinates.map((c: any) => [c[1], c[0]]);
+          layer = L.polyline(latlngs, {
+            color: '#fa8c16', // Orange for lines
+            weight: 3,
+            opacity: 0.9,
+          });
+        } else if (feature.type === 'Polygon') {
+          const latlngs = feature.coordinates.map((ring: any) => ring.map((c: any) => [c[1], c[0]]));
+          layer = L.polygon(latlngs, {
+            color: '#1890ff', // Blue for polygons
+            fillColor: '#1890ff',
+            fillOpacity: 0.25,
+            weight: 2,
+          });
+        }
+
+        if (layer) {
+          layer.bindTooltip(
+            `<div style="font-weight: 600;">${feature.name}</div>`,
+            { direction: 'top', offset: [0, -5], opacity: 0.9 }
+          );
+
+          layer.bindPopup(`
+            <div style="min-width: 200px; padding: 4px;">
+              <div style="font-size: 14px; font-weight: bold; color: #1890ff; border-bottom: 1px solid #f0f0f0; padding-bottom: 4px; margin-bottom: 8px;">
+                ${feature.name}
+              </div>
+              <div style="font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
+                <div><b>Mã:</b> ${feature.code}</div>
+                <div><b>Loại kết cấu:</b> ${feature.objectType}</div>
+                <div><b>Ghi chú:</b> ${feature.description || 'Không có'}</div>
+              </div>
+            </div>
+          `);
+
+          tempGroup.addLayer(layer);
+        }
+      } catch (err) {
+        console.error('Failed to draw custom feature:', feature, err);
+      }
+    });
+
+    customGisGroupRef.current.addLayer(tempGroup);
+  }, [customGisFeatures]);
 
   // Render planning features as vector layers on the map
   useEffect(() => {
@@ -1259,12 +1448,17 @@ export default function GISChartView() {
 
   // 3. Initialize Leaflet Map
   useEffect(() => {
-    if (!leafletLoaded || !mapContainerRef.current || mapRef.current) return;
+    if (!leafletLoaded || !mapContainerRef.current) return;
+    if (mapRef.current) {
+      setMapInstance(mapRef.current);
+      return;
+    }
 
     const L = window.L;
     // Create map centered on Vietnam (incorporating East Sea / Sovereignty area)
     const map = L.map(mapContainerRef.current, { preferCanvas: true, attributionControl: false }).setView([16.0, 108.0], 5);
     mapRef.current = map;
+    setMapInstance(map);
 
     // Create a high-priority pane for QHCB planning layers so they render above ENC layers
     const planningPane = map.createPane('planningPane');
@@ -1338,6 +1532,9 @@ export default function GISChartView() {
     // Feature group for planning features
     planningGroupRef.current = L.featureGroup().addTo(map);
 
+    // Feature group for manually drawn GIS features (Point, Line, Polygon objects)
+    customGisGroupRef.current = L.featureGroup().addTo(map);
+
 
 
 
@@ -1404,21 +1601,16 @@ export default function GISChartView() {
     const pm = (map as any).pm;
     if (!pm) return;
 
-    if (map.pm && typeof map.pm.addControls === 'function') {
+    if (map.pm) {
+      if (typeof map.pm.removeControls === 'function') {
+        try {
+          map.pm.removeControls();
+        } catch (e) {
+          console.error(e);
+        }
+      }
       pm.setLang('vi');
-      pm.addControls({
-        position: 'topleft',
-        drawMarker: true,
-        drawPolyline: true,
-        drawRectangle: true,
-        drawPolygon: true,
-        drawCircle: false,
-        drawCircleMarker: false,
-        editMode: true,
-        dragMode: true,
-        cutPolygon: false,
-        removalMode: true,
-      });
+      // Do not add default Geoman controls since we are rendering the custom MapToolbar
 
       let activeDrawnLayer: any = null;
 
@@ -1480,13 +1672,35 @@ export default function GISChartView() {
 
         updateDrawnGeometry(layer, shape);
 
+        const geo = layer.toGeoJSON();
+        const geomTypeMap: Record<string, 'draw-point' | 'draw-line' | 'draw-polygon'> = {
+          'Marker': 'draw-point',
+          'Line': 'draw-line',
+          'Polyline': 'draw-line',
+          'Polygon': 'draw-polygon',
+          'Rectangle': 'draw-polygon'
+        };
+        const drawResult: DrawResult = {
+          geojson: geo,
+          type: geomTypeMap[shape] || 'draw-point'
+        };
+        setPendingDrawResult(drawResult);
+        setSaveModalOpen(true);
+
         layer.on('pm:edit', () => {
           updateDrawnGeometry(layer, shape);
+          const updatedGeo = layer.toGeoJSON();
+          setPendingDrawResult({
+            geojson: updatedGeo,
+            type: geomTypeMap[shape] || 'draw-point'
+          });
         });
 
         layer.on('pm:remove', () => {
           setDrawnGeometry(null);
           activeDrawnLayer = null;
+          setPendingDrawResult(null);
+          setSaveModalOpen(false);
         });
       });
 
@@ -1498,7 +1712,7 @@ export default function GISChartView() {
         activeDrawnLayer = null;
       };
     }
-  }, [leafletLoaded]);
+  }, [leafletLoaded, mapInstance]);
 
   const renderVertexMarkers = useCallback(() => {
     const L = window.L;
@@ -2166,94 +2380,54 @@ export default function GISChartView() {
                   filter: palette === 'NIGHT' ? 'brightness(0.85) contrast(1.1)' : 'none',
                 }}
               />
-              {/* Drawn Geometry Info Card */}
-              {drawnGeometry && (
-                <Card
-                  size="small"
-                  title={
-                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                      <Space>
-                        <EditOutlined style={{ color: '#1890ff' }} />
-                        <span style={{ fontWeight: 600 }}>Tọa độ đối tượng vẽ</span>
-                      </Space>
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<CloseOutlined />}
-                        onClick={() => {
-                          if ((window as any).clearDrawnShape) {
-                            (window as any).clearDrawnShape();
-                          }
-                        }}
-                      />
-                    </Space>
-                  }
-                  style={{
-                    position: 'absolute',
-                    bottom: '20px',
-                    left: '20px',
-                    zIndex: 1000,
-                    width: '320px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    borderRadius: '8px',
-                    backdropFilter: 'blur(8px)',
-                    background: 'rgba(255, 255, 255, 0.9)',
+              {mapInstance && (
+                <MapToolbar
+                  map={mapInstance}
+                  onClearAll={() => {
+                    if ((window as any).clearDrawnShape) {
+                      (window as any).clearDrawnShape();
+                    }
                   }}
-                >
-                  <div style={{ fontSize: '13px' }}>
-                    <div style={{ marginBottom: '8px' }}>
-                      <span style={{ color: '#888' }}>Loại đối tượng:</span>{' '}
-                      <span style={{ fontWeight: 600, color: '#1890ff' }}>{drawnGeometry.type}</span>
-                    </div>
-                    <div style={{ marginBottom: '8px' }}>
-                      <span style={{ color: '#888' }}>Số điểm tọa độ:</span>{' '}
-                      <span style={{ fontWeight: 600 }}>{drawnGeometry.coordinates.length}</span>
-                    </div>
-                    <div style={{ marginBottom: '12px' }}>
-                      <div style={{ color: '#888', marginBottom: '4px' }}>Chuỗi WKT (Well-Known Text):</div>
-                      <div
-                        style={{
-                          backgroundColor: '#f5f5f5',
-                          border: '1px solid #d9d9d9',
-                          borderRadius: '4px',
-                          padding: '6px 8px',
-                          fontFamily: 'monospace',
-                          fontSize: '11px',
-                          maxHeight: '100px',
-                          overflowY: 'auto',
-                          wordBreak: 'break-all',
-                        }}
-                      >
-                        {drawnGeometry.wkt}
-                      </div>
-                    </div>
-                    <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-                      <Button
-                        size="small"
-                        icon={<DeleteOutlined />}
-                        danger
-                        onClick={() => {
-                          if ((window as any).clearDrawnShape) {
-                            (window as any).clearDrawnShape();
-                          }
-                        }}
-                      >
-                        Xóa nét vẽ
-                      </Button>
-                      <Button
-                        type="primary"
-                        size="small"
-                        icon={<CopyOutlined />}
-                        onClick={() => {
-                          void navigator.clipboard.writeText(drawnGeometry.wkt);
-                          toast.success('Đã sao chép chuỗi WKT vào bộ nhớ tạm!');
-                        }}
-                      >
-                        Sao chép WKT
-                      </Button>
-                    </Space>
-                  </div>
-                </Card>
+                />
+              )}
+
+
+              {saveModalOpen && (
+                <DrawSaveModal
+                  open={saveModalOpen}
+                  drawResult={pendingDrawResult}
+                  onClose={() => {
+                    setSaveModalOpen(false);
+                    setPendingDrawResult(null);
+                  }}
+                  onSaved={() => {
+                    setSaveModalOpen(false);
+                    setPendingDrawResult(null);
+                    if ((window as any).clearDrawnShape) {
+                      (window as any).clearDrawnShape();
+                    }
+                    // Reload active GIS features in map viewport
+                    if (fetchFeaturesInViewportRef.current) {
+                      void fetchFeaturesInViewportRef.current();
+                    }
+                    // Reload custom GIS features
+                    if (fetchCustomGisFeaturesRef.current) {
+                      void fetchCustomGisFeaturesRef.current();
+                    }
+                  }}
+                  onRedraw={(type) => {
+                    if ((window as any).clearDrawnShape) {
+                      (window as any).clearDrawnShape();
+                    }
+                    const pm = (mapRef.current as any).pm;
+                    if (pm) {
+                      pm.disableDraw();
+                      if (type === 'draw-point') pm.enableDraw('Marker');
+                      else if (type === 'draw-line') pm.enableDraw('Line');
+                      else if (type === 'draw-polygon') pm.enableDraw('Polygon');
+                    }
+                  }}
+                />
               )}
               {/* Overlay Grid Button (AppstoreOutlined) */}
               <Button

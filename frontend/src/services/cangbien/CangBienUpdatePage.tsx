@@ -7,6 +7,7 @@ import { fetchCangBienById, updateCangBien } from './api';
 import { TRANG_THAI_HOAT_DONG_OPTIONS } from './schema';
 import type { CangBienResponse } from './types';
 import { VIETNAM_PROVINCES } from '../../types/common';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
 
 export default function CangBienUpdatePage() {
   const navigate = useNavigate();
@@ -15,11 +16,7 @@ export default function CangBienUpdatePage() {
   const [submitting, setSubmitting] = useState(false);
   const [entityData, setEntityData] = useState<CangBienResponse | null>(null);
 
-  const viDo = Form.useWatch('viDo', form);
-  const kinhDo = Form.useWatch('kinhDo', form);
-  const gpsPairedWarning =
-    ((viDo !== undefined && viDo != null && !Number.isNaN(viDo)) !==
-      (kinhDo !== undefined && kinhDo != null && !Number.isNaN(kinhDo)));
+  const updateLoaiHinhHoc = Form.useWatch('loaiHinhHoc', form) || 'POINT';
 
   useEffect(() => {
     if (!id) return;
@@ -32,11 +29,15 @@ export default function CangBienUpdatePage() {
           maCang: data.maCang,
           tenCang: data.tenCang,
           tinhThanhPho: data.tinhThanhPho || undefined,
-          viDo: data.viDo != null ? data.viDo : undefined,
-          kinhDo: data.kinhDo != null ? data.kinhDo : undefined,
           dienTich: data.dienTich != null ? data.dienTich : undefined,
           khaNangTiepNhan: data.khaNangTiepNhan != null ? data.khaNangTiepNhan : undefined,
           trangThaiHoatDong: data.trangThaiHoatDong || undefined,
+          loaiHinhHoc: data.loaiHinhHoc || 'POINT',
+          gisLocation: {
+            loaiHinhHoc: data.loaiHinhHoc || 'POINT',
+            toaDo: data.toaDo || '',
+            bieuTuongId: data.bieuTuongId
+          }
         });
       } catch (err) {
         console.error('Failed to fetch CangBien:', err);
@@ -47,23 +48,6 @@ export default function CangBienUpdatePage() {
   }, [id, navigate, form]);
 
   const handleFinish = async (values: Record<string, unknown>) => {
-    // GPS paired check
-    const vi = values.viDo as number;
-    const jd = values.kinhDo as number;
-    if ((vi !== undefined && vi != null && !Number.isNaN(vi)) !==
-        (jd !== undefined && jd != null && !Number.isNaN(jd))) {
-      toast.error('Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau');
-      return;
-    }
-    // Validate ranges
-    if (vi !== undefined && vi != null && !Number.isNaN(vi) && (vi < -90 || vi > 90)) {
-      toast.error('Vĩ độ phải từ -90 đến 90');
-      return;
-    }
-    if (jd !== undefined && jd != null && !Number.isNaN(jd) && (jd < -180 || jd > 180)) {
-      toast.error('Kinh độ phải từ -180 đến 180');
-      return;
-    }
     const dienTich = values.dienTich as number;
     if (dienTich !== undefined && dienTich != null && !Number.isNaN(dienTich) && dienTich <= 0) {
       toast.error('Diện tích phải lớn hơn 0');
@@ -76,11 +60,12 @@ export default function CangBienUpdatePage() {
         id: String(id),
         tenCang: (values.tenCang as string) || undefined,
         tinhThanhPho: (values.tinhThanhPho as string) || undefined,
-        viDo: values.viDo as number | undefined,
-        kinhDo: values.kinhDo as number | undefined,
         dienTich: values.dienTich as number | undefined,
         khaNangTiepNhan: values.khaNangTiepNhan as number | undefined,
         trangThaiHoatDong: (values.trangThaiHoatDong as string) || undefined,
+        bieuTuongId: (values.gisLocation as any)?.bieuTuongId || null,
+        loaiHinhHoc: values.loaiHinhHoc as string,
+        toaDo: (values.gisLocation as any)?.toaDo,
       };
       await updateCangBien(payload);
       toast.success('Cập nhật thành công');
@@ -154,47 +139,22 @@ export default function CangBienUpdatePage() {
           </Typography.Text>
           <Row gutter={24}>
             <Col span={12}>
-              <Form.Item
-                label="Vĩ độ (Latitude)"
-                name="viDo"
-                rules={[
-                  {
-                    validator: (_, value) => {
-                      if (value === undefined || value === null || Number.isNaN(value)) return Promise.resolve();
-                      if (value < -90 || value > 90) return Promise.reject('Vĩ độ phải từ -90 đến 90');
-                      return Promise.resolve();
-                    },
-                  },
-                ]}
-              >
-                <InputNumber min={-90} max={90} step={0.000001} precision={6} placeholder="VD: 20.9" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Kinh độ (Longitude)"
-                name="kinhDo"
-                rules={[
-                  {
-                    validator: (_, value) => {
-                      if (value === undefined || value === null || Number.isNaN(value)) return Promise.resolve();
-                      if (value < -180 || value > 180) return Promise.reject('Kinh độ phải từ -180 đến 180');
-                      return Promise.resolve();
-                    },
-                  },
-                ]}
-              >
-                <InputNumber min={-180} max={180} step={0.000001} precision={6} placeholder="VD: -106.7" style={{ width: '100%' }} />
+              <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
+                <Select placeholder="Chọn loại đối tượng" options={[
+                  { value: 'POINT', label: 'Đối tượng điểm' },
+                  { value: 'LINE', label: 'Đối tượng đường' },
+                  { value: 'POLYGON', label: 'Đối tượng vùng' }
+                ]} />
               </Form.Item>
             </Col>
           </Row>
-          {gpsPairedWarning && (
-            <Card size="small" style={{ marginBottom: 16, backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
-              <Typography.Text type="warning">
-                ⚠️ Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau.
-              </Typography.Text>
-            </Card>
-          )}
+          <Row gutter={24}>
+            <Col span={24}>
+              <Form.Item name="gisLocation">
+                <GisLocationSelector defaultGeometryType={updateLoaiHinhHoc} />
+              </Form.Item>
+            </Col>
+          </Row>
 
           {/* Statistics Section */}
           <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>

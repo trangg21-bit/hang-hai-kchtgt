@@ -33,11 +33,11 @@ public interface PolygonObjectRepository extends JpaRepository<PolygonObject, UU
     List<PolygonObject> findByCodeContainingIgnoreCase(String code);
 
     @Query(value = "SELECT * FROM gis_spatial_objects p WHERE " +
-            "p.geometry_type = 3 AND " +
-            "(:name IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
-            "(:code IS NULL OR LOWER(p.code) LIKE LOWER(CONCAT('%', :code, '%'))) AND " +
-            "(:objectType IS NULL OR p.object_type = :objectType) AND " +
-            "(:status IS NULL OR p.status = :status)", nativeQuery = true)
+            "p.geometry_type = 3 AND p.ref_id IS NULL AND " +
+            "(cast(:name as text) IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', cast(:name as text), '%'))) AND " +
+            "(cast(:code as text) IS NULL OR LOWER(p.code) LIKE LOWER(CONCAT('%', cast(:code as text), '%'))) AND " +
+            "(cast(:objectType as integer) IS NULL OR p.object_type = cast(:objectType as integer)) AND " +
+            "(cast(:status as integer) IS NULL OR p.status = cast(:status as integer))", nativeQuery = true)
     List<PolygonObject> searchFiltered(
             @Param("name") String name,
             @Param("code") String code,
