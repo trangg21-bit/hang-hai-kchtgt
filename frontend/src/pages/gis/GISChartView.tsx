@@ -354,6 +354,19 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     return status;
   };
 
+  const getLoaiVungNuocText = (val?: string) => {
+    if (!val) return '—';
+    const v = val.toUpperCase();
+    if (v === 'NEO_DAU') return 'Khu neo đậu';
+    if (v === 'KIEM_DICH') return 'Khu kiểm dịch';
+    if (v === 'DON_TRA_HOA_TIEU') return 'Khu đón trả hoa tiêu';
+    if (v === 'QUAY_TRO_TAU') return 'Vùng quay trở tàu';
+    if (v === 'BEN_PHAO') return 'Bến phao';
+    if (v === 'CHUYEN_TAI') return 'Khu chuyển tải';
+    if (v === 'TRANH_BAO') return 'Khu tránh trú bão';
+    return val;
+  };
+
   const formatVal = (val: any) => {
     if (val === undefined || val === null || val === '') return '—';
     return String(val);
@@ -473,7 +486,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
         <tr><td style="${tdLabelStyle}">Diện tích (ha):</td><td style="${tdValStyle}">${formatVal(data.dienTich)}</td></tr>
         <tr><td style="${tdLabelStyle}">Độ sâu lớn nhất (m):</td><td style="${tdValStyle}">${formatVal(data.doSauMax)}</td></tr>
         <tr><td style="${tdLabelStyle}">Độ sâu trung bình (m):</td><td style="${tdValStyle}">${formatVal(data.doSauTrungBinh)}</td></tr>
-        <tr><td style="${tdLabelStyle}">Loại vùng nước:</td><td style="${tdValStyle}">${formatVal(data.loaiVungNuoc)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Loại vùng nước:</td><td style="${tdValStyle}">${getLoaiVungNuocText(data.loaiVungNuoc)}</td></tr>
         <tr><td style="${tdLabelStyle}">Tình trạng:</td><td style="${tdValStyle}">${getStatusText(data.trangThaiHoatDong)}</td></tr>
         <tr><td style="${tdLabelStyle}">Trạng thái:</td><td style="${tdValStyle}">${getApprovalStatusText(data.trangThaiPheDuyet)}</td></tr>
         <tr><td style="${tdLabelStyle}">Ngày cập nhật:</td><td style="${tdValStyle}">${formatDateTime(data.updatedAt)}</td></tr>
@@ -1501,7 +1514,7 @@ export default function GISChartView() {
     const visibleRecords = selectedRecords.filter(record => {
       if (!record.toaDo || !record.loaiHinhHoc) return false;
       const geomType = record.loaiHinhHoc.toUpperCase();
-      return geomType === 'LINE' || geomType === 'POLYLINE';
+      return geomType === 'LINE' || geomType === 'POLYLINE' || geomType === 'POLYGON' || geomType === 'AREA';
     });
 
     const vertexMarkers: any[] = [];
@@ -1620,7 +1633,19 @@ export default function GISChartView() {
           
           // Viewport bounding box check: only render if visible in current viewport bounds (with 10% padding)
           const paddedBounds = bounds.pad(0.1);
-          if (!paddedBounds.contains(latlng)) {
+          let isVisible = paddedBounds.contains(latlng);
+          
+          if (!isVisible && record.toaDo && record.loaiHinhHoc && zoom >= 10) {
+            const shapeCoordinates = parseWktToLatLngs(record.toaDo, record.loaiHinhHoc);
+            if (shapeCoordinates.length > 0) {
+              const shapeBounds = L.latLngBounds(shapeCoordinates.map(c => L.latLng(c[0], c[1])));
+              if (paddedBounds.intersects(shapeBounds)) {
+                isVisible = true;
+              }
+            }
+          }
+
+          if (!isVisible) {
             return;
           }
 
@@ -2314,6 +2339,8 @@ export default function GISChartView() {
                       <Form.Item name="kchtType" label="Loại kết cấu hạ tầng">
                         <Select
                           mode="multiple"
+                          showSearch
+                          filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                           placeholder="Chọn loại kết cấu..."
                           options={[
                             { value: 'BENCANG', label: 'Bến cảng' },
