@@ -3319,7 +3319,7 @@ public class ReportService {
                 }
 
                 int N = arrResult.size();
-                int offset = N - 1;
+                int offset = Math.max(0, N - 1);
 
                 // Dynamically detect header template row and detail template row to merge them
 

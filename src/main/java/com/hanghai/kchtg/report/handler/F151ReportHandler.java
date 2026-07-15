@@ -78,6 +78,8 @@ public class F151ReportHandler extends BaseReportHandler {
         List<LineObject> lines = lineObjectRepository.findAll().stream()
                 .filter(p -> skipFilter || targetUnitId.equals(p.getUnitId()))
                 .filter(p -> p.getCreatedAt() == null || p.getCreatedAt().getYear() <= reportYear)
+                .filter(p -> p.getObjectType() == LineObject.ObjectType.SHIPPING_ROUTE
+                        || p.getObjectType() == LineObject.ObjectType.WATERWAY)
                 .toList();
 
         List<Map<String, Object>> arrResult = new ArrayList<>();
