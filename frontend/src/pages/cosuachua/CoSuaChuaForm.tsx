@@ -16,6 +16,7 @@ import {
 } from 'antd';
 import { coSuaChuaCRUD, coSuaChuaApproval } from '../../services/coSuaChuaService';
 import { organizationService } from '../../services/organizationService';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type {
   CoSuaChuaResponse,
   CreateCoSuaChuaRequest,
@@ -96,6 +97,11 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
             khaNang: data.khaNang,
             chuQuan: data.chuQuan,
             orgUnitId: data.orgUnitId,
+            spatialData: {
+              loaiHinhHoc: data.loaiHinhHoc,
+              toaDo: data.toaDo,
+              bieuTuongId: data.bieuTuongId,
+            }
           });
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
@@ -132,6 +138,7 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
   const handleSubmitForm = async (values: any) => {
     setIsSubmitting(true);
     try {
+      const spatialData = values.spatialData;
       const payload = {
         tenCoSo: values.tenCoSo,
         diaChi: values.diaChi,
@@ -142,6 +149,9 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
         khaNang: values.khaNang,
         chuQuan: values.chuQuan,
         orgUnitId: values.orgUnitId,
+        loaiHinhHoc: spatialData?.loaiHinhHoc,
+        toaDo: spatialData?.toaDo,
+        bieuTuongId: spatialData?.bieuTuongId,
       };
 
       if (isCreateMode) {
@@ -588,6 +598,10 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
               attachments={record?.attachments || []}
               readonly={false}
             />
+          </Form.Item>
+
+          <Form.Item label="Vị trí/Hình vẽ bản đồ" name="spatialData">
+            <GisLocationSelector defaultGeometryType="POINT" />
           </Form.Item>
 
           <Form.Item>

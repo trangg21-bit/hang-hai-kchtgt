@@ -31,4 +31,7 @@ public class BenCangResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private UUID bieuTuongId;
+    private java.util.UUID khongGianId;
+    private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
+    private String toaDo;
 }

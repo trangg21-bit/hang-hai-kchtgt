@@ -31,4 +31,9 @@ public class HeThongVTSResponse {
     private String nguoiSuaDoi;
     private LocalDateTime ngaySuaDoi;
     private List<HeThongVTSAttachmentResponse> attachments;
+
+    private java.util.UUID khongGianId;
+    private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
+    private String toaDo;
+    private java.util.UUID bieuTuongId;
 }

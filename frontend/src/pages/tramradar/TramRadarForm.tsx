@@ -28,6 +28,7 @@ import ApprovalActionBar from '../../components/shared/ApprovalActionBar';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
 
 const LOAI_TRAM_MAP: Record<string, string> = {
   'MAIN': 'Trạm radar chính',
@@ -57,6 +58,8 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
   const [form] = Form.useForm();
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
+
+  const watchLoaiHinhHoc = Form.useWatch('loaiHinhHoc', form) || 'POINT';
 
   const isModalMode = open !== undefined;
   const id = isModalMode ? (editId || undefined) : routeId;
@@ -111,6 +114,12 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
             nguonGoc: data.nguonGoc,
             tinhTrang: data.tinhTrang,
             orgUnitId: data.orgUnitId,
+            loaiHinhHoc: data.loaiHinhHoc || 'POINT',
+            gisLocation: {
+              loaiHinhHoc: data.loaiHinhHoc || 'POINT',
+              toaDo: data.toaDo || '',
+              bieuTuongId: data.bieuTuongId
+            }
           });
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
@@ -155,6 +164,9 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
         nguonGoc: values.nguonGoc,
         tinhTrang: values.tinhTrang,
         orgUnitId: values.orgUnitId,
+        bieuTuongId: values.gisLocation?.bieuTuongId || undefined,
+        loaiHinhHoc: values.loaiHinhHoc,
+        toaDo: values.gisLocation?.toaDo,
       };
 
       if (isCreateMode) {
@@ -409,6 +421,18 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
               <Input placeholder="Nhập tên trạm (không bắt buộc)" />
             </Form.Item>
 
+            <Form.Item name="loaiHinhHoc" label="Loại đối tượng" rules={[{ required: true, message: 'Vui lòng chọn loại đối tượng' }]} style={{ width: '100%' }}>
+              <Select placeholder="Chọn loại đối tượng" options={[
+                { value: 'POINT', label: 'Đối tượng điểm' },
+                { value: 'LINE', label: 'Đối tượng đường' },
+                { value: 'POLYGON', label: 'Đối tượng vùng' }
+              ]} />
+            </Form.Item>
+
+            <Form.Item name="gisLocation">
+              <GisLocationSelector defaultGeometryType={watchLoaiHinhHoc} />
+            </Form.Item>
+
             <Form.Item
               label="Vị trí"
               name="viTri"
@@ -563,6 +587,18 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
         >
           <Form.Item label="Tên trạm" name="tenTram">
             <Input placeholder="Nhập tên trạm (không bắt buộc)" />
+          </Form.Item>
+
+          <Form.Item name="loaiHinhHoc" label="Loại đối tượng" rules={[{ required: true, message: 'Vui lòng chọn loại đối tượng' }]} style={{ width: '100%' }}>
+            <Select placeholder="Chọn loại đối tượng" options={[
+              { value: 'POINT', label: 'Đối tượng điểm' },
+              { value: 'LINE', label: 'Đối tượng đường' },
+              { value: 'POLYGON', label: 'Đối tượng vùng' }
+            ]} />
+          </Form.Item>
+
+          <Form.Item name="gisLocation">
+            <GisLocationSelector defaultGeometryType={watchLoaiHinhHoc} />
           </Form.Item>
 
           <Form.Item

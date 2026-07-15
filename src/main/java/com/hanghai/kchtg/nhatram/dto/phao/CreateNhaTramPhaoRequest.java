@@ -66,4 +66,8 @@ public class CreateNhaTramPhaoRequest {
 
     @Builder.Default
     private String action = "draft";
+
+    private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
+    private String toaDo;
+    private java.util.UUID bieuTuongId;
 }

@@ -66,7 +66,7 @@ public class DeKeService {
                     req.getToaDo(),
                     req.getBieuTuongId(),
                     refId,
-                    "DEKE"
+                    com.hanghai.kchtg.gis.search.dto.KchtType.DEKE
             );
             d.setKhongGianId(spatialObj.getId());
             d = repo.save(d);
@@ -161,7 +161,7 @@ public class DeKeService {
                         req.getToaDo(),
                         req.getBieuTuongId(),
                         refId,
-                        "DEKE"
+                        com.hanghai.kchtg.gis.search.dto.KchtType.DEKE
                 );
                 d.setKhongGianId(spatialObj.getId());
             }
@@ -177,7 +177,7 @@ public class DeKeService {
                         spatialObj.getCoordinates(),
                         spatialObj.getBieuTuongId(),
                         refId,
-                        "DEKE"
+                        com.hanghai.kchtg.gis.search.dto.KchtType.DEKE
                 );
             });
         }

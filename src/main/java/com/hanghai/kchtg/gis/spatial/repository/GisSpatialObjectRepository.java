@@ -49,4 +49,8 @@ public interface GisSpatialObjectRepository extends JpaRepository<GisSpatialObje
     );
 
     long countByGeometryTypeAndStatus(GisGeometryType geometryType, GisSpatialStatus status);
+
+    List<GisSpatialObject> findByRefIdIn(List<UUID> refIds);
+
+    List<GisSpatialObject> findByRefIdInAndRefType(List<UUID> refIds, com.hanghai.kchtg.gis.search.dto.KchtType refType);
 }

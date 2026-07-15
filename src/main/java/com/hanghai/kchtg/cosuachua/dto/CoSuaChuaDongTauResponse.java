@@ -34,4 +34,9 @@ public class CoSuaChuaDongTauResponse {
     private LocalDateTime ngaySuaDoi;
     private Boolean isDeleted;
     private List<CoSuaChuaDongTauAttachmentResponse> attachments;
+
+    private java.util.UUID khongGianId;
+    private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
+    private String toaDo;
+    private java.util.UUID bieuTuongId;
 }

@@ -32,4 +32,6 @@ public class CreateBenCangRequest {
     private String congNangKhaiThac;
     private com.hanghai.kchtg.common.entity.TrangThaiHoatDong trangThaiHoatDong;
     private UUID bieuTuongId;
+    private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
+    private String toaDo;
 }

@@ -22,11 +22,14 @@ public class HeThongVTSDataService {
 
     private final HeThongVTSRepository repository;
     private final PheDuyetLichSuRepository historyRepository;
+    private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
 
     public HeThongVTSDataService(HeThongVTSRepository repository,
-                                PheDuyetLichSuRepository historyRepository) {
+                                PheDuyetLichSuRepository historyRepository,
+                                com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService) {
         this.repository = repository;
         this.historyRepository = historyRepository;
+        this.gisSpatialObjectService = gisSpatialObjectService;
     }
 
     public HeThongVTSResponse create(HeThongVTSCreateRequest request, String username) {
@@ -46,6 +49,25 @@ public class HeThongVTSDataService {
                 .build();
 
         HeThongVTS saved = repository.save(entity);
+
+        if (request.getToaDo() != null && !request.getToaDo().trim().isEmpty()) {
+            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = getSpatialObjectType(geomType);
+            UUID refId = UUID.nameUUIDFromBytes(("VTS_" + saved.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    null,
+                    "Hệ thống VTS tại " + request.getViTri(),
+                    "VTS_" + saved.getId(),
+                    geomType,
+                    objType,
+                    request.getToaDo(),
+                    request.getBieuTuongId(),
+                    refId,
+                    com.hanghai.kchtg.gis.search.dto.KchtType.HE_THONG_VTS
+            );
+            saved.setKhongGianId(spatialObj.getId());
+            saved = repository.save(saved);
+        }
 
         historyRepository.save(PheDuyetLichSu.builder()
                 .heThongVTSId(saved.getId())
@@ -92,6 +114,46 @@ public class HeThongVTSDataService {
         if (request.getNguonGoc() != null) entity.setNguonGoc(request.getNguonGoc());
         if (request.getDoiTac() != null) entity.setDoiTac(request.getDoiTac());
         if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
+
+        if (request.getToaDo() != null) {
+            if (request.getToaDo().trim().isEmpty()) {
+                if (entity.getKhongGianId() != null) {
+                    gisSpatialObjectService.delete(entity.getKhongGianId());
+                    entity.setKhongGianId(null);
+                }
+            } else {
+                com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = getSpatialObjectType(geomType);
+                UUID refId = UUID.nameUUIDFromBytes(("VTS_" + entity.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                        entity.getKhongGianId(),
+                        "Hệ thống VTS tại " + (request.getViTri() != null ? request.getViTri() : entity.getViTri()),
+                        "VTS_" + entity.getId(),
+                        geomType,
+                        objType,
+                        request.getToaDo(),
+                        request.getBieuTuongId(),
+                        refId,
+                        com.hanghai.kchtg.gis.search.dto.KchtType.HE_THONG_VTS
+                );
+                entity.setKhongGianId(spatialObj.getId());
+            }
+        } else if (entity.getKhongGianId() != null && request.getViTri() != null) {
+            gisSpatialObjectService.findById(entity.getKhongGianId()).ifPresent(spatialObj -> {
+                UUID refId = UUID.nameUUIDFromBytes(("VTS_" + entity.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                gisSpatialObjectService.createOrUpdate(
+                        spatialObj.getId(),
+                        "Hệ thống VTS tại " + request.getViTri(),
+                        spatialObj.getCode(),
+                        spatialObj.getGeometryType(),
+                        spatialObj.getObjectType(),
+                        spatialObj.getCoordinates(),
+                        spatialObj.getBieuTuongId(),
+                        refId,
+                        com.hanghai.kchtg.gis.search.dto.KchtType.HE_THONG_VTS
+                );
+            });
+        }
 
         entity.setNguoiSuaDoi(username);
 
@@ -243,6 +305,19 @@ public class HeThongVTSDataService {
                         .build())
                 .collect(Collectors.toList());
 
+        com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = null;
+        String coords = null;
+        UUID symbolId = null;
+        if (entity.getKhongGianId() != null) {
+            java.util.Optional<com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getKhongGianId());
+            if (spatialOpt.isPresent()) {
+                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatial = spatialOpt.get();
+                geomType = spatial.getGeometryType();
+                coords = spatial.getCoordinates();
+                symbolId = spatial.getBieuTuongId();
+            }
+        }
+
         return HeThongVTSResponse.builder()
                 .id(entity.getId())
                 .tenHeThong(entity.getTenHeThong())
@@ -265,6 +340,16 @@ public class HeThongVTSDataService {
                 .nguoiSuaDoi(entity.getNguoiSuaDoi())
                 .ngaySuaDoi(entity.getNgaySuaDoi())
                 .attachments(attachments)
+                .khongGianId(entity.getKhongGianId())
+                .loaiHinhHoc(geomType)
+                .toaDo(coords)
+                .bieuTuongId(symbolId)
                 .build();
+    }
+
+    private com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType getSpatialObjectType(com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType) {
+        if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT) return com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_OTHER;
+        if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POLYGON) return com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POLYGON_OTHER;
+        return com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.LINE_OTHER;
     }
 }

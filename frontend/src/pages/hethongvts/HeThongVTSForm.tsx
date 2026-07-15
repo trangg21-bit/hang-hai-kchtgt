@@ -17,6 +17,7 @@ import {
 import dayjs from 'dayjs';
 import { heThongVTSCRUD, heThongVTSApproval } from '../../services/heThongVtsService';
 import { organizationService } from '../../services/organizationService';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type {
   HeThongVTSResponse,
   CreateHeThongVTSRequest,
@@ -99,6 +100,11 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
             nguonGoc: data.nguonGoc,
             doiTac: data.doiTac,
             orgUnitId: data.orgUnitId,
+            spatialData: {
+              loaiHinhHoc: data.loaiHinhHoc,
+              toaDo: data.toaDo,
+              bieuTuongId: data.bieuTuongId,
+            }
           });
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
@@ -132,6 +138,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
   const handleSubmitForm = async (values: any) => {
     setIsSubmitting(true);
     try {
+      const spatialData = values.spatialData;
       const payload: CreateHeThongVTSRequest | UpdateHeThongVTSRequest = {
         tenHeThong: values.tenHeThong,
         viTri: values.viTri,
@@ -140,6 +147,9 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
         nguonGoc: values.nguonGoc,
         doiTac: values.doiTac,
         orgUnitId: values.orgUnitId,
+        loaiHinhHoc: spatialData?.loaiHinhHoc,
+        toaDo: spatialData?.toaDo,
+        bieuTuongId: spatialData?.bieuTuongId,
       };
 
       if (isCreateMode) {
@@ -535,6 +545,10 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
             name="attachments"
           >
             <AttachmentList readonly={isDetailMode} />
+          </Form.Item>
+
+          <Form.Item label="Vị trí/Hình vẽ bản đồ" name="spatialData">
+            <GisLocationSelector defaultGeometryType="POINT" />
           </Form.Item>
 
           <Form.Item>

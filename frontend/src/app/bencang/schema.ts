@@ -30,6 +30,8 @@ export const createSchema = z.object({
   congNangKhaiThac: z.string().optional().or(z.literal("")),
   trangThaiHoatDong: z.enum(["HIEN_HANH", "TAM_NGUNG"]).optional().default("HIEN_HANH"),
   bieuTuongId: z.string().uuid().optional().or(z.literal("")),
+  loaiHinhHoc: z.string().optional(),
+  toaDo: z.string().optional(),
 });
 
 export type CreateForm = z.infer<typeof createSchema>;
@@ -49,6 +51,8 @@ export const updateSchema = z.object({
   congNangKhaiThac: z.string().optional().or(z.literal("")),
   trangThaiHoatDong: z.enum(["HIEN_HANH", "TAM_NGUNG"]).optional(),
   bieuTuongId: z.string().uuid().optional().nullable(),
+  loaiHinhHoc: z.string().optional(),
+  toaDo: z.string().optional(),
 });
 
 export type UpdateForm = z.infer<typeof updateSchema>;

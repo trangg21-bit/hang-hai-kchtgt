@@ -19,6 +19,7 @@ public class CoSuaChuaDongTauService {
     private final CoSuaChuaDongTauRepository repository;
     private final CoSuaChuaDongTauAttachmentRepository attachmentRepository;
     private final PheDuyetLichSuRepository historyRepository;
+    private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
 
     public CoSuaChuaDongTauResponse create(CoSuaChuaDongTauCreateRequest request, String createdBy) {
         CoSuaChuaDongTau entity = CoSuaChuaDongTau.builder()
@@ -39,6 +40,26 @@ public class CoSuaChuaDongTauService {
                 .build();
 
         CoSuaChuaDongTau saved = repository.save(entity);
+
+        if (request.getToaDo() != null && !request.getToaDo().trim().isEmpty()) {
+            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = getSpatialObjectType(geomType);
+            UUID refId = UUID.nameUUIDFromBytes(("COSO_" + saved.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    null,
+                    "Cơ sở sửa chữa tại " + request.getDiaChi(),
+                    "COSO_" + saved.getId(),
+                    geomType,
+                    objType,
+                    request.getToaDo(),
+                    request.getBieuTuongId(),
+                    refId,
+                    com.hanghai.kchtg.gis.search.dto.KchtType.COSO_SUACHUA
+            );
+            saved.setKhongGianId(spatialObj.getId());
+            saved = repository.save(saved);
+        }
+
         historyRepository.save(PheDuyetLichSu.builder()
                 .coSuaChuaId(saved.getId())
                 .capPheDuyet(0)
@@ -85,6 +106,46 @@ public class CoSuaChuaDongTauService {
         if (request.getKhaNang() != null) entity.setKhaNang(request.getKhaNang());
         if (request.getChuQuan() != null) entity.setChuQuan(request.getChuQuan());
         if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
+
+        if (request.getToaDo() != null) {
+            if (request.getToaDo().trim().isEmpty()) {
+                if (entity.getKhongGianId() != null) {
+                    gisSpatialObjectService.delete(entity.getKhongGianId());
+                    entity.setKhongGianId(null);
+                }
+            } else {
+                com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = getSpatialObjectType(geomType);
+                UUID refId = UUID.nameUUIDFromBytes(("COSO_" + entity.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                        entity.getKhongGianId(),
+                        "Cơ sở sửa chữa tại " + (request.getDiaChi() != null ? request.getDiaChi() : entity.getDiaChi()),
+                        "COSO_" + entity.getId(),
+                        geomType,
+                        objType,
+                        request.getToaDo(),
+                        request.getBieuTuongId(),
+                        refId,
+                        com.hanghai.kchtg.gis.search.dto.KchtType.COSO_SUACHUA
+                );
+                entity.setKhongGianId(spatialObj.getId());
+            }
+        } else if (entity.getKhongGianId() != null && request.getDiaChi() != null) {
+            gisSpatialObjectService.findById(entity.getKhongGianId()).ifPresent(spatialObj -> {
+                UUID refId = UUID.nameUUIDFromBytes(("COSO_" + entity.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                gisSpatialObjectService.createOrUpdate(
+                        spatialObj.getId(),
+                        "Cơ sở sửa chữa tại " + request.getDiaChi(),
+                        spatialObj.getCode(),
+                        spatialObj.getGeometryType(),
+                        spatialObj.getObjectType(),
+                        spatialObj.getCoordinates(),
+                        spatialObj.getBieuTuongId(),
+                        refId,
+                        com.hanghai.kchtg.gis.search.dto.KchtType.COSO_SUACHUA
+                );
+            });
+        }
 
         CoSuaChuaDongTau saved = repository.save(entity);
 
@@ -225,6 +286,19 @@ public class CoSuaChuaDongTauService {
                         .ngayTaiLen(a.getNgayTaiLen())
                         .build()).toList();
 
+        com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = null;
+        String coords = null;
+        UUID symbolId = null;
+        if (entity.getKhongGianId() != null) {
+            java.util.Optional<com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getKhongGianId());
+            if (spatialOpt.isPresent()) {
+                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatial = spatialOpt.get();
+                geomType = spatial.getGeometryType();
+                coords = spatial.getCoordinates();
+                symbolId = spatial.getBieuTuongId();
+            }
+        }
+
         return CoSuaChuaDongTauResponse.builder()
                 .id(entity.getId())
                 .tenCoSo(entity.getTenCoSo())
@@ -250,6 +324,16 @@ public class CoSuaChuaDongTauService {
                 .ngaySuaDoi(entity.getNgaySuaDoi())
                 .isDeleted(entity.getIsDeleted())
                 .attachments(attachments)
+                .khongGianId(entity.getKhongGianId())
+                .loaiHinhHoc(geomType)
+                .toaDo(coords)
+                .bieuTuongId(symbolId)
                 .build();
+    }
+
+    private com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType getSpatialObjectType(com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType) {
+        if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT) return com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_OTHER;
+        if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POLYGON) return com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POLYGON_OTHER;
+        return com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.LINE_OTHER;
     }
 }

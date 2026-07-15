@@ -59,6 +59,7 @@ import { giayToApi } from '../giayto/api';
 import UserResolver from '../../components/UserResolver';
 import { z } from 'zod';
 import { createCangCanSchema, updateCangCanSchema } from './schema';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
 
 export const translateFieldName = (fieldName: string): string => {
   const map: Record<string, string> = {
@@ -138,6 +139,9 @@ export default function CangCanListPage() {
   const [updateForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
+
+  const createLoaiHinhHoc = Form.useWatch('loaiHinhHoc', createForm) || 'POINT';
+  const updateLoaiHinhHoc = Form.useWatch('loaiHinhHoc', updateForm) || 'POINT';
 
   const fetchSymbols = useCallback(async () => {
     try {
@@ -275,7 +279,9 @@ export default function CangCanListPage() {
         dienTich: values.dienTich,
         congSuatTEU: values.congSuatTEU != null && !Number.isNaN(values.congSuatTEU) ? values.congSuatTEU : undefined,
         trangThaiHoatDong: values.trangThaiHoatDong || 'HIEN_HANH',
-        bieuTuongId: values.bieuTuongId || undefined,
+        bieuTuongId: values.gisLocation?.bieuTuongId || undefined,
+        loaiHinhHoc: values.loaiHinhHoc,
+        toaDo: values.gisLocation?.toaDo,
       });
 
       setSubmitting(true);
@@ -310,7 +316,9 @@ export default function CangCanListPage() {
         dienTich: values.dienTich,
         congSuatTEU: values.congSuatTEU,
         trangThaiHoatDong: values.trangThaiHoatDong,
-        bieuTuongId: values.bieuTuongId || null,
+        bieuTuongId: values.gisLocation?.bieuTuongId || null,
+        loaiHinhHoc: values.loaiHinhHoc,
+        toaDo: values.gisLocation?.toaDo,
       });
 
       setSubmitting(true);
@@ -451,7 +459,12 @@ export default function CangCanListPage() {
                     dienTich: data.dienTich,
                     congSuatTEU: data.congSuatTEU,
                     trangThaiHoatDong: data.trangThaiHoatDong,
-                    bieuTuongId: data.bieuTuongId,
+                    loaiHinhHoc: data.loaiHinhHoc || 'POINT',
+                    gisLocation: {
+                      loaiHinhHoc: data.loaiHinhHoc || 'POINT',
+                      toaDo: data.toaDo || '',
+                      bieuTuongId: data.bieuTuongId
+                    }
                   });
                   setUpdateModalVisible(true);
                 } catch (err) {
@@ -659,18 +672,21 @@ export default function CangCanListPage() {
             </Col>
           </Row>
 
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
-            Thông tin địa lý
-          </Typography.Text>
           <Row gutter={24}>
             <Col span={12}>
-              <Form.Item label="Vĩ độ (Latitude)" name="viDo">
-                <InputNumber min={-90} max={90} step={0.000001} precision={6} placeholder="VD: 20.9" style={{ width: '100%' }} />
+              <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
+                <Select placeholder="Chọn loại đối tượng" options={[
+                  { value: 'POINT', label: 'Đối tượng điểm' },
+                  { value: 'LINE', label: 'Đối tượng đường' },
+                  { value: 'POLYGON', label: 'Đối tượng vùng' }
+                ]} />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item label="Kinh độ (Longitude)" name="kinhDo">
-                <InputNumber min={-180} max={180} step={0.000001} precision={6} placeholder="VD: 106.7" style={{ width: '100%' }} />
+          </Row>
+          <Row gutter={24}>
+            <Col span={24}>
+              <Form.Item name="gisLocation">
+                <GisLocationSelector defaultGeometryType={createLoaiHinhHoc} />
               </Form.Item>
             </Col>
           </Row>
@@ -702,28 +718,6 @@ export default function CangCanListPage() {
             <Col span={12}>
               <Form.Item label="Trạng thái hoạt động" name="trangThaiHoatDong">
                 <Select placeholder="Chọn trạng thái" options={[{ label: 'Hiện hành', value: 'HIEN_HANH' }, { label: 'Tạm ngừng', value: 'TAM_NGUNG' }]} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={24}>
-            <Col span={24}>
-              <Form.Item name="bieuTuongId" label="Biểu tượng bản đồ">
-                <Select placeholder="Chọn biểu tượng hiển thị" allowClear showSearch optionFilterProp="label">
-                  {symbols.map((sym) => (
-                    <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
-                      <Space>
-                        {sym.hinhAnh && (
-                          <img
-                            src={sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}
-                            alt={sym.name}
-                            style={{ width: 20, height: 20, objectFit: 'contain' }}
-                          />
-                        )}
-                        <span>{sym.name} ({sym.code})</span>
-                      </Space>
-                    </Select.Option>
-                  ))}
-                </Select>
               </Form.Item>
             </Col>
           </Row>
@@ -779,18 +773,21 @@ export default function CangCanListPage() {
             </Col>
           </Row>
 
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
-            Thông tin địa lý
-          </Typography.Text>
           <Row gutter={24}>
             <Col span={12}>
-              <Form.Item label="Vĩ độ (Latitude)" name="viDo">
-                <InputNumber min={-90} max={90} step={0.000001} precision={6} placeholder="VD: 20.9" style={{ width: '100%' }} />
+              <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
+                <Select placeholder="Chọn loại đối tượng" options={[
+                  { value: 'POINT', label: 'Đối tượng điểm' },
+                  { value: 'LINE', label: 'Đối tượng đường' },
+                  { value: 'POLYGON', label: 'Đối tượng vùng' }
+                ]} />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item label="Kinh độ (Longitude)" name="kinhDo">
-                <InputNumber min={-180} max={180} step={0.000001} precision={6} placeholder="VD: 106.7" style={{ width: '100%' }} />
+          </Row>
+          <Row gutter={24}>
+            <Col span={24}>
+              <Form.Item name="gisLocation">
+                <GisLocationSelector defaultGeometryType={updateLoaiHinhHoc} />
               </Form.Item>
             </Col>
           </Row>
@@ -815,9 +812,6 @@ export default function CangCanListPage() {
             </Col>
           </Row>
 
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
-            Trạng thái
-          </Typography.Text>
           <Row gutter={24}>
             <Col span={12}>
               <Form.Item label="Trạng thái hoạt động" name="trangThaiHoatDong">
@@ -827,28 +821,6 @@ export default function CangCanListPage() {
             <Col span={12}>
               <Form.Item label="Trạng thái phê duyệt">
                 <Input disabled value={selectedRecord?.trangThaiPheDuyet ? trangThaiPheDuyetBadge(selectedRecord.trangThaiPheDuyet).label : '—'} aria-readonly="true" />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={24}>
-            <Col span={24}>
-              <Form.Item name="bieuTuongId" label="Biểu tượng bản đồ">
-                <Select placeholder="Chọn biểu tượng hiển thị" allowClear showSearch optionFilterProp="label">
-                  {symbols.map((sym) => (
-                    <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
-                      <Space>
-                        {sym.hinhAnh && (
-                          <img
-                            src={sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}
-                            alt={sym.name}
-                            style={{ width: 20, height: 20, objectFit: 'contain' }}
-                          />
-                        )}
-                        <span>{sym.name} ({sym.code})</span>
-                      </Space>
-                    </Select.Option>
-                  ))}
-                </Select>
               </Form.Item>
             </Col>
           </Row>

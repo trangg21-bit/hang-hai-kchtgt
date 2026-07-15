@@ -21,6 +21,6 @@ public class PolygonObjectTypeConverter implements AttributeConverter<ObjectType
                 return type;
             }
         }
-        throw new IllegalArgumentException("Unknown database value for PolygonObject.ObjectType: " + dbData);
+        return ObjectType.OTHER;
     }
 }

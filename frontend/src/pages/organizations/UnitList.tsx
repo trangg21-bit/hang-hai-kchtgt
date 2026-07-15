@@ -538,8 +538,6 @@ export default function UnitList() {
               <Input placeholder="Địa chỉ trụ sở (tùy chọn)" />
             </Form.Item>
 
-            <Form.Item
-
             <Row gutter={16}>
               <Col xs={24} md={12}>
                 <Form.Item
