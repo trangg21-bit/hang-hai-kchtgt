@@ -46,6 +46,7 @@ public class CangBienService {
     private final LichSuThayDoiService lichSuThayDoiService;
     private final UserResolverService userResolverService;
     private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
+    private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
 
     // ── CREATE (F-008) ──────────────────────────────────────────────────
 
@@ -74,6 +75,43 @@ public class CangBienService {
                 .build();
 
         CangBien saved = cangBienRepository.save(entity);
+
+        String toaDo = request.getToaDo();
+        if ((toaDo == null || toaDo.trim().isEmpty()) && request.getKinhDo() != null && request.getViDo() != null) {
+            toaDo = "POINT(" + request.getKinhDo() + " " + request.getViDo() + ")";
+        }
+
+        if (toaDo != null && !toaDo.trim().isEmpty()) {
+            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_PORT;
+            UUID refId = saved.getId();
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    null,
+                    saved.getTenCang(),
+                    "CANGBIEN_" + saved.getMaCang(),
+                    geomType,
+                    objType,
+                    toaDo,
+                    request.getBieuTuongId(),
+                    refId,
+                    com.hanghai.kchtg.gis.search.dto.KchtType.CANGBIEN
+            );
+            saved.setKhongGianId(spatialObj.getId());
+            if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT) {
+                try {
+                    String clean = toaDo.replace("POINT", "").replace("(", "").replace(")", "").trim();
+                    String[] parts = clean.split("\\s+");
+                    if (parts.length == 2) {
+                        saved.setKinhDo(new java.math.BigDecimal(parts[0]));
+                        saved.setViDo(new java.math.BigDecimal(parts[1]));
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to parse POINT coordinates", e);
+                }
+            }
+            saved = cangBienRepository.save(saved);
+        }
+
         log.info("Created CangBien [{}] code={}", saved.getId(), saved.getMaCang());
         return toResponse(saved);
     }
@@ -195,6 +233,57 @@ public class CangBienService {
 
         CangBien saved = cangBienRepository.save(entity);
 
+        // Sync to GisSpatialObject
+        String toaDo = request.getToaDo();
+        if ((toaDo == null || toaDo.trim().isEmpty()) && request.getKinhDo() != null && request.getViDo() != null) {
+            toaDo = "POINT(" + request.getKinhDo() + " " + request.getViDo() + ")";
+        }
+
+        if (toaDo != null && !toaDo.trim().isEmpty()) {
+            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_PORT;
+            UUID refId = saved.getId();
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    saved.getKhongGianId(),
+                    saved.getTenCang(),
+                    "CANGBIEN_" + saved.getMaCang(),
+                    geomType,
+                    objType,
+                    toaDo,
+                    request.getBieuTuongId(),
+                    refId,
+                    com.hanghai.kchtg.gis.search.dto.KchtType.CANGBIEN
+            );
+            saved.setKhongGianId(spatialObj.getId());
+            if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT) {
+                try {
+                    String clean = toaDo.replace("POINT", "").replace("(", "").replace(")", "").trim();
+                    String[] parts = clean.split("\\s+");
+                    if (parts.length == 2) {
+                        saved.setKinhDo(new java.math.BigDecimal(parts[0]));
+                        saved.setViDo(new java.math.BigDecimal(parts[1]));
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to parse POINT coordinates", e);
+                }
+            }
+            saved = cangBienRepository.save(saved);
+        } else if (saved.getKhongGianId() != null) {
+            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_PORT;
+            gisSpatialObjectService.createOrUpdate(
+                    saved.getKhongGianId(),
+                    saved.getTenCang(),
+                    "CANGBIEN_" + saved.getMaCang(),
+                    geomType,
+                    objType,
+                    "POINT(" + saved.getKinhDo() + " " + saved.getViDo() + ")",
+                    saved.getBieuTuongId(),
+                    saved.getId(),
+                    com.hanghai.kchtg.gis.search.dto.KchtType.CANGBIEN
+            );
+        }
+
         // Record field-level change history (INT-003b)
         lichSuThayDoiService.recordChanges("CangBien", saved.getId().toString(), "system", preImage, saved);
 
@@ -226,6 +315,9 @@ public class CangBienService {
 
         entity.softDelete();
         cangBienRepository.save(entity);
+        if (entity.getKhongGianId() != null) {
+            gisSpatialObjectService.delete(entity.getKhongGianId());
+        }
         log.info("Soft-deleted CangBien [{}] code={}", entity.getId(), entity.getMaCang());
     }
 
@@ -249,7 +341,7 @@ public class CangBienService {
         String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName : userResolverService.resolveName(entity.getCreatedBy());
         String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName : userResolverService.resolveName(entity.getUpdatedBy());
 
-        return CangBienResponse.builder()
+        CangBienResponse.CangBienResponseBuilder builder = CangBienResponse.builder()
                 .id(entity.getId())
                 .maCang(entity.getMaCang())
                 .tenCang(entity.getTenCang())
@@ -266,7 +358,15 @@ public class CangBienService {
                 .createdBy(createdBy)
                 .updatedBy(updatedBy)
                 .createdAt(entity.getCreatedAt())
-                .updatedAt(entity.getUpdatedAt())
-                .build();
+                .updatedAt(entity.getUpdatedAt());
+
+        if (entity.getKhongGianId() != null) {
+            builder.khongGianId(entity.getKhongGianId());
+            gisSpatialObjectService.findById(entity.getKhongGianId()).ifPresent(spatialObj -> {
+                builder.loaiHinhHoc(spatialObj.getGeometryType());
+                builder.toaDo(spatialObj.getCoordinates());
+            });
+        }
+        return builder.build();
     }
 }

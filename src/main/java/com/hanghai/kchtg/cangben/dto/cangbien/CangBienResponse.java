@@ -31,4 +31,7 @@ public class CangBienResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private java.util.UUID bieuTuongId;
+    private java.util.UUID khongGianId;
+    private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
+    private String toaDo;
 }

@@ -32,6 +32,10 @@ export interface CoSuaChuaResponse {
   isDeleted?: boolean;
   attachments?: CoSuaChuaAttachment[];
   history?: HistoryEntry[];
+  khongGianId?: string;
+  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
+  toaDo?: string;
+  bieuTuongId?: string;
 }
 
 export interface CreateCoSuaChuaRequest {
@@ -44,6 +48,9 @@ export interface CreateCoSuaChuaRequest {
   khaNang?: string;
   chuQuan?: string;
   orgUnitId?: string;
+  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
+  toaDo?: string;
+  bieuTuongId?: string;
 }
 
 export interface UpdateCoSuaChuaRequest extends CreateCoSuaChuaRequest {}

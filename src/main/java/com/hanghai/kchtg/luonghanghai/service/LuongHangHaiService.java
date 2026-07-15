@@ -63,7 +63,7 @@ public class LuongHangHaiService {
                     req.getToaDo(),
                     req.getBieuTuongId(),
                     refId,
-                    "LUONGHANGHAI"
+                    com.hanghai.kchtg.gis.search.dto.KchtType.LUONGHANGHAI
             );
             l.setKhongGianId(spatialObj.getId());
             l = repo.save(l);
@@ -141,7 +141,7 @@ public class LuongHangHaiService {
                         req.getToaDo(),
                         req.getBieuTuongId(),
                         refId,
-                        "LUONGHANGHAI"
+                        com.hanghai.kchtg.gis.search.dto.KchtType.LUONGHANGHAI
                 );
                 l.setKhongGianId(spatialObj.getId());
             }
@@ -157,7 +157,7 @@ public class LuongHangHaiService {
                         spatialObj.getCoordinates(),
                         spatialObj.getBieuTuongId(),
                         refId,
-                        "LUONGHANGHAI"
+                        com.hanghai.kchtg.gis.search.dto.KchtType.LUONGHANGHAI
                 );
             });
         }

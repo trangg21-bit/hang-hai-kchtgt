@@ -49,6 +49,8 @@ export const createSchema = z.object({
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
   trangThaiPheDuyet: z.enum(['CHO_PHE_DUYET', 'DUOC_PHE_DUYET', 'TU_CHOI']).default('CHO_PHE_DUYET'),
   bieuTuongId: z.string().uuid().optional().or(z.literal('')),
+  loaiHinhHoc: z.string().optional(),
+  toaDo: z.string().optional(),
 }).refine(
   (data) => (data.viDo === undefined || Number.isNaN(data.viDo)) === (data.kinhDo === undefined || Number.isNaN(data.kinhDo)),
   {
@@ -72,6 +74,8 @@ export const updateSchema = z.object({
   khaNangTiepNhan: z.coerce.number().optional().or(z.nan()),
   trangThaiHoatDong: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
   bieuTuongId: z.string().uuid().optional().nullable(),
+  loaiHinhHoc: z.string().optional(),
+  toaDo: z.string().optional(),
 }).refine(
   (data) => (data.viDo === undefined || Number.isNaN(data.viDo)) === (data.kinhDo === undefined || Number.isNaN(data.kinhDo)),
   {

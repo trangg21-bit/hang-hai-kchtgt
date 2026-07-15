@@ -33,6 +33,7 @@ public class NhaTramPhaoService {
     private final PointObjectSyncService pointObjectSyncService;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
+    private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
 
     // -- READ --
 
@@ -96,6 +97,42 @@ public class NhaTramPhaoService {
         }
 
         entity = phaoRepo.save(entity);
+
+        String toaDo = request.getToaDo();
+        if ((toaDo == null || toaDo.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+            toaDo = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
+        }
+
+        if (toaDo != null && !toaDo.trim().isEmpty()) {
+            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_BUOY;
+            UUID refId = entity.getId();
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    null,
+                    entity.getName(),
+                    "PHAOTIEU_" + entity.getCode(),
+                    geomType,
+                    objType,
+                    toaDo,
+                    request.getBieuTuongId(),
+                    refId,
+                    com.hanghai.kchtg.gis.search.dto.KchtType.PHAOTIEU
+            );
+            entity.setKhongGianId(spatialObj.getId());
+            if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT) {
+                try {
+                    String clean = toaDo.replace("POINT", "").replace("(", "").replace(")", "").trim();
+                    String[] parts = clean.split("\\s+");
+                    if (parts.length == 2) {
+                        entity.setLongitude(Double.parseDouble(parts[0]));
+                        entity.setLatitude(Double.parseDouble(parts[1]));
+                    }
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+            entity = phaoRepo.save(entity);
+        }
 
         logHistory(entity, NhaTramHistoryActionType.CREATE, null, null, toJson(entity));
         notificationService.sendApprovalNotificationPhao(entity);
@@ -163,6 +200,57 @@ public class NhaTramPhaoService {
 
         phaoRepo.save(entity);
 
+        // Sync to GisSpatialObject
+        String toaDo = request.getToaDo();
+        if ((toaDo == null || toaDo.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+            toaDo = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
+        }
+
+        if (toaDo != null && !toaDo.trim().isEmpty()) {
+            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_BUOY;
+            UUID refId = entity.getId();
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    entity.getKhongGianId(),
+                    entity.getName(),
+                    "PHAOTIEU_" + entity.getCode(),
+                    geomType,
+                    objType,
+                    toaDo,
+                    request.getBieuTuongId(),
+                    refId,
+                    com.hanghai.kchtg.gis.search.dto.KchtType.PHAOTIEU
+            );
+            entity.setKhongGianId(spatialObj.getId());
+            if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT) {
+                try {
+                    String clean = toaDo.replace("POINT", "").replace("(", "").replace(")", "").trim();
+                    String[] parts = clean.split("\\s+");
+                    if (parts.length == 2) {
+                        entity.setLongitude(Double.parseDouble(parts[0]));
+                        entity.setLatitude(Double.parseDouble(parts[1]));
+                    }
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+            phaoRepo.save(entity);
+        } else if (entity.getKhongGianId() != null) {
+            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_BUOY;
+            gisSpatialObjectService.createOrUpdate(
+                    entity.getKhongGianId(),
+                    entity.getName(),
+                    "PHAOTIEU_" + entity.getCode(),
+                    geomType,
+                    objType,
+                    "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")",
+                    request.getBieuTuongId(),
+                    entity.getId(),
+                    com.hanghai.kchtg.gis.search.dto.KchtType.PHAOTIEU
+            );
+        }
+
         // Compare JSON for actual changes
         String newJson = toJson(entity);
         if (!compareJsonNodes(oldJson, newJson)) {
@@ -192,6 +280,9 @@ public class NhaTramPhaoService {
         entity.setStatus(NhaTramStatus.DELETED);
         entity.softDelete();
         phaoRepo.save(entity);
+        if (entity.getKhongGianId() != null) {
+            gisSpatialObjectService.delete(entity.getKhongGianId());
+        }
 
         logHistory(entity, NhaTramHistoryActionType.SOFT_DELETE, null, null, toJson(entity));
 
@@ -340,7 +431,7 @@ public class NhaTramPhaoService {
     }
 
     private NhaTramPhaoResponse toResponse(NhaTramPhao entity) {
-        return NhaTramPhaoResponse.builder()
+        NhaTramPhaoResponse.NhaTramPhaoResponseBuilder builder = NhaTramPhaoResponse.builder()
                 .id(entity.getId())
                 .code(entity.getCode())
                 .name(entity.getName())
@@ -363,8 +454,17 @@ public class NhaTramPhaoService {
                 .approvedDate(entity.getApprovedDate())
                 .rejectionReason(entity.getRejectionReason())
                 .createdAt(entity.getCreatedAt())
-                .updatedAt(entity.getUpdatedAt())
-                .build();
+                .updatedAt(entity.getUpdatedAt());
+
+        if (entity.getKhongGianId() != null) {
+            builder.khongGianId(entity.getKhongGianId());
+            gisSpatialObjectService.findById(entity.getKhongGianId()).ifPresent(spatialObj -> {
+                builder.loaiHinhHoc(spatialObj.getGeometryType());
+                builder.toaDo(spatialObj.getCoordinates());
+                builder.bieuTuongId(spatialObj.getBieuTuongId());
+            });
+        }
+        return builder.build();
     }
 
     private boolean isApprovedStatus(NhaTramStatus status) {

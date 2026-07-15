@@ -75,10 +75,17 @@ class NhaTramDenControllerTest {
     }
 
     private NhaTramDenResponse makeResponse(UUID id, String name) {
-        return new NhaTramDenResponse(
-                id, "DEN-001", name, null, 10.0, 106.0, 15.0,
-                null, null, 20.0, "Mo ta", null, null, null, true,
-                null, null, null, null, null, null, null, null);
+        return NhaTramDenResponse.builder()
+                .id(id)
+                .code("DEN-001")
+                .name(name)
+                .latitude(10.0)
+                .longitude(106.0)
+                .lightRange(15.0)
+                .range(20.0)
+                .description("Mo ta")
+                .isActive(true)
+                .build();
     }
 
     @Test

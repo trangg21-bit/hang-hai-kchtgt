@@ -62,7 +62,7 @@ public class VungNuocService {
                     request.getToaDo(),
                     request.getBieuTuongId(),
                     vungNuocId,
-                    "VUNGNUOC"
+                    com.hanghai.kchtg.gis.search.dto.KchtType.VUNGNUOC
             );
             spatialId = spatialObj.getId();
         }
@@ -226,7 +226,7 @@ public class VungNuocService {
                         request.getToaDo(),
                         request.getBieuTuongId(),
                         entity.getId(),
-                        "VUNGNUOC"
+                        com.hanghai.kchtg.gis.search.dto.KchtType.VUNGNUOC
                 );
                 entity.setKhongGianId(spatialObj.getId());
             }
@@ -241,7 +241,7 @@ public class VungNuocService {
                         spatialObj.getCoordinates(),
                         spatialObj.getBieuTuongId(),
                         entity.getId(),
-                        "VUNGNUOC"
+                        com.hanghai.kchtg.gis.search.dto.KchtType.VUNGNUOC
                 );
             });
         }

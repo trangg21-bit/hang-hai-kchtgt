@@ -17,6 +17,7 @@ import {
 } from 'antd';
 import { dekeCRUD, deKeApproval } from '../../services/deKeService';
 import { organizationService } from '../../services/organizationService';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import type {
   DeKeResponse,
   CreateDeKeRequest,
@@ -115,6 +116,11 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
             tinhTrang: data.tinhTrang,
             ghiChu: data.ghiChu,
             donViId: data.donViId,
+            spatialData: {
+              loaiHinhHoc: data.loaiHinhHoc,
+              toaDo: data.toaDo,
+              bieuTuongId: data.bieuTuongId,
+            }
           });
         } catch (err) {
           setFormError(err instanceof Error ? err.message : 'Không thể tải dữ liệu');
@@ -148,6 +154,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
   const handleSubmitForm = async (values: any) => {
     setIsSubmitting(true);
     try {
+      const spatialData = values.spatialData;
       const payload: CreateDeKeRequest = {
         loaiDe: values.loaiDe,
         viTri: values.viTri,
@@ -157,6 +164,9 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
         matVatLieu: values.matVatLieu,
         tinhTrang: values.tinhTrang,
         donViId: values.donViId,
+        loaiHinhHoc: spatialData?.loaiHinhHoc,
+        toaDo: spatialData?.toaDo,
+        bieuTuongId: spatialData?.bieuTuongId,
       };
       if (values.ghiChu !== undefined) {
         (payload as any).ghiChu = values.ghiChu;
@@ -526,6 +536,10 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
           showCount
           rows={4}
         />
+      </Form.Item>
+
+      <Form.Item label="Vị trí/Hình vẽ bản đồ" name="spatialData">
+        <GisLocationSelector defaultGeometryType="LINE" />
       </Form.Item>
 
       <Form.Item label="Tài liệu đính kèm">

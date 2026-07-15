@@ -19,6 +19,7 @@ public class TramRadarService {
 
     private final TramRadarRepository repository;
     private final PheDuyetLichSuRepository historyRepository;
+    private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
 
     public TramRadarResponse create(TramRadarCreateRequest request, String createdBy) {
         TramRadar entity = TramRadar.builder()
@@ -40,6 +41,42 @@ public class TramRadarService {
                 .build();
 
         TramRadar saved = repository.save(entity);
+
+        String toaDo = request.getToaDo();
+        if ((toaDo == null || toaDo.trim().isEmpty()) && request.getKinhDo() != null && request.getViDo() != null) {
+            toaDo = "POINT(" + request.getKinhDo() + " " + request.getViDo() + ")";
+        }
+
+        if (toaDo != null && !toaDo.trim().isEmpty()) {
+            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_OTHER;
+            UUID refId = UUID.nameUUIDFromBytes(String.valueOf(saved.getId()).getBytes());
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    null,
+                    saved.getTenTram(),
+                    "RADAR_" + saved.getId(),
+                    geomType,
+                    objType,
+                    toaDo,
+                    request.getBieuTuongId(),
+                    refId,
+                    com.hanghai.kchtg.gis.search.dto.KchtType.TRAM_RADAR
+            );
+            saved.setKhongGianId(spatialObj.getId());
+            if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT) {
+                try {
+                    String clean = toaDo.replace("POINT", "").replace("(", "").replace(")", "").trim();
+                    String[] parts = clean.split("\\s+");
+                    if (parts.length == 2) {
+                        saved.setKinhDo(new java.math.BigDecimal(parts[0]));
+                        saved.setViDo(new java.math.BigDecimal(parts[1]));
+                    }
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+            saved = repository.save(saved);
+        }
 
         historyRepository.save(PheDuyetLichSu.builder()
                 .tramRadarId(saved.getId())
@@ -92,6 +129,57 @@ public class TramRadarService {
 
         TramRadar saved = repository.save(entity);
 
+        // Sync to GisSpatialObject
+        String toaDo = request.getToaDo();
+        if ((toaDo == null || toaDo.trim().isEmpty()) && request.getKinhDo() != null && request.getViDo() != null) {
+            toaDo = "POINT(" + request.getKinhDo() + " " + request.getViDo() + ")";
+        }
+
+        if (toaDo != null && !toaDo.trim().isEmpty()) {
+            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_OTHER;
+            UUID refId = UUID.nameUUIDFromBytes(String.valueOf(saved.getId()).getBytes());
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    saved.getKhongGianId(),
+                    saved.getTenTram(),
+                    "RADAR_" + saved.getId(),
+                    geomType,
+                    objType,
+                    toaDo,
+                    request.getBieuTuongId(),
+                    refId,
+                    com.hanghai.kchtg.gis.search.dto.KchtType.TRAM_RADAR
+            );
+            saved.setKhongGianId(spatialObj.getId());
+            if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT) {
+                try {
+                    String clean = toaDo.replace("POINT", "").replace("(", "").replace(")", "").trim();
+                    String[] parts = clean.split("\\s+");
+                    if (parts.length == 2) {
+                        saved.setKinhDo(new java.math.BigDecimal(parts[0]));
+                        saved.setViDo(new java.math.BigDecimal(parts[1]));
+                    }
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+            saved = repository.save(saved);
+        } else if (saved.getKhongGianId() != null) {
+            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_OTHER;
+            gisSpatialObjectService.createOrUpdate(
+                    saved.getKhongGianId(),
+                    saved.getTenTram(),
+                    "RADAR_" + saved.getId(),
+                    geomType,
+                    objType,
+                    "POINT(" + saved.getKinhDo() + " " + saved.getViDo() + ")",
+                    request.getBieuTuongId(),
+                    UUID.nameUUIDFromBytes(String.valueOf(saved.getId()).getBytes()),
+                    com.hanghai.kchtg.gis.search.dto.KchtType.TRAM_RADAR
+            );
+        }
+
         historyRepository.save(PheDuyetLichSu.builder()
                 .tramRadarId(saved.getId())
                 .capPheDuyet(0)
@@ -113,6 +201,9 @@ public class TramRadarService {
 
         entity.setIsDeleted(true);
         repository.save(entity);
+        if (entity.getKhongGianId() != null) {
+            gisSpatialObjectService.delete(entity.getKhongGianId());
+        }
 
         historyRepository.save(PheDuyetLichSu.builder()
                 .tramRadarId(entity.getId())
@@ -224,7 +315,7 @@ public class TramRadarService {
                         .ngayTaiLen(a.getNgayTaiLen())
                         .build()).toList();
 
-        return TramRadarResponse.builder()
+        TramRadarResponse.TramRadarResponseBuilder builder = TramRadarResponse.builder()
                 .id(entity.getId())
                 .tenTram(entity.getTenTram())
                 .viTri(entity.getViTri())
@@ -248,7 +339,16 @@ public class TramRadarService {
                 .ngayTao(entity.getNgayTao())
                 .nguoiSuaDoi(entity.getNguoiSuaDoi())
                 .ngaySuaDoi(entity.getNgaySuaDoi())
-                .attachments(attachments)
-                .build();
+                .attachments(attachments);
+
+        if (entity.getKhongGianId() != null) {
+            builder.khongGianId(entity.getKhongGianId());
+            gisSpatialObjectService.findById(entity.getKhongGianId()).ifPresent(spatialObj -> {
+                builder.loaiHinhHoc(spatialObj.getGeometryType());
+                builder.toaDo(spatialObj.getCoordinates());
+                builder.bieuTuongId(spatialObj.getBieuTuongId());
+            });
+        }
+        return builder.build();
     }
 }

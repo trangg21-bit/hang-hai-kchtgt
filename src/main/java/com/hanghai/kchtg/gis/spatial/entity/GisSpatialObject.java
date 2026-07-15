@@ -97,6 +97,6 @@ public class GisSpatialObject extends BaseEntity {
     @Column(name = "ref_id")
     private UUID refId;
 
-    @Column(name = "ref_type", length = 50)
-    private String refType;
+    @Column(name = "ref_type")
+    private com.hanghai.kchtg.gis.search.dto.KchtType refType;
 }

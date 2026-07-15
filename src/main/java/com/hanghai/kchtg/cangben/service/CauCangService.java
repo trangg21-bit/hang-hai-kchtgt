@@ -69,7 +69,7 @@ public class CauCangService {
                     request.getToaDo(),
                     request.getBieuTuongId(),
                     cauCangId,
-                    "CAUCANG"
+                    com.hanghai.kchtg.gis.search.dto.KchtType.CAUCANG
             );
             spatialId = spatialObj.getId();
         }
@@ -239,7 +239,7 @@ public class CauCangService {
                         request.getToaDo(),
                         request.getBieuTuongId(),
                         entity.getId(),
-                        "CAUCANG"
+                        com.hanghai.kchtg.gis.search.dto.KchtType.CAUCANG
                 );
                 entity.setKhongGianId(spatialObj.getId());
             }
@@ -254,7 +254,7 @@ public class CauCangService {
                         spatialObj.getCoordinates(),
                         spatialObj.getBieuTuongId(),
                         entity.getId(),
-                        "CAUCANG"
+                        com.hanghai.kchtg.gis.search.dto.KchtType.CAUCANG
                 );
             });
         }

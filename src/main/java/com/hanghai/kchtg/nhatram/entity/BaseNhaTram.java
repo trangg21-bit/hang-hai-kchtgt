@@ -68,4 +68,7 @@ public abstract class BaseNhaTram {
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
     }
+
+    @Column(name = "spatial_id")
+    private UUID khongGianId;
 }

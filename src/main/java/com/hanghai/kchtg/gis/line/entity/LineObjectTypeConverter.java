@@ -21,6 +21,6 @@ public class LineObjectTypeConverter implements AttributeConverter<ObjectType, I
                 return type;
             }
         }
-        throw new IllegalArgumentException("Unknown database value for LineObject.ObjectType: " + dbData);
+        return ObjectType.OTHER;
     }
 }

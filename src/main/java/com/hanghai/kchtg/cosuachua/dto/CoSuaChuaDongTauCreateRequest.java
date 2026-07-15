@@ -38,4 +38,8 @@ public class CoSuaChuaDongTauCreateRequest {
     @Size(max = 255)
     private String chuQuan;
     private java.util.UUID orgUnitId;
+
+    private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
+    private String toaDo;
+    private java.util.UUID bieuTuongId;
 }

@@ -43,6 +43,9 @@ public class HeThongVTS {
     @Column(name = "org_unit_id")
     private java.util.UUID orgUnitId;
 
+    @Column(name = "spatial_id")
+    private java.util.UUID khongGianId;
+
     @Column(name = "trang_thai", nullable = false)
     @Convert(converter = HeThongVTSApprovalStatusConverter.class)
     private HeThongVTSApprovalStatus trangThai;

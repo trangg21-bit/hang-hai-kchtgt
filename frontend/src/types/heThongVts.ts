@@ -41,6 +41,10 @@ export interface HeThongVTSResponse {
   ngaySuaDoi?: string;
   attachments?: HeThongVTSAttachment[];
   history?: HistoryEntry[];
+  khongGianId?: string;
+  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
+  toaDo?: string;
+  bieuTuongId?: string;
 }
 
 export interface CreateHeThongVTSRequest {
@@ -51,6 +55,9 @@ export interface CreateHeThongVTSRequest {
   nguonGoc?: string;
   doiTac?: string;
   orgUnitId?: string;
+  loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
+  toaDo?: string;
+  bieuTuongId?: string;
 }
 
 export interface UpdateHeThongVTSRequest extends CreateHeThongVTSRequest {}
