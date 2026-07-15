@@ -544,7 +544,7 @@ export default function AppLayout() {
               />
             )}
             <Typography.Title level={5} style={{ margin: 0, color: '#12468C' }}>
-              {pageTitles[selectedKey] ?? 'Quản trị hệ thống'}
+              HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
             </Typography.Title>
           </Space>
 

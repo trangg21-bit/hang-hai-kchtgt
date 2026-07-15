@@ -200,7 +200,7 @@ export const metronicTheme: ThemeConfig = {
       headerBg: '#F9FAFB',
       headerColor: colors.textSecondary,
       rowHoverBg: '#F5F8FA',
-      cellPaddingBlock: 14,
+      cellPaddingBlock: 10,
     },
 
     Input: {
