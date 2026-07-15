@@ -59,11 +59,6 @@ public interface OrgUnitRepository extends JpaRepository<OrgUnit, UUID> {
      */
     long countByParentIdAndDeletedAtIsNull(UUID parentId);
 
-    /**
-     * Find a unit by its unique code and scope (for multi-tenant support).
-     */
-    Optional<OrgUnit> findByCodeAndScopeId(String code, Long scopeId);
-
     // ── Path-based queries (Materialized Path) ───────────────────────
 
     /**

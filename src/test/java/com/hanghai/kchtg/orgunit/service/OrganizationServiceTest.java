@@ -19,8 +19,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -31,7 +29,7 @@ import static org.mockito.Mockito.*;
 /**
  * Unit tests for {@link OrganizationService}.
  * Covers: unique code constraint (BR-013), delete guard (BR-014),
- * circular reference detection (BR-016), approval workflow (BR-015), coefficient validation (BR-017).
+ * circular reference detection (BR-016), approval workflow (BR-015).
  */
 @ExtendWith(MockitoExtension.class)
 class OrganizationServiceTest {
@@ -87,7 +85,6 @@ class OrganizationServiceTest {
         request.setName("Chi cục 1");
         request.setCode("CUC001");
         request.setType(OrgUnitType.CHI_CUC);
-        request.setCoefficient(BigDecimal.valueOf(1.5));
 
             when(orgUnitRepo.existsByCode("CUC001")).thenReturn(false);
             when(orgUnitRepo.save(any())).thenAnswer(invocation -> {
@@ -284,66 +281,6 @@ class OrganizationServiceTest {
         }
     }
 
-    // ── BR-017: Coefficient validation ───────────────────────────────
-
-    @Nested
-    @DisplayName("BR-017: Coefficient must be > 0 with max 2 decimal places")
-    class CoefficientTests {
-
-    @Test
-    @DisplayName("shouldRejectZeroCoefficientViaValidation")
-    void shouldRejectZeroCoefficient() {
-        CreateOrgUnitRequest request = new CreateOrgUnitRequest();
-        request.setName("Test");
-        request.setCode("TEST001");
-        request.setType(OrgUnitType.CUC);
-        request.setCoefficient(BigDecimal.ZERO);
-
-        // Jakarta Validation @DecimalMin("0.01") — 0.0 fails
-        // Verify the value violates the constraint (compareTo <= 0 means invalid)
-        assertTrue(request.getCoefficient() != null && request.getCoefficient().compareTo(BigDecimal.ZERO) <= 0,
-                "Coefficient 0 should be rejected by @DecimalMin validation");
-    }
-
-    @Test
-    @DisplayName("shouldRejectNegativeCoefficient")
-    void shouldRejectNegativeCoefficient() {
-        CreateOrgUnitRequest request = new CreateOrgUnitRequest();
-        request.setName("Test");
-        request.setCode("TEST001");
-        request.setType(OrgUnitType.CUC);
-        request.setCoefficient(BigDecimal.valueOf(-0.5));
-
-        assertTrue(request.getCoefficient() != null && request.getCoefficient().compareTo(BigDecimal.ZERO) <= 0,
-                "Negative coefficient should be rejected by @DecimalMin validation");
-    }
-
-    @Test
-    @DisplayName("shouldAcceptValidCoefficient")
-    void shouldAcceptValidCoefficient() {
-        CreateOrgUnitRequest request = new CreateOrgUnitRequest();
-        request.setName("Test");
-        request.setCode("TEST001");
-        request.setType(OrgUnitType.CUC);
-        request.setCoefficient(BigDecimal.valueOf(1.50));
-
-        assertNotNull(request.getCoefficient());
-        assertTrue(request.getCoefficient().compareTo(BigDecimal.ZERO) > 0);
-    }
-
-        @Test
-        @DisplayName("shouldAcceptNullCoefficient")
-        void shouldAcceptNullCoefficient() {
-            CreateOrgUnitRequest request = new CreateOrgUnitRequest();
-            request.setName("Test");
-            request.setCode("TEST001");
-            request.setType(OrgUnitType.CUC);
-            request.setCoefficient(null);
-
-            assertNull(request.getCoefficient());
-        }
-    }
-
     // ── Utility helpers ──────────────────────────────────────────────
 
     private OrgUnit makeUnit(UUID id, String name, String code, OrgUnitType type) {
@@ -355,9 +292,7 @@ class OrganizationServiceTest {
         unit.setStatus(OrgUnitStatus.APPROVED);
         unit.setPath("/" + id + "/");
         unit.setLevel(1);
-        unit.setScopeId(0L);
         unit.setSortOrder(0);
-        unit.setCoefficient(BigDecimal.valueOf(1.0));
         unit.setCreatedAt(LocalDateTime.now());
         unit.setUpdatedAt(LocalDateTime.now());
         return unit;

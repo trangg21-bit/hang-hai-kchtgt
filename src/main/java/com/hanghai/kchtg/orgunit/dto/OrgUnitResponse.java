@@ -37,10 +37,8 @@ public class OrgUnitResponse {
     private String address;
     private String phone;
     private String contactPerson;
-    private java.math.BigDecimal coefficient;
     private String path;
     private Integer level;
-    private Long scopeId;
     private Integer sortOrder;
     private LocalDateTime approvedAt;
     private LocalDateTime createdAt;
@@ -64,10 +62,8 @@ public class OrgUnitResponse {
                 .address(entity.getAddress())
                 .phone(entity.getPhone())
                 .contactPerson(entity.getContactPerson())
-                .coefficient(entity.getCoefficient())
                 .path(entity.getPath())
                 .level(entity.getLevel())
-                .scopeId(entity.getScopeId())
                 .sortOrder(entity.getSortOrder())
                 .approvedAt(entity.getApprovedAt())
                 .createdAt(entity.getCreatedAt())

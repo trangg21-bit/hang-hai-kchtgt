@@ -38,7 +38,6 @@ import java.util.stream.Collectors;
  *   <li>BR-014: delete guard (no children, no related personnel)</li>
  *   <li>BR-015: Admin-only approval</li>
  *   <li>BR-016: parent-child hierarchy with circular ref detection</li>
- *   <li>BR-017: coefficient > 0, max 2 decimal places</li>
  * </ul>
  * </p>
  */
@@ -209,9 +208,7 @@ public class OrganizationService {
                 .address(request.getAddress())
                 .phone(request.getPhone())
                 .contactPerson(request.getContactPerson())
-                .coefficient(request.getCoefficient())
                 .status(request.getStatus() != null ? request.getStatus() : OrgUnitStatus.DRAFT)
-                .scopeId(0L)
                 .sortOrder(0)
                 .path("")   // placeholder — set below
                 .level(0)   // placeholder — set below
@@ -296,7 +293,6 @@ public class OrganizationService {
         if (request.getAddress() != null) unit.setAddress(request.getAddress());
         if (request.getPhone() != null) unit.setPhone(request.getPhone());
         if (request.getContactPerson() != null) unit.setContactPerson(request.getContactPerson());
-        if (request.getCoefficient() != null) unit.setCoefficient(request.getCoefficient());
 
         OrgUnit saved = orgUnitRepo.save(unit);
         saveHistory(saved, "UPDATED", "Cập nhật đơn vị", operatorId, operatorName);
@@ -414,7 +410,7 @@ public class OrganizationService {
      */
     public OrgUnitResponse seedRoot(String name, String code, OrgUnitType type,
                                       String description, String address, String phone,
-                                      java.math.BigDecimal coefficient, UUID operatorId, String operatorName) {
+                                      UUID operatorId, String operatorName) {
         long rootCount = orgUnitRepo.findByParentIdIsNull().size();
         if (rootCount > 0) {
             log.warn("Root unit already exists ({} roots found). Skipping seed.", rootCount);
@@ -428,9 +424,7 @@ public class OrganizationService {
                 .description(description)
                 .address(address)
                 .phone(phone)
-                .coefficient(coefficient)
                 .status(OrgUnitStatus.APPROVED) // root is pre-approved
-                .scopeId(0L)
                 .sortOrder(0)
                 .build();
 

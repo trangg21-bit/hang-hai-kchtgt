@@ -177,13 +177,6 @@ public class User extends BaseEntity implements java.security.Principal {
     private Boolean totpEnabled = false;
 
     /**
-     * The most recent TOTP code submitted for verification (used for audit / debugging).
-     * 6-character numeric code, {@code null} if no code has been submitted yet.
-     */
-    @Column(name = "last_totp_code", length = 6)
-    private String lastTotpCode;
-
-    /**
      * Timestamp when TOTP was last successfully verified.
      */
     @Column(name = "totp_verified_at")
@@ -238,12 +231,6 @@ public class User extends BaseEntity implements java.security.Principal {
      */
     @Column(name = "last_changed_at")
     private LocalDateTime lastChangedAt;
-
-    /**
-     * Điểm số sức mạnh mật khẩu (0-100), dùng cho password strength meter.
-     */
-    @Column(name = "password_strength_score")
-    private Integer passwordStrengthScore;
 
     /**
      * Monotonic version for permission invalidation.

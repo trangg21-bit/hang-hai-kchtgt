@@ -21,7 +21,6 @@ export interface Organization {
   phone?: string;
   contactPerson?: string;
   contactPhone?: string;
-  coefficient?: number;
   status: "draft" | "pending" | "approved" | "rejected";
   childCount: number;
   createdAt: string;
@@ -38,7 +37,6 @@ export interface CreateOrganizationPayload {
   phone?: string;
   contactPerson?: string;
   contactPhone?: string;
-  coefficient?: number;
 }
 
 export interface UpdateOrganizationPayload {
@@ -51,7 +49,6 @@ export interface UpdateOrganizationPayload {
   phone?: string;
   contactPerson?: string;
   contactPhone?: string;
-  coefficient?: number;
   status?: "draft" | "pending" | "approved" | "rejected";
 }
 
@@ -157,7 +154,6 @@ export const organizationService = {
         parentId: item.parentId ? String(item.parentId) : undefined,
         level: item.level,
         type: item.type as Organization["type"],
-        coefficient: item.coefficient,
         status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
       }));
 
@@ -177,7 +173,6 @@ export const organizationService = {
           phone: item.phone,
           contactPerson: item.contactPerson,
           contactPhone: item.phone,
-          coefficient: item.coefficient,
           status: item.status as Organization["status"],
           childCount: 0, // placeholder
           createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
@@ -214,7 +209,6 @@ export const organizationService = {
           phone: item.phone,
           contactPerson: item.contactPerson,
           contactPhone: item.phone,
-          coefficient: item.coefficient,
           status: item.status as Organization["status"],
           childCount,
           createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
@@ -293,7 +287,6 @@ export const organizationService = {
         phone: item.phone,
         contactPerson: item.contactPerson,
         contactPhone: item.contactPhone ?? item.phone,
-        coefficient: item.coefficient,
         status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
         childCount: 0,
         createdAt: item.createdAt
@@ -337,7 +330,6 @@ export const organizationService = {
           description: node.description,
           address: node.address,
           phone: node.phone,
-          coefficient: node.coefficient,
           status: (node.status?.toLowerCase() as Organization["status"]) ?? "draft",
           childCount: Array.isArray(node.children) ? node.children.length : 0,
           createdAt: node.createdAt ? new Date(node.createdAt).toISOString() : "",
@@ -454,7 +446,6 @@ export const organizationService = {
         address: payload.address,
         phone: payload.phone ?? payload.contactPhone,
         contactPerson: payload.contactPerson,
-        coefficient: payload.coefficient,
         status: "DRAFT",
       });
       const item: any = extractData(resp);
@@ -472,7 +463,6 @@ export const organizationService = {
         phone: item.phone ?? payload.phone,
         contactPerson: item.contactPerson ?? payload.contactPerson,
         contactPhone: payload.contactPhone ?? payload.phone,
-        coefficient: item.coefficient,
         status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
         childCount: 0,
         createdAt: new Date().toISOString(),
@@ -499,7 +489,6 @@ export const organizationService = {
         phone: payload.phone,
         contactPerson: payload.contactPerson,
         contactPhone: payload.contactPhone ?? payload.phone,
-        coefficient: payload.coefficient,
         status: 'draft',
         childCount: 0,
         createdAt: new Date().toISOString(),
@@ -527,7 +516,6 @@ export const organizationService = {
         address: payload.address,
         phone: payload.phone ?? payload.contactPhone,
         contactPerson: payload.contactPerson,
-        coefficient: payload.coefficient,
         status: payload.status?.toUpperCase(),
       });
       const item: any = extractData(resp);
@@ -545,7 +533,6 @@ export const organizationService = {
         phone: item.phone ?? payload.phone,
         contactPerson: item.contactPerson ?? payload.contactPerson,
         contactPhone: payload.contactPhone ?? payload.phone,
-        coefficient: item.coefficient,
         status:
           (payload.status ?? item.status?.toLowerCase()) as Organization["status"] ??
           "draft",

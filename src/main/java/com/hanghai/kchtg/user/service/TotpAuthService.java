@@ -225,7 +225,6 @@ public class TotpAuthService {
 
         // =========================================================================
         user.setFailedTotpCount(0);
-        user.setLastTotpCode(totpCode);
         user.setTotpVerifiedAt(LocalDateTime.now());
         user.setLastLoginAt(LocalDateTime.now());
         // Xóa khóa (lock) nếu có (user đã xác thực thành công)

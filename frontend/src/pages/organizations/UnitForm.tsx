@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Input, Select, Row, Col, InputNumber } from 'antd';
+import { Card, Form, Button, Space, Typography, Input, Select, Row, Col } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { organizationService } from '../../services/organizationService';
@@ -45,7 +45,6 @@ export default function UnitForm() {
             address: data.address,
             contactPerson: data.contactPerson,
             contactPhone: data.contactPhone,
-            coefficient: data.coefficient,
             status: data.status,
           });
           form.setFieldsValue({
@@ -57,7 +56,6 @@ export default function UnitForm() {
             address: data.address,
             contactPerson: data.contactPerson,
             contactPhone: data.contactPhone,
-            coefficient: data.coefficient,
             status: data.status,
           });
         } catch {
@@ -88,7 +86,6 @@ export default function UnitForm() {
           address: values.address,
           contactPerson: values.contactPerson,
           contactPhone: values.contactPhone,
-          coefficient: values.coefficient,
           status: values.status,
         };
         await organizationService.update(id!, payload);
@@ -102,7 +99,6 @@ export default function UnitForm() {
           address: values.address,
           contactPerson: values.contactPerson,
           contactPhone: values.contactPhone,
-          coefficient: values.coefficient,
         };
         await organizationService.create(payload);
         toast.success('Đã tạo đơn vị thành công');
@@ -124,7 +120,7 @@ export default function UnitForm() {
             Quay lại
           </Button>
           <Typography.Title level={5} style={{ margin: 0 }}>
-            {isEdit ? 'Chỉnh sửa đơn vị' : 'Thêm đơn vị mới'}
+            {isEdit ? 'Chỉnh sửa đơn vị' : 'Thêm mới đơn vị'}
           </Typography.Title>
         </Space>
       </Card>
@@ -184,29 +180,7 @@ export default function UnitForm() {
             placeholder="Địa chỉ trụ sở..."
           />
 
-          <Form.Item
-            name="coefficient"
-            label="Hệ số"
-            required
-            rules={[
-              { required: true, message: 'Vui lòng nhập hệ số' },
-              {
-                validator: (_, value) => {
-                  if (value === undefined || value === null) return Promise.resolve();
-                  if (value <= 0) {
-                    return Promise.reject(new Error('Hệ số phải lớn hơn 0'));
-                  }
-                  const parts = String(value).split('.');
-                  if (parts[1] && parts[1].length > 2) {
-                    return Promise.reject(new Error('Hệ số tối đa 2 chữ số thập phân'));
-                  }
-                  return Promise.resolve();
-                }
-              }
-            ]}
-          >
-            <InputNumber style={{ width: '100%' }} min={0.01} step={0.1} placeholder="VD: 1.00" />
-          </Form.Item>
+          
 
           <Row style={{ display: 'flex', gap: 16 }}>
             <Col style={{ flex: 1 }}>

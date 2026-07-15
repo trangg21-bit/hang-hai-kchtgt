@@ -49,8 +49,8 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
     await createBtn.scrollIntoViewIfNeeded();
     await createBtn.click({ timeout: 10_000 });
 
-    // Modal phải mở với tiêu đề "Thêm người dùng mới"
-    await expect(page.locator('.ant-modal-title')).toHaveText('Thêm người dùng mới', { timeout: 5000 });
+    // Modal phải mở với tiêu đề "Thêm mới người dùng"
+    await expect(page.locator('.ant-modal-title')).toHaveText('Thêm mới người dùng', { timeout: 5000 });
 
     const rand = Date.now();
     // Điền form
@@ -105,7 +105,7 @@ test.describe('Quản lý người dùng (User CRUD)', () => {
     await createBtn.scrollIntoViewIfNeeded();
     await createBtn.click({ timeout: 10_000 });
 
-    await expect(page.locator('.ant-modal-title')).toHaveText('Thêm người dùng mới', { timeout: 5000 });
+    await expect(page.locator('.ant-modal-title')).toHaveText('Thêm mới người dùng', { timeout: 5000 });
 
     // Chỉ click "Tạo mới" mà không điền gì → validation errors
     const submitBtn = page.locator('.ant-modal .ant-btn-primary:has-text("Tạo mới"), button:has-text("Tạo mới").ant-btn');

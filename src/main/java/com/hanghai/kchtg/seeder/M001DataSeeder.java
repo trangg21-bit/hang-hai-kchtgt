@@ -88,7 +88,6 @@ public class M001DataSeeder implements CommandLineRunner {
                     .status(OrgUnitStatus.APPROVED)
                     .path("/" + codes[i] + "/")
                     .level(i == 0 ? 1 : 2)
-                    .scopeId(0L)
                     .sortOrder(i + 1)
                     .build();
             orgUnitRepo.save(u);

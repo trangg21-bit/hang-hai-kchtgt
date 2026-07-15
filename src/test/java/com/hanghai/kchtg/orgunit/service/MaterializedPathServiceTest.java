@@ -16,8 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -173,33 +171,5 @@ class MaterializedPathServiceTest {
         when(repo.findById(candidateParentId)).thenReturn(Optional.of(candidateParent));
 
         assertFalse(service.isAncestor(unitId, candidateParentId));
-    }
-
-    // ── Coefficient validation ───────────────────────────────────────
-
-    @Test
-    @DisplayName("F-003: coefficient = 0 is invalid (BR-017)")
-    void shouldRejectZeroCoefficient() {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> {
-            if (0.0 <= 0.0) throw new IllegalArgumentException("Hệ số phải lớn hơn 0");
-        });
-        assertNotNull(ex);
-    }
-
-    @Test
-    @DisplayName("F-003: coefficient = -1 is invalid (BR-017)")
-    void shouldRejectNegativeCoefficient() {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> {
-            if (-1.0 <= 0.0) throw new IllegalArgumentException("Hệ số phải lớn hơn 0");
-        });
-        assertNotNull(ex);
-    }
-
-    @Test
-    @DisplayName("F-003: coefficient = 1.234 has 3 decimal places — fails BigDecimal(5,2)")
-    void shouldRejectThreeDecimalCoefficient() {
-        BigDecimal threeDec = new BigDecimal("1.234");
-        BigDecimal rounded = threeDec.setScale(2, BigDecimal.ROUND_HALF_UP);
-        assertNotEquals(threeDec, rounded, "1.234 rounded to 2 decimals ≠ original");
     }
 }

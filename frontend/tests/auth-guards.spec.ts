@@ -43,7 +43,7 @@ test.describe('Modal and Forms', () => {
     await page.goto('/users');
     await page.waitForTimeout(1500);
     await page.getByRole('button', { name: 'Thêm người dùng' }).click();
-    await expect(page.getByText('Thêm người dùng mới')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Thêm mới người dùng')).toBeVisible({ timeout: 15000 });
   });
 
   test('should open edit user modal', async ({ page }) => {

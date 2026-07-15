@@ -171,7 +171,6 @@ public class TotpSetupController {
         User user = userRepository.findByIdWithRelations(java.util.UUID.fromString(userId)).orElseThrow();
         user.setTotpSecretHash(hashedSecret);
         user.setTotpEnabled(true);
-        user.setLastTotpCode(code);
         user.setTotpVerifiedAt(LocalDateTime.now());
         userRepository.save(user);
 

@@ -463,7 +463,7 @@ export default function UsersPage() {
 
       {/* Create / Edit Modal */}
       <Modal
-        title={editingUser ? 'Sửa người dùng' : 'Thêm người dùng mới'}
+        title={editingUser ? 'Sửa người dùng' : 'Thêm mới người dùng'}
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={() => setModalOpen(false)}

@@ -15,7 +15,6 @@ import {
   Modal,
   Form,
   Spin,
-  InputNumber,
   Tree,
 } from 'antd';
 import {
@@ -119,7 +118,6 @@ export default function UnitList() {
         phone: org.phone,
         contactPerson: org.contactPerson,
         contactPhone: org.contactPhone,
-        coefficient: org.coefficient,
       });
       setModalOpen(true);
     },
@@ -143,7 +141,6 @@ export default function UnitList() {
           phone: values.phone,
           contactPerson: values.contactPerson,
           contactPhone: values.contactPhone,
-          coefficient: values.coefficient,
         };
         await organizationService.update(editingOrg.id, payload);
         toast.success('Đã cập nhật đơn vị');
@@ -157,7 +154,6 @@ export default function UnitList() {
           phone: values.phone,
           contactPerson: values.contactPerson,
           contactPhone: values.contactPhone,
-          coefficient: values.coefficient,
         };
         await organizationService.create(payload);
         toast.success('Đã tạo đơn vị mới');
@@ -472,7 +468,7 @@ export default function UnitList() {
 
       {/* Create / Edit Modal */}
       <Modal
-        title={editingOrg ? 'Sửa đơn vị' : 'Thêm đơn vị mới'}
+        title={editingOrg ? 'Sửa đơn vị' : 'Thêm mới đơn vị'}
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={() => setModalOpen(false)}
@@ -543,27 +539,6 @@ export default function UnitList() {
             </Form.Item>
 
             <Form.Item
-              name="coefficient"
-              label="Hệ số"
-              rules={[
-                { required: true, message: 'Vui lòng nhập hệ số' },
-                {
-                  validator: (_, value) => {
-                    if (value === undefined || value === null) return Promise.resolve();
-                    if (value <= 0) {
-                      return Promise.reject(new Error('Hệ số phải lớn hơn 0'));
-                    }
-                    const parts = String(value).split('.');
-                    if (parts[1] && parts[1].length > 2) {
-                      return Promise.reject(new Error('Hệ số tối đa 2 chữ số thập phân'));
-                    }
-                    return Promise.resolve();
-                  }
-                }
-              ]}
-            >
-              <InputNumber style={{ width: '100%' }} min={0.01} step={0.1} placeholder="VD: 1.00" />
-            </Form.Item>
 
             <Row gutter={16}>
               <Col xs={24} md={12}>

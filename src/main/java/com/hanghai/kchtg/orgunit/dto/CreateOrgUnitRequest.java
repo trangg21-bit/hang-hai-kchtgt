@@ -11,7 +11,7 @@ import java.util.UUID;
  * Request body for creating a new organisational unit.
  *
  * <p>
- * Validates BR-013 (unique code), BR-017 (coefficient > 0, max 2 decimals),
+ * Validates BR-013 (unique code),
  * BR-003-08 (name required, max 200).
  * </p>
  */
@@ -43,10 +43,6 @@ public class CreateOrgUnitRequest {
 
     @Size(max = 200, message = "Trưởng đơn vị tối đa 200 ký tự")
     private String contactPerson;
-
-    /** Coefficient for calculations/reports. Must be > 0, max 2 decimal places. BR-017 */
-    @DecimalMin(value = "0.01", message = "Hệ số phải lớn hơn 0")
-    private java.math.BigDecimal coefficient;
 
     /** Status — defaults to DRAFT on the service layer if not provided. */
     private OrgUnitStatus status;

@@ -6,7 +6,6 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 import org.hibernate.annotations.Where;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
@@ -22,7 +21,6 @@ import java.util.UUID;
  * <ul>
  *   <li>BR-013: unique code per scope</li>
  *   <li>BR-016: parent-child hierarchy with circular ref detection</li>
- *   <li>BR-017: coefficient > 0, max 2 decimal places</li>
  * </ul>
  * </p>
  */
@@ -100,18 +98,9 @@ public class OrgUnit extends BaseEntity {
     @Column(nullable = false)
     private Integer level;
 
-    /** Scope identifier for multi-tenant isolation. 0 = single root (current). */
-    @Column(nullable = false)
-    private Long scopeId;
-
     /** Sibling ordering within same parent. */
     @Column(nullable = false)
     private Integer sortOrder;
-
-    /** Coefficient for calculations/reports. Must be > 0 with max 2 decimal places (BR-017). */
-    @DecimalMin(value = "0.01", message = "Hệ số phải lớn hơn 0")
-    @Column(precision = 5, scale = 2)
-    private BigDecimal coefficient;
 
     /** Timestamp when unit was approved (set on APPROVED transition). */
     @Column(name = "approved_at")
@@ -123,8 +112,7 @@ public class OrgUnit extends BaseEntity {
      * Create a new root unit (no parent).
      */
     public static OrgUnit createRoot(String name, String code, OrgUnitType type,
-                                      String description, String address, String phone,
-                                      java.math.BigDecimal coefficient) {
+                                      String description, String address, String phone) {
         OrgUnit unit = new OrgUnit();
         unit.setName(name);
         unit.setCode(code);
@@ -132,11 +120,9 @@ public class OrgUnit extends BaseEntity {
         unit.setDescription(description);
         unit.setAddress(address);
         unit.setPhone(phone);
-        unit.setCoefficient(coefficient);
         unit.setStatus(OrgUnitStatus.DRAFT);
         unit.setPath("");   // set later by MaterializedPathService
         unit.setLevel(0);
-        unit.setScopeId(0L);
         unit.setSortOrder(0);
         return unit;
     }
