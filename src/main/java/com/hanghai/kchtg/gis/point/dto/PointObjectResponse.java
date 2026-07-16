@@ -28,6 +28,10 @@ public class PointObjectResponse {
     private String description;
     private Status status;
     private UUID unitId;
+    private UUID refId;
+    private Integer refType;
+    private String purpose;
+    private String restrictionLevel;
     private ApprovalStatus approvalStatus;
     private Long approvedBy;
     private LocalDateTime approvedDate;

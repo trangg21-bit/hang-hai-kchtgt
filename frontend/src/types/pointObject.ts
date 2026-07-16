@@ -15,6 +15,10 @@ export interface PointObject {
   approvedDate?: string;
   createdAt?: string;
   updatedAt?: string;
+  refId?: string;
+  refType?: number;
+  purpose?: string;
+  restrictionLevel?: string;
 }
 
 export namespace PointObject {
@@ -52,6 +56,10 @@ export interface CreatePointObjectPayload {
   longitude: number;
   latitude: number;
   description?: string;
+  refId?: string;
+  refType?: number;
+  purpose?: string;
+  restrictionLevel?: string;
 }
 
 export interface UpdatePointObjectPayload {
@@ -64,6 +72,10 @@ export interface UpdatePointObjectPayload {
   latitude?: number;
   description?: string;
   status?: PointObject.Status;
+  refId?: string;
+  refType?: number;
+  purpose?: string;
+  restrictionLevel?: string;
 }
 
 export interface PointObjectFilters {

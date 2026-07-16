@@ -31,6 +31,9 @@ class TramRadarServiceTest {
     @Mock
     private PheDuyetLichSuRepository historyRepository;
 
+    @Mock
+    private com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+
     @InjectMocks
     private TramRadarService service;
 
@@ -39,6 +42,12 @@ class TramRadarServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> {
+                    com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatial = new com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject();
+                    spatial.setId(java.util.UUID.randomUUID());
+                    return spatial;
+                });
         entity = TramRadar.builder()
                 .id(1L)
                 .tenTram("Tram ABC")

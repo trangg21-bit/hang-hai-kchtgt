@@ -109,7 +109,7 @@ public class VungNuocService {
     public Page<VungNuocResponse> findAll(int page, int size, UUID orgUnitId, UUID cangBienId,
                                          String search, LoaiVungNuoc loaiVungNuoc, String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
         TrangThaiHoatDong statusEnum = status != null ? TrangThaiHoatDong.fromString(status) : null;
         TrangThaiPheDuyet approvalEnum = approvalStatus != null ? TrangThaiPheDuyet.fromString(approvalStatus) : null;
         Page<VungNuoc> pageResult = vungNuocRepository.searchVungNuoc(orgUnitId, cangBienId, search, loaiVungNuoc, statusEnum, approvalEnum, pageable);

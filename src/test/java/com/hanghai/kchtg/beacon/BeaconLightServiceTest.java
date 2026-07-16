@@ -12,7 +12,10 @@ import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.beacon.service.BeaconLightService;
 import com.hanghai.kchtg.beacon.service.NotificationService;
-import com.hanghai.kchtg.beacon.service.PointObjectSyncService;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,10 +53,10 @@ class BeaconLightServiceTest {
     private BeaconHistoryRepository historyRepo;
 
     @Mock
-    private PointObjectSyncService pointObjectSyncService;
+    private NotificationService notificationService;
 
     @Mock
-    private NotificationService notificationService;
+    private GisSpatialObjectService gisSpatialObjectService;
 
     @Mock
     private OrgUnitRepository orgUnitRepo;
@@ -78,6 +81,11 @@ class BeaconLightServiceTest {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+
+        GisSpatialObject dummySpatial = new GisSpatialObject();
+        dummySpatial.setId(UUID.randomUUID());
+        lenient().when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(dummySpatial);
     }
 
     private BeaconLight makeEntity(UUID id, BeaconStatus status) {
@@ -188,7 +196,7 @@ class BeaconLightServiceTest {
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getName()).isEqualTo("Đèn biển test");
             verify(beaconLightRepo).searchFiltered("Đèn", "DEN",
-                    BeaconLightType.LIGHTHOUSE.name(), BeaconStatus.DRAFT.name());
+                    BeaconLightType.LIGHTHOUSE.getValue(), BeaconStatus.DRAFT.getValue());
         }
     }
 
@@ -221,7 +229,7 @@ class BeaconLightServiceTest {
             assertThat(result.getStatus()).isEqualTo(BeaconStatus.DRAFT);
             assertThat(result.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.PENDING);
 
-            verify(beaconLightRepo).save(any());
+            verify(beaconLightRepo, atLeastOnce()).save(any());
             verify(historyRepo).save(any());
             verify(notificationService).sendApprovalNotification(any());
         }
@@ -322,7 +330,7 @@ class BeaconLightServiceTest {
             // Code should remain immutable
             assertThat(result.getCode()).isEqualTo("DEN-001");
 
-            verify(beaconLightRepo).save(any());
+            verify(beaconLightRepo, atLeastOnce()).save(any());
             verify(historyRepo).save(any());
         }
 
@@ -413,6 +421,7 @@ class BeaconLightServiceTest {
         void deleteSuccess() {
             UUID id = UUID.randomUUID();
             BeaconLight entity = makeEntity(id, BeaconStatus.DRAFT);
+            entity.setKhongGianId(UUID.randomUUID());
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconLightRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -423,7 +432,7 @@ class BeaconLightServiceTest {
             assertThat(saved.getStatus()).isEqualTo(BeaconStatus.DELETED);
             assertThat(saved.getDeletedAt()).isNotNull();
             verify(historyRepo).save(any());
-            verify(pointObjectSyncService).hideFromMap(entity);
+            verify(gisSpatialObjectService).delete(entity.getKhongGianId());
         }
 
         @Test
@@ -553,7 +562,6 @@ class BeaconLightServiceTest {
             assertThat(saved.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.APPROVED);
             assertThat(saved.getApprovedBy()).isEqualTo(3L);
             assertThat(result.getStatus()).isEqualTo(BeaconStatus.PUBLISHED);
-            verify(pointObjectSyncService).syncToMap(entity);
             verify(historyRepo).save(any());
         }
 

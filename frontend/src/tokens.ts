@@ -60,7 +60,8 @@ export const radiusPill = 999;
 
 // Spacing: tighter small, wider large — creates breathing room
 export const spaceXs = 4;
-export const spaceSm = 6;
+export const spaceSm = 8;
+export const spaceFormField = 12;
 export const spaceMd = 16;
 export const spaceLg = 24;
 export const spaceXl = 32;

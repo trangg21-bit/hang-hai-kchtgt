@@ -13,6 +13,7 @@ import {
   Modal,
   Form,
   message,
+  TreeSelect,
 } from 'antd';
 import {
   PlusOutlined,
@@ -39,6 +40,8 @@ import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
 import FormField from '../../components/FormField';
+import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { organizationService } from '../../services/organizationService';
 
 export default function BuoyList() {
   const navigate = useNavigate();
@@ -59,6 +62,44 @@ export default function BuoyList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<Buoy | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [isDetailMode, setIsDetailMode] = useState(false);
+  const [orgTree, setOrgTree] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const orgs = await organizationService.getTree();
+        const buildOrgTree = (nodes: any[]): any[] => {
+          const map = new Map<string, any>();
+          const roots: any[] = [];
+
+          nodes.forEach((org) => {
+            map.set(org.id, {
+              title: org.name,
+              value: org.id,
+              parentId: org.parentId,
+              children: [],
+            });
+          });
+
+          nodes.forEach((org) => {
+            const node = map.get(org.id);
+            if (org.parentId && map.has(org.parentId)) {
+              map.get(org.parentId).children.push(node);
+            } else {
+              roots.push(node);
+            }
+          });
+
+          return roots;
+        };
+
+        setOrgTree(buildOrgTree(orgs));
+      } catch (error) {
+        console.error('Failed to fetch org tree:', error);
+      }
+    })();
+  }, []);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -86,21 +127,47 @@ export default function BuoyList() {
 
   const openCreateModal = useCallback(() => {
     setEditingRecord(null);
+    setIsDetailMode(false);
     form.resetFields();
     setIsModalOpen(true);
   }, [form]);
 
   const openEditModal = useCallback((record: Buoy) => {
     setEditingRecord(record);
+    setIsDetailMode(false);
     form.setFieldsValue({
       name: record.name,
       code: record.code,
       type: record.type,
-      longitude: record.longitude,
-      latitude: record.latitude,
       range: record.range,
       color: record.color,
       description: record.description,
+      unitId: record.unitId,
+      gisLocation: {
+        loaiHinhHoc: 'POINT',
+        toaDo: record.longitude != null && record.latitude != null ? `POINT(${record.longitude} ${record.latitude})` : '',
+        bieuTuongId: record.bieuTuongId
+      }
+    });
+    setIsModalOpen(true);
+  }, [form]);
+
+  const openDetailModal = useCallback((record: Buoy) => {
+    setEditingRecord(record);
+    setIsDetailMode(true);
+    form.setFieldsValue({
+      name: record.name,
+      code: record.code,
+      type: record.type,
+      range: record.range,
+      color: record.color,
+      description: record.description,
+      unitId: record.unitId,
+      gisLocation: {
+        loaiHinhHoc: 'POINT',
+        toaDo: record.longitude != null && record.latitude != null ? `POINT(${record.longitude} ${record.latitude})` : '',
+        bieuTuongId: record.bieuTuongId
+      }
     });
     setIsModalOpen(true);
   }, [form]);
@@ -109,15 +176,24 @@ export default function BuoyList() {
     try {
       const values = await form.validateFields();
 
-      // WGS84 validation
-      if (values.latitude < -90 || values.latitude > 90) {
-        message.error('Vĩ độ phải từ -90 đến 90');
+      const gisLocation = values.gisLocation;
+      let latitude = 0;
+      let longitude = 0;
+      if (gisLocation && gisLocation.toaDo) {
+        const match = gisLocation.toaDo.match(/POINT\(([^)]+)\)/);
+        if (match) {
+          const parts = match[1].split(' ');
+          longitude = parseFloat(parts[0]);
+          latitude = parseFloat(parts[1]);
+        } else {
+          message.error('Vui lòng chọn vị trí hợp lệ trên bản đồ');
+          return;
+        }
+      } else {
+        message.error('Vui lòng chọn vị trí trên bản đồ');
         return;
       }
-      if (values.longitude < -180 || values.longitude > 180) {
-        message.error('Kinh độ phải từ -180 đến 180');
-        return;
-      }
+
       if (values.range < 0.01 || values.range > 100) {
         message.error('Bán kính hoạt động phải từ 0.01 đến 100');
         return;
@@ -129,11 +205,13 @@ export default function BuoyList() {
         const payload: UpdateBuoyRequest = {
           name: values.name,
           type: values.type,
-          longitude: values.longitude,
-          latitude: values.latitude,
+          longitude,
+          latitude,
           range: values.range,
           color: values.color,
           description: values.description,
+          unitId: values.unitId,
+          bieuTuongId: gisLocation?.bieuTuongId || undefined,
         };
         await buoyCRUD.update(editingRecord.id, payload);
         toast.success('Đã cập nhật phao tiêu');
@@ -142,11 +220,13 @@ export default function BuoyList() {
           name: values.name,
           code: values.code,
           type: values.type,
-          longitude: values.longitude,
-          latitude: values.latitude,
+          longitude,
+          latitude,
           range: values.range,
           color: values.color,
           description: values.description,
+          unitId: values.unitId,
+          bieuTuongId: gisLocation?.bieuTuongId || undefined,
         };
         await buoyCRUD.create(payload);
         toast.success('Đã tạo phao tiêu');
@@ -294,7 +374,7 @@ export default function BuoyList() {
               type="link"
               size="small"
               icon={<EyeOutlined />}
-              onClick={() => navigate(`/buoys/${record.id}`)}
+              onClick={() => openDetailModal(record)}
             />
           </Tooltip>
           <Tooltip title="Sửa">
@@ -478,18 +558,19 @@ export default function BuoyList() {
       </Card>
 
       <Modal
-        title={editingRecord ? 'Chỉnh sửa phao tiêu' : 'Thêm phao tiêu mới'}
+        title={isDetailMode ? 'Chi tiết phao tiêu' : (editingRecord ? 'Chỉnh sửa phao tiêu' : 'Thêm phao tiêu mới')}
         open={isModalOpen}
-        onOk={handleSubmit}
+        onOk={isDetailMode ? () => setIsModalOpen(false) : handleSubmit}
         onCancel={() => setIsModalOpen(false)}
         destroyOnClose
         confirmLoading={submitting}
-        okText={editingRecord ? 'Cập nhật' : 'Tạo mới'}
+        okText={isDetailMode ? 'Đóng' : (editingRecord ? 'Cập nhật' : 'Tạo mới')}
+        cancelButtonProps={isDetailMode ? { style: { display: 'none' } } : undefined}
         cancelText="Hủy"
         width={700}
         mask={{ closable: false }}
       >
-        <Form form={form} layout="vertical" style={{ marginTop: 16, maxHeight: '60vh', overflowY: 'auto', paddingRight: 12 }}>
+        <Form form={form} layout="vertical" disabled={isDetailMode} style={{ marginTop: 16, maxHeight: '60vh', overflowY: 'auto', paddingRight: 12 }}>
           <FormField
             type="text"
             name="code"
@@ -516,34 +597,26 @@ export default function BuoyList() {
             options={BUOY_TYPE_OPTIONS}
           />
 
-          <Row gutter={16}>
-            <Col span={12}>
-              <FormField
-                type="number"
-                name="longitude"
-                label="Kinh độ (Longitude)"
-                required
-                min={-180}
-                max={180}
-                step={0.000001}
-                placeholder="106.8"
-                help="WGS84: -180 ~ 180"
-              />
-            </Col>
-            <Col span={12}>
-              <FormField
-                type="number"
-                name="latitude"
-                label="Vĩ độ (Latitude)"
-                required
-                min={-90}
-                max={90}
-                step={0.000001}
-                placeholder="20.7"
-                help="WGS84: -90 ~ 90"
-              />
-            </Col>
-          </Row>
+          <Form.Item
+            name="unitId"
+            label="Đơn vị quản lý"
+            rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
+          >
+            <TreeSelect
+              placeholder="Chọn đơn vị quản lý"
+              treeData={orgTree}
+              showSearch
+              treeDefaultExpandAll
+              filterTreeNode={(input, node) =>
+                (node?.title as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
+              }
+              allowClear
+            />
+          </Form.Item>
+
+          <Form.Item name="gisLocation">
+            <GisLocationSelector defaultGeometryType="POINT" />
+          </Form.Item>
 
           <Row gutter={16}>
             <Col span={12}>

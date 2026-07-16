@@ -24,6 +24,7 @@ public class LineObjectService {
 
     private final LineObjectRepository repository;
     private final LineHistoryRepository historyRepository;
+    private final com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository spatialRepository;
 
     public List<LineObjectResponse> findAll() {
         return repository.findAll().stream()
@@ -62,7 +63,7 @@ public class LineObjectService {
 
     @Transactional
     public LineObjectResponse create(CreateLineObjectRequest request) {
-        if (repository.existsByCode(request.getCode())) {
+        if (spatialRepository.existsByCode(request.getCode())) {
             throw new IllegalArgumentException("Mã đối tượng đã tồn tại: " + request.getCode());
         }
 
@@ -81,6 +82,10 @@ public class LineObjectService {
                 .length(request.getLength())
                 .material(request.getMaterial())
                 .yearBuilt(request.getYearBuilt())
+                .refId(request.getRefId())
+                .refType(request.getRefType())
+                .purpose(request.getPurpose())
+                .restrictionLevel(request.getRestrictionLevel())
                 .build();
 
         entity = repository.save(entity);
@@ -107,6 +112,10 @@ public class LineObjectService {
         if (request.getLength() != null) entity.setLength(request.getLength());
         if (request.getMaterial() != null) entity.setMaterial(request.getMaterial());
         if (request.getYearBuilt() != null) entity.setYearBuilt(request.getYearBuilt());
+        if (request.getRefId() != null) entity.setRefId(request.getRefId());
+        if (request.getRefType() != null) entity.setRefType(request.getRefType());
+        if (request.getPurpose() != null) entity.setPurpose(request.getPurpose());
+        if (request.getRestrictionLevel() != null) entity.setRestrictionLevel(request.getRestrictionLevel());
 
         entity = repository.save(entity);
         return toResponse(entity);
@@ -200,6 +209,10 @@ public class LineObjectService {
                 .length(entity.getLength())
                 .material(entity.getMaterial())
                 .yearBuilt(entity.getYearBuilt())
+                .refId(entity.getRefId())
+                .refType(entity.getRefType())
+                .purpose(entity.getPurpose())
+                .restrictionLevel(entity.getRestrictionLevel())
                 .approvalStatus(entity.getApprovalStatus())
                 .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())

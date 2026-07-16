@@ -111,7 +111,7 @@ public class CangCanService {
     public Page<CangCanResponse> findAll(int page, int size, UUID orgUnitId,
                                          String search, String status, String approvalStatus) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by("createdAt").descending());
+        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
         TrangThaiHoatDong statusEnum = status != null ? TrangThaiHoatDong.fromString(status) : null;
         TrangThaiPheDuyet approvalEnum = approvalStatus != null ? TrangThaiPheDuyet.fromString(approvalStatus) : null;
         Page<CangCan> pageResult = cangCanRepository.searchCangCan(orgUnitId, search, statusEnum, approvalEnum, pageable);

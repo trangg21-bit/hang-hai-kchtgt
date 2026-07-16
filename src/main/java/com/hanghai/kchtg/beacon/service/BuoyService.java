@@ -14,6 +14,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -32,7 +33,7 @@ public class BuoyService {
     private final BuoyRepository buoyRepo;
     private final BeaconLightRepository beaconLightRepo;
     private final BeaconHistoryRepository historyRepo;
-    private final PointObjectSyncService pointObjectSyncService;
+    private final GisSpatialObjectService gisSpatialObjectService;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
     private final OrgUnitRepository orgUnitRepo;
@@ -57,8 +58,8 @@ public class BuoyService {
         return buoyRepo.searchFiltered(
                 name,
                 code,
-                type != null ? type.name() : null,
-                status != null ? status.name() : null
+                type != null ? type.getValue() : null,
+                status != null ? status.getValue() : null
         ).stream()
                 .map(this::toResponse)
                 .toList();
@@ -104,6 +105,22 @@ public class BuoyService {
             entity.setApprovalLevel(1);
         }
 
+        entity = buoyRepo.save(entity);
+
+        // Sync GIS spatial object
+        String wkt = "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")";
+        com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                null,
+                entity.getName(),
+                "PHAOTIEU_" + entity.getCode(),
+                com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT,
+                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_BUOY,
+                wkt,
+                null,
+                entity.getId(),
+                com.hanghai.kchtg.gis.search.dto.KchtType.PHAOTIEU
+        );
+        entity.setKhongGianId(spatialObj.getId());
         entity = buoyRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.CREATE, null, null, toJson(entity));
@@ -169,7 +186,25 @@ public class BuoyService {
             entity.setApprovalLevel(1);
         }
 
-        buoyRepo.save(entity);
+        entity = buoyRepo.save(entity);
+
+        // Sync GIS spatial object
+        String wkt = "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")";
+        com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                entity.getKhongGianId(),
+                entity.getName(),
+                "PHAOTIEU_" + entity.getCode(),
+                com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT,
+                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_BUOY,
+                wkt,
+                null,
+                entity.getId(),
+                com.hanghai.kchtg.gis.search.dto.KchtType.PHAOTIEU
+        );
+        if (entity.getKhongGianId() == null) {
+            entity.setKhongGianId(spatialObj.getId());
+            buoyRepo.save(entity);
+        }
 
         // BUG FIX #1: Use JsonNode.equals() for reliable comparison (not string equals)
         // BUG FIX #3: Use real field diff instead of static "fields_updated"
@@ -204,7 +239,9 @@ public class BuoyService {
 
         logHistory(entity, BeaconHistoryActionType.SOFT_DELETE, null, null, toJson(entity));
 
-        pointObjectSyncService.hideFromMapBuoy(entity);
+        if (entity.getKhongGianId() != null) {
+            gisSpatialObjectService.delete(entity.getKhongGianId());
+        }
     }
 
     // -- APPROVAL --
@@ -277,8 +314,6 @@ public class BuoyService {
         buoyRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.APPROVE_L2, null, null, null);
-
-        pointObjectSyncService.syncToMapBuoy(entity);
 
         return toResponse(entity);
     }

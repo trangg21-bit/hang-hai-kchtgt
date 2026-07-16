@@ -415,7 +415,9 @@ export default function GisLocationSelector({
       layer.on('pm:dragend', () => syncLayerToWkt(layer));
     });
 
-    mapRef.current.pm.reenableMode = false;
+    if (mapRef.current.pm) {
+      mapRef.current.pm.reenableMode = false;
+    }
     mapRef.current.on('pm:remove', () => {
       drawnLayerRef.current = null;
       setVertices([]);

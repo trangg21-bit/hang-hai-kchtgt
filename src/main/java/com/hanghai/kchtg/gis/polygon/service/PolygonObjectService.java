@@ -24,6 +24,7 @@ public class PolygonObjectService {
 
     private final PolygonObjectRepository repository;
     private final PolygonHistoryRepository historyRepository;
+    private final com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository spatialRepository;
 
     public List<PolygonObjectResponse> findAll() {
         return repository.findAll().stream()
@@ -62,7 +63,7 @@ public class PolygonObjectService {
 
     @Transactional
     public PolygonObjectResponse create(CreatePolygonObjectRequest request) {
-        if (repository.existsByCode(request.getCode())) {
+        if (spatialRepository.existsByCode(request.getCode())) {
             throw new IllegalArgumentException("Mã đối tượng đã tồn tại: " + request.getCode());
         }
 
@@ -81,6 +82,8 @@ public class PolygonObjectService {
                 .area(request.getArea())
                 .purpose(request.getPurpose())
                 .restrictionLevel(request.getRestrictionLevel())
+                .refId(request.getRefId())
+                .refType(request.getRefType())
                 .build();
 
         entity = repository.save(entity);
@@ -107,6 +110,8 @@ public class PolygonObjectService {
         if (request.getArea() != null) entity.setArea(request.getArea());
         if (request.getPurpose() != null) entity.setPurpose(request.getPurpose());
         if (request.getRestrictionLevel() != null) entity.setRestrictionLevel(request.getRestrictionLevel());
+        if (request.getRefId() != null) entity.setRefId(request.getRefId());
+        if (request.getRefType() != null) entity.setRefType(request.getRefType());
 
         entity = repository.save(entity);
         return toResponse(entity);
@@ -200,6 +205,8 @@ public class PolygonObjectService {
                 .area(entity.getArea())
                 .purpose(entity.getPurpose())
                 .restrictionLevel(entity.getRestrictionLevel())
+                .refId(entity.getRefId())
+                .refType(entity.getRefType())
                 .approvalStatus(entity.getApprovalStatus())
                 .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())

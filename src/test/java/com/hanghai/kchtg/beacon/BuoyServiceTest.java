@@ -12,7 +12,10 @@ import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.beacon.service.BuoyService;
 import com.hanghai.kchtg.beacon.service.NotificationService;
-import com.hanghai.kchtg.beacon.service.PointObjectSyncService;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,10 +53,10 @@ class BuoyServiceTest {
     private BeaconHistoryRepository historyRepo;
 
     @Mock
-    private PointObjectSyncService pointObjectSyncService;
+    private NotificationService notificationService;
 
     @Mock
-    private NotificationService notificationService;
+    private GisSpatialObjectService gisSpatialObjectService;
 
     @Mock
     private OrgUnitRepository orgUnitRepo;
@@ -78,6 +81,11 @@ class BuoyServiceTest {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+
+        GisSpatialObject dummySpatial = new GisSpatialObject();
+        dummySpatial.setId(UUID.randomUUID());
+        lenient().when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(dummySpatial);
     }
 
     private Buoy makeEntity(UUID id, BeaconStatus status) {
@@ -189,7 +197,7 @@ class BuoyServiceTest {
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getName()).isEqualTo("Phao tiêu test");
             verify(buoyRepo).searchFiltered("Phao", "PHAO",
-                    BuoyType.CARDINAL.name(), BeaconStatus.DRAFT.name());
+                    BuoyType.CARDINAL.getValue(), BeaconStatus.DRAFT.getValue());
         }
     }
 
@@ -222,7 +230,7 @@ class BuoyServiceTest {
             assertThat(result.getStatus()).isEqualTo(BeaconStatus.DRAFT);
             assertThat(result.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.PENDING);
 
-            verify(buoyRepo).save(any());
+            verify(buoyRepo, atLeastOnce()).save(any());
             verify(historyRepo).save(any());
             verify(notificationService).sendApprovalNotificationBuoy(any());
         }
@@ -339,7 +347,7 @@ class BuoyServiceTest {
             // Code should remain immutable
             assertThat(result.getCode()).isEqualTo("PHAO-001");
 
-            verify(buoyRepo).save(any());
+            verify(buoyRepo, atLeastOnce()).save(any());
             verify(historyRepo).save(any());
         }
 
@@ -428,6 +436,7 @@ class BuoyServiceTest {
         void deleteSuccess() {
             UUID id = UUID.randomUUID();
             Buoy entity = makeEntity(id, BeaconStatus.DRAFT);
+            entity.setKhongGianId(UUID.randomUUID());
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -438,7 +447,7 @@ class BuoyServiceTest {
             assertThat(saved.getStatus()).isEqualTo(BeaconStatus.DELETED);
             assertThat(saved.getDeletedAt()).isNotNull();
             verify(historyRepo).save(any());
-            verify(pointObjectSyncService).hideFromMapBuoy(entity);
+            verify(gisSpatialObjectService).delete(entity.getKhongGianId());
         }
 
         @Test
@@ -568,7 +577,6 @@ class BuoyServiceTest {
             assertThat(saved.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.APPROVED);
             assertThat(saved.getApprovedBy()).isEqualTo(3L);
             assertThat(result.getStatus()).isEqualTo(BeaconStatus.PUBLISHED);
-            verify(pointObjectSyncService).syncToMapBuoy(entity);
             verify(historyRepo).save(any());
         }
 

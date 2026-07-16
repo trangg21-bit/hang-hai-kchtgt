@@ -1,9 +1,6 @@
 package com.hanghai.kchtg.nhatram.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
@@ -21,7 +18,7 @@ import org.hibernate.annotations.SQLRestriction;
 @SuperBuilder
 @SQLRestriction("deleted_at IS NULL")
 public class NhaTramDen extends BaseNhaTram {
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = BeaconLightTypeConverter.class)
     private BeaconLightType type;
 
     private Double lightRange;

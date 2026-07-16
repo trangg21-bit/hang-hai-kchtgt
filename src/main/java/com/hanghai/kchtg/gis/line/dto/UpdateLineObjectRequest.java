@@ -25,4 +25,8 @@ public class UpdateLineObjectRequest {
     private Double length;
     private String material;
     private Integer yearBuilt;
+    private java.util.UUID refId;
+    private Integer refType;
+    private String purpose;
+    private String restrictionLevel;
 }

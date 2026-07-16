@@ -99,6 +99,12 @@ public class PolygonObject extends BaseEntity {
     @Column(name = "unit_id")
     private java.util.UUID unitId;
 
+    @Column(name = "ref_id")
+    private java.util.UUID refId;
+
+    @Column(name = "ref_type")
+    private Integer refType;
+
     @Column
     private Double area;
 

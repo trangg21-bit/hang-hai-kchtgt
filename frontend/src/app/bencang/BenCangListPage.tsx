@@ -827,7 +827,7 @@ export default function BenCangListPage() {
                 if (sz) setPageSize(sz);
               },
               showSizeChanger: true,
-              showTotal: (t: number) => `Hiển thị 1-${Math.min(total, (page - 1) * pageSize + pageSize)} của ${total} kết quả`,
+              showTotal: (total: number, range: [number, number]) => `Hiển thị ${range[0]}-${range[1]} của ${total} kết quả`,
               pageSizeOptions: ['10', '20', '50'],
             }}
           />

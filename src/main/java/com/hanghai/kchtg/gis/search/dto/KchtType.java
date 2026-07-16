@@ -16,5 +16,11 @@ public enum KchtType {
     BENPHAO,
     KHUNEO_DAU,
     KHUCHUYEN_TAI,
-    KHUTRANH_TRU_BAO
+    KHUTRANH_TRU_BAO,
+    DAI_TTDH,
+    DAI_INMARSAT,
+    DAI_COSPAS_SARSAT,
+    DAI_LRIT,
+    DAI_HANOI,
+    NHATRAM_PHAO
 }

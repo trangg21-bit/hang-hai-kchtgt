@@ -30,6 +30,8 @@ public class PolygonObjectResponse {
     private Double area;
     private String purpose;
     private String restrictionLevel;
+    private UUID refId;
+    private Integer refType;
     private ApprovalStatus approvalStatus;
     private Long approvedBy;
     private LocalDateTime approvedDate;
