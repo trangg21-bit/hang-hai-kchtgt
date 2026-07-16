@@ -50,6 +50,57 @@ public class CreateCangBienRequest {
     private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
     private String toaDo;
 
+    // ── Extended fields (V53) ────────────────────────────────────────
+
+    @Size(max = 500, message = "Địa điểm chi tiết tối đa 500 ký tự")
+    private String diaDiemChiTiet;
+
+    private Integer phanCap;
+
+    private Integer heQuyChieu;
+
+    private Integer quyTacHienThi;
+
+    // ── zobjDataSub fields ───────────────────────────────────────────
+
+    @Size(max = 2000, message = "Phạm vi vùng nước tối đa 2000 ký tự")
+    private String phamViVungNuoc;
+
+    private Integer tongSoBenCang;
+
+    private Integer tongSoKhuNeoDauChuyenTai;
+
+    private Integer tongSoTuyenLuongCongCong;
+
+    private Integer tongSoTuyenLuongChuyenDung;
+
+    @DecimalMin(value = "0", message = "Tổng chiều dài luồng công cộng phải >= 0")
+    private BigDecimal tongChieuDaiLuongCongCong;
+
+    @DecimalMin(value = "0", message = "Tổng chiều dài luồng chuyên dùng phải >= 0")
+    private BigDecimal tongChieuDaiLuongChuyenDung;
+
+    private Integer tongSoPhaoTieuBaoHieu;
+
+    private Integer tongSoDeKe;
+
+    @DecimalMin(value = "0", message = "Tổng chiều dài đê kè phải >= 0")
+    private BigDecimal tongChieuDaiDeKe;
+
+    private Integer tongSoDenBienDangTieu;
+
+    private Integer soLuongBenPhao;
+
+    private Integer soLuongKhuNeoDau;
+
+    private Integer soLuongKhuChuyenTai;
+
+    @Size(max = 2000, message = "Các khu nước khác tối đa 2000 ký tự")
+    private String cacKhuNuocKhac;
+
+    @Size(max = 2000, message = "Ghi chú tối đa 2000 ký tự")
+    private String ghiChu;
+
     /**
      * GPS paired-field constraint: viDo and kinhDo must both be present or both be absent.
      */

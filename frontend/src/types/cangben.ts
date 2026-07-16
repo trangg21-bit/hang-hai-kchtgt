@@ -36,11 +36,34 @@ export interface CangBien {
   trangThaiHoatDong: string;
   trangThaiPheDuyet: string;
   orgUnitId: string;
+  nhomCangBien?: number;
   bieuTuongId?: string;
   createdBy: string;
   updatedBy: string;
   createdAt: string;
   updatedAt: string;
+  // Extended fields (V53)
+  diaDiemChiTiet?: string;
+  phanCap?: number;
+  heQuyChieu?: number;
+  quyTacHienThi?: number;
+  // zobjDataSub fields
+  phamViVungNuoc?: string;
+  tongSoBenCang?: number;
+  tongSoKhuNeoDauChuyenTai?: number;
+  tongSoTuyenLuongCongCong?: number;
+  tongSoTuyenLuongChuyenDung?: number;
+  tongChieuDaiLuongCongCong?: number;
+  tongChieuDaiLuongChuyenDung?: number;
+  tongSoPhaoTieuBaoHieu?: number;
+  tongSoDeKe?: number;
+  tongChieuDaiDeKe?: number;
+  tongSoDenBienDangTieu?: number;
+  soLuongBenPhao?: number;
+  soLuongKhuNeoDau?: number;
+  soLuongKhuChuyenTai?: number;
+  cacKhuNuocKhac?: string;
+  ghiChu?: string;
 }
 
 export interface CreateCangBienRequest {
@@ -54,7 +77,30 @@ export interface CreateCangBienRequest {
   trangThaiHoatDong: string;
   trangThaiPheDuyet: string;
   orgUnitId: string;
+  nhomCangBien?: number;
   bieuTuongId?: string;
+  // Extended fields (V53)
+  diaDiemChiTiet?: string;
+  phanCap?: number;
+  heQuyChieu?: number;
+  quyTacHienThi?: number;
+  // zobjDataSub fields
+  phamViVungNuoc?: string;
+  tongSoBenCang?: number;
+  tongSoKhuNeoDauChuyenTai?: number;
+  tongSoTuyenLuongCongCong?: number;
+  tongSoTuyenLuongChuyenDung?: number;
+  tongChieuDaiLuongCongCong?: number;
+  tongChieuDaiLuongChuyenDung?: number;
+  tongSoPhaoTieuBaoHieu?: number;
+  tongSoDeKe?: number;
+  tongChieuDaiDeKe?: number;
+  tongSoDenBienDangTieu?: number;
+  soLuongBenPhao?: number;
+  soLuongKhuNeoDau?: number;
+  soLuongKhuChuyenTai?: number;
+  cacKhuNuocKhac?: string;
+  ghiChu?: string;
 }
 
 export interface UpdateCangBienRequest {
@@ -68,6 +114,30 @@ export interface UpdateCangBienRequest {
   bieuTuongId?: string | null;
   trangThaiHoatDong?: string;
   trangThaiPheDuyet?: string;
+  orgUnitId?: string;
+  nhomCangBien?: number;
+  // Extended fields (V53)
+  diaDiemChiTiet?: string;
+  phanCap?: number;
+  heQuyChieu?: number;
+  quyTacHienThi?: number;
+  // zobjDataSub fields
+  phamViVungNuoc?: string;
+  tongSoBenCang?: number;
+  tongSoKhuNeoDauChuyenTai?: number;
+  tongSoTuyenLuongCongCong?: number;
+  tongSoTuyenLuongChuyenDung?: number;
+  tongChieuDaiLuongCongCong?: number;
+  tongChieuDaiLuongChuyenDung?: number;
+  tongSoPhaoTieuBaoHieu?: number;
+  tongSoDeKe?: number;
+  tongChieuDaiDeKe?: number;
+  tongSoDenBienDangTieu?: number;
+  soLuongBenPhao?: number;
+  soLuongKhuNeoDau?: number;
+  soLuongKhuChuyenTai?: number;
+  cacKhuNuocKhac?: string;
+  ghiChu?: string;
 }
 
 // ── 2. Bến Cảng ──────────────────────────────────────────────────────
@@ -96,6 +166,22 @@ export interface BenCang {
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
+  // Extended fields
+  diaDiem?: string;
+  diaDiemChiTiet?: string;
+  heQuyChieu?: number;
+  quyTacHienThi?: number;
+  donViKhaiThac?: string;
+  tongDienTich?: number;
+  nangLucThongQuaThietKe?: number;
+  nangLucThongQuaHienTrang?: number;
+  coTauTiepNhanLonNhat?: number;
+  quyHoachNangLucThongQua?: number;
+  sanLuongHangHoaNamGanNhat?: number;
+  thoiDiemCongBoMo?: string;
+  quyetDinhCongBo?: string;
+  vanBanThoaThuanDauTu?: string;
+  loaiKetCau?: number;
 }
 
 export interface CreateBenCangRequest {
@@ -112,6 +198,23 @@ export interface CreateBenCangRequest {
   congNangKhaiThac?: string;
   trangThaiHoatDong?: string;
   bieuTuongId?: string;
+  // Extended fields
+  orgUnitId?: string;
+  diaDiem?: string;
+  diaDiemChiTiet?: string;
+  heQuyChieu?: number;
+  quyTacHienThi?: number;
+  donViKhaiThac?: string;
+  tongDienTich?: number;
+  nangLucThongQuaThietKe?: number;
+  nangLucThongQuaHienTrang?: number;
+  coTauTiepNhanLonNhat?: number;
+  quyHoachNangLucThongQua?: number;
+  sanLuongHangHoaNamGanNhat?: number;
+  thoiDiemCongBoMo?: string;
+  quyetDinhCongBo?: string;
+  vanBanThoaThuanDauTu?: string;
+  loaiKetCau?: number;
 }
 
 export interface UpdateBenCangRequest {
@@ -128,6 +231,23 @@ export interface UpdateBenCangRequest {
   congNangKhaiThac?: string;
   trangThaiHoatDong?: string;
   bieuTuongId?: string | null;
+  // Extended fields
+  orgUnitId?: string;
+  diaDiem?: string;
+  diaDiemChiTiet?: string;
+  heQuyChieu?: number;
+  quyTacHienThi?: number;
+  donViKhaiThac?: string;
+  tongDienTich?: number;
+  nangLucThongQuaThietKe?: number;
+  nangLucThongQuaHienTrang?: number;
+  coTauTiepNhanLonNhat?: number;
+  quyHoachNangLucThongQua?: number;
+  sanLuongHangHoaNamGanNhat?: number;
+  thoiDiemCongBoMo?: string;
+  quyetDinhCongBo?: string;
+  vanBanThoaThuanDauTu?: string;
+  loaiKetCau?: number;
 }
 
 // ── 3. Cầu Cảng ──────────────────────────────────────────────────────

@@ -72,7 +72,24 @@ public class BenCangService {
                 .trangThaiHoatDong(request.getTrangThaiHoatDong())
                 .orgUnitId(parent.getOrgUnitId())
                 .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
-                .bieuTuongId(request.getBieuTuongId()).build();
+                .bieuTuongId(request.getBieuTuongId())
+                // Extended fields
+                .diaDiem(request.getDiaDiem())
+                .diaDiemChiTiet(request.getDiaDiemChiTiet())
+                .heQuyChieu(request.getHeQuyChieu())
+                .quyTacHienThi(request.getQuyTacHienThi())
+                .donViKhaiThac(request.getDonViKhaiThac())
+                .tongDienTich(request.getTongDienTich())
+                .nangLucThongQuaThietKe(request.getNangLucThongQuaThietKe())
+                .nangLucThongQuaHienTrang(request.getNangLucThongQuaHienTrang())
+                .coTauTiepNhanLonNhat(request.getCoTauTiepNhanLonNhat())
+                .quyHoachNangLucThongQua(request.getQuyHoachNangLucThongQua())
+                .sanLuongHangHoaNamGanNhat(request.getSanLuongHangHoaNamGanNhat())
+                .thoiDiemCongBoMo(request.getThoiDiemCongBoMo())
+                .quyetDinhCongBo(request.getQuyetDinhCongBo())
+                .vanBanThoaThuanDauTu(request.getVanBanThoaThuanDauTu())
+                .loaiKetCau(request.getLoaiKetCau())
+                .build();
         BenCang saved = benCangRepository.save(entity);
 
         String toaDo = request.getToaDo();
@@ -219,6 +236,22 @@ public class BenCangService {
                 .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
                 .orgUnitId(entity.getOrgUnitId())
                 .bieuTuongId(entity.getBieuTuongId())
+                // Extended fields snapshot
+                .diaDiem(entity.getDiaDiem())
+                .diaDiemChiTiet(entity.getDiaDiemChiTiet())
+                .heQuyChieu(entity.getHeQuyChieu())
+                .quyTacHienThi(entity.getQuyTacHienThi())
+                .donViKhaiThac(entity.getDonViKhaiThac())
+                .tongDienTich(entity.getTongDienTich())
+                .nangLucThongQuaThietKe(entity.getNangLucThongQuaThietKe())
+                .nangLucThongQuaHienTrang(entity.getNangLucThongQuaHienTrang())
+                .coTauTiepNhanLonNhat(entity.getCoTauTiepNhanLonNhat())
+                .quyHoachNangLucThongQua(entity.getQuyHoachNangLucThongQua())
+                .sanLuongHangHoaNamGanNhat(entity.getSanLuongHangHoaNamGanNhat())
+                .thoiDiemCongBoMo(entity.getThoiDiemCongBoMo())
+                .quyetDinhCongBo(entity.getQuyetDinhCongBo())
+                .vanBanThoaThuanDauTu(entity.getVanBanThoaThuanDauTu())
+                .loaiKetCau(entity.getLoaiKetCau())
                 .build();
 
         if (request.getTenBen() != null)
@@ -264,6 +297,37 @@ public class BenCangService {
             entity.setCongNangKhaiThac(request.getCongNangKhaiThac());
         if (request.getTrangThaiHoatDong() != null)
             entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong());
+        // Extended fields
+        if (request.getDiaDiem() != null)
+            entity.setDiaDiem(request.getDiaDiem());
+        if (request.getDiaDiemChiTiet() != null)
+            entity.setDiaDiemChiTiet(request.getDiaDiemChiTiet());
+        if (request.getHeQuyChieu() != null)
+            entity.setHeQuyChieu(request.getHeQuyChieu());
+        if (request.getQuyTacHienThi() != null)
+            entity.setQuyTacHienThi(request.getQuyTacHienThi());
+        if (request.getDonViKhaiThac() != null)
+            entity.setDonViKhaiThac(request.getDonViKhaiThac());
+        if (request.getTongDienTich() != null)
+            entity.setTongDienTich(request.getTongDienTich());
+        if (request.getNangLucThongQuaThietKe() != null)
+            entity.setNangLucThongQuaThietKe(request.getNangLucThongQuaThietKe());
+        if (request.getNangLucThongQuaHienTrang() != null)
+            entity.setNangLucThongQuaHienTrang(request.getNangLucThongQuaHienTrang());
+        if (request.getCoTauTiepNhanLonNhat() != null)
+            entity.setCoTauTiepNhanLonNhat(request.getCoTauTiepNhanLonNhat());
+        if (request.getQuyHoachNangLucThongQua() != null)
+            entity.setQuyHoachNangLucThongQua(request.getQuyHoachNangLucThongQua());
+        if (request.getSanLuongHangHoaNamGanNhat() != null)
+            entity.setSanLuongHangHoaNamGanNhat(request.getSanLuongHangHoaNamGanNhat());
+        if (request.getThoiDiemCongBoMo() != null)
+            entity.setThoiDiemCongBoMo(request.getThoiDiemCongBoMo());
+        if (request.getQuyetDinhCongBo() != null)
+            entity.setQuyetDinhCongBo(request.getQuyetDinhCongBo());
+        if (request.getVanBanThoaThuanDauTu() != null)
+            entity.setVanBanThoaThuanDauTu(request.getVanBanThoaThuanDauTu());
+        if (request.getLoaiKetCau() != null)
+            entity.setLoaiKetCau(request.getLoaiKetCau());
         entity.setBieuTuongId(request.getBieuTuongId());
         entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
@@ -369,6 +433,22 @@ public class BenCangService {
                 .trangThaiHoatDong(e.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(e.getTrangThaiPheDuyet()).orgUnitId(e.getOrgUnitId())
                 .bieuTuongId(e.getBieuTuongId())
+                // Extended fields
+                .diaDiem(e.getDiaDiem())
+                .diaDiemChiTiet(e.getDiaDiemChiTiet())
+                .heQuyChieu(e.getHeQuyChieu())
+                .quyTacHienThi(e.getQuyTacHienThi())
+                .donViKhaiThac(e.getDonViKhaiThac())
+                .tongDienTich(e.getTongDienTich())
+                .nangLucThongQuaThietKe(e.getNangLucThongQuaThietKe())
+                .nangLucThongQuaHienTrang(e.getNangLucThongQuaHienTrang())
+                .coTauTiepNhanLonNhat(e.getCoTauTiepNhanLonNhat())
+                .quyHoachNangLucThongQua(e.getQuyHoachNangLucThongQua())
+                .sanLuongHangHoaNamGanNhat(e.getSanLuongHangHoaNamGanNhat())
+                .thoiDiemCongBoMo(e.getThoiDiemCongBoMo())
+                .quyetDinhCongBo(e.getQuyetDinhCongBo())
+                .vanBanThoaThuanDauTu(e.getVanBanThoaThuanDauTu())
+                .loaiKetCau(e.getLoaiKetCau())
                 .createdBy(createdBy)
                 .updatedBy(updatedBy)
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt());
