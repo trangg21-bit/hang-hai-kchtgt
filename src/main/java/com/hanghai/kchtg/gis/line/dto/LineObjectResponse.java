@@ -30,6 +30,10 @@ public class LineObjectResponse {
     private Double length;
     private String material;
     private Integer yearBuilt;
+    private UUID refId;
+    private Integer refType;
+    private String purpose;
+    private String restrictionLevel;
     private ApprovalStatus approvalStatus;
     private Long approvedBy;
     private LocalDateTime approvedDate;

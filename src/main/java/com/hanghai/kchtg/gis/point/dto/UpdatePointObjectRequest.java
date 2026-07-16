@@ -32,4 +32,8 @@ public class UpdatePointObjectRequest {
     private String description;
     private Status status;
     private java.util.UUID unitId;
+    private java.util.UUID refId;
+    private Integer refType;
+    private String purpose;
+    private String restrictionLevel;
 }

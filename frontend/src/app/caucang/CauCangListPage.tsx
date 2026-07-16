@@ -673,7 +673,7 @@ export default function CauCangListPage() {
               total,
               onChange: (p) => setPage(p - 1),
               showSizeChanger: true,
-              showTotal: (t) => `Hiển thị 1-${Math.min(pageSize, t - page * pageSize)} của ${t} kết quả`,
+              showTotal: (total: number, range: [number, number]) => `Hiển thị ${range[0]}-${range[1]} của ${total} kết quả`,
               pageSizeOptions: ['10', '20', '50'],
             }}
           />

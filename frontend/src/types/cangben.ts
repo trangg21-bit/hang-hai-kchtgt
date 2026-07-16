@@ -286,3 +286,23 @@ export interface UpdateVungNuocRequest {
   loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
   toaDo?: string;
 }
+
+export const VUNGNUOOC_LOAI_OPTIONS = [
+  { label: 'Khu neo đậu', value: 'NEO_DAU' },
+  { label: 'Khu kiểm dịch', value: 'KIEM_DICH' },
+  { label: 'Khu đón trả hoa tiêu', value: 'DON_TRA_HOA_TIEU' },
+  { label: 'Vùng quay trở tàu', value: 'QUAY_TRO_TAU' },
+  { label: 'Bến phao', value: 'BEN_PHAO' },
+  { label: 'Khu chuyển tải', value: 'CHUYEN_TAI' },
+  { label: 'Khu tránh trú bão', value: 'TRANH_BAO' },
+];
+
+export const VUNGNUOOC_LOAI_MAP = {
+  NEO_DAU: { color: 'blue', label: 'Khu neo đậu' },
+  KIEM_DICH: { color: 'cyan', label: 'Khu kiểm dịch' },
+  DON_TRA_HOA_TIEU: { color: 'pink', label: 'Khu đón trả hoa tiêu' },
+  QUAY_TRO_TAU: { color: 'orange', label: 'Vùng quay trở tàu' },
+  BEN_PHAO: { color: 'purple', label: 'Bến phao' },
+  CHUYEN_TAI: { color: 'geekblue', label: 'Khu chuyển tải' },
+  TRANH_BAO: { color: 'red', label: 'Khu tránh trú bão' },
+};

@@ -25,4 +25,6 @@ public class UpdatePolygonObjectRequest {
     private Double area;
     private String purpose;
     private String restrictionLevel;
+    private java.util.UUID refId;
+    private Integer refType;
 }

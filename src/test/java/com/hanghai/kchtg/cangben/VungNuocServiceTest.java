@@ -53,6 +53,9 @@ class VungNuocServiceTest {
     @Mock
     private UserResolverService userResolverService;
 
+    @Mock
+    private com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+
     private UUID testId;
     private UUID cangBienId;
     private UUID orgUnitId;
@@ -64,6 +67,12 @@ class VungNuocServiceTest {
             String arg = inv.getArgument(0);
             return arg != null ? arg : "SYSTEM";
         });
+        lenient().when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> {
+                    com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatial = new com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject();
+                    spatial.setId(UUID.randomUUID());
+                    return spatial;
+                });
 
         testId = UUID.randomUUID();
         cangBienId = UUID.randomUUID();

@@ -14,6 +14,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -32,7 +33,7 @@ public class BeaconLightService {
     private final BeaconLightRepository beaconLightRepo;
     private final BuoyRepository buoyRepo;
     private final BeaconHistoryRepository historyRepo;
-    private final PointObjectSyncService pointObjectSyncService;
+    private final GisSpatialObjectService gisSpatialObjectService;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
     private final OrgUnitRepository orgUnitRepo;
@@ -57,8 +58,8 @@ public class BeaconLightService {
         return beaconLightRepo.searchFiltered(
                 name,
                 code,
-                type != null ? type.name() : null,
-                status != null ? status.name() : null
+                type != null ? type.getValue() : null,
+                status != null ? status.getValue() : null
         ).stream()
                 .map(this::toResponse)
                 .toList();
@@ -104,6 +105,22 @@ public class BeaconLightService {
             entity.setApprovalLevel(1);
         }
 
+        entity = beaconLightRepo.save(entity);
+
+        // Sync GIS spatial object
+        String wkt = "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")";
+        com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                null,
+                entity.getName(),
+                "DENBIEN_" + entity.getCode(),
+                com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT,
+                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_LIGHTHOUSE,
+                wkt,
+                null,
+                entity.getId(),
+                com.hanghai.kchtg.gis.search.dto.KchtType.DENBIEN
+        );
+        entity.setKhongGianId(spatialObj.getId());
         entity = beaconLightRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.CREATE, null, null, toJson(entity));
@@ -170,7 +187,25 @@ public class BeaconLightService {
             entity.setApprovalLevel(1);
         }
 
-        beaconLightRepo.save(entity);
+        entity = beaconLightRepo.save(entity);
+
+        // Sync GIS spatial object
+        String wkt = "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")";
+        com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                entity.getKhongGianId(),
+                entity.getName(),
+                "DENBIEN_" + entity.getCode(),
+                com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT,
+                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_LIGHTHOUSE,
+                wkt,
+                null,
+                entity.getId(),
+                com.hanghai.kchtg.gis.search.dto.KchtType.DENBIEN
+        );
+        if (entity.getKhongGianId() == null) {
+            entity.setKhongGianId(spatialObj.getId());
+            beaconLightRepo.save(entity);
+        }
 
         // BUG FIX #1: Use JsonNode.equals() for reliable comparison (not string equals)
         // BUG FIX #3: Use real field diff instead of static "fields_updated"
@@ -205,7 +240,9 @@ public class BeaconLightService {
 
         logHistory(entity, BeaconHistoryActionType.SOFT_DELETE, null, null, toJson(entity));
 
-        pointObjectSyncService.hideFromMap(entity);
+        if (entity.getKhongGianId() != null) {
+            gisSpatialObjectService.delete(entity.getKhongGianId());
+        }
     }
 
     // -- APPROVAL --
@@ -278,8 +315,6 @@ public class BeaconLightService {
         beaconLightRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.APPROVE_L2, null, null, null);
-
-        pointObjectSyncService.syncToMap(entity);
 
         return toResponse(entity);
     }

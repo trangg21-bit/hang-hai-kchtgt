@@ -17,6 +17,10 @@ export interface LineObject {
   approvedDate?: string;
   createdAt?: string;
   updatedAt?: string;
+  refId?: string;
+  refType?: number;
+  purpose?: string;
+  restrictionLevel?: string;
 }
 
 export namespace LineObject {
@@ -55,6 +59,10 @@ export interface CreateLineObjectPayload {
   length?: number;
   material?: string;
   yearBuilt?: number;
+  refId?: string;
+  refType?: number;
+  purpose?: string;
+  restrictionLevel?: string;
 }
 
 export interface UpdateLineObjectPayload {
@@ -69,6 +77,10 @@ export interface UpdateLineObjectPayload {
   length?: number;
   material?: string;
   yearBuilt?: number;
+  refId?: string;
+  refType?: number;
+  purpose?: string;
+  restrictionLevel?: string;
 }
 
 export interface LineObjectFilters {

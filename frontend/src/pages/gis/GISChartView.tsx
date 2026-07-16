@@ -21,6 +21,7 @@ import {
   Checkbox,
   Table,
   Cascader,
+  Modal,
 } from 'antd';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -708,7 +709,9 @@ export default function GISChartView() {
 
   // Save modal state
   const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
   const [pendingDrawResult, setPendingDrawResult] = useState<DrawResult | null>(null);
+  const [editingCustomGisRecord, setEditingCustomGisRecord] = useState<any | null>(null);
 
   // Measure actual available height for table body using ResizeObserver on the wrapper div
   useEffect(() => {
@@ -717,8 +720,8 @@ export default function GISChartView() {
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        // Subtract ~39px for the table header row
-        const available = entry.contentRect.height - 39;
+        // Subtract ~55px for the table header row and horizontal scrollbar to prevent clipping
+        const available = entry.contentRect.height - 55;
         setTableHeight(Math.max(100, Math.floor(available)));
       }
     });
@@ -821,25 +824,12 @@ export default function GISChartView() {
       const lon = parseFloat(rawLon as any);
       
       if (!isNaN(lat) && !isNaN(lon) && lat >= 5.0 && lat <= 26.0 && lon >= 99.0 && lon <= 118.0 && mapRef.current) {
-        mapRef.current.setView([lat, lon], 15);
-        
-        let activePopup: any = null;
-        if (window.L) {
-          activePopup = window.L.popup()
-            .setLatLng([lat, lon])
-            .setContent('<div style="padding: 10px; font-size: 13px; font-family: sans-serif;">Đang tải thông tin chi tiết...</div>')
-            .openOn(mapRef.current);
-        }
+        mapRef.current.setView([lat, lon], 12);
         
         setSelectedRowKeys((prev) => {
           if (prev.includes(record.id)) return prev;
           return [...prev, record.id];
         });
-
-        const popupContent = await fetchAndFormatPopupDetails(record);
-        if (activePopup) {
-          activePopup.setContent(popupContent);
-        }
       } else {
         toast.info(`Đối tượng này có tọa độ không hợp lệ trên bản đồ Việt Nam: [Vĩ độ: ${lat}, Kinh độ: ${lon}]`);
       }
@@ -1070,6 +1060,63 @@ export default function GISChartView() {
     return null;
   }, []);
 
+  const getOrgNameByUnitId = (unitId?: string) => {
+    if (!unitId) return '—';
+    const pathList: string[] = [];
+    let currentId: string | undefined = unitId;
+    let limit = 10;
+    while (currentId && limit > 0) {
+      const found = orgUnits.find(u => u.id === currentId);
+      if (found) {
+        pathList.unshift(found.name);
+        currentId = found.parentId;
+      } else {
+        break;
+      }
+      limit--;
+    }
+    return pathList.length > 0 ? pathList.join(' > ') : '—';
+  };
+
+  const getObjectTypeLabel = (type: string, objectType: string, categoryId?: number) => {
+    if (categoryId === 1) return 'Cảng biển';
+    if (categoryId === 2) return 'Cơ sở sửa chữa';
+    if (categoryId === 3) return 'Đê kè';
+    if (categoryId === 4) return 'Đèn biển';
+    if (categoryId === 5) return 'Hệ thống VTS';
+    if (categoryId === 6) return 'Khu chuyển tải';
+    if (categoryId === 7) return 'Khu neo đậu';
+    if (categoryId === 8) return 'Khu tránh trú bão';
+    if (categoryId === 9) return 'Luồng hàng hải';
+    if (categoryId === 10) return 'Phao tiêu';
+    if (categoryId === 11) return 'Trạm radar';
+    if (categoryId === 12) return 'Vùng nước';
+    if (categoryId === 13) return 'Cảng cạn';
+
+    const t = (type || '').toLowerCase();
+    const ot = (objectType || '').toUpperCase();
+
+    if (t === 'point') {
+      if (ot === 'PORT') return 'Cảng biển';
+      if (ot === 'LIGHTHOUSE') return 'Đèn biển';
+      if (ot === 'BUOY') return 'Phao tiêu';
+      if (ot === 'BEACON') return 'Tiêu / Biển báo';
+      return 'Đối tượng điểm';
+    }
+    if (t === 'linestring') {
+      if (ot === 'SHIPPING_ROUTE') return 'Luồng hàng hải';
+      if (ot === 'COASTLINE') return 'Đê kè';
+      return 'Đối tượng đường';
+    }
+    if (t === 'polygon') {
+      if (ot === 'WATER_ZONE') return 'Vùng nước';
+      if (ot === 'ANCHORAGE') return 'Khu neo đậu / Khu chuyển tải';
+      if (ot === 'STORM_SHELTER') return 'Khu tránh trú bão';
+      return 'Đối tượng vùng';
+    }
+    return objectType || 'Khác';
+  };
+
   // Fetch manually drawn spatial features
   const fetchCustomGisFeatures = useCallback(async () => {
     try {
@@ -1091,7 +1138,14 @@ export default function GISChartView() {
             type: 'Point',
             coordinates: [item.longitude, item.latitude],
             objectType: item.objectType,
+            categoryId: item.categoryId,
+            unitId: item.unitId,
             description: item.description,
+            status: item.status,
+            refId: item.refId,
+            refType: item.refType,
+            purpose: item.purpose,
+            restrictionLevel: item.restrictionLevel,
           });
         }
       });
@@ -1108,7 +1162,14 @@ export default function GISChartView() {
               type: 'LineString',
               coordinates: coords,
               objectType: item.objectType,
+              categoryId: item.categoryId,
+              unitId: item.unitId,
               description: item.description,
+              status: item.status,
+              refId: item.refId,
+              refType: item.refType,
+              purpose: item.purpose,
+              restrictionLevel: item.restrictionLevel,
             });
           }
         }
@@ -1126,7 +1187,14 @@ export default function GISChartView() {
               type: 'Polygon',
               coordinates: coords,
               objectType: item.objectType,
+              categoryId: item.categoryId,
+              unitId: item.unitId,
               description: item.description,
+              status: item.status,
+              refId: item.refId,
+              refType: item.refType,
+              purpose: item.purpose,
+              restrictionLevel: item.restrictionLevel,
             });
           }
         }
@@ -1169,6 +1237,7 @@ export default function GISChartView() {
             fillColor: '#13c2c2',
             fillOpacity: 0.85,
             weight: 2,
+            pmIgnore: true,
           });
         } else if (feature.type === 'LineString') {
           const latlngs = feature.coordinates.map((c: any) => [c[1], c[0]]);
@@ -1176,6 +1245,7 @@ export default function GISChartView() {
             color: '#fa8c16', // Orange for lines
             weight: 3,
             opacity: 0.9,
+            pmIgnore: true,
           });
         } else if (feature.type === 'Polygon') {
           const latlngs = feature.coordinates.map((ring: any) => ring.map((c: any) => [c[1], c[0]]));
@@ -1184,6 +1254,7 @@ export default function GISChartView() {
             fillColor: '#1890ff',
             fillOpacity: 0.25,
             weight: 2,
+            pmIgnore: true,
           });
         }
 
@@ -1193,18 +1264,76 @@ export default function GISChartView() {
             { direction: 'top', offset: [0, -5], opacity: 0.9 }
           );
 
-          layer.bindPopup(`
-            <div style="min-width: 200px; padding: 4px;">
-              <div style="font-size: 14px; font-weight: bold; color: #1890ff; border-bottom: 1px solid #f0f0f0; padding-bottom: 4px; margin-bottom: 8px;">
+          const getPopupHtml = (portName: string) => `
+            <div style="min-width: 250px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 4px;">
+              <!-- Header -->
+              <div style="font-size: 14px; font-weight: bold; color: #1890ff; border-bottom: 1px solid #e8e8e8; padding-bottom: 6px; margin-bottom: 8px; word-break: break-all;">
                 ${feature.name}
               </div>
-              <div style="font-size: 12px; display: flex; flex-direction: column; gap: 4px;">
-                <div><b>Mã:</b> ${feature.code}</div>
-                <div><b>Loại kết cấu:</b> ${feature.objectType}</div>
-                <div><b>Ghi chú:</b> ${feature.description || 'Không có'}</div>
+
+              <!-- Fields table -->
+              <div style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #555;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f9f9f9; padding-bottom: 4px;">
+                  <span style="font-weight: 600; color: #888;">Mã:</span>
+                  <span style="color: #222;">${feature.code}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f9f9f9; padding-bottom: 4px;">
+                  <span style="font-weight: 600; color: #888;">Loại KCHT:</span>
+                  <span style="font-weight: bold; color: #fa8c16;">${getObjectTypeLabel(feature.type, feature.objectType, feature.categoryId)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f9f9f9; padding-bottom: 4px;">
+                  <span style="font-weight: 600; color: #888;">Địa điểm:</span>
+                  <span style="color: #222;">${feature.purpose || '—'}</span>
+                </div>
+                ${feature.restrictionLevel ? `
+                <div style="display: flex; flex-direction: column; border-bottom: 1px solid #f9f9f9; padding-bottom: 4px;">
+                  <span style="font-weight: 600; color: #888;">Địa điểm chi tiết:</span>
+                  <span style="color: #666; font-style: italic;">${feature.restrictionLevel}</span>
+                </div>
+                ` : ''}
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f9f9f9; padding-bottom: 4px;">
+                  <span style="font-weight: 600; color: #888;">Cảng biển:</span>
+                  <span style="color: #222;">${portName}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f9f9f9; padding-bottom: 4px;">
+                  <span style="font-weight: 600; color: #888;">Đơn vị QL:</span>
+                  <span style="color: #222; text-align: right; max-width: 140px; word-break: break-word;">${getOrgNameByUnitId(feature.unitId)}</span>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                  <span style="font-weight: 600; color: #888;">Ghi chú:</span>
+                  <span style="color: #666; font-style: italic; word-break: break-word;">${feature.description || 'Không có ghi chú'}</span>
+                </div>
+              </div>
+
+              <!-- Action Buttons -->
+              <div style="margin-top: 14px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #f0f0f0; padding-top: 10px;">
+                <button class="btn-delete-custom-gis" data-id="${feature.id}" data-type="${feature.type}" data-name="${feature.name}" style="font-size: 11px; border-radius: 4px; padding: 4px 10px; cursor: pointer; border: 1px solid #ff4d4f; background: #ff4d4f; color: white; font-weight: 500; outline: none; transition: background 0.2s;">
+                  Xóa
+                </button>
+                <button class="btn-edit-custom-gis" data-id="${feature.id}" data-type="${feature.type}" data-name="${feature.name}" style="font-size: 11px; border-radius: 4px; padding: 4px 10px; cursor: pointer; border: 1px solid #1890ff; background: transparent; color: #1890ff; font-weight: 500; outline: none; transition: background 0.2s;">
+                  Chỉnh sửa
+                </button>
               </div>
             </div>
-          `);
+          `;
+
+          layer.bindPopup(getPopupHtml(feature.refId ? 'Đang tải...' : '—'));
+
+          if (feature.refId) {
+            layer.on('popupopen', async () => {
+              try {
+                const port = await cangBienCRUD.findById(feature.refId);
+                if (port) {
+                  layer.setPopupContent(getPopupHtml(port.tenCang || '—'));
+                } else {
+                  layer.setPopupContent(getPopupHtml('—'));
+                }
+              } catch (err) {
+                console.error(err);
+                layer.setPopupContent(getPopupHtml('—'));
+              }
+            });
+          }
 
           tempGroup.addLayer(layer);
         }
@@ -1261,6 +1390,7 @@ export default function GISChartView() {
         
         const layer = L.geoJSON(geojsonObj, {
           pane: 'planningPane',
+          pmIgnore: true,
           style: () => ({
             color: color,
             weight: feature.geomType === 'LINE' ? 2 : 1.5,
@@ -1275,6 +1405,7 @@ export default function GISChartView() {
               color: '#ffffff',
               weight: 1,
               fillOpacity: 0.8,
+              pmIgnore: true,
             });
           }
         });
@@ -1506,21 +1637,9 @@ export default function GISChartView() {
     searchMarkersGroupRef.current.addTo(map);
 
     // Plain feature group for vertex markers (zoom-controlled to prevent lag)
-    searchVertexMarkersGroupRef.current = L.layerGroup();
+    searchVertexMarkersGroupRef.current = L.layerGroup().addTo(map);
 
     map.on('zoomend', () => {
-      const zoom = map.getZoom();
-      if (searchVertexMarkersGroupRef.current) {
-        if (zoom >= 15) {
-          if (!map.hasLayer(searchVertexMarkersGroupRef.current)) {
-            map.addLayer(searchVertexMarkersGroupRef.current);
-          }
-        } else {
-          if (map.hasLayer(searchVertexMarkersGroupRef.current)) {
-            map.removeLayer(searchVertexMarkersGroupRef.current);
-          }
-        }
-      }
       if (renderVertexMarkersRef.current) {
         renderVertexMarkersRef.current();
       }
@@ -1539,38 +1658,138 @@ export default function GISChartView() {
 
 
 
-    // Global capture-phase click listener for planning status options
+    // Global capture-phase click listener for planning status options and custom GIS actions
     const handleGlobalClick = async (evt: any) => {
       const opt = evt.target.closest('.planning-status-option');
-      if (!opt) return;
+      if (opt) {
+        evt.preventDefault();
+        evt.stopPropagation();
 
-      evt.preventDefault();
-      evt.stopPropagation();
+        const status = opt.getAttribute('data-status');
+        const color = opt.getAttribute('data-color');
+        const fid = opt.getAttribute('data-fid');
+        const geomType = opt.getAttribute('data-geomtype');
 
-      const status = opt.getAttribute('data-status');
-      const color = opt.getAttribute('data-color');
-      const fid = opt.getAttribute('data-fid');
-      const geomType = opt.getAttribute('data-geomtype');
+        if (!status || !color || !fid || !geomType) {
+          return;
+        }
 
-      if (!status || !color || !fid || !geomType) {
+        try {
+          const colorInt = parseInt(color, 10);
+          await api.put(`/gis/planning/features/${geomType}/${fid}/status`, null, {
+            params: { status, color: colorInt }
+          });
+          toast.success('Cập nhật trạng thái quy hoạch thành công');
+          
+          if (mapRef.current) {
+            mapRef.current.closePopup();
+          }
+          // Clear cache for this feature so it gets re-rendered with new color!
+          if (fid && planningLayersCacheRef.current) {
+            delete planningLayersCacheRef.current[fid];
+          }
+          if (fetchPlanningFeaturesRef.current) {
+            await fetchPlanningFeaturesRef.current();
+          }
+        } catch (err) {
+          toast.error('Lỗi khi cập nhật trạng thái quy hoạch');
+        }
         return;
       }
 
-      try {
-        const colorInt = parseInt(color, 10);
-        await api.put(`/gis/planning/features/${geomType}/${fid}/status`, null, {
-          params: { status, color: colorInt }
+      // Intercept delete custom GIS object click
+      const deleteBtn = evt.target.closest('.btn-delete-custom-gis');
+      if (deleteBtn) {
+        evt.preventDefault();
+        evt.stopPropagation();
+
+        const id = deleteBtn.getAttribute('data-id');
+        const type = deleteBtn.getAttribute('data-type');
+        const name = deleteBtn.getAttribute('data-name');
+        if (!id || !type) return;
+
+        Modal.confirm({
+          title: 'Xóa đối tượng KCHT',
+          content: `Bạn có chắc chắn muốn xóa đối tượng "${name}" không?`,
+          okText: 'Xóa',
+          okType: 'danger',
+          cancelText: 'Hủy',
+          onOk: async () => {
+            try {
+              if (type === 'Point') {
+                await pointObjectService.delete(id);
+              } else if (type === 'LineString') {
+                await lineObjectService.delete(id);
+              } else if (type === 'Polygon') {
+                await polygonObjectService.delete(id);
+              }
+              toast.success('Xóa đối tượng KCHT thành công');
+              
+              if (mapRef.current) {
+                mapRef.current.closePopup();
+              }
+              if (fetchCustomGisFeaturesRef.current) {
+                await fetchCustomGisFeaturesRef.current();
+              }
+            } catch (err) {
+              toast.error('Lỗi khi xóa đối tượng KCHT');
+            }
+          }
         });
-        toast.success('Cập nhật trạng thái quy hoạch thành công');
+        return;
+      }
+
+      // Intercept edit custom GIS object click
+      const editBtn = evt.target.closest('.btn-edit-custom-gis');
+      if (editBtn) {
+        evt.preventDefault();
+        evt.stopPropagation();
         
-        if (mapRef.current) {
-          mapRef.current.closePopup();
+        const id = editBtn.getAttribute('data-id');
+        if (!id) return;
+
+        const feature = customGisFeatures.find((f: any) => f.id === id);
+        if (feature) {
+          const getLoaiKchtValue = (catId?: number) => {
+            if (catId === 1) return 'CANGBIEN';
+            if (catId === 2) return 'COSO_SUACHUA';
+            if (catId === 3) return 'DEKE';
+            if (catId === 4) return 'DENBIEN';
+            if (catId === 5) return 'HE_THONG_VTS';
+            if (catId === 6) return 'KHUCHUYEN_TAI';
+            if (catId === 7) return 'KHUNEO_DAU';
+            if (catId === 8) return 'KHUTRANH_TRU_BAO';
+            if (catId === 9) return 'LUONGHANGHAI';
+            if (catId === 10) return 'PHAOTIEU';
+            if (catId === 11) return 'TRAM_RADAR';
+            if (catId === 12) return 'VUNGNUOC';
+            if (catId === 13) return 'CANGCAN';
+            return 'OTHER';
+          };
+
+          const editRecord = {
+            id: feature.id,
+            type: feature.type,
+            name: feature.name,
+            code: feature.code,
+            loaiKcht: getLoaiKchtValue(feature.categoryId),
+            unitId: feature.unitId,
+            cangBien: feature.refId,
+            diaDiem: feature.purpose,
+            diaDiemChiTiet: feature.restrictionLevel,
+            moTa: feature.description,
+            status: feature.status || 'PUBLISHED',
+            coordinates: feature.coordinates,
+          };
+
+          setEditingCustomGisRecord(editRecord);
+          setSaveModalOpen(true);
+
+          if (mapRef.current) {
+            mapRef.current.closePopup();
+          }
         }
-        if (fetchPlanningFeaturesRef.current) {
-          await fetchPlanningFeaturesRef.current();
-        }
-      } catch (err) {
-        toast.error('Lỗi khi cập nhật trạng thái quy hoạch');
+        return;
       }
     };
 
@@ -1665,6 +1884,13 @@ export default function GISChartView() {
       map.on('pm:create', (e: any) => {
         const { layer, shape } = e;
         
+        // Disable draw mode asynchronously to return cursor to normal navigation and prevent Geoman race conditions
+        setTimeout(() => {
+          if (pm && typeof pm.disableDraw === 'function') {
+            pm.disableDraw();
+          }
+        }, 0);
+
         if (activeDrawnLayer && map.hasLayer(activeDrawnLayer)) {
           map.removeLayer(activeDrawnLayer);
         }
@@ -1720,10 +1946,10 @@ export default function GISChartView() {
     
     searchVertexMarkersGroupRef.current.clearLayers();
 
-    const zoom = mapRef.current.getZoom();
-    if (zoom < 15) return;
-
     const selectedRecords = infrastructureResults.filter((record) => selectedRowKeys.includes(record.id));
+    const zoom = mapRef.current.getZoom();
+    if (zoom < 10) return;
+
     const bounds = mapRef.current.getBounds();
     const visibleRecords = selectedRecords.filter(record => {
       if (!record.toaDo || !record.loaiHinhHoc) return false;
@@ -1732,7 +1958,12 @@ export default function GISChartView() {
     });
 
     const vertexMarkers: any[] = [];
+    let renderedCount = 0;
+    const maxVertices = 1000;
+
     visibleRecords.forEach(record => {
+      if (renderedCount >= maxVertices) return;
+
       const shapeCoordinates = parseWktToLatLngs(record.toaDo, record.loaiHinhHoc);
       if (shapeCoordinates.length === 0) return;
       
@@ -1795,16 +2026,21 @@ export default function GISChartView() {
       }
 
       shapeCoordinates.forEach((coord: [number, number]) => {
+        if (renderedCount >= maxVertices) return;
         if (!bounds.contains(L.latLng(coord[0], coord[1]))) return;
 
-        const vertexMarker = L.marker(coord, { icon: markerIcon }).bindPopup('Đang tải thông tin chi tiết...', { minWidth: 460, maxWidth: 500 });
+        const vertexMarker = L.marker(coord, { icon: markerIcon, pmIgnore: true });
         vertexMarker.on('click', async (e: any) => {
           L.DomEvent.stopPropagation(e);
-          vertexMarker.openPopup();
+          const popup = L.popup({ minWidth: 460, maxWidth: 500 })
+            .setLatLng(coord)
+            .setContent('<div style="padding: 10px; font-size: 13px; font-family: sans-serif;">Đang tải thông tin chi tiết...</div>')
+            .openOn(mapRef.current);
           const detailsHtml = await fetchAndFormatPopupDetails(record);
-          vertexMarker.setPopupContent(detailsHtml);
+          popup.setContent(detailsHtml);
         });
         vertexMarkers.push(vertexMarker);
+        renderedCount++;
       });
     });
 
@@ -1832,7 +2068,7 @@ export default function GISChartView() {
     const bounds = mapRef.current.getBounds();
     const zoom = mapRef.current.getZoom();
     const markers: any[] = [];
-    const useCircle = false;
+    const useCircle = selectedRecords.length > 300 && zoom < 13;
 
     selectedRecords.forEach((record) => {
       const rawLat = record.viDo ?? record.latitude;
@@ -1869,84 +2105,69 @@ export default function GISChartView() {
 
           let marker;
           let markerIcon: any;
-          if (useCircle) {
-            let fillColor = '#1890ff';
-            const kchtType = record.kchtTypeLabel || '';
-            if (kchtType.includes('Cảng biển')) fillColor = '#1890ff';
-            else if (kchtType.includes('Bến cảng')) fillColor = '#52c41a';
-            else if (kchtType.includes('Cầu cảng')) fillColor = '#faad14';
-            else if (kchtType.includes('Cảng cạn')) fillColor = '#722ed1';
-            else fillColor = '#13c2c2';
-
-            marker = L.circleMarker([lat, lon], {
-              radius: 6,
-              fillColor: fillColor,
-              color: '#fff',
-              weight: 1.5,
-              fillOpacity: 0.9,
-            }).bindPopup('Đang tải thông tin chi tiết...');
+          if (sym && sym.hinhAnh) {
+            markerIcon = L.divIcon({
+              html: `
+                <div style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  width: 32px;
+                  height: 32px;
+                  background: white;
+                  border: 2px solid #1890ff;
+                  border-radius: 50%;
+                  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                  overflow: hidden;
+                ">
+                  <img src="${sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}"
+                       style="width: 22px; height: 22px; object-fit: contain;" />
+                </div>
+              `,
+              className: 'custom-map-icon',
+              iconSize: [32, 32],
+              iconAnchor: [16, 16],
+              popupAnchor: [0, -16],
+            });
           } else {
-            if (sym && sym.hinhAnh) {
-              markerIcon = L.divIcon({
-                html: `
-                  <div style="
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 32px;
-                    height: 32px;
-                    background: white;
-                    border: 2px solid #1890ff;
-                    border-radius: 50%;
-                    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-                    overflow: hidden;
-                  ">
-                    <img src="${sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}"
-                         style="width: 22px; height: 22px; object-fit: contain;" />
-                  </div>
-                `,
-                className: 'custom-map-icon',
-                iconSize: [32, 32],
-                iconAnchor: [16, 16],
-                popupAnchor: [0, -16],
-              });
-            } else {
-              markerIcon = L.divIcon({
-                html: `
-                  <div style="
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 24px;
-                    height: 24px;
-                    background: #1890ff;
-                    border: 2px solid white;
-                    border-radius: 50%;
-                    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-                  ">
-                    <span style="color: white; font-size: 10px; font-weight: bold;">
-                      ${record.kchtTypeLabel ? record.kchtTypeLabel.charAt(0) : '•'}
-                    </span>
-                  </div>
-                `,
-                className: 'default-map-icon',
-                iconSize: [24, 24],
-                iconAnchor: [12, 12],
-                popupAnchor: [0, -12],
-              });
-            }
-            
-            // Always create a point marker for all record types (including LINE/POLYLINE)
-            // At low zoom, users see the marker icon; at high zoom >= 10, the full polyline/polygon shape is also drawn
-            marker = L.marker([lat, lon], { icon: markerIcon }).bindPopup('Đang tải thông tin chi tiết...', { minWidth: 460, maxWidth: 500 });
+            markerIcon = L.divIcon({
+              html: `
+                <div style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  width: 24px;
+                  height: 24px;
+                  background: #1890ff;
+                  border: 2px solid white;
+                  border-radius: 50%;
+                  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                ">
+                  <span style="color: white; font-size: 10px; font-weight: bold;">
+                    ${record.kchtTypeLabel ? record.kchtTypeLabel.charAt(0) : '•'}
+                  </span>
+                </div>
+              `,
+              className: 'default-map-icon',
+              iconSize: [24, 24],
+              iconAnchor: [12, 12],
+              popupAnchor: [0, -12],
+            });
+          }
+          
+          // Always create a point marker for all record types (including LINE/POLYLINE)
+          // At low zoom, users see the marker icon; at high zoom >= 10, the full polyline/polygon shape is also drawn
+          marker = L.marker([lat, lon], { icon: markerIcon, pmIgnore: true });
             marker.on('click', async (e: any) => {
               L.DomEvent.stopPropagation(e);
-              marker.openPopup();
+              const popup = L.popup({ minWidth: 460, maxWidth: 500 })
+                .setLatLng([lat, lon])
+                .setContent('<div style="padding: 10px; font-size: 13px; font-family: sans-serif;">Đang tải thông tin chi tiết...</div>')
+                .openOn(mapRef.current);
               const detailsHtml = await fetchAndFormatPopupDetails(record);
-              marker.setPopupContent(detailsHtml);
+              popup.setContent(detailsHtml);
             });
             markers.push(marker);
-          }
 
           // Draw spatial shape (polyline / polygon) if coordinates exist
           // Optimization: Only render complex vector shapes at zoom >= 10 to prevent map rendering lag at low zoom levels
@@ -1959,28 +2180,36 @@ export default function GISChartView() {
                 shapeLayer = L.polyline(shapeCoordinates, {
                   color: '#1890ff',
                   weight: 4,
-                  opacity: 0.85
-                }).bindPopup('Đang tải thông tin chi tiết...', { minWidth: 460, maxWidth: 500 });
+                  opacity: 0.85,
+                  pmIgnore: true,
+                });
 
                 shapeLayer.on('click', async (e: any) => {
                   L.DomEvent.stopPropagation(e);
-                  shapeLayer.openPopup(e.latlng);
+                  const popup = L.popup({ minWidth: 460, maxWidth: 500 })
+                    .setLatLng(e.latlng)
+                    .setContent('<div style="padding: 10px; font-size: 13px; font-family: sans-serif;">Đang tải thông tin chi tiết...</div>')
+                    .openOn(mapRef.current);
                   const detailsHtml = await fetchAndFormatPopupDetails(record);
-                  shapeLayer.setPopupContent(detailsHtml);
+                  popup.setContent(detailsHtml);
                 });
               } else if (geomType === 'POLYGON' || geomType === 'AREA') {
                 shapeLayer = L.polygon(shapeCoordinates, {
                   color: '#1890ff',
                   weight: 2,
                   fillColor: '#1890ff',
-                  fillOpacity: 0.35
-                }).bindPopup('Đang tải thông tin chi tiết...', { minWidth: 460, maxWidth: 500 });
+                  fillOpacity: 0.35,
+                  pmIgnore: true,
+                });
 
                 shapeLayer.on('click', async (e: any) => {
                   L.DomEvent.stopPropagation(e);
-                  shapeLayer.openPopup(e.latlng);
+                  const popup = L.popup({ minWidth: 460, maxWidth: 500 })
+                    .setLatLng(e.latlng)
+                    .setContent('<div style="padding: 10px; font-size: 13px; font-family: sans-serif;">Đang tải thông tin chi tiết...</div>')
+                    .openOn(mapRef.current);
                   const detailsHtml = await fetchAndFormatPopupDetails(record);
-                  shapeLayer.setPopupContent(detailsHtml);
+                  popup.setContent(detailsHtml);
                 });
               }
               if (shapeLayer) {
@@ -2034,13 +2263,27 @@ export default function GISChartView() {
         const rawLat = record.viDo ?? record.latitude;
         const rawLon = record.kinhDo ?? record.longitude;
         if (rawLat !== undefined && rawLat !== null && rawLon !== undefined && rawLon !== null) {
-          pts.push([parseFloat(rawLat), parseFloat(rawLon)]);
+          const lat = parseFloat(rawLat);
+          const lon = parseFloat(rawLon);
+          if (lat >= 5 && lat <= 25 && lon >= 95 && lon <= 120) {
+            pts.push([lat, lon]);
+          }
         }
       });
+      // Fallback if all selected records are outside Vietnam bounds
+      if (pts.length === 0) {
+        selectedRecords.forEach(record => {
+          const rawLat = record.viDo ?? record.latitude;
+          const rawLon = record.kinhDo ?? record.longitude;
+          if (rawLat !== undefined && rawLat !== null && rawLon !== undefined && rawLon !== null) {
+            pts.push([parseFloat(rawLat), parseFloat(rawLon)]);
+          }
+        });
+      }
       if (pts.length > 0) {
         const bounds = L.latLngBounds(pts);
         if (bounds.isValid()) {
-          mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+          mapRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
         }
       }
     } catch (e) {
@@ -2126,6 +2369,7 @@ export default function GISChartView() {
               color: strokeColor || '#333',
               weight: 1.5,
               fillOpacity: 0.85,
+              pmIgnore: true,
             });
             minLat = maxLat = lat;
             minLon = maxLon = lon;
@@ -2146,6 +2390,7 @@ export default function GISChartView() {
             color: strokeColor,
             weight: strokeWidth,
             dashArray: strokeDashArray,
+            pmIgnore: true,
           });
         } else if (geometryType === 'POLYGON') {
           const coordsStr = coordinates.replace(/POLYGON\s*\(\s*\(/i, '').replace(/\)\s*\)/, '');
@@ -2166,6 +2411,7 @@ export default function GISChartView() {
             weight: strokeWidth,
             dashArray: strokeDashArray,
             interactive: featureCode !== 'M_COVR' && featureCode !== 'M_QUAL',
+            pmIgnore: true,
           });
         }
 
@@ -2390,19 +2636,125 @@ export default function GISChartView() {
                   }}
                 />
               )}
+              {mapInstance && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '20px',
+                    right: '20px',
+                    zIndex: 1000,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-end',
+                    gap: '8px'
+                  }}
+                >
+                  {legendOpen && (
+                    <div
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.98)',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                        border: '1px solid rgba(0,0,0,0.06)',
+                        padding: '16px',
+                        width: '320px',
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      <div style={{ fontWeight: 700, fontSize: '13px', color: '#333', letterSpacing: '0.5px', borderBottom: '1px solid #f0f0f0', paddingBottom: '8px', marginBottom: '12px' }}>
+                        GHI CHÚ QUY HOẠCH:
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {/* Bến cảng hiện hữu */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ width: '24px', height: '12px', background: '#faad14', border: '1px solid #d9d9d9', borderRadius: '2px' }} />
+                          <span style={{ fontSize: '13px', color: '#444' }}>Bến cảng hiện hữu</span>
+                        </div>
+                        {/* Bến cảng quy hoạch đến năm 2030 */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ width: '24px', height: '12px', background: '#52c41a', border: '1px solid #d9d9d9', borderRadius: '2px' }} />
+                          <span style={{ fontSize: '13px', color: '#444' }}>Bến cảng quy hoạch đến năm 2030</span>
+                        </div>
+                        {/* Bến cảng phát triển có điều kiện */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ width: '24px', height: '12px', background: '#ffa39e', border: '1px solid #ff4d4f', borderRadius: '2px' }} />
+                          <span style={{ fontSize: '13px', color: '#444' }}>Bến cảng phát triển có điều kiện</span>
+                        </div>
+                        {/* Bến cảng quy hoạch tầm nhìn đến năm 2050 */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ width: '24px', height: '12px', background: '#722ed1', border: '1px solid #d9d9d9', borderRadius: '2px' }} />
+                          <span style={{ fontSize: '13px', color: '#444' }}>Bến cảng quy hoạch tầm nhìn đến năm 2050</span>
+                        </div>
+                        {/* Vùng đón trả hoa tiêu quy hoạch */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
+                            <line x1="2" y1="10" x2="22" y2="2" stroke="#eb2f96" strokeWidth="3" strokeLinecap="round" />
+                          </svg>
+                          <span style={{ fontSize: '13px', color: '#444' }}>Vùng đón trả hoa tiêu quy hoạch</span>
+                        </div>
+                        {/* Vùng đón trả hoa tiêu hiện trạng */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
+                            <line x1="2" y1="10" x2="22" y2="2" stroke="#ffadd2" strokeWidth="2" strokeLinecap="round" />
+                          </svg>
+                          <span style={{ fontSize: '13px', color: '#444' }}>Vùng đón trả hoa tiêu hiện trạng</span>
+                        </div>
+                        {/* Vùng neo hiện trạng */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
+                            <line x1="2" y1="10" x2="22" y2="2" stroke="#8c8c8c" strokeWidth="2" strokeLinecap="round" />
+                          </svg>
+                          <span style={{ fontSize: '13px', color: '#444' }}>Vùng neo hiện trạng</span>
+                        </div>
+                        {/* Vùng neo quy hoạch */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <svg width="24" height="12" viewBox="0 0 24 12" style={{ display: 'block' }}>
+                            <line x1="2" y1="10" x2="22" y2="2" stroke="#ffa940" strokeWidth="2" strokeLinecap="round" />
+                          </svg>
+                          <span style={{ fontSize: '13px', color: '#444' }}>Vùng neo quy hoạch</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <Button
+                    type={legendOpen ? 'primary' : 'default'}
+                    shape="circle"
+                    icon={<InfoCircleOutlined style={{ fontSize: '18px' }} />}
+                    onClick={() => setLegendOpen(!legendOpen)}
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: legendOpen ? '#1890ff' : '#ffffff',
+                      color: legendOpen ? '#ffffff' : '#1890ff',
+                      border: 'none',
+                    }}
+                  />
+                </div>
+              )}
 
 
               {saveModalOpen && (
                 <DrawSaveModal
                   open={saveModalOpen}
                   drawResult={pendingDrawResult}
+                  editRecord={editingCustomGisRecord}
                   onClose={() => {
                     setSaveModalOpen(false);
                     setPendingDrawResult(null);
+                    setEditingCustomGisRecord(null);
+                    if ((window as any).clearDrawnShape) {
+                      (window as any).clearDrawnShape();
+                    }
                   }}
                   onSaved={() => {
                     setSaveModalOpen(false);
                     setPendingDrawResult(null);
+                    setEditingCustomGisRecord(null);
                     if ((window as any).clearDrawnShape) {
                       (window as any).clearDrawnShape();
                     }
@@ -2419,7 +2771,7 @@ export default function GISChartView() {
                     if ((window as any).clearDrawnShape) {
                       (window as any).clearDrawnShape();
                     }
-                    const pm = (mapRef.current as any).pm;
+                    const pm = (mapRef.current as any)?.pm;
                     if (pm) {
                       pm.disableDraw();
                       if (type === 'draw-point') pm.enableDraw('Marker');
@@ -2481,7 +2833,7 @@ export default function GISChartView() {
                   key: '1',
                   label: 'Tra cứu',
                   children: (
-                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: '100%', maxWidth: '100%', minWidth: 0 }}>
                       {/* Fixed top section: title + form + pagination */}
                       <div style={{ flexShrink: 0, padding: '12px 12px 0 12px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -2520,19 +2872,23 @@ export default function GISChartView() {
                             { value: 'BENCANG', label: 'Bến cảng' },
                             { value: 'BENPHAO', label: 'Bến phao' },
                             { value: 'CANGBIEN', label: 'Cảng biển' },
-                            { value: 'CANGCAN', label: 'Cảng cạn' },
                             { value: 'CAUCANG', label: 'Cầu cảng' },
-                            { value: 'COSO_SUACHUA', label: 'Cơ sở sửa chữa' },
-                            { value: 'DEKE', label: 'Đê kè' },
-                            { value: 'DENBIEN', label: 'Đèn biển' },
-                            { value: 'HE_THONG_VTS', label: 'Hệ thống VTS' },
+                            { value: 'CANGCAN', label: 'Cảng cạn' },
+                            { value: 'COSO_SUACHUA', label: 'Cơ sở sửa chữa, đóng tàu' },
                             { value: 'KHUCHUYEN_TAI', label: 'Khu chuyển tải' },
-                            { value: 'KHUNEO_DAU', label: 'Khu neo đậu' },
-                            { value: 'KHUTRANH_TRU_BAO', label: 'Khu tránh trú bão' },
+                            { value: 'DENBIEN', label: 'Đèn biển và nhà trạm gắn liền với đèn biển' },
+                            { value: 'DEKE', label: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' },
+                            { value: 'DAI_TTDH', label: 'Đài TTDH' },
+                            { value: 'DAI_INMARSAT', label: 'Đài Thông tin Vệ tinh mặt đất Inmarsat Hải Phòng' },
                             { value: 'LUONGHANGHAI', label: 'Luồng hàng hải' },
-                            { value: 'PHAOTIEU', label: 'Phao tiêu' },
-                            { value: 'TRAM_RADAR', label: 'Trạm radar' },
-                            { value: 'VUNGNUOC', label: 'Vùng nước' },
+                            { value: 'DAI_LRIT', label: 'Đài Thông tin nhận dạng và truy theo tầm xa (LRIT)' },
+                            { value: 'KHUNEO_DAU', label: 'Khu neo đậu' },
+                            { value: 'NHATRAM_PHAO', label: 'Nhà trạm quản lý vận hành phao tiêu' },
+                            { value: 'PHAOTIEU', label: 'Phao, tiêu' },
+                            { value: 'DAI_COSPAS_SARSAT', label: 'Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam' },
+                            { value: 'KHUTRANH_TRU_BAO', label: 'Khu tránh, trú bão' },
+                            { value: 'DAI_HANOI', label: 'Đài Trung tâm xử lý thông tin hàng hải Hà Nội' },
+                            { value: 'HE_THONG_VTS', label: 'Hệ thống VTS' },
                           ]}
                         />
                       </Form.Item>
@@ -2643,8 +2999,9 @@ export default function GISChartView() {
                       </div>
 
                       {/* Table fills all remaining vertical space */}
-                      <div ref={tableWrapperRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: '0 12px 12px 12px' }}>
+                      <div ref={tableWrapperRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden', width: '100%', maxWidth: '100%', padding: '0 12px 12px 12px' }}>
                     <Table
+                      style={{ width: '100%' }}
                       loading={searchingInfrastructure}
                       rowSelection={{
                         type: 'checkbox',

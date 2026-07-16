@@ -32,8 +32,8 @@ public class BeaconLight extends BaseEntity {
     @Column(nullable = false, length = 200)
     private String name;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false)
+    @Convert(converter = BeaconLightTypeConverter.class)
     private BeaconLightType type;
 
     @NotNull
@@ -82,13 +82,13 @@ public class BeaconLight extends BaseEntity {
     @Builder.Default
     private Boolean isActive = true;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false)
+    @Convert(converter = BeaconStatusConverter.class)
     @Builder.Default
     private BeaconStatus status = BeaconStatus.DRAFT;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "approval_status", nullable = false, length = 20)
+    @Column(name = "approval_status", nullable = false)
+    @Convert(converter = BeaconApprovalStatusConverter.class)
     @Builder.Default
     private BeaconApprovalStatus approvalStatus = BeaconApprovalStatus.PENDING;
 
@@ -103,4 +103,7 @@ public class BeaconLight extends BaseEntity {
 
     @Column(name = "rejection_reason", length = 500)
     private String rejectionReason;
+
+    @Column(name = "spatial_id")
+    private java.util.UUID khongGianId;
 }

@@ -32,6 +32,9 @@ class CoSuaChuaDongTauServiceTest {
     @Mock
     private PheDuyetLichSuRepository historyRepository;
 
+    @Mock
+    private com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+
     @InjectMocks
     private CoSuaChuaDongTauService service;
 
@@ -40,6 +43,12 @@ class CoSuaChuaDongTauServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> {
+                    com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatial = new com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject();
+                    spatial.setId(java.util.UUID.randomUUID());
+                    return spatial;
+                });
         entity = CoSuaChuaDongTau.builder()
                 .id(1L)
                 .tenCoSo("Cơ sở ABC")

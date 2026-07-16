@@ -647,7 +647,7 @@ export default function VungNuocListPage() {
                 setPage(p);
               },
               showSizeChanger: true,
-              showTotal: (t: number) => `Hiển thị 1-${Math.min(t, pageSize)} của ${t} kết quả`,
+              showTotal: (total: number, range: [number, number]) => `Hiển thị ${range[0]}-${range[1]} của ${total} kết quả`,
               pageSizeOptions: ['10', '20', '50'],
             }}
           />

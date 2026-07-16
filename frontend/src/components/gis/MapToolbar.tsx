@@ -184,6 +184,27 @@ export default function MapToolbar({ map, onClearAll }: MapToolbarProps) {
     }
   }, []);
 
+  // Reset active tool and cursor when Geoman drawing ends or shape is created
+  useEffect(() => {
+    if (!map) return;
+
+    const onDrawEnd = () => {
+      setActiveTool(null);
+      const container = map.getContainer();
+      if (container) {
+        container.style.cursor = '';
+      }
+    };
+
+    map.on('pm:drawend', onDrawEnd);
+    map.on('pm:create', onDrawEnd);
+
+    return () => {
+      map.off('pm:drawend', onDrawEnd);
+      map.off('pm:create', onDrawEnd);
+    };
+  }, [map]);
+
   // Reset cursors and stop Geoman/draw modes
   const disableAllModes = useCallback(() => {
     if (!map) return;

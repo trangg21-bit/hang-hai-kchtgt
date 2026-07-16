@@ -31,8 +31,8 @@ public interface BeaconLightRepository extends JpaRepository<BeaconLight, UUID> 
     List<BeaconLight> searchFiltered(
         @Param("name") String name,
         @Param("code") String code,
-        @Param("type") String type,
-        @Param("status") String status
+        @Param("type") Integer type,
+        @Param("status") Integer status
     );
 
     long countByStatus(BeaconStatus status);

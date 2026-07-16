@@ -31,8 +31,8 @@ public interface BuoyRepository extends JpaRepository<Buoy, UUID> {
     List<Buoy> searchFiltered(
         @Param("name") String name,
         @Param("code") String code,
-        @Param("type") String type,
-        @Param("status") String status
+        @Param("type") Integer type,
+        @Param("status") Integer status
     );
 
     long countByStatus(BeaconStatus status);

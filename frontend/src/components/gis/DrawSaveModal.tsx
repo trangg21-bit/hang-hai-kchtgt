@@ -19,6 +19,20 @@ export interface DrawResult {
 interface DrawSaveModalProps {
   open: boolean;
   drawResult: DrawResult | null;
+  editRecord?: {
+    id: string;
+    type: 'Point' | 'LineString' | 'Polygon';
+    name: string;
+    code: string;
+    loaiKcht: string;
+    unitId?: string;
+    cangBien?: string;
+    diaDiem?: string;
+    diaDiemChiTiet?: string;
+    moTa?: string;
+    status: string;
+    coordinates?: any;
+  } | null;
   onClose: () => void;
   onSaved?: () => void;
   onRedraw?: (type: string) => void;
@@ -35,19 +49,23 @@ const LOAI_KCHT_OPTIONS = [
   { value: 'BENCANG', label: 'Bến cảng' },
   { value: 'BENPHAO', label: 'Bến phao' },
   { value: 'CANGBIEN', label: 'Cảng biển' },
-  { value: 'CANGCAN', label: 'Cảng cạn' },
   { value: 'CAUCANG', label: 'Cầu cảng' },
-  { value: 'COSO_SUACHUA', label: 'Cơ sở sửa chữa' },
-  { value: 'DEKE', label: 'Đê kè' },
-  { value: 'DENBIEN', label: 'Đèn biển' },
-  { value: 'HE_THONG_VTS', label: 'Hệ thống VTS' },
+  { value: 'CANGCAN', label: 'Cảng cạn' },
+  { value: 'COSO_SUACHUA', label: 'Cơ sở sửa chữa, đóng tàu' },
   { value: 'KHUCHUYEN_TAI', label: 'Khu chuyển tải' },
-  { value: 'KHUNEO_DAU', label: 'Khu neo đậu' },
-  { value: 'KHUTRANH_TRU_BAO', label: 'Khu tránh trú bão' },
+  { value: 'DENBIEN', label: 'Đèn biển và nhà trạm gắn liền với đèn biển' },
+  { value: 'DEKE', label: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' },
+  { value: 'DAI_TTDH', label: 'Đài TTDH' },
+  { value: 'DAI_INMARSAT', label: 'Đài Thông tin Vệ tinh mặt đất Inmarsat Hải Phòng' },
   { value: 'LUONGHANGHAI', label: 'Luồng hàng hải' },
-  { value: 'PHAOTIEU', label: 'Phao tiêu' },
-  { value: 'TRAM_RADAR', label: 'Trạm radar' },
-  { value: 'VUNGNUOC', label: 'Vùng nước' },
+  { value: 'DAI_LRIT', label: 'Đài Thông tin nhận dạng và truy theo tầm xa (LRIT)' },
+  { value: 'KHUNEO_DAU', label: 'Khu neo đậu' },
+  { value: 'NHATRAM_PHAO', label: 'Nhà trạm quản lý vận hành phao tiêu' },
+  { value: 'PHAOTIEU', label: 'Phao, tiêu' },
+  { value: 'DAI_COSPAS_SARSAT', label: 'Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam' },
+  { value: 'KHUTRANH_TRU_BAO', label: 'Khu tránh, trú bão' },
+  { value: 'DAI_HANOI', label: 'Đài Trung tâm xử lý thông tin hàng hải Hà Nội' },
+  { value: 'HE_THONG_VTS', label: 'Hệ thống VTS' },
 ];
 
 const mapToPointObjectType = (val: string): string => {
@@ -57,23 +75,10 @@ const mapToPointObjectType = (val: string): string => {
   return 'OTHER';
 };
 
-const mapToPointCategoryId = (val: string): number => {
-  if (val === 'CANGBIEN') return 1; // Cảng biển
-  if (val === 'DENBIEN') return 2;   // Đèn biển
-  if (val === 'PHAOTIEU') return 3;  // Phao tiêu
-  return 5; // Khác
-};
-
 const mapToLineObjectType = (val: string): string => {
   if (val === 'LUONGHANGHAI') return 'SHIPPING_ROUTE';
   if (val === 'DEKE') return 'COASTLINE';
   return 'OTHER';
-};
-
-const mapToLineCategoryId = (val: string): number => {
-  if (val === 'DEKE') return 1; // Đường bờ biển
-  if (val === 'LUONGHANGHAI') return 2; // Tuyến hàng hải
-  return 4; // Khác
 };
 
 const mapToPolygonObjectType = (val: string): string => {
@@ -83,11 +88,21 @@ const mapToPolygonObjectType = (val: string): string => {
   return 'OTHER';
 };
 
-const mapToPolygonCategoryId = (val: string): number => {
-  if (val === 'VUNGNUOC') return 1; // Vùng nước
-  if (val === 'KHUNEO_DAU' || val === 'KHUCHUYEN_TAI') return 2; // Khu neo đậu
-  if (val === 'KHUTRANH_TRU_BAO') return 3; // Tránh trú bão
-  return 6; // Khác
+const mapToCategoryId = (val: string): number => {
+  if (val === 'CANGBIEN') return 1;
+  if (val === 'COSO_SUACHUA') return 2;
+  if (val === 'DEKE') return 3;
+  if (val === 'DENBIEN') return 4;
+  if (val === 'HE_THONG_VTS') return 5;
+  if (val === 'KHUCHUYEN_TAI') return 6;
+  if (val === 'KHUNEO_DAU') return 7;
+  if (val === 'KHUTRANH_TRU_BAO') return 8;
+  if (val === 'LUONGHANGHAI') return 9;
+  if (val === 'PHAOTIEU') return 10;
+  if (val === 'TRAM_RADAR') return 11;
+  if (val === 'VUNGNUOC') return 12;
+  if (val === 'CANGCAN') return 13;
+  return 99; // Khác
 };
 
 const TRANG_THAI_OPTIONS = [
@@ -98,6 +113,7 @@ const TRANG_THAI_OPTIONS = [
 export default function DrawSaveModal({
   open,
   drawResult,
+  editRecord,
   onClose,
   onSaved,
   onRedraw,
@@ -225,25 +241,55 @@ export default function DrawSaveModal({
     }
   };
 
-  // Set default values when geometry is drawn
+  // Set default/editing values when opened
   useEffect(() => {
-    if (open && drawResult) {
-      const geom = drawResult.geojson?.geometry;
-      if (drawResult.type === 'draw-point' && geom?.coordinates) {
+    if (open) {
+      if (editRecord) {
         form.setFieldsValue({
-          _lat: geom.coordinates[1].toFixed(6),
-          _lng: geom.coordinates[0].toFixed(6),
+          ten: editRecord.name,
+          ma: editRecord.code,
+          loaiKcht: editRecord.loaiKcht,
+          donViQuanLy: editRecord.unitId,
+          cangBien: editRecord.cangBien,
+          diaDiem: editRecord.diaDiem,
+          diaDiemChiTiet: editRecord.diaDiemChiTiet,
+          moTa: editRecord.moTa,
+          trangThai: editRecord.status,
         });
-      } else {
-        form.setFieldsValue({
-          _lat: undefined,
-          _lng: undefined,
-        });
+
+        if (editRecord.type === 'Point' && editRecord.coordinates) {
+          form.setFieldsValue({
+            _lat: editRecord.coordinates[1]?.toFixed(6),
+            _lng: editRecord.coordinates[0]?.toFixed(6),
+          });
+        } else {
+          form.setFieldsValue({
+            _lat: undefined,
+            _lng: undefined,
+          });
+        }
+
+        if (editRecord.unitId) {
+          void loadPorts(editRecord.unitId, 1, false);
+        }
+      } else if (drawResult) {
+        const geom = drawResult.geojson?.geometry;
+        if (drawResult.type === 'draw-point' && geom?.coordinates) {
+          form.setFieldsValue({
+            _lat: geom.coordinates[1].toFixed(6),
+            _lng: geom.coordinates[0].toFixed(6),
+          });
+        } else {
+          form.setFieldsValue({
+            _lat: undefined,
+            _lng: undefined,
+          });
+        }
       }
     } else {
       form.resetFields();
     }
-  }, [open, drawResult, form]);
+  }, [open, drawResult, editRecord, form]);
 
   // Convert Drawn GeoJSON to WKT format
   const getWktString = (result: DrawResult | null, formLat?: number, formLng?: number): string => {
@@ -282,52 +328,83 @@ export default function DrawSaveModal({
   };
 
   const handleSave = async () => {
-    if (!drawResult) return;
+    if (!drawResult && !editRecord) return;
     try {
       const values = await form.validateFields();
       setLoading(true);
 
       const lat = values._lat ? parseFloat(values._lat) : undefined;
       const lng = values._lng ? parseFloat(values._lng) : undefined;
-      const wkt = getWktString(drawResult, lat, lng);
+      const wkt = drawResult ? getWktString(drawResult, lat, lng) : undefined;
 
-      if (drawResult.type === 'draw-point') {
+      const isPoint = editRecord ? (editRecord.type === 'Point') : (drawResult?.type === 'draw-point');
+      const isLine = editRecord ? (editRecord.type === 'LineString') : (drawResult?.type === 'draw-line');
+      const isPolygon = editRecord ? (editRecord.type === 'Polygon') : (drawResult?.type === 'draw-polygon');
+
+      if (isPoint) {
         const payload = {
           name: values.ten,
           code: values.ma,
           objectType: mapToPointObjectType(values.loaiKcht),
-          categoryId: mapToPointCategoryId(values.loaiKcht),
-          longitude: lng ?? drawResult.geojson.geometry.coordinates[0],
-          latitude: lat ?? drawResult.geojson.geometry.coordinates[1],
+          categoryId: mapToCategoryId(values.loaiKcht),
+          longitude: lng ?? (drawResult?.geojson?.geometry?.coordinates?.[0] || editRecord?.coordinates?.[0]),
+          latitude: lat ?? (drawResult?.geojson?.geometry?.coordinates?.[1] || editRecord?.coordinates?.[1]),
           description: values.moTa,
           unitId: values.donViQuanLy,
+          status: values.trangThai,
+          refId: values.cangBien || null,
+          refType: values.cangBien ? 0 : null,
+          purpose: values.diaDiem || null,
+          restrictionLevel: values.diaDiemChiTiet || null,
         };
-        await pointObjectService.create(payload as any);
-      } else if (drawResult.type === 'draw-line') {
+        if (editRecord) {
+          await pointObjectService.update(editRecord.id, payload as any);
+        } else {
+          await pointObjectService.create(payload as any);
+        }
+      } else if (isLine) {
         const payload = {
           name: values.ten,
           code: values.ma,
           objectType: mapToLineObjectType(values.loaiKcht),
-          categoryId: mapToLineCategoryId(values.loaiKcht),
-          coordinates: wkt,
+          categoryId: mapToCategoryId(values.loaiKcht),
+          coordinates: wkt || (editRecord?.coordinates ? (typeof editRecord.coordinates === 'string' ? editRecord.coordinates : undefined) : undefined),
           description: values.moTa,
           unitId: values.donViQuanLy,
+          status: values.trangThai,
+          refId: values.cangBien || null,
+          refType: values.cangBien ? 0 : null,
+          purpose: values.diaDiem || null,
+          restrictionLevel: values.diaDiemChiTiet || null,
         };
-        await lineObjectService.create(payload as any);
-      } else if (drawResult.type === 'draw-polygon') {
+        if (editRecord) {
+          await lineObjectService.update(editRecord.id, payload as any);
+        } else {
+          await lineObjectService.create(payload as any);
+        }
+      } else if (isPolygon) {
         const payload = {
           name: values.ten,
           code: values.ma,
           objectType: mapToPolygonObjectType(values.loaiKcht),
-          categoryId: mapToPolygonCategoryId(values.loaiKcht),
-          coordinates: wkt,
+          categoryId: mapToCategoryId(values.loaiKcht),
+          coordinates: wkt || (editRecord?.coordinates ? (typeof editRecord.coordinates === 'string' ? editRecord.coordinates : undefined) : undefined),
           description: values.moTa,
           unitId: values.donViQuanLy,
+          status: values.trangThai,
+          refId: values.cangBien || null,
+          refType: values.cangBien ? 0 : null,
+          purpose: values.diaDiem || null,
+          restrictionLevel: values.diaDiemChiTiet || null,
         };
-        await polygonObjectService.create(payload as any);
+        if (editRecord) {
+          await polygonObjectService.update(editRecord.id, payload as any);
+        } else {
+          await polygonObjectService.create(payload as any);
+        }
       }
 
-      toast.success(`Đã lưu thành công đối tượng KCHT "${values.ten}"`);
+      toast.success(editRecord ? `Đã cập nhật thành công đối tượng KCHT "${values.ten}"` : `Đã lưu thành công đối tượng KCHT "${values.ten}"`);
       form.resetFields();
       onClose();
       if (onSaved) onSaved();
@@ -341,6 +418,17 @@ export default function DrawSaveModal({
   };
 
   const geomSummary = () => {
+    if (editRecord) {
+      if (editRecord.type === 'Point' && editRecord.coordinates) {
+        return `📍 Điểm — ${Number(editRecord.coordinates[1]).toFixed(5)}°N, ${Number(editRecord.coordinates[0]).toFixed(5)}°E`;
+      }
+      if (editRecord.type === 'LineString') {
+        return `╱ Đường`;
+      }
+      if (editRecord.type === 'Polygon') {
+        return `△ Vùng đa giác`;
+      }
+    }
     if (!drawResult) return '—';
     const type = GEOM_TYPE_LABELS[drawResult.type] || drawResult.type;
     const geom = drawResult.geojson?.geometry;
@@ -365,9 +453,12 @@ export default function DrawSaveModal({
       width={560}
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>💾 Lưu đối tượng KCHT</span>
+          <span>{editRecord ? '📝 Chỉnh sửa đối tượng KCHT' : '💾 Lưu đối tượng KCHT'}</span>
           <Tag color="blue" style={{ fontSize: 11, fontWeight: 500 }}>
-            {GEOM_TYPE_LABELS[drawResult?.type ?? ''] || drawResult?.type || '—'}
+            {editRecord
+              ? (editRecord.type === 'Point' ? '📍 Điểm' : editRecord.type === 'LineString' ? '╱ Đường' : '△ Vùng đa giác')
+              : (GEOM_TYPE_LABELS[drawResult?.type ?? ''] || drawResult?.type || '—')
+            }
           </Tag>
         </div>
       }
@@ -377,7 +468,7 @@ export default function DrawSaveModal({
           Hủy
         </Button>,
         <Button key="save" type="primary" loading={loading} onClick={handleSave}>
-          Lưu vào CSDL
+          Lưu
         </Button>,
       ]}
     >
@@ -402,16 +493,18 @@ export default function DrawSaveModal({
             <span style={{ fontSize: 12, color: '#333' }}>
               <strong>Hình học:</strong> {geomSummary()}
             </span>
-            <Button
-              size="small"
-              icon={<span>🔄</span>}
-              onClick={() => {
-                onClose();
-                if (onRedraw && drawResult) onRedraw(drawResult.type);
-              }}
-            >
-              Vẽ lại
-            </Button>
+            {!editRecord && onRedraw && drawResult && (
+              <Button
+                size="small"
+                icon={<span>🔄</span>}
+                onClick={() => {
+                  onClose();
+                  if (onRedraw) onRedraw(drawResult.type);
+                }}
+              >
+                Vẽ lại
+              </Button>
+            )}
           </div>
 
           {drawResult?.type === 'draw-point' && drawResult.geojson?.geometry?.coordinates && (
@@ -462,7 +555,6 @@ export default function DrawSaveModal({
         <Form.Item
           label="Loại kết cấu hạ tầng"
           name="loaiKcht"
-          rules={[{ required: true, message: 'Vui lòng chọn loại KCHT' }]}
         >
           <Select placeholder="Chọn loại KCHT" options={LOAI_KCHT_OPTIONS} />
         </Form.Item>
@@ -470,7 +562,6 @@ export default function DrawSaveModal({
         <Form.Item
           label="Đơn vị quản lý"
           name="donViQuanLy"
-          rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
         >
           <TreeSelect
             placeholder="Chọn đơn vị quản lý"
@@ -488,7 +579,6 @@ export default function DrawSaveModal({
         <Form.Item
           label="Thuộc cảng biển"
           name="cangBien"
-          rules={[{ required: !isCangBien, message: 'Vui lòng chọn cảng biển' }]}
         >
           <Select
             placeholder={isCangBien ? "Không áp dụng cho Cảng biển" : "Chọn cảng biển"}
@@ -511,7 +601,6 @@ export default function DrawSaveModal({
         <Form.Item
           label="Tỉnh/Thành phố"
           name="diaDiem"
-          rules={[{ required: true, message: 'Vui lòng chọn tỉnh/thành phố' }]}
         >
           <Select
             placeholder="Chọn tỉnh/thành phố"

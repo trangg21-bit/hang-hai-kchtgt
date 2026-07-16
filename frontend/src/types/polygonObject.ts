@@ -17,6 +17,8 @@ export interface PolygonObject {
   approvedDate?: string;
   createdAt?: string;
   updatedAt?: string;
+  refId?: string;
+  refType?: number;
 }
 
 export namespace PolygonObject {
@@ -57,6 +59,8 @@ export interface CreatePolygonObjectPayload {
   area?: number;
   purpose?: string;
   restrictionLevel?: string;
+  refId?: string;
+  refType?: number;
 }
 
 export interface UpdatePolygonObjectPayload {
@@ -71,6 +75,8 @@ export interface UpdatePolygonObjectPayload {
   area?: number;
   purpose?: string;
   restrictionLevel?: string;
+  refId?: string;
+  refType?: number;
 }
 
 export interface PolygonObjectFilters {

@@ -31,30 +31,30 @@ body {
   height: 100%;
 }
 
-/* Custom scrollbar for search results table body to make it darker, wider, and highly visible */
-.gis-sidebar-tabs .ant-table-virtual-holder::-webkit-scrollbar,
-.gis-sidebar-tabs .rc-virtual-list-holder::-webkit-scrollbar,
-.gis-sidebar-tabs .ant-table-body::-webkit-scrollbar {
-  width: 10px !important;
-  height: 10px !important;
-  display: block !important;
+/* Custom scrollbar for GIS sidebar elements to make both vertical and horizontal scrollbars highly visible */
+.gis-sidebar-tabs ::-webkit-scrollbar {
+  width: 12px !important;
+  height: 12px !important;
 }
-.gis-sidebar-tabs .ant-table-virtual-holder::-webkit-scrollbar-track,
-.gis-sidebar-tabs .rc-virtual-list-holder::-webkit-scrollbar-track,
-.gis-sidebar-tabs .ant-table-body::-webkit-scrollbar-track {
+.gis-sidebar-tabs ::-webkit-scrollbar-track {
   background: #f1f2f5 !important;
-  border-radius: 4px !important;
-}
-.gis-sidebar-tabs .ant-table-virtual-holder::-webkit-scrollbar-thumb,
-.gis-sidebar-tabs .rc-virtual-list-holder::-webkit-scrollbar-thumb,
-.gis-sidebar-tabs .ant-table-body::-webkit-scrollbar-thumb {
-  background: #777777 !important;
-  border: 1px solid #f1f2f5 !important;
   border-radius: 6px !important;
+}
+.gis-sidebar-tabs ::-webkit-scrollbar-thumb {
+  background: #777777 !important;
+  border-radius: 6px !important;
+  border: 2px solid #f1f2f5 !important;
   transition: background 0.15s !important;
 }
-.gis-sidebar-tabs .ant-table-virtual-holder::-webkit-scrollbar-thumb:hover,
-.gis-sidebar-tabs .rc-virtual-list-holder::-webkit-scrollbar-thumb:hover,
-.gis-sidebar-tabs .ant-table-body::-webkit-scrollbar-thumb:hover {
+.gis-sidebar-tabs ::-webkit-scrollbar-thumb:hover {
   background: #444444 !important;
+}
+
+/* Force constraints on the sidebar tabs container and descendants to prevent layout expansion */
+.gis-sidebar-tabs,
+.gis-sidebar-tabs .ant-tabs-content,
+.gis-sidebar-tabs .ant-tabs-tabpane {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
 }

@@ -58,6 +58,9 @@ class CangBienServiceTest {
     @Mock
     private UserResolverService userResolverService;
 
+    @Mock
+    private com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+
     private UUID testId;
     private CangBien testEntity;
 
@@ -67,6 +70,12 @@ class CangBienServiceTest {
             String arg = inv.getArgument(0);
             return arg != null ? arg : "SYSTEM";
         });
+        lenient().when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenAnswer(inv -> {
+                    com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatial = new com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject();
+                    spatial.setId(UUID.randomUUID());
+                    return spatial;
+                });
 
         testId = UUID.randomUUID();
         testEntity = new CangBien();
@@ -102,7 +111,7 @@ class CangBienServiceTest {
         assertEquals("CB-002", result.getMaCang());
         assertEquals("Cảng mới", result.getTenCang());
         assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getTrangThaiPheDuyet());
-        verify(cangBienRepository).save(any(CangBien.class));
+        verify(cangBienRepository, times(2)).save(any(CangBien.class));
     }
 
     @Test
