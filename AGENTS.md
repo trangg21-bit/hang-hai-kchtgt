@@ -129,6 +129,64 @@ PMO Lead
          Cấm dùng giá trị ngoài thang: radius 6/7/10, font 12/14/16/18/24, spacing 10/14/18."
 ```
 
+## Form & List UI Convention (MANDATORY — áp dụng cho MỌI màn danh sách và popup)
+
+### List Screen Pattern
+
+Mọi màn hình danh sách (quản lý người dùng, vai trò, đơn vị, v.v.) **PHẢI** dùng 5 components share từ `frontend/src/components/list-view/`:
+
+| Component | Vai trò |
+|---|---|
+| `ScreenHeader` | Breadcrumb + nút hành động (Thêm mới, Xuất Excel) |
+| `FilterBar` | Ô tìm kiếm, select lọc, date range + nút Tìm kiếm/Reload |
+| `StatusTabs` | Tab trạng thái kèm số lượng |
+| `DataTable` | Bảng dữ liệu có sort + dropdown hành động |
+| `Pagination` | Điều hướng trang |
+
+### Form/Modal Pattern
+
+Mọi form trong modal popup **PHẢI** dùng:
+
+```ts
+// ✅ ĐÚNG — tokens từ tokens.ts
+import { spaceFormField, radiusPill } from '../tokens';
+
+<Form.Item style={{ marginBottom: spaceFormField }}>...</Form.Item>
+<Input style={{ borderRadius: radiusPill, height: 40 }} />
+<Modal footer={[
+  <Button style={{ borderRadius: radiusPill, height: 40 }}>Hủy</Button>,
+  <Button type="primary" style={{ borderRadius: radiusPill, height: 40 }}>Tạo mới</Button>,
+]} />
+```
+
+- **KHÔNG** hardcode margin-bottom Form.Item — dùng `spaceFormField` (12px)
+- **KHÔNG** hardcode border-radius — dùng `radiusPill` (999px) cho Input, Select, Button
+- `height: 40` cho mọi Input, Select
+- `labelProps()` helper cho label style nhất quán
+- Modal footer: Cancel (outlined) + Submit (primary), cả hai pill radius
+
+### Reference Implementation
+
+Xem `frontend/src/pages/UsersPage.tsx` — đây là mẫu chuẩn cho cả list screen + form modal.
+
+Chi tiết xem tại: [`docs/conventions/form-and-list-patterns.md`](docs/conventions/form-and-list-patterns.md)
+
+### Agent workflow
+
+```
+PMO Lead
+  └── Dispatch Dev làm màn danh sách / popup → PHẢI chép constraints vào prompt:
+        "Dùng ScreenHeader + FilterBar + StatusTabs + DataTable + Pagination
+         từ frontend/src/components/list-view/.
+         KHÔNG tự tạo search/filter UI riêng, KHÔNG tự tạo table riêng.
+         Form.Item marginBottom = spaceFormField (12px).
+         Input/Select borderRadius = radiusPill (999px), height = 40.
+         Xem UsersPage.tsx làm mẫu chuẩn.
+         Đọc docs/conventions/form-and-list-patterns.md để biết chi tiết."
+```
+
+**⚠️ PMO LEAD: workers KHÔNG đọc AGENTS.md. Bạn PHẢI copy quy tắc trên vào brief và luôn gửi kèm link `docs/conventions/form-and-list-patterns.md`.**
+
 ## SDLC convention
 
 All SDLC scaffolding goes through `ai-kit` CLI (ADR-005).

@@ -12,7 +12,7 @@ import { ScreenHeader, FilterBar, StatusTabs, DataTable } from '../components/li
 import Pagination from '../components/list-view/Pagination';
 import type { User, CreateUserPayload, UpdateUserPayload } from '../types/user';
 import { organizationService } from '../services/organizationService';
-import { statusOperational, statusCritical, statusDraft, actionPrimary, textSecondary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, dataSea1, radiusPill, borderDefault } from '../tokens';
+import { statusOperational, statusCritical, statusDraft, actionPrimary, textSecondary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, dataSea1, radiusPill, borderDefault, spaceFormField } from '../tokens';
 import { colors } from '../theme';
 const { confirm } = Modal;
 
@@ -167,7 +167,7 @@ export default function UsersPage() {
     if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách người dùng'} onRetry={() => refetch()} />;
     const tableData = data?.data || [];
     if (tableData.length === 0) {
-      if (search || filterRoleId || filterStatus) return <EmptyState description="Không tìm thấy người dùng nào phù hợp" ctaText="Xóa bộ lọc" onCta={handleFilterReset} />;
+      if (search || filterRoleId || filterStatus) return <EmptyState description="Không tìm thấy người dùng nào phù hợp" />;
       return <EmptyState description="Chưa có người dùng nào" ctaText="Thêm người dùng đầu tiên" onCta={openCreateModal} />;
     }
     return <div style={{ overflowX: 'auto' }}><DataTable columns={columns} dataSource={tableData} rowKey="id" rowActions={rowActions} loading={deleteUser.isPending || toggleLock.isPending} scroll={{ x: 1200 }} onSort={handleSort} /><Pagination total={data?.total || 0} current={page} pageSize={pageSize} onChange={handlePageChange} /></div>;
@@ -217,16 +217,16 @@ export default function UsersPage() {
             labelCol={{ style: { padding: 0, marginBottom: 4 } }}
           >
             {!editingUser && (<>
-              <Form.Item name="username" {...labelProps('Tên đăng nhập')} style={{ marginBottom: 6 }} rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập' }, { min: 4, message: 'Tối thiểu 4 ký tự' }, { pattern: /^[a-z0-9_]+$/, message: 'Chỉ chứa chữ thường, số và dấu gạch dưới' }]}><Input placeholder="vd: nguyenvana" autoComplete="off" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
-              <Form.Item name="password" {...labelProps('Mật khẩu')} style={{ marginBottom: 6 }} rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }, { min: 8, message: 'Tối thiểu 8 ký tự' }, { pattern: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).+$/, message: 'Phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 số' }]}><Input.Password placeholder="Ít nhất 8 ký tự" autoComplete="new-password" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
+              <Form.Item name="username" {...labelProps('Tên đăng nhập')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập' }, { min: 4, message: 'Tối thiểu 4 ký tự' }, { pattern: /^[a-z0-9_]+$/, message: 'Chỉ chứa chữ thường, số và dấu gạch dưới' }]}><Input placeholder="vd: nguyenvana" autoComplete="off" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
+              <Form.Item name="password" {...labelProps('Mật khẩu')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }, { min: 8, message: 'Tối thiểu 8 ký tự' }, { pattern: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).+$/, message: 'Phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 số' }]}><Input.Password placeholder="Ít nhất 8 ký tự" autoComplete="new-password" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
             </>)}
-            <Form.Item name="fullName" {...labelProps('Họ và tên')} style={{ marginBottom: 6 }} rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}><Input placeholder="Nguyễn Văn A" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
+            <Form.Item name="fullName" {...labelProps('Họ và tên')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}><Input placeholder="Nguyễn Văn A" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
             <Row gutter={16}>
-              <Col xs={24} md={12}><Form.Item name="email" {...labelProps('Email')} style={{ marginBottom: 6 }} rules={[{ required: true, message: 'Vui lòng nhập email' }, { type: 'email', message: 'Email không hợp lệ' }]}><Input placeholder="email@example.com" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
-              <Col xs={24} md={12}><Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: 6 }} rules={[{ pattern: /^0\d{9,10}$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]}><Input placeholder="0901234567" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
+              <Col xs={24} md={12}><Form.Item name="email" {...labelProps('Email')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập email' }, { type: 'email', message: 'Email không hợp lệ' }]}><Input placeholder="email@example.com" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
+              <Col xs={24} md={12}><Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: spaceFormField }} rules={[{ pattern: /^0\d{9,10}$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]}><Input placeholder="0901234567" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
             </Row>
-            <Form.Item name="roleId" {...labelProps('Vai trò')} style={{ marginBottom: 6 }} rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}><Select placeholder="Chọn vai trò" options={rolesData?.map((r: any) => ({ value: r.code, label: r.name }))} style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
-            <Form.Item name="orgUnitId" {...labelProps('Đơn vị trực thuộc')} style={{ marginBottom: 6 }}><Select placeholder="Chọn đơn vị trực thuộc" allowClear showSearch filterOption={(input: string, option: any) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())} options={organizations.map((org: any) => ({ value: org.id, label: org.code ? `${org.code} - ${org.name}` : org.name }))} style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
+            <Form.Item name="roleId" {...labelProps('Vai trò')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}><Select placeholder="Chọn vai trò" options={rolesData?.map((r: any) => ({ value: r.code, label: r.name }))} style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
+            <Form.Item name="orgUnitId" {...labelProps('Đơn vị trực thuộc')} style={{ marginBottom: spaceFormField }}><Select placeholder="Chọn đơn vị trực thuộc" allowClear showSearch filterOption={(input: string, option: any) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())} options={organizations.map((org: any) => ({ value: org.id, label: org.code ? `${org.code} - ${org.name}` : org.name }))} style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
           </Form>
         </Spin>
       </Modal>
