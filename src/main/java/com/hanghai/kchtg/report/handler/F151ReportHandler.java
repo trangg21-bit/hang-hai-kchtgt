@@ -4,7 +4,10 @@ import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.gis.line.entity.LineObject;
 import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
+import com.hanghai.kchtg.luonghanghai.entity.LuongHangHai;
+import com.hanghai.kchtg.luonghanghai.repository.LuongHangHaiRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -14,6 +17,9 @@ public class F151ReportHandler extends BaseReportHandler {
 
     @Autowired
     private LineObjectRepository lineObjectRepository;
+
+    @Autowired
+    private LuongHangHaiRepository luongHangHaiRepository;
 
     @Override
     public boolean supports(String reportCode) {
@@ -26,11 +32,16 @@ public class F151ReportHandler extends BaseReportHandler {
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
         int reportYear = getReportYear(request);
 
-        List<LineObject> lines = lineObjectRepository.findAll().stream()
-                .filter(p -> skipFilter || targetUnitId.equals(p.getUnitId()))
-                .filter(p -> p.getCreatedAt() == null || p.getCreatedAt().getYear() <= reportYear)
-                .filter(p -> p.getObjectType() == LineObject.ObjectType.SHIPPING_ROUTE
-                        || p.getObjectType() == LineObject.ObjectType.WATERWAY)
+        List<LuongHangHai> luongHangHaiList = luongHangHaiRepository
+                .findByIsDeletedFalse(Sort.unsorted())
+                .stream()
+                .filter(lhh -> skipFilter || targetUnitId.equals(lhh.getDonViId()))
+                .filter(lhh -> {
+                    if (lhh.getNgayGhiNhan() != null) {
+                        return lhh.getNgayGhiNhan().getYear() <= reportYear;
+                    }
+                    return lhh.getCreatedAt() == null || lhh.getCreatedAt().getYear() <= reportYear;
+                })
                 .toList();
 
         List<String> headers = List.of(
@@ -41,11 +52,22 @@ public class F151ReportHandler extends BaseReportHandler {
 
         List<Map<String, Object>> rows = new ArrayList<>();
         int stt = 1;
-        for (LineObject p : lines) {
+        for (LuongHangHai lhh : luongHangHaiList) {
+            // Look up LineObject by spatial_id (khongGianId)
+            String tenTuyen = lhh.getTen();
+            Double chieuDai = 0.0;
+            if (lhh.getKhongGianId() != null) {
+                Optional<LineObject> lineOpt = lineObjectRepository.findById(lhh.getKhongGianId());
+                if (lineOpt.isPresent()) {
+                    LineObject line = lineOpt.get();
+                    chieuDai = line.getLength() != null ? line.getLength() : 0.0;
+                }
+            }
+
             Map<String, Object> r = new LinkedHashMap<>();
             r.put("STT", stt++);
-            r.put("Tên tuyến luồng", p.getName());
-            r.put("Chiều dài (km)", p.getLength() != null ? p.getLength() : 0.0);
+            r.put("Tên tuyến luồng", tenTuyen != null ? tenTuyen : "");
+            r.put("Chiều dài (km)", chieuDai);
             r.put("Chiều rộng lớn nhất (m)", 0.0);
             r.put("Chiều rộng nhỏ nhất (m)", 0.0);
             r.put("Độ sâu (m)", 0.0);
@@ -55,8 +77,8 @@ public class F151ReportHandler extends BaseReportHandler {
             r.put("Luồng công cộng", 0.0);
             r.put("Luồng chuyên dùng", 0.0);
             String donVi = "";
-            if (p.getUnitId() != null) {
-                donVi = orgUnitRepository.findById(p.getUnitId())
+            if (lhh.getDonViId() != null) {
+                donVi = orgUnitRepository.findById(lhh.getDonViId())
                         .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
                         .orElse("");
             }
@@ -75,39 +97,59 @@ public class F151ReportHandler extends BaseReportHandler {
         UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
 
-        List<LineObject> lines = lineObjectRepository.findAll().stream()
-                .filter(p -> skipFilter || targetUnitId.equals(p.getUnitId()))
-                .filter(p -> p.getCreatedAt() == null || p.getCreatedAt().getYear() <= reportYear)
-                .filter(p -> p.getObjectType() == LineObject.ObjectType.SHIPPING_ROUTE
-                        || p.getObjectType() == LineObject.ObjectType.WATERWAY)
+        List<LuongHangHai> luongHangHaiList = luongHangHaiRepository
+                .findByIsDeletedFalse(Sort.unsorted())
+                .stream()
+                .filter(lhh -> skipFilter || targetUnitId.equals(lhh.getDonViId()))
+                .filter(lhh -> {
+                    if (lhh.getNgayGhiNhan() != null) {
+                        return lhh.getNgayGhiNhan().getYear() <= reportYear;
+                    }
+                    return lhh.getCreatedAt() == null || lhh.getCreatedAt().getYear() <= reportYear;
+                })
                 .toList();
 
         List<Map<String, Object>> arrResult = new ArrayList<>();
-        for (LineObject p : lines) {
+        for (LuongHangHai lhh : luongHangHaiList) {
+            // Look up LineObject by spatial_id (khongGianId)
+            String tenTuyen = lhh.getTen();
+            Double chieuDai = 0.0;
+            String code = "";
+            String moTa = "";
+            if (lhh.getKhongGianId() != null) {
+                Optional<LineObject> lineOpt = lineObjectRepository.findById(lhh.getKhongGianId());
+                if (lineOpt.isPresent()) {
+                    LineObject line = lineOpt.get();
+                    code = line.getCode();
+                    moTa = line.getDescription();
+                    chieuDai = line.getLength() != null ? line.getLength() : 0.0;
+                }
+            }
+
             Map<String, Object> item = new HashMap<>();
-            item.put("ten", p.getName());
-            item.put("code", p.getCode());
-            item.put("name", p.getName());
-            item.put("description", p.getDescription());
-            item.put("unitId", p.getUnitId() != null ? p.getUnitId().toString() : "");
-            item.put("status", p.getStatus() != null ? p.getStatus().name() : "");
+            item.put("ten", lhh.getTen() != null ? lhh.getTen() : "");
+            item.put("code", code);
+            item.put("name", tenTuyen != null ? tenTuyen : "");
+            item.put("description", moTa != null ? moTa : "");
+            item.put("unitId", lhh.getDonViId() != null ? lhh.getDonViId().toString() : "");
+            item.put("status", "");
 
-            item.put("tenCangBien", p.getName());
-            item.put("tenCang", p.getName());
-            item.put("loaiTaiSan", p.getName());
-            item.put("maTuyenLuong", p.getCode());
-            item.put("tenTramQuanLyLuong", p.getName());
-            item.put("tenDiemNeo", p.getName());
+            item.put("tenCangBien", tenTuyen != null ? tenTuyen : "");
+            item.put("tenCang", tenTuyen != null ? tenTuyen : "");
+            item.put("loaiTaiSan", tenTuyen != null ? tenTuyen : "");
+            item.put("maTuyenLuong", lhh.getTen() != null ? lhh.getTen() : "");
+            item.put("tenTramQuanLyLuong", tenTuyen != null ? tenTuyen : "");
+            item.put("tenDiemNeo", tenTuyen != null ? tenTuyen : "");
 
-            item.put("soLuongTram", 0.0);
-            item.put("dienTich", 0.0);
+            item.put("soLuongTram", lhh.getSoLuong() != null ? lhh.getSoLuong().doubleValue() : 0.0);
+            item.put("dienTich", lhh.getDienTichDangBo() != null ? parseDoubleSafe(lhh.getDienTichDangBo()) : 0.0);
             item.put("thoiDiemSuaChuaGanNhat", "");
             item.put("thoiDiemCongBo", "");
             item.put("ngaySuaChua", "");
             item.put("nhanSuBoTriTaiTramQlLuong", 0.0);
             item.put("nhanSuBoTriTaiTramQL", 0.0);
             item.put("soLuongNhanSuBoTri", 0.0);
-            item.put("daiLuong", p.getLength() != null ? p.getLength() : 0.0);
+            item.put("daiLuong", chieuDai);
             item.put("rongLonNhat", 0.0);
             item.put("rongNhoNhat", 0.0);
             item.put("doSau", 0.0);
@@ -119,9 +161,23 @@ public class F151ReportHandler extends BaseReportHandler {
             item.put("congCong", 0.0);
             item.put("chuyenDung", 0.0);
             item.put("chieuCaoTinhKhong", 0.0);
-            item.put("donViQuanLyVanHanh", p.getUnitId() != null ? p.getUnitId().toString() : "");
+            String donVi = "";
+            if (lhh.getDonViId() != null) {
+                donVi = orgUnitRepository.findById(lhh.getDonViId())
+                        .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                        .orElse("");
+            }
+            item.put("donViQuanLyVanHanh", donVi);
             arrResult.add(item);
         }
         return arrResult;
+    }
+
+    private double parseDoubleSafe(String value) {
+        try {
+            return value != null && !value.trim().isEmpty() ? Double.parseDouble(value.trim()) : 0.0;
+        } catch (NumberFormatException e) {
+            return 0.0;
+        }
     }
 }

@@ -10,7 +10,7 @@ import java.util.*;
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class LuongHangHai {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
-    @Column(name = "loai_tau", nullable = false, length = 100) private String loaiTau;
+    @Column(name = "ten", nullable = false, length = 100) private String ten;
     @Column(name = "so_luong") private Integer soLuong;
     @Column(name = "ngay_ghi_nhan") private LocalDate ngayGhiNhan;
     @Column(name = "gio_dien", length = 50) private String gioDien;

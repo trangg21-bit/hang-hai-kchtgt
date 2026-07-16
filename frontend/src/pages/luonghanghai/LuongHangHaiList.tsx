@@ -123,9 +123,9 @@ export default function LuongHangHaiList() {
       render: (_: unknown, __: unknown, index: number) => index + 1,
     } as any,
     {
-      title: 'Loại tàu',
-      dataIndex: 'loaiTau',
-      key: 'loaiTau',
+      title: 'Tên luồng hàng hải',
+      dataIndex: 'ten',
+      key: 'ten',
       sorter: true,
     },
     {
@@ -234,7 +234,7 @@ export default function LuongHangHaiList() {
           <Col xs={24} md={16}>
             <Space wrap>
               <Input.Search
-                placeholder="Tìm kiếm loại tàu..."
+                placeholder="Tìm kiếm luồng hàng hải..."
                 allowClear
                 value={filterKeyword}
                 onSearch={(val) => { setFilterKeyword(val); setPage(1); }}

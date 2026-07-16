@@ -3007,7 +3007,7 @@ public class ReportService {
                                                     }
 
                                                     if (expr.contains("item.") || expr.contains("table.value")
-                                                            || expr.contains("thiz.getCateOtherText")) {
+                                                            || expr.contains("this.getCateOtherText")) {
                                                         Object val = resolveExpression(expr, item);
 
                                                         if (val != null) {
@@ -3453,7 +3453,7 @@ public class ReportService {
                                     String expr = srcCell.getStringCellValue();
 
                                     if (expr != null && (expr.contains("table.value")
-                                            || expr.contains("thiz.getCateOtherText") || expr.contains("item."))) {
+                                            || expr.contains("this.getCateOtherText") || expr.contains("item."))) {
                                         Map<String, Object> item = arrResult.isEmpty() ? new HashMap<>()
                                                 : arrResult.get(0);
 
@@ -3506,7 +3506,7 @@ public class ReportService {
                                             }
 
                                             if (expr.contains("item.") || expr.contains("table.value")
-                                                    || expr.contains("thiz.getCateOtherText")) {
+                                                    || expr.contains("this.getCateOtherText")) {
                                                 Object val = resolveExpression(expr, item);
 
                                                 if (val != null) {
@@ -3812,7 +3812,7 @@ public class ReportService {
             bcNoiDungLabel = "Kê khai thay đổi thông tin";
         }
 
-        replacements.put("${thiz.getCateOtherText('DM_APP_PARAM',objInput.getBcNoiDung(), 'NOI_DUNG_BAO_CAO_158')}",
+        replacements.put("${this.getCateOtherText('DM_APP_PARAM',objInput.getBcNoiDung(), 'NOI_DUNG_BAO_CAO_158')}",
                 bcNoiDungLabel);
         replacements.put("${idx+1}", "1");
         replacements.put("${idx + 1}", "1");
