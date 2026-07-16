@@ -1,50 +1,19 @@
-import { useState, useCallback, useEffect } from 'react';
-import {
-  Table,
-  Button,
-  Input,
-  Select,
-  Space,
-  Tag,
-  Modal,
-  Form,
-  Typography,
-  Tooltip,
-  Badge,
-  Card,
-  Row,
-  Col,
-  Spin,
-} from 'antd';
-import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  LockOutlined,
-  UnlockOutlined,
-  KeyOutlined,
-  SearchOutlined,
-  ReloadOutlined,
-  ExclamationCircleOutlined,
-} from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
+import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { Typography, Tooltip, Modal, Form, Input, Select, Row, Col, Spin, Button } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined, UnlockOutlined, KeyOutlined, ExclamationCircleOutlined, FileExcelOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import {
-  useUsers,
-  useCreateUser,
-  useUpdateUser,
-  useDeleteUser,
-  useToggleLockUser,
-  useResetPassword,
-} from '../hooks/useUsers';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword } from '../hooks/useUsers';
 import { useRoles } from '../hooks/useRoles';
 import { usePermissionStore } from '../store/permissionStore';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
+import { ScreenHeader, FilterBar, StatusTabs, DataTable } from '../components/list-view';
+import Pagination from '../components/list-view/Pagination';
 import type { User, CreateUserPayload, UpdateUserPayload } from '../types/user';
 import { organizationService } from '../services/organizationService';
-
+import { statusOperational, statusCritical, statusDraft, actionPrimary, textSecondary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, dataSea1, radiusPill, borderDefault } from '../tokens';
+import { colors } from '../theme';
 const { confirm } = Modal;
 
 const STATUS_MAP: Record<string, { color: string; label: string }> = {
@@ -53,8 +22,19 @@ const STATUS_MAP: Record<string, { color: string; label: string }> = {
   inactive: { color: 'default', label: 'Không hoạt động' },
 };
 
+function getRoleTagClass(roleId: string): string {
+  switch (roleId) {
+    case 'ROLE_SYSTEM_ADMIN': return 'role-tag--admin';
+    case 'ROLE_ADMIN': return 'role-tag--org-admin';
+    case 'ROLE_MANAGER': return 'role-tag--manager';
+    case 'ROLE_VIEWER': return 'role-tag--viewer';
+    default: return 'role-tag--user';
+  }
+}
+
+const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
+
 export default function UsersPage() {
-  // Filters
   const [search, setSearch] = useState('');
   const [filterRoleId, setFilterRoleId] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
@@ -62,8 +42,6 @@ export default function UsersPage() {
   const [pageSize, setPageSize] = useState(10);
   const [sortField, setSortField] = useState<string | undefined>();
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>(null);
-
-  // Modal
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form] = Form.useForm();
@@ -75,505 +53,183 @@ export default function UsersPage() {
       try {
         const resp = await organizationService.list({ pageSize: 1000 });
         setOrganizations(resp.data || []);
-      } catch (err) {
-        console.error('Failed to load organizations', err);
-      }
+      } catch (err) { console.error('Failed to load organizations', err); }
     })();
   }, []);
 
-  // Permissions
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
-  // Queries
   const { data, isLoading, isError, error, refetch } = useUsers({
-    page,
-    pageSize,
-    search: search || undefined,
-    roleId: filterRoleId,
-    status: filterStatus,
-    sortField,
-    sortOrder,
+    page, pageSize, search: search || undefined,
+    roleId: filterRoleId, status: filterStatus, sortField, sortOrder,
   });
 
   const { data: rolesData } = useRoles();
+  const { data: dataActive } = useUsers({ page: 1, pageSize: 1, status: 'active' });
+  const { data: dataLocked } = useUsers({ page: 1, pageSize: 1, status: 'locked' });
+  const { data: dataInactive } = useUsers({ page: 1, pageSize: 1, status: 'inactive' });
+  const totalAll = (dataActive?.total || 0) + (dataLocked?.total || 0) + (dataInactive?.total || 0);
+  const countActive = dataActive?.total || 0;
+  const countLocked = dataLocked?.total || 0;
+  const countInactive = dataInactive?.total || 0;
 
-  // Mutations
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
   const toggleLock = useToggleLockUser();
   const resetPassword = useResetPassword();
 
-  // ---- Handlers ----
-  const openCreateModal = useCallback(() => {
-    setEditingUser(null);
-    form.resetFields();
+  const openCreateModal = useCallback(() => { setEditingUser(null); form.resetFields(); setModalOpen(true); }, [form]);
+
+  const openEditModal = useCallback((user: User) => {
+    setEditingUser(user);
+    form.setFieldsValue({ fullName: user.fullName, email: user.email, phone: user.phone, roleId: user.roleId, orgUnitId: user.orgUnitId, status: user.status });
     setModalOpen(true);
   }, [form]);
-
-  const openEditModal = useCallback(
-    (user: User) => {
-      setEditingUser(user);
-      form.setFieldsValue({
-        fullName: user.fullName,
-        email: user.email,
-        phone: user.phone,
-        roleId: user.roleId,
-        orgUnitId: user.orgUnitId,
-        status: user.status,
-      });
-      setModalOpen(true);
-    },
-    [form],
-  );
 
   const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields();
       setSubmitting(true);
-
       if (editingUser) {
-        const payload: UpdateUserPayload = {
-          fullName: values.fullName,
-          email: values.email,
-          phone: values.phone,
-          roleId: values.roleId,
-          orgUnitId: values.orgUnitId,
-        };
+        const payload: UpdateUserPayload = { fullName: values.fullName, email: values.email, phone: values.phone, roleId: values.roleId, orgUnitId: values.orgUnitId };
         await updateUser.mutateAsync({ id: editingUser.id, payload });
       } else {
-        const payload: CreateUserPayload = {
-          username: values.username,
-          fullName: values.fullName,
-          email: values.email,
-          phone: values.phone,
-          password: values.password,
-          roleId: values.roleId,
-          orgUnitId: values.orgUnitId,
-        };
+        const payload: CreateUserPayload = { username: values.username, fullName: values.fullName, email: values.email, phone: values.phone, password: values.password, roleId: values.roleId, orgUnitId: values.orgUnitId };
         await createUser.mutateAsync(payload);
       }
       setModalOpen(false);
-    } catch {
-      // validation error — do nothing, antd shows errors inline
-    } finally {
-      setSubmitting(false);
-    }
+    } catch {} finally { setSubmitting(false); }
   }, [editingUser, form, createUser, updateUser]);
 
-  const handleDelete = useCallback(
-    (user: User) => {
-      confirm({
-        title: 'Xác nhận xóa người dùng',
-        icon: <ExclamationCircleOutlined />,
-        content: `Bạn có chắc chắn muốn xóa người dùng "${user.fullName}"? Hành động này không thể hoàn tác.`,
-        okText: 'Xóa',
-        okType: 'danger',
-        cancelText: 'Hủy',
-        onOk: () => deleteUser.mutateAsync(user.id),
-      });
-    },
-    [deleteUser],
-  );
+  const handleDelete = useCallback((user: User) => {
+    confirm({ title: 'Xác nhận xóa người dùng', icon: <ExclamationCircleOutlined />, content: `Bạn có chắc chắn muốn xóa người dùng "${user.fullName}"? Hành động này không thể hoàn tác.`, okText: 'Xóa', okType: 'danger', cancelText: 'Hủy', onOk: () => deleteUser.mutateAsync(user.id) });
+  }, [deleteUser]);
 
-  const handleToggleLock = useCallback(
-    (user: User) => {
-      const willBeLocked = user.status !== 'locked';
-      confirm({
-        title: willBeLocked ? 'Xác nhận khóa tài khoản' : 'Xác nhận mở khóa tài khoản',
-        icon: <ExclamationCircleOutlined />,
-        content: willBeLocked
-          ? `Tài khoản "${user.fullName}" sẽ bị khóa và không thể đăng nhập. Tiếp tục?`
-          : `Tài khoản "${user.fullName}" sẽ được mở khóa. Tiếp tục?`,
-        okText: willBeLocked ? 'Khóa' : 'Mở khóa',
-        okType: willBeLocked ? 'danger' : 'primary',
-        cancelText: 'Hủy',
-        onOk: () => toggleLock.mutateAsync(user.id),
-      });
-    },
-    [toggleLock],
-  );
+  const handleToggleLock = useCallback((user: User) => {
+    const willBeLocked = user.status !== 'locked';
+    confirm({ title: willBeLocked ? 'Xác nhận khóa tài khoản' : 'Xác nhận mở khóa tài khoản', icon: <ExclamationCircleOutlined />, content: willBeLocked ? `Tài khoản "${user.fullName}" sẽ bị khóa và không thể đăng nhập. Tiếp tục?` : `Tài khoản "${user.fullName}" sẽ được mở khóa. Tiếp tục?`, okText: willBeLocked ? 'Khóa' : 'Mở khóa', okType: willBeLocked ? 'danger' : 'primary', cancelText: 'Hủy', onOk: () => toggleLock.mutateAsync(user.id) });
+  }, [toggleLock]);
 
-  const handleResetPassword = useCallback(
-    (user: User) => {
-      confirm({
-        title: 'Xác nhận đặt lại mật khẩu',
-        icon: <ExclamationCircleOutlined />,
-        content: `Mật khẩu của "${user.fullName}" sẽ được đặt lại thành mật khẩu ngẫu nhiên. Tiếp tục?`,
-        okText: 'Đặt lại',
-        cancelText: 'Hủy',
-        onOk: () => resetPassword.mutateAsync(user.id),
-      });
-    },
-    [resetPassword],
-  );
+  const handleResetPassword = useCallback((user: User) => {
+    confirm({ title: 'Xác nhận đặt lại mật khẩu', icon: <ExclamationCircleOutlined />, content: `Mật khẩu của "${user.fullName}" sẽ được đặt lại thành mật khẩu ngẫu nhiên. Tiếp tục?`, okText: 'Đặt lại', cancelText: 'Hủy', onOk: () => resetPassword.mutateAsync(user.id) });
+  }, [resetPassword]);
 
+  const handleFilterSearch = useCallback((values: Record<string, any>) => {
+    setSearch(values.search || ''); setFilterRoleId(values.roleId || undefined); setFilterStatus(values.status || undefined); setPage(1);
+  }, []);
 
-  const handleTableChange = useCallback(
-    (
-      pag: { current?: number; pageSize?: number },
-      _filters: any,
-      sorter: any
-    ) => {
-      setPage(pag.current || 1);
-      setPageSize(pag.pageSize || 10);
-      if (sorter && sorter.field) {
-        setSortField(sorter.field);
-        setSortOrder(sorter.order || null);
-      } else {
-        setSortField(undefined);
-        setSortOrder(null);
+  const handleFilterReset = useCallback(() => { setSearch(''); setFilterRoleId(undefined); setFilterStatus(undefined); setPage(1); }, []);
+
+  const handleTabChange = useCallback((key: string) => { setFilterStatus(key === 'all' ? undefined : key); setPage(1); }, []);
+
+  const handleSort = useCallback((key: string, order: 'asc' | 'desc') => { setSortField(key); setSortOrder(order === 'asc' ? 'ascend' : 'descend'); }, []);
+
+  const handlePageChange = useCallback((p: number, ps: number) => { setPage(p); setPageSize(ps); }, []);
+
+  const rowActions = useCallback((record: User) => {
+    const actions: {
+      key: string; label: string; icon?: ReactNode;
+      onClick: () => void; danger?: boolean;
+    }[] = [];
+    if (hasPerm('user.edit')) actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
+    if (hasPerm('user.lock')) actions.push({ key: 'lock', label: record.status === 'locked' ? 'Mở khóa' : 'Khóa', icon: record.status === 'locked' ? <UnlockOutlined /> : <LockOutlined />, onClick: () => handleToggleLock(record) });
+    if (hasPerm('user.reset_password')) actions.push({ key: 'reset-password', label: 'Reset mật khẩu', icon: <KeyOutlined />, onClick: () => handleResetPassword(record) });
+    if (hasPerm('user.delete')) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
+    return actions;
+  }, [hasPerm, openEditModal, handleToggleLock, handleResetPassword, handleDelete]);
+
+  const columns = useMemo(() => [
+    { key: 'stt', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
+    { key: 'fullName', label: 'Họ và tên', dataIndex: 'fullName', width: 200, sortable: true, sorter: true, align: 'left' as const, sortOrder: sortField === 'fullName' ? sortOrder : null, render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },
+    { key: 'username', label: 'Tên đăng nhập', dataIndex: 'username', width: 150, sortable: true, align: 'left' as const, sortOrder: sortField === 'username' ? sortOrder : null },
+    { key: 'email', label: 'Email', dataIndex: 'email', width: 200, sortable: true, align: 'left' as const, sortOrder: sortField === 'email' ? sortOrder : null },
+    { key: 'roleName', label: 'Vai trò', dataIndex: 'roleName', width: 180, sortable: true, align: 'center' as const, sortOrder: sortField === 'roleName' ? sortOrder : null, render: (text: string, record: User) => {
+      const variant = getRoleTagClass(record.roleId);
+      if (variant !== 'role-tag--user') {
+        return <span className={`role-tag ${variant}`}>{text}</span>;
       }
-    },
-    []
-  );
+      return (
+        <span style={{
+          display: 'inline-flex', fontSize: fontSizeMd, fontWeight: fontWeightMedium,
+          padding: '2px 10px', borderRadius: 8,
+          background: `${dataSea1}15`, color: dataSea1,
+        }}>{text}</span>
+      );
+    } },
+    { key: 'orgUnitName', label: 'Đơn vị', dataIndex: 'orgUnitName', width: 200, sortable: true, align: 'left' as const, sortOrder: sortField === 'orgUnitName' ? sortOrder : null, render: (text: string) => text ? <Typography.Text>{text}</Typography.Text> : <Typography.Text type="secondary">—</Typography.Text> },
+    { key: 'lastLoginAt', label: 'Đăng nhập cuối', dataIndex: 'lastLoginAt', width: 170, sortable: true, align: 'center' as const, sortOrder: sortField === 'lastLoginAt' ? sortOrder : null, render: (text: string) => text ? <span>{dayjs(text).format('DD/MM/YYYY HH:mm')}</span> : <Typography.Text type="secondary">Chưa đăng nhập</Typography.Text> },
+    { key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 140, sortable: true, align: 'center' as const, sortOrder: sortField === 'status' ? sortOrder : null, render: (status: string) => { const isActive = status === 'active'; const isLocked = status === 'locked'; const color = isActive ? actionPrimary : isLocked ? statusCritical : statusDraft; const label = STATUS_MAP[status]?.label || status; return ( <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}> {label} </span> ); } },
+  ], [page, pageSize, sortField, sortOrder]);
 
-  // ---- Columns ----
-  const columns: ColumnsType<User> = [
-    {
-      title: '#',
-      width: 60,
-      render: (_, __, idx) => (page - 1) * pageSize + idx + 1,
-    },
-    {
-      title: 'Họ và tên',
-      dataIndex: 'fullName',
-      sorter: true,
-      sortOrder: sortField === 'fullName' ? sortOrder : null,
-      render: (text: string, record: User) => (
-        <Space>
-          <Badge
-            status={record.status === 'active' ? 'success' : record.status === 'locked' ? 'error' : 'default'}
-          />
-          <Typography.Text strong>{text}</Typography.Text>
-        </Space>
-      ),
-    },
-    {
-      title: 'Tên đăng nhập',
-      dataIndex: 'username',
-      ellipsis: true,
-    },
-    {
-      title: 'Email',
-      dataIndex: 'email',
-      ellipsis: true,
-    },
-    {
-      title: 'Vai trò',
-      dataIndex: 'roleName',
-      render: (text: string) => <Tag color="blue">{text}</Tag>,
-    },
-    {
-      title: 'Đơn vị',
-      dataIndex: 'orgUnitName',
-      render: (text: string) => text ? <Typography.Text>{text}</Typography.Text> : <Typography.Text type="secondary">—</Typography.Text>,
-    },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      render: (status: string) => {
-        const variant = status === 'active' ? 'active' : status === 'locked' ? 'locked' : 'inactive';
-        const label = STATUS_MAP[status]?.label || status;
-        return <span className={`status-badge status-badge--${variant}`}>{label}</span>;
-      },
-    },
-    {
-      title: 'Đăng nhập cuối',
-      dataIndex: 'lastLoginAt',
-      render: (text: string) =>
-        text ? dayjs(text).format('DD/MM/YYYY HH:mm') : <Typography.Text type="secondary">Chưa đăng nhập</Typography.Text>,
-    },
-    {
-      title: 'Hành động',
-      key: 'actions',
-      width: 200,
-      fixed: 'right',
-      render: (_: unknown, record: User) => (
-        <div className="table-actions">
-          {hasPerm('user.edit') && (
-            <Tooltip title="Sửa">
-              <span className="table-actions__btn" onClick={() => openEditModal(record)}>
-                <EditOutlined />
-              </span>
-            </Tooltip>
-          )}
-
-          {hasPerm('user.lock') && (
-            <Tooltip title={record.status === 'locked' ? 'Mở khóa' : 'Khóa'}>
-              <span className="table-actions__btn" onClick={() => handleToggleLock(record)}>
-                {record.status === 'locked' ? <UnlockOutlined /> : <LockOutlined />}
-              </span>
-            </Tooltip>
-          )}
-
-          {hasPerm('user.reset_password') && (
-            <Tooltip title="Reset mật khẩu">
-              <span className="table-actions__btn" onClick={() => handleResetPassword(record)}>
-                <KeyOutlined />
-              </span>
-            </Tooltip>
-          )}
-
-          {hasPerm('user.delete') && (
-            <Tooltip title="Xóa">
-              <span className="table-actions__btn table-actions__btn--danger" onClick={() => handleDelete(record)}>
-                <DeleteOutlined />
-              </span>
-            </Tooltip>
-          )}
-        </div>
-      ),
-    },
-  ];
-
-  // ---- Render States ----
   const renderContent = () => {
     if (isLoading) return <LoadingSkeleton rows={8} />;
-    if (isError)
-      return (
-        <ErrorState
-          message={error?.message || 'Không thể tải danh sách người dùng'}
-          onRetry={() => refetch()}
-        />
-      );
-    if (!data || data.data.length === 0) {
-      // If filters active, show "no results"
-      if (search || filterRoleId || filterStatus) {
-        return (
-          <EmptyState
-            description="Không tìm thấy người dùng nào phù hợp"
-            ctaText="Xóa bộ lọc"
-            onCta={() => {
-              setSearch('');
-              setFilterRoleId(undefined);
-              setFilterStatus(undefined);
-              setPage(1);
-            }}
-          />
-        );
-      }
-      return (
-        <EmptyState
-          description="Chưa có người dùng nào"
-          ctaText="Thêm người dùng đầu tiên"
-          onCta={openCreateModal}
-        />
-      );
+    if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách người dùng'} onRetry={() => refetch()} />;
+    const tableData = data?.data || [];
+    if (tableData.length === 0) {
+      if (search || filterRoleId || filterStatus) return <EmptyState description="Không tìm thấy người dùng nào phù hợp" ctaText="Xóa bộ lọc" onCta={handleFilterReset} />;
+      return <EmptyState description="Chưa có người dùng nào" ctaText="Thêm người dùng đầu tiên" onCta={openCreateModal} />;
     }
-
-    return (
-      <Table<User>
-        columns={columns}
-        dataSource={data.data}
-        rowKey="id"
-        onChange={handleTableChange}
-        loading={deleteUser.isPending || toggleLock.isPending}
-        sticky={{ offsetHeader: 0 }}
-        scroll={{ x: 1000 }}
-      onRow={() => ({
-        style: {
-          cursor: 'pointer',
-        },
-      })}
-        pagination={{
-          current: page,
-          pageSize,
-          total: data.total,
-          showSizeChanger: true,
-          showTotal: (total, range) =>
-            `${range[0]}-${range[1]} / ${total} người dùng`,
-        }}
-      />
-    );
+    return <div style={{ overflowX: 'auto' }}><DataTable columns={columns} dataSource={tableData} rowKey="id" rowActions={rowActions} loading={deleteUser.isPending || toggleLock.isPending} scroll={{ x: 1200 }} onSort={handleSort} /><Pagination total={data?.total || 0} current={page} pageSize={pageSize} onChange={handlePageChange} /></div>;
   };
 
+
+  const filterFields = useMemo(() => [
+    { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên, email, username...' },
+    { key: 'roleId', type: 'select' as const, label: 'Vai trò', placeholder: 'Chọn vai trò', options: rolesData?.map((r: any) => ({ value: r.code, label: r.name })) || [] },
+    { key: 'status', type: 'select' as const, label: 'Trạng thái', placeholder: 'Chọn trạng thái', options: [{ value: 'active', label: 'Hoạt động' }, { value: 'locked', label: 'Đã khóa' }, { value: 'inactive', label: 'Không hoạt động' }] },
+  ], [rolesData]);
+
+  const headerActions = useMemo(() => {
+    const actions: any[] = [];
+    if (hasPerm('user.create')) actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
+    actions.push({ key: 'export', label: '', variant: 'subtle' as const, icon: <FileExcelOutlined style={{ color: statusOperational }} />, borderColor: `${statusOperational}80`, color: statusOperational, onClick: () => {} });
+    return actions;
+  }, [hasPerm, openCreateModal, statusOperational]);
+
   return (
-    <>
-      {/* Header & Filters */}
-      <Card style={{ marginBottom: 16 }}>
-        <Row gutter={[12, 12]} align="middle" justify="space-between">
-          <Col xs={24} md={16}>
-            <Space wrap>
-              <Input.Search
-                placeholder="Tìm theo tên, email, username..."
-                allowClear
-                style={{ width: 260 }}
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-                onSearch={(val) => {
-                  setSearch(val);
-                  setPage(1);
-                }}
-              />
+    <div style={{ minHeight: '100%', marginTop: -8 }}>
+      <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý người dùng' }]} actions={headerActions} />
+      <FilterBar fields={filterFields} onSearch={handleFilterSearch} onReset={handleFilterReset} />
+      <div style={{ ...cardStyle, marginBottom: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px 16px' }}>
+        <StatusTabs
+          tabs={[
+            { key: 'all', label: 'Tất cả', count: totalAll, color: textSecondary, active: !filterStatus },
+            { key: 'active', label: 'Hoạt động', count: countActive, color: actionPrimary, active: filterStatus === 'active' },
+            { key: 'locked', label: 'Đã khóa', count: countLocked, color: statusCritical, active: filterStatus === 'locked' },
+            { key: 'inactive', label: 'Không hoạt động', count: countInactive, color: statusDraft, active: filterStatus === 'inactive' },
+          ]}
+          onChange={handleTabChange}
+        />
+      </div>
+      <div style={{ ...cardStyle, padding: '8px 16px' }}>
+        {renderContent()}
+      </div>
 
-              <Select
-                placeholder="Vai trò"
-                allowClear
-                style={{ width: 200 }}
-                value={filterRoleId}
-                onChange={(val) => {
-                  setFilterRoleId(val);
-                  setPage(1);
-                }}
-                options={rolesData?.map((r) => ({
-                  value: r.code,
-                  label: r.name,
-                }))}
-              />
-
-              <Select
-                placeholder="Trạng thái"
-                allowClear
-                style={{ width: 150 }}
-                value={filterStatus}
-                onChange={(val) => {
-                  setFilterStatus(val);
-                  setPage(1);
-                }}
-                options={[
-                  { value: 'active', label: 'Hoạt động' },
-                  { value: 'locked', label: 'Đã khóa' },
-                  { value: 'inactive', label: 'Không hoạt động' },
-                ]}
-              />
-            </Space>
-          </Col>
-
-          <Col xs={24} md={8} style={{ textAlign: 'right' }}>
-            <Space>
-              <Tooltip title="Tải lại">
-                <Button icon={<ReloadOutlined />} onClick={() => refetch()} />
-              </Tooltip>
-              {hasPerm('user.create') && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-                  Thêm người dùng
-                </Button>
-              )}
-            </Space>
-          </Col>
-        </Row>
-      </Card>
-
-      {/* Table */}
-      <Card>{renderContent()}</Card>
-
-      {/* Create / Edit Modal */}
-      <Modal
-        title={editingUser ? 'Sửa người dùng' : 'Thêm mới người dùng'}
-        open={modalOpen}
-        onOk={handleSubmit}
-        onCancel={() => setModalOpen(false)}
-        destroyOnHidden
-        confirmLoading={submitting}
-        okText={editingUser ? 'Cập nhật' : 'Tạo mới'}
-        cancelText="Hủy"
-        width={600}
-        mask={{ closable: false }}
+      <Modal title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingUser ? 'Sửa người dùng' : 'Thêm mới người dùng'}</span>} open={modalOpen} onOk={handleSubmit} onCancel={() => setModalOpen(false)} destroyOnHidden confirmLoading={submitting} width={600} maskClosable={false}
+        footer={[
+          <Button key="cancel" onClick={() => setModalOpen(false)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
+          <Button key="ok" type="primary" onClick={handleSubmit} loading={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>{editingUser ? 'Cập nhật' : 'Tạo mới'}</Button>,
+        ]}
       >
         <Spin spinning={submitting}>
-          <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-            {!editingUser && (
-              <>
-                <Form.Item
-                  name="username"
-                  label="Tên đăng nhập"
-                  rules={[
-                    { required: true, message: 'Vui lòng nhập tên đăng nhập' },
-                    { min: 4, message: 'Tối thiểu 4 ký tự' },
-                    { pattern: /^[a-z0-9_]+$/, message: 'Chỉ chứa chữ thường, số và dấu gạch dưới' },
-                  ]}
-                >
-                  <Input name="username" placeholder="vd: nguyenvana" autoComplete="off" />
-                </Form.Item>
- 
-                <Form.Item
-                  name="password"
-                  label="Mật khẩu"
-                  rules={[
-                    { required: true, message: 'Vui lòng nhập mật khẩu' },
-                    { min: 8, message: 'Tối thiểu 8 ký tự' },
-                    {
-                      pattern: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).+$/,
-                      message: 'Phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 số',
-                    },
-                  ]}
-                >
-                  <Input.Password name="password" placeholder="Ít nhất 8 ký tự" autoComplete="new-password" />
-                </Form.Item>
-              </>
-            )}
- 
-            <Form.Item
-              name="fullName"
-              label="Họ và tên"
-              rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}
-            >
-              <Input name="fullName" placeholder="Nguyễn Văn A" />
-            </Form.Item>
- 
+          <Form form={form} layout="vertical" style={{ marginTop: 16 }}
+            labelCol={{ style: { padding: 0, marginBottom: 4 } }}
+          >
+            {!editingUser && (<>
+              <Form.Item name="username" {...labelProps('Tên đăng nhập')} style={{ marginBottom: 6 }} rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập' }, { min: 4, message: 'Tối thiểu 4 ký tự' }, { pattern: /^[a-z0-9_]+$/, message: 'Chỉ chứa chữ thường, số và dấu gạch dưới' }]}><Input placeholder="vd: nguyenvana" autoComplete="off" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
+              <Form.Item name="password" {...labelProps('Mật khẩu')} style={{ marginBottom: 6 }} rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }, { min: 8, message: 'Tối thiểu 8 ký tự' }, { pattern: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).+$/, message: 'Phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 số' }]}><Input.Password placeholder="Ít nhất 8 ký tự" autoComplete="new-password" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
+            </>)}
+            <Form.Item name="fullName" {...labelProps('Họ và tên')} style={{ marginBottom: 6 }} rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}><Input placeholder="Nguyễn Văn A" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
             <Row gutter={16}>
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="email"
-                  label="Email"
-                  rules={[
-                    { required: true, message: 'Vui lòng nhập email' },
-                    { type: 'email', message: 'Email không hợp lệ' },
-                  ]}
-                >
-                  <Input name="email" placeholder="email@example.com" />
-                </Form.Item>
-              </Col>
- 
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="phone"
-                  label="Số điện thoại"
-                  rules={[{ pattern: /^0\d{9,10}$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]}
-                >
-                  <Input name="phone" placeholder="0901234567" />
-                </Form.Item>
-              </Col>
+              <Col xs={24} md={12}><Form.Item name="email" {...labelProps('Email')} style={{ marginBottom: 6 }} rules={[{ required: true, message: 'Vui lòng nhập email' }, { type: 'email', message: 'Email không hợp lệ' }]}><Input placeholder="email@example.com" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
+              <Col xs={24} md={12}><Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: 6 }} rules={[{ pattern: /^0\d{9,10}$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]}><Input placeholder="0901234567" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
             </Row>
-
-            <Form.Item
-              name="roleId"
-              label="Vai trò"
-              rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}
-            >
-              <Select
-                placeholder="Chọn vai trò"
-                options={rolesData?.map((r) => ({
-                  value: r.code,
-                  label: r.name,
-                }))}
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="orgUnitId"
-              label="Đơn vị trực thuộc"
-            >
-              <Select
-                placeholder="Chọn đơn vị trực thuộc"
-                allowClear
-                showSearch
-                filterOption={(input, option) =>
-                  (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())
-                }
-                options={organizations.map((org) => ({
-                  value: org.id,
-                  label: org.code ? `${org.code} - ${org.name}` : org.name,
-                }))}
-              />
-            </Form.Item>
+            <Form.Item name="roleId" {...labelProps('Vai trò')} style={{ marginBottom: 6 }} rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}><Select placeholder="Chọn vai trò" options={rolesData?.map((r: any) => ({ value: r.code, label: r.name }))} style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
+            <Form.Item name="orgUnitId" {...labelProps('Đơn vị trực thuộc')} style={{ marginBottom: 6 }}><Select placeholder="Chọn đơn vị trực thuộc" allowClear showSearch filterOption={(input: string, option: any) => (option?.label ?? '').toString().toLowerCase().includes(input.toLowerCase())} options={organizations.map((org: any) => ({ value: org.id, label: org.code ? `${org.code} - ${org.name}` : org.name }))} style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
           </Form>
         </Spin>
       </Modal>
-    </>
+    </div>
   );
 }
