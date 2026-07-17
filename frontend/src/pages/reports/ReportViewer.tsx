@@ -530,7 +530,7 @@ export default function ReportViewer() {
             }
             style={{ minHeight: 380 }}
           >
-            {['F-153', 'F-154', 'F-155', 'F-156', 'F-157', 'F-158', 'F-159'].includes(reportCode) ? (
+            {['F-154', 'F-155', 'F-156', 'F-157', 'F-159'].includes(reportCode) ? (
               <div style={{ padding: '10px 0' }}>
                 <Alert
                   message="Lưu ý về nguồn dữ liệu báo cáo"

@@ -27,6 +27,7 @@ export interface HeThongVTSResponse {
   nguonGoc?: string;
   doiTac?: string; // partner field unique to VTS
   orgUnitId?: string;
+  phamViApDung?: string;
   trangThai: string; // status as plain String
   pheDuyetC1?: boolean;
   nguoiPheDuyetC1?: string;
@@ -55,6 +56,7 @@ export interface CreateHeThongVTSRequest {
   nguonGoc?: string;
   doiTac?: string;
   orgUnitId?: string;
+  phamViApDung?: string;
   loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
   toaDo?: string;
   bieuTuongId?: string;

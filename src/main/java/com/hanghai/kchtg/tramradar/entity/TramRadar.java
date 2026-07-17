@@ -9,6 +9,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.hanghai.kchtg.vts.entity.HeThongVTS;
+
 @Entity
 @Table(name = "tram_radar")
 @Data
@@ -97,6 +99,19 @@ public class TramRadar {
 
     @Column(name = "spatial_id")
     private java.util.UUID khongGianId;
+
+    @Column(name = "he_thong_vts_id")
+    private Long heThongVtsId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "he_thong_vts_id", insertable = false, updatable = false)
+    private HeThongVTS heThongVts;
+
+    @Column(name = "chieu_cao_thap_radar", precision = 20, scale = 4)
+    private BigDecimal chieuCaoThapRadar;
+
+    @Column(name = "tam_hieu_luc_radar", precision = 20)
+    private BigDecimal tamHieuLucRadar;
 
     @OneToMany(mappedBy = "tramRadar", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
