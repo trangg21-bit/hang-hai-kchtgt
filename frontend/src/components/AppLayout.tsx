@@ -296,7 +296,7 @@ export default function AppLayout() {
           key: 'reports-kcht',
           label: 'Nhóm chỉ tiêu kết cấu hạ tầng',
           children: [
-            { key: '/reports/F-148', label: 'Biểu 01-N: Năng lực thông qua bến cảng, cầu cảng' },
+            { key: '/reports/F-148', label: 'Biểu 01-N: Năng lực thông qua cảng biển, cầu cảng, cảng bến thủy nội địa' },
             { key: '/reports/F-149', label: 'Biểu 02-N: Năng lực thông qua cảng biển' },
             { key: '/reports/F-150', label: 'Biểu 03-N: Thống kê cầu cảng' },
             { key: '/reports/F-151', label: <span style={{ color: 'red' }}>Biểu 04-N: Thống kê luồng hàng hải</span> },

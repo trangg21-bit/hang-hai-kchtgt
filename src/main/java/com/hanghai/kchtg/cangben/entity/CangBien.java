@@ -137,4 +137,5 @@ public class CangBien extends BaseEntity {
 
     @Column(name = "ghi_chu", length = 2000)
     private String ghiChu;
+
 }
