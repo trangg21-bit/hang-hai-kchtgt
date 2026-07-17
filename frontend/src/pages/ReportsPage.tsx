@@ -104,7 +104,7 @@ const REPORT_TEMPLATES: ReportTemplate[] = [
   // --- Wave 2 (F-148 → F-160) ---
   {
     code: 'F-148',
-    name: 'Biểu 01-N: Năng lực thông qua bến cảng, cầu cảng',
+    name: 'Biểu 01-N: Năng lực thông qua cảng biển, cầu cảng, cảng bến thủy nội địa',
     description: 'Thống kê năng lực thông qua của từng bến cảng và cầu cảng trong hệ thống hạ tầng.',
     requiresDates: false,
   },
