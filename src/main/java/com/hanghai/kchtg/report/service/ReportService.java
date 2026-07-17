@@ -694,105 +694,302 @@ public class ReportService {
         final int reportYear = request.getStartDate() != null ? request.getStartDate().getYear()
                 : LocalDate.now().getYear();
 
-        List<com.hanghai.kchtg.cangben.entity.BenCang> berths = benCangRepository.findAll().stream()
-                .filter(b -> skipFilter || targetUnitId.equals(b.getOrgUnitId()))
-                .filter(b -> b.getCreatedAt() == null || b.getCreatedAt().getYear() <= reportYear)
-                .filter(b -> {
-                    if (filterNhom == null)
-                        return true;
-
-                    com.hanghai.kchtg.cangben.entity.CangBien cb = b.getCangBienId() != null ?
-
-                            cangBienRepository.findById(b.getCangBienId()).orElse(null) : null;
-
-                    return cb != null && filterNhom.equals(cb.getNhomCangBien());
-                })
+        // 1. Query CangBien (ports) as root — matching hh.csdl hierarchy: Cảng biển → Bến cảng → Cầu cảng
+        List<com.hanghai.kchtg.cangben.entity.CangBien> allPorts = cangBienRepository.findAll().stream()
+                .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
+                .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
+                .filter(cb -> filterNhom == null || filterNhom.equals(cb.getNhomCangBien()))
                 .toList();
 
+        // 2. Group by nhomCangBien: nhom = 1 → maritime (section I), nhom = 2+ → inland (section II), null → excluded
+        List<com.hanghai.kchtg.cangben.entity.CangBien> group1Ports = allPorts.stream()
+                .filter(cb -> cb.getNhomCangBien() != null && cb.getNhomCangBien() == 1)
+                .toList();
+        List<com.hanghai.kchtg.cangben.entity.CangBien> group2Ports = allPorts.stream()
+                .filter(cb -> cb.getNhomCangBien() != null && cb.getNhomCangBien() != 1)
+                .toList();
+
+        // 3. Headers exactly matching Excel template BCKCHT_163.xlsx row 9 columns
         List<String> headers = List.of(
                 "STT",
-                "Tên bến cảng",
-                "Đơn vị quản lý",
-                "Địa điểm",
-                "Diện tích (km²)",
-                "Khả năng tiếp nhận (DWT)",
-                "Thời điểm công bố",
+                "Danh mục bến cảng, cầu cảng",
+                "Đơn vị quản lý khai thác cảng",
+                "Địa điểm, vị trí cảng",
+                "Thời điểm công bố mở",
+                "Công năng khai thác",
+                "Năng lực năm trước",
+                "Năng lực năm báo cáo",
+                "Đơn vị tính",
                 "Chiều dài (m)",
-                "Công năng khai thác"
-
+                "Tổng diện tích (ha)",
+                "Tàu neo đậu, làm hàng lớn nhất (DWT)"
         );
 
         List<Map<String, Object>> rows = new ArrayList<>();
+        int stt = 1;
 
-        List<com.hanghai.kchtg.cangben.entity.BenCang> group1 = new ArrayList<>();
-        List<com.hanghai.kchtg.cangben.entity.BenCang> group2 = new ArrayList<>();
-        for (com.hanghai.kchtg.cangben.entity.BenCang b : berths) {
-            if (b.getTenBen() != null && (b.getTenBen().toLowerCase().contains("thủy nội địa")
-                    || b.getTenBen().toLowerCase().contains("sông"))) {
-                group2.add(b);
-            } else {
-                group1.add(b);
+        // Section I: Cảng biển (maritime ports — nhom 1,2)
+        if (!group1Ports.isEmpty()) {
+            Map<String, Object> sectionRow = new LinkedHashMap<>();
+            sectionRow.put("STT", "I");
+            sectionRow.put("Danh mục bến cảng, cầu cảng", "Cảng biển");
+            sectionRow.put("Đơn vị quản lý khai thác cảng", "");
+            sectionRow.put("Địa điểm, vị trí cảng", "");
+            sectionRow.put("Thời điểm công bố mở", "");
+            sectionRow.put("Công năng khai thác", "");
+            sectionRow.put("Năng lực năm trước", "");
+            sectionRow.put("Năng lực năm báo cáo", "");
+            sectionRow.put("Đơn vị tính", "");
+            sectionRow.put("Chiều dài (m)", "");
+            sectionRow.put("Tổng diện tích (ha)", "");
+            sectionRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", "");
+            sectionRow.put("_rowType", "section");
+            rows.add(sectionRow);
+
+            for (com.hanghai.kchtg.cangben.entity.CangBien port : group1Ports) {
+                stt = appendF148Hierarchy(port, stt, rows);
             }
         }
-        Map<String, List<com.hanghai.kchtg.cangben.entity.BenCang>> groups = new LinkedHashMap<>();
-        if (!group1.isEmpty())
-            groups.put("I. Cảng biển", group1);
-        if (!group2.isEmpty())
-            groups.put("II. Cảng, bến thủy nội địa", group2);
-        if (groups.isEmpty()) {
-            groups.put("I. Cảng biển", new ArrayList<>());
-        }
-        for (Map.Entry<String, List<com.hanghai.kchtg.cangben.entity.BenCang>> entry : groups.entrySet()) {
-            String groupKey = entry.getKey();
-            String groupNum = groupKey.split("\\.")[0];
-            String groupName = groupKey.substring(groupKey.indexOf(".") + 1).trim();
-            List<com.hanghai.kchtg.cangben.entity.BenCang> groupItems = entry.getValue();
-            // Group Header Row
-            Map<String, Object> headerRow = new LinkedHashMap<>();
-            headerRow.put("STT", groupNum);
-            headerRow.put("Tên bến cảng", groupName);
-            headerRow.put("Đơn vị quản lý", "");
-            headerRow.put("Địa điểm", "");
-            headerRow.put("Diện tích (km²)", "");
-            headerRow.put("Khả năng tiếp nhận (DWT)", "");
-            headerRow.put("Thời điểm công bố", "");
-            headerRow.put("Chiều dài (m)", "");
-            headerRow.put("Công năng khai thác", "");
-            rows.add(headerRow);
-            int idx = 1;
-            for (com.hanghai.kchtg.cangben.entity.BenCang b : groupItems) {
-                com.hanghai.kchtg.cangben.entity.CangBien cb = b.getCangBienId() != null
-                        ? cangBienRepository.findById(b.getCangBienId()).orElse(null)
-                        : null;
-                String donViName = "Cảng vụ hàng hải";
-                if (b.getOrgUnitId() != null) {
-                    donViName = orgUnitRepository.findById(b.getOrgUnitId())
-                            .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
-                            .orElse("Cảng vụ hàng hải");
-                }
-                java.time.LocalDateTime createdDate = b.getCreatedAt() != null ? b.getCreatedAt()
-                        : java.time.LocalDateTime.now();
-                String formattedDate = String.format("%02d/%d", createdDate.getMonthValue(), createdDate.getYear());
-                Map<String, Object> itemRow = new LinkedHashMap<>();
-                itemRow.put("STT", String.valueOf(idx++));
-                itemRow.put("Tên bến cảng", b.getTenBen());
-                itemRow.put("Đơn vị quản lý", donViName);
-                itemRow.put("Địa điểm", cb != null && cb.getTinhThanhPho() != null ? cb.getTinhThanhPho() : "");
-                itemRow.put("Diện tích (km²)",
-                        cb != null && cb.getDienTich() != null ? cb.getDienTich().doubleValue() : 0.0);
-                itemRow.put("Khả năng tiếp nhận (DWT)",
-                        cb != null && cb.getKhaNangTiepNhan() != null
-                                ? String.valueOf(cb.getKhaNangTiepNhan().longValue())
-                                : "");
-                itemRow.put("Thời điểm công bố", formattedDate);
-                itemRow.put("Chiều dài (m)", b.getChieuDai() != null ? b.getChieuDai().doubleValue() : 0.0);
-                itemRow.put("Công năng khai thác", b.getCongNangKhaiThac() != null ? b.getCongNangKhaiThac() : "");
-                rows.add(itemRow);
+
+        // Section II: Cảng, bến thủy nội địa (inland waterways — nhom 3,4,5 or null)
+        if (!group2Ports.isEmpty()) {
+            Map<String, Object> sectionRow = new LinkedHashMap<>();
+            sectionRow.put("STT", "II");
+            sectionRow.put("Danh mục bến cảng, cầu cảng", "Cảng, bến thủy nội địa");
+            sectionRow.put("Đơn vị quản lý khai thác cảng", "");
+            sectionRow.put("Địa điểm, vị trí cảng", "");
+            sectionRow.put("Thời điểm công bố mở", "");
+            sectionRow.put("Công năng khai thác", "");
+            sectionRow.put("Năng lực năm trước", "");
+            sectionRow.put("Năng lực năm báo cáo", "");
+            sectionRow.put("Đơn vị tính", "");
+            sectionRow.put("Chiều dài (m)", "");
+            sectionRow.put("Tổng diện tích (ha)", "");
+            sectionRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", "");
+            sectionRow.put("_rowType", "section");
+            rows.add(sectionRow);
+
+            for (com.hanghai.kchtg.cangben.entity.CangBien port : group2Ports) {
+                stt = appendF148Hierarchy(port, stt, rows);
             }
         }
+
+        // Fallback if no items at all
+        if (rows.isEmpty()) {
+            Map<String, Object> sectionRow = new LinkedHashMap<>();
+            sectionRow.put("STT", "I");
+            sectionRow.put("Danh mục bến cảng, cầu cảng", "I. CẢNG BIỂN");
+            sectionRow.put("Đơn vị quản lý khai thác cảng", "");
+            sectionRow.put("Địa điểm, vị trí cảng", "");
+            sectionRow.put("Thời điểm công bố mở", "");
+            sectionRow.put("Công năng khai thác", "");
+            sectionRow.put("Năng lực năm trước", "");
+            sectionRow.put("Năng lực năm báo cáo", "");
+            sectionRow.put("Đơn vị tính", "");
+            sectionRow.put("Chiều dài (m)", "");
+            sectionRow.put("Tổng diện tích (ha)", "");
+            sectionRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", "");
+            sectionRow.put("_rowType", "section");
+            rows.add(sectionRow);
+        }
+
         Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("Tổng số dòng", rows.size());
+        long dataRowCount = rows.stream().filter(r -> !"section".equals(r.get("_rowType"))).count();
+        summary.put("Tổng số dòng", dataRowCount);
         return buildPreviewResponse(request.getReportCode(), headers, rows, summary);
+    }
+
+
+
+
+
+    /**
+     * Formats TrangThaiHoatDong enum to a human-readable Vietnamese label.
+     */
+    private String f148TrangThaiLabel(
+            com.hanghai.kchtg.common.entity.TrangThaiHoatDong status) {
+        if (status == null)
+            return "";
+        switch (status) {
+            case HIEN_HANH:
+                return "Đang hoạt động";
+            case TAM_NGUNG:
+                return "Tạm ngừng";
+            default:
+                return status.name();
+        }
+    }
+
+    /**
+     * Formats LoaiBen enum to a human-readable Vietnamese label.
+     */
+    private String f148LoaiBenLabel(
+            com.hanghai.kchtg.cangben.entity.LoaiBen loaiBen) {
+        if (loaiBen == null)
+            return "";
+        switch (loaiBen) {
+            case BEN_CONTAINER:
+                return "Bến container";
+            case BEN_TONG_HOP:
+                return "Bến tổng hợp";
+            case BEN_CHUYEN_DUNG:
+                return "Bến chuyên dụng";
+            case BEN_HANH_KHACH:
+                return "Bến hành khách";
+            case BEN_PHAO:
+                return "Bến phao";
+            case BEN_THUY_NOI_DIA:
+                return "Bến thủy nội địa";
+            default:
+                return loaiBen.name();
+        }
+    }
+
+    /**
+     * Formats loaiKetCau (Integer from BenCang) to a human-readable label.
+     */
+    private String f148LoaiKetCauLabel(Integer loaiKetCau) {
+        if (loaiKetCau == null)
+            return "";
+        switch (loaiKetCau) {
+            case 1:
+                return "Bê tông cốt thép";
+            case 2:
+                return "Thép";
+            case 3:
+                return "Kết cấu hỗn hợp";
+            case 4:
+                return "Phao nổi";
+            default:
+                return "Khác (" + loaiKetCau + ")";
+        }
+    }
+
+    /**
+     * Formats LocalDateTime to "MM/yyyy" string, or empty if null.
+     */
+    private String f148FormatThoiDiem(java.time.LocalDateTime dt) {
+        if (dt == null)
+            return "";
+        return String.format("%02d/%d", dt.getMonthValue(), dt.getYear());
+    }
+
+    /**
+     * Appends one CangBien port row, then its BenCang children, then each BenCang's CauCang children.
+     * Returns the next STT value.
+     * <p>
+     * This implements the hh.csdl hierarchy: Cảng biển → Bến cảng → Cầu cảng.
+     * Port rows carry the sequential STT; berth and wharf rows are indented with empty STT.
+     */
+    private int appendF148Hierarchy(
+            com.hanghai.kchtg.cangben.entity.CangBien port,
+            int stt,
+            List<Map<String, Object>> rows) {
+
+        // Resolve org-unit name for the port
+        String donViPort = "";
+        if (port.getOrgUnitId() != null) {
+            donViPort = orgUnitRepository.findById(port.getOrgUnitId())
+                    .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                    .orElse("");
+        }
+
+        // ── Port (Cảng biển) row ──
+        Map<String, Object> portRow = new LinkedHashMap<>();
+        portRow.put("STT", String.valueOf(stt++));
+        portRow.put("Danh mục bến cảng, cầu cảng", port.getTenCang());
+        portRow.put("Đơn vị quản lý khai thác cảng", donViPort);
+        portRow.put("Địa điểm, vị trí cảng", port.getTinhThanhPho() != null ? port.getTinhThanhPho() : "");
+        portRow.put("Thời điểm công bố mở", f148FormatThoiDiem(port.getCreatedAt()));
+        portRow.put("Công năng khai thác", "");
+        portRow.put("Năng lực năm trước", "");
+        portRow.put("Năng lực năm báo cáo", "");
+        portRow.put("Đơn vị tính", "tấn/năm");
+        portRow.put("Chiều dài (m)", "");
+        portRow.put("Tổng diện tích (ha)",
+                port.getDienTich() != null ? port.getDienTich().doubleValue() : 0.0);
+        String portDwt = port.getKhaNangTiepNhan() != null
+                ? (port.getKhaNangTiepNhan().longValue() + " DWT") : "";
+        portRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", portDwt);
+        portRow.put("_rowType", "port");
+        rows.add(portRow);
+
+        // ── Berths (Bến cảng) under this port ──
+        List<com.hanghai.kchtg.cangben.entity.BenCang> berths =
+                benCangRepository.findByCangBienIdAndDeletedAtIsNull(port.getId());
+        for (com.hanghai.kchtg.cangben.entity.BenCang berth : berths) {
+            String donViBerth = "";
+            if (berth.getOrgUnitId() != null) {
+                donViBerth = orgUnitRepository.findById(berth.getOrgUnitId())
+                        .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                        .orElse("");
+            }
+
+            String diaDiemBerth = berth.getDiaDiem() != null ? berth.getDiaDiem()
+                    : (port.getTinhThanhPho() != null ? port.getTinhThanhPho() : "");
+
+            String thoiDiemBerth = f148FormatThoiDiem(berth.getThoiDiemCongBoMo());
+            if (thoiDiemBerth.isEmpty()) {
+                thoiDiemBerth = f148FormatThoiDiem(berth.getCreatedAt());
+            }
+
+            String dwtBerth = "";
+            if (berth.getCoTauTiepNhanLonNhat() != null && berth.getCoTauTiepNhanLonNhat().doubleValue() > 0) {
+                dwtBerth = berth.getCoTauTiepNhanLonNhat().longValue() + " DWT";
+            }
+
+            Map<String, Object> berthRow = new LinkedHashMap<>();
+            berthRow.put("STT", "");
+            berthRow.put("Danh mục bến cảng, cầu cảng", "\u00A0\u00A0\u00A0\u00A0" + berth.getTenBen());
+            berthRow.put("Đơn vị quản lý khai thác cảng", donViBerth);
+            berthRow.put("Địa điểm, vị trí cảng", diaDiemBerth);
+            berthRow.put("Thời điểm công bố mở", thoiDiemBerth);
+            berthRow.put("Công năng khai thác",
+                    berth.getCongNangKhaiThac() != null ? berth.getCongNangKhaiThac() : "");
+            // Năng lực từ BenCang extended fields
+            String nlTruoc = berth.getNangLucThongQuaHienTrang() != null
+                    ? String.valueOf(berth.getNangLucThongQuaHienTrang().longValue()) : "";
+            berthRow.put("Năng lực năm trước", nlTruoc);
+            String nlBaoCao = berth.getNangLucThongQuaThietKe() != null
+                    ? String.valueOf(berth.getNangLucThongQuaThietKe().longValue()) : "";
+            berthRow.put("Năng lực năm báo cáo", nlBaoCao);
+            berthRow.put("Đơn vị tính", "tấn/năm");
+            berthRow.put("Chiều dài (m)",
+                    berth.getChieuDai() != null ? berth.getChieuDai().doubleValue() : 0.0);
+            berthRow.put("Tổng diện tích (ha)",
+                    berth.getTongDienTich() != null ? berth.getTongDienTich().doubleValue() : 0.0);
+            berthRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", dwtBerth);
+            rows.add(berthRow);
+
+            // ── Wharves (Cầu cảng) under this berth ──
+            List<com.hanghai.kchtg.cangben.entity.CauCang> wharves =
+                    cauCangRepository.findByBenCangIdAndDeletedAtIsNull(berth.getId());
+            for (com.hanghai.kchtg.cangben.entity.CauCang wharf : wharves) {
+                String dwtWharf = "";
+                if (wharf.getTaiTrong() != null && wharf.getTaiTrong().doubleValue() > 0) {
+                    dwtWharf = wharf.getTaiTrong().longValue() + " DWT";
+                }
+
+                Map<String, Object> wharfRow = new LinkedHashMap<>();
+                wharfRow.put("STT", "");
+                wharfRow.put("Danh mục bến cảng, cầu cảng", "\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0" + wharf.getTenCau());
+                wharfRow.put("Đơn vị quản lý khai thác cảng", "");
+                wharfRow.put("Địa điểm, vị trí cảng", "");
+                wharfRow.put("Thời điểm công bố mở", "");
+                wharfRow.put("Công năng khai thác",
+                        wharf.getCongNangKhaiThac() != null ? wharf.getCongNangKhaiThac() : "");
+                wharfRow.put("Năng lực năm trước", "");
+                wharfRow.put("Năng lực năm báo cáo", "");
+                wharfRow.put("Đơn vị tính", "tấn/năm");
+                wharfRow.put("Chiều dài (m)",
+                        wharf.getChieuDai() != null ? wharf.getChieuDai().doubleValue() : 0.0);
+                wharfRow.put("Tổng diện tích (ha)", 0.0);
+                wharfRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", dwtWharf);
+                rows.add(wharfRow);
+            }
+        }
+
+        return stt;
     }
 
     private ReportResponse getPreviewF149(ReportPreviewRequest request) {
@@ -832,24 +1029,22 @@ public class ReportService {
                         })
                         .toList();
                 if (!cbInNhom.isEmpty()) {
-                    String roman = g == 1 ? "I" : g == 2 ? "II" : g == 3 ? "III" : g == 4 ? "IV" : "V";
-                    groups.put("Cấp " + roman + ". Nhóm " + g, cbInNhom);
+                    groups.put("Nhóm " + g, cbInNhom);
                 }
             }
         }
         for (Map.Entry<String, List<com.hanghai.kchtg.cangben.entity.CangBien>> entry : groups.entrySet()) {
-            String groupKey = entry.getKey();
-            String groupNum = groupKey.split("\\.")[0];
-            String groupName = groupKey.substring(groupKey.indexOf(".") + 1).trim();
+            String groupName = entry.getKey();
             List<com.hanghai.kchtg.cangben.entity.CangBien> groupItems = entry.getValue();
             // Add Category Header row
             Map<String, Object> headerRow = new LinkedHashMap<>();
-            headerRow.put("STT", groupNum);
+            headerRow.put("STT", "");
             headerRow.put("Danh mục cảng", groupName);
             headerRow.put("Địa điểm (Tỉnh/TP)", "");
             headerRow.put("Năng lực năm trước (tấn/năm)", "");
             headerRow.put("Năng lực năm báo cáo (tấn/năm)", "");
             headerRow.put("Năng lực tăng thêm", "");
+            headerRow.put("_rowType", "section");
             rows.add(headerRow);
             int idx = 1;
             for (com.hanghai.kchtg.cangben.entity.CangBien cb : groupItems) {
@@ -866,7 +1061,8 @@ public class ReportService {
             }
         }
         Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("Tổng số dòng", rows.size());
+        long dataRowCount = rows.stream().filter(r -> !"section".equals(r.get("_rowType"))).count();
+        summary.put("Tổng số dòng", dataRowCount);
         return buildPreviewResponse(request.getReportCode(), headers, rows, summary);
     }
 
@@ -2781,11 +2977,10 @@ public class ReportService {
                         reportYear);
 
                 if ("F-148".equalsIgnoreCase(request.getReportCode())) {
-                    // Custom hierarchical export for F-148 (BCKCHT_163) using real BenCang and
-                    // CangBien entities
+                    // Custom hierarchical export for F-148 (BCKCHT_163)
+                    // Hierarchy: CangBien → BenCang → CauCang (same as getPreviewF148 + appendF148Hierarchy)
 
                     boolean isRoot = false;
-
                     if (targetUnitId != null) {
                         isRoot = orgUnitRepository.findById(targetUnitId)
                                 .map(u -> "ORG_TCDb".equals(u.getCode()))
@@ -2793,258 +2988,143 @@ public class ReportService {
                     }
 
                     final boolean skipFilter = targetUnitId == null || isRoot;
-
                     final Integer filterNhom = request.getNhomCangBien();
 
-                    List<com.hanghai.kchtg.cangben.entity.BenCang> berths = benCangRepository.findAll().stream()
-                            .filter(b -> skipFilter || targetUnitId.equals(b.getOrgUnitId()))
-                            .filter(b -> b.getCreatedAt() == null || b.getCreatedAt().getYear() <= reportYear)
-                            .filter(b -> {
-                                if (filterNhom == null)
-                                    return true;
-
-                                com.hanghai.kchtg.cangben.entity.CangBien cb = b.getCangBienId() != null ?
-
-                                        cangBienRepository.findById(b.getCangBienId()).orElse(null) : null;
-
-                                return cb != null && filterNhom.equals(cb.getNhomCangBien());
-                            })
+                    // 1. Query CangBien as root — same as getPreviewF148
+                    List<com.hanghai.kchtg.cangben.entity.CangBien> allPorts = cangBienRepository.findAll().stream()
+                            .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
+                            .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
+                            .filter(cb -> filterNhom == null || filterNhom.equals(cb.getNhomCangBien()))
                             .toList();
 
-                    List<Map<String, Object>> group1Items = new ArrayList<>();
+                    // 2. Group by nhomCangBien:
+                    //    nhom = 1 → maritime (section I, "Cảng biển")
+                    //    nhom = 2+ → inland waterways (section II, "Cảng, bến thủy nội địa")
+                    //    null → excluded
+                    List<com.hanghai.kchtg.cangben.entity.CangBien> group1Ports = allPorts.stream()
+                            .filter(cb -> cb.getNhomCangBien() != null && cb.getNhomCangBien() == 1)
+                            .toList();
+                    List<com.hanghai.kchtg.cangben.entity.CangBien> group2Ports = allPorts.stream()
+                            .filter(cb -> cb.getNhomCangBien() != null && cb.getNhomCangBien() != 1)
+                            .toList();
 
-                    List<Map<String, Object>> group2Items = new ArrayList<>();
+                    Row portTemplateRow = srcSheet.getRow(10); // Port / section header template row
+                    Row wharfTemplateRow = srcSheet.getRow(11); // Berth / wharf template row
 
-                    int idx1 = 1;
-                    int idx2 = 1;
-
-                    for (com.hanghai.kchtg.cangben.entity.BenCang b : berths) {
-                        com.hanghai.kchtg.cangben.entity.CangBien cb = b.getCangBienId() != null ?
-
-                                cangBienRepository.findById(b.getCangBienId()).orElse(null) : null;
-
-                        Map<String, Object> item = new HashMap<>();
-
-                        item.put("tenCang", b.getTenBen());
-                        item.put("loaiTaiSan", b.getTenBen());
-
-                        // Operator unit name
-
-                        String donViName = "Cảng vụ hàng hải";
-
-                        if (b.getOrgUnitId() != null) {
-                            donViName = orgUnitRepository.findById(b.getOrgUnitId())
-                                    .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
-                                    .orElse("Cảng vụ hàng hải");
-                        }
-
-                        item.put("donViQl", donViName);
-
-                        if (cb != null) {
-                            item.put("diaDiem", cb.getTinhThanhPho() != null ? cb.getTinhThanhPho() : "");
-                            item.put("dienTich", cb.getDienTich() != null ? cb.getDienTich().doubleValue() : 0.0);
-                            item.put("tauLonNhat",
-                                    cb.getKhaNangTiepNhan() != null ? (cb.getKhaNangTiepNhan().longValue() + " DWT")
-                                            : "");
-                            item.put("soQuyetDinh",
-                                    cb.getKhaNangTiepNhan() != null ? (cb.getKhaNangTiepNhan().longValue() + " DWT")
-                                            : "");
-                        } else {
-                            item.put("diaDiem", "");
-                            item.put("dienTich", 0.0);
-                            item.put("tauLonNhat", "");
-                            item.put("soQuyetDinh", "");
-                        }
-
-                        // Time of publication formatted as MM/yyyy
-
-                        java.time.LocalDateTime createdDate = b.getCreatedAt() != null ? b.getCreatedAt()
-                                : java.time.LocalDateTime.now();
-
-                        String formattedDate = String.format("%02d/%d", createdDate.getMonthValue(),
-                                createdDate.getYear());
-
-                        item.put("thoiDiem", formattedDate);
-                        item.put("ngayQuyetDinh", formattedDate);
-
-                        // Capacity
-
-                        item.put("congNang", b.getCongNangKhaiThac() != null ? b.getCongNangKhaiThac() : "");
-                        item.put("congNangKhaiThac", b.getCongNangKhaiThac() != null ? b.getCongNangKhaiThac() : "");
-
-                        // Length
-
-                        item.put("chieuDai", b.getChieuDai() != null ? b.getChieuDai().doubleValue() : 0.0);
-                        item.put("soLuong", b.getChieuDai() != null ? b.getChieuDai().doubleValue() : 0.0);
-
-                        // Template-matching keys for BCKCHT_163.xlsx (F-148)
-                        // Template uses expressions like ${item.ccTen.asText()},
-                        // ${item.ccDonViKhaiThacCang.asText()}
-                        item.put("ccTen", b.getTenBen());
-                        item.put("ccDonViKhaiThacCang", donViName);
-                        item.put("ccDiaDiemViTriCang", item.getOrDefault("diaDiem", ""));
-                        item.put("ccThoiDiemCongBoMoBenCangCauCang", item.getOrDefault("thoiDiem", ""));
-                        item.put("ccCongNangKhaiThac", item.getOrDefault("congNang", ""));
-                        item.put("ccChieuDai", b.getChieuDai() != null ? b.getChieuDai().doubleValue() : 0.0);
-                        item.put("ccCoTauKhaiThacTheoCongBo", item.getOrDefault("tauLonNhat", ""));
-                        // Port header row keys (table.value[0])
-                        item.put("cbTen", b.getTenBen());
-                        item.put("cbDonViQlKt", donViName);
-                        item.put("cbDiaDiem", item.getOrDefault("diaDiem", ""));
-                        item.put("cbThoiDiemCongBo", item.getOrDefault("thoiDiem", ""));
-                        item.put("cbCongNangKhaiThac", item.getOrDefault("congNang", ""));
-                        item.put("cbNamTruoc", "");
-                        item.put("cbNamBaoCao", "");
-                        item.put("cbTongDienTich", item.getOrDefault("dienTich", 0.0));
-                        item.put("cbTauLeoDauLamHangLonNhat", item.getOrDefault("tauLonNhat", ""));
-
-                        if (b.getTenBen() != null && (b.getTenBen().toLowerCase().contains("thủy nội địa")
-                                || b.getTenBen().toLowerCase().contains("sông"))) {
-                            item.put("idx", idx2++);
-                            group2Items.add(item);
-                        } else {
-                            item.put("idx", idx1++);
-                            group1Items.add(item);
+                    // 3. Copy header rows 0-9 from template
+                    for (int r = 0; r < 10; r++) {
+                        Row srcRow = srcSheet.getRow(r);
+                        if (srcRow == null)
+                            continue;
+                        Row destRow = destSheet.createRow(r);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
+                            }
                         }
                     }
 
-                    Map<String, List<Map<String, Object>>> groups = new LinkedHashMap<>();
+                    // 4. Write hierarchy content starting at row 10
+                    int currentDestRow = 10;
+                    int stt = 1;
 
-                    groups.put("I. Cảng biển", group1Items);
-                    groups.put("II. Cảng, bến thủy nội địa", group2Items);
+                    // ── Section I: Cảng biển ──
+                    if (!group1Ports.isEmpty()) {
+                        // Section header row
+                        Row sectionRow = destSheet.createRow(currentDestRow++);
+                        sectionRow.setHeight(portTemplateRow.getHeight());
+                        int numTemplateCols = portTemplateRow.getLastCellNum();
+                        for (int c = 0; c < numTemplateCols; c++) {
+                            Cell srcCell = portTemplateRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = sectionRow.createCell(c);
+                                destCell.setCellStyle(srcCell.getCellStyle());
+                                if (c == 0) {
+                                    destCell.setCellValue("I");
+                                } else if (c == 1) {
+                                    destCell.setCellValue("Cảng biển");
+                                } else {
+                                    destCell.setCellValue("");
+                                }
+                            }
+                        }
 
-                    int totalGeneratedRows = groups.size() + group1Items.size() + group2Items.size();
-                    int offset = totalGeneratedRows - 2; // Original template has 2 template rows (row 11 & row 12)
+                        // Port rows with hierarchy
+                        for (com.hanghai.kchtg.cangben.entity.CangBien port : group1Ports) {
+                            currentDestRow = writeF148PortHierarchyToSheet(destSheet, currentDestRow,
+                                    portTemplateRow, wharfTemplateRow, port, stt);
+                            stt++;
+                        }
+                    }
 
-                    Row portTemplateRow = srcSheet.getRow(10); // Row 11 in Excel (0-indexed 10)
+                    // ── Section II: Cảng, bến thủy nội địa ──
+                    if (!group2Ports.isEmpty()) {
+                        Row sectionRow = destSheet.createRow(currentDestRow++);
+                        sectionRow.setHeight(portTemplateRow.getHeight());
+                        int numTemplateCols = portTemplateRow.getLastCellNum();
+                        for (int c = 0; c < numTemplateCols; c++) {
+                            Cell srcCell = portTemplateRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = sectionRow.createCell(c);
+                                destCell.setCellStyle(srcCell.getCellStyle());
+                                if (c == 0) {
+                                    destCell.setCellValue("II");
+                                } else if (c == 1) {
+                                    destCell.setCellValue("Cảng, bến thủy nội địa");
+                                } else {
+                                    destCell.setCellValue("");
+                                }
+                            }
+                        }
 
-                    Row wharfTemplateRow = srcSheet.getRow(11); // Row 12 in Excel (0-indexed 11)
+                        for (com.hanghai.kchtg.cangben.entity.CangBien port : group2Ports) {
+                            currentDestRow = writeF148PortHierarchyToSheet(destSheet, currentDestRow,
+                                    portTemplateRow, wharfTemplateRow, port, stt);
+                            stt++;
+                        }
+                    }
 
-                    for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
+                    // Fallback if both groups empty
+                    if (currentDestRow == 10) {
+                        Row sectionRow = destSheet.createRow(currentDestRow++);
+                        sectionRow.setHeight(portTemplateRow.getHeight());
+                        int numTemplateCols = portTemplateRow.getLastCellNum();
+                        for (int c = 0; c < numTemplateCols; c++) {
+                            Cell srcCell = portTemplateRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = sectionRow.createCell(c);
+                                destCell.setCellStyle(srcCell.getCellStyle());
+                                if (c == 0) {
+                                    destCell.setCellValue("I");
+                                } else if (c == 1) {
+                                    destCell.setCellValue("Cảng biển");
+                                } else {
+                                    destCell.setCellValue("");
+                                }
+                            }
+                        }
+                    }
+
+                    // 5. Calculate offset for footer rows and merged regions
+                    int totalGeneratedRows = currentDestRow - 10;
+                    int offset = totalGeneratedRows - 2; // template has 2 data rows (10, 11)
+
+                    // 6. Copy footer rows (r > 11) with offset
+                    for (int r = 12; r <= srcSheet.getLastRowNum(); r++) {
                         Row srcRow = srcSheet.getRow(r);
-
                         if (srcRow == null)
                             continue;
 
-                        if (r < 10) {
-                            Row destRow = destSheet.createRow(r);
-
-                            destRow.setHeight(srcRow.getHeight());
-
-                            for (int c = 0; c < srcRow.getLastCellNum(); c++) {
-                                Cell srcCell = srcRow.getCell(c);
-
-                                if (srcCell != null) {
-                                    Cell destCell = destRow.createCell(c);
-
-                                    copyCell(srcCell, destCell, replacements);
-                                }
-                            }
-                        } else if (r == 10 || r == 11) {
-                            if (r == 11)
-                                continue; // Handled inside index 10 processing
-
-                            int currentDestRowIdx = 10;
-
-                            for (Map.Entry<String, List<Map<String, Object>>> entry : groups.entrySet()) {
-                                String groupKey = entry.getKey();
-                                String groupNum = groupKey.split("\\.")[0];
-                                String groupName = groupKey.substring(groupKey.indexOf(".") + 1).trim();
-
-                                List<Map<String, Object>> groupItems = entry.getValue();
-
-                                // Port Category Header Row (Style from Row 11)
-
-                                Row destRow = destSheet.createRow(currentDestRowIdx++);
-
-                                destRow.setHeight(portTemplateRow.getHeight());
-
-                                for (int c = 0; c < portTemplateRow.getLastCellNum(); c++) {
-                                    Cell srcCell = portTemplateRow.getCell(c);
-
-                                    if (srcCell != null) {
-                                        Cell destCell = destRow.createCell(c);
-
-                                        destCell.setCellStyle(srcCell.getCellStyle());
-
-                                        if (c == 0) {
-                                            destCell.setCellValue(groupNum);
-                                        } else if (c == 1) {
-                                            destCell.setCellValue(groupName);
-                                        } else {
-                                            destCell.setCellValue(""); // Category header rows are blank except columns
-                                                                       // A and B
-                                        }
-                                    }
-                                }
-
-                                // Individual Wharf/Port Rows (Style from Row 12)
-
-                                for (Map<String, Object> item : groupItems) {
-                                    Row destWharfRow = destSheet.createRow(currentDestRowIdx++);
-
-                                    destWharfRow.setHeight(wharfTemplateRow.getHeight());
-
-                                    int idx = (Integer) item.get("idx");
-
-                                    for (int c = 0; c < wharfTemplateRow.getLastCellNum(); c++) {
-                                        Cell srcCell = wharfTemplateRow.getCell(c);
-
-                                        if (srcCell != null) {
-                                            Cell destCell = destWharfRow.createCell(c);
-
-                                            destCell.setCellStyle(srcCell.getCellStyle());
-
-                                            if (srcCell.getCellType() == CellType.STRING) {
-                                                String expr = srcCell.getStringCellValue();
-
-                                                if (expr != null) {
-                                                    if (expr.contains("idx+1") || expr.contains("idx + 1")
-                                                            || expr.contains("index")) {
-                                                        destCell.setCellValue(idx);
-
-                                                        continue;
-                                                    }
-
-                                                    if (expr.contains("item.") || expr.contains("table.value")
-                                                            || expr.contains("this.getCateOtherText")) {
-                                                        Object val = resolveExpression(expr, item);
-
-                                                        if (val != null) {
-                                                            if (val instanceof Number) {
-                                                                double d = ((Number) val).doubleValue();
-
-                                                                destCell.setCellValue(d);
-
-                                                                setNumericCellFormat(destCell, d);
-                                                            } else {
-                                                                destCell.setCellValue(val.toString());
-                                                            }
-
-                                                            continue;
-                                                        }
-                                                    }
-                                                }
-                                            }
-
-                                            copyCell(srcCell, destCell, replacements);
-                                        }
-                                    }
-                                }
-                            }
-                        } else {
-                            Row destRow = destSheet.createRow(r + offset);
-
-                            destRow.setHeight(srcRow.getHeight());
-
-                            for (int c = 0; c < srcRow.getLastCellNum(); c++) {
-                                Cell srcCell = srcRow.getCell(c);
-
-                                if (srcCell != null) {
-                                    Cell destCell = destRow.createCell(c);
-
-                                    copyCell(srcCell, destCell, replacements);
-                                }
+                        Row destRow = destSheet.createRow(r + offset);
+                        destRow.setHeight(srcRow.getHeight());
+                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                            Cell srcCell = srcRow.getCell(c);
+                            if (srcCell != null) {
+                                Cell destCell = destRow.createCell(c);
+                                copyCell(srcCell, destCell, replacements);
                             }
                         }
                     }
@@ -3052,13 +3132,11 @@ public class ReportService {
                     copyMergedRegions(srcSheet, destSheet, false, 10, offset);
 
                     boolean isExcel = "EXCEL".equalsIgnoreCase(request.getFormat());
-
                     if (!isExcel) {
                         applyStaticRemergeAndOverflowMerge(destSheet, false, 10, 10 + totalGeneratedRows - 1);
                     }
 
                     finalizeWorkbookSheet(workbook);
-
                     return outputWorkbook(workbook, destSheet, isExcel);
                 } else if ("F-149".equalsIgnoreCase(request.getReportCode())) {
                     // Custom hierarchical export for F-149 (BCKCHT_164) using real CangBien
@@ -3135,24 +3213,24 @@ public class ReportService {
                     }
 
                     if (!group1Items.isEmpty())
-                        groups.put("Cấp I. Nhóm 1", group1Items);
+                        groups.put("Nhóm 1", group1Items);
 
                     if (!group2Items.isEmpty())
-                        groups.put("Cấp II. Nhóm 2", group2Items);
+                        groups.put("Nhóm 2", group2Items);
 
                     if (!group3Items.isEmpty())
-                        groups.put("Cấp III. Nhóm 3", group3Items);
+                        groups.put("Nhóm 3", group3Items);
 
                     if (!group4Items.isEmpty())
-                        groups.put("Cấp IV. Nhóm 4", group4Items);
+                        groups.put("Nhóm 4", group4Items);
 
                     if (!group5Items.isEmpty())
-                        groups.put("Cấp V. Nhóm 5", group5Items);
+                        groups.put("Nhóm 5", group5Items);
 
                     // Fallback to empty display if no groups
 
                     if (groups.isEmpty()) {
-                        groups.put("Cấp I. Nhóm 1", new ArrayList<>());
+                        groups.put("Nhóm 1", new ArrayList<>());
                     }
 
                     int totalGeneratedRows = 0;
@@ -3215,7 +3293,7 @@ public class ReportService {
                                         destCell.setCellStyle(srcCell.getCellStyle());
 
                                         if (c == 0) {
-                                            destCell.setCellValue(groupNum);
+                                            destCell.setCellValue("");
                                         } else if (c == 1) {
                                             destCell.setCellValue(groupName);
                                         } else {
@@ -3771,10 +3849,11 @@ public class ReportService {
     }
 
     private Map<String, String> buildReplacements(ReportPreviewRequest request, int reportYear) {
-        String orgName = "Cục Hàng hải và Đường thủy Việt Nam";
+        // [COMMENTED] Hardcoded org name — resolved from DB below
+        String orgName = ""; // was: "Cục Hàng hải và Đường thủy Việt Nam"
 
         if (request.getOrgUnitId() != null && !request.getOrgUnitId().isBlank()
-                && !"g17-43-demo".equalsIgnoreCase(request.getOrgUnitId())) {
+                /* && !"g17-43-demo".equalsIgnoreCase(request.getOrgUnitId()) */) {
             try {
                 orgName = orgUnitRepository.findById(java.util.UUID.fromString(request.getOrgUnitId()))
                         .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
@@ -4547,6 +4626,202 @@ public class ReportService {
 
                 break;
         }
+    }
+
+    /**
+     * Writes one CangBien port row + its BenCang children + each BenCang's CauCang children
+     * to the destination sheet. Returns the next available destination row index.
+     * Used by F-148 (BCKCHT_163) hierarchical export.
+     */
+    private int writeF148PortHierarchyToSheet(
+            Sheet destSheet,
+            int currentDestRow,
+            Row portTemplateRow,
+            Row wharfTemplateRow,
+            com.hanghai.kchtg.cangben.entity.CangBien port,
+            int stt) {
+
+        // Resolve org-unit name for this port
+        String donViPort = "";
+        if (port.getOrgUnitId() != null) {
+            donViPort = orgUnitRepository.findById(port.getOrgUnitId())
+                    .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                    .orElse("");
+        }
+
+        int numPortCols = portTemplateRow.getLastCellNum();
+
+        // ── Port (Cảng biển) row ──
+        Row portRow = destSheet.createRow(currentDestRow++);
+        portRow.setHeight(portTemplateRow.getHeight());
+        for (int c = 0; c < numPortCols; c++) {
+            Cell srcCell = portTemplateRow.getCell(c);
+            if (srcCell != null) {
+                Cell destCell = portRow.createCell(c);
+                destCell.setCellStyle(srcCell.getCellStyle());
+                if (c == 0) {
+                    destCell.setCellValue(String.valueOf(stt));
+                } else if (c == 1) {
+                    destCell.setCellValue(port.getTenCang() != null ? port.getTenCang() : "");
+                } else if (c == 2) {
+                    destCell.setCellValue(donViPort);
+                } else if (c == 3) {
+                    destCell.setCellValue(port.getTinhThanhPho() != null ? port.getTinhThanhPho() : "");
+                } else if (c == 4) {
+                    destCell.setCellValue(f148FormatThoiDiem(port.getCreatedAt()));
+                } else if (c == 5) {
+                    destCell.setCellValue("");
+                } else if (c == 6) {
+                    destCell.setCellValue("");
+                } else if (c == 7) {
+                    destCell.setCellValue("");
+                } else if (c == 8) {
+                    destCell.setCellValue("tấn/năm");
+                } else if (c == 9) {
+                    destCell.setCellValue("");
+                } else if (c == 10) {
+                    double dienTich = port.getDienTich() != null ? port.getDienTich().doubleValue() : 0.0;
+                    destCell.setCellValue(dienTich);
+                    if (dienTich != 0) {
+                        setNumericCellFormat(destCell, dienTich);
+                    }
+                } else if (c == 11) {
+                    String portDwt = port.getKhaNangTiepNhan() != null
+                            ? (port.getKhaNangTiepNhan().longValue() + " DWT") : "";
+                    destCell.setCellValue(portDwt);
+                } else {
+                    destCell.setCellValue("");
+                }
+            }
+        }
+
+        // ── Berths (Bến cảng) under this port ──
+        int numWharfCols = wharfTemplateRow.getLastCellNum();
+        List<com.hanghai.kchtg.cangben.entity.BenCang> berths =
+                benCangRepository.findByCangBienIdAndDeletedAtIsNull(port.getId());
+        for (com.hanghai.kchtg.cangben.entity.BenCang berth : berths) {
+            String donViBerth = "";
+            if (berth.getOrgUnitId() != null) {
+                donViBerth = orgUnitRepository.findById(berth.getOrgUnitId())
+                        .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                        .orElse("");
+            }
+
+            String diaDiemBerth = berth.getDiaDiem() != null ? berth.getDiaDiem()
+                    : (port.getTinhThanhPho() != null ? port.getTinhThanhPho() : "");
+
+            String thoiDiemBerth = f148FormatThoiDiem(berth.getThoiDiemCongBoMo());
+            if (thoiDiemBerth.isEmpty()) {
+                thoiDiemBerth = f148FormatThoiDiem(berth.getCreatedAt());
+            }
+
+            String dwtBerth = "";
+            if (berth.getCoTauTiepNhanLonNhat() != null && berth.getCoTauTiepNhanLonNhat().doubleValue() > 0) {
+                dwtBerth = berth.getCoTauTiepNhanLonNhat().longValue() + " DWT";
+            }
+
+            Row berthRow = destSheet.createRow(currentDestRow++);
+            berthRow.setHeight(wharfTemplateRow.getHeight());
+            for (int c = 0; c < numWharfCols; c++) {
+                Cell srcCell = wharfTemplateRow.getCell(c);
+                if (srcCell != null) {
+                    Cell destCell = berthRow.createCell(c);
+                    destCell.setCellStyle(srcCell.getCellStyle());
+                    if (c == 0) {
+                        destCell.setCellValue("");
+                    } else if (c == 1) {
+                        destCell.setCellValue("    " + (berth.getTenBen() != null ? berth.getTenBen() : ""));
+                    } else if (c == 2) {
+                        destCell.setCellValue(donViBerth);
+                    } else if (c == 3) {
+                        destCell.setCellValue(diaDiemBerth);
+                    } else if (c == 4) {
+                        destCell.setCellValue(thoiDiemBerth);
+                    } else if (c == 5) {
+                        destCell.setCellValue(berth.getCongNangKhaiThac() != null ? berth.getCongNangKhaiThac() : "");
+                    } else if (c == 6) {
+                        String nlTruoc = berth.getNangLucThongQuaHienTrang() != null
+                                ? String.valueOf(berth.getNangLucThongQuaHienTrang().longValue()) : "";
+                        destCell.setCellValue(nlTruoc);
+                    } else if (c == 7) {
+                        String nlBaoCao = berth.getNangLucThongQuaThietKe() != null
+                                ? String.valueOf(berth.getNangLucThongQuaThietKe().longValue()) : "";
+                        destCell.setCellValue(nlBaoCao);
+                    } else if (c == 8) {
+                        destCell.setCellValue("tấn/năm");
+                    } else if (c == 9) {
+                        double chieuDai = berth.getChieuDai() != null ? berth.getChieuDai().doubleValue() : 0.0;
+                        destCell.setCellValue(chieuDai);
+                        if (chieuDai != 0) {
+                            setNumericCellFormat(destCell, chieuDai);
+                        }
+                    } else if (c == 10) {
+                        double tongDienTich = berth.getTongDienTich() != null ? berth.getTongDienTich().doubleValue() : 0.0;
+                        destCell.setCellValue(tongDienTich);
+                        if (tongDienTich != 0) {
+                            setNumericCellFormat(destCell, tongDienTich);
+                        }
+                    } else if (c == 11) {
+                        destCell.setCellValue(dwtBerth);
+                    } else {
+                        destCell.setCellValue("");
+                    }
+                }
+            }
+
+            // ── Wharves (Cầu cảng) under this berth ──
+            List<com.hanghai.kchtg.cangben.entity.CauCang> wharves =
+                    cauCangRepository.findByBenCangIdAndDeletedAtIsNull(berth.getId());
+            for (com.hanghai.kchtg.cangben.entity.CauCang wharf : wharves) {
+                String dwtWharf = "";
+                if (wharf.getTaiTrong() != null && wharf.getTaiTrong().doubleValue() > 0) {
+                    dwtWharf = wharf.getTaiTrong().longValue() + " DWT";
+                }
+
+                Row wharfRow = destSheet.createRow(currentDestRow++);
+                wharfRow.setHeight(wharfTemplateRow.getHeight());
+                for (int c = 0; c < numWharfCols; c++) {
+                    Cell srcCell = wharfTemplateRow.getCell(c);
+                    if (srcCell != null) {
+                        Cell destCell = wharfRow.createCell(c);
+                        destCell.setCellStyle(srcCell.getCellStyle());
+                        if (c == 0) {
+                            destCell.setCellValue("");
+                        } else if (c == 1) {
+                            destCell.setCellValue("        " + (wharf.getTenCau() != null ? wharf.getTenCau() : ""));
+                        } else if (c == 2) {
+                            destCell.setCellValue("");
+                        } else if (c == 3) {
+                            destCell.setCellValue("");
+                        } else if (c == 4) {
+                            destCell.setCellValue("");
+                        } else if (c == 5) {
+                            destCell.setCellValue(wharf.getCongNangKhaiThac() != null ? wharf.getCongNangKhaiThac() : "");
+                        } else if (c == 6) {
+                            destCell.setCellValue("");
+                        } else if (c == 7) {
+                            destCell.setCellValue("");
+                        } else if (c == 8) {
+                            destCell.setCellValue("tấn/năm");
+                        } else if (c == 9) {
+                            double chieuDaiWharf = wharf.getChieuDai() != null ? wharf.getChieuDai().doubleValue() : 0.0;
+                            destCell.setCellValue(chieuDaiWharf);
+                            if (chieuDaiWharf != 0) {
+                                setNumericCellFormat(destCell, chieuDaiWharf);
+                            }
+                        } else if (c == 10) {
+                            destCell.setCellValue(0.0);
+                        } else if (c == 11) {
+                            destCell.setCellValue(dwtWharf);
+                        } else {
+                            destCell.setCellValue("");
+                        }
+                    }
+                }
+            }
+        }
+
+        return currentDestRow;
     }
 
     private String formatDouble(double dVal) {

@@ -351,6 +351,7 @@ export default function ReportsPage() {
   const [loadingPreview, setLoadingPreview] = useState<boolean>(false);
   const [loadingExport, setLoadingExport] = useState<string | null>(null);
   const [reportData, setReportData] = useState<ReportResponse | null>(null);
+  const [selectedNhom, setSelectedNhom] = useState<number | undefined>(undefined);
 
   const activeTemplate = REPORT_TEMPLATES.find((t) => t.code === selectedReportCode);
 
@@ -361,6 +362,7 @@ export default function ReportsPage() {
     try {
       const request: ReportRequest = {
         reportCode: selectedReportCode,
+        nhomCangBien: selectedNhom,
       };
 
       if (activeTemplate?.requiresDates) {
@@ -391,6 +393,7 @@ export default function ReportsPage() {
       const request: ReportRequest = {
         reportCode: selectedReportCode,
         format,
+        nhomCangBien: selectedNhom,
       };
 
       if (activeTemplate?.requiresDates) {
@@ -412,19 +415,31 @@ export default function ReportsPage() {
   const getColumns = () => {
     if (!reportData || !reportData.headers) return [];
 
-    return reportData.headers.map((header) => ({
-      title: header,
-      dataIndex: header,
-      key: header,
-      render: (value: any) => {
-        if (value === null || value === undefined) return '-';
-        if (typeof value === 'boolean') {
-          return value ? <Badge status="success" text="Đúng" /> : <Badge status="error" text="Sai" />;
-        }
-        return value.toString();
-      },
-    }));
+    return reportData.headers
+      .map((header) => ({
+        title: header,
+        dataIndex: header,
+        key: header,
+        render: (value: any) => {
+          if (value === null || value === undefined) return '-';
+          if (typeof value === 'boolean') {
+            return value ? <Badge status="success" text="Đúng" /> : <Badge status="error" text="Sai" />;
+          }
+          return value.toString();
+        },
+      }));
   };
+
+  // Inject CSS for bold section/port rows (className approach avoids onRow style issues)
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .report-section-row td { background-color: #D9E2F3 !important; font-weight: bold !important; font-size: 13px !important; }
+      .report-port-row td { font-weight: 600 !important; }
+    `;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
+  }, []);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -502,6 +517,29 @@ export default function ReportsPage() {
           </Col>
         </Row>
 
+        <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+          <Col xs={24} md={10}>
+            <div style={{ marginBottom: 6 }}><Text strong>Nhóm cảng biển</Text></div>
+            <Select
+              style={{ width: '100%' }}
+              value={selectedNhom}
+              onChange={(value) => setSelectedNhom(value)}
+              placeholder="Chọn nhóm cảng biển (bỏ trống để lấy tất cả)"
+              allowClear
+              options={[
+                { value: 1, label: 'Nhóm 1 - Cảng biển' },
+                { value: 2, label: 'Nhóm 2 - Cảng, bến thủy nội địa' },
+                { value: 3, label: 'Nhóm 3' },
+                { value: 4, label: 'Nhóm 4' },
+                { value: 5, label: 'Nhóm 5' },
+              ]}
+            />
+          </Col>
+          <Col xs={24} md={14}>
+            {/* Spacer for alignment */}
+          </Col>
+        </Row>
+
         {activeTemplate && (
           <Alert
             style={{ marginTop: 16 }}
@@ -558,9 +596,15 @@ export default function ReportsPage() {
             <Table
               columns={getColumns()}
               dataSource={reportData.rows.map((row, idx) => ({ ...row, key: row.key || idx }))}
-              pagination={{ pageSize: 10, showSizeChanger: true }}
+              pagination={false}
               bordered
               scroll={{ x: 'max-content' }}
+              onRow={(record: any) => {
+                const stt = record['STT'];
+                if (stt === 'I' || stt === 'II') return { className: 'report-section-row' };
+                if (stt && stt !== '' && !isNaN(Number(stt))) return { className: 'report-port-row' };
+                return {};
+              }}
             />
 
             {reportData.summary && Object.keys(reportData.summary).length > 0 && (

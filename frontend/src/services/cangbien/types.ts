@@ -19,6 +19,28 @@ export interface CangBienResponse {
   updatedBy: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+  // Extended fields (V53)
+  diaDiemChiTiet: string | null;
+  phanCap: number | null;
+  heQuyChieu: number | null;
+  quyTacHienThi: number | null;
+  // zobjDataSub fields
+  phamViVungNuoc: string | null;
+  tongSoBenCang: number | null;
+  tongSoKhuNeoDauChuyenTai: number | null;
+  tongSoTuyenLuongCongCong: number | null;
+  tongSoTuyenLuongChuyenDung: number | null;
+  tongChieuDaiLuongCongCong: number | null;
+  tongChieuDaiLuongChuyenDung: number | null;
+  tongSoPhaoTieuBaoHieu: number | null;
+  tongSoDeKe: number | null;
+  tongChieuDaiDeKe: number | null;
+  tongSoDenBienDangTieu: number | null;
+  soLuongBenPhao: number | null;
+  soLuongKhuNeoDau: number | null;
+  soLuongKhuChuyenTai: number | null;
+  cacKhuNuocKhac: string | null;
+  ghiChu: string | null;
 }
 
 // ── CreateCangBienRequest (matches CreateCangBienRequest.java) ─
@@ -36,6 +58,28 @@ export interface CreateCangBienRequest {
   orgUnitId?: string | null;
   nhomCangBien?: number | null;
   bieuTuongId?: string | null;
+  // Extended fields (V53)
+  diaDiemChiTiet?: string | null;
+  phanCap?: number | null;
+  heQuyChieu?: number | null;
+  quyTacHienThi?: number | null;
+  // zobjDataSub fields
+  phamViVungNuoc?: string | null;
+  tongSoBenCang?: number | null;
+  tongSoKhuNeoDauChuyenTai?: number | null;
+  tongSoTuyenLuongCongCong?: number | null;
+  tongSoTuyenLuongChuyenDung?: number | null;
+  tongChieuDaiLuongCongCong?: number | null;
+  tongChieuDaiLuongChuyenDung?: number | null;
+  tongSoPhaoTieuBaoHieu?: number | null;
+  tongSoDeKe?: number | null;
+  tongChieuDaiDeKe?: number | null;
+  tongSoDenBienDangTieu?: number | null;
+  soLuongBenPhao?: number | null;
+  soLuongKhuNeoDau?: number | null;
+  soLuongKhuChuyenTai?: number | null;
+  cacKhuNuocKhac?: string | null;
+  ghiChu?: string | null;
 }
 
 // ── UpdateCangBienRequest (matches UpdateCangBienRequest.java) ─
@@ -52,6 +96,28 @@ export interface UpdateCangBienRequest {
   orgUnitId?: string | null;
   nhomCangBien?: number | null;
   bieuTuongId?: string | null;
+  // Extended fields (V53)
+  diaDiemChiTiet?: string | null;
+  phanCap?: number | null;
+  heQuyChieu?: number | null;
+  quyTacHienThi?: number | null;
+  // zobjDataSub fields
+  phamViVungNuoc?: string | null;
+  tongSoBenCang?: number | null;
+  tongSoKhuNeoDauChuyenTai?: number | null;
+  tongSoTuyenLuongCongCong?: number | null;
+  tongSoTuyenLuongChuyenDung?: number | null;
+  tongChieuDaiLuongCongCong?: number | null;
+  tongChieuDaiLuongChuyenDung?: number | null;
+  tongSoPhaoTieuBaoHieu?: number | null;
+  tongSoDeKe?: number | null;
+  tongChieuDaiDeKe?: number | null;
+  tongSoDenBienDangTieu?: number | null;
+  soLuongBenPhao?: number | null;
+  soLuongKhuNeoDau?: number | null;
+  soLuongKhuChuyenTai?: number | null;
+  cacKhuNuocKhac?: string | null;
+  ghiChu?: string | null;
 }
 
 // ── ChangeHistory record (matches LichSuThayDoi.java) ─

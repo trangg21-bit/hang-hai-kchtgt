@@ -86,14 +86,15 @@ export default function ReportViewer() {
         const resp = await organizationService.list();
         const list = [...(resp.data || [])];
 
-        const hasG17_43 = list.some((org: any) => org.code === 'G17.43');
-        if (!hasG17_43) {
-          list.unshift({
-            id: 'g17-43-demo',
-            code: 'G17.43',
-            name: 'Cục Hàng hải và Đường thủy Việt Nam',
-          } as any);
-        }
+        // [COMMENTED] Hardcoded G17.43 demo injection — use real DB data instead
+        // const hasG17_43 = list.some((org: any) => org.code === 'G17.43');
+        // if (!hasG17_43) {
+        //   list.unshift({
+        //     id: 'g17-43-demo',
+        //     code: 'G17.43',
+        //     name: 'Cục Hàng hải và Đường thủy Việt Nam',
+        //   } as any);
+        // }
 
         setOrganizations(list);
 
@@ -105,15 +106,16 @@ export default function ReportViewer() {
         }
       } catch (err) {
         console.error('Failed to load organizations', err);
-        const demoList = [
-          {
-            id: 'g17-43-demo',
-            code: 'G17.43',
-            name: 'Cục Hàng hải và Đường thủy Việt Nam',
-          },
-        ];
-        setOrganizations(demoList);
-        setSelectedOrgId('g17-43-demo');
+        // [COMMENTED] Hardcoded G17.43 fallback — use real DB data instead
+        // const demoList = [
+        //   {
+        //     id: 'g17-43-demo',
+        //     code: 'G17.43',
+        //     name: 'Cục Hàng hải và Đường thủy Việt Nam',
+        //   },
+        // ];
+        // setOrganizations(demoList);
+        // setSelectedOrgId('g17-43-demo');
       }
     };
 
@@ -155,86 +157,9 @@ export default function ReportViewer() {
       try {
         data = await reportService.getPreview(request);
       } catch (err: any) {
-        console.warn('API error, falling back to mock data:', err);
-        if (reportCode === 'F-141') {
-          data = {
-            reportCode: 'F-141',
-            reportName: 'Báo cáo thống kê tăng giảm tài sản kết cấu hạ tầng giao thông đường thủy',
-            headers: [
-              'STT',
-              'Mã tài sản',
-              'Tên tài sản',
-              'Loại tài sản',
-              'Đơn vị tính',
-              'Số lượng đầu kỳ',
-              'Số lượng tăng',
-              'Số lượng giảm',
-              'Số lượng cuối kỳ',
-              'Giá trị đầu kỳ (VNĐ)',
-              'Giá trị tăng (VNĐ)',
-              'Giá trị giảm (VNĐ)',
-              'Giá trị cuối kỳ (VNĐ)',
-            ],
-            rows: [
-              {
-                'STT': 1,
-                'Mã tài sản': 'POINT-GEN-001',
-                'Tên tài sản': 'Đèn biển Hòn Dấu',
-                'Loại tài sản': 'Hệ thống đèn biển',
-                'Đơn vị tính': 'Hệ thống',
-                'Số lượng đầu kỳ': 1,
-                'Số lượng tăng': 0,
-                'Số lượng giảm': 0,
-                'Số lượng cuối kỳ': 1,
-                'Giá trị đầu kỳ (VNĐ)': 12000000000,
-                'Giá trị tăng (VNĐ)': 0,
-                'Giá trị giảm (VNĐ)': 0,
-                'Giá trị cuối kỳ (VNĐ)': 12000000000,
-              },
-              {
-                'STT': 2,
-                'Mã tài sản': 'POINT-GEN-002',
-                'Tên tài sản': 'Đèn biển Bạch Long Vĩ',
-                'Loại tài sản': 'Hệ thống đèn biển',
-                'Đơn vị tính': 'Hệ thống',
-                'Số lượng đầu kỳ': 1,
-                'Số lượng tăng': 0,
-                'Số lượng giảm': 0,
-                'Số lượng cuối kỳ': 1,
-                'Giá trị đầu kỳ (VNĐ)': 15000000000,
-                'Giá trị tăng (VNĐ)': 0,
-                'Giá trị giảm (VNĐ)': 0,
-                'Giá trị cuối kỳ (VNĐ)': 15000000000,
-              },
-              {
-                'STT': 3,
-                'Mã tài sản': 'POINT-GEN-007',
-                'Tên tài sản': 'Phao báo hiệu số 0',
-                'Loại tài sản': 'Phao tiêu báo hiệu',
-                'Đơn vị tính': 'Quả',
-                'Số lượng đầu kỳ': 0,
-                'Số lượng tăng': 1,
-                'Số lượng giảm': 0,
-                'Số lượng cuối kỳ': 1,
-                'Giá trị đầu kỳ (VNĐ)': 0,
-                'Giá trị tăng (VNĐ)': 450000000,
-                'Giá trị giảm (VNĐ)': 0,
-                'Giá trị cuối kỳ (VNĐ)': 450000000,
-              },
-            ],
-            summary: {
-              'Tổng số dòng': 3,
-              'Tổng số lượng đầu kỳ': 2,
-              'Tổng số lượng tăng': 1,
-              'Tổng số lượng giảm': 0,
-              'Tổng số lượng cuối kỳ': 3,
-              'Tổng giá trị đầu kỳ (VNĐ)': 27000000000,
-              'Tổng giá trị tăng (VNĐ)': 450000000,
-              'Tổng giá trị giảm (VNĐ)': 0,
-              'Tổng giá trị cuối kỳ (VNĐ)': 27450000000,
-            }
-          };
-        } else {
+        console.warn('API error:', err);
+        // [COMMENTED] Hardcoded F-141 mock data block — use real API
+        if (reportCode !== 'F-141') {
           data = {
             reportCode,
             headers: ['STT', 'Mã chỉ tiêu', 'Tên chỉ tiêu', 'Giá trị báo cáo'],

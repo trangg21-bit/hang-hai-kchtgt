@@ -23,6 +23,22 @@ export interface BenCangEntity {
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
+  // Extended fields
+  diaDiem?: string;
+  diaDiemChiTiet?: string;
+  heQuyChieu?: number;
+  quyTacHienThi?: number;
+  donViKhaiThac?: string;
+  tongDienTich?: number;
+  nangLucThongQuaThietKe?: number;
+  nangLucThongQuaHienTrang?: number;
+  coTauTiepNhanLonNhat?: number;
+  quyHoachNangLucThongQua?: number;
+  sanLuongHangHoaNamGanNhat?: number;
+  thoiDiemCongBoMo?: string;
+  quyetDinhCongBo?: string;
+  vanBanThoaThuanDauTu?: string;
+  loaiKetCau?: number;
 }
 
 // Approval statuses — values returned by the BE (ASCII, no diacritics)

@@ -20,6 +20,7 @@ export const createSchema = z.object({
   maBen: z.string().min(1, "Mã bến không được để trống").max(50, "Mã bến tối đa 50 ký tự"),
   tenBen: z.string().min(1, "Tên bến không được để trống").max(255, "Tên bến tối đa 255 ký tự"),
   cangBienId: z.string().uuid("Cảng biển chủ không được để trống"),
+  orgUnitId: z.string().uuid().optional().or(z.literal("")),
   tuyenDuongThuy: z.string().max(255, "Tuyến đường thủy tối đa 255 ký tự").optional().or(z.literal("")),
   viDo: z.coerce.number().min(-90, "Vĩ độ phải từ -90 đến 90").max(90, "Vĩ độ phải từ -90 đến 90").optional().or(z.nan()),
   kinhDo: z.coerce.number().min(-180, "Kinh độ phải từ -180 đến 180").max(180, "Kinh độ phải từ -180 đến 180").optional().or(z.nan()),
@@ -32,6 +33,22 @@ export const createSchema = z.object({
   bieuTuongId: z.string().uuid().optional().or(z.literal("")),
   loaiHinhHoc: z.string().optional(),
   toaDo: z.string().optional(),
+  // Extended fields
+  diaDiem: z.string().max(100, "Địa điểm tối đa 100 ký tự").optional().or(z.literal("")),
+  diaDiemChiTiet: z.string().max(500, "Địa điểm chi tiết tối đa 500 ký tự").optional().or(z.literal("")),
+  heQuyChieu: z.coerce.number().int().optional().or(z.nan()),
+  quyTacHienThi: z.coerce.number().int().optional().or(z.nan()),
+  donViKhaiThac: z.string().max(255, "Đơn vị khai thác tối đa 255 ký tự").optional().or(z.literal("")),
+  tongDienTich: z.coerce.number().optional().or(z.nan()),
+  nangLucThongQuaThietKe: z.coerce.number().optional().or(z.nan()),
+  nangLucThongQuaHienTrang: z.coerce.number().optional().or(z.nan()),
+  coTauTiepNhanLonNhat: z.coerce.number().optional().or(z.nan()),
+  quyHoachNangLucThongQua: z.coerce.number().optional().or(z.nan()),
+  sanLuongHangHoaNamGanNhat: z.coerce.number().optional().or(z.nan()),
+  thoiDiemCongBoMo: z.string().optional().or(z.literal("")),
+  quyetDinhCongBo: z.string().max(500, "Quyết định công bố tối đa 500 ký tự").optional().or(z.literal("")),
+  vanBanThoaThuanDauTu: z.string().max(2000, "Văn bản thỏa thuận đầu tư tối đa 2000 ký tự").optional().or(z.literal("")),
+  loaiKetCau: z.coerce.number().int().optional().or(z.nan()),
 });
 
 export type CreateForm = z.infer<typeof createSchema>;
@@ -41,6 +58,7 @@ export const updateSchema = z.object({
   id: z.string().uuid("ID không được để trống"),
   tenBen: z.string().max(255, "Tên bến tối đa 255 ký tự").optional().or(z.literal("")),
   cangBienId: z.string().uuid().optional(),
+  orgUnitId: z.string().uuid().optional().or(z.literal("")),
   tuyenDuongThuy: z.string().max(255, "Tuyến đường thủy tối đa 255 ký tự").optional().or(z.literal("")),
   viDo: z.coerce.number().min(-90, "Vĩ độ phải từ -90 đến 90").max(90, "Vĩ độ phải từ -90 đến 90").optional().or(z.nan()),
   kinhDo: z.coerce.number().min(-180, "Kinh độ phải từ -180 đến 180").max(180, "Kinh độ phải từ -180 đến 180").optional().or(z.nan()),
@@ -53,6 +71,22 @@ export const updateSchema = z.object({
   bieuTuongId: z.string().uuid().optional().nullable(),
   loaiHinhHoc: z.string().optional(),
   toaDo: z.string().optional(),
+  // Extended fields
+  diaDiem: z.string().max(100, "Địa điểm tối đa 100 ký tự").optional().or(z.literal("")),
+  diaDiemChiTiet: z.string().max(500, "Địa điểm chi tiết tối đa 500 ký tự").optional().or(z.literal("")),
+  heQuyChieu: z.coerce.number().int().optional().or(z.nan()),
+  quyTacHienThi: z.coerce.number().int().optional().or(z.nan()),
+  donViKhaiThac: z.string().max(255, "Đơn vị khai thác tối đa 255 ký tự").optional().or(z.literal("")),
+  tongDienTich: z.coerce.number().optional().or(z.nan()),
+  nangLucThongQuaThietKe: z.coerce.number().optional().or(z.nan()),
+  nangLucThongQuaHienTrang: z.coerce.number().optional().or(z.nan()),
+  coTauTiepNhanLonNhat: z.coerce.number().optional().or(z.nan()),
+  quyHoachNangLucThongQua: z.coerce.number().optional().or(z.nan()),
+  sanLuongHangHoaNamGanNhat: z.coerce.number().optional().or(z.nan()),
+  thoiDiemCongBoMo: z.string().optional().or(z.literal("")),
+  quyetDinhCongBo: z.string().max(500, "Quyết định công bố tối đa 500 ký tự").optional().or(z.literal("")),
+  vanBanThoaThuanDauTu: z.string().max(2000, "Văn bản thỏa thuận đầu tư tối đa 2000 ký tự").optional().or(z.literal("")),
+  loaiKetCau: z.coerce.number().int().optional().or(z.nan()),
 });
 
 export type UpdateForm = z.infer<typeof updateSchema>;
