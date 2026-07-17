@@ -41,6 +41,7 @@ public class HeThongVTSDataService {
                 .nguonGoc(request.getNguonGoc())
                 .doiTac(request.getDoiTac())
                 .orgUnitId(request.getOrgUnitId())
+                .phamViApDung(request.getPhamViApDung())
                 .trangThai(HeThongVTSApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
@@ -114,6 +115,7 @@ public class HeThongVTSDataService {
         if (request.getNguonGoc() != null) entity.setNguonGoc(request.getNguonGoc());
         if (request.getDoiTac() != null) entity.setDoiTac(request.getDoiTac());
         if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
+        if (request.getPhamViApDung() != null) entity.setPhamViApDung(request.getPhamViApDung());
 
         if (request.getToaDo() != null) {
             if (request.getToaDo().trim().isEmpty()) {
@@ -327,6 +329,7 @@ public class HeThongVTSDataService {
                 .nguonGoc(entity.getNguonGoc())
                 .doiTac(entity.getDoiTac())
                 .orgUnitId(entity.getOrgUnitId())
+                .phamViApDung(entity.getPhamViApDung())
                 .trangThai(entity.getTrangThai())
                 .pheDuyetC1(entity.getPheDuyetC1())
                 .nguoiPheDuyetC1(entity.getNguoiPheDuyetC1())

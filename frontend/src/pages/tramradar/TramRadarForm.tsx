@@ -17,6 +17,7 @@ import {
 } from 'antd';
 import { tramRadarCRUD, tramRadarApproval } from '../../services/tramRadarService';
 import { organizationService } from '../../services/organizationService';
+import { heThongVTSCRUD } from '../../services/heThongVtsService';
 import type {
   TramRadarResponse,
   CreateTramRadarRequest,
@@ -76,6 +77,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
   const [formError, setFormError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [organizations, setOrganizations] = useState<any[]>([]);
+  const [heThongVtsList, setHeThongVtsList] = useState<any[]>([]);
 
   useEffect(() => {
     (async () => {
@@ -84,6 +86,17 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
         setOrganizations(resp.data || []);
       } catch (err) {
         console.error('Failed to load organizations', err);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await heThongVTSCRUD.list({ pageSize: 1000 });
+        setHeThongVtsList(resp.items || []);
+      } catch (err) {
+        console.error('Failed to load VTS list', err);
       }
     })();
   }, []);
@@ -114,6 +127,9 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
             nguonGoc: data.nguonGoc,
             tinhTrang: data.tinhTrang,
             orgUnitId: data.orgUnitId,
+            heThongVtsId: data.heThongVtsId,
+            chieuCaoThapRadar: data.chieuCaoThapRadar,
+            tamHieuLucRadar: data.tamHieuLucRadar,
             loaiHinhHoc: data.loaiHinhHoc || 'POINT',
             gisLocation: {
               loaiHinhHoc: data.loaiHinhHoc || 'POINT',
@@ -128,6 +144,12 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
         }
       };
       loadData();
+    } else {
+      // Create mode - reset all form fields and record
+      form.resetFields();
+      setRecord(null);
+      setFormError(null);
+      setHasChanges(false);
     }
   }, [id, isEditMode, form]);
 
@@ -164,6 +186,9 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
         nguonGoc: values.nguonGoc,
         tinhTrang: values.tinhTrang,
         orgUnitId: values.orgUnitId,
+        heThongVtsId: values.heThongVtsId,
+        chieuCaoThapRadar: values.chieuCaoThapRadar,
+        tamHieuLucRadar: values.tamHieuLucRadar,
         bieuTuongId: values.gisLocation?.bieuTuongId || undefined,
         loaiHinhHoc: values.loaiHinhHoc,
         toaDo: values.gisLocation?.toaDo,
@@ -317,6 +342,19 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
               <Descriptions.Item label="Đơn vị quản lý" span={2}>
                 {record.orgUnitId ? organizations.find(o => o.id === record.orgUnitId)?.name || record.orgUnitId : '—'}
               </Descriptions.Item>
+              <Descriptions.Item label="Hệ thống VTS" span={2}>
+                {record.tenHeThongVts || (record.heThongVtsId ? `VTS-${record.heThongVtsId}` : '—')}
+              </Descriptions.Item>
+              <Descriptions.Item label="Chiều cao tháp radar (m)">
+                {record.chieuCaoThapRadar != null
+                  ? `${Number(record.chieuCaoThapRadar).toLocaleString('vi-VN')}m`
+                  : '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Tầm hiệu lực radar">
+                {record.tamHieuLucRadar != null
+                  ? `${Number(record.tamHieuLucRadar).toLocaleString('vi-VN')}Nm`
+                  : '—'}
+              </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
                 <ApprovalStatusBadge status={record.trangThaiPheDuyet} />
               </Descriptions.Item>
@@ -403,7 +441,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
   if (isModalMode) {
     return (
       <Modal
-        title={isCreateMode ? 'Tạo mới Trạm Radar' : 'Chỉnh sửa Trạm Radar'}
+        title={isCreateMode ? "Tạo mới Trạm Radar" : "Chỉnh sửa Trạm Radar"}
         open={open}
         onCancel={handleCloseModal}
         footer={null}
@@ -421,12 +459,22 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
               <Input placeholder="Nhập tên trạm (không bắt buộc)" />
             </Form.Item>
 
-            <Form.Item name="loaiHinhHoc" label="Loại đối tượng" rules={[{ required: true, message: 'Vui lòng chọn loại đối tượng' }]} style={{ width: '100%' }}>
-              <Select placeholder="Chọn loại đối tượng" options={[
-                { value: 'POINT', label: 'Đối tượng điểm' },
-                { value: 'LINE', label: 'Đối tượng đường' },
-                { value: 'POLYGON', label: 'Đối tượng vùng' }
-              ]} />
+            <Form.Item
+              name="loaiHinhHoc"
+              label="Loại đối tượng"
+              rules={[
+                { required: true, message: "Vui lòng chọn loại đối tượng" },
+              ]}
+              style={{ width: "100%" }}
+            >
+              <Select
+                placeholder="Chọn loại đối tượng"
+                options={[
+                  { value: "POINT", label: "Đối tượng điểm" },
+                  { value: "LINE", label: "Đối tượng đường" },
+                  { value: "POLYGON", label: "Đối tượng vùng" },
+                ]}
+              />
             </Form.Item>
 
             <Form.Item name="gisLocation">
@@ -436,7 +484,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
             <Form.Item
               label="Vị trí"
               name="viTri"
-              rules={[{ required: true, message: 'Vui lòng nhập vị trí' }]}
+              rules={[{ required: true, message: "Vui lòng nhập vị trí" }]}
             >
               <Input placeholder="Nhập vị trí" />
             </Form.Item>
@@ -449,7 +497,9 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
                   validator: (_, value) => {
                     if (!value && value !== 0) return Promise.resolve();
                     if (value < -180 || value > 180) {
-                      return Promise.reject(new Error('Kinh độ phải trong khoảng -180 đến 180'));
+                      return Promise.reject(
+                        new Error("Kinh độ phải trong khoảng -180 đến 180")
+                      );
                     }
                     return Promise.resolve();
                   },
@@ -463,7 +513,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
                 step={0.000001}
                 precision={6}
                 placeholder="Nhập kinh độ (WGS84)"
-                style={{ width: '100%' }}
+                style={{ width: "100%" }}
               />
             </Form.Item>
 
@@ -475,7 +525,9 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
                   validator: (_, value) => {
                     if (!value && value !== 0) return Promise.resolve();
                     if (value < -90 || value > 90) {
-                      return Promise.reject(new Error('Vĩ độ phải trong khoảng -90 đến 90'));
+                      return Promise.reject(
+                        new Error("Vĩ độ phải trong khoảng -90 đến 90")
+                      );
                     }
                     return Promise.resolve();
                   },
@@ -489,7 +541,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
                 step={0.000001}
                 precision={6}
                 placeholder="Nhập vĩ độ (WGS84)"
-                style={{ width: '100%' }}
+                style={{ width: "100%" }}
               />
             </Form.Item>
 
@@ -497,10 +549,10 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
               <Select
                 placeholder="Chọn loại trạm"
                 options={[
-                  { label: 'Trạm radar chính', value: 'MAIN' },
-                  { label: 'Trạm radar phụ', value: 'SECONDARY' },
-                  { label: 'Trạm radar hỗ trợ', value: 'ASSIST' },
-                  { label: 'Khác', value: 'KHAC' },
+                  { label: "Trạm radar chính", value: "MAIN" },
+                  { label: "Trạm radar phụ", value: "SECONDARY" },
+                  { label: "Trạm radar hỗ trợ", value: "ASSIST" },
+                  { label: "Khác", value: "KHAC" },
                 ]}
               />
             </Form.Item>
@@ -516,7 +568,8 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
                 {
                   validator: (_, value) => {
                     if (!value && value !== 0) return Promise.resolve();
-                    if (value <= 0) return Promise.reject(new Error('Phải > 0'));
+                    if (value <= 0)
+                      return Promise.reject(new Error("Phải > 0"));
                     return Promise.resolve();
                   },
                 },
@@ -526,7 +579,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
                 min={0}
                 step={1}
                 placeholder="Nhập diện tích phát xạ"
-                style={{ width: '100%' }}
+                style={{ width: "100%" }}
               />
             </Form.Item>
 
@@ -538,17 +591,14 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
               <Select
                 placeholder="Chọn tình trạng"
                 options={[
-                  { label: 'Hoạt động tốt', value: 'TOT' },
-                  { label: 'Hoạt động kém', value: 'KEM' },
-                  { label: 'Ngừng hoạt động', value: 'NGUNG' },
+                  { label: "Hoạt động tốt", value: "TOT" },
+                  { label: "Hoạt động kém", value: "KEM" },
+                  { label: "Ngừng hoạt động", value: "NGUNG" },
                 ]}
               />
             </Form.Item>
 
-            <Form.Item
-              label="Đơn vị quản lý"
-              name="orgUnitId"
-            >
+            <Form.Item label="Đơn vị quản lý" name="orgUnitId">
               <Select
                 placeholder="Chọn đơn vị quản lý"
                 allowClear
@@ -559,11 +609,35 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
               />
             </Form.Item>
 
+            <Form.Item label="Hệ thống VTS" name="heThongVtsId">
+              <Select
+                placeholder="Chọn hệ thống VTS"
+                allowClear
+                options={heThongVtsList.map((vts) => ({
+                  value: vts.id,
+                  label: vts.tenHeThong,
+                }))}
+              />
+            </Form.Item>
+
+            <Form.Item label="Chiều cao tháp radar (m)" name="chieuCaoThapRadar">
+              <InputNumber min={0} step={0.1} placeholder="Nhập chiều cao" style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item label="Tầm hiệu lực radar" name="tamHieuLucRadar">
+              <InputNumber min={0} step={1} placeholder="Nhập tầm hiệu lực" style={{ width: '100%' }} />
+            </Form.Item>
+
             <Form.Item>
-              <Space style={{ display: 'flex', justifyContent: 'end', marginTop: 16 }}>
+              <Space
+                style={{
+                  display: "flex",
+                  justifyContent: "end",
+                  marginTop: 16,
+                }}
+              >
                 <Button onClick={onCancel}>Hủy</Button>
                 <Button type="primary" htmlType="submit" loading={isSubmitting}>
-                  {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
+                  {isCreateMode ? "Tạo mới" : "Cập nhật"}
                 </Button>
               </Space>
             </Form.Item>
@@ -725,6 +799,27 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
                 label: org.code ? `${org.code} - ${org.name}` : org.name,
               }))}
             />
+          </Form.Item>
+
+          <Form.Item
+            label="Hệ thống VTS"
+            name="heThongVtsId"
+          >
+            <Select
+              placeholder="Chọn hệ thống VTS"
+              allowClear
+              options={heThongVtsList.map((vts) => ({
+                value: vts.id,
+                label: vts.tenHeThong,
+              }))}
+            />
+          </Form.Item>
+
+          <Form.Item label="Chiều cao tháp radar (m)" name="chieuCaoThapRadar">
+            <InputNumber min={0} step={0.1} placeholder="Nhập chiều cao" style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item label="Tầm hiệu lực radar" name="tamHieuLucRadar">
+            <InputNumber min={0} step={1} placeholder="Nhập tầm hiệu lực" style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item label="Tài liệu đính kèm">

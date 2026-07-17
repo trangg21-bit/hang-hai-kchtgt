@@ -4,6 +4,8 @@ import com.hanghai.kchtg.tramradar.dto.*;
 import com.hanghai.kchtg.tramradar.entity.*;
 import com.hanghai.kchtg.tramradar.repository.PheDuyetLichSuRepository;
 import com.hanghai.kchtg.tramradar.repository.TramRadarRepository;
+import com.hanghai.kchtg.vts.repository.HeThongVTSRepository;
+import com.hanghai.kchtg.vts.entity.HeThongVTS;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +22,7 @@ public class TramRadarService {
     private final TramRadarRepository repository;
     private final PheDuyetLichSuRepository historyRepository;
     private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+    private final HeThongVTSRepository heThongVTSRepository;
 
     public TramRadarResponse create(TramRadarCreateRequest request, String createdBy) {
         TramRadar entity = TramRadar.builder()
@@ -33,6 +36,9 @@ public class TramRadarService {
                 .nguonGoc(request.getNguonGoc())
                 .tinhTrang(request.getTinhTrang())
                 .orgUnitId(request.getOrgUnitId())
+                .heThongVtsId(request.getHeThongVtsId())
+                .chieuCaoThapRadar(request.getChieuCaoThapRadar())
+                .tamHieuLucRadar(request.getTamHieuLucRadar())
                 .trangThai(TramRadarApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
                 .pheDuyetC2(false)
@@ -126,6 +132,9 @@ public class TramRadarService {
         if (request.getNguonGoc() != null) entity.setNguonGoc(request.getNguonGoc());
         if (request.getTinhTrang() != null) entity.setTinhTrang(request.getTinhTrang());
         if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
+        if (request.getHeThongVtsId() != null) entity.setHeThongVtsId(request.getHeThongVtsId());
+        if (request.getChieuCaoThapRadar() != null) entity.setChieuCaoThapRadar(request.getChieuCaoThapRadar());
+        if (request.getTamHieuLucRadar() != null) entity.setTamHieuLucRadar(request.getTamHieuLucRadar());
 
         TramRadar saved = repository.save(entity);
 
@@ -339,7 +348,14 @@ public class TramRadarService {
                 .ngayTao(entity.getNgayTao())
                 .nguoiSuaDoi(entity.getNguoiSuaDoi())
                 .ngaySuaDoi(entity.getNgaySuaDoi())
-                .attachments(attachments);
+                .attachments(attachments)
+                .heThongVtsId(entity.getHeThongVtsId())
+                .chieuCaoThapRadar(entity.getChieuCaoThapRadar())
+                .tamHieuLucRadar(entity.getTamHieuLucRadar())
+                .tenHeThongVts(entity.getHeThongVtsId() != null ? 
+                    heThongVTSRepository.findById(entity.getHeThongVtsId())
+                        .map(HeThongVTS::getTenHeThong)
+                        .orElse("") : "");
 
         if (entity.getKhongGianId() != null) {
             builder.khongGianId(entity.getKhongGianId());

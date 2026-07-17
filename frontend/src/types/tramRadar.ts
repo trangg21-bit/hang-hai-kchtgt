@@ -36,6 +36,10 @@ export interface TramRadarResponse {
   toaDo?: string;
   bieuTuongId?: string;
   khongGianId?: string;
+  chieuCaoThapRadar?: number;
+  tamHieuLucRadar?: number;
+  heThongVtsId?: number;
+  tenHeThongVts?: string;
 }
 
 export interface CreateTramRadarRequest {
@@ -52,6 +56,9 @@ export interface CreateTramRadarRequest {
   loaiHinhHoc?: string;
   toaDo?: string;
   bieuTuongId?: string;
+  chieuCaoThapRadar?: number;
+  tamHieuLucRadar?: number;
+  heThongVtsId?: number;
 }
 
 export interface UpdateTramRadarRequest extends CreateTramRadarRequest {}
