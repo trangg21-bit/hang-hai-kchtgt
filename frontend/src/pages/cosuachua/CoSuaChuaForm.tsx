@@ -85,7 +85,8 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
         setIsLoading(true);
         setFormError(null);
         try {
-          const data = await coSuaChuaCRUD.getById(id);
+          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          const data = cached || await coSuaChuaCRUD.getById(id);
           setRecord(data);
           form.setFieldsValue({
             tenCoSo: data.tenCoSo,

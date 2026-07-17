@@ -30,7 +30,7 @@ import {
   DownloadOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { vungNuocApi } from './api';
 import type { VungNuoc, VungNuocTrangThaiHoatDong, VungNuocTrangThaiPheDuyet, LoaiVungNuoc } from './types';
 import {
@@ -145,16 +145,86 @@ export default function VungNuocListPage() {
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
+
+  const closeUpdateModal = useCallback(() => {
+    setUpdateModalVisible(false);
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
+  }, []);
+
+  const closeDetailModal = useCallback(() => {
+    setDetailModalVisible(false);
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
+  }, []);
+
+  const [searchParams] = useSearchParams();
+  const isIframeModal = (window.self !== window.top) && searchParams.has('action');
+
+  const action = searchParams.get('action');
+  const id = searchParams.get('id');
+
+  useEffect(() => {
+    if (id && (action === 'detail' || action === 'edit')) {
+      (async () => {
+        try {
+          setIsLoading(true);
+          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          console.log('[IframeCache] Looked up ID:', id, 'Found:', cached, 'Global cache object:', (window.parent as any)?.kchtDetailCache);
+          const data = cached || await vungNuocApi.findById(id);
+          setSelectedRecord(data);
+          if (action === 'detail') {
+            const fileRes = await giayToApi.listByEntity('vung-nuoc', id, { page: 1, size: 20 });
+            setDetailFiles(fileRes.data || []);
+            setDetailModalVisible(true);
+          } else if (action === 'edit') {
+            if (data.cangBienId) {
+              setCangBienOptions([{ id: data.cangBienId, tenCang: data.tenCangBien || 'Cảng biển hiện tại' }]);
+            }
+            updateForm.setFieldsValue({
+              maVungNuoc: data.maVungNuoc,
+              tenVungNuoc: data.tenVungNuoc,
+              cangBienId: data.cangBienId,
+              dienTich: data.dienTich,
+              doSauMax: data.doSauMax,
+              doSauTrungBinh: data.doSauTrungBinh,
+              loaiVungNuoc: data.loaiVungNuoc,
+              trangThaiHoatDong: data.trangThaiHoatDong,
+              bieuTuongId: data.bieuTuongId,
+              loaiHinhHoc: data.loaiHinhHoc || 'POLYGON',
+              gisLocation: {
+                loaiHinhHoc: data.loaiHinhHoc || 'POLYGON',
+                toaDo: data.toaDo || '',
+                bieuTuongId: data.bieuTuongId
+              }
+            });
+            setUpdateModalVisible(true);
+          }
+        } catch (err) {
+          console.error('Failed to auto-load details in iframe:', err);
+        } finally {
+          setIsLoading(false);
+        }
+      })();
+    }
+  }, [action, id, updateForm]);
   const createLoaiHinhHoc = Form.useWatch('loaiHinhHoc', createForm);
   const updateLoaiHinhHoc = Form.useWatch('loaiHinhHoc', updateForm);
 
-  const fetchCangBienOptions = useCallback(async () => {
+  const handleCangBienSearch = useCallback(async (searchText: string) => {
     try {
       const { fetchCangBienList } = await import('../../services/cangbien/api');
-      const res = await fetchCangBienList({ page: 0, size: 5000, trangThaiHoatDong: 'HIEN_HANH' });
+      const res = await fetchCangBienList({
+        page: 0,
+        size: 50,
+        tenCang: searchText || undefined,
+        trangThaiHoatDong: 'HIEN_HANH'
+      });
       setCangBienOptions(res.content.map((c) => ({ id: c.id, tenCang: c.tenCang })));
     } catch (err) {
-      console.error('Failed to fetch CangBien options:', err);
+      console.error('Failed to search CangBien options:', err);
     }
   }, []);
 
@@ -193,9 +263,19 @@ export default function VungNuocListPage() {
   }, [symbols]);
 
   useEffect(() => {
-    void fetchCangBienOptions();
-    void fetchSymbols();
-  }, [fetchCangBienOptions, fetchSymbols]);
+    // 1. Try to use symbols cache from parent window
+    const parentSymbols = (window.parent as any)?.kchtSymbols;
+    if (parentSymbols && parentSymbols.length > 0) {
+      setSymbols(parentSymbols);
+    }
+
+    // 2. Only fetch what is required:
+    const needSymbols = !parentSymbols || parentSymbols.length === 0;
+
+    if (needSymbols) {
+      void fetchSymbols();
+    }
+  }, [fetchSymbols, isIframeModal, action]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -220,7 +300,7 @@ export default function VungNuocListPage() {
     }
   }, [page, pageSize, search, filterMaVung, filterTenVung, filterHoatDong, filterPheDuyet, cangBienIdFilter, filterLoaiVungNuoc]);
 
-  useEffect(() => { void fetchData(); }, [fetchData]);
+  useEffect(() => { if (!isIframeModal) void fetchData(); }, [fetchData, isIframeModal]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);
@@ -316,6 +396,12 @@ export default function VungNuocListPage() {
     }
   };
 
+  const handleFormFailed = (errorInfo: any) => {
+    errorInfo.errorFields.forEach((field: any) => {
+      toast.error(`${field.errors.join(', ')}`);
+    });
+  };
+
   const handleUpdateFinish = async (values: any) => {
     if (!selectedRecord) return;
     try {
@@ -334,10 +420,15 @@ export default function VungNuocListPage() {
       });
 
       setSubmitting(true);
-      await vungNuocApi.update(parsed);
+      const res = await vungNuocApi.update(parsed);
       toast.success('Cập nhật vùng nước thành công');
-      setUpdateModalVisible(false);
-      fetchData();
+      if (window.parent && (window.parent as any).kchtDetailCache) {
+        (window.parent as any).kchtDetailCache[selectedRecord.id] = res;
+      }
+      closeUpdateModal();
+      if (!isIframeModal) {
+        fetchData();
+      }
     } catch (err: unknown) {
       if (err instanceof z.ZodError) {
         err.issues.forEach((e) => toast.error(e.message));
@@ -558,7 +649,9 @@ export default function VungNuocListPage() {
 
   return (
     <>
-      <Card style={{ marginBottom: 16 }}>
+      {!isIframeModal && (
+        <>
+          <Card style={{ marginBottom: 16 }}>
         <Row gutter={[12, 12]} align="middle" justify="space-between">
           <Col xs={24} md={16}>
             <Space wrap>
@@ -653,9 +746,12 @@ export default function VungNuocListPage() {
           />
         )}
       </Card>
+        </>
+      )}
 
       {/* Create Modal */}
-      <Modal
+      {!isIframeModal && (
+        <Modal
         title="Tạo mới Vùng nước"
         open={createModalVisible}
         onCancel={() => setCreateModalVisible(false)}
@@ -663,7 +759,7 @@ export default function VungNuocListPage() {
         width={800}
         forceRender
       >
-        <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} initialValues={{ trangThaiHoatDong: 'HIEN_HANH' }}>
+        <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} onFinishFailed={handleFormFailed} initialValues={{ trangThaiHoatDong: 'HIEN_HANH' }}>
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thông tin chung
           </Typography.Text>
@@ -697,7 +793,13 @@ export default function VungNuocListPage() {
                 <Select
                   placeholder="Chọn cảng biển chủ"
                   showSearch
-                  optionFilterProp="label"
+                  filterOption={false}
+                  onSearch={handleCangBienSearch}
+                  onOpenChange={(open) => {
+                    if (open && cangBienOptions.length <= 1) {
+                      void handleCangBienSearch('');
+                    }
+                  }}
                   options={cangBienOptions.map(o => ({ label: o.tenCang, value: o.id }))}
                 />
               </Form.Item>
@@ -791,18 +893,26 @@ export default function VungNuocListPage() {
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+        </Modal>
+      )}
 
       {/* Edit Modal */}
-      <Modal
-        title={selectedRecord ? `Chỉnh sửa: ${selectedRecord.maVungNuoc} — ${selectedRecord.tenVungNuoc}` : 'Chỉnh sửa vùng nước'}
+      {(!isIframeModal || action === 'edit') && (
+        <Modal
+        title={isIframeModal ? null : (selectedRecord ? `Chỉnh sửa: ${selectedRecord.maVungNuoc} — ${selectedRecord.tenVungNuoc}` : 'Chỉnh sửa vùng nước')}
         open={updateModalVisible}
-        onCancel={() => setUpdateModalVisible(false)}
+        onCancel={closeUpdateModal}
         footer={null}
-        width={800}
+        width={isIframeModal ? '100%' : 800}
+        mask={!isIframeModal}
+        closable={!isIframeModal}
+        style={isIframeModal ? { top: 0, margin: 0, padding: 0, maxWidth: 'none', height: '100%' } : undefined}
+        styles={{
+          body: isIframeModal ? { padding: '16px 24px', height: '100%', overflowY: 'auto' } : undefined
+        }}
         forceRender
       >
-        <Form form={updateForm} layout="vertical" onFinish={handleUpdateFinish}>
+        <Form form={updateForm} layout="vertical" onFinish={handleUpdateFinish} onFinishFailed={handleFormFailed}>
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thông tin chung
           </Typography.Text>
@@ -832,7 +942,13 @@ export default function VungNuocListPage() {
                 <Select
                   placeholder="Chọn cảng biển chủ"
                   showSearch
-                  optionFilterProp="label"
+                  filterOption={false}
+                  onSearch={handleCangBienSearch}
+                  onOpenChange={(open) => {
+                    if (open && cangBienOptions.length <= 1) {
+                      void handleCangBienSearch('');
+                    }
+                  }}
                   options={cangBienOptions.map(o => ({ label: o.tenCang, value: o.id }))}
                 />
               </Form.Item>
@@ -926,20 +1042,28 @@ export default function VungNuocListPage() {
 
           <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
             <Space>
-              <Button onClick={() => setUpdateModalVisible(false)}>Hủy</Button>
+              <Button onClick={closeUpdateModal}>Hủy</Button>
               <Button type="primary" htmlType="submit" loading={submitting}>Cập nhật</Button>
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+        </Modal>
+      )}
 
       {/* Detail Modal */}
-      <Modal
-        title={selectedRecord ? `Chi tiết vùng nước: ${selectedRecord.maVungNuoc} — ${selectedRecord.tenVungNuoc}` : 'Chi tiết vùng nước'}
+      {(!isIframeModal || action === 'detail') && (
+        <Modal
+        title={isIframeModal ? null : (selectedRecord ? `Chi tiết vùng nước: ${selectedRecord.maVungNuoc} — ${selectedRecord.tenVungNuoc}` : 'Chi tiết vùng nước')}
         open={detailModalVisible}
-        onCancel={() => setDetailModalVisible(false)}
+        onCancel={closeDetailModal}
         footer={null}
-        width={800}
+        width={isIframeModal ? '100%' : 800}
+        mask={!isIframeModal}
+        closable={!isIframeModal}
+        style={isIframeModal ? { top: 0, margin: 0, padding: 0, maxWidth: 'none', height: '100%' } : undefined}
+        styles={{
+          body: isIframeModal ? { padding: '16px 24px', height: '100%', overflowY: 'auto' } : undefined
+        }}
       >
         {selectedRecord && (
           <div>
@@ -1116,12 +1240,13 @@ export default function VungNuocListPage() {
                 >
                   Chỉnh sửa
                 </Button>
-                <Button onClick={() => setDetailModalVisible(false)}>Đóng</Button>
+                <Button onClick={closeDetailModal}>Đóng</Button>
               </Space>
             </div>
           </div>
         )}
-      </Modal>
+        </Modal>
+      )}
 
       {/* History Modal */}
       <Modal

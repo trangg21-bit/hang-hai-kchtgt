@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import api from '../../services/api';
 import {
   Table,
   Button,
@@ -38,7 +40,39 @@ export default function CoastalStationList() {
   // Form states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CoastalStationVTSResponse | null>(null);
+  const [isReadOnly, setIsReadOnly] = useState(false);
   const [form] = Form.useForm();
+  
+  const [searchParams] = useSearchParams();
+  const isIframeModal = (window.self !== window.top) && searchParams.has('action');
+
+  const action = searchParams.get('action');
+  const id = searchParams.get('id');
+
+  useEffect(() => {
+    if (id && (action === 'detail' || action === 'edit')) {
+      (async () => {
+        try {
+          setLoading(true);
+          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          const data = cached || await api.get(`/v1/stations/coastal/${id}`).then(r => r.data);
+          setIsReadOnly(action === 'detail');
+          
+          const formatted = {
+            ...data,
+            stationCode: data.stationCode || data.code,
+            stationName: data.stationName || data.name,
+          };
+          
+          handleOpenModal(formatted);
+        } catch (err: any) {
+          message.error(err.message || 'Lỗi khi tải thông tin chi tiết đài duyên hải');
+        } finally {
+          setLoading(false);
+        }
+      })();
+    }
+  }, [action, id]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -58,8 +92,9 @@ export default function CoastalStationList() {
   }, [page, pageSize, searchText]);
 
   useEffect(() => {
+    if (isIframeModal) return;
     loadData();
-  }, [loadData]);
+  }, [loadData, isIframeModal]);
 
   const handleOpenModal = (record?: CoastalStationVTSResponse) => {
     if (record) {
@@ -86,6 +121,9 @@ export default function CoastalStationList() {
   const handleCancel = () => {
     setIsModalOpen(false);
     form.resetFields();
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
   };
 
   const handleSubmit = async () => {
@@ -242,15 +280,18 @@ export default function CoastalStationList() {
       />
 
       <Modal
-        title={editingItem ? 'Chỉnh sửa đài duyên hải' : 'Thêm mới đài duyên hải / VTS'}
+        title={isReadOnly ? 'Chi tiết đài duyên hải' : (editingItem ? 'Chỉnh sửa đài duyên hải' : 'Thêm mới đài duyên hải / VTS')}
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}
         okText="Lưu"
         cancelText="Hủy"
         width={700}
+        footer={isReadOnly ? [
+          <Button key="close" type="primary" onClick={handleCancel}>Đóng</Button>
+        ] : undefined}
       >
-        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+        <Form form={form} layout="vertical" style={{ marginTop: 16 }} disabled={isReadOnly}>
           <Space size="large" style={{ display: 'flex', width: '100%' }}>
             <Form.Item
               name="stationCode"

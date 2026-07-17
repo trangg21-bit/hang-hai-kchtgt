@@ -444,7 +444,7 @@ public class KchtGis155Service {
 
                 case BENCANG:
                     List<BenCang> benCangs = benCangRepository.searchBenCang(
-                            orgUnitId, null, searchLower, null, null, null, TrangThaiHoatDong.HIEN_HANH,
+                            orgUnitId, searchLower, null, null, null, null, null, TrangThaiHoatDong.HIEN_HANH,
                             TrangThaiPheDuyet.DUOC_PHE_DUYET, PageRequest.of(0, 10000)).getContent();
                     List<UUID> cbIds = benCangs.stream().map(BenCang::getCangBienId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, CangBien> bcCangBienMap = new HashMap<>();

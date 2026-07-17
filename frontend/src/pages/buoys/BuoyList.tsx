@@ -44,6 +44,7 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { organizationService } from '../../services/organizationService';
 
 export default function BuoyList() {
+  const isInIframe = window.self !== window.top;
   const navigate = useNavigate();
 
   const [filterName, setFilterName] = useState('');
@@ -66,6 +67,7 @@ export default function BuoyList() {
   const [orgTree, setOrgTree] = useState<any[]>([]);
 
   useEffect(() => {
+    if (isInIframe) return;
     (async () => {
       try {
         const orgs = await organizationService.getTree();
@@ -241,7 +243,7 @@ export default function BuoyList() {
     }
   }, [editingRecord, form, fetchData]);
 
-  useEffect(() => { void fetchData(); }, [fetchData]);
+  useEffect(() => { if (!isInIframe) void fetchData(); }, [fetchData, isInIframe]);
 
   const handleDelete = useCallback(
     async (record: Buoy) => {

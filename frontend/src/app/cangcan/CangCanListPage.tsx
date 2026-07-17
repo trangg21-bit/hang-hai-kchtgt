@@ -30,7 +30,7 @@ import {
   DownloadOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { CangCan } from './types';
 import {
   TRANG_THAI_HOAT_DONG_MAP,
@@ -140,6 +140,66 @@ export default function CangCanListPage() {
   const [submitting, setSubmitting] = useState(false);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
 
+  const closeUpdateModal = useCallback(() => {
+    setUpdateModalVisible(false);
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
+  }, []);
+
+  const closeDetailModal = useCallback(() => {
+    setDetailModalVisible(false);
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
+  }, []);
+
+  const [searchParams] = useSearchParams();
+  const isIframeModal = (window.self !== window.top) && searchParams.has('action');
+
+  const action = searchParams.get('action');
+  const id = searchParams.get('id');
+
+  useEffect(() => {
+    if (id && (action === 'detail' || action === 'edit')) {
+      (async () => {
+        try {
+          setIsLoading(true);
+          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          const data = cached || await fetchCangCanById(id);
+          setSelectedRecord(data);
+          if (action === 'detail') {
+            const fileRes = await giayToApi.listByEntity('cang-can', id, { page: 1, size: 20 });
+            setDetailFiles(fileRes.data || []);
+            setDetailModalVisible(true);
+          } else if (action === 'edit') {
+            updateForm.setFieldsValue({
+              maCangCan: data.maCangCan,
+              tenCangCan: data.tenCangCan,
+              tinhThanhPho: data.tinhThanhPho,
+              viDo: data.viDo,
+              kinhDo: data.kinhDo,
+              dienTich: data.dienTich,
+              congSuatTEU: data.congSuatTEU,
+              trangThaiHoatDong: data.trangThaiHoatDong,
+              loaiHinhHoc: data.loaiHinhHoc || 'POINT',
+              gisLocation: {
+                loaiHinhHoc: data.loaiHinhHoc || 'POINT',
+                toaDo: data.toaDo || '',
+                bieuTuongId: data.bieuTuongId
+              }
+            });
+            setUpdateModalVisible(true);
+          }
+        } catch (err) {
+          console.error('Failed to auto-load details in iframe:', err);
+        } finally {
+          setIsLoading(false);
+        }
+      })();
+    }
+  }, [action, id, updateForm]);
+
   const createLoaiHinhHoc = Form.useWatch('loaiHinhHoc', createForm) || 'POINT';
   const updateLoaiHinhHoc = Form.useWatch('loaiHinhHoc', updateForm) || 'POINT';
 
@@ -206,9 +266,22 @@ export default function CangCanListPage() {
   }, [page, pageSize, search, filterStatus, filterApprovalStatus]);
 
   useEffect(() => {
-    void fetchData();
-    void fetchSymbols();
-  }, [fetchData, fetchSymbols]);
+    // 1. Try to use symbols cache from parent window
+    const parentSymbols = (window.parent as any)?.kchtSymbols;
+    if (parentSymbols && parentSymbols.length > 0) {
+      setSymbols(parentSymbols);
+    }
+
+    // 2. Fetch if not cached
+    const needSymbols = !parentSymbols || parentSymbols.length === 0;
+    if (needSymbols) {
+      void fetchSymbols();
+    }
+
+    if (!isIframeModal) {
+      void fetchData();
+    }
+  }, [fetchData, fetchSymbols, isIframeModal]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);
@@ -304,6 +377,12 @@ export default function CangCanListPage() {
     }
   };
 
+  const handleFormFailed = (errorInfo: any) => {
+    errorInfo.errorFields.forEach((field: any) => {
+      toast.error(`${field.errors.join(', ')}`);
+    });
+  };
+
   const handleUpdateFinish = async (values: any) => {
     if (!selectedRecord) return;
     try {
@@ -322,10 +401,15 @@ export default function CangCanListPage() {
       });
 
       setSubmitting(true);
-      await updateCangCan(parsed);
+      const res = await updateCangCan(parsed);
       toast.success('Cập nhật cảng cạn thành công');
-      setUpdateModalVisible(false);
-      fetchData();
+      if (window.parent && (window.parent as any).kchtDetailCache) {
+        (window.parent as any).kchtDetailCache[selectedRecord.id] = res;
+      }
+      closeUpdateModal();
+      if (!isIframeModal) {
+        fetchData();
+      }
     } catch (err: unknown) {
       if (err instanceof z.ZodError) {
         err.issues.forEach((e) => toast.error(e.message));
@@ -540,7 +624,9 @@ export default function CangCanListPage() {
 
   return (
     <>
-      <Card style={{ marginBottom: 16 }}>
+      {!isIframeModal && (
+        <>
+          <Card style={{ marginBottom: 16 }}>
         <Row gutter={[12, 12]} align="middle" justify="space-between">
           <Col xs={24} md={16}>
             <Space wrap>
@@ -625,9 +711,12 @@ export default function CangCanListPage() {
           />
         )}
       </Card>
+        </>
+      )}
 
       {/* Create Modal */}
-      <Modal
+      {!isIframeModal && (
+        <Modal
         title="Tạo mới Cảng cạn"
         open={createModalVisible}
         onCancel={() => setCreateModalVisible(false)}
@@ -635,7 +724,7 @@ export default function CangCanListPage() {
         width={800}
         forceRender
       >
-        <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} initialValues={{ trangThaiHoatDong: 'HIEN_HANH' }}>
+        <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} onFinishFailed={handleFormFailed} initialValues={{ trangThaiHoatDong: 'HIEN_HANH' }}>
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thông tin chung
           </Typography.Text>
@@ -729,18 +818,26 @@ export default function CangCanListPage() {
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+        </Modal>
+      )}
 
       {/* Edit Modal */}
-      <Modal
-        title={selectedRecord ? `Chỉnh sửa: ${selectedRecord.maCangCan} — ${selectedRecord.tenCangCan}` : 'Chỉnh sửa cảng cạn'}
+      {(!isIframeModal || action === 'edit') && (
+        <Modal
+        title={isIframeModal ? null : (selectedRecord ? `Chỉnh sửa: ${selectedRecord.maCangCan} — ${selectedRecord.tenCangCan}` : 'Chỉnh sửa cảng cạn')}
         open={updateModalVisible}
-        onCancel={() => setUpdateModalVisible(false)}
+        onCancel={closeUpdateModal}
         footer={null}
-        width={800}
+        width={isIframeModal ? '100%' : 800}
+        mask={!isIframeModal}
+        closable={!isIframeModal}
+        style={isIframeModal ? { top: 0, margin: 0, padding: 0, maxWidth: 'none', height: '100%' } : undefined}
+        styles={{
+          body: isIframeModal ? { padding: '16px 24px', height: '100%', overflowY: 'auto' } : undefined
+        }}
         forceRender
       >
-        <Form form={updateForm} layout="vertical" onFinish={handleUpdateFinish}>
+        <Form form={updateForm} layout="vertical" onFinish={handleUpdateFinish} onFinishFailed={handleFormFailed}>
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thông tin chung
           </Typography.Text>
@@ -827,20 +924,28 @@ export default function CangCanListPage() {
 
           <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
             <Space>
-              <Button onClick={() => setUpdateModalVisible(false)}>Hủy</Button>
+              <Button onClick={closeUpdateModal}>Hủy</Button>
               <Button type="primary" htmlType="submit" loading={submitting}>Cập nhật</Button>
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+        </Modal>
+      )}
 
       {/* Detail Modal */}
-      <Modal
-        title={selectedRecord ? `Chi tiết cảng cạn: ${selectedRecord.maCangCan} — ${selectedRecord.tenCangCan}` : 'Chi tiết cảng cạn'}
+      {(!isIframeModal || action === 'detail') && (
+        <Modal
+        title={isIframeModal ? null : (selectedRecord ? `Chi tiết cảng cạn: ${selectedRecord.maCangCan} — ${selectedRecord.tenCangCan}` : 'Chi tiết cảng cạn')}
         open={detailModalVisible}
-        onCancel={() => setDetailModalVisible(false)}
+        onCancel={closeDetailModal}
         footer={null}
-        width={800}
+        width={isIframeModal ? '100%' : 800}
+        mask={!isIframeModal}
+        closable={!isIframeModal}
+        style={isIframeModal ? { top: 0, margin: 0, padding: 0, maxWidth: 'none', height: '100%' } : undefined}
+        styles={{
+          body: isIframeModal ? { padding: '16px 24px', height: '100%', overflowY: 'auto' } : undefined
+        }}
       >
         {selectedRecord && (
           <div>
@@ -1012,12 +1117,13 @@ export default function CangCanListPage() {
                 >
                   Chỉnh sửa
                 </Button>
-                <Button onClick={() => setDetailModalVisible(false)}>Đóng</Button>
+                <Button onClick={closeDetailModal}>Đóng</Button>
               </Space>
             </div>
           </div>
         )}
-      </Modal>
+        </Modal>
+      )}
 
       {/* History Modal */}
       <Modal

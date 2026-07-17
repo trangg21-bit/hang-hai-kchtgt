@@ -30,6 +30,10 @@ public class UpdateOrgUnitRequest {
     @Size(max = 500, message = "Địa chỉ tối đa 500 ký tự")
     private String address;
 
+    /** Detailed street address (optional). */
+    @Size(max = 500, message = "Địa chỉ chi tiết tối đa 500 ký tự")
+    private String detailAddress;
+
     @Size(max = 20, message = "Số điện thoại tối đa 20 ký tự")
     private String phone;
 

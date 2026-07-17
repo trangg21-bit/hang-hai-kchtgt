@@ -21,7 +21,7 @@ export const REPORT_TEMPLATES: ReportTemplate[] = [
   { code: 'F-147', name: 'Mẫu số 06: Tổng hợp danh mục TS KCHTGT hàng hải đề nghị xử lý', category: 'bcc', status: 'active' },
 
   // bckcht: Nhóm chỉ tiêu kết cấu hạ tầng
-  { code: 'F-148', name: 'Biểu 01-N: Năng lực thông qua bến cảng, cầu cảng', category: 'bckcht', status: 'active' },
+  { code: 'F-148', name: 'Biểu 01-N: Năng lực thông qua cảng biển, cầu cảng, cảng bến thủy nội địa', category: 'bckcht', status: 'active' },
   { code: 'F-149', name: 'Biểu 02-N: Năng lực thông qua cảng biển', category: 'bckcht', status: 'active' },
   { code: 'F-150', name: 'Biểu 03-N: Thống kê cầu cảng', category: 'bckcht', status: 'active' },
   { code: 'F-151', name: 'Biểu 04-N: Thống kê luồng hàng hải', category: 'bckcht', status: 'active' },

@@ -22,7 +22,7 @@ public class CreateOrgUnitRequest {
     @Size(max = 200, message = "Tên đơn vị tối đa 200 ký tự")
     private String name;
 
-    @NotBlank(message = "Mã đơn vị không được để trống")
+    /** Unit code — auto-generated if not provided. */
     @Size(max = 50, message = "Mã đơn vị tối đa 50 ký tự")
     private String code;
 
@@ -37,6 +37,10 @@ public class CreateOrgUnitRequest {
 
     @Size(max = 500, message = "Địa chỉ tối đa 500 ký tự")
     private String address;
+
+    /** Detailed street address (optional). */
+    @Size(max = 500, message = "Địa chỉ chi tiết tối đa 500 ký tự")
+    private String detailAddress;
 
     @Size(max = 20, message = "Số điện thoại tối đa 20 ký tự")
     private String phone;

@@ -83,7 +83,8 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
         setIsLoading(true);
         setFormError(null);
         try {
-          const data = await luongHangHaiCRUD.getById(id);
+          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          const data = cached || await luongHangHaiCRUD.getById(id);
           setRecord(data);
           form.setFieldsValue({
             ten: data.ten,

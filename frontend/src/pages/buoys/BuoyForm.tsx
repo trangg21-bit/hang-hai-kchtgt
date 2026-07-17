@@ -38,7 +38,8 @@ export default function BuoyForm() {
     if (isEdit) {
       (async () => {
         try {
-          const data = await buoyCRUD.findById(id!);
+          const cached = (window.parent as any)?.kchtDetailCache?.[id!];
+          const data = cached || await buoyCRUD.findById(id!);
           setEntityData({ status: data.status });
           form.setFieldsValue({
             name: data.name,

@@ -214,6 +214,11 @@ export default function GisLocationSelector({
 
   // Load symbols list
   useEffect(() => {
+    const parentSymbols = (window.parent as any)?.kchtSymbols || (window as any)?.kchtSymbols;
+    if (parentSymbols && parentSymbols.length > 0) {
+      setSymbols(parentSymbols);
+      return;
+    }
     (async () => {
       try {
         const res = await symbolService.list({ pageSize: 100 });

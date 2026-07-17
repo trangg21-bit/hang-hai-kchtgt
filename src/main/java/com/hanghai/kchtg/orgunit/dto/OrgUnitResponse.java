@@ -35,6 +35,7 @@ public class OrgUnitResponse {
     private OrgUnitStatus status;
     private String description;
     private String address;
+    private String detailAddress;
     private String phone;
     private String contactPerson;
     private String path;
@@ -43,6 +44,9 @@ public class OrgUnitResponse {
     private LocalDateTime approvedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    /** User who last updated (username from auditing). null if never updated. */
+    private String updatedBy;
 
     /** Child units — populated by tree-building logic. Omitted from flat list responses. */
     private List<OrgUnitResponse> children;
@@ -60,6 +64,7 @@ public class OrgUnitResponse {
                 .status(entity.getStatus())
                 .description(entity.getDescription())
                 .address(entity.getAddress())
+                .detailAddress(entity.getDetailAddress())
                 .phone(entity.getPhone())
                 .contactPerson(entity.getContactPerson())
                 .path(entity.getPath())
@@ -68,6 +73,7 @@ public class OrgUnitResponse {
                 .approvedAt(entity.getApprovedAt())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .updatedBy(entity.getUpdatedBy())
                 .build();
     }
 }

@@ -203,6 +203,16 @@ export const metronicTheme: ThemeConfig = {
       cellPaddingBlock: 10,
     },
 
+    Dropdown: {
+      fontSize: 13,
+    },
+
+    Modal: {
+      fontSize: 13,
+      fontSizeLG: 13,
+      titleFontSize: 15,
+    },
+
     Input: {
       borderRadius: radius.sm,
       controlHeight: 40,

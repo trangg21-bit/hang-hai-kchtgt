@@ -1,23 +1,22 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Tree, Typography, Button, Space, Tag } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
-import { useNavigate, useParams } from 'react-router-dom';
-import type { DataNode } from 'antd/es/tree';
+import { Tree, Typography, Space } from 'antd';
+import { useNavigate } from 'react-router-dom';
 import { organizationService } from '../../services/organizationService';
 import type { Organization } from '../../services/organizationService';
+import { ScreenHeader } from '../../components/list-view';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import ErrorState from '../../components/ErrorState';
 import EmptyState from '../../components/EmptyState';
-import dayjs from 'dayjs';
+import { statusOperational, statusAttention, statusCritical, statusDraft, cardStyle, dataSea1, fontSizeMd, fontWeightMedium } from '../../tokens';
 
 const STATUS_MAP: Record<string, { color: string; label: string }> = {
-  draft: { color: 'default', label: 'Bản nháp' },
-  pending: { color: 'orange', label: 'Chờ duyệt' },
-  approved: { color: 'green', label: 'Đã phê duyệt' },
-  rejected: { color: 'red', label: 'Bị từ chối' },
+  draft: { color: statusDraft, label: 'Bản nháp' },
+  pending: { color: statusAttention, label: 'Chờ duyệt' },
+  approved: { color: statusOperational, label: 'Đã phê duyệt' },
+  rejected: { color: statusCritical, label: 'Bị từ chối' },
 };
 
-interface OrgTreeNode extends DataNode {
+interface OrgTreeNode {
   key: string;
   title: React.ReactNode;
   isLeaf?: boolean;
@@ -32,10 +31,10 @@ function buildTree(orgs: Organization[], parentId?: string): OrgTreeNode[] {
       title: (
         <Space>
           <Typography.Text strong>{org.name}</Typography.Text>
-          <Tag color="blue">C{org.level}</Tag>
-          <Tag color={STATUS_MAP[org.status]?.color || 'default'}>
+          <span style={{ display: 'inline-flex', padding: '2px 6px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${dataSea1}15`, color: dataSea1 }}>C{org.level}</span>
+          <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${STATUS_MAP[org.status]?.color}15`, color: STATUS_MAP[org.status]?.color }}>
             {STATUS_MAP[org.status]?.label || org.status}
-          </Tag>
+          </span>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             {org.childCount} đơn vị con
           </Typography.Text>
@@ -62,44 +61,29 @@ export default function UnitTree() {
     } catch (err: unknown) {
       setIsError(true);
       setError(err instanceof Error ? err : new Error('Không thể tải cây đơn vị'));
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { setIsLoading(false); }
   }, []);
 
   useEffect(() => { void loadTree(); }, []);
 
   return (
-    <>
-      <Card style={{ marginBottom: 16 }}>
-        <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/organizations')}>
-            Quay lại
-          </Button>
-          <Typography.Title level={5} style={{ margin: 0 }}>Cây cấu trúc đơn vị</Typography.Title>
-        </Space>
-      </Card>
-
-      <Card>
+    <div style={{ minHeight: '100%', marginTop: -8 }}>
+      <ScreenHeader
+        breadcrumb={[
+          { label: 'Quản trị hệ thống' },
+          { label: 'Quản lý đơn vị', path: '/organizations' },
+          { label: 'Cây cấu trúc đơn vị' },
+        ]}
+        actions={[]}
+      />
+      <div style={{ ...cardStyle, padding: '8px 16px' }}>
         {isLoading && <LoadingSkeleton rows={10} type="card" />}
-        {isError && (
-          <ErrorState
-            message={error?.message || 'Không thể tải cây đơn vị'}
-            onRetry={loadTree}
-          />
-        )}
-        {!isLoading && !isError && dataSource.length === 0 && (
-          <EmptyState description="Chưa có đơn vị nào trong hệ thống" />
-        )}
+        {isError && <ErrorState message={error?.message || 'Không thể tải cây đơn vị'} onRetry={loadTree} />}
+        {!isLoading && !isError && dataSource.length === 0 && <EmptyState description="Chưa có đơn vị nào trong hệ thống" />}
         {!isLoading && !isError && dataSource.length > 0 && (
-          <Tree
-            treeData={dataSource}
-            defaultExpandedAll
-            showLine
-            showIcon={false}
-          />
+          <Tree treeData={dataSource} defaultExpandedAll showLine showIcon={false} />
         )}
-      </Card>
-    </>
+      </div>
+    </div>
   );
 }

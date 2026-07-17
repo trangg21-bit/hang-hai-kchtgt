@@ -114,7 +114,8 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
         setIsLoading(true);
         setFormError(null);
         try {
-          const data = await tramRadarCRUD.getById(id);
+          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          const data = cached || await tramRadarCRUD.getById(id);
           setRecord(data);
           form.setFieldsValue({
             tenTram: data.tenTram,
