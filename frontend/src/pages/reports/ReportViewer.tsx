@@ -546,7 +546,7 @@ export default function ReportViewer() {
                         <p>Toàn bộ dữ liệu đèn biển hiện tại được lấy từ bảng thực thể <strong>Nhà trạm đèn biển</strong> (<code>nha_tram_den</code>) tại màn hình <strong>Nhà trạm đèn biển</strong> (<code>/nhatram/den</code>).</p>
                         <p>Do cấu trúc dữ liệu hiện tại chỉ lưu trữ các trường cơ bản (tên, mã, tầm hiệu lực ánh sáng, màu sắc ánh sáng, ngày bảo trì) nên các thông số kỹ thuật chi tiết khác sẽ hiển thị trống trên báo cáo.</p>
                       </div>
-                    ) : ['F-156', 'F-157', 'F-158', 'F-159', 'F-160'].includes(reportCode) ? (
+                    ) : ['F-156', 'F-157', 'F-159'].includes(reportCode) ? (
                       <div>
                         <p>Hệ thống hiện tại chưa cấu hình các bảng thực thể nghiệp vụ chi tiết cho nhóm hạ tầng kỹ thuật tương ứng như phao tiêu báo hiệu, trạm VTS, đài thông tin duyên hải, hay công trình đê kè như dự án gốc <strong>hh.csdl</strong>.</p>
                         <p>Toàn bộ thông tin hạ tầng này hiện tại được lấy từ các đối tượng hình học dạng điểm (<strong>PointObject</strong>) tại màn hình <strong>Đối tượng điểm</strong> (<code>/gis/points</code>).</p>

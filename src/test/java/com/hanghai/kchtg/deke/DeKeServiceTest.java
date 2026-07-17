@@ -45,10 +45,10 @@ class DeKeServiceTest {
         service = new DeKeService(repo, attachmentRepo, pheDuyetLichSuRepo, gisSpatialObjectService);
         testEntity = DeKe.builder()
                 .id(1L)
-                .loaiDe(LoaiDe.DE_DAT)
+                .loaiDe(LoaiDe.DE_CHAN_SONG)
                 .viTri("Bac Giang")
                 .chieuDai(150.5)
-                .chieuRong(10.0)
+                .caoTrinhDinh(10.0)
                 .chieuCao(5.0)
                 .matVatLieu("Betong")
                 .tinhTrang("Tot")
@@ -60,10 +60,10 @@ class DeKeServiceTest {
                 .createdAt(LocalDateTime.of(2026, 6, 1, 10, 0))
                 .build();
         createReq = DeKeCreateRequest.builder()
-                .loaiDe(LoaiDe.DE_BETONG)
+                .loaiDe(LoaiDe.DE_CHAN_CAT)
                 .viTri("Ha Noi")
                 .chieuDai(200.0)
-                .chieuRong(20.0)
+                .caoTrinhDinh(20.0)
                 .chieuCao(8.0)
                 .matVatLieu("Thep")
                 .tinhTrang("Tot")
@@ -76,7 +76,7 @@ class DeKeServiceTest {
         when(repo.save(any())).thenReturn(testEntity);
         DeKeResponse r = service.create(createReq, "testuser");
         assertThat(r).isNotNull();
-        assertThat(r.getLoaiDe()).isEqualTo(LoaiDe.DE_DAT);
+        assertThat(r.getLoaiDe()).isEqualTo(LoaiDe.DE_CHAN_SONG);
         assertThat(r.getTrangThaiPheDuyet()).isEqualTo(DeKeApprovalStatus.PROPOSED);
         verify(repo, times(1)).save(any());
     }
@@ -91,7 +91,7 @@ class DeKeServiceTest {
 
     @Test void getById_shouldReturnResponse() {
         when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
-        assertThat(service.getById(1L).getLoaiDe()).isEqualTo(LoaiDe.DE_DAT);
+        assertThat(service.getById(1L).getLoaiDe()).isEqualTo(LoaiDe.DE_CHAN_SONG);
     }
 
     @Test void getById_shouldThrowWhenNotFound() {
@@ -118,13 +118,13 @@ class DeKeServiceTest {
 
     @Test void update_shouldUpdateFields() {
         DeKeUpdateRequest ur = DeKeUpdateRequest.builder()
-                .loaiDe(LoaiDe.KE_DA)
+                .loaiDe(LoaiDe.KE_HUONG_DONG)
                 .viTri("Da Nang")
                 .build();
         when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
         when(repo.save(any())).thenReturn(testEntity);
         DeKeResponse r = service.update(1L, ur, "testuser");
-        assertThat(r.getLoaiDe()).isEqualTo(LoaiDe.KE_DA);
+        assertThat(r.getLoaiDe()).isEqualTo(LoaiDe.KE_HUONG_DONG);
         verify(repo, times(1)).save(any());
     }
 
@@ -307,9 +307,9 @@ class DeKeServiceTest {
     // ── searchByLoaiDeContaining ────────────────────────────────────────
 
     @Test void searchByLoaiDe_shouldReturnResults() {
-        when(repo.findByLoaiDeAndIsDeletedFalse(LoaiDe.DE_DAT))
+        when(repo.findByLoaiDeAndIsDeletedFalse(LoaiDe.DE_CHAN_SONG))
                 .thenReturn(List.of(testEntity));
-        assertThat(service.searchByLoaiDe(LoaiDe.DE_DAT)).hasSize(1);
+        assertThat(service.searchByLoaiDe(LoaiDe.DE_CHAN_SONG)).hasSize(1);
     }
 
     // ── searchDocuments ─────────────────────────────────────────────────

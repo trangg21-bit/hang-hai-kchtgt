@@ -37,10 +37,10 @@ class DeKeControllerTest {
 
         testResp = DeKeResponse.builder()
                 .id(1L)
-                .loaiDe(LoaiDe.DE_DAT)
+                .loaiDe(LoaiDe.DE_CHAN_SONG)
                 .viTri("Bac Giang")
                 .chieuDai(150.5)
-                .chieuRong(10.0)
+                .caoTrinhDinh(10.0)
                 .chieuCao(5.0)
                 .matVatLieu("Betong")
                 .tinhTrang("Tot")
@@ -51,10 +51,10 @@ class DeKeControllerTest {
                 .build();
 
         createReq = DeKeCreateRequest.builder()
-                .loaiDe(LoaiDe.DE_BETONG)
+                .loaiDe(LoaiDe.DE_CHAN_CAT)
                 .viTri("Ha Noi")
                 .chieuDai(200.0)
-                .chieuRong(20.0)
+                .caoTrinhDinh(20.0)
                 .chieuCao(8.0)
                 .matVatLieu("Thep")
                 .tinhTrang("Tot")
@@ -71,7 +71,7 @@ class DeKeControllerTest {
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody().isSuccess()).isTrue();
         assertThat(resp.getBody().getMessage()).isEqualTo("Tạo đê kè thành công");
-        assertThat(resp.getBody().getData().getLoaiDe()).isEqualTo(LoaiDe.DE_DAT);
+        assertThat(resp.getBody().getData().getLoaiDe()).isEqualTo(LoaiDe.DE_CHAN_SONG);
         verify(service, times(1)).create(any(), anyString());
     }
 
@@ -83,7 +83,7 @@ class DeKeControllerTest {
         var resp = controller.getById(1L);
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
-        assertThat(resp.getBody().getData().getLoaiDe()).isEqualTo(LoaiDe.DE_DAT);
+        assertThat(resp.getBody().getData().getLoaiDe()).isEqualTo(LoaiDe.DE_CHAN_SONG);
         verify(service, times(1)).getById(1L);
     }
 
@@ -96,22 +96,22 @@ class DeKeControllerTest {
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody().getData()).hasSize(1);
-        assertThat(resp.getBody().getData().get(0).getLoaiDe()).isEqualTo(LoaiDe.DE_DAT);
+        assertThat(resp.getBody().getData().get(0).getLoaiDe()).isEqualTo(LoaiDe.DE_CHAN_SONG);
         verify(service, times(1)).findAll(0, 20);
     }
 
     // ── update ──────────────────────────────────────────────────────────
 
     @Test void update_shouldReturnUpdated() {
-        DeKeResponse up = DeKeResponse.builder().id(1L).loaiDe(LoaiDe.KE_DA).build();
+        DeKeResponse up = DeKeResponse.builder().id(1L).loaiDe(LoaiDe.KE_HUONG_DONG).build();
         when(service.update(eq(1L), any(), anyString())).thenReturn(up);
 
         DeKeUpdateRequest updateReq = DeKeUpdateRequest.builder()
-                .loaiDe(LoaiDe.KE_DA).viTri("Da Nang").build();
+                .loaiDe(LoaiDe.KE_HUONG_DONG).viTri("Da Nang").build();
         var resp = controller.update(1L, updateReq, authentication);
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
-        assertThat(resp.getBody().getData().getLoaiDe()).isEqualTo(LoaiDe.KE_DA);
+        assertThat(resp.getBody().getData().getLoaiDe()).isEqualTo(LoaiDe.KE_HUONG_DONG);
         verify(service, times(1)).update(eq(1L), any(), anyString());
     }
 
@@ -200,7 +200,7 @@ class DeKeControllerTest {
     @Test void filterByApprovalStatus_shouldReturnResults() {
         DeKeResponse approvedResp = DeKeResponse.builder()
                 .id(1L)
-                .loaiDe(LoaiDe.DE_BETONG)
+                .loaiDe(LoaiDe.DE_CHAN_CAT)
                 .trangThaiPheDuyet(DeKeApprovalStatus.APPROVED)
                 .build();
         when(service.findByTrangThaiPheDuyet(DeKeApprovalStatus.APPROVED)).thenReturn(List.of(approvedResp));

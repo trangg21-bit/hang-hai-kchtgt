@@ -37,17 +37,19 @@ const APPROVAL_STATUS_OPTIONS = [
 ];
 
 const LOAI_DE_OPTIONS = [
-  { label: 'Đê đất', value: 'DE_DAT' },
-  { label: 'Đê bê tông', value: 'DE_BETONG' },
-  { label: 'Kè đá', value: 'KE_DA' },
-  { label: 'Kè bê tông', value: 'KE_BETONG' },
-  { label: 'Khác', value: 'KHAC' },
+  { label: 'Đê chắn sóng', value: 'DE_CHAN_SONG' },
+  { label: 'Đê chắn cát', value: 'DE_CHAN_CAT' },
+  { label: 'Kè hướng dòng', value: 'KE_HUONG_DONG' },
+  { label: 'Kè bảo vệ bờ', value: 'KE_BAO_VE_BO' },
+  { label: 'Giao thông', value: 'GIAO_THONG' },
+  { label: 'Kè chắn sóng', value: 'KE_CHAN_SONG' },
+  { label: 'Kè chắn cát', value: 'KE_CHAN_CAT' },
 ];
 
 const TINH_TRANG_OPTIONS = [
-  { label: 'Tốt', value: 'TOT' },
-  { label: 'Xuống cấp', value: 'XUONG_CAP' },
-  { label: 'Hư hỏng', value: 'HU_HOng' },
+  { label: 'Chưa khai thác/vận hành', value: '1' },
+  { label: 'Đang khai thác/vận hành', value: '2' },
+  { label: 'Dừng khai thác/vận hành', value: '3' },
 ];
 
 export default function DeKeList() {
@@ -135,17 +137,26 @@ export default function DeKeList() {
       render: (_: unknown, __: unknown, index: number) => index + 1,
     } as any,
     {
+      title: 'Tên đê kè',
+      dataIndex: 'tenDeKe',
+      key: 'tenDeKe',
+      ellipsis: true,
+      render: (val: string) => val || '—',
+    },
+    {
       title: 'Loại đê',
       dataIndex: 'loaiDe',
       key: 'loaiDe',
       width: 120,
       render: (val: string) => {
         const textMap: Record<string, string> = {
-          'DE_DAT': 'Đê đất',
-          'DE_BETONG': 'Đê bê tông',
-          'KE_DA': 'Kè đá',
-          'KE_BETONG': 'Kè bê tông',
-          'KHAC': 'Khác',
+          'DE_CHAN_SONG': 'Đê chắn sóng',
+          'DE_CHAN_CAT': 'Đê chắn cát',
+          'KE_HUONG_DONG': 'Kè hướng dòng',
+          'KE_BAO_VE_BO': 'Kè bảo vệ bờ',
+          'GIAO_THONG': 'Giao thông',
+          'KE_CHAN_SONG': 'Kè chắn sóng',
+          'KE_CHAN_CAT': 'Kè chắn cát',
         };
         return <span style={{ fontWeight: 500 }}>{textMap[val] || val}</span>;
       },
@@ -164,11 +175,18 @@ export default function DeKeList() {
       render: (val: number) => (val !== undefined ? val.toFixed(2) : '—'),
     },
     {
-      title: 'Chiều rộng (m)',
-      dataIndex: 'chieuRong',
-      key: 'chieuRong',
+      title: 'Cao trình đỉnh (m)',
+      dataIndex: 'caoTrinhDinh',
+      key: 'caoTrinhDinh',
       width: 100,
       render: (val: number) => (val !== undefined ? val.toFixed(2) : '—'),
+    },
+    {
+      title: 'Thời điểm đưa vào khai thác',
+      dataIndex: 'thoiDiemDuaVaoKhaiThac',
+      key: 'thoiDiemDuaVaoKhaiThac',
+      width: 130,
+      render: (val: string) => val || '—',
     },
     {
       title: 'Chiều cao (m)',
@@ -192,18 +210,14 @@ export default function DeKeList() {
       render: (val: string) => {
         if (!val) return '—';
         const colorMap: Record<string, string> = {
-          TOT: 'green',
-          XUONG_CAP: 'orange',
-          HU_HOng: 'red',
-          HU_HOING: 'red',
-          HU_HONG: 'red',
+          '1': 'green',
+          '2': 'orange',
+          '3': 'red',
         };
         const textMap: Record<string, string> = {
-          TOT: 'Tốt',
-          XUONG_CAP: 'Xuống cấp',
-          HU_HOng: 'Hư hỏng',
-          HU_HOING: 'Hư hỏng',
-          HU_HONG: 'Hư hỏng',
+          '1': 'Chưa khai thác/vận hành',
+          '2': 'Đang khai thác/vận hành',
+          '3': 'Dừng khai thác/vận hành',
         };
         return <span style={{ color: colorMap[val] || 'inherit', fontWeight: 500 }}>{textMap[val] || val}</span>;
       },
@@ -246,7 +260,7 @@ export default function DeKeList() {
                 aria-label="Xem chi tiết"
               />
             )}
-            {canUpdate && isProposed && (
+            {canUpdate && (
               <Button
                 type="link"
                 size="small"

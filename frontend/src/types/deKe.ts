@@ -8,14 +8,16 @@ export interface DeKeAttachment {
   fileUrl: string;
 }
 
-export type LoaiDe = 'DE_DAT' | 'DE_BETONG' | 'KE_DA' | 'KE_BETONG' | 'KHAC';
+export type LoaiDe = 'DE_CHAN_SONG' | 'DE_CHAN_CAT' | 'KE_HUONG_DONG' | 'KE_BAO_VE_BO' | 'GIAO_THONG' | 'KE_CHAN_SONG' | 'KE_CHAN_CAT';
 
 export interface DeKeResponse {
   id: number;
   loaiDe: LoaiDe;
   viTri: string;
+  tenDeKe?: string;
   chieuDai?: number;
-  chieuRong?: number;
+  caoTrinhDinh?: number;
+  thoiDiemDuaVaoKhaiThac?: string;
   chieuCao?: number;
   matVatLieu?: string;
   tinhTrang?: string;
@@ -46,8 +48,10 @@ export interface DeKeResponse {
 export interface CreateDeKeRequest {
   loaiDe: LoaiDe;
   viTri: string;
+  tenDeKe: string;
   chieuDai?: number;
-  chieuRong?: number;
+  caoTrinhDinh?: number;
+  thoiDiemDuaVaoKhaiThac?: string;
   chieuCao?: number;
   matVatLieu?: string;
   tinhTrang?: string;

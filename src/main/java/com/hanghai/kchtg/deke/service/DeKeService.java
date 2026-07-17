@@ -37,8 +37,10 @@ public class DeKeService {
         DeKe d = DeKe.builder()
                 .loaiDe(req.getLoaiDe())
                 .viTri(req.getViTri())
+                .tenDeKe(req.getTenDeKe())
                 .chieuDai(req.getChieuDai())
-                .chieuRong(req.getChieuRong())
+                .caoTrinhDinh(req.getCaoTrinhDinh())
+                .thoiDiemDuaVaoKhaiThac(req.getThoiDiemDuaVaoKhaiThac())
                 .chieuCao(req.getChieuCao())
                 .matVatLieu(req.getMatVatLieu())
                 .tinhTrang(req.getTinhTrang())
@@ -133,8 +135,10 @@ public class DeKeService {
 
         if (req.getLoaiDe() != null) d.setLoaiDe(req.getLoaiDe());
         if (req.getViTri() != null) d.setViTri(req.getViTri());
+        if (req.getTenDeKe() != null) d.setTenDeKe(req.getTenDeKe());
         if (req.getChieuDai() != null) d.setChieuDai(req.getChieuDai());
-        if (req.getChieuRong() != null) d.setChieuRong(req.getChieuRong());
+        if (req.getCaoTrinhDinh() != null) d.setCaoTrinhDinh(req.getCaoTrinhDinh());
+        if (req.getThoiDiemDuaVaoKhaiThac() != null) d.setThoiDiemDuaVaoKhaiThac(req.getThoiDiemDuaVaoKhaiThac());
         if (req.getChieuCao() != null) d.setChieuCao(req.getChieuCao());
         if (req.getMatVatLieu() != null) d.setMatVatLieu(req.getMatVatLieu());
         if (req.getTinhTrang() != null) d.setTinhTrang(req.getTinhTrang());
@@ -389,8 +393,10 @@ public class DeKeService {
                 .id(d.getId())
                 .loaiDe(d.getLoaiDe())
                 .viTri(d.getViTri())
+                .tenDeKe(d.getTenDeKe())
                 .chieuDai(d.getChieuDai())
-                .chieuRong(d.getChieuRong())
+                .caoTrinhDinh(d.getCaoTrinhDinh())
+                .thoiDiemDuaVaoKhaiThac(d.getThoiDiemDuaVaoKhaiThac())
                 .chieuCao(d.getChieuCao())
                 .matVatLieu(d.getMatVatLieu())
                 .tinhTrang(d.getTinhTrang())

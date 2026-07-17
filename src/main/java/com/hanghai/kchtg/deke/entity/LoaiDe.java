@@ -7,11 +7,13 @@ import lombok.Getter;
  */
 @Getter
 public enum LoaiDe {
-    DE_DAT(1),
-    DE_BETONG(2),
-    KE_DA(3),
-    KE_BETONG(4),
-    KHAC(5);
+    DE_CHAN_SONG(1),
+    DE_CHAN_CAT(2),
+    KE_HUONG_DONG(3),
+    KE_BAO_VE_BO(4),
+    GIAO_THONG(5),
+    KE_CHAN_SONG(6),
+    KE_CHAN_CAT(7);
 
     private final int value;
 

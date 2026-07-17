@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import dayjs from 'dayjs';
 import {
   Form,
   Button,
@@ -14,6 +15,7 @@ import {
   message,
   Breadcrumb,
   Modal,
+  DatePicker,
 } from 'antd';
 import { dekeCRUD, deKeApproval } from '../../services/deKeService';
 import { organizationService } from '../../services/organizationService';
@@ -33,19 +35,19 @@ import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 
 const LOAI_DE_MAP: Record<string, string> = {
-  'DE_DAT': 'Đê đất',
-  'DE_BETONG': 'Đê bê tông',
-  'KE_DA': 'Kè đá',
-  'KE_BETONG': 'Kè bê tông',
-  'KHAC': 'Khác',
+  'DE_CHAN_SONG': 'Đê chắn sóng',
+  'DE_CHAN_CAT': 'Đê chắn cát',
+  'KE_HUONG_DONG': 'Kè hướng dòng',
+  'KE_BAO_VE_BO': 'Kè bảo vệ bờ',
+  'GIAO_THONG': 'Giao thông',
+  'KE_CHAN_SONG': 'Kè chắn sóng',
+  'KE_CHAN_CAT': 'Kè chắn cát',
 };
 
 const TINH_TRANG_MAP: Record<string, string> = {
-  'TOT': 'Tốt',
-  'XUONG_CAP': 'Xuống cấp',
-  'HU_HOng': 'Hư hỏng',
-  'HU_HOING': 'Hư hỏng',
-  'HU_HONG': 'Hư hỏng',
+  '1': 'Chưa khai thác/vận hành',
+  '2': 'Đang khai thác/vận hành',
+  '3': 'Dừng khai thác/vận hành',
 };
 
 export interface DeKeFormProps {
@@ -109,8 +111,10 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
           form.setFieldsValue({
             loaiDe: data.loaiDe,
             viTri: data.viTri,
+            tenDeKe: data.tenDeKe,
             chieuDai: data.chieuDai,
-            chieuRong: data.chieuRong,
+            caoTrinhDinh: data.caoTrinhDinh,
+            thoiDiemDuaVaoKhaiThac: data.thoiDiemDuaVaoKhaiThac ? dayjs(data.thoiDiemDuaVaoKhaiThac) : null,
             chieuCao: data.chieuCao,
             matVatLieu: data.matVatLieu,
             tinhTrang: data.tinhTrang,
@@ -158,8 +162,10 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
       const payload: CreateDeKeRequest = {
         loaiDe: values.loaiDe,
         viTri: values.viTri,
+        tenDeKe: values.tenDeKe,
         chieuDai: values.chieuDai,
-        chieuRong: values.chieuRong,
+        caoTrinhDinh: values.caoTrinhDinh,
+        thoiDiemDuaVaoKhaiThac: values.thoiDiemDuaVaoKhaiThac || undefined,
         chieuCao: values.chieuCao,
         matVatLieu: values.matVatLieu,
         tinhTrang: values.tinhTrang,
@@ -303,11 +309,15 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
             <Descriptions column={2} bordered size="small">
               <Descriptions.Item label="Loại đê">{LOAI_DE_MAP[record.loaiDe] || record.loaiDe}</Descriptions.Item>
               <Descriptions.Item label="Vị trí">{record.viTri}</Descriptions.Item>
+              <Descriptions.Item label="Tên đê kè">{record.tenDeKe || '—'}</Descriptions.Item>
               <Descriptions.Item label="Chiều dài (m)">
                 {record.chieuDai !== undefined ? record.chieuDai.toFixed(2) : '—'}
               </Descriptions.Item>
-              <Descriptions.Item label="Chiều rộng (m)">
-                {record.chieuRong !== undefined ? record.chieuRong.toFixed(2) : '—'}
+              <Descriptions.Item label="Cao trình đỉnh (m)">
+                {record.caoTrinhDinh !== undefined ? record.caoTrinhDinh.toFixed(2) : '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Thời điểm đưa vào khai thác">
+                {record.thoiDiemDuaVaoKhaiThac ? dayjs(record.thoiDiemDuaVaoKhaiThac).format('DD/MM/YYYY') : '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Chiều cao (m)">
                 {record.chieuCao !== undefined ? record.chieuCao.toFixed(2) : '—'}
@@ -417,11 +427,13 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
         <Select
           placeholder="Chọn loại đê"
           options={[
-            { label: 'Đê đất', value: 'DE_DAT' },
-            { label: 'Đê bê tông', value: 'DE_BETONG' },
-            { label: 'Kè đá', value: 'KE_DA' },
-            { label: 'Kè bê tông', value: 'KE_BETONG' },
-            { label: 'Khác', value: 'KHAC' },
+            { label: 'Đê chắn sóng', value: 'DE_CHAN_SONG' },
+            { label: 'Đê chắn cát', value: 'DE_CHAN_CAT' },
+            { label: 'Kè hướng dòng', value: 'KE_HUONG_DONG' },
+            { label: 'Kè bảo vệ bờ', value: 'KE_BAO_VE_BO' },
+            { label: 'Giao thông', value: 'GIAO_THONG' },
+            { label: 'Kè chắn sóng', value: 'KE_CHAN_SONG' },
+            { label: 'Kè chắn cát', value: 'KE_CHAN_CAT' },
           ]}
         />
       </Form.Item>
@@ -432,6 +444,14 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
         rules={[{ required: true, message: 'Vui lòng nhập vị trí' }]}
       >
         <Input placeholder="Nhập vị trí" />
+      </Form.Item>
+
+      <Form.Item
+        label="Tên đê kè"
+        name="tenDeKe"
+        rules={[{ required: true, message: 'Vui lòng nhập tên đê kè' }]}
+      >
+        <Input placeholder="Nhập tên đê kè" />
       </Form.Item>
 
       <Form.Item
@@ -456,23 +476,26 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
       </Form.Item>
 
       <Form.Item
-        label="Chiều rộng (m)"
-        name="chieuRong"
-        rules={[
-          {
-            validator: (_, value) => {
-              if (!value && value !== 0) return Promise.resolve();
-              if (value < 0) return Promise.reject(new Error('Phải >= 0'));
-              return Promise.resolve();
-            },
-          },
-        ]}
+        label="Cao trình đỉnh (m)"
+        name="caoTrinhDinh"
       >
         <InputNumber
-          min={0}
-          placeholder="Nhập chiều rộng"
+          placeholder="Nhập cao trình đỉnh"
           style={{ width: '100%' }}
           precision={2}
+        />
+      </Form.Item>
+
+      <Form.Item
+        label="Thời điểm đưa vào khai thác"
+        name="thoiDiemDuaVaoKhaiThac"
+        getValueProps={(value) => ({ value: value ? dayjs(value) : null })}
+        normalize={(value) => value ? value.format('YYYY-MM-DD') : null}
+      >
+        <DatePicker
+          placeholder="Chọn ngày"
+          style={{ width: '100%' }}
+          format="DD/MM/YYYY"
         />
       </Form.Item>
 
@@ -505,9 +528,9 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
         <Select
           placeholder="Chọn tình trạng"
           options={[
-            { label: 'Tốt', value: 'TOT' },
-            { label: 'Xuống cấp', value: 'XUONG_CAP' },
-            { label: 'Hư hỏng', value: 'HU_HOng' },
+            { label: 'Chưa khai thác/vận hành', value: '1' },
+            { label: 'Đang khai thác/vận hành', value: '2' },
+            { label: 'Dừng khai thác/vận hành', value: '3' },
           ]}
         />
       </Form.Item>

@@ -128,8 +128,8 @@ export default function ReportList() {
           children: list.map((item) => ({
             title: (
               <Space style={{ padding: '2px 0' }}>
-                <Typography.Text code style={{ color: ['F-151', 'F-152', 'F-153', 'F-154', 'F-155', 'F-156', 'F-157', 'F-158', 'F-159', 'F-160'].includes(item.code) ? 'red' : '#1677ff', fontWeight: 'bold' }}>{item.code}</Typography.Text>
-                <Typography.Text style={{ fontSize: 14, color: ['F-151', 'F-152', 'F-153', 'F-154', 'F-155', 'F-156', 'F-157', 'F-158', 'F-159', 'F-160'].includes(item.code) ? 'red' : undefined }}>{item.name}</Typography.Text>
+                <Typography.Text code style={{ color: ['F-151', 'F-152', 'F-153', 'F-154', 'F-155', 'F-156', 'F-157', 'F-159'].includes(item.code) ? 'red' : '#1677ff', fontWeight: 'bold' }}>{item.code}</Typography.Text>
+                <Typography.Text style={{ fontSize: 14, color: ['F-151', 'F-152', 'F-153', 'F-154', 'F-155', 'F-156', 'F-157', 'F-159'].includes(item.code) ? 'red' : undefined }}>{item.name}</Typography.Text>
               </Space>
             ),
             key: item.code,

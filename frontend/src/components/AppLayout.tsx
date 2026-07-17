@@ -306,9 +306,9 @@ export default function AppLayout() {
             { key: '/reports/F-155', label: <span style={{ color: 'red' }}>Biểu 08-N: Thống kê hệ thống đèn biển</span> },
             { key: '/reports/F-156', label: <span style={{ color: 'red' }}>Biểu 09-6T/N: Thống kê về hệ thống phao tiêu, báo hiệu trên luồng</span> },
             { key: '/reports/F-157', label: <span style={{ color: 'red' }}>Biểu 10-6T/N: Thống kê phao tiêu, báo hiệu trên luồng</span> },
-            { key: '/reports/F-158', label: <span style={{ color: 'red' }}>Biểu 11-N: Thống kê về hệ thống giám sát và điều phối giao thông hàng hải (VTS)</span> },
+            { key: '/reports/F-158', label: 'Biểu 11-N: Thống kê về hệ thống giám sát và điều phối giao thông hàng hải (VTS)' },
             { key: '/reports/F-159', label: <span style={{ color: 'red' }}>Biểu 12-N: Hệ thống các đài thông tin duyên hải</span> },
-            { key: '/reports/F-160', label: <span style={{ color: 'red' }}>Biểu 13-N: Thống kê về hệ thống đê, kè chắn sóng, chắn cát</span> }
+            { key: '/reports/F-160', label: 'Biểu 13-N: Thống kê về hệ thống đê, kè chắn sóng, chắn cát' }
           ]
         },
         {

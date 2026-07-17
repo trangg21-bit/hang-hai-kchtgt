@@ -201,7 +201,7 @@ export default function HeThongVTSList() {
                 onClick={() => { setEditingId(String(record.id)); setModalMode('detail'); setIsModalOpen(true); }}
               />
             )}
-            {canUpdate && isProposed && (
+            {canUpdate && (
               <Button
                 type="link"
                 size="small"
