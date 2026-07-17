@@ -24,6 +24,7 @@ public class PointObjectService {
 
     private final PointObjectRepository repository;
     private final PointHistoryRepository historyRepository;
+    private final com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository spatialRepository;
 
     public List<PointObjectResponse> findAll() {
         return repository.findAll().stream()
@@ -62,7 +63,7 @@ public class PointObjectService {
 
     @Transactional
     public PointObjectResponse create(CreatePointObjectRequest request) {
-        if (repository.existsByCode(request.getCode())) {
+        if (spatialRepository.existsByCode(request.getCode())) {
             throw new IllegalArgumentException("Mã đối tượng đã tồn tại: " + request.getCode());
         }
 
@@ -79,6 +80,10 @@ public class PointObjectService {
                 .description(request.getDescription())
                 .status(request.getStatus())
                 .unitId(request.getUnitId())
+                .refId(request.getRefId())
+                .refType(request.getRefType())
+                .purpose(request.getPurpose())
+                .restrictionLevel(request.getRestrictionLevel())
                 .build();
 
         entity = repository.save(entity);
@@ -103,6 +108,10 @@ public class PointObjectService {
         if (request.getDescription() != null) entity.setDescription(request.getDescription());
         if (request.getStatus() != null) entity.setStatus(request.getStatus());
         if (request.getUnitId() != null) entity.setUnitId(request.getUnitId());
+        if (request.getRefId() != null) entity.setRefId(request.getRefId());
+        if (request.getRefType() != null) entity.setRefType(request.getRefType());
+        if (request.getPurpose() != null) entity.setPurpose(request.getPurpose());
+        if (request.getRestrictionLevel() != null) entity.setRestrictionLevel(request.getRestrictionLevel());
 
         entity = repository.save(entity);
         return toResponse(entity);
@@ -194,6 +203,10 @@ public class PointObjectService {
                 .description(entity.getDescription())
                 .status(entity.getStatus())
                 .unitId(entity.getUnitId())
+                .refId(entity.getRefId())
+                .refType(entity.getRefType())
+                .purpose(entity.getPurpose())
+                .restrictionLevel(entity.getRestrictionLevel())
                 .approvalStatus(entity.getApprovalStatus())
                 .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())

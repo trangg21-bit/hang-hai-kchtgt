@@ -215,19 +215,6 @@ export default function CangBienForm() {
             <Col style={{ flex: 1 }}>
               <FormField
                 type="number"
-                name="kinhDo"
-                label="Kinh độ (Longitude)"
-                required
-                min={-180}
-                max={180}
-                step={0.0001}
-                placeholder="-106.7"
-                help="WGS84: -180 ~ 180"
-              />
-            </Col>
-            <Col style={{ flex: 1 }}>
-              <FormField
-                type="number"
                 name="viDo"
                 label="Vĩ độ (Latitude)"
                 required
@@ -236,6 +223,19 @@ export default function CangBienForm() {
                 step={0.0001}
                 placeholder="20.9"
                 help="WGS84: -90 ~ 90"
+              />
+            </Col>
+            <Col style={{ flex: 1 }}>
+              <FormField
+                type="number"
+                name="kinhDo"
+                label="Kinh độ (Longitude)"
+                required
+                min={-180}
+                max={180}
+                step={0.0001}
+                placeholder="-106.7"
+                help="WGS84: -180 ~ 180"
               />
             </Col>
           </Row>

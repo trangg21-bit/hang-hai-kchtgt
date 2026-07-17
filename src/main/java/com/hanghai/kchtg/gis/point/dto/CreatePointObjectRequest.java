@@ -45,4 +45,9 @@ public class CreatePointObjectRequest {
     private Status status = Status.DRAFT;
 
     private java.util.UUID unitId;
+
+    private java.util.UUID refId;
+    private Integer refType;
+    private String purpose;
+    private String restrictionLevel;
 }

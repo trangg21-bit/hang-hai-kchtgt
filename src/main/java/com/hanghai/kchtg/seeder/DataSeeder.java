@@ -85,8 +85,8 @@ public class DataSeeder implements CommandLineRunner {
         seedOrgUnits();
         seedUserGroups();
         seedUsers();
-        seedBeaconLights();
-        seedBuoys();
+        // seedBeaconLights();
+        // seedBuoys();
         seedDataConnections();
         seedMapSymbols();
 

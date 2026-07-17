@@ -61,6 +61,9 @@ class CangCanServiceTest {
         @Mock
         private UserResolverService userResolverService;
 
+        @Mock
+        private com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+
         private UUID testId;
         private CangCan testEntity;
 
@@ -70,6 +73,12 @@ class CangCanServiceTest {
                 String arg = inv.getArgument(0);
                 return arg != null ? arg : "SYSTEM";
             });
+            lenient().when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenAnswer(inv -> {
+                        com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatial = new com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject();
+                        spatial.setId(UUID.randomUUID());
+                        return spatial;
+                    });
 
             testId = UUID.randomUUID();
             testEntity = new CangCan();
