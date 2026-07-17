@@ -44,6 +44,7 @@ const TINH_TRANG_OPTIONS = [
 ];
 
 export default function TramRadarList() {
+  const isInIframe = window.self !== window.top;
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
@@ -64,6 +65,7 @@ export default function TramRadarList() {
   const [organizations, setOrganizations] = useState<any[]>([]);
 
   useEffect(() => {
+    if (isInIframe) return;
     (async () => {
       try {
         const resp = await organizationService.list({ pageSize: 1000 });
@@ -97,8 +99,10 @@ export default function TramRadarList() {
   }, [page, pageSize, filterKeyword, filterTinhTrang, filterTrangThai]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (!isInIframe) {
+      fetchData();
+    }
+  }, [fetchData, isInIframe]);
 
   const handleReset = useCallback(() => {
     setFilterKeyword('');
