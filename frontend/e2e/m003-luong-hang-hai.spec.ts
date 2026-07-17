@@ -35,7 +35,7 @@ test.describe('M-003 Luồng Hàng Hải', () => {
     await page.goto(CREATE_URL);
     await expect(page).not.toHaveURL(/login/);
     await expect(page.getByRole('heading', { name: 'Tạo mới Luồng Hàng Hải' })).toBeVisible({ timeout: 8000 });
-    await expect(page.getByText('Loại tàu', { exact: true })).toBeVisible();
+    await expect(page.getByText('Tên luồng hàng hải', { exact: true })).toBeVisible();
   });
 
   test('TC-M003-LHH-03: Trang chi tiết /luong-hang-hai/:id reachable', async ({ page }) => {

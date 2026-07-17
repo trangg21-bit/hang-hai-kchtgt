@@ -10,7 +10,7 @@ export interface LuongHangHaiAttachment {
 
 export interface LuongHangHaiResponse {
   id: number;
-  loaiTau: string;
+  ten: string;
   soLuong?: number;
   ngayGhiNhan?: string; // date
   gioDien?: string;
@@ -41,7 +41,7 @@ export interface LuongHangHaiResponse {
 }
 
 export interface CreateLuongHangHaiRequest {
-  loaiTau: string;
+  ten: string;
   soLuong?: number;
   ngayGhiNhan?: string;
   gioDien?: string;

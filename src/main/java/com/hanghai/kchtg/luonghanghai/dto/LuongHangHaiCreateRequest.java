@@ -12,7 +12,7 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class LuongHangHaiCreateRequest {
-    @NotBlank(message = "Loai tau khong duoc de trong") private String loaiTau;
+    @NotBlank(message = "Ten luong hang hai khong duoc de trong") private String ten;
     private Integer soLuong;
     private LocalDate ngayGhiNhan;
     private String gioDien;

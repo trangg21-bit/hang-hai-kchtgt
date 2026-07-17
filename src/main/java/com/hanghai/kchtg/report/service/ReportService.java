@@ -3117,6 +3117,7 @@ public class ReportService {
                         Row srcRow = srcSheet.getRow(r);
                         if (srcRow == null)
                             continue;
+
                         Row destRow = destSheet.createRow(r + offset);
                         destRow.setHeight(srcRow.getHeight());
                         for (int c = 0; c < srcRow.getLastCellNum(); c++) {
@@ -3396,7 +3397,7 @@ public class ReportService {
                 }
 
                 int N = arrResult.size();
-                int offset = N - 1;
+                int offset = Math.max(0, N - 1);
 
                 // Dynamically detect header template row and detail template row to merge them
 
@@ -3530,7 +3531,7 @@ public class ReportService {
                                     String expr = srcCell.getStringCellValue();
 
                                     if (expr != null && (expr.contains("table.value")
-                                            || expr.contains("thiz.getCateOtherText") || expr.contains("item."))) {
+                                            || expr.contains("this.getCateOtherText") || expr.contains("item."))) {
                                         Map<String, Object> item = arrResult.isEmpty() ? new HashMap<>()
                                                 : arrResult.get(0);
 
@@ -3583,7 +3584,7 @@ public class ReportService {
                                             }
 
                                             if (expr.contains("item.") || expr.contains("table.value")
-                                                    || expr.contains("thiz.getCateOtherText")) {
+                                                    || expr.contains("this.getCateOtherText")) {
                                                 Object val = resolveExpression(expr, item);
 
                                                 if (val != null) {
@@ -3945,7 +3946,7 @@ public class ReportService {
             bcNoiDungLabel = "Kê khai thay đổi thông tin";
         }
 
-        replacements.put("${thiz.getCateOtherText('DM_APP_PARAM',objInput.getBcNoiDung(), 'NOI_DUNG_BAO_CAO_158')}",
+        replacements.put("${this.getCateOtherText('DM_APP_PARAM',objInput.getBcNoiDung(), 'NOI_DUNG_BAO_CAO_158')}",
                 bcNoiDungLabel);
         replacements.put("${idx+1}", "1");
         replacements.put("${idx + 1}", "1");

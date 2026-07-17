@@ -33,7 +33,7 @@ public class LuongHangHaiService {
     @Transactional
     public LuongHangHaiResponse create(LuongHangHaiCreateRequest req, String username) {
         LuongHangHai l = LuongHangHai.builder()
-                .loaiTau(req.getLoaiTau())
+                .ten(req.getTen())
                 .soLuong(req.getSoLuong())
                 .ngayGhiNhan(req.getNgayGhiNhan())
                 .gioDien(req.getGioDien())
@@ -56,7 +56,7 @@ public class LuongHangHaiService {
             UUID refId = UUID.nameUUIDFromBytes(("LUONGHANGHAI_" + l.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
-                    "Luồng hàng hải loại tàu " + req.getLoaiTau(),
+                    req.getTen(),
                     "LUONG_" + l.getId(),
                     geomType,
                     objType,
@@ -112,7 +112,7 @@ public class LuongHangHaiService {
         LuongHangHai l = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
-        if (req.getLoaiTau() != null) l.setLoaiTau(req.getLoaiTau());
+        if (req.getTen() != null) l.setTen(req.getTen());
         if (req.getSoLuong() != null) l.setSoLuong(req.getSoLuong());
         if (req.getNgayGhiNhan() != null) l.setNgayGhiNhan(req.getNgayGhiNhan());
         if (req.getGioDien() != null) l.setGioDien(req.getGioDien());
@@ -134,7 +134,7 @@ public class LuongHangHaiService {
                 UUID refId = UUID.nameUUIDFromBytes(("LUONGHANGHAI_" + l.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
                 GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                         l.getKhongGianId(),
-                        "Luồng hàng hải loại tàu " + l.getLoaiTau(),
+                        l.getTen(),
                         "LUONG_" + l.getId(),
                         geomType,
                         objType,
@@ -145,12 +145,12 @@ public class LuongHangHaiService {
                 );
                 l.setKhongGianId(spatialObj.getId());
             }
-        } else if (l.getKhongGianId() != null && req.getLoaiTau() != null) {
+        } else if (l.getKhongGianId() != null && req.getTen() != null) {
             gisSpatialObjectService.findById(l.getKhongGianId()).ifPresent(spatialObj -> {
                 UUID refId = UUID.nameUUIDFromBytes(("LUONGHANGHAI_" + l.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
                 gisSpatialObjectService.createOrUpdate(
                         spatialObj.getId(),
-                        "Luồng hàng hải loại tàu " + req.getLoaiTau(),
+                        req.getTen(),
                         spatialObj.getCode(),
                         spatialObj.getGeometryType(),
                         spatialObj.getObjectType(),
@@ -300,8 +300,8 @@ public class LuongHangHaiService {
     }
 
     @Transactional(readOnly = true)
-    public List<LuongHangHaiResponse> searchByLoaiTauContaining(String kw) {
-        return repo.findByLoaiTauContainingAndIsDeletedFalse(kw)
+    public List<LuongHangHaiResponse> searchByTenContaining(String kw) {
+        return repo.findByTenContainingAndIsDeletedFalse(kw)
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
@@ -364,7 +364,7 @@ public class LuongHangHaiService {
 
         return LuongHangHaiResponse.builder()
                 .id(l.getId())
-                .loaiTau(l.getLoaiTau())
+                .ten(l.getTen())
                 .soLuong(l.getSoLuong())
                 .ngayGhiNhan(l.getNgayGhiNhan())
                 .gioDien(l.getGioDien())
