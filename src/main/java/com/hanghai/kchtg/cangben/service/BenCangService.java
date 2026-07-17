@@ -140,14 +140,14 @@ public class BenCangService {
 
     @Transactional(readOnly = true)
     public Page<BenCangResponse> findAll(int page, int size, UUID orgUnitId) {
-        return findAll(page, size, orgUnitId, null, null, null, null, null, null, null);
+        return findAll(page, size, orgUnitId, null, null, null, null, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
     public Page<BenCangResponse> findAll(int page, int size, UUID orgUnitId,
             String maBen, String tenBen, UUID cangBienId,
             String tuyenDuongThuy, String loaiBen,
-            String trangThaiHoatDong, String trangThaiPheDuyet) {
+            String trangThaiHoatDong, String trangThaiPheDuyet, String search) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
         TrangThaiHoatDong statusEnum = trangThaiHoatDong != null ? TrangThaiHoatDong.fromString(trangThaiHoatDong)
@@ -162,7 +162,7 @@ public class BenCangService {
                 // ignore or leave as null if invalid enum string
             }
         }
-        Page<BenCang> pageResult = benCangRepository.searchBenCang(orgUnitId, maBen, tenBen, cangBienId,
+        Page<BenCang> pageResult = benCangRepository.searchBenCang(orgUnitId, search, maBen, tenBen, cangBienId,
                 tuyenDuongThuy, loaiBenEnum, statusEnum, approvalEnum, pageable);
 
         java.util.List<UUID> parentIds = pageResult.getContent().stream()

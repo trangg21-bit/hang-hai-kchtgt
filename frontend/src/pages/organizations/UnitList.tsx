@@ -16,6 +16,7 @@ import {
   Form,
   Spin,
   Tree,
+  App,
 } from 'antd';
 import {
   PlusOutlined,
@@ -29,6 +30,8 @@ import {
   SendOutlined,
   CheckOutlined,
   CloseOutlined,
+  FolderOpenOutlined,
+  FolderOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { organizationService } from '../../services/organizationService';
@@ -47,9 +50,159 @@ const STATUS_MAP: Record<string, { color: string; label: string }> = {
   rejected: { color: 'red', label: 'Bị từ chối' },
 };
 
+const customStyles = `
+  .custom-tree {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .custom-tree ul {
+    list-style: none;
+    padding-left: 28px;
+    position: relative;
+    margin: 0;
+  }
+  .custom-tree ul::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e2e8f0;
+    border-radius: 1px;
+  }
+  .custom-tree .node {
+    position: relative;
+    margin: 8px 0;
+  }
+  .custom-tree .node-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+    border: 1px solid #e2e8f0;
+    transition: all 0.15s ease-in-out;
+    position: relative;
+  }
+  .custom-tree .node-row:hover {
+    border-color: #94a3b8;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .custom-tree .node-row.level-1 {
+    border-left: 4px solid #1E40AF;
+  }
+  .custom-tree .node-row.level-2 {
+    border-left: 4px solid #0D9488;
+  }
+  .custom-tree .node-row.level-3 {
+    border-left: 4px solid #D97706;
+  }
+  .custom-tree .toggle {
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 5px;
+    flex-shrink: 0;
+    transition: transform 0.2s ease, background 0.2s ease;
+    color: #64748b;
+    font-size: 10px;
+    user-select: none;
+  }
+  .custom-tree .toggle:hover {
+    background: #f1f5f9;
+  }
+  .custom-tree .toggle.open {
+    transform: rotate(90deg);
+  }
+  .custom-tree .toggle.leaf {
+    visibility: hidden;
+  }
+  .custom-tree .badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 12px;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+    display: inline-block;
+    line-height: 1.2;
+  }
+  .custom-tree .badge.l1 {
+    background: #DBEAFE;
+    color: #1E40AF;
+  }
+  .custom-tree .badge.l2 {
+    background: #CCFBF1;
+    color: #0D9488;
+  }
+  .custom-tree .badge.l3 {
+    background: #FEF3C7;
+    color: #D97706;
+  }
+  .custom-tree .name {
+    font-size: 14px;
+    font-weight: 600;
+    flex: 1;
+    color: #1e293b;
+  }
+  .custom-tree .code {
+    font-size: 11px;
+    color: #64748b;
+    margin-left: 8px;
+    font-weight: 400;
+  }
+  .custom-tree .actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .custom-tree .actions button {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+    background: transparent;
+    color: #64748b;
+    font-size: 14px;
+    padding: 0;
+  }
+  .custom-tree .actions .btn-view:hover {
+    background: #DBEAFE;
+    color: #2563EB;
+  }
+  .custom-tree .actions .btn-edit:hover {
+    background: #FEF3C7;
+    color: #D97706;
+  }
+  .custom-tree .actions .btn-delete:hover {
+    background: #FEE2E2;
+    color: #EF4444;
+  }
+  .custom-tree .actions .btn-add:hover {
+    background: #D1FAE5;
+    color: #059669;
+  }
+  .custom-tree .hidden {
+    display: none !important;
+  }
+`;
+
 export default function UnitList() {
   const navigate = useNavigate();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const { modal } = App.useApp();
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
@@ -57,6 +210,11 @@ export default function UnitList() {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+
+  // Expanded keys & Detail modal state
+  const [expandedKeys, setExpandedKeys] = useState<Record<string, boolean>>({});
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [viewingOrg, setViewingOrg] = useState<Organization | null>(null);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -124,6 +282,11 @@ export default function UnitList() {
     [form],
   );
 
+  const openViewModal = useCallback((org: Organization) => {
+    setViewingOrg(org);
+    setDetailModalOpen(true);
+  }, []);
+
   const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields();
@@ -169,7 +332,7 @@ export default function UnitList() {
 
   const handleDelete = useCallback(
     async (org: Organization) => {
-      Modal.confirm({
+      modal.confirm({
         title: 'Xác nhận xóa đơn vị',
         icon: <ExclamationCircleOutlined />,
         content: `Bạn có chắc chắn muốn xóa đơn vị "${org.name}"?`,
@@ -192,7 +355,7 @@ export default function UnitList() {
 
   const handleSubmitApproval = useCallback(
     async (org: Organization) => {
-      Modal.confirm({
+      modal.confirm({
         title: 'Xác nhận trình duyệt đơn vị',
         icon: <ExclamationCircleOutlined />,
         content: `Bạn có muốn gửi yêu cầu phê duyệt cho đơn vị "${org.name}"?`,
@@ -214,7 +377,7 @@ export default function UnitList() {
 
   const handleApprove = useCallback(
     async (org: Organization) => {
-      Modal.confirm({
+      modal.confirm({
         title: 'Xác nhận phê duyệt đơn vị',
         icon: <ExclamationCircleOutlined />,
         content: `Bạn có chắc chắn muốn phê duyệt đơn vị "${org.name}"?`,
@@ -237,7 +400,7 @@ export default function UnitList() {
   const handleReject = useCallback(
     async (org: Organization) => {
       let comments = '';
-      Modal.confirm({
+      modal.confirm({
         title: 'Xác nhận từ chối đơn vị',
         icon: <ExclamationCircleOutlined />,
         content: (
@@ -266,102 +429,6 @@ export default function UnitList() {
     },
     [fetchOrgs],
   );
-
-  const buildTreeData = useCallback((orgs: Organization[], parentId?: string): any[] => {
-    return orgs
-      .filter((o) => parentId ? o.parentId === parentId : !o.parentId)
-      .sort((a, b) => {
-        const levelDiff = (a.level || 1) - (b.level || 1);
-        if (levelDiff !== 0) return levelDiff;
-        return a.name.localeCompare(b.name, 'vi');
-      })
-      .map((org) => {
-        return {
-          key: org.id,
-          title: (
-            <Space size={8}>
-              <Typography.Text strong>{org.name}</Typography.Text>
-              {org.code && <Typography.Text type="secondary" style={{ fontSize: 12 }}>({org.code})</Typography.Text>}
-              <Tag color="blue">C{org.level}</Tag>
-              <Tag color={STATUS_MAP[org.status]?.color || 'default'}>
-                {STATUS_MAP[org.status]?.label || org.status}
-              </Tag>
-              
-              <Space size={4} style={{ marginLeft: 16 }}>
-                {hasPerm('org.edit') && (
-                  <Tooltip title="Sửa">
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<EditOutlined />}
-                      onClick={(e) => { e.stopPropagation(); openEditModal(org); }}
-                      style={{ color: '#1890ff', padding: '0 4px', height: 'auto' }}
-                    />
-                  </Tooltip>
-                )}
-                {hasPerm('org.create') && (
-                  <Tooltip title="Thêm đơn vị con">
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<PlusOutlined />}
-                      onClick={(e) => { e.stopPropagation(); openCreateChildModal(org); }}
-                      style={{ color: '#52c41a', padding: '0 4px', height: 'auto' }}
-                    />
-                  </Tooltip>
-                )}
-                {hasPerm('org.edit') && (org.status === 'draft' || org.status === 'rejected') && (
-                  <Tooltip title="Trình duyệt">
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<SendOutlined />}
-                      onClick={(e) => { e.stopPropagation(); handleSubmitApproval(org); }}
-                      style={{ color: '#1890ff', padding: '0 4px', height: 'auto' }}
-                    />
-                  </Tooltip>
-                )}
-                {hasPerm('org.approve') && org.status === 'pending' && (
-                  <>
-                    <Tooltip title="Phê duyệt">
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<CheckOutlined />}
-                        onClick={(e) => { e.stopPropagation(); handleApprove(org); }}
-                        style={{ color: '#52c41a', padding: '0 4px', height: 'auto' }}
-                      />
-                    </Tooltip>
-                    <Tooltip title="Từ chối">
-                      <Button
-                        type="text"
-                        size="small"
-                        icon={<CloseOutlined />}
-                        onClick={(e) => { e.stopPropagation(); handleReject(org); }}
-                        style={{ color: '#ff4d4f', padding: '0 4px', height: 'auto' }}
-                      />
-                    </Tooltip>
-                  </>
-                )}
-                {hasPerm('org.delete') && (
-                  <Tooltip title="Xóa">
-                    <Button
-                      type="text"
-                      size="small"
-                      danger
-                      icon={<DeleteOutlined />}
-                      onClick={(e) => { e.stopPropagation(); handleDelete(org); }}
-                      style={{ padding: '0 4px', height: 'auto' }}
-                    />
-                  </Tooltip>
-                )}
-              </Space>
-            </Space>
-          ),
-          children: buildTreeData(orgs, org.id)
-        };
-      });
-  }, [hasPerm, openEditModal, openCreateChildModal, handleSubmitApproval, handleApprove, handleReject, handleDelete]);
 
   const getFilteredOrgs = useCallback(() => {
     if (!search && !filterStatus) return allOrgs;
@@ -398,8 +465,140 @@ export default function UnitList() {
 
   const filteredOrgs = getFilteredOrgs();
 
+  // Tải lại, mở hết, thu gọn
+  const toggleNode = useCallback((id: string) => {
+    setExpandedKeys(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  }, []);
+
+  const handleExpandAll = useCallback(() => {
+    const keys: Record<string, boolean> = {};
+    const walk = (orgs: Organization[]) => {
+      orgs.forEach(o => {
+        const hasChildren = allOrgs.some(child => child.parentId === o.id);
+        if (hasChildren) {
+          keys[o.id] = true;
+        }
+      });
+    };
+    walk(allOrgs);
+    setExpandedKeys(keys);
+  }, [allOrgs]);
+
+  const handleCollapseAll = useCallback(() => {
+    setExpandedKeys({});
+  }, []);
+
+  // Tự động bung rộng cây khi danh sách lọc thay đổi (ví dụ khi tìm kiếm)
+  useEffect(() => {
+    if (filteredOrgs.length > 0) {
+      setExpandedKeys(prev => {
+        const next = { ...prev };
+        filteredOrgs.forEach(o => {
+          next[o.id] = true;
+        });
+        return next;
+      });
+    }
+  }, [filteredOrgs]);
+
+  // Khởi tạo bung rộng cây lúc bắt đầu
+  useEffect(() => {
+    if (allOrgs.length > 0 && Object.keys(expandedKeys).length === 0) {
+      const initialKeys: Record<string, boolean> = {};
+      allOrgs.forEach(o => {
+        initialKeys[o.id] = true;
+      });
+      setExpandedKeys(initialKeys);
+    }
+  }, [allOrgs, expandedKeys]);
+
+  // Hàm render đệ quy cây đơn vị theo giao diện HTML
+  const renderTreeNodes = (orgs: Organization[], parentId?: string): React.ReactNode => {
+    const levelOrgs = orgs
+      .filter((o) => parentId ? o.parentId === parentId : !o.parentId)
+      .sort((a, b) => {
+        const levelDiff = (a.level || 1) - (b.level || 1);
+        if (levelDiff !== 0) return levelDiff;
+        return a.name.localeCompare(b.name, 'vi');
+      });
+
+    if (levelOrgs.length === 0) return null;
+
+    return (
+      <ul className={parentId ? 'custom-tree-sub' : 'custom-tree-root'}>
+        {levelOrgs.map((org) => {
+          const hasChildren = orgs.some(child => child.parentId === org.id);
+          const isExpanded = !!expandedKeys[org.id];
+          const level = org.level || 1;
+          const badgeLabel = `Cấp ${level}`;
+          const badgeClass = level === 1 ? 'l1' : level === 2 ? 'l2' : 'l3';
+
+          return (
+            <li className="node" key={org.id}>
+              <div className={`node-row level-${level}`}>
+                <span 
+                  className={`toggle ${hasChildren ? (isExpanded ? 'open' : '') : 'leaf'}`}
+                  onClick={() => toggleNode(org.id)}
+                >
+                  ▶
+                </span>
+                <span className={`badge ${badgeClass}`}>{badgeLabel}</span>
+                <span className="name">
+                  {org.name}
+                  {org.code && <span className="code">{org.code}</span>}
+                </span>
+                
+                <span className="actions">
+                  <button 
+                    className="btn-view" 
+                    title="Xem chi tiết" 
+                    onClick={() => openViewModal(org)}
+                  >
+                    👁
+                  </button>
+                  {hasPerm('org.edit') && (
+                    <button 
+                      className="btn-edit" 
+                      title="Sửa" 
+                      onClick={() => openEditModal(org)}
+                    >
+                      ✏
+                    </button>
+                  )}
+                  {hasPerm('org.create') && level < 3 && (
+                    <button 
+                      className="btn-add" 
+                      title="Thêm đơn vị con" 
+                      onClick={() => openCreateChildModal(org)}
+                    >
+                      ➕
+                    </button>
+                  )}
+                  {hasPerm('org.delete') && (
+                    <button 
+                      className="btn-delete" 
+                      title="Xóa" 
+                      onClick={() => handleDelete(org)}
+                    >
+                      🗑
+                    </button>
+                  )}
+                </span>
+              </div>
+              {hasChildren && isExpanded && renderTreeNodes(orgs, org.id)}
+            </li>
+          );
+        })}
+      </ul>
+    );
+  };
+
   return (
     <>
+      <style dangerouslySetInnerHTML={{ __html: customStyles }} />
       <Card style={{ marginBottom: 16 }}>
         <Row gutter={[12, 12]} align="middle" justify="space-between">
           <Col xs={24} md={16}>
@@ -457,14 +656,99 @@ export default function UnitList() {
           />
         )}
         {!isLoading && !isError && filteredOrgs.length > 0 && (
-          <Tree
-            treeData={buildTreeData(filteredOrgs)}
-            defaultExpandedAll
-            showLine
-            showIcon={false}
-          />
+          <div className="custom-tree">
+            {renderTreeNodes(filteredOrgs)}
+          </div>
         )}
       </Card>
+
+      {/* Detail Modal */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>👁 Chi tiết đơn vị</span>
+            {viewingOrg && (
+              <span 
+                className={`custom-tree badge ${viewingOrg.level === 1 ? 'l1' : viewingOrg.level === 2 ? 'l2' : 'l3'}`}
+                style={{ fontSize: 11, padding: '2px 8px' }}
+              >
+                Cấp {viewingOrg.level}
+              </span>
+            )}
+          </div>
+        }
+        open={detailModalOpen}
+        onCancel={() => setDetailModalOpen(false)}
+        footer={[
+          <Button key="close" onClick={() => setDetailModalOpen(false)}>
+            Đóng
+          </Button>,
+          hasPerm('org.edit') && viewingOrg && (
+            <Button 
+              key="edit" 
+              type="primary" 
+              onClick={() => {
+                setDetailModalOpen(false);
+                openEditModal(viewingOrg);
+              }}
+            >
+              Chỉnh sửa
+            </Button>
+          )
+        ].filter(Boolean)}
+        width={600}
+      >
+        {viewingOrg && (
+          <div style={{ marginTop: 16 }}>
+            <h2 style={{ fontSize: 20, marginBottom: 16, fontWeight: 700 }}>{viewingOrg.name}</h2>
+            <div className="detail-grid" style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '12px'
+            }}>
+              <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>Mã đơn vị</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{viewingOrg.code}</div>
+              </div>
+              <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>Loại đơn vị</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{
+                  viewingOrg.type === 'TCT' ? 'Tổng cục' :
+                  viewingOrg.type === 'CUC' ? 'Cục' :
+                  viewingOrg.type === 'CHI_CUC' ? 'Chi cục' :
+                  viewingOrg.type === 'CANG_VU' ? 'Cảng vụ' : viewingOrg.type
+                }</div>
+              </div>
+              <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>Trưởng đơn vị</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{viewingOrg.contactPerson || '—'}</div>
+              </div>
+              <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>Số điện thoại</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{viewingOrg.contactPhone || '—'}</div>
+              </div>
+              <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, gridColumn: '1 / -1' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>Trụ sở / Địa chỉ</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>{viewingOrg.address || '—'}</div>
+              </div>
+              <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>Đơn vị cấp trên</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>
+                  {allOrgs.find(o => o.id === viewingOrg.parentId)?.name || '— (Đơn vị gốc)'}
+                </div>
+              </div>
+              <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>Trạng thái</div>
+                <div style={{ fontSize: 14, fontWeight: 600 }}>
+                  <Tag color={STATUS_MAP[viewingOrg.status]?.color || 'default'}>
+                    {STATUS_MAP[viewingOrg.status]?.label || viewingOrg.status}
+                  </Tag>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Create / Edit Modal */}
       <Modal

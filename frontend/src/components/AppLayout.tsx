@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import {
   Layout,
   Menu,
@@ -117,6 +117,7 @@ const pageTitles: Record<string, string> = {
 };
 
 export default function AppLayout() {
+  const isInIframe = window.self !== window.top;
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState(false);
@@ -478,6 +479,84 @@ export default function AppLayout() {
       </div>
     </div>
   );
+
+  const [searchParams] = useSearchParams();
+  const hasAction = searchParams.has('action');
+  const isListPage = [
+    '/cangbien',
+    '/bencang',
+    '/caucang',
+    '/cangcan',
+    '/vungnuoc'
+  ].includes(location.pathname);
+
+  if (isInIframe) {
+    const isModalIframe = isListPage && hasAction;
+    return (
+      <Layout style={{ minHeight: '100vh', background: isModalIframe ? 'transparent' : '#fff' }}>
+        <style>{`
+          .ant-breadcrumb,
+          .ant-card-head,
+          .ant-divider,
+          h2,
+          h3 {
+            display: none !important;
+          }
+          .ant-card {
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            margin-bottom: 0 !important;
+          }
+          .ant-card-body {
+            padding: 0 !important;
+          }
+          body {
+            background: ${isModalIframe ? 'transparent' : '#fff'} !important;
+          }
+          .ant-layout-content {
+            padding: 8px 16px !important;
+          }
+          ${isModalIframe ? `
+            #root {
+              display: none !important;
+            }
+            .ant-modal-root .ant-modal-mask {
+              display: none !important;
+            }
+            .ant-modal-root .ant-modal-wrap {
+              position: absolute !important;
+              top: 0 !important;
+              left: 0 !important;
+              right: 0 !important;
+              bottom: 0 !important;
+              overflow: auto !important;
+            }
+            .ant-modal-root .ant-modal {
+              position: relative !important;
+              top: 0 !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            .ant-modal-root .ant-modal-content {
+              border-radius: 0 !important;
+              box-shadow: none !important;
+              border: none !important;
+              padding: 16px !important;
+            }
+            .ant-modal-root .ant-modal-close {
+              display: none !important;
+            }
+          ` : ''}
+        `}</style>
+        <Content style={{ padding: 16, minHeight: '100vh', background: isModalIframe ? 'transparent' : '#fff' }}>
+          <Outlet />
+        </Content>
+      </Layout>
+    );
+  }
 
   return (
     <>

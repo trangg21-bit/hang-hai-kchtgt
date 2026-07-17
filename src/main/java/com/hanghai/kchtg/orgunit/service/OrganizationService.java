@@ -185,18 +185,6 @@ public class OrganizationService {
             parent = orgUnitRepo.findById(request.getParentId())
                     .orElseThrow(() -> new EntityNotFoundException(
                             "Đơn vị cha không tồn tại: " + request.getParentId()));
-
-            // BR-016: circular reference detection
-            if (materializedPathService.isSelfParent(request.getParentId(), request.getParentId())) {
-                throw new IllegalArgumentException(
-                        "Đơn vị không thể là cha của chính nó");
-            }
-
-            // Check if parent is actually an ancestor of itself (shouldn't happen, but defensive)
-            if (materializedPathService.isAncestor(request.getParentId(), request.getParentId())) {
-                throw new IllegalArgumentException(
-                        "Đơn vị không thể là cha của chính nó");
-            }
         }
 
         OrgUnit unit = OrgUnit.builder()

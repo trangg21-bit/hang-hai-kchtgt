@@ -126,6 +126,7 @@ export const benCangCRUD = {
   },
 
   async search(params?: {
+    search?: string;
     maBen?: string;
     tenBen?: string;
     cangBienId?: string;
@@ -137,6 +138,7 @@ export const benCangCRUD = {
     pageSize?: number;
   }): Promise<PaginatedResponse<BenCang>> {
     const sp = buildSearchParams({
+      search: params?.search,
       maBen: params?.maBen,
       tenBen: params?.tenBen,
       cangBienId: params?.cangBienId,

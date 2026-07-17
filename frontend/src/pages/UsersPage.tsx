@@ -14,6 +14,7 @@ import type { User, CreateUserPayload, UpdateUserPayload } from '../types/user';
 import { organizationService } from '../services/organizationService';
 import { statusOperational, statusCritical, statusDraft, actionPrimary, textSecondary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, dataSea1, radiusPill, borderDefault, spaceFormField } from '../tokens';
 import { colors } from '../theme';
+import toast from '../components/ToastNotification';
 const { confirm } = Modal;
 
 const STATUS_MAP: Record<string, { color: string; label: string }> = {
@@ -99,7 +100,13 @@ export default function UsersPage() {
         await createUser.mutateAsync(payload);
       }
       setModalOpen(false);
-    } catch {} finally { setSubmitting(false); }
+    } catch (err: any) {
+      if (err.errorFields) return;
+      const msg = err.response?.data?.message || err.message || 'Lỗi hệ thống';
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
   }, [editingUser, form, createUser, updateUser]);
 
   const handleDelete = useCallback((user: User) => {

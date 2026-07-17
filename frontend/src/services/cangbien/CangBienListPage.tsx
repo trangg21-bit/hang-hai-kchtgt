@@ -32,7 +32,7 @@ import {
   UploadOutlined,
   DownloadOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   fetchCangBienList,
   deleteCangBien,
@@ -151,12 +151,92 @@ export default function CangBienListPage() {
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Forms definition
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
+
+  const closeUpdateModal = useCallback(() => {
+    setUpdateModalVisible(false);
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
+  }, []);
+
+  const closeDetailModal = useCallback(() => {
+    setDetailModalVisible(false);
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
+  }, []);
+
+  const [searchParams] = useSearchParams();
+  const isIframeModal = (window.self !== window.top) && searchParams.has('action');
+
+  const action = searchParams.get('action');
+  const id = searchParams.get('id');
+
+  useEffect(() => {
+    if (id && (action === 'detail' || action === 'edit')) {
+      (async () => {
+        try {
+          setIsLoading(true);
+          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          const data = cached || await fetchCangBienById(id);
+          setSelectedRecord(data);
+          if (action === 'detail') {
+            const fileRes = await giayToApi.listByEntity('cang-bien', id, { page: 1, size: 20 });
+            setDetailFiles(fileRes.data || []);
+            setDetailModalVisible(true);
+          } else if (action === 'edit') {
+            updateForm.setFieldsValue({
+              id: data.id,
+              maCang: data.maCang,
+              tenCang: data.tenCang,
+              tinhThanhPho: data.tinhThanhPho || undefined,
+              dienTich: data.dienTich != null ? data.dienTich : undefined,
+              khaNangTiepNhan: data.khaNangTiepNhan != null ? data.khaNangTiepNhan : undefined,
+              trangThaiHoatDong: data.trangThaiHoatDong || undefined,
+              orgUnitId: data.orgUnitId || undefined,
+              nhomCangBien: data.nhomCangBien != null ? data.nhomCangBien : undefined,
+              bieuTuongId: data.bieuTuongId || undefined,
+              diaDiemChiTiet: data.diaDiemChiTiet || undefined,
+              phanCap: data.phanCap != null ? data.phanCap : undefined,
+              heQuyChieu: data.heQuyChieu != null ? data.heQuyChieu : undefined,
+              quyTacHienThi: data.quyTacHienThi != null ? data.quyTacHienThi : undefined,
+              phamViVungNuoc: data.phamViVungNuoc || undefined,
+              tongSoBenCang: data.tongSoBenCang != null ? data.tongSoBenCang : undefined,
+              tongSoKhuNeoDauChuyenTai: data.tongSoKhuNeoDauChuyenTai != null ? data.tongSoKhuNeoDauChuyenTai : undefined,
+              tongSoTuyenLuongCongCong: data.tongSoTuyenLuongCongCong != null ? data.tongSoTuyenLuongCongCong : undefined,
+              tongSoTuyenLuongChuyenDung: data.tongSoTuyenLuongChuyenDung != null ? data.tongSoTuyenLuongChuyenDung : undefined,
+              tongChieuDaiLuongCongCong: data.tongChieuDaiLuongCongCong != null ? data.tongChieuDaiLuongCongCong : undefined,
+              tongChieuDaiLuongChuyenDung: data.tongChieuDaiLuongChuyenDung != null ? data.tongChieuDaiLuongChuyenDung : undefined,
+              tongSoPhaoTieuBaoHieu: data.tongSoPhaoTieuBaoHieu != null ? data.tongSoPhaoTieuBaoHieu : undefined,
+              tongSoDeKe: data.tongSoDeKe != null ? data.tongSoDeKe : undefined,
+              tongChieuDaiDeKe: data.tongChieuDaiDeKe != null ? data.tongChieuDaiDeKe : undefined,
+              tongSoDenBienDangTieu: data.tongSoDenBienDangTieu != null ? data.tongSoDenBienDangTieu : undefined,
+              soLuongBenPhao: data.soLuongBenPhao != null ? data.soLuongBenPhao : undefined,
+              soLuongKhuNeoDau: data.soLuongKhuNeoDau != null ? data.soLuongKhuNeoDau : undefined,
+              soLuongKhuChuyenTai: data.soLuongKhuChuyenTai != null ? data.soLuongKhuChuyenTai : undefined,
+              cacKhuNuocKhac: data.cacKhuNuocKhac || undefined,
+              ghiChu: data.ghiChu || undefined,
+              gisLocation: {
+                loaiHinhHoc: data.loaiHinhHoc || 'POINT',
+                toaDo: data.toaDo || '',
+                bieuTuongId: data.bieuTuongId
+              }
+            });
+            setUpdateModalVisible(true);
+          }
+        } catch (err) {
+          console.error('Failed to auto-load details in iframe:', err);
+        } finally {
+          setIsLoading(false);
+        }
+      })();
+    }
+  }, [action, id, updateForm]);
 
   const fetchSymbols = useCallback(async () => {
     try {
@@ -168,16 +248,35 @@ export default function CangBienListPage() {
   }, []);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const resp = await organizationService.list();
-        setOrgUnits(resp.data || []);
-      } catch (err) {
-        console.error('Failed to load org units', err);
-      }
-    })();
-    void fetchSymbols();
-  }, [fetchSymbols]);
+    // 1. Try to use caches from parent window to avoid duplicate API calls
+    const parentOrgUnits = (window.parent as any)?.kchtOrgUnits;
+    const parentSymbols = (window.parent as any)?.kchtSymbols;
+
+    if (parentOrgUnits && parentOrgUnits.length > 0) {
+      setOrgUnits(parentOrgUnits);
+    }
+    if (parentSymbols && parentSymbols.length > 0) {
+      setSymbols(parentSymbols);
+    }
+
+    // 2. Only fetch what is actually required:
+    const needOrgUnits = (!parentOrgUnits || parentOrgUnits.length === 0);
+    const needSymbols = (!parentSymbols || parentSymbols.length === 0);
+
+    if (needSymbols) {
+      void fetchSymbols();
+    }
+    if (needOrgUnits) {
+      (async () => {
+        try {
+          const resp = await organizationService.list();
+          setOrgUnits(resp.data || []);
+        } catch (err) {
+          console.error('Failed to load org units', err);
+        }
+      })();
+    }
+  }, [fetchSymbols, isIframeModal, action]);
 
   const translateValue = useCallback((fieldName: string, val: string | null): string => {
     if (!val || val === '(null)' || val === 'null') {
@@ -299,6 +398,12 @@ export default function CangBienListPage() {
     }
   };
 
+  const handleFormFailed = (errorInfo: any) => {
+    errorInfo.errorFields.forEach((field: any) => {
+      toast.error(`${field.errors.join(', ')}`);
+    });
+  };
+
   const handleUpdateFinish = async (values: Record<string, unknown>) => {
     if (!selectedRecord) return;
     const dienTich = values.dienTich as number;
@@ -345,10 +450,15 @@ export default function CangBienListPage() {
         cacKhuNuocKhac: (values.cacKhuNuocKhac as string) || undefined,
         ghiChu: (values.ghiChu as string) || undefined,
       };
-      await import('./api').then(m => m.updateCangBien(payload));
+      const res = await import('./api').then(m => m.updateCangBien(payload));
       toast.success('Cập nhật thành công');
-      setUpdateModalVisible(false);
-      fetchData();
+      if (window.parent && (window.parent as any).kchtDetailCache) {
+        (window.parent as any).kchtDetailCache[selectedRecord.id] = res;
+      }
+      closeUpdateModal();
+      if (!isIframeModal) {
+        fetchData();
+      }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Cập nhật thất bại');
     } finally {
@@ -383,7 +493,7 @@ export default function CangBienListPage() {
     }
   }, [page, pageSize, search, filterMaCang, filterTenCang, filterTinhThanhPho, filterStatus, filterApprovalStatus]);
 
-  useEffect(() => { void fetchData(); }, [fetchData]);
+  useEffect(() => { if (!isIframeModal) void fetchData(); }, [fetchData, isIframeModal]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);
@@ -682,7 +792,9 @@ export default function CangBienListPage() {
 
   return (
     <>
-      <Card style={{ marginBottom: 16 }} ref={searchRef}>
+      {!isIframeModal && (
+        <>
+          <Card style={{ marginBottom: 16 }} ref={searchRef}>
         <Row gutter={[12, 12]} align="middle" justify="space-between">
           <Col xs={24} md={16}>
             <Space wrap>
@@ -820,9 +932,12 @@ export default function CangBienListPage() {
           )}
         </Spin>
       </Card>
+        </>
+      )}
 
       {/* Create Modal */}
-      <Modal
+      {!isIframeModal && (
+        <Modal
         title="Tạo mới Cảng biển"
         open={createModalVisible}
         onCancel={() => setCreateModalVisible(false)}
@@ -830,7 +945,7 @@ export default function CangBienListPage() {
         width={900}
         forceRender
       >
-        <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} initialValues={{ trangThaiPheDuyet: 'CHO_PHE_DUYET' }}>
+        <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} onFinishFailed={handleFormFailed} initialValues={{ trangThaiPheDuyet: 'CHO_PHE_DUYET' }}>
           {/* ── Section 1: Thông tin chung ── */}
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thông tin chung
@@ -1108,18 +1223,26 @@ export default function CangBienListPage() {
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+        </Modal>
+      )}
 
       {/* Edit Modal */}
-      <Modal
-        title={selectedRecord ? `Chỉnh sửa: ${selectedRecord.maCang} — ${selectedRecord.tenCang}` : 'Chỉnh sửa cảng biển'}
+      {(!isIframeModal || action === 'edit') && (
+        <Modal
+        title={isIframeModal ? null : (selectedRecord ? `Chỉnh sửa: ${selectedRecord.maCang} — ${selectedRecord.tenCang}` : 'Chỉnh sửa cảng biển')}
         open={updateModalVisible}
-        onCancel={() => setUpdateModalVisible(false)}
+        onCancel={closeUpdateModal}
         footer={null}
-        width={900}
+        width={isIframeModal ? '100%' : 900}
+        mask={!isIframeModal}
+        closable={!isIframeModal}
+        style={isIframeModal ? { top: 0, margin: 0, padding: 0, maxWidth: 'none', height: '100%' } : undefined}
+        styles={{
+          body: isIframeModal ? { padding: '16px 24px', height: '100%', overflowY: 'auto' } : undefined
+        }}
         forceRender
       >
-        <Form form={updateForm} layout="vertical" onFinish={handleUpdateFinish}>
+        <Form form={updateForm} layout="vertical" onFinish={handleUpdateFinish} onFinishFailed={handleFormFailed}>
           {/* ── Section 1: Thông tin chung ── */}
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thông tin chung
@@ -1395,20 +1518,28 @@ export default function CangBienListPage() {
 
           <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
             <Space>
-              <Button onClick={() => setUpdateModalVisible(false)}>Hủy</Button>
+              <Button onClick={closeUpdateModal}>Hủy</Button>
               <Button type="primary" htmlType="submit" loading={submitting}>Cập nhật</Button>
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+        </Modal>
+      )}
 
       {/* Detail Modal */}
-      <Modal
-        title={selectedRecord ? `Chi tiết cảng biển: ${selectedRecord.maCang} — ${selectedRecord.tenCang}` : 'Chi tiết cảng biển'}
+      {(!isIframeModal || action === 'detail') && (
+        <Modal
+        title={isIframeModal ? null : (selectedRecord ? `Chi tiết cảng biển: ${selectedRecord.maCang} — ${selectedRecord.tenCang}` : 'Chi tiết cảng biển')}
         open={detailModalVisible}
-        onCancel={() => setDetailModalVisible(false)}
+        onCancel={closeDetailModal}
         footer={null}
-        width={800}
+        width={isIframeModal ? '100%' : 800}
+        mask={!isIframeModal}
+        closable={!isIframeModal}
+        style={isIframeModal ? { top: 0, margin: 0, padding: 0, maxWidth: 'none', height: '100%' } : undefined}
+        styles={{
+          body: isIframeModal ? { padding: '16px 24px', height: '100%', overflowY: 'auto' } : undefined
+        }}
       >
         {selectedRecord && (
           <div>
@@ -1635,12 +1766,13 @@ export default function CangBienListPage() {
                 >
                   Chỉnh sửa
                 </Button>
-                <Button onClick={() => setDetailModalVisible(false)}>Đóng</Button>
+                <Button onClick={closeDetailModal}>Đóng</Button>
               </Space>
             </div>
           </div>
         )}
-      </Modal>
+        </Modal>
+      )}
 
       {/* History Modal */}
       <Modal

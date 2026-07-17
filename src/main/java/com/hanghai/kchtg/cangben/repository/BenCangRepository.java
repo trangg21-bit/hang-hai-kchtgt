@@ -42,6 +42,7 @@ public interface BenCangRepository extends JpaRepository<BenCang, UUID> {
 
     @Query("SELECT b FROM BenCang b WHERE b.deletedAt IS NULL " +
             "AND (:orgUnitId IS NULL OR b.orgUnitId = :orgUnitId) " +
+            "AND (CAST(:search AS string) IS NULL OR (LOWER(b.maBen) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(b.tenBen) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')))) " +
             "AND (CAST(:maBen AS string) IS NULL OR LOWER(b.maBen) LIKE LOWER(CONCAT('%', CAST(:maBen AS string), '%'))) " +
             "AND (CAST(:tenBen AS string) IS NULL OR LOWER(b.tenBen) LIKE LOWER(CONCAT('%', CAST(:tenBen AS string), '%'))) " +
             "AND (:cangBienId IS NULL OR b.cangBienId = :cangBienId) " +
@@ -51,6 +52,7 @@ public interface BenCangRepository extends JpaRepository<BenCang, UUID> {
             "AND (:trangThaiPheDuyet IS NULL OR b.trangThaiPheDuyet = :trangThaiPheDuyet)")
     Page<BenCang> searchBenCang(
             @Param("orgUnitId") UUID orgUnitId,
+            @Param("search") String search,
             @Param("maBen") String maBen,
             @Param("tenBen") String tenBen,
             @Param("cangBienId") UUID cangBienId,
