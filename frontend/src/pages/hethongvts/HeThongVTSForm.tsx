@@ -90,7 +90,8 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
         setIsLoading(true);
         setFormError(null);
         try {
-          const data = await heThongVTSCRUD.getById(id);
+          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          const data = cached || await heThongVTSCRUD.getById(id);
           setRecord(data);
           form.setFieldsValue({
             tenHeThong: data.tenHeThong,
