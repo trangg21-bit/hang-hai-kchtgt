@@ -48,7 +48,7 @@ public abstract class BaseReportHandler implements ReportHandler {
             return false;
         }
         return orgUnitRepository.findById(targetUnitId)
-                .map(u -> "ORG_TCDb".equals(u.getCode()))
+                .map(u -> "CUC_HHVT".equals(u.getCode()))
                 .orElse(false);
     }
 

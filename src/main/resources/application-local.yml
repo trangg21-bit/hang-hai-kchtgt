@@ -4,6 +4,9 @@ spring:
     driver-class-name: org.postgresql.Driver
     username: ${DB_USER:kchtg}
     password: ${DB_PASS:kchtg}
+    hikari:
+      maximum-pool-size: 2
+      minimum-idle: 1
   jpa:
     hibernate:
       ddl-auto: update

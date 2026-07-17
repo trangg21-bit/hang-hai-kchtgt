@@ -84,7 +84,7 @@ public class User extends BaseEntity implements java.security.Principal {
      * Vai trò của người dùng (M-to-N relationship via user_roles join table).
      * Mỗi user chỉ có 1 role chính theo business rule.
      */
-    @ManyToMany(fetch = FetchType.EAGER)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "user_roles",
         joinColumns = @JoinColumn(name = "user_id"),
         inverseJoinColumns = @JoinColumn(name = "role_id"))

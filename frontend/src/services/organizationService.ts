@@ -1,4 +1,4 @@
-import api from "./api";
+﻿import api from "./api";
 import type { PaginatedResponse } from "../types/common";
 import { MOCK_ORGANIZATIONS } from './mockData';
 
@@ -18,6 +18,7 @@ export interface Organization {
   type?: "CUC" | "TCT" | "CHI_CUC" | "CANG_VU";
   description?: string;
   address?: string;
+  detailAddress?: string;
   phone?: string;
   contactPerson?: string;
   contactPhone?: string;
@@ -25,6 +26,7 @@ export interface Organization {
   childCount: number;
   createdAt: string;
   updatedAt: string;
+  updatedBy?: string;
 }
 
 export interface CreateOrganizationPayload {
@@ -34,9 +36,11 @@ export interface CreateOrganizationPayload {
   type?: "CUC" | "TCT" | "CHI_CUC" | "CANG_VU";
   description?: string;
   address?: string;
+  detailAddress?: string;
   phone?: string;
   contactPerson?: string;
   contactPhone?: string;
+  status?: string;
 }
 
 export interface UpdateOrganizationPayload {
@@ -46,6 +50,7 @@ export interface UpdateOrganizationPayload {
   type?: "CUC" | "TCT" | "CHI_CUC" | "CANG_VU";
   description?: string;
   address?: string;
+  detailAddress?: string;
   phone?: string;
   contactPerson?: string;
   contactPhone?: string;
@@ -108,10 +113,9 @@ function mapOrgUnit(
     level,
     type: item.type as Organization["type"],
     description: item.description,
-    address: item.address,
-    phone: item.phone,
+    address: item.address, detailAddress: item.detailAddress, phone: item.phone,
     contactPerson: item.contactPerson,
-    contactPhone: item.phone,
+    contactPhone: item.contactPhone ?? item.phone,
     status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
     childCount,
     createdAt: item.createdAt
@@ -169,14 +173,13 @@ export const organizationService = {
           level: item.level,
           type: item.type as Organization["type"],
           description: item.description,
-          address: item.address,
-          phone: item.phone,
+          address: item.address, detailAddress: item.detailAddress, phone: item.phone,
           contactPerson: item.contactPerson,
-          contactPhone: item.phone,
+          contactPhone: item.contactPhone ?? item.phone,
           status: item.status as Organization["status"],
           childCount: 0, // placeholder
           createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
-          updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "",
+          updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined), 
         });
       });
 
@@ -205,14 +208,13 @@ export const organizationService = {
           level,
           type: item.type as Organization["type"],
           description: item.description,
-          address: item.address,
-          phone: item.phone,
+          address: item.address, detailAddress: item.detailAddress, phone: item.phone,
           contactPerson: item.contactPerson,
-          contactPhone: item.phone,
+          contactPhone: item.contactPhone ?? item.phone,
           status: item.status as Organization["status"],
           childCount,
           createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
-          updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "",
+          updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined), 
         };
       });
 
@@ -283,8 +285,7 @@ export const organizationService = {
         level: item.level,
         type: item.type as Organization["type"],
         description: item.description,
-        address: item.address,
-        phone: item.phone,
+        address: item.address, detailAddress: item.detailAddress, phone: item.phone,
         contactPerson: item.contactPerson,
         contactPhone: item.contactPhone ?? item.phone,
         status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
@@ -295,6 +296,7 @@ export const organizationService = {
         updatedAt: item.updatedAt
           ? new Date(item.updatedAt).toISOString()
           : "",
+        updatedBy: item.updatedBy ?? undefined,
       };
     } catch {
       await delay();
@@ -329,11 +331,12 @@ export const organizationService = {
           type: node.type as Organization["type"],
           description: node.description,
           address: node.address,
+          detailAddress: node.detailAddress,
           phone: node.phone,
           status: (node.status?.toLowerCase() as Organization["status"]) ?? "draft",
           childCount: Array.isArray(node.children) ? node.children.length : 0,
           createdAt: node.createdAt ? new Date(node.createdAt).toISOString() : "",
-          updatedAt: node.updatedAt ? new Date(node.updatedAt).toISOString() : "",
+          updatedAt: node.updatedAt ? new Date(node.updatedAt).toISOString() : "", updatedBy: (node.updatedBy ?? undefined), 
         };
         flatList.push(org);
 
@@ -396,10 +399,9 @@ export const organizationService = {
           parentOrgName: "",
           level: undefined,
           description: item.description,
-          address: item.address,
-          phone: item.phone,
+          address: item.address, detailAddress: item.detailAddress, phone: item.phone,
           contactPerson: item.contactPerson,
-          contactPhone: item.phone,
+          contactPhone: item.contactPhone ?? item.phone,
           status: (item.status?.toLowerCase() as Organization["status"]) ?? "active",
           childCount: 0,
           createdAt: item.createdAt
@@ -408,6 +410,7 @@ export const organizationService = {
           updatedAt: item.updatedAt
             ? new Date(item.updatedAt).toISOString()
             : "",
+          updatedBy: item.updatedBy ?? undefined,
         };
         orgMap.set(item.id ?? "", org);
         return org;
@@ -437,13 +440,12 @@ export const organizationService = {
     try {
       const resp = await api.post("/org-units", {
         name: payload.name,
-        code:
-          payload.code ??
-          payload.name.substring(0, 10).replace(/\\s+/g, "_").toLowerCase(),
+        ...(payload.code ? { code: payload.code } : {}),
         parentId: payload.parentId,
         type: payload.type,
         description: payload.description,
         address: payload.address,
+        detailAddress: payload.detailAddress,
         phone: payload.phone ?? payload.contactPhone,
         contactPerson: payload.contactPerson,
         status: "DRAFT",
@@ -466,7 +468,7 @@ export const organizationService = {
         status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
         childCount: 0,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(), updatedBy: undefined, 
       };
     } catch {
       await delay();
@@ -492,7 +494,7 @@ export const organizationService = {
         status: 'draft',
         childCount: 0,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(), updatedBy: undefined, 
       };
       organizations.push(newOrg);
       return { ...newOrg };
@@ -507,17 +509,21 @@ export const organizationService = {
     payload: UpdateOrganizationPayload
   ): Promise<Organization> {
     try {
-      const resp = await api.put(`/org-units/${id}`, {
+      const body: Record<string, any> = {
         name: payload.name,
         code: payload.code,
-        parentId: payload.parentId || "00000000-0000-0000-0000-000000000000",
         type: payload.type,
         description: payload.description,
         address: payload.address,
+        detailAddress: payload.detailAddress,
         phone: payload.phone ?? payload.contactPhone,
         contactPerson: payload.contactPerson,
         status: payload.status?.toUpperCase(),
-      });
+      };
+      if (payload.parentId !== undefined) {
+        body.parentId = payload.parentId;
+      }
+      const resp = await api.put(`/org-units/${id}`, body);
       const item: any = extractData(resp);
 
       return {
@@ -551,7 +557,7 @@ export const organizationService = {
       organizations[idx] = {
         ...organizations[idx],
         ...payload,
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(), updatedBy: undefined, 
       };
       return { ...organizations[idx] };
     }
@@ -586,14 +592,13 @@ export const organizationService = {
         parentOrgName: undefined,
         level: undefined,
         description: item.description,
-        address: item.address,
-        phone: item.phone,
+        address: item.address, detailAddress: item.detailAddress, phone: item.phone,
         contactPerson: item.contactPerson,
-        contactPhone: item.phone,
+        contactPhone: item.contactPhone ?? item.phone,
         status: (item.status?.toLowerCase() as Organization["status"]) ?? "active",
         childCount: 0,
         createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
-        updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "",
+        updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined), 
       };
     } catch {
       await delay();
@@ -621,14 +626,13 @@ export const organizationService = {
         parentOrgName: undefined,
         level: undefined,
         description: item.description,
-        address: item.address,
-        phone: item.phone,
+        address: item.address, detailAddress: item.detailAddress, phone: item.phone,
         contactPerson: item.contactPerson,
-        contactPhone: item.phone,
+        contactPhone: item.contactPhone ?? item.phone,
         status: (item.status?.toLowerCase() as Organization["status"]) ?? "active",
         childCount: 0,
         createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
-        updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "",
+        updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined), 
       };
     } catch {
       await delay();
@@ -656,14 +660,13 @@ export const organizationService = {
         parentOrgName: undefined,
         level: undefined,
         description: item.description,
-        address: item.address,
-        phone: item.phone,
+        address: item.address, detailAddress: item.detailAddress, phone: item.phone,
         contactPerson: item.contactPerson,
-        contactPhone: item.phone,
+        contactPhone: item.contactPhone ?? item.phone,
         status: (item.status?.toLowerCase() as Organization["status"]) ?? "active",
         childCount: 0,
         createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
-        updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "",
+        updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined), 
       };
     } catch {
       await delay();
@@ -689,14 +692,13 @@ export const organizationService = {
         level: item.level,
         type: item.type as Organization["type"],
         description: item.description,
-        address: item.address,
-        phone: item.phone,
+        address: item.address, detailAddress: item.detailAddress, phone: item.phone,
         contactPerson: item.contactPerson,
-        contactPhone: item.phone,
+        contactPhone: item.contactPhone ?? item.phone,
         status: (item.status?.toLowerCase() as Organization["status"]) ?? "draft",
         childCount: 0,
         createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : "",
-        updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "",
+        updatedAt: item.updatedAt ? new Date(item.updatedAt).toISOString() : "", updatedBy: (item.updatedBy ?? undefined), 
       }));
     } catch {
       await delay();

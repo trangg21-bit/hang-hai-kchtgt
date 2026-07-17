@@ -16,7 +16,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -51,6 +53,7 @@ public class OrganizationService {
     private final OrgUnitRepository orgUnitRepo;
     private final UnitHistoryRepository unitHistoryRepo;
     private final MaterializedPathService materializedPathService;
+    private final TransactionTemplate transactionTemplate;
 
     // ═══════════════════════════════════════════════════════════════════
     // ── Queries ──────────────────────────────────────────────────────
@@ -173,10 +176,17 @@ public class OrganizationService {
      * @throws IllegalArgumentException if code already exists or circular ref detected
      * @throws EntityNotFoundException  if parent does not exist
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public OrgUnitResponse create(CreateOrgUnitRequest request, UUID operatorId, String operatorName) {
+        // Auto-generate code if not provided
+        String code = request.getCode();
+        if (code == null || code.isBlank()) {
+            code = generateCode(request.getName());
+        }
+
         // BR-013: unique code check (active only)
-        if (orgUnitRepo.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Mã đơn vị đã tồn tại: " + request.getCode());
+        if (orgUnitRepo.existsByCode(code)) {
+            throw new IllegalArgumentException("Mã đơn vị đã tồn tại: " + code);
         }
 
         // Validate parent exists if specified
@@ -185,36 +195,24 @@ public class OrganizationService {
             parent = orgUnitRepo.findById(request.getParentId())
                     .orElseThrow(() -> new EntityNotFoundException(
                             "Đơn vị cha không tồn tại: " + request.getParentId()));
-
-            // BR-016: circular reference detection
-            if (materializedPathService.isSelfParent(request.getParentId(), request.getParentId())) {
-                throw new IllegalArgumentException(
-                        "Đơn vị không thể là cha của chính nó");
-            }
-
-            // Check if parent is actually an ancestor of itself (shouldn't happen, but defensive)
-            if (materializedPathService.isAncestor(request.getParentId(), request.getParentId())) {
-                throw new IllegalArgumentException(
-                        "Đơn vị không thể là cha của chính nó");
-            }
         }
 
         OrgUnit unit = OrgUnit.builder()
                 .name(request.getName())
-                .code(request.getCode())
+                .code(code)
                 .parentId(request.getParentId())
                 .type(request.getType())
                 .description(request.getDescription())
                 .address(request.getAddress())
+                .detailAddress(request.getDetailAddress())
                 .phone(request.getPhone())
                 .contactPerson(request.getContactPerson())
                 .status(request.getStatus() != null ? request.getStatus() : OrgUnitStatus.DRAFT)
                 .sortOrder(0)
-                .path("")   // placeholder — set below
-                .level(0)   // placeholder — set below
                 .build();
 
-        // Compute materialized path and level
+        // Pre-assign UUID so path can be computed before persist
+        unit.setId(UUID.randomUUID());
         String computedPath = materializedPathService.computePath(request.getParentId(), unit.getId());
         unit.setPath(computedPath);
         unit.setLevel(materializedPathService.calculateLevel(computedPath));
@@ -227,7 +225,6 @@ public class OrganizationService {
 
         OrgUnit saved = orgUnitRepo.save(unit);
 
-        // Audit trail
         saveHistory(saved, "CREATED", "Tạo mới đơn vị", operatorId, operatorName);
 
         log.info("Created org unit: {} ({}, path: {}, level: {})", saved.getCode(), saved.getId(),
@@ -239,6 +236,7 @@ public class OrganizationService {
      * Partial update of an existing unit. Only non-null fields are applied.
      * Includes code uniqueness, circular reference detection, and path rebuild.
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public OrgUnitResponse update(UUID id, UpdateOrgUnitRequest request, UUID operatorId, String operatorName) {
         OrgUnit unit = orgUnitRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
@@ -291,11 +289,11 @@ public class OrganizationService {
         if (request.getType() != null) unit.setType(request.getType());
         if (request.getDescription() != null) unit.setDescription(request.getDescription());
         if (request.getAddress() != null) unit.setAddress(request.getAddress());
+        if (request.getDetailAddress() != null) unit.setDetailAddress(request.getDetailAddress());
         if (request.getPhone() != null) unit.setPhone(request.getPhone());
         if (request.getContactPerson() != null) unit.setContactPerson(request.getContactPerson());
 
         OrgUnit saved = orgUnitRepo.save(unit);
-        saveHistory(saved, "UPDATED", "Cập nhật đơn vị", operatorId, operatorName);
 
         log.info("Updated org unit: {} ({})", saved.getCode(), saved.getId());
         return OrgUnitResponse.from(saved);
@@ -305,6 +303,7 @@ public class OrganizationService {
      * Soft-delete a unit. Fails if the unit has children or related personnel.
      * BR-014: delete guard.
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void delete(UUID id, UUID operatorId, String operatorName) {
         OrgUnit unit = orgUnitRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
@@ -318,7 +317,6 @@ public class OrganizationService {
         }
 
         String details = String.format("Xóa đơn vị '%s' (code: %s)", unit.getName(), unit.getCode());
-        saveHistory(unit, "DELETED", details, operatorId, operatorName);
         unit.softDelete();
         orgUnitRepo.save(unit);
 
@@ -333,6 +331,7 @@ public class OrganizationService {
      * Submit a unit for approval. Transitions DRAFT → PENDING.
      * Any role with create permissions can submit.
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public OrgUnitResponse submitForApproval(UUID id, UUID operatorId, String operatorName) {
         OrgUnit unit = orgUnitRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
@@ -355,6 +354,7 @@ public class OrganizationService {
      * Approve a pending unit. Transitions PENDING → APPROVED.
      * BR-015: Admin-only approval.
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public OrgUnitResponse approve(UUID id, UUID approverId, String approverName, String comments) {
         OrgUnit unit = orgUnitRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
@@ -380,6 +380,7 @@ public class OrganizationService {
      * Reject a pending unit. Transitions PENDING → REJECTED.
      * BR-015: Admin-only approval.
      */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public OrgUnitResponse reject(UUID id, UUID approverId, String approverName, String comments) {
         OrgUnit unit = orgUnitRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Đơn vị không tồn tại: " + id));
@@ -447,10 +448,31 @@ public class OrganizationService {
 
     private void saveHistory(OrgUnit unit, String action, String details,
                               UUID performedBy, String performedByName) {
-        UnitHistory history = UnitHistory.create(unit.getId(), action, details,
-                performedBy, performedByName);
-        history.setUnitName(unit.getName());
-        history.setUnitCode(unit.getCode());
-        unitHistoryRepo.save(history);
+        // REQUIRES_NEW via TransactionTemplate to isolate from
+        // auth-loaded User entity (avoids User.groups shared-reference JPA bug)
+        transactionTemplate.executeWithoutResult(status -> {
+            UnitHistory history = UnitHistory.create(unit.getId(), action, details,
+                    performedBy, performedByName);
+            history.setUnitName(unit.getName());
+            history.setUnitCode(unit.getCode());
+            unitHistoryRepo.save(history);
+        });
+    }
+
+    /**
+     * Auto-generate a unit code from the name.
+     * Strips diacritics, replaces spaces with underscores, uppercases, truncates, appends random suffix.
+     */
+    private String generateCode(String name) {
+        if (name == null || name.isBlank()) return "ORG_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        String normalized = java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
+                .replaceAll("[^a-zA-Z0-9\\s]", "")
+                .trim()
+                .replaceAll("\\s+", "_")
+                .toUpperCase();
+        if (normalized.length() > 30) normalized = normalized.substring(0, 30);
+        String suffix = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        return normalized + "_" + suffix;
     }
 }
