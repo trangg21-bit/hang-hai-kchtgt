@@ -683,7 +683,7 @@ public class ReportService {
 
         if (targetUnitId != null) {
             isRoot = orgUnitRepository.findById(targetUnitId)
-                    .map(u -> "ORG_TCDb".equals(u.getCode()))
+                    .map(u -> "CUC_HHVT".equals(u.getCode()))
                     .orElse(false);
         }
 
@@ -1000,7 +1000,7 @@ public class ReportService {
         boolean isRoot = false;
         if (targetUnitId != null) {
             isRoot = orgUnitRepository.findById(targetUnitId)
-                    .map(u -> "ORG_TCDb".equals(u.getCode()))
+                    .map(u -> "CUC_HHVT".equals(u.getCode()))
                     .orElse(false);
         }
         final boolean skipFilter = targetUnitId == null || isRoot;
@@ -2996,7 +2996,7 @@ public class ReportService {
                     boolean isRoot = false;
                     if (targetUnitId != null) {
                         isRoot = orgUnitRepository.findById(targetUnitId)
-                                .map(u -> "ORG_TCDb".equals(u.getCode()))
+                                .map(u -> "CUC_HHVT".equals(u.getCode()))
                                 .orElse(false);
                     }
 
@@ -3152,7 +3152,7 @@ public class ReportService {
 
                     if (targetUnitId != null) {
                         isRoot = orgUnitRepository.findById(targetUnitId)
-                                .map(u -> "ORG_TCDb".equals(u.getCode()))
+                                .map(u -> "CUC_HHVT".equals(u.getCode()))
                                 .orElse(false);
                     }
 
@@ -3869,7 +3869,7 @@ public class ReportService {
 
         if (targetUnitId != null) {
             isRoot = orgUnitRepository.findById(targetUnitId)
-                    .map(u -> "ORG_TCDb".equals(u.getCode()))
+                    .map(u -> "CUC_HHVT".equals(u.getCode()))
                     .orElse(false);
         }
 

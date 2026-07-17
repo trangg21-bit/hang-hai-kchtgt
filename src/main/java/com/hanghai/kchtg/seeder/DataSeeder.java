@@ -191,13 +191,13 @@ public class DataSeeder implements CommandLineRunner {
         log.info("📦 Seeding 15 OrgUnits...");
 
         String[] codes = {
-            "ORG_TCDb", "ORG_CVHP", "ORG_CVHCM", "ORG_CVQN", "ORG_CVDN",
-            "ORG_CVVT", "ORG_CVNT", "ORG_CVQN2", "ORG_CVCT", "ORG_CVQB",
-            "ORG_CVTH", "ORG_CVNA", "ORG_CVHT", "ORG_CVQT", "ORG_CVTTH"
+            "CUC_HHVT", "CV_HH_HP", "CV_HH_HCM", "CV_HH_QN", "CV_HH_DN",
+            "CV_HH_VT", "CV_HH_NT", "CV_HH_QNhon", "CV_HH_CT", "CV_HH_QB",
+            "CV_HH_TH", "CV_HH_NA", "CV_HH_HT", "CV_HH_QT", "CV_HH_TTH"
         };
 
         String[] names = {
-            "Tổng Cục Đường Bộ", "Cảng vụ Hàng hải Hải Phòng", "Cảng vụ Hàng hải TP. Hồ Chí Minh",
+            "Cục Hàng hải và Đường thủy Việt Nam", "Cảng vụ Hàng hải Hải Phòng", "Cảng vụ Hàng hải TP. Hồ Chí Minh",
             "Cảng vụ Hàng hải Quảng Ninh", "Cảng vụ Hàng hải Đà Nẵng", "Cảng vụ Hàng hải Vũng Tàu",
             "Cảng vụ Hàng hải Nha Trang", "Cảng vụ Hàng hải Quy Nhơn", "Cảng vụ Hàng hải Cần Thơ",
             "Cảng vụ Hàng hải Quảng Bình", "Cảng vụ Hàng hải Thanh Hóa", "Cảng vụ Hàng hải Nghệ An",
@@ -210,21 +210,73 @@ public class DataSeeder implements CommandLineRunner {
             "Thanh Hóa", "Nghệ An", "Hà Tĩnh", "Quảng Trị", "Thừa Thiên Huế"
         };
 
-        for (int i = 0; i < 15; i++) {
+        // Save root first to get its ID for parentId
+        OrgUnit root = OrgUnit.builder()
+                .name(names[0])
+                .code(codes[0])
+                .type(OrgUnitType.CUC)
+                .address(cities[0])
+                .phone("024" + 1234567)
+                .status(OrgUnitStatus.APPROVED)
+                .path("/" + codes[0] + "/")
+                .level(1)
+                .sortOrder(1)
+                .build();
+        root = orgUnitRepo.save(root);
+
+        // Save children with parentId pointing to root
+        for (int i = 1; i < 15; i++) {
             OrgUnit u = OrgUnit.builder()
                     .name(names[i])
                     .code(codes[i])
-                    .type(i == 0 ? OrgUnitType.CUC : OrgUnitType.CHI_CUC)
+                    .type(OrgUnitType.CANG_VU)
+                    .parentId(root.getId())
                     .address(cities[i])
                     .phone("024" + (1234567 + i))
                     .status(OrgUnitStatus.APPROVED)
-                    .path("/" + codes[i] + "/")
-                    .level(i == 0 ? 1 : 2)
+                    .path(root.getPath() + codes[i] + "/")
+                    .level(2)
                     .sortOrder(i + 1)
                     .build();
             orgUnitRepo.save(u);
         }
-        log.info("✅ Seeded 15 OrgUnits");
+
+        // --- Level 3: Đại diện under select Cảng vụ ---
+        OrgUnit cvHP = orgUnitRepo.findByCode("CV_HH_HP").orElse(null);
+        if (cvHP != null) {
+            addChild(cvHP, "Đại diện Cảng vụ Hải Phòng tại Đình Vũ", "DD_CVHP_DV", 15);
+            addChild(cvHP, "Đại diện Cảng vụ Hải Phòng tại Bạch Đằng", "DD_CVHP_BD", 16);
+        }
+        OrgUnit cvQN = orgUnitRepo.findByCode("CV_HH_QN").orElse(null);
+        if (cvQN != null) {
+            addChild(cvQN, "Đại diện Cảng vụ Quảng Ninh tại Móng Cái", "DD_CVQN_MC", 17);
+            addChild(cvQN, "Đại diện Cảng vụ Quảng Ninh tại Vân Đồn", "DD_CVQN_VD", 18);
+        }
+        OrgUnit cvHCM = orgUnitRepo.findByCode("CV_HH_HCM").orElse(null);
+        if (cvHCM != null) {
+            addChild(cvHCM, "Đại diện Cảng vụ TP.HCM tại Cát Lái", "DD_CVHCM_CL", 19);
+        }
+        OrgUnit cvDN = orgUnitRepo.findByCode("CV_HH_DN").orElse(null);
+        if (cvDN != null) {
+            addChild(cvDN, "Đại diện Cảng vụ Đà Nẵng tại Tiên Sa", "DD_CVDN_TS", 20);
+        }
+        log.info("✅ Seeded 21 OrgUnits (15 L1+L2 + 6 L3 Đại diện)");
+    }
+
+    private void addChild(OrgUnit parent, String name, String code, int sort) {
+        OrgUnit child = OrgUnit.builder()
+                .name(name)
+                .code(code)
+                .type(OrgUnitType.CANG_VU)
+                .parentId(parent.getId())
+                .address(parent.getAddress())
+                .phone(parent.getPhone())
+                .status(OrgUnitStatus.APPROVED)
+                .path(parent.getPath() + code + "/")
+                .level(parent.getLevel() + 1)
+                .sortOrder(sort)
+                .build();
+        orgUnitRepo.save(child);
     }
 
     private void seedUserGroups() {

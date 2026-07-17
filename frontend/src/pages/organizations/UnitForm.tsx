@@ -75,7 +75,7 @@ export default function UnitForm() {
       const values = await form.validateFields();
       setSubmitting(true);
 
-      const targetParentId = values.type === 'TCT' ? undefined : values.parentId;
+      const targetParentId = (values.type && values.type !== 'CUC') ? values.parentId : undefined;
 
       if (isEdit) {
         const payload: UpdateOrganizationPayload = {
@@ -84,6 +84,7 @@ export default function UnitForm() {
           type: values.type,
           description: values.description,
           address: values.address,
+          detailAddress: values.detailAddress,
           contactPerson: values.contactPerson,
           contactPhone: values.contactPhone,
           status: values.status,
@@ -97,6 +98,8 @@ export default function UnitForm() {
           type: values.type,
           description: values.description,
           address: values.address,
+          detailAddress: values.detailAddress,
+          phone: values.phone,
           contactPerson: values.contactPerson,
           contactPhone: values.contactPhone,
         };
@@ -105,8 +108,9 @@ export default function UnitForm() {
       }
 
       navigate('/organizations');
-    } catch (err) {
-      console.error("Submit error:", err);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Thao tác thất bại';
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }

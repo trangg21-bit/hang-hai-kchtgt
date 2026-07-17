@@ -37,7 +37,6 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Where(clause = "deleted_at IS NULL")
 public class OrgUnit extends BaseEntity {
 
     /** Display name of the organisational unit (max 200 chars). BR-003-08 */
@@ -69,6 +68,10 @@ public class OrgUnit extends BaseEntity {
     @Column(length = 500)
     private String address;
 
+    /** Detailed street address (optional). */
+    @Column(name = "detail_address", length = 500)
+    private String detailAddress;
+
     /** Contact phone number (max 20 chars, optional). */
     @Column(length = 20)
     private String phone;
@@ -89,7 +92,7 @@ public class OrgUnit extends BaseEntity {
      * Materialized path for subtree traversal. Format: /1/5/12/ (trailing slash).
      * Root has path like /{id}/. Computed by MaterializedPathService.
      */
-    @NotBlank(message = "Đường dẫn không được để trống")
+    /** Materialized path for subtree traversal. Auto-computed by service after persist. */
     @Size(max = 500, message = "Đường dẫn tối đa 500 ký tự")
     @Column(nullable = false, length = 500)
     private String path;
