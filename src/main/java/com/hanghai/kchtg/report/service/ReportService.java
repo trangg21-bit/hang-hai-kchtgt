@@ -3670,6 +3670,61 @@ public class ReportService {
 
                 finalizeWorkbookSheet(workbook);
 
+                // F-150: fix năng lực rows — unmerge + fill "-"
+                if ("F-150".equalsIgnoreCase(request.getReportCode())) {
+                    // First pass: find năng lực rows and remove any merged regions that overlap them
+                    java.util.Set<Integer> nangLucRows = new java.util.HashSet<>();
+                    for (int r = 0; r <= destSheet.getLastRowNum(); r++) {
+                        Row row = destSheet.getRow(r);
+                        if (row == null) continue;
+                        Cell cellB = row.getCell(1);
+                        if (cellB != null && cellB.getCellType() == CellType.STRING) {
+                            String val = cellB.getStringCellValue();
+                            if (val != null && val.contains("Năng lực")) {
+                                nangLucRows.add(r);
+                            }
+                        }
+                    }
+
+                    // Remove merged regions that overlap with năng lực rows (columns C-I)
+                    if (!nangLucRows.isEmpty()) {
+                        java.util.List<Integer> toRemove = new java.util.ArrayList<>();
+                        for (int i = 0; i < destSheet.getNumMergedRegions(); i++) {
+                            org.apache.poi.ss.util.CellRangeAddress region = destSheet.getMergedRegion(i);
+                            for (int r = region.getFirstRow(); r <= region.getLastRow(); r++) {
+                                if (nangLucRows.contains(r) && region.getFirstColumn() >= 2 && region.getFirstColumn() <= 8) {
+                                    toRemove.add(i);
+                                    break;
+                                }
+                            }
+                        }
+                        // Remove in reverse order
+                        for (int i = toRemove.size() - 1; i >= 0; i--) {
+                            destSheet.removeMergedRegion(toRemove.get(i));
+                        }
+                    }
+
+                    // Second pass: force-set all năng lực cells
+                    for (int r : nangLucRows) {
+                        Row row = destSheet.getRow(r);
+                        // Ensure "Nghìn tấn/năm" stays in column C only
+                        Cell cellC = row.getCell(2);
+                        if (cellC == null) cellC = row.createCell(2);
+                        cellC.setCellValue("Nghìn tấn/năm");
+
+                        // Fill "-" in columns D-I
+                        for (int c = 3; c <= 8; c++) {
+                            Cell cell = row.getCell(c);
+                            if (cell == null) cell = row.createCell(c);
+                            CellStyle style = cell.getCellStyle();
+                            if (style == null) style = destSheet.getWorkbook().createCellStyle();
+                            style.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.CENTER);
+                            cell.setCellStyle(style);
+                            cell.setCellValue("-");
+                        }
+                    }
+                }
+
                 return outputWorkbook(workbook, destSheet, isExcel);
             }
         }
