@@ -16,6 +16,10 @@ public interface TramRadarRepository extends JpaRepository<TramRadar, Long> {
 
     List<TramRadar> findByTrangThaiAndIsDeletedFalse(TramRadarApprovalStatus trangThai);
 
+    List<TramRadar> findByHeThongVtsId(Long heThongVtsId);
+
+    long countByHeThongVtsId(Long heThongVtsId);
+
     @Query("""
         SELECT t FROM TramRadar t
         WHERE (:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId)

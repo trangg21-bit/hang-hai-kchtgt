@@ -198,6 +198,13 @@ export default function TramRadarList() {
       },
     },
     {
+      title: 'Hệ thống VTS',
+      key: 'heThongVtsId',
+      width: 180,
+      render: (_: unknown, record: TramRadarResponse) =>
+        record.tenHeThongVts || (record.heThongVtsId ? `VTS-${record.heThongVtsId}` : '—'),
+    },
+    {
       title: 'Trạng thái',
       dataIndex: 'trangThai',
       key: 'trangThai',

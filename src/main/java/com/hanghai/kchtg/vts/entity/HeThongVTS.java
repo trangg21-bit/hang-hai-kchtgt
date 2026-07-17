@@ -8,6 +8,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.hanghai.kchtg.tramradar.entity.TramRadar;
+
 @Entity
 @Table(name = "he_thong_vts")
 @Data
@@ -42,6 +44,9 @@ public class HeThongVTS {
 
     @Column(name = "org_unit_id")
     private java.util.UUID orgUnitId;
+
+    @Column(name = "pham_vi_ap_dung", length = 2000)
+    private String phamViApDung;
 
     @Column(name = "spatial_id")
     private java.util.UUID khongGianId;
@@ -92,6 +97,10 @@ public class HeThongVTS {
     @OneToMany(mappedBy = "heThongVTS", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<HeThongVTSAttachment> attachments = new ArrayList<>();
+
+    @OneToMany(mappedBy = "heThongVts")
+    @Builder.Default
+    private List<TramRadar> tramRadars = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
