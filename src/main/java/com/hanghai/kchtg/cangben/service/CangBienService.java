@@ -72,6 +72,28 @@ public class CangBienService {
                 .orgUnitId(request.getOrgUnitId())
                 .nhomCangBien(request.getNhomCangBien())
                 .bieuTuongId(request.getBieuTuongId())
+                // Extended fields
+                .diaDiemChiTiet(request.getDiaDiemChiTiet())
+                .phanCap(request.getPhanCap())
+                .heQuyChieu(request.getHeQuyChieu())
+                .quyTacHienThi(request.getQuyTacHienThi())
+                // zobjDataSub fields
+                .phamViVungNuoc(request.getPhamViVungNuoc())
+                .tongSoBenCang(request.getTongSoBenCang())
+                .tongSoKhuNeoDauChuyenTai(request.getTongSoKhuNeoDauChuyenTai())
+                .tongSoTuyenLuongCongCong(request.getTongSoTuyenLuongCongCong())
+                .tongSoTuyenLuongChuyenDung(request.getTongSoTuyenLuongChuyenDung())
+                .tongChieuDaiLuongCongCong(request.getTongChieuDaiLuongCongCong())
+                .tongChieuDaiLuongChuyenDung(request.getTongChieuDaiLuongChuyenDung())
+                .tongSoPhaoTieuBaoHieu(request.getTongSoPhaoTieuBaoHieu())
+                .tongSoDeKe(request.getTongSoDeKe())
+                .tongChieuDaiDeKe(request.getTongChieuDaiDeKe())
+                .tongSoDenBienDangTieu(request.getTongSoDenBienDangTieu())
+                .soLuongBenPhao(request.getSoLuongBenPhao())
+                .soLuongKhuNeoDau(request.getSoLuongKhuNeoDau())
+                .soLuongKhuChuyenTai(request.getSoLuongKhuChuyenTai())
+                .cacKhuNuocKhac(request.getCacKhuNuocKhac())
+                .ghiChu(request.getGhiChu())
                 .build();
 
         CangBien saved = cangBienRepository.save(entity);
@@ -199,6 +221,28 @@ public class CangBienService {
                 .trangThaiHoatDong(entity.getTrangThaiHoatDong())
                 .trangThaiPheDuyet(entity.getTrangThaiPheDuyet())
                 .bieuTuongId(entity.getBieuTuongId())
+                // Extended fields (pre-image)
+                .diaDiemChiTiet(entity.getDiaDiemChiTiet())
+                .phanCap(entity.getPhanCap())
+                .heQuyChieu(entity.getHeQuyChieu())
+                .quyTacHienThi(entity.getQuyTacHienThi())
+                // zobjDataSub fields (pre-image)
+                .phamViVungNuoc(entity.getPhamViVungNuoc())
+                .tongSoBenCang(entity.getTongSoBenCang())
+                .tongSoKhuNeoDauChuyenTai(entity.getTongSoKhuNeoDauChuyenTai())
+                .tongSoTuyenLuongCongCong(entity.getTongSoTuyenLuongCongCong())
+                .tongSoTuyenLuongChuyenDung(entity.getTongSoTuyenLuongChuyenDung())
+                .tongChieuDaiLuongCongCong(entity.getTongChieuDaiLuongCongCong())
+                .tongChieuDaiLuongChuyenDung(entity.getTongChieuDaiLuongChuyenDung())
+                .tongSoPhaoTieuBaoHieu(entity.getTongSoPhaoTieuBaoHieu())
+                .tongSoDeKe(entity.getTongSoDeKe())
+                .tongChieuDaiDeKe(entity.getTongChieuDaiDeKe())
+                .tongSoDenBienDangTieu(entity.getTongSoDenBienDangTieu())
+                .soLuongBenPhao(entity.getSoLuongBenPhao())
+                .soLuongKhuNeoDau(entity.getSoLuongKhuNeoDau())
+                .soLuongKhuChuyenTai(entity.getSoLuongKhuChuyenTai())
+                .cacKhuNuocKhac(entity.getCacKhuNuocKhac())
+                .ghiChu(entity.getGhiChu())
                 .build();
 
         // Update mutable fields — code (maCang) is immutable
@@ -230,6 +274,30 @@ public class CangBienService {
         entity.setBieuTuongId(request.getBieuTuongId());
         entity.setTrangThaiHoatDong(request.getTrangThaiHoatDong() != null ? request.getTrangThaiHoatDong() : entity.getTrangThaiHoatDong());
         entity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
+
+        // Update extended fields
+        if (request.getDiaDiemChiTiet() != null) entity.setDiaDiemChiTiet(request.getDiaDiemChiTiet());
+        if (request.getPhanCap() != null) entity.setPhanCap(request.getPhanCap());
+        if (request.getHeQuyChieu() != null) entity.setHeQuyChieu(request.getHeQuyChieu());
+        if (request.getQuyTacHienThi() != null) entity.setQuyTacHienThi(request.getQuyTacHienThi());
+
+        // Update zobjDataSub fields
+        if (request.getPhamViVungNuoc() != null) entity.setPhamViVungNuoc(request.getPhamViVungNuoc());
+        if (request.getTongSoBenCang() != null) entity.setTongSoBenCang(request.getTongSoBenCang());
+        if (request.getTongSoKhuNeoDauChuyenTai() != null) entity.setTongSoKhuNeoDauChuyenTai(request.getTongSoKhuNeoDauChuyenTai());
+        if (request.getTongSoTuyenLuongCongCong() != null) entity.setTongSoTuyenLuongCongCong(request.getTongSoTuyenLuongCongCong());
+        if (request.getTongSoTuyenLuongChuyenDung() != null) entity.setTongSoTuyenLuongChuyenDung(request.getTongSoTuyenLuongChuyenDung());
+        if (request.getTongChieuDaiLuongCongCong() != null) entity.setTongChieuDaiLuongCongCong(request.getTongChieuDaiLuongCongCong());
+        if (request.getTongChieuDaiLuongChuyenDung() != null) entity.setTongChieuDaiLuongChuyenDung(request.getTongChieuDaiLuongChuyenDung());
+        if (request.getTongSoPhaoTieuBaoHieu() != null) entity.setTongSoPhaoTieuBaoHieu(request.getTongSoPhaoTieuBaoHieu());
+        if (request.getTongSoDeKe() != null) entity.setTongSoDeKe(request.getTongSoDeKe());
+        if (request.getTongChieuDaiDeKe() != null) entity.setTongChieuDaiDeKe(request.getTongChieuDaiDeKe());
+        if (request.getTongSoDenBienDangTieu() != null) entity.setTongSoDenBienDangTieu(request.getTongSoDenBienDangTieu());
+        if (request.getSoLuongBenPhao() != null) entity.setSoLuongBenPhao(request.getSoLuongBenPhao());
+        if (request.getSoLuongKhuNeoDau() != null) entity.setSoLuongKhuNeoDau(request.getSoLuongKhuNeoDau());
+        if (request.getSoLuongKhuChuyenTai() != null) entity.setSoLuongKhuChuyenTai(request.getSoLuongKhuChuyenTai());
+        if (request.getCacKhuNuocKhac() != null) entity.setCacKhuNuocKhac(request.getCacKhuNuocKhac());
+        if (request.getGhiChu() != null) entity.setGhiChu(request.getGhiChu());
 
         CangBien saved = cangBienRepository.save(entity);
 
@@ -358,7 +426,29 @@ public class CangBienService {
                 .createdBy(createdBy)
                 .updatedBy(updatedBy)
                 .createdAt(entity.getCreatedAt())
-                .updatedAt(entity.getUpdatedAt());
+                .updatedAt(entity.getUpdatedAt())
+                // Extended fields
+                .diaDiemChiTiet(entity.getDiaDiemChiTiet())
+                .phanCap(entity.getPhanCap())
+                .heQuyChieu(entity.getHeQuyChieu())
+                .quyTacHienThi(entity.getQuyTacHienThi())
+                // zobjDataSub fields
+                .phamViVungNuoc(entity.getPhamViVungNuoc())
+                .tongSoBenCang(entity.getTongSoBenCang())
+                .tongSoKhuNeoDauChuyenTai(entity.getTongSoKhuNeoDauChuyenTai())
+                .tongSoTuyenLuongCongCong(entity.getTongSoTuyenLuongCongCong())
+                .tongSoTuyenLuongChuyenDung(entity.getTongSoTuyenLuongChuyenDung())
+                .tongChieuDaiLuongCongCong(entity.getTongChieuDaiLuongCongCong())
+                .tongChieuDaiLuongChuyenDung(entity.getTongChieuDaiLuongChuyenDung())
+                .tongSoPhaoTieuBaoHieu(entity.getTongSoPhaoTieuBaoHieu())
+                .tongSoDeKe(entity.getTongSoDeKe())
+                .tongChieuDaiDeKe(entity.getTongChieuDaiDeKe())
+                .tongSoDenBienDangTieu(entity.getTongSoDenBienDangTieu())
+                .soLuongBenPhao(entity.getSoLuongBenPhao())
+                .soLuongKhuNeoDau(entity.getSoLuongKhuNeoDau())
+                .soLuongKhuChuyenTai(entity.getSoLuongKhuChuyenTai())
+                .cacKhuNuocKhac(entity.getCacKhuNuocKhac())
+                .ghiChu(entity.getGhiChu());
 
         if (entity.getKhongGianId() != null) {
             builder.khongGianId(entity.getKhongGianId());

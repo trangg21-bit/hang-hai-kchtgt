@@ -15,6 +15,7 @@ import {
   InputNumber,
   Typography,
   Descriptions,
+  DatePicker,
 } from 'antd';
 import type { TableProps } from 'antd';
 import {
@@ -43,6 +44,8 @@ import { symbolService } from '../../services/symbolService';
 import type { Symbol } from '../../services/symbolService';
 import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge } from '../../services/cangbien/schema';
 import { giayToApi } from '../giayto/api';
+import dayjs from 'dayjs';
+import { organizationService } from '../../services/organizationService';
 import { z } from 'zod';
 import { createSchema, updateSchema } from './schema';
 import GiayToUploadModal from '../giayto/GiayToUploadModal';
@@ -121,6 +124,22 @@ export const translateFieldName = (fieldName: string): string => {
     fillSymbolId: 'Ký hiệu vùng',
     khongGianId: 'Vị trí không gian',
     spatialId: 'Vị trí không gian',
+    diaDiem: 'Địa điểm',
+    diaDiemChiTiet: 'Địa điểm chi tiết',
+    heQuyChieu: 'Hệ quy chiếu',
+    quyTacHienThi: 'Quy tắc hiển thị',
+    donViKhaiThac: 'Đơn vị khai thác',
+    tongDienTich: 'Tổng diện tích',
+    nangLucThongQuaThietKe: 'NL thông qua (thiết kế)',
+    nangLucThongQuaHienTrang: 'NL thông qua (hiện trạng)',
+    coTauTiepNhanLonNhat: 'Cỡ tàu tiếp nhận lớn nhất',
+    quyHoachNangLucThongQua: 'Quy hoạch NL thông qua',
+    sanLuongHangHoaNamGanNhat: 'Sản lượng hàng hóa (năm gần nhất)',
+    thoiDiemCongBoMo: 'Thời điểm công bố mở',
+    quyetDinhCongBo: 'Quyết định công bố',
+    vanBanThoaThuanDauTu: 'Văn bản thỏa thuận đầu tư',
+    orgUnitId: 'Đơn vị quản lý',
+    loaiKetCau: 'Loại kết cấu',
   };
   return map[fieldName] || fieldName;
 };
@@ -143,6 +162,7 @@ export default function BenCangListPage() {
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [cangBienOptions, setCangBienOptions] = useState<Array<{ id: string; tenCang: string }>>([]);
+  const [orgUnits, setOrgUnits] = useState<any[]>([]);
 
   // Modals visibility
   const [createModalVisible, setCreateModalVisible] = useState(false);
@@ -187,6 +207,14 @@ export default function BenCangListPage() {
   useEffect(() => {
     void fetchCangBienOptions();
     void fetchSymbols();
+    (async () => {
+      try {
+        const resp = await organizationService.list();
+        setOrgUnits(resp.data || []);
+      } catch (err) {
+        console.error('Failed to load org units', err);
+      }
+    })();
   }, [fetchCangBienOptions, fetchSymbols]);
 
   const translateValue = useCallback((fieldName: string, val: string | null): string => {
@@ -313,18 +341,34 @@ export default function BenCangListPage() {
         maBen: values.maBen,
         tenBen: values.tenBen,
         cangBienId: values.cangBienId,
+        orgUnitId: values.orgUnitId || undefined,
         tuyenDuongThuy: values.tuyenDuongThuy || undefined,
-        viDo: values.viDo || undefined,
-        kinhDo: values.kinhDo || undefined,
-        chieuDai: values.chieuDai || undefined,
-        chieuRong: values.chieuRong || undefined,
+        viDo: values.viDo ?? undefined,
+        kinhDo: values.kinhDo ?? undefined,
+        chieuDai: values.chieuDai ?? undefined,
+        chieuRong: values.chieuRong ?? undefined,
         loaiBen: values.loaiBen || undefined,
-        doSauLuong: values.doSauLuong || undefined,
+        doSauLuong: values.doSauLuong ?? undefined,
         congNangKhaiThac: values.congNangKhaiThac ? values.congNangKhaiThac.join(', ') : undefined,
         trangThaiHoatDong: values.trangThaiHoatDong || 'HIEN_HANH',
-        bieuTuongId: values.gisLocation?.bieuTuongId || undefined,
+        bieuTuongId: values.bieuTuongId || values.gisLocation?.bieuTuongId || undefined,
         loaiHinhHoc: values.loaiHinhHoc,
         toaDo: values.gisLocation?.toaDo,
+        diaDiem: values.diaDiem || undefined,
+        diaDiemChiTiet: values.diaDiemChiTiet || undefined,
+        heQuyChieu: values.heQuyChieu ?? undefined,
+        quyTacHienThi: values.quyTacHienThi ?? undefined,
+        donViKhaiThac: values.donViKhaiThac || undefined,
+        tongDienTich: values.tongDienTich ?? undefined,
+        nangLucThongQuaThietKe: values.nangLucThongQuaThietKe ?? undefined,
+        nangLucThongQuaHienTrang: values.nangLucThongQuaHienTrang ?? undefined,
+        coTauTiepNhanLonNhat: values.coTauTiepNhanLonNhat ?? undefined,
+        quyHoachNangLucThongQua: values.quyHoachNangLucThongQua ?? undefined,
+        sanLuongHangHoaNamGanNhat: values.sanLuongHangHoaNamGanNhat ?? undefined,
+        thoiDiemCongBoMo: values.thoiDiemCongBoMo ? dayjs(values.thoiDiemCongBoMo).toISOString() : undefined,
+        quyetDinhCongBo: values.quyetDinhCongBo || undefined,
+        vanBanThoaThuanDauTu: values.vanBanThoaThuanDauTu || undefined,
+        loaiKetCau: values.loaiKetCau ?? undefined,
       });
 
       setSubmitting(true);
@@ -354,6 +398,7 @@ export default function BenCangListPage() {
         id: selectedRecord.id,
         tenBen: values.tenBen || undefined,
         cangBienId: values.cangBienId || undefined,
+        orgUnitId: values.orgUnitId || undefined,
         tuyenDuongThuy: values.tuyenDuongThuy || undefined,
         viDo: values.viDo,
         kinhDo: values.kinhDo,
@@ -363,9 +408,24 @@ export default function BenCangListPage() {
         doSauLuong: values.doSauLuong,
         congNangKhaiThac: values.congNangKhaiThac ? values.congNangKhaiThac.join(', ') : undefined,
         trangThaiHoatDong: values.trangThaiHoatDong,
-        bieuTuongId: values.gisLocation?.bieuTuongId || null,
+        bieuTuongId: values.bieuTuongId || values.gisLocation?.bieuTuongId || null,
         loaiHinhHoc: values.loaiHinhHoc,
         toaDo: values.gisLocation?.toaDo,
+        diaDiem: values.diaDiem || undefined,
+        diaDiemChiTiet: values.diaDiemChiTiet || undefined,
+        heQuyChieu: values.heQuyChieu,
+        quyTacHienThi: values.quyTacHienThi,
+        donViKhaiThac: values.donViKhaiThac || undefined,
+        tongDienTich: values.tongDienTich,
+        nangLucThongQuaThietKe: values.nangLucThongQuaThietKe,
+        nangLucThongQuaHienTrang: values.nangLucThongQuaHienTrang,
+        coTauTiepNhanLonNhat: values.coTauTiepNhanLonNhat,
+        quyHoachNangLucThongQua: values.quyHoachNangLucThongQua,
+        sanLuongHangHoaNamGanNhat: values.sanLuongHangHoaNamGanNhat,
+        thoiDiemCongBoMo: values.thoiDiemCongBoMo ? dayjs(values.thoiDiemCongBoMo).toISOString() : undefined,
+        quyetDinhCongBo: values.quyetDinhCongBo || undefined,
+        vanBanThoaThuanDauTu: values.vanBanThoaThuanDauTu || undefined,
+        loaiKetCau: values.loaiKetCau ?? undefined,
       });
 
       setSubmitting(true);
@@ -419,6 +479,41 @@ export default function BenCangListPage() {
       render: (v?: string) => v || '—',
     },
     {
+      title: 'Địa điểm',
+      dataIndex: 'diaDiem',
+      width: 140,
+      ellipsis: true,
+      render: (v?: string) => v || '—',
+    },
+    {
+      title: 'Đơn vị khai thác',
+      dataIndex: 'donViKhaiThac',
+      width: 160,
+      ellipsis: true,
+      render: (v?: string) => v || '—',
+    },
+    {
+      title: 'Loại bến',
+      dataIndex: 'loaiBen',
+      width: 140,
+      ellipsis: true,
+      render: (v?: string) => (v ? (LOAI_BEN_MAP[v] || v) : '—'),
+    },
+    {
+      title: 'Loại kết cấu',
+      dataIndex: 'loaiKetCau',
+      width: 110,
+      align: 'right' as const,
+      render: (v?: number) => (v != null ? v.toString() : '—'),
+    },
+    {
+      title: 'Công năng khai thác',
+      dataIndex: 'congNangKhaiThac',
+      width: 160,
+      ellipsis: true,
+      render: (v?: string) => v || '—',
+    },
+    {
       title: 'Chiều dài (m)',
       dataIndex: 'chieuDai',
       width: 120,
@@ -433,18 +528,31 @@ export default function BenCangListPage() {
       render: (v?: number) => v?.toFixed(2) || '—',
     },
     {
-      title: 'Loại bến',
-      dataIndex: 'loaiBen',
-      width: 140,
-      ellipsis: true,
-      render: (v?: string) => (v ? (LOAI_BEN_MAP[v] || v) : '—'),
-    },
-    {
       title: 'Độ sâu luồng (m)',
       dataIndex: 'doSauLuong',
       width: 130,
       align: 'right' as const,
       render: (v?: number) => v?.toFixed(2) || '—',
+    },
+    {
+      title: 'Năng lực TK',
+      dataIndex: 'nangLucThongQuaThietKe',
+      width: 110,
+      align: 'right' as const,
+      render: (v?: number) => v?.toLocaleString('vi-VN') || '—',
+    },
+    {
+      title: 'Cỡ tàu (DWT)',
+      dataIndex: 'coTauTiepNhanLonNhat',
+      width: 110,
+      align: 'right' as const,
+      render: (v?: number) => v?.toLocaleString('vi-VN') || '—',
+    },
+    {
+      title: 'Ngày công bố',
+      dataIndex: 'thoiDiemCongBoMo',
+      width: 130,
+      render: (v?: string) => v ? new Date(v).toLocaleDateString('vi-VN') : '—',
     },
     {
       title: 'Trạng thái HĐ',
@@ -512,6 +620,7 @@ export default function BenCangListPage() {
                     maBen: data.maBen,
                     tenBen: data.tenBen,
                     cangBienId: data.cangBienId,
+                    orgUnitId: data.orgUnitId,
                     tuyenDuongThuy: data.tuyenDuongThuy,
                     viDo: data.viDo,
                     kinhDo: data.kinhDo,
@@ -522,11 +631,27 @@ export default function BenCangListPage() {
                     congNangKhaiThac: data.congNangKhaiThac ? data.congNangKhaiThac.split(',').map(s => s.trim()) : [],
                     trangThaiHoatDong: data.trangThaiHoatDong,
                     loaiHinhHoc: data.loaiHinhHoc || 'POINT',
+                    bieuTuongId: data.bieuTuongId,
                     gisLocation: {
                       loaiHinhHoc: data.loaiHinhHoc || 'POINT',
                       toaDo: data.toaDo || '',
                       bieuTuongId: data.bieuTuongId
-                    }
+                    },
+                    diaDiem: data.diaDiem,
+                    diaDiemChiTiet: data.diaDiemChiTiet,
+                    heQuyChieu: data.heQuyChieu,
+                    quyTacHienThi: data.quyTacHienThi,
+                    donViKhaiThac: data.donViKhaiThac,
+                    tongDienTich: data.tongDienTich,
+                    nangLucThongQuaThietKe: data.nangLucThongQuaThietKe,
+                    nangLucThongQuaHienTrang: data.nangLucThongQuaHienTrang,
+                    coTauTiepNhanLonNhat: data.coTauTiepNhanLonNhat,
+                    quyHoachNangLucThongQua: data.quyHoachNangLucThongQua,
+                    sanLuongHangHoaNamGanNhat: data.sanLuongHangHoaNamGanNhat,
+                    thoiDiemCongBoMo: data.thoiDiemCongBoMo ? dayjs(data.thoiDiemCongBoMo) : undefined,
+                    quyetDinhCongBo: data.quyetDinhCongBo,
+                    vanBanThoaThuanDauTu: data.vanBanThoaThuanDauTu,
+                    loaiKetCau: data.loaiKetCau,
                   });
                   setUpdateModalVisible(true);
                 } catch (err) {
@@ -719,126 +844,252 @@ export default function BenCangListPage() {
         forceRender
       >
         <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} initialValues={{ trangThaiHoatDong: 'HIEN_HANH' }}>
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
-            Thông tin chung
-          </Typography.Text>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item
-                label="Mã bến *"
-                name="maBen"
-                rules={[{ required: true, message: 'Mã bến không được để trống' }, { max: 50, message: 'Mã bến tối đa 50 ký tự' }]}
-              >
-                <Input placeholder="VD: BC-HAIPHONG-001" maxLength={50} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Tên bến *"
-                name="tenBen"
-                rules={[{ required: true, message: 'Tên bến không được để trống' }, { max: 255, message: 'Tên bến tối đa 255 ký tự' }]}
-              >
-                <Input placeholder="VD: Bến cảng Hải Phòng" maxLength={255} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item
-                label="Cảng biển chủ *"
-                name="cangBienId"
-                rules={[{ required: true, message: 'Vui lòng chọn cảng biển chủ' }]}
-              >
-                <Select
-                  placeholder="Chọn cảng biển chủ"
-                  showSearch
-                  optionFilterProp="label"
-                  options={cangBienOptions.map(o => ({ label: o.tenCang, value: o.id }))}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Tuyến đường thủy"
-                name="tuyenDuongThuy"
-                rules={[{ max: 255, message: 'Tuyến đường thủy tối đa 255 ký tự' }]}
-              >
-                <Input placeholder="VD: Tuyến sông Bạch Đằng" maxLength={255} />
-              </Form.Item>
-            </Col>
-          </Row>
+          {/* SECTION 1: Thông tin chung */}
+          <Card title="Thông tin chung" size="small" style={{ marginBottom: 16 }}>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Đơn vị quản lý" name="orgUnitId">
+                  <Select
+                    allowClear
+                    showSearch
+                    placeholder="Chọn đơn vị quản lý"
+                    optionFilterProp="label"
+                    options={orgUnits.map(o => ({ label: o.name, value: o.id }))}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Cảng biển *"
+                  name="cangBienId"
+                  rules={[{ required: true, message: 'Vui lòng chọn cảng biển chủ' }]}
+                >
+                  <Select
+                    placeholder="Chọn cảng biển chủ"
+                    showSearch
+                    optionFilterProp="label"
+                    options={cangBienOptions.map(o => ({ label: o.tenCang, value: o.id }))}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item
+                  label="Tuyến đường thủy"
+                  name="tuyenDuongThuy"
+                  rules={[{ max: 255, message: 'Tuyến đường thủy tối đa 255 ký tự' }]}
+                >
+                  <Input placeholder="VD: Tuyến sông Bạch Đằng" maxLength={255} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Đơn vị khai thác" name="donViKhaiThac">
+                  <Input placeholder="VD: Công ty CP Cảng Hải Phòng" maxLength={255} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item
+                  label="Mã bến *"
+                  name="maBen"
+                  rules={[{ required: true, message: 'Mã bến không được để trống' }, { max: 50, message: 'Mã bến tối đa 50 ký tự' }]}
+                >
+                  <Input placeholder="VD: BC-HAIPHONG-001" maxLength={50} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Tên bến *"
+                  name="tenBen"
+                  rules={[{ required: true, message: 'Tên bến không được để trống' }, { max: 255, message: 'Tên bến tối đa 255 ký tự' }]}
+                >
+                  <Input placeholder="VD: Bến cảng Hải Phòng" maxLength={255} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Địa điểm (Tỉnh/Thành phố)" name="diaDiem">
+                  <Input placeholder="VD: Khu vực cảng Hải Phòng" maxLength={100} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Địa điểm chi tiết" name="diaDiemChiTiet">
+                  <Input placeholder="VD: Số 1 đường Lê Thánh Tông" maxLength={500} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Loại kết cấu bến cảng" name="loaiKetCau">
+                  <InputNumber min={0} step={1} precision={0} placeholder="VD: 1" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Công năng khai thác" name="congNangKhaiThac">
+                  <Select
+                    mode="multiple"
+                    placeholder="Chọn công năng khai thác"
+                    allowClear
+                    options={CONG_NANG_KHAI_THAC_OPTIONS}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Tổng diện tích (ha)" name="tongDienTich">
+                  <InputNumber min={0} step={0.0001} precision={4} placeholder="VD: 15000.0000" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Năng lực thông qua (thiết kế)" name="nangLucThongQuaThietKe">
+                  <InputNumber min={0} step={0.0001} precision={4} placeholder="VD: 500000.0000" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Năng lực thông qua (hiện trạng) (tấn/năm)" name="nangLucThongQuaHienTrang">
+                  <InputNumber min={0} step={0.0001} precision={4} placeholder="VD: 350000.0000" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Cỡ tàu tiếp nhận lớn nhất (DWT)" name="coTauTiepNhanLonNhat">
+                  <InputNumber min={0} step={0.0001} precision={4} placeholder="VD: 50000.0000" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Quy hoạch năng lực thông qua (tấn/năm)" name="quyHoachNangLucThongQua">
+                  <InputNumber min={0} step={0.0001} precision={4} placeholder="VD: 800000.0000" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Sản lượng hàng hóa thực tế (năm gần nhất)" name="sanLuongHangHoaNamGanNhat">
+                  <InputNumber min={0} step={0.0001} precision={4} placeholder="VD: 1200000.0000" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Tình trạng" name="trangThaiHoatDong">
+                  <Select placeholder="Chọn trạng thái" options={ACTIVITY_STATUS_OPTIONS} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
 
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
-                <Select placeholder="Chọn loại đối tượng" options={[
-                  { value: 'POINT', label: 'Đối tượng điểm' },
-                  { value: 'LINE', label: 'Đối tượng đường' },
-                  { value: 'POLYGON', label: 'Đối tượng vùng' }
-                ]} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={24}>
-            <Col span={24}>
-              <Form.Item name="gisLocation">
-                <GisLocationSelector defaultGeometryType={createLoaiHinhHoc} />
-              </Form.Item>
-            </Col>
-          </Row>
+          {/* SECTION 2: Thông tin kỹ thuật */}
+          <Card title="Thông tin kỹ thuật" size="small" style={{ marginBottom: 16 }}>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Loại bến" name="loaiBen" rules={[{ required: true, message: 'Vui lòng chọn loại bến' }]}>
+                  <Select placeholder="Chọn loại bến" options={LOAI_BEN_OPTIONS} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Chiều dài (m)" name="chieuDai">
+                  <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 200.00" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Chiều rộng (m)" name="chieuRong">
+                  <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 30.00" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Độ sâu luồng (m)" name="doSauLuong">
+                  <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 12.50" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
 
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
-            Thông số kỹ thuật
-          </Typography.Text>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Chiều dài (m)" name="chieuDai">
-                <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 200.00" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Chiều rộng (m)" name="chieuRong">
-                <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 30.00" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Loại bến" name="loaiBen" rules={[{ required: true, message: 'Vui lòng chọn loại bến' }]}>
-                <Select placeholder="Chọn loại bến" options={LOAI_BEN_OPTIONS} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Độ sâu luồng (m)" name="doSauLuong">
-                <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 12.50" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={24}>
-            <Col span={24}>
-              <Form.Item label="Công năng khai thác" name="congNangKhaiThac">
-                <Select
-                  mode="multiple"
-                  placeholder="Chọn công năng khai thác"
-                  allowClear
-                  options={CONG_NANG_KHAI_THAC_OPTIONS}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+          {/* SECTION 3: Thông tin công bố mở, đưa vào sử dụng */}
+          <Card title="Thông tin công bố mở, đưa vào sử dụng" size="small" style={{ marginBottom: 16 }}>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Thời điểm công bố, đưa vào sử dụng" name="thoiDiemCongBoMo">
+                  <DatePicker showTime style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Quyết định công bố / Văn bản cho phép khai thác" name="quyetDinhCongBo">
+                  <Input placeholder="VD: 1234/QĐ-BGTVT" maxLength={500} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={24}>
+                <Form.Item label="Văn bản thỏa thuận đầu tư xây dựng" name="vanBanThoaThuanDauTu">
+                  <Input.TextArea placeholder="VD: Thỏa thuận đầu tư số..." maxLength={2000} rows={3} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
 
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
-            Trạng thái
-          </Typography.Text>
-          <Row gutter={24}>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Trạng thái hoạt động" name="trangThaiHoatDong">
-                <Select placeholder="Chọn trạng thái" options={ACTIVITY_STATUS_OPTIONS} />
-              </Form.Item>
-            </Col>
-          </Row>
-          </Row>
+          {/* SECTION 4: Thông tin vị trí (GIS) */}
+          <Card title="Thông tin vị trí (GIS)" size="small" style={{ marginBottom: 16 }}>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Vĩ độ" name="viDo">
+                  <InputNumber min={-90} max={90} step={0.000001} precision={6} placeholder="VD: 20.859442" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Kinh độ" name="kinhDo">
+                  <InputNumber min={-180} max={180} step={0.000001} precision={6} placeholder="VD: 106.681560" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
+                  <Select placeholder="Chọn loại đối tượng" options={[
+                    { value: 'POINT', label: 'Đối tượng điểm' },
+                    { value: 'LINE', label: 'Đối tượng đường' },
+                    { value: 'POLYGON', label: 'Đối tượng vùng' }
+                  ]} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Biểu tượng" name="bieuTuongId">
+                  <Select
+                    allowClear
+                    showSearch
+                    placeholder="Chọn biểu tượng"
+                    optionFilterProp="label"
+                    options={symbols.map(s => ({ label: `${s.name} (${s.code})`, value: s.id }))}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Hệ quy chiếu" name="heQuyChieu">
+                  <InputNumber min={0} step={1} precision={0} placeholder="VD: 4326" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Quy tắc hiển thị" name="quyTacHienThi">
+                  <InputNumber min={0} step={1} precision={0} placeholder="VD: 1" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={24}>
+                <Form.Item name="gisLocation">
+                  <GisLocationSelector defaultGeometryType={createLoaiHinhHoc} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
 
           <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
             <Space>
@@ -859,116 +1110,250 @@ export default function BenCangListPage() {
         forceRender
       >
         <Form form={updateForm} layout="vertical" onFinish={handleUpdateFinish}>
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
-            Thông tin chung
-          </Typography.Text>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Mã bến" name="maBen">
-                <Input disabled aria-readonly="true" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Tên bến *"
-                name="tenBen"
-                rules={[{ required: true, message: 'Tên bến không được để trống' }, { max: 255, message: 'Tên bến tối đa 255 ký tự' }]}
-              >
-                <Input placeholder="VD: Bến cảng Hải Phòng" maxLength={255} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item
-                label="Cảng biển chủ *"
-                name="cangBienId"
-                rules={[{ required: true, message: 'Vui lòng chọn cảng biển chủ' }]}
-              >
-                <Select
-                  placeholder="Chọn cảng biển chủ"
-                  showSearch
-                  optionFilterProp="label"
-                  options={cangBienOptions.map(o => ({ label: o.tenCang, value: o.id }))}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Tuyến đường thủy"
-                name="tuyenDuongThuy"
-                rules={[{ max: 255, message: 'Tuyến đường thủy tối đa 255 ký tự' }]}
-              >
-                <Input placeholder="VD: Tuyến sông Bạch Đằng" maxLength={255} />
-              </Form.Item>
-            </Col>
-          </Row>
+          {/* SECTION 1: Thông tin chung */}
+          <Card title="Thông tin chung" size="small" style={{ marginBottom: 16 }}>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Đơn vị quản lý" name="orgUnitId">
+                  <Select
+                    allowClear
+                    showSearch
+                    placeholder="Chọn đơn vị quản lý"
+                    optionFilterProp="label"
+                    options={orgUnits.map(o => ({ label: o.name, value: o.id }))}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Cảng biển *"
+                  name="cangBienId"
+                  rules={[{ required: true, message: 'Vui lòng chọn cảng biển chủ' }]}
+                >
+                  <Select
+                    placeholder="Chọn cảng biển chủ"
+                    showSearch
+                    optionFilterProp="label"
+                    options={cangBienOptions.map(o => ({ label: o.tenCang, value: o.id }))}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item
+                  label="Tuyến đường thủy"
+                  name="tuyenDuongThuy"
+                  rules={[{ max: 255, message: 'Tuyến đường thủy tối đa 255 ký tự' }]}
+                >
+                  <Input placeholder="VD: Tuyến sông Bạch Đằng" maxLength={255} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Đơn vị khai thác" name="donViKhaiThac">
+                  <Input placeholder="VD: Công ty CP Cảng Hải Phòng" maxLength={255} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Mã bến" name="maBen">
+                  <Input disabled aria-readonly="true" />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Tên bến *"
+                  name="tenBen"
+                  rules={[{ required: true, message: 'Tên bến không được để trống' }, { max: 255, message: 'Tên bến tối đa 255 ký tự' }]}
+                >
+                  <Input placeholder="VD: Bến cảng Hải Phòng" maxLength={255} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Địa điểm (Tỉnh/Thành phố)" name="diaDiem">
+                  <Input placeholder="VD: Khu vực cảng Hải Phòng" maxLength={100} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Địa điểm chi tiết" name="diaDiemChiTiet">
+                  <Input placeholder="VD: Số 1 đường Lê Thánh Tông" maxLength={500} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Loại kết cấu bến cảng" name="loaiKetCau">
+                  <InputNumber min={0} step={1} precision={0} placeholder="VD: 1" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Công năng khai thác" name="congNangKhaiThac">
+                  <Select
+                    mode="multiple"
+                    placeholder="Chọn công năng khai thác"
+                    allowClear
+                    options={CONG_NANG_KHAI_THAC_OPTIONS}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Tổng diện tích (ha)" name="tongDienTich">
+                  <InputNumber min={0} step={0.0001} precision={4} placeholder="VD: 15000.0000" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Năng lực thông qua (thiết kế)" name="nangLucThongQuaThietKe">
+                  <InputNumber min={0} step={0.0001} precision={4} placeholder="VD: 500000.0000" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Năng lực thông qua (hiện trạng) (tấn/năm)" name="nangLucThongQuaHienTrang">
+                  <InputNumber min={0} step={0.0001} precision={4} placeholder="VD: 350000.0000" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Cỡ tàu tiếp nhận lớn nhất (DWT)" name="coTauTiepNhanLonNhat">
+                  <InputNumber min={0} step={0.0001} precision={4} placeholder="VD: 50000.0000" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Quy hoạch năng lực thông qua (tấn/năm)" name="quyHoachNangLucThongQua">
+                  <InputNumber min={0} step={0.0001} precision={4} placeholder="VD: 800000.0000" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Sản lượng hàng hóa thực tế (năm gần nhất)" name="sanLuongHangHoaNamGanNhat">
+                  <InputNumber min={0} step={0.0001} precision={4} placeholder="VD: 1200000.0000" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Tình trạng" name="trangThaiHoatDong">
+                  <Select placeholder="Chọn trạng thái" options={ACTIVITY_STATUS_OPTIONS} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
+
+          {/* SECTION 2: Thông tin kỹ thuật */}
+          <Card title="Thông tin kỹ thuật" size="small" style={{ marginBottom: 16 }}>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Loại bến" name="loaiBen" rules={[{ required: true, message: 'Vui lòng chọn loại bến' }]}>
+                  <Select placeholder="Chọn loại bến" options={LOAI_BEN_OPTIONS} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Chiều dài (m)" name="chieuDai">
+                  <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 200.00" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Chiều rộng (m)" name="chieuRong">
+                  <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 30.00" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Độ sâu luồng (m)" name="doSauLuong">
+                  <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 12.50" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
+
+          {/* SECTION 3: Thông tin công bố mở, đưa vào sử dụng */}
+          <Card title="Thông tin công bố mở, đưa vào sử dụng" size="small" style={{ marginBottom: 16 }}>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Thời điểm công bố, đưa vào sử dụng" name="thoiDiemCongBoMo">
+                  <DatePicker showTime style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Quyết định công bố / Văn bản cho phép khai thác" name="quyetDinhCongBo">
+                  <Input placeholder="VD: 1234/QĐ-BGTVT" maxLength={500} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={24}>
+                <Form.Item label="Văn bản thỏa thuận đầu tư xây dựng" name="vanBanThoaThuanDauTu">
+                  <Input.TextArea placeholder="VD: Thỏa thuận đầu tư số..." maxLength={2000} rows={3} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
+
+          {/* SECTION 4: Thông tin vị trí (GIS) */}
+          <Card title="Thông tin vị trí (GIS)" size="small" style={{ marginBottom: 16 }}>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Vĩ độ" name="viDo">
+                  <InputNumber min={-90} max={90} step={0.000001} precision={6} placeholder="VD: 20.859442" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Kinh độ" name="kinhDo">
+                  <InputNumber min={-180} max={180} step={0.000001} precision={6} placeholder="VD: 106.681560" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
+                  <Select placeholder="Chọn loại đối tượng" options={[
+                    { value: 'POINT', label: 'Đối tượng điểm' },
+                    { value: 'LINE', label: 'Đối tượng đường' },
+                    { value: 'POLYGON', label: 'Đối tượng vùng' }
+                  ]} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Biểu tượng" name="bieuTuongId">
+                  <Select
+                    allowClear
+                    showSearch
+                    placeholder="Chọn biểu tượng"
+                    optionFilterProp="label"
+                    options={symbols.map(s => ({ label: `${s.name} (${s.code})`, value: s.id }))}
+                  />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={12}>
+                <Form.Item label="Hệ quy chiếu" name="heQuyChieu">
+                  <InputNumber min={0} step={1} precision={0} placeholder="VD: 4326" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item label="Quy tắc hiển thị" name="quyTacHienThi">
+                  <InputNumber min={0} step={1} precision={0} placeholder="VD: 1" style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Row gutter={24}>
+              <Col span={24}>
+                <Form.Item name="gisLocation">
+                  <GisLocationSelector defaultGeometryType={updateLoaiHinhHoc} />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
 
           <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
-                <Select placeholder="Chọn loại đối tượng" options={[
-                  { value: 'POINT', label: 'Đối tượng điểm' },
-                  { value: 'LINE', label: 'Đối tượng đường' },
-                  { value: 'POLYGON', label: 'Đối tượng vùng' }
-                ]} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={24}>
-            <Col span={24}>
-              <Form.Item name="gisLocation">
-                <GisLocationSelector defaultGeometryType={updateLoaiHinhHoc} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
-            Thông số kỹ thuật
-          </Typography.Text>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Chiều dài (m)" name="chieuDai">
-                <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 200.00" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Chiều rộng (m)" name="chieuRong">
-                <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 30.00" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Loại bến" name="loaiBen" rules={[{ required: true, message: 'Vui lòng chọn loại bến' }]}>
-                <Select placeholder="Chọn loại bến" options={LOAI_BEN_OPTIONS} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Độ sâu luồng (m)" name="doSauLuong">
-                <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 12.50" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={24}>
-            <Col span={24}>
-              <Form.Item label="Công năng khai thác" name="congNangKhaiThac">
-                <Select
-                  mode="multiple"
-                  placeholder="Chọn công năng khai thác"
-                  allowClear
-                  options={CONG_NANG_KHAI_THAC_OPTIONS}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Trạng thái hoạt động" name="trangThaiHoatDong">
-                <Select placeholder="Chọn trạng thái" options={ACTIVITY_STATUS_OPTIONS} />
-              </Form.Item>
-            </Col>
             <Col span={12}>
               <Form.Item label="Trạng thái phê duyệt">
                 <Input disabled value={selectedRecord?.trangThaiPheDuyet ? trangThaiPheDuyetBadge(selectedRecord.trangThaiPheDuyet).label : '—'} aria-readonly="true" />
@@ -996,90 +1381,142 @@ export default function BenCangListPage() {
         {selectedRecord && (
           <div>
             <Row gutter={[16, 16]}>
-              <Col span={16}>
-                <Card title="Thông tin chung" size="small" style={{ height: '100%' }}>
-                  <Row gutter={[12, 12]}>
-                    <Col span={12}>
-                      <Typography.Text strong>Mã bến:</Typography.Text>
-                      <br />
+              <Col span={24}>
+                <Card title="Thông tin chung" size="small">
+                  <Descriptions bordered column={2} size="small">
+                    <Descriptions.Item label="Đơn vị quản lý">
+                      {selectedRecord.orgUnitId
+                        ? (orgUnits.find(o => o.id === selectedRecord.orgUnitId)?.name || selectedRecord.orgUnitId)
+                        : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Cảng biển chủ">
+                      {selectedRecord.tenCangBien || selectedRecord.cangBienId || '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Tuyến đường thủy">
+                      {selectedRecord.tuyenDuongThuy || '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Đơn vị khai thác">
+                      {selectedRecord.donViKhaiThac || '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Mã bến">
                       <Tag color="cyan">{selectedRecord.maBen}</Tag>
-                    </Col>
-                    <Col span={12}>
-                      <Typography.Text strong>Tên bến:</Typography.Text>
-                      <br />
-                      <Typography.Text>{selectedRecord.tenBen}</Typography.Text>
-                    </Col>
-                    <Col span={12} style={{ marginTop: 8 }}>
-                      <Typography.Text strong>Cảng biển chủ:</Typography.Text>
-                      <br />
-                      <Typography.Text>
-                        {selectedRecord.tenCangBien || selectedRecord.cangBienId}
-                      </Typography.Text>
-                    </Col>
-                    <Col span={12} style={{ marginTop: 8 }}>
-                      <Typography.Text strong>Tuyến đường thủy:</Typography.Text>
-                      <br />
-                      <Typography.Text>{selectedRecord.tuyenDuongThuy || '—'}</Typography.Text>
-                    </Col>
-                  </Row>
-                </Card>
-              </Col>
-              <Col span={8}>
-                <Card title="Thông số kỹ thuật" size="small" style={{ height: '100%' }}>
-                  <Typography.Text strong>Chiều dài:</Typography.Text> {selectedRecord.chieuDai != null ? `${selectedRecord.chieuDai.toFixed(2)} m` : '—'}
-                  <br />
-                  <Typography.Text strong style={{ marginTop: 4, display: 'inline-block' }}>Chiều rộng:</Typography.Text> {selectedRecord.chieuRong != null ? `${selectedRecord.chieuRong.toFixed(2)} m` : '—'}
-                  <br />
-                  <Typography.Text strong style={{ marginTop: 4, display: 'inline-block' }}>Độ sâu luồng:</Typography.Text> {selectedRecord.doSauLuong != null ? `${selectedRecord.doSauLuong.toFixed(2)} m` : '—'}
-                  <br />
-                  <Typography.Text strong style={{ marginTop: 4, display: 'inline-block' }}>Loại bến:</Typography.Text> {selectedRecord.loaiBen ? (LOAI_BEN_MAP[selectedRecord.loaiBen] || selectedRecord.loaiBen) : '—'}
-                </Card>
-              </Col>
-              <Col span={16}>
-                <Card title="Thông tin địa lý" size="small" style={{ height: '100%' }}>
-                  <Row gutter={[12, 12]}>
-                    <Col span={12}>
-                      <Typography.Text strong>Vĩ độ:</Typography.Text>
-                      <br />
-                      <Typography.Text>{selectedRecord.viDo != null ? selectedRecord.viDo.toFixed(6) : '—'}</Typography.Text>
-                    </Col>
-                    <Col span={12}>
-                      <Typography.Text strong>Kinh độ:</Typography.Text>
-                      <br />
-                      <Typography.Text>{selectedRecord.kinhDo != null ? selectedRecord.kinhDo.toFixed(6) : '—'}</Typography.Text>
-                    </Col>
-                  </Row>
-                </Card>
-              </Col>
-              <Col span={8}>
-                <Card title="Trạng thái" size="small" style={{ height: '100%' }}>
-                  <Typography.Text strong>Hoạt động:</Typography.Text>
-                  <br />
-                  {selectedRecord.trangThaiHoatDong && (
-                    <Tag color={trangThaiHoatDongBadge(selectedRecord.trangThaiHoatDong).color}>
-                      {trangThaiHoatDongBadge(selectedRecord.trangThaiHoatDong).label}
-                    </Tag>
-                  )}
-                  <br />
-                  <Typography.Text strong style={{ marginTop: 8, display: 'block' }}>Phê duyệt:</Typography.Text>
-                  {selectedRecord.trangThaiPheDuyet && (
-                    <Tag color={trangThaiPheDuyetBadge(selectedRecord.trangThaiPheDuyet).color}>
-                      {trangThaiPheDuyetBadge(selectedRecord.trangThaiPheDuyet).label}
-                    </Tag>
-                  )}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Tên bến">
+                      {selectedRecord.tenBen}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Địa điểm (Tỉnh/Thành phố)">
+                      {selectedRecord.diaDiem || '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Địa điểm chi tiết">
+                      {selectedRecord.diaDiemChiTiet || '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Loại kết cấu bến cảng">
+                      {selectedRecord.loaiKetCau != null ? selectedRecord.loaiKetCau : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Công năng khai thác">
+                      {selectedRecord.congNangKhaiThac ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {selectedRecord.congNangKhaiThac.split(',').map(s => s.trim()).filter(Boolean).map(c => (
+                            <Tag color="blue" key={c}>{c}</Tag>
+                          ))}
+                        </div>
+                      ) : (
+                        '—'
+                      )}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Tổng diện tích (ha)">
+                      {selectedRecord.tongDienTich != null ? selectedRecord.tongDienTich.toFixed(4) : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Năng lực thông qua (thiết kế)">
+                      {selectedRecord.nangLucThongQuaThietKe != null ? selectedRecord.nangLucThongQuaThietKe.toFixed(4) : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Năng lực thông qua (hiện trạng) (tấn/năm)">
+                      {selectedRecord.nangLucThongQuaHienTrang != null ? selectedRecord.nangLucThongQuaHienTrang.toFixed(4) : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Cỡ tàu tiếp nhận lớn nhất (DWT)">
+                      {selectedRecord.coTauTiepNhanLonNhat != null ? selectedRecord.coTauTiepNhanLonNhat.toFixed(4) : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Quy hoạch năng lực thông qua (tấn/năm)">
+                      {selectedRecord.quyHoachNangLucThongQua != null ? selectedRecord.quyHoachNangLucThongQua.toFixed(4) : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Sản lượng hàng hóa thực tế (năm gần nhất)">
+                      {selectedRecord.sanLuongHangHoaNamGanNhat != null ? selectedRecord.sanLuongHangHoaNamGanNhat.toFixed(4) : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Tình trạng">
+                      {selectedRecord.trangThaiHoatDong ? (
+                        <Tag color={trangThaiHoatDongBadge(selectedRecord.trangThaiHoatDong).color}>
+                          {trangThaiHoatDongBadge(selectedRecord.trangThaiHoatDong).label}
+                        </Tag>
+                      ) : (
+                        '—'
+                      )}
+                    </Descriptions.Item>
+                  </Descriptions>
                 </Card>
               </Col>
               <Col span={24}>
-                <Card title="Công năng khai thác" size="small">
-                  {selectedRecord.congNangKhaiThac ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {selectedRecord.congNangKhaiThac.split(',').map(s => s.trim()).filter(Boolean).map(c => (
-                        <Tag color="blue" key={c}>{c}</Tag>
-                      ))}
-                    </div>
-                  ) : (
-                    <span style={{ color: '#bfbfbf' }}>Chưa chọn công năng khai thác</span>
-                  )}
+                <Card title="Thông tin kỹ thuật" size="small">
+                  <Descriptions bordered column={2} size="small">
+                    <Descriptions.Item label="Loại bến">
+                      {selectedRecord.loaiBen ? (LOAI_BEN_MAP[selectedRecord.loaiBen] || selectedRecord.loaiBen) : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Chiều dài (m)">
+                      {selectedRecord.chieuDai != null ? `${selectedRecord.chieuDai.toFixed(2)}` : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Chiều rộng (m)">
+                      {selectedRecord.chieuRong != null ? `${selectedRecord.chieuRong.toFixed(2)}` : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Độ sâu luồng (m)">
+                      {selectedRecord.doSauLuong != null ? `${selectedRecord.doSauLuong.toFixed(2)}` : '—'}
+                    </Descriptions.Item>
+                  </Descriptions>
+                </Card>
+              </Col>
+              <Col span={24}>
+                <Card title="Thông tin công bố mở, đưa vào sử dụng" size="small">
+                  <Descriptions bordered column={2} size="small">
+                    <Descriptions.Item label="Thời điểm công bố, đưa vào sử dụng">
+                      {selectedRecord.thoiDiemCongBoMo ? new Date(selectedRecord.thoiDiemCongBoMo).toLocaleString('vi-VN') : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Quyết định công bố / Văn bản cho phép khai thác">
+                      {selectedRecord.quyetDinhCongBo || '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Văn bản thỏa thuận đầu tư xây dựng" span={2}>
+                      {selectedRecord.vanBanThoaThuanDauTu || '—'}
+                    </Descriptions.Item>
+                  </Descriptions>
+                </Card>
+              </Col>
+              <Col span={24}>
+                <Card title="Thông tin vị trí (GIS)" size="small">
+                  <Descriptions bordered column={2} size="small">
+                    <Descriptions.Item label="Vĩ độ">
+                      {selectedRecord.viDo != null ? selectedRecord.viDo.toFixed(6) : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Kinh độ">
+                      {selectedRecord.kinhDo != null ? selectedRecord.kinhDo.toFixed(6) : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Loại đối tượng">
+                      {selectedRecord.loaiHinhHoc === 'POINT' ? 'Đối tượng điểm'
+                        : selectedRecord.loaiHinhHoc === 'LINE' ? 'Đối tượng đường'
+                          : selectedRecord.loaiHinhHoc === 'POLYGON' ? 'Đối tượng vùng'
+                            : selectedRecord.loaiHinhHoc || '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Biểu tượng">
+                      {selectedRecord.bieuTuongId
+                        ? (symbols.find(s => s.id === selectedRecord.bieuTuongId)?.name || selectedRecord.bieuTuongId)
+                        : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Hệ quy chiếu">
+                      {selectedRecord.heQuyChieu != null ? selectedRecord.heQuyChieu : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Quy tắc hiển thị">
+                      {selectedRecord.quyTacHienThi != null ? selectedRecord.quyTacHienThi : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Tọa độ" span={2}>
+                      {selectedRecord.toaDo || '—'}
+                    </Descriptions.Item>
+                  </Descriptions>
                 </Card>
               </Col>
               <Col span={24}>
@@ -1153,6 +1590,7 @@ export default function BenCangListPage() {
                       maBen: selectedRecord.maBen,
                       tenBen: selectedRecord.tenBen,
                       cangBienId: selectedRecord.cangBienId,
+                      orgUnitId: selectedRecord.orgUnitId,
                       tuyenDuongThuy: selectedRecord.tuyenDuongThuy,
                       viDo: selectedRecord.viDo,
                       kinhDo: selectedRecord.kinhDo,
@@ -1162,6 +1600,28 @@ export default function BenCangListPage() {
                       doSauLuong: selectedRecord.doSauLuong,
                       congNangKhaiThac: selectedRecord.congNangKhaiThac ? selectedRecord.congNangKhaiThac.split(',').map(s => s.trim()) : [],
                       trangThaiHoatDong: selectedRecord.trangThaiHoatDong,
+                      loaiHinhHoc: selectedRecord.loaiHinhHoc || 'POINT',
+                      bieuTuongId: selectedRecord.bieuTuongId,
+                      gisLocation: {
+                        loaiHinhHoc: selectedRecord.loaiHinhHoc || 'POINT',
+                        toaDo: selectedRecord.toaDo || '',
+                        bieuTuongId: selectedRecord.bieuTuongId
+                      },
+                      diaDiem: selectedRecord.diaDiem,
+                      diaDiemChiTiet: selectedRecord.diaDiemChiTiet,
+                      heQuyChieu: selectedRecord.heQuyChieu,
+                      quyTacHienThi: selectedRecord.quyTacHienThi,
+                      donViKhaiThac: selectedRecord.donViKhaiThac,
+                      tongDienTich: selectedRecord.tongDienTich,
+                      nangLucThongQuaThietKe: selectedRecord.nangLucThongQuaThietKe,
+                      nangLucThongQuaHienTrang: selectedRecord.nangLucThongQuaHienTrang,
+                      coTauTiepNhanLonNhat: selectedRecord.coTauTiepNhanLonNhat,
+                      quyHoachNangLucThongQua: selectedRecord.quyHoachNangLucThongQua,
+                      sanLuongHangHoaNamGanNhat: selectedRecord.sanLuongHangHoaNamGanNhat,
+                      thoiDiemCongBoMo: selectedRecord.thoiDiemCongBoMo ? dayjs(selectedRecord.thoiDiemCongBoMo) : undefined,
+                      quyetDinhCongBo: selectedRecord.quyetDinhCongBo,
+                      vanBanThoaThuanDauTu: selectedRecord.vanBanThoaThuanDauTu,
+                      loaiKetCau: selectedRecord.loaiKetCau,
                     });
                     setUpdateModalVisible(true);
                   }}

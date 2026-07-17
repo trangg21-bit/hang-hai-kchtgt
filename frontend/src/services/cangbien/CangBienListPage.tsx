@@ -239,9 +239,45 @@ export default function CangBienListPage() {
         trangThaiPheDuyet: (values.trangThaiPheDuyet as string) || 'CHO_PHE_DUYET',
         orgUnitId: (values.orgUnitId as string) || undefined,
         nhomCangBien: values.nhomCangBien ? Number(values.nhomCangBien) : undefined,
-        bieuTuongId: (values.gisLocation as any)?.bieuTuongId || undefined,
-        loaiHinhHoc: values.loaiHinhHoc as string,
-        toaDo: (values.gisLocation as any)?.toaDo,
+        bieuTuongId: (values.bieuTuongId as string) || undefined,
+        // Extended fields
+        diaDiemChiTiet: (values.diaDiemChiTiet as string) || undefined,
+        phanCap: values.phanCap != null && !Number.isNaN(values.phanCap as number)
+          ? Number(values.phanCap) : undefined,
+        heQuyChieu: values.heQuyChieu != null && !Number.isNaN(values.heQuyChieu as number)
+          ? Number(values.heQuyChieu) : undefined,
+        quyTacHienThi: values.quyTacHienThi != null && !Number.isNaN(values.quyTacHienThi as number)
+          ? Number(values.quyTacHienThi) : undefined,
+        // zobjDataSub fields
+        phamViVungNuoc: (values.phamViVungNuoc as string) || undefined,
+        tongSoBenCang: values.tongSoBenCang != null && !Number.isNaN(values.tongSoBenCang as number)
+          ? Number(values.tongSoBenCang) : undefined,
+        tongSoKhuNeoDauChuyenTai: values.tongSoKhuNeoDauChuyenTai != null && !Number.isNaN(values.tongSoKhuNeoDauChuyenTai as number)
+          ? Number(values.tongSoKhuNeoDauChuyenTai) : undefined,
+        tongSoTuyenLuongCongCong: values.tongSoTuyenLuongCongCong != null && !Number.isNaN(values.tongSoTuyenLuongCongCong as number)
+          ? Number(values.tongSoTuyenLuongCongCong) : undefined,
+        tongSoTuyenLuongChuyenDung: values.tongSoTuyenLuongChuyenDung != null && !Number.isNaN(values.tongSoTuyenLuongChuyenDung as number)
+          ? Number(values.tongSoTuyenLuongChuyenDung) : undefined,
+        tongChieuDaiLuongCongCong: values.tongChieuDaiLuongCongCong != null && !Number.isNaN(values.tongChieuDaiLuongCongCong as number)
+          ? Number(values.tongChieuDaiLuongCongCong) : undefined,
+        tongChieuDaiLuongChuyenDung: values.tongChieuDaiLuongChuyenDung != null && !Number.isNaN(values.tongChieuDaiLuongChuyenDung as number)
+          ? Number(values.tongChieuDaiLuongChuyenDung) : undefined,
+        tongSoPhaoTieuBaoHieu: values.tongSoPhaoTieuBaoHieu != null && !Number.isNaN(values.tongSoPhaoTieuBaoHieu as number)
+          ? Number(values.tongSoPhaoTieuBaoHieu) : undefined,
+        tongSoDeKe: values.tongSoDeKe != null && !Number.isNaN(values.tongSoDeKe as number)
+          ? Number(values.tongSoDeKe) : undefined,
+        tongChieuDaiDeKe: values.tongChieuDaiDeKe != null && !Number.isNaN(values.tongChieuDaiDeKe as number)
+          ? Number(values.tongChieuDaiDeKe) : undefined,
+        tongSoDenBienDangTieu: values.tongSoDenBienDangTieu != null && !Number.isNaN(values.tongSoDenBienDangTieu as number)
+          ? Number(values.tongSoDenBienDangTieu) : undefined,
+        soLuongBenPhao: values.soLuongBenPhao != null && !Number.isNaN(values.soLuongBenPhao as number)
+          ? Number(values.soLuongBenPhao) : undefined,
+        soLuongKhuNeoDau: values.soLuongKhuNeoDau != null && !Number.isNaN(values.soLuongKhuNeoDau as number)
+          ? Number(values.soLuongKhuNeoDau) : undefined,
+        soLuongKhuChuyenTai: values.soLuongKhuChuyenTai != null && !Number.isNaN(values.soLuongKhuChuyenTai as number)
+          ? Number(values.soLuongKhuChuyenTai) : undefined,
+        cacKhuNuocKhac: (values.cacKhuNuocKhac as string) || undefined,
+        ghiChu: (values.ghiChu as string) || undefined,
       };
       await import('./api').then(m => m.createCangBien(payload));
       toast.success('Tạo mới thành công — chờ phê duyệt');
@@ -273,6 +309,9 @@ export default function CangBienListPage() {
 
     setSubmitting(true);
     try {
+      const n = (v: unknown): number | undefined =>
+        v != null && !Number.isNaN(v as number) ? Number(v) : undefined;
+
       const payload = {
         id: selectedRecord.id,
         tenCang: (values.tenCang as string) || undefined,
@@ -282,9 +321,29 @@ export default function CangBienListPage() {
         trangThaiHoatDong: (values.trangThaiHoatDong as string) || undefined,
         orgUnitId: (values.orgUnitId as string) || undefined,
         nhomCangBien: values.nhomCangBien ? Number(values.nhomCangBien) : undefined,
-        bieuTuongId: (values.gisLocation as any)?.bieuTuongId || undefined,
-        loaiHinhHoc: values.loaiHinhHoc as string,
-        toaDo: (values.gisLocation as any)?.toaDo,
+        bieuTuongId: (values.bieuTuongId as string) || null,
+        // Extended fields
+        diaDiemChiTiet: (values.diaDiemChiTiet as string) || undefined,
+        phanCap: n(values.phanCap),
+        heQuyChieu: n(values.heQuyChieu),
+        quyTacHienThi: n(values.quyTacHienThi),
+        // zobjDataSub fields
+        phamViVungNuoc: (values.phamViVungNuoc as string) || undefined,
+        tongSoBenCang: n(values.tongSoBenCang),
+        tongSoKhuNeoDauChuyenTai: n(values.tongSoKhuNeoDauChuyenTai),
+        tongSoTuyenLuongCongCong: n(values.tongSoTuyenLuongCongCong),
+        tongSoTuyenLuongChuyenDung: n(values.tongSoTuyenLuongChuyenDung),
+        tongChieuDaiLuongCongCong: n(values.tongChieuDaiLuongCongCong),
+        tongChieuDaiLuongChuyenDung: n(values.tongChieuDaiLuongChuyenDung),
+        tongSoPhaoTieuBaoHieu: n(values.tongSoPhaoTieuBaoHieu),
+        tongSoDeKe: n(values.tongSoDeKe),
+        tongChieuDaiDeKe: n(values.tongChieuDaiDeKe),
+        tongSoDenBienDangTieu: n(values.tongSoDenBienDangTieu),
+        soLuongBenPhao: n(values.soLuongBenPhao),
+        soLuongKhuNeoDau: n(values.soLuongKhuNeoDau),
+        soLuongKhuChuyenTai: n(values.soLuongKhuChuyenTai),
+        cacKhuNuocKhac: (values.cacKhuNuocKhac as string) || undefined,
+        ghiChu: (values.ghiChu as string) || undefined,
       };
       await import('./api').then(m => m.updateCangBien(payload));
       toast.success('Cập nhật thành công');
@@ -388,6 +447,17 @@ export default function CangBienListPage() {
     [fetchData],
   );
 
+  const getOrgUnitName = useCallback((orgUnitId: string | null): string => {
+    if (!orgUnitId) return '—';
+    const unit = orgUnits.find(o => o.id === orgUnitId);
+    return unit ? unit.name : orgUnitId.substring(0, 8) + '…';
+  }, [orgUnits]);
+
+  const getNhomCangBienLabel = (val: number | null): string => {
+    if (!val) return '—';
+    return `Nhóm ${val}`;
+  };
+
   const columns: ColumnsType<CangBienResponse> = [
     {
       title: 'STT',
@@ -408,23 +478,28 @@ export default function CangBienListPage() {
       ellipsis: true,
     },
     {
-      title: 'Tỉnh/thành phố',
-      dataIndex: 'tinhThanhPho',
+      title: 'Đơn vị QL',
+      dataIndex: 'orgUnitId',
       width: 180,
+      ellipsis: true,
+      render: (v: string | null) => getOrgUnitName(v),
+    },
+    {
+      title: 'Tỉnh/TP',
+      dataIndex: 'tinhThanhPho',
+      width: 150,
       ellipsis: true,
       render: (v: string | null) => v || '—',
     },
     {
-      title: 'Vĩ độ',
-      dataIndex: 'viDo',
-      width: 110,
-      render: (v: number | null) => (v != null ? v.toFixed(4) : '—'),
-    },
-    {
-      title: 'Kinh độ',
-      dataIndex: 'kinhDo',
-      width: 110,
-      render: (v: number | null) => (v != null ? v.toFixed(4) : '—'),
+      title: 'Nhóm CB',
+      dataIndex: 'nhomCangBien',
+      width: 120,
+      render: (v: number | null) => {
+        if (!v) return '—';
+        const roman = v === 1 ? 'I' : v === 2 ? 'II' : v === 3 ? 'III' : v === 4 ? 'IV' : 'V';
+        return <Tag>{`Nhóm ${v}`}</Tag>;
+      },
     },
     {
       title: 'Diện tích (m²)',
@@ -512,12 +587,27 @@ export default function CangBienListPage() {
                     trangThaiHoatDong: data.trangThaiHoatDong || undefined,
                     orgUnitId: data.orgUnitId || undefined,
                     nhomCangBien: data.nhomCangBien != null ? data.nhomCangBien : undefined,
-                    loaiHinhHoc: data.loaiHinhHoc || 'POINT',
-                    gisLocation: {
-                      loaiHinhHoc: data.loaiHinhHoc || 'POINT',
-                      toaDo: data.toaDo || '',
-                      bieuTuongId: data.bieuTuongId
-                    }
+                    bieuTuongId: data.bieuTuongId || undefined,
+                    diaDiemChiTiet: data.diaDiemChiTiet || undefined,
+                    phanCap: data.phanCap != null ? data.phanCap : undefined,
+                    heQuyChieu: data.heQuyChieu != null ? data.heQuyChieu : undefined,
+                    quyTacHienThi: data.quyTacHienThi != null ? data.quyTacHienThi : undefined,
+                    phamViVungNuoc: data.phamViVungNuoc || undefined,
+                    tongSoBenCang: data.tongSoBenCang != null ? data.tongSoBenCang : undefined,
+                    tongSoKhuNeoDauChuyenTai: data.tongSoKhuNeoDauChuyenTai != null ? data.tongSoKhuNeoDauChuyenTai : undefined,
+                    tongSoTuyenLuongCongCong: data.tongSoTuyenLuongCongCong != null ? data.tongSoTuyenLuongCongCong : undefined,
+                    tongSoTuyenLuongChuyenDung: data.tongSoTuyenLuongChuyenDung != null ? data.tongSoTuyenLuongChuyenDung : undefined,
+                    tongChieuDaiLuongCongCong: data.tongChieuDaiLuongCongCong != null ? data.tongChieuDaiLuongCongCong : undefined,
+                    tongChieuDaiLuongChuyenDung: data.tongChieuDaiLuongChuyenDung != null ? data.tongChieuDaiLuongChuyenDung : undefined,
+                    tongSoPhaoTieuBaoHieu: data.tongSoPhaoTieuBaoHieu != null ? data.tongSoPhaoTieuBaoHieu : undefined,
+                    tongSoDeKe: data.tongSoDeKe != null ? data.tongSoDeKe : undefined,
+                    tongChieuDaiDeKe: data.tongChieuDaiDeKe != null ? data.tongChieuDaiDeKe : undefined,
+                    tongSoDenBienDangTieu: data.tongSoDenBienDangTieu != null ? data.tongSoDenBienDangTieu : undefined,
+                    soLuongBenPhao: data.soLuongBenPhao != null ? data.soLuongBenPhao : undefined,
+                    soLuongKhuNeoDau: data.soLuongKhuNeoDau != null ? data.soLuongKhuNeoDau : undefined,
+                    soLuongKhuChuyenTai: data.soLuongKhuChuyenTai != null ? data.soLuongKhuChuyenTai : undefined,
+                    cacKhuNuocKhac: data.cacKhuNuocKhac || undefined,
+                    ghiChu: data.ghiChu || undefined,
                   });
                   setUpdateModalVisible(true);
                 } catch (err) {
@@ -737,45 +827,14 @@ export default function CangBienListPage() {
         open={createModalVisible}
         onCancel={() => setCreateModalVisible(false)}
         footer={null}
-        width={800}
+        width={900}
         forceRender
       >
         <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} initialValues={{ trangThaiPheDuyet: 'CHO_PHE_DUYET' }}>
+          {/* ── Section 1: Thông tin chung ── */}
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thông tin chung
           </Typography.Text>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item
-                label="Mã cảng *"
-                name="maCang"
-                rules={[{ required: true, message: 'Mã cảng không được để trống' }, { max: 50, message: 'Mã cảng tối đa 50 ký tự' }]}
-              >
-                <Input placeholder="VD: CB-HAIPHONG-001" maxLength={50} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Tên cảng *"
-                name="tenCang"
-                rules={[{ required: true, message: 'Tên cảng không được để trống' }, { max: 255, message: 'Tên cảng tối đa 255 ký tự' }]}
-              >
-                <Input placeholder="VD: Cảng biển Hải Phòng" maxLength={255} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row>
-            <Col span={24}>
-              <Form.Item label="Tỉnh/thành phố" name="tinhThanhPho" rules={[{ required: false }]}>
-                <Select
-                  showSearch
-                  placeholder="Chọn tỉnh/thành phố..."
-                  filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                  options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
           <Row gutter={24}>
             <Col span={12}>
               <Form.Item label="Đơn vị quản lý" name="orgUnitId">
@@ -789,24 +848,188 @@ export default function CangBienListPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
+              <Form.Item
+                label="Mã cảng *"
+                name="maCang"
+                rules={[{ required: true, message: 'Mã cảng không được để trống' }, { max: 50, message: 'Mã cảng tối đa 50 ký tự' }]}
+              >
+                <Input placeholder="VD: CB-HAIPHONG-001" maxLength={50} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item
+                label="Tên cảng *"
+                name="tenCang"
+                rules={[{ required: true, message: 'Tên cảng không được để trống' }, { max: 255, message: 'Tên cảng tối đa 255 ký tự' }]}
+              >
+                <Input placeholder="VD: Cảng biển Hải Phòng" maxLength={255} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Tỉnh/thành phố" name="tinhThanhPho" rules={[{ required: false }]}>
+                <Select
+                  showSearch
+                  placeholder="Chọn tỉnh/thành phố..."
+                  filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                  options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Địa điểm chi tiết" name="diaDiemChiTiet">
+                <Input placeholder="VD: Xã Đình Vũ, Quận Hải An" maxLength={500} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Phân cấp" name="phanCap">
+                <InputNumber min={1} step={1} precision={0} placeholder="VD: 1" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={12}>
               <Form.Item label="Nhóm cảng biển" name="nhomCangBien">
                 <Select
                   placeholder="Chọn nhóm cảng biển"
                   allowClear
                   options={[
-                    { label: 'Cấp I. Nhóm 1', value: 1 },
-                    { label: 'Cấp II. Nhóm 2', value: 2 },
-                    { label: 'Cấp III. Nhóm 3', value: 3 },
-                    { label: 'Cấp IV. Nhóm 4', value: 4 },
-                    { label: 'Cấp V. Nhóm 5', value: 5 },
+                    { label: 'Nhóm 1', value: 1 },
+                    { label: 'Nhóm 2', value: 2 },
+                    { label: 'Nhóm 3', value: 3 },
+                    { label: 'Nhóm 4', value: 4 },
+                    { label: 'Nhóm 5', value: 5 },
                   ]}
                 />
               </Form.Item>
             </Col>
           </Row>
 
+          {/* ── Section 2: Thông số ── */}
           <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
-            Vị trí địa lý (GIS)
+            Thông số
+          </Typography.Text>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Diện tích (m²) *" name="dienTich" rules={[{ required: true, message: 'Diện tích phải lớn hơn 0' }]}>
+                <InputNumber min={0.01} step={0.01} precision={2} placeholder="VD: 100.00" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Khả năng tiếp nhận" name="khaNangTiepNhan">
+                <InputNumber step={0.01} precision={2} placeholder="VD: 500000" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Trạng thái hoạt động" name="trangThaiHoatDong">
+                <Select placeholder="Chọn trạng thái" options={TRANG_THAI_HOAT_DONG_OPTIONS} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {/* ── Section 3: Thống kê tổng hợp ── */}
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
+            Thống kê tổng hợp
+          </Typography.Text>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Phạm vi vùng nước" name="phamViVungNuoc">
+                <Input.TextArea rows={2} placeholder="Mô tả phạm vi vùng nước cảng biển" maxLength={2000} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Tổng số bến cảng" name="tongSoBenCang">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Tổng số khu neo đậu, chuyển tải" name="tongSoKhuNeoDauChuyenTai">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={6}>
+              <Form.Item label="Tổng số tuyến luồng công cộng" name="tongSoTuyenLuongCongCong">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Tổng số tuyến luồng chuyên dùng" name="tongSoTuyenLuongChuyenDung">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Tổng chiều dài luồng công cộng (m)" name="tongChieuDaiLuongCongCong">
+                <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Tổng chiều dài luồng chuyên dùng (m)" name="tongChieuDaiLuongChuyenDung">
+                <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={6}>
+              <Form.Item label="Tổng số phao tiêu báo hiệu" name="tongSoPhaoTieuBaoHieu">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Tổng số đê kè" name="tongSoDeKe">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Tổng chiều dài đê kè (m)" name="tongChieuDaiDeKe">
+                <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Tổng số đèn biển, đăng tiêu" name="tongSoDenBienDangTieu">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={6}>
+              <Form.Item label="Số lượng bến phao" name="soLuongBenPhao">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Số lượng khu neo đậu" name="soLuongKhuNeoDau">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Số lượng khu chuyển tải" name="soLuongKhuChuyenTai">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Các khu nước khác" name="cacKhuNuocKhac">
+                <Input placeholder="Mô tả" maxLength={2000} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={24}>
+              <Form.Item label="Ghi chú" name="ghiChu">
+                <Input.TextArea rows={2} placeholder="Ghi chú" maxLength={2000} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {/* ── Section 4: Vị trí (GIS) ── */}
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
+            Vị trí (GIS)
           </Typography.Text>
           <Row gutter={24}>
             <Col span={12}>
@@ -826,35 +1049,54 @@ export default function CangBienListPage() {
               </Form.Item>
             </Col>
           </Row>
-
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
-            Thống kê
-          </Typography.Text>
+          <Card size="small" style={{ marginBottom: 16, backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
+              <Typography.Text type="warning">⚠️ Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau.</Typography.Text>
+            </Card>
           <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Diện tích (m²) *" name="dienTich" rules={[{ required: true, message: 'Diện tích phải lớn hơn 0' }]}>
-                <InputNumber min={0.01} step={0.01} precision={2} placeholder="VD: 100.00" style={{ width: '100%' }} />
+            <Col span={8}>
+              <Form.Item label="Loại đối tượng" name="loaiHinhHoc">
+                <Select placeholder="Chọn loại" allowClear options={[
+                  { label: 'Điểm (POINT)', value: 'POINT' },
+                  { label: 'Đường (LINE)', value: 'LINE' },
+                  { label: 'Vùng (POLYGON)', value: 'POLYGON' },
+                ]} />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item label="Khả năng tiếp nhận" name="khaNangTiepNhan">
-                <InputNumber step={0.01} precision={2} placeholder="VD: 500000" style={{ width: '100%' }} />
+            <Col span={8}>
+              <Form.Item name="bieuTuongId" label="Biểu tượng bản đồ">
+                <Select placeholder="Chọn biểu tượng hiển thị" allowClear showSearch optionFilterProp="label">
+                  {symbols.map((sym) => (
+                    <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
+                      <Space>
+                        {sym.hinhAnh && (
+                          <img
+                            src={sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}
+                            alt={sym.name}
+                            style={{ width: 20, height: 20, objectFit: 'contain' }}
+                          />
+                        )}
+                        <span>{sym.name} ({sym.code})</span>
+                      </Space>
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={4}>
+              <Form.Item label="Hệ quy chiếu" name="heQuyChieu">
+                <InputNumber min={0} step={1} precision={0} placeholder="4326" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={4}>
+              <Form.Item label="Quy tắc hiển thị" name="quyTacHienThi">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
           </Row>
-
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
-            Trạng thái
-          </Typography.Text>
           <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Trạng thái hoạt động" name="trangThaiHoatDong">
-                <Select placeholder="Chọn trạng thái" options={TRANG_THAI_HOAT_DONG_OPTIONS} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Trạng thái phê duyệt" name="trangThaiPheDuyet" rules={[{ required: true, message: 'Vui lòng chọn trạng thái phê duyệt' }]}>
-                <Select options={[{ label: 'Chờ phê duyệt', value: 'CHO_PHE_DUYET' }, { label: 'Được phê duyệt', value: 'DUOC_PHE_DUYET' }, { label: 'Từ chối', value: 'TU_CHOI' }]} />
+            <Col span={24}>
+              <Form.Item label="Tọa độ (WKT)" name="toaDo">
+                <Input placeholder="VD: POINT(106.7 20.9)" />
               </Form.Item>
             </Col>
           </Row>
@@ -874,45 +1116,14 @@ export default function CangBienListPage() {
         open={updateModalVisible}
         onCancel={() => setUpdateModalVisible(false)}
         footer={null}
-        width={800}
+        width={900}
         forceRender
       >
         <Form form={updateForm} layout="vertical" onFinish={handleUpdateFinish}>
+          {/* ── Section 1: Thông tin chung ── */}
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thông tin chung
           </Typography.Text>
-          <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Mã cảng" name="maCang">
-                <Input disabled aria-readonly="true" />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Tên cảng"
-                name="tenCang"
-                rules={[{ max: 255, message: 'Tên cảng tối đa 255 ký tự' }]}
-              >
-                <Input placeholder="VD: Cảng biển Hải Phòng" maxLength={255} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row>
-            <Col span={24}>
-              <Form.Item
-                label="Tỉnh/thành phố"
-                name="tinhThanhPho"
-                rules={[{ required: false }]}
-              >
-                <Select
-                  showSearch
-                  placeholder="Chọn tỉnh/thành phố..."
-                  filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-                  options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
           <Row gutter={24}>
             <Col span={12}>
               <Form.Item label="Đơn vị quản lý" name="orgUnitId">
@@ -926,24 +1137,189 @@ export default function CangBienListPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
+              <Form.Item label="Mã cảng" name="maCang">
+                <Input disabled aria-readonly="true" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item
+                label="Tên cảng"
+                name="tenCang"
+                rules={[{ max: 255, message: 'Tên cảng tối đa 255 ký tự' }]}
+              >
+                <Input placeholder="VD: Cảng biển Hải Phòng" maxLength={255} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Tỉnh/thành phố" name="tinhThanhPho" rules={[{ required: false }]}>
+                <Select
+                  showSearch
+                  placeholder="Chọn tỉnh/thành phố..."
+                  filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                  options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Địa điểm chi tiết" name="diaDiemChiTiet">
+                <Input placeholder="VD: Xã Đình Vũ, Quận Hải An" maxLength={500} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Phân cấp" name="phanCap">
+                <InputNumber min={1} step={1} precision={0} placeholder="VD: 1" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={12}>
               <Form.Item label="Nhóm cảng biển" name="nhomCangBien">
                 <Select
                   placeholder="Chọn nhóm cảng biển"
                   allowClear
                   options={[
-                    { label: 'Cấp I. Nhóm 1', value: 1 },
-                    { label: 'Cấp II. Nhóm 2', value: 2 },
-                    { label: 'Cấp III. Nhóm 3', value: 3 },
-                    { label: 'Cấp IV. Nhóm 4', value: 4 },
-                    { label: 'Cấp V. Nhóm 5', value: 5 },
+                    { label: 'Nhóm 1', value: 1 },
+                    { label: 'Nhóm 2', value: 2 },
+                    { label: 'Nhóm 3', value: 3 },
+                    { label: 'Nhóm 4', value: 4 },
+                    { label: 'Nhóm 5', value: 5 },
                   ]}
                 />
               </Form.Item>
             </Col>
           </Row>
 
+          {/* ── Section 2: Thông số ── */}
           <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
-            Vị trí địa lý (GIS)
+            Thông số
+          </Typography.Text>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Diện tích (m²)" name="dienTich">
+                <InputNumber min={0.01} step={0.01} precision={2} placeholder="VD: 100.00" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Khả năng tiếp nhận" name="khaNangTiepNhan">
+                <InputNumber step={0.01} precision={2} placeholder="VD: 500000" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Trạng thái hoạt động" name="trangThaiHoatDong">
+                <Select placeholder="Chọn trạng thái" options={TRANG_THAI_HOAT_DONG_OPTIONS} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Trạng thái phê duyệt">
+                <Input disabled value={selectedRecord?.trangThaiPheDuyet ? trangThaiPheDuyetBadge(selectedRecord.trangThaiPheDuyet).label : '—'} aria-readonly="true" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {/* ── Section 3: Thống kê tổng hợp ── */}
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
+            Thống kê tổng hợp
+          </Typography.Text>
+          <Row gutter={24}>
+            <Col span={12}>
+              <Form.Item label="Phạm vi vùng nước" name="phamViVungNuoc">
+                <Input.TextArea rows={2} placeholder="Mô tả phạm vi vùng nước cảng biển" maxLength={2000} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Tổng số bến cảng" name="tongSoBenCang">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Tổng số khu neo đậu, chuyển tải" name="tongSoKhuNeoDauChuyenTai">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={6}>
+              <Form.Item label="Tổng số tuyến luồng công cộng" name="tongSoTuyenLuongCongCong">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Tổng số tuyến luồng chuyên dùng" name="tongSoTuyenLuongChuyenDung">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Tổng chiều dài luồng công cộng (m)" name="tongChieuDaiLuongCongCong">
+                <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Tổng chiều dài luồng chuyên dùng (m)" name="tongChieuDaiLuongChuyenDung">
+                <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={6}>
+              <Form.Item label="Tổng số phao tiêu báo hiệu" name="tongSoPhaoTieuBaoHieu">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Tổng số đê kè" name="tongSoDeKe">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Tổng chiều dài đê kè (m)" name="tongChieuDaiDeKe">
+                <InputNumber min={0} step={0.01} precision={2} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Tổng số đèn biển, đăng tiêu" name="tongSoDenBienDangTieu">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={6}>
+              <Form.Item label="Số lượng bến phao" name="soLuongBenPhao">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Số lượng khu neo đậu" name="soLuongKhuNeoDau">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Số lượng khu chuyển tải" name="soLuongKhuChuyenTai">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item label="Các khu nước khác" name="cacKhuNuocKhac">
+                <Input placeholder="Mô tả" maxLength={2000} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={24}>
+            <Col span={24}>
+              <Form.Item label="Ghi chú" name="ghiChu">
+                <Input.TextArea rows={2} placeholder="Ghi chú" maxLength={2000} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {/* ── Section 4: Vị trí (GIS) ── */}
+          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
+            Vị trí (GIS)
           </Typography.Text>
           <Row gutter={24}>
             <Col span={12}>
@@ -963,39 +1339,59 @@ export default function CangBienListPage() {
               </Form.Item>
             </Col>
           </Row>
-
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
-            Thống kê
-          </Typography.Text>
+          <Card size="small" style={{ marginBottom: 16, backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
+              <Typography.Text type="warning">
+                ⚠️ Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau.
+              </Typography.Text>
+            </Card>
           <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Diện tích (m²)" name="dienTich">
-                <InputNumber min={0.01} step={0.01} precision={2} placeholder="VD: 100.00" style={{ width: '100%' }} />
+            <Col span={8}>
+              <Form.Item label="Loại đối tượng" name="loaiHinhHoc">
+                <Select placeholder="Chọn loại" allowClear options={[
+                  { label: 'Điểm (POINT)', value: 'POINT' },
+                  { label: 'Đường (LINE)', value: 'LINE' },
+                  { label: 'Vùng (POLYGON)', value: 'POLYGON' },
+                ]} />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item label="Khả năng tiếp nhận" name="khaNangTiepNhan">
-                <InputNumber step={0.01} precision={2} placeholder="VD: 500000" style={{ width: '100%' }} />
+            <Col span={8}>
+              <Form.Item name="bieuTuongId" label="Biểu tượng bản đồ">
+                <Select placeholder="Chọn biểu tượng hiển thị" allowClear showSearch optionFilterProp="label">
+                  {symbols.map((sym) => (
+                    <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
+                      <Space>
+                        {sym.hinhAnh && (
+                          <img
+                            src={sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}
+                            alt={sym.name}
+                            style={{ width: 20, height: 20, objectFit: 'contain' }}
+                          />
+                        )}
+                        <span>{sym.name} ({sym.code})</span>
+                      </Space>
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={4}>
+              <Form.Item label="Hệ quy chiếu" name="heQuyChieu">
+                <InputNumber min={0} step={1} precision={0} placeholder="4326" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={4}>
+              <Form.Item label="Quy tắc hiển thị" name="quyTacHienThi">
+                <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
           </Row>
-
-          <Typography.Text strong style={{ display: 'block', marginBottom: 12, marginTop: 16 }}>
-            Trạng thái
-          </Typography.Text>
           <Row gutter={24}>
-            <Col span={12}>
-              <Form.Item label="Trạng thái hoạt động" name="trangThaiHoatDong">
-                <Select placeholder="Chọn trạng thái" options={TRANG_THAI_HOAT_DONG_OPTIONS} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item label="Trạng thái phê duyệt">
-                <Input disabled value={selectedRecord?.trangThaiPheDuyet ? trangThaiPheDuyetBadge(selectedRecord.trangThaiPheDuyet).label : '—'} aria-readonly="true" />
+            <Col span={24}>
+              <Form.Item label="Tọa độ (WKT)" name="toaDo">
+                <Input placeholder="VD: POINT(106.7 20.9)" />
               </Form.Item>
             </Col>
           </Row>
-
 
           <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
             <Space>
@@ -1030,11 +1426,6 @@ export default function CangBienListPage() {
                       <br />
                       <Typography.Text>{selectedRecord.tenCang}</Typography.Text>
                     </Col>
-                    <Col span={24} style={{ marginTop: 8 }}>
-                      <Typography.Text strong>Tỉnh/thành phố:</Typography.Text>
-                      <br />
-                      <Typography.Text>{selectedRecord.tinhThanhPho || '—'}</Typography.Text>
-                    </Col>
                     <Col span={12} style={{ marginTop: 8 }}>
                       <Typography.Text strong>Đơn vị quản lý:</Typography.Text>
                       <br />
@@ -1045,11 +1436,26 @@ export default function CangBienListPage() {
                       </Typography.Text>
                     </Col>
                     <Col span={12} style={{ marginTop: 8 }}>
+                      <Typography.Text strong>Tỉnh/thành phố:</Typography.Text>
+                      <br />
+                      <Typography.Text>{selectedRecord.tinhThanhPho || '—'}</Typography.Text>
+                    </Col>
+                    <Col span={12} style={{ marginTop: 8 }}>
+                      <Typography.Text strong>Địa điểm chi tiết:</Typography.Text>
+                      <br />
+                      <Typography.Text>{selectedRecord.diaDiemChiTiet || '—'}</Typography.Text>
+                    </Col>
+                    <Col span={12} style={{ marginTop: 8 }}>
+                      <Typography.Text strong>Phân cấp:</Typography.Text>
+                      <br />
+                      <Typography.Text>{selectedRecord.phanCap ?? '—'}</Typography.Text>
+                    </Col>
+                    <Col span={12} style={{ marginTop: 8 }}>
                       <Typography.Text strong>Nhóm cảng biển:</Typography.Text>
                       <br />
                       <Typography.Text>
                         {selectedRecord.nhomCangBien 
-                          ? `Cấp ${selectedRecord.nhomCangBien === 1 ? 'I' : selectedRecord.nhomCangBien === 2 ? 'II' : selectedRecord.nhomCangBien === 3 ? 'III' : selectedRecord.nhomCangBien === 4 ? 'IV' : 'V'}. Nhóm ${selectedRecord.nhomCangBien}`
+                          ? 'Nhóm ' + selectedRecord.nhomCangBien
                           : '—'}
                       </Typography.Text>
                     </Col>
@@ -1057,35 +1463,15 @@ export default function CangBienListPage() {
                 </Card>
               </Col>
               <Col span={8}>
-                <Card title="Thống kê" size="small" style={{ height: '100%' }}>
+                <Card title="Thông số" size="small" style={{ height: '100%' }}>
                   <Typography.Text strong>Diện tích (m²):</Typography.Text>
                   <br />
                   <Typography.Text>{selectedRecord.dienTich != null ? selectedRecord.dienTich.toFixed(2) : '—'}</Typography.Text>
                   <br />
                   <Typography.Text strong style={{ marginTop: 8, display: 'block' }}>Khả năng tiếp nhận:</Typography.Text>
                   <Typography.Text>{selectedRecord.khaNangTiepNhan != null ? selectedRecord.khaNangTiepNhan.toFixed(2) : '—'}</Typography.Text>
-                </Card>
-              </Col>
-              <Col span={16}>
-                <Card title="Thông tin địa lý" size="small" style={{ height: '100%' }}>
-                  <Row gutter={[12, 12]}>
-                    <Col span={12}>
-                      <Typography.Text strong>Vĩ độ:</Typography.Text>
-                      <br />
-                      <Typography.Text>{selectedRecord.viDo != null ? selectedRecord.viDo.toFixed(6) : '—'}</Typography.Text>
-                    </Col>
-                    <Col span={12}>
-                      <Typography.Text strong>Kinh độ:</Typography.Text>
-                      <br />
-                      <Typography.Text>{selectedRecord.kinhDo != null ? selectedRecord.kinhDo.toFixed(6) : '—'}</Typography.Text>
-                    </Col>
-                  </Row>
-                </Card>
-              </Col>
-              <Col span={8}>
-                <Card title="Trạng thái" size="small" style={{ height: '100%' }}>
-                  <Typography.Text strong>Hoạt động:</Typography.Text>
                   <br />
+                  <Typography.Text strong style={{ marginTop: 8, display: 'block' }}>Trạng thái HĐ:</Typography.Text>
                   {selectedRecord.trangThaiHoatDong && (
                     <Tag color={trangThaiHoatDongBadge(selectedRecord.trangThaiHoatDong).color}>
                       {trangThaiHoatDongBadge(selectedRecord.trangThaiHoatDong).label}
@@ -1098,6 +1484,68 @@ export default function CangBienListPage() {
                       {trangThaiPheDuyetBadge(selectedRecord.trangThaiPheDuyet).label}
                     </Tag>
                   )}
+                </Card>
+              </Col>
+              <Col span={24}>
+                <Card title="Thống kê tổng hợp" size="small">
+                  <Row gutter={[12, 12]}>
+                    <Col span={8}><Typography.Text strong>Phạm vi vùng nước:</Typography.Text><br /><Typography.Text>{selectedRecord.phamViVungNuoc || '—'}</Typography.Text></Col>
+                    <Col span={4}><Typography.Text strong>Tổng số bến cảng:</Typography.Text><br /><Typography.Text>{selectedRecord.tongSoBenCang ?? '—'}</Typography.Text></Col>
+                    <Col span={4}><Typography.Text strong>Khu neo đậu, chuyển tải:</Typography.Text><br /><Typography.Text>{selectedRecord.tongSoKhuNeoDauChuyenTai ?? '—'}</Typography.Text></Col>
+                  </Row>
+                  <Row gutter={[12, 12]} style={{ marginTop: 12 }}>
+                    <Col span={6}><Typography.Text strong>Tuyến luồng công cộng:</Typography.Text><br /><Typography.Text>{selectedRecord.tongSoTuyenLuongCongCong ?? '—'} ({selectedRecord.tongChieuDaiLuongCongCong != null ? selectedRecord.tongChieuDaiLuongCongCong + 'm' : '—'})</Typography.Text></Col>
+                    <Col span={6}><Typography.Text strong>Tuyến luồng chuyên dùng:</Typography.Text><br /><Typography.Text>{selectedRecord.tongSoTuyenLuongChuyenDung ?? '—'} ({selectedRecord.tongChieuDaiLuongChuyenDung != null ? selectedRecord.tongChieuDaiLuongChuyenDung + 'm' : '—'})</Typography.Text></Col>
+                    <Col span={6}><Typography.Text strong>Phao tiêu báo hiệu:</Typography.Text><br /><Typography.Text>{selectedRecord.tongSoPhaoTieuBaoHieu ?? '—'}</Typography.Text></Col>
+                    <Col span={6}><Typography.Text strong>Đê kè:</Typography.Text><br /><Typography.Text>{selectedRecord.tongSoDeKe ?? '—'} ({selectedRecord.tongChieuDaiDeKe != null ? selectedRecord.tongChieuDaiDeKe + 'm' : '—'})</Typography.Text></Col>
+                  </Row>
+                  <Row gutter={[12, 12]} style={{ marginTop: 12 }}>
+                    <Col span={4}><Typography.Text strong>Đèn biển, đăng tiêu:</Typography.Text><br /><Typography.Text>{selectedRecord.tongSoDenBienDangTieu ?? '—'}</Typography.Text></Col>
+                    <Col span={4}><Typography.Text strong>Bến phao:</Typography.Text><br /><Typography.Text>{selectedRecord.soLuongBenPhao ?? '—'}</Typography.Text></Col>
+                    <Col span={4}><Typography.Text strong>Khu neo đậu:</Typography.Text><br /><Typography.Text>{selectedRecord.soLuongKhuNeoDau ?? '—'}</Typography.Text></Col>
+                    <Col span={4}><Typography.Text strong>Khu chuyển tải:</Typography.Text><br /><Typography.Text>{selectedRecord.soLuongKhuChuyenTai ?? '—'}</Typography.Text></Col>
+                    <Col span={8}><Typography.Text strong>Các khu nước khác:</Typography.Text><br /><Typography.Text>{selectedRecord.cacKhuNuocKhac || '—'}</Typography.Text></Col>
+                  </Row>
+                  <Row gutter={[12, 12]} style={{ marginTop: 12 }}>
+                    <Col span={24}><Typography.Text strong>Ghi chú:</Typography.Text><br /><Typography.Text>{selectedRecord.ghiChu || '—'}</Typography.Text></Col>
+                  </Row>
+                </Card>
+              </Col>
+              <Col span={16}>
+                <Card title="Thông tin địa lý & GIS" size="small" style={{ height: '100%' }}>
+                  <Row gutter={[12, 12]}>
+                    <Col span={8}>
+                      <Typography.Text strong>Vĩ độ:</Typography.Text>
+                      <br />
+                      <Typography.Text>{selectedRecord.viDo != null ? selectedRecord.viDo.toFixed(6) : '—'}</Typography.Text>
+                    </Col>
+                    <Col span={8}>
+                      <Typography.Text strong>Kinh độ:</Typography.Text>
+                      <br />
+                      <Typography.Text>{selectedRecord.kinhDo != null ? selectedRecord.kinhDo.toFixed(6) : '—'}</Typography.Text>
+                    </Col>
+                    <Col span={4}>
+                      <Typography.Text strong>Hệ quy chiếu:</Typography.Text>
+                      <br />
+                      <Typography.Text>{selectedRecord.heQuyChieu ?? '—'}</Typography.Text>
+                    </Col>
+                    <Col span={4}>
+                      <Typography.Text strong>Quy tắc hiển thị:</Typography.Text>
+                      <br />
+                      <Typography.Text>{selectedRecord.quyTacHienThi ?? '—'}</Typography.Text>
+                    </Col>
+                  </Row>
+                  <Row gutter={[12, 12]} style={{ marginTop: 8 }}>
+                    <Col span={24}>
+                      <Typography.Text strong>Biểu tượng bản đồ:</Typography.Text>
+                      <br />
+                      <Typography.Text>
+                        {selectedRecord.bieuTuongId
+                          ? (symbols.find(s => s.id === selectedRecord.bieuTuongId)?.name || selectedRecord.bieuTuongId)
+                          : '—'}
+                      </Typography.Text>
+                    </Col>
+                  </Row>
                 </Card>
               </Col>
               <Col span={24}>
@@ -1161,6 +1609,26 @@ export default function CangBienListPage() {
                       orgUnitId: selectedRecord.orgUnitId || undefined,
                       nhomCangBien: selectedRecord.nhomCangBien != null ? selectedRecord.nhomCangBien : undefined,
                       bieuTuongId: selectedRecord.bieuTuongId || undefined,
+                      diaDiemChiTiet: selectedRecord.diaDiemChiTiet || undefined,
+                      phanCap: selectedRecord.phanCap != null ? selectedRecord.phanCap : undefined,
+                      heQuyChieu: selectedRecord.heQuyChieu != null ? selectedRecord.heQuyChieu : undefined,
+                      quyTacHienThi: selectedRecord.quyTacHienThi != null ? selectedRecord.quyTacHienThi : undefined,
+                      phamViVungNuoc: selectedRecord.phamViVungNuoc || undefined,
+                      tongSoBenCang: selectedRecord.tongSoBenCang != null ? selectedRecord.tongSoBenCang : undefined,
+                      tongSoKhuNeoDauChuyenTai: selectedRecord.tongSoKhuNeoDauChuyenTai != null ? selectedRecord.tongSoKhuNeoDauChuyenTai : undefined,
+                      tongSoTuyenLuongCongCong: selectedRecord.tongSoTuyenLuongCongCong != null ? selectedRecord.tongSoTuyenLuongCongCong : undefined,
+                      tongSoTuyenLuongChuyenDung: selectedRecord.tongSoTuyenLuongChuyenDung != null ? selectedRecord.tongSoTuyenLuongChuyenDung : undefined,
+                      tongChieuDaiLuongCongCong: selectedRecord.tongChieuDaiLuongCongCong != null ? selectedRecord.tongChieuDaiLuongCongCong : undefined,
+                      tongChieuDaiLuongChuyenDung: selectedRecord.tongChieuDaiLuongChuyenDung != null ? selectedRecord.tongChieuDaiLuongChuyenDung : undefined,
+                      tongSoPhaoTieuBaoHieu: selectedRecord.tongSoPhaoTieuBaoHieu != null ? selectedRecord.tongSoPhaoTieuBaoHieu : undefined,
+                      tongSoDeKe: selectedRecord.tongSoDeKe != null ? selectedRecord.tongSoDeKe : undefined,
+                      tongChieuDaiDeKe: selectedRecord.tongChieuDaiDeKe != null ? selectedRecord.tongChieuDaiDeKe : undefined,
+                      tongSoDenBienDangTieu: selectedRecord.tongSoDenBienDangTieu != null ? selectedRecord.tongSoDenBienDangTieu : undefined,
+                      soLuongBenPhao: selectedRecord.soLuongBenPhao != null ? selectedRecord.soLuongBenPhao : undefined,
+                      soLuongKhuNeoDau: selectedRecord.soLuongKhuNeoDau != null ? selectedRecord.soLuongKhuNeoDau : undefined,
+                      soLuongKhuChuyenTai: selectedRecord.soLuongKhuChuyenTai != null ? selectedRecord.soLuongKhuChuyenTai : undefined,
+                      cacKhuNuocKhac: selectedRecord.cacKhuNuocKhac || undefined,
+                      ghiChu: selectedRecord.ghiChu || undefined,
                     });
                     setUpdateModalVisible(true);
                   }}

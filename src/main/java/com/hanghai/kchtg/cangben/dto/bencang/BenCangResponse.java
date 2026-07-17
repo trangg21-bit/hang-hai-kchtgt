@@ -34,4 +34,22 @@ public class BenCangResponse {
     private java.util.UUID khongGianId;
     private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
     private String toaDo;
+
+    // ── Extended fields from hh.csdl legacy Qlkc038Dto ────────────────
+
+    private String diaDiem;
+    private String diaDiemChiTiet;
+    private Integer heQuyChieu;
+    private Integer quyTacHienThi;
+    private String donViKhaiThac;
+    private BigDecimal tongDienTich;
+    private BigDecimal nangLucThongQuaThietKe;
+    private BigDecimal nangLucThongQuaHienTrang;
+    private BigDecimal coTauTiepNhanLonNhat;
+    private BigDecimal quyHoachNangLucThongQua;
+    private BigDecimal sanLuongHangHoaNamGanNhat;
+    private LocalDateTime thoiDiemCongBoMo;
+    private String quyetDinhCongBo;
+    private String vanBanThoaThuanDauTu;
+    private Integer loaiKetCau;
 }
