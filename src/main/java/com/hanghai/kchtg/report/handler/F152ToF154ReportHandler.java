@@ -2,9 +2,13 @@ package com.hanghai.kchtg.report.handler;
 
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
-import com.hanghai.kchtg.gis.polygon.entity.PolygonObject;
-import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
+import com.hanghai.kchtg.cangben.entity.VungNuoc;
+import com.hanghai.kchtg.cangben.entity.LoaiVungNuoc;
+import com.hanghai.kchtg.cangben.repository.VungNuocRepository;
+import com.hanghai.kchtg.gis.line.entity.LineObject;
+import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -13,7 +17,10 @@ import java.util.*;
 public class F152ToF154ReportHandler extends BaseReportHandler {
 
     @Autowired
-    private PolygonObjectRepository polygonObjectRepository;
+    private VungNuocRepository vungNuocRepository;
+
+    @Autowired
+    private LineObjectRepository lineObjectRepository;
 
     @Override
     public boolean supports(String reportCode) {
@@ -22,15 +29,35 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
                 || "F-154".equalsIgnoreCase(reportCode);
     }
 
+    private Set<LoaiVungNuoc> getLoaiVungNuocFilter(String reportCode) {
+        Set<LoaiVungNuoc> filterSet = new HashSet<>();
+        if ("F-152".equalsIgnoreCase(reportCode)) {
+            filterSet.add(LoaiVungNuoc.DON_TRA_HOA_TIEU);
+            filterSet.add(LoaiVungNuoc.QUAY_TRO_TAU);
+            filterSet.add(LoaiVungNuoc.NEO_DAU);
+            filterSet.add(LoaiVungNuoc.TRANH_BAO);
+        } else if ("F-153".equalsIgnoreCase(reportCode)) {
+            filterSet.add(LoaiVungNuoc.CHUYEN_TAI);
+            filterSet.add(LoaiVungNuoc.NEO_DAU);
+        } else if ("F-154".equalsIgnoreCase(reportCode)) {
+            filterSet.add(LoaiVungNuoc.BEN_PHAO);
+            filterSet.add(LoaiVungNuoc.NEO_DAU);
+        }
+        return filterSet;
+    }
+
     @Override
     public ReportResponse getPreview(ReportPreviewRequest request) {
         UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
         int reportYear = getReportYear(request);
 
-        List<PolygonObject> polygons = polygonObjectRepository.findAll().stream()
-                .filter(p -> skipFilter || targetUnitId.equals(p.getUnitId()))
-                .filter(p -> p.getCreatedAt() == null || p.getCreatedAt().getYear() <= reportYear)
+        Set<LoaiVungNuoc> filterSet = getLoaiVungNuocFilter(request.getReportCode());
+
+        List<VungNuoc> vungNuocs = vungNuocRepository.findAll(Sort.unsorted()).stream()
+                .filter(v -> filterSet.contains(v.getLoaiVungNuoc()))
+                .filter(v -> skipFilter || targetUnitId.equals(v.getDonViId()))
+                .filter(v -> v.getCreatedAt() == null || v.getCreatedAt().getYear() <= reportYear)
                 .toList();
 
         List<String> headers = List.of(
@@ -42,26 +69,36 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
 
         List<Map<String, Object>> rows = new ArrayList<>();
         int stt = 1;
-        for (PolygonObject p : polygons) {
+        for (VungNuoc v : vungNuocs) {
             Map<String, Object> r = new LinkedHashMap<>();
             r.put("STT", stt++);
-            r.put("Chỉ tiêu", p.getName());
-            r.put("Vị trí, tọa độ", p.getCoordinates() != null ? p.getCoordinates() : "");
+            r.put("Chỉ tiêu", v.getTenVungNuoc() != null ? v.getTenVungNuoc() : "");
+
+            // JOIN khongGianId → LineObject.coordinates
+            String coordinates = "";
+            if (v.getKhongGianId() != null) {
+                Optional<LineObject> lineOpt = lineObjectRepository.findById(v.getKhongGianId());
+                if (lineOpt.isPresent() && lineOpt.get().getCoordinates() != null) {
+                    coordinates = lineOpt.get().getCoordinates();
+                }
+            }
+            r.put("Vị trí, tọa độ", coordinates);
             r.put("Hình dạng", "");
-            r.put("Diện tích (m2)", 0.0);
+            r.put("Diện tích (m2)", v.getDienTich() != null ? v.getDienTich().doubleValue() : 0.0);
             r.put("Cỡ tàu lớn nhất (DWT)", 0.0);
+
             String donVi = "";
-            if (p.getUnitId() != null) {
-                donVi = orgUnitRepository.findById(p.getUnitId())
+            if (v.getDonViId() != null) {
+                donVi = orgUnitRepository.findById(v.getDonViId())
                         .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
                         .orElse("");
             }
             r.put("Đơn vị quản lý khai thác", donVi);
-            r.put("Độ sâu theo thiết kế (m)", 0.0);
-            r.put("Độ sâu hiện tại (m)", 0.0);
+            r.put("Độ sâu theo thiết kế (m)", v.getDoSauMax() != null ? v.getDoSauMax().doubleValue() : 0.0);
+            r.put("Độ sâu hiện tại (m)", v.getDoSauTrungBinh() != null ? v.getDoSauTrungBinh().doubleValue() : 0.0);
             r.put("Đã công bố", "");
             r.put("Năm công bố", "");
-            r.put("Ghi chú", p.getDescription() != null ? p.getDescription() : "");
+            r.put("Ghi chú", v.getLoaiVungNuoc() != null ? v.getLoaiVungNuoc().name() : "");
             rows.add(r);
         }
 
@@ -76,30 +113,38 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
         UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
 
-        List<PolygonObject> polygons = polygonObjectRepository.findAll().stream()
-                .filter(p -> skipFilter || targetUnitId.equals(p.getUnitId()))
-                .filter(p -> p.getCreatedAt() == null || p.getCreatedAt().getYear() <= reportYear)
+        Set<LoaiVungNuoc> filterSet = getLoaiVungNuocFilter(request.getReportCode());
+
+        List<VungNuoc> vungNuocs = vungNuocRepository.findAll(Sort.unsorted()).stream()
+                .filter(v -> filterSet.contains(v.getLoaiVungNuoc()))
+                .filter(v -> skipFilter || targetUnitId.equals(v.getDonViId()))
+                .filter(v -> v.getCreatedAt() == null || v.getCreatedAt().getYear() <= reportYear)
                 .toList();
 
         List<Map<String, Object>> arrResult = new ArrayList<>();
-        for (PolygonObject p : polygons) {
+        for (VungNuoc v : vungNuocs) {
             Map<String, Object> item = new HashMap<>();
-            item.put("ten", p.getName());
-            item.put("code", p.getCode());
-            item.put("name", p.getName());
-            item.put("description", p.getDescription());
-            item.put("unitId", p.getUnitId() != null ? p.getUnitId().toString() : "");
-            item.put("status", p.getStatus() != null ? p.getStatus().name() : "");
+            String tenVungNuoc = v.getTenVungNuoc() != null ? v.getTenVungNuoc() : "";
+            double dienTich = v.getDienTich() != null ? v.getDienTich().doubleValue() : 0.0;
+            double doSauMax = v.getDoSauMax() != null ? v.getDoSauMax().doubleValue() : 0.0;
+            double doSauTrungBinh = v.getDoSauTrungBinh() != null ? v.getDoSauTrungBinh().doubleValue() : 0.0;
 
-            item.put("tenCangBien", p.getName());
-            item.put("tenCang", p.getName());
-            item.put("loaiTaiSan", p.getName());
-            item.put("maTuyenLuong", p.getCode());
-            item.put("tenTramQuanLyLuong", p.getName());
-            item.put("tenDiemNeo", p.getName());
+            item.put("ten", tenVungNuoc);
+            item.put("code", v.getMaVungNuoc() != null ? v.getMaVungNuoc() : "");
+            item.put("name", tenVungNuoc);
+            item.put("description", v.getLoaiVungNuoc() != null ? v.getLoaiVungNuoc().name() : "");
+            item.put("unitId", v.getDonViId() != null ? v.getDonViId().toString() : "");
+            item.put("status", "");
+
+            item.put("tenCangBien", tenVungNuoc);
+            item.put("tenCang", tenVungNuoc);
+            item.put("loaiTaiSan", tenVungNuoc);
+            item.put("maTuyenLuong", v.getMaVungNuoc() != null ? v.getMaVungNuoc() : "");
+            item.put("tenTramQuanLyLuong", tenVungNuoc);
+            item.put("tenDiemNeo", tenVungNuoc);
 
             item.put("soLuongTram", 0.0);
-            item.put("dienTich", 0.0);
+            item.put("dienTich", dienTich);
             item.put("thoiDiemSuaChuaGanNhat", "");
             item.put("thoiDiemCongBo", "");
             item.put("ngaySuaChua", "");
@@ -109,16 +154,23 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
             item.put("daiLuong", 0.0);
             item.put("rongLonNhat", 0.0);
             item.put("rongNhoNhat", 0.0);
-            item.put("doSau", 0.0);
-            item.put("doSauThietKe", 0.0);
-            item.put("doSauKhuNuocTheoThietKe", 0.0);
+            item.put("doSau", doSauMax);
+            item.put("doSauThietKe", doSauMax);
+            item.put("doSauKhuNuocTheoThietKe", doSauMax);
             item.put("maiDoc", 0.0);
-            item.put("doSauHienTai", 0.0);
+            item.put("doSauHienTai", doSauTrungBinh);
             item.put("khoiLuongNaoVetDuyTu", 0.0);
             item.put("congCong", 0.0);
             item.put("chuyenDung", 0.0);
             item.put("chieuCaoTinhKhong", 0.0);
-            item.put("donViQuanLyVanHanh", p.getUnitId() != null ? p.getUnitId().toString() : "");
+
+            String donVi = "";
+            if (v.getDonViId() != null) {
+                donVi = orgUnitRepository.findById(v.getDonViId())
+                        .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                        .orElse("");
+            }
+            item.put("donViQuanLyVanHanh", donVi);
             arrResult.add(item);
         }
         return arrResult;

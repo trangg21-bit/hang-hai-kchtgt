@@ -23,7 +23,7 @@ public interface ChartFeatureRepository extends JpaRepository<ChartFeature, UUID
     @org.springframework.data.jpa.repository.Query(value = 
         "SELECT f.* FROM enc_features f " +
         "WHERE f.deleted_at IS NULL " +
-        "AND f.geom && ST_MakeEnvelope(:minLon, :minLat, :maxLon, :maxLat, 4326)", 
+        "AND ST_GeomFromText(f.coordinates, 4326) && ST_MakeEnvelope(:minLon, :minLat, :maxLon, :maxLat, 4326)", 
         nativeQuery = true)
     List<ChartFeature> findFeaturesInBoundingBox(
         @org.springframework.data.repository.query.Param("minLon") double minLon,

@@ -104,7 +104,8 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
         setIsLoading(true);
         setFormError(null);
         try {
-          const data = await dekeCRUD.getById(id);
+          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          const data = cached || await dekeCRUD.getById(id);
           setRecord(data);
           form.setFieldsValue({
             loaiDe: data.loaiDe,

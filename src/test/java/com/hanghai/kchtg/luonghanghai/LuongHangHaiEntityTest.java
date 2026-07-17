@@ -14,7 +14,7 @@ class LuongHangHaiEntityTest {
     @Test void builder_shouldCreateValidEntity() {
         LuongHangHai e = LuongHangHai.builder()
                 .id(1L)
-                .loaiTau("Tau ca cuoc")
+                .ten("Luong hang hai")
                 .soLuong(100)
                 .ngayGhiNhan(LocalDate.of(2026, 1, 1))
                 .gioDien("12:00")
@@ -28,7 +28,7 @@ class LuongHangHaiEntityTest {
                 .createdBy("Admin")
                 .build();
         assertThat(e.getId()).isEqualTo(1L);
-        assertThat(e.getLoaiTau()).isEqualTo("Tau ca cuoc");
+        assertThat(e.getTen()).isEqualTo("Luong hang hai");
         assertThat(e.getApprovalStatus()).isEqualTo(LuongHangHaiApprovalStatus.PROPOSED);
         assertThat(e.getPheDuyetC1()).isFalse();
         assertThat(e.getSoLuong()).isEqualTo(100);
@@ -37,7 +37,7 @@ class LuongHangHaiEntityTest {
     @Test void getterSetter_shouldWork() {
         LuongHangHai e = new LuongHangHai();
         e.setId(42L);
-        e.setLoaiTau("Tau dat");
+        e.setTen("Luong hang hai moi");
         e.setSoLuong(200);
         e.setGioDien("14:30");
         e.setTaiTrong("2000");
@@ -47,13 +47,13 @@ class LuongHangHaiEntityTest {
         e.setCreatedBy("User");
         e.setUpdatedBy("Admin");
         assertThat(e.getId()).isEqualTo(42L);
-        assertThat(e.getLoaiTau()).isEqualTo("Tau dat");
+        assertThat(e.getTen()).isEqualTo("Luong hang hai moi");
         assertThat(e.getApprovalStatus()).isEqualTo(LuongHangHaiApprovalStatus.APPROVED);
     }
 
     @Test void prePersist_shouldSetCreatedAt() {
         // JPA lifecycle: onCreate() is protected — test via manual setter
-        LuongHangHai e = LuongHangHai.builder().loaiTau("Tau").build();
+        LuongHangHai e = LuongHangHai.builder().ten("Luong hang hai").build();
         assertThat(e.getCreatedAt()).isNull();
         e.setCreatedAt(LocalDateTime.of(2026, 6, 1, 10, 0));
         assertThat(e.getCreatedAt()).isNotNull().isInstanceOf(LocalDateTime.class);
@@ -61,14 +61,14 @@ class LuongHangHaiEntityTest {
 
     @Test void preUpdate_shouldSetUpdatedAt() {
         LocalDateTime before = LocalDateTime.now().minusHours(1);
-        LuongHangHai e = LuongHangHai.builder().loaiTau("Tau").updatedAt(before).build();
+        LuongHangHai e = LuongHangHai.builder().ten("Luong hang hai").updatedAt(before).build();
         // JPA lifecycle: onUpdate() is protected — test via manual setter
         e.setUpdatedAt(LocalDateTime.now());
         assertThat(e.getUpdatedAt()).isNotNull().isAfter(before);
     }
 
     @Test void attachments_shouldSupportOneToMany() {
-        LuongHangHai e = LuongHangHai.builder().loaiTau("Tau").build();
+        LuongHangHai e = LuongHangHai.builder().ten("Luong hang hai").build();
         LuongHangHaiAttachment a1 = LuongHangHaiAttachment.builder().tenTaiLieu("File 1").duongDan("/f1.pdf").build();
         LuongHangHaiAttachment a2 = LuongHangHaiAttachment.builder().tenTaiLieu("File 2").duongDan("/f2.pdf").build();
         e.setAttachments(new ArrayList<>());
@@ -78,7 +78,7 @@ class LuongHangHaiEntityTest {
     }
 
     @Test void approvalHistory_shouldSupportOneToMany() {
-        LuongHangHai e = LuongHangHai.builder().loaiTau("Tau").build();
+        LuongHangHai e = LuongHangHai.builder().ten("Luong hang hai").build();
         e.setApprovalHistory(new ArrayList<>());
         assertThat(e.getApprovalHistory()).isEmpty();
     }
@@ -121,14 +121,14 @@ class LuongHangHaiEntityTest {
     }
 
     @Test void isDeleted_shouldDefaultFalse() {
-        LuongHangHai e = LuongHangHai.builder().loaiTau("Tau").build();
+        LuongHangHai e = LuongHangHai.builder().ten("Luong hang hai").build();
         assertThat(e.getIsDeleted()).isFalse();
     }
 
     @Test void fullFields_shouldSetAll() {
         LuongHangHai e = LuongHangHai.builder()
                 .id(99L)
-                .loaiTau("Tau full")
+                .ten("Luong hang hai full")
                 .soLuong(500)
                 .ngayGhiNhan(LocalDate.of(2026, 3, 15))
                 .gioDien("09:00")

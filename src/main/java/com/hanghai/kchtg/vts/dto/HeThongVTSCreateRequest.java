@@ -19,6 +19,7 @@ public class HeThongVTSCreateRequest {
     private String nguonGoc;
     private String doiTac;
     private java.util.UUID orgUnitId;
+    private String phamViApDung;
 
     private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
     private String toaDo;

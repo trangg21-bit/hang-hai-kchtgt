@@ -444,7 +444,7 @@ public class KchtGis155Service {
 
                 case BENCANG:
                     List<BenCang> benCangs = benCangRepository.searchBenCang(
-                            orgUnitId, null, searchLower, null, null, null, TrangThaiHoatDong.HIEN_HANH,
+                            orgUnitId, searchLower, null, null, null, null, null, TrangThaiHoatDong.HIEN_HANH,
                             TrangThaiPheDuyet.DUOC_PHE_DUYET, PageRequest.of(0, 10000)).getContent();
                     List<UUID> cbIds = benCangs.stream().map(BenCang::getCangBienId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, CangBien> bcCangBienMap = new HashMap<>();
@@ -618,7 +618,7 @@ public class KchtGis155Service {
                             .filter(x -> !Boolean.TRUE.equals(x.getIsDeleted()))
                             .filter(x -> orgUnitId == null || orgUnitId.equals(x.getDonViId()))
                             .filter(x -> searchLower == null ||
-                                    (x.getLoaiTau() != null && x.getLoaiTau().toLowerCase().contains(searchLower)))
+                                    (x.getTen() != null && x.getTen().toLowerCase().contains(searchLower)))
                             .collect(Collectors.toList());
                     Map<UUID, GisSpatialObject> luongSpatialMap = new HashMap<>();
                     if (objectType != null) {
@@ -631,7 +631,7 @@ public class KchtGis155Service {
                         UUID dtoId = UUID.nameUUIDFromBytes(String.valueOf(l.getId()).getBytes());
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(dtoId)
-                                .name("Luồng hàng hải " + l.getId() + " - " + l.getLoaiTau())
+                                .name("Luồng hàng hải " + l.getId() + " - " + l.getTen())
                                 .ma("LUONG_" + l.getId())
                                 .orgName(getOrgName(l.getDonViId(), orgNameMap))
                                 .kchtTypeLabel("Luồng hàng hải")

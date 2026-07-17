@@ -49,7 +49,7 @@ class LuongHangHaiControllerTest {
 
                 testResp = LuongHangHaiResponse.builder()
                                 .id(1L)
-                                .loaiTau("Tau ca cuoc Hai Phong")
+                                .ten("Hai Phong")
                                 .soLuong(100)
                                 .ngayGhiNhan(LocalDate.of(2026, 1, 1))
                                 .gioDien("12:00")
@@ -63,7 +63,7 @@ class LuongHangHaiControllerTest {
                                 .build();
 
                 createReq = LuongHangHaiCreateRequest.builder()
-                                .loaiTau("Tau moi")
+                                .ten("Luong moi")
                                 .soLuong(50)
                                 .ngayGhiNhan(LocalDate.of(2026, 6, 15))
                                 .gioDien("14:00")
@@ -79,7 +79,7 @@ class LuongHangHaiControllerTest {
                 mockMvc.perform(get("/api/v1/luong-hang-hai").param("page", "0").param("size", "20"))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.success").value(true))
-                                .andExpect(jsonPath("$.data[0].loaiTau").value("Tau ca cuoc Hai Phong"));
+                                .andExpect(jsonPath("$.data[0].ten").value("Hai Phong"));
         }
 
         @Test
@@ -91,12 +91,12 @@ class LuongHangHaiControllerTest {
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.success").value(true))
                                 .andExpect(jsonPath("$.message").value("Tạo luồng hàng hải thành công"))
-                                .andExpect(jsonPath("$.data.loaiTau").value("Tau ca cuoc Hai Phong"));
+                                .andExpect(jsonPath("$.data.ten").value("Hai Phong"));
         }
 
         @Test
         void create_shouldRejectNull() throws Exception {
-                LuongHangHaiCreateRequest bad = LuongHangHaiCreateRequest.builder().loaiTau(null).build();
+                LuongHangHaiCreateRequest bad = LuongHangHaiCreateRequest.builder().ten(null).build();
                 mockMvc.perform(post("/api/v1/luong-hang-hai")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(bad)))
@@ -108,18 +108,18 @@ class LuongHangHaiControllerTest {
                 when(service.getById(1L)).thenReturn(testResp);
                 mockMvc.perform(get("/api/v1/luong-hang-hai/1"))
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.data.loaiTau").value("Tau ca cuoc Hai Phong"));
+                                .andExpect(jsonPath("$.data.ten").value("Hai Phong"));
         }
 
         @Test
         void update_shouldReturnUpdated() throws Exception {
-                LuongHangHaiResponse up = LuongHangHaiResponse.builder().id(1L).loaiTau("Da cap nhat").build();
+                LuongHangHaiResponse up = LuongHangHaiResponse.builder().id(1L).ten("Da cap nhat").build();
                 when(service.update(eq(1L), any(), anyString())).thenReturn(up);
                 mockMvc.perform(put("/api/v1/luong-hang-hai/1")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(createReq)))
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$.data.loaiTau").value("Da cap nhat"));
+                                .andExpect(jsonPath("$.data.ten").value("Da cap nhat"));
         }
 
         @Test
@@ -207,7 +207,7 @@ class LuongHangHaiControllerTest {
         void filterByApprovalStatus_shouldReturnResults() throws Exception {
                 LuongHangHaiResponse approvedResp = LuongHangHaiResponse.builder()
                                 .id(1L)
-                                .loaiTau("Tau da duyet")
+                                .ten("Luong da duyet")
                                 .approvalStatus(LuongHangHaiApprovalStatus.APPROVED)
                                 .build();
                 when(service.findByApprovalStatus(LuongHangHaiApprovalStatus.APPROVED))
@@ -227,15 +227,15 @@ class LuongHangHaiControllerTest {
                                 .currentPage(0)
                                 .pageSize(20)
                                 .build();
-                when(service.searchDocuments(eq(null), eq("Tau"), eq(null), eq(null), eq(null), eq(0), eq(20)))
+                when(service.searchDocuments(eq(null), eq("Hai"), eq(null), eq(null), eq(null), eq(0), eq(20)))
                                 .thenReturn(sr);
                 mockMvc.perform(get("/api/v1/luong-hang-hai/search")
-                                .param("keyword", "Tau")
+                                .param("keyword", "Hai")
                                 .param("page", "0")
                                 .param("size", "20"))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.data.totalElements").value(1))
-                                .andExpect(jsonPath("$.data.results[0].loaiTau").value("Tau ca cuoc Hai Phong"));
+                                .andExpect(jsonPath("$.data.results[0].ten").value("Hai Phong"));
         }
 
         @Test

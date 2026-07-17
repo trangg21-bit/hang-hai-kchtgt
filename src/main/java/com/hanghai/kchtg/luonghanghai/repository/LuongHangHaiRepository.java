@@ -16,11 +16,11 @@ public interface LuongHangHaiRepository extends JpaRepository<LuongHangHai, Long
 
     Page<LuongHangHai> findByIsDeletedFalse(Pageable pageable);
 
-    List<LuongHangHai> findByLoaiTauContainingAndIsDeletedFalse(String loaiTau);
+    List<LuongHangHai> findByTenContainingAndIsDeletedFalse(String ten);
 
     @Query("SELECT l FROM LuongHangHai l WHERE " +
             "(:orgUnitId IS NULL OR l.donViId = :orgUnitId) AND " +
-            "(:keyword IS NULL OR LOWER(l.loaiTau) LIKE :keyword) AND " +
+            "(:keyword IS NULL OR LOWER(l.ten) LIKE :keyword) AND " +
             "(:gioDien IS NULL OR l.gioDien = :gioDien) AND " +
             "(:taiTrong IS NULL OR l.taiTrong = :taiTrong) AND " +
             "(:trangThaiPheDuyet IS NULL OR l.approvalStatus = :trangThaiPheDuyet) AND " +

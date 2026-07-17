@@ -51,6 +51,7 @@ const TINH_TRANG_OPTIONS = [
 ];
 
 export default function DeKeList() {
+  const isInIframe = window.self !== window.top;
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
@@ -72,6 +73,7 @@ export default function DeKeList() {
   const [organizations, setOrganizations] = useState<any[]>([]);
 
   useEffect(() => {
+    if (isInIframe) return;
     (async () => {
       try {
         const resp = await organizationService.list({ pageSize: 1000 });
@@ -105,9 +107,7 @@ export default function DeKeList() {
     }
   }, [page, pageSize, filterKeyword, filterLoaiDe, filterTinhTrang, filterStatus]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { if (!isInIframe) fetchData(); }, [fetchData, isInIframe]);
 
   const handleReset = useCallback(() => {
     setFilterKeyword('');

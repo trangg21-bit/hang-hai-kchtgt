@@ -31,7 +31,7 @@ import {
   DownloadOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { benCangCRUD, benCangApproval } from '../../services/cangbenService';
 import type { BenCang } from '../../types/cangben';
 import { APPROVAL_STATUS_MAP } from '../../types/cangben';
@@ -147,6 +147,12 @@ export const translateFieldName = (fieldName: string): string => {
 export default function BenCangListPage() {
   const navigate = useNavigate();
 
+  const [searchParams] = useSearchParams();
+  const isIframeModal = (window.self !== window.top) && searchParams.has('action');
+
+  const action = searchParams.get('action');
+  const id = searchParams.get('id');
+
   const [search, setSearch] = useState('');
   const [filterMaBen, setFilterMaBen] = useState('');
   const [filterTenBen, setFilterTenBen] = useState('');
@@ -175,6 +181,19 @@ export default function BenCangListPage() {
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  const closeUpdateModal = useCallback(() => {
+    setUpdateModalVisible(false);
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
+  }, []);
+  const closeDetailModal = useCallback(() => {
+    setDetailModalVisible(false);
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
+  }, []);
+
   // Forms definition
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
@@ -183,13 +202,18 @@ export default function BenCangListPage() {
   const createLoaiHinhHoc = Form.useWatch('loaiHinhHoc', createForm) || 'POINT';
   const updateLoaiHinhHoc = Form.useWatch('loaiHinhHoc', updateForm) || 'POINT';
 
-  const fetchCangBienOptions = useCallback(async () => {
+  const handleCangBienSearch = useCallback(async (searchText: string) => {
     try {
       const { fetchCangBienList } = await import('../../services/cangbien/api');
-      const res = await fetchCangBienList({ page: 0, size: 5000, trangThaiHoatDong: 'HIEN_HANH' });
+      const res = await fetchCangBienList({
+        page: 0,
+        size: 50,
+        tenCang: searchText || undefined,
+        trangThaiHoatDong: 'HIEN_HANH'
+      });
       setCangBienOptions(res.content.map((c) => ({ id: c.id, tenCang: c.tenCang })));
     } catch (err) {
-      console.error('Failed to fetch CangBien options:', err);
+      console.error('Failed to search CangBien options:', err);
     }
   }, []);
 
@@ -205,17 +229,35 @@ export default function BenCangListPage() {
   }, []);
 
   useEffect(() => {
-    void fetchCangBienOptions();
-    void fetchSymbols();
-    (async () => {
-      try {
-        const resp = await organizationService.list();
-        setOrgUnits(resp.data || []);
-      } catch (err) {
-        console.error('Failed to load org units', err);
-      }
-    })();
-  }, [fetchCangBienOptions, fetchSymbols]);
+    // 1. Try to use caches from parent window to avoid duplicate API calls
+    const parentOrgUnits = (window.parent as any)?.kchtOrgUnits;
+    const parentSymbols = (window.parent as any)?.kchtSymbols;
+
+    if (parentOrgUnits && parentOrgUnits.length > 0) {
+      setOrgUnits(parentOrgUnits);
+    }
+    if (parentSymbols && parentSymbols.length > 0) {
+      setSymbols(parentSymbols);
+    }
+
+    // 2. Only fetch what is actually required:
+    const needOrgUnits = (!parentOrgUnits || parentOrgUnits.length === 0);
+    const needSymbols = (!parentSymbols || parentSymbols.length === 0);
+
+    if (needSymbols) {
+      void fetchSymbols();
+    }
+    if (needOrgUnits) {
+      (async () => {
+        try {
+          const resp = await organizationService.list();
+          setOrgUnits(resp.data || []);
+        } catch (err) {
+          console.error('Failed to load org units', err);
+        }
+      })();
+    }
+  }, [fetchSymbols, isIframeModal, action]);
 
   const translateValue = useCallback((fieldName: string, val: string | null): string => {
     if (!val || val === '(null)' || val === 'null') {
@@ -258,10 +300,11 @@ export default function BenCangListPage() {
       const res = await benCangCRUD.search({
         page,
         pageSize,
-        maBen: filterMaBen || search || undefined,
-        tenBen: filterTenBen || search || undefined,
-        loaiBen: filterLoaiBen || search || undefined,
-        tuyenDuongThuy: filterTuyenDuongThuy || search || undefined,
+        search: search || undefined,
+        maBen: filterMaBen || undefined,
+        tenBen: filterTenBen || undefined,
+        loaiBen: filterLoaiBen || undefined,
+        tuyenDuongThuy: filterTuyenDuongThuy || undefined,
         trangThaiHoatDong: filterStatus,
         trangThaiPheDuyet: filterApprovalStatus,
       });
@@ -275,7 +318,57 @@ export default function BenCangListPage() {
     }
   }, [page, pageSize, filterMaBen, filterTenBen, filterLoaiBen, filterTuyenDuongThuy, filterStatus, filterApprovalStatus, search]);
 
-  useEffect(() => { void fetchData(); }, [fetchData]);
+  useEffect(() => { if (!isIframeModal) void fetchData(); }, [fetchData, isIframeModal]);
+
+  useEffect(() => {
+    if (id && (action === 'detail' || action === 'edit')) {
+      (async () => {
+        try {
+          setIsLoading(true);
+          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          const data = cached || await benCangCRUD.findById(id);
+          setSelectedRecord(data);
+          if (action === 'detail') {
+            try {
+              const fileRes = await giayToApi.listByEntity('ben-cang', id, { page: 1, size: 20 });
+              setDetailFiles(fileRes.data || []);
+            } catch (err) {
+              console.error('Failed to load giay to', err);
+            }
+            setDetailModalVisible(true);
+          } else if (action === 'edit') {
+            if (data.cangBienId) {
+              setCangBienOptions([{ id: data.cangBienId, tenCang: data.tenCangBien || 'Cảng biển hiện tại' }]);
+            }
+            updateForm.setFieldsValue({
+              maBen: data.maBen, tenBen: data.tenBen, cangBienId: data.cangBienId,
+              orgUnitId: data.orgUnitId, tuyenDuongThuy: data.tuyenDuongThuy,
+              viDo: data.viDo, kinhDo: data.kinhDo, chieuDai: data.chieuDai,
+              chieuRong: data.chieuRong, loaiBen: data.loaiBen, doSauLuong: data.doSauLuong,
+              congNangKhaiThac: data.congNangKhaiThac ? data.congNangKhaiThac.split(',').map((s: string) => s.trim()) : [],
+              trangThaiHoatDong: data.trangThaiHoatDong,
+              loaiHinhHoc: data.loaiHinhHoc || 'POINT', bieuTuongId: data.bieuTuongId,
+              gisLocation: { loaiHinhHoc: data.loaiHinhHoc || 'POINT', toaDo: data.toaDo || '', bieuTuongId: data.bieuTuongId },
+              diaDiem: data.diaDiem, diaDiemChiTiet: data.diaDiemChiTiet,
+              heQuyChieu: data.heQuyChieu, quyTacHienThi: data.quyTacHienThi,
+              donViKhaiThac: data.donViKhaiThac, tongDienTich: data.tongDienTich,
+              nangLucThongQuaThietKe: data.nangLucThongQuaThietKe, nangLucThongQuaHienTrang: data.nangLucThongQuaHienTrang,
+              coTauTiepNhanLonNhat: data.coTauTiepNhanLonNhat, quyHoachNangLucThongQua: data.quyHoachNangLucThongQua,
+              sanLuongHangHoaNamGanNhat: data.sanLuongHangHoaNamGanNhat,
+              thoiDiemCongBoMo: data.thoiDiemCongBoMo ? dayjs(data.thoiDiemCongBoMo) : undefined,
+              quyetDinhCongBo: data.quyetDinhCongBo, vanBanThoaThuanDauTu: data.vanBanThoaThuanDauTu,
+              loaiKetCau: data.loaiKetCau,
+            });
+            setUpdateModalVisible(true);
+          }
+        } catch (err) {
+          console.error('Failed to auto-load details in iframe:', err);
+        } finally {
+          setIsLoading(false);
+        }
+      })();
+    }
+  }, [action, id, updateForm]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);
@@ -391,6 +484,12 @@ export default function BenCangListPage() {
     }
   };
 
+  const handleFormFailed = (errorInfo: any) => {
+    errorInfo.errorFields.forEach((field: any) => {
+      toast.error(`${field.errors.join(', ')}`);
+    });
+  };
+
   const handleUpdateFinish = async (values: any) => {
     if (!selectedRecord) return;
     try {
@@ -429,10 +528,15 @@ export default function BenCangListPage() {
       });
 
       setSubmitting(true);
-      await benCangCRUD.update(parsed);
+      const res = await benCangCRUD.update(parsed);
       toast.success('Cập nhật bến cảng thành công');
-      setUpdateModalVisible(false);
-      fetchData();
+      if (window.parent && (window.parent as any).kchtDetailCache) {
+        (window.parent as any).kchtDetailCache[selectedRecord.id] = res;
+      }
+      closeUpdateModal();
+      if (!isIframeModal) {
+        fetchData();
+      }
     } catch (err: unknown) {
       if (err instanceof z.ZodError) {
         err.issues.forEach((e) => toast.error(e.message));
@@ -726,6 +830,8 @@ export default function BenCangListPage() {
 
   return (
     <>
+      {!isIframeModal && (
+      <>
       <Card style={{ marginBottom: 16 }}>
         <Row gutter={[12, 12]} align="middle" justify="space-between">
           <Col xs={24} md={14}>
@@ -833,9 +939,12 @@ export default function BenCangListPage() {
           />
         )}
       </Card>
+      </>
+      )}
 
       {/* Create Modal */}
-      <Modal
+      {!isIframeModal && (
+        <Modal
         title="Tạo mới Bến cảng"
         open={createModalVisible}
         onCancel={() => setCreateModalVisible(false)}
@@ -843,7 +952,7 @@ export default function BenCangListPage() {
         width={800}
         forceRender
       >
-        <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} initialValues={{ trangThaiHoatDong: 'HIEN_HANH' }}>
+        <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} onFinishFailed={handleFormFailed} initialValues={{ trangThaiHoatDong: 'HIEN_HANH' }}>
           {/* SECTION 1: Thông tin chung */}
           <Card title="Thông tin chung" size="small" style={{ marginBottom: 16 }}>
             <Row gutter={24}>
@@ -867,7 +976,13 @@ export default function BenCangListPage() {
                   <Select
                     placeholder="Chọn cảng biển chủ"
                     showSearch
-                    optionFilterProp="label"
+                    filterOption={false}
+                    onSearch={handleCangBienSearch}
+                    onOpenChange={(open) => {
+                      if (open && cangBienOptions.length <= 1) {
+                        void handleCangBienSearch('');
+                      }
+                    }}
                     options={cangBienOptions.map(o => ({ label: o.tenCang, value: o.id }))}
                   />
                 </Form.Item>
@@ -1098,18 +1213,26 @@ export default function BenCangListPage() {
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+        </Modal>
+      )}
 
       {/* Edit Modal */}
-      <Modal
-        title={selectedRecord ? `Chỉnh sửa: ${selectedRecord.maBen} — ${selectedRecord.tenBen}` : 'Chỉnh sửa bến cảng'}
+      {(!isIframeModal || action === 'edit') && (
+        <Modal
+        title={isIframeModal ? null : (selectedRecord ? `Chỉnh sửa: ${selectedRecord.maBen} — ${selectedRecord.tenBen}` : 'Chỉnh sửa bến cảng')}
         open={updateModalVisible}
-        onCancel={() => setUpdateModalVisible(false)}
+        onCancel={closeUpdateModal}
         footer={null}
-        width={800}
+        width={isIframeModal ? '100%' : 800}
+        mask={!isIframeModal}
+        closable={!isIframeModal}
+        style={isIframeModal ? { top: 0, margin: 0, padding: 0, maxWidth: 'none', height: '100%' } : undefined}
+        styles={{
+          body: isIframeModal ? { padding: '16px 24px', height: '100%', overflowY: 'auto' } : undefined
+        }}
         forceRender
       >
-        <Form form={updateForm} layout="vertical" onFinish={handleUpdateFinish}>
+        <Form form={updateForm} layout="vertical" onFinish={handleUpdateFinish} onFinishFailed={handleFormFailed}>
           {/* SECTION 1: Thông tin chung */}
           <Card title="Thông tin chung" size="small" style={{ marginBottom: 16 }}>
             <Row gutter={24}>
@@ -1133,7 +1256,13 @@ export default function BenCangListPage() {
                   <Select
                     placeholder="Chọn cảng biển chủ"
                     showSearch
-                    optionFilterProp="label"
+                    filterOption={false}
+                    onSearch={handleCangBienSearch}
+                    onOpenChange={(open) => {
+                      if (open && cangBienOptions.length <= 1) {
+                        void handleCangBienSearch('');
+                      }
+                    }}
                     options={cangBienOptions.map(o => ({ label: o.tenCang, value: o.id }))}
                   />
                 </Form.Item>
@@ -1363,20 +1492,28 @@ export default function BenCangListPage() {
 
           <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
             <Space>
-              <Button onClick={() => setUpdateModalVisible(false)}>Hủy</Button>
+              <Button onClick={closeUpdateModal}>Hủy</Button>
               <Button type="primary" htmlType="submit" loading={submitting}>Cập nhật</Button>
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+        </Modal>
+      )}
 
       {/* Detail Modal */}
-      <Modal
-        title={selectedRecord ? `Chi tiết bến cảng: ${selectedRecord.maBen} — ${selectedRecord.tenBen}` : 'Chi tiết bến cảng'}
+      {(!isIframeModal || action === 'detail') && (
+        <Modal
+        title={isIframeModal ? null : (selectedRecord ? `Chi tiết bến cảng: ${selectedRecord.maBen} — ${selectedRecord.tenBen}` : 'Chi tiết bến cảng')}
         open={detailModalVisible}
-        onCancel={() => setDetailModalVisible(false)}
+        onCancel={closeDetailModal}
         footer={null}
-        width={800}
+        width={isIframeModal ? '100%' : 800}
+        mask={!isIframeModal}
+        closable={!isIframeModal}
+        style={isIframeModal ? { top: 0, margin: 0, padding: 0, maxWidth: 'none', height: '100%' } : undefined}
+        styles={{
+          body: isIframeModal ? { padding: '16px 24px', height: '100%', overflowY: 'auto' } : undefined
+        }}
       >
         {selectedRecord && (
           <div>
@@ -1578,14 +1715,14 @@ export default function BenCangListPage() {
                     </Button>
                   </>
                 )}
-                <Button icon={<UploadOutlined />} onClick={() => { setDetailModalVisible(false); setUploadModalVisible(true); }}>
+                <Button icon={<UploadOutlined />} onClick={() => { closeDetailModal(); setUploadModalVisible(true); }}>
                   Upload Giấy tờ
                 </Button>
                 <Button
                   type="primary"
                   icon={<EditOutlined />}
                   onClick={() => {
-                    setDetailModalVisible(false);
+                    closeDetailModal();
                     updateForm.setFieldsValue({
                       maBen: selectedRecord.maBen,
                       tenBen: selectedRecord.tenBen,
@@ -1628,12 +1765,13 @@ export default function BenCangListPage() {
                 >
                   Chỉnh sửa
                 </Button>
-                <Button onClick={() => setDetailModalVisible(false)}>Đóng</Button>
+                <Button onClick={closeDetailModal}>Đóng</Button>
               </Space>
             </div>
           </div>
         )}
-      </Modal>
+        </Modal>
+      )}
 
       {/* History Modal */}
       <Modal

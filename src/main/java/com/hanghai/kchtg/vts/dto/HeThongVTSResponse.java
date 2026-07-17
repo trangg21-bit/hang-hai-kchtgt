@@ -18,6 +18,7 @@ public class HeThongVTSResponse {
     private String nguonGoc;
     private String doiTac;
     private java.util.UUID orgUnitId;
+    private String phamViApDung;
     private com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus trangThai;
     private Boolean pheDuyetC1;
     private String nguoiPheDuyetC1;

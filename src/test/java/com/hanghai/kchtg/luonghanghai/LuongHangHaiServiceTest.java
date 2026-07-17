@@ -43,7 +43,7 @@ class LuongHangHaiServiceTest {
         service = new LuongHangHaiService(repo, pheDuyetLichSuRepo, gisSpatialObjectService);
         testEntity = LuongHangHai.builder()
                 .id(1L)
-                .loaiTau("Tau ca cuoc")
+                .ten("Luong hang hai")
                 .soLuong(100)
                 .ngayGhiNhan(LocalDate.of(2026, 1, 1))
                 .gioDien("12:00")
@@ -58,7 +58,7 @@ class LuongHangHaiServiceTest {
                 .createdAt(LocalDateTime.of(2026, 6, 1, 10, 0))
                 .build();
         createReq = LuongHangHaiCreateRequest.builder()
-                .loaiTau("Tau moi")
+                .ten("Luong hang hai moi")
                 .soLuong(50)
                 .ngayGhiNhan(LocalDate.of(2026, 6, 15))
                 .gioDien("14:00")
@@ -72,7 +72,7 @@ class LuongHangHaiServiceTest {
         when(repo.save(any())).thenReturn(testEntity);
         LuongHangHaiResponse r = service.create(createReq, "testuser");
         assertThat(r).isNotNull();
-        assertThat(r.getLoaiTau()).isEqualTo("Tau ca cuoc");
+        assertThat(r.getTen()).isEqualTo("Luong hang hai");
         assertThat(r.getApprovalStatus()).isEqualTo(LuongHangHaiApprovalStatus.PROPOSED);
         verify(repo, times(1)).save(any());
     }
@@ -84,7 +84,7 @@ class LuongHangHaiServiceTest {
 
     @Test void getById_shouldReturnResponse() {
         when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
-        assertThat(service.getById(1L).getLoaiTau()).isEqualTo("Tau ca cuoc");
+        assertThat(service.getById(1L).getTen()).isEqualTo("Luong hang hai");
     }
 
     @Test void getById_shouldThrowWhenNotFound() {
@@ -105,13 +105,13 @@ class LuongHangHaiServiceTest {
 
     @Test void update_shouldUpdateFields() {
         LuongHangHaiUpdateRequest ur = LuongHangHaiUpdateRequest.builder()
-                .loaiTau("Da cap nhat")
+                .ten("Da cap nhat")
                 .taiTrong("Da Nang")
                 .build();
         when(repo.findById(1L)).thenReturn(Optional.of(testEntity));
         when(repo.save(any())).thenReturn(testEntity);
         LuongHangHaiResponse r = service.update(1L, ur, "testuser");
-        assertThat(r.getLoaiTau()).isEqualTo("Da cap nhat");
+        assertThat(r.getTen()).isEqualTo("Da cap nhat");
         verify(repo, times(1)).save(any());
     }
 
@@ -259,16 +259,16 @@ class LuongHangHaiServiceTest {
         assertThat(service.findByApprovalStatus(LuongHangHaiApprovalStatus.APPROVED)).hasSize(1);
     }
 
-    @Test void searchByLoaiTauContaining_shouldReturnResults() {
-        when(repo.findByLoaiTauContainingAndIsDeletedFalse("Tau")).thenReturn(List.of(testEntity));
-        assertThat(service.searchByLoaiTauContaining("Tau")).hasSize(1);
+    @Test void searchByTenContaining_shouldReturnResults() {
+        when(repo.findByTenContainingAndIsDeletedFalse("Luong hang hai")).thenReturn(List.of(testEntity));
+        assertThat(service.searchByTenContaining("Luong hang hai")).hasSize(1);
     }
 
     @Test void searchDocuments_shouldReturnPaginated() {
         Page<LuongHangHai> p = new PageImpl<>(List.of(testEntity));
-        when(repo.searchDocuments(eq(null), eq("%tau%"), eq("12:00"), eq("1000"),
+        when(repo.searchDocuments(eq(null), eq("%luong hang hai%"), eq("12:00"), eq("1000"),
                 eq(LuongHangHaiApprovalStatus.APPROVED), any(Pageable.class))).thenReturn(p);
-        KetQuaTimKiemResponse r = service.searchDocuments(null, "Tau", "12:00", "1000", "APPROVED", 0, 20);
+        KetQuaTimKiemResponse r = service.searchDocuments(null, "Luong hang hai", "12:00", "1000", "APPROVED", 0, 20);
         assertThat(r.getTotalElements()).isEqualTo(1);
     }
 

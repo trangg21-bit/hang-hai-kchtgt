@@ -29,7 +29,7 @@ import {
   DownloadOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import DataTable from '../../components/DataTable';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
@@ -129,6 +129,11 @@ const CONG_NANG_KHAI_THAC_OPTIONS = [
 
 export default function CauCangListPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isIframeModal = (window.self !== window.top) && searchParams.has('action');
+
+  const action = searchParams.get('action');
+  const id = searchParams.get('id');
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>();
@@ -167,6 +172,20 @@ export default function CauCangListPage() {
   const [historyRecords, setHistoryRecords] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  const closeUpdateModal = useCallback(() => {
+    setUpdateModalVisible(false);
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
+  }, []);
+
+  const closeDetailModal = useCallback(() => {
+    setDetailModalVisible(false);
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
+  }, []);
+
   // Forms definition
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
@@ -201,9 +220,9 @@ export default function CauCangListPage() {
     }
   }, [search, filterStatus, filterApproval, filterBenCangId, filterLoaiCau, sortBy, sortOrder, page, pageSize]);
 
-  const loadBenCangOptions = useCallback(async () => {
+  const handleBenCangSearch = useCallback(async (searchText: string) => {
     try {
-      const res = await fetchBenCangOptions({ size: 100 });
+      const res = await fetchBenCangOptions({ size: 50, tenBen: searchText || undefined });
       setBenCangOptions(res.content);
     } catch (err) {
       console.error('Failed to load BenCang options:', err);
@@ -236,10 +255,64 @@ export default function CauCangListPage() {
   }, [symbols]);
 
   useEffect(() => {
-    void loadBenCangOptions();
-    void fetchSymbols();
-  }, [loadBenCangOptions, fetchSymbols]);
-  useEffect(() => { void fetchData(); }, [fetchData]);
+    // 1. Try to use symbols cache from parent window
+    const parentSymbols = (window.parent as any)?.kchtSymbols;
+    if (parentSymbols && parentSymbols.length > 0) {
+      setSymbols(parentSymbols);
+    }
+
+    // 2. Only fetch what is required:
+    const needSymbols = !parentSymbols || parentSymbols.length === 0;
+
+    if (needSymbols) {
+      void fetchSymbols();
+    }
+  }, [fetchSymbols, isIframeModal, action]);
+  useEffect(() => { if (!isIframeModal) void fetchData(); }, [fetchData, isIframeModal]);
+
+  useEffect(() => {
+    if (id && (action === 'detail' || action === 'edit')) {
+      (async () => {
+        try {
+          setIsLoading(true);
+          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          const data = cached || await fetchCauCangById(id);
+          setSelectedRecord(data);
+          if (action === 'detail') {
+            const fileRes = await giayToApi.listByEntity('cau-cang', id, { page: 1, size: 20 });
+            setDetailFiles(fileRes.data || []);
+            setDetailModalVisible(true);
+          } else if (action === 'edit') {
+            if (data.benCangId) {
+              setBenCangOptions([{ id: data.benCangId, tenBen: 'Đang tải...' }]);
+            }
+            updateForm.setFieldsValue({
+              maCau: data.maCau,
+              tenCau: data.tenCau,
+              benCangId: data.benCangId,
+              chieuDai: data.chieuDai,
+              taiTrong: data.taiTrong,
+              loaiCau: data.loaiCau,
+              congNangKhaiThac: data.congNangKhaiThac ? data.congNangKhaiThac.split(',').map((s: string) => s.trim()) : [],
+              trangThaiHoatDong: data.trangThaiHoatDong,
+              bieuTuongId: data.bieuTuongId,
+              loaiHinhHoc: data.loaiHinhHoc || 'LINE',
+              gisLocation: {
+                loaiHinhHoc: data.loaiHinhHoc || 'LINE',
+                toaDo: data.toaDo || '',
+                bieuTuongId: data.bieuTuongId
+              }
+            });
+            setUpdateModalVisible(true);
+          }
+        } catch (err) {
+          console.error('Failed to auto-load details in iframe:', err);
+        } finally {
+          setIsLoading(false);
+        }
+      })();
+    }
+  }, [action, id, updateForm]);
 
   useEffect(() => {
     if (selectedRecord && selectedRecord.benCangId) {
@@ -350,6 +423,12 @@ export default function CauCangListPage() {
     }
   };
 
+  const handleFormFailed = (errorInfo: any) => {
+    errorInfo.errorFields.forEach((field: any) => {
+      toast.error(`${field.errors.join(', ')}`);
+    });
+  };
+
   const handleUpdateFinish = async (values: any) => {
     if (!selectedRecord) return;
     try {
@@ -368,10 +447,15 @@ export default function CauCangListPage() {
       });
 
       setSubmitting(true);
-      await updateCauCang(parsed);
+      const res = await updateCauCang(parsed);
       toast.success('Cập nhật cầu cảng thành công');
-      setUpdateModalVisible(false);
-      fetchData();
+      if (window.parent && (window.parent as any).kchtDetailCache) {
+        (window.parent as any).kchtDetailCache[selectedRecord.id] = res;
+      }
+      closeUpdateModal();
+      if (!isIframeModal) {
+        fetchData();
+      }
     } catch (err: unknown) {
       if (err instanceof z.ZodError) {
         err.issues.forEach((e) => toast.error(e.message));
@@ -585,7 +669,9 @@ export default function CauCangListPage() {
 
   return (
     <>
-      <Card style={{ marginBottom: 16 }}>
+      {!isIframeModal && (
+        <>
+          <Card style={{ marginBottom: 16 }}>
         <Row gutter={[12, 12]} align="middle" justify="space-between">
           <Col xs={24} md={16}>
             <Space wrap>
@@ -679,16 +765,19 @@ export default function CauCangListPage() {
           />
         )}
       </Card>
+        </>
+      )}
 
       {/* Create Modal */}
-      <Modal
+      {!isIframeModal && (
+        <Modal
         title="Tạo mới Cầu cảng"
         open={createModalVisible}
         onCancel={() => setCreateModalVisible(false)}
         footer={null}
         width={800}
       >
-        <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} initialValues={{ trangThaiHoatDong: 'HIEN_HANH' }}>
+        <Form form={createForm} layout="vertical" onFinish={handleCreateFinish} onFinishFailed={handleFormFailed} initialValues={{ trangThaiHoatDong: 'HIEN_HANH' }}>
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thông tin chung
           </Typography.Text>
@@ -722,7 +811,13 @@ export default function CauCangListPage() {
                 <Select
                   placeholder="Chọn bến cảng chủ"
                   showSearch
-                  optionFilterProp="label"
+                  filterOption={false}
+                  onSearch={handleBenCangSearch}
+                  onOpenChange={(open) => {
+                    if (open && benCangOptions.length <= 1) {
+                      void handleBenCangSearch('');
+                    }
+                  }}
                   options={benCangOptions.map(o => ({ label: o.tenBen, value: o.id }))}
                 />
               </Form.Item>
@@ -823,17 +918,25 @@ export default function CauCangListPage() {
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+        </Modal>
+      )}
 
       {/* Edit Modal */}
-      <Modal
-        title={selectedRecord ? `Chỉnh sửa: ${selectedRecord.maCau} — ${selectedRecord.tenCau}` : 'Chỉnh sửa cầu cảng'}
+      {(!isIframeModal || action === 'edit') && (
+        <Modal
+        title={isIframeModal ? null : (selectedRecord ? `Chỉnh sửa: ${selectedRecord.maCau} — ${selectedRecord.tenCau}` : 'Chỉnh sửa cầu cảng')}
         open={updateModalVisible}
-        onCancel={() => setUpdateModalVisible(false)}
+        onCancel={closeUpdateModal}
         footer={null}
-        width={800}
+        width={isIframeModal ? '100%' : 800}
+        mask={!isIframeModal}
+        closable={!isIframeModal}
+        style={isIframeModal ? { top: 0, margin: 0, padding: 0, maxWidth: 'none', height: '100%' } : undefined}
+        styles={{
+          body: isIframeModal ? { padding: '16px 24px', height: '100%', overflowY: 'auto' } : undefined
+        }}
       >
-        <Form form={updateForm} layout="vertical" onFinish={handleUpdateFinish}>
+        <Form form={updateForm} layout="vertical" onFinish={handleUpdateFinish} onFinishFailed={handleFormFailed}>
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thông tin chung
           </Typography.Text>
@@ -863,7 +966,13 @@ export default function CauCangListPage() {
                 <Select
                   placeholder="Chọn bến cảng chủ"
                   showSearch
-                  optionFilterProp="label"
+                  filterOption={false}
+                  onSearch={handleBenCangSearch}
+                  onOpenChange={(open) => {
+                    if (open && benCangOptions.length <= 1) {
+                      void handleBenCangSearch('');
+                    }
+                  }}
                   options={benCangOptions.map(o => ({ label: o.tenBen, value: o.id }))}
                 />
               </Form.Item>
@@ -964,20 +1073,28 @@ export default function CauCangListPage() {
 
           <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
             <Space>
-              <Button onClick={() => setUpdateModalVisible(false)}>Hủy</Button>
+              <Button onClick={closeUpdateModal}>Hủy</Button>
               <Button type="primary" htmlType="submit" loading={submitting}>Cập nhật</Button>
             </Space>
           </Form.Item>
         </Form>
-      </Modal>
+        </Modal>
+      )}
 
       {/* Detail Modal */}
-      <Modal
-        title={selectedRecord ? `Chi tiết cầu cảng: ${selectedRecord.maCau} — ${selectedRecord.tenCau}` : 'Chi tiết cầu cảng'}
+      {(!isIframeModal || action === 'detail') && (
+        <Modal
+        title={isIframeModal ? null : (selectedRecord ? `Chi tiết cầu cảng: ${selectedRecord.maCau} — ${selectedRecord.tenCau}` : 'Chi tiết cầu cảng')}
         open={detailModalVisible}
-        onCancel={() => setDetailModalVisible(false)}
+        onCancel={closeDetailModal}
         footer={null}
-        width={800}
+        width={isIframeModal ? '100%' : 800}
+        mask={!isIframeModal}
+        closable={!isIframeModal}
+        style={isIframeModal ? { top: 0, margin: 0, padding: 0, maxWidth: 'none', height: '100%' } : undefined}
+        styles={{
+          body: isIframeModal ? { padding: '16px 24px', height: '100%', overflowY: 'auto' } : undefined
+        }}
       >
         {selectedRecord && (
           <div>
@@ -1165,12 +1282,13 @@ export default function CauCangListPage() {
                 >
                   Chỉnh sửa
                 </Button>
-                <Button onClick={() => setDetailModalVisible(false)}>Đóng</Button>
+                <Button onClick={closeDetailModal}>Đóng</Button>
               </Space>
             </div>
           </div>
         )}
-      </Modal>
+        </Modal>
+      )}
 
       {/* Upload Giấy tờ Modal */}
       {selectedRecord && (

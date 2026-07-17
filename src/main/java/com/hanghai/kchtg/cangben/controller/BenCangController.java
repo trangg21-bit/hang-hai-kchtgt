@@ -68,6 +68,7 @@ public class BenCangController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) UUID orgUnitId,
+            @RequestParam(required = false) String search,
             @RequestParam(required = false) String maBen,
             @RequestParam(required = false) String tenBen,
             @RequestParam(required = false) UUID cangBienId,
@@ -75,10 +76,10 @@ public class BenCangController {
             @RequestParam(required = false) String loaiBen,
             @RequestParam(required = false) String trangThaiHoatDong,
             @RequestParam(required = false) String trangThaiPheDuyet) {
-        log.info("Listing BenCang: page={}, size={}, orgUnitId={}, maBen={}, tenBen={}, cangBienId={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, maBen, tenBen, cangBienId, trangThaiHoatDong, trangThaiPheDuyet);
+        log.info("Listing BenCang: page={}, size={}, orgUnitId={}, search={}, maBen={}, tenBen={}, cangBienId={}, status={}, approvalStatus={}",
+                page, size, orgUnitId, search, maBen, tenBen, cangBienId, trangThaiHoatDong, trangThaiPheDuyet);
         Page<BenCangResponse> result = benCangService.findAll(page, size, orgUnitId,
-                maBen, tenBen, cangBienId, tuyenDuongThuy, loaiBen, trangThaiHoatDong, trangThaiPheDuyet);
+                maBen, tenBen, cangBienId, tuyenDuongThuy, loaiBen, trangThaiHoatDong, trangThaiPheDuyet, search);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách bến cảng thành công", result));
     }
 

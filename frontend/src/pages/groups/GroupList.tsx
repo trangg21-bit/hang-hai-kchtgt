@@ -227,7 +227,7 @@ export default function GroupList() {
             <Button
               type="link"
               size="small"
-              icon={<ArrowRightOutlined />}
+              icon={<UserOutlined />}
               onClick={() => navigate(`/groups/${record.id}/members`)}
             />
           </Tooltip>

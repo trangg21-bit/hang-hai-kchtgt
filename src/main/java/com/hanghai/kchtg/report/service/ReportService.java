@@ -701,13 +701,9 @@ public class ReportService {
                 .filter(cb -> filterNhom == null || filterNhom.equals(cb.getNhomCangBien()))
                 .toList();
 
-        // 2. Group by nhomCangBien: nhom = 1 → maritime (section I), nhom = 2+ → inland (section II), null → excluded
-        List<com.hanghai.kchtg.cangben.entity.CangBien> group1Ports = allPorts.stream()
-                .filter(cb -> cb.getNhomCangBien() != null && cb.getNhomCangBien() == 1)
-                .toList();
-        List<com.hanghai.kchtg.cangben.entity.CangBien> group2Ports = allPorts.stream()
-                .filter(cb -> cb.getNhomCangBien() != null && cb.getNhomCangBien() != 1)
-                .toList();
+        // 2. ALL ports go to I. CẢNG BIỂN; Section II is always rendered (with no data rows)
+        List<com.hanghai.kchtg.cangben.entity.CangBien> group1Ports = new ArrayList<>(allPorts);
+        List<com.hanghai.kchtg.cangben.entity.CangBien> group2Ports = new ArrayList<>();
 
         // 3. Headers exactly matching Excel template BCKCHT_163.xlsx row 9 columns
         List<String> headers = List.of(
@@ -747,12 +743,12 @@ public class ReportService {
             rows.add(sectionRow);
 
             for (com.hanghai.kchtg.cangben.entity.CangBien port : group1Ports) {
-                stt = appendF148Hierarchy(port, stt, rows);
+                stt = appendF148Hierarchy(port, stt, rows, reportYear);
             }
         }
 
-        // Section II: Cảng, bến thủy nội địa (inland waterways — nhom 3,4,5 or null)
-        if (!group2Ports.isEmpty()) {
+        // Section II: Cảng, bến thủy nội địa (inland waterways) — always shows even if empty
+        {
             Map<String, Object> sectionRow = new LinkedHashMap<>();
             sectionRow.put("STT", "II");
             sectionRow.put("Danh mục bến cảng, cầu cảng", "Cảng, bến thủy nội địa");
@@ -770,7 +766,7 @@ public class ReportService {
             rows.add(sectionRow);
 
             for (com.hanghai.kchtg.cangben.entity.CangBien port : group2Ports) {
-                stt = appendF148Hierarchy(port, stt, rows);
+                stt = appendF148Hierarchy(port, stt, rows, reportYear);
             }
         }
 
@@ -884,7 +880,8 @@ public class ReportService {
     private int appendF148Hierarchy(
             com.hanghai.kchtg.cangben.entity.CangBien port,
             int stt,
-            List<Map<String, Object>> rows) {
+            List<Map<String, Object>> rows,
+            int reportYear) {
 
         // Resolve org-unit name for the port
         String donViPort = "";
@@ -909,7 +906,7 @@ public class ReportService {
         portRow.put("Tổng diện tích (ha)",
                 port.getDienTich() != null ? port.getDienTich().doubleValue() : 0.0);
         String portDwt = port.getKhaNangTiepNhan() != null
-                ? (port.getKhaNangTiepNhan().longValue() + " DWT") : "";
+                ? String.valueOf(port.getKhaNangTiepNhan().longValue()) : "";
         portRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", portDwt);
         portRow.put("_rowType", "port");
         rows.add(portRow);
@@ -935,7 +932,7 @@ public class ReportService {
 
             String dwtBerth = "";
             if (berth.getCoTauTiepNhanLonNhat() != null && berth.getCoTauTiepNhanLonNhat().doubleValue() > 0) {
-                dwtBerth = berth.getCoTauTiepNhanLonNhat().longValue() + " DWT";
+                dwtBerth = String.valueOf(berth.getCoTauTiepNhanLonNhat().longValue());
             }
 
             Map<String, Object> berthRow = new LinkedHashMap<>();
@@ -947,12 +944,18 @@ public class ReportService {
             berthRow.put("Công năng khai thác",
                     berth.getCongNangKhaiThac() != null ? berth.getCongNangKhaiThac() : "");
             // Năng lực từ BenCang extended fields
-            String nlTruoc = berth.getNangLucThongQuaHienTrang() != null
+            // Năm báo cáo = nangLucThongQuaHienTrang
+            String nlBaoCao = berth.getNangLucThongQuaHienTrang() != null
                     ? String.valueOf(berth.getNangLucThongQuaHienTrang().longValue()) : "";
-            berthRow.put("Năng lực năm trước", nlTruoc);
-            String nlBaoCao = berth.getNangLucThongQuaThietKe() != null
-                    ? String.valueOf(berth.getNangLucThongQuaThietKe().longValue()) : "";
             berthRow.put("Năng lực năm báo cáo", nlBaoCao);
+            // Năm trước = nangLucThongQuaHienTrang if updatedAt.year == reportYear - 1
+            String nlTruoc = "";
+            if (berth.getNangLucThongQuaHienTrang() != null
+                    && berth.getUpdatedAt() != null
+                    && berth.getUpdatedAt().getYear() == reportYear - 1) {
+                nlTruoc = String.valueOf(berth.getNangLucThongQuaHienTrang().longValue());
+            }
+            berthRow.put("Năng lực năm trước", nlTruoc);
             berthRow.put("Đơn vị tính", "tấn/năm");
             berthRow.put("Chiều dài (m)",
                     berth.getChieuDai() != null ? berth.getChieuDai().doubleValue() : 0.0);
@@ -967,7 +970,7 @@ public class ReportService {
             for (com.hanghai.kchtg.cangben.entity.CauCang wharf : wharves) {
                 String dwtWharf = "";
                 if (wharf.getTaiTrong() != null && wharf.getTaiTrong().doubleValue() > 0) {
-                    dwtWharf = wharf.getTaiTrong().longValue() + " DWT";
+                    dwtWharf = String.valueOf(wharf.getTaiTrong().longValue());
                 }
 
                 Map<String, Object> wharfRow = new LinkedHashMap<>();
@@ -1048,8 +1051,18 @@ public class ReportService {
             rows.add(headerRow);
             int idx = 1;
             for (com.hanghai.kchtg.cangben.entity.CangBien cb : groupItems) {
-                double capBaoCao = cb.getKhaNangTiepNhan() != null ? cb.getKhaNangTiepNhan().doubleValue() : 0.0;
-                double capNamTruoc = capBaoCao * 0.95;
+                // Sum nangLuc from all BenCang children (BCKCHT_164 approach)
+                List<com.hanghai.kchtg.cangben.entity.BenCang> children = benCangRepository.findByCangBienIdAndDeletedAtIsNull(cb.getId());
+                double capBaoCao = children.stream()
+                        .filter(b -> b.getNangLucThongQuaHienTrang() != null)
+                        .filter(b -> b.getThoiDiemCongBoMo() != null && b.getThoiDiemCongBoMo().getYear() == reportYear)
+                        .mapToDouble(b -> b.getNangLucThongQuaHienTrang().doubleValue())
+                        .sum();
+                double capNamTruoc = children.stream()
+                        .filter(b -> b.getNangLucThongQuaHienTrang() != null)
+                        .filter(b -> b.getThoiDiemCongBoMo() != null && b.getThoiDiemCongBoMo().getYear() == reportYear - 1)
+                        .mapToDouble(b -> b.getNangLucThongQuaHienTrang().doubleValue())
+                        .sum();
                 Map<String, Object> itemRow = new LinkedHashMap<>();
                 itemRow.put("STT", String.valueOf(idx++));
                 itemRow.put("Danh mục cảng", cb.getTenCang());
@@ -2997,16 +3010,9 @@ public class ReportService {
                             .filter(cb -> filterNhom == null || filterNhom.equals(cb.getNhomCangBien()))
                             .toList();
 
-                    // 2. Group by nhomCangBien:
-                    //    nhom = 1 → maritime (section I, "Cảng biển")
-                    //    nhom = 2+ → inland waterways (section II, "Cảng, bến thủy nội địa")
-                    //    null → excluded
-                    List<com.hanghai.kchtg.cangben.entity.CangBien> group1Ports = allPorts.stream()
-                            .filter(cb -> cb.getNhomCangBien() != null && cb.getNhomCangBien() == 1)
-                            .toList();
-                    List<com.hanghai.kchtg.cangben.entity.CangBien> group2Ports = allPorts.stream()
-                            .filter(cb -> cb.getNhomCangBien() != null && cb.getNhomCangBien() != 1)
-                            .toList();
+                    // 2. ALL ports go to I. CẢNG BIỂN; Section II is always rendered (with no data rows)
+                    List<com.hanghai.kchtg.cangben.entity.CangBien> group1Ports = new ArrayList<>(allPorts);
+                    List<com.hanghai.kchtg.cangben.entity.CangBien> group2Ports = new ArrayList<>();
 
                     Row portTemplateRow = srcSheet.getRow(10); // Port / section header template row
                     Row wharfTemplateRow = srcSheet.getRow(11); // Berth / wharf template row
@@ -3055,13 +3061,13 @@ public class ReportService {
                         // Port rows with hierarchy
                         for (com.hanghai.kchtg.cangben.entity.CangBien port : group1Ports) {
                             currentDestRow = writeF148PortHierarchyToSheet(destSheet, currentDestRow,
-                                    portTemplateRow, wharfTemplateRow, port, stt);
+                                    portTemplateRow, wharfTemplateRow, port, stt, reportYear);
                             stt++;
                         }
                     }
 
-                    // ── Section II: Cảng, bến thủy nội địa ──
-                    if (!group2Ports.isEmpty()) {
+                    // ── Section II: Cảng, bến thủy nội địa ── always shows even if empty
+                    {
                         Row sectionRow = destSheet.createRow(currentDestRow++);
                         sectionRow.setHeight(portTemplateRow.getHeight());
                         int numTemplateCols = portTemplateRow.getLastCellNum();
@@ -3082,7 +3088,7 @@ public class ReportService {
 
                         for (com.hanghai.kchtg.cangben.entity.CangBien port : group2Ports) {
                             currentDestRow = writeF148PortHierarchyToSheet(destSheet, currentDestRow,
-                                    portTemplateRow, wharfTemplateRow, port, stt);
+                                    portTemplateRow, wharfTemplateRow, port, stt, reportYear);
                             stt++;
                         }
                     }
@@ -3117,6 +3123,7 @@ public class ReportService {
                         Row srcRow = srcSheet.getRow(r);
                         if (srcRow == null)
                             continue;
+
                         Row destRow = destSheet.createRow(r + offset);
                         destRow.setHeight(srcRow.getHeight());
                         for (int c = 0; c < srcRow.getLastCellNum(); c++) {
@@ -3183,9 +3190,18 @@ public class ReportService {
                         item.put("tenCangBien", cb.getTenCang());
                         item.put("diaDiemText", cb.getTinhThanhPho() != null ? cb.getTinhThanhPho() : "");
 
-                        double capBaoCao = cb.getKhaNangTiepNhan() != null ? cb.getKhaNangTiepNhan().doubleValue()
-                                : 0.0;
-                        double capNamTruoc = capBaoCao * 0.95;
+                        // Sum nangLuc from all BenCang children (BCKCHT_164 approach)
+                        List<com.hanghai.kchtg.cangben.entity.BenCang> children = benCangRepository.findByCangBienIdAndDeletedAtIsNull(cb.getId());
+                        double capBaoCao = children.stream()
+                                .filter(b -> b.getNangLucThongQuaHienTrang() != null)
+                                .filter(b -> b.getThoiDiemCongBoMo() != null && b.getThoiDiemCongBoMo().getYear() == reportYear)
+                                .mapToDouble(b -> b.getNangLucThongQuaHienTrang().doubleValue())
+                                .sum();
+                        double capNamTruoc = children.stream()
+                                .filter(b -> b.getNangLucThongQuaHienTrang() != null)
+                                .filter(b -> b.getThoiDiemCongBoMo() != null && b.getThoiDiemCongBoMo().getYear() == reportYear - 1)
+                                .mapToDouble(b -> b.getNangLucThongQuaHienTrang().doubleValue())
+                                .sum();
 
                         item.put("nangLucThongQuaCangNamTruoc", capNamTruoc);
                         item.put("nangLucThongQuaCangNamBaoCao", capBaoCao);
@@ -3396,7 +3412,7 @@ public class ReportService {
                 }
 
                 int N = arrResult.size();
-                int offset = N - 1;
+                int offset = Math.max(0, N - 1);
 
                 // Dynamically detect header template row and detail template row to merge them
 
@@ -3530,7 +3546,7 @@ public class ReportService {
                                     String expr = srcCell.getStringCellValue();
 
                                     if (expr != null && (expr.contains("table.value")
-                                            || expr.contains("thiz.getCateOtherText") || expr.contains("item."))) {
+                                            || expr.contains("this.getCateOtherText") || expr.contains("item."))) {
                                         Map<String, Object> item = arrResult.isEmpty() ? new HashMap<>()
                                                 : arrResult.get(0);
 
@@ -3583,7 +3599,7 @@ public class ReportService {
                                             }
 
                                             if (expr.contains("item.") || expr.contains("table.value")
-                                                    || expr.contains("thiz.getCateOtherText")) {
+                                                    || expr.contains("this.getCateOtherText")) {
                                                 Object val = resolveExpression(expr, item);
 
                                                 if (val != null) {
@@ -3668,6 +3684,61 @@ public class ReportService {
                 }
 
                 finalizeWorkbookSheet(workbook);
+
+                // F-150: fix năng lực rows — unmerge + fill "-"
+                if ("F-150".equalsIgnoreCase(request.getReportCode())) {
+                    // First pass: find năng lực rows and remove any merged regions that overlap them
+                    java.util.Set<Integer> nangLucRows = new java.util.HashSet<>();
+                    for (int r = 0; r <= destSheet.getLastRowNum(); r++) {
+                        Row row = destSheet.getRow(r);
+                        if (row == null) continue;
+                        Cell cellB = row.getCell(1);
+                        if (cellB != null && cellB.getCellType() == CellType.STRING) {
+                            String val = cellB.getStringCellValue();
+                            if (val != null && val.contains("Năng lực")) {
+                                nangLucRows.add(r);
+                            }
+                        }
+                    }
+
+                    // Remove merged regions that overlap with năng lực rows (columns C-I)
+                    if (!nangLucRows.isEmpty()) {
+                        java.util.List<Integer> toRemove = new java.util.ArrayList<>();
+                        for (int i = 0; i < destSheet.getNumMergedRegions(); i++) {
+                            org.apache.poi.ss.util.CellRangeAddress region = destSheet.getMergedRegion(i);
+                            for (int r = region.getFirstRow(); r <= region.getLastRow(); r++) {
+                                if (nangLucRows.contains(r) && region.getFirstColumn() >= 2 && region.getFirstColumn() <= 8) {
+                                    toRemove.add(i);
+                                    break;
+                                }
+                            }
+                        }
+                        // Remove in reverse order
+                        for (int i = toRemove.size() - 1; i >= 0; i--) {
+                            destSheet.removeMergedRegion(toRemove.get(i));
+                        }
+                    }
+
+                    // Second pass: force-set all năng lực cells
+                    for (int r : nangLucRows) {
+                        Row row = destSheet.getRow(r);
+                        // Ensure "Nghìn tấn/năm" stays in column C only
+                        Cell cellC = row.getCell(2);
+                        if (cellC == null) cellC = row.createCell(2);
+                        cellC.setCellValue("Nghìn tấn/năm");
+
+                        // Fill "-" in columns D-I
+                        for (int c = 3; c <= 8; c++) {
+                            Cell cell = row.getCell(c);
+                            if (cell == null) cell = row.createCell(c);
+                            CellStyle style = cell.getCellStyle();
+                            if (style == null) style = destSheet.getWorkbook().createCellStyle();
+                            style.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.CENTER);
+                            cell.setCellStyle(style);
+                            cell.setCellValue("-");
+                        }
+                    }
+                }
 
                 return outputWorkbook(workbook, destSheet, isExcel);
             }
@@ -3890,7 +3961,7 @@ public class ReportService {
             bcNoiDungLabel = "Kê khai thay đổi thông tin";
         }
 
-        replacements.put("${thiz.getCateOtherText('DM_APP_PARAM',objInput.getBcNoiDung(), 'NOI_DUNG_BAO_CAO_158')}",
+        replacements.put("${this.getCateOtherText('DM_APP_PARAM',objInput.getBcNoiDung(), 'NOI_DUNG_BAO_CAO_158')}",
                 bcNoiDungLabel);
         replacements.put("${idx+1}", "1");
         replacements.put("${idx + 1}", "1");
@@ -4638,7 +4709,8 @@ public class ReportService {
             Row portTemplateRow,
             Row wharfTemplateRow,
             com.hanghai.kchtg.cangben.entity.CangBien port,
-            int stt) {
+            int stt,
+            int reportYear) {
 
         // Resolve org-unit name for this port
         String donViPort = "";
@@ -4686,7 +4758,7 @@ public class ReportService {
                     }
                 } else if (c == 11) {
                     String portDwt = port.getKhaNangTiepNhan() != null
-                            ? (port.getKhaNangTiepNhan().longValue() + " DWT") : "";
+                ? String.valueOf(port.getKhaNangTiepNhan().longValue()) : "";
                     destCell.setCellValue(portDwt);
                 } else {
                     destCell.setCellValue("");
@@ -4716,7 +4788,7 @@ public class ReportService {
 
             String dwtBerth = "";
             if (berth.getCoTauTiepNhanLonNhat() != null && berth.getCoTauTiepNhanLonNhat().doubleValue() > 0) {
-                dwtBerth = berth.getCoTauTiepNhanLonNhat().longValue() + " DWT";
+                dwtBerth = String.valueOf(berth.getCoTauTiepNhanLonNhat().longValue());
             }
 
             Row berthRow = destSheet.createRow(currentDestRow++);
@@ -4739,12 +4811,18 @@ public class ReportService {
                     } else if (c == 5) {
                         destCell.setCellValue(berth.getCongNangKhaiThac() != null ? berth.getCongNangKhaiThac() : "");
                     } else if (c == 6) {
-                        String nlTruoc = berth.getNangLucThongQuaHienTrang() != null
-                                ? String.valueOf(berth.getNangLucThongQuaHienTrang().longValue()) : "";
+                        // Năm trước = nangLucThongQuaHienTrang if updatedAt.year == reportYear - 1
+                        String nlTruoc = "";
+                        if (berth.getNangLucThongQuaHienTrang() != null
+                                && berth.getUpdatedAt() != null
+                                && berth.getUpdatedAt().getYear() == reportYear - 1) {
+                            nlTruoc = String.valueOf(berth.getNangLucThongQuaHienTrang().longValue());
+                        }
                         destCell.setCellValue(nlTruoc);
                     } else if (c == 7) {
-                        String nlBaoCao = berth.getNangLucThongQuaThietKe() != null
-                                ? String.valueOf(berth.getNangLucThongQuaThietKe().longValue()) : "";
+                        // Năm báo cáo = nangLucThongQuaHienTrang
+                        String nlBaoCao = berth.getNangLucThongQuaHienTrang() != null
+                                ? String.valueOf(berth.getNangLucThongQuaHienTrang().longValue()) : "";
                         destCell.setCellValue(nlBaoCao);
                     } else if (c == 8) {
                         destCell.setCellValue("tấn/năm");
@@ -4774,7 +4852,7 @@ public class ReportService {
             for (com.hanghai.kchtg.cangben.entity.CauCang wharf : wharves) {
                 String dwtWharf = "";
                 if (wharf.getTaiTrong() != null && wharf.getTaiTrong().doubleValue() > 0) {
-                    dwtWharf = wharf.getTaiTrong().longValue() + " DWT";
+                    dwtWharf = String.valueOf(wharf.getTaiTrong().longValue());
                 }
 
                 Row wharfRow = destSheet.createRow(currentDestRow++);

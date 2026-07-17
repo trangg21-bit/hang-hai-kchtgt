@@ -39,4 +39,10 @@ public class TramRadarResponse {
     private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
     private String toaDo;
     private java.util.UUID bieuTuongId;
+
+    private BigDecimal chieuCaoThapRadar;
+    private BigDecimal tamHieuLucRadar;
+
+    private Long heThongVtsId;
+    private String tenHeThongVts;
 }

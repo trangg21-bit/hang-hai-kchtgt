@@ -99,6 +99,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
             mucDoPhuTrach: data.mucDoPhuTrach,
             nguonGoc: data.nguonGoc,
             doiTac: data.doiTac,
+            phamViApDung: data.phamViApDung,
             orgUnitId: data.orgUnitId,
             spatialData: {
               loaiHinhHoc: data.loaiHinhHoc,
@@ -113,6 +114,10 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
         }
       };
       loadData();
+    } else {
+      form.resetFields();
+      setRecord(null);
+      setFormError(null);
     }
   }, [id, isEditMode, form]);
 
@@ -146,6 +151,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
         mucDoPhuTrach: values.mucDoPhuTrach,
         nguonGoc: values.nguonGoc,
         doiTac: values.doiTac,
+        phamViApDung: values.phamViApDung,
         orgUnitId: values.orgUnitId,
         loaiHinhHoc: spatialData?.loaiHinhHoc,
         toaDo: spatialData?.toaDo,
@@ -283,6 +289,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
               <Descriptions.Item label="Mức độ phủ trách">{record.mucDoPhuTrach ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Nguồn gốc">{record.nguonGoc ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Đối tác">{record.doiTac ?? '—'}</Descriptions.Item>
+              <Descriptions.Item label="Phạm vi áp dụng" span={2}>{record.phamViApDung ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Đơn vị quản lý" span={2}>
                 {record.orgUnitId ? organizations.find(o => o.id === record.orgUnitId)?.name || record.orgUnitId : '—'}
               </Descriptions.Item>
@@ -437,6 +444,10 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
               <Input placeholder="Nhập đối tác" />
             </Form.Item>
 
+            <Form.Item label="Phạm vi áp dụng" name="phamViApDung">
+              <Input.TextArea rows={3} placeholder="Nhập phạm vi áp dụng" />
+            </Form.Item>
+
             <Form.Item
               label="Đơn vị quản lý"
               name="orgUnitId"
@@ -524,6 +535,10 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
             name="doiTac"
           >
             <Input placeholder="Nhập đối tác" />
+          </Form.Item>
+
+          <Form.Item label="Phạm vi áp dụng" name="phamViApDung">
+            <Input.TextArea rows={3} placeholder="Nhập phạm vi áp dụng" />
           </Form.Item>
 
           <Form.Item

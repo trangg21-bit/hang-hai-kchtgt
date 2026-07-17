@@ -23,6 +23,12 @@ public abstract class BaseReportHandler implements ReportHandler {
             return null;
         }
         try {
+            if (requestOrgId.trim().endsWith("-demo")) {
+                List<com.hanghai.kchtg.orgunit.entity.OrgUnit> roots = orgUnitRepository.findAll();
+                if (!roots.isEmpty())
+                    return roots.get(0).getId();
+                return null;
+            }
             return UUID.fromString(requestOrgId.trim());
         } catch (Exception e) {
             return null;
