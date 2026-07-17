@@ -20,8 +20,10 @@ public class DeKeResponse {
     private Long id;
     private com.hanghai.kchtg.deke.entity.LoaiDe loaiDe;
     private String viTri;
+    private String tenDeKe;
     private Double chieuDai;
-    private Double chieuRong;
+    private Double caoTrinhDinh;
+    private LocalDate thoiDiemDuaVaoKhaiThac;
     private Double chieuCao;
     private String matVatLieu;
     private String tinhTrang;

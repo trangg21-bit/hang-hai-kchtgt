@@ -237,7 +237,7 @@ export default function TramRadarList() {
                 aria-label="Xem chi tiết"
               />
             )}
-            {canUpdate && isProposed && (
+            {canUpdate && (
               <Button
                 type="link"
                 size="small"

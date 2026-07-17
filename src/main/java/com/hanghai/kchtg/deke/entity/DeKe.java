@@ -20,11 +20,17 @@ public class DeKe {
     @Column(name = "vi_tri", nullable = false, length = 200)
     private String viTri;
 
+    @Column(name = "ten_de_ke", length = 255)
+    private String tenDeKe;
+
     @Column(name = "chieu_dai")
     private Double chieuDai;
 
-    @Column(name = "chieu_rong")
-    private Double chieuRong;
+    @Column(name = "cao_trinh_dinh")
+    private Double caoTrinhDinh;
+
+    @Column(name = "thoi_diem_dua_vao_khai_thac")
+    private LocalDate thoiDiemDuaVaoKhaiThac;
 
     @Column(name = "chieu_cao")
     private Double chieuCao;

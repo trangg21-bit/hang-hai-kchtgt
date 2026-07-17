@@ -3,6 +3,7 @@ package com.hanghai.kchtg.deke.dto;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -22,8 +23,12 @@ public class DeKeCreateRequest {
     @NotBlank(message = "Vị trí không được để trống")
     private String viTri;
 
+    @NotBlank(message = "Tên đê kè không được để trống")
+    private String tenDeKe;
+
     private Double chieuDai;
-    private Double chieuRong;
+    private Double caoTrinhDinh;
+    private LocalDate thoiDiemDuaVaoKhaiThac;
     private Double chieuCao;
     private String matVatLieu;
     private String tinhTrang;
