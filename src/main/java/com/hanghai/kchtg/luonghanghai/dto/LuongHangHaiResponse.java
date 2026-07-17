@@ -10,7 +10,7 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class LuongHangHaiResponse {
     private Long id;
-    private String loaiTau;
+    private String ten;
     private Integer soLuong;
     private LocalDate ngayGhiNhan;
     private String gioDien;

@@ -95,7 +95,7 @@ const pageTitles: Record<string, string> = {
   '/caucang': 'Cầu cảng',
   '/cangcan': 'Cảng cạn',
   '/vungnuoc': 'Vùng nước',
-  '/luong-hang-hai': 'Lượng hàng hải',
+  '/luong-hang-hai': 'Luồng hàng hải',
   '/de-ke': 'Đê/Kè',
   '/co-so-sua-chua': 'Cơ sở sửa chữa & đóng tàu',
   '/tram-radar': 'Trạm Radar',
@@ -256,7 +256,7 @@ export default function AppLayout() {
       icon: <SettingOutlined />,
       label: 'Khu nước & VTS',
       children: [
-        canAccessMenu('/luong-hang-hai') ? { key: '/luong-hang-hai', label: 'Lượng hàng hải' } : null,
+        canAccessMenu('/luong-hang-hai') ? { key: '/luong-hang-hai', label: 'Luồng hàng hải' } : null,
         canAccessMenu('/de-ke') ? { key: '/de-ke', label: 'Đê/Kè' } : null,
         canAccessMenu('/co-so-sua-chua') ? { key: '/co-so-sua-chua', label: 'Cơ sở sửa chữa & đóng tàu' } : null,
         canAccessMenu('/tram-radar') ? { key: '/tram-radar', label: 'Trạm Radar' } : null,

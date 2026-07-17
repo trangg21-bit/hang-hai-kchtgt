@@ -618,7 +618,7 @@ public class KchtGis155Service {
                             .filter(x -> !Boolean.TRUE.equals(x.getIsDeleted()))
                             .filter(x -> orgUnitId == null || orgUnitId.equals(x.getDonViId()))
                             .filter(x -> searchLower == null ||
-                                    (x.getLoaiTau() != null && x.getLoaiTau().toLowerCase().contains(searchLower)))
+                                    (x.getTen() != null && x.getTen().toLowerCase().contains(searchLower)))
                             .collect(Collectors.toList());
                     Map<UUID, GisSpatialObject> luongSpatialMap = new HashMap<>();
                     if (objectType != null) {
@@ -631,7 +631,7 @@ public class KchtGis155Service {
                         UUID dtoId = UUID.nameUUIDFromBytes(String.valueOf(l.getId()).getBytes());
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(dtoId)
-                                .name("Luồng hàng hải " + l.getId() + " - " + l.getLoaiTau())
+                                .name("Luồng hàng hải " + l.getId() + " - " + l.getTen())
                                 .ma("LUONG_" + l.getId())
                                 .orgName(getOrgName(l.getDonViId(), orgNameMap))
                                 .kchtTypeLabel("Luồng hàng hải")

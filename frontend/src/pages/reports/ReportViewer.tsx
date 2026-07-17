@@ -530,16 +530,15 @@ export default function ReportViewer() {
             }
             style={{ minHeight: 380 }}
           >
-            {['F-151', 'F-152', 'F-153', 'F-154', 'F-155', 'F-156', 'F-157', 'F-158', 'F-159', 'F-160'].includes(reportCode) ? (
+            {['F-153', 'F-154', 'F-155', 'F-156', 'F-157', 'F-158', 'F-159'].includes(reportCode) ? (
               <div style={{ padding: '10px 0' }}>
                 <Alert
                   message="Lưu ý về nguồn dữ liệu báo cáo"
                   description={
                     reportCode === 'F-151' ? (
                       <div>
-                        <p>Hệ thống hiện tại chưa cấu hình các bảng thực thể nghiệp vụ chi tiết cho từng loại kết cấu tuyến luồng như dự án gốc <strong>hh.csdl</strong> (ví dụ: các trường độ sâu thiết kế, mái dốc, tĩnh không, trạm quản lý,...).</p>
-                        <p>Toàn bộ thông tin tuyến luồng hàng hải hiện tại được lấy từ các đối tượng hình học dạng đường (<strong>LineObject</strong>) tại màn hình <strong>Đối tượng đường</strong> (<code>/gis/lines</code>) đã được chuẩn hóa đúng từ <strong>"Luồng hàng hải"</strong> thành <strong>"Lượng hàng hải"</strong>.</p>
-                        <p>Do cấu trúc dữ liệu GIS hiện tại chỉ lưu trữ các trường cơ bản như tên, mã và chiều dài nên các thông số kỹ thuật chi tiết khác sẽ hiển thị trống trên báo cáo.</p>
+                        <p>Dữ liệu được lấy từ bảng <strong>Luồng hàng hải</strong> (<code>luong_hang_hai</code>) kết hợp với dữ liệu không gian từ <strong>GIS</strong> (<code>gis_spatial_objects</code>) qua liên kết <code>spatial_id</code>.</p>
+                        <p>Một số thông số kỹ thuật chi tiết (chiều rộng, độ sâu, mái dốc, khối lượng nạo vét) hiện chưa có trong cấu trúc dữ liệu hiện tại và sẽ hiển thị trống trên báo cáo.</p>
                       </div>
                     ) : reportCode === 'F-155' ? (
                       <div>

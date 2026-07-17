@@ -15,7 +15,7 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 @Builder
 public class LuongHangHaiUpdateRequest {
 
-    private String loaiTau;
+    private String ten;
 
     private Integer soLuong;
 

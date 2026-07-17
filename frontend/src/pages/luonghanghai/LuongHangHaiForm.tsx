@@ -86,7 +86,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
           const data = await luongHangHaiCRUD.getById(id);
           setRecord(data);
           form.setFieldsValue({
-            loaiTau: data.loaiTau,
+            ten: data.ten,
             soLuong: data.soLuong,
             ngayGhiNhan: data.ngayGhiNhan ? dayjs(data.ngayGhiNhan) : null,
             gioDien: data.gioDien ? dayjs(data.gioDien, 'HH:mm') : null,
@@ -137,7 +137,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
     try {
       const spatialData = values.spatialData;
       const payload = {
-        loaiTau: values.loaiTau,
+        ten: values.ten,
         soLuong: values.soLuong,
         ngayGhiNhan: values.ngayGhiNhan ? values.ngayGhiNhan.format('YYYY-MM-DD') : undefined,
         gioDien: values.gioDien ? values.gioDien.format('HH:mm') : undefined,
@@ -234,7 +234,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
 
   const breadcrumbs = [
     { title: 'Trang chủ', onClick: () => navigate('/') },
-    { title: 'Lượng hàng hải', onClick: () => navigate('/luong-hang-hai') },
+    { title: 'Luồng hàng hải', onClick: () => navigate('/luong-hang-hai') },
     { title: isCreateMode ? 'Tạo mới' : isEditMode ? 'Chỉnh sửa' : 'Chi tiết' },
   ];
 
@@ -267,7 +267,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
           {!isModalMode && <h2>Chi tiết Luồng Hàng Hải</h2>}
           {record && (
             <Descriptions column={2} bordered size="small">
-              <Descriptions.Item label="Loại tàu">{record.loaiTau}</Descriptions.Item>
+              <Descriptions.Item label="Tên luồng hàng hải">{record.ten}</Descriptions.Item>
               <Descriptions.Item label="Số lượng">{record.soLuong ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Ngày ghi nhận">
                 {record.ngayGhiNhan ? dayjs(record.ngayGhiNhan).format('DD/MM/YYYY') : '—'}
@@ -375,11 +375,11 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
             autoComplete="off"
           >
             <Form.Item
-              label="Loại tàu"
-              name="loaiTau"
-              rules={[{ required: true, message: 'Vui lòng nhập loại tàu' }]}
+              label="Tên luồng hàng hải"
+              name="ten"
+              rules={[{ required: true, message: 'Vui lòng nhập tên luồng hàng hải' }]}
             >
-              <Input placeholder="Nhập loại tàu" />
+              <Input placeholder="Nhập tên luồng hàng hải" />
             </Form.Item>
 
             <Form.Item
@@ -487,11 +487,11 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
           autoComplete="off"
         >
           <Form.Item
-            label="Loại tàu"
-            name="loaiTau"
-            rules={[{ required: true, message: 'Vui lòng nhập loại tàu' }]}
+            label="Tên luồng hàng hải"
+            name="ten"
+            rules={[{ required: true, message: 'Vui lòng nhập tên luồng hàng hải' }]}
           >
-            <Input placeholder="Nhập loại tàu" />
+            <Input placeholder="Nhập tên luồng hàng hải" />
           </Form.Item>
 
           <Form.Item
