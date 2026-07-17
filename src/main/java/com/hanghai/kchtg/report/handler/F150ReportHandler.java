@@ -125,7 +125,8 @@ public class F150ReportHandler extends BaseReportHandler {
                 "Cầu cảng chuyên dụng hàng rời, quặng",
                 "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng",
                 "Cầu cảng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu …)",
-                "Cầu cảng hành khách"
+                "Cầu cảng hành khách",
+                "Ghi chú"
         );
 
         List<Map<String, Object>> rows = new ArrayList<>();
@@ -138,7 +139,8 @@ public class F150ReportHandler extends BaseReportHandler {
                 "Cầu cảng chuyên dụng hàng rời, quặng", roiQuangNam,
                 "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng", xangDauNam,
                 "Cầu cảng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu …)", khacNam,
-                "Cầu cảng hành khách", hanhKhachNam
+                "Cầu cảng hành khách", hanhKhachNam,
+                "Ghi chú", ""
         ));
         rows.add(Map.of(
                 "STT", 2,
@@ -149,7 +151,8 @@ public class F150ReportHandler extends BaseReportHandler {
                 "Cầu cảng chuyên dụng hàng rời, quặng", roiQuangThayDoi,
                 "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng", xangDauThayDoi,
                 "Cầu cảng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu …)", khacThayDoi,
-                "Cầu cảng hành khách", hanhKhachThayDoi
+                "Cầu cảng hành khách", hanhKhachThayDoi,
+                "Ghi chú", ""
         ));
         rows.add(Map.of(
                 "STT", 3,
@@ -160,7 +163,8 @@ public class F150ReportHandler extends BaseReportHandler {
                 "Cầu cảng chuyên dụng hàng rời, quặng", roiQuangDaiNam,
                 "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng", xangDauDaiNam,
                 "Cầu cảng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu …)", khacDaiNam,
-                "Cầu cảng hành khách", hanhKhachDaiNam
+                "Cầu cảng hành khách", hanhKhachDaiNam,
+                "Ghi chú", ""
         ));
         rows.add(Map.of(
                 "STT", 4,
@@ -171,29 +175,32 @@ public class F150ReportHandler extends BaseReportHandler {
                 "Cầu cảng chuyên dụng hàng rời, quặng", roiQuangDaiThayDoi,
                 "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng", xangDauDaiThayDoi,
                 "Cầu cảng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu …)", khacDaiThayDoi,
-                "Cầu cảng hành khách", hanhKhachDaiThayDoi
+                "Cầu cảng hành khách", hanhKhachDaiThayDoi,
+                "Ghi chú", ""
         ));
         rows.add(Map.of(
                 "STT", 5,
                 "Chỉ tiêu", "Năng lực thông qua năm báo cáo",
                 "Đơn vị", "Nghìn tấn/năm",
-                "Cầu cảng container", 0.0,
-                "Cầu cảng tổng hợp (bách hóa)", 0.0,
-                "Cầu cảng chuyên dụng hàng rời, quặng", 0.0,
-                "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng", 0.0,
-                "Cầu cảng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu …)", 0.0,
-                "Cầu cảng hành khách", 0.0
+                "Cầu cảng container", "-",
+                "Cầu cảng tổng hợp (bách hóa)", "-",
+                "Cầu cảng chuyên dụng hàng rời, quặng", "-",
+                "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng", "-",
+                "Cầu cảng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu …)", "-",
+                "Cầu cảng hành khách", "-",
+                "Ghi chú", ""
         ));
         rows.add(Map.of(
                 "STT", 6,
                 "Chỉ tiêu", "Năng lực thông qua thay đổi",
                 "Đơn vị", "Nghìn tấn/năm",
-                "Cầu cảng container", 0.0,
-                "Cầu cảng tổng hợp (bách hóa)", 0.0,
-                "Cầu cảng chuyên dụng hàng rời, quặng", 0.0,
-                "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng", 0.0,
-                "Cầu cảng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu …)", 0.0,
-                "Cầu cảng hành khách", 0.0
+                "Cầu cảng container", "-",
+                "Cầu cảng tổng hợp (bách hóa)", "-",
+                "Cầu cảng chuyên dụng hàng rời, quặng", "-",
+                "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng", "-",
+                "Cầu cảng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu …)", "-",
+                "Cầu cảng hành khách", "-",
+                "Ghi chú", ""
         ));
 
         Map<String, Object> summary = new LinkedHashMap<>();
@@ -325,6 +332,22 @@ public class F150ReportHandler extends BaseReportHandler {
         item.put("chieuDaiCauCangChuyenDungXangDauKhiHoaLongThayDoi", xangDauDaiThayDoi);
         item.put("chieuDaiCauCangChuyenDungKhacThayDoi", khacDaiThayDoi);
         item.put("chieuDaiCauCangHanhKhachNamThayDoi", hanhKhachDaiThayDoi);
+
+        item.put("nangLucContainerNamBaoCao", "-");
+        item.put("nangLucTongHopNamBaoCao", "-");
+        item.put("nangLucChuyenDungHangRoiQuangNamBaoCao", "-");
+        item.put("nangLucChuyenDungXangDauKhiHoaLongNamBaoCao", "-");
+        item.put("nangLucChuyenDungKhacNamBaoCao", "-");
+        item.put("nangLucHanhKhachNamBaoCao", "-");
+
+        item.put("nangLucContainerThayDoi", "-");
+        item.put("nangLucTongHopThayDoi", "-");
+        item.put("nangLucChuyenDungHangRoiQuangThayDoi", "-");
+        item.put("nangLucChuyenDungXangDauKhiHoaLongThayDoi", "-");
+        item.put("nangLucChuyenDungKhacThayDoi", "-");
+        item.put("nangLucHanhKhachThayDoi", "-");
+
+        item.put("ghiChu", "");
 
         List<Map<String, Object>> list = new ArrayList<>();
         list.add(item);
