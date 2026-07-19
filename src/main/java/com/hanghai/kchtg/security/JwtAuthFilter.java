@@ -101,7 +101,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                             ? List.of(new SimpleGrantedAuthority(role))
                             : List.of();
 
-                    User user = userRepository.findByUsername(username).orElse(null);
+                    User user = userRepository.findByUsernameWithRelations(username).orElse(null);
 
                     // Instant permission revocation: reject tokens whose permission
                     // snapshot is older than the user's current version. When an admin

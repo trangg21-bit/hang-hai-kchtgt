@@ -75,7 +75,7 @@ public class AuthController {
 
             if (challenge.isSkipTotp()) {
                 // User does NOT have TOTP enabled - proceed with single-phase login
-                User user = userRepository.findById(challenge.getUserId())
+                User user = userRepository.findByIdWithRelations(challenge.getUserId())
                         .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));
 
                 // Update last login
@@ -119,7 +119,7 @@ public class AuthController {
             HttpServletRequest httpRequest) {
         try {
             TwoFactorLoginResponse response = totpAuthService.verifyTotp(request, httpRequest);
-            User user = userRepository.findById(response.getUser().getId()).orElse(null);
+            User user = userRepository.findByIdWithRelations(response.getUser().getId()).orElse(null);
             if (user != null) {
                 httpRequest.setAttribute("authenticatedUser", user);
                 httpRequest.setAttribute("authenticatedUserRole", response.getUser().getRole());

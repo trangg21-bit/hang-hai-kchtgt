@@ -1,32 +1,24 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
-  Card,
-  Table,
   Button,
-  Input,
-  Space,
   Tag,
   Modal,
   Form,
+  Input,
   Typography,
-  Tooltip,
   Tree,
   Spin,
-  Row,
-  Col,
-  message,
+  Card,
+  Space,
 } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  SearchOutlined,
-  ReloadOutlined,
   ExclamationCircleOutlined,
-  SafetyOutlined,
   KeyOutlined,
 } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
+import type { TreeProps } from 'antd';
 import dayjs from 'dayjs';
 import {
   useRoles,
@@ -39,17 +31,22 @@ import { usePermissionStore } from '../store/permissionStore';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import EmptyState from '../components/EmptyState';
 import ErrorState from '../components/ErrorState';
+import { ScreenHeader, FilterBar, DataTable } from '../components/list-view';
+import Pagination from '../components/list-view/Pagination';
 import type { Role, CreateRolePayload, UpdateRolePayload } from '../types/role';
-import type { TreeProps } from 'antd';
 import { ALL_PERMISSIONS } from '../services/mockData';
+import { actionPrimary, textSecondary, textPrimary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, radiusMd, radiusPill, borderDefault, spaceFormField, statusOperational, statusCritical } from '../tokens';
+import { colors } from '../theme';
+import toast from '../components/ToastNotification';
 
 const { confirm } = Modal;
 
-/** Look up Vietnamese display name for a permission key. */
 function getPermissionName(key: string): string {
   const perm = ALL_PERMISSIONS.find((p) => p.key === key);
   return perm ? perm.name : key;
 }
+
+const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
 export default function RolesPage() {
   const [search, setSearch] = useState('');
@@ -59,13 +56,12 @@ export default function RolesPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(10);
 
   const [form] = Form.useForm();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
   const { tree, allGroupKeys } = usePermissions();
 
-  // Query
   const { data: rolesData, isLoading, isError, error, refetch } = useRoles({
     page,
     pageSize,
@@ -75,12 +71,10 @@ export default function RolesPage() {
   const roles = rolesData?.data || [];
   const total = rolesData?.total || 0;
 
-  // Mutations
   const createRole = useCreateRole();
   const updateRole = useUpdateRole();
   const deleteRole = useDeleteRole();
 
-  // ---- Handlers ----
   const openCreateModal = useCallback(() => {
     setEditingRole(null);
     setCheckedKeys([]);
@@ -139,8 +133,10 @@ export default function RolesPage() {
         await createRole.mutateAsync(payload);
       }
       setModalOpen(false);
-    } catch {
-      // validation error
+    } catch (err: any) {
+      if (err.errorFields) return;
+      const msg = err.response?.data?.message || err.message || 'Lỗi hệ thống';
+      toast.error(msg);
     } finally {
       setSubmitting(false);
     }
@@ -149,7 +145,7 @@ export default function RolesPage() {
   const handleDelete = useCallback(
     (role: Role) => {
       if (role.userCount > 0) {
-        message.warning(`Vai trò "${role.name}" đang có ${role.userCount} người dùng. Vui lòng chuyển người dùng sang vai trò khác trước khi xóa.`);
+        toast.warning(`Vai trò "${role.name}" đang có ${role.userCount} người dùng. Vui lòng chuyển người dùng sang vai trò khác trước khi xóa.`);
         return;
       }
 
@@ -166,242 +162,123 @@ export default function RolesPage() {
     [deleteRole],
   );
 
-  const handleSearch = useCallback((value: string) => {
-    setSearch(value);
+  const handleFilterSearch = useCallback((values: Record<string, any>) => {
+    setSearch(values.search || '');
     setPage(1);
   }, []);
 
-  const handleTableChange = useCallback(
-    (pag: { current?: number; pageSize?: number }) => {
-      setPage(pag.current || 1);
-      setPageSize(pag.pageSize || 5);
-    },
-    []
-  );
+  const handleFilterReset = useCallback(() => {
+    setSearch('');
+    setPage(1);
+  }, []);
 
-  // ---- Permission count display ----
-  const getCheckedCount = () => {
-    // Only count leaf (permission) keys, not group keys
-    return checkedKeys.filter((k) => !allGroupKeys.includes(k)).length;
-  };
+  const handlePageChange = useCallback((p: number, ps: number) => {
+    setPage(p);
+    setPageSize(ps);
+  }, []);
 
-  // ---- Render ----
+  const getCheckedCount = () => checkedKeys.filter((k) => !allGroupKeys.includes(k)).length;
+
+  // ---- Row actions ----
+  const rowActions = useCallback((record: Role) => {
+    const actions: {
+      key: string; label: string;
+      icon?: React.ReactNode; onClick: () => void; danger?: boolean;
+    }[] = [];
+    if (hasPerm('role.edit')) actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
+    if (hasPerm('role.delete') && record.id !== 'role-001') actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
+    return actions;
+  }, [hasPerm, openEditModal, handleDelete]);
+
+  // ---- Columns ----
+  const columns = useMemo(() => [
+    { key: 'stt', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
+    { key: 'name', label: 'Tên vai trò', dataIndex: 'name', width: 220, align: 'left' as const, render: (text: string, record: Role) => (
+      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Typography.Text strong>{text}</Typography.Text>
+        {record.id === 'role-001' && <Tag color="volcano">Hệ thống</Tag>}
+      </span>
+    ) },
+    { key: 'description', label: 'Mô tả', dataIndex: 'description', width: 260, align: 'left' as const, render: (text?: string) => text ? <Typography.Text>{text}</Typography.Text> : <Typography.Text type="secondary">—</Typography.Text> },
+    { key: 'permissions', label: 'Quyền hạn', dataIndex: 'permissions', width: 130, align: 'center' as const, render: (perms: string[]) => (
+      <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${actionPrimary}15`, color: actionPrimary }}>{perms.length} quyền</span>
+    ) },
+    { key: 'userCount', label: 'Người dùng', dataIndex: 'userCount', width: 120, align: 'center' as const, render: (count: number) => (
+      <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: count > 0 ? `${statusOperational}15` : `${textSecondary}15`, color: count > 0 ? statusOperational : textSecondary }}>{count}</span>
+    ) },
+    { key: 'updatedAt', label: 'Cập nhật cuối', dataIndex: 'updatedAt', width: 140, align: 'center' as const, render: (text: string) => text ? <span>{dayjs(text).format('DD/MM/YYYY')}</span> : <Typography.Text type="secondary">—</Typography.Text> },
+  ], [page, pageSize]);
+
+  // ---- Filter fields ----
+  const filterFields = useMemo(() => [
+    { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên, mô tả...' },
+  ], []);
+
+  // ---- Header actions ----
+  const headerActions = useMemo(() => {
+    const actions: any[] = [];
+    if (hasPerm('role.create')) actions.push({ key: 'create', label: 'Tạo vai trò', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
+    return actions;
+  }, [hasPerm, openCreateModal]);
+
   const renderContent = () => {
-    if (isLoading) return <LoadingSkeleton rows={4} />;
-    if (isError)
-      return (
-        <ErrorState
-          message={error?.message || 'Không thể tải danh sách vai trò'}
-          onRetry={() => refetch()}
-        />
-      );
-    if (!roles || roles.length === 0) {
-      if (search) {
-        return (
-          <EmptyState
-            description="Không tìm thấy vai trò nào"
-            ctaText="Xóa tìm kiếm"
-            onCta={() => setSearch('')}
-          />
-        );
-      }
-      return (
-        <EmptyState
-          description="Chưa có vai trò nào"
-          ctaText="Tạo vai trò đầu tiên"
-          onCta={openCreateModal}
-        />
-      );
+    if (isLoading) return <LoadingSkeleton rows={6} />;
+    if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách vai trò'} onRetry={() => refetch()} />;
+    if (roles.length === 0) {
+      if (search) return <EmptyState description="Không tìm thấy vai trò nào phù hợp" />;
+      return <EmptyState description="Chưa có vai trò nào" ctaText="Tạo vai trò đầu tiên" onCta={openCreateModal} />;
     }
-
     return (
-      <Table<Role>
-        columns={columns}
-        dataSource={roles}
-        rowKey="id"
-        pagination={{
-          current: page,
-          pageSize: pageSize,
-          total: total,
-          showSizeChanger: true,
-          showTotal: (t) => `Tổng ${t} vai trò`,
-          pageSizeOptions: ['5', '10', '20', '50']
-        }}
-        onChange={handleTableChange}
-        scroll={{ x: 800 }}
-      />
+      <div style={{ overflowX: 'auto' }}>
+        <DataTable columns={columns} dataSource={roles} rowKey="id" rowActions={rowActions} scroll={{ x: 930 }} />
+        <Pagination total={total} current={page} pageSize={pageSize} onChange={handlePageChange} />
+      </div>
     );
   };
 
-  // ---- Columns ----
-  const columns: ColumnsType<Role> = [
-    {
-      title: 'Tên vai trò',
-      dataIndex: 'name',
-      render: (text: string, record: Role) => (
-        <Space>
-          <SafetyOutlined style={{ color: '#1677ff' }} />
-          <Typography.Text strong>{text}</Typography.Text>
-          {record.id === 'role-001' && <Tag color="volcano">Hệ thống</Tag>}
-        </Space>
-      ),
-    },
-    {
-      title: 'Mô tả',
-      dataIndex: 'description',
-      ellipsis: true,
-    },
-    {
-      title: 'Quyền hạn',
-      dataIndex: 'permissions',
-      render: (perms: string[]) => (
-        <Tooltip
-          title={
-            <ul style={{ paddingLeft: 16, margin: 0 }}>
-              {perms.map((p) => (
-                <li key={p}>{getPermissionName(p)}</li>
-              ))}
-            </ul>
-          }
-        >
-          <Tag color="blue">{perms.length} quyền</Tag>
-        </Tooltip>
-      ),
-    },
-    {
-      title: 'Số người dùng',
-      dataIndex: 'userCount',
-      align: 'center',
-      render: (count: number) => (
-        <Tag color={count > 0 ? 'green' : 'default'}>{count}</Tag>
-      ),
-    },
-    {
-      title: 'Cập nhật cuối',
-      dataIndex: 'updatedAt',
-      render: (text: string) => dayjs(text).format('DD/MM/YYYY'),
-    },
-    {
-      title: 'Hành động',
-      key: 'actions',
-      width: 120,
-      render: (_: unknown, record: Role) => (
-        <Space size="small">
-          {hasPerm('role.edit') && (
-            <Tooltip title="Sửa">
-              <Button
-                type="link"
-                size="small"
-                icon={<EditOutlined />}
-                onClick={() => openEditModal(record)}
-              />
-            </Tooltip>
-          )}
-          {hasPerm('role.delete') && record.id !== 'role-001' && (
-            <Tooltip title="Xóa">
-              <Button
-                type="link"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => handleDelete(record)}
-              />
-            </Tooltip>
-          )}
-        </Space>
-      ),
-    },
-  ];
-
   return (
-    <>
-      {/* Header & Search */}
-      <Card style={{ marginBottom: 16 }}>
-        <Row gutter={[12, 12]} align="middle" justify="space-between">
-          <Col>
-            <Input.Search
-              placeholder="Tìm vai trò..."
-              allowClear
-              style={{ width: 300 }}
-              prefix={<SearchOutlined />}
-              onSearch={handleSearch}
-            />
-          </Col>
-          <Col>
-            <Space>
-              <Tooltip title="Tải lại">
-                <Button icon={<ReloadOutlined />} onClick={() => refetch()} />
-              </Tooltip>
-              {hasPerm('role.create') && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-                  Tạo vai trò
-                </Button>
-              )}
-            </Space>
-          </Col>
-        </Row>
-      </Card>
+    <div style={{ minHeight: '100%', marginTop: -8 }}>
+      <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Phân quyền' }]} actions={headerActions} />
+      <FilterBar fields={filterFields} onSearch={handleFilterSearch} onReset={handleFilterReset} />
+      <div style={{ ...cardStyle, padding: '8px 16px', marginBottom: 4 }}>
+        {renderContent()}
+      </div>
 
-      {/* Table */}
-      <Card>{renderContent()}</Card>
-
-      {/* Create / Edit Modal */}
       <Modal
-        title={editingRole ? 'Sửa vai trò' : 'Tạo vai trò mới'}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingRole ? 'Sửa vai trò' : 'Tạo vai trò mới'}</span>}
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={() => setModalOpen(false)}
         destroyOnHidden
         confirmLoading={submitting}
-        okText={editingRole ? 'Cập nhật' : 'Tạo mới'}
-        cancelText="Hủy"
         width={700}
-        mask={{ closable: false }}
+        maskClosable={false}
+        footer={[
+          <Button key="cancel" onClick={() => setModalOpen(false)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
+          <Button key="ok" type="primary" onClick={handleSubmit} loading={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>{editingRole ? 'Cập nhật' : 'Tạo mới'}</Button>,
+        ]}
       >
         <Spin spinning={submitting}>
           <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-            <Form.Item
-              name="name"
-              label="Tên vai trò"
-              rules={[{ required: true, message: 'Vui lòng nhập tên vai trò' }]}
-            >
-              <Input placeholder="vd: Quản trị viên" />
+            <Form.Item name="name" {...labelProps('Tên vai trò')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên vai trò' }]}>
+              <Input placeholder="vd: Quản trị viên" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
-
-            <Form.Item
-              name="code"
-              label="Mã vai trò"
-              rules={[
-                { required: true, message: 'Vui lòng nhập mã vai trò' },
-                { pattern: /^[a-zA-Z0-9_]+$/, message: 'Chỉ chứa chữ, số và dấu gạch dưới' },
-              ]}
-            >
-              <Input placeholder="vd: senior_admin" />
+            <Form.Item name="code" {...labelProps('Mã vai trò')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mã vai trò' }, { pattern: /^[a-zA-Z0-9_]+$/, message: 'Chỉ chứa chữ, số và dấu gạch dưới' }]}>
+              <Input placeholder="vd: senior_admin" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
-
-            <Form.Item
-              name="description"
-              label="Mô tả"
-              rules={[{ required: true, message: 'Vui lòng nhập mô tả' }]}
-            >
-              <Input.TextArea rows={2} placeholder="Mô tả ngắn gọn về vai trò" />
+            <Form.Item name="description" {...labelProps('Mô tả')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mô tả' }]}>
+              <Input.TextArea rows={2} placeholder="Mô tả ngắn gọn về vai trò" style={{ borderRadius: radiusMd }} />
             </Form.Item>
-
             <Form.Item
               name="permissions"
-              label="Phân quyền"
-              rules={[
-                {
-                  validator: (_: unknown, value: string[]) => {
-                    if (!value || value.length === 0) {
-                      return Promise.reject(
-                        new Error('Vui lòng chọn ít nhất một quyền cho vai trò'),
-                      );
-                    }
-                    return Promise.resolve();
-                  },
+              {...labelProps('Phân quyền')}
+              style={{ marginBottom: spaceFormField }}
+              rules={[{
+                validator: (_: unknown, value: string[]) => {
+                  if (!value || value.length === 0) return Promise.reject(new Error('Vui lòng chọn ít nhất một quyền cho vai trò'));
+                  return Promise.resolve();
                 },
-              ]}
+              }]}
             >
               <Card
                 size="small"
@@ -412,7 +289,7 @@ export default function RolesPage() {
                     <Tag>{getCheckedCount()} quyền đã chọn</Tag>
                   </Space>
                 }
-                style={{ borderColor: '#d9d9d9' }}
+                style={{ borderColor: borderDefault }}
               >
                 <Tree
                   checkable
@@ -427,6 +304,6 @@ export default function RolesPage() {
           </Form>
         </Spin>
       </Modal>
-    </>
+    </div>
   );
 }

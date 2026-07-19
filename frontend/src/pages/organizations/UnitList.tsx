@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Typography, Modal, Form, Input, Select, Spin, Button, Space, Dropdown } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined, ExclamationCircleOutlined, FileExcelOutlined, SendOutlined, CheckOutlined, CloseOutlined, MoreOutlined, CaretRightOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, FileExcelOutlined, SendOutlined, CheckOutlined, CloseOutlined, MoreOutlined, CaretRightOutlined } from '@ant-design/icons';
 import { organizationService } from '../../services/organizationService';
 
 import type { Organization, CreateOrganizationPayload, UpdateOrganizationPayload } from '../../services/organizationService';
@@ -18,6 +18,7 @@ const { confirm } = Modal;
 const STATUS_COLORS: Record<string, string> = { draft: statusDraft, pending: statusAttention, approved: statusOperational, rejected: statusCritical };
 const STATUS_LABELS: Record<string, string> = { draft: 'Bản nháp', pending: 'Chờ duyệt', approved: 'Đã phê duyệt', rejected: 'Bị từ chối' };
 const TYPE_LABELS: Record<string, string> = { CUC: 'Cục', TCT: 'Tổng cục', CHI_CUC: 'Chi cục', CANG_VU: 'Cảng vụ' };
+const getTypeLabel = (type: string) => TYPE_LABELS[type] || type;
 
 const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
@@ -152,7 +153,7 @@ export default function UnitList() {
   }, [fetchOrgs]);
 
   const getActions = (record: Organization) => {
-    const items: any[] = [{ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => {} }];
+    const items: any[] = [];
     if (hasPerm('org.edit')) items.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
     if (hasPerm('org.edit') && (record.status === 'draft' || record.status === 'rejected')) items.push({ key: 'submit', label: 'Trình duyệt', icon: <SendOutlined />, onClick: () => handleSubmitApproval(record) });
     if (hasPerm('org.approve') && record.status === 'pending') { items.push({ key: 'approve', label: 'Phê duyệt', icon: <CheckOutlined />, onClick: () => handleApprove(record) }); items.push({ key: 'reject', label: 'Từ chối', icon: <CloseOutlined />, onClick: () => handleReject(record), danger: true }); }

@@ -1,47 +1,24 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Button,
-  Space,
-  Tag,
-  Card,
-  Row,
-  Col,
-  Typography,
-  Input,
-  Select,
-  Tooltip,
-  Badge,
-  Modal,
-  Form,
-  Spin,
-} from 'antd';
-import {
-  PlusOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  UserOutlined,
-  SearchOutlined,
-  ReloadOutlined,
-  ArrowRightOutlined,
-  ExclamationCircleOutlined,
-} from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
+import { Typography, Modal, Form, Input, Spin, Button } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { groupService } from '../../services/groupService';
-import type { Group, CreateGroupPayload, UpdateGroupPayload } from '../../services/groupService';
 import { usePermissionStore } from '../../store/permissionStore';
-import DataTable from '../../components/DataTable';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
+import { ScreenHeader, FilterBar, StatusTabs, DataTable } from '../../components/list-view';
+import Pagination from '../../components/list-view/Pagination';
+import { groupService } from '../../services/groupService';
+import type { Group, CreateGroupPayload, UpdateGroupPayload } from '../../services/groupService';
+import { actionPrimary, textSecondary, statusCritical, statusDraft, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, radiusPill, borderDefault, spaceFormField, statusOperational } from '../../tokens';
+import { colors } from '../../theme';
 import toast from '../../components/ToastNotification';
+const { confirm } = Modal;
 
-const STATUS_MAP: Record<string, { color: string; label: string }> = {
-  active: { color: 'green', label: 'Hoạt động' },
-  locked: { color: 'red', label: 'Đã khóa' },
-  inactive: { color: 'default', label: 'Không hoạt động' },
-};
+const STATUS_LABELS: Record<string, string> = { active: 'Hoạt động', locked: 'Đã khóa', inactive: 'Không hoạt động' };
+
+const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
 export default function GroupList() {
   const navigate = useNavigate();
@@ -57,332 +34,183 @@ export default function GroupList() {
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  // Modal state
+  const [countActive, setCountActive] = useState(0);
+  const [countLocked, setCountLocked] = useState(0);
+  const [countInactive, setCountInactive] = useState(0);
+
   const [modalOpen, setModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
 
   const fetchGroups = useCallback(async () => {
-    setIsLoading(true);
-    setIsError(false);
+    setIsLoading(true); setIsError(false);
     try {
       const res = await groupService.list({ page, pageSize, search: search || undefined, status: filterStatus });
-      setDataSource(res.data);
-      setTotal(res.total);
-    } catch (err: unknown) {
-      setIsError(true);
-      setError(err instanceof Error ? err : new Error('Không thể tải danh sách nhóm'));
-    } finally {
-      setIsLoading(false);
-    }
+      setDataSource(res.data); setTotal(res.total);
+    } catch (err: unknown) { setIsError(true); setError(err instanceof Error ? err : new Error('Không thể tải danh sách nhóm')); }
+    finally { setIsLoading(false); }
   }, [page, pageSize, search, filterStatus]);
 
+  useEffect(() => { fetchGroups(); }, [fetchGroups]);
+
   useEffect(() => {
-    fetchGroups();
-  }, [fetchGroups]);
-
-  const handleSearch = useCallback((value: string) => {
-    setSearch(value);
-    setPage(1);
+    (async () => {
+      try {
+        const [active, locked, inactive] = await Promise.all([
+          groupService.list({ page: 1, pageSize: 1, status: 'active' }),
+          groupService.list({ page: 1, pageSize: 1, status: 'locked' }),
+          groupService.list({ page: 1, pageSize: 1, status: 'inactive' }),
+        ]);
+        setCountActive(active.total); setCountLocked(locked.total); setCountInactive(inactive.total);
+      } catch { /* ignore */ }
+    })();
   }, []);
 
-  const handleTableChange = useCallback((pag: { current?: number; pageSize?: number }) => {
-    setPage(pag.current || 1);
-    setPageSize(pag.pageSize || 10);
-  }, []);
+  const totalAll = countActive + countLocked + countInactive;
 
-  // ---- Modal handlers ----
-  const openCreateModal = useCallback(() => {
-    setEditingGroup(null);
-    form.resetFields();
+  const openCreateModal = useCallback(() => { setEditingGroup(null); form.resetFields(); setModalOpen(true); }, [form]);
+
+  const openEditModal = useCallback((group: Group) => {
+    setEditingGroup(group);
+    form.setFieldsValue({ name: group.name, code: group.code, description: group.description });
     setModalOpen(true);
   }, [form]);
 
-  const openEditModal = useCallback(
-    (group: Group) => {
-      setEditingGroup(group);
-      form.setFieldsValue({
-        name: group.name,
-        code: group.code,
-        description: group.description,
-      });
-      setModalOpen(true);
-    },
-    [form],
-  );
-
   const handleSubmit = useCallback(async () => {
     try {
-      const values = await form.validateFields();
-      setSubmitting(true);
-
+      const values = await form.validateFields(); setSubmitting(true);
       if (editingGroup) {
-        const payload: UpdateGroupPayload = {
-          name: values.name,
-          code: values.code,
-          description: values.description,
-        };
+        const payload: UpdateGroupPayload = { name: values.name, code: values.code, description: values.description };
         await groupService.update(editingGroup.id, payload);
         toast.success('Đã cập nhật nhóm');
       } else {
-        const payload: CreateGroupPayload = {
-          name: values.name,
-          code: values.code,
-          description: values.description,
-        };
+        const payload: CreateGroupPayload = { name: values.name, code: values.code, description: values.description };
         await groupService.create(payload);
         toast.success('Đã tạo nhóm mới');
       }
-      setModalOpen(false);
-      fetchGroups();
-    } catch {
-      // validation error — antd shows errors inline
-    } finally {
-      setSubmitting(false);
-    }
+      setModalOpen(false); fetchGroups();
+    } catch (err: any) {
+      if (err.errorFields) return;
+      toast.error(err?.message || 'Thao tác thất bại');
+    } finally { setSubmitting(false); }
   }, [editingGroup, form, fetchGroups]);
 
-  const handleDelete = useCallback(
-    (group: Group) => {
-      Modal.confirm({
-        title: 'Xác nhận xóa nhóm',
-        icon: <ExclamationCircleOutlined />,
-        content: `Bạn có chắc chắn muốn xóa nhóm "${group.name}"? Hành động này không thể hoàn tác.`,
-        okText: 'Xóa',
-        okType: 'danger',
-        cancelText: 'Hủy',
-        onOk: async () => {
-          try {
-            await groupService.delete(group.id);
-            toast.success('Đã xóa nhóm thành công');
-            fetchGroups();
-          } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
-          }
-        },
-      });
-    },
-    [fetchGroups],
-  );
-
-  const columns: ColumnsType<Group> = [
-    {
-      title: '#',
-      width: 60,
-      render: (_, __, idx) => (page - 1) * pageSize + idx + 1,
-    },
-    {
-      title: 'Tên nhóm',
-      dataIndex: 'name',
-      ellipsis: true,
-      render: (text: string, record: Group) => (
-        <Space>
-          <Badge status={record.status === 'active' ? 'success' : record.status === 'locked' ? 'error' : 'default'} />
-          <Typography.Text strong>{text}</Typography.Text>
-        </Space>
-      ),
-    },
-    {
-      title: 'Mô tả',
-      dataIndex: 'description',
-      ellipsis: true,
-      render: (text?: string) => text || <Typography.Text type="secondary">—</Typography.Text>,
-    },
-    {
-      title: 'Thành viên',
-      dataIndex: 'memberCount',
-      width: 120,
-      render: (count: number) => (
-        <Space>
-          <UserOutlined />
-          <Typography.Text>{count}</Typography.Text>
-        </Space>
-      ),
-    },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      width: 120,
-      render: (status: string) => {
-        const variant = status === 'active' ? 'active' : status === 'locked' ? 'locked' : 'inactive';
-        const label = STATUS_MAP[status]?.label || status;
-        return <span className={`status-badge status-badge--${variant}`}>{label}</span>;
+  const handleDelete = useCallback((group: Group) => {
+    confirm({
+      title: 'Xác nhận xóa nhóm',
+      icon: <ExclamationCircleOutlined />,
+      content: `Bạn có chắc chắn muốn xóa nhóm "${group.name}"? Hành động này không thể hoàn tác.`,
+      okText: 'Xóa', okType: 'danger', cancelText: 'Hủy',
+      onOk: async () => {
+        try { await groupService.delete(group.id); toast.success('Đã xóa nhóm'); fetchGroups(); }
+        catch (err: unknown) { toast.error(err instanceof Error ? err.message : 'Xóa thất bại'); }
       },
-    },
-    {
-      title: 'Cập nhật cuối',
-      dataIndex: 'updatedAt',
-      width: 160,
-      render: (text: string) => text ? dayjs(text).format('DD/MM/YYYY HH:mm') : '—',
-    },
-    {
-      title: 'Thao tác',
-      key: 'actions',
-      width: 180,
-      fixed: 'right' as const,
-      render: (_: unknown, record: Group) => (
-        <Space size="small">
-          <Tooltip title="Xem thành viên">
-            <Button
-              type="link"
-              size="small"
-              icon={<UserOutlined />}
-              onClick={() => navigate(`/groups/${record.id}/members`)}
-            />
-          </Tooltip>
-          {hasPerm('group.edit') && (
-            <Tooltip title="Sửa">
-              <Button
-                type="link"
-                size="small"
-                icon={<EditOutlined />}
-                onClick={() => openEditModal(record)}
-              />
-            </Tooltip>
-          )}
-          {hasPerm('group.delete') && (
-            <Tooltip title="Xóa">
-              <Button
-                type="link"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => handleDelete(record)}
-              />
-            </Tooltip>
-          )}
-        </Space>
-      ),
-    },
-  ];
+    });
+  }, [fetchGroups]);
+
+  const handleFilterSearch = useCallback((values: Record<string, any>) => {
+    setSearch(values.search || ''); setFilterStatus(values.status || undefined); setPage(1);
+  }, []);
+
+  const handleFilterReset = useCallback(() => { setSearch(''); setFilterStatus(undefined); setPage(1); }, []);
+
+  const handleTabChange = useCallback((key: string) => {
+    setFilterStatus(key === 'all' ? undefined : key); setPage(1);
+  }, []);
+
+  const handlePageChange = useCallback((p: number, ps: number) => { setPage(p); setPageSize(ps); }, []);
+
+  const rowActions = useCallback((record: Group) => {
+    const actions: { key: string; label: string; icon?: ReactNode; onClick: () => void; danger?: boolean }[] = [];
+    actions.push({ key: 'members', label: 'Thành viên', icon: <UserOutlined />, onClick: () => navigate(`/groups/${record.id}/members`) });
+    if (hasPerm('group.edit')) actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
+    if (hasPerm('group.delete')) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
+    return actions;
+  }, [hasPerm, navigate, openEditModal, handleDelete]);
+
+  const columns = useMemo(() => [
+    { key: 'stt', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const,
+      render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
+    { key: 'name', label: 'Tên nhóm', dataIndex: 'name', width: 250,
+      render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },
+    { key: 'description', label: 'Mô tả', dataIndex: 'description', width: 300,
+      render: (text?: string) => text || <Typography.Text type="secondary">—</Typography.Text> },
+    { key: 'memberCount', label: 'Thành viên', dataIndex: 'memberCount', width: 120, align: 'center' as const,
+      render: (count: number) => <span>{count}</span> },
+    { key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 140, align: 'center' as const,
+      render: (status: string) => {
+        const color = status === 'active' ? statusOperational : status === 'locked' ? statusCritical : statusDraft;
+        const label = STATUS_LABELS[status] || status;
+        return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}>{label}</span>;
+      } },
+    { key: 'updatedAt', label: 'Cập nhật cuối', dataIndex: 'updatedAt', width: 170, align: 'center' as const,
+      render: (text: string) => text ? dayjs(text).format('DD/MM/YYYY HH:mm') : '—' },
+  ], [page, pageSize]);
+
+  const renderContent = () => {
+    if (isLoading) return <LoadingSkeleton rows={8} />;
+    if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách nhóm'} onRetry={fetchGroups} />;
+    if (dataSource.length === 0) {
+      if (search || filterStatus) return <EmptyState description="Không tìm thấy nhóm nào phù hợp" />;
+      return <EmptyState description="Chưa có nhóm nào" ctaText="Thêm nhóm đầu tiên" onCta={openCreateModal} />;
+    }
+    return <div style={{ overflowX: 'auto' }}><DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} scroll={{ x: 1000 }} /><Pagination total={total} current={page} pageSize={pageSize} onChange={handlePageChange} /></div>;
+  };
+
+  const filterFields = useMemo(() => [
+    { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên, mô tả...' },
+    { key: 'status', type: 'select' as const, label: 'Trạng thái', placeholder: 'Chọn trạng thái',
+      options: [{ value: 'active', label: 'Hoạt động' }, { value: 'locked', label: 'Đã khóa' }, { value: 'inactive', label: 'Không hoạt động' }] },
+  ], []);
+
+  const headerActions = useMemo(() => {
+    const actions: any[] = [];
+    if (hasPerm('group.create')) actions.push({ key: 'create', label: 'Thêm nhóm', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
+    return actions;
+  }, [hasPerm, openCreateModal]);
 
   return (
-    <>
-      {/* Header */}
-      <Card style={{ marginBottom: 16 }}>
-        <Row gutter={[12, 12]} align="middle" justify="space-between">
-          <Col xs={24} md={16}>
-            <Space wrap>
-              <Input.Search
-                placeholder="Tìm theo tên, mô tả..."
-                allowClear
-                style={{ width: 260 }}
-                prefix={<SearchOutlined />}
-                onSearch={handleSearch}
-              />
-              <Select
-                placeholder="Trạng thái"
-                allowClear
-                style={{ width: 150 }}
-                value={filterStatus}
-                onChange={(val) => {
-                  setFilterStatus(val);
-                  setPage(1);
-                }}
-                options={[
-                  { value: 'active', label: 'Hoạt động' },
-                  { value: 'locked', label: 'Đã khóa' },
-                  { value: 'inactive', label: 'Không hoạt động' },
-                ]}
-              />
-            </Space>
-          </Col>
-          <Col xs={24} md={8} style={{ textAlign: 'right' }}>
-            <Space>
-              <Tooltip title="Tải lại">
-                <Button icon={<ReloadOutlined />} onClick={fetchGroups} />
-              </Tooltip>
-              {hasPerm('group.create') && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-                  Thêm nhóm
-                </Button>
-              )}
-            </Space>
-          </Col>
-        </Row>
-      </Card>
+    <div style={{ minHeight: '100%', marginTop: -8 }}>
+      <ScreenHeader breadcrumb={[{ label: 'Quản trị hệ thống' }, { label: 'Quản lý nhóm' }]} actions={headerActions} />
+      <FilterBar fields={filterFields} onSearch={handleFilterSearch} onReset={handleFilterReset} />
+      <div style={{ ...cardStyle, marginBottom: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '8px 16px' }}>
+        <StatusTabs
+          tabs={[
+            { key: 'all', label: 'Tất cả', count: totalAll, color: textSecondary, active: !filterStatus },
+            { key: 'active', label: 'Hoạt động', count: countActive, color: statusOperational, active: filterStatus === 'active' },
+            { key: 'locked', label: 'Đã khóa', count: countLocked, color: statusCritical, active: filterStatus === 'locked' },
+            { key: 'inactive', label: 'Không hoạt động', count: countInactive, color: statusDraft, active: filterStatus === 'inactive' },
+          ]}
+          onChange={handleTabChange}
+        />
+      </div>
+      <div style={{ ...cardStyle, padding: '8px 16px' }}>
+        {renderContent()}
+      </div>
 
-      {/* Table */}
-      <Card>
-        {isLoading && <LoadingSkeleton rows={8} type="table" />}
-        {isError && (
-          <ErrorState
-            message={error?.message || 'Không thể tải danh sách nhóm'}
-            onRetry={fetchGroups}
-          />
-        )}
-        {!isLoading && !isError && dataSource.length === 0 && (
-          <EmptyState
-            description={search || filterStatus ? 'Không tìm thấy nhóm nào' : 'Chưa có nhóm nào'}
-            ctaText="Thêm nhóm đầu tiên"
-            onCta={openCreateModal}
-          />
-        )}
-        {!isLoading && !isError && dataSource.length > 0 && (
-          <DataTable<Group>
-            columns={columns}
-            dataSource={dataSource}
-            loading={false}
-            rowKey="id"
-            scroll={{ x: 1000 }}
-            onChange={handleTableChange}
-            pagination={{
-              current: page,
-              pageSize,
-              total,
-              onChange: (p, sz) => {
-                setPage(p);
-                if (sz) setPageSize(sz);
-              },
-              showSizeChanger: true,
-              showTotal: (t) => `Tổng ${t} nhóm`,
-              pageSizeOptions: ['10', '20', '50'],
-            }}
-          />
-        )}
-      </Card>
-
-      {/* Create / Edit Modal */}
       <Modal
-        title={editingGroup ? 'Sửa nhóm' : 'Thêm nhóm mới'}
-        open={modalOpen}
-        onOk={handleSubmit}
-        onCancel={() => setModalOpen(false)}
-        destroyOnHidden
-        confirmLoading={submitting}
-        okText={editingGroup ? 'Cập nhật' : 'Tạo mới'}
-        cancelText="Hủy"
-        width={600}
-        mask={{ closable: false }}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingGroup ? 'Sửa nhóm' : 'Thêm nhóm mới'}</span>}
+        open={modalOpen} onCancel={() => setModalOpen(false)} destroyOnHidden confirmLoading={submitting} width={600} maskClosable={false}
+        footer={[
+          <Button key="cancel" onClick={() => setModalOpen(false)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
+          <Button key="ok" type="primary" onClick={handleSubmit} loading={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>{editingGroup ? 'Cập nhật' : 'Tạo mới'}</Button>,
+        ]}
       >
         <Spin spinning={submitting}>
-          <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-            <Form.Item
-              name="name"
-              label="Tên nhóm"
-              rules={[{ required: true, message: 'Vui lòng nhập tên nhóm' }]}
-            >
-              <Input placeholder="vd: Nhóm Quản lý" />
+          <Form form={form} layout="vertical" style={{ marginTop: 16 }} labelCol={{ style: { padding: 0, marginBottom: 4 } }}>
+            <Form.Item name="name" {...labelProps('Tên nhóm')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên nhóm' }]}>
+              <Input placeholder="vd: Nhóm Quản lý" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
-
-            <Form.Item
-              name="code"
-              label="Mã nhóm"
-              rules={[{ required: true, message: 'Vui lòng nhập mã nhóm' }]}
-            >
-              <Input placeholder="vd: QL01" />
+            <Form.Item name="code" {...labelProps('Mã nhóm')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mã nhóm' }]}>
+              <Input placeholder="vd: QL01" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
-
-            <Form.Item
-              name="description"
-              label="Mô tả"
-            >
-              <Input.TextArea rows={3} placeholder="Mô tả nhóm (tùy chọn)" />
+            <Form.Item name="description" {...labelProps('Mô tả')} style={{ marginBottom: 6 }}>
+              <Input.TextArea rows={3} placeholder="Mô tả nhóm (tùy chọn)" style={{ borderRadius: 8 }} />
             </Form.Item>
           </Form>
         </Spin>
       </Modal>
-    </>
+    </div>
   );
 }

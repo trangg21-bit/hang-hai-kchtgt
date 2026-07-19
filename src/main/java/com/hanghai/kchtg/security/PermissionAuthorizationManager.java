@@ -78,10 +78,10 @@ public class PermissionAuthorizationManager {
             return user;
         }
         if (principal instanceof org.springframework.security.core.userdetails.User springUser) {
-            return userRepository.findByUsername(springUser.getUsername()).orElse(null);
+            return userRepository.findByUsernameWithRelations(springUser.getUsername()).orElse(null);
         }
         if (principal instanceof String username) {
-            return userRepository.findByUsername(username).orElse(null);
+            return userRepository.findByUsernameWithRelations(username).orElse(null);
         }
         return null;
     }
