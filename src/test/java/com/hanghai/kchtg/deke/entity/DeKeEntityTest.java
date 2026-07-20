@@ -25,8 +25,9 @@ class DeKeEntityTest {
     // ── Lombok accessors ──────────────────────────────────────────────
 
     @Test void getters_setters_work() {
-        entity.setId(42L);
-        assertEquals(42L, entity.getId());
+        java.util.UUID uuid = java.util.UUID.randomUUID();
+        entity.setId(uuid);
+        assertEquals(uuid, entity.getId());
 
         entity.setLoaiDe(LoaiDe.DE_CHAN_SONG);
         assertEquals(LoaiDe.DE_CHAN_SONG, entity.getLoaiDe());

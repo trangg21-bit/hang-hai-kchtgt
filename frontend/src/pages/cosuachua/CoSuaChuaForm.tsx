@@ -164,7 +164,10 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
           navigate('/co-so-sua-chua');
         }
       } else if (id && isEditMode) {
-        await coSuaChuaCRUD.update(id, payload as UpdateCoSuaChuaRequest);
+        const res = await coSuaChuaCRUD.update(id, payload as UpdateCoSuaChuaRequest);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = res;
+        }
         message.success('Cập nhật thành công');
         if (isModalMode) {
           onSuccess?.();
@@ -192,7 +195,10 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
           quyetDinh: 'APPROVED',
           lyDo: undefined,
         };
-        await coSuaChuaApproval.approveC1(id, pheDuyetData);
+        const res = await coSuaChuaApproval.approveC1(id, pheDuyetData);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = res;
+        }
         message.success('Phê duyệt C1 thành công');
         setRecord({ ...record, trangThai: 'UNDER_REVIEW' });
       } else if (action === 'approveC2') {
@@ -200,7 +206,10 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
           quyetDinh: 'APPROVED',
           lyDo: undefined,
         };
-        await coSuaChuaApproval.approveC2(id, pheDuyetData);
+        const res = await coSuaChuaApproval.approveC2(id, pheDuyetData);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = res;
+        }
         message.success('Phê duyệt C2 thành công');
         setRecord({ ...record, trangThai: 'APPROVED' });
       } else if (action === 'reject') {
@@ -209,10 +218,14 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
           lyDo: payload?.lyDo as string,
         };
 
+        let updatedRecord;
         if (record.trangThai === 'PROPOSED' || record.trangThai === 'REJECTED') {
-          await coSuaChuaApproval.approveC1(id, pheDuyetData);
+          updatedRecord = await coSuaChuaApproval.approveC1(id, pheDuyetData);
         } else if (record.trangThai === 'UNDER_REVIEW') {
-          await coSuaChuaApproval.approveC2(id, pheDuyetData);
+          updatedRecord = await coSuaChuaApproval.approveC2(id, pheDuyetData);
+        }
+        if (updatedRecord && window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = updatedRecord;
         }
 
         message.success('Từ chối thành công');

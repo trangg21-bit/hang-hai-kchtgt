@@ -58,7 +58,7 @@ public class DeKeService {
         if (req.getToaDo() != null && !req.getToaDo().trim().isEmpty()) {
             GisGeometryType geomType = req.getLoaiHinhHoc() != null ? req.getLoaiHinhHoc() : GisGeometryType.LINE;
             GisSpatialObjectType objType = getSpatialObjectType(geomType);
-            UUID refId = UUID.nameUUIDFromBytes(("DEKE_" + d.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            UUID refId = d.getId();
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
                     "Đê kè tại " + req.getViTri(),
@@ -94,7 +94,7 @@ public class DeKeService {
     }
 
     @Transactional(readOnly = true)
-    public DeKeResponse getById(Long id) {
+    public DeKeResponse getById(UUID id) {
         return toResponse(repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id)));
     }
@@ -129,7 +129,7 @@ public class DeKeService {
     }
 
     @Transactional
-    public DeKeResponse update(Long id, DeKeUpdateRequest req, String username) {
+    public DeKeResponse update(UUID id, DeKeUpdateRequest req, String username) {
         DeKe d = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
@@ -155,7 +155,7 @@ public class DeKeService {
             } else {
                 GisGeometryType geomType = req.getLoaiHinhHoc() != null ? req.getLoaiHinhHoc() : GisGeometryType.LINE;
                 GisSpatialObjectType objType = getSpatialObjectType(geomType);
-                UUID refId = UUID.nameUUIDFromBytes(("DEKE_" + d.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                UUID refId = d.getId();
                 GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                         d.getKhongGianId(),
                         "Đê kè tại " + d.getViTri(),
@@ -171,7 +171,7 @@ public class DeKeService {
             }
         } else if (d.getKhongGianId() != null && req.getViTri() != null) {
             gisSpatialObjectService.findById(d.getKhongGianId()).ifPresent(spatialObj -> {
-                UUID refId = UUID.nameUUIDFromBytes(("DEKE_" + d.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                UUID refId = d.getId();
                 gisSpatialObjectService.createOrUpdate(
                         spatialObj.getId(),
                         "Đê kè tại " + req.getViTri(),
@@ -193,7 +193,7 @@ public class DeKeService {
     }
 
     @Transactional
-    public void softDelete(Long id) {
+    public void softDelete(UUID id) {
         DeKe d = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
@@ -211,7 +211,7 @@ public class DeKeService {
     }
 
     @Transactional
-    public PheDuyetResponse approveC1(Long id, PheDuyetRequest req, String approvedBy) {
+    public PheDuyetResponse approveC1(UUID id, PheDuyetRequest req, String approvedBy) {
         DeKe d = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
@@ -236,7 +236,7 @@ public class DeKeService {
     }
 
     @Transactional
-    public PheDuyetResponse approveC2(Long id, PheDuyetRequest req, String approvedBy) {
+    public PheDuyetResponse approveC2(UUID id, PheDuyetRequest req, String approvedBy) {
         DeKe d = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
@@ -265,7 +265,7 @@ public class DeKeService {
     }
 
     @Transactional
-    public PheDuyetResponse reject(Long id, PheDuyetRequest req, String approvedBy) {
+    public PheDuyetResponse reject(UUID id, PheDuyetRequest req, String approvedBy) {
         DeKe d = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
@@ -292,7 +292,7 @@ public class DeKeService {
 
     private PheDuyetResponse buildPheDuyetResponse(DeKe d, Integer cap) {
         return PheDuyetResponse.builder()
-                .id(d.getId())
+                .id(String.valueOf(d.getId()))
                 .deKeId(d.getId())
                 .capPheDuyet(cap)
                 .trangThai(d.getTrangThaiPheDuyet().name())
@@ -303,7 +303,7 @@ public class DeKeService {
     }
 
     @Transactional(readOnly = true)
-    public List<HistoryEntry> getApprovalHistory(Long id) {
+    public List<HistoryEntry> getApprovalHistory(UUID id) {
         DeKe d = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay de ke voi id: " + id));
 
@@ -367,7 +367,7 @@ public class DeKeService {
         List<PheDuyetResponse> hist = d.getApprovalHistory() != null
                 ? d.getApprovalHistory().stream()
                         .map(h -> PheDuyetResponse.builder()
-                                .id(h.getId())
+                                .id(String.valueOf(h.getId()))
                                 .deKeId(h.getDeKe().getId())
                                 .capPheDuyet(h.getCapPheDuyet())
                                 .trangThai(h.getTrangThai())

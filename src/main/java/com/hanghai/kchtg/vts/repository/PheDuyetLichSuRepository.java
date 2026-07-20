@@ -9,5 +9,5 @@ import java.util.List;
 @Repository("vtsPheDuyetLichSuRepository")
 public interface PheDuyetLichSuRepository extends JpaRepository<PheDuyetLichSu, Long> {
 
-    List<PheDuyetLichSu> findByHeThongVTSIdOrderByNgayPheDuyetDesc(Long heThongVTSId);
+    List<PheDuyetLichSu> findByHeThongVTSIdOrderByNgayPheDuyetDesc(java.util.UUID heThongVTSId);
 }

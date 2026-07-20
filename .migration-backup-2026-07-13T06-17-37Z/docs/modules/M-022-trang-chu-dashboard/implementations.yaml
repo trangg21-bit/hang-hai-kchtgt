@@ -1,0 +1,32 @@
+module_id: M-022
+module_name: "Trang chủ Dashboard"
+type: bounded-context
+slug: trang-chu-dashboard
+
+implementations:
+  apps: []
+  services:
+    - name: dashboard-ui
+      path: "frontend/src"
+      type: react-app
+      description: "Frontend React application housing all dashboard components (FilterBar, KpiCard, TrendChartCard, Home.tsx)"
+  libs:
+    - name: design-tokens
+      path: "frontend/src/tokens.ts"
+      type: token-system
+      description: "Semantic design token system (13 colors, 4 radius, 5 font sizes, 6 spacing scales)"
+  packages:
+    - name: dashboard-context
+      path: "frontend/src/context"
+      files:
+        - "FilterContext.tsx"
+    - name: dashboard-components
+      path: "frontend/src/components"
+      files:
+        - "FilterBar.tsx"
+        - "KpiCard.tsx"
+        - "TrendChartCard.tsx"
+    - name: dashboard-pages
+      path: "frontend/src/pages"
+      files:
+        - "Home.tsx"

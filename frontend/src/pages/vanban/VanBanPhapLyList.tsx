@@ -28,6 +28,8 @@ import {
   deleteVanBan,
 } from '../../services/vanban/api';
 import type { VanBanPhapLyResponse, VanBanPhapLyCreateRequest } from '../../services/vanban/types';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 import dayjs from 'dayjs';
 
 export default function VanBanPhapLyList() {
@@ -35,7 +37,7 @@ export default function VanBanPhapLyList() {
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
 
   // Filter states
   const [filterKeyword, setFilterKeyword] = useState('');
@@ -303,7 +305,7 @@ export default function VanBanPhapLyList() {
       />
 
       <Modal
-        title={editingItem ? 'Chỉnh sửa văn bản pháp lý' : 'Thêm mới văn bản pháp lý'}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingItem ? 'Chỉnh sửa văn bản pháp lý' : 'Thêm mới văn bản pháp lý'}</span>}
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}

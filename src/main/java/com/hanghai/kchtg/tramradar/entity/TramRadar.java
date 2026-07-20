@@ -21,8 +21,9 @@ import com.hanghai.kchtg.vts.entity.HeThongVTS;
 public class TramRadar {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false)
+    private java.util.UUID id;
 
     @Column(name = "ten_tram", nullable = false, length = 255)
     private String tenTram;
@@ -30,11 +31,6 @@ public class TramRadar {
     @Column(name = "vi_tri", nullable = false, length = 500)
     private String viTri;
 
-    @Column(name = "kinh_do", precision = 10, scale = 6)
-    private BigDecimal kinhDo;
-
-    @Column(name = "vi_do", precision = 10, scale = 6)
-    private BigDecimal viDo;
 
     @Column(name = "loai_tram", length = 100)
     private String loaiTram;
@@ -101,7 +97,7 @@ public class TramRadar {
     private java.util.UUID khongGianId;
 
     @Column(name = "he_thong_vts_id")
-    private Long heThongVtsId;
+    private java.util.UUID heThongVtsId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "he_thong_vts_id", insertable = false, updatable = false)

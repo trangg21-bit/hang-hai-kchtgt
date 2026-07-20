@@ -31,13 +31,15 @@ import {
   rejectYeuCauTang,
 } from '../../services/assetmovement/api';
 import type { YeuCauTangTaiSanResponse, YeuCauTangTaiSanRequest } from '../../services/assetmovement/types';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 export default function AssetIncreaseList() {
   const [dataSource, setDataSource] = useState<YeuCauTangTaiSanResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
 
   // Form Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -298,7 +300,7 @@ export default function AssetIncreaseList() {
       />
 
       <Modal
-        title={editingItem ? 'Cập nhật yêu cầu tăng tài sản' : 'Tạo mới yêu cầu tăng tài sản'}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingItem ? 'Cập nhật yêu cầu tăng tài sản' : 'Tạo mới yêu cầu tăng tài sản'}</span>}
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}
@@ -335,7 +337,7 @@ export default function AssetIncreaseList() {
       </Modal>
 
       <Modal
-        title="Từ chối phê duyệt yêu cầu tăng"
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt yêu cầu tăng</span>}
         open={isRejectModalOpen}
         onOk={handleRejectConfirm}
         onCancel={() => setIsRejectModalOpen(false)}

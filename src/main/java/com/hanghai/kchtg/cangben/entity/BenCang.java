@@ -43,11 +43,7 @@ public class BenCang extends BaseEntity {
     @Column(name = "tuyen_duong_thuy", length = 255)
     private String tuyenDuongThuy;
 
-    @Column(name = "vi_do", precision = 10, scale = 6)
-    private BigDecimal viDo;
 
-    @Column(name = "kinh_do", precision = 10, scale = 6)
-    private BigDecimal kinhDo;
 
     @Column(name = "chieu_dai", precision = 15, scale = 2)
     private BigDecimal chieuDai;

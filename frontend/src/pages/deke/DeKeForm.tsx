@@ -29,6 +29,8 @@ import type {
   LoaiDe,
 } from '../../types/deKe';
 import { useAuthStore } from '../../store/authStore';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 import ApprovalActionBar from '../../components/shared/ApprovalActionBar';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
@@ -389,7 +391,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
     if (isModalMode) {
       return (
         <Modal
-          title="Chi tiết Đê/Kè"
+          title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Chi tiết Đê/Kè</span>}
           open={open}
           onCancel={handleCloseModal}
           footer={null}
@@ -588,7 +590,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
   if (isModalMode) {
     return (
       <Modal
-        title={isCreateMode ? 'Tạo mới Đê/Kè' : 'Chỉnh sửa Đê/Kè'}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isCreateMode ? 'Tạo mới Đê/Kè' : 'Chỉnh sửa Đê/Kè'}</span>}
         open={open}
         onCancel={handleCloseModal}
         footer={null}

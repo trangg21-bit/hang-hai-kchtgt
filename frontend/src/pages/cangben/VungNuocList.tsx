@@ -47,7 +47,7 @@ export default function VungNuocList() {
   const [filterLoai, setFilterLoai] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(20);
   const [dataSource, setDataSource] = useState<VungNuoc[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -395,8 +395,6 @@ export default function VungNuocList() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={search || filterMa || filterTen || filterLoai || filterStatus ? 'Không tìm thấy' : 'Chưa có vùng nước nào'}
-            ctaText="Tạo vùng nước đầu tiên"
-            onCta={() => navigate('/vungnuoc/create')}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (

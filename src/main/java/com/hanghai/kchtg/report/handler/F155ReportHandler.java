@@ -4,6 +4,7 @@ import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.beacon.entity.BeaconLight;
 import com.hanghai.kchtg.beacon.entity.BeaconApprovalStatus;
+import com.hanghai.kchtg.beacon.entity.BeaconStatus;
 import com.hanghai.kchtg.beacon.entity.BeaconLightType;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,9 +30,10 @@ public class F155ReportHandler extends BaseReportHandler {
         int reportYear = getReportYear(request);
 
         List<BeaconLight> beacons = beaconLightRepository.findAll().stream()
-                .filter(b -> b.getApprovalStatus() == BeaconApprovalStatus.APPROVED)
+                .filter(b -> b.getStatus() == BeaconStatus.APPROVED_L2)
+                .filter(b -> b.getIsActive() != null && b.getIsActive())
                 .filter(b -> skipFilter || targetUnitId.equals(b.getUnitId()))
-                .filter(b -> b.getCreatedAt() == null || b.getCreatedAt().getYear() <= reportYear)
+                .filter(b -> b.getUpdatedAt() == null || b.getUpdatedAt().getYear() <= reportYear)
                 .toList();
 
         // Group by type
@@ -123,9 +125,10 @@ public class F155ReportHandler extends BaseReportHandler {
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
 
         List<BeaconLight> beacons = beaconLightRepository.findAll().stream()
-                .filter(b -> b.getApprovalStatus() == BeaconApprovalStatus.APPROVED)
+                .filter(b -> b.getStatus() == BeaconStatus.APPROVED_L2)
+                .filter(b -> b.getIsActive() != null && b.getIsActive())
                 .filter(b -> skipFilter || targetUnitId.equals(b.getUnitId()))
-                .filter(b -> b.getCreatedAt() == null || b.getCreatedAt().getYear() <= reportYear)
+                .filter(b -> b.getUpdatedAt() == null || b.getUpdatedAt().getYear() <= reportYear)
                 .toList();
 
         // Group by type for section headers

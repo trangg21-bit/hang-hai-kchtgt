@@ -9,7 +9,7 @@ export interface LuongHangHaiAttachment {
 }
 
 export interface LuongHangHaiResponse {
-  id: number;
+  id: string;
   ten: string;
   soLuong?: number;
   ngayGhiNhan?: string; // date
@@ -55,7 +55,7 @@ export interface CreateLuongHangHaiRequest {
 }
 
 export interface UpdateLuongHangHaiRequest extends CreateLuongHangHaiRequest {
-  id: number;
+  id: string;
 }
 
 export interface PheDuyetRequest {
@@ -66,7 +66,7 @@ export interface PheDuyetRequest {
 }
 
 export interface PheDuyetResponse {
-  id: number;
+  id: string;
   capPheDuyet?: number;
   trangThai: string;
   nguoiPheDuyet: string;

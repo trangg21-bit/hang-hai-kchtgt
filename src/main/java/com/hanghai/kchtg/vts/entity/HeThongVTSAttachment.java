@@ -18,7 +18,7 @@ public class HeThongVTSAttachment {
     private Long id;
 
     @Column(name = "he_thong_vts_id", nullable = false)
-    private Long heThongVTSId;
+    private java.util.UUID heThongVTSId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "he_thong_vts_id", insertable = false, updatable = false)

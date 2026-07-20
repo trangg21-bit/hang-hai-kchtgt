@@ -1,14 +1,36 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Input, InputNumber, Select, Row, Col, message } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import { Form, Button, Space, Input, InputNumber, Select, Row, Col, message } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { pointObjectService } from '../../services/pointObjectService';
 import type { CreatePointObjectPayload, UpdatePointObjectPayload } from '../../types/pointObject';
 import {
   POINT_OBJECT_TYPE_OPTIONS,
 } from '../../types/pointObject';
-import FormField from '../../components/FormField';
 import toast from '../../components/ToastNotification';
+import { ScreenHeader } from '../../components/list-view';
+import {
+  spaceMd, spaceLg, spaceFormField,
+  radiusPill, fontSizeMd, fontWeightMedium,
+  textSecondary,
+} from '../../tokens';
+
+const INPUT_STYLE: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: 40,
+};
+
+const SELECT_STYLE: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: 40,
+  width: '100%',
+};
+
+const BTN_STYLE: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: 40,
+  fontWeight: fontWeightMedium,
+  fontSize: fontSizeMd,
+};
 
 export default function PointObjectForm() {
   const navigate = useNavigate();
@@ -45,7 +67,6 @@ export default function PointObjectForm() {
     try {
       const values = await form.validateFields();
 
-      // WGS84 validation
       if (values.latitude < -90 || values.latitude > 90) {
         message.error('Vĩ độ phải từ -90 đến 90');
         return;
@@ -56,8 +77,6 @@ export default function PointObjectForm() {
       }
 
       setSubmitting(true);
-
-
 
       if (isEdit) {
         const payload: UpdatePointObjectPayload = {
@@ -96,136 +115,111 @@ export default function PointObjectForm() {
 
   return (
     <>
-      <Card style={{ marginBottom: 16 }}>
-        <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/gis/points')}>
-            Quay lại
-          </Button>
-          <Typography.Title level={5} style={{ margin: 0 }}>
-            {isEdit ? 'Chỉnh sửa đối tượng điểm' : 'Thêm đối tượng điểm mới'}
-          </Typography.Title>
-        </Space>
-      </Card>
+      <ScreenHeader
+        breadcrumb={[
+          { label: 'Trang chủ', path: '/' },
+          { label: 'Quản lý KCHT trên nền bản đồ (GIS)' },
+          { label: 'Quản lý danh mục đối tượng điểm', path: '/gis/points' },
+          { label: isEdit ? 'Chỉnh sửa đối tượng điểm' : 'Thêm đối tượng điểm mới' },
+        ]}
+      />
 
-      <Card style={{ maxWidth: 700, margin: '0 auto' }}>
+      <div style={{ maxWidth: 700, margin: '0 auto' }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ status: 'DRAFT' }}>
           {!isEdit && (
-            <FormField
-              type="text"
-              name="code"
-              label="Mã đối tượng"
-              required
-              placeholder="VD: PT-PORT-001"
-              help="Mã định danh duy nhất cho đối tượng điểm"
-            />
+            <Form.Item name="code" label="Mã đối tượng"
+              rules={[{ required: true, message: 'Vui lòng nhập mã' }]}
+              style={{ marginBottom: spaceFormField }}>
+              <Input placeholder="VD: PT-PORT-001" style={INPUT_STYLE} />
+            </Form.Item>
           )}
 
           {isEdit && (
-            <FormField
-              type="text"
-              name="code"
-              label="Mã đối tượng"
-              disabled
-            />
+            <Form.Item name="code" label="Mã đối tượng"
+              style={{ marginBottom: spaceFormField }}>
+              <Input disabled style={INPUT_STYLE} />
+            </Form.Item>
           )}
 
-          <FormField
-            type="text"
-            name="name"
-            label="Tên đối tượng"
-            required
-            placeholder="VD: Cảng Hải Phòng"
-          />
+          <Form.Item name="name" label="Tên đối tượng"
+            rules={[{ required: true, message: 'Vui lòng nhập tên' }]}
+            style={{ marginBottom: spaceFormField }}>
+            <Input placeholder="VD: Cảng Hải Phòng" style={INPUT_STYLE} />
+          </Form.Item>
 
-          <FormField
-            type="select"
-            name="objectType"
-            label="Loại đối tượng"
-            required
-            options={POINT_OBJECT_TYPE_OPTIONS}
-          />
+          <Form.Item name="objectType" label="Loại đối tượng"
+            rules={[{ required: true, message: 'Vui lòng chọn loại' }]}
+            style={{ marginBottom: spaceFormField }}>
+            <Select placeholder="Chọn loại đối tượng" options={POINT_OBJECT_TYPE_OPTIONS} style={SELECT_STYLE} />
+          </Form.Item>
 
-          <Row style={{ display: 'flex', gap: 16 }}>
-            <Col style={{ flex: 1 }}>
-              <FormField
-                type="number"
-                name="longitude"
-                label="Kinh độ (Longitude)"
-                required
-                min={-180}
-                max={180}
-                step={0.0001}
-                placeholder="-106.7"
-                help="WGS84: -180 ~ 180"
-              />
+          <Row gutter={spaceMd}>
+            <Col span={12}>
+              <Form.Item name="longitude" label="Kinh độ (Longitude)"
+                rules={[{ required: true, message: 'Nhập kinh độ' }]}
+                style={{ marginBottom: spaceFormField }}>
+                <InputNumber placeholder="-106.7" min={-180} max={180} step={0.0001}
+                  style={{ ...INPUT_STYLE, width: '100%' }} />
+              </Form.Item>
             </Col>
-            <Col style={{ flex: 1 }}>
-              <FormField
-                type="number"
-                name="latitude"
-                label="Vĩ độ (Latitude)"
-                required
-                min={-90}
-                max={90}
-                step={0.0001}
-                placeholder="20.9"
-                help="WGS84: -90 ~ 90"
-              />
+            <Col span={12}>
+              <Form.Item name="latitude" label="Vĩ độ (Latitude)"
+                rules={[{ required: true, message: 'Nhập vĩ độ' }]}
+                style={{ marginBottom: spaceFormField }}>
+                <InputNumber placeholder="20.9" min={-90} max={90} step={0.0001}
+                  style={{ ...INPUT_STYLE, width: '100%' }} />
+              </Form.Item>
             </Col>
           </Row>
 
-          <Row style={{ display: 'flex', gap: 16 }}>
-            <Col style={{ flex: 1 }}>
-              <FormField
-                type="select"
-                name="categoryId"
-                label="Danh mục"
-                placeholder="Tùy chọn danh mục"
-                options={[
-                  { label: 'Cảng biển', value: 1 },
-                  { label: 'Đèn biển', value: 2 },
-                  { label: 'Phao tiêu', value: 3 },
-                  { label: 'Đèn hiệu', value: 4 },
-                  { label: 'Khác', value: 5 },
-                ]}
-              />
+          <Row gutter={spaceMd}>
+            <Col span={12}>
+              <Form.Item name="categoryId" label="Danh mục"
+                style={{ marginBottom: spaceFormField }}>
+                <Select placeholder="Tùy chọn danh mục" style={SELECT_STYLE}
+                  options={[
+                    { label: 'Cảng biển', value: 1 },
+                    { label: 'Đèn biển', value: 2 },
+                    { label: 'Phao tiêu', value: 3 },
+                    { label: 'Đèn hiệu', value: 4 },
+                    { label: 'Khác', value: 5 },
+                  ]} />
+              </Form.Item>
             </Col>
-            <Col style={{ flex: 1 }}>
-              <FormField
-                type="select"
-                name="iconId"
-                label="Biểu tượng bản đồ"
-                placeholder="Tùy chọn biểu tượng"
-                options={[
-                  { label: 'Icon Cảng biển', value: 1 },
-                  { label: 'Icon Đèn biển', value: 2 },
-                  { label: 'Icon Phao tiêu', value: 3 },
-                  { label: 'Icon Đèn hiệu', value: 4 },
-                  { label: 'Icon Khác (Default)', value: 5 },
-                ]}
-              />
+            <Col span={12}>
+              <Form.Item name="iconId" label="Biểu tượng bản đồ"
+                style={{ marginBottom: spaceFormField }}>
+                <Select placeholder="Tùy chọn biểu tượng" style={SELECT_STYLE}
+                  options={[
+                    { label: 'Icon Cảng biển', value: 1 },
+                    { label: 'Icon Đèn biển', value: 2 },
+                    { label: 'Icon Phao tiêu', value: 3 },
+                    { label: 'Icon Đèn hiệu', value: 4 },
+                    { label: 'Icon Khác (Default)', value: 5 },
+                  ]} />
+              </Form.Item>
             </Col>
           </Row>
 
+          <Form.Item name="description" label="Mô tả"
+            style={{ marginBottom: spaceFormField }}>
+            <Input.TextArea placeholder="Mô tả về đối tượng điểm..." rows={3}
+              style={{ borderRadius: radiusPill }} />
+          </Form.Item>
 
-
-          <FormField
-            type="textarea"
-            name="description"
-            label="Mô tả"
-            placeholder="Mô tả về đối tượng điểm..."
-          />
-
-          <Form.Item style={{ marginTop: 24 }}>
+          <Form.Item style={{ marginTop: spaceLg }}>
             <Space>
-              <Button type="primary" htmlType="submit" loading={submitting}>
+              <Button type="primary" htmlType="submit" loading={submitting} style={BTN_STYLE}>
                 {isEdit ? 'Cập nhật' : 'Tạo đối tượng'}
               </Button>
-              <Button onClick={() => navigate('/gis/points')}>Hủy</Button>
+              <Button onClick={() => navigate('/gis/points')}
+                style={{ ...BTN_STYLE, borderColor: textSecondary, color: textSecondary }}>
+                Hủy
+              </Button>
             </Space>
           </Form.Item>
         </Form>
-      </Card>
+      </div>
     </>
   );
 }

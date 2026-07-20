@@ -168,7 +168,10 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
           navigate('/he-thong-vts');
         }
       } else if (id && isEditMode) {
-        await heThongVTSCRUD.update(id, payload as UpdateHeThongVTSRequest);
+        const res = await heThongVTSCRUD.update(id, payload as UpdateHeThongVTSRequest);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = res;
+        }
         message.success('Cập nhật thành công');
         if (isModalMode) {
           onSuccess?.();
@@ -196,6 +199,9 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
           quyetDinh: 'APPROVED',
         };
         const updated = await heThongVTSApproval.approveC1(id, pheDuyetData);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = updated;
+        }
         message.success('Phê duyệt C1 thành công');
         setRecord(updated);
         setHasChanges(true);
@@ -204,6 +210,9 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
           quyetDinh: 'APPROVED',
         };
         const updated = await heThongVTSApproval.approveC2(id, pheDuyetData);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = updated;
+        }
         message.success('Phê duyệt C2 thành công');
         setRecord(updated);
         setHasChanges(true);
@@ -213,10 +222,14 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
           lyDo: payload?.lyDo as string,
         };
 
+        let updatedRecord;
         if (record.trangThai === 'PROPOSED' || record.trangThai === 'REJECTED') {
-          await heThongVTSApproval.approveC1(id, pheDuyetData);
+          updatedRecord = await heThongVTSApproval.approveC1(id, pheDuyetData);
         } else if (record.trangThai === 'UNDER_REVIEW') {
-          await heThongVTSApproval.approveC2(id, pheDuyetData);
+          updatedRecord = await heThongVTSApproval.approveC2(id, pheDuyetData);
+        }
+        if (updatedRecord && window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = updatedRecord;
         }
 
         message.success('Từ chối thành công');

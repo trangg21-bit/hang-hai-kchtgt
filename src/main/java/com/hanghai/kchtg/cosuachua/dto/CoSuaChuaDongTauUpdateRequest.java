@@ -24,8 +24,7 @@ public class CoSuaChuaDongTauUpdateRequest {
     @Size(max = 100)
     private String email;
 
-    @Size(max = 100)
-    private String loaiCoSo;
+    private com.hanghai.kchtg.cosuachua.entity.LoaiCoSo loaiCoSo;
 
     @Size(max = 255)
     private String khaNang;

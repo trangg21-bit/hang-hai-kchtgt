@@ -1,0 +1,332 @@
+{
+  "entry": {
+    "aggregate_size_status": "yellow",
+    "depends_on": [],
+    "feature_count": 21,
+    "features": {
+      "F-141": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-141",
+        "name": "Bao cao tang giam tai san",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-141-bao-cao-tang-giam-tai-san/",
+        "slug": "bao-cao-tang-giam-tai-san",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-142": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-142",
+        "name": "Mau B03/CCTT: Thong tin tai chinh tai san KCHT",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-142-mau-b03-cctt-thong-tin-tai-chinh-kcht/",
+        "slug": "mau-b03-cctt-thong-tin-tai-chinh-kcht",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-143": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-143",
+        "name": "Mau so 02: Bao cao ke khai tai san KCHT",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-143-mau-so-02-bao-cao-ke-khai-kcht/",
+        "slug": "mau-so-02-bao-cao-ke-khai-kcht",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-144": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-144",
+        "name": "Mau so 03: Bao cao tinh hinh quan ly tai san KCHT",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-144-mau-so-03-tinh-hinh-quan-ly-kcht/",
+        "slug": "mau-so-03-tinh-hinh-quan-ly-kcht",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-145": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-145",
+        "name": "Mau so 04: Bao cao tinh hinh xu ly tai san KCHT",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-145-mau-so-04-xu-ly-kcht/",
+        "slug": "mau-so-04-xu-ly-kcht",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-146": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-146",
+        "name": "Mau so 05: Bao cao tinh hinh khai thac tai san KCHT",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-146-mau-so-05-khai-thac-kcht/",
+        "slug": "mau-so-05-khai-thac-kcht",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-147": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-147",
+        "name": "Mau so 06: Tong hop danh muc TS KCHTGT de nghi xu ly",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-147-mau-so-06-tong-hop-danh-muc-kchtgt/",
+        "slug": "mau-so-06-tong-hop-danh-muc-kchtgt",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-174": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-174",
+        "name": "Bieu 45-6T/N: Bao cao tong hop hang hoa thong qua cang",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-174-bieu-45-6t-n-tong-hop-hang-hoa-thong-qua/",
+        "slug": "bieu-45-6t-n-tong-hop-hang-hoa-thong-qua",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-177": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-177",
+        "name": "Bieu 28-T: Khoi luong hang hoa theo thang",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-177-bieu-28-t-khoi-luong-hang-hoa-theo-thang/",
+        "slug": "bieu-28-t-khoi-luong-hang-hoa-theo-thang",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-178": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-178",
+        "name": "Bieu 29-N: Khoi luong hang hoa theo nam",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-178-bieu-29-n-khoi-luong-hang-hoa-theo-nam/",
+        "slug": "bieu-29-n-khoi-luong-hang-hoa-theo-nam",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-179": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-179",
+        "name": "Bieu 33-N: San luong dich vu van tai, doanh nghiep",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-179-bieu-33-n-san-luong-dich-vu-van-tai/",
+        "slug": "bieu-33-n-san-luong-dich-vu-van-tai",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-180": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-180",
+        "name": "Bieu Tong hop thong tin chung",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-180-bieu-tong-hop-thong-tin-chung/",
+        "slug": "bieu-tong-hop-thong-tin-chung",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-181": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-181",
+        "name": "Bieu Tong hop thong tin KCHTGT hang hai",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-181-bieu-tong-hop-thong-tin-kchtgt-hang-hai/",
+        "slug": "bieu-tong-hop-thong-tin-kchtgt-hang-hai",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-182": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-182",
+        "name": "Bieu Tong hop thong tin bao tri KCHTGT",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-182-bieu-tong-hop-bao-tri-kchtgt/",
+        "slug": "bieu-tong-hop-bao-tri-kchtgt",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-183": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-183",
+        "name": "Bieu Tong hop bao tri KCHTGT - Cau cang",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-183-bieu-tong-hop-bao-tri-kchtgt-cau-cang/",
+        "slug": "bieu-tong-hop-bao-tri-kchtgt-cau-cang",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-184": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-184",
+        "name": "Bieu Tong hop bao tri KCHTGT - Luong hang hai",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-184-bieu-tong-hop-bao-tri-kchtgt-luong-hang-hai/",
+        "slug": "bieu-tong-hop-bao-tri-kchtgt-luong-hang-hai",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-185": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-185",
+        "name": "Bieu Tong hop bao tri KCHTGT - Phao tieu",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-185-bieu-tong-hop-bao-tri-kchtgt-phao-tieu/",
+        "slug": "bieu-tong-hop-bao-tri-kchtgt-phao-tieu",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-186": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-186",
+        "name": "Bieu Tong hop bao tri KCHTGT - Den bien",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-186-bieu-tong-hop-bao-tri-kchtgt-den-bien/",
+        "slug": "bieu-tong-hop-bao-tri-kchtgt-den-bien",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-187": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-187",
+        "name": "Bieu Tong hop bao tri KCHTGT - De, ke",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-187-bieu-tong-hop-bao-tri-kchtgt-de-ke/",
+        "slug": "bieu-tong-hop-bao-tri-kchtgt-de-ke",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-188": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-188",
+        "name": "Bao cao ke khai, tinh hinh quan ly TS KCHTGT hang hai",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-188-bao-cao-ke-khai-quan-ly-ts-kchtgt/",
+        "slug": "bao-cao-ke-khai-quan-ly-ts-kchtgt",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-189": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-189",
+        "name": "Bao cao tinh hinh hoat dong bao hieu hang hai va de, ke",
+        "path": "docs/modules/M-016-bao-cao-tong-hop/_features/F-189-bao-cao-tinh-hinh-hoat-dong-bao-hieu/",
+        "slug": "bao-cao-tinh-hinh-hoat-dong-bao-hieu",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      }
+    },
+    "id": "M-016",
+    "name": "Báo cáo & Tổng hợp",
+    "path": "docs/modules/M-016-bao-cao-tong-hop/",
+    "slug": "bao-cao-tong-hop",
+    "status": "in-progress",
+    "version": 1
+  },
+  "module_id": "M-016",
+  "schema_version": "1.0"
+}

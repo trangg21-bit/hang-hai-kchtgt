@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.core.Authentication;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -19,6 +20,9 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 class DeKeControllerTest {
+
+    private static final UUID TEST_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID TEST_ID_2 = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
     private DeKeController controller;
     private DeKeService service;
@@ -36,7 +40,7 @@ class DeKeControllerTest {
         when(authentication.getName()).thenReturn("testuser");
 
         testResp = DeKeResponse.builder()
-                .id(1L)
+                .id(TEST_ID)
                 .loaiDe(LoaiDe.DE_CHAN_SONG)
                 .viTri("Bac Giang")
                 .chieuDai(150.5)
@@ -78,13 +82,13 @@ class DeKeControllerTest {
     // ── getById ─────────────────────────────────────────────────────────
 
     @Test void getById_shouldReturnResponse() {
-        when(service.getById(1L)).thenReturn(testResp);
+        when(service.getById(TEST_ID)).thenReturn(testResp);
 
-        var resp = controller.getById(1L);
+        var resp = controller.getById(TEST_ID);
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody().getData().getLoaiDe()).isEqualTo(LoaiDe.DE_CHAN_SONG);
-        verify(service, times(1)).getById(1L);
+        verify(service, times(1)).getById(TEST_ID);
     }
 
     // ── list ────────────────────────────────────────────────────────────
@@ -103,43 +107,44 @@ class DeKeControllerTest {
     // ── update ──────────────────────────────────────────────────────────
 
     @Test void update_shouldReturnUpdated() {
-        DeKeResponse up = DeKeResponse.builder().id(1L).loaiDe(LoaiDe.KE_HUONG_DONG).build();
-        when(service.update(eq(1L), any(), anyString())).thenReturn(up);
+        DeKeResponse up = DeKeResponse.builder().id(TEST_ID).loaiDe(LoaiDe.KE_HUONG_DONG).build();
+        when(service.update(eq(TEST_ID), any(), anyString())).thenReturn(up);
 
         DeKeUpdateRequest updateReq = DeKeUpdateRequest.builder()
                 .loaiDe(LoaiDe.KE_HUONG_DONG).viTri("Da Nang").build();
-        var resp = controller.update(1L, updateReq, authentication);
+        var resp = controller.update(TEST_ID, updateReq, authentication);
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody().getData().getLoaiDe()).isEqualTo(LoaiDe.KE_HUONG_DONG);
-        verify(service, times(1)).update(eq(1L), any(), anyString());
+        verify(service, times(1)).update(eq(TEST_ID), any(), anyString());
     }
 
     // ── softDelete ──────────────────────────────────────────────────────
 
     @Test void softDelete_shouldReturnOk() {
-        doNothing().when(service).softDelete(1L);
+        doNothing().when(service).softDelete(TEST_ID);
 
-        var resp = controller.softDelete(1L);
+        var resp = controller.softDelete(TEST_ID);
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody().isSuccess()).isTrue();
         assertThat(resp.getBody().getMessage()).isEqualTo("Xóa mềm đê kè thành công");
-        verify(service, times(1)).softDelete(1L);
+        verify(service, times(1)).softDelete(TEST_ID);
     }
 
     // ── approveC1 ───────────────────────────────────────────────────────
 
     @Test void approveC1_shouldReturnUnderReview() {
         PheDuyetResponse resp = PheDuyetResponse.builder()
-                .deKeId(1L)
+                .id(TEST_ID.toString())
+                .deKeId(TEST_ID)
                 .capPheDuyet(1)
                 .trangThai("UNDER_REVIEW")
                 .nguoiPheDuyet("Truong Phong")
                 .build();
-        when(service.approveC1(eq(1L), any(), anyString())).thenReturn(resp);
+        when(service.approveC1(eq(TEST_ID), any(), anyString())).thenReturn(resp);
 
-        var ctrlResp = controller.approveC1(1L, PheDuyetRequest.builder()
+        var ctrlResp = controller.approveC1(TEST_ID, PheDuyetRequest.builder()
                 .quyetDinh("APPROVED")
                 .lyDo("Phe cap 1")
                 .build(), null);
@@ -147,21 +152,22 @@ class DeKeControllerTest {
         assertThat(ctrlResp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(ctrlResp.getBody().getData().getTrangThai()).isEqualTo("UNDER_REVIEW");
         assertThat(ctrlResp.getBody().getData().getCapPheDuyet()).isEqualTo(1);
-        verify(service, times(1)).approveC1(eq(1L), any(), anyString());
+        verify(service, times(1)).approveC1(eq(TEST_ID), any(), anyString());
     }
 
     // ── approveC2 ───────────────────────────────────────────────────────
 
     @Test void approveC2_shouldReturnApproved() {
         PheDuyetResponse resp = PheDuyetResponse.builder()
-                .deKeId(1L)
+                .id(TEST_ID.toString())
+                .deKeId(TEST_ID)
                 .capPheDuyet(2)
                 .trangThai("APPROVED")
                 .nguoiPheDuyet("Giam Doc")
                 .build();
-        when(service.approveC2(eq(1L), any(), anyString())).thenReturn(resp);
+        when(service.approveC2(eq(TEST_ID), any(), anyString())).thenReturn(resp);
 
-        var ctrlResp = controller.approveC2(1L, PheDuyetRequest.builder()
+        var ctrlResp = controller.approveC2(TEST_ID, PheDuyetRequest.builder()
                 .quyetDinh("APPROVED")
                 .lyDo("Phe cap 2")
                 .build(), null);
@@ -169,37 +175,37 @@ class DeKeControllerTest {
         assertThat(ctrlResp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(ctrlResp.getBody().getData().getTrangThai()).isEqualTo("APPROVED");
         assertThat(ctrlResp.getBody().getData().getCapPheDuyet()).isEqualTo(2);
-        verify(service, times(1)).approveC2(eq(1L), any(), anyString());
+        verify(service, times(1)).approveC2(eq(TEST_ID), any(), anyString());
     }
 
     // B1 regression: approver identity is bound from the authenticated principal
     // (authentication.getName() == "testuser"), never from the request body — the
     // PheDuyetRequest no longer carries an approver field, so spoofing is impossible.
     @Test void approveC1_bindsApproverFromAuthentication() {
-        when(service.approveC1(eq(1L), any(), anyString()))
-                .thenReturn(PheDuyetResponse.builder().deKeId(1L).capPheDuyet(1).trangThai("UNDER_REVIEW").build());
-        controller.approveC1(1L, PheDuyetRequest.builder().quyetDinh("APPROVED").build(), authentication);
-        verify(service).approveC1(eq(1L), any(), eq("testuser"));
+        when(service.approveC1(eq(TEST_ID), any(), anyString()))
+                .thenReturn(PheDuyetResponse.builder().deKeId(TEST_ID).capPheDuyet(1).trangThai("UNDER_REVIEW").build());
+        controller.approveC1(TEST_ID, PheDuyetRequest.builder().quyetDinh("APPROVED").build(), authentication);
+        verify(service).approveC1(eq(TEST_ID), any(), eq("testuser"));
     }
 
 
     @Test void getApprovalHistory_shouldReturnEntries() {
-        when(service.getApprovalHistory(1L)).thenReturn(List.of(
-                HistoryEntry.builder().deKeId(1L).trangThai("PROPOSED").lyDo("Tao moi").build()));
+        when(service.getApprovalHistory(TEST_ID)).thenReturn(List.of(
+                HistoryEntry.builder().deKeId(TEST_ID).trangThai("PROPOSED").lyDo("Tao moi").build()));
 
-        var resp = controller.getApprovalHistory(1L);
+        var resp = controller.getApprovalHistory(TEST_ID);
 
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody().getData()).hasSize(1);
         assertThat(resp.getBody().getData().get(0).getTrangThai()).isEqualTo("PROPOSED");
-        verify(service, times(1)).getApprovalHistory(1L);
+        verify(service, times(1)).getApprovalHistory(TEST_ID);
     }
 
     // ── filterByStatus ──────────────────────────────────────────────────
 
     @Test void filterByApprovalStatus_shouldReturnResults() {
         DeKeResponse approvedResp = DeKeResponse.builder()
-                .id(1L)
+                .id(TEST_ID)
                 .loaiDe(LoaiDe.DE_CHAN_CAT)
                 .trangThaiPheDuyet(DeKeApprovalStatus.APPROVED)
                 .build();
@@ -245,13 +251,13 @@ class DeKeControllerTest {
     // ── error propagation ───────────────────────────────────────────────
 
     @Test void approveC1_shouldThrowWhenNotFound() {
-        when(service.approveC1(eq(99L), any(), anyString())).thenThrow(new IllegalArgumentException("Khong tim thay"));
+        when(service.approveC1(eq(TEST_ID_2), any(), anyString())).thenThrow(new IllegalArgumentException("Khong tim thay"));
 
-        assertThatThrownBy(() -> controller.approveC1(99L, PheDuyetRequest.builder()
+        assertThatThrownBy(() -> controller.approveC1(TEST_ID_2, PheDuyetRequest.builder()
                 .quyetDinh("APPROVED")
                 .build(), null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Khong tim thay");
-        verify(service, times(1)).approveC1(eq(99L), any(), anyString());
+        verify(service, times(1)).approveC1(eq(TEST_ID_2), any(), anyString());
     }
 }

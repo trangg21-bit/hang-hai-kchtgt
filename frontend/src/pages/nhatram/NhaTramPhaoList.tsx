@@ -32,12 +32,17 @@ import type { NhaTramPhaoResponse, CreateNhaTramPhaoRequest } from '../../servic
 import dayjs from 'dayjs';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 
+import { useSearchParams } from 'react-router-dom';
+import { fetchNhaTramPhaoById } from '../../services/nhatram/api';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
+
 export default function NhaTramPhaoList() {
   const [dataSource, setDataSource] = useState<NhaTramPhaoResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
 
   // Filter states
   const [filterKeyword, setFilterKeyword] = useState('');
@@ -46,7 +51,33 @@ export default function NhaTramPhaoList() {
   // Form states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<NhaTramPhaoResponse | null>(null);
+  const [isReadOnly, setIsReadOnly] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
+
+  const [searchParams] = useSearchParams();
+  const isIframeModal = (window.self !== window.top) && searchParams.has('action');
+
+  const action = searchParams.get('action');
+  const id = searchParams.get('id');
+
+  useEffect(() => {
+    if (id && (action === 'detail' || action === 'edit')) {
+      (async () => {
+        try {
+          setLoading(true);
+          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          const data = cached || await fetchNhaTramPhaoById(id);
+          setIsReadOnly(action === 'detail');
+          handleOpenModal(data);
+        } catch (err: any) {
+          message.error(err.message || 'Lỗi khi tải thông tin chi tiết nhà trạm phao');
+        } finally {
+          setLoading(false);
+        }
+      })();
+    }
+  }, [action, id]);
 
   const watchLoaiHinhHoc = Form.useWatch('loaiHinhHoc', form) || 'POINT';
 
@@ -69,8 +100,9 @@ export default function NhaTramPhaoList() {
   }, [page, pageSize, filterKeyword, filterType]);
 
   useEffect(() => {
+    if (isIframeModal) return;
     loadData();
-  }, [loadData]);
+  }, [loadData, isIframeModal]);
 
   const handleOpenModal = (record?: NhaTramPhaoResponse) => {
     if (record) {
@@ -105,10 +137,14 @@ export default function NhaTramPhaoList() {
   const handleCancel = () => {
     setIsModalOpen(false);
     form.resetFields();
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
   };
 
   const handleSubmit = async () => {
     try {
+      setSubmitting(true);
       const values = await form.validateFields();
       const payload: CreateNhaTramPhaoRequest = {
         unitId: editingItem?.unitId || '00000000-0000-0000-0000-000000000000',
@@ -134,6 +170,8 @@ export default function NhaTramPhaoList() {
       loadData();
     } catch (err: any) {
       message.error(err.message || 'Có lỗi xảy ra khi lưu nhà trạm');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -243,66 +281,80 @@ export default function NhaTramPhaoList() {
   ];
 
   return (
-    <Card
-      title="Danh sách Nhà trạm phao tiêu"
-      extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
-          Thêm mới
-        </Button>
-      }
-    >
-      <Space style={{ marginBottom: 16 }}>
-        <Input
-          placeholder="Tìm theo tên nhà trạm..."
-          value={filterKeyword}
-          onChange={(e) => setFilterKeyword(e.target.value)}
-          style={{ width: 250 }}
-        />
-        <Select
-          placeholder="Lọc theo loại..."
-          allowClear
-          value={filterType}
-          onChange={(val) => setFilterType(val)}
-          style={{ width: 200 }}
+    <>
+      {!isIframeModal && (
+        <Card
+          title="Danh sách Nhà trạm phao tiêu"
+          extra={
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
+              Thêm mới
+            </Button>
+          }
         >
-          <Select.Option value="CARDINAL">Phao hướng (Cardinal)</Select.Option>
-          <Select.Option value="SECTOR">Phao phân khu (Sector)</Select.Option>
-          <Select.Option value="SPECIAL">Phao đặc biệt (Special)</Select.Option>
-          <Select.Option value="SAFE_WATER">Phao vùng nước an toàn (Safe water)</Select.Option>
-          <Select.Option value="ISOLATED_DANGER">Phao nguy hiểm cô lập (Isolated danger)</Select.Option>
-        </Select>
-        <Button icon={<ReloadOutlined />} onClick={loadData}>Tải lại</Button>
-      </Space>
+          <Space style={{ marginBottom: 16 }}>
+            <Input
+              placeholder="Tìm theo tên nhà trạm..."
+              value={filterKeyword}
+              onChange={(e) => setFilterKeyword(e.target.value)}
+              style={{ width: 250 }}
+            />
+            <Select
+              placeholder="Lọc theo loại..."
+              allowClear
+              value={filterType}
+              onChange={(val) => setFilterType(val)}
+              style={{ width: 200 }}
+            >
+              <Select.Option value="CARDINAL">Phao hướng (Cardinal)</Select.Option>
+              <Select.Option value="SECTOR">Phao phân khu (Sector)</Select.Option>
+              <Select.Option value="SPECIAL">Phao đặc biệt (Special)</Select.Option>
+              <Select.Option value="SAFE_WATER">Phao vùng nước an toàn (Safe water)</Select.Option>
+              <Select.Option value="ISOLATED_DANGER">Phao nguy hiểm cô lập (Isolated danger)</Select.Option>
+            </Select>
+            <Button icon={<ReloadOutlined />} onClick={loadData}>Tải lại</Button>
+          </Space>
 
-      <Table
-        dataSource={dataSource}
-        columns={columns}
-        rowKey="id"
-        loading={loading}
-        pagination={{
-          current: page,
-          pageSize: pageSize,
-          total: total,
-          onChange: (p, s) => {
-            setPage(p);
-            setPageSize(s);
-          },
-          showSizeChanger: true,
-          showTotal: (totalCount) => `Tổng ${totalCount} nhà trạm`,
-          locale: { items_per_page: '/ trang' },
-        }}
-      />
+          <Table
+            dataSource={dataSource}
+            columns={columns}
+            rowKey="id"
+            loading={loading}
+            pagination={{
+              current: page,
+              pageSize: pageSize,
+              total: total,
+              onChange: (p, s) => {
+                setPage(p);
+                setPageSize(s);
+              },
+              showSizeChanger: true,
+              showTotal: (totalCount) => `Tổng ${totalCount} nhà trạm`,
+              locale: { items_per_page: '/ trang' },
+            }}
+          />
+        </Card>
+      )}
 
       <Modal
-        title={editingItem ? 'Chỉnh sửa thông tin nhà trạm phao' : 'Thêm mới nhà trạm phao tiêu'}
+        title={isIframeModal ? null : (<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isReadOnly ? 'Chi tiết nhà trạm phao tiêu' : (editingItem ? 'Chỉnh sửa thông tin nhà trạm phao' : 'Thêm mới nhà trạm phao tiêu')}</span>)}
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}
         okText="Lưu"
         cancelText="Hủy"
-        width={700}
+        width={isIframeModal ? '100%' : 700}
+        mask={!isIframeModal}
+        closable={!isIframeModal}
+        style={isIframeModal ? { top: 0, margin: 0, padding: 0, maxWidth: 'none', height: '100vh' } : undefined}
+        styles={isIframeModal ? { body: { padding: '16px 24px', overflowY: 'auto', maxHeight: 'calc(100vh - 110px)' } } : undefined}
+        footer={isReadOnly ? [
+          <Button key="close" type="primary" onClick={handleCancel}>Đóng</Button>
+        ] : (isIframeModal ? [
+          <Button key="cancel" onClick={handleCancel}>Hủy</Button>,
+          <Button key="submit" type="primary" onClick={handleSubmit} loading={submitting}>Lưu</Button>
+        ] : undefined)}
       >
-        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+        <Form form={form} layout="vertical" style={{ marginTop: 16, maxHeight: '60vh', overflowY: 'auto', paddingRight: 12 }} disabled={isReadOnly}>
           <Space size="large" style={{ display: 'flex', width: '100%' }}>
             <Form.Item
               name="code"
@@ -399,6 +451,6 @@ export default function NhaTramPhaoList() {
           </Form.Item>
         </Form>
       </Modal>
-    </Card>
+    </>
   );
 }

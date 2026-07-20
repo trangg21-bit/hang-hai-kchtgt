@@ -1,0 +1,55 @@
+module_id: M-002
+module_name: "Quản lý tài sản KCHTGT - Cảng & Bến"
+type: bounded-context
+slug: quan-ly-tai-san-kchtgt-cang-ben
+last-updated: 2026-06-27
+
+# Map logical module → physical implementations across apps/services/libs.
+# Updated by sdlc-tech-lead (write-back 2026-06-27).
+implementations:
+  apps: []
+  services:
+    - path: src/main/java/com/hanghai/kchtg/cangben
+      status: planned
+      features:
+        - F-008
+        - F-009
+        - F-010
+        - F-011
+        - F-012
+        - F-013
+        - F-014
+        - F-015
+        - F-016
+        - F-017
+        - F-018
+        - F-019
+        - F-020
+        - F-021
+        - F-022
+        - F-023
+        - F-024
+        - F-025
+        - F-026
+        - F-027
+        - F-028
+        - F-029
+        - F-030
+        - F-031
+        - F-032
+        - F-033
+        - F-034
+        - F-035
+        - F-036
+        - F-037
+  libs: []
+  packages: []
+
+# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
+stakeholders:
+  business-owner: ""
+  tech-lead: ""
+  qa-lead: ""
+
+# Cross-references
+depends_on: []

@@ -10,7 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface CoSuaChuaDongTauRepository extends JpaRepository<CoSuaChuaDongTau, Long> {
+public interface CoSuaChuaDongTauRepository extends JpaRepository<CoSuaChuaDongTau, java.util.UUID> {
 
     List<CoSuaChuaDongTau> findByTrangThaiAndIsDeletedFalse(CoSuaChuaApprovalStatus trangThai);
 

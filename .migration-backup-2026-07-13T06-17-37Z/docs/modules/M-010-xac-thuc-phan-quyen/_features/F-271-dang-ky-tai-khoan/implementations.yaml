@@ -1,0 +1,16 @@
+feature_id: F-271
+module_id: M-010
+slug: dang-ky-tai-khoan
+stage: tech-lead
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: "com.hanghai.kchtg.user.controller.RegistrationController"
+  consumers:
+    - "com.hanghai.kchtg.user.controller.AuthController"  # login uses User.password_hash
+    - "com.hanghai.kchtg.KchtgApplication"                  # entry point
+
+# Cross-cutting: features consumed by multiple modules
+consumed_by_modules: []

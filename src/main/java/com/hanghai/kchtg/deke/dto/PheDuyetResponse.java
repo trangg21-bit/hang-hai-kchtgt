@@ -13,8 +13,8 @@ import java.time.LocalDate;
 @Builder
 public class PheDuyetResponse {
 
-    private Long id;
-    private Long deKeId;
+    private String id;
+    private java.util.UUID deKeId;
     private Integer capPheDuyet;
     private String trangThai;
     private String nguoiPheDuyet;

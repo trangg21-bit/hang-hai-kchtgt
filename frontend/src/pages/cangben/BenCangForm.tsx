@@ -9,6 +9,7 @@ import {
   type CangBenStatus,
 } from '../../types/cangben';
 import FormField from '../../components/FormField';
+import { radiusPill, fontSizeMd, borderDefault, textSecondary } from '../../tokens';
 import toast from '../../components/ToastNotification';
 
 export default function BenCangForm() {
@@ -312,7 +313,7 @@ export default function BenCangForm() {
               <Button type="primary" htmlType="submit" loading={submitting}>
                 {isEdit ? 'Cập nhật' : 'Tạo bến cảng'}
               </Button>
-              <Button onClick={() => navigate('/bencang')}>Hủy</Button>
+              <Button onClick={() => navigate('/bencang')} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>
             </Space>
           </Form.Item>
         </Form>

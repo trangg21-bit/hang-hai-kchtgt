@@ -29,8 +29,7 @@ export interface CangBien {
   maCang: string;
   tenCang: string;
   tinhThanhPho: string;
-  viDo: number;
-  kinhDo: number;
+
   dienTich: number;
   khaNangTiepNhan: number;
   trangThaiHoatDong: string;
@@ -70,8 +69,7 @@ export interface CreateCangBienRequest {
   maCang: string;
   tenCang: string;
   tinhThanhPho: string;
-  viDo: number;
-  kinhDo: number;
+
   dienTich: number;
   khaNangTiepNhan: number;
   trangThaiHoatDong: string;
@@ -107,8 +105,7 @@ export interface UpdateCangBienRequest {
   maCang?: string;
   tenCang?: string;
   tinhThanhPho?: string;
-  viDo?: number;
-  kinhDo?: number;
+
   dienTich?: number;
   khaNangTiepNhan?: number;
   bieuTuongId?: string | null;
@@ -151,8 +148,7 @@ export interface BenCang {
   cangBienId: string;
   tenCangBien?: string;
   tuyenDuongThuy?: string;
-  viDo?: number;
-  kinhDo?: number;
+
   chieuDai?: number;
   chieuRong?: number;
   loaiBen?: string;
@@ -189,8 +185,7 @@ export interface CreateBenCangRequest {
   tenBen: string;
   cangBienId: string;
   tuyenDuongThuy?: string;
-  viDo?: number;
-  kinhDo?: number;
+
   chieuDai?: number;
   chieuRong?: number;
   loaiBen?: string;
@@ -222,8 +217,7 @@ export interface UpdateBenCangRequest {
   tenBen?: string;
   cangBienId?: string;
   tuyenDuongThuy?: string;
-  viDo?: number;
-  kinhDo?: number;
+
   chieuDai?: number;
   chieuRong?: number;
   loaiBen?: string;
@@ -310,8 +304,7 @@ export interface CangCan {
   maCangCan: string;
   tenCangCan: string;
   tinhThanhPho: string;
-  viDo: number;
-  kinhDo: number;
+
   dienTich: number;
   congSuatTEU: number;
   trangThaiHoatDong: string;
@@ -328,8 +321,7 @@ export interface CreateCangCanRequest {
   maCangCan: string;
   tenCangCan: string;
   tinhThanhPho: string;
-  viDo: number;
-  kinhDo: number;
+
   dienTich: number;
   congSuatTEU: number;
   trangThaiHoatDong: string;
@@ -342,8 +334,7 @@ export interface UpdateCangCanRequest {
   maCangCan?: string;
   tenCangCan?: string;
   tinhThanhPho?: string;
-  viDo?: number;
-  kinhDo?: number;
+
   dienTich?: number;
   congSuatTEU?: number;
   trangThaiHoatDong?: string;

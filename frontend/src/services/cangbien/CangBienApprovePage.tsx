@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, Button, Space, Typography, Tag, Row, Col, Form, Checkbox, Input } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
+import { borderDefault } from '../../tokens';
 import { fetchCangBienById, approveCangBien, rejectCangBien } from './api';
 import { trangThaiPheDuyetBadge } from './schema';
 import type { CangBienResponse } from './types';
@@ -118,20 +119,7 @@ export default function CangBienApprovePage() {
               <br />
               <Typography.Text>{data.tinhThanhPho || '—'}</Typography.Text>
             </Col>
-            {data.viDo != null && data.kinhDo != null && (
-              <>
-                <Col span={12}>
-                  <Typography.Text strong>Vĩ độ:</Typography.Text>
-                  <br />
-                  <Typography.Text>{data.viDo.toFixed(6)}</Typography.Text>
-                </Col>
-                <Col span={12}>
-                  <Typography.Text strong>Kinh độ:</Typography.Text>
-                  <br />
-                  <Typography.Text>{data.kinhDo.toFixed(6)}</Typography.Text>
-                </Col>
-              </>
-            )}
+
             <Col span={12}>
               <Typography.Text strong>Diện tích (m²):</Typography.Text>
               <br />
@@ -209,7 +197,7 @@ export default function CangBienApprovePage() {
         )}
 
         {/* Footer */}
-        <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 16, marginTop: 8 }}>
+        <div style={{ borderTop: `1px solid ${borderDefault}`, paddingTop: 16, marginTop: 8 }}>
           <Space>
             <Button onClick={() => navigate(`/cangbien/${data.id}`)}>Hủy</Button>
             <Button

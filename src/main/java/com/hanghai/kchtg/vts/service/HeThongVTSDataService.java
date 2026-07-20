@@ -54,7 +54,7 @@ public class HeThongVTSDataService {
         if (request.getToaDo() != null && !request.getToaDo().trim().isEmpty()) {
             com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
             com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = getSpatialObjectType(geomType);
-            UUID refId = UUID.nameUUIDFromBytes(("VTS_" + saved.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            UUID refId = saved.getId();
             com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
                     "Hệ thống VTS tại " + request.getViTri(),
@@ -81,7 +81,7 @@ public class HeThongVTSDataService {
         return toResponse(saved);
     }
 
-    public HeThongVTSResponse getById(Long id) {
+    public HeThongVTSResponse getById(UUID id) {
         HeThongVTS entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
         return toResponse(entity);
@@ -102,7 +102,7 @@ public class HeThongVTSDataService {
         return repository.search(orgUnitId, keywordLike, tinhTrangEnum, statusEnum, pageable).map(this::toResponse);
     }
 
-    public HeThongVTSResponse update(Long id, HeThongVTSUpdateRequest request, String username) {
+    public HeThongVTSResponse update(UUID id, HeThongVTSUpdateRequest request, String username) {
         HeThongVTS entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
@@ -126,7 +126,7 @@ public class HeThongVTSDataService {
             } else {
                 com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
                 com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = getSpatialObjectType(geomType);
-                UUID refId = UUID.nameUUIDFromBytes(("VTS_" + entity.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                UUID refId = entity.getId();
                 com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                         entity.getKhongGianId(),
                         "Hệ thống VTS tại " + (request.getViTri() != null ? request.getViTri() : entity.getViTri()),
@@ -142,7 +142,7 @@ public class HeThongVTSDataService {
             }
         } else if (entity.getKhongGianId() != null && request.getViTri() != null) {
             gisSpatialObjectService.findById(entity.getKhongGianId()).ifPresent(spatialObj -> {
-                UUID refId = UUID.nameUUIDFromBytes(("VTS_" + entity.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                UUID refId = entity.getId();
                 gisSpatialObjectService.createOrUpdate(
                         spatialObj.getId(),
                         "Hệ thống VTS tại " + request.getViTri(),
@@ -176,7 +176,7 @@ public class HeThongVTSDataService {
         return toResponse(saved);
     }
 
-    public void delete(Long id, String username) {
+    public void delete(UUID id, String username) {
         HeThongVTS entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
@@ -197,7 +197,7 @@ public class HeThongVTSDataService {
                 .build());
     }
 
-    public HeThongVTSResponse approveC1(Long id, PheDuyetRequest request, String username) {
+    public HeThongVTSResponse approveC1(UUID id, PheDuyetRequest request, String username) {
         HeThongVTS entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
@@ -229,7 +229,7 @@ public class HeThongVTSDataService {
         return toResponse(saved);
     }
 
-    public HeThongVTSResponse approveC2(Long id, PheDuyetRequest request, String username) {
+    public HeThongVTSResponse approveC2(UUID id, PheDuyetRequest request, String username) {
         HeThongVTS entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
@@ -266,7 +266,7 @@ public class HeThongVTSDataService {
         return toResponse(saved);
     }
 
-    public List<HistoryEntry> getHistory(Long id) {
+    public List<HistoryEntry> getHistory(UUID id) {
         repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
         return historyRepository.findByHeThongVTSIdOrderByNgayPheDuyetDesc(id).stream()

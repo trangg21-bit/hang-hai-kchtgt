@@ -32,7 +32,7 @@ public class F158ReportHandler extends BaseReportHandler {
         int reportYear = getReportYear(request);
 
         // Cache HeThongVTS lookup
-        Map<Long, HeThongVTS> vtsCache = new HashMap<>();
+        Map<UUID, HeThongVTS> vtsCache = new HashMap<>();
 
         List<TramRadar> tramList = tramRadarRepository.findAll().stream()
                 .filter(t -> t.getTrangThai() == TramRadarApprovalStatus.APPROVED)
@@ -48,9 +48,9 @@ public class F158ReportHandler extends BaseReportHandler {
 
         List<Map<String, Object>> rows = new ArrayList<>();
         int stt = 1;
-        Set<Long> seenVtsIds = new HashSet<>();
+        Set<UUID> seenVtsIds = new HashSet<>();
         for (TramRadar tram : tramList) {
-            Long vtsId = tram.getHeThongVtsId();
+            UUID vtsId = tram.getHeThongVtsId();
             if (vtsId == null) continue;
 
             HeThongVTS vts = vtsCache.computeIfAbsent(vtsId, id ->
@@ -86,7 +86,7 @@ public class F158ReportHandler extends BaseReportHandler {
         UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
 
-        Map<Long, HeThongVTS> vtsCache = new HashMap<>();
+        Map<UUID, HeThongVTS> vtsCache = new HashMap<>();
 
         List<TramRadar> tramList = tramRadarRepository.findAll().stream()
                 .filter(t -> t.getTrangThai() == TramRadarApprovalStatus.APPROVED)
@@ -95,9 +95,9 @@ public class F158ReportHandler extends BaseReportHandler {
                 .toList();
 
         List<Map<String, Object>> arrResult = new ArrayList<>();
-        Set<Long> seenVtsIds = new HashSet<>();
+        Set<UUID> seenVtsIds = new HashSet<>();
         for (TramRadar tram : tramList) {
-            Long vtsId = tram.getHeThongVtsId();
+            UUID vtsId = tram.getHeThongVtsId();
             if (vtsId == null) continue;
 
             HeThongVTS vts = vtsCache.computeIfAbsent(vtsId, id ->

@@ -27,7 +27,7 @@ export default function GroupList() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<Group[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -153,7 +153,7 @@ export default function GroupList() {
     if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách nhóm'} onRetry={fetchGroups} />;
     if (dataSource.length === 0) {
       if (search || filterStatus) return <EmptyState description="Không tìm thấy nhóm nào phù hợp" />;
-      return <EmptyState description="Chưa có nhóm nào" ctaText="Thêm nhóm đầu tiên" onCta={openCreateModal} />;
+      return <EmptyState description="Chưa có nhóm nào" />;
     }
     return <div style={{ overflowX: 'auto' }}><DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} scroll={{ x: 1000 }} /><Pagination total={total} current={page} pageSize={pageSize} onChange={handlePageChange} /></div>;
   };
@@ -205,8 +205,8 @@ export default function GroupList() {
             <Form.Item name="code" {...labelProps('Mã nhóm')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mã nhóm' }]}>
               <Input placeholder="vd: QL01" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
-            <Form.Item name="description" {...labelProps('Mô tả')} style={{ marginBottom: 6 }}>
-              <Input.TextArea rows={3} placeholder="Mô tả nhóm (tùy chọn)" style={{ borderRadius: 8 }} />
+            <Form.Item name="description" {...labelProps('Mô tả')} style={{ marginBottom: spaceFormField }}>
+              <Input.TextArea rows={3} placeholder="Mô tả nhóm (tùy chọn)" />
             </Form.Item>
           </Form>
         </Spin>

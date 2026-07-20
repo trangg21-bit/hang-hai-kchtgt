@@ -10,6 +10,7 @@ import {
   type BeaconStatus,
 } from '../../types/beacon';
 import FormField from '../../components/FormField';
+import { radiusPill, fontSizeMd, borderDefault, textSecondary } from '../../tokens';
 import toast from '../../components/ToastNotification';
 import { organizationService } from '../../services/organizationService';
 
@@ -91,7 +92,10 @@ export default function BeaconForm() {
           description: values.description,
           unitId: values.unitId,
         };
-        await beaconLightCRUD.update(id!, payload);
+        const res = await beaconLightCRUD.update(id!, payload);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id!] = res;
+        }
         toast.success('Đã cập nhật đèn biển');
       } else {
         const payload: CreateBeaconLightRequest = {
@@ -307,7 +311,7 @@ export default function BeaconForm() {
               <Button type="primary" htmlType="submit" loading={submitting}>
                 {isEdit ? 'Cập nhật' : 'Tạo đèn biển'}
               </Button>
-              <Button onClick={() => navigate('/den-bien')}>Hủy</Button>
+              <Button onClick={() => navigate('/den-bien')} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>
             </Space>
           </Form.Item>
         </Form>

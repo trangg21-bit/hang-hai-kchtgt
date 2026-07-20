@@ -28,9 +28,8 @@ public class CoSuaChuaDongTauCreateRequest {
     @Size(max = 100)
     private String email;
 
-    @NotBlank(message = "loaiCoSo is required")
-    @Size(max = 100)
-    private String loaiCoSo;
+    @jakarta.validation.constraints.NotNull(message = "loaiCoSo is required")
+    private com.hanghai.kchtg.cosuachua.entity.LoaiCoSo loaiCoSo;
 
     @Size(max = 255)
     private String khaNang;

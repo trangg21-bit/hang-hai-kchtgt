@@ -1,0 +1,418 @@
+{
+  "schema_version": "1.0",
+  "test_plan_id": "suite",
+  "run_id": "run-m022-wave1-20260713",
+  "run_at": "2026-07-13T03:35:32.109Z",
+  "agent": "utility-test-runner",
+  "session_id": "ses_0a6751be1ffe9YWX8GyongmqTk",
+  "base_url": "",
+  "total": 12,
+  "passed": 0,
+  "failed": 12,
+  "skipped": 0,
+  "cases": [
+    {
+      "tc_id": "TC-M022-001",
+      "name": "Dashboard page renders without crash after login",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "action": "Navigate to /login",
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "action": "Fill login credentials",
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "action": "Click Đăng nhập",
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "action": "Wait for redirect",
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "action": "Verify no error overlay",
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable: Playwright not installed in runtime environment (Browser error: Playwright could not be resolved)",
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC-M022-002",
+      "name": "ErrorBoundary catches rendering errors gracefully",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "action": "Verify ErrorBoundary exists in main.tsx",
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "action": "Navigate to dashboard",
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "action": "Verify dashboard renders inside ErrorBoundary",
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "action": "Check browser console for errors",
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable — cannot navigate to dashboard or check console",
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC-M022-003",
+      "name": "All 6 stats cards render in the grid row",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "action": "Navigate to dashboard",
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "action": "Verify stats grid container",
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "action": "Count visible cards",
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "action": "Verify card types",
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable — cannot verify DOM elements",
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC-M022-004",
+      "name": "MiniKpiCard displays correct KPI data",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "action": "Navigate to dashboard",
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "action": "Verify MiniKpiCard label",
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "action": "Verify KPI value",
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "action": "Verify delta percentage",
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "action": "Verify sparkline chart",
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable — cannot verify card content",
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC-M022-005",
+      "name": "HeroCard renders with correct structure",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "action": "Navigate to dashboard",
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "action": "Verify HeroCard text",
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "action": "Verify large KPI number",
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "action": "Verify delta percentage",
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "action": "Verify sparkline",
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable — cannot verify HeroCard",
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC-M022-006",
+      "name": "ApprovalCards render with progress bars and legends",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "action": "Navigate to dashboard",
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "action": "Verify Phê duyệt tài sản card",
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "action": "Verify Phê duyệt KCHT card",
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "action": "Verify status bar",
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "action": "Verify legend",
+          "status": "skip"
+        },
+        {
+          "no": 6,
+          "action": "Verify pending pill",
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable — cannot verify ApprovalCard elements",
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC-M022-007",
+      "name": "Stacked bar chart 'Hàng hóa thông qua cảng theo tháng' renders",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "action": "Navigate to dashboard",
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "action": "Verify chart title",
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "action": "Verify ECharts canvas",
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "action": "Verify 6 series legend",
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "action": "Verify cargoSeriesColors",
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable — cannot verify ECharts canvas",
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC-M022-008",
+      "name": "Polar passenger chart 'Lượt hành khách qua cảng' renders",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "action": "Navigate to dashboard",
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "action": "Verify chart title",
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "action": "Verify ECharts polar bar",
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "action": "Verify 2 series",
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "action": "Verify polar radius",
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable — cannot verify polar chart",
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC-M022-009",
+      "name": "Map section 'Bản đồ tra cứu Kết cấu hạ tầng' renders",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "action": "Navigate to dashboard",
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "action": "Verify map card title",
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "action": "Verify DashboardMap renders",
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "action": "Verify no console errors",
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable — cannot verify DashboardMap",
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC-M022-010",
+      "name": "Infrastructure table renders 10 rows with pill badges",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "action": "Navigate to dashboard",
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "action": "Verify table title",
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "action": "Verify Ant Table",
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "action": "Count data rows",
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "action": "Verify pill badge rendering",
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable — cannot verify Ant Table",
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC-M022-011",
+      "name": "FilterBar renders with 3 dropdowns + timestamp",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "action": "Navigate to dashboard",
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "action": "Verify FilterBar visible",
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "action": "Verify Năm dropdown",
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "action": "Verify Tỉnh/TP dropdown",
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "action": "Verify Loại KCHT dropdown",
+          "status": "skip"
+        },
+        {
+          "no": 6,
+          "action": "Verify timestamp label",
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable — cannot verify FilterBar dropdowns",
+      "duration_ms": 0
+    },
+    {
+      "tc_id": "TC-M022-012",
+      "name": "FilterBar year change triggers data refresh",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "action": "Navigate to dashboard",
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "action": "Note current KPI values",
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "action": "Change year dropdown",
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "action": "Wait for data refresh",
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "action": "Verify dashboard data updated",
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable — cannot change dropdown or observe re-render",
+      "duration_ms": 0
+    }
+  ]
+}

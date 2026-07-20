@@ -14,7 +14,7 @@ import java.time.LocalDate;
 public class HistoryEntry {
 
     private Long id;
-    private Long luongHangHaiId;
+    private java.util.UUID luongHangHaiId;
     private Integer capPheDuyet;
     private String trangThai;
     private String nguoiPheDuyet;

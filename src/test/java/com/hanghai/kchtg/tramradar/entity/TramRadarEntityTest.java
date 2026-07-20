@@ -30,17 +30,16 @@ class TramRadarEntityTest {
     @Test
     void testSettersAndGetters() {
         TramRadar entity = new TramRadar();
-        entity.setId(1L);
+        java.util.UUID uuid = java.util.UUID.randomUUID();
+        entity.setId(uuid);
         entity.setTenTram("Tram ABC");
         entity.setViTri("Hà Nội");
-        entity.setKinhDo(new java.math.BigDecimal("105.8"));
-        entity.setViDo(new java.math.BigDecimal("21.0"));
         entity.setLoaiTram("Radar X");
         entity.setTrangThai(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.APPROVED);
         entity.setNguoiSuaDoi("admin");
         entity.setNgaySuaDoi(LocalDateTime.now());
 
-        assertEquals(1L, entity.getId());
+        assertEquals(uuid, entity.getId());
         assertEquals("Tram ABC", entity.getTenTram());
         assertEquals(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.APPROVED, entity.getTrangThai());
         assertNotNull(entity.getNgaySuaDoi());

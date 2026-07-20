@@ -31,13 +31,15 @@ import {
   rejectYeuCauGiam,
 } from '../../services/assetmovement/api';
 import type { YeuCauGiamTaiSanResponse, YeuCauGiamTaiSanRequest } from '../../services/assetmovement/types';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 export default function AssetDecreaseList() {
   const [dataSource, setDataSource] = useState<YeuCauGiamTaiSanResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -310,7 +312,7 @@ export default function AssetDecreaseList() {
       />
 
       <Modal
-        title={editingItem ? 'Cập nhật yêu cầu giảm tài sản' : 'Tạo mới yêu cầu giảm tài sản'}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingItem ? 'Cập nhật yêu cầu giảm tài sản' : 'Tạo mới yêu cầu giảm tài sản'}</span>}
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}
@@ -360,7 +362,7 @@ export default function AssetDecreaseList() {
       </Modal>
 
       <Modal
-        title="Từ chối phê duyệt yêu cầu giảm"
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Từ chối phê duyệt yêu cầu giảm</span>}
         open={isRejectModalOpen}
         onOk={handleRejectConfirm}
         onCancel={() => setIsRejectModalOpen(false)}

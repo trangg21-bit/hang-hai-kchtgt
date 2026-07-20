@@ -10,6 +10,7 @@ import {
   type BeaconStatus,
 } from '../../types/beacon';
 import FormField from '../../components/FormField';
+import { radiusPill, fontSizeMd, borderDefault, textSecondary } from '../../tokens';
 import toast from '../../components/ToastNotification';
 import { organizationService } from '../../services/organizationService';
 
@@ -91,7 +92,10 @@ export default function BuoyForm() {
           description: values.description,
           unitId: values.unitId,
         };
-        await buoyCRUD.update(id!, payload);
+        const res = await buoyCRUD.update(id!, payload);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id!] = res;
+        }
         toast.success('Đã cập nhật phao tiêu');
       } else {
         const payload: CreateBuoyRequest = {
@@ -307,7 +311,7 @@ export default function BuoyForm() {
               <Button type="primary" htmlType="submit" loading={submitting}>
                 {isEdit ? 'Cập nhật' : 'Tạo phao tiêu'}
               </Button>
-              <Button onClick={() => navigate('/buoys')}>Hủy</Button>
+              <Button onClick={() => navigate('/buoys')} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>
             </Space>
           </Form.Item>
         </Form>

@@ -41,6 +41,8 @@ export interface CangBienResponse {
   soLuongKhuChuyenTai: number | null;
   cacKhuNuocKhac: string | null;
   ghiChu: string | null;
+  loaiHinhHoc?: string;
+  toaDo?: string;
 }
 
 // ── CreateCangBienRequest (matches CreateCangBienRequest.java) ─

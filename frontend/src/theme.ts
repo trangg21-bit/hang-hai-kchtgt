@@ -173,6 +173,7 @@ export const metronicTheme: ThemeConfig = {
       darkItemSelectedColor: '#FFFFFF',
       darkItemSelectedBg: colors.sidebarActiveBg,
       itemHeight: 46,
+      lineHeight: 1.5,
       itemMarginInline: 10,
       itemBorderRadius: radius.md,
       iconSize: 18,
@@ -423,6 +424,23 @@ export const globalCssVars = `
   position: relative;
   font-weight: 600;
   box-shadow: 0 0 12px rgba(27, 132, 255, 0.4);
+}
+
+/* Menu item spacing đồng bộ với form field (height ~40px, padding 10 = cellPaddingBlock) */
+.ant-menu-dark .ant-menu-item {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+  height: auto !important;
+}
+.ant-menu-dark .ant-menu-submenu-title {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+  height: auto !important;
+}
+/* Cho phép text menu dài xuống dòng */
+.ant-menu-dark .ant-menu-title-content {
+  white-space: normal;
+  line-height: 1.5 !important;
 }
 
 /* Footer với nút collapse dạng FLOATING */
@@ -693,6 +711,11 @@ export const globalCssVars = `
 /* ---------- Body background ---------- */
 body, .ant-layout {
   background: var(--bg-body);
+}
+
+/* ---------- TextArea — tight corners, never pill/round ---------- */
+textarea.ant-input {
+  border-radius: 4px !important;
 }
 `;
 

@@ -36,6 +36,8 @@ import {
 } from '../../services/assetmovement/api';
 import type { KeHoachKiemKeResponse, KeHoachKiemKeRequest, BaoCaoKiemKeResponse, BaoCaoKiemKeRequest } from '../../services/assetmovement/types';
 import dayjs from 'dayjs';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 const { TabPane } = Tabs;
 
@@ -47,12 +49,12 @@ export default function InventoryList() {
 
   // Pagination states for Plans
   const [planPage, setPlanPage] = useState(1);
-  const [planPageSize, setPlanPageSize] = useState(10);
+  const [planPageSize, setPlanPageSize] = useState(20);
   const [planTotal, setPlanTotal] = useState(0);
 
   // Pagination states for Reports
   const [reportPage, setReportPage] = useState(1);
-  const [reportPageSize, setReportPageSize] = useState(10);
+  const [reportPageSize, setReportPageSize] = useState(20);
   const [reportTotal, setReportTotal] = useState(0);
 
   // Modals
@@ -459,7 +461,7 @@ export default function InventoryList() {
 
       {/* Plan Modal */}
       <Modal
-        title="Lập kế hoạch kiểm kê mới"
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Lập kế hoạch kiểm kê mới</span>}
         open={isPlanModalOpen}
         onOk={handleCreatePlan}
         onCancel={() => setIsPlanModalOpen(false)}
@@ -538,7 +540,7 @@ export default function InventoryList() {
 
       {/* Report Modal */}
       <Modal
-        title="Lập báo cáo kết quả kiểm kê"
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Lập báo cáo kết quả kiểm kê</span>}
         open={isReportModalOpen}
         onOk={handleCreateReport}
         onCancel={() => setIsReportModalOpen(false)}
@@ -600,7 +602,7 @@ export default function InventoryList() {
 
       {/* Reject Plan Modal */}
       <Modal
-        title="Lý do từ chối kế hoạch kiểm kê"
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Lý do từ chối kế hoạch kiểm kê</span>}
         open={isRejectPlanModalOpen}
         onOk={handleRejectPlanConfirm}
         onCancel={() => setIsRejectPlanModalOpen(false)}
@@ -620,7 +622,7 @@ export default function InventoryList() {
 
       {/* Reject Report Modal */}
       <Modal
-        title="Lý do từ chối báo cáo kiểm kê"
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Lý do từ chối báo cáo kiểm kê</span>}
         open={isRejectReportModalOpen}
         onOk={handleRejectReportConfirm}
         onCancel={() => setIsRejectReportModalOpen(false)}

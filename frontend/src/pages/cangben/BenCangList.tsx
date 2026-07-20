@@ -44,7 +44,7 @@ export default function BenCangList() {
   const [filterLoaiBen, setFilterLoaiBen] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(20);
   const [dataSource, setDataSource] = useState<BenCang[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -402,8 +402,6 @@ export default function BenCangList() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={search || filterMaBen || filterTenBen || filterTuyenDuongThuy || filterLoaiBen || filterStatus ? 'Không tìm thấy' : 'Chưa có bến cảng nào'}
-            ctaText="Tạo bến cảng đầu tiên"
-            onCta={() => navigate('/bencang/create')}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (

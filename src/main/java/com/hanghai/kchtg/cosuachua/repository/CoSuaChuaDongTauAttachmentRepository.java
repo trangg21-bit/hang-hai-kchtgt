@@ -9,7 +9,7 @@ import java.util.List;
 @Repository
 public interface CoSuaChuaDongTauAttachmentRepository extends JpaRepository<CoSuaChuaDongTauAttachment, Long> {
 
-    List<CoSuaChuaDongTauAttachment> findByCoSuaChuaDongTauId(Long coSuaChuaDongTauId);
+    List<CoSuaChuaDongTauAttachment> findByCoSuaChuaDongTauId(java.util.UUID coSuaChuaDongTauId);
 
-    void deleteByCoSuaChuaDongTauId(Long coSuaChuaDongTauId);
+    void deleteByCoSuaChuaDongTauId(java.util.UUID coSuaChuaDongTauId);
 }

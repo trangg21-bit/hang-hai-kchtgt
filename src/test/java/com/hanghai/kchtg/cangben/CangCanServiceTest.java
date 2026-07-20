@@ -86,8 +86,6 @@ class CangCanServiceTest {
             testEntity.setMaCangCan("CC-001");
             testEntity.setTenCangCan("Cảng Cạn Demo");
             testEntity.setTinhThanhPho("Hà Nội");
-            testEntity.setViDo(new BigDecimal("21.028"));
-            testEntity.setKinhDo(new BigDecimal("105.854"));
             testEntity.setDienTich(new BigDecimal("10000.00"));
             testEntity.setCongSuatTEU(new BigDecimal("50000.00"));
             testEntity.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);

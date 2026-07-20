@@ -1,0 +1,13 @@
+feature_id: F-220
+module_id: M-009
+slug: danh-muc-hang-hoa
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: PortCargoShareController
+  consumers: []
+
+# Cross-cutting: features consumed by multiple modules
+consumed_by_modules: []

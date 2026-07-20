@@ -34,7 +34,7 @@ public class TramRadarCreateRequest {
     private java.util.UUID orgUnitId;
     private BigDecimal chieuCaoThapRadar;
     private BigDecimal tamHieuLucRadar;
-    private Long heThongVtsId;
+    private java.util.UUID heThongVtsId;
     private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
     private String toaDo;
     private java.util.UUID bieuTuongId;

@@ -32,6 +32,14 @@ import {
   UploadOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  textPrimary, textSecondary, textTertiary,
+  statusOperational, statusAttention, actionPrimary,
+  borderDefault,
+  spaceMd, spaceSm,
+  fontSizeSm,
+  fontWeightMedium,
+} from '../../tokens';
 import { benCangCRUD, benCangApproval } from '../../services/cangbenService';
 import type { BenCang } from '../../types/cangben';
 import { APPROVAL_STATUS_MAP } from '../../types/cangben';
@@ -161,7 +169,7 @@ export default function BenCangListPage() {
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [filterApprovalStatus, setFilterApprovalStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<BenCang[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -914,8 +922,6 @@ export default function BenCangListPage() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={search || filterMaBen || filterTenBen || filterTuyenDuongThuy || filterLoaiBen || filterStatus || filterApprovalStatus ? 'Không tìm thấy' : 'Chưa có bến cảng nào'}
-            ctaText="Tạo bến cảng đầu tiên"
-            onCta={() => { createForm.resetFields(); setCreateModalVisible(true); }}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (
@@ -1151,18 +1157,7 @@ export default function BenCangListPage() {
 
           {/* SECTION 4: Thông tin vị trí (GIS) */}
           <Card title="Thông tin vị trí (GIS)" size="small" style={{ marginBottom: 16 }}>
-            <Row gutter={24}>
-              <Col span={12}>
-                <Form.Item label="Vĩ độ" name="viDo">
-                  <InputNumber min={-90} max={90} step={0.000001} precision={6} placeholder="VD: 20.859442" style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item label="Kinh độ" name="kinhDo">
-                  <InputNumber min={-180} max={180} step={0.000001} precision={6} placeholder="VD: 106.681560" style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
-            </Row>
+
             <Row gutter={24}>
               <Col span={12}>
                 <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
@@ -1427,18 +1422,7 @@ export default function BenCangListPage() {
 
           {/* SECTION 4: Thông tin vị trí (GIS) */}
           <Card title="Thông tin vị trí (GIS)" size="small" style={{ marginBottom: 16 }}>
-            <Row gutter={24}>
-              <Col span={12}>
-                <Form.Item label="Vĩ độ" name="viDo">
-                  <InputNumber min={-90} max={90} step={0.000001} precision={6} placeholder="VD: 20.859442" style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item label="Kinh độ" name="kinhDo">
-                  <InputNumber min={-180} max={180} step={0.000001} precision={6} placeholder="VD: 106.681560" style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
-            </Row>
+
             <Row gutter={24}>
               <Col span={12}>
                 <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
@@ -1627,12 +1611,7 @@ export default function BenCangListPage() {
               <Col span={24}>
                 <Card title="Thông tin vị trí (GIS)" size="small">
                   <Descriptions bordered column={2} size="small">
-                    <Descriptions.Item label="Vĩ độ">
-                      {selectedRecord.viDo != null ? selectedRecord.viDo.toFixed(6) : '—'}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Kinh độ">
-                      {selectedRecord.kinhDo != null ? selectedRecord.kinhDo.toFixed(6) : '—'}
-                    </Descriptions.Item>
+
                     <Descriptions.Item label="Loại đối tượng">
                       {selectedRecord.loaiHinhHoc === 'POINT' ? 'Đối tượng điểm'
                         : selectedRecord.loaiHinhHoc === 'LINE' ? 'Đối tượng đường'
@@ -1659,7 +1638,7 @@ export default function BenCangListPage() {
               <Col span={24}>
                 <Card title="Tài liệu đính kèm" size="small">
                   {detailFiles.length === 0 ? (
-                    <span style={{ color: '#bfbfbf' }}>Không có tài liệu đính kèm</span>
+                    <span style={{ color: textTertiary }}>Không có tài liệu đính kèm</span>
                   ) : (
                     <div>
                       {detailFiles.map((f) => (
@@ -1790,11 +1769,11 @@ export default function BenCangListPage() {
         ) : historyRecords.length === 0 ? (
           <EmptyState description="Chưa có thay đổi nào được ghi nhận." />
         ) : (
-          <div style={{ borderLeft: '2px solid #f0f0f0', paddingLeft: 24, marginLeft: 8, marginTop: 16, maxHeight: '60vh', overflowY: 'auto' }}>
+          <div style={{ borderLeft: `1px solid ${borderDefault}`, paddingLeft: 24, marginLeft: 8, marginTop: spaceMd, maxHeight: '60vh', overflowY: 'auto' }}>
             {historyRecords.map((record: any, idx: number) => (
-              <div key={record.id || idx} style={{ position: 'relative', marginBottom: 24, paddingBottom: 12, borderBottom: idx < historyRecords.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
+              <div key={record.id || idx} style={{ position: 'relative', marginBottom: spaceMd + 8, paddingBottom: 12, borderBottom: idx < historyRecords.length - 1 ? `1px solid ${borderDefault}` : 'none' }}>
                 {/* Timeline dot */}
-                <div style={{ position: 'absolute', left: -29, top: 4, width: 12, height: 12, borderRadius: '50%', background: '#1890ff', border: '2px solid #fff', boxShadow: '0 0 0 2px #1890ff' }} />
+                <div style={{ position: 'absolute', left: -29, top: 4, width: 12, height: 12, borderRadius: '50%', background: actionPrimary, border: '2px solid #fff', boxShadow: `0 0 0 2px ${actionPrimary}` }} />
                 
                 {/* Timestamp */}
                 <div style={{ marginBottom: 4 }}>
@@ -1822,7 +1801,7 @@ export default function BenCangListPage() {
                 {/* Old/New value */}
                 {record.oldValue !== undefined && record.oldValue != null && (
                   <div style={{ marginBottom: 2 }}>
-                    <Typography.Text type="secondary" style={{ textDecoration: 'line-through', color: '#ff4d4f' }}>
+                    <Typography.Text type="danger" style={{ textDecoration: 'line-through' }}>
                       cũ: {translateValue(record.fieldName || record.fieldChanged, record.oldValue)}
                     </Typography.Text>
                   </div>
@@ -1830,7 +1809,7 @@ export default function BenCangListPage() {
                 {record.newValue !== undefined && record.newValue != null && (
                   <div>
                     <Typography.Text type="secondary">mới: </Typography.Text>
-                    <Typography.Text style={{ color: '#52c41a', fontWeight: 500 }}>
+                    <Typography.Text style={{ color: statusOperational, fontWeight: fontWeightMedium }}>
                       {translateValue(record.fieldName || record.fieldChanged, record.newValue)}
                     </Typography.Text>
                   </div>
@@ -1838,7 +1817,7 @@ export default function BenCangListPage() {
 
                 {/* Reason */}
                 {record.reason && (
-                  <div style={{ marginTop: 8, padding: 8, background: '#fff2f0', borderRadius: 4 }}>
+                  <div style={{ marginTop: spaceSm, padding: spaceSm, background: `${textTertiary}18`, borderRadius: 4 }}>
                     <Typography.Text type="secondary">Lý do: </Typography.Text>
                     <Typography.Text>{record.reason}</Typography.Text>
                   </div>

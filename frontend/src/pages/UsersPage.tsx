@@ -40,7 +40,7 @@ export default function UsersPage() {
   const [filterRoleId, setFilterRoleId] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [sortField, setSortField] = useState<string | undefined>();
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -175,7 +175,7 @@ export default function UsersPage() {
     const tableData = data?.data || [];
     if (tableData.length === 0) {
       if (search || filterRoleId || filterStatus) return <EmptyState description="Không tìm thấy người dùng nào phù hợp" />;
-      return <EmptyState description="Chưa có người dùng nào" ctaText="Thêm người dùng đầu tiên" onCta={openCreateModal} />;
+      return <EmptyState description="Chưa có người dùng nào" />;
     }
     return <div style={{ overflowX: 'auto' }}><DataTable columns={columns} dataSource={tableData} rowKey="id" rowActions={rowActions} loading={deleteUser.isPending || toggleLock.isPending} scroll={{ x: 1200 }} onSort={handleSort} /><Pagination total={data?.total || 0} current={page} pageSize={pageSize} onChange={handlePageChange} /></div>;
   };

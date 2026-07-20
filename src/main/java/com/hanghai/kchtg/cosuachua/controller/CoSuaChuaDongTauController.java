@@ -38,7 +38,7 @@ public class CoSuaChuaDongTauController {
 
     @PreAuthorize("@auth.check(authentication, 'cosuachua:read')")
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<CoSuaChuaDongTauResponse>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<CoSuaChuaDongTauResponse>> getById(@PathVariable java.util.UUID id) {
         try {
             CoSuaChuaDongTauResponse response = service.getById(id);
             return ResponseEntity.ok(ApiResponse.success("Xem chi tiết thành công", response));
@@ -65,7 +65,7 @@ public class CoSuaChuaDongTauController {
     @PreAuthorize("@auth.check(authentication, 'cosuachua:update')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<CoSuaChuaDongTauResponse>> update(
-            @PathVariable Long id,
+            @PathVariable java.util.UUID id,
             @Valid @RequestBody CoSuaChuaDongTauUpdateRequest request,
             Authentication authentication) {
         try {
@@ -80,7 +80,7 @@ public class CoSuaChuaDongTauController {
 
     @PreAuthorize("@auth.check(authentication, 'cosuachua:delete')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id, Authentication authentication) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable java.util.UUID id, Authentication authentication) {
         try {
             String username = authentication != null ? authentication.getName() : "system";
             service.delete(id, username);
@@ -94,7 +94,7 @@ public class CoSuaChuaDongTauController {
     @PreAuthorize("@auth.check(authentication, 'cosuachua:approvec1')")
     @PostMapping("/{id}/approve/c1")
     public ResponseEntity<ApiResponse<CoSuaChuaDongTauResponse>> approveC1(
-            @PathVariable Long id,
+            @PathVariable java.util.UUID id,
             @Valid @RequestBody PheDuyetRequest request,
             Authentication authentication) {
         try {
@@ -110,7 +110,7 @@ public class CoSuaChuaDongTauController {
     @PreAuthorize("@auth.check(authentication, 'cosuachua:approvec2')")
     @PostMapping("/{id}/approve/c2")
     public ResponseEntity<ApiResponse<CoSuaChuaDongTauResponse>> approveC2(
-            @PathVariable Long id,
+            @PathVariable java.util.UUID id,
             @Valid @RequestBody PheDuyetRequest request,
             Authentication authentication) {
         try {
@@ -125,7 +125,7 @@ public class CoSuaChuaDongTauController {
 
     @PreAuthorize("@auth.check(authentication, 'cosuachua:history')")
     @GetMapping("/{id}/history")
-    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(@PathVariable java.util.UUID id) {
         try {
             List<HistoryEntry> history = service.getHistory(id);
             return ResponseEntity.ok(ApiResponse.success("Lịch sử phê duyệt thành công", history));

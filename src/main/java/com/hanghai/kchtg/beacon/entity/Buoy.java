@@ -36,17 +36,6 @@ public class Buoy extends BaseEntity {
     @Convert(converter = BuoyTypeConverter.class)
     private BuoyType type;
 
-    @NotNull
-    @DecimalMin("-90.0")
-    @DecimalMax("90.0")
-    @Column(nullable = false)
-    private Double latitude;
-
-    @NotNull
-    @DecimalMin("-180.0")
-    @DecimalMax("180.0")
-    @Column(nullable = false)
-    private Double longitude;
 
     @Size(max = 50)
     private String color;

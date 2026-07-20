@@ -57,6 +57,7 @@ export const radiusMd = 8;
 export const radiusLg = 12;
 export const radiusXl = 18;
 export const radiusPill = 999;
+export const radiusTextArea = radiusSm; // TextArea uses tight 4px — pill/round looks wrong on multi-line
 
 // Spacing: tighter small, wider large — creates breathing room
 export const spaceXs = 4;

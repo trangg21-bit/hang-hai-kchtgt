@@ -743,8 +743,6 @@ export default function CauCangListPage() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={search || filterStatus || filterApproval || filterBenCangId ? 'Không tìm thấy' : 'Chưa có cầu cảng nào'}
-            ctaText="Tạo cầu cảng đầu tiên"
-            onCta={() => { createForm.resetFields(); setCreateModalVisible(true); }}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (

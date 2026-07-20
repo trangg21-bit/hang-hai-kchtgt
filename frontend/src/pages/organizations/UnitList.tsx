@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { Typography, Modal, Form, Input, Select, Spin, Button, Space, Dropdown } from 'antd';
+import { Typography, Modal, Form, Input, Select, Spin, Button, Space, Dropdown, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, FileExcelOutlined, SendOutlined, CheckOutlined, CloseOutlined, MoreOutlined, CaretRightOutlined } from '@ant-design/icons';
 import { organizationService } from '../../services/organizationService';
 
@@ -10,7 +10,7 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
-import { statusOperational, statusAttention, statusCritical, statusDraft, actionPrimary, textSecondary, textTertiary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, dataSea1, radiusPill, borderDefault, spaceFormField } from '../../tokens';
+import { statusOperational, statusAttention, statusCritical, statusDraft, actionPrimary, textSecondary, textTertiary, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold, cardStyle, dataSea1, radiusPill, borderDefault, spaceFormField, spaceMd } from '../../tokens';
 import { colors } from '../../theme';
 
 const { confirm } = Modal;
@@ -248,7 +248,7 @@ export default function UnitList() {
         {isLoading && <LoadingSkeleton rows={8} />}
         {isError && <ErrorState message={error?.message || 'Không thể tải danh sách đơn vị'} onRetry={fetchOrgs} />}
         {!isLoading && !isError && allOrgs.length === 0 && (
-          <EmptyState description="Chưa có đơn vị nào" ctaText="Thêm đơn vị đầu tiên" onCta={openCreateModal} />
+          <EmptyState description="Chưa có đơn vị nào" />
         )}
         {!isLoading && !isError && allOrgs.length > 0 && (
           <>
@@ -370,12 +370,18 @@ export default function UnitList() {
                 <Select placeholder="Chọn đơn vị cha" allowClear style={{ borderRadius: radiusPill, height: 40 }} options={allOrgs.filter((o) => !editingOrg || o.id !== editingOrg.id).map((o) => ({ value: o.id, label: o.name }))} />
               </Form.Item>
             )}
-            <Form.Item name="address" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} style={{ marginBottom: spaceFormField }}>
-              <Input placeholder="vd: Hải Phòng" style={{ borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
-            <Form.Item name="detailAddress" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}>
-              <Input placeholder="Số nhà, đường, phường/xã..." style={{ borderRadius: radiusPill, height: 40 }} />
-            </Form.Item>
+            <Row gutter={spaceMd}>
+              <Col span={12}>
+                <Form.Item name="address" {...labelProps('Địa điểm (Tỉnh/Thành phố)')} style={{ marginBottom: spaceFormField }}>
+                  <Input placeholder="vd: Hải Phòng" style={{ borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item name="detailAddress" {...labelProps('Địa điểm chi tiết')} style={{ marginBottom: spaceFormField }}>
+                  <Input placeholder="Số nhà, đường, phường/xã..." style={{ borderRadius: radiusPill, height: 40 }} />
+                </Form.Item>
+              </Col>
+            </Row>
             <Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: spaceFormField }} rules={[{ pattern: /^0\d{9,10}$/, message: 'SĐT không hợp lệ' }]}>
               <Input placeholder="0901234567" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
@@ -384,8 +390,8 @@ export default function UnitList() {
                 <Select style={{ borderRadius: radiusPill, height: 40 }} options={[{ value: 'draft', label: 'Bản nháp' }, { value: 'pending', label: 'Chờ duyệt' }, { value: 'approved', label: 'Đã phê duyệt' }, { value: 'rejected', label: 'Bị từ chối' }]} />
               </Form.Item>
             )}
-            <Form.Item name="description" {...labelProps('Ghi chú')} style={{ marginBottom: 6 }}>
-              <Input.TextArea rows={2} placeholder="Ghi chú thêm..." style={{ borderRadius: 8 }} />
+            <Form.Item name="description" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
+              <Input.TextArea rows={2} placeholder="Ghi chú thêm..." />
             </Form.Item>
           </Form>
         </Spin>

@@ -27,7 +27,7 @@ import {
   CloseCircleOutlined,
   EyeOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   beaconLightCRUD,
   approval,
@@ -47,10 +47,13 @@ import toast from '../../components/ToastNotification';
 import FormField from '../../components/FormField';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import dayjs from 'dayjs';
 import RejectionModal from '../../components/shared/RejectionModal';
 import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import { beaconHistory } from '../../services/beaconService';
 import { organizationService } from '../../services/organizationService';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 export default function BeaconList() {
   const isInIframe = window.self !== window.top;
@@ -61,7 +64,7 @@ export default function BeaconList() {
   const [filterType, setFilterType] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<BeaconLight[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -80,8 +83,34 @@ export default function BeaconList() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [orgTree, setOrgTree] = useState<any[]>([]);
 
+  const [searchParams] = useSearchParams();
+  const isIframeModal = (window.self !== window.top) && searchParams.has('action');
+
+  const action = searchParams.get('action');
+  const id = searchParams.get('id');
+
   useEffect(() => {
-    if (isInIframe) return;
+    if (id && (action === 'detail' || action === 'edit')) {
+      (async () => {
+        try {
+          setIsLoading(true);
+          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          const data = cached || await beaconLightCRUD.findById(id);
+          if (action === 'detail') {
+            openDetailModal(data);
+          } else {
+            openEditModal(data);
+          }
+        } catch (err: any) {
+          message.error(err.message || 'Lỗi khi tải thông tin chi tiết đèn biển');
+        } finally {
+          setIsLoading(false);
+        }
+      })();
+    }
+  }, [action, id]);
+
+  useEffect(() => {
     (async () => {
       try {
         const orgs = await organizationService.getTree();
@@ -170,8 +199,8 @@ export default function BeaconList() {
       dienTichSuDungTram: record.dienTichSuDungTram,
       lightCharacteristic: record.lightCharacteristic,
       range: record.range,
-      lastMaintenanceDate: record.lastMaintenanceDate,
-      nextMaintenanceDate: record.nextMaintenanceDate,
+      lastMaintenanceDate: record.lastMaintenanceDate ? dayjs(record.lastMaintenanceDate) : null,
+      nextMaintenanceDate: record.nextMaintenanceDate ? dayjs(record.nextMaintenanceDate) : null,
       unitId: record.unitId,
       gisLocation: {
         loaiHinhHoc: 'POINT',
@@ -203,8 +232,8 @@ export default function BeaconList() {
       dienTichSuDungTram: record.dienTichSuDungTram,
       lightCharacteristic: record.lightCharacteristic,
       range: record.range,
-      lastMaintenanceDate: record.lastMaintenanceDate,
-      nextMaintenanceDate: record.nextMaintenanceDate,
+      lastMaintenanceDate: record.lastMaintenanceDate ? dayjs(record.lastMaintenanceDate) : null,
+      nextMaintenanceDate: record.nextMaintenanceDate ? dayjs(record.nextMaintenanceDate) : null,
       unitId: record.unitId,
       gisLocation: {
         loaiHinhHoc: 'POINT',
@@ -227,6 +256,14 @@ export default function BeaconList() {
       .catch(() => setHistory([]))
       .finally(() => setHistoryLoading(false));
     setIsModalOpen(true);
+  }, [form]);
+
+  const handleCancel = useCallback(() => {
+    setIsModalOpen(false);
+    form.resetFields();
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
   }, [form]);
 
   const handleSubmit = useCallback(async () => {
@@ -283,7 +320,10 @@ export default function BeaconList() {
           unitId: values.unitId,
           bieuTuongId: gisLocation?.bieuTuongId || undefined,
         };
-        await beaconLightCRUD.update(editingRecord.id, payload);
+        const updated = await beaconLightCRUD.update(editingRecord.id, payload);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[editingRecord.id] = updated;
+        }
         toast.success('Đã cập nhật đèn biển');
       } else {
         const payload: CreateBeaconLightRequest = {
@@ -325,7 +365,7 @@ export default function BeaconList() {
     }
   }, [editingRecord, form, fetchData]);
 
-  useEffect(() => { if (!isInIframe) void fetchData(); }, [fetchData, isInIframe]);
+  useEffect(() => { if (!isIframeModal) void fetchData(); }, [fetchData, isIframeModal]);
 
   const handleDelete = useCallback(
     async (record: BeaconLight) => {
@@ -346,6 +386,7 @@ export default function BeaconList() {
         await approval.submitForApproval(record.id);
         toast.success('Đã gửi duyệt đèn biển');
         fetchData();
+        setIsModalOpen(false);
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : 'Gửi duyệt thất bại');
       }
@@ -360,6 +401,7 @@ export default function BeaconList() {
         await approval.approveL1(record.id, approverId);
         toast.success('Đã phê duyệt cấp 1');
         fetchData();
+        setIsModalOpen(false);
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
       }
@@ -374,6 +416,7 @@ export default function BeaconList() {
         await approval.approveL2(record.id, approverId);
         toast.success('Đã phê duyệt cấp 2');
         fetchData();
+        setIsModalOpen(false);
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
       }
@@ -399,6 +442,7 @@ export default function BeaconList() {
         setRejectModalVisible(false);
         setRejectTarget(null);
         fetchData();
+        setIsModalOpen(false);
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
       }
@@ -411,7 +455,7 @@ export default function BeaconList() {
     {
       title: 'Mã đèn biển',
       dataIndex: 'code',
-      width: 160,
+      width: 140,
       render: (code: string) => <Tag color="cyan">{code}</Tag>,
     },
     {
@@ -422,7 +466,7 @@ export default function BeaconList() {
     {
       title: 'Cấp trạm đèn',
       dataIndex: 'type',
-      width: 160,
+      width: 130,
       render: (type: string) => {
         const m = BEACON_LIGHT_TYPE_MAP[type as keyof typeof BEACON_LIGHT_TYPE_MAP];
         return m ? <Tag color={m.color}>{BEACON_LIGHT_TYPE_OPTIONS.find((o) => o.value === type)?.label || type}</Tag> : <Tag>{type}</Tag>;
@@ -449,14 +493,13 @@ export default function BeaconList() {
     {
       title: 'Trạng thái phê duyệt',
       dataIndex: 'approvalStatus',
-      width: 140,
+      width: 130,
       render: (status: string) => <ApprovalStatusBadge status={status} />,
     },
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 140,
-      fixed: 'right' as const,
+      width: 130,
       render: (_: unknown, record: BeaconLight) => (
         <Space size="small">
           <Tooltip title="Xem chi tiết">
@@ -519,7 +562,7 @@ export default function BeaconList() {
               <Tooltip title="Phê duyệt cấp 2">
                 <Popconfirm
                   title="Phê duyệt cấp 2?"
-                  description="Sau khi phê duyệt, đèn biển sẽ được công bố chính thức."
+                  description="Sau khi phê duyệt, đèn biển sẽ chuyển sang trạng thái đã phê duyệt."
                   okText="Phê duyệt"
                   cancelText="Hủy"
                   onConfirm={() => handleApproveL2(record)}
@@ -561,105 +604,119 @@ export default function BeaconList() {
 
   return (
     <>
-      <Card style={{ marginBottom: 16 }}>
-        <Row gutter={[12, 12]} align="middle" justify="space-between">
-          <Col xs={24} md={16}>
-            <Space wrap>
-              <Input
-                placeholder="Lọc theo tên"
-                allowClear
-                style={{ width: 160 }}
-                value={filterName}
-                onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
-              />
-              <Input
-                placeholder="Lọc theo mã"
-                allowClear
-                style={{ width: 140 }}
-                value={filterCode}
-                onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
-              />
-              <Select
-                placeholder="Loại đèn biển"
-                allowClear
-                style={{ width: 180 }}
-                value={filterType}
-                onChange={(val) => { setFilterType(val); setPage(1); }}
-                options={BEACON_LIGHT_TYPE_OPTIONS}
-              />
-              <Select
-                placeholder="Trạng thái"
-                allowClear
-                style={{ width: 160 }}
-                value={filterStatus}
-                onChange={(val) => { setFilterStatus(val); setPage(1); }}
-                options={Object.entries(BEACON_STATUS_MAP).map(([value, { label }]) => ({ value, label }))}
-              />
-            </Space>
-          </Col>
-          <Col xs={24} md={8} style={{ textAlign: 'right' }}>
-            <Space>
-              <Tooltip title="Tải lại">
-                <Button icon={<ReloadOutlined />} onClick={fetchData} />
-              </Tooltip>
-              <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-                Tạo đèn biển
-              </Button>
-            </Space>
-          </Col>
-        </Row>
-      </Card>
+      {!isIframeModal && (
+        <>
+          <Card style={{ marginBottom: 16 }}>
+            <Row gutter={[12, 12]} align="middle" justify="space-between">
+              <Col xs={24} md={16}>
+                <Space wrap>
+                  <Input
+                    placeholder="Lọc theo tên"
+                    allowClear
+                    style={{ width: 160 }}
+                    value={filterName}
+                    onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
+                  />
+                  <Input
+                    placeholder="Lọc theo mã"
+                    allowClear
+                    style={{ width: 140 }}
+                    value={filterCode}
+                    onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
+                  />
+                  <Select
+                    placeholder="Loại đèn biển"
+                    allowClear
+                    style={{ width: 180 }}
+                    value={filterType}
+                    onChange={(val) => { setFilterType(val); setPage(1); }}
+                    options={BEACON_LIGHT_TYPE_OPTIONS}
+                  />
+                  <Select
+                    placeholder="Trạng thái"
+                    allowClear
+                    style={{ width: 160 }}
+                    value={filterStatus}
+                    onChange={(val) => { setFilterStatus(val); setPage(1); }}
+                    options={Object.entries(BEACON_STATUS_MAP).map(([value, { label }]) => ({ value, label }))}
+                  />
+                </Space>
+              </Col>
+              <Col xs={24} md={8} style={{ textAlign: 'right' }}>
+                <Space>
+                  <Tooltip title="Tải lại">
+                    <Button icon={<ReloadOutlined />} onClick={fetchData} />
+                  </Tooltip>
+                  <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+                    Tạo đèn biển
+                  </Button>
+                </Space>
+              </Col>
+            </Row>
+          </Card>
 
-      <Card>
-        {isLoading && <LoadingSkeleton rows={8} type="table" />}
-        {isError && (
-          <ErrorState
-            message={error?.message || 'Không thể tải danh sách đèn biển'}
-            onRetry={fetchData}
-          />
-        )}
-        {!isLoading && !isError && dataSource.length === 0 && (
-          <EmptyState
-            description={filterName || filterCode || filterType || filterStatus ? 'Không tìm thấy' : 'Chưa có đèn biển nào'}
-            ctaText="Tạo đèn biển đầu tiên"
-            onCta={openCreateModal}
-          />
-        )}
-        {!isLoading && !isError && dataSource.length > 0 && (
-          <DataTable<BeaconLight>
-            columns={columns}
-            dataSource={dataSource}
-            rowKey="id"
-            scroll={{ x: 1400 }}
-            pagination={{
-              current: page,
-              pageSize,
-              total,
-              onChange: (p: number, sz?: number) => {
-                setPage(p);
-                if (sz) setPageSize(sz);
-              },
-              showSizeChanger: true,
-              showTotal: (t: number) => `Tổng ${t} đèn biển`,
-              pageSizeOptions: ['10', '20', '50'],
-            }}
-          />
-        )}
-      </Card>
+          <Card>
+            {isLoading && <LoadingSkeleton rows={8} type="table" />}
+            {isError && (
+              <ErrorState
+                message={error?.message || 'Không thể tải danh sách đèn biển'}
+                onRetry={fetchData}
+              />
+            )}
+            {!isLoading && !isError && dataSource.length === 0 && (
+              <EmptyState
+                description={filterName || filterCode || filterType || filterStatus ? 'Không tìm thấy' : 'Chưa có đèn biển nào'}
+                ctaText="Tạo đèn biển đầu tiên"
+                onCta={openCreateModal}
+              />
+            )}
+            {!isLoading && !isError && dataSource.length > 0 && (
+              <DataTable<BeaconLight>
+                columns={columns}
+                dataSource={dataSource}
+                rowKey="id"
+                scroll={{ x: 'max-content' }}
+                pagination={{
+                  current: page,
+                  pageSize,
+                  total,
+                  onChange: (p: number, sz?: number) => {
+                    setPage(p);
+                    if (sz) setPageSize(sz);
+                  },
+                  showSizeChanger: true,
+                  showTotal: (t: number) => `Tổng ${t} đèn biển`,
+                  pageSizeOptions: ['10', '20', '50'],
+                }}
+              />
+            )}
+          </Card>
+        </>
+      )}
 
       <Modal
-        key={modalKey}
-        title={isDetailMode ? 'Chi tiết đèn biển' : (editingRecord ? 'Chỉnh sửa đèn biển' : 'Thêm đèn biển mới')}
+        title={isIframeModal ? null : (<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isDetailMode ? 'Chi tiết đèn biển' : (editingRecord ? 'Chỉnh sửa đèn biển' : 'Thêm đèn biển mới')}</span>)}
         open={isModalOpen}
-        onOk={isDetailMode ? () => setIsModalOpen(false) : handleSubmit}
-        onCancel={() => setIsModalOpen(false)}
+        onOk={isDetailMode ? handleCancel : handleSubmit}
+        onCancel={handleCancel}
         destroyOnClose
         confirmLoading={submitting}
         okText={isDetailMode ? 'Đóng' : (editingRecord ? 'Cập nhật' : 'Tạo mới')}
         cancelButtonProps={isDetailMode ? { style: { display: 'none' } } : undefined}
         cancelText="Hủy"
-        width={700}
-        mask={{ closable: false }}
+        width={isIframeModal ? '100%' : 700}
+        mask={!isIframeModal}
+        closable={!isIframeModal}
+        style={isIframeModal ? { top: 0, margin: 0, padding: 0, maxWidth: 'none', height: '100vh' } : undefined}
+        styles={isIframeModal ? { body: { padding: '16px 24px', overflowY: 'auto', maxHeight: 'calc(100vh - 110px)' } } : undefined}
+        footer={isIframeModal ? (
+          isDetailMode ? [
+            <Button key="close" type="primary" onClick={handleCancel}>Đóng</Button>
+          ] : [
+            <Button key="cancel" onClick={handleCancel}>Hủy</Button>,
+            <Button key="submit" type="primary" onClick={handleSubmit} loading={submitting}>{editingRecord ? 'Cập nhật' : 'Tạo mới'}</Button>
+          ]
+        ) : undefined}
       >
         {isDetailMode ? (
           // Read-only Descriptions view (like DeKe)

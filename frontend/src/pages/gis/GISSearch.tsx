@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -8,24 +8,21 @@ import {
   Typography,
   Input,
   Select,
-  Table,
   Tag,
   Tooltip,
   Row,
   Col,
   List,
-  Divider,
   InputNumber,
-  DatePicker,
 } from 'antd';
 import {
   SearchOutlined,
+  ReloadOutlined,
   HistoryOutlined,
   DeleteOutlined,
   ClockCircleOutlined,
   EyeOutlined,
 } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { gisSearchService } from '../../services/gisSearchService';
 import type {
@@ -36,9 +33,14 @@ import type {
 import { SEARCH_TYPE_OPTIONS } from '../../types/gisSearch';
 import toast from '../../components/ToastNotification';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import FormField from '../../components/FormField';
-
-const { RangePicker } = DatePicker;
+import EmptyState from '../../components/EmptyState';
+import { ScreenHeader, DataTable } from '../../components/list-view';
+import {
+  spaceMd, spaceFormField, spaceSm, spaceXs,
+  radiusPill, fontSizeMd, fontWeightMedium, fontSizeLg,
+  textTertiary, textSecondary,
+  actionPrimary, borderDefault,
+} from '../../tokens';
 
 const QUERY_TYPE_LABELS: Record<string, string> = {
   TEXT: 'Văn bản',
@@ -46,6 +48,24 @@ const QUERY_TYPE_LABELS: Record<string, string> = {
   RADIUS: 'Bán kính',
   POLYGON: 'Đa giác',
   COORDINATE: 'Tọa độ',
+};
+
+const INPUT_STYLE: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: 40,
+};
+
+const SELECT_STYLE: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: 40,
+  width: '100%',
+};
+
+const BTN_STYLE: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: 40,
+  fontWeight: fontWeightMedium,
+  fontSize: fontSizeMd,
 };
 
 export default function GISSearch() {
@@ -57,6 +77,7 @@ export default function GISSearch() {
   const [durationMs, setDurationMs] = useState(0);
   const [history, setHistory] = useState<SearchHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
     loadHistory();
@@ -96,11 +117,12 @@ export default function GISSearch() {
         radius: values.radius,
         coordinates: values.coordinates,
         layerTypes: values.layerTypes,
-        page: values.page || 0,
-        size: values.size || 20,
+        page: 0,
+        size: 20,
       };
 
       setSearching(true);
+      setHasSearched(true);
       const response = await gisSearchService.search(request);
       setResults(response.results || []);
       setTotalResults(response.totalResults);
@@ -121,11 +143,9 @@ export default function GISSearch() {
     void handleSearch();
   }, [form, handleSearch]);
 
-  const resultColumns: ColumnsType<SearchResultItem> = [
-    {
-      title: 'Đối tượng',
-      dataIndex: 'name',
-      ellipsis: true,
+  // ── Result columns (list-view format) ──
+  const resultColumns = useMemo(() => [
+    { key: 'name', label: 'Đối tượng', dataIndex: 'name',
       render: (text: string, record: SearchResultItem) => (
         <Space>
           <Typography.Text strong>{text}</Typography.Text>
@@ -133,49 +153,26 @@ export default function GISSearch() {
         </Space>
       ),
     },
-    {
-      title: 'Mã',
-      dataIndex: 'code',
-      width: 180,
+    { key: 'code', label: 'Mã', dataIndex: 'code', width: 180,
       render: (code: string) => (
         <Tooltip title={code}>
-          <Tag
-            color="cyan"
-            style={{
-              maxWidth: '100%',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              display: 'inline-block',
-              verticalAlign: 'bottom',
-            }}
-          >
-            {code}
-          </Tag>
-        </Tooltip>
-      ),
+          <Tag color="cyan" style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', verticalAlign: 'bottom' }}>{code}</Tag>
+        </Tooltip>),
     },
-    {
-      title: 'Layer',
-      dataIndex: 'layerType',
-      width: 120,
+    { key: 'layerType', label: 'Layer', dataIndex: 'layerType', width: 120,
       render: (text?: string) => text ? <Tag>{text}</Tag> : '—',
     },
-    {
-      title: 'Khoảng cách',
-      dataIndex: 'distance',
-      width: 120,
+    { key: 'distance', label: 'Khoảng cách', dataIndex: 'distance', width: 120,
       render: (v?: number) => v != null ? `${v.toFixed(1)}m` : '—',
     },
-    {
-      title: 'Thao tác',
-      key: 'actions',
-      width: 100,
+    { key: 'actions', label: 'Thao tác', width: 100, align: 'center' as const,
+      type: 'action' as const,
       render: (_: unknown, record: SearchResultItem) => {
         let path = '';
         if (record.objectType === 'POINT') path = `/gis/points/${record.objectId}`;
         else if (record.objectType === 'LINE') path = `/gis/lines/${record.objectId}`;
         else if (record.objectType === 'POLYGON') path = `/gis/polygons/${record.objectId}`;
-        
+
         return path ? (
           <Tooltip title="Xem chi tiết">
             <Button
@@ -187,144 +184,103 @@ export default function GISSearch() {
         ) : '—';
       },
     },
-  ];
+  ], [navigate]);
 
   return (
     <>
-      <Card style={{ marginBottom: 16 }}>
-        <Typography.Title level={5} style={{ margin: '0 0 16px 0' }}>
-          <SearchOutlined /> Tra cứu GIS
-        </Typography.Title>
+      <ScreenHeader
+        breadcrumb={[
+          { label: 'Trang chủ', path: '/' },
+          { label: 'Quản lý KCHT trên nền bản đồ (GIS)' },
+          { label: 'Tra cứu thông tin KCHT hàng hải trên bản đồ' },
+        ]}
+      />
 
-        <Form form={form} layout="vertical" onFinish={handleSearch} initialValues={{ queryType: 'TEXT', size: 20 }}>
+      <Card style={{ marginBottom: spaceMd }}>
+        <Form form={form} layout="vertical" onFinish={handleSearch} initialValues={{ queryType: 'TEXT' }}>
           <Row gutter={[16, 16]}>
             <Col xs={24} md={6}>
-              <FormField
-                type="select"
-                name="queryType"
-                label="Loại tìm kiếm"
-                required
-                options={SEARCH_TYPE_OPTIONS}
-              />
+              <Form.Item name="queryType" label="Loại tìm kiếm"
+                rules={[{ required: true, message: 'Vui lòng chọn loại' }]}
+                style={{ marginBottom: spaceFormField }}>
+                <Select placeholder="Chọn loại" options={SEARCH_TYPE_OPTIONS} style={SELECT_STYLE} />
+              </Form.Item>
             </Col>
-            <Col xs={24} md={18}>
-              <Form.Item name="query" label="Từ khóa" rules={[{ required: true, message: 'Vui lòng nhập từ khóa' }]}>
+            <Col xs={24} md={6}>
+              <Form.Item name="query" label="Từ khóa"
+                rules={[{ required: true, message: 'Vui lòng nhập từ khóa' }]}
+                style={{ marginBottom: spaceFormField }}>
                 <Input
-                  placeholder="Nhập từ khóa tìm kiếm..."
+                  placeholder="Nhập từ khóa..."
                   allowClear
-                  size="large"
                   onPressEnter={handleSearch}
+                  style={INPUT_STYLE}
                 />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={6}>
+              <Form.Item name="centerLat" label="Vĩ độ tâm"
+                style={{ marginBottom: spaceFormField }}>
+                <InputNumber placeholder="20.85" min={-90} max={90} step={0.0001}
+                  style={{ ...INPUT_STYLE, width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={6}>
+              <Form.Item name="centerLon" label="Kinh độ tâm"
+                style={{ marginBottom: spaceFormField }}>
+                <InputNumber placeholder="106.70" min={-180} max={180} step={0.0001}
+                  style={{ ...INPUT_STYLE, width: '100%' }} />
               </Form.Item>
             </Col>
           </Row>
 
-          {/* Optional location fields */}
           <Row gutter={[16, 16]}>
-            <Col xs={24} md={8}>
-              <FormField
-                type="number"
-                name="centerLat"
-                label="Vĩ độ tâm (centerLat)"
-                min={-90}
-                max={90}
-                step={0.0001}
-                placeholder="20.85"
-                help="Dùng cho LOCATION, RADIUS, COORDINATE"
-              />
-            </Col>
-            <Col xs={24} md={8}>
-              <FormField
-                type="number"
-                name="centerLon"
-                label="Kinh độ tâm (centerLon)"
-                min={-180}
-                max={180}
-                step={0.0001}
-                placeholder="106.70"
-                help="Dùng cho LOCATION, RADIUS, COORDINATE"
-              />
-            </Col>
-            <Col xs={24} md={8}>
-              <FormField
-                type="number"
-                name="radius"
-                label="Bán kính (m)"
-                min={50}
-                max={10000}
-                step={1}
-                placeholder="1000"
-                help="Dùng cho RADIUS, 50m ~ 10km"
-              />
-            </Col>
-          </Row>
-
-          <Row gutter={[16, 16]}>
-            <Col xs={24} md={12}>
-              <FormField
-                type="textarea"
-                name="coordinates"
-                label="Tọa độ / Đa giác (WKT)"
-                placeholder="Dùng cho POLYGON, COORDINATE"
-              />
+            <Col xs={24} md={6}>
+              <Form.Item name="radius" label="Bán kính (m)"
+                style={{ marginBottom: spaceFormField }}>
+                <InputNumber placeholder="1000" min={50} max={10000} step={1}
+                  style={{ ...INPUT_STYLE, width: '100%' }} />
+              </Form.Item>
             </Col>
             <Col xs={24} md={6}>
-              <FormField
-                type="text"
-                name="layerTypes"
-                label="Loại layer"
-                placeholder="POINT,LINE"
-                help="Phân cách bằng dấu phẩy"
-              />
+              <Form.Item name="coordinates" label="Tọa độ / Đa giác (WKT)"
+                style={{ marginBottom: spaceFormField }}>
+                <Input placeholder="Dùng cho POLYGON, COORDINATE" style={INPUT_STYLE} />
+              </Form.Item>
             </Col>
             <Col xs={24} md={6}>
-              <Row style={{ display: 'flex', gap: 16 }}>
-                <Col style={{ flex: 1 }}>
-                  <FormField
-                    type="number"
-                    name="page"
-                    label="Trang"
-                    min={0}
-                    step={1}
-                    defaultValue={0}
-                  />
-                </Col>
-                <Col style={{ flex: 1 }}>
-                  <FormField
-                    type="number"
-                    name="size"
-                    label="Số kết quả"
-                    min={1}
-                    max={100}
-                    step={1}
-                    defaultValue={20}
-                  />
-                </Col>
-              </Row>
+              <Form.Item name="layerTypes" label="Loại layer"
+                style={{ marginBottom: spaceFormField }}>
+                <Input placeholder="POINT,LINE" style={INPUT_STYLE} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={6}>
+              <div style={{ paddingTop: 30 }}>
+                <Space>
+                  <Button icon={<ReloadOutlined />} onClick={() => form.resetFields()}
+                    style={{ color: textSecondary, borderColor: borderDefault, borderRadius: radiusPill, height: 40 }} />
+                  <Button type="primary" htmlType="submit" loading={searching} icon={<SearchOutlined />}
+                    style={{ background: actionPrimary, borderColor: actionPrimary, borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>
+                    Tìm kiếm
+                  </Button>
+                </Space>
+              </div>
             </Col>
           </Row>
-
-          <Form.Item style={{ marginTop: 8 }}>
-            <Space>
-              <Button type="primary" htmlType="submit" loading={searching} icon={<SearchOutlined />} size="large">
-                Tìm kiếm
-              </Button>
-              <Button onClick={() => form.resetFields()} size="large">
-                Đặt lại
-              </Button>
-            </Space>
-          </Form.Item>
         </Form>
       </Card>
 
       {/* Search Results */}
-      {(results.length > 0 || searching) && (
-        <Card style={{ marginBottom: 16 }}>
-          <Row gutter={[12, 12]} align="middle" justify="space-between" style={{ marginBottom: 12 }}>
+      {(results.length > 0 || searching || (hasSearched && !searching)) && (
+        <Card style={{ marginBottom: spaceMd }}>
+          <Row align="middle" justify="space-between" style={{ marginBottom: spaceFormField }}>
             <Col>
-              <Typography.Text strong>Kết quả tìm kiếm</Typography.Text>
-              {!searching && (
-                <Typography.Text type="secondary" style={{ marginLeft: 12 }}>
+              <Typography.Text strong>
+                <SearchOutlined style={{ marginRight: spaceXs }} />
+                Kết quả tìm kiếm
+              </Typography.Text>
+              {!searching && totalResults > 0 && (
+                <Typography.Text type="secondary" style={{ marginLeft: spaceFormField }}>
                   {totalResults} kết quả • {durationMs}ms
                 </Typography.Text>
               )}
@@ -332,13 +288,14 @@ export default function GISSearch() {
           </Row>
           {searching ? (
             <LoadingSkeleton rows={5} type="table" />
+          ) : results.length === 0 ? (
+            <EmptyState description="Không tìm thấy kết quả nào" />
           ) : (
-            <Table<SearchResultItem>
+            <DataTable
               columns={resultColumns}
               dataSource={results}
               rowKey="objectId"
-              pagination={false}
-              scroll={{ y: 300 }}
+              loading={false}
             />
           )}
         </Card>
@@ -346,7 +303,7 @@ export default function GISSearch() {
 
       {/* Search History */}
       <Card>
-        <Row gutter={[12, 12]} align="middle" justify="space-between" style={{ marginBottom: 12 }}>
+        <Row align="middle" justify="space-between" style={{ marginBottom: spaceFormField }}>
           <Col>
             <Space>
               <HistoryOutlined />
@@ -360,6 +317,7 @@ export default function GISSearch() {
               size="small"
               onClick={handleClearHistory}
               disabled={history.length === 0}
+              style={{ borderRadius: radiusPill }}
             >
               Xóa lịch sử
             </Button>
@@ -368,9 +326,7 @@ export default function GISSearch() {
         {loadingHistory ? (
           <LoadingSkeleton rows={4} />
         ) : history.length === 0 ? (
-          <Typography.Text type="secondary" style={{ textAlign: 'center', display: 'block', padding: '20px 0' }}>
-            Chưa có lịch sử tìm kiếm
-          </Typography.Text>
+          <EmptyState description="Chưa có lịch sử tìm kiếm" />
         ) : (
           <List<SearchHistoryItem>
             dataSource={history}
@@ -382,7 +338,7 @@ export default function GISSearch() {
                 onClick={() => handleHistoryClick(item)}
               >
                 <List.Item.Meta
-                  avatar={<ClockCircleOutlined style={{ fontSize: 16, color: '#999', marginTop: 4 }} />}
+                  avatar={<ClockCircleOutlined style={{ fontSize: fontSizeLg, color: textTertiary, marginTop: spaceXs }} />}
                   title={
                     <Space>
                       <Tag>{QUERY_TYPE_LABELS[item.queryType] || item.queryType}</Tag>

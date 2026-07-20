@@ -687,8 +687,6 @@ export default function CangCanListPage() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={search || filterStatus || filterApprovalStatus ? 'Không tìm thấy' : 'Chưa có cảng cạn nào'}
-            ctaText="Tạo cảng cạn đầu tiên"
-            onCta={() => { createForm.resetFields(); setCreateModalVisible(true); }}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (
@@ -1003,15 +1001,14 @@ export default function CangCanListPage() {
               <Col span={16}>
                 <Card title="Thông tin địa lý" size="small" style={{ height: '100%' }}>
                   <Row gutter={[12, 12]}>
-                    <Col span={12}>
-                      <Typography.Text strong>Vĩ độ:</Typography.Text>
-                      <br />
-                      <Typography.Text>{selectedRecord.viDo != null ? selectedRecord.viDo.toFixed(6) : '—'}</Typography.Text>
-                    </Col>
-                    <Col span={12}>
-                      <Typography.Text strong>Kinh độ:</Typography.Text>
-                      <br />
-                      <Typography.Text>{selectedRecord.kinhDo != null ? selectedRecord.kinhDo.toFixed(6) : '—'}</Typography.Text>
+                    <Col span={24}>
+                      <Typography.Text strong>Loại đối tượng:</Typography.Text>{' '}
+                      <Typography.Text>
+                        {selectedRecord.loaiHinhHoc === 'POINT' ? 'Đối tượng điểm'
+                          : selectedRecord.loaiHinhHoc === 'LINE' ? 'Đối tượng đường'
+                            : selectedRecord.loaiHinhHoc === 'POLYGON' ? 'Đối tượng vùng'
+                              : selectedRecord.loaiHinhHoc || 'Đối tượng điểm'}
+                      </Typography.Text>
                     </Col>
                   </Row>
                 </Card>

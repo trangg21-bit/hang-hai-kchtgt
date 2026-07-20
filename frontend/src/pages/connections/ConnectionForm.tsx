@@ -5,6 +5,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { connectionService } from '../../services/connectionService';
 import type { CreateConnectionPayload, UpdateConnectionPayload } from '../../services/connectionService';
 import FormField from '../../components/FormField';
+import { radiusPill, fontSizeMd, borderDefault, textSecondary } from '../../tokens';
 import toast from '../../components/ToastNotification';
 
 const TYPE_OPTIONS = [
@@ -133,7 +134,7 @@ export default function ConnectionForm() {
               <Button type="primary" htmlType="submit" loading={submitting}>
                 {isEdit ? 'Cập nhật' : 'Tạo kết nối'}
               </Button>
-              <Button onClick={() => navigate(-1)}>Hủy</Button>
+              <Button onClick={() => navigate(-1)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>
             </Space>
           </Form.Item>
         </Form>

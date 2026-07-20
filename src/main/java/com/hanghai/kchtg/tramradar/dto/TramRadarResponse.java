@@ -10,7 +10,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TramRadarResponse {
-    private Long id;
+    private java.util.UUID id;
     private String tenTram;
     private String viTri;
     private BigDecimal kinhDo;
@@ -43,6 +43,6 @@ public class TramRadarResponse {
     private BigDecimal chieuCaoThapRadar;
     private BigDecimal tamHieuLucRadar;
 
-    private Long heThongVtsId;
+    private java.util.UUID heThongVtsId;
     private String tenHeThongVts;
 }

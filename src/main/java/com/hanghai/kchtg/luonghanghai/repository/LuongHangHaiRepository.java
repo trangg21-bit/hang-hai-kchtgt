@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface LuongHangHaiRepository extends JpaRepository<LuongHangHai, Long> {
+public interface LuongHangHaiRepository extends JpaRepository<LuongHangHai, java.util.UUID> {
 
     List<LuongHangHai> findByApprovalStatusAndIsDeletedFalse(LuongHangHaiApprovalStatus approvalStatus);
 

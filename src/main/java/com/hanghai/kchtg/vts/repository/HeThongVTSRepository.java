@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface HeThongVTSRepository extends JpaRepository<HeThongVTS, Long> {
+public interface HeThongVTSRepository extends JpaRepository<HeThongVTS, java.util.UUID> {
 
     List<HeThongVTS> findByTrangThaiAndIsDeletedFalse(HeThongVTSApprovalStatus trangThai);
 

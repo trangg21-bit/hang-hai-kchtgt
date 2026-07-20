@@ -58,7 +58,7 @@ export default function ConnectionList() {
   const [filterType, setFilterType] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<Connection[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -272,8 +272,6 @@ export default function ConnectionList() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={search || filterType ? 'Không tìm thấy kết nối' : 'Chưa có kết nối nào'}
-            ctaText="Thêm kết nối đầu tiên"
-            onCta={() => navigate('/connections/create')}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (

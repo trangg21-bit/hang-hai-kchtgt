@@ -56,7 +56,7 @@ export default function RolesPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
 
   const [form] = Form.useForm();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
@@ -226,7 +226,7 @@ export default function RolesPage() {
     if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách vai trò'} onRetry={() => refetch()} />;
     if (roles.length === 0) {
       if (search) return <EmptyState description="Không tìm thấy vai trò nào phù hợp" />;
-      return <EmptyState description="Chưa có vai trò nào" ctaText="Tạo vai trò đầu tiên" onCta={openCreateModal} />;
+      return <EmptyState description="Chưa có vai trò nào" />;
     }
     return (
       <div style={{ overflowX: 'auto' }}>
@@ -266,9 +266,6 @@ export default function RolesPage() {
             <Form.Item name="code" {...labelProps('Mã vai trò')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mã vai trò' }, { pattern: /^[a-zA-Z0-9_]+$/, message: 'Chỉ chứa chữ, số và dấu gạch dưới' }]}>
               <Input placeholder="vd: senior_admin" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
-            <Form.Item name="description" {...labelProps('Mô tả')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mô tả' }]}>
-              <Input.TextArea rows={2} placeholder="Mô tả ngắn gọn về vai trò" style={{ borderRadius: radiusMd }} />
-            </Form.Item>
             <Form.Item
               name="permissions"
               {...labelProps('Phân quyền')}
@@ -300,6 +297,9 @@ export default function RolesPage() {
                   style={{ maxHeight: 320, overflow: 'auto' }}
                 />
               </Card>
+            </Form.Item>
+            <Form.Item name="description" {...labelProps('Mô tả')} style={{ marginBottom: 0 }} rules={[{ required: true, message: 'Vui lòng nhập mô tả' }]}>
+              <Input.TextArea rows={2} placeholder="Mô tả ngắn gọn về vai trò" />
             </Form.Item>
           </Form>
         </Spin>

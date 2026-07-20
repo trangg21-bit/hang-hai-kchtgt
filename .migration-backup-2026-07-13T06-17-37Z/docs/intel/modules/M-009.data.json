@@ -1,0 +1,1328 @@
+{
+  "module_id": "M-009",
+  "module_name": "Lien thong & Tich hop du lieu",
+  "description": "Truc LGSP, NDXP, API (37 chia se + 44 tich hop = 81)",
+  "stack": [
+    "Spring Boot 17+",
+    "MSSQL Server 2022",
+    "ReactJS 18+",
+    "Nginx",
+    "MinIO",
+    "GeoServer"
+  ],
+  "actors": [
+    "A-007",
+    "A-006"
+  ],
+  "features": [
+    {
+      "id": "F-190",
+      "name": "Chia se: KCHTGT Ben cang",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-205, line ~3954",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Ben cang",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Ben cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-191",
+      "name": "Chia se: KCHTGT Cau cang",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-206, line ~3955",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Cau cang",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Cau cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-192",
+      "name": "Chia se: KCHTGT Ben phao",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-207, line ~3956",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Ben phao",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Ben phao thanh cong"
+      ]
+    },
+    {
+      "id": "F-193",
+      "name": "Chia se: KCHTGT Khu trÃ¡nh trÃº bÃ£o",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-208, line ~3957",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Khu trÃ¡nh trÃº bÃ£o",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Khu trÃ¡nh trÃº bÃ£o thanh cong"
+      ]
+    },
+    {
+      "id": "F-194",
+      "name": "Chia se: KCHTGT Khu chuyen tai",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-209, line ~3958",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Khu chuyen tai",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Khu chuyen tai thanh cong"
+      ]
+    },
+    {
+      "id": "F-195",
+      "name": "Chia se: KCHTGT Khu neo dau",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-210, line ~3959",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Khu neo dau",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Khu neo dau thanh cong"
+      ]
+    },
+    {
+      "id": "F-196",
+      "name": "Chia se: KCHTGT Co so sua chua",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-211, line ~3960",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Co so sua chua",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Co so sua chua thanh cong"
+      ]
+    },
+    {
+      "id": "F-197",
+      "name": "Chia se: KCHTGT Den bien",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-212, line ~3961",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Den bien",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Den bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-198",
+      "name": "Chia se: KCHTGT Phao tieu",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-213, line ~3962",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Phao tieu",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Phao tieu thanh cong"
+      ]
+    },
+    {
+      "id": "F-199",
+      "name": "Chia se: KCHTGT He thong VTS",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-214, line ~3963",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT He thong VTS",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT He thong VTS thanh cong"
+      ]
+    },
+    {
+      "id": "F-200",
+      "name": "Chia se: KCHTGT TT dieu hanh VTS",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-215, line ~3964",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT TT dieu hanh VTS",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT TT dieu hanh VTS thanh cong"
+      ]
+    },
+    {
+      "id": "F-201",
+      "name": "Chia se: KCHTGT Tram Radar",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-216, line ~3965",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Tram Radar",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Tram Radar thanh cong"
+      ]
+    },
+    {
+      "id": "F-202",
+      "name": "Chia se: KCHTGT He thong AIS",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-217, line ~3966",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT He thong AIS",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT He thong AIS thanh cong"
+      ]
+    },
+    {
+      "id": "F-203",
+      "name": "Chia se: KCHTGT He thong CCTV",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-218, line ~3967",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT He thong CCTV",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT He thong CCTV thanh cong"
+      ]
+    },
+    {
+      "id": "F-204",
+      "name": "Chia se: KCHTGT He thong SCADA",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-219, line ~3968",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT He thong SCADA",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT He thong SCADA thanh cong"
+      ]
+    },
+    {
+      "id": "F-205",
+      "name": "Chia se: KCHTGT He thong thong tin VHF",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-220, line ~3969",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT He thong thong tin VHF",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT He thong thong tin VHF thanh cong"
+      ]
+    },
+    {
+      "id": "F-206",
+      "name": "Chia se: KCHTGT He thong truyen dan",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-221, line ~3970",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT He thong truyen dan",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT He thong truyen dan thanh cong"
+      ]
+    },
+    {
+      "id": "F-207",
+      "name": "Chia se: KCHTGT He thong phu tro VTS",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-222, line ~3971",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT He thong phu tro VTS",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT He thong phu tro VTS thanh cong"
+      ]
+    },
+    {
+      "id": "F-208",
+      "name": "Chia se: KCHTGT De chan song, de chan cat, ke",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-223, line ~3972",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT De chan song, de chan cat, ke",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT De chan song, de chan cat, ke thanh cong"
+      ]
+    },
+    {
+      "id": "F-209",
+      "name": "Chia se: KCHTGT Luong hang hai",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-224, line ~3973",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Luong hang hai",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Luong hang hai thanh cong"
+      ]
+    },
+    {
+      "id": "F-210",
+      "name": "Chia se: KCHTGT Dai TTDH",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-225, line ~3974",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Dai TTDH",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Dai TTDH thanh cong"
+      ]
+    },
+    {
+      "id": "F-211",
+      "name": "Chia se: KCHTGT Dai Inmarsat",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-226, line ~3975",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Dai Inmarsat",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Dai Inmarsat thanh cong"
+      ]
+    },
+    {
+      "id": "F-212",
+      "name": "Chia se: KCHTGT Dai Cospas-Sarsat",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-227, line ~3976",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Dai Cospas-Sarsat",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Dai Cospas-Sarsat thanh cong"
+      ]
+    },
+    {
+      "id": "F-213",
+      "name": "Chia se: KCHTGT Dai LRIT",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-228, line ~3977",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Dai LRIT",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Dai LRIT thanh cong"
+      ]
+    },
+    {
+      "id": "F-214",
+      "name": "Chia se: KCHTGT Dai TT hang hai HN",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-229, line ~3978",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Dai TT hang hai HN",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Dai TT hang hai HN thanh cong"
+      ]
+    },
+    {
+      "id": "F-215",
+      "name": "Chia se: KCHTGT Cang can",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-230, line ~3979",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Cang can",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Cang can thanh cong"
+      ]
+    },
+    {
+      "id": "F-216",
+      "name": "Chia se: KCHTGT Trang thai hoat dong KCHTGT HH",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-231, line ~3980",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Trang thai hoat dong KCHTGT HH",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Trang thai hoat dong KCHTGT HH thanh cong"
+      ]
+    },
+    {
+      "id": "F-217",
+      "name": "Chia se: KCHTGT Thong tin tai san KCHTGT HH",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-232, line ~3981",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Thong tin tai san KCHTGT HH",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Thong tin tai san KCHTGT HH thanh cong"
+      ]
+    },
+    {
+      "id": "F-218",
+      "name": "Chia se: KCHTGT Thong tin tong hop KCHTGT hang hai",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-233, line ~3982",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Thong tin tong hop KCHTGT hang hai",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Thong tin tong hop KCHTGT hang hai thanh cong"
+      ]
+    },
+    {
+      "id": "F-219",
+      "name": "Chia se: KCHTGT Thong tin bao tri KCHTGT hang hai",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-234, line ~3983",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Thong tin bao tri KCHTGT hang hai",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Thong tin bao tri KCHTGT hang hai thanh cong"
+      ]
+    },
+    {
+      "id": "F-220",
+      "name": "Chia se: KCHTGT Tong hop KCHTGT - cang bien",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-235, line ~3984",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Tong hop KCHTGT - cang bien",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Tong hop KCHTGT - cang bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-221",
+      "name": "Chia se: KCHTGT Tong hop KCHTGT - ben cang, cau cang",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-236, line ~3985",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Tong hop KCHTGT - ben cang, cau cang",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Tong hop KCHTGT - ben cang, cau cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-222",
+      "name": "Chia se: KCHTGT Tong hop KCHTGT - luong hang hai",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-237, line ~3986",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Tong hop KCHTGT - luong hang hai",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Tong hop KCHTGT - luong hang hai thanh cong"
+      ]
+    },
+    {
+      "id": "F-223",
+      "name": "Chia se: KCHTGT Tong hop KCHTGT - khu chuyen tai, khu neo dau",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-238, line ~3987",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Tong hop KCHTGT - khu chuyen tai, khu neo dau",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Tong hop KCHTGT - khu chuyen tai, khu neo dau thanh cong"
+      ]
+    },
+    {
+      "id": "F-224",
+      "name": "Chia se: KCHTGT Tong hop KCHTGT - phao tieu",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-239, line ~3988",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Tong hop KCHTGT - phao tieu",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Tong hop KCHTGT - phao tieu thanh cong"
+      ]
+    },
+    {
+      "id": "F-225",
+      "name": "Chia se: KCHTGT Tong hop KCHTGT - he thong den bien",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-240, line ~3989",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Tong hop KCHTGT - he thong den bien",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Tong hop KCHTGT - he thong den bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-226",
+      "name": "Chia se: KCHTGT Tong hop KCHTGT - he thong de, ke",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-241, line ~3990",
+      "scope": "Truc LGSP, HTTT-DV - Chia se thong tin KCHTGT Tong hop KCHTGT - he thong de, ke",
+      "business_rules": [
+        "Chia se qua Truc LGSP",
+        "RESTful API, JSON, HTTPS, JWT, IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Chia se KCHTGT Tong hop KCHTGT - he thong de, ke thanh cong"
+      ]
+    },
+    {
+      "id": "F-227",
+      "name": "Tich hop: KCHTGT Ben cang",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-242, line ~4076",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Ben cang",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Ben cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-228",
+      "name": "Tich hop: KCHTGT Cau cang",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-243, line ~4077",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Cau cang",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Cau cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-229",
+      "name": "Tich hop: KCHTGT Ben phao",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-244, line ~4078",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Ben phao",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Ben phao thanh cong"
+      ]
+    },
+    {
+      "id": "F-230",
+      "name": "Tich hop: KCHTGT Khu trÃ¡nh trÃº bÃ£o",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-245, line ~4079",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Khu trÃ¡nh trÃº bÃ£o",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Khu trÃ¡nh trÃº bÃ£o thanh cong"
+      ]
+    },
+    {
+      "id": "F-231",
+      "name": "Tich hop: KCHTGT Khu chuyen tai",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-246, line ~4080",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Khu chuyen tai",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Khu chuyen tai thanh cong"
+      ]
+    },
+    {
+      "id": "F-232",
+      "name": "Tich hop: KCHTGT Khu neo dau",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-247, line ~4081",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Khu neo dau",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Khu neo dau thanh cong"
+      ]
+    },
+    {
+      "id": "F-233",
+      "name": "Tich hop: KCHTGT Co so sua chua",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-248, line ~4082",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Co so sua chua",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Co so sua chua thanh cong"
+      ]
+    },
+    {
+      "id": "F-234",
+      "name": "Tich hop: KCHTGT TT Den bien",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-249, line ~4083",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT TT Den bien",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT TT Den bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-235",
+      "name": "Tich hop: KCHTGT TT Phao tieu",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-250, line ~4084",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT TT Phao tieu",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT TT Phao tieu thanh cong"
+      ]
+    },
+    {
+      "id": "F-236",
+      "name": "Tich hop: KCHTGT He thong VTS",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-251, line ~4085",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT He thong VTS",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT He thong VTS thanh cong"
+      ]
+    },
+    {
+      "id": "F-237",
+      "name": "Tich hop: KCHTGT TT dieu hanh VTS",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-252, line ~4086",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT TT dieu hanh VTS",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT TT dieu hanh VTS thanh cong"
+      ]
+    },
+    {
+      "id": "F-238",
+      "name": "Tich hop: KCHTGT Tram Radar",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-253, line ~4087",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Tram Radar",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Tram Radar thanh cong"
+      ]
+    },
+    {
+      "id": "F-239",
+      "name": "Tich hop: KCHTGT He thong AIS",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-254, line ~4088",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT He thong AIS",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT He thong AIS thanh cong"
+      ]
+    },
+    {
+      "id": "F-240",
+      "name": "Tich hop: KCHTGT He thong CCTV",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-255, line ~4089",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT He thong CCTV",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT He thong CCTV thanh cong"
+      ]
+    },
+    {
+      "id": "F-241",
+      "name": "Tich hop: KCHTGT He thong SCADA",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-256, line ~4090",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT He thong SCADA",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT He thong SCADA thanh cong"
+      ]
+    },
+    {
+      "id": "F-242",
+      "name": "Tich hop: KCHTGT He thong thong tin VHF",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-257, line ~4091",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT He thong thong tin VHF",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT He thong thong tin VHF thanh cong"
+      ]
+    },
+    {
+      "id": "F-243",
+      "name": "Tich hop: KCHTGT He thong truyen dan",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-258, line ~4092",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT He thong truyen dan",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT He thong truyen dan thanh cong"
+      ]
+    },
+    {
+      "id": "F-244",
+      "name": "Tich hop: KCHTGT He thong phu tro VTS",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-259, line ~4093",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT He thong phu tro VTS",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT He thong phu tro VTS thanh cong"
+      ]
+    },
+    {
+      "id": "F-245",
+      "name": "Tich hop: KCHTGT De/ke",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-260, line ~4094",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT De/ke",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT De/ke thanh cong"
+      ]
+    },
+    {
+      "id": "F-246",
+      "name": "Tich hop: KCHTGT Luong hang hai",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-261, line ~4095",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Luong hang hai",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Luong hang hai thanh cong"
+      ]
+    },
+    {
+      "id": "F-247",
+      "name": "Tich hop: KCHTGT TT Dai TTDH",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-262, line ~4096",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT TT Dai TTDH",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT TT Dai TTDH thanh cong"
+      ]
+    },
+    {
+      "id": "F-248",
+      "name": "Tich hop: KCHTGT TT Dai Inmarsat",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-263, line ~4097",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT TT Dai Inmarsat",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT TT Dai Inmarsat thanh cong"
+      ]
+    },
+    {
+      "id": "F-249",
+      "name": "Tich hop: KCHTGT TT Dai Cospas-Sarsat",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-264, line ~4098",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT TT Dai Cospas-Sarsat",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT TT Dai Cospas-Sarsat thanh cong"
+      ]
+    },
+    {
+      "id": "F-250",
+      "name": "Tich hop: KCHTGT TT Dai LRIT",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-265, line ~4099",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT TT Dai LRIT",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT TT Dai LRIT thanh cong"
+      ]
+    },
+    {
+      "id": "F-251",
+      "name": "Tich hop: KCHTGT TT Dai TT hang hai HN",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-266, line ~4100",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT TT Dai TT hang hai HN",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT TT Dai TT hang hai HN thanh cong"
+      ]
+    },
+    {
+      "id": "F-252",
+      "name": "Tich hop: KCHTGT Cang can",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-267, line ~4101",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Cang can",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Cang can thanh cong"
+      ]
+    },
+    {
+      "id": "F-253",
+      "name": "Tich hop: KCHTGT Mang hai do dien tu",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-268, line ~4102",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Mang hai do dien tu",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Mang hai do dien tu thanh cong"
+      ]
+    },
+    {
+      "id": "F-254",
+      "name": "Tich hop: KCHTGT Tau bien ra vao cang",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-269, line ~4103",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Tau bien ra vao cang",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Tau bien ra vao cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-255",
+      "name": "Tich hop: KCHTGT Phuong tien thuy noi dia",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-270, line ~4104",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Phuong tien thuy noi dia",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Phuong tien thuy noi dia thanh cong"
+      ]
+    },
+    {
+      "id": "F-256",
+      "name": "Tich hop: KCHTGT Tau bien nuoc ngoai",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-271, line ~4105",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Tau bien nuoc ngoai",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Tau bien nuoc ngoai thanh cong"
+      ]
+    },
+    {
+      "id": "F-257",
+      "name": "Tich hop: KCHTGT Tau bien VN van tai quoc te",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-272, line ~4106",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Tau bien VN van tai quoc te",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Tau bien VN van tai quoc te thanh cong"
+      ]
+    },
+    {
+      "id": "F-258",
+      "name": "Tich hop: KCHTGT Khoi luong hang hoa, hanh khach",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-273, line ~4107",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Khoi luong hang hoa, hanh khach",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Khoi luong hang hoa, hanh khach thanh cong"
+      ]
+    },
+    {
+      "id": "F-259",
+      "name": "Tich hop: KCHTGT Luot tau thuyá»n vao roi cang",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-274, line ~4108",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Luot tau thuyá»n vao roi cang",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Luot tau thuyá»n vao roi cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-260",
+      "name": "Tich hop: KCHTGT Khoi luong hang hoa doi tau VN",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-275, line ~4109",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Khoi luong hang hoa doi tau VN",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Khoi luong hang hoa doi tau VN thanh cong"
+      ]
+    },
+    {
+      "id": "F-261",
+      "name": "Tich hop: KCHTGT Khoi luong hang hoa trong khu quan ly",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-276, line ~4110",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Khoi luong hang hoa trong khu quan ly",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Khoi luong hang hoa trong khu quan ly thanh cong"
+      ]
+    },
+    {
+      "id": "F-262",
+      "name": "Tich hop: KCHTGT Thuyen vien, hoa tieu",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-277, line ~4111",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Thuyen vien, hoa tieu",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Thuyen vien, hoa tieu thanh cong"
+      ]
+    },
+    {
+      "id": "F-263",
+      "name": "Tich hop: KCHTGT Tau bien co quoc tich VN",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-278, line ~4112",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Tau bien co quoc tich VN",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Tau bien co quoc tich VN thanh cong"
+      ]
+    },
+    {
+      "id": "F-264",
+      "name": "Tich hop: KCHTGT Tau thuyá»n lai dhat",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-279, line ~4113",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Tau thuyá»n lai dhat",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Tau thuyá»n lai dhat thanh cong"
+      ]
+    },
+    {
+      "id": "F-265",
+      "name": "Tich hop: KCHTGT Co so dong moi, sua chua",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-280, line ~4114",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Co so dong moi, sua chua",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Co so dong moi, sua chua thanh cong"
+      ]
+    },
+    {
+      "id": "F-266",
+      "name": "Tich hop: KCHTGT Nang luc thong qua ben cang",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-281, line ~4115",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Nang luc thong qua ben cang",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Nang luc thong qua ben cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-267",
+      "name": "Tich hop: KCHTGT Nang luc thong qua cang",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-282, line ~4116",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Nang luc thong qua cang",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Nang luc thong qua cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-268",
+      "name": "Tich hop: KCHTGT Khoi luong hang hoa theo thang",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-283, line ~4117",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Khoi luong hang hoa theo thang",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Khoi luong hang hoa theo thang thanh cong"
+      ]
+    },
+    {
+      "id": "F-269",
+      "name": "Tich hop: KCHTGT Khoi luong hang hoa theo nam",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-284, line ~4118",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT Khoi luong hang hoa theo nam",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT Khoi luong hang hoa theo nam thanh cong"
+      ]
+    },
+    {
+      "id": "F-270",
+      "name": "Tich hop: KCHTGT San luong dich vu van tai",
+      "module": "M-009",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-285, line ~4119",
+      "scope": "Truc LGSP, HTTT-DV - Tich hop du lieu KCHTGT San luong dich vu van tai",
+      "business_rules": [
+        "Tich hop qua API/Truc LGSP",
+        "Kiem tra JWT/IP whitelist"
+      ],
+      "acceptance_criteria": [
+        "Tich hop KCHTGT San luong dich vu van tai thanh cong"
+      ]
+    }
+  ],
+  "cross_references": {
+    "catalog_ref": "docs/intel/catalog.json#M-009",
+    "brief_ref": "docs/intel/doc-brief.md"
+  },
+  "do_d": {
+    "api_contract_complete": false,
+    "entity_schema_defined": false,
+    "business_rules_mapped": true,
+    "test_data_ready": false,
+    "acceptance_criteria_written": true,
+    "priority_assigned": true,
+    "source_traced": true
+  }
+}

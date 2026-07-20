@@ -28,13 +28,15 @@ import {
   deleteInmarsat,
 } from '../../services/station/api';
 import type { CoastalStationInmarsatResponse, CoastalStationInmarsatRequest } from '../../services/station/types';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 export default function SpecialStationList() {
   const [dataSource, setDataSource] = useState<CoastalStationInmarsatResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [searchText, setSearchText] = useState('');
 
   // Form states
@@ -136,7 +138,10 @@ export default function SpecialStationList() {
       };
 
       if (editingItem) {
-        await updateInmarsat(editingItem.id, payload);
+        const res = await updateInmarsat(editingItem.id, payload);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[editingItem.id] = res;
+        }
         message.success('Cập nhật đài Inmarsat thành công!');
       } else {
         await createInmarsat(payload);
@@ -301,7 +306,7 @@ export default function SpecialStationList() {
       />
 
       <Modal
-        title={isReadOnly ? 'Chi tiết đài vệ tinh' : (editingItem ? 'Chỉnh sửa đài vệ tinh' : 'Thêm mới đài vệ tinh Inmarsat')}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isReadOnly ? 'Chi tiết đài vệ tinh' : (editingItem ? 'Chỉnh sửa đài vệ tinh' : 'Thêm mới đài vệ tinh Inmarsat')}</span>}
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}

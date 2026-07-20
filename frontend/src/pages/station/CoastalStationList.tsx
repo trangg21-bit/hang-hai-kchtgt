@@ -28,13 +28,15 @@ import {
   deleteCoastalVTS,
 } from '../../services/station/api';
 import type { CoastalStationVTSResponse, CoastalStationVTSRequest } from '../../services/station/types';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 export default function CoastalStationList() {
   const [dataSource, setDataSource] = useState<CoastalStationVTSResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [searchText, setSearchText] = useState('');
 
   // Form states
@@ -135,7 +137,10 @@ export default function CoastalStationList() {
       };
 
       if (editingItem) {
-        await updateCoastalVTS(editingItem.id, payload);
+        const res = await updateCoastalVTS(editingItem.id, payload);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[editingItem.id] = res;
+        }
         message.success('Cập nhật đài duyên hải thành công!');
       } else {
         await createCoastalVTS(payload);
@@ -280,7 +285,7 @@ export default function CoastalStationList() {
       />
 
       <Modal
-        title={isReadOnly ? 'Chi tiết đài duyên hải' : (editingItem ? 'Chỉnh sửa đài duyên hải' : 'Thêm mới đài duyên hải / VTS')}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isReadOnly ? 'Chi tiết đài duyên hải' : (editingItem ? 'Chỉnh sửa đài duyên hải' : 'Thêm mới đài duyên hải / VTS')}</span>}
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}
