@@ -2,6 +2,14 @@ import { useState, useMemo, useEffect } from 'react';
 import { Card, Input, Space, Tag, Typography, Empty, Tree } from 'antd';
 import { SearchOutlined, FileTextOutlined, FolderOutlined, FolderOpenOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import {
+  actionPrimary,
+  statusOperational,
+  spaceMd, spaceLg, spaceXxl,
+  fontSizeLg,
+  fontWeightBold,
+} from '../../tokens';
+import { colors } from '../../theme';
 
 export interface ReportTemplate {
   code: string;
@@ -114,27 +122,27 @@ export default function ReportList() {
         data.push({
           title: (
             <Space style={{ padding: '4px 0' }}>
-              <Typography.Text strong style={{ fontSize: 15 }}>{info.label}</Typography.Text>
+              <Typography.Text strong style={{ fontSize: fontSizeLg }}>{info.label}</Typography.Text>
               <Tag color={info.color} style={{ margin: 0 }}>{list.length} biểu mẫu</Tag>
             </Space>
           ),
           key: key,
           icon: ({ expanded }: { expanded: boolean }) =>
             expanded ? (
-              <FolderOpenOutlined style={{ color: '#1890ff', fontSize: 16 }} />
+              <FolderOpenOutlined style={{ color: actionPrimary, fontSize: 16 }} />
             ) : (
-              <FolderOutlined style={{ color: '#1890ff', fontSize: 16 }} />
+              <FolderOutlined style={{ color: actionPrimary, fontSize: 16 }} />
             ),
           children: list.map((item) => ({
             title: (
               <Space style={{ padding: '2px 0' }}>
-                <Typography.Text code style={{ color: ['F-151', 'F-152', 'F-153', 'F-154', 'F-155', 'F-156', 'F-157', 'F-159'].includes(item.code) ? 'red' : '#1677ff', fontWeight: 'bold' }}>{item.code}</Typography.Text>
-                <Typography.Text style={{ fontSize: 14, color: ['F-151', 'F-152', 'F-153', 'F-154', 'F-155', 'F-156', 'F-157', 'F-159'].includes(item.code) ? 'red' : undefined }}>{item.name}</Typography.Text>
+                <Typography.Text code style={{ color: ['F-151', 'F-152', 'F-153', 'F-154', 'F-155', 'F-156', 'F-157', 'F-159'].includes(item.code) ? colors.error : actionPrimary, fontWeight: fontWeightBold }}>{item.code}</Typography.Text>
+                <Typography.Text style={{ fontSize: 14, color: ['F-151', 'F-152', 'F-153', 'F-154', 'F-155', 'F-156', 'F-157', 'F-159'].includes(item.code) ? colors.error : undefined }}>{item.name}</Typography.Text>
               </Space>
             ),
             key: item.code,
             isLeaf: true,
-            icon: <FileTextOutlined style={{ color: '#52c41a', fontSize: 15 }} />,
+            icon: <FileTextOutlined style={{ color: statusOperational, fontSize: fontSizeLg }} />,
           })),
         });
       }
@@ -161,10 +169,10 @@ export default function ReportList() {
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       {/* Search Header */}
       <Card>
-        <Typography.Title level={4} style={{ margin: 0, marginBottom: 12 }}>
+        <Typography.Title level={4} style={{ margin: 0, marginBottom: spaceMd }}>
           Danh mục biểu mẫu báo cáo & thống kê
         </Typography.Title>
-        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+        <Typography.Text type="secondary" style={{ display: 'block', marginBottom: spaceMd }}>
           Hệ thống cung cấp 49 mẫu biểu thống kê chuyên ngành theo Thông tư 48, Thông tư 67 và Nghị định 43.
         </Typography.Text>
         <Input
@@ -180,7 +188,7 @@ export default function ReportList() {
 
       {/* Tree list catalog */}
       {treeData.length > 0 ? (
-        <Card styles={{ body: { padding: '16px 24px' } }}>
+        <Card styles={{ body: { padding: `${spaceMd}px ${spaceLg}px` } }}>
           <Tree
             showIcon
             blockNode
@@ -188,11 +196,11 @@ export default function ReportList() {
             onExpand={(keys) => setExpandedKeys(keys)}
             onSelect={onSelect}
             treeData={treeData}
-            style={{ fontSize: 15 }}
+            style={{ fontSize: fontSizeLg }}
           />
         </Card>
       ) : (
-        <Card style={{ textAlign: 'center', padding: '40px 0' }}>
+        <Card style={{ textAlign: 'center', padding: `${spaceXxl}px 0` }}>
           <Empty description="Không tìm thấy biểu mẫu báo cáo nào khớp với từ khóa tìm kiếm" />
         </Card>
       )}
