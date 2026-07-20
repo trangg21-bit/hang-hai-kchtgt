@@ -49,12 +49,12 @@ export default function InventoryList() {
 
   // Pagination states for Plans
   const [planPage, setPlanPage] = useState(1);
-  const [planPageSize, setPlanPageSize] = useState(10);
+  const [planPageSize, setPlanPageSize] = useState(20);
   const [planTotal, setPlanTotal] = useState(0);
 
   // Pagination states for Reports
   const [reportPage, setReportPage] = useState(1);
-  const [reportPageSize, setReportPageSize] = useState(10);
+  const [reportPageSize, setReportPageSize] = useState(20);
   const [reportTotal, setReportTotal] = useState(0);
 
   // Modals

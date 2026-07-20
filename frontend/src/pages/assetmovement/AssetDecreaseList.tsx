@@ -39,7 +39,7 @@ export default function AssetDecreaseList() {
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);

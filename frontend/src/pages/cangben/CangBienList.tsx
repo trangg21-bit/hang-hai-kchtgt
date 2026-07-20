@@ -43,7 +43,7 @@ export default function CangBienList() {
   const [filterTinhThanhPho, setFilterTinhThanhPho] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(20);
   const [dataSource, setDataSource] = useState<CangBien[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);

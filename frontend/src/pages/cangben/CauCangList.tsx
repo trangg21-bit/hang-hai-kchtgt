@@ -47,7 +47,7 @@ export default function CauCangList() {
   const [filterLoai, setFilterLoai] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize] = useState(20);
   const [dataSource, setDataSource] = useState<CauCang[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);

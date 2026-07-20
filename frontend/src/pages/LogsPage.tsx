@@ -49,7 +49,7 @@ export default function LogsPage() {
   const [totalAccessLogs, setTotalAccessLogs] = useState(0);
   const [logsLoading, setLogsLoading] = useState(false);
   const [logPage, setLogPage] = useState(1);
-  const [logPageSize, setLogPageSize] = useState(10);
+  const [logPageSize, setLogPageSize] = useState(20);
   const [searchUsername, setSearchUsername] = useState('');
   const [searchModule, setSearchModule] = useState('');
   const [searchAction, setSearchAction] = useState('');
@@ -512,7 +512,7 @@ export default function LogsPage() {
                   columns={backupColumns}
                   rowKey="id"
                   loading={backupsLoading || restoreSubmitting}
-                  pagination={{ pageSize: 10 }}
+                  pagination={{ pageSize: 20 }}
                 />
               </Card>
             ),
