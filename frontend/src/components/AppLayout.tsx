@@ -46,7 +46,7 @@ const MENU_PERMISSION_MAP: Record<string, string> = {
   '/gis/search': 'data:read',
   '/gis/map': 'data:read',
   '/gis/permits': 'data:read',
-  '/beacons': 'data:read',
+  '/den-bien': 'data:read',
   '/buoys': 'data:read',
   '/history': 'data:read',
   '/cangbien': 'cangbien:read',
@@ -85,7 +85,7 @@ const pageTitles: Record<string, string> = {
   '/gis/search': 'Tra cứu thông tin KCHT hàng hải trên bản đồ',
   '/gis/map': 'Quản lý thông tin KCHT hàng hải trên bản đồ',
   '/gis/permits': 'Giấy phép S-63',
-  '/beacons': 'Đèn biển',
+  '/den-bien': 'Đèn biển',
   '/buoys': 'Phao tiêu',
   '/nhatram/den': 'Nhà trạm đèn biển',
   '/nhatram/phao': 'Nhà trạm phao tiêu',
@@ -161,7 +161,7 @@ export default function AppLayout() {
 
   useEffect(() => {
     if (selectedKey) {
-      if (selectedKey.startsWith('/nhatram') || selectedKey === '/beacons' || selectedKey === '/buoys' || selectedKey === '/history') {
+      if (selectedKey.startsWith('/nhatram') || selectedKey === '/den-bien' || selectedKey === '/buoys' || selectedKey === '/history') {
         setOpenKeys(['beacon']);
       } else if (selectedKey.startsWith('/gis')) {
         setOpenKeys(['gis']);
@@ -216,7 +216,7 @@ export default function AppLayout() {
       icon: <SettingOutlined />,
       label: 'Báo hiệu hàng hải',
       children: [
-        canAccessMenu('/beacons') ? { key: '/beacons', label: 'Đèn biển' } : null,
+        canAccessMenu('/den-bien') ? { key: '/den-bien', label: 'Đèn biển' } : null,
         canAccessMenu('/buoys') ? { key: '/buoys', label: 'Phao tiêu' } : null,
         canAccessMenu('/nhatram/den') ? { key: '/nhatram/den', label: 'Nhà trạm đèn biển' } : null,
         canAccessMenu('/nhatram/phao') ? { key: '/nhatram/phao', label: 'Nhà trạm phao tiêu' } : null,
@@ -310,7 +310,7 @@ export default function AppLayout() {
             { key: '/reports/F-152', label: <span style={{ color: 'red' }}>Biểu 06-N: Thống kê vùng đón trả hoa tiêu, vùng quay trở tàu, ga tránh tàu, khu neo tránh trú bão</span> },
             { key: '/reports/F-153', label: <span style={{ color: 'red' }}>Biểu 05-N: Thống kê khu chuyển tải, khu neo đậu</span> },
             { key: '/reports/F-154', label: <span style={{ color: 'red' }}>Biểu 07-N: Thống kê bến phao, khu neo đậu</span> },
-            { key: '/reports/F-155', label: <span style={{ color: 'red' }}>Biểu 08-N: Thống kê hệ thống đèn biển</span> },
+            { key: '/reports/F-155', label: 'Biểu 08-N: Thống kê hệ thống đèn biển' },
             { key: '/reports/F-156', label: <span style={{ color: 'red' }}>Biểu 09-6T/N: Thống kê về hệ thống phao tiêu, báo hiệu trên luồng</span> },
             { key: '/reports/F-157', label: <span style={{ color: 'red' }}>Biểu 10-6T/N: Thống kê phao tiêu, báo hiệu trên luồng</span> },
             { key: '/reports/F-158', label: 'Biểu 11-N: Thống kê về hệ thống giám sát và điều phối giao thông hàng hải (VTS)' },
@@ -601,18 +601,19 @@ export default function AppLayout() {
           transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
         }
       `}</style>
-      <Layout style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
+        <Layout style={{ minHeight: '100vh', position: 'relative' }}>
       {/* Desktop Sidebar */}
       {!isMobile && !sidebarHidden && (
         <Sider
           width={isMenuFullScreen ? '100%' : layout.sidebarWidth}
           style={{
             borderRight: '1px solid rgba(255,255,255,0.06)',
-            position: 'absolute',
+            position: 'fixed',
             left: 0,
             top: 0,
             bottom: 0,
             height: '100vh',
+            overflowY: 'auto',
             zIndex: isMenuFullScreen ? 9999 : 1000,
             background: isMenuFullScreen ? '#fff' : 'var(--bg-sidebar, #1E2129)',
           }}

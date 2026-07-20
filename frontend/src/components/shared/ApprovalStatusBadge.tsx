@@ -1,6 +1,6 @@
 import { Tag } from 'antd';
 
-export type ApprovalStatusType = 'PROPOSED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
+export type ApprovalStatusType = 'PROPOSED' | 'PENDING' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
 
 interface ApprovalStatusBadgeProps {
   status: ApprovalStatusType | string;
@@ -9,6 +9,7 @@ interface ApprovalStatusBadgeProps {
 
 const STATUS_MAP: Record<ApprovalStatusType | string, { color: string; label: string }> = {
   PROPOSED: { color: 'default', label: 'Chờ duyệt' },
+  PENDING: { color: 'default', label: 'Chờ duyệt' },
   UNDER_REVIEW: { color: 'processing', label: 'Đang xem xét' },
   APPROVED: { color: 'success', label: 'Đã phê duyệt' },
   REJECTED: { color: 'error', label: 'Từ chối' },

@@ -3,9 +3,9 @@
 export type BeaconLightType = 'LIGHTHOUSE' | 'BEACON_LIGHT' | 'BEACON_MARK';
 
 export const BEACON_LIGHT_TYPE_OPTIONS: { value: BeaconLightType; label: string }[] = [
-  { value: 'LIGHTHOUSE', label: 'Hải đăng' },
-  { value: 'BEACON_LIGHT', label: 'Đèn biển' },
-  { value: 'BEACON_MARK', label: 'Tiêu dẫn đường' },
+  { value: 'LIGHTHOUSE', label: 'Cấp I' },
+  { value: 'BEACON_LIGHT', label: 'Cấp II' },
+  { value: 'BEACON_MARK', label: 'Cấp III' },
 ];
 
 export const BEACON_LIGHT_TYPE_MAP: Record<BeaconLightType, { color: string }> = {
@@ -83,6 +83,15 @@ export interface BeaconLight {
   rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
+  hinhDang?: string;
+  ketCau?: string;
+  chieuCaoThapDen?: number;
+  chieuCaoTamSang?: number;
+  tamHieuLucDiaLy?: string;
+  chungLoaiDenDuPhong?: string;
+  nguonCungCapNangLuongChoDen?: string;
+  soLuongNhanSuBoTri?: number;
+  dienTichSuDungTram?: number;
 }
 
 export interface CreateBeaconLightRequest {
@@ -102,6 +111,15 @@ export interface CreateBeaconLightRequest {
   isActive?: boolean;
   action?: 'draft' | 'submit';
   bieuTuongId?: string;
+  hinhDang?: string;
+  ketCau?: string;
+  chieuCaoThapDen?: number;
+  chieuCaoTamSang?: number;
+  tamHieuLucDiaLy?: string;
+  chungLoaiDenDuPhong?: string;
+  nguonCungCapNangLuongChoDen?: string;
+  soLuongNhanSuBoTri?: number;
+  dienTichSuDungTram?: number;
 }
 
 export interface UpdateBeaconLightRequest {
@@ -119,6 +137,15 @@ export interface UpdateBeaconLightRequest {
   nextMaintenanceDate?: string;
   isActive?: boolean;
   bieuTuongId?: string;
+  hinhDang?: string;
+  ketCau?: string;
+  chieuCaoThapDen?: number;
+  chieuCaoTamSang?: number;
+  tamHieuLucDiaLy?: string;
+  chungLoaiDenDuPhong?: string;
+  nguonCungCapNangLuongChoDen?: string;
+  soLuongNhanSuBoTri?: number;
+  dienTichSuDungTram?: number;
 }
 
 export interface Buoy {

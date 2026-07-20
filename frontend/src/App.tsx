@@ -166,9 +166,9 @@ export default function App() {
                 <Route path="/reports/:code" element={<PermissionGuard permission="report:read"><ReportViewer /></PermissionGuard>} />
 
                 {/* Beacon Lights & Buoys — Báo hiệu hàng hải */}
-                <Route path="/beacons" element={<PermissionGuard permission="data:read"><BeaconList /></PermissionGuard>} />
-                <Route path="/beacons/create" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
-                <Route path="/beacons/:id" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
+                <Route path="/den-bien" element={<PermissionGuard permission="data:read"><BeaconList /></PermissionGuard>} />
+                <Route path="/den-bien/tao-moi" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
+                <Route path="/den-bien/:id" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
                 <Route path="/buoys" element={<PermissionGuard permission="data:read"><BuoyList /></PermissionGuard>} />
                 <Route path="/buoys/create" element={<PermissionGuard permission="data:read"><BuoyForm /></PermissionGuard>} />
                 <Route path="/buoys/:id" element={<PermissionGuard permission="data:read"><BuoyForm /></PermissionGuard>} />

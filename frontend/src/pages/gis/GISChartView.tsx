@@ -1248,7 +1248,7 @@ export default function GISChartView() {
         return;
       }
 
-      // Also skip closing if the pathname includes an ID segment (e.g. /beacons/123)
+      // Also skip closing if the pathname includes an ID segment (e.g. /den-bien/123)
       const segments = pathname.split('/').filter(Boolean);
       if (segments.length >= 2) {
         return;
@@ -1260,7 +1260,7 @@ export default function GISChartView() {
         '/luong-hang-hai',
         '/he-thong-vts',
         '/co-so-sua-chua',
-        '/beacons',
+        '/den-bien',
         '/buoys',
         '/cangbien',
         '/bencang',

@@ -45,4 +45,14 @@ public class BeaconLightResponse {
     private String rejectionReason;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    private String hinhDang;
+    private String ketCau;
+    private Double chieuCaoThapDen;
+    private Double chieuCaoTamSang;
+    private String tamHieuLucDiaLy;
+    private String chungLoaiDenDuPhong;
+    private String nguonCungCapNangLuongChoDen;
+    private Integer soLuongNhanSuBoTri;
+    private Double dienTichSuDungTram;
 }

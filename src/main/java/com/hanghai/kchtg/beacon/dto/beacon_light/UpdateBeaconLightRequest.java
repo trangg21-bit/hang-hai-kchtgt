@@ -57,4 +57,14 @@ public class UpdateBeaconLightRequest {
     private LocalDate lastMaintenanceDate;
     private LocalDate nextMaintenanceDate;
     private Boolean isActive;
+
+    private String hinhDang;
+    private String ketCau;
+    private Double chieuCaoThapDen;
+    private Double chieuCaoTamSang;
+    private String tamHieuLucDiaLy;
+    private String chungLoaiDenDuPhong;
+    private String nguonCungCapNangLuongChoDen;
+    private Integer soLuongNhanSuBoTri;
+    private Double dienTichSuDungTram;
 }

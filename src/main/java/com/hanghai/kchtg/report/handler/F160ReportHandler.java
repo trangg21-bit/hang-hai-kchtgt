@@ -57,8 +57,8 @@ public class F160ReportHandler extends BaseReportHandler {
                     d.getThoiDiemDuaVaoKhaiThac() != null
                             ? String.valueOf(d.getThoiDiemDuaVaoKhaiThac().getYear())
                             : "");
-            r.put("Chiều dài", d.getChieuDai() != null ? d.getChieuDai() : 0.0);
-            r.put("Chiều cao", d.getChieuCao() != null ? d.getChieuCao() : 0.0);
+            r.put("Chiều dài", d.getChieuDai() != null ? (d.getChieuDai() % 1 == 0 ? String.valueOf(d.getChieuDai().longValue()) : String.valueOf(d.getChieuDai())) : "0");
+            r.put("Chiều cao", d.getChieuCao() != null ? (d.getChieuCao() % 1 == 0 ? String.valueOf(d.getChieuCao().longValue()) : String.valueOf(d.getChieuCao())) : "0");
             r.put("Cao trình đỉnh", formatCaoTrinhDinh(d.getCaoTrinhDinh()));
             r.put("Hiện trạng của công trình", tinhTrangLabel(d.getTinhTrang()));
             String donVi = "";
@@ -112,8 +112,8 @@ public class F160ReportHandler extends BaseReportHandler {
                     deKe.getThoiDiemDuaVaoKhaiThac() != null
                             ? String.valueOf(deKe.getThoiDiemDuaVaoKhaiThac().getYear())
                             : "");
-            item.put("chieuDai", deKe.getChieuDai() != null ? deKe.getChieuDai() : 0.0);
-            item.put("chieuCao", deKe.getChieuCao() != null ? deKe.getChieuCao() : 0.0);
+            item.put("chieuDai", deKe.getChieuDai() != null ? (deKe.getChieuDai() % 1 == 0 ? String.valueOf(deKe.getChieuDai().longValue()) : String.valueOf(deKe.getChieuDai())) : "0");
+            item.put("chieuCao", deKe.getChieuCao() != null ? (deKe.getChieuCao() % 1 == 0 ? String.valueOf(deKe.getChieuCao().longValue()) : String.valueOf(deKe.getChieuCao())) : "0");
             item.put("caoTrinhDinh", formatCaoTrinhDinh(deKe.getCaoTrinhDinh()));
             item.put("hienTrang", tinhTrangLabel(deKe.getTinhTrang()));
             String donVi = "";

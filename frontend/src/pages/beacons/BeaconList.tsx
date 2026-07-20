@@ -12,6 +12,7 @@ import {
   Popconfirm,
   Modal,
   Form,
+  Descriptions,
   message,
   TreeSelect,
 } from 'antd';
@@ -36,6 +37,7 @@ import {
   BEACON_STATUS_MAP,
   BEACON_LIGHT_TYPE_OPTIONS,
   BEACON_LIGHT_TYPE_MAP,
+  BEACON_HISTORY_ACTION_MAP,
 } from '../../types/beacon';
 import DataTable from '../../components/DataTable';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
@@ -44,6 +46,11 @@ import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
 import FormField from '../../components/FormField';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
+import dayjs from 'dayjs';
+import RejectionModal from '../../components/shared/RejectionModal';
+import HistoryTimeline from '../../components/shared/HistoryTimeline';
+import { beaconHistory } from '../../services/beaconService';
 import { organizationService } from '../../services/organizationService';
 import { colors } from '../../theme';
 import { fontWeightBold, fontSizeLg } from '../../tokens';
@@ -69,6 +76,11 @@ export default function BeaconList() {
   const [editingRecord, setEditingRecord] = useState<BeaconLight | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [isDetailMode, setIsDetailMode] = useState(false);
+  const [modalKey, setModalKey] = useState(0);
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState<BeaconLight | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [orgTree, setOrgTree] = useState<any[]>([]);
 
   const [searchParams] = useSearchParams();
@@ -162,6 +174,7 @@ export default function BeaconList() {
     setEditingRecord(null);
     setIsDetailMode(false);
     form.resetFields();
+    setModalKey(k => k + 1);
     setIsModalOpen(true);
   }, [form]);
 
@@ -175,6 +188,19 @@ export default function BeaconList() {
       lightRange: record.lightRange,
       lightColor: record.lightColor,
       description: record.description,
+      hinhDang: record.hinhDang,
+      ketCau: record.ketCau,
+      chieuCaoThapDen: record.chieuCaoThapDen,
+      chieuCaoTamSang: record.chieuCaoTamSang,
+      tamHieuLucDiaLy: record.tamHieuLucDiaLy,
+      chungLoaiDenDuPhong: record.chungLoaiDenDuPhong,
+      nguonCungCapNangLuongChoDen: record.nguonCungCapNangLuongChoDen,
+      soLuongNhanSuBoTri: record.soLuongNhanSuBoTri,
+      dienTichSuDungTram: record.dienTichSuDungTram,
+      lightCharacteristic: record.lightCharacteristic,
+      range: record.range,
+      lastMaintenanceDate: record.lastMaintenanceDate ? dayjs(record.lastMaintenanceDate) : null,
+      nextMaintenanceDate: record.nextMaintenanceDate ? dayjs(record.nextMaintenanceDate) : null,
       unitId: record.unitId,
       gisLocation: {
         loaiHinhHoc: 'POINT',
@@ -195,6 +221,19 @@ export default function BeaconList() {
       lightRange: record.lightRange,
       lightColor: record.lightColor,
       description: record.description,
+      hinhDang: record.hinhDang,
+      ketCau: record.ketCau,
+      chieuCaoThapDen: record.chieuCaoThapDen,
+      chieuCaoTamSang: record.chieuCaoTamSang,
+      tamHieuLucDiaLy: record.tamHieuLucDiaLy,
+      chungLoaiDenDuPhong: record.chungLoaiDenDuPhong,
+      nguonCungCapNangLuongChoDen: record.nguonCungCapNangLuongChoDen,
+      soLuongNhanSuBoTri: record.soLuongNhanSuBoTri,
+      dienTichSuDungTram: record.dienTichSuDungTram,
+      lightCharacteristic: record.lightCharacteristic,
+      range: record.range,
+      lastMaintenanceDate: record.lastMaintenanceDate ? dayjs(record.lastMaintenanceDate) : null,
+      nextMaintenanceDate: record.nextMaintenanceDate ? dayjs(record.nextMaintenanceDate) : null,
       unitId: record.unitId,
       gisLocation: {
         loaiHinhHoc: 'POINT',
@@ -202,6 +241,20 @@ export default function BeaconList() {
         bieuTuongId: record.bieuTuongId
       }
     });
+    // Load approval history
+    setHistoryLoading(true);
+    beaconHistory.getHistory({
+      type: 'BEACON_LIGHT',
+      entityId: record.id,
+    }).then(res => setHistory((res.data || []).map((h: any) => ({
+      id: h.id,
+      trangThai: BEACON_HISTORY_ACTION_MAP[h.actionType]?.label || h.actionType,
+      nguoiPheDuyet: h.changedBy ? `Người dùng #${h.changedBy}` : 'Hệ thống',
+      ngayPheDuyet: h.changedAt,
+      lyDo: h.reason || '',
+    }))))
+      .catch(() => setHistory([]))
+      .finally(() => setHistoryLoading(false));
     setIsModalOpen(true);
   }, [form]);
 
@@ -251,6 +304,19 @@ export default function BeaconList() {
           lightRange: values.lightRange,
           lightColor: values.lightColor,
           description: values.description,
+          hinhDang: values.hinhDang,
+          ketCau: values.ketCau,
+          chieuCaoThapDen: values.chieuCaoThapDen,
+          chieuCaoTamSang: values.chieuCaoTamSang,
+          tamHieuLucDiaLy: values.tamHieuLucDiaLy,
+          chungLoaiDenDuPhong: values.chungLoaiDenDuPhong,
+          nguonCungCapNangLuongChoDen: values.nguonCungCapNangLuongChoDen,
+          soLuongNhanSuBoTri: values.soLuongNhanSuBoTri,
+          dienTichSuDungTram: values.dienTichSuDungTram,
+          lightCharacteristic: values.lightCharacteristic,
+          range: values.range,
+          lastMaintenanceDate: values.lastMaintenanceDate,
+          nextMaintenanceDate: values.nextMaintenanceDate,
           unitId: values.unitId,
           bieuTuongId: gisLocation?.bieuTuongId || undefined,
         };
@@ -269,6 +335,19 @@ export default function BeaconList() {
           lightRange: values.lightRange,
           lightColor: values.lightColor,
           description: values.description,
+          hinhDang: values.hinhDang,
+          ketCau: values.ketCau,
+          chieuCaoThapDen: values.chieuCaoThapDen,
+          chieuCaoTamSang: values.chieuCaoTamSang,
+          tamHieuLucDiaLy: values.tamHieuLucDiaLy,
+          chungLoaiDenDuPhong: values.chungLoaiDenDuPhong,
+          nguonCungCapNangLuongChoDen: values.nguonCungCapNangLuongChoDen,
+          soLuongNhanSuBoTri: values.soLuongNhanSuBoTri,
+          dienTichSuDungTram: values.dienTichSuDungTram,
+          lightCharacteristic: values.lightCharacteristic,
+          range: values.range,
+          lastMaintenanceDate: values.lastMaintenanceDate,
+          nextMaintenanceDate: values.nextMaintenanceDate,
           unitId: values.unitId,
           bieuTuongId: gisLocation?.bieuTuongId || undefined,
         };
@@ -277,9 +356,7 @@ export default function BeaconList() {
       }
 
       setIsModalOpen(false);
-      if (window.self !== window.top) {
-        window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
-      }
+      setEditingRecord(null);
       void fetchData();
     } catch {
       // validation error
@@ -309,6 +386,7 @@ export default function BeaconList() {
         await approval.submitForApproval(record.id);
         toast.success('Đã gửi duyệt đèn biển');
         fetchData();
+        setIsModalOpen(false);
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : 'Gửi duyệt thất bại');
       }
@@ -323,6 +401,7 @@ export default function BeaconList() {
         await approval.approveL1(record.id, approverId);
         toast.success('Đã phê duyệt cấp 1');
         fetchData();
+        setIsModalOpen(false);
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
       }
@@ -337,6 +416,7 @@ export default function BeaconList() {
         await approval.approveL2(record.id, approverId);
         toast.success('Đã phê duyệt cấp 2');
         fetchData();
+        setIsModalOpen(false);
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
       }
@@ -345,38 +425,48 @@ export default function BeaconList() {
   );
 
   const handleReject = useCallback(
-    async (record: BeaconLight) => {
+    (record: BeaconLight) => {
+      setRejectTarget(record);
+      setRejectModalVisible(true);
+    },
+    [],
+  );
+
+  const handleRejectConfirm = useCallback(
+    async (reason: string) => {
+      if (!rejectTarget) return;
       const approverId = localStorage.getItem('user_id') || '1';
-      const reason = window.prompt('Lý do từ chối:', '');
-      if (reason === null) return; // user cancelled
       try {
-        await approval.reject(record.id, reason, approverId);
+        await approval.reject(rejectTarget.id, reason, approverId);
         toast.success('Đã từ chối');
+        setRejectModalVisible(false);
+        setRejectTarget(null);
         fetchData();
+        setIsModalOpen(false);
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
       }
     },
-    [fetchData],
+    [rejectTarget, fetchData],
   );
 
   const columns = [
     { title: '#', width: 60, render: (_: unknown, __: BeaconLight, idx: number) => (page - 1) * pageSize + idx + 1 },
     {
-      title: 'Mã',
+      title: 'Mã đèn biển',
       dataIndex: 'code',
-      width: 160,
+      width: 140,
       render: (code: string) => <Tag color="cyan">{code}</Tag>,
     },
     {
-      title: 'Tên',
+      title: 'Tên đèn biển',
       dataIndex: 'name',
       ellipsis: true,
     },
     {
-      title: 'Loại',
+      title: 'Cấp trạm đèn',
       dataIndex: 'type',
-      width: 160,
+      width: 130,
       render: (type: string) => {
         const m = BEACON_LIGHT_TYPE_MAP[type as keyof typeof BEACON_LIGHT_TYPE_MAP];
         return m ? <Tag color={m.color}>{BEACON_LIGHT_TYPE_OPTIONS.find((o) => o.value === type)?.label || type}</Tag> : <Tag>{type}</Tag>;
@@ -395,25 +485,21 @@ export default function BeaconList() {
       render: (v: number) => v?.toFixed(4) || '—',
     },
     {
-      title: 'Bán kính (km)',
+      title: 'Tầm hiệu lực ánh sáng',
       dataIndex: 'lightRange',
       width: 110,
       render: (v: number) => v?.toFixed(1) || '—',
     },
     {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      width: 140,
-      render: (status: string) => {
-        const s = BEACON_STATUS_MAP[status as keyof typeof BEACON_STATUS_MAP] || { color: 'default', label: status };
-        return <Tag color={s.color}>{s.label}</Tag>;
-      },
+      title: 'Trạng thái phê duyệt',
+      dataIndex: 'approvalStatus',
+      width: 130,
+      render: (status: string) => <ApprovalStatusBadge status={status} />,
     },
     {
       title: 'Thao tác',
       key: 'actions',
-      width: 140,
-      fixed: 'right' as const,
+      width: 130,
       render: (_: unknown, record: BeaconLight) => (
         <Space size="small">
           <Tooltip title="Xem chi tiết">
@@ -476,7 +562,7 @@ export default function BeaconList() {
               <Tooltip title="Phê duyệt cấp 2">
                 <Popconfirm
                   title="Phê duyệt cấp 2?"
-                  description="Sau khi phê duyệt, đèn biển sẽ được công bố chính thức."
+                  description="Sau khi phê duyệt, đèn biển sẽ chuyển sang trạng thái đã phê duyệt."
                   okText="Phê duyệt"
                   cancelText="Hủy"
                   onConfirm={() => handleApproveL2(record)}
@@ -589,7 +675,7 @@ export default function BeaconList() {
                 columns={columns}
                 dataSource={dataSource}
                 rowKey="id"
-                scroll={{ x: 1400 }}
+                scroll={{ x: 'max-content' }}
                 pagination={{
                   current: page,
                   pageSize,
@@ -632,87 +718,324 @@ export default function BeaconList() {
           ]
         ) : undefined}
       >
-        <Form form={form} layout="vertical" disabled={isDetailMode} style={{ marginTop: 16, maxHeight: '60vh', overflowY: 'auto', paddingRight: 12 }}>
-          <FormField
-            type="text"
-            name="code"
-            label="Mã đèn biển"
-            required
-            disabled={!!editingRecord}
-            placeholder="VD: LH-HAIPHONG-001"
-            help="Mã định danh duy nhất cho đèn biển"
-          />
+        {isDetailMode ? (
+          // Read-only Descriptions view (like DeKe)
+          editingRecord && (<>
+            <Descriptions column={2} bordered size="small" style={{ marginTop: 16 }}>
+              <Descriptions.Item label="Mã đèn biển">{editingRecord.code}</Descriptions.Item>
+              <Descriptions.Item label="Tên đèn biển">{editingRecord.name}</Descriptions.Item>
+              <Descriptions.Item label="Cấp trạm đèn">
+                {BEACON_LIGHT_TYPE_OPTIONS.find(o => o.value === editingRecord.type)?.label || editingRecord.type}
+              </Descriptions.Item>
+              <Descriptions.Item label="Đơn vị quản lý">{editingRecord.unitName || editingRecord.unitId || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Kinh độ">{editingRecord.longitude?.toFixed(6) || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Vĩ độ">{editingRecord.latitude?.toFixed(6) || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Tầm hiệu lực ánh sáng">{editingRecord.lightRange != null ? `${editingRecord.lightRange} hải lý` : '—'}</Descriptions.Item>
+              <Descriptions.Item label="Màu sắc bên ngoài của tháp đèn">{editingRecord.lightColor || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Địa điểm đặt trạm đèn" span={2}>{editingRecord.description || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Hình dáng">{editingRecord.hinhDang || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Kết cấu">{editingRecord.ketCau || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Chiều cao tháp đèn (m)">{editingRecord.chieuCaoThapDen != null ? editingRecord.chieuCaoThapDen : '—'}</Descriptions.Item>
+              <Descriptions.Item label="Chiều cao tâm sáng (m)">{editingRecord.chieuCaoTamSang != null ? editingRecord.chieuCaoTamSang : '—'}</Descriptions.Item>
+              <Descriptions.Item label="Tầm hiệu lực địa lý">{editingRecord.tamHieuLucDiaLy || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Đèn dự phòng">{editingRecord.chungLoaiDenDuPhong || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Nguồn cung cấp năng lượng" span={2}>{editingRecord.nguonCungCapNangLuongChoDen || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Nhân sự bố trí (người)">{editingRecord.soLuongNhanSuBoTri != null ? editingRecord.soLuongNhanSuBoTri : '—'}</Descriptions.Item>
+              <Descriptions.Item label="Diện tích sử dụng trạm (m²)">{editingRecord.dienTichSuDungTram != null ? editingRecord.dienTichSuDungTram : '—'}</Descriptions.Item>
+              <Descriptions.Item label="Đèn chính">{editingRecord.lightCharacteristic || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Diện tích (m²)">{editingRecord.range != null ? editingRecord.range : '—'}</Descriptions.Item>
+              <Descriptions.Item label="Thời điểm sửa chữa gần nhất">{editingRecord.lastMaintenanceDate || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Thời điểm đưa vào sử dụng">{editingRecord.nextMaintenanceDate || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Trạng thái phê duyệt">
+                <ApprovalStatusBadge status={editingRecord.approvalStatus} />
+              </Descriptions.Item>
+              <Descriptions.Item label="Trạng thái vận hành">
+                {BEACON_STATUS_MAP[editingRecord.status as keyof typeof BEACON_STATUS_MAP]?.label || editingRecord.status}
+              </Descriptions.Item>
+            </Descriptions>
+            {/* Approval Action Buttons */}
+            <Space wrap style={{ marginTop: 16, marginBottom: 16 }}>
+              {editingRecord.status === 'DRAFT' && (
+                <Popconfirm
+                  title="Gửi duyệt đèn biển?"
+                  okText="Gửi"
+                  cancelText="Hủy"
+                  onConfirm={() => { handleSubmitApproval(editingRecord); }}
+                >
+                  <Button type="primary" icon={<SendOutlined />}>Gửi duyệt</Button>
+                </Popconfirm>
+              )}
+              {editingRecord.status === 'PENDING_APPROVAL' && (
+                <>
+                  <Popconfirm
+                    title="Phê duyệt cấp 1?"
+                    okText="Phê duyệt"
+                    cancelText="Hủy"
+                    onConfirm={() => { handleApproveL1(editingRecord); }}
+                  >
+                    <Button type="primary" style={{ background: '#52c41a' }} icon={<CheckCircleOutlined />}>Phê duyệt L1</Button>
+                  </Popconfirm>
+                  <Button danger icon={<CloseCircleOutlined />} onClick={() => handleReject(editingRecord)}>Từ chối</Button>
+                </>
+              )}
+              {editingRecord.status === 'APPROVED_L1' && (
+                <>
+                  <Popconfirm
+                    title="Phê duyệt cấp 2?"
+                    okText="Phê duyệt"
+                    cancelText="Hủy"
+                    onConfirm={() => { handleApproveL2(editingRecord); }}
+                  >
+                    <Button type="primary" style={{ background: '#1890ff' }} icon={<CheckCircleOutlined />}>Phê duyệt L2</Button>
+                  </Popconfirm>
+                  <Button danger icon={<CloseCircleOutlined />} onClick={() => handleReject(editingRecord)}>Từ chối</Button>
+                </>
+              )}
+              {editingRecord.status === 'DRAFT' && (
+                <Popconfirm
+                  title={`Xóa đèn biển "${editingRecord.name}"?`}
+                  okText="Xóa"
+                  okType="danger"
+                  cancelText="Hủy"
+                  onConfirm={() => { handleDelete(editingRecord); }}
+                >
+                  <Button danger icon={<DeleteOutlined />}>Xóa</Button>
+                </Popconfirm>
+              )}
+            </Space>
 
-          <FormField
-            type="text"
-            name="name"
-            label="Tên đèn biển"
-            required
-            placeholder="VD: Đèn biển Hòn Dấu"
-          />
-
-          <FormField
-            type="select"
-            name="type"
-            label="Loại đèn biển"
-            required
-            options={BEACON_LIGHT_TYPE_OPTIONS}
-          />
-
-          <Form.Item
-            name="unitId"
-            label="Đơn vị quản lý"
-            rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
-          >
-            <TreeSelect
-              placeholder="Chọn đơn vị quản lý"
-              treeData={orgTree}
-              showSearch
-              treeDefaultExpandAll
-              filterTreeNode={(input, node) =>
-                (node?.title as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
-              }
-              allowClear
+            {/* Approval History Timeline */}
+            <Card size="small" title="Lịch sử phê duyệt" style={{ marginTop: 16 }}>
+              <HistoryTimeline
+                history={history}
+                loading={historyLoading}
+                onRetry={() => {
+                  if (!editingRecord) return;
+                  setHistoryLoading(true);
+                  beaconHistory.getHistory({ type: 'BEACON_LIGHT', entityId: editingRecord.id })
+                    .then(res => setHistory((res.data || []).map((h: any) => ({
+                      id: h.id,
+                      trangThai: BEACON_HISTORY_ACTION_MAP[h.actionType]?.label || h.actionType,
+                      nguoiPheDuyet: h.changedBy ? `Người dùng #${h.changedBy}` : 'Hệ thống',
+                      ngayPheDuyet: h.changedAt,
+                      lyDo: h.reason || '',
+                    }))))
+                    .catch(() => setHistory([]))
+                    .finally(() => setHistoryLoading(false));
+                }}
+              />
+            </Card>
+          </>)
+        ) : (
+          // Editable Form (create/edit)
+          <Form form={form} layout="vertical" style={{ marginTop: 16, maxHeight: '60vh', overflowY: 'auto', paddingRight: 12 }}>
+            <FormField
+              type="text"
+              name="code"
+              label="Mã đèn biển"
+              required
+              disabled={!!editingRecord}
+              placeholder="VD: LH-HAIPHONG-001"
+              help="Mã định danh duy nhất cho đèn biển"
             />
-          </Form.Item>
 
-          <Form.Item name="gisLocation">
-            <GisLocationSelector defaultGeometryType="POINT" />
-          </Form.Item>
+            <FormField
+              type="text"
+              name="name"
+              label="Tên đèn biển"
+              required
+              placeholder="VD: Đèn biển Hòn Dấu"
+            />
 
-          <Row gutter={16}>
-            <Col span={12}>
-              <FormField
-                type="number"
-                name="lightRange"
-                label="Bán kính chiếu sáng (Hải lý)"
-                required
-                min={0.01}
-                max={60}
-                step={0.01}
-                placeholder="VD: 15"
-                help="Từ 0.01 đến 60 hải lý"
+            <FormField
+              type="select"
+              name="type"
+              label="Cấp trạm đèn"
+              required
+              options={BEACON_LIGHT_TYPE_OPTIONS}
+            />
+
+            <Form.Item
+              name="unitId"
+              label="Đơn vị quản lý"
+              rules={[{ required: true, message: 'Vui lòng chọn đơn vị quản lý' }]}
+            >
+              <TreeSelect
+                placeholder="Chọn đơn vị quản lý"
+                treeData={orgTree}
+                showSearch
+                treeDefaultExpandAll
+                filterTreeNode={(input, node) =>
+                  (node?.title as string)?.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                }
+                allowClear
               />
-            </Col>
-            <Col span={12}>
-              <FormField
-                type="text"
-                name="lightColor"
-                label="Màu sắc ánh sáng"
-                required
-                placeholder="VD: Trắng, Đỏ chớp"
-              />
-            </Col>
-          </Row>
+            </Form.Item>
 
-          <FormField
-            type="textarea"
-            name="description"
-            label="Mô tả"
-            placeholder="Mô tả về đặc tính đèn biển..."
-          />
-        </Form>
+            <Form.Item name="gisLocation">
+              <GisLocationSelector defaultGeometryType="POINT" />
+            </Form.Item>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <FormField
+                  type="number"
+                  name="lightRange"
+                  label="Tầm hiệu lực ánh sáng"
+                  required
+                  min={0.01}
+                  max={60}
+                  step={0.01}
+                  placeholder="VD: 15"
+                  help="Từ 0.01 đến 60 hải lý"
+                />
+              </Col>
+              <Col span={12}>
+                <FormField
+                  type="text"
+                  name="lightColor"
+                  label="Màu sắc bên ngoài của tháp đèn"
+                  required
+                  placeholder="VD: Trắng, Đỏ chớp"
+                />
+              </Col>
+            </Row>
+
+            <FormField
+              type="textarea"
+              name="description"
+              label="Địa điểm đặt trạm đèn"
+              placeholder="Mô tả về đặc tính đèn biển..."
+            />
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <FormField
+                  type="text"
+                  name="hinhDang"
+                  label="Hình dáng"
+                  placeholder="VD: Hình trụ tròn"
+                />
+              </Col>
+              <Col span={12}>
+                <FormField
+                  type="number"
+                  name="chieuCaoThapDen"
+                  label="Chiều cao tháp đèn (m)"
+                  min={0}
+                  step={0.01}
+                  placeholder="VD: 25.5"
+                />
+              </Col>
+            </Row>
+
+            <FormField
+              type="textarea"
+              name="ketCau"
+              label="Kết cấu"
+              placeholder="VD: Bê tông cốt thép..."
+            />
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <FormField
+                  type="number"
+                  name="chieuCaoTamSang"
+                  label="Chiều cao tâm sáng (m)"
+                  min={0}
+                  step={0.01}
+                  placeholder="VD: 20"
+                />
+              </Col>
+              <Col span={12}>
+                <FormField
+                  type="text"
+                  name="tamHieuLucDiaLy"
+                  label="Tầm hiệu lực địa lý"
+                  placeholder="VD: 15 hải lý"
+                />
+              </Col>
+            </Row>
+
+            <FormField
+              type="text"
+              name="chungLoaiDenDuPhong"
+              label="Đèn dự phòng"
+              placeholder="VD: LED 200W"
+            />
+
+            <FormField
+              type="text"
+              name="nguonCungCapNangLuongChoDen"
+              label="Nguồn cung cấp năng lượng cho đèn"
+              placeholder="VD: Pin mặt trời, điện lưới..."
+            />
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <FormField
+                  type="number"
+                  name="soLuongNhanSuBoTri"
+                  label="Nhân sự bố trí (người)"
+                  min={0}
+                  max={99999}
+                  step={1}
+                  placeholder="VD: 3"
+                />
+              </Col>
+              <Col span={12}>
+                <FormField
+                  type="number"
+                  name="dienTichSuDungTram"
+                  label="Diện tích sử dụng trạm (m²)"
+                  min={0}
+                  step={0.01}
+                  placeholder="VD: 150.5"
+                />
+              </Col>
+            </Row>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <FormField
+                  type="text"
+                  name="lightCharacteristic"
+                  label="Đèn chính"
+                  placeholder="VD: VMS.RB-400"
+                />
+              </Col>
+              <Col span={12}>
+                <FormField
+                  type="number"
+                  name="range"
+                  label="Diện tích (m²)"
+                  min={0}
+                  step={0.01}
+                  placeholder="VD: 4466.7"
+                />
+              </Col>
+            </Row>
+
+            <FormField
+              type="date"
+              name="lastMaintenanceDate"
+              label="Thời điểm sửa chữa gần nhất"
+            />
+
+            <FormField
+              type="date"
+              name="nextMaintenanceDate"
+              label="Thời điểm đưa vào sử dụng"
+            />
+          </Form>
+        )}
       </Modal>
+      <RejectionModal
+        visible={rejectModalVisible}
+        loading={false}
+        onConfirm={handleRejectConfirm}
+        onCancel={() => { setRejectModalVisible(false); setRejectTarget(null); }}
+      />
     </>
   );
 }

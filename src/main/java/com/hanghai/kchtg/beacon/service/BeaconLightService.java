@@ -81,6 +81,8 @@ public class BeaconLightService {
                 .code(request.getCode())
                 .name(request.getName())
                 .type(request.getType())
+                .latitude(request.getLatitude())
+                .longitude(request.getLongitude())
                 .lightRange(request.getLightRange())
                 .lightColor(request.getLightColor())
                 .lightCharacteristic(request.getLightCharacteristic())
@@ -90,7 +92,17 @@ public class BeaconLightService {
                 .lastMaintenanceDate(request.getLastMaintenanceDate())
                 .nextMaintenanceDate(request.getNextMaintenanceDate())
                 .isActive(request.getIsActive())
-                .status(BeaconStatus.DRAFT)
+                .hinhDang(request.getHinhDang())
+                .ketCau(request.getKetCau())
+                .chieuCaoThapDen(request.getChieuCaoThapDen())
+                .chieuCaoTamSang(request.getChieuCaoTamSang())
+                .tamHieuLucDiaLy(request.getTamHieuLucDiaLy())
+                .chungLoaiDenDuPhong(request.getChungLoaiDenDuPhong())
+                .nguonCungCapNangLuongChoDen(request.getNguonCungCapNangLuongChoDen())
+                .soLuongNhanSuBoTri(request.getSoLuongNhanSuBoTri())
+                .dienTichSuDungTram(request.getDienTichSuDungTram())
+                .status(BeaconStatus.PENDING_APPROVAL)
+                .approvalLevel(1)
                 .approvalStatus(BeaconApprovalStatus.PENDING)
                 .build();
 
@@ -195,6 +207,16 @@ public class BeaconLightService {
             entity.setNextMaintenanceDate(request.getNextMaintenanceDate());
         }
         if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
+
+        if (request.getHinhDang() != null) entity.setHinhDang(request.getHinhDang());
+        if (request.getKetCau() != null) entity.setKetCau(request.getKetCau());
+        if (request.getChieuCaoThapDen() != null) entity.setChieuCaoThapDen(request.getChieuCaoThapDen());
+        if (request.getChieuCaoTamSang() != null) entity.setChieuCaoTamSang(request.getChieuCaoTamSang());
+        if (request.getTamHieuLucDiaLy() != null) entity.setTamHieuLucDiaLy(request.getTamHieuLucDiaLy());
+        if (request.getChungLoaiDenDuPhong() != null) entity.setChungLoaiDenDuPhong(request.getChungLoaiDenDuPhong());
+        if (request.getNguonCungCapNangLuongChoDen() != null) entity.setNguonCungCapNangLuongChoDen(request.getNguonCungCapNangLuongChoDen());
+        if (request.getSoLuongNhanSuBoTri() != null) entity.setSoLuongNhanSuBoTri(request.getSoLuongNhanSuBoTri());
+        if (request.getDienTichSuDungTram() != null) entity.setDienTichSuDungTram(request.getDienTichSuDungTram());
 
         // Status revert logic for approved states
         if (isApprovedStatus(entity.getStatus())) {
@@ -379,10 +401,6 @@ public class BeaconLightService {
             throw new IllegalArgumentException(
                     "Ngày bảo trì gần nhất không được lớn hơn ngày hiện tại");
         }
-        if (last != null && next != null && next.isBefore(last)) {
-            throw new IllegalArgumentException(
-                    "Ngày bảo trì kế tiếp không được nhỏ hơn ngày bảo trì gần nhất");
-        }
     }
 
     private void logHistory(BeaconLight entity,
@@ -451,6 +469,15 @@ public class BeaconLightService {
                 .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())
                 .rejectionReason(entity.getRejectionReason())
+                .hinhDang(entity.getHinhDang())
+                .ketCau(entity.getKetCau())
+                .chieuCaoThapDen(entity.getChieuCaoThapDen())
+                .chieuCaoTamSang(entity.getChieuCaoTamSang())
+                .tamHieuLucDiaLy(entity.getTamHieuLucDiaLy())
+                .chungLoaiDenDuPhong(entity.getChungLoaiDenDuPhong())
+                .nguonCungCapNangLuongChoDen(entity.getNguonCungCapNangLuongChoDen())
+                .soLuongNhanSuBoTri(entity.getSoLuongNhanSuBoTri())
+                .dienTichSuDungTram(entity.getDienTichSuDungTram())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

@@ -199,6 +199,23 @@ export default function ReportViewer() {
     }
   }, [reportCode, selectedOrgId, selectedBcNoiDung, selectedYear, nguonDuLieu, dateRange, selectedNhomCangBien]);
 
+  // Inject CSS for report section header rows
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .report-section-row td {
+        background-color: #D9E2F3 !important;
+        font-weight: bold !important;
+        font-size: 13px !important;
+      }
+      .report-section-row td:first-child {
+        text-align: center !important;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
+  }, []);
+
   const handleExport = async (format: 'EXCEL' | 'PDF') => {
     setLoadingExport(format);
     try {
@@ -482,7 +499,7 @@ export default function ReportViewer() {
 
           {/* Full Width Preview Panel */}
           <div style={{ ...cardStyle, padding: '8px 16px' }}>
-            {['F-154', 'F-155', 'F-156', 'F-157', 'F-159'].includes(reportCode) ? (
+            {['F-154', 'F-156', 'F-157', 'F-159'].includes(reportCode) ? (
               <div style={{ padding: `${spaceSm}px 0` }}>
                 <Alert
                   message="Lưu ý về nguồn dữ liệu báo cáo"
@@ -548,7 +565,6 @@ export default function ReportViewer() {
                     setPageSize(size);
                   }}
                 />
-
 
               </>
             ) : (
