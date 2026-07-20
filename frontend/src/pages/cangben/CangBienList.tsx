@@ -382,8 +382,6 @@ export default function CangBienList() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={search || filterMaCang || filterTenCang || filterTinhThanhPho || filterStatus ? 'Không tìm thấy' : 'Chưa có cảng biển nào'}
-            ctaText="Tạo cảng biển đầu tiên"
-            onCta={() => navigate('/cangbien/create')}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (

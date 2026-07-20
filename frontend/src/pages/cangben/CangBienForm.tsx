@@ -6,6 +6,7 @@ import { cangBienCRUD, cangBienApproval } from '../../services/cangbenService';
 import type { CreateCangBienRequest, UpdateCangBienRequest } from '../../types/cangben';
 import { BECBANG_STATUS_MAP } from '../../types/cangben';
 import FormField from '../../components/FormField';
+import { radiusPill, fontSizeMd, borderDefault, textSecondary } from '../../tokens';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
 
@@ -278,7 +279,7 @@ export default function CangBienForm() {
               <Button type="primary" htmlType="submit" loading={submitting}>
                 {isEdit ? 'Cập nhật' : 'Tạo cảng biển'}
               </Button>
-              <Button onClick={() => navigate('/cangbien')}>Hủy</Button>
+              <Button onClick={() => navigate('/cangbien')} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>
             </Space>
           </Form.Item>
         </Form>

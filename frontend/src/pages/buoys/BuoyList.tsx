@@ -42,6 +42,8 @@ import toast from '../../components/ToastNotification';
 import FormField from '../../components/FormField';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { organizationService } from '../../services/organizationService';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 export default function BuoyList() {
   const isInIframe = window.self !== window.top;
@@ -533,8 +535,6 @@ export default function BuoyList() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={filterName || filterCode || filterType || filterStatus ? 'Không tìm thấy' : 'Chưa có phao tiêu nào'}
-            ctaText="Tạo phao tiêu đầu tiên"
-            onCta={openCreateModal}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (
@@ -560,7 +560,7 @@ export default function BuoyList() {
       </Card>
 
       <Modal
-        title={isDetailMode ? 'Chi tiết phao tiêu' : (editingRecord ? 'Chỉnh sửa phao tiêu' : 'Thêm phao tiêu mới')}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isDetailMode ? 'Chi tiết phao tiêu' : (editingRecord ? 'Chỉnh sửa phao tiêu' : 'Thêm phao tiêu mới')}</span>}
         open={isModalOpen}
         onOk={isDetailMode ? () => setIsModalOpen(false) : handleSubmit}
         onCancel={() => setIsModalOpen(false)}

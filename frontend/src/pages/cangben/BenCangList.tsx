@@ -402,8 +402,6 @@ export default function BenCangList() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={search || filterMaBen || filterTenBen || filterTuyenDuongThuy || filterLoaiBen || filterStatus ? 'Không tìm thấy' : 'Chưa có bến cảng nào'}
-            ctaText="Tạo bến cảng đầu tiên"
-            onCta={() => navigate('/bencang/create')}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (

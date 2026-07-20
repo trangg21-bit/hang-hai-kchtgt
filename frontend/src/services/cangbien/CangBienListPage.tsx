@@ -933,20 +933,6 @@ export default function CangBienListPage() {
                       ? 'Không tìm thấy cảng biển nào phù hợp'
                       : 'Chưa có cảng biển nào'
                   }
-                  ctaText={
-                    !search && !filterTinh && !filterStatus
-                      ? 'Tạo cảng biển đầu tiên'
-                      : undefined
-                  }
-                  onCta={
-                    !search && !filterTinh && !filterStatus
-                      ? () => {
-                          createForm.resetFields();
-                          createForm.setFieldsValue({ trangThaiPheDuyet: 'CHO_PHE_DUYET' });
-                          setCreateModalVisible(true);
-                        }
-                      : undefined
-                  }
                 />
               )}
               {!isLoading && !isError && dataSource.length > 0 && (

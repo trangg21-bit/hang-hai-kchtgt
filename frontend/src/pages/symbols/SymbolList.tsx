@@ -36,6 +36,8 @@ import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import FormField from '../../components/FormField';
 import toast from '../../components/ToastNotification';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 const STATUS_MAP: Record<string, { color: string; label: string }> = {
   active: { color: 'green', label: 'Sử dụng' },
@@ -375,8 +377,6 @@ export default function SymbolList() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={search ? 'Không tìm thấy biểu tượng' : 'Chưa có biểu tượng nào'}
-            ctaText="Thêm biểu tượng đầu tiên"
-            onCta={openCreateModal}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (
@@ -403,7 +403,7 @@ export default function SymbolList() {
 
       {/* Create / Edit Modal */}
       <Modal
-        title={editingSymbol ? 'Chỉnh sửa biểu tượng' : 'Thêm biểu tượng mới'}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingSymbol ? 'Chỉnh sửa biểu tượng' : 'Thêm biểu tượng mới'}</span>}
         open={formOpen}
         onOk={handleSave}
         onCancel={() => setFormOpen(false)}
@@ -479,7 +479,7 @@ export default function SymbolList() {
 
       {/* Preview Modal */}
       <Modal
-        title="Xem trước chi tiết biểu tượng"
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Xem trước chi tiết biểu tượng</span>}
         open={previewOpen}
         onCancel={() => setPreviewOpen(false)}
         footer={[

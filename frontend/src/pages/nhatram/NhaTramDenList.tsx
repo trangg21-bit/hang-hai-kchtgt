@@ -28,6 +28,8 @@ import {
   updateNhaTramDen,
   deleteNhaTramDen,
 } from '../../services/nhatram/api';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 import type { NhaTramDenResponse, CreateNhaTramDenRequest } from '../../services/nhatram/types';
 import dayjs from 'dayjs';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -270,7 +272,7 @@ export default function NhaTramDenList() {
       />
 
       <Modal
-        title={editingItem ? 'Chỉnh sửa thông tin nhà trạm' : 'Thêm mới nhà trạm đèn biển'}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingItem ? 'Chỉnh sửa thông tin nhà trạm' : 'Thêm mới nhà trạm đèn biển'}</span>}
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}

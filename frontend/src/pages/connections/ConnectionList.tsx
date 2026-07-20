@@ -272,8 +272,6 @@ export default function ConnectionList() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={search || filterType ? 'Không tìm thấy kết nối' : 'Chưa có kết nối nào'}
-            ctaText="Thêm kết nối đầu tiên"
-            onCta={() => navigate('/connections/create')}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (

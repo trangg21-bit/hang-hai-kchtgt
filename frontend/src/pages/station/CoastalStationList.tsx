@@ -28,6 +28,8 @@ import {
   deleteCoastalVTS,
 } from '../../services/station/api';
 import type { CoastalStationVTSResponse, CoastalStationVTSRequest } from '../../services/station/types';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 export default function CoastalStationList() {
   const [dataSource, setDataSource] = useState<CoastalStationVTSResponse[]>([]);
@@ -280,7 +282,7 @@ export default function CoastalStationList() {
       />
 
       <Modal
-        title={isReadOnly ? 'Chi tiết đài duyên hải' : (editingItem ? 'Chỉnh sửa đài duyên hải' : 'Thêm mới đài duyên hải / VTS')}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isReadOnly ? 'Chi tiết đài duyên hải' : (editingItem ? 'Chỉnh sửa đài duyên hải' : 'Thêm mới đài duyên hải / VTS')}</span>}
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}

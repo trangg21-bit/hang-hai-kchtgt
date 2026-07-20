@@ -28,6 +28,8 @@ import {
   updateNhaTramPhao,
   deleteNhaTramPhao,
 } from '../../services/nhatram/api';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 import type { NhaTramPhaoResponse, CreateNhaTramPhaoRequest } from '../../services/nhatram/types';
 import dayjs from 'dayjs';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -294,7 +296,7 @@ export default function NhaTramPhaoList() {
       />
 
       <Modal
-        title={editingItem ? 'Chỉnh sửa thông tin nhà trạm phao' : 'Thêm mới nhà trạm phao tiêu'}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingItem ? 'Chỉnh sửa thông tin nhà trạm phao' : 'Thêm mới nhà trạm phao tiêu'}</span>}
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}

@@ -10,6 +10,7 @@ import {
   type BeaconStatus,
 } from '../../types/beacon';
 import FormField from '../../components/FormField';
+import { radiusPill, fontSizeMd, borderDefault, textSecondary } from '../../tokens';
 import toast from '../../components/ToastNotification';
 import { organizationService } from '../../services/organizationService';
 
@@ -307,7 +308,7 @@ export default function BuoyForm() {
               <Button type="primary" htmlType="submit" loading={submitting}>
                 {isEdit ? 'Cập nhật' : 'Tạo phao tiêu'}
               </Button>
-              <Button onClick={() => navigate('/buoys')}>Hủy</Button>
+              <Button onClick={() => navigate('/buoys')} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>
             </Space>
           </Form.Item>
         </Form>

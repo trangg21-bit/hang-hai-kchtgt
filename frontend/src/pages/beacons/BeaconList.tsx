@@ -44,6 +44,8 @@ import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
 import FormField from '../../components/FormField';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 import { organizationService } from '../../services/organizationService';
 
 export default function BeaconList() {
@@ -536,8 +538,6 @@ export default function BeaconList() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={filterName || filterCode || filterType || filterStatus ? 'Không tìm thấy' : 'Chưa có đèn biển nào'}
-            ctaText="Tạo đèn biển đầu tiên"
-            onCta={openCreateModal}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (
@@ -563,7 +563,7 @@ export default function BeaconList() {
       </Card>
 
       <Modal
-        title={isDetailMode ? 'Chi tiết đèn biển' : (editingRecord ? 'Chỉnh sửa đèn biển' : 'Thêm đèn biển mới')}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isDetailMode ? 'Chi tiết đèn biển' : (editingRecord ? 'Chỉnh sửa đèn biển' : 'Thêm đèn biển mới')}</span>}
         open={isModalOpen}
         onOk={isDetailMode ? () => setIsModalOpen(false) : handleSubmit}
         onCancel={() => setIsModalOpen(false)}

@@ -294,22 +294,11 @@ export default function LoginPage() {
           {/* Card body */}
           <div style={{ padding: '32px 30px 26px', textAlign: 'center' }}>
             {/* Logo */}
-            <div
-              style={{
-                width: 140,
-                height: 50,
-                margin: '0 auto 12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <img
-                src="/images/Logo_Cục_Hàng_hải_Việt_Nam.jpg"
-                alt="Logo Cục Hàng hải Việt Nam"
-                style={{ width: 140, height: 50, objectFit: 'contain' }}
-              />
-            </div>
+            <img
+              src="/images/Logo_Cục_Hàng_hải_Việt_Nam.jpg"
+              alt="Logo Cục Hàng hải Việt Nam"
+              style={{ display: 'block', margin: '0 auto 12px', width: 140, height: 50, objectFit: 'contain' }}
+            />
 
             {/* Title */}
             <div style={{ textAlign: 'center', marginBottom: spaceXl }}>

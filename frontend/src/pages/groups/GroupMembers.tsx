@@ -128,7 +128,7 @@ export default function GroupMembers() {
     if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách thành viên'} onRetry={fetchMembers} />;
     if (dataSource.length === 0) {
       if (search || filterRole) return <EmptyState description="Không tìm thấy thành viên nào phù hợp" />;
-      return <EmptyState description="Chưa có thành viên nào" ctaText="Thêm thành viên đầu tiên" onCta={() => setAddModalOpen(true)} />;
+      return <EmptyState description="Chưa có thành viên nào" />;
     }
     return <div style={{ overflowX: 'auto' }}><DataTable columns={columns} dataSource={dataSource} rowKey="userId" rowActions={rowActions} scroll={{ x: 900 }} /><Pagination total={total} current={page} pageSize={pageSize} onChange={handlePageChange} /></div>;
   };

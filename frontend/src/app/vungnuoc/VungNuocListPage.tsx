@@ -722,8 +722,6 @@ export default function VungNuocListPage() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={search || filterHoatDong || filterPheDuyet || cangBienIdFilter ? 'Không tìm thấy' : 'Chưa có vùng nước nào'}
-            ctaText="Tạo vùng nước đầu tiên"
-            onCta={() => { createForm.resetFields(); setCreateModalVisible(true); }}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (

@@ -395,8 +395,6 @@ export default function VungNuocList() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={search || filterMa || filterTen || filterLoai || filterStatus ? 'Không tìm thấy' : 'Chưa có vùng nước nào'}
-            ctaText="Tạo vùng nước đầu tiên"
-            onCta={() => navigate('/vungnuoc/create')}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (

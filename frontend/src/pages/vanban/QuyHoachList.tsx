@@ -28,6 +28,8 @@ import {
 import type { QuyHoachBenCangResponse, QuyHoachBenCangCreateRequest } from '../../services/vanban/types';
 import dayjs from 'dayjs';
 import { useAuthStore } from '../../store/authStore';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 export default function QuyHoachList() {
   const currentUser = useAuthStore((s) => s.user);
@@ -272,7 +274,7 @@ export default function QuyHoachList() {
       />
 
       <Modal
-        title={editingItem ? 'Chỉnh sửa hồ sơ quy hoạch' : 'Tạo mới hồ sơ quy hoạch'}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingItem ? 'Chỉnh sửa hồ sơ quy hoạch' : 'Tạo mới hồ sơ quy hoạch'}</span>}
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}

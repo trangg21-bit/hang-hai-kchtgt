@@ -389,8 +389,6 @@ export default function CauCangList() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={search || filterMa || filterTen || filterLoai || filterStatus ? 'Không tìm thấy' : 'Chưa có cầu cảng nào'}
-            ctaText="Tạo cầu cảng đầu tiên"
-            onCta={() => navigate('/caucang/create')}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (

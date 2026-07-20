@@ -687,8 +687,6 @@ export default function CangCanListPage() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={search || filterStatus || filterApprovalStatus ? 'Không tìm thấy' : 'Chưa có cảng cạn nào'}
-            ctaText="Tạo cảng cạn đầu tiên"
-            onCta={() => { createForm.resetFields(); setCreateModalVisible(true); }}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (

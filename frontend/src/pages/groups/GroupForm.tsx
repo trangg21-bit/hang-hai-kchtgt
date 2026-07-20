@@ -100,18 +100,18 @@ export default function GroupForm() {
               <Input placeholder="vd: Nhóm Quản trị viên" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
 
-            <Form.Item name="description" {...labelProps('Mô tả')} style={{ marginBottom: spaceFormField }}>
-              <Input.TextArea rows={3} placeholder="Mô tả ngắn về nhóm" style={{ borderRadius: radiusPill }} />
-            </Form.Item>
-
             {isEdit && (
               <Form.Item name="status" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }}>
                 <Select
                   options={STATUS_OPTIONS}
-                  style={{ width: '100%' }}
+                  style={{ borderRadius: radiusPill, height: 40, width: '100%' }}
                 />
               </Form.Item>
             )}
+
+            <Form.Item name="description" {...labelProps('Mô tả')} style={{ marginBottom: 0 }}>
+              <Input.TextArea rows={3} placeholder="Mô tả ngắn về nhóm" />
+            </Form.Item>
 
             <Form.Item style={{ marginTop: spaceLg, marginBottom: 0 }}>
               <Space>

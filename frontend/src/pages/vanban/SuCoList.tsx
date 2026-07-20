@@ -27,6 +27,8 @@ import {
 } from '../../services/vanban/api';
 import type { SuCoResponse, SuCoCreateRequest } from '../../services/vanban/types';
 import dayjs from 'dayjs';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 export default function SuCoList() {
   const [dataSource, setDataSource] = useState<SuCoResponse[]>([]);
@@ -253,7 +255,7 @@ export default function SuCoList() {
       />
 
       <Modal
-        title={editingItem ? 'Chỉnh sửa hồ sơ sự cố' : 'Ghi nhận hồ sơ sự cố mới'}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingItem ? 'Chỉnh sửa hồ sơ sự cố' : 'Ghi nhận hồ sơ sự cố mới'}</span>}
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}

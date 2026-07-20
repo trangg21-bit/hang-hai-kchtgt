@@ -28,6 +28,8 @@ import {
   deleteInmarsat,
 } from '../../services/station/api';
 import type { CoastalStationInmarsatResponse, CoastalStationInmarsatRequest } from '../../services/station/types';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 export default function SpecialStationList() {
   const [dataSource, setDataSource] = useState<CoastalStationInmarsatResponse[]>([]);
@@ -301,7 +303,7 @@ export default function SpecialStationList() {
       />
 
       <Modal
-        title={isReadOnly ? 'Chi tiết đài vệ tinh' : (editingItem ? 'Chỉnh sửa đài vệ tinh' : 'Thêm mới đài vệ tinh Inmarsat')}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isReadOnly ? 'Chi tiết đài vệ tinh' : (editingItem ? 'Chỉnh sửa đài vệ tinh' : 'Thêm mới đài vệ tinh Inmarsat')}</span>}
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}

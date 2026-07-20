@@ -392,8 +392,6 @@ export default function CangCanList() {
         {!isLoading && !isError && dataSource.length === 0 && (
           <EmptyState
             description={search || filterMa || filterTen || filterTinh || filterStatus ? 'Không tìm thấy' : 'Chưa có cảng căn cứ nào'}
-            ctaText="Tạo cảng căn cứ đầu tiên"
-            onCta={() => navigate('/cangcan/create')}
           />
         )}
         {!isLoading && !isError && dataSource.length > 0 && (

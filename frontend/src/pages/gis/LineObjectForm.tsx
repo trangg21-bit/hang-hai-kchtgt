@@ -1,14 +1,36 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Input, InputNumber, Select, Row, Col, message } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import { Form, Button, Space, Input, InputNumber, Select, Row, Col, message } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { lineObjectService } from '../../services/lineObjectService';
 import type { CreateLineObjectPayload, UpdateLineObjectPayload } from '../../types/lineObject';
 import {
   LINE_OBJECT_TYPE_OPTIONS,
 } from '../../types/lineObject';
-import FormField from '../../components/FormField';
 import toast from '../../components/ToastNotification';
+import { ScreenHeader } from '../../components/list-view';
+import {
+  spaceMd, spaceLg, spaceFormField,
+  radiusPill, fontSizeMd, fontWeightMedium,
+  textSecondary,
+} from '../../tokens';
+
+const INPUT_STYLE: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: 40,
+};
+
+const SELECT_STYLE: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: 40,
+  width: '100%',
+};
+
+const BTN_STYLE: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: 40,
+  fontWeight: fontWeightMedium,
+  fontSize: fontSizeMd,
+};
 
 export default function LineObjectForm() {
   const navigate = useNavigate();
@@ -51,7 +73,6 @@ export default function LineObjectForm() {
     try {
       const values = await form.validateFields();
 
-      // WKT validation
       if (!validateWKT(values.coordinates)) {
         message.error('Tọa độ phải ở định dạng WKT LINESTRING (VD: LINESTRING(106.7 21.0, 106.8 21.1))');
         return;
@@ -100,147 +121,118 @@ export default function LineObjectForm() {
 
   return (
     <>
-      <Card style={{ marginBottom: 16 }}>
-        <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/gis/lines')}>
-            Quay lại
-          </Button>
-          <Typography.Title level={5} style={{ margin: 0 }}>
-            {isEdit ? 'Chỉnh sửa đối tượng đường' : 'Thêm đối tượng đường mới'}
-          </Typography.Title>
-        </Space>
-      </Card>
+      <ScreenHeader
+        breadcrumb={[
+          { label: 'Trang chủ', path: '/' },
+          { label: 'Quản lý KCHT trên nền bản đồ (GIS)' },
+          { label: 'Quản lý danh mục đối tượng đường', path: '/gis/lines' },
+          { label: isEdit ? 'Chỉnh sửa đối tượng đường' : 'Thêm đối tượng đường mới' },
+        ]}
+      />
 
-      <Card style={{ maxWidth: 700, margin: '0 auto' }}>
+      <div style={{ maxWidth: 700, margin: '0 auto' }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           {!isEdit && (
-            <FormField
-              type="text"
-              name="code"
-              label="Mã đối tượng"
-              required
-              placeholder="VD: LN-ROUTE-001"
-              help="Mã định danh duy nhất"
-            />
+            <Form.Item name="code" label="Mã đối tượng"
+              rules={[{ required: true, message: 'Vui lòng nhập mã' }]}
+              style={{ marginBottom: spaceFormField }}>
+              <Input placeholder="VD: LN-ROUTE-001" style={INPUT_STYLE} />
+            </Form.Item>
           )}
 
           {isEdit && (
-            <FormField
-              type="text"
-              name="code"
-              label="Mã đối tượng"
-              disabled
-            />
+            <Form.Item name="code" label="Mã đối tượng"
+              style={{ marginBottom: spaceFormField }}>
+              <Input disabled style={INPUT_STYLE} />
+            </Form.Item>
           )}
 
-          <FormField
-            type="text"
-            name="name"
-            label="Tên đối tượng"
-            required
-            placeholder="VD: Tuyến hàng hải Hải Phòng - Quảng Ninh"
-          />
+          <Form.Item name="name" label="Tên đối tượng"
+            rules={[{ required: true, message: 'Vui lòng nhập tên' }]}
+            style={{ marginBottom: spaceFormField }}>
+            <Input placeholder="VD: Tuyến hàng hải Hải Phòng - Quảng Ninh" style={INPUT_STYLE} />
+          </Form.Item>
 
-          <FormField
-            type="select"
-            name="objectType"
-            label="Loại đối tượng"
-            required
-            options={LINE_OBJECT_TYPE_OPTIONS}
-          />
+          <Form.Item name="objectType" label="Loại đối tượng"
+            rules={[{ required: true, message: 'Vui lòng chọn loại' }]}
+            style={{ marginBottom: spaceFormField }}>
+            <Select placeholder="Chọn loại đối tượng" options={LINE_OBJECT_TYPE_OPTIONS} style={SELECT_STYLE} />
+          </Form.Item>
 
-          <FormField
-            type="textarea"
-            name="coordinates"
-            label="Tọa độ (WKT LINESTRING)"
-            required
-            placeholder="LINESTRING(106.7000 20.8500, 106.8000 20.9000, 107.0000 21.0000)"
-            help="Định dạng WKT LINESTRING — phải bắt đầu bằng 'LINESTRING'"
-          />
+          <Form.Item name="coordinates" label="Tọa độ (WKT LINESTRING)"
+            rules={[{ required: true, message: 'Vui lòng nhập tọa độ WKT' }]}
+            style={{ marginBottom: spaceFormField }}>
+            <Input placeholder="LINESTRING(106.7000 20.8500, 106.8000 20.9000, 107.0000 21.0000)" style={INPUT_STYLE} />
+          </Form.Item>
 
-          <FormField
-            type="textarea"
-            name="description"
-            label="Mô tả"
-            placeholder="Mô tả về đối tượng đường..."
-          />
-
-          <Row style={{ display: 'flex', gap: 16 }}>
-            <Col style={{ flex: 1 }}>
-              <FormField
-                type="number"
-                name="length"
-                label="Chiều dài (km)"
-                min={0}
-                step={0.01}
-                placeholder="Tùy chọn"
-              />
+          <Row gutter={spaceMd}>
+            <Col span={12}>
+              <Form.Item name="length" label="Chiều dài (km)"
+                style={{ marginBottom: spaceFormField }}>
+                <InputNumber placeholder="Tùy chọn" min={0} step={0.01}
+                  style={{ ...INPUT_STYLE, width: '100%' }} />
+              </Form.Item>
             </Col>
-            <Col style={{ flex: 1 }}>
-              <FormField
-                type="number"
-                name="yearBuilt"
-                label="Năm xây dựng"
-                min={1900}
-                max={9999}
-                placeholder="Tùy chọn"
-              />
+            <Col span={12}>
+              <Form.Item name="yearBuilt" label="Năm xây dựng"
+                style={{ marginBottom: spaceFormField }}>
+                <InputNumber placeholder="Tùy chọn" min={1900} max={9999}
+                  style={{ ...INPUT_STYLE, width: '100%' }} />
+              </Form.Item>
             </Col>
           </Row>
 
-          <Row style={{ display: 'flex', gap: 16 }}>
-            <Col style={{ flex: 1 }}>
-              <FormField
-                type="text"
-                name="material"
-                label="Vật liệu"
-                placeholder="Tùy chọn"
-              />
+          <Form.Item name="material" label="Vật liệu"
+            style={{ marginBottom: spaceFormField }}>
+            <Input placeholder="Tùy chọn" style={INPUT_STYLE} />
+          </Form.Item>
+
+          <Row gutter={spaceMd}>
+            <Col span={12}>
+              <Form.Item name="categoryId" label="Danh mục"
+                style={{ marginBottom: spaceFormField }}>
+                <Select placeholder="Tùy chọn danh mục" style={SELECT_STYLE}
+                  options={[
+                    { label: 'Đường bờ biển', value: 1 },
+                    { label: 'Tuyến hàng hải', value: 2 },
+                    { label: 'Đường thủy', value: 3 },
+                    { label: 'Khác', value: 4 },
+                  ]} />
+              </Form.Item>
             </Col>
-            <Col style={{ flex: 1 }}>
-              <FormField
-                type="select"
-                name="categoryId"
-                label="Danh mục"
-                placeholder="Tùy chọn danh mục"
-                options={[
-                  { label: 'Đường bờ biển', value: 1 },
-                  { label: 'Tuyến hàng hải', value: 2 },
-                  { label: 'Đường thủy', value: 3 },
-                  { label: 'Khác', value: 4 },
-                ]}
-              />
+            <Col span={12}>
+              <Form.Item name="lineSymbolId" label="Ký hiệu đường"
+                style={{ marginBottom: spaceFormField }}>
+                <Select placeholder="Tùy chọn ký hiệu" style={SELECT_STYLE}
+                  options={[
+                    { label: 'Symbol Đường bờ biển', value: 1 },
+                    { label: 'Symbol Tuyến hàng hải', value: 2 },
+                    { label: 'Symbol Đường thủy', value: 3 },
+                    { label: 'Symbol Khác', value: 4 },
+                  ]} />
+              </Form.Item>
             </Col>
           </Row>
 
-          <Row style={{ display: 'flex', gap: 16 }}>
-            <Col style={{ flex: 1 }}>
-              <FormField
-                type="select"
-                name="lineSymbolId"
-                label="Ký hiệu đường"
-                placeholder="Tùy chọn ký hiệu"
-                options={[
-                  { label: 'Symbol Đường bờ biển', value: 1 },
-                  { label: 'Symbol Tuyến hàng hải', value: 2 },
-                  { label: 'Symbol Đường thủy', value: 3 },
-                  { label: 'Symbol Khác', value: 4 },
-                ]}
-              />
-            </Col>
-            <Col style={{ flex: 1 }} />
-          </Row>
+          <Form.Item name="description" label="Mô tả"
+            style={{ marginBottom: 0 }}>
+            <Input.TextArea placeholder="Mô tả về đối tượng đường..." rows={3}
+              style={{ borderRadius: radiusPill }} />
+          </Form.Item>
 
-          <Form.Item style={{ marginTop: 24 }}>
+          <Form.Item style={{ marginTop: spaceLg }}>
             <Space>
-              <Button type="primary" htmlType="submit" loading={submitting}>
+              <Button type="primary" htmlType="submit" loading={submitting} style={BTN_STYLE}>
                 {isEdit ? 'Cập nhật' : 'Tạo đối tượng'}
               </Button>
-              <Button onClick={() => navigate('/gis/lines')}>Hủy</Button>
+              <Button onClick={() => navigate('/gis/lines')}
+                style={{ ...BTN_STYLE, borderColor: textSecondary, color: textSecondary }}>
+                Hủy
+              </Button>
             </Space>
           </Form.Item>
         </Form>
-      </Card>
+      </div>
     </>
   );
 }

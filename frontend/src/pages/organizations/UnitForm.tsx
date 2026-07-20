@@ -7,7 +7,7 @@ import type { CreateOrganizationPayload, UpdateOrganizationPayload } from '../..
 import type { Organization } from '../../services/organizationService';
 import FormField from '../../components/FormField';
 import toast from '../../components/ToastNotification';
-import { spaceMd, spaceLg, radiusPill, fontSizeMd, fontWeightBold } from '../../tokens';
+import { spaceMd, spaceLg, radiusPill, fontSizeMd, fontWeightBold, borderDefault, textSecondary } from '../../tokens';
 import { colors } from '../../theme';
 
 export default function UnitForm() {
@@ -225,7 +225,7 @@ export default function UnitForm() {
               <Button type="primary" htmlType="submit" loading={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>
                 Lưu
               </Button>
-              <Button onClick={() => navigate(-1)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Hủy</Button>
+              <Button onClick={() => navigate(-1)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>
             </Space>
           </Form.Item>
         </Form>

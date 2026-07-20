@@ -9,6 +9,7 @@ import {
   type CangBenStatus,
 } from '../../types/cangben';
 import FormField from '../../components/FormField';
+import { radiusPill, fontSizeMd, borderDefault, textSecondary } from '../../tokens';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
 
@@ -277,7 +278,7 @@ export default function CangCanForm() {
               <Button type="primary" htmlType="submit" loading={submitting}>
                 {isEdit ? 'Cập nhật' : 'Tạo cảng cạn'}
               </Button>
-              <Button onClick={() => navigate('/cangcan')}>Hủy</Button>
+              <Button onClick={() => navigate('/cangcan')} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>
             </Space>
           </Form.Item>
         </Form>

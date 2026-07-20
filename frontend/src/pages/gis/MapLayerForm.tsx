@@ -1,12 +1,34 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Card, Form, Button, Space, Typography, Input, InputNumber, Select, Row, Col, Switch, message } from 'antd';
-import { ArrowLeftOutlined } from '@ant-design/icons';
+import { Form, Button, Space, Input, InputNumber, Select, Row, Col, Switch, message } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { mapLayerService } from '../../services/mapLayerService';
 import type { CreateMapLayerPayload, UpdateMapLayerPayload } from '../../types/mapLayer';
 import { MAP_LAYER_TYPE_OPTIONS } from '../../types/mapLayer';
-import FormField from '../../components/FormField';
 import toast from '../../components/ToastNotification';
+import { ScreenHeader } from '../../components/list-view';
+import {
+  spaceMd, spaceLg, spaceFormField,
+  radiusPill, fontSizeMd, fontWeightMedium,
+  textSecondary,
+} from '../../tokens';
+
+const INPUT_STYLE: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: 40,
+};
+
+const SELECT_STYLE: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: 40,
+  width: '100%',
+};
+
+const BTN_STYLE: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: 40,
+  fontWeight: fontWeightMedium,
+  fontSize: fontSizeMd,
+};
 
 export default function MapLayerForm() {
   const navigate = useNavigate();
@@ -80,110 +102,90 @@ export default function MapLayerForm() {
 
   return (
     <>
-      <Card style={{ marginBottom: 16 }}>
-        <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/gis/layers')}>
-            Quay lại
-          </Button>
-          <Typography.Title level={5} style={{ margin: 0 }}>
-            {isEdit ? 'Chỉnh sửa lớp bản đồ' : 'Thêm lớp bản đồ mới'}
-          </Typography.Title>
-        </Space>
-      </Card>
+      <ScreenHeader
+        breadcrumb={[
+          { label: 'Trang chủ', path: '/' },
+          { label: 'Quản lý KCHT trên nền bản đồ (GIS)' },
+          { label: 'Quản lý lớp bản đồ', path: '/gis/layers' },
+          { label: isEdit ? 'Chỉnh sửa lớp bản đồ' : 'Thêm lớp bản đồ mới' },
+        ]}
+      />
 
-      <Card style={{ maxWidth: 700, margin: '0 auto' }}>
+      <div style={{ maxWidth: 700, margin: '0 auto' }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={{ visible: true, opacity: 1, order: 0 }}>
           {!isEdit && (
-            <FormField
-              type="text"
-              name="code"
-              label="Mã lớp"
-              required
-              placeholder="VD: LAY-PT-001"
-              help="Mã định danh duy nhất"
-            />
+            <Form.Item name="code" label="Mã lớp"
+              rules={[{ required: true, message: 'Vui lòng nhập mã' }]}
+              style={{ marginBottom: spaceFormField }}>
+              <Input placeholder="VD: LAY-PT-001" style={INPUT_STYLE} />
+            </Form.Item>
           )}
 
           {isEdit && (
-            <FormField
-              type="text"
-              name="code"
-              label="Mã lớp"
-              disabled
-            />
+            <Form.Item name="code" label="Mã lớp"
+              style={{ marginBottom: spaceFormField }}>
+              <Input disabled style={INPUT_STYLE} />
+            </Form.Item>
           )}
 
-          <FormField
-            type="text"
-            name="name"
-            label="Tên lớp"
-            required
-            placeholder="VD: Đối tượng điểm cảng biển"
-          />
+          <Form.Item name="name" label="Tên lớp"
+            rules={[{ required: true, message: 'Vui lòng nhập tên' }]}
+            style={{ marginBottom: spaceFormField }}>
+            <Input placeholder="VD: Đối tượng điểm cảng biển" style={INPUT_STYLE} />
+          </Form.Item>
 
-          <FormField
-            type="select"
-            name="layerType"
-            label="Loại lớp"
-            required
-            options={MAP_LAYER_TYPE_OPTIONS}
-          />
+          <Form.Item name="layerType" label="Loại lớp"
+            rules={[{ required: true, message: 'Vui lòng chọn loại' }]}
+            style={{ marginBottom: spaceFormField }}>
+            <Select placeholder="Chọn loại lớp" options={MAP_LAYER_TYPE_OPTIONS} style={SELECT_STYLE} />
+          </Form.Item>
 
-          <FormField
-            type="text"
-            name="source"
-            label="Nguồn dữ liệu"
-            placeholder="VD: WMS, GeoJSON, file shape..."
-          />
+          <Form.Item name="source" label="Nguồn dữ liệu"
+            style={{ marginBottom: spaceFormField }}>
+            <Input placeholder="VD: WMS, GeoJSON, file shape..." style={INPUT_STYLE} />
+          </Form.Item>
 
-          <FormField
-            type="textarea"
-            name="styleConfig"
-            label="Cấu hình style (JSON)"
-            placeholder='{"color": "#ff0000", "width": 2}'
-            help="Cấu hình hiển thị dạng JSON"
-          />
+          <Form.Item name="styleConfig" label="Cấu hình style (JSON)"
+            style={{ marginBottom: spaceFormField }}>
+            <Input.TextArea placeholder='{"color": "#ff0000", "width": 2}'
+              rows={3} style={{ borderRadius: radiusPill }} />
+          </Form.Item>
 
-          <Row style={{ display: 'flex', gap: 16 }}>
-            <Col style={{ flex: 1 }}>
-              <FormField
-                type="number"
-                name="opacity"
-                label="Độ mờ (0-1)"
-                min={0}
-                max={1}
-                step={0.1}
-              />
+          <Row gutter={spaceMd}>
+            <Col span={12}>
+              <Form.Item name="opacity" label="Độ mờ (0-1)"
+                style={{ marginBottom: spaceFormField }}>
+                <InputNumber placeholder="1" min={0} max={1} step={0.1}
+                  style={{ ...INPUT_STYLE, width: '100%' }} />
+              </Form.Item>
             </Col>
-            <Col style={{ flex: 1 }}>
-              <FormField
-                type="number"
-                name="order"
-                label="Thứ tự hiển thị"
-                min={0}
-                step={1}
-              />
+            <Col span={12}>
+              <Form.Item name="order" label="Thứ tự hiển thị"
+                style={{ marginBottom: spaceFormField }}>
+                <InputNumber placeholder="0" min={0} step={1}
+                  style={{ ...INPUT_STYLE, width: '100%' }} />
+              </Form.Item>
             </Col>
           </Row>
 
-          <Form.Item
-            name="visible"
-            label="Hiển thị"
-            valuePropName="checked"
-          >
+          <Form.Item name="visible" label="Hiển thị" valuePropName="checked"
+            style={{ marginBottom: spaceFormField }}>
             <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
           </Form.Item>
 
-          <Form.Item style={{ marginTop: 24 }}>
+          <Form.Item style={{ marginTop: spaceLg }}>
             <Space>
-              <Button type="primary" htmlType="submit" loading={submitting}>
+              <Button type="primary" htmlType="submit" loading={submitting} style={BTN_STYLE}>
                 {isEdit ? 'Cập nhật' : 'Tạo lớp'}
               </Button>
-              <Button onClick={() => navigate('/gis/layers')}>Hủy</Button>
+              <Button onClick={() => navigate('/gis/layers')}
+                style={{ ...BTN_STYLE, borderColor: textSecondary, color: textSecondary }}>
+                Hủy
+              </Button>
             </Space>
           </Form.Item>
         </Form>
-      </Card>
+      </div>
     </>
   );
 }

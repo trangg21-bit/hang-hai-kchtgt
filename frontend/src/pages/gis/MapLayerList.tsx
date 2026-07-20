@@ -1,24 +1,17 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Button,
   Space,
   Tag,
-  Card,
-  Row,
-  Col,
-  Typography,
-  Input,
-  Select,
   Tooltip,
   Popconfirm,
   Switch,
+  Typography,
 } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  SearchOutlined,
-  ReloadOutlined,
   EyeOutlined,
   EyeInvisibleOutlined,
 } from '@ant-design/icons';
@@ -31,11 +24,16 @@ import {
   MAP_LAYER_STATUS_MAP,
 } from '../../types/mapLayer';
 import { usePermissionStore } from '../../store/permissionStore';
-import DataTable from '../../components/DataTable';
+import { ScreenHeader, FilterBar, DataTable } from '../../components/list-view';
+import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
+import {
+  spaceXs,
+  statusOperational, textTertiary,
+} from '../../tokens';
 
 export default function MapLayerList() {
   const navigate = useNavigate();
@@ -75,11 +73,6 @@ export default function MapLayerList() {
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
-  const handleSearch = useCallback((value: string) => {
-    setSearch(value);
-    setPage(1);
-  }, []);
-
   const handleToggleVisible = useCallback(
     async (record: MapLayer) => {
       const newVisible = !record.visible;
@@ -107,118 +100,65 @@ export default function MapLayerList() {
     [fetchData],
   );
 
-  const columns = [
-    { title: '#', width: 60, render: (_: unknown, __: MapLayer, idx: number) => (page - 1) * pageSize + idx + 1 },
-    {
-      title: 'Mã',
-      dataIndex: 'code',
-      width: 180,
+  // ── List-view columns ──
+  const columns = useMemo(() => [
+    { key: 'stt', label: '#', width: 60, align: 'center' as const, type: 'mono' as const,
+      render: (_: unknown, __: MapLayer, idx: number) =>
+        <span style={{ color: textTertiary }}>{(page - 1) * pageSize + idx + 1}</span> },
+    { key: 'code', label: 'Mã', dataIndex: 'code', width: 180,
       render: (code: string) => (
         <Tooltip title={code}>
-          <Tag
-            color="cyan"
-            style={{
-              maxWidth: '100%',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              display: 'inline-block',
-              verticalAlign: 'bottom',
-            }}
-          >
-            {code}
-          </Tag>
-        </Tooltip>
-      ),
-    },
-    {
-      title: 'Tên',
-      dataIndex: 'name',
-      ellipsis: true,
+          <Tag color="cyan" style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', verticalAlign: 'bottom' }}>{code}</Tag>
+        </Tooltip>) },
+    { key: 'name', label: 'Tên', dataIndex: 'name',
       render: (text: string, record: MapLayer) => (
         <Space>
           {record.visible ? (
-            <EyeOutlined style={{ color: '#52c41a' }} />
+            <EyeOutlined style={{ color: statusOperational }} />
           ) : (
-            <EyeInvisibleOutlined style={{ color: '#d9d9d9' }} />
+            <EyeInvisibleOutlined style={{ color: textTertiary }} />
           )}
           <Typography.Text strong>{text}</Typography.Text>
         </Space>
       ),
     },
-    {
-      title: 'Loại lớp',
-      dataIndex: 'layerType',
-      width: 130,
+    { key: 'layerType', label: 'Loại lớp', dataIndex: 'layerType', width: 130,
       render: (type: string) => {
         const opt = MAP_LAYER_TYPE_OPTIONS.find((o) => o.value === type);
         return <Tag>{opt?.label || type}</Tag>;
-      },
-    },
-    {
-      title: 'Opacity',
-      dataIndex: 'opacity',
-      width: 90,
-      render: (v: number) => `${(v! * 100).toFixed(0)}%`,
-    },
-    {
-      title: 'Thứ tự',
-      dataIndex: 'order',
-      width: 80,
-      render: (v: number) => v,
-    },
-    {
-      title: 'Hiển thị',
-      dataIndex: 'visible',
-      width: 90,
+      } },
+    { key: 'opacity', label: 'Opacity', dataIndex: 'opacity', width: 90, align: 'center' as const,
+      render: (v: number) => `${(v! * 100).toFixed(0)}%` },
+    { key: 'order', label: 'Thứ tự', dataIndex: 'order', width: 80, align: 'center' as const,
+      render: (v: number) => v },
+    { key: 'visible', label: 'Hiển thị', dataIndex: 'visible', width: 90, align: 'center' as const,
       render: (visible: boolean, record: MapLayer) => (
-        <Switch
-          checked={visible}
-          onChange={() => handleToggleVisible(record)}
-          size="small"
-        />
+        <Switch checked={visible} onChange={() => handleToggleVisible(record)} size="small" />
       ),
     },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      width: 120,
+    { key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 120, align: 'center' as const,
+      type: 'status' as const,
       render: (status: string) => {
         const s = MAP_LAYER_STATUS_MAP[status] || { color: 'default', label: status };
         return <Tag color={s.color}>{s.label}</Tag>;
-      },
-    },
-    {
-      title: 'Cập nhật',
-      dataIndex: 'updatedAt',
-      width: 130,
-      render: (text: string) => (text ? dayjs(text).format('DD/MM/YYYY') : '—'),
-    },
-    {
-      title: 'Thao tác',
-      key: 'actions',
-      width: 160,
-      fixed: 'right' as const,
+      } },
+    { key: 'updatedAt', label: 'Cập nhật', dataIndex: 'updatedAt', width: 130,
+      type: 'date' as const,
+      render: (text: string) => (text ? dayjs(text).format('DD/MM/YYYY') : '—') },
+    { key: 'actions', label: 'Thao tác', width: 160, align: 'center' as const,
+      type: 'action' as const,
       render: (_: unknown, record: MapLayer) => (
-        <Space size="small">
+        <Space size={spaceXs}>
           {hasPerm('gis.layer.edit') && (
             <Tooltip title="Sửa">
-              <Button
-                type="link"
-                size="small"
-                icon={<EditOutlined />}
-                onClick={() => navigate(`/gis/layers/${record.id}/edit`)}
-              />
+              <Button type="link" size="small" icon={<EditOutlined />}
+                onClick={() => navigate(`/gis/layers/${record.id}/edit`)} />
             </Tooltip>
           )}
           {hasPerm('gis.layer.delete') && (
-            <Popconfirm
-              title="Xác nhận xóa"
-              description={`Bạn có chắc muốn xóa "${record.name}"?`}
-              okText="Xóa"
-              okType="danger"
-              cancelText="Hủy"
-              onConfirm={() => handleDelete(record)}
-            >
+            <Popconfirm title="Xác nhận xóa" description={`Bạn có chắc muốn xóa "${record.name}"?`}
+              okText="Xóa" okType="danger" cancelText="Hủy"
+              onConfirm={() => handleDelete(record)}>
               <Tooltip title="Xóa">
                 <Button type="link" size="small" danger icon={<DeleteOutlined />} />
               </Tooltip>
@@ -227,82 +167,77 @@ export default function MapLayerList() {
         </Space>
       ),
     },
-  ];
+  ], [page, pageSize, navigate, hasPerm, handleToggleVisible, handleDelete]);
+
+  // ── Filter fields ──
+  const filterFields = useMemo(() => [
+    { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên, mã...' },
+    { key: 'layerType', type: 'select' as const, label: 'Loại lớp', placeholder: 'Chọn loại',
+      options: MAP_LAYER_TYPE_OPTIONS.map(o => ({ value: o.value, label: o.label })) },
+  ], []);
+
+  const handleFilterSearch = useCallback((values: Record<string, any>) => {
+    setSearch(values.search || '');
+    setFilterType(values.layerType || undefined);
+    setPage(1);
+  }, []);
+
+  const handleFilterReset = useCallback(() => {
+    setSearch('');
+    setFilterType(undefined);
+    setPage(1);
+  }, []);
+
+  // ── Header actions ──
+  const headerActions = useMemo(() => [
+    hasPerm('gis.layer.create') ? {
+      key: 'create', label: 'Thêm lớp bản đồ', variant: 'primary' as const,
+      icon: <PlusOutlined />, onClick: () => navigate('/gis/layers/create'),
+    } : null,
+  ].filter(Boolean) as { key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon: React.ReactNode; onClick: () => void }[], [hasPerm, navigate]);
 
   return (
     <>
-      <Card style={{ marginBottom: 16 }}>
-        <Row gutter={[12, 12]} align="middle" justify="space-between">
-          <Col xs={24} md={16}>
-            <Space wrap>
-              <Input.Search
-                placeholder="Tìm theo tên, mã..."
-                allowClear
-                style={{ width: 260 }}
-                prefix={<SearchOutlined />}
-                onSearch={handleSearch}
-              />
-              <Select
-                placeholder="Loại lớp"
-                allowClear
-                style={{ width: 160 }}
-                value={filterType}
-                onChange={(val) => { setFilterType(val); setPage(1); }}
-                options={MAP_LAYER_TYPE_OPTIONS}
-              />
-            </Space>
-          </Col>
-          <Col xs={24} md={8} style={{ textAlign: 'right' }}>
-            <Space>
-              <Tooltip title="Tải lại">
-                <Button icon={<ReloadOutlined />} onClick={fetchData} />
-              </Tooltip>
-              {hasPerm('gis.layer.create') && (
-                <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/gis/layers/create')}>
-                  Thêm lớp bản đồ
-                </Button>
-              )}
-            </Space>
-          </Col>
-        </Row>
-      </Card>
+      <ScreenHeader
+        breadcrumb={[
+          { label: 'Trang chủ', path: '/' },
+          { label: 'Quản lý KCHT trên nền bản đồ (GIS)' },
+          { label: 'Quản lý lớp bản đồ' },
+        ]}
+        actions={headerActions}
+      />
 
-      <Card>
-        {isLoading && <LoadingSkeleton rows={8} type="table" />}
-        {isError && (
-          <ErrorState
-            message={error?.message || 'Không thể tải danh sách lớp bản đồ'}
-            onRetry={fetchData}
-          />
-        )}
-        {!isLoading && !isError && dataSource.length === 0 && (
-          <EmptyState
-            description={search || filterType ? 'Không tìm thấy' : 'Chưa có lớp bản đồ nào'}
-            ctaText="Thêm lớp bản đồ đầu tiên"
-            onCta={() => navigate('/gis/layers/create')}
-          />
-        )}
-        {!isLoading && !isError && dataSource.length > 0 && (
-          <DataTable<MapLayer>
+      <FilterBar fields={filterFields} onSearch={handleFilterSearch} onReset={handleFilterReset} />
+
+      {isLoading && <LoadingSkeleton rows={8} type="table" />}
+      {isError && (
+        <ErrorState
+          message={error?.message || 'Không thể tải danh sách lớp bản đồ'}
+          onRetry={fetchData}
+        />
+      )}
+      {!isLoading && !isError && dataSource.length === 0 && (
+        <EmptyState
+          description={search || filterType ? 'Không tìm thấy' : 'Chưa có lớp bản đồ nào'}
+        />
+      )}
+      {!isLoading && !isError && dataSource.length > 0 && (
+        <>
+          <DataTable
             columns={columns}
             dataSource={dataSource}
             rowKey="id"
-            scroll={{ x: 1380 }}
-            pagination={{
-              current: page,
-              pageSize,
-              total,
-              onChange: (p, sz) => {
-                setPage(p);
-                if (sz) setPageSize(sz);
-              },
-              showSizeChanger: true,
-              showTotal: (t) => `Tổng ${t} lớp`,
-              pageSizeOptions: ['10', '20', '50'],
-            }}
+            loading={false}
           />
-        )}
-      </Card>
+          <Pagination
+            total={total}
+            current={page}
+            pageSize={pageSize}
+            pageSizeOptions={[10, 20, 50]}
+            onChange={(p, sz) => { setPage(p); if (sz) setPageSize(sz); }}
+          />
+        </>
+      )}
     </>
   );
 }
