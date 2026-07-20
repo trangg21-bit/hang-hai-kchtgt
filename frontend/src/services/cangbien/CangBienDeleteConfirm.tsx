@@ -3,6 +3,7 @@ import { Card, Button, Space, Typography, Tag, Row, Col } from 'antd';
 import toast from '../../components/ToastNotification';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
+import { borderDefault, statusAttention, spaceMd } from '../../tokens';
 import { fetchCangBienById, deleteCangBien } from './api';
 import type { CangBienResponse } from './types';
 
@@ -107,7 +108,7 @@ export default function CangBienDeleteConfirm() {
         </Card>
 
         {/* Warning */}
-        <Card size="small" style={{ marginBottom: 16, backgroundColor: '#fff7e6', borderColor: '#ffd591' }}>
+        <Card size="small" style={{ marginBottom: spaceMd, borderColor: statusAttention, backgroundColor: `${statusAttention}10` }}>
           <Typography.Text type="warning">
             ⚠️ Dữ liệu sẽ được ẩn (soft-delete) nhưng vẫn được lưu trữ trong hệ thống.
           </Typography.Text>
@@ -127,7 +128,7 @@ export default function CangBienDeleteConfirm() {
         </div>
 
         {/* Footer */}
-        <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 16 }}>
+        <div style={{ borderTop: `1px solid ${borderDefault}`, paddingTop: 16 }}>
           <Space>
             <Button onClick={() => navigate(`/cangbien/${id}`)}>Hủy</Button>
             <Button

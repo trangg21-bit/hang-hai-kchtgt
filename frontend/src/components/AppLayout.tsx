@@ -78,12 +78,12 @@ const pageTitles: Record<string, string> = {
   '/organizations': 'Quản lý đơn vị',
   '/groups': 'Quản lý nhóm',
   '/roles': 'Phân quyền',
-  '/gis/points': 'Đối tượng điểm',
-  '/gis/lines': 'Đối tượng đường',
-  '/gis/polygons': 'Đối tượng vùng',
-  '/gis/layers': 'Lớp bản đồ',
-  '/gis/search': 'Tra cứu GIS',
-  '/gis/map': 'Tra cứu KCHT trên bản đồ',
+  '/gis/points': 'Quản lý danh mục đối tượng điểm',
+  '/gis/lines': 'Quản lý danh mục đối tượng đường',
+  '/gis/polygons': 'Quản lý danh mục đối tượng vùng',
+  '/gis/layers': 'Quản lý lớp bản đồ',
+  '/gis/search': 'Tra cứu thông tin KCHT hàng hải trên bản đồ',
+  '/gis/map': 'Quản lý thông tin KCHT hàng hải trên bản đồ',
   '/gis/permits': 'Giấy phép S-63',
   '/beacons': 'Đèn biển',
   '/buoys': 'Phao tiêu',
@@ -193,14 +193,14 @@ export default function AppLayout() {
     {
       key: 'gis',
       icon: <CompassOutlined />,
-      label: 'GIS • Bản đồ',
+      label: 'Quản lý KCHT trên nền bản đồ (GIS)',
       children: [
-        canAccessMenu('/gis/points') ? { key: '/gis/points', label: 'Đối tượng điểm' } : null,
-        canAccessMenu('/gis/lines') ? { key: '/gis/lines', label: 'Đối tượng đường' } : null,
-        canAccessMenu('/gis/polygons') ? { key: '/gis/polygons', label: 'Đối tượng vùng' } : null,
-        canAccessMenu('/gis/layers') ? { key: '/gis/layers', label: 'Lớp bản đồ' } : null,
-        canAccessMenu('/gis/search') ? { key: '/gis/search', label: 'Tra cứu GIS' } : null,
-        canAccessMenu('/gis/map') ? { key: '/gis/map', label: 'Tra cứu KCHT trên bản đồ' } : null,
+        canAccessMenu('/gis/points') ? { key: '/gis/points', label: 'Quản lý danh mục đối tượng điểm' } : null,
+        canAccessMenu('/gis/lines') ? { key: '/gis/lines', label: 'Quản lý danh mục đối tượng đường' } : null,
+        canAccessMenu('/gis/polygons') ? { key: '/gis/polygons', label: 'Quản lý danh mục đối tượng vùng' } : null,
+        canAccessMenu('/gis/layers') ? { key: '/gis/layers', label: 'Quản lý lớp bản đồ' } : null,
+        canAccessMenu('/gis/search') ? { key: '/gis/search', label: 'Tra cứu thông tin KCHT hàng hải trên bản đồ' } : null,
+        canAccessMenu('/gis/map') ? { key: '/gis/map', label: 'Quản lý thông tin KCHT hàng hải trên bản đồ' } : null,
         canAccessMenu('/gis/permits') ? { key: '/gis/permits', label: 'Giấy phép S-63' } : null,
       ].filter(Boolean),
     },
@@ -221,7 +221,7 @@ export default function AppLayout() {
     {
       key: 'cangben',
       icon: <ContainerOutlined />,
-      label: 'Tài sản KCHTGT',
+      label: 'Quản lý KCHT Hàng Hải',
       children: [
         canAccessMenu('/cangbien') ? { key: '/cangbien', label: 'Cảng biển' } : null,
         canAccessMenu('/bencang') ? { key: '/bencang', label: 'Bến cảng' } : null,
@@ -425,16 +425,16 @@ export default function AppLayout() {
   const sidebarContent = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header — logo và nút thu gọn menu */}
-      <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', cursor: 'pointer' }}>
+      <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', padding: '0 16px', cursor: 'pointer' }}>
         <div className="sidebar-header__logo-box" onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center' }}>
-          <img src="/images/logo-vinamarine.png" alt="Logo" style={{ maxHeight: '35px' }} />
+          <img src="/images/logo-vinamarine.png" alt="Logo" style={{ maxHeight: '56px' }} />
         </div>
         {!collapsed && (
           <Button
             type="text"
             icon={<span style={{ display: 'inline-flex', alignItems: 'center', fontSize: '14px', letterSpacing: '-1px', color: '#fff', fontWeight: 'bold' }}>|↔|</span>}
             onClick={(e) => { e.stopPropagation(); setSidebarHidden(true); }}
-            style={{ padding: 0 }}
+            style={{ position: 'absolute', right: 8, padding: 0 }}
             title="Thu gọn menu"
           />
         )}
@@ -458,6 +458,7 @@ export default function AppLayout() {
           onOpenChange={setOpenKeys}
           items={menuItems}
           onClick={handleMenuClick}
+          inlineIndent={24}
           style={{ borderInlineEnd: 'none', paddingTop: 4 }}
         />
       </div>
@@ -629,7 +630,7 @@ export default function AppLayout() {
 
           {sidebarHidden && (
             <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={() => navigate('/')}>
-              <img src="/images/logo-vinamarine.png" alt="Logo" style={{ maxHeight: '35px' }} />
+              <img src="/images/logo-vinamarine.png" alt="Logo" style={{ maxHeight: '56px' }} />
             </div>
           )}
 
