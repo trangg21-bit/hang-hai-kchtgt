@@ -28,7 +28,7 @@ public class F150ReportHandler extends BaseReportHandler {
 
         List<CauCang> berths = cauCangRepository.findAll().stream()
                 .filter(b -> skipFilter || targetUnitId.equals(b.getDonViId()))
-                .filter(b -> b.getCreatedAt() == null || b.getCreatedAt().getYear() <= reportYear)
+                                    .filter(b -> b.getCreatedAt() == null || b.getCreatedAt().getYear() <= reportYear)
                 .toList();
 
         double containerNam = 0;
@@ -61,7 +61,7 @@ public class F150ReportHandler extends BaseReportHandler {
 
         for (CauCang b : berths) {
             String type = classifyCauCang(b.getLoaiCau(), b.getCongNangKhaiThac());
-            boolean isNewThisYear = b.getCreatedAt() != null && b.getCreatedAt().getYear() == reportYear;
+            boolean isNewThisYear = b.getUpdatedAt() != null && b.getUpdatedAt().getYear() == reportYear;
             double len = b.getChieuDai() != null ? b.getChieuDai().doubleValue() : 0.0;
 
             switch (type) {
@@ -249,7 +249,7 @@ public class F150ReportHandler extends BaseReportHandler {
 
         for (CauCang b : berths) {
             String type = classifyCauCang(b.getLoaiCau(), b.getCongNangKhaiThac());
-            boolean isNewThisYear = b.getCreatedAt() != null && b.getCreatedAt().getYear() == reportYear;
+            boolean isNewThisYear = b.getUpdatedAt() != null && b.getUpdatedAt().getYear() == reportYear;
             double len = b.getChieuDai() != null ? b.getChieuDai().doubleValue() : 0.0;
 
             switch (type) {

@@ -425,6 +425,15 @@ export default function ReportsPage() {
           if (typeof value === 'boolean') {
             return value ? <Badge status="success" text="Đúng" /> : <Badge status="error" text="Sai" />;
           }
+          // Format numbers with thousand separators (e.g., 1,000,000)
+          if (typeof value === 'number') {
+            return value.toLocaleString('vi-VN');
+          }
+          // Also handle numeric strings (from backend)
+          const num = Number(value);
+          if (!isNaN(num) && typeof value === 'string' && value.trim() !== '' && !isNaN(Number(value))) {
+            return Number(value).toLocaleString('vi-VN');
+          }
           return value.toString();
         },
       }));
