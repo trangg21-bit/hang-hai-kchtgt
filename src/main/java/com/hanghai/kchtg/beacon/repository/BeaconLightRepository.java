@@ -23,10 +23,10 @@ public interface BeaconLightRepository extends JpaRepository<BeaconLight, UUID> 
     List<BeaconLight> findByNameContainingIgnoreCase(String name);
     List<BeaconLight> findByCodeContainingIgnoreCase(String code);
 
-    @Query(value = "SELECT * FROM beacon_light b WHERE " +
-           "(:name IS NULL OR LOWER(b.name) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
-           "(:code IS NULL OR LOWER(b.code) LIKE LOWER(CONCAT('%', :code, '%'))) AND " +
-           "(:type IS NULL OR b.type = :type) AND " +
+    @Query(value = "SELECT * FROM den_bien b WHERE " +
+           "(:name IS NULL OR LOWER(b.ten_den_bien) LIKE LOWER(CONCAT('%', :name, '%'))) AND " +
+           "(:code IS NULL OR LOWER(b.ma_den_bien) LIKE LOWER(CONCAT('%', :code, '%'))) AND " +
+           "(:type IS NULL OR b.cap_tram_den = :type) AND " +
            "(:status IS NULL OR b.status = :status)", nativeQuery = true)
     List<BeaconLight> searchFiltered(
         @Param("name") String name,

@@ -92,6 +92,15 @@ public class BeaconLightService {
                 .lastMaintenanceDate(request.getLastMaintenanceDate())
                 .nextMaintenanceDate(request.getNextMaintenanceDate())
                 .isActive(request.getIsActive())
+                .hinhDang(request.getHinhDang())
+                .ketCau(request.getKetCau())
+                .chieuCaoThapDen(request.getChieuCaoThapDen())
+                .chieuCaoTamSang(request.getChieuCaoTamSang())
+                .tamHieuLucDiaLy(request.getTamHieuLucDiaLy())
+                .chungLoaiDenDuPhong(request.getChungLoaiDenDuPhong())
+                .nguonCungCapNangLuongChoDen(request.getNguonCungCapNangLuongChoDen())
+                .soLuongNhanSuBoTri(request.getSoLuongNhanSuBoTri())
+                .dienTichSuDungTram(request.getDienTichSuDungTram())
                 .status(BeaconStatus.DRAFT)
                 .approvalStatus(BeaconApprovalStatus.PENDING)
                 .build();
@@ -179,6 +188,16 @@ public class BeaconLightService {
             entity.setNextMaintenanceDate(request.getNextMaintenanceDate());
         }
         if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
+
+        if (request.getHinhDang() != null) entity.setHinhDang(request.getHinhDang());
+        if (request.getKetCau() != null) entity.setKetCau(request.getKetCau());
+        if (request.getChieuCaoThapDen() != null) entity.setChieuCaoThapDen(request.getChieuCaoThapDen());
+        if (request.getChieuCaoTamSang() != null) entity.setChieuCaoTamSang(request.getChieuCaoTamSang());
+        if (request.getTamHieuLucDiaLy() != null) entity.setTamHieuLucDiaLy(request.getTamHieuLucDiaLy());
+        if (request.getChungLoaiDenDuPhong() != null) entity.setChungLoaiDenDuPhong(request.getChungLoaiDenDuPhong());
+        if (request.getNguonCungCapNangLuongChoDen() != null) entity.setNguonCungCapNangLuongChoDen(request.getNguonCungCapNangLuongChoDen());
+        if (request.getSoLuongNhanSuBoTri() != null) entity.setSoLuongNhanSuBoTri(request.getSoLuongNhanSuBoTri());
+        if (request.getDienTichSuDungTram() != null) entity.setDienTichSuDungTram(request.getDienTichSuDungTram());
 
         // Status revert logic for approved states
         if (isApprovedStatus(entity.getStatus())) {
@@ -415,6 +434,15 @@ public class BeaconLightService {
                 .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())
                 .rejectionReason(entity.getRejectionReason())
+                .hinhDang(entity.getHinhDang())
+                .ketCau(entity.getKetCau())
+                .chieuCaoThapDen(entity.getChieuCaoThapDen())
+                .chieuCaoTamSang(entity.getChieuCaoTamSang())
+                .tamHieuLucDiaLy(entity.getTamHieuLucDiaLy())
+                .chungLoaiDenDuPhong(entity.getChungLoaiDenDuPhong())
+                .nguonCungCapNangLuongChoDen(entity.getNguonCungCapNangLuongChoDen())
+                .soLuongNhanSuBoTri(entity.getSoLuongNhanSuBoTri())
+                .dienTichSuDungTram(entity.getDienTichSuDungTram())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

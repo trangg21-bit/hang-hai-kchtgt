@@ -3545,8 +3545,8 @@ public class ReportService {
                                 if (srcCell.getCellType() == CellType.STRING) {
                                     String expr = srcCell.getStringCellValue();
 
-                                    if (expr != null && (expr.contains("table.value")
-                                            || expr.contains("this.getCateOtherText") || expr.contains("item."))) {
+if (expr != null && (expr.contains("table.")
+                                        || expr.contains("this.getCateOtherText") || expr.contains("item."))) {
                                         Map<String, Object> item = arrResult.isEmpty() ? new HashMap<>()
                                                 : arrResult.get(0);
 
@@ -3598,7 +3598,7 @@ public class ReportService {
                                                 continue;
                                             }
 
-                                            if (expr.contains("item.") || expr.contains("table.value")
+                                            if (expr.contains("item.") || expr.contains("table.")
                                                     || expr.contains("this.getCateOtherText")) {
                                                 Object val = resolveExpression(expr, item);
 
@@ -3645,8 +3645,8 @@ public class ReportService {
                                 if (srcCell.getCellType() == CellType.STRING) {
                                     String expr = srcCell.getStringCellValue();
 
-                                    if (expr != null && (expr.contains("table.value")
-                                            || expr.contains("this.getCateOtherText") || expr.contains("item."))) {
+if (expr != null && (expr.contains("table.")
+                                        || expr.contains("this.getCateOtherText") || expr.contains("item."))) {
                                         Map<String, Object> item = arrResult.isEmpty() ? new HashMap<>()
                                                 : arrResult.get(arrResult.size() - 1);
 
@@ -3736,6 +3736,63 @@ public class ReportService {
                             style.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.CENTER);
                             cell.setCellStyle(style);
                             cell.setCellValue("-");
+                        }
+                    }
+                }
+
+                // Post-process F-155: section headers with proper formatting + STT reset
+                if ("F-155".equalsIgnoreCase(request.getReportCode())) {
+                    int sttCounter = 0;
+                    for (int r = 0; r <= destSheet.getLastRowNum(); r++) {
+                        Row row = destSheet.getRow(r);
+                        if (row == null) continue;
+                        Cell cellB = row.getCell(1);
+                        if (cellB != null && cellB.getCellType() == CellType.STRING) {
+                            String val = cellB.getStringCellValue();
+                            if ("Cấp I".equals(val) || "Cấp II".equals(val) || "Cấp III".equals(val)) {
+                                // Section header row: reset STT, clear all cells except B, set font
+                                sttCounter = 0;
+                                Cell cellA = row.getCell(0);
+                                if (cellA != null) cellA.setCellValue("");
+                                // Clear all other cells in this row
+                                for (int c = 2; c < row.getLastCellNum(); c++) {
+                                    Cell cell = row.getCell(c);
+                                    if (cell != null) cell.setCellValue("");
+                                }
+                                // Set font: Times New Roman, size 10, bold
+                                CellStyle style = workbook.createCellStyle();
+                                style.cloneStyleFrom(cellB.getCellStyle());
+                                org.apache.poi.ss.usermodel.Font font = workbook.createFont();
+                                font.setFontName("Times New Roman");
+                                font.setFontHeightInPoints((short) 10);
+                                font.setBold(true);
+                                style.setFont(font);
+                                cellB.setCellStyle(style);
+                                continue;
+                            }
+                        }
+                        // Data row: assign STT + ensure column B is not bold
+                        Cell cellA = row.getCell(0);
+                        if (cellA != null && cellA.getCellType() == CellType.NUMERIC) {
+                            cellA.setCellValue(++sttCounter);
+                        }
+                        // Unbold column B for data rows (section rows already handled with continue)
+                        Cell cellBData = row.getCell(1);
+                        if (cellBData != null) {
+                            CellStyle style = cellBData.getCellStyle();
+                            if (style != null) {
+                                org.apache.poi.ss.usermodel.Font font = workbook.getFontAt(style.getFontIndex());
+                                if (font != null && font.getBold()) {
+                                    CellStyle unboldStyle = workbook.createCellStyle();
+                                    unboldStyle.cloneStyleFrom(style);
+                                    org.apache.poi.ss.usermodel.Font unboldFont = workbook.createFont();
+                                    unboldFont.setFontName(font.getFontName());
+                                    unboldFont.setFontHeightInPoints(font.getFontHeightInPoints());
+                                    unboldFont.setBold(false);
+                                    unboldStyle.setFont(unboldFont);
+                                    cellBData.setCellStyle(unboldStyle);
+                                }
+                            }
                         }
                     }
                 }

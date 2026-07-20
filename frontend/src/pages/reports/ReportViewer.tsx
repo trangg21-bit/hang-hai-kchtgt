@@ -30,6 +30,7 @@ import type { ReportRequest, ReportResponse } from '../../types/report';
 import { REPORT_TEMPLATES, CATEGORY_MAP } from './ReportList';
 import { organizationService } from '../../services/organizationService';
 
+
 const { Title, Text, Paragraph } = Typography;
 const { RangePicker } = DatePicker;
 
@@ -190,6 +191,23 @@ export default function ReportViewer() {
     }
   }, [reportCode, selectedOrgId, selectedBcNoiDung, selectedYear, nguonDuLieu, dateRange, selectedNhomCangBien]);
 
+  // Inject CSS for report section header rows
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .report-section-row td {
+        background-color: #D9E2F3 !important;
+        font-weight: bold !important;
+        font-size: 13px !important;
+      }
+      .report-section-row td:first-child {
+        text-align: center !important;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
+  }, []);
+
   const handleExport = async (format: 'EXCEL' | 'PDF') => {
     setLoadingExport(format);
     try {
@@ -247,7 +265,7 @@ export default function ReportViewer() {
       key: h,
       render: (val: any) => {
         if (typeof val === 'number') {
-          return val.toLocaleString('vi-VN');
+          return val.toString();
         }
         return val;
       },
@@ -264,22 +282,15 @@ export default function ReportViewer() {
 
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%', padding: '24px' }}>
-      {/* Breadcrumbs */}
-      <Breadcrumb
-        items={[
-          { title: 'Trang chủ', href: '/' },
-          { title: 'Danh sách báo cáo', href: '/reports' },
-          { title: `${template.code} - ${template.name}` },
-        ]}
-      />
 
-      {/* Header Banner */}
+
+      {/* Header */}
       <Card
         styles={{
           body: {
-            background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
+            background: 'linear-gradient(135deg, #1677ff 0%, #0958d9 100%)',
             borderRadius: 6,
-            padding: '24px',
+            padding: '20px 24px',
           },
         }}
         variant="borderless"
@@ -530,7 +541,7 @@ export default function ReportViewer() {
             }
             style={{ minHeight: 380 }}
           >
-            {['F-154', 'F-155', 'F-156', 'F-157', 'F-159'].includes(reportCode) ? (
+            {['F-154', 'F-156', 'F-157', 'F-159'].includes(reportCode) ? (
               <div style={{ padding: '10px 0' }}>
                 <Alert
                   message="Lưu ý về nguồn dữ liệu báo cáo"
@@ -574,6 +585,14 @@ export default function ReportViewer() {
                 <Table
                   columns={getColumns()}
                   dataSource={reportData.rows.map((row, idx) => ({ ...row, key: idx }))}
+                  onRow={(record: any) => {
+                    const ten = record['Tên đèn biển'];
+                    if (ten === 'Cấp I' || ten === 'Cấp II' || ten === 'Cấp III') {
+                      return { className: 'report-section-row' };
+                    }
+                    return {};
+                  }}
+
                   pagination={{
                     current: currentPage,
                     pageSize: pageSize,
@@ -595,7 +614,7 @@ export default function ReportViewer() {
                       {Object.entries(reportData.summary).map(([key, val]) => (
                         <Descriptions.Item key={key} label={key}>
                           <Text strong>
-                            {typeof val === 'number' ? val.toLocaleString('vi-VN') : val.toString()}
+                            {typeof val === 'number' ? val.toString() : val.toString()}
                           </Text>
                         </Descriptions.Item>
                       ))}

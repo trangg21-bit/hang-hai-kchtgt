@@ -901,7 +901,7 @@ export default function GISChartView() {
         return;
       }
 
-      // Also skip closing if the pathname includes an ID segment (e.g. /beacons/123)
+      // Also skip closing if the pathname includes an ID segment (e.g. /den-bien/123)
       const segments = pathname.split('/').filter(Boolean);
       if (segments.length >= 2) {
         return;
@@ -913,7 +913,7 @@ export default function GISChartView() {
         '/luong-hang-hai',
         '/he-thong-vts',
         '/co-so-sua-chua',
-        '/beacons',
+        '/den-bien',
         '/buoys',
         '/cangbien',
         '/bencang',
@@ -954,7 +954,7 @@ export default function GISChartView() {
       const label = (typeLabel || '').trim().toLowerCase();
       let path = '';
       if (label.includes('đèn biển') || label.includes('den bien')) {
-        path = `/beacons/${id}${action === 'edit' ? '?mode=edit' : ''}`;
+        path = `/den-bien/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('phao tiêu') || label.includes('phao tieu')) {
         path = `/buoys/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('cảng biển') || label.includes('cang bien')) {

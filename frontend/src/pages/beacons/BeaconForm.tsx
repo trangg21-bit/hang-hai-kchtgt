@@ -54,7 +54,7 @@ export default function BeaconForm() {
           });
         } catch {
           toast.error('Không thể tải thông tin đèn biển');
-          navigate('/beacons');
+          navigate('/den-bien');
         }
       })();
     }
@@ -109,7 +109,7 @@ export default function BeaconForm() {
         toast.success('Đã tạo đèn biển');
       }
 
-      navigate('/beacons');
+      navigate('/den-bien');
     } catch {
       // validation errors or API errors (handled globally by Axios interceptor in api.ts)
     } finally {
@@ -125,7 +125,7 @@ export default function BeaconForm() {
     try {
       await beaconLightCRUD.delete(id);
       toast.success('Đã xóa đèn biển');
-      navigate('/beacons');
+      navigate('/den-bien');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
     }
@@ -136,7 +136,7 @@ export default function BeaconForm() {
     try {
       await approval.submitForApproval(id);
       toast.success('Đã gửi duyệt đèn biển');
-      navigate('/beacons');
+      navigate('/den-bien');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Gửi duyệt thất bại');
     }
@@ -148,7 +148,7 @@ export default function BeaconForm() {
     try {
       await approval.approveL1(id, approverId);
       toast.success('Đã phê duyệt cấp 1');
-      navigate('/beacons');
+      navigate('/den-bien');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
     }
@@ -160,7 +160,7 @@ export default function BeaconForm() {
     try {
       await approval.approveL2(id, approverId);
       toast.success('Đã phê duyệt cấp 2');
-      navigate('/beacons');
+      navigate('/den-bien');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
     }
@@ -175,7 +175,7 @@ export default function BeaconForm() {
       setRejectLoading(true);
       await approval.reject(id, reason, approverId);
       toast.success('Đã từ chối');
-      navigate('/beacons');
+      navigate('/den-bien');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
     } finally {
@@ -187,7 +187,7 @@ export default function BeaconForm() {
     <>
       <Card style={{ marginBottom: 16 }}>
         <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/beacons')}>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/den-bien')}>
             Quay lại
           </Button>
           <Typography.Title level={5} style={{ margin: 0 }}>
@@ -229,7 +229,7 @@ export default function BeaconForm() {
           <FormField
             type="select"
             name="type"
-            label="Loại đèn biển"
+            label="Cấp trạm đèn"
             required
             options={BEACON_LIGHT_TYPE_OPTIONS}
             disabled={isEdit && (entityData?.status === 'APPROVED_L2' || entityData?.status === 'PUBLISHED')}
@@ -252,7 +252,7 @@ export default function BeaconForm() {
                <FormField
                  type="number"
                  name="longitude"
-                 label="Kinh độ (Longitude)"
+                  label="Kinh độ"
                  required
                  min={-180}
                  max={180}
@@ -265,7 +265,7 @@ export default function BeaconForm() {
                <FormField
                  type="number"
                  name="latitude"
-                 label="Vĩ độ (Latitude)"
+                  label="Vĩ độ"
                  required
                  min={-90}
                  max={90}
@@ -279,7 +279,7 @@ export default function BeaconForm() {
            <FormField
              type="number"
              name="lightRange"
-             label="Bán kính chiếu sáng (Light Range, km)"
+             label="Tầm hiệu lực ánh sáng"
              required
              min={0.01}
              max={60}
@@ -291,14 +291,14 @@ export default function BeaconForm() {
            <FormField
              type="text"
              name="lightColor"
-             label="Màu ánh sáng"
+             label="Màu sắc bên ngoài của tháp đèn"
              placeholder="VD: Trắng, Đỏ, Xanh..."
            />
 
           <FormField
             type="textarea"
             name="description"
-            label="Mô tả"
+            label="Địa điểm đặt trạm đèn"
             placeholder="Mô tả về đèn biển..."
           />
 
@@ -307,7 +307,7 @@ export default function BeaconForm() {
               <Button type="primary" htmlType="submit" loading={submitting}>
                 {isEdit ? 'Cập nhật' : 'Tạo đèn biển'}
               </Button>
-              <Button onClick={() => navigate('/beacons')}>Hủy</Button>
+              <Button onClick={() => navigate('/den-bien')}>Hủy</Button>
             </Space>
           </Form.Item>
         </Form>

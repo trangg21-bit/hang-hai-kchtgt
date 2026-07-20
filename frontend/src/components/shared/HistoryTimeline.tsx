@@ -21,6 +21,13 @@ const STATUS_COLOR_MAP: Record<string, string> = {
   UNDER_REVIEW: 'blue',
   APPROVED: 'green',
   REJECTED: 'red',
+  // Beacon action types
+  CREATE: 'blue',
+  UPDATE: 'cyan',
+  APPROVE_L1: 'orange',
+  APPROVE_L2: 'magenta',
+  REJECT: 'red',
+  SOFT_DELETE: 'gray',
 };
 
 export default function HistoryTimeline({ history, loading, error, onRetry }: HistoryTimelineProps) {
