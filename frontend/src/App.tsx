@@ -15,7 +15,6 @@ import LineObjectForm from './pages/gis/LineObjectForm';
 import PolygonObjectList from './pages/gis/PolygonObjectList';
 import PolygonObjectForm from './pages/gis/PolygonObjectForm';
 import MapLayerList from './pages/gis/MapLayerList';
-import MapLayerForm from './pages/gis/MapLayerForm';
 import GISSearch from './pages/gis/GISSearch';
 import GISChartView from './pages/gis/GISChartView';
 import S63PermitsPage from './pages/gis/S63PermitsPage';
@@ -151,8 +150,6 @@ export default function App() {
                 <Route path="/gis/polygons/:id" element={<PermissionGuard permission="data:read"><PolygonObjectForm /></PermissionGuard>} />
 
                 <Route path="/gis/layers" element={<PermissionGuard permission="map:manage"><MapLayerList /></PermissionGuard>} />
-                <Route path="/gis/layers/create" element={<PermissionGuard permission="map:manage"><MapLayerForm /></PermissionGuard>} />
-                <Route path="/gis/layers/:id/edit" element={<PermissionGuard permission="map:manage"><MapLayerForm /></PermissionGuard>} />
 
                 <Route path="/gis/search" element={<PermissionGuard permission="data:read"><GISSearch /></PermissionGuard>} />
                 <Route path="/gis/map" element={<PermissionGuard permission="data:read"><GISChartView /></PermissionGuard>} />

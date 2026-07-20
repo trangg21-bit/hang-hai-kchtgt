@@ -7,6 +7,14 @@ import {
   Popconfirm,
   Switch,
   Typography,
+  Modal,
+  Form,
+  Input,
+  InputNumber,
+  Select,
+  Row,
+  Col,
+  message,
 } from 'antd';
 import {
   PlusOutlined,
@@ -19,6 +27,7 @@ import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { mapLayerService } from '../../services/mapLayerService';
 import type { MapLayer } from '../../types/mapLayer';
+import type { CreateMapLayerPayload, UpdateMapLayerPayload } from '../../types/mapLayer';
 import {
   MAP_LAYER_TYPE_OPTIONS,
   MAP_LAYER_STATUS_MAP,
@@ -31,9 +40,38 @@ import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
 import {
-  spaceXs,
-  statusOperational, textTertiary,
+  spaceMd, spaceFormField, spaceSm, spaceLg, spaceXs,
+  radiusPill, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
+  textPrimary, textSecondary, textTertiary,
+  statusOperational,
+  actionPrimary, borderDefault,
 } from '../../tokens';
+import { colors } from '../../theme';
+
+const MODAL_FORM_STYLE: React.CSSProperties = {
+  marginTop: spaceMd,
+  maxHeight: '60vh',
+  overflowY: 'auto',
+  paddingRight: spaceFormField,
+};
+
+const INPUT_STYLE: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: 40,
+};
+
+const SELECT_STYLE: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: 40,
+  width: '100%',
+};
+
+const BTN_STYLE: React.CSSProperties = {
+  borderRadius: radiusPill,
+  height: 40,
+  fontWeight: fontWeightMedium,
+  fontSize: fontSizeMd,
+};
 
 export default function MapLayerList() {
   const navigate = useNavigate();
@@ -48,6 +86,12 @@ export default function MapLayerList() {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+
+  // ── Modal form state ──
+  const [form] = Form.useForm();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<MapLayer | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -72,6 +116,70 @@ export default function MapLayerList() {
   }, [page, pageSize, search, filterType]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
+
+  // ── Modal handlers ──
+  const openCreateModal = useCallback(() => {
+    setEditingRecord(null);
+    form.resetFields();
+    form.setFieldsValue({ visible: true, opacity: 1, order: 0 });
+    setIsModalOpen(true);
+  }, [form]);
+
+  const openEditModal = useCallback((record: MapLayer) => {
+    setEditingRecord(record);
+    form.setFieldsValue({
+      name: record.name,
+      code: record.code,
+      layerType: record.layerType,
+      source: record.source,
+      visible: record.visible,
+      opacity: record.opacity,
+      order: record.order,
+      styleConfig: record.styleConfig,
+    });
+    setIsModalOpen(true);
+  }, [form]);
+
+  const handleSubmit = useCallback(async () => {
+    try {
+      const values = await form.validateFields();
+      setSubmitting(true);
+
+      if (editingRecord) {
+        const payload: UpdateMapLayerPayload = {
+          name: values.name,
+          layerType: values.layerType,
+          source: values.source,
+          visible: values.visible,
+          opacity: values.opacity,
+          order: values.order,
+          styleConfig: values.styleConfig,
+        };
+        await mapLayerService.update(editingRecord.id, payload);
+        toast.success('Đã cập nhật lớp bản đồ');
+      } else {
+        const payload: CreateMapLayerPayload = {
+          name: values.name,
+          code: values.code,
+          layerType: values.layerType,
+          source: values.source,
+          visible: values.visible,
+          opacity: values.opacity,
+          order: values.order,
+          styleConfig: values.styleConfig,
+        };
+        await mapLayerService.create(payload);
+        toast.success('Đã tạo lớp bản đồ');
+      }
+
+      setIsModalOpen(false);
+      void fetchData();
+    } catch {
+      // validation error
+    } finally {
+      setSubmitting(false);
+    }
+  }, [editingRecord, form, fetchData]);
 
   const handleToggleVisible = useCallback(
     async (record: MapLayer) => {
@@ -152,7 +260,7 @@ export default function MapLayerList() {
           {hasPerm('gis.layer.edit') && (
             <Tooltip title="Sửa">
               <Button type="link" size="small" icon={<EditOutlined />}
-                onClick={() => navigate(`/gis/layers/${record.id}/edit`)} />
+                onClick={() => openEditModal(record)} />
             </Tooltip>
           )}
           {hasPerm('gis.layer.delete') && (
@@ -167,7 +275,7 @@ export default function MapLayerList() {
         </Space>
       ),
     },
-  ], [page, pageSize, navigate, hasPerm, handleToggleVisible, handleDelete]);
+  ], [page, pageSize, hasPerm, openEditModal, handleToggleVisible, handleDelete]);
 
   // ── Filter fields ──
   const filterFields = useMemo(() => [
@@ -192,9 +300,9 @@ export default function MapLayerList() {
   const headerActions = useMemo(() => [
     hasPerm('gis.layer.create') ? {
       key: 'create', label: 'Thêm lớp bản đồ', variant: 'primary' as const,
-      icon: <PlusOutlined />, onClick: () => navigate('/gis/layers/create'),
+      icon: <PlusOutlined />, onClick: openCreateModal,
     } : null,
-  ].filter(Boolean) as { key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon: React.ReactNode; onClick: () => void }[], [hasPerm, navigate]);
+  ].filter(Boolean) as { key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon: React.ReactNode; onClick: () => void }[], [hasPerm, openCreateModal]);
 
   return (
     <>
@@ -238,6 +346,80 @@ export default function MapLayerList() {
           />
         </>
       )}
+
+      <Modal
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingRecord ? 'Chỉnh sửa lớp bản đồ' : 'Thêm lớp bản đồ mới'}</span>}
+        open={isModalOpen}
+        onOk={handleSubmit}
+        onCancel={() => setIsModalOpen(false)}
+        destroyOnClose
+        confirmLoading={submitting}
+        okText={editingRecord ? 'Cập nhật' : 'Tạo lớp'}
+        cancelText="Hủy"
+        width={700}
+        mask={{ closable: false }}
+        footer={[
+          <Button key="cancel" style={{ ...BTN_STYLE, borderColor: borderDefault, color: textSecondary }}
+            onClick={() => setIsModalOpen(false)}>Hủy</Button>,
+          <Button key="submit" type="primary" style={{ ...BTN_STYLE, background: actionPrimary, borderColor: actionPrimary }}
+            loading={submitting} onClick={handleSubmit}>
+            {editingRecord ? 'Cập nhật' : 'Tạo lớp'}
+          </Button>,
+        ]}
+      >
+        <Form form={form} layout="vertical" style={MODAL_FORM_STYLE}>
+          <Form.Item name="code" label="Mã lớp"
+            rules={[{ required: true, message: 'Vui lòng nhập mã' }]}
+            style={{ marginBottom: spaceFormField }}>
+            <Input placeholder="VD: LAY-PT-001" disabled={!!editingRecord} style={INPUT_STYLE} />
+          </Form.Item>
+
+          <Form.Item name="name" label="Tên lớp"
+            rules={[{ required: true, message: 'Vui lòng nhập tên' }]}
+            style={{ marginBottom: spaceFormField }}>
+            <Input placeholder="VD: Đối tượng điểm cảng biển" style={INPUT_STYLE} />
+          </Form.Item>
+
+          <Form.Item name="layerType" label="Loại lớp"
+            rules={[{ required: true, message: 'Vui lòng chọn loại' }]}
+            style={{ marginBottom: spaceFormField }}>
+            <Select placeholder="Chọn loại lớp" options={MAP_LAYER_TYPE_OPTIONS} style={SELECT_STYLE} />
+          </Form.Item>
+
+          <Form.Item name="source" label="Nguồn dữ liệu"
+            style={{ marginBottom: spaceFormField }}>
+            <Input placeholder="VD: WMS, GeoJSON, file shape..." style={INPUT_STYLE} />
+          </Form.Item>
+
+          <Form.Item name="styleConfig" label="Cấu hình style (JSON)"
+            style={{ marginBottom: spaceFormField }}>
+            <Input.TextArea placeholder='{"color": "#ff0000", "width": 2}'
+              rows={3} style={{ borderRadius: radiusPill }} />
+          </Form.Item>
+
+          <Row gutter={spaceMd}>
+            <Col span={12}>
+              <Form.Item name="opacity" label="Độ mờ (0-1)"
+                style={{ marginBottom: spaceFormField }}>
+                <InputNumber placeholder="1" min={0} max={1} step={0.1}
+                  style={{ ...INPUT_STYLE, width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="order" label="Thứ tự hiển thị"
+                style={{ marginBottom: spaceFormField }}>
+                <InputNumber placeholder="0" min={0} step={1}
+                  style={{ ...INPUT_STYLE, width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item name="visible" label="Hiển thị" valuePropName="checked"
+            style={{ marginBottom: spaceFormField }}>
+            <Switch checkedChildren="Bật" unCheckedChildren="Tắt" />
+          </Form.Item>
+        </Form>
+      </Modal>
     </>
   );
 }

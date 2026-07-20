@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
@@ -8,7 +8,6 @@ import {
   Typography,
   Input,
   Select,
-  Table,
   Tag,
   Tooltip,
   Row,
@@ -18,12 +17,12 @@ import {
 } from 'antd';
 import {
   SearchOutlined,
+  ReloadOutlined,
   HistoryOutlined,
   DeleteOutlined,
   ClockCircleOutlined,
   EyeOutlined,
 } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { gisSearchService } from '../../services/gisSearchService';
 import type {
@@ -34,11 +33,13 @@ import type {
 import { SEARCH_TYPE_OPTIONS } from '../../types/gisSearch';
 import toast from '../../components/ToastNotification';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
-import { ScreenHeader } from '../../components/list-view';
+import EmptyState from '../../components/EmptyState';
+import { ScreenHeader, DataTable } from '../../components/list-view';
 import {
   spaceMd, spaceFormField, spaceSm, spaceXs,
   radiusPill, fontSizeMd, fontWeightMedium, fontSizeLg,
-  textTertiary, textSecondary, textPrimary,
+  textTertiary, textSecondary,
+  actionPrimary, borderDefault,
 } from '../../tokens';
 
 const QUERY_TYPE_LABELS: Record<string, string> = {
@@ -76,6 +77,7 @@ export default function GISSearch() {
   const [durationMs, setDurationMs] = useState(0);
   const [history, setHistory] = useState<SearchHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
     loadHistory();
@@ -115,11 +117,12 @@ export default function GISSearch() {
         radius: values.radius,
         coordinates: values.coordinates,
         layerTypes: values.layerTypes,
-        page: values.page || 0,
-        size: values.size || 20,
+        page: 0,
+        size: 20,
       };
 
       setSearching(true);
+      setHasSearched(true);
       const response = await gisSearchService.search(request);
       setResults(response.results || []);
       setTotalResults(response.totalResults);
@@ -140,11 +143,9 @@ export default function GISSearch() {
     void handleSearch();
   }, [form, handleSearch]);
 
-  const resultColumns: ColumnsType<SearchResultItem> = [
-    {
-      title: 'Đối tượng',
-      dataIndex: 'name',
-      ellipsis: true,
+  // ── Result columns (list-view format) ──
+  const resultColumns = useMemo(() => [
+    { key: 'name', label: 'Đối tượng', dataIndex: 'name',
       render: (text: string, record: SearchResultItem) => (
         <Space>
           <Typography.Text strong>{text}</Typography.Text>
@@ -152,43 +153,20 @@ export default function GISSearch() {
         </Space>
       ),
     },
-    {
-      title: 'Mã',
-      dataIndex: 'code',
-      width: 180,
+    { key: 'code', label: 'Mã', dataIndex: 'code', width: 180,
       render: (code: string) => (
         <Tooltip title={code}>
-          <Tag
-            color="cyan"
-            style={{
-              maxWidth: '100%',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              display: 'inline-block',
-              verticalAlign: 'bottom',
-            }}
-          >
-            {code}
-          </Tag>
-        </Tooltip>
-      ),
+          <Tag color="cyan" style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', verticalAlign: 'bottom' }}>{code}</Tag>
+        </Tooltip>),
     },
-    {
-      title: 'Layer',
-      dataIndex: 'layerType',
-      width: 120,
+    { key: 'layerType', label: 'Layer', dataIndex: 'layerType', width: 120,
       render: (text?: string) => text ? <Tag>{text}</Tag> : '—',
     },
-    {
-      title: 'Khoảng cách',
-      dataIndex: 'distance',
-      width: 120,
+    { key: 'distance', label: 'Khoảng cách', dataIndex: 'distance', width: 120,
       render: (v?: number) => v != null ? `${v.toFixed(1)}m` : '—',
     },
-    {
-      title: 'Thao tác',
-      key: 'actions',
-      width: 100,
+    { key: 'actions', label: 'Thao tác', width: 100, align: 'center' as const,
+      type: 'action' as const,
       render: (_: unknown, record: SearchResultItem) => {
         let path = '';
         if (record.objectType === 'POINT') path = `/gis/points/${record.objectId}`;
@@ -206,7 +184,7 @@ export default function GISSearch() {
         ) : '—';
       },
     },
-  ];
+  ], [navigate]);
 
   return (
     <>
@@ -219,11 +197,7 @@ export default function GISSearch() {
       />
 
       <Card style={{ marginBottom: spaceMd }}>
-        <Typography.Title level={5} style={{ margin: '0 0 16px 0' }}>
-          <SearchOutlined /> Tra cứu GIS
-        </Typography.Title>
-
-        <Form form={form} layout="vertical" onFinish={handleSearch} initialValues={{ queryType: 'TEXT', size: 20 }}>
+        <Form form={form} layout="vertical" onFinish={handleSearch} initialValues={{ queryType: 'TEXT' }}>
           <Row gutter={[16, 16]}>
             <Col xs={24} md={6}>
               <Form.Item name="queryType" label="Loại tìm kiếm"
@@ -232,46 +206,43 @@ export default function GISSearch() {
                 <Select placeholder="Chọn loại" options={SEARCH_TYPE_OPTIONS} style={SELECT_STYLE} />
               </Form.Item>
             </Col>
-            <Col xs={24} md={18}>
+            <Col xs={24} md={6}>
               <Form.Item name="query" label="Từ khóa"
                 rules={[{ required: true, message: 'Vui lòng nhập từ khóa' }]}
                 style={{ marginBottom: spaceFormField }}>
                 <Input
-                  placeholder="Nhập từ khóa tìm kiếm..."
+                  placeholder="Nhập từ khóa..."
                   allowClear
                   onPressEnter={handleSearch}
                   style={INPUT_STYLE}
                 />
               </Form.Item>
             </Col>
-          </Row>
-
-          <Row gutter={[16, 16]}>
-            <Col xs={24} md={8}>
-              <Form.Item name="centerLat" label="Vĩ độ tâm (centerLat)"
+            <Col xs={24} md={6}>
+              <Form.Item name="centerLat" label="Vĩ độ tâm"
                 style={{ marginBottom: spaceFormField }}>
                 <InputNumber placeholder="20.85" min={-90} max={90} step={0.0001}
                   style={{ ...INPUT_STYLE, width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col xs={24} md={8}>
-              <Form.Item name="centerLon" label="Kinh độ tâm (centerLon)"
+            <Col xs={24} md={6}>
+              <Form.Item name="centerLon" label="Kinh độ tâm"
                 style={{ marginBottom: spaceFormField }}>
                 <InputNumber placeholder="106.70" min={-180} max={180} step={0.0001}
                   style={{ ...INPUT_STYLE, width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col xs={24} md={8}>
+          </Row>
+
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={6}>
               <Form.Item name="radius" label="Bán kính (m)"
                 style={{ marginBottom: spaceFormField }}>
                 <InputNumber placeholder="1000" min={50} max={10000} step={1}
                   style={{ ...INPUT_STYLE, width: '100%' }} />
               </Form.Item>
             </Col>
-          </Row>
-
-          <Row gutter={[16, 16]}>
-            <Col xs={24} md={12}>
+            <Col xs={24} md={6}>
               <Form.Item name="coordinates" label="Tọa độ / Đa giác (WKT)"
                 style={{ marginBottom: spaceFormField }}>
                 <Input placeholder="Dùng cho POLYGON, COORDINATE" style={INPUT_STYLE} />
@@ -284,47 +255,31 @@ export default function GISSearch() {
               </Form.Item>
             </Col>
             <Col xs={24} md={6}>
-              <Row gutter={spaceMd}>
-                <Col span={12}>
-                  <Form.Item name="page" label="Trang"
-                    style={{ marginBottom: spaceFormField }}>
-                    <InputNumber min={0} step={1} placeholder="0"
-                      style={{ ...INPUT_STYLE, width: '100%' }} />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item name="size" label="Số kết quả"
-                    style={{ marginBottom: spaceFormField }}>
-                    <InputNumber min={1} max={100} step={1} placeholder="20"
-                      style={{ ...INPUT_STYLE, width: '100%' }} />
-                  </Form.Item>
-                </Col>
-              </Row>
+              <div style={{ paddingTop: 30 }}>
+                <Space>
+                  <Button icon={<ReloadOutlined />} onClick={() => form.resetFields()}
+                    style={{ color: textSecondary, borderColor: borderDefault, borderRadius: radiusPill, height: 40 }} />
+                  <Button type="primary" htmlType="submit" loading={searching} icon={<SearchOutlined />}
+                    style={{ background: actionPrimary, borderColor: actionPrimary, borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>
+                    Tìm kiếm
+                  </Button>
+                </Space>
+              </div>
             </Col>
           </Row>
-
-          <Form.Item style={{ marginTop: spaceSm }}>
-            <Space>
-              <Button type="primary" htmlType="submit" loading={searching} icon={<SearchOutlined />}
-                style={BTN_STYLE}>
-                Tìm kiếm
-              </Button>
-              <Button onClick={() => form.resetFields()}
-                style={{ ...BTN_STYLE, borderColor: textSecondary, color: textSecondary }}>
-                Đặt lại
-              </Button>
-            </Space>
-          </Form.Item>
         </Form>
       </Card>
 
       {/* Search Results */}
-      {(results.length > 0 || searching) && (
+      {(results.length > 0 || searching || (hasSearched && !searching)) && (
         <Card style={{ marginBottom: spaceMd }}>
-          <Row gutter={[spaceFormField, spaceFormField]} align="middle" justify="space-between" style={{ marginBottom: spaceFormField }}>
+          <Row align="middle" justify="space-between" style={{ marginBottom: spaceFormField }}>
             <Col>
-              <Typography.Text strong>Kết quả tìm kiếm</Typography.Text>
-              {!searching && (
+              <Typography.Text strong>
+                <SearchOutlined style={{ marginRight: spaceXs }} />
+                Kết quả tìm kiếm
+              </Typography.Text>
+              {!searching && totalResults > 0 && (
                 <Typography.Text type="secondary" style={{ marginLeft: spaceFormField }}>
                   {totalResults} kết quả • {durationMs}ms
                 </Typography.Text>
@@ -333,13 +288,14 @@ export default function GISSearch() {
           </Row>
           {searching ? (
             <LoadingSkeleton rows={5} type="table" />
+          ) : results.length === 0 ? (
+            <EmptyState description="Không tìm thấy kết quả nào" />
           ) : (
-            <Table<SearchResultItem>
+            <DataTable
               columns={resultColumns}
               dataSource={results}
               rowKey="objectId"
-              pagination={false}
-              scroll={{ y: 300 }}
+              loading={false}
             />
           )}
         </Card>
@@ -347,7 +303,7 @@ export default function GISSearch() {
 
       {/* Search History */}
       <Card>
-        <Row gutter={[spaceFormField, spaceFormField]} align="middle" justify="space-between" style={{ marginBottom: spaceFormField }}>
+        <Row align="middle" justify="space-between" style={{ marginBottom: spaceFormField }}>
           <Col>
             <Space>
               <HistoryOutlined />
@@ -370,9 +326,7 @@ export default function GISSearch() {
         {loadingHistory ? (
           <LoadingSkeleton rows={4} />
         ) : history.length === 0 ? (
-          <Typography.Text type="secondary" style={{ textAlign: 'center', display: 'block', padding: '20px 0' }}>
-            Chưa có lịch sử tìm kiếm
-          </Typography.Text>
+          <EmptyState description="Chưa có lịch sử tìm kiếm" />
         ) : (
           <List<SearchHistoryItem>
             dataSource={history}
