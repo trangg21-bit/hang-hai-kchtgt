@@ -42,7 +42,7 @@ export default function MapLayerList() {
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<MapLayer[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);

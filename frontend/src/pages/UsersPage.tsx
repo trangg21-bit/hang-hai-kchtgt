@@ -40,7 +40,7 @@ export default function UsersPage() {
   const [filterRoleId, setFilterRoleId] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [sortField, setSortField] = useState<string | undefined>();
   const [sortOrder, setSortOrder] = useState<'ascend' | 'descend' | null>(null);
   const [modalOpen, setModalOpen] = useState(false);

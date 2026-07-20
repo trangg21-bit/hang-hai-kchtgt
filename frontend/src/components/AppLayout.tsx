@@ -119,8 +119,9 @@ const pageTitles: Record<string, string> = {
 export default function AppLayout() {
   const isInIframe = window.self !== window.top;
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const collapsed = false;
   const [sidebarHidden, setSidebarHidden] = useState(false);
+  const [isMenuFullScreen, setIsMenuFullScreen] = useState(false);
   const [openKeys, setOpenKeys] = useState<string[]>([]);
   const navigate = useNavigate();
   const location = useLocation();
@@ -128,6 +129,13 @@ export default function AppLayout() {
   const logout = useAuthStore((s) => s.logout);
   const screens = useBreakpoint();
   const { token } = theme.useToken();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [isMenuFullScreen, sidebarHidden]);
 
   // Match top-level section: extract first two path segments for GIS submenus
   const pathSegments = location.pathname.split('/').filter(Boolean);
@@ -199,9 +207,7 @@ export default function AppLayout() {
         canAccessMenu('/gis/lines') ? { key: '/gis/lines', label: 'Quản lý danh mục đối tượng đường' } : null,
         canAccessMenu('/gis/polygons') ? { key: '/gis/polygons', label: 'Quản lý danh mục đối tượng vùng' } : null,
         canAccessMenu('/gis/layers') ? { key: '/gis/layers', label: 'Quản lý lớp bản đồ' } : null,
-        canAccessMenu('/gis/search') ? { key: '/gis/search', label: 'Tra cứu thông tin KCHT hàng hải trên bản đồ' } : null,
         canAccessMenu('/gis/map') ? { key: '/gis/map', label: 'Quản lý thông tin KCHT hàng hải trên bản đồ' } : null,
-        canAccessMenu('/gis/permits') ? { key: '/gis/permits', label: 'Giấy phép S-63' } : null,
       ].filter(Boolean),
     },
     { type: 'divider' as const },
@@ -425,23 +431,53 @@ export default function AppLayout() {
   const sidebarContent = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header — logo và nút thu gọn menu */}
-      <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', padding: '0 16px', cursor: 'pointer' }}>
-        <div className="sidebar-header__logo-box" onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center' }}>
+      <div 
+        className="sidebar-header" 
+        style={{ 
+          display: 'flex', 
+          flexDirection: isMenuFullScreen ? 'column' : 'row',
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          position: 'relative', 
+          padding: isMenuFullScreen ? '24px 16px' : '0 16px', 
+          cursor: 'pointer',
+          borderBottom: isMenuFullScreen ? '1px solid #f0f0f0' : 'none',
+          height: isMenuFullScreen ? 'auto' : undefined
+        }}
+      >
+        <div className="sidebar-header__logo-box" onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', marginBottom: isMenuFullScreen ? 12 : 0 }}>
           <img src="/images/logo-vinamarine.png" alt="Logo" style={{ maxHeight: '56px' }} />
         </div>
+        {isMenuFullScreen && (
+          <Typography.Title level={5} style={{ margin: 0, color: '#12468C', textAlign: 'center', fontWeight: 600, fontSize: '15px' }}>
+            HỆ THỐNG THÔNG TIN QUẢN LÝ KẾT CẤU HẠ TẦNG GIAO THÔNG HÀNG HẢI
+          </Typography.Title>
+        )}
         {!collapsed && (
           <Button
             type="text"
-            icon={<span style={{ display: 'inline-flex', alignItems: 'center', fontSize: '14px', letterSpacing: '-1px', color: '#fff', fontWeight: 'bold' }}>|↔|</span>}
-            onClick={(e) => { e.stopPropagation(); setSidebarHidden(true); }}
-            style={{ position: 'absolute', right: 8, padding: 0 }}
-            title="Thu gọn menu"
+            icon={
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+                role="img"
+                width="1.2em"
+                height="1.2em"
+                viewBox="0 0 24 24"
+                style={{ verticalAlign: 'middle', color: isMenuFullScreen ? '#000' : '#fff' }}
+              >
+                <path fill="currentColor" d={isMenuFullScreen ? "M13 20V4h2.03v16zm-3 0V4h2.03v16zM5 8l4.03 4L5 16v-3H2v-2h3zm15 8l-4-4l4-4v3h3v2h-3z" : "M9 11h6V8l4 4l-4 4v-3H9v3l-4-4l4-4zm-7 9V4h2v16zm18 0V4h2v16z"} />
+              </svg>
+            }
+            onClick={(e) => { e.stopPropagation(); setIsMenuFullScreen(!isMenuFullScreen); }}
+            style={{ position: 'absolute', right: 16, top: isMenuFullScreen ? 24 : 'auto', padding: 0 }}
+            title={isMenuFullScreen ? "Thu gọn menu" : "Mở rộng menu"}
           />
         )}
       </div>
 
       {/* Ô tìm kiếm — pill trong mờ, ngay dưới header */}
-      {!collapsed && (
+      {!collapsed && !isMenuFullScreen && (
         <div className="sidebar-search">
           <SearchOutlined />
           <input placeholder="Tìm kiếm" />
@@ -450,7 +486,7 @@ export default function AppLayout() {
 
       <div className="sidebar-menu-scroll">
         <Menu
-          theme="dark"
+          theme={isMenuFullScreen ? 'light' : 'dark'}
           mode="inline"
           inlineCollapsed={collapsed}
           selectedKeys={[selectedKey]}
@@ -463,20 +499,19 @@ export default function AppLayout() {
         />
       </div>
 
-      {/* Footer — text + nút tròn floating */}
-      <div className="sidebar-footer">
-        {!collapsed && (
-          <div className="sidebar-header__text">
-            <span className="sidebar-footer__version">Cục Hàng Hải và Đường Thủy</span>
-            <span className="sidebar-footer__version">Việt Nam</span>
-          </div>
-        )}
-        <button
-          className={`sidebar-footer__collapse-btn${collapsed ? ' sidebar-footer__collapse-btn--collapsed' : ''}`}
-          onClick={() => setCollapsed(!collapsed)}
-        >
-          <LeftOutlined />
-        </button>
+      {/* Footer — text */}
+      <div 
+        className="sidebar-footer" 
+        style={{ 
+          justifyContent: 'center',
+          color: isMenuFullScreen ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.45)',
+          borderTop: isMenuFullScreen ? '1px solid #f0f0f0' : '1px solid rgba(255,255,255,0.06)'
+        }}
+      >
+        <div className="sidebar-header__text" style={{ textAlign: 'center', width: '100%' }}>
+          <span className="sidebar-footer__version">Cục Hàng Hải và Đường Thủy</span>
+          <span className="sidebar-footer__version">Việt Nam</span>
+        </div>
       </div>
     </div>
   );
@@ -552,29 +587,34 @@ export default function AppLayout() {
             }
           ` : ''}
         `}</style>
-        <Content style={{ padding: 16, minHeight: '100vh', background: isModalIframe ? 'transparent' : '#fff' }}>
-          <Outlet />
-        </Content>
+          <Content style={{ padding: 16, minHeight: '100vh', background: isModalIframe ? 'transparent' : '#fff' }}>
+            <Outlet />
+          </Content>
       </Layout>
     );
   }
 
   return (
     <>
-      <Layout style={{ minHeight: '100vh' }}>
+      <style>{`
+        .ant-layout-sider {
+          transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+        }
+      `}</style>
+      <Layout style={{ minHeight: '100vh', position: 'relative', overflow: 'hidden' }}>
       {/* Desktop Sidebar */}
       {!isMobile && !sidebarHidden && (
         <Sider
-          collapsible
-          trigger={null}
-          collapsed={collapsed}
-          onCollapse={setCollapsed}
-          width={layout.sidebarWidth}
-          collapsedWidth={layout.sidebarCollapsedWidth}
+          width={isMenuFullScreen ? '100%' : layout.sidebarWidth}
           style={{
             borderRight: '1px solid rgba(255,255,255,0.06)',
-            position: 'relative',
-            background: 'var(--bg-sidebar, #1E2129)',
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            height: '100vh',
+            zIndex: isMenuFullScreen ? 9999 : 1000,
+            background: isMenuFullScreen ? '#fff' : 'var(--bg-sidebar, #1E2129)',
           }}
           breakpoint="lg"
         >
@@ -594,30 +634,61 @@ export default function AppLayout() {
         </Drawer>
       )}
 
-      <Layout>
-        {/* Header */}
-        <Header
-          style={{
-            padding: '0 24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            position: 'sticky',
-            top: 0,
-            zIndex: 100,
+        <Layout 
+          style={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            paddingLeft: (!isMobile && !sidebarHidden) ? layout.sidebarWidth : 0,
+            minHeight: '100vh',
           }}
         >
+          {/* Header */}
+          <Header
+            style={{
+              padding: '0 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              position: 'sticky',
+              top: 0,
+              zIndex: 100,
+            }}
+          >
           <Space>
             {isMobile ? (
               <Button
                 type="text"
-                icon={<MenuOutlined />}
+                icon={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                    role="img"
+                    width="1.2em"
+                    height="1.2em"
+                    viewBox="0 0 24 24"
+                    style={{ verticalAlign: 'middle', color: '#000' }}
+                  >
+                    <path fill="currentColor" d="M21 15.61L19.59 17l-5.01-5l5.01-5L21 8.39L17.44 12zM3 6h13v2H3zm0 7v-2h10v2zm0 5v-2h13v2z" />
+                  </svg>
+                }
                 onClick={() => setMobileDrawerOpen(true)}
               />
             ) : (
               <Button
                 type="text"
-                icon={<MenuOutlined />}
+                icon={
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                    role="img"
+                    width="1.2em"
+                    height="1.2em"
+                    viewBox="0 0 24 24"
+                    style={{ verticalAlign: 'middle', color: '#000' }}
+                  >
+                    <path fill="currentColor" d="M21 15.61L19.59 17l-5.01-5l5.01-5L21 8.39L17.44 12zM3 6h13v2H3zm0 7v-2h10v2zm0 5v-2h13v2z" />
+                  </svg>
+                }
                 onClick={() => setSidebarHidden(!sidebarHidden)}
                 style={{ fontSize: '18px', padding: '4px 8px' }}
                 title={sidebarHidden ? "Mở menu" : "Thu gọn menu"}
@@ -635,15 +706,7 @@ export default function AppLayout() {
           )}
 
           <Space size="middle" style={{ display: 'flex', alignItems: 'center' }}>
-            {sidebarHidden && (
-              <Button
-                type="text"
-                icon={<span style={{ display: 'inline-flex', alignItems: 'center', fontSize: '14px', letterSpacing: '-1px', fontWeight: 'bold' }}>|↔|</span>}
-                onClick={() => setSidebarHidden(false)}
-                title="Thu gọn menu"
-                style={{ padding: '4px 8px' }}
-              />
-            )}
+
             <Dropdown
               menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
               trigger={['click']}

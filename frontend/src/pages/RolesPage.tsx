@@ -56,7 +56,7 @@ export default function RolesPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
 
   const [form] = Form.useForm();
   const hasPerm = usePermissionStore((s) => s.hasPermission);

@@ -37,7 +37,7 @@ export default function QuyHoachList() {
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
 
   // Filter states
   const [filterKeyword, setFilterKeyword] = useState('');

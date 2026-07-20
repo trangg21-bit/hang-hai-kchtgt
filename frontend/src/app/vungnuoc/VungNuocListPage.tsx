@@ -113,7 +113,7 @@ export default function VungNuocListPage() {
   const [cangBienIdFilter, setCangBienIdFilter] = useState<string | undefined>();
   const [filterLoaiVungNuoc, setFilterLoaiVungNuoc] = useState<LoaiVungNuoc | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<VungNuoc[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);

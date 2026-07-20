@@ -3192,11 +3192,31 @@ export default function GISChartView() {
         }
 
         if (layer) {
+          const attribs = {
+            'Mã S-57': featureCode,
+            'Hình học': geometryType,
+            ...(feature.attributes || {})
+          };
+
+          const attribsHtml = `<div style="max-height: 180px; overflow-y: auto; margin-top: 8px; border-top: 1px solid #eee; padding-top: 8px; font-size: 11px; line-height: 1.4;">
+            ${Object.entries(attribs)
+              .map(([k, v]) => `<div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 2px;">
+                <strong style="color: #666;">${k}:</strong>
+                <span style="color: #333; text-align: right; word-break: break-all;">${String(v)}</span>
+              </div>`)
+              .join('')}
+           </div>`;
+
           layer.bindPopup(`
-            <strong>${getFeatureNameVi(featureCode, featureName)}</strong><br/>
-            Mã S-57: <code>${featureCode}</code><br/>
-            Hình học: <code>${geometryType}</code>
-          `);
+            <div style="min-width: 180px; max-width: 280px; font-family: sans-serif;">
+              <strong style="font-size: 13px; color: #1890ff; display: block; margin-bottom: 4px;">
+                ${getFeatureNameVi(featureCode, featureName)}
+              </strong>
+              ${attribsHtml}
+            </div>
+          `, {
+            maxWidth: 300
+          });
           layer.on('click', () => setSelectedFeature(feature));
           const parsedItem = { minZoom, layer, minLat, minLon, maxLat, maxLon, featureCode };
           
@@ -3587,6 +3607,7 @@ export default function GISChartView() {
               className="gis-sidebar-tabs"
               defaultActiveKey="1"
               type="card"
+              renderTabBar={() => null}
               style={{ height: 'calc(100vh - 96px)', display: 'flex', flexDirection: 'column' }}
               items={[
                 {
