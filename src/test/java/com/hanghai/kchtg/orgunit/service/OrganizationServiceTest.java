@@ -43,6 +43,9 @@ class OrganizationServiceTest {
     @Mock
     private MaterializedPathService materializedPathService;
 
+    @Mock
+    private org.springframework.transaction.support.TransactionTemplate transactionTemplate;
+
     @InjectMocks
     private OrganizationService service;
 
@@ -55,6 +58,12 @@ class OrganizationServiceTest {
         rootId = UUID.fromString("00000000-0000-0000-0000-000000000001");
         parentId = UUID.fromString("00000000-0000-0000-0000-000000000002");
         childId = UUID.fromString("00000000-0000-0000-0000-000000000003");
+
+        lenient().doAnswer(invocation -> {
+            java.util.function.Consumer<org.springframework.transaction.TransactionStatus> callback = invocation.getArgument(0);
+            callback.accept(mock(org.springframework.transaction.TransactionStatus.class));
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
     }
 
     // ── BR-013: Unique code constraint ───────────────────────────────
@@ -140,7 +149,6 @@ class OrganizationServiceTest {
             when(orgUnitRepo.findById(childId)).thenReturn(Optional.of(
                     makeUnit(childId, "Cảng vụ", "CV001", OrgUnitType.CANG_VU)));
             when(orgUnitRepo.countByParentIdAndDeletedAtIsNull(childId)).thenReturn(0L);
-            when(unitHistoryRepo.save(any())).thenReturn(UnitHistory.builder().build());
 
             assertDoesNotThrow(() -> service.delete(childId, UUID.randomUUID(), "admin"));
         }
