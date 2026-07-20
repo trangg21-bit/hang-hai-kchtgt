@@ -29,14 +29,15 @@ class HeThongVTSEntityTest {
     @Test
     void testSettersAndGetters() {
         HeThongVTS entity = new HeThongVTS();
-        entity.setId(1L);
+        java.util.UUID uuid = java.util.UUID.randomUUID();
+        entity.setId(uuid);
         entity.setTenHeThong("VTS ABC");
         entity.setViTri("Hà Nội");
         entity.setTrangThai(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.APPROVED);
         entity.setNguoiSuaDoi("admin");
         entity.setNgaySuaDoi(LocalDateTime.now());
 
-        assertEquals(1L, entity.getId());
+        assertEquals(uuid, entity.getId());
         assertEquals("VTS ABC", entity.getTenHeThong());
         assertEquals(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.APPROVED, entity.getTrangThai());
         assertNotNull(entity.getNgaySuaDoi());

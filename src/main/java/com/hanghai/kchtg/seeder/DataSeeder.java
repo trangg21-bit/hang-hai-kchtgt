@@ -498,8 +498,6 @@ public class DataSeeder implements CommandLineRunner {
             b.setCode(codes[i]);
             b.setName(names[i]);
             b.setType(types[i]);
-            b.setLatitude(lats[i]);
-            b.setLongitude(lons[i]);
             b.setLightRange(12.5 + i % 5);
             b.setLightColor(i % 3 == 0 ? "Trắng chớp nhoáng" : (i % 3 == 1 ? "Đỏ chớp chu kỳ" : "Xanh lục"));
             b.setStatus(statuses[i]);
@@ -556,8 +554,6 @@ public class DataSeeder implements CommandLineRunner {
             b.setCode(codes[i]);
             b.setName(names[i]);
             b.setType(types[i]);
-            b.setLatitude(lats[i]);
-            b.setLongitude(lons[i]);
             b.setRange(5.0 + i % 3);
             b.setColor(i % 2 == 0 ? "Đỏ" : "Xanh lục");
             b.setStatus(statuses[i]);

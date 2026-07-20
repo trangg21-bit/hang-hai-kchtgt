@@ -9,5 +9,5 @@ import java.util.List;
 @Repository
 public interface DeKeAttachmentRepository extends JpaRepository<DeKeAttachment, Long> {
 
-    List<DeKeAttachment> findByDeKeId(Long deKeId);
+    List<DeKeAttachment> findByDeKeId(java.util.UUID deKeId);
 }

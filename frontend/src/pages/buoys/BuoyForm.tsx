@@ -91,7 +91,10 @@ export default function BuoyForm() {
           description: values.description,
           unitId: values.unitId,
         };
-        await buoyCRUD.update(id!, payload);
+        const res = await buoyCRUD.update(id!, payload);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id!] = res;
+        }
         toast.success('Đã cập nhật phao tiêu');
       } else {
         const payload: CreateBuoyRequest = {

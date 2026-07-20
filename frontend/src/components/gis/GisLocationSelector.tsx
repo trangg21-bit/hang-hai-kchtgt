@@ -16,6 +16,7 @@ interface GisLocationSelectorProps {
   onChange?: (value: GisLocationSelectorValue) => void;
   defaultGeometryType?: 'POINT' | 'LINE' | 'POLYGON';
   height?: number;
+  disabled?: boolean;
 }
 
 // Global script loading helper to avoid duplicates
@@ -160,6 +161,7 @@ export default function GisLocationSelector({
   onChange,
   defaultGeometryType,
   height = 550,
+  disabled,
 }: GisLocationSelectorProps) {
   const [leafletLoaded, setLeafletLoaded] = useState(false);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
@@ -608,7 +610,7 @@ export default function GisLocationSelector({
             type="primary"
             ghost
             icon={<EnvironmentOutlined />}
-            disabled={!internalGeom}
+            disabled={disabled || !internalGeom}
             onClick={() => setModalOpen(true)}
           >
             Chọn vị trí trên bản đồ

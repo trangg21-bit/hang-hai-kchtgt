@@ -113,28 +113,18 @@ export default function CangBienDetailPage() {
 
         {/* Geo Card */}
         <Col xs={24} md={16}>
-          <Card title="Thông tin địa lý">
+          <Card title="Thông tin địa lý & GIS">
             <Row gutter={[16, 16]}>
-              <Col span={12}>
-                <Typography.Text strong>Vĩ độ:</Typography.Text>
-                <br />
-                <Typography.Text>{data.viDo != null ? data.viDo.toFixed(6) : '—'}</Typography.Text>
-              </Col>
-              <Col span={12}>
-                <Typography.Text strong>Kinh độ:</Typography.Text>
-                <br />
-                <Typography.Text>{data.kinhDo != null ? data.kinhDo.toFixed(6) : '—'}</Typography.Text>
+              <Col span={24}>
+                <Typography.Text strong>Loại đối tượng:</Typography.Text>{' '}
+                <Typography.Text>
+                  {data.loaiHinhHoc === 'POINT' ? 'Đối tượng điểm'
+                    : data.loaiHinhHoc === 'LINE' ? 'Đối tượng đường'
+                      : data.loaiHinhHoc === 'POLYGON' ? 'Đối tượng vùng'
+                        : data.loaiHinhHoc || 'Đối tượng điểm'}
+                </Typography.Text>
               </Col>
             </Row>
-            {gpsPaired ? (
-              <Card size="small" style={{ marginTop: 8 }}>
-                <Typography.Text type="secondary">Đã đăng ký GPS — Vĩ độ {data.viDo?.toFixed(6)}, Kinh độ {data.kinhDo?.toFixed(6)}</Typography.Text>
-              </Card>
-            ) : (
-              <Card size="small" style={{ marginTop: 8 }} type="inner">
-                <Typography.Text type="secondary">Chưa có thông tin GPS</Typography.Text>
-              </Card>
-            )}
           </Card>
         </Col>
 

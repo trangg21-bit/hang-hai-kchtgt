@@ -50,6 +50,7 @@ import {
   vungNuocCRUD
 } from '../../services/cangbenService';
 import { beaconLightCRUD, buoyCRUD } from '../../services/beaconService';
+import { fetchNhaTramDenById, fetchNhaTramPhaoById } from '../../services/nhatram/api';
 import { dekeCRUD } from '../../services/deKeService';
 import { luongHangHaiCRUD } from '../../services/luongHangHaiService';
 import { tramRadarCRUD } from '../../services/tramRadarService';
@@ -328,6 +329,43 @@ const formatDateTime = (dtStr?: string) => {
   }
 };
 
+const formatDate = (dStr?: string) => {
+  if (!dStr) return '—';
+  try {
+    const d = new Date(dStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  } catch (e) {
+    return dStr;
+  }
+};
+
+const getLoaiBenText = (val?: string) => {
+  if (!val) return '—';
+  const v = val.toUpperCase();
+  if (v === 'BEN_CONTAINER') return 'Bến Container';
+  if (v === 'BEN_TONG_HOP') return 'Bến tổng hợp';
+  if (v === 'BEN_CHUYEN_DUNG') return 'Bến chuyên dụng';
+  if (v === 'BEN_HANH_KHACH') return 'Bến hành khách';
+  if (v === 'BEN_PHAO') return 'Bến phao';
+  if (v === 'BEN_THUY_NOI_DIA') return 'Bến thủy nội địa';
+  return val;
+};
+
+const getLoaiCauText = (val?: string) => {
+  if (!val) return '—';
+  const v = val.toUpperCase();
+  if (v === 'CONTAINER') return 'Cầu cảng container';
+  if (v === 'TONG_HOP') return 'Cầu cảng tổng hợp';
+  if (v === 'HANH_KHACH') return 'Cầu cảng hành khách';
+  if (v === 'CHUYEN_DUNG_XANG_DAU') return 'Cầu cảng chuyên dụng xăng dầu';
+  if (v === 'CHUYEN_DUNG_ROI_QUANG') return 'Cầu cảng chuyên dụng rời quặng';
+  if (v === 'KHAC') return 'Khác';
+  return val;
+};
+
 const resolvedNamesCache = new Map<string, string>();
 let orgUnitsGlobalCache: any[] = [];
 
@@ -358,6 +396,203 @@ const resolveName = async (id: string, type: 'org' | 'cangbien' | 'bencang') => 
     console.error(`Failed to resolve name for ID: ${id}`, err);
   }
   return id;
+};
+
+const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[] => {
+  const normType = type.trim();
+  
+  if (normType === 'Cảng biển') {
+    return [
+      { key: 'maCang', label: 'Mã cảng biển' },
+      { key: 'tenCang', label: 'Tên cảng biển' },
+      { key: 'tinhThanhPho', label: 'Địa điểm (Tỉnh/ Thành phố)' },
+      { key: 'dienTich', label: 'Diện tích (ha)' },
+      { key: 'khaNangTiepNhan', label: 'Khả năng tiếp nhận (tấn)' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'trangThaiHoatDong', label: 'Trạng thái hoạt động' },
+      { key: 'trangThaiPheDuyet', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+  
+  if (normType === 'Bến cảng') {
+    return [
+      { key: 'maBen', label: 'Mã bến cảng' },
+      { key: 'tenBen', label: 'Tên bến cảng' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'tinhThanhPho', label: 'Địa điểm (Tỉnh/ Thành phố)' },
+      { key: 'diaDiemChiTiet', label: 'Địa điểm chi tiết' },
+      { key: 'cangBienId', label: 'Thuộc cảng biển' },
+      { key: 'luongHangHaiId', label: 'Thuộc luồng hàng hải' },
+      { key: 'loaiKetCau', label: 'Loại kết cấu cầu cảng' },
+      { key: 'congNangKhaiThac', label: 'Công năng khai thác' },
+      { key: 'trangThaiHoatDong', label: 'Trạng thái hoạt động' },
+      { key: 'trangThaiPheDuyet', label: 'Trạng thái phê duyệt' },
+      { key: 'donViKhaiThac', label: 'Đơn vị khai thác' },
+      { key: 'tongDienTich', label: 'Tổng diện tích (ha)' },
+      { key: 'nangLucThongQuaThietKe', label: 'Năng lực thông qua thiết kế' },
+      { key: 'nangLucThongQuaHienTrang', label: 'Năng lực thông qua hiện trạng (tấn/ năm)' },
+      { key: 'coTauTiepNhanLonNhat', label: 'Cỡ tàu tiếp nhận lớn nhất theo quy hoạch (DWT)' },
+      { key: 'quyHoachNangLucThongQua', label: 'Quy hoạch năng lực thông qua (tấn/ năm)' },
+      { key: 'sanLuongHangHoaNamGanNhat', label: 'Sản lượng hàng hóa thực tế thông qua trong năm gần nhất' },
+      { key: 'thoiDiemCongBoMo', label: 'Thời điểm công bố mở, đưa vào sử dụng' },
+      { key: 'quyetDinhCongBo', label: 'Quyết định công bố/ Văn bản cho phép khai thác' },
+      { key: 'vanBanThoaThuanDauTu', label: 'Văn bản thỏa thuận đầu tư xây dựng' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  if (normType === 'Cầu cảng') {
+    return [
+      { key: 'maCau', label: 'Mã cầu cảng' },
+      { key: 'tenCau', label: 'Tên cầu cảng' },
+      { key: 'loaiCau', label: 'Loại cầu cảng' },
+      { key: 'congNangKhaiThac', label: 'Công năng khai thác' },
+      { key: 'chieuDai', label: 'Chiều dài (m)' },
+      { key: 'taiTrong', label: 'Trọng tải tiếp nhận (DWT)' },
+      { key: 'benCangId', label: 'Thuộc bến cảng' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'trangThaiHoatDong', label: 'Trạng thái hoạt động' },
+      { key: 'trangThaiPheDuyet', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  if (normType === 'Cảng cạn') {
+    return [
+      { key: 'maCangCan', label: 'Mã cảng cạn' },
+      { key: 'tenCangCan', label: 'Tên cảng cạn' },
+      { key: 'viTri', label: 'Vị trí' },
+      { key: 'dienTichDat', label: 'Diện tích đất (ha)' },
+      { key: 'dienTichNuoc', label: 'Diện tích nước (ha)' },
+      { key: 'nangLucThongQua', label: 'Năng lực thông qua' },
+      { key: 'congSuatTEU', label: 'Công suất (TEU)' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'trangThaiHoatDong', label: 'Trạng thái hoạt động' },
+      { key: 'trangThaiPheDuyet', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  if (
+    normType === 'Vùng nước' ||
+    normType === 'Khu neo đậu' ||
+    normType === 'Khu chuyển tải' ||
+    normType === 'Khu tránh trú bão' ||
+    normType === 'Khu tránh, trú bão' ||
+    normType === 'Bến phao'
+  ) {
+    return [
+      { key: 'maVungNuoc', label: 'Mã vùng nước' },
+      { key: 'tenVungNuoc', label: 'Tên vùng nước' },
+      { key: 'loaiVungNuoc', label: 'Loại vùng nước' },
+      { key: 'cangBienId', label: 'Thuộc cảng biển' },
+      { key: 'chieuDaiVungNuoc', label: 'Chiều dài vùng nước (m)' },
+      { key: 'chieuRongVungNuoc', label: 'Chiều rộng vùng nước (m)' },
+      { key: 'doSauVungNuoc', label: 'Độ sâu vùng nước (m)' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'trangThaiHoatDong', label: 'Trạng thái hoạt động' },
+      { key: 'trangThaiPheDuyet', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  if (normType === 'Đèn biển') {
+    return [
+      { key: 'code', label: 'Mã đèn biển' },
+      { key: 'name', label: 'Tên đèn biển' },
+      { key: 'type', label: 'Loại đèn biển' },
+      { key: 'lightRange', label: 'Tầm hiệu lực (hải lý)' },
+      { key: 'lightColor', label: 'Màu sắc ánh sáng' },
+      { key: 'lightCharacteristic', label: 'Đặc tính ánh sáng' },
+      { key: 'description', label: 'Mô tả vị trí' },
+      { key: 'unitId', label: 'Đơn vị quản lý' },
+      { key: 'isActive', label: 'Trạng thái hoạt động' },
+      { key: 'status', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  if (normType === 'Phao tiêu') {
+    return [
+      { key: 'code', label: 'Mã phao tiêu' },
+      { key: 'name', label: 'Tên phao tiêu' },
+      { key: 'type', label: 'Loại phao tiêu' },
+      { key: 'range', label: 'Bán kính hoạt động (hải lý)' },
+      { key: 'color', label: 'Màu sắc phao' },
+      { key: 'unitId', label: 'Đơn vị quản lý' },
+      { key: 'isActive', label: 'Trạng thái hoạt động' },
+      { key: 'status', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  if (normType === 'Đê kè') {
+    return [
+      { key: 'maDeKe', label: 'Mã đê kè' },
+      { key: 'tenDeKe', label: 'Tên đê kè' },
+      { key: 'loaiDe', label: 'Loại đê/kè' },
+      { key: 'ketCau', label: 'Kết cấu đê/kè' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'trangThaiHoatDong', label: 'Trạng thái hoạt động' },
+      { key: 'trangThaiPheDuyet', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  if (normType === 'Luồng hàng hải') {
+    return [
+      { key: 'maLuong', label: 'Mã luồng hàng hải' },
+      { key: 'tenLuong', label: 'Tên luồng hàng hải' },
+      { key: 'chieuDaiLuong', label: 'Chiều dài luồng (km)' },
+      { key: 'doSauThietKe', label: 'Độ sâu thiết kế (m)' },
+      { key: 'chieuRongThietKe', label: 'Chiều rộng thiết kế (m)' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'trangThaiHoatDong', label: 'Trạng thái hoạt động' },
+      { key: 'trangThaiPheDuyet', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  if (normType === 'Trạm radar') {
+    return [
+      { key: 'maTram', label: 'Mã trạm' },
+      { key: 'tenTram', label: 'Tên trạm radar' },
+      { key: 'radarModel', label: 'Model radar' },
+      { key: 'frequencyBand', label: 'Băng tần' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'trangThaiHoatDong', label: 'Trạng thái hoạt động' },
+      { key: 'trangThaiPheDuyet', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  if (normType === 'Hệ thống VTS') {
+    return [
+      { key: 'maHeThong', label: 'Mã hệ thống' },
+      { key: 'tenHeThong', label: 'Tên hệ thống VTS' },
+      { key: 'vtsCenter', label: 'Trung tâm VTS' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'trangThaiHoatDong', label: 'Trạng thái hoạt động' },
+      { key: 'trangThaiPheDuyet', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  if (normType === 'Cơ sở sửa chữa' || normType === 'Cơ sở sửa chữa/đóng tàu') {
+    return [
+      { key: 'maCoSo', label: 'Mã cơ sở' },
+      { key: 'tenCoSo', label: 'Tên cơ sở đóng/sửa tàu' },
+      { key: 'nangLucNang', label: 'Năng lực nâng (tấn)' },
+      { key: 'kichThuocDoc', label: 'Kích thước đốc (m)' },
+      { key: 'orgUnitId', label: 'Đơn vị quản lý' },
+      { key: 'trangThaiHoatDong', label: 'Trạng thái hoạt động' },
+      { key: 'trangThaiPheDuyet', label: 'Trạng thái phê duyệt' },
+      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+    ];
+  }
+
+  return [];
 };
 
 const fetchAndFormatPopupDetails = async (record: any) => {
@@ -415,7 +650,34 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     const s = status.toUpperCase();
     if (s === 'DUOC_PHE_DUYET' || s === 'APPROVED') return 'Đã phê duyệt';
     if (s === 'CHO_PHE_DUYET' || s === 'PENDING') return 'Chờ phê duyệt';
+    if (s === 'DRAFT') return 'Bản nháp';
+    if (s === 'PENDING_APPROVAL') return 'Chờ phê duyệt';
+    if (s === 'APPROVED_L1') return 'Đã duyệt L1';
+    if (s === 'APPROVED_L2') return 'Đã duyệt L2';
+    if (s === 'PUBLISHED') return 'Đã công bố';
+    if (s === 'REJECTED') return 'Từ chối';
+    if (s === 'DELETED') return 'Đã xóa';
     return status;
+  };
+
+  const getBeaconLightTypeText = (val?: string) => {
+    if (!val) return '—';
+    const v = val.toUpperCase();
+    if (v === 'LIGHTHOUSE' || v === '1') return 'Hải đăng';
+    if (v === 'BEACON_LIGHT' || v === '2') return 'Đèn báo';
+    if (v === 'BEACON_MARK' || v === '3') return 'Cọc tiêu';
+    return val;
+  };
+
+  const getBuoyTypeText = (val?: string) => {
+    if (!val) return '—';
+    const v = val.toUpperCase();
+    if (v === 'CARDINAL') return 'Phao hướng (Cardinal)';
+    if (v === 'SECTOR') return 'Phao phân khu (Sector)';
+    if (v === 'SPECIAL') return 'Phao đặc biệt (Special)';
+    if (v === 'SAFE_WATER') return 'Phao vùng nước an toàn (Safe water)';
+    if (v === 'ISOLATED_DANGER') return 'Phao nguy hiểm cô lập (Isolated danger)';
+    return val;
   };
 
   const getLoaiVungNuocText = (val?: string) => {
@@ -508,6 +770,20 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     chieuRong: 'Chiều rộng (m)',
     loaiBen: 'Loại bến',
     doSauLuong: 'Độ sâu luồng (m)',
+    donViKhaiThac: 'Đơn vị khai thác',
+    tongDienTich: 'Tổng diện tích (ha)',
+    nangLucThongQuaThietKe: 'Năng lực thông qua thiết kế',
+    nangLucThongQuaHienTrang: 'Năng lực thông qua hiện trạng (tấn/ năm)',
+    coTauTiepNhanLonNhat: 'Cỡ tàu tiếp nhận lớn nhất theo quy hoạch (DWT)',
+    quyHoachNangLucThongQua: 'Quy hoạch năng lực thông qua (tấn/ năm)',
+    sanLuongHangHoaNamGanNhat: 'Sản lượng hàng hóa thực tế thông qua trong năm gần nhất',
+    thoiDiemCongBoMo: 'Thời điểm công bố mở, đưa vào sử dụng',
+    quyetDinhCongBo: 'Quyết định công bố/ Văn bản cho phép khai thác',
+    vanBanThoaThuanDauTu: 'Văn bản thỏa thuận đầu tư xây dựng',
+    loaiKetCau: 'Loại kết cấu cầu cảng',
+    tinhThanhPho: 'Địa điểm (Tỉnh/ Thành phố)',
+    diaDiemChiTiet: 'Địa điểm chi tiết',
+    luongHangHaiId: 'Thuộc luồng hàng hải',
 
     // Cảng cạn
     maCangCan: 'Mã cảng cạn',
@@ -593,6 +869,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
   try {
     let rowsHtml = '';
     let data: any = null;
+    let displayType = type;
 
     if (type === 'Cầu cảng') {
       data = await cauCangCRUD.findById(id);
@@ -613,8 +890,15 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       data = await vungNuocCRUD.findById(id);
     } else if (type === 'Đèn biển') {
       data = await beaconLightCRUD.findById(id);
-    } else if (type === 'Phao tiêu') {
+    } else if (type === 'Nhà trạm đèn biển') {
+      data = await fetchNhaTramDenById(id);
+      displayType = 'Đèn biển';
+    } else if (type === 'Phao tiêu' || type === 'Phao, tiêu') {
       data = await buoyCRUD.findById(id);
+      displayType = 'Phao tiêu';
+    } else if (type === 'Nhà trạm phao tiêu') {
+      data = await fetchNhaTramPhaoById(id);
+      displayType = 'Phao tiêu';
     } else if (type === 'Đê kè') {
       data = await dekeCRUD.getById(id);
     } else if (type === 'Luồng hàng hải') {
@@ -651,18 +935,11 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       (window as any).kchtDetailCache[id] = data;
       console.log('[ParentCache] Stored details for ID:', id, 'Data:', data);
 
-      // Order of important fields to put first
-      const orderedKeys = [
-        'ma', 'maCang', 'maBen', 'maCau', 'maVungNuoc', 'maDeKe', 'maLuong', 'maTram', 'maHeThong', 'maCoSo', 'code', 'beaconCode', 'buoyCode',
-        'name', 'ten', 'tenCang', 'tenBen', 'tenCau', 'tenVungNuoc', 'tenDeKe', 'tenLuong', 'tenTram', 'tenHeThong', 'tenCoSo', 'beaconName', 'buoyName',
-        'orgName', 'orgUnitName', 'donViQuanLy', 'orgUnitId', 'donViId', 'unitId',
-        'cangBienId', 'tenCangBien', 'benCangId', 'tenBenCang',
-        'tinhThanh', 'tinhThanhPho', 'diaDiem', 'diaChiChiTiet', 'diaDiemChiTiet',
-        'trangThaiHoatDong', 'status', 'tinhTrang',
-        'trangThaiPheDuyet', 'trangThai',
-        'loaiHinhHoc', 'geomType',
-      ];
-      
+      if (!data.maCoSo && record.code) {
+        data.maCoSo = record.code;
+      }
+
+      const customOrdered = getOrderedKeysAndLabels(displayType);
       const renderedKeys = new Set<string>();
 
       // Lazy-resolve only the specific parent IDs present in data
@@ -670,7 +947,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       let cangBienNameResolved = '';
       let benCangNameResolved = '';
       
-      const orgId = data.orgUnitId || data.donViId || data.unitId || data.donViQuanLy;
+      const orgId = data.orgUnitId || data.donViId || data.unitId || data.donViQuanLy || data.unitId;
       if (orgId) {
         orgUnitNameResolved = data.donViQuanLy || data.orgName || data.orgUnitName || await resolveName(orgId, 'org');
       }
@@ -681,12 +958,12 @@ const fetchAndFormatPopupDetails = async (record: any) => {
         benCangNameResolved = data.tenBenCang || (data.benCangId ? await resolveName(data.benCangId, 'bencang') : '');
       }
 
-      orderedKeys.forEach(k => {
-        if (data[k] !== undefined && data[k] !== null && data[k] !== '') {
-          const label = KEY_LABELS[k] || k;
-          let val = data[k];
+      if (customOrdered.length > 0) {
+        customOrdered.forEach(({ key: k, label }) => {
+          const valExists = data[k] !== undefined && data[k] !== null && data[k] !== '';
+          let val = valExists ? data[k] : '';
           
-          if (['orgUnitId', 'donViId', 'unitId', 'donViQuanLy'].includes(k)) {
+          if (['orgUnitId', 'donViId', 'unitId', 'donViQuanLy', 'unitId', 'unitName'].includes(k)) {
             val = orgUnitNameResolved || val;
           } else if (k === 'cangBienId') {
             val = cangBienNameResolved || val;
@@ -694,20 +971,69 @@ const fetchAndFormatPopupDetails = async (record: any) => {
             val = benCangNameResolved || val;
           }
           
-          if (k === 'trangThaiHoatDong' || k === 'status' || k === 'tinhTrang') val = getStatusText(val);
-          if (k === 'trangThaiPheDuyet' || k === 'trangThai') val = getApprovalStatusText(val);
-          if (k === 'loaiVungNuoc') val = getLoaiVungNuocText(val);
-          if (k === 'loaiHinhHoc' || k === 'geomType') val = getGeometryTypeText(val);
+          if (valExists) {
+            if (k === 'type') {
+              if (displayType === 'Đèn biển') {
+                val = getBeaconLightTypeText(val);
+              } else if (displayType === 'Phao tiêu') {
+                val = getBuoyTypeText(val);
+              }
+            }
+            if (k === 'trangThaiHoatDong' || k === 'tinhTrang' || k === 'isActive') {
+              val = getStatusText(k === 'isActive' ? (val ? 'ACTIVE' : 'INACTIVE') : val);
+            }
+            if (k === 'trangThaiPheDuyet' || k === 'trangThai' || k === 'status' || k === 'approvalStatus') {
+              val = getApprovalStatusText(val);
+            }
+            if (k === 'loaiVungNuoc') val = getLoaiVungNuocText(val);
+            if (k === 'loaiHinhHoc' || k === 'geomType') val = getGeometryTypeText(val);
+            if (k === 'loaiBen') val = getLoaiBenText(val);
+            if (k === 'loaiCau') val = getLoaiCauText(val);
+            if (k === 'thoiDiemCongBoMo') val = formatDate(val);
+          }
           
-          // Skip showing duplicates of things like tenCangBien / tenBenCang / orgName / parentOrgName
-          if (k === 'tenCangBien' && cangBienNameResolved) return;
-          if (k === 'tenBenCang' && benCangNameResolved) return;
-          if (['orgName', 'orgUnitName', 'donViQuanLy'].includes(k) && orgUnitNameResolved) return;
-
           rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(val)}</td></tr>`;
           renderedKeys.add(k);
-        }
-      });
+        });
+      } else {
+        const orderedKeys = [
+          'ma', 'maCang', 'maBen', 'maCau', 'maVungNuoc', 'maDeKe', 'maLuong', 'maTram', 'maHeThong', 'maCoSo', 'code', 'beaconCode', 'buoyCode',
+          'name', 'ten', 'tenCang', 'tenBen', 'tenCau', 'tenVungNuoc', 'tenDeKe', 'tenLuong', 'tenTram', 'tenHeThong', 'tenCoSo', 'beaconName', 'buoyName',
+          'orgName', 'orgUnitName', 'donViQuanLy', 'orgUnitId', 'donViId', 'unitId',
+          'cangBienId', 'tenCangBien', 'benCangId', 'tenBenCang',
+          'tinhThanh', 'tinhThanhPho', 'diaDiem', 'diaChiChiTiet', 'diaDiemChiTiet',
+          'trangThaiHoatDong', 'status', 'tinhTrang',
+          'trangThaiPheDuyet', 'trangThai',
+          'loaiHinhHoc', 'geomType',
+        ];
+        
+        orderedKeys.forEach(k => {
+          const valExists = data[k] !== undefined && data[k] !== null && data[k] !== '';
+          if (valExists) {
+            const label = KEY_LABELS[k] || k;
+            let val = data[k];
+            
+            if (['orgUnitId', 'donViId', 'unitId', 'donViQuanLy'].includes(k)) {
+              val = orgUnitNameResolved || val;
+            } else if (k === 'cangBienId') {
+              val = cangBienNameResolved || val;
+            } else if (k === 'benCangId') {
+              val = benCangNameResolved || val;
+            }
+            
+            if (k === 'trangThaiHoatDong' || k === 'tinhTrang' || k === 'isActive') val = getStatusText(val);
+            if (k === 'trangThaiPheDuyet' || k === 'trangThai' || k === 'status' || k === 'approvalStatus') val = getApprovalStatusText(val);
+            if (k === 'loaiVungNuoc') val = getLoaiVungNuocText(val);
+            if (k === 'loaiHinhHoc' || k === 'geomType') val = getGeometryTypeText(val);
+            if (k === 'loaiBen') val = getLoaiBenText(val);
+            if (k === 'loaiCau') val = getLoaiCauText(val);
+            if (k === 'thoiDiemCongBoMo') val = formatDate(val);
+            
+            rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(val)}</td></tr>`;
+            renderedKeys.add(k);
+          }
+        });
+      }
 
       Object.entries(data).forEach(([k, val]) => {
         if (renderedKeys.has(k)) return;
@@ -715,15 +1041,14 @@ const fetchAndFormatPopupDetails = async (record: any) => {
         const lowerK = k.toLowerCase();
         if (
           lowerK === 'id' || lowerK === 'uuid' || lowerK === 'geom' || lowerK === 'geometry' ||
-          lowerK === 'toado' || lowerK === 'coordinates' || lowerK === 'latitude' || lowerK === 'longitude' ||
-          lowerK === 'vido' || lowerK === 'kinhdo' || lowerK === 'bieutuongid' || lowerK === 'iconid' ||
-          lowerK === 'symbolid' || lowerK === 'createdat' || lowerK === 'updatedat' ||
-          lowerK === 'createdby' || lowerK === 'updatedby' || lowerK === 'selected' || lowerK === 'active' ||
-          lowerK === 'khonggianid' || lowerK === 'spatialid' || lowerK === 'deletedat' ||
+          lowerK === 'toado' || lowerK === 'coordinates' ||
+          lowerK === 'bieutuongid' || lowerK === 'iconid' ||
+          lowerK === 'symbolid' || lowerK === 'khonggianid' || lowerK === 'spatialid' || lowerK === 'deletedat' ||
           lowerK === 'tencangbien' || lowerK === 'tenbencang' || lowerK === 'orgname' ||
           lowerK === 'orgunitname' || lowerK === 'parentorgname' || lowerK === 'donviid' ||
           lowerK === 'unitid' || lowerK === 'orgunitid' || lowerK === 'cangbienid' ||
-          lowerK === 'bencangid' || lowerK === 'donviquanly'
+          lowerK === 'bencangid' || lowerK === 'donviquanly' || lowerK === 'updatedat' ||
+          lowerK === 'updatedby' || lowerK === 'canbocapnhat' || lowerK === 'ngaycapnhat'
         ) {
           return;
         }
@@ -738,10 +1063,19 @@ const fetchAndFormatPopupDetails = async (record: any) => {
           } else if (k === 'benCangId') {
             displayVal = benCangNameResolved || val;
           }
-          if (k === 'trangThaiHoatDong' || k === 'status' || k === 'tinhTrang') displayVal = getStatusText(val);
-          if (k === 'trangThaiPheDuyet' || k === 'trangThai') displayVal = getApprovalStatusText(val);
+          if (k === 'type') {
+            if (displayType === 'Đèn biển') {
+              displayVal = getBeaconLightTypeText(val);
+            } else if (displayType === 'Phao tiêu') {
+              displayVal = getBuoyTypeText(val);
+            }
+          }
+          if (k === 'trangThaiHoatDong' || k === 'tinhTrang' || k === 'isActive') displayVal = getStatusText(val);
+          if (k === 'trangThaiPheDuyet' || k === 'trangThai' || k === 'status' || k === 'approvalStatus') displayVal = getApprovalStatusText(val);
           if (k === 'loaiVungNuoc') displayVal = getLoaiVungNuocText(val);
           if (k === 'loaiHinhHoc' || k === 'geomType') displayVal = getGeometryTypeText(val);
+          if (k === 'loaiBen') displayVal = getLoaiBenText(val);
+          if (k === 'loaiCau') displayVal = getLoaiCauText(val);
 
           rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(displayVal)}</td></tr>`;
         }
@@ -889,6 +1223,19 @@ export default function GISChartView() {
   const navigate = useNavigate();
   const [activeModalUrl, setActiveModalUrl] = useState<string | null>(null);
 
+  const activePopupRef = useRef<any>(null);
+  const activePopupRecordRef = useRef<any>(null);
+
+  const refreshActivePopup = useCallback(() => {
+    const popup = activePopupRef.current;
+    const record = activePopupRecordRef.current;
+    if (popup && record && mapRef.current && mapRef.current.hasLayer(popup)) {
+      fetchAndFormatPopupDetails(record).then((detailsHtml) => {
+        popup.setContent(detailsHtml);
+      }).catch((err) => console.error('Failed to refresh popup:', err));
+    }
+  }, []);
+
   const handleIframeLoad = useCallback((e: any) => {
     try {
       const iframe = e.target;
@@ -924,6 +1271,7 @@ export default function GISChartView() {
 
       if (isListPage) {
         setActiveModalUrl(null);
+        refreshActivePopup();
         if (fetchFeaturesInViewportRef.current) {
           fetchFeaturesInViewportRef.current();
         }
@@ -940,6 +1288,7 @@ export default function GISChartView() {
     const handleMessage = (e: MessageEvent) => {
       if (e.data && e.data.type === 'CLOSE_KCHT_MODAL') {
         setActiveModalUrl(null);
+        refreshActivePopup();
         if (fetchFeaturesInViewportRef.current) {
           fetchFeaturesInViewportRef.current();
         }
@@ -953,9 +1302,13 @@ export default function GISChartView() {
     (window as any).handleKchtAction = (id: string, typeLabel: string, action: 'view' | 'edit') => {
       const label = (typeLabel || '').trim().toLowerCase();
       let path = '';
-      if (label.includes('đèn biển') || label.includes('den bien')) {
+      if (label === 'nhà trạm đèn biển' || label === 'nha tram den bien') {
+        path = `/nhatram/den?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+      } else if (label === 'nhà trạm phao tiêu' || label === 'nha tram phao tieu') {
+        path = `/nhatram/phao?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+      } else if (label.includes('đèn biển') || label.includes('den bien')) {
         path = `/beacons/${id}${action === 'edit' ? '?mode=edit' : ''}`;
-      } else if (label.includes('phao tiêu') || label.includes('phao tieu')) {
+      } else if (label.includes('phao tiêu') || label.includes('phao tieu') || label.includes('phao, tiêu')) {
         path = `/buoys/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('cảng biển') || label.includes('cang bien')) {
         path = `/cangbien?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
@@ -2419,6 +2772,16 @@ export default function GISChartView() {
             .setLatLng(coord)
             .setContent('<div style="padding: 10px; font-size: 13px; font-family: sans-serif;">Đang tải thông tin chi tiết...</div>')
             .openOn(mapRef.current);
+          
+          activePopupRef.current = popup;
+          activePopupRecordRef.current = record;
+          popup.on('close', () => {
+            if (activePopupRef.current === popup) {
+              activePopupRef.current = null;
+              activePopupRecordRef.current = null;
+            }
+          });
+
           const detailsHtml = await fetchAndFormatPopupDetails(record);
           popup.setContent(detailsHtml);
         });
@@ -2547,6 +2910,16 @@ export default function GISChartView() {
                 .setLatLng([lat, lon])
                 .setContent('<div style="padding: 10px; font-size: 13px; font-family: sans-serif;">Đang tải thông tin chi tiết...</div>')
                 .openOn(mapRef.current);
+
+              activePopupRef.current = popup;
+              activePopupRecordRef.current = record;
+              popup.on('close', () => {
+                if (activePopupRef.current === popup) {
+                  activePopupRef.current = null;
+                  activePopupRecordRef.current = null;
+                }
+              });
+
               const detailsHtml = await fetchAndFormatPopupDetails(record);
               popup.setContent(detailsHtml);
             });
@@ -2573,6 +2946,16 @@ export default function GISChartView() {
                     .setLatLng(e.latlng)
                     .setContent('<div style="padding: 10px; font-size: 13px; font-family: sans-serif;">Đang tải thông tin chi tiết...</div>')
                     .openOn(mapRef.current);
+
+                  activePopupRef.current = popup;
+                  activePopupRecordRef.current = record;
+                  popup.on('close', () => {
+                    if (activePopupRef.current === popup) {
+                      activePopupRef.current = null;
+                      activePopupRecordRef.current = null;
+                    }
+                  });
+
                   const detailsHtml = await fetchAndFormatPopupDetails(record);
                   popup.setContent(detailsHtml);
                 });
@@ -2591,6 +2974,16 @@ export default function GISChartView() {
                     .setLatLng(e.latlng)
                     .setContent('<div style="padding: 10px; font-size: 13px; font-family: sans-serif;">Đang tải thông tin chi tiết...</div>')
                     .openOn(mapRef.current);
+
+                  activePopupRef.current = popup;
+                  activePopupRecordRef.current = record;
+                  popup.on('close', () => {
+                    if (activePopupRef.current === popup) {
+                      activePopupRef.current = null;
+                      activePopupRecordRef.current = null;
+                    }
+                  });
+
                   const detailsHtml = await fetchAndFormatPopupDetails(record);
                   popup.setContent(detailsHtml);
                 });
@@ -2979,26 +3372,10 @@ export default function GISChartView() {
         {/* Main Map Viewer */}
         <Col xs={24} lg={searchPanelVisible ? 17 : 24} style={{ order: 2 }}>
           <Card
-            title={
-              <Space>
-                <CompassOutlined style={{ color: '#1890ff' }} />
-                <span>Bản đồ tích hợp hải đồ S-57/S-63 (S-52 display)</span>
-              </Space>
-            }
-            extra={
-              <Space>
-                <Radio.Group value={palette} onChange={(e) => setPalette(e.target.value)} size="small">
-                  <Radio.Button value="DAY">DAY (Ngày)</Radio.Button>
-                  <Radio.Button value="DUSK">DUSK (Hoàng hôn)</Radio.Button>
-                  <Radio.Button value="NIGHT">NIGHT (Đêm)</Radio.Button>
-                </Radio.Group>
-                <Button size="small" icon={<ReloadOutlined />} onClick={fetchCells} />
-              </Space>
-            }
             styles={{ body: { padding: 0 } }}
           >
             {/* The Map Div and Floating Control */}
-            <div style={{ position: 'relative', height: 'calc(100vh - 146px)' }}>
+            <div style={{ position: 'relative', height: 'calc(100vh - 98px)' }}>
               <div
                 ref={mapContainerRef}
                 id="leaflet-map-container"
@@ -3453,136 +3830,138 @@ export default function GISChartView() {
                     </div>
                   ),
                 },
-              {
-                key: '2',
-                label: 'Hiệu chỉnh tọa độ',
-                children: (
-                  <Card variant="borderless">
-                    <Form form={calibrationForm} layout="vertical" onFinish={handleCalibrate} initialValues={{ systemType: 'VN2000', dx: 0, dy: 0 }}>
-                      <Form.Item name="systemType" label="Hệ tọa độ nguồn" rules={[{ required: true }]}>
-                        <Radio.Group style={{ width: '100%' }}>
-                          <Radio.Button value="VN2000" style={{ width: '33.3%' }}>VN-2000</Radio.Button>
-                          <Radio.Button value="UTM" style={{ width: '33.3%' }}>UTM</Radio.Button>
-                          <Radio.Button value="WGS84" style={{ width: '33.4%' }}>WGS84</Radio.Button>
-                        </Radio.Group>
-                      </Form.Item>
-
-                      <Form.Item noStyle shouldUpdate={(prev, curr) => prev.systemType !== curr.systemType}>
-                        {({ getFieldValue }) => {
-                          const type = getFieldValue('systemType');
-                          return (
-                            <>
-                              <Form.Item
-                                name="coord1"
-                                label={type === 'WGS84' ? 'Kinh độ (Decimal / DMS / DDM)' : 'Tọa độ X (Easting)'}
-                                rules={[{ required: true, message: 'Vui lòng điền tọa độ 1' }]}
-                              >
-                                <Input placeholder={type === 'WGS84' ? 'Ví dụ: 106°37\'46" E' : 'Ví dụ: 568390.0'} />
-                              </Form.Item>
-
-                              <Form.Item
-                                name="coord2"
-                                label={type === 'WGS84' ? 'Vĩ độ (Decimal / DMS / DDM)' : 'Tọa độ Y (Northing)'}
-                                rules={[{ required: true, message: 'Vui lòng điền tọa độ 2' }]}
-                              >
-                                <Input placeholder={type === 'WGS84' ? 'Ví dụ: 20°40\'0" N' : 'Ví dụ: 2322890.0'} />
-                              </Form.Item>
-
-                              {type !== 'WGS84' && (
+                /*
+                {
+                  key: '2',
+                  label: 'Hiệu chỉnh tọa độ',
+                  children: (
+                    <Card variant="borderless">
+                      <Form form={calibrationForm} layout="vertical" onFinish={handleCalibrate} initialValues={{ systemType: 'VN2000', dx: 0, dy: 0 }}>
+                        <Form.Item name="systemType" label="Hệ tọa độ nguồn" rules={[{ required: true }]}>
+                          <Radio.Group style={{ width: '100%' }}>
+                            <Radio.Button value="VN2000" style={{ width: '33.3%' }}>VN-2000</Radio.Button>
+                            <Radio.Button value="UTM" style={{ width: '33.3%' }}>UTM</Radio.Button>
+                            <Radio.Button value="WGS84" style={{ width: '33.4%' }}>WGS84</Radio.Button>
+                          </Radio.Group>
+                        </Form.Item>
+  
+                        <Form.Item noStyle shouldUpdate={(prev, curr) => prev.systemType !== curr.systemType}>
+                          {({ getFieldValue }) => {
+                            const type = getFieldValue('systemType');
+                            return (
+                              <>
                                 <Form.Item
-                                  name="zoneOrCm"
-                                  label={type === 'VN2000' ? 'Kinh tuyến trục (Central Meridian)' : 'Múi chiếu (UTM Zone)'}
-                                  rules={[{ required: true, message: 'Vui lòng chọn múi/kinh tuyến trục' }]}
+                                  name="coord1"
+                                  label={type === 'WGS84' ? 'Kinh độ (Decimal / DMS / DDM)' : 'Tọa độ X (Easting)'}
+                                  rules={[{ required: true, message: 'Vui lòng điền tọa độ 1' }]}
                                 >
-                                  <Input placeholder={type === 'VN2000' ? 'Ví dụ: 105.0 hoặc 108.5' : 'Ví dụ: 48N'} />
+                                  <Input placeholder={type === 'WGS84' ? 'Ví dụ: 106°37\'46" E' : 'Ví dụ: 568390.0'} />
                                 </Form.Item>
-                              )}
-                            </>
-                          );
-                        }}
-                      </Form.Item>
-
-                      <Collapse 
-                        size="small" 
-                        bordered={false} 
-                        style={{ marginBottom: 16 }}
-                        items={[
-                          {
-                            key: '1',
-                            label: 'Sai số hiệu chuẩn (Calibration offset)',
-                            children: (
-                              <Row gutter={8}>
-                                <Col span={12}>
-                                  <Form.Item name="dx" label="Độ lệch dX (m / deg)">
-                                    <InputNumber style={{ width: '100%' }} />
+  
+                                <Form.Item
+                                  name="coord2"
+                                  label={type === 'WGS84' ? 'Vĩ độ (Decimal / DMS / DDM)' : 'Tọa độ Y (Northing)'}
+                                  rules={[{ required: true, message: 'Vui lòng điền tọa độ 2' }]}
+                                >
+                                  <Input placeholder={type === 'WGS84' ? 'Ví dụ: 20°40\'0" N' : 'Ví dụ: 2322890.0'} />
+                                </Form.Item>
+  
+                                {type !== 'WGS84' && (
+                                  <Form.Item
+                                    name="zoneOrCm"
+                                    label={type === 'VN2000' ? 'Kinh tuyến trục (Central Meridian)' : 'Múi chiếu (UTM Zone)'}
+                                    rules={[{ required: true, message: 'Vui lòng chọn múi/kinh tuyến trục' }]}
+                                  >
+                                    <Input placeholder={type === 'VN2000' ? 'Ví dụ: 105.0 hoặc 108.5' : 'Ví dụ: 48N'} />
                                   </Form.Item>
-                                </Col>
-                                <Col span={12}>
-                                  <Form.Item name="dy" label="Độ lệch dY (m / deg)">
-                                    <InputNumber style={{ width: '100%' }} />
-                                  </Form.Item>
-                                </Col>
-                              </Row>
-                            )
-                          }
-                        ]}
-                      />
-
-                      <Form.Item style={{ marginBottom: 0 }}>
-                        <Button
-                          type="primary"
-                          htmlType="submit"
-                          icon={<GlobalOutlined />}
-                          loading={calibrating}
-                          style={{ width: '100%' }}
-                        >
-                          Hiệu chuẩn & Chuyển WGS84
-                        </Button>
-                      </Form.Item>
-                    </Form>
-
-                    {calibratedPoint && (
-                      <div style={{ marginTop: 16, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 4 }}>
-                        <Typography.Text strong>Kết quả hiệu chuẩn (EPSG:4326):</Typography.Text><br/>
-                        <Typography.Text>Kinh độ: <code>{calibratedPoint.lon.toFixed(7)}°</code></Typography.Text><br/>
-                        <Typography.Text>Vĩ độ: <code>{calibratedPoint.lat.toFixed(7)}°</code></Typography.Text>
-                      </div>
-                    )}
-                  </Card>
-                ),
-              },
-              {
-                key: '3',
-                label: 'Nhập hải đồ',
-                children: (
-                  <Card variant="borderless">
-                    <Space orientation="vertical" style={{ width: '100%' }} size="middle">
-                      <Card size="small" title="Nhập hải đồ thường (S-57)" style={{ width: '100%' }}>
-                        <Typography.Paragraph type="secondary" style={{ fontSize: '13px' }}>
-                          Tải lên file hải đồ định dạng tiêu chuẩn S-57 (`.000`). Hệ thống sẽ tự động phân tích và trích xuất các đối tượng.
-                        </Typography.Paragraph>
-                        <Upload customRequest={handleUploadS57} showUploadList={false}>
-                          <Button icon={<UploadOutlined />} style={{ width: '100%' }}>
-                            Chọn file S-57 (.000)
+                                )}
+                              </>
+                            );
+                          }}
+                        </Form.Item>
+  
+                        <Collapse 
+                          size="small" 
+                          bordered={false} 
+                          style={{ marginBottom: 16 }}
+                          items={[
+                            {
+                              key: '1',
+                              label: 'Sai số hiệu chuẩn (Calibration offset)',
+                              children: (
+                                <Row gutter={8}>
+                                  <Col span={12}>
+                                    <Form.Item name="dx" label="Độ lệch dX (m / deg)">
+                                      <InputNumber style={{ width: '100%' }} />
+                                    </Form.Item>
+                                  </Col>
+                                  <Col span={12}>
+                                    <Form.Item name="dy" label="Độ lệch dY (m / deg)">
+                                      <InputNumber style={{ width: '100%' }} />
+                                    </Form.Item>
+                                  </Col>
+                                </Row>
+                              )
+                            }
+                          ]}
+                        />
+  
+                        <Form.Item style={{ marginBottom: 0 }}>
+                          <Button
+                            type="primary"
+                            htmlType="submit"
+                            icon={<GlobalOutlined />}
+                            loading={calibrating}
+                            style={{ width: '100%' }}
+                          >
+                            Hiệu chuẩn & Chuyển WGS84
                           </Button>
-                        </Upload>
-                      </Card>
-
-                      <Card size="small" title="Nhập hải đồ bảo mật (S-63)" style={{ width: '100%' }}>
-                        <Typography.Paragraph type="secondary" style={{ fontSize: '13px' }}>
-                          Nhập file hải đồ mã hóa S-63 (`.000`). File yêu cầu phải có giấy phép Cell Permit tương ứng đã được đăng ký trước.
-                        </Typography.Paragraph>
-                        <Upload customRequest={handleUploadS63} showUploadList={false}>
-                          <Button icon={<UploadOutlined />} style={{ width: '100%' }} type="dashed">
-                            Chọn file S-63 (.000)
-                          </Button>
-                        </Upload>
-                      </Card>
-                    </Space>
-                  </Card>
-                ),
-              },
-            ]}
+                        </Form.Item>
+                      </Form>
+  
+                      {calibratedPoint && (
+                        <div style={{ marginTop: 16, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 4 }}>
+                          <Typography.Text strong>Kết quả hiệu chuẩn (EPSG:4326):</Typography.Text><br/>
+                          <Typography.Text>Kinh độ: <code>{calibratedPoint.lon.toFixed(7)}°</code></Typography.Text><br/>
+                          <Typography.Text>Vĩ độ: <code>{calibratedPoint.lat.toFixed(7)}°</code></Typography.Text>
+                        </div>
+                      )}
+                    </Card>
+                  ),
+                },
+                {
+                  key: '3',
+                  label: 'Nhập hải đồ',
+                  children: (
+                    <Card variant="borderless">
+                      <Space orientation="vertical" style={{ width: '100%' }} size="middle">
+                        <Card size="small" title="Nhập hải đồ thường (S-57)" style={{ width: '100%' }}>
+                          <Typography.Paragraph type="secondary" style={{ fontSize: '13px' }}>
+                            Tải lên file hải đồ định dạng tiêu chuẩn S-57 (`.000`). Hệ thống sẽ tự động phân tích và trích xuất các đối tượng.
+                          </Typography.Paragraph>
+                          <Upload customRequest={handleUploadS57} showUploadList={false}>
+                            <Button icon={<UploadOutlined />} style={{ width: '100%' }}>
+                              Chọn file S-57 (.000)
+                            </Button>
+                          </Upload>
+                        </Card>
+  
+                        <Card size="small" title="Nhập hải đồ bảo mật (S-63)" style={{ width: '100%' }}>
+                          <Typography.Paragraph type="secondary" style={{ fontSize: '13px' }}>
+                            Nhập file hải đồ mã hóa S-63 (`.000`). File yêu cầu phải có giấy phép Cell Permit tương ứng đã được đăng ký trước.
+                          </Typography.Paragraph>
+                          <Upload customRequest={handleUploadS63} showUploadList={false}>
+                            <Button icon={<UploadOutlined />} style={{ width: '100%' }} type="dashed">
+                              Chọn file S-63 (.000)
+                            </Button>
+                          </Upload>
+                        </Card>
+                      </Space>
+                    </Card>
+                  ),
+                },
+                */
+              ]}
           />
         </Col>
         )}

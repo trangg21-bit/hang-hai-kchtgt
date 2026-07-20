@@ -35,7 +35,7 @@ public class DeKeController {
 
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'deke:read')")
-    public ResponseEntity<ApiResponse<DeKeResponse>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<DeKeResponse>> getById(@PathVariable java.util.UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.getById(id)));
     }
 
@@ -50,7 +50,7 @@ public class DeKeController {
     @PutMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'deke:update')")
     public ResponseEntity<ApiResponse<DeKeResponse>> update(
-            @PathVariable Long id,
+            @PathVariable java.util.UUID id,
             @RequestBody @Valid DeKeUpdateRequest req,
             Authentication authentication) {
         return ResponseEntity.ok(ApiResponse.success("Cập nhật đê kè thành công", service.update(id, req, authentication.getName())));
@@ -58,7 +58,7 @@ public class DeKeController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'deke:delete')")
-    public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable java.util.UUID id) {
         service.softDelete(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa mềm đê kè thành công", null));
     }
@@ -66,7 +66,7 @@ public class DeKeController {
     @PostMapping("/{id}/approve/c1")
     @PreAuthorize("@auth.check(authentication, 'deke:approvec1')")
     public ResponseEntity<ApiResponse<PheDuyetResponse>> approveC1(
-            @PathVariable Long id,
+            @PathVariable java.util.UUID id,
             @RequestBody @Valid PheDuyetRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
@@ -76,7 +76,7 @@ public class DeKeController {
     @PostMapping("/{id}/approve/c2")
     @PreAuthorize("@auth.check(authentication, 'deke:approvec2')")
     public ResponseEntity<ApiResponse<PheDuyetResponse>> approveC2(
-            @PathVariable Long id,
+            @PathVariable java.util.UUID id,
             @RequestBody @Valid PheDuyetRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
@@ -85,7 +85,7 @@ public class DeKeController {
 
     @GetMapping("/{id}/history")
     @PreAuthorize("@auth.check(authentication, 'deke:read')")
-    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getApprovalHistory(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getApprovalHistory(@PathVariable java.util.UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.getApprovalHistory(id)));
     }
 

@@ -58,8 +58,8 @@ public class BuoyService {
         return buoyRepo.searchFiltered(
                 name,
                 code,
-                type != null ? type.getValue() : null,
-                status != null ? status.getValue() : null
+                type,
+                status
         ).stream()
                 .map(this::toResponse)
                 .toList();
@@ -81,8 +81,6 @@ public class BuoyService {
                 .code(request.getCode())
                 .name(request.getName())
                 .type(request.getType())
-                .latitude(request.getLatitude())
-                .longitude(request.getLongitude())
                 .color(request.getColor())
                 .shape(request.getShape())
                 .lightCharacteristic(request.getLightCharacteristic())
@@ -108,7 +106,7 @@ public class BuoyService {
         entity = buoyRepo.save(entity);
 
         // Sync GIS spatial object
-        String wkt = "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")";
+        String wkt = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                 null,
                 entity.getName(),
@@ -155,12 +153,30 @@ public class BuoyService {
         }
 
         // Handle latitude/longitude updates
-        if (request.getLongitude() != null || request.getLatitude() != null) {
-            Double finalLon = request.getLongitude() != null ? request.getLongitude() : entity.getLongitude();
-            Double finalLat = request.getLatitude() != null ? request.getLatitude() : entity.getLatitude();
+        Double currentLon = null;
+        Double currentLat = null;
+        if (entity.getKhongGianId() != null) {
+            Optional<com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getKhongGianId());
+            if (spatialObjOpt.isPresent()) {
+                String coordsStr = spatialObjOpt.get().getCoordinates();
+                try {
+                    String clean = coordsStr.replace("POINT", "").replace("(", "").replace(")", "").trim();
+                    String[] parts = clean.split("\\s+");
+                    if (parts.length == 2) {
+                        currentLon = Double.parseDouble(parts[0]);
+                        currentLat = Double.parseDouble(parts[1]);
+                    }
+                } catch (Exception ex) {
+                    // ignore
+                }
+            }
+        }
+        Double finalLon = request.getLongitude() != null ? request.getLongitude() : currentLon;
+        Double finalLat = request.getLatitude() != null ? request.getLatitude() : currentLat;
+        String wkt = null;
+        if (finalLon != null && finalLat != null) {
             validateCoordinates(finalLon, finalLat);
-            entity.setLongitude(finalLon);
-            entity.setLatitude(finalLat);
+            wkt = "POINT(" + finalLon + " " + finalLat + ")";
         }
 
         if (request.getColor() != null) entity.setColor(request.getColor());
@@ -189,21 +205,22 @@ public class BuoyService {
         entity = buoyRepo.save(entity);
 
         // Sync GIS spatial object
-        String wkt = "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")";
-        com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                entity.getKhongGianId(),
-                entity.getName(),
-                "PHAOTIEU_" + entity.getCode(),
-                com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT,
-                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_BUOY,
-                wkt,
-                null,
-                entity.getId(),
-                com.hanghai.kchtg.gis.search.dto.KchtType.PHAOTIEU
-        );
-        if (entity.getKhongGianId() == null) {
-            entity.setKhongGianId(spatialObj.getId());
-            buoyRepo.save(entity);
+        if (wkt != null) {
+            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    entity.getKhongGianId(),
+                    entity.getName(),
+                    "PHAOTIEU_" + entity.getCode(),
+                    com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT,
+                    com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_BUOY,
+                    wkt,
+                    null,
+                    entity.getId(),
+                    com.hanghai.kchtg.gis.search.dto.KchtType.PHAOTIEU
+            );
+            if (entity.getKhongGianId() == null) {
+                entity.setKhongGianId(spatialObj.getId());
+                buoyRepo.save(entity);
+            }
         }
 
         // BUG FIX #1: Use JsonNode.equals() for reliable comparison (not string equals)
@@ -391,13 +408,32 @@ public class BuoyService {
                     .orElse(null);
         }
 
+        Double latitude = null;
+        Double longitude = null;
+        if (entity.getKhongGianId() != null) {
+            Optional<com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getKhongGianId());
+            if (spatialObjOpt.isPresent()) {
+                String coordsStr = spatialObjOpt.get().getCoordinates();
+                try {
+                    String clean = coordsStr.replace("POINT", "").replace("(", "").replace(")", "").trim();
+                    String[] parts = clean.split("\\s+");
+                    if (parts.length == 2) {
+                        longitude = Double.parseDouble(parts[0]);
+                        latitude = Double.parseDouble(parts[1]);
+                    }
+                } catch (Exception ex) {
+                    // ignore
+                }
+            }
+        }
+
         return BuoyResponse.builder()
                 .id(entity.getId())
                 .code(entity.getCode())
                 .name(entity.getName())
                 .type(entity.getType())
-                .latitude(entity.getLatitude())
-                .longitude(entity.getLongitude())
+                .latitude(latitude)
+                .longitude(longitude)
                 .color(entity.getColor())
                 .shape(entity.getShape())
                 .lightCharacteristic(entity.getLightCharacteristic())

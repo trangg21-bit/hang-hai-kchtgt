@@ -21,7 +21,7 @@ public class PheDuyetLichSu {
     private Long id;
 
     @Column(name = "co_sua_chua_id", nullable = true)
-    private Long coSuaChuaId;
+    private java.util.UUID coSuaChuaId;
 
     @Column(name = "cap_phe_duyet", nullable = false)
     private Integer capPheDuyet;

@@ -53,7 +53,7 @@ public class LuongHangHaiService {
         if (req.getToaDo() != null && !req.getToaDo().trim().isEmpty()) {
             GisGeometryType geomType = req.getLoaiHinhHoc() != null ? req.getLoaiHinhHoc() : GisGeometryType.LINE;
             GisSpatialObjectType objType = getSpatialObjectType(geomType);
-            UUID refId = UUID.nameUUIDFromBytes(("LUONGHANGHAI_" + l.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            UUID refId = l.getId();
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
                     req.getTen(),
@@ -73,7 +73,7 @@ public class LuongHangHaiService {
     }
 
     @Transactional(readOnly = true)
-    public LuongHangHaiResponse getById(Long id) {
+    public LuongHangHaiResponse getById(UUID id) {
         return toResponse(repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id)));
     }
@@ -108,7 +108,7 @@ public class LuongHangHaiService {
     }
 
     @Transactional
-    public LuongHangHaiResponse update(Long id, LuongHangHaiUpdateRequest req, String username) {
+    public LuongHangHaiResponse update(UUID id, LuongHangHaiUpdateRequest req, String username) {
         LuongHangHai l = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -131,7 +131,7 @@ public class LuongHangHaiService {
             } else {
                 GisGeometryType geomType = req.getLoaiHinhHoc() != null ? req.getLoaiHinhHoc() : GisGeometryType.LINE;
                 GisSpatialObjectType objType = getSpatialObjectType(geomType);
-                UUID refId = UUID.nameUUIDFromBytes(("LUONGHANGHAI_" + l.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                UUID refId = l.getId();
                 GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                         l.getKhongGianId(),
                         l.getTen(),
@@ -147,7 +147,7 @@ public class LuongHangHaiService {
             }
         } else if (l.getKhongGianId() != null && req.getTen() != null) {
             gisSpatialObjectService.findById(l.getKhongGianId()).ifPresent(spatialObj -> {
-                UUID refId = UUID.nameUUIDFromBytes(("LUONGHANGHAI_" + l.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                UUID refId = l.getId();
                 gisSpatialObjectService.createOrUpdate(
                         spatialObj.getId(),
                         req.getTen(),
@@ -167,7 +167,7 @@ public class LuongHangHaiService {
     }
 
     @Transactional
-    public void softDelete(Long id) {
+    public void softDelete(UUID id) {
         LuongHangHai l = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -185,7 +185,7 @@ public class LuongHangHaiService {
     }
 
     @Transactional
-    public PheDuyetResponse approveC1(Long id, PheDuyetRequest req, String approvedBy) {
+    public PheDuyetResponse approveC1(UUID id, PheDuyetRequest req, String approvedBy) {
         LuongHangHai l = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -210,7 +210,7 @@ public class LuongHangHaiService {
     }
 
     @Transactional
-    public PheDuyetResponse approveC2(Long id, PheDuyetRequest req, String approvedBy) {
+    public PheDuyetResponse approveC2(UUID id, PheDuyetRequest req, String approvedBy) {
         LuongHangHai l = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -239,7 +239,7 @@ public class LuongHangHaiService {
     }
 
     @Transactional
-    public PheDuyetResponse reject(Long id, PheDuyetRequest req, String approvedBy) {
+    public PheDuyetResponse reject(UUID id, PheDuyetRequest req, String approvedBy) {
         LuongHangHai l = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -266,7 +266,7 @@ public class LuongHangHaiService {
 
     private PheDuyetResponse buildPheDuyetResponse(LuongHangHai l, Integer cap) {
         return PheDuyetResponse.builder()
-                .id(l.getId())
+                .id(String.valueOf(l.getId()))
                 .luongHangHaiId(l.getId())
                 .capPheDuyet(cap)
                 .trangThai(l.getApprovalStatus().name())
@@ -277,7 +277,7 @@ public class LuongHangHaiService {
     }
 
     @Transactional(readOnly = true)
-    public List<HistoryEntry> getApprovalHistory(Long id) {
+    public List<HistoryEntry> getApprovalHistory(UUID id) {
         LuongHangHai l = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -340,7 +340,7 @@ public class LuongHangHaiService {
         List<PheDuyetResponse> hist = l.getApprovalHistory() != null
                 ? l.getApprovalHistory().stream()
                         .map(h -> PheDuyetResponse.builder()
-                                .id(h.getId())
+                                .id(String.valueOf(h.getId()))
                                 .luongHangHaiId(h.getLuongHangHai().getId())
                                 .capPheDuyet(h.getCapPheDuyet())
                                 .trangThai(h.getTrangThai())

@@ -1,6 +1,10 @@
 spring:
   application:
     name: kchtg-m001-quan-tri-he-thong
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 50
 
   # Default profile (dev with H2)
   profiles:

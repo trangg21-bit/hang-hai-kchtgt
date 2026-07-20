@@ -6,14 +6,18 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class LuongHangHaiEntityTest {
 
+    private static final UUID TEST_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID TEST_ID_2 = UUID.fromString("22222222-2222-2222-2222-222222222222");
+
     @Test void builder_shouldCreateValidEntity() {
         LuongHangHai e = LuongHangHai.builder()
-                .id(1L)
+                .id(TEST_ID)
                 .ten("Luong hang hai")
                 .soLuong(100)
                 .ngayGhiNhan(LocalDate.of(2026, 1, 1))
@@ -27,7 +31,7 @@ class LuongHangHaiEntityTest {
                 .isDeleted(false)
                 .createdBy("Admin")
                 .build();
-        assertThat(e.getId()).isEqualTo(1L);
+        assertThat(e.getId()).isEqualTo(TEST_ID);
         assertThat(e.getTen()).isEqualTo("Luong hang hai");
         assertThat(e.getApprovalStatus()).isEqualTo(LuongHangHaiApprovalStatus.PROPOSED);
         assertThat(e.getPheDuyetC1()).isFalse();
@@ -36,7 +40,8 @@ class LuongHangHaiEntityTest {
 
     @Test void getterSetter_shouldWork() {
         LuongHangHai e = new LuongHangHai();
-        e.setId(42L);
+        UUID uuid = UUID.randomUUID();
+        e.setId(uuid);
         e.setTen("Luong hang hai moi");
         e.setSoLuong(200);
         e.setGioDien("14:30");
@@ -46,7 +51,7 @@ class LuongHangHaiEntityTest {
         e.setApprovalStatus(LuongHangHaiApprovalStatus.APPROVED);
         e.setCreatedBy("User");
         e.setUpdatedBy("Admin");
-        assertThat(e.getId()).isEqualTo(42L);
+        assertThat(e.getId()).isEqualTo(uuid);
         assertThat(e.getTen()).isEqualTo("Luong hang hai moi");
         assertThat(e.getApprovalStatus()).isEqualTo(LuongHangHaiApprovalStatus.APPROVED);
     }
@@ -92,7 +97,8 @@ class LuongHangHaiEntityTest {
     }
 
     @Test void pheDuyetLichSu_shouldSetFields() {
-        LuongHangHai parent = LuongHangHai.builder().id(1L).build();
+        UUID uuid = UUID.randomUUID();
+        LuongHangHai parent = LuongHangHai.builder().id(uuid).build();
         PheDuyetLichSu h = PheDuyetLichSu.builder()
                 .luongHangHai(parent)
                 .capPheDuyet(1)
@@ -127,7 +133,7 @@ class LuongHangHaiEntityTest {
 
     @Test void fullFields_shouldSetAll() {
         LuongHangHai e = LuongHangHai.builder()
-                .id(99L)
+                .id(TEST_ID_2)
                 .ten("Luong hang hai full")
                 .soLuong(500)
                 .ngayGhiNhan(LocalDate.of(2026, 3, 15))
@@ -145,7 +151,7 @@ class LuongHangHaiEntityTest {
                 .createdBy("Admin")
                 .updatedBy("User")
                 .build();
-        assertThat(e.getId()).isEqualTo(99L);
+        assertThat(e.getId()).isEqualTo(TEST_ID_2);
         assertThat(e.getSoLuong()).isEqualTo(500);
         assertThat(e.getPheDuyetC1()).isTrue();
         assertThat(e.getPheDuyetC2()).isTrue();

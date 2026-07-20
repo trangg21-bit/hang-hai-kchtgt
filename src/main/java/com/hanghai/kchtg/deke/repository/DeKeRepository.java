@@ -10,7 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface DeKeRepository extends JpaRepository<DeKe, Long> {
+public interface DeKeRepository extends JpaRepository<DeKe, java.util.UUID> {
 
     List<DeKe> findByTrangThaiPheDuyetAndIsDeletedFalse(DeKeApprovalStatus trangThaiPheDuyet);
 

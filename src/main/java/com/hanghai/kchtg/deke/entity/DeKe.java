@@ -10,8 +10,9 @@ import java.util.*;
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class DeKe {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Id @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false)
+    private java.util.UUID id;
 
     @Column(name = "loai_de")
     @Convert(converter = LoaiDeConverter.class)

@@ -35,7 +35,7 @@ public class LuongHangHaiController {
 
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'luonghanghai:read')")
-    public ResponseEntity<ApiResponse<LuongHangHaiResponse>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<LuongHangHaiResponse>> getById(@PathVariable java.util.UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.getById(id)));
     }
 
@@ -50,7 +50,7 @@ public class LuongHangHaiController {
     @PutMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'luonghanghai:update')")
     public ResponseEntity<ApiResponse<LuongHangHaiResponse>> update(
-            @PathVariable Long id,
+            @PathVariable java.util.UUID id,
             @RequestBody @Valid LuongHangHaiUpdateRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
@@ -59,7 +59,7 @@ public class LuongHangHaiController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'luonghanghai:delete')")
-    public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable java.util.UUID id) {
         service.softDelete(id);
         return ResponseEntity.ok(ApiResponse.success("Xóa mềm luồng hàng hải thành công", null));
     }
@@ -67,7 +67,7 @@ public class LuongHangHaiController {
     @PostMapping("/{id}/approve/c1")
     @PreAuthorize("@auth.check(authentication, 'luonghanghai:approvec1')")
     public ResponseEntity<ApiResponse<PheDuyetResponse>> approveC1(
-            @PathVariable Long id,
+            @PathVariable java.util.UUID id,
             @RequestBody @Valid PheDuyetRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
@@ -77,7 +77,7 @@ public class LuongHangHaiController {
     @PostMapping("/{id}/approve/c2")
     @PreAuthorize("@auth.check(authentication, 'luonghanghai:approvec2')")
     public ResponseEntity<ApiResponse<PheDuyetResponse>> approveC2(
-            @PathVariable Long id,
+            @PathVariable java.util.UUID id,
             @RequestBody @Valid PheDuyetRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
@@ -86,7 +86,7 @@ public class LuongHangHaiController {
 
     @GetMapping("/{id}/history")
     @PreAuthorize("@auth.check(authentication, 'luonghanghai:read')")
-    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getApprovalHistory(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getApprovalHistory(@PathVariable java.util.UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.getApprovalHistory(id)));
     }
 

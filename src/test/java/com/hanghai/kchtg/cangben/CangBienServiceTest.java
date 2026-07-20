@@ -83,8 +83,6 @@ class CangBienServiceTest {
         testEntity.setMaCang("CB-001");
         testEntity.setTenCang("Cảng Biển Demo");
         testEntity.setTinhThanhPho("Hải Phòng");
-        testEntity.setViDo(new BigDecimal("20.845"));
-        testEntity.setKinhDo(new BigDecimal("106.688"));
         testEntity.setDienTich(new BigDecimal("5000.00"));
         testEntity.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
         testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);

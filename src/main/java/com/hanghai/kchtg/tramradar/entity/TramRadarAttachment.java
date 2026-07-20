@@ -18,7 +18,7 @@ public class TramRadarAttachment {
     private Long id;
 
     @Column(name = "tram_radar_id", nullable = false)
-    private Long tramRadarId;
+    private java.util.UUID tramRadarId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tram_radar_id", insertable = false, updatable = false)

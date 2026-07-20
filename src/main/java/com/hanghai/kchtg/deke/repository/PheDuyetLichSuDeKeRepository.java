@@ -9,5 +9,5 @@ import java.util.List;
 @Repository
 public interface PheDuyetLichSuDeKeRepository extends JpaRepository<PheDuyetLichSu, Long> {
 
-    List<PheDuyetLichSu> findByDeKeIdOrderByNgayPheDuyetDesc(Long deKeId);
+    List<PheDuyetLichSu> findByDeKeIdOrderByNgayPheDuyetDesc(java.util.UUID deKeId);
 }

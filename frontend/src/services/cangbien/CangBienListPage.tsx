@@ -225,7 +225,8 @@ export default function CangBienListPage() {
                 loaiHinhHoc: data.loaiHinhHoc || 'POINT',
                 toaDo: data.toaDo || '',
                 bieuTuongId: data.bieuTuongId
-              }
+              },
+              loaiHinhHoc: data.loaiHinhHoc || 'POINT'
             });
             setUpdateModalVisible(true);
           }
@@ -338,8 +339,9 @@ export default function CangBienListPage() {
         trangThaiPheDuyet: (values.trangThaiPheDuyet as string) || 'CHO_PHE_DUYET',
         orgUnitId: (values.orgUnitId as string) || undefined,
         nhomCangBien: values.nhomCangBien ? Number(values.nhomCangBien) : undefined,
-        bieuTuongId: (values.bieuTuongId as string) || undefined,
-        // Extended fields
+        bieuTuongId: (values.gisLocation as any)?.bieuTuongId || (values.bieuTuongId as string) || undefined,
+        loaiHinhHoc: values.loaiHinhHoc as string,
+        toaDo: (values.gisLocation as any)?.toaDo || undefined,
         diaDiemChiTiet: (values.diaDiemChiTiet as string) || undefined,
         phanCap: values.phanCap != null && !Number.isNaN(values.phanCap as number)
           ? Number(values.phanCap) : undefined,
@@ -426,7 +428,9 @@ export default function CangBienListPage() {
         trangThaiHoatDong: (values.trangThaiHoatDong as string) || undefined,
         orgUnitId: (values.orgUnitId as string) || undefined,
         nhomCangBien: values.nhomCangBien ? Number(values.nhomCangBien) : undefined,
-        bieuTuongId: (values.bieuTuongId as string) || null,
+        bieuTuongId: (values.gisLocation as any)?.bieuTuongId || (values.bieuTuongId as string) || null,
+        loaiHinhHoc: values.loaiHinhHoc as string,
+        toaDo: (values.gisLocation as any)?.toaDo || undefined,
         // Extended fields
         diaDiemChiTiet: (values.diaDiemChiTiet as string) || undefined,
         phanCap: n(values.phanCap),
@@ -687,19 +691,25 @@ export default function CangBienListPage() {
                   setIsLoading(true);
                   const data = await fetchCangBienById(record.id);
                   setSelectedRecord(data);
-                  updateForm.setFieldsValue({
-                    id: data.id,
-                    maCang: data.maCang,
-                    tenCang: data.tenCang,
-                    tinhThanhPho: data.tinhThanhPho || undefined,
-                    dienTich: data.dienTich != null ? data.dienTich : undefined,
-                    khaNangTiepNhan: data.khaNangTiepNhan != null ? data.khaNangTiepNhan : undefined,
-                    trangThaiHoatDong: data.trangThaiHoatDong || undefined,
-                    orgUnitId: data.orgUnitId || undefined,
-                    nhomCangBien: data.nhomCangBien != null ? data.nhomCangBien : undefined,
-                    bieuTuongId: data.bieuTuongId || undefined,
-                    diaDiemChiTiet: data.diaDiemChiTiet || undefined,
-                    phanCap: data.phanCap != null ? data.phanCap : undefined,
+                    updateForm.setFieldsValue({
+                      id: data.id,
+                      maCang: data.maCang,
+                      tenCang: data.tenCang,
+                      tinhThanhPho: data.tinhThanhPho || undefined,
+                      dienTich: data.dienTich != null ? data.dienTich : undefined,
+                      khaNangTiepNhan: data.khaNangTiepNhan != null ? data.khaNangTiepNhan : undefined,
+                      trangThaiHoatDong: data.trangThaiHoatDong || undefined,
+                      orgUnitId: data.orgUnitId || undefined,
+                      nhomCangBien: data.nhomCangBien != null ? data.nhomCangBien : undefined,
+                      bieuTuongId: data.bieuTuongId || undefined,
+                      loaiHinhHoc: data.loaiHinhHoc || 'POINT',
+                      gisLocation: {
+                        loaiHinhHoc: data.loaiHinhHoc || 'POINT',
+                        toaDo: data.toaDo || '',
+                        bieuTuongId: data.bieuTuongId
+                      },
+                      diaDiemChiTiet: data.diaDiemChiTiet || undefined,
+                      phanCap: data.phanCap != null ? data.phanCap : undefined,
                     heQuyChieu: data.heQuyChieu != null ? data.heQuyChieu : undefined,
                     quyTacHienThi: data.quyTacHienThi != null ? data.quyTacHienThi : undefined,
                     phamViVungNuoc: data.phamViVungNuoc || undefined,
@@ -1164,54 +1174,15 @@ export default function CangBienListPage() {
               </Form.Item>
             </Col>
           </Row>
-          <Card size="small" style={{ marginBottom: 16, backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
-              <Typography.Text type="warning">⚠️ Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau.</Typography.Text>
-            </Card>
           <Row gutter={24}>
-            <Col span={8}>
-              <Form.Item label="Loại đối tượng" name="loaiHinhHoc">
-                <Select placeholder="Chọn loại" allowClear options={[
-                  { label: 'Điểm (POINT)', value: 'POINT' },
-                  { label: 'Đường (LINE)', value: 'LINE' },
-                  { label: 'Vùng (POLYGON)', value: 'POLYGON' },
-                ]} />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item name="bieuTuongId" label="Biểu tượng bản đồ">
-                <Select placeholder="Chọn biểu tượng hiển thị" allowClear showSearch optionFilterProp="label">
-                  {symbols.map((sym) => (
-                    <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
-                      <Space>
-                        {sym.hinhAnh && (
-                          <img
-                            src={sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}
-                            alt={sym.name}
-                            style={{ width: 20, height: 20, objectFit: 'contain' }}
-                          />
-                        )}
-                        <span>{sym.name} ({sym.code})</span>
-                      </Space>
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={4}>
+            <Col span={12}>
               <Form.Item label="Hệ quy chiếu" name="heQuyChieu">
                 <InputNumber min={0} step={1} precision={0} placeholder="4326" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col span={4}>
+            <Col span={12}>
               <Form.Item label="Quy tắc hiển thị" name="quyTacHienThi">
                 <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={24}>
-            <Col span={24}>
-              <Form.Item label="Tọa độ (WKT)" name="toaDo">
-                <Input placeholder="VD: POINT(106.7 20.9)" />
               </Form.Item>
             </Col>
           </Row>
@@ -1462,56 +1433,15 @@ export default function CangBienListPage() {
               </Form.Item>
             </Col>
           </Row>
-          <Card size="small" style={{ marginBottom: 16, backgroundColor: '#fffbe6', borderColor: '#ffe58f' }}>
-              <Typography.Text type="warning">
-                ⚠️ Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau.
-              </Typography.Text>
-            </Card>
           <Row gutter={24}>
-            <Col span={8}>
-              <Form.Item label="Loại đối tượng" name="loaiHinhHoc">
-                <Select placeholder="Chọn loại" allowClear options={[
-                  { label: 'Điểm (POINT)', value: 'POINT' },
-                  { label: 'Đường (LINE)', value: 'LINE' },
-                  { label: 'Vùng (POLYGON)', value: 'POLYGON' },
-                ]} />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item name="bieuTuongId" label="Biểu tượng bản đồ">
-                <Select placeholder="Chọn biểu tượng hiển thị" allowClear showSearch optionFilterProp="label">
-                  {symbols.map((sym) => (
-                    <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
-                      <Space>
-                        {sym.hinhAnh && (
-                          <img
-                            src={sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}
-                            alt={sym.name}
-                            style={{ width: 20, height: 20, objectFit: 'contain' }}
-                          />
-                        )}
-                        <span>{sym.name} ({sym.code})</span>
-                      </Space>
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col span={4}>
+            <Col span={12}>
               <Form.Item label="Hệ quy chiếu" name="heQuyChieu">
                 <InputNumber min={0} step={1} precision={0} placeholder="4326" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col span={4}>
+            <Col span={12}>
               <Form.Item label="Quy tắc hiển thị" name="quyTacHienThi">
                 <InputNumber min={0} step={1} precision={0} placeholder="0" style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
-          <Row gutter={24}>
-            <Col span={24}>
-              <Form.Item label="Tọa độ (WKT)" name="toaDo">
-                <Input placeholder="VD: POINT(106.7 20.9)" />
               </Form.Item>
             </Col>
           </Row>
@@ -1645,22 +1575,12 @@ export default function CangBienListPage() {
               <Col span={16}>
                 <Card title="Thông tin địa lý & GIS" size="small" style={{ height: '100%' }}>
                   <Row gutter={[12, 12]}>
-                    <Col span={8}>
-                      <Typography.Text strong>Vĩ độ:</Typography.Text>
-                      <br />
-                      <Typography.Text>{selectedRecord.viDo != null ? selectedRecord.viDo.toFixed(6) : '—'}</Typography.Text>
-                    </Col>
-                    <Col span={8}>
-                      <Typography.Text strong>Kinh độ:</Typography.Text>
-                      <br />
-                      <Typography.Text>{selectedRecord.kinhDo != null ? selectedRecord.kinhDo.toFixed(6) : '—'}</Typography.Text>
-                    </Col>
-                    <Col span={4}>
+                    <Col span={12}>
                       <Typography.Text strong>Hệ quy chiếu:</Typography.Text>
                       <br />
                       <Typography.Text>{selectedRecord.heQuyChieu ?? '—'}</Typography.Text>
                     </Col>
-                    <Col span={4}>
+                    <Col span={12}>
                       <Typography.Text strong>Quy tắc hiển thị:</Typography.Text>
                       <br />
                       <Typography.Text>{selectedRecord.quyTacHienThi ?? '—'}</Typography.Text>
@@ -1732,14 +1652,18 @@ export default function CangBienListPage() {
                       maCang: selectedRecord.maCang,
                       tenCang: selectedRecord.tenCang,
                       tinhThanhPho: selectedRecord.tinhThanhPho || undefined,
-                      viDo: selectedRecord.viDo != null ? selectedRecord.viDo : undefined,
-                      kinhDo: selectedRecord.kinhDo != null ? selectedRecord.kinhDo : undefined,
                       dienTich: selectedRecord.dienTich != null ? selectedRecord.dienTich : undefined,
                       khaNangTiepNhan: selectedRecord.khaNangTiepNhan != null ? selectedRecord.khaNangTiepNhan : undefined,
                       trangThaiHoatDong: selectedRecord.trangThaiHoatDong || undefined,
                       orgUnitId: selectedRecord.orgUnitId || undefined,
                       nhomCangBien: selectedRecord.nhomCangBien != null ? selectedRecord.nhomCangBien : undefined,
                       bieuTuongId: selectedRecord.bieuTuongId || undefined,
+                      loaiHinhHoc: selectedRecord.loaiHinhHoc || 'POINT',
+                      gisLocation: {
+                        loaiHinhHoc: selectedRecord.loaiHinhHoc || 'POINT',
+                        toaDo: selectedRecord.toaDo || '',
+                        bieuTuongId: selectedRecord.bieuTuongId
+                      },
                       diaDiemChiTiet: selectedRecord.diaDiemChiTiet || undefined,
                       phanCap: selectedRecord.phanCap != null ? selectedRecord.phanCap : undefined,
                       heQuyChieu: selectedRecord.heQuyChieu != null ? selectedRecord.heQuyChieu : undefined,

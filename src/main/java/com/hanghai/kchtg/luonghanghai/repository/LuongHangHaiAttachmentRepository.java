@@ -9,5 +9,5 @@ import java.util.List;
 @Repository
 public interface LuongHangHaiAttachmentRepository extends JpaRepository<LuongHangHaiAttachment, Long> {
 
-    List<LuongHangHaiAttachment> findByLuongHangHaiId(Long luongHangHaiId);
+    List<LuongHangHaiAttachment> findByLuongHangHaiId(java.util.UUID luongHangHaiId);
 }

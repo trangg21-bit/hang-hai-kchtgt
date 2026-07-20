@@ -38,11 +38,7 @@ public class CangCan extends BaseEntity {
     @Column(name = "tinh_thanh_pho", length = 100)
     private String tinhThanhPho;
 
-    @Column(name = "vi_do", precision = 10, scale = 6)
-    private BigDecimal viDo;
 
-    @Column(name = "kinh_do", precision = 10, scale = 6)
-    private BigDecimal kinhDo;
 
     @Column(name = "dien_tich", precision = 15, scale = 2)
     private BigDecimal dienTich;

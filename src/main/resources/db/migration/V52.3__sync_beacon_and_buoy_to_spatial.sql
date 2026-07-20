@@ -1,7 +1,9 @@
-ALTER TABLE public.beacon_light ADD COLUMN spatial_id UUID NULL;
+ALTER TABLE public.beacon_light ADD COLUMN IF NOT EXISTS spatial_id UUID NULL;
+ALTER TABLE public.beacon_light DROP CONSTRAINT IF EXISTS fk_beaconlight_spatial;
 ALTER TABLE public.beacon_light ADD CONSTRAINT fk_beaconlight_spatial FOREIGN KEY (spatial_id) REFERENCES public.gis_spatial_objects(id) ON DELETE SET NULL;
 
-ALTER TABLE public.buoy ADD COLUMN spatial_id UUID NULL;
+ALTER TABLE public.buoy ADD COLUMN IF NOT EXISTS spatial_id UUID NULL;
+ALTER TABLE public.buoy DROP CONSTRAINT IF EXISTS fk_buoy_spatial;
 ALTER TABLE public.buoy ADD CONSTRAINT fk_buoy_spatial FOREIGN KEY (spatial_id) REFERENCES public.gis_spatial_objects(id) ON DELETE SET NULL;
 
 -- DO block to migrate existing data for public.beacon_light

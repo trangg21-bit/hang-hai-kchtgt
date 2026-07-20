@@ -2,6 +2,7 @@ package com.hanghai.kchtg.cosuachua.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.cosuachua.dto.*;
+import com.hanghai.kchtg.cosuachua.entity.*;
 import com.hanghai.kchtg.cosuachua.service.CoSuaChuaDongTauService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -24,6 +26,9 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CoSuaChuaDongTauControllerTest {
+
+    private static final UUID TEST_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID TEST_ID_2 = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
     @Mock
     private CoSuaChuaDongTauService service;
@@ -40,15 +45,15 @@ class CoSuaChuaDongTauControllerTest {
                 .tenCoSo("Cơ sở ABC")
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
-                .loaiCoSo("Sửa chữa")
+                .loaiCoSo(LoaiCoSo.CS_SUA_CHUA)
                 .build();
 
         response = CoSuaChuaDongTauResponse.builder()
-                .id(1L)
+                .id(TEST_ID)
                 .tenCoSo("Cơ sở ABC")
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
-                .loaiCoSo("Sửa chữa")
+                .loaiCoSo(LoaiCoSo.CS_SUA_CHUA)
                 .trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED)
                 .pheDuyetC1(true)
                 .pheDuyetC2(true)
@@ -91,9 +96,9 @@ class CoSuaChuaDongTauControllerTest {
 
     @Test
     void testGetById() {
-        when(service.getById(1L)).thenReturn(response);
+        when(service.getById(TEST_ID)).thenReturn(response);
 
-        ResponseEntity<?> result = controller.getById(1L);
+        ResponseEntity<?> result = controller.getById(TEST_ID);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         @SuppressWarnings("unchecked")
@@ -101,14 +106,14 @@ class CoSuaChuaDongTauControllerTest {
         assertNotNull(apiResp);
         CoSuaChuaDongTauResponse body = apiResp.getData();
         assertNotNull(body);
-        assertEquals(1L, body.getId());
+        assertEquals(TEST_ID, body.getId());
     }
 
     @Test
     void testGetById_NotFound() {
-        when(service.getById(999L)).thenThrow(new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu: 999"));
+        when(service.getById(TEST_ID_2)).thenThrow(new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu"));
 
-        ResponseEntity<?> result = controller.getById(999L);
+        ResponseEntity<?> result = controller.getById(TEST_ID_2);
 
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
         assertNotNull(result.getBody());
@@ -146,33 +151,33 @@ class CoSuaChuaDongTauControllerTest {
     void testUpdate() {
         CoSuaChuaDongTauUpdateRequest updateReq = CoSuaChuaDongTauUpdateRequest.builder()
                 .tenCoSo("Cơ sở XYZ").build();
-        when(service.update(eq(1L), any(CoSuaChuaDongTauUpdateRequest.class), anyString())).thenReturn(response);
+        when(service.update(eq(TEST_ID), any(CoSuaChuaDongTauUpdateRequest.class), anyString())).thenReturn(response);
 
-        ResponseEntity<?> result = controller.update(1L, updateReq, mockAuth());
+        ResponseEntity<?> result = controller.update(TEST_ID, updateReq, mockAuth());
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        verify(service, times(1)).update(eq(1L), any(CoSuaChuaDongTauUpdateRequest.class), anyString());
+        verify(service, times(1)).update(eq(TEST_ID), any(CoSuaChuaDongTauUpdateRequest.class), anyString());
     }
 
     @Test
     void testDelete() {
-        doNothing().when(service).delete(eq(1L), anyString());
+        doNothing().when(service).delete(eq(TEST_ID), anyString());
 
-        ResponseEntity<?> result = controller.delete(1L, mockAuth());
+        ResponseEntity<?> result = controller.delete(TEST_ID, mockAuth());
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         @SuppressWarnings("unchecked")
         ApiResponse<Void> delResp = (ApiResponse<Void>) result.getBody();
         assertNotNull(delResp);
         assertTrue(delResp.isSuccess());
-        verify(service, times(1)).delete(eq(1L), anyString());
+        verify(service, times(1)).delete(eq(TEST_ID), anyString());
     }
 
     @Test
     void testDelete_Throws() {
-        doThrow(new RuntimeException("Chỉ có thể xóa các bản ghi đã được phê duyệt")).when(service).delete(eq(1L), anyString());
+        doThrow(new RuntimeException("Chỉ có thể xóa các bản ghi đã được phê duyệt")).when(service).delete(eq(TEST_ID), anyString());
 
-        ResponseEntity<?> result = controller.delete(1L, mockAuth());
+        ResponseEntity<?> result = controller.delete(TEST_ID, mockAuth());
 
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
         assertNotNull(result.getBody());
@@ -181,12 +186,12 @@ class CoSuaChuaDongTauControllerTest {
     @Test
     void testApproveC1_Approve() {
         PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
-        when(service.approveC1(eq(1L), eq(req), anyString())).thenReturn(response);
+        when(service.approveC1(eq(TEST_ID), eq(req), anyString())).thenReturn(response);
 
-        ResponseEntity<?> result = controller.approveC1(1L, req, mockAuth());
+        ResponseEntity<?> result = controller.approveC1(TEST_ID, req, mockAuth());
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        verify(service, times(1)).approveC1(eq(1L), eq(req), anyString());
+        verify(service, times(1)).approveC1(eq(TEST_ID), eq(req), anyString());
     }
 
     @Test
@@ -196,10 +201,10 @@ class CoSuaChuaDongTauControllerTest {
                 .lyDo("Không đủ điều kiện")
                 .build();
         CoSuaChuaDongTauResponse rejectedResponse = CoSuaChuaDongTauResponse.builder()
-                .id(1L).trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.REJECTED).lyDoTuChoi("Không đủ điều kiện").build();
-        when(service.approveC1(eq(1L), eq(req), anyString())).thenReturn(rejectedResponse);
+                .id(TEST_ID).trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.REJECTED).lyDoTuChoi("Không đủ điều kiện").build();
+        when(service.approveC1(eq(TEST_ID), eq(req), anyString())).thenReturn(rejectedResponse);
 
-        ResponseEntity<?> result = controller.approveC1(1L, req, mockAuth());
+        ResponseEntity<?> result = controller.approveC1(TEST_ID, req, mockAuth());
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
@@ -207,21 +212,21 @@ class CoSuaChuaDongTauControllerTest {
     @Test
     void testApproveC2_Approve() {
         PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
-        when(service.approveC2(eq(1L), eq(req), anyString())).thenReturn(response);
+        when(service.approveC2(eq(TEST_ID), eq(req), anyString())).thenReturn(response);
 
-        ResponseEntity<?> result = controller.approveC2(1L, req, mockAuth());
+        ResponseEntity<?> result = controller.approveC2(TEST_ID, req, mockAuth());
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        verify(service, times(1)).approveC2(eq(1L), eq(req), anyString());
+        verify(service, times(1)).approveC2(eq(TEST_ID), eq(req), anyString());
     }
 
     @Test
     void testGetHistory() {
         HistoryEntry entry = HistoryEntry.builder()
                 .id(1L).capPheDuyet(1).trangThai("APPROVED").nguoiPheDuyet("admin").build();
-        when(service.getHistory(1L)).thenReturn(Arrays.asList(entry));
+        when(service.getHistory(TEST_ID)).thenReturn(Arrays.asList(entry));
 
-        ResponseEntity<?> result = controller.getHistory(1L);
+        ResponseEntity<?> result = controller.getHistory(TEST_ID);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         @SuppressWarnings("unchecked")
@@ -233,9 +238,9 @@ class CoSuaChuaDongTauControllerTest {
 
     @Test
     void testGetHistory_Empty() {
-        when(service.getHistory(1L)).thenReturn(Collections.emptyList());
+        when(service.getHistory(TEST_ID)).thenReturn(Collections.emptyList());
 
-        ResponseEntity<?> result = controller.getHistory(1L);
+        ResponseEntity<?> result = controller.getHistory(TEST_ID);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }

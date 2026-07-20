@@ -4,6 +4,8 @@ import com.hanghai.kchtg.cangben.dto.bencang.*;
 import com.hanghai.kchtg.cangben.entity.BenCang;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
 import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import java.math.BigDecimal;
+import java.util.Optional;
 import com.hanghai.kchtg.cangben.entity.CangBien;
 import com.hanghai.kchtg.cangben.repository.BenCangRepository;
 import com.hanghai.kchtg.cangben.repository.CangBienRepository;
@@ -65,7 +67,6 @@ public class BenCangService {
         BenCang entity = BenCang.builder()
                 .maBen(request.getMaBen()).tenBen(request.getTenBen())
                 .cangBienId(request.getCangBienId()).tuyenDuongThuy(request.getTuyenDuongThuy())
-                .viDo(request.getViDo()).kinhDo(request.getKinhDo())
                 .chieuDai(request.getChieuDai()).chieuRong(request.getChieuRong())
                 .loaiBen(request.getLoaiBen()).doSauLuong(request.getDoSauLuong())
                 .congNangKhaiThac(request.getCongNangKhaiThac())
@@ -113,18 +114,6 @@ public class BenCangService {
                     com.hanghai.kchtg.gis.search.dto.KchtType.BENCANG
             );
             saved.setKhongGianId(spatialObj.getId());
-            if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT) {
-                try {
-                    String clean = toaDo.replace("POINT", "").replace("(", "").replace(")", "").trim();
-                    String[] parts = clean.split("\\s+");
-                    if (parts.length == 2) {
-                        saved.setKinhDo(new java.math.BigDecimal(parts[0]));
-                        saved.setViDo(new java.math.BigDecimal(parts[1]));
-                    }
-                } catch (Exception e) {
-                    log.error("Failed to parse POINT coordinates", e);
-                }
-            }
             saved = benCangRepository.save(saved);
         }
 
@@ -224,12 +213,17 @@ public class BenCangService {
         BenCang entity = benCangRepository.findById(request.getId())
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + request.getId()));
 
+        String toaDo = request.getToaDo();
+        if ((toaDo == null || toaDo.trim().isEmpty()) && request.getKinhDo() != null && request.getViDo() != null) {
+            toaDo = "POINT(" + request.getKinhDo() + " " + request.getViDo() + ")";
+        }
+
         // Capture pre-mutation snapshot BEFORE applying changes (INT-003c fix)
         BenCang snapshot = BenCang.builder()
                 .maBen(entity.getMaBen())
                 .tenBen(entity.getTenBen()).cangBienId(entity.getCangBienId())
-                .tuyenDuongThuy(entity.getTuyenDuongThuy()).viDo(entity.getViDo())
-                .kinhDo(entity.getKinhDo()).chieuDai(entity.getChieuDai())
+                .tuyenDuongThuy(entity.getTuyenDuongThuy())
+                .chieuDai(entity.getChieuDai())
                 .chieuRong(entity.getChieuRong()).loaiBen(entity.getLoaiBen())
                 .doSauLuong(entity.getDoSauLuong()).congNangKhaiThac(entity.getCongNangKhaiThac())
                 .trangThaiHoatDong(entity.getTrangThaiHoatDong())
@@ -281,10 +275,7 @@ public class BenCangService {
         }
         if (request.getTuyenDuongThuy() != null)
             entity.setTuyenDuongThuy(request.getTuyenDuongThuy());
-        if (request.getViDo() != null)
-            entity.setViDo(request.getViDo());
-        if (request.getKinhDo() != null)
-            entity.setKinhDo(request.getKinhDo());
+
         if (request.getChieuDai() != null)
             entity.setChieuDai(request.getChieuDai());
         if (request.getChieuRong() != null)
@@ -333,12 +324,6 @@ public class BenCangService {
 
         BenCang saved = benCangRepository.save(entity);
 
-        // Sync to GisSpatialObject
-        String toaDo = request.getToaDo();
-        if ((toaDo == null || toaDo.trim().isEmpty()) && request.getKinhDo() != null && request.getViDo() != null) {
-            toaDo = "POINT(" + request.getKinhDo() + " " + request.getViDo() + ")";
-        }
-
         if (toaDo != null && !toaDo.trim().isEmpty()) {
             com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
             com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_PORT;
@@ -355,33 +340,7 @@ public class BenCangService {
                     com.hanghai.kchtg.gis.search.dto.KchtType.BENCANG
             );
             saved.setKhongGianId(spatialObj.getId());
-            if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT) {
-                try {
-                    String clean = toaDo.replace("POINT", "").replace("(", "").replace(")", "").trim();
-                    String[] parts = clean.split("\\s+");
-                    if (parts.length == 2) {
-                        saved.setKinhDo(new java.math.BigDecimal(parts[0]));
-                        saved.setViDo(new java.math.BigDecimal(parts[1]));
-                    }
-                } catch (Exception e) {
-                    log.error("Failed to parse POINT coordinates", e);
-                }
-            }
             saved = benCangRepository.save(saved);
-        } else if (saved.getKhongGianId() != null) {
-            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_PORT;
-            gisSpatialObjectService.createOrUpdate(
-                    saved.getKhongGianId(),
-                    saved.getTenBen(),
-                    "BENCANG_" + saved.getMaBen(),
-                    geomType,
-                    objType,
-                    "POINT(" + saved.getKinhDo() + " " + saved.getViDo() + ")",
-                    saved.getBieuTuongId(),
-                    saved.getId(),
-                    com.hanghai.kchtg.gis.search.dto.KchtType.BENCANG
-            );
         }
 
         // Record change history using pre-mutation snapshot (INT-003b/c)
@@ -422,12 +381,31 @@ public class BenCangService {
         String createdBy = preResolvedCreatorName != null ? preResolvedCreatorName : userResolverService.resolveName(e.getCreatedBy());
         String updatedBy = preResolvedUpdaterName != null ? preResolvedUpdaterName : userResolverService.resolveName(e.getUpdatedBy());
 
+        BigDecimal viDo = null;
+        BigDecimal kinhDo = null;
+        if (e.getKhongGianId() != null) {
+            Optional<com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(e.getKhongGianId());
+            if (spatialObjOpt.isPresent()) {
+                String coordinates = spatialObjOpt.get().getCoordinates();
+                try {
+                    String clean = coordinates.replace("POINT", "").replace("(", "").replace(")", "").trim();
+                    String[] parts = clean.split("\\s+");
+                    if (parts.length == 2) {
+                        kinhDo = new BigDecimal(parts[0]);
+                        viDo = new BigDecimal(parts[1]);
+                    }
+                } catch (Exception ex) {
+                    // ignore
+                }
+            }
+        }
+
         BenCangResponse.BenCangResponseBuilder builder = BenCangResponse.builder()
                 .id(e.getId()).maBen(e.getMaBen()).tenBen(e.getTenBen())
                 .cangBienId(e.getCangBienId())
                 .tenCangBien(tenCangBien)
                 .tuyenDuongThuy(e.getTuyenDuongThuy())
-                .viDo(e.getViDo()).kinhDo(e.getKinhDo()).chieuDai(e.getChieuDai())
+                .viDo(viDo).kinhDo(kinhDo).chieuDai(e.getChieuDai())
                 .chieuRong(e.getChieuRong()).loaiBen(e.getLoaiBen())
                 .doSauLuong(e.getDoSauLuong()).congNangKhaiThac(e.getCongNangKhaiThac())
                 .trangThaiHoatDong(e.getTrangThaiHoatDong())

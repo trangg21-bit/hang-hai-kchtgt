@@ -20,8 +20,9 @@ import com.hanghai.kchtg.tramradar.entity.TramRadar;
 public class HeThongVTS {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false)
+    private java.util.UUID id;
 
     @Column(name = "ten_he_thong", nullable = false, length = 255)
     private String tenHeThong;

@@ -204,7 +204,10 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
           navigate('/tram-radar');
         }
       } else if (id && isEditMode) {
-        await tramRadarCRUD.update(id, payload as UpdateTramRadarRequest);
+        const res = await tramRadarCRUD.update(id, payload as UpdateTramRadarRequest);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = res;
+        }
         message.success('Cập nhật thành công');
         if (isModalMode) {
           onSuccess?.();
@@ -231,7 +234,10 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
         const pheDuyetData: PheDuyetRequest = {
           quyetDinh: 'APPROVED',
         };
-        await tramRadarApproval.approveC1(id, pheDuyetData);
+        const res = await tramRadarApproval.approveC1(id, pheDuyetData);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = res;
+        }
         message.success('Phê duyệt C1 thành công');
         setRecord({ ...record, trangThai: 'UNDER_REVIEW' });
         setHasChanges(true);
@@ -239,7 +245,10 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
         const pheDuyetData: PheDuyetRequest = {
           quyetDinh: 'APPROVED',
         };
-        await tramRadarApproval.approveC2(id, pheDuyetData);
+        const res = await tramRadarApproval.approveC2(id, pheDuyetData);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = res;
+        }
         message.success('Phê duyệt C2 thành công');
         setRecord({ ...record, trangThai: 'APPROVED' });
         setHasChanges(true);
@@ -249,10 +258,14 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
           lyDo: payload?.lyDo as string,
         };
 
+        let updatedRecord;
         if (record.trangThai === 'PROPOSED' || record.trangThai === 'REJECTED') {
-          await tramRadarApproval.approveC1(id, pheDuyetData);
+          updatedRecord = await tramRadarApproval.approveC1(id, pheDuyetData);
         } else if (record.trangThai === 'UNDER_REVIEW') {
-          await tramRadarApproval.approveC2(id, pheDuyetData);
+          updatedRecord = await tramRadarApproval.approveC2(id, pheDuyetData);
+        }
+        if (updatedRecord && window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = updatedRecord;
         }
 
         message.success('Từ chối thành công');
@@ -323,12 +336,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
             <Descriptions column={2} bordered size="small">
               <Descriptions.Item label="Tên trạm">{record.tenTram ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Vị trí">{record.viTri}</Descriptions.Item>
-              <Descriptions.Item label="Kinh độ">
-                {record.kinhDo !== undefined ? record.kinhDo.toFixed(6) : '—'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Vĩ độ">
-                {record.viDo !== undefined ? record.viDo.toFixed(6) : '—'}
-              </Descriptions.Item>
+
               <Descriptions.Item label="Loại trạm">
                 {LOAI_TRAM_MAP[record.loaiTram] || record.loaiTram || '—'}
               </Descriptions.Item>
@@ -490,61 +498,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
               <Input placeholder="Nhập vị trí" />
             </Form.Item>
 
-            <Form.Item
-              label="Kinh độ"
-              name="kinhDo"
-              rules={[
-                {
-                  validator: (_, value) => {
-                    if (!value && value !== 0) return Promise.resolve();
-                    if (value < -180 || value > 180) {
-                      return Promise.reject(
-                        new Error("Kinh độ phải trong khoảng -180 đến 180")
-                      );
-                    }
-                    return Promise.resolve();
-                  },
-                },
-              ]}
-              validateTrigger="onChange"
-            >
-              <InputNumber
-                min={-180}
-                max={180}
-                step={0.000001}
-                precision={6}
-                placeholder="Nhập kinh độ (WGS84)"
-                style={{ width: "100%" }}
-              />
-            </Form.Item>
 
-            <Form.Item
-              label="Vĩ độ"
-              name="viDo"
-              rules={[
-                {
-                  validator: (_, value) => {
-                    if (!value && value !== 0) return Promise.resolve();
-                    if (value < -90 || value > 90) {
-                      return Promise.reject(
-                        new Error("Vĩ độ phải trong khoảng -90 đến 90")
-                      );
-                    }
-                    return Promise.resolve();
-                  },
-                },
-              ]}
-              validateTrigger="onChange"
-            >
-              <InputNumber
-                min={-90}
-                max={90}
-                step={0.000001}
-                precision={6}
-                placeholder="Nhập vĩ độ (WGS84)"
-                style={{ width: "100%" }}
-              />
-            </Form.Item>
 
             <Form.Item label="Loại trạm" name="loaiTram">
               <Select
@@ -684,57 +638,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
             <Input placeholder="Nhập vị trí" />
           </Form.Item>
 
-          <Form.Item
-            label="Kinh độ"
-            name="kinhDo"
-            rules={[
-              {
-                validator: (_, value) => {
-                  if (!value && value !== 0) return Promise.resolve();
-                  if (value < -180 || value > 180) {
-                    return Promise.reject(new Error('Kinh độ phải trong khoảng -180 đến 180'));
-                  }
-                  return Promise.resolve();
-                },
-              },
-            ]}
-            validateTrigger="onChange"
-          >
-            <InputNumber
-              min={-180}
-              max={180}
-              step={0.000001}
-              precision={6}
-              placeholder="Nhập kinh độ (WGS84)"
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
 
-          <Form.Item
-            label="Vĩ độ"
-            name="viDo"
-            rules={[
-              {
-                validator: (_, value) => {
-                  if (!value && value !== 0) return Promise.resolve();
-                  if (value < -90 || value > 90) {
-                    return Promise.reject(new Error('Vĩ độ phải trong khoảng -90 đến 90'));
-                  }
-                  return Promise.resolve();
-                },
-              },
-            ]}
-            validateTrigger="onChange"
-          >
-            <InputNumber
-              min={-90}
-              max={90}
-              step={0.000001}
-              precision={6}
-              placeholder="Nhập vĩ độ (WGS84)"
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
 
           <Form.Item label="Loại trạm" name="loaiTram">
             <Select

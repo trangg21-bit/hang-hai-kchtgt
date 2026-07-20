@@ -101,11 +101,8 @@ public class CreateCangBienRequest {
     @Size(max = 2000, message = "Ghi chú tối đa 2000 ký tự")
     private String ghiChu;
 
-    /**
-     * GPS paired-field constraint: viDo and kinhDo must both be present or both be absent.
-     */
-    @AssertTrue(message = "Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau")
+    @AssertTrue(message = "Vĩ độ và kinh độ phải được điền đồng thời")
     public boolean isGpsPaired() {
-        return (viDo == null) == (kinhDo == null);
+        return (viDo == null && kinhDo == null) || (viDo != null && kinhDo != null);
     }
 }

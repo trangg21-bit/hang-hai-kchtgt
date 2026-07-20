@@ -136,7 +136,10 @@ export default function SpecialStationList() {
       };
 
       if (editingItem) {
-        await updateInmarsat(editingItem.id, payload);
+        const res = await updateInmarsat(editingItem.id, payload);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[editingItem.id] = res;
+        }
         message.success('Cập nhật đài Inmarsat thành công!');
       } else {
         await createInmarsat(payload);
