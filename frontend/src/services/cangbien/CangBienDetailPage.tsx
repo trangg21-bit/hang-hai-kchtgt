@@ -1,15 +1,27 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Card, Button, Space, Tag, Typography, Row, Col, Popconfirm } from 'antd';
+import { Card, Button, Space, Tag, Typography, Row, Col, Popconfirm, Table } from 'antd';
 import { UploadOutlined, DownloadOutlined } from '@ant-design/icons';
 import toast from '../../components/ToastNotification';
 import { ArrowLeftOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined, HistoryOutlined } from '@ant-design/icons';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { fetchCangBienById, deleteCangBien, approveCangBien, rejectCangBien } from './api';
 import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge } from './schema';
 import type { CangBienResponse } from './types';
 import { giayToApi } from '../../app/giayto/api';
 import type { GiayTo } from '../../app/giayto/types';
 import EmptyState from '../../components/EmptyState';
+import { benCangCRUD, vungNuocCRUD } from '../../services/cangbenService';
+import type { BenCang, VungNuoc } from '../../types/cangben';
+import { VUNGNUOOC_LOAI_MAP } from '../../types/cangben';
+import {
+  textPrimary, textSecondary, textTertiary,
+  statusOperational, statusAttention, actionPrimary,
+  borderDefault,
+  spaceMd, spaceSm,
+  fontSizeSm, fontSizeMd,
+  fontWeightMedium, fontWeightBold,
+  radiusPill,
+} from '../../tokens';
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—';
@@ -48,6 +60,34 @@ export default function CangBienDetailPage() {
   }, [id]);
 
   useEffect(() => { void loadData(); }, [loadData]);
+
+  // ── Child entities ────────────────────────────────────────────────
+  const [benCangs, setBenCangs] = useState<BenCang[]>([]);
+  const [vungNuocs, setVungNuocs] = useState<VungNuoc[]>([]);
+  const [totalBenCangs, setTotalBenCangs] = useState(0);
+  const [totalVungNuocs, setTotalVungNuocs] = useState(0);
+  const [childrenLoading, setChildrenLoading] = useState(false);
+
+  const loadChildren = useCallback(async () => {
+    if (!id) return;
+    setChildrenLoading(true);
+    try {
+      const [bcRes, vnRes] = await Promise.all([
+        benCangCRUD.search({ cangBienId: id, pageSize: 5 }),
+        vungNuocCRUD.findAll({ cangBienId: id, size: 5 }),
+      ]);
+      setBenCangs(bcRes.data || []);
+      setTotalBenCangs(bcRes.total);
+      setVungNuocs(vnRes.data || []);
+      setTotalVungNuocs(vnRes.total);
+    } catch {
+      // silent — children are supplementary
+    } finally {
+      setChildrenLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => { void loadChildren(); }, [loadChildren]);
 
   if (isLoading) return <div style={{ padding: 40, textAlign: 'center' }}>Đang tải...</div>;
   if (isError || !data) {
@@ -213,6 +253,86 @@ export default function CangBienDetailPage() {
                   </div>
                 ))}
               </div>
+            )}
+          </Card>
+        </Col>
+
+        {/* ── Bến cảng trực thuộc ────────────────────────────────────── */}
+        <Col xs={24}>
+          <Card
+            title={
+              <span style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold }}>
+                Bến cảng trực thuộc
+                {!childrenLoading && <span style={{ color: textTertiary, fontWeight: fontWeightMedium, fontSize: fontSizeSm, marginLeft: spaceSm }}>({totalBenCangs})</span>}
+              </span>
+            }
+            style={{ border: `1px solid ${borderDefault}` }}
+          >
+            {childrenLoading ? (
+              <div style={{ textAlign: 'center', padding: spaceMd * 2, color: textTertiary, fontSize: fontSizeSm }}>Đang tải...</div>
+            ) : benCangs.length === 0 ? (
+              <EmptyState description="Không có bến cảng trực thuộc" />
+            ) : (
+              <>
+                <Table<BenCang>
+                  dataSource={benCangs}
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                  showHeader={false}
+                  columns={[
+                    { dataIndex: 'maBen', width: 120, render: (v: string) => <span style={{ fontFamily: 'monospace', fontSize: fontSizeSm, color: textSecondary }}>{v}</span> },
+                    { dataIndex: 'tenBen', ellipsis: true, render: (v: string, r: BenCang) => <Link to={`/bencang/${r.id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, textDecoration: 'none' }}>{v}</Link> },
+                    { dataIndex: 'loaiBen', width: 140, render: (v: string) => v ? <span style={{ fontSize: fontSizeSm, color: textSecondary, padding: `2px ${spaceSm}px`, borderRadius: radiusPill, background: 'rgba(11,46,79,0.04)' }}>{v}</span> : <span style={{ color: textTertiary, fontSize: fontSizeSm }}>—</span> },
+                    { dataIndex: 'trangThaiHoatDong', width: 120, render: (v: string) => v === 'HIEN_HANH' ? <span style={{ fontSize: fontSizeSm, color: statusOperational, fontWeight: fontWeightMedium }}>● Hoạt động</span> : <span style={{ fontSize: fontSizeSm, color: statusAttention, fontWeight: fontWeightMedium }}>● Tạm ngừng</span> },
+                  ]}
+                />
+                {totalBenCangs > 5 && (
+                  <div style={{ textAlign: 'right', marginTop: spaceSm }}>
+                    <Link to={`/bencang?cangBienId=${id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeSm, textDecoration: 'none' }}>Xem tất cả {totalBenCangs} bến cảng →</Link>
+                  </div>
+                )}
+              </>
+            )}
+          </Card>
+        </Col>
+
+        {/* ── Vùng nước trực thuộc ──────────────────────────────────── */}
+        <Col xs={24}>
+          <Card
+            title={
+              <span style={{ color: textPrimary, fontSize: fontSizeMd, fontWeight: fontWeightBold }}>
+                Vùng nước trực thuộc
+                {!childrenLoading && <span style={{ color: textTertiary, fontWeight: fontWeightMedium, fontSize: fontSizeSm, marginLeft: spaceSm }}>({totalVungNuocs})</span>}
+              </span>
+            }
+            style={{ border: `1px solid ${borderDefault}` }}
+          >
+            {childrenLoading ? (
+              <div style={{ textAlign: 'center', padding: spaceMd * 2, color: textTertiary, fontSize: fontSizeSm }}>Đang tải...</div>
+            ) : vungNuocs.length === 0 ? (
+              <EmptyState description="Không có vùng nước trực thuộc" />
+            ) : (
+              <>
+                <Table<VungNuoc>
+                  dataSource={vungNuocs}
+                  rowKey="id"
+                  pagination={false}
+                  size="small"
+                  showHeader={false}
+                  columns={[
+                    { dataIndex: 'maVungNuoc', width: 120, render: (v: string) => <span style={{ fontFamily: 'monospace', fontSize: fontSizeSm, color: textSecondary }}>{v}</span> },
+                    { dataIndex: 'tenVungNuoc', ellipsis: true, render: (v: string, r: VungNuoc) => <Link to={`/vungnuoc/${r.id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, textDecoration: 'none' }}>{v}</Link> },
+                    { dataIndex: 'loaiVungNuoc', width: 160, render: (v: string) => { const label = VUNGNUOOC_LOAI_MAP[v as keyof typeof VUNGNUOOC_LOAI_MAP]?.label || v; return <span style={{ fontSize: fontSizeSm, color: textSecondary, padding: `2px ${spaceSm}px`, borderRadius: radiusPill, background: 'rgba(11,46,79,0.04)' }}>{label}</span>; } },
+                    { dataIndex: 'dienTich', width: 100, render: (v: number) => v != null ? <span style={{ fontSize: fontSizeSm, color: textSecondary }}>{v.toLocaleString('vi-VN')} m²</span> : <span style={{ color: textTertiary, fontSize: fontSizeSm }}>—</span> },
+                  ]}
+                />
+                {totalVungNuocs > 5 && (
+                  <div style={{ textAlign: 'right', marginTop: spaceSm }}>
+                    <Link to={`/vungnuoc?cangBienId=${id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeSm, textDecoration: 'none' }}>Xem tất cả {totalVungNuocs} vùng nước →</Link>
+                  </div>
+                )}
+              </>
             )}
           </Card>
         </Col>
