@@ -12,7 +12,6 @@ import {
   InputNumber,
   Tag,
   Radio,
-  Tabs,
   Upload,
   Divider,
   List,
@@ -64,12 +63,24 @@ import { symbolService } from '../../services/symbolService';
 import type { Symbol } from '../../services/symbolService';
 import EmptyState from '../../components/EmptyState';
 import Flatbush from 'flatbush';
+import Pagination from '../../components/list-view/Pagination';
 import MapToolbar from '../../components/gis/MapToolbar';
 import DrawSaveModal from '../../components/gis/DrawSaveModal';
 import type { DrawResult } from '../../components/gis/DrawSaveModal';
 import { pointObjectService } from '../../services/pointObjectService';
 import { lineObjectService } from '../../services/lineObjectService';
 import { polygonObjectService } from '../../services/polygonObjectService';
+import {
+  spaceFormField, spaceMd, spaceSm,
+  radiusMd, radiusPill, fontSizeLg, fontSizeMd,
+  fontWeightBold, fontWeightMedium,
+  textPrimary, textTertiary,
+  actionPrimary, statusCritical,
+} from '../../tokens';
+
+const INPUT_STYLE: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
+const SELECT_STYLE: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
+const BTN_STYLE: React.CSSProperties = { borderRadius: radiusPill, height: 40, fontWeight: fontWeightMedium, fontSize: fontSizeMd };
 
 declare global {
   interface Window {
@@ -3583,34 +3594,30 @@ export default function GISChartView() {
         {/* Sidebar panels */}
         {searchPanelVisible && (
           <Col xs={24} lg={7} style={{ order: 1 }}>
-            <Tabs
-              className="gis-sidebar-tabs"
-              defaultActiveKey="1"
-              type="card"
-              style={{ height: 'calc(100vh - 96px)', display: 'flex', flexDirection: 'column' }}
-              items={[
-                {
-                  key: '1',
-                  label: 'Tra cứu',
-                  children: (
-                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: '100%', maxWidth: '100%', minWidth: 0 }}>
-                      {/* Fixed top section: title + form + pagination */}
-                      <div style={{ flexShrink: 0, padding: '12px 12px 0 12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <Typography.Title level={4} style={{ fontSize: '15px', fontWeight: 600, margin: 0, color: '#111' }}>
-                          Tra cứu thông tin kết cấu hạ tầng hàng hải trên bản đồ
-                        </Typography.Title>
-                        <Button
-                          type="text"
-                          icon={<CloseOutlined style={{ fontSize: '16px', color: '#999' }} />}
-                          onClick={() => setSearchPanelVisible(false)}
-                          style={{ padding: 0, border: 'none', background: 'transparent', height: 'auto', width: 'auto', display: 'flex', alignItems: 'center' }}
-                          title="Đóng"
-                        />
-                      </div>
+            <Card
+              className="gis-sidebar-panel"
+              styles={{ body: { display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', padding: 0 } }}
+              style={{ height: 'calc(100vh - 96px)', display: 'flex', flexDirection: 'column', borderRadius: radiusMd, overflow: 'hidden' }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', width: '100%', maxWidth: '100%', minWidth: 0 }}>
+                {/* Fixed top section: title + form + pagination */}
+                <div style={{ flexShrink: 0, padding: `${spaceFormField}px ${spaceFormField}px 0 ${spaceFormField}px` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spaceMd }}>
+                    <Typography.Title level={4} style={{ fontSize: fontSizeLg, fontWeight: fontWeightBold, margin: 0, color: textPrimary }}>
+                      Tra cứu thông tin kết cấu hạ tầng hàng hải trên bản đồ
+                    </Typography.Title>
+                    <Button
+                      type="text"
+                      icon={<CloseOutlined style={{ fontSize: fontSizeLg, color: textTertiary }} />}
+                      onClick={() => setSearchPanelVisible(false)}
+                      style={{ padding: 0, border: 'none', background: 'transparent', height: 'auto', width: 'auto', display: 'flex', alignItems: 'center' }}
+                      title="Đóng"
+                    />
+                  </div>
                       <Form form={searchForm} layout="vertical" onFinish={handleSearchInfrastructure} initialValues={{ orgUnitId: ['all'], kchtType: urlKchtType, tinhThanhPho: urlProvince, search: urlSearch, objectType: '' }}>
                         <Form.Item name="orgUnitId" label="Đơn vị quản lý">
                         <Cascader
+                          style={SELECT_STYLE}
                           options={treeOptions}
                           changeOnSelect
                           expandTrigger="hover"
@@ -3626,6 +3633,7 @@ export default function GISChartView() {
                         <Select
                           mode="multiple"
                           showSearch
+                          style={SELECT_STYLE}
                           filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                           placeholder="Chọn loại kết cấu..."
                           options={[
@@ -3656,6 +3664,7 @@ export default function GISChartView() {
                       <Form.Item name="tinhThanhPho" label="Địa điểm (Tỉnh/Thành phố)">
                         <Select
                           showSearch
+                          style={SELECT_STYLE}
                           placeholder="Chọn tỉnh/thành phố..."
                           filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
                           options={[
@@ -3668,10 +3677,11 @@ export default function GISChartView() {
                       <div style={{ display: showAdvancedSearch ? 'block' : 'none' }}>
                         <Form.Item name="search" label="Kết cấu hạ tầng">
                           <Input
+                            style={INPUT_STYLE}
                             placeholder="Kết cấu hạ tầng"
                             maxLength={255}
                             suffix={
-                              <span style={{ fontSize: '12px', color: '#999' }}>
+                              <span style={{ fontSize: fontSizeMd, color: textTertiary }}>
                                 {searchVal.length} / 255
                               </span>
                             }
@@ -3681,6 +3691,7 @@ export default function GISChartView() {
 
                         <Form.Item name="objectType" label="Loại đối tượng">
                           <Select
+                            style={SELECT_STYLE}
                             placeholder="Loại đối tượng"
                             allowClear
                             options={[
@@ -3699,7 +3710,7 @@ export default function GISChartView() {
                           htmlType="submit" 
                           icon={<SearchOutlined />}
                           loading={searchingInfrastructure}
-                          style={{ flex: 1 }}
+                          style={{ ...BTN_STYLE, flex: 1, background: actionPrimary, borderColor: actionPrimary }}
                         >
                           Tìm kiếm
                         </Button>
@@ -3710,7 +3721,7 @@ export default function GISChartView() {
                             setInfrastructureResults([]);
                             setTotalSearchElements(0);
                           }}
-                          style={{ borderColor: '#ff4d4f', color: '#ff4d4f' }}
+                          style={{ ...BTN_STYLE, borderColor: statusCritical, color: statusCritical }}
                         >
                           Xóa tìm kiếm
                         </Button>
@@ -3718,48 +3729,25 @@ export default function GISChartView() {
                           icon={<SlidersOutlined />} 
                           onClick={() => setShowAdvancedSearch(prev => !prev)}
                           style={{
-                            borderColor: showAdvancedSearch ? '#1890ff' : undefined,
-                            color: showAdvancedSearch ? '#1890ff' : undefined,
+                            ...BTN_STYLE,
+                            borderColor: showAdvancedSearch ? actionPrimary : undefined,
+                            color: showAdvancedSearch ? actionPrimary : undefined,
                           }}
                         />
                       </div>
                     </Form>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '16px 0 8px 0', fontSize: '13px' }}>
-                      <span>{totalSearchElements > 0 ? `${(searchPage - 1) * searchPageSize + 1}-${Math.min(searchPage * searchPageSize, totalSearchElements)} trong ${totalSearchElements}` : '0 trong 0'}</span>
-                      <Space size={4}>
-                        <Button 
-                          size="small" 
-                          disabled={searchPage <= 1} 
-                          onClick={() => { setSearchPage(p => p - 1); }}
-                        >
-                          &lt;
-                        </Button>
-                        <Button 
-                          size="small" 
-                          disabled={searchPage * searchPageSize >= totalSearchElements} 
-                          onClick={() => { setSearchPage(p => p + 1); }}
-                        >
-                          &gt;
-                        </Button>
-                        <Select
-                          size="small"
-                          value={searchPageSize}
-                          onChange={(val) => { setSearchPageSize(val); setSearchPage(1); }}
-                          options={[
-                            { value: 20, label: '20 / trang' },
-                            { value: 50, label: '50 / trang' },
-                            { value: 100, label: '100 / trang' },
-                            { value: 5000, label: '5000 / trang' },
-                          ]}
-                          style={{ width: 120 }}
-                        />
-                      </Space>
-                    </div>
+                    <Pagination
+                      total={totalSearchElements}
+                      current={searchPage}
+                      pageSize={searchPageSize}
+                      pageSizeOptions={[20, 50, 100, 5000]}
+                      onChange={(page, size) => { setSearchPage(page); setSearchPageSize(size); }}
+                    />
                       </div>
 
                       {/* Table fills all remaining vertical space */}
-                      <div ref={tableWrapperRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden', width: '100%', maxWidth: '100%', padding: '0 12px 12px 12px' }}>
+                      <div ref={tableWrapperRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden', width: '100%', maxWidth: '100%', padding: `0 ${spaceFormField}px ${spaceFormField}px ${spaceFormField}px` }}>
                     <Table
                       style={{ width: '100%' }}
                       loading={searchingInfrastructure}
@@ -3828,143 +3816,9 @@ export default function GISChartView() {
                     />
                       </div>
                     </div>
-                  ),
-                },
-                /*
-                {
-                  key: '2',
-                  label: 'Hiệu chỉnh tọa độ',
-                  children: (
-                    <Card variant="borderless">
-                      <Form form={calibrationForm} layout="vertical" onFinish={handleCalibrate} initialValues={{ systemType: 'VN2000', dx: 0, dy: 0 }}>
-                        <Form.Item name="systemType" label="Hệ tọa độ nguồn" rules={[{ required: true }]}>
-                          <Radio.Group style={{ width: '100%' }}>
-                            <Radio.Button value="VN2000" style={{ width: '33.3%' }}>VN-2000</Radio.Button>
-                            <Radio.Button value="UTM" style={{ width: '33.3%' }}>UTM</Radio.Button>
-                            <Radio.Button value="WGS84" style={{ width: '33.4%' }}>WGS84</Radio.Button>
-                          </Radio.Group>
-                        </Form.Item>
-  
-                        <Form.Item noStyle shouldUpdate={(prev, curr) => prev.systemType !== curr.systemType}>
-                          {({ getFieldValue }) => {
-                            const type = getFieldValue('systemType');
-                            return (
-                              <>
-                                <Form.Item
-                                  name="coord1"
-                                  label={type === 'WGS84' ? 'Kinh độ (Decimal / DMS / DDM)' : 'Tọa độ X (Easting)'}
-                                  rules={[{ required: true, message: 'Vui lòng điền tọa độ 1' }]}
-                                >
-                                  <Input placeholder={type === 'WGS84' ? 'Ví dụ: 106°37\'46" E' : 'Ví dụ: 568390.0'} />
-                                </Form.Item>
-  
-                                <Form.Item
-                                  name="coord2"
-                                  label={type === 'WGS84' ? 'Vĩ độ (Decimal / DMS / DDM)' : 'Tọa độ Y (Northing)'}
-                                  rules={[{ required: true, message: 'Vui lòng điền tọa độ 2' }]}
-                                >
-                                  <Input placeholder={type === 'WGS84' ? 'Ví dụ: 20°40\'0" N' : 'Ví dụ: 2322890.0'} />
-                                </Form.Item>
-  
-                                {type !== 'WGS84' && (
-                                  <Form.Item
-                                    name="zoneOrCm"
-                                    label={type === 'VN2000' ? 'Kinh tuyến trục (Central Meridian)' : 'Múi chiếu (UTM Zone)'}
-                                    rules={[{ required: true, message: 'Vui lòng chọn múi/kinh tuyến trục' }]}
-                                  >
-                                    <Input placeholder={type === 'VN2000' ? 'Ví dụ: 105.0 hoặc 108.5' : 'Ví dụ: 48N'} />
-                                  </Form.Item>
-                                )}
-                              </>
-                            );
-                          }}
-                        </Form.Item>
-  
-                        <Collapse 
-                          size="small" 
-                          bordered={false} 
-                          style={{ marginBottom: 16 }}
-                          items={[
-                            {
-                              key: '1',
-                              label: 'Sai số hiệu chuẩn (Calibration offset)',
-                              children: (
-                                <Row gutter={8}>
-                                  <Col span={12}>
-                                    <Form.Item name="dx" label="Độ lệch dX (m / deg)">
-                                      <InputNumber style={{ width: '100%' }} />
-                                    </Form.Item>
-                                  </Col>
-                                  <Col span={12}>
-                                    <Form.Item name="dy" label="Độ lệch dY (m / deg)">
-                                      <InputNumber style={{ width: '100%' }} />
-                                    </Form.Item>
-                                  </Col>
-                                </Row>
-                              )
-                            }
-                          ]}
-                        />
-  
-                        <Form.Item style={{ marginBottom: 0 }}>
-                          <Button
-                            type="primary"
-                            htmlType="submit"
-                            icon={<GlobalOutlined />}
-                            loading={calibrating}
-                            style={{ width: '100%' }}
-                          >
-                            Hiệu chuẩn & Chuyển WGS84
-                          </Button>
-                        </Form.Item>
-                      </Form>
-  
-                      {calibratedPoint && (
-                        <div style={{ marginTop: 16, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 4 }}>
-                          <Typography.Text strong>Kết quả hiệu chuẩn (EPSG:4326):</Typography.Text><br/>
-                          <Typography.Text>Kinh độ: <code>{calibratedPoint.lon.toFixed(7)}°</code></Typography.Text><br/>
-                          <Typography.Text>Vĩ độ: <code>{calibratedPoint.lat.toFixed(7)}°</code></Typography.Text>
-                        </div>
-                      )}
-                    </Card>
-                  ),
-                },
-                {
-                  key: '3',
-                  label: 'Nhập hải đồ',
-                  children: (
-                    <Card variant="borderless">
-                      <Space orientation="vertical" style={{ width: '100%' }} size="middle">
-                        <Card size="small" title="Nhập hải đồ thường (S-57)" style={{ width: '100%' }}>
-                          <Typography.Paragraph type="secondary" style={{ fontSize: '13px' }}>
-                            Tải lên file hải đồ định dạng tiêu chuẩn S-57 (`.000`). Hệ thống sẽ tự động phân tích và trích xuất các đối tượng.
-                          </Typography.Paragraph>
-                          <Upload customRequest={handleUploadS57} showUploadList={false}>
-                            <Button icon={<UploadOutlined />} style={{ width: '100%' }}>
-                              Chọn file S-57 (.000)
-                            </Button>
-                          </Upload>
-                        </Card>
-  
-                        <Card size="small" title="Nhập hải đồ bảo mật (S-63)" style={{ width: '100%' }}>
-                          <Typography.Paragraph type="secondary" style={{ fontSize: '13px' }}>
-                            Nhập file hải đồ mã hóa S-63 (`.000`). File yêu cầu phải có giấy phép Cell Permit tương ứng đã được đăng ký trước.
-                          </Typography.Paragraph>
-                          <Upload customRequest={handleUploadS63} showUploadList={false}>
-                            <Button icon={<UploadOutlined />} style={{ width: '100%' }} type="dashed">
-                              Chọn file S-63 (.000)
-                            </Button>
-                          </Upload>
-                        </Card>
-                      </Space>
-                    </Card>
-                  ),
-                },
-                */
-              ]}
-          />
-        </Col>
-        )}
+                  </Card>
+                </Col>
+              )}
       </Row>
 
       {/* Drawer for Map Layer Management */}
@@ -3975,13 +3829,13 @@ export default function GISChartView() {
         open={drawerVisible}
         size="default"
       >
-        <Space orientation="vertical" style={{ width: '100%' }} size={16}>
+        <Space orientation="vertical" style={{ width: '100%' }} size={spaceMd}>
           <div>
-            <Typography.Text type="secondary" strong style={{ display: 'block', marginBottom: '12px', fontSize: '13px' }}>
+            <Typography.Text type="secondary" strong style={{ display: 'block', marginBottom: spaceFormField, fontSize: fontSizeMd }}>
               Lớp dữ liệu (Overlay)
             </Typography.Text>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
               <Checkbox 
                 checked={showChart}
                 onChange={(e) => {
@@ -3994,7 +3848,7 @@ export default function GISChartView() {
                   setVisibleLayers(next);
                 }}
               >
-                <Space size={6}>
+                <Space size={spaceSm}>
                   <span>🗺️</span>
                   <span>ENC - Hải đồ điện tử</span>
                 </Space>
@@ -4004,7 +3858,7 @@ export default function GISChartView() {
                 checked={showPlanning}
                 onChange={(e) => setShowPlanning(e.target.checked)}
               >
-                <Space size={6}>
+                <Space size={spaceSm}>
                   <span>🏢</span>
                   <span>QHCB - Quy hoạch cảng biển</span>
                 </Space>
@@ -4023,7 +3877,7 @@ export default function GISChartView() {
               const isChecked = visibleLayers[code] ?? false;
 
               return (
-                <div key={code} style={{ padding: '6px 0', display: 'flex', alignItems: 'center' }}>
+                <div key={code} style={{ padding: `${spaceSm}px 0`, display: 'flex', alignItems: 'center' }}>
                   <Checkbox 
                     checked={isChecked}
                     onChange={(e) => {

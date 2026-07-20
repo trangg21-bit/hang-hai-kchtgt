@@ -1,5 +1,13 @@
 import { Button, Col, Form, Input, Modal, Row, Select, Tag, TreeSelect } from 'antd';
 import { useEffect, useState } from 'react';
+import {
+  actionPrimary, actionHover, textPrimary, textSecondary, textTertiary,
+  statusCritical, surfaceCard, borderDefault,
+  fontSizeSm, fontSizeMd, fontSizeLg,
+  fontWeightNormal, fontWeightMedium, fontWeightBold,
+  radiusSm, radiusMd, radiusLg, radiusPill,
+  spaceXs, spaceSm, spaceFormField, spaceMd, spaceLg, spaceXl,
+} from '../../tokens';
 import { organizationService } from '../../services/organizationService';
 import { cangBienCRUD } from '../../services/cangbenService';
 import { pointObjectService } from '../../services/pointObjectService';
@@ -43,6 +51,10 @@ const GEOM_TYPE_LABELS: Record<string, string> = {
   'draw-line': '╱ Đường',
   'draw-polygon': '△ Vùng đa giác',
 };
+
+const INPUT_STYLE: React.CSSProperties = { borderRadius: radiusPill, height: 40 };
+const SELECT_STYLE: React.CSSProperties = { borderRadius: radiusPill, height: 40, width: '100%' };
+const BTN_STYLE: React.CSSProperties = { borderRadius: radiusPill, height: 40, fontWeight: fontWeightMedium, fontSize: fontSizeMd };
 
 // Danh sách 16 loại KCHT khớp với dropdown filter bên ngoài
 const LOAI_KCHT_OPTIONS = [
@@ -454,7 +466,7 @@ export default function DrawSaveModal({
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span>{editRecord ? '📝 Chỉnh sửa đối tượng KCHT' : '💾 Lưu đối tượng KCHT'}</span>
-          <Tag color="blue" style={{ fontSize: 11, fontWeight: 500 }}>
+          <Tag color="blue" style={{ fontSize: fontSizeSm, fontWeight: fontWeightMedium }}>
             {editRecord
               ? (editRecord.type === 'Point' ? '📍 Điểm' : editRecord.type === 'LineString' ? '╱ Đường' : '△ Vùng đa giác')
               : (GEOM_TYPE_LABELS[drawResult?.type ?? ''] || drawResult?.type || '—')
@@ -464,10 +476,10 @@ export default function DrawSaveModal({
       }
       onCancel={onClose}
       footer={[
-        <Button key="cancel" onClick={onClose}>
+        <Button key="cancel" onClick={onClose} style={BTN_STYLE}>
           Hủy
         </Button>,
-        <Button key="save" type="primary" loading={loading} onClick={handleSave}>
+        <Button key="save" type="primary" loading={loading} onClick={handleSave} style={BTN_STYLE}>
           Lưu
         </Button>,
       ]}
@@ -480,17 +492,17 @@ export default function DrawSaveModal({
       >
         <div
           style={{
-            background: '#f6f8fa',
-            border: '1px solid #e8e8e8',
-            borderRadius: 6,
-            color: '#444',
-            fontSize: 13,
-            marginBottom: 16,
-            padding: '12px',
+            background: surfaceCard,
+            border: `1px solid ${borderDefault}`,
+            borderRadius: radiusMd,
+            color: textSecondary,
+            fontSize: fontSizeMd,
+            marginBottom: spaceMd,
+            padding: spaceFormField,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span style={{ fontSize: 12, color: '#333' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: spaceSm }}>
+            <span style={{ fontSize: fontSizeMd, color: textPrimary }}>
               <strong>Hình học:</strong> {geomSummary()}
             </span>
             {!editRecord && onRedraw && drawResult && (
@@ -508,14 +520,14 @@ export default function DrawSaveModal({
           </div>
 
           {drawResult?.type === 'draw-point' && drawResult.geojson?.geometry?.coordinates && (
-            <div style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr 1fr', marginTop: 8 }}>
+            <div style={{ display: 'grid', gap: spaceSm, gridTemplateColumns: '1fr 1fr', marginTop: spaceSm }}>
               <Form.Item
                 label="Vĩ độ (Lat)"
                 name="_lat"
                 style={{ marginBottom: 0 }}
                 rules={[{ required: true, message: 'Vui lòng nhập vĩ độ' }]}
               >
-                <Input size="small" />
+                <Input size="small" style={INPUT_STYLE} />
               </Form.Item>
               <Form.Item
                 label="Kinh độ (Lng)"
@@ -523,7 +535,7 @@ export default function DrawSaveModal({
                 style={{ marginBottom: 0 }}
                 rules={[{ required: true, message: 'Vui lòng nhập kinh độ' }]}
               >
-                <Input size="small" />
+                <Input size="small" style={INPUT_STYLE} />
               </Form.Item>
             </div>
           )}
@@ -533,21 +545,23 @@ export default function DrawSaveModal({
             <Form.Item
               label="Mã đối tượng"
               name="ma"
+              style={{ marginBottom: spaceFormField }}
               rules={[
                 { required: true, message: 'Vui lòng nhập mã đối tượng' },
                 { pattern: /^[A-Za-z0-9_-]+$/, message: 'Mã chỉ gồm chữ, số, - và _' },
               ]}
             >
-              <Input placeholder="Mã VD: P5_LSG" />
+              <Input placeholder="Mã VD: P5_LSG" style={INPUT_STYLE} />
             </Form.Item>
           </Col>
           <Col span={12}>
             <Form.Item
               label="Tên đối tượng"
               name="ten"
+              style={{ marginBottom: spaceFormField }}
               rules={[{ required: true, message: 'Vui lòng nhập tên đối tượng' }]}
             >
-              <Input placeholder="Ví dụ: Phao số 5 - Luồng Sài Gòn" />
+              <Input placeholder="Ví dụ: Phao số 5 - Luồng Sài Gòn" style={INPUT_STYLE} />
             </Form.Item>
           </Col>
         </Row>
@@ -555,17 +569,20 @@ export default function DrawSaveModal({
         <Form.Item
           label="Loại kết cấu hạ tầng"
           name="loaiKcht"
+          style={{ marginBottom: spaceFormField }}
         >
-          <Select placeholder="Chọn loại KCHT" options={LOAI_KCHT_OPTIONS} />
+          <Select placeholder="Chọn loại KCHT" options={LOAI_KCHT_OPTIONS} style={SELECT_STYLE} />
         </Form.Item>
 
         <Form.Item
           label="Đơn vị quản lý"
           name="donViQuanLy"
+          style={{ marginBottom: spaceFormField }}
         >
           <TreeSelect
             placeholder="Chọn đơn vị quản lý"
             treeData={orgTree}
+            style={SELECT_STYLE}
             showSearch
             treeDefaultExpandAll
             filterTreeNode={(input, node) =>
@@ -579,6 +596,7 @@ export default function DrawSaveModal({
         <Form.Item
           label="Thuộc cảng biển"
           name="cangBien"
+          style={{ marginBottom: spaceFormField }}
         >
           <Select
             placeholder={isCangBien ? "Không áp dụng cho Cảng biển" : "Chọn cảng biển"}
@@ -591,16 +609,18 @@ export default function DrawSaveModal({
             loading={fetchingMore && seaPortList.length === 0}
             notFoundContent={fetchingMore ? 'Đang tải...' : 'Không tìm thấy cảng biển'}
             disabled={isCangBien}
+            style={SELECT_STYLE}
           />
         </Form.Item>
 
-        <Form.Item label="Trạng thái" name="trangThai">
-          <Select options={TRANG_THAI_OPTIONS} />
+        <Form.Item label="Trạng thái" name="trangThai" style={{ marginBottom: spaceFormField }}>
+          <Select options={TRANG_THAI_OPTIONS} style={SELECT_STYLE} />
         </Form.Item>
 
         <Form.Item
           label="Tỉnh/Thành phố"
           name="diaDiem"
+          style={{ marginBottom: spaceFormField }}
         >
           <Select
             placeholder="Chọn tỉnh/thành phố"
@@ -609,14 +629,15 @@ export default function DrawSaveModal({
             filterOption={(input, opt) =>
               (opt?.label as string)?.toLowerCase().includes(input.toLowerCase())
             }
+            style={SELECT_STYLE}
           />
         </Form.Item>
 
-        <Form.Item label="Địa điểm chi tiết" name="diaDiemChiTiet">
-          <Input placeholder="Ví dụ: Quận 4, TP. HCM" />
+        <Form.Item label="Địa điểm chi tiết" name="diaDiemChiTiet" style={{ marginBottom: spaceFormField }}>
+          <Input placeholder="Ví dụ: Quận 4, TP. HCM" style={INPUT_STYLE} />
         </Form.Item>
 
-        <Form.Item label="Mô tả" name="moTa">
+        <Form.Item label="Mô tả" name="moTa" style={{ marginBottom: spaceFormField }}>
           <TextArea placeholder="Ghi chú thêm về đối tượng..." rows={3} />
         </Form.Item>
       </Form>
