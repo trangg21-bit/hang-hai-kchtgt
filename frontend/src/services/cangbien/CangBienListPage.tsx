@@ -220,9 +220,7 @@ export default function CangBienListPage() {
               maCang: data.maCang,
               tenCang: data.tenCang,
               tinhThanhPho: data.tinhThanhPho || undefined,
-              dienTich: data.dienTich != null ? data.dienTich : undefined,
               khaNangTiepNhan: data.khaNangTiepNhan != null ? data.khaNangTiepNhan : undefined,
-              trangThaiHoatDong: data.trangThaiHoatDong || undefined,
               orgUnitId: data.orgUnitId || undefined,
               nhomCangBien: data.nhomCangBien != null ? data.nhomCangBien : undefined,
               bieuTuongId: data.bieuTuongId || undefined,
@@ -650,10 +648,8 @@ export default function CangBienListPage() {
                 maCang: data.maCang,
                 tenCang: data.tenCang,
                 tinhThanhPho: data.tinhThanhPho || undefined,
-                dienTich: data.dienTich != null ? data.dienTich : undefined,
-                khaNangTiepNhan: data.khaNangTiepNhan != null ? data.khaNangTiepNhan : undefined,
-                trangThaiHoatDong: data.trangThaiHoatDong || undefined,
-                orgUnitId: data.orgUnitId || undefined,
+                  khaNangTiepNhan: data.khaNangTiepNhan != null ? data.khaNangTiepNhan : undefined,
+                  orgUnitId: data.orgUnitId || undefined,
                 nhomCangBien: data.nhomCangBien != null ? data.nhomCangBien : undefined,
                 bieuTuongId: data.bieuTuongId || undefined,
                 diaDiemChiTiet: data.diaDiemChiTiet || undefined,
@@ -744,61 +740,24 @@ export default function CangBienListPage() {
       },
       {
         key: 'orgUnitId',
-        label: 'Đơn vị QL',
+        label: 'Đơn vị quản lý',
         dataIndex: 'orgUnitId',
         width: 180,
         render: (v: string | null) => getOrgUnitName(v),
       },
       {
         key: 'tinhThanhPho',
-        label: 'Tỉnh/TP',
+        label: 'Tỉnh/Thành phố',
         dataIndex: 'tinhThanhPho',
         width: 150,
         render: (v: string | null) => v || '—',
       },
       {
         key: 'nhomCangBien',
-        label: 'Nhóm CB',
+        label: 'Nhóm cảng biển',
         dataIndex: 'nhomCangBien',
         width: 100,
         render: (v: number | null) => getNhomCangBienLabel(v),
-      },
-      {
-        key: 'dienTich',
-        label: 'Diện tích (ha)',
-        dataIndex: 'dienTich',
-        width: 120,
-        align: 'right' as const,
-        render: (v: number | null) => (v != null ? v.toFixed(2) + ' ha' : '—'),
-      },
-      {
-        key: 'trangThaiHoatDong',
-        label: 'Trạng thái HĐ',
-        dataIndex: 'trangThaiHoatDong',
-        width: 140,
-        render: (v: string) => {
-          if (!v) return '—';
-          const badge = trangThaiHoatDongBadge(v);
-          let color = textTertiary;
-          if (badge.color === 'green') color = statusOperational;
-          else if (badge.color === 'red') color = statusCritical;
-          else if (badge.color === 'orange') color = statusAttention;
-          return (
-            <span
-              style={{
-                display: 'inline-flex',
-                padding: '2px 10px',
-                borderRadius: 999,
-                fontSize: fontSizeMd,
-                fontWeight: fontWeightMedium,
-                background: `${color}15`,
-                color,
-              }}
-            >
-              {badge.label}
-            </span>
-          );
-        },
       },
       {
         key: 'trangThaiPheDuyet',
@@ -845,16 +804,9 @@ export default function CangBienListPage() {
       {
         key: 'tinhThanhPho',
         type: 'select' as const,
-        label: 'Tỉnh/TP',
+        label: 'Tỉnh/Thành phố',
         placeholder: 'Chọn tỉnh/thành phố',
         options: VIETNAM_PROVINCES.map((p) => ({ value: p, label: p })),
-      },
-      {
-        key: 'trangThaiHoatDong',
-        type: 'select' as const,
-        label: 'Trạng thái HĐ',
-        placeholder: 'Chọn trạng thái',
-        options: TRANG_THAI_HOAT_DONG_OPTIONS,
       },
     ],
     [],
@@ -1133,74 +1085,7 @@ export default function CangBienListPage() {
                           </Form.Item>
                         </Col>
                       </Row>
-                      <Row gutter={16}>
-                        <Col span={12}>
-                          <Form.Item
-                            name="nhomCangBien"
-                            {...labelProps('Nhóm cảng biển')}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              placeholder="Chọn nhóm cảng biển"
-                              allowClear
-                              options={[
-                                { label: 'Nhóm 1', value: 1 },
-                                { label: 'Nhóm 2', value: 2 },
-                                { label: 'Nhóm 3', value: 3 },
-                                { label: 'Nhóm 4', value: 4 },
-                                { label: 'Nhóm 5', value: 5 },
-                              ]}
-                              style={selectStyle}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            name="dienTich"
-                            {...labelProps('Diện tích (m²) *')}
-                            style={{ marginBottom: spaceFormField }}
-                            rules={[{ required: true, message: 'Diện tích phải lớn hơn 0' }]}
-                          >
-                            <InputNumber
-                              min={0.01}
-                              step={0.01}
-                              precision={2}
-                              placeholder="VD: 100.00"
-                              style={numberInputStyle}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                      <Row gutter={16}>
-                        <Col span={12}>
-                          <Form.Item
-                            name="khaNangTiepNhan"
-                            {...labelProps('Khả năng tiếp nhận')}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <InputNumber
-                              step={0.01}
-                              precision={2}
-                              placeholder="VD: 500000"
-                              style={numberInputStyle}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            name="trangThaiHoatDong"
-                            {...labelProps('Trạng thái hoạt động')}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              placeholder="Chọn trạng thái"
-                              options={TRANG_THAI_HOAT_DONG_OPTIONS}
-                              style={selectStyle}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                      <Row gutter={16}>
+<Row gutter={16}>
                         <Col span={24}>
                           <Form.Item
                             name="ghiChu"
@@ -1427,7 +1312,7 @@ export default function CangBienListPage() {
                         </Col>
                       </Row>
                       <Row gutter={16}>
-                        <Col span={8}>
+                        <Col span={12}>
                           <Form.Item
                             name="heQuyChieu"
                             {...labelProps('Hệ quy chiếu')}
@@ -1442,7 +1327,7 @@ export default function CangBienListPage() {
                             />
                           </Form.Item>
                         </Col>
-                        <Col span={8}>
+                        <Col span={12}>
                           <Form.Item
                             name="quyTacHienThi"
                             {...labelProps('Quy tắc hiển thị')}
@@ -1451,7 +1336,9 @@ export default function CangBienListPage() {
                             <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
-                        <Col span={8}>
+                      </Row>
+                      <Row gutter={16}>
+                        <Col span={24}>
                           <Form.Item
                             name="toaDo"
                             {...labelProps('Tọa độ (WKT)')}
@@ -1626,73 +1513,7 @@ export default function CangBienListPage() {
                           </Form.Item>
                         </Col>
                       </Row>
-                      <Row gutter={16}>
-                        <Col span={12}>
-                          <Form.Item
-                            name="nhomCangBien"
-                            {...labelProps('Nhóm cảng biển')}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              placeholder="Chọn nhóm cảng biển"
-                              allowClear
-                              options={[
-                                { label: 'Nhóm 1', value: 1 },
-                                { label: 'Nhóm 2', value: 2 },
-                                { label: 'Nhóm 3', value: 3 },
-                                { label: 'Nhóm 4', value: 4 },
-                                { label: 'Nhóm 5', value: 5 },
-                              ]}
-                              style={selectStyle}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            name="dienTich"
-                            {...labelProps('Diện tích (m²)')}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <InputNumber
-                              min={0.01}
-                              step={0.01}
-                              precision={2}
-                              placeholder="VD: 100.00"
-                              style={numberInputStyle}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                      <Row gutter={16}>
-                        <Col span={12}>
-                          <Form.Item
-                            name="khaNangTiepNhan"
-                            {...labelProps('Khả năng tiếp nhận')}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <InputNumber
-                              step={0.01}
-                              precision={2}
-                              placeholder="VD: 500000"
-                              style={numberInputStyle}
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            name="trangThaiHoatDong"
-                            {...labelProps('Trạng thái hoạt động')}
-                            style={{ marginBottom: spaceFormField }}
-                          >
-                            <Select
-                              placeholder="Chọn trạng thái"
-                              options={TRANG_THAI_HOAT_DONG_OPTIONS}
-                              style={selectStyle}
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                      <Row gutter={16}>
+<Row gutter={16}>
                         <Col span={12}>
                           <Form.Item
                             {...labelProps('Trạng thái phê duyệt')}
@@ -1936,7 +1757,7 @@ export default function CangBienListPage() {
                         </Col>
                       </Row>
                       <Row gutter={16}>
-                        <Col span={8}>
+                        <Col span={12}>
                           <Form.Item
                             name="heQuyChieu"
                             {...labelProps('Hệ quy chiếu')}
@@ -1951,7 +1772,7 @@ export default function CangBienListPage() {
                             />
                           </Form.Item>
                         </Col>
-                        <Col span={8}>
+                        <Col span={12}>
                           <Form.Item
                             name="quyTacHienThi"
                             {...labelProps('Quy tắc hiển thị')}
@@ -1960,7 +1781,9 @@ export default function CangBienListPage() {
                             <InputNumber min={0} step={1} precision={0} placeholder="0" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
-                        <Col span={8}>
+                      </Row>
+                      <Row gutter={16}>
+                        <Col span={24}>
                           <Form.Item
                             name="toaDo"
                             {...labelProps('Tọa độ (WKT)')}
@@ -2099,32 +1922,6 @@ export default function CangBienListPage() {
                 </Col>
                 <Col span={8}>
                   <Card title="Thông số" size="small" style={{ height: '100%' }}>
-                    <Typography.Text strong>Diện tích (m²):</Typography.Text>
-                    <br />
-                    <Typography.Text>
-                      {selectedRecord.dienTich != null
-                        ? selectedRecord.dienTich.toFixed(2)
-                        : '—'}
-                    </Typography.Text>
-                    <br />
-                    <Typography.Text strong style={{ marginTop: 8, display: 'block' }}>
-                      Khả năng tiếp nhận:
-                    </Typography.Text>
-                    <Typography.Text>
-                      {selectedRecord.khaNangTiepNhan != null
-                        ? selectedRecord.khaNangTiepNhan.toFixed(2)
-                        : '—'}
-                    </Typography.Text>
-                    <br />
-                    <Typography.Text strong style={{ marginTop: 8, display: 'block' }}>
-                      Trạng thái HĐ:
-                    </Typography.Text>
-                    {selectedRecord.trangThaiHoatDong && (
-                      <Tag color={trangThaiHoatDongBadge(selectedRecord.trangThaiHoatDong).color}>
-                        {trangThaiHoatDongBadge(selectedRecord.trangThaiHoatDong).label}
-                      </Tag>
-                    )}
-                    <br />
                     <Typography.Text strong style={{ marginTop: 8, display: 'block' }}>
                       Phê duyệt:
                     </Typography.Text>
@@ -2357,123 +2154,7 @@ export default function CangBienListPage() {
                       color: textSecondary,
                     }}
                   >
-                    Upload Giấy tờ
-                  </Button>
-                  <Button
-                    type="primary"
-                    icon={<EditOutlined />}
-                    onClick={() => {
-                      setDetailModalVisible(false);
-                      updateForm.setFieldsValue({
-                        id: selectedRecord.id,
-                        maCang: selectedRecord.maCang,
-                        tenCang: selectedRecord.tenCang,
-                        tinhThanhPho: selectedRecord.tinhThanhPho || undefined,
-                        viDo:
-                          selectedRecord.viDo != null ? selectedRecord.viDo : undefined,
-                        kinhDo:
-                          selectedRecord.kinhDo != null ? selectedRecord.kinhDo : undefined,
-                        dienTich:
-                          selectedRecord.dienTich != null
-                            ? selectedRecord.dienTich
-                            : undefined,
-                        khaNangTiepNhan:
-                          selectedRecord.khaNangTiepNhan != null
-                            ? selectedRecord.khaNangTiepNhan
-                            : undefined,
-                        trangThaiHoatDong: selectedRecord.trangThaiHoatDong || undefined,
-                        orgUnitId: selectedRecord.orgUnitId || undefined,
-                        nhomCangBien:
-                          selectedRecord.nhomCangBien != null
-                            ? selectedRecord.nhomCangBien
-                            : undefined,
-                        bieuTuongId: selectedRecord.bieuTuongId || undefined,
-                        diaDiemChiTiet: selectedRecord.diaDiemChiTiet || undefined,
-                        phanCap:
-                          selectedRecord.phanCap != null
-                            ? selectedRecord.phanCap
-                            : undefined,
-                        heQuyChieu:
-                          selectedRecord.heQuyChieu != null
-                            ? selectedRecord.heQuyChieu
-                            : undefined,
-                        quyTacHienThi:
-                          selectedRecord.quyTacHienThi != null
-                            ? selectedRecord.quyTacHienThi
-                            : undefined,
-                        phamViVungNuoc: selectedRecord.phamViVungNuoc || undefined,
-                        tongSoBenCang:
-                          selectedRecord.tongSoBenCang != null
-                            ? selectedRecord.tongSoBenCang
-                            : undefined,
-                        tongSoKhuNeoDauChuyenTai:
-                          selectedRecord.tongSoKhuNeoDauChuyenTai != null
-                            ? selectedRecord.tongSoKhuNeoDauChuyenTai
-                            : undefined,
-                        tongSoTuyenLuongCongCong:
-                          selectedRecord.tongSoTuyenLuongCongCong != null
-                            ? selectedRecord.tongSoTuyenLuongCongCong
-                            : undefined,
-                        tongSoTuyenLuongChuyenDung:
-                          selectedRecord.tongSoTuyenLuongChuyenDung != null
-                            ? selectedRecord.tongSoTuyenLuongChuyenDung
-                            : undefined,
-                        tongChieuDaiLuongCongCong:
-                          selectedRecord.tongChieuDaiLuongCongCong != null
-                            ? selectedRecord.tongChieuDaiLuongCongCong
-                            : undefined,
-                        tongChieuDaiLuongChuyenDung:
-                          selectedRecord.tongChieuDaiLuongChuyenDung != null
-                            ? selectedRecord.tongChieuDaiLuongChuyenDung
-                            : undefined,
-                        tongSoPhaoTieuBaoHieu:
-                          selectedRecord.tongSoPhaoTieuBaoHieu != null
-                            ? selectedRecord.tongSoPhaoTieuBaoHieu
-                            : undefined,
-                        tongSoDeKe:
-                          selectedRecord.tongSoDeKe != null
-                            ? selectedRecord.tongSoDeKe
-                            : undefined,
-                        tongChieuDaiDeKe:
-                          selectedRecord.tongChieuDaiDeKe != null
-                            ? selectedRecord.tongChieuDaiDeKe
-                            : undefined,
-                        tongSoDenBienDangTieu:
-                          selectedRecord.tongSoDenBienDangTieu != null
-                            ? selectedRecord.tongSoDenBienDangTieu
-                            : undefined,
-                        soLuongBenPhao:
-                          selectedRecord.soLuongBenPhao != null
-                            ? selectedRecord.soLuongBenPhao
-                            : undefined,
-                        soLuongKhuNeoDau:
-                          selectedRecord.soLuongKhuNeoDau != null
-                            ? selectedRecord.soLuongKhuNeoDau
-                            : undefined,
-                        soLuongKhuChuyenTai:
-                          selectedRecord.soLuongKhuChuyenTai != null
-                            ? selectedRecord.soLuongKhuChuyenTai
-                            : undefined,
-                        cacKhuNuocKhac: selectedRecord.cacKhuNuocKhac || undefined,
-                        ghiChu: selectedRecord.ghiChu || undefined,
-                        gisLocation: {
-                          loaiHinhHoc: selectedRecord.loaiHinhHoc || 'POINT',
-                          toaDo: selectedRecord.toaDo || '',
-                          bieuTuongId: selectedRecord.bieuTuongId,
-                        },
-                      });
-                      setUpdateModalVisible(true);
-                    }}
-                    style={{
-                      borderRadius: radiusPill,
-                      height: 40,
-                      fontSize: fontSizeMd,
-                      background: actionPrimary,
-                      borderColor: actionPrimary,
-                    }}
-                  >
-                    Chỉnh sửa
-                  </Button>
+                                    <div style={{ marginTop: 24, textAlign: 'right' }}>
                   <Button
                     onClick={closeDetailModal}
                     style={{
@@ -2485,6 +2166,8 @@ export default function CangBienListPage() {
                     }}
                   >
                     Đóng
+                  </Button>
+                </div>
                   </Button>
                 </Space>
               </div>

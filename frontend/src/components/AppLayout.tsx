@@ -221,7 +221,7 @@ export default function AppLayout() {
     {
       key: 'cangben',
       icon: <ContainerOutlined />,
-      label: 'Tài sản KCHTGT',
+      label: 'Quản lý KCHT Hàng Hải',
       children: [
         canAccessMenu('/cangbien') ? { key: '/cangbien', label: 'Cảng biển' } : null,
         canAccessMenu('/bencang') ? { key: '/bencang', label: 'Bến cảng' } : null,
