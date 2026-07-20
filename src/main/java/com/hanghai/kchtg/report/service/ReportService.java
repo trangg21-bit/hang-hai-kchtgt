@@ -708,7 +708,7 @@ public class ReportService {
         // 3. Headers exactly matching Excel template BCKCHT_163.xlsx row 9 columns
         List<String> headers = List.of(
                 "STT",
-                "Danh mục bến cảng, cầu cảng",
+                "Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa",
                 "Đơn vị quản lý khai thác cảng",
                 "Địa điểm, vị trí cảng",
                 "Thời điểm công bố mở",
@@ -716,9 +716,9 @@ public class ReportService {
                 "Năng lực năm trước",
                 "Năng lực năm báo cáo",
                 "Đơn vị tính",
-                "Chiều dài (m)",
-                "Tổng diện tích (ha)",
-                "Tàu neo đậu, làm hàng lớn nhất (DWT)"
+                "Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)",
+                "Tàu neo đậu, làm hàng lớn nhất (DWT)",
+                "Ghi chú"
         );
 
         List<Map<String, Object>> rows = new ArrayList<>();
@@ -728,7 +728,7 @@ public class ReportService {
         if (!group1Ports.isEmpty()) {
             Map<String, Object> sectionRow = new LinkedHashMap<>();
             sectionRow.put("STT", "I");
-            sectionRow.put("Danh mục bến cảng, cầu cảng", "Cảng biển");
+            sectionRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", "Cảng biển");
             sectionRow.put("Đơn vị quản lý khai thác cảng", "");
             sectionRow.put("Địa điểm, vị trí cảng", "");
             sectionRow.put("Thời điểm công bố mở", "");
@@ -736,9 +736,9 @@ public class ReportService {
             sectionRow.put("Năng lực năm trước", "");
             sectionRow.put("Năng lực năm báo cáo", "");
             sectionRow.put("Đơn vị tính", "");
-            sectionRow.put("Chiều dài (m)", "");
-            sectionRow.put("Tổng diện tích (ha)", "");
+            sectionRow.put("Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)", "");
             sectionRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", "");
+            sectionRow.put("Ghi chú", "");
             sectionRow.put("_rowType", "section");
             rows.add(sectionRow);
 
@@ -751,7 +751,7 @@ public class ReportService {
         {
             Map<String, Object> sectionRow = new LinkedHashMap<>();
             sectionRow.put("STT", "II");
-            sectionRow.put("Danh mục bến cảng, cầu cảng", "Cảng, bến thủy nội địa");
+            sectionRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", "Cảng, bến thủy nội địa");
             sectionRow.put("Đơn vị quản lý khai thác cảng", "");
             sectionRow.put("Địa điểm, vị trí cảng", "");
             sectionRow.put("Thời điểm công bố mở", "");
@@ -759,9 +759,9 @@ public class ReportService {
             sectionRow.put("Năng lực năm trước", "");
             sectionRow.put("Năng lực năm báo cáo", "");
             sectionRow.put("Đơn vị tính", "");
-            sectionRow.put("Chiều dài (m)", "");
-            sectionRow.put("Tổng diện tích (ha)", "");
+            sectionRow.put("Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)", "");
             sectionRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", "");
+            sectionRow.put("Ghi chú", "");
             sectionRow.put("_rowType", "section");
             rows.add(sectionRow);
 
@@ -774,7 +774,7 @@ public class ReportService {
         if (rows.isEmpty()) {
             Map<String, Object> sectionRow = new LinkedHashMap<>();
             sectionRow.put("STT", "I");
-            sectionRow.put("Danh mục bến cảng, cầu cảng", "I. CẢNG BIỂN");
+            sectionRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", "I. CẢNG BIỂN");
             sectionRow.put("Đơn vị quản lý khai thác cảng", "");
             sectionRow.put("Địa điểm, vị trí cảng", "");
             sectionRow.put("Thời điểm công bố mở", "");
@@ -782,9 +782,9 @@ public class ReportService {
             sectionRow.put("Năng lực năm trước", "");
             sectionRow.put("Năng lực năm báo cáo", "");
             sectionRow.put("Đơn vị tính", "");
-            sectionRow.put("Chiều dài (m)", "");
-            sectionRow.put("Tổng diện tích (ha)", "");
+            sectionRow.put("Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)", "");
             sectionRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", "");
+            sectionRow.put("Ghi chú", "");
             sectionRow.put("_rowType", "section");
             rows.add(sectionRow);
         }
@@ -894,7 +894,7 @@ public class ReportService {
         // ── Port (Cảng biển) row ──
         Map<String, Object> portRow = new LinkedHashMap<>();
         portRow.put("STT", String.valueOf(stt++));
-        portRow.put("Danh mục bến cảng, cầu cảng", port.getTenCang());
+        portRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", port.getTenCang());
         portRow.put("Đơn vị quản lý khai thác cảng", donViPort);
         portRow.put("Địa điểm, vị trí cảng", port.getTinhThanhPho() != null ? port.getTinhThanhPho() : "");
         portRow.put("Thời điểm công bố mở", f148FormatThoiDiem(port.getCreatedAt()));
@@ -902,12 +902,11 @@ public class ReportService {
         portRow.put("Năng lực năm trước", "");
         portRow.put("Năng lực năm báo cáo", "");
         portRow.put("Đơn vị tính", "tấn/năm");
-        portRow.put("Chiều dài (m)", "");
-        portRow.put("Tổng diện tích (ha)",
-                port.getDienTich() != null ? port.getDienTich().doubleValue() : 0.0);
-        String portDwt = port.getKhaNangTiepNhan() != null
-                ? String.valueOf(port.getKhaNangTiepNhan().longValue()) : "";
+        portRow.put("Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)", "");
+        double portDwt = port.getKhaNangTiepNhan() != null
+                ? port.getKhaNangTiepNhan().doubleValue() : 0.0;
         portRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", portDwt);
+        portRow.put("Ghi chú", "");
         portRow.put("_rowType", "port");
         rows.add(portRow);
 
@@ -930,14 +929,12 @@ public class ReportService {
                 thoiDiemBerth = f148FormatThoiDiem(berth.getCreatedAt());
             }
 
-            String dwtBerth = "";
-            if (berth.getCoTauTiepNhanLonNhat() != null && berth.getCoTauTiepNhanLonNhat().doubleValue() > 0) {
-                dwtBerth = String.valueOf(berth.getCoTauTiepNhanLonNhat().longValue());
-            }
+            double dwtBerth = berth.getCoTauTiepNhanLonNhat() != null
+                    ? berth.getCoTauTiepNhanLonNhat().doubleValue() : 0.0;
 
             Map<String, Object> berthRow = new LinkedHashMap<>();
             berthRow.put("STT", "");
-            berthRow.put("Danh mục bến cảng, cầu cảng", "\u00A0\u00A0\u00A0\u00A0" + berth.getTenBen());
+            berthRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", "\u00A0\u00A0\u00A0\u00A0" + berth.getTenBen());
             berthRow.put("Đơn vị quản lý khai thác cảng", donViBerth);
             berthRow.put("Địa điểm, vị trí cảng", diaDiemBerth);
             berthRow.put("Thời điểm công bố mở", thoiDiemBerth);
@@ -945,37 +942,32 @@ public class ReportService {
                     berth.getCongNangKhaiThac() != null ? berth.getCongNangKhaiThac() : "");
             // Năng lực từ BenCang extended fields
             // Năm báo cáo = nangLucThongQuaHienTrang
-            String nlBaoCao = berth.getNangLucThongQuaHienTrang() != null
-                    ? String.valueOf(berth.getNangLucThongQuaHienTrang().longValue()) : "";
+            double nlBaoCao = berth.getNangLucThongQuaHienTrang() != null
+                    ? berth.getNangLucThongQuaHienTrang().doubleValue() : 0.0;
             berthRow.put("Năng lực năm báo cáo", nlBaoCao);
             // Năm trước = nangLucThongQuaHienTrang if updatedAt.year == reportYear - 1
-            String nlTruoc = "";
-            if (berth.getNangLucThongQuaHienTrang() != null
+            double nlTruoc = (berth.getNangLucThongQuaHienTrang() != null
                     && berth.getUpdatedAt() != null
-                    && berth.getUpdatedAt().getYear() == reportYear - 1) {
-                nlTruoc = String.valueOf(berth.getNangLucThongQuaHienTrang().longValue());
-            }
+                    && berth.getUpdatedAt().getYear() == reportYear - 1)
+                    ? berth.getNangLucThongQuaHienTrang().doubleValue() : 0.0;
             berthRow.put("Năng lực năm trước", nlTruoc);
             berthRow.put("Đơn vị tính", "tấn/năm");
-            berthRow.put("Chiều dài (m)",
+            berthRow.put("Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)",
                     berth.getChieuDai() != null ? berth.getChieuDai().doubleValue() : 0.0);
-            berthRow.put("Tổng diện tích (ha)",
-                    berth.getTongDienTich() != null ? berth.getTongDienTich().doubleValue() : 0.0);
             berthRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", dwtBerth);
+            berthRow.put("Ghi chú", "");
             rows.add(berthRow);
 
             // ── Wharves (Cầu cảng) under this berth ──
             List<com.hanghai.kchtg.cangben.entity.CauCang> wharves =
                     cauCangRepository.findByBenCangIdAndDeletedAtIsNull(berth.getId());
             for (com.hanghai.kchtg.cangben.entity.CauCang wharf : wharves) {
-                String dwtWharf = "";
-                if (wharf.getTaiTrong() != null && wharf.getTaiTrong().doubleValue() > 0) {
-                    dwtWharf = String.valueOf(wharf.getTaiTrong().longValue());
-                }
+                double dwtWharf = wharf.getTaiTrong() != null
+                        ? wharf.getTaiTrong().doubleValue() : 0.0;
 
                 Map<String, Object> wharfRow = new LinkedHashMap<>();
                 wharfRow.put("STT", "");
-                wharfRow.put("Danh mục bến cảng, cầu cảng", "\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0" + wharf.getTenCau());
+                wharfRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", "\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0" + wharf.getTenCau());
                 wharfRow.put("Đơn vị quản lý khai thác cảng", "");
                 wharfRow.put("Địa điểm, vị trí cảng", "");
                 wharfRow.put("Thời điểm công bố mở", "");
@@ -984,10 +976,10 @@ public class ReportService {
                 wharfRow.put("Năng lực năm trước", "");
                 wharfRow.put("Năng lực năm báo cáo", "");
                 wharfRow.put("Đơn vị tính", "tấn/năm");
-                wharfRow.put("Chiều dài (m)",
+                wharfRow.put("Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)",
                         wharf.getChieuDai() != null ? wharf.getChieuDai().doubleValue() : 0.0);
-                wharfRow.put("Tổng diện tích (ha)", 0.0);
                 wharfRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", dwtWharf);
+                wharfRow.put("Ghi chú", "");
                 rows.add(wharfRow);
             }
         }
@@ -3142,6 +3134,23 @@ public class ReportService {
                         applyStaticRemergeAndOverflowMerge(destSheet, false, 10, 10 + totalGeneratedRows - 1);
                     }
 
+                    // Write "Tính đến ngày" to F7 if current year
+                    if (reportYear == LocalDate.now().getYear()) {
+                        Row r6 = destSheet.getRow(6);
+                        if (r6 == null) r6 = destSheet.createRow(6);
+                        Cell c = r6.getCell(5);
+                        if (c == null) c = r6.createCell(5);
+                        c.setCellValue("Tính đến ngày " + LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+                        org.apache.poi.ss.usermodel.CellStyle style = destSheet.getWorkbook().createCellStyle();
+                        org.apache.poi.ss.usermodel.Font font = destSheet.getWorkbook().createFont();
+                        font.setFontName("Times New Roman");
+                        font.setFontHeightInPoints((short) 12);
+                        style.setFont(font);
+                        style.setAlignment(org.apache.poi.ss.usermodel.HorizontalAlignment.CENTER);
+                        style.setVerticalAlignment(org.apache.poi.ss.usermodel.VerticalAlignment.CENTER);
+                        c.setCellStyle(style);
+                    }
+
                     finalizeWorkbookSheet(workbook);
                     return outputWorkbook(workbook, destSheet, isExcel);
                 } else if ("F-149".equalsIgnoreCase(request.getReportCode())) {
@@ -4751,15 +4760,14 @@ public class ReportService {
                 } else if (c == 9) {
                     destCell.setCellValue("");
                 } else if (c == 10) {
-                    double dienTich = port.getDienTich() != null ? port.getDienTich().doubleValue() : 0.0;
-                    destCell.setCellValue(dienTich);
-                    if (dienTich != 0) {
-                        setNumericCellFormat(destCell, dienTich);
+                    double portDwt = port.getKhaNangTiepNhan() != null
+                            ? port.getKhaNangTiepNhan().doubleValue() : 0.0;
+                    destCell.setCellValue(portDwt);
+                    if (portDwt != 0) {
+                        setNumericCellFormat(destCell, portDwt);
                     }
                 } else if (c == 11) {
-                    String portDwt = port.getKhaNangTiepNhan() != null
-                ? String.valueOf(port.getKhaNangTiepNhan().longValue()) : "";
-                    destCell.setCellValue(portDwt);
+                    destCell.setCellValue("");
                 } else {
                     destCell.setCellValue("");
                 }
@@ -4786,10 +4794,8 @@ public class ReportService {
                 thoiDiemBerth = f148FormatThoiDiem(berth.getCreatedAt());
             }
 
-            String dwtBerth = "";
-            if (berth.getCoTauTiepNhanLonNhat() != null && berth.getCoTauTiepNhanLonNhat().doubleValue() > 0) {
-                dwtBerth = String.valueOf(berth.getCoTauTiepNhanLonNhat().longValue());
-            }
+            double dwtBerth = berth.getCoTauTiepNhanLonNhat() != null
+                    ? berth.getCoTauTiepNhanLonNhat().doubleValue() : 0.0;
 
             Row berthRow = destSheet.createRow(currentDestRow++);
             berthRow.setHeight(wharfTemplateRow.getHeight());
@@ -4812,18 +4818,22 @@ public class ReportService {
                         destCell.setCellValue(berth.getCongNangKhaiThac() != null ? berth.getCongNangKhaiThac() : "");
                     } else if (c == 6) {
                         // Năm trước = nangLucThongQuaHienTrang if updatedAt.year == reportYear - 1
-                        String nlTruoc = "";
-                        if (berth.getNangLucThongQuaHienTrang() != null
+                        double nlTruoc = (berth.getNangLucThongQuaHienTrang() != null
                                 && berth.getUpdatedAt() != null
-                                && berth.getUpdatedAt().getYear() == reportYear - 1) {
-                            nlTruoc = String.valueOf(berth.getNangLucThongQuaHienTrang().longValue());
-                        }
+                                && berth.getUpdatedAt().getYear() == reportYear - 1)
+                                ? berth.getNangLucThongQuaHienTrang().doubleValue() : 0.0;
                         destCell.setCellValue(nlTruoc);
+                        if (nlTruoc != 0) {
+                            setNumericCellFormat(destCell, nlTruoc);
+                        }
                     } else if (c == 7) {
                         // Năm báo cáo = nangLucThongQuaHienTrang
-                        String nlBaoCao = berth.getNangLucThongQuaHienTrang() != null
-                                ? String.valueOf(berth.getNangLucThongQuaHienTrang().longValue()) : "";
+                        double nlBaoCao = berth.getNangLucThongQuaHienTrang() != null
+                                ? berth.getNangLucThongQuaHienTrang().doubleValue() : 0.0;
                         destCell.setCellValue(nlBaoCao);
+                        if (nlBaoCao != 0) {
+                            setNumericCellFormat(destCell, nlBaoCao);
+                        }
                     } else if (c == 8) {
                         destCell.setCellValue("tấn/năm");
                     } else if (c == 9) {
@@ -4833,13 +4843,12 @@ public class ReportService {
                             setNumericCellFormat(destCell, chieuDai);
                         }
                     } else if (c == 10) {
-                        double tongDienTich = berth.getTongDienTich() != null ? berth.getTongDienTich().doubleValue() : 0.0;
-                        destCell.setCellValue(tongDienTich);
-                        if (tongDienTich != 0) {
-                            setNumericCellFormat(destCell, tongDienTich);
+                        destCell.setCellValue(dwtBerth);
+                        if (dwtBerth != 0) {
+                            setNumericCellFormat(destCell, dwtBerth);
                         }
                     } else if (c == 11) {
-                        destCell.setCellValue(dwtBerth);
+                        destCell.setCellValue("");
                     } else {
                         destCell.setCellValue("");
                     }
@@ -4850,10 +4859,8 @@ public class ReportService {
             List<com.hanghai.kchtg.cangben.entity.CauCang> wharves =
                     cauCangRepository.findByBenCangIdAndDeletedAtIsNull(berth.getId());
             for (com.hanghai.kchtg.cangben.entity.CauCang wharf : wharves) {
-                String dwtWharf = "";
-                if (wharf.getTaiTrong() != null && wharf.getTaiTrong().doubleValue() > 0) {
-                    dwtWharf = String.valueOf(wharf.getTaiTrong().longValue());
-                }
+                double dwtWharf = wharf.getTaiTrong() != null
+                        ? wharf.getTaiTrong().doubleValue() : 0.0;
 
                 Row wharfRow = destSheet.createRow(currentDestRow++);
                 wharfRow.setHeight(wharfTemplateRow.getHeight());
@@ -4887,9 +4894,12 @@ public class ReportService {
                                 setNumericCellFormat(destCell, chieuDaiWharf);
                             }
                         } else if (c == 10) {
-                            destCell.setCellValue(0.0);
-                        } else if (c == 11) {
                             destCell.setCellValue(dwtWharf);
+                            if (dwtWharf != 0) {
+                                setNumericCellFormat(destCell, dwtWharf);
+                            }
+                        } else if (c == 11) {
+                            destCell.setCellValue("");
                         } else {
                             destCell.setCellValue("");
                         }
