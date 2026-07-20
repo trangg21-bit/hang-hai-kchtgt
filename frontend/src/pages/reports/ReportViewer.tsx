@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   Card,
   Row,
@@ -7,36 +7,47 @@ import {
   DatePicker,
   Button,
   Table,
-  Space,
   Typography,
   Empty,
   Badge,
   Alert,
   message,
-  Descriptions,
-  Breadcrumb,
   Select,
+  Tooltip,
 } from 'antd';
 import {
-  ArrowLeftOutlined,
   FileTextOutlined,
   FileExcelOutlined,
   DeleteOutlined,
+  ReloadOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { reportService } from '../../services/reportService';
 import type { ReportRequest, ReportResponse } from '../../types/report';
-import { REPORT_TEMPLATES, CATEGORY_MAP } from './ReportList';
+import { REPORT_TEMPLATES } from './ReportList';
 import { organizationService } from '../../services/organizationService';
+import {
+  actionPrimary,
+  statusOperational,
+  cardStyle,
+  borderDefault,
+  textSecondary, textTertiary, textPrimary,
+  spaceXs, spaceSm, spaceMd, spaceLg, spaceXxl,
+  fontSizeMd, fontSizeLg, fontSizeDisplay,
+  radiusPill,
+  fontWeightMedium, fontWeightBold,
+} from '../../tokens';
+import { colors } from '../../theme';
+import { ScreenHeader } from '../../components/list-view';
+import Pagination from '../../components/list-view/Pagination';
 
-
-const { Title, Text, Paragraph } = Typography;
+const {
+  Text
+} = Typography;
 const { RangePicker } = DatePicker;
-
 export default function ReportViewer() {
   const { code } = useParams<{ code: string }>();
-  const navigate = useNavigate();
 
   const reportCode = code || '';
   const template = REPORT_TEMPLATES.find((t) => t.code === reportCode);
@@ -49,7 +60,7 @@ export default function ReportViewer() {
   const [loadingExport, setLoadingExport] = useState<'EXCEL' | 'PDF' | null>(null);
   const [reportData, setReportData] = useState<ReportResponse | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(5);
+  const [pageSize, setPageSize] = useState<number>(20);
 
   // Filter states
   const [organizations, setOrganizations] = useState<any[]>([]);
@@ -76,9 +87,6 @@ export default function ReportViewer() {
   const isSpecialContentReport = reportCode === 'F-143';
 
   const isPeriodReport = !isYearReport && !isSpecialContentReport;
-
-  const requiresDates = true;
-  const categoryInfo = template ? CATEGORY_MAP[template.category] : null;
 
   // Load organizations
   useEffect(() => {
@@ -183,7 +191,7 @@ export default function ReportViewer() {
 
   useEffect(() => {
     setCurrentPage(1);
-    setPageSize(5);
+    setPageSize(20);
     if (template && template.status === 'active') {
       fetchPreview(true);
     } else {
@@ -263,61 +271,64 @@ export default function ReportViewer() {
       title: h,
       dataIndex: h,
       key: h,
-      render: (val: any) => {
-        if (typeof val === 'number') {
-          return val.toString();
-        }
-        return val;
+      onHeaderCell: () => ({
+        style: { background: colors.bodyBg, color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd, whiteSpace: 'nowrap', textTransform: 'uppercase' as const, padding: '16px 16px' },
+      }),
+      onCell: () => ({
+        style: { fontSize: fontSizeMd, color: textPrimary },
+      }),
+      render: (value: any) => {
+        if (value === null || value === undefined) return '-';
+        if (typeof value === 'number') return value.toLocaleString('vi-VN');
+        if (typeof value === 'boolean') return value ? <Badge status="success" text="Đúng" /> : <Badge status="error" text="Sai" />;
+        const num = Number(value);
+        if (!isNaN(num) && typeof value === 'string' && value.trim() !== '') return Number(value).toLocaleString('vi-VN');
+        return value.toString();
       },
     }));
   };
 
+  // Inject CSS for bold section/port rows (className approach avoids onRow style issues)
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .report-section-row td { background-color: #D9E2F3 !important; font-weight: ${fontWeightBold} !important; }
+      .report-port-row td { font-weight: ${fontWeightBold} !important; }
+    `;
+    document.head.appendChild(style);
+    return () => { document.head.removeChild(style); };
+  }, []);
+
   if (!template) {
     return (
-      <Card style={{ margin: 24 }}>
+      <Card style={{ margin: spaceLg }}>
         <Empty description="Không tìm thấy thông tin biểu mẫu báo cáo." />
       </Card>
     );
   }
 
   return (
-    <Space direction="vertical" size="middle" style={{ width: '100%', padding: '24px' }}>
+    <div style={{ minHeight: '100%', marginTop: -8 }}>
 
 
-      {/* Header */}
-      <Card
-        styles={{
-          body: {
-            background: 'linear-gradient(135deg, #1677ff 0%, #0958d9 100%)',
-            borderRadius: 6,
-            padding: '20px 24px',
-          },
-        }}
-        variant="borderless"
-      >
-        <div style={{ color: '#fff' }}>
-          <Space size="middle" align="center" style={{ marginBottom: 8 }}>
-            <Badge status={template.status === 'active' ? 'success' : 'warning'} />
-            <Text style={{ color: '#e6f7ff', fontSize: 16, fontWeight: 500 }}>
-              {categoryInfo?.label || 'Chuyên ngành'}
-            </Text>
-          </Space>
-          <Title level={3} style={{ color: '#fff', margin: '0 0 8px 0', fontWeight: 600 }}>
-            [{template.code}] {template.name}
-          </Title>
-          <Paragraph style={{ color: 'rgba(255, 255, 255, 0.85)', margin: 0, fontSize: 14 }}>
-            Báo cáo thống kê dữ liệu chuyên ngành hàng hải phục vụ công tác quản lý kết cấu hạ tầng giao thông đường thủy.
-          </Paragraph>
-        </div>
-      </Card>
+      <ScreenHeader
+        breadcrumb={[
+          { label: 'Danh sách báo cáo' },
+          { label: `${template.code} - ${template.name}` },
+        ]}
+        actions={[
+          { key: 'export-pdf', label: '', variant: 'subtle' as const, icon: <Tooltip title="Xuất PDF" placement="bottom"><FileTextOutlined style={{ color: colors.error, fontSize: fontSizeLg }} /></Tooltip>, borderColor: `${colors.error}80`, color: colors.error, onClick: () => handleExport('PDF') },
+          { key: 'export-excel', label: '', variant: 'subtle' as const, icon: <Tooltip title="Xuất Excel" placement="bottom"><FileExcelOutlined style={{ color: statusOperational, fontSize: fontSizeLg }} /></Tooltip>, borderColor: `${statusOperational}80`, color: statusOperational, onClick: () => handleExport('EXCEL') },
+        ]}
+      />
 
       {/* Proposed State Warn */}
       {template.status === 'proposed' && (
-        <Card>
+        <Card style={{ ...cardStyle }}>
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description={
-              <Space direction="vertical">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: spaceSm }}>
                 <Text type="secondary">
                   Biểu mẫu này nằm trong kế hoạch phát triển (Wave 2-6). Trạng thái hiện tại: <b>Proposed</b>.
                 </Text>
@@ -326,24 +337,25 @@ export default function ReportViewer() {
                   message="Dữ liệu mẫu và API tương ứng chưa được kích hoạt cho biểu mẫu này. Vui lòng quay lại trong các giai đoạn tiếp theo."
                   showIcon
                 />
-              </Space>
+              </div>
             }
           />
         </Card>
       )}
 
       {template.status === 'active' && (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <>
           {/* Horizontal Filter Bar */}
-          <Card size="small" styles={{ body: { padding: '16px 24px' } }}>
-            <Row gutter={[16, 16]} align="bottom">
-              <Col xs={24} sm={12} md={6} lg={6}>
-                <div style={{ marginBottom: 6 }}>
-                  <Text strong>Đơn vị báo cáo <span style={{ color: 'red' }}>*</span></Text>
-                </div>
+          <Card
+            style={{ ...cardStyle, marginBottom: 4 }}
+            styles={{ body: { padding: '8px 16px' } }}
+          >
+            <div style={{ display: 'flex', gap: spaceSm, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 160px', minWidth: 140 }}>
+                <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>Đơn vị báo cáo <span style={{ color: 'red' }}>*</span></div>
                 <Select
                   placeholder="Chọn đơn vị báo cáo"
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                   value={selectedOrgId}
                   onChange={(val) => setSelectedOrgId(val)}
                   options={organizations.map((org) => ({
@@ -353,16 +365,14 @@ export default function ReportViewer() {
                   showSearch
                   optionFilterProp="label"
                 />
-              </Col>
- 
+              </div>
+
               {reportCode === 'F-149' && (
-                <Col xs={24} sm={12} md={5} lg={5}>
-                  <div style={{ marginBottom: 6 }}>
-                    <Text strong>Nhóm cảng biển</Text>
-                  </div>
+                <div style={{ flex: '1 1 160px', minWidth: 140 }}>
+                  <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>Nhóm cảng biển</div>
                   <Select
                     placeholder="Nhóm cảng biển"
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                     value={selectedNhomCangBien}
                     onChange={(val) => setSelectedNhomCangBien(val)}
                     options={[
@@ -374,32 +384,28 @@ export default function ReportViewer() {
                     ]}
                     allowClear
                   />
-                </Col>
+                </div>
               )}
 
               {isYearReport && (
-                <Col xs={24} sm={12} md={5} lg={5}>
-                  <div style={{ marginBottom: 6 }}>
-                    <Text strong>Năm báo cáo <span style={{ color: 'red' }}>*</span></Text>
-                  </div>
+                <div style={{ flex: '1 1 160px', minWidth: 140 }}>
+                  <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>Năm báo cáo <span style={{ color: 'red' }}>*</span></div>
                   <DatePicker
                     picker="year"
                     placeholder="Chọn năm"
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                     value={selectedYear}
                     onChange={(date) => setSelectedYear(date)}
                   />
-                </Col>
+                </div>
               )}
 
               {reportCode === 'F-142' && (
-                <Col xs={24} sm={12} md={5} lg={5}>
-                  <div style={{ marginBottom: 6 }}>
-                    <Text strong>Nguồn dữ liệu <span style={{ color: 'red' }}>*</span></Text>
-                  </div>
+                <div style={{ flex: '1 1 160px', minWidth: 140 }}>
+                  <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>Nguồn dữ liệu <span style={{ color: 'red' }}>*</span></div>
                   <Select
                     placeholder="Chọn nguồn dữ liệu"
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                     value={nguonDuLieu}
                     onChange={(val) => setNguonDuLieu(val)}
                     options={[
@@ -407,17 +413,15 @@ export default function ReportViewer() {
                       { value: '2', label: 'Nguồn dữ liệu chi tiết' }
                     ]}
                   />
-                </Col>
+                </div>
               )}
 
               {isSpecialContentReport && (
-                <Col xs={24} sm={12} md={8} lg={8}>
-                  <div style={{ marginBottom: 6 }}>
-                    <Text strong>Nội dung báo cáo <span style={{ color: 'red' }}>*</span></Text>
-                  </div>
+                <div style={{ flex: '1 1 160px', minWidth: 140 }}>
+                  <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>Nội dung báo cáo <span style={{ color: 'red' }}>*</span></div>
                   <Select
                     placeholder="Chọn nội dung báo cáo"
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                     value={selectedBcNoiDung}
                     onChange={(val) => setSelectedBcNoiDung(val)}
                     options={[
@@ -426,17 +430,15 @@ export default function ReportViewer() {
                       { value: '3', label: 'Kê khai thay đổi thông tin' }
                     ]}
                   />
-                </Col>
+                </div>
               )}
 
               {isPeriodReport && (
-                <Col xs={24} sm={12} md={4} lg={4}>
-                  <div style={{ marginBottom: 6 }}>
-                    <Text strong>Kỳ báo cáo <span style={{ color: 'red' }}>*</span></Text>
-                  </div>
+                <div style={{ flex: '1 1 160px', minWidth: 140 }}>
+                  <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>Kỳ báo cáo <span style={{ color: 'red' }}>*</span></div>
                   <Select
                     placeholder="Kỳ báo cáo"
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                     value={selectedPeriod}
                     onChange={(val) => setSelectedPeriod(val)}
                     options={[
@@ -447,16 +449,14 @@ export default function ReportViewer() {
                     ]}
                     allowClear
                   />
-                </Col>
+                </div>
               )}
 
               {isPeriodReport && reportCode !== 'F-147' && (
-                <Col xs={24} sm={12} md={5} lg={5}>
-                  <div style={{ marginBottom: 6 }}>
-                    <Text strong>Thời gian báo cáo</Text>
-                  </div>
+                <div style={{ flex: '1 1 160px', minWidth: 140 }}>
+                  <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>Thời gian báo cáo</div>
                   <RangePicker
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', borderRadius: radiusPill }}
                     value={dateRange}
                     onChange={(dates) => {
                       if (dates) {
@@ -467,18 +467,16 @@ export default function ReportViewer() {
                     }}
                     placeholder={['Ngày bắt đầu', 'Ngày kết thúc']}
                   />
-                </Col>
+                </div>
               )}
 
               {reportCode === 'F-147' && (
-                <Col xs={24} sm={12} md={6} lg={6}>
-                  <div style={{ marginBottom: 6 }}>
-                    <Text strong>Hình thức xử lý <span style={{ color: 'red' }}>*</span></Text>
-                  </div>
+                <div style={{ flex: '1 1 160px', minWidth: 140 }}>
+                  <div style={{ fontSize: fontSizeMd, color: colors.sidebarBg, fontWeight: fontWeightBold, marginBottom: 4 }}>Hình thức xử lý <span style={{ color: 'red' }}>*</span></div>
                   <Select
                     mode="multiple"
                     placeholder="Hình thức xử lý"
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
                     value={selectedHtxl}
                     onChange={(val) => setSelectedHtxl(val)}
                     options={[
@@ -489,60 +487,20 @@ export default function ReportViewer() {
                     ]}
                     allowClear
                   />
-                </Col>
+                </div>
               )}
 
-              <Col xs={24} sm={12} md={4} lg={4} style={{ display: 'flex', gap: '8px' }}>
-                <Button
-                  type="primary"
-                  icon={<SearchOutlined />}
-                  loading={loadingPreview}
-                  onClick={() => fetchPreview()}
-                  style={{ flex: 1 }}
-                >
-                  Tổng hợp
-                </Button>
-                <Button
-                  danger
-                  icon={<DeleteOutlined />}
-                  onClick={handleClearFilters}
-                >
-                  Xóa
-                </Button>
-              </Col>
-            </Row>
+              <div style={{ display: 'flex', gap: spaceSm, flexShrink: 0 }}>
+                <Button icon={<ReloadOutlined />} onClick={handleClearFilters} style={{ color: textSecondary, borderColor: borderDefault, borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }} />
+                <Button type="primary" icon={<SearchOutlined />} loading={loadingPreview} onClick={() => fetchPreview()} style={{ background: actionPrimary, borderColor: actionPrimary, borderRadius: radiusPill, height: 40, fontSize: fontSizeMd }}>Tổng hợp</Button>
+              </div>
+            </div>
           </Card>
 
           {/* Full Width Preview Panel */}
-          <Card
-            title="Dữ liệu xem trước"
-            extra={
-              <Space>
-                <Button
-                  type="default"
-                  icon={<FileTextOutlined />}
-                  disabled={!reportData || reportData.rows.length === 0}
-                  loading={loadingExport === 'PDF'}
-                  onClick={() => handleExport('PDF')}
-                >
-                  Xuất PDF
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<FileExcelOutlined />}
-                  disabled={!reportData || reportData.rows.length === 0}
-                  loading={loadingExport === 'EXCEL'}
-                  onClick={() => handleExport('EXCEL')}
-                  style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
-                >
-                  Xuất Excel
-                </Button>
-              </Space>
-            }
-            style={{ minHeight: 380 }}
-          >
+          <div style={{ ...cardStyle, padding: '8px 16px' }}>
             {['F-154', 'F-156', 'F-157', 'F-159'].includes(reportCode) ? (
-              <div style={{ padding: '10px 0' }}>
+              <div style={{ padding: `${spaceSm}px 0` }}>
                 <Alert
                   message="Lưu ý về nguồn dữ liệu báo cáo"
                   description={
@@ -576,58 +534,45 @@ export default function ReportViewer() {
                 />
               </div>
             ) : loadingPreview ? (
-              <div style={{ padding: '60px 0', textAlign: 'center' }}>
-                <SearchOutlined spin style={{ fontSize: 28, color: '#1677ff', marginBottom: 16 }} />
-                <div>Đang tính toán số liệu thống kê...</div>
+              <div style={{ padding: `${spaceXxl}px 0`, textAlign: 'center' }}>
+                <SearchOutlined spin style={{ fontSize: fontSizeDisplay, color: actionPrimary, marginBottom: spaceMd }} />
+                <div style={{ color: textSecondary, fontSize: fontSizeMd }}>Đang tính toán số liệu thống kê...</div>
               </div>
             ) : reportData ? (
-              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                <Table
-                  columns={getColumns()}
-                  dataSource={reportData.rows.map((row, idx) => ({ ...row, key: idx }))}
-                  onRow={(record: any) => {
-                    const ten = record['Tên đèn biển'];
-                    if (ten === 'Cấp I' || ten === 'Cấp II' || ten === 'Cấp III') {
-                      return { className: 'report-section-row' };
-                    }
-                    return {};
-                  }}
+              <>
+                <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
+                  <Table
+                    columns={getColumns()}
+                    dataSource={reportData.rows.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((row, idx) => ({ ...row, key: (currentPage - 1) * pageSize + idx }))}
+                    pagination={false}
+                    className="list-view-table"
+                    scroll={{ x: 'max-content' }}
+                    onRow={(record: any) => {
+                      const stt = record['STT'];
+                      if (stt === 'I' || stt === 'II') return { className: 'report-section-row' };
+                      if (stt && stt !== '' && !isNaN(Number(stt))) return { className: 'report-port-row' };
+                      return {};
+                    }}
+                  />
+                </div>
 
-                  pagination={{
-                    current: currentPage,
-                    pageSize: pageSize,
-                    total: reportData.rows.length,
-                    showSizeChanger: true,
-                    onChange: (page, size) => {
-                      setCurrentPage(page);
-                      setPageSize(size);
-                    },
+                <Pagination
+                  total={reportData.rows.length}
+                  current={currentPage}
+                  pageSize={pageSize}
+                  onChange={(page, size) => {
+                    setCurrentPage(page);
+                    setPageSize(size);
                   }}
-                  bordered
-                  scroll={{ x: 'max-content' }}
-                  size="middle"
                 />
 
-                {reportData.summary && Object.keys(reportData.summary).length > 0 && (
-                  <Card type="inner" title="Thông tin tổng hợp số liệu">
-                    <Descriptions bordered column={{ xs: 1, sm: 2 }}>
-                      {Object.entries(reportData.summary).map(([key, val]) => (
-                        <Descriptions.Item key={key} label={key}>
-                          <Text strong>
-                            {typeof val === 'number' ? val.toString() : val.toString()}
-                          </Text>
-                        </Descriptions.Item>
-                      ))}
-                    </Descriptions>
-                  </Card>
-                )}
-              </Space>
+              </>
             ) : (
-              <Empty description="Bấm nút Tổng hợp ở trên để kết xuất dữ liệu." />
+              <Empty description={<span style={{ color: textSecondary }}>Bấm nút Tổng hợp ở trên để kết xuất dữ liệu.</span>} />
             )}
-          </Card>
-        </Space>
+          </div>
+        </>
       )}
-    </Space>
+    </div>
   );
 }
