@@ -61,6 +61,7 @@ class JwtAuthFilterPermissionVersionTest {
         user.setStatus(UserStatus.ACTIVE);
         user.setPermissionVersion(version);
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user));
+        when(userRepository.findByUsernameWithRelations("alice")).thenReturn(Optional.of(user));
         return user;
     }
 

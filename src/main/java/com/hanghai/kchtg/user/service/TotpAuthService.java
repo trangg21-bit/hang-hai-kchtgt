@@ -166,7 +166,7 @@ public class TotpAuthService {
         UUID userId = request.getUserId();
         String totpCode = request.getTotpCode();
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdWithRelations(userId)
                 .orElseThrow(() -> new IllegalArgumentException("ID người dùng không hợp lệ"));
 
         // =========================================================================
@@ -280,7 +280,7 @@ public class TotpAuthService {
             String userIdStr = claims.get("user_id", String.class);
             UUID userId = UUID.fromString(userIdStr);
 
-            User user = userRepository.findById(userId)
+            User user = userRepository.findByIdWithRelations(userId)
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));
 
             if (user.getStatus() == UserStatus.LOCKED) {
