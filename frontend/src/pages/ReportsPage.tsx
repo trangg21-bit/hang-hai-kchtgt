@@ -1,3 +1,7 @@
+/**
+ * @deprecated This page is orphaned — use ReportList.tsx + ReportViewer.tsx instead.
+ * This file is kept for reference only. Do NOT route to this component.
+ */
 import { useState, useEffect } from 'react';
 import {
   Card,
