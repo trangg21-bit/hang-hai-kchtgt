@@ -93,8 +93,6 @@ class BeaconLightServiceTest {
                 .code("DEN-001")
                 .name("Đèn biển test")
                 .type(BeaconLightType.LIGHTHOUSE)
-                .latitude(10.5)
-                .longitude(106.5)
                 .lightRange(15.0)
                 .lightColor("Trắng")
                 .range(12.0)
@@ -196,7 +194,7 @@ class BeaconLightServiceTest {
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getName()).isEqualTo("Đèn biển test");
             verify(beaconLightRepo).searchFiltered("Đèn", "DEN",
-                    BeaconLightType.LIGHTHOUSE.getValue(), BeaconStatus.DRAFT.getValue());
+                    BeaconLightType.LIGHTHOUSE, BeaconStatus.DRAFT);
         }
     }
 

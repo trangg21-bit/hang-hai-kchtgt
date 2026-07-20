@@ -9,7 +9,9 @@ import java.util.*;
 @Table(name = "luong_hang_hai")
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class LuongHangHai {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
+    @Id @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false)
+    private java.util.UUID id;
     @Column(name = "ten", nullable = false, length = 100) private String ten;
     @Column(name = "so_luong") private Integer soLuong;
     @Column(name = "ngay_ghi_nhan") private LocalDate ngayGhiNhan;

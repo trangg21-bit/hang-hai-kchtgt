@@ -1,0 +1,124 @@
+{
+  "module_id": "M-012",
+  "module_name": "Hai do & GIS Integration",
+  "description": "Tich hop hai do S-57/S-63, S-52 hien thi, hieu toa WGS84, quan ly lop GIS",
+  "stack": [
+    "Spring Boot 17+",
+    "MSSQL Server 2022",
+    "ReactJS 18+",
+    "Nginx",
+    "MinIO",
+    "GeoServer"
+  ],
+  "actors": [
+    "A-003"
+  ],
+  "features": [
+    {
+      "id": "F-284",
+      "name": "Tich hop hai do S-57",
+      "module": "M-012",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "line 4760-4789, UC-268",
+      "scope": "Tich hop hai do S-57 tu VMS-N/VMS-S",
+      "business_rules": [
+        "Tieu chuan S-57 (IHO)",
+        "Hieu toa WGS84/EPGS:4326"
+      ],
+      "acceptance_criteria": [
+        "Tich hop S-57 thanh cong"
+      ]
+    },
+    {
+      "id": "F-285",
+      "name": "Tich hop hai do S-63",
+      "module": "M-012",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "line 4764, 4768-4789",
+      "scope": "Tich hop hai do S-63 ma hoa",
+      "business_rules": [
+        "Tieu chuan S-63 ma hoa/bao mat"
+      ],
+      "acceptance_criteria": [
+        "Tich hop S-63 thanh cong"
+      ]
+    },
+    {
+      "id": "F-286",
+      "name": "Hien thi hai do GIS (S-52)",
+      "module": "M-012",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "line 4765",
+      "scope": "Hien thi hai do theo tieu chuan S-52",
+      "business_rules": [
+        "Tieu chuan S-52: ki hieu, mau sac, kieu duong"
+      ],
+      "acceptance_criteria": [
+        "Hien thi S-52 thanh cong"
+      ]
+    },
+    {
+      "id": "F-287",
+      "name": "Quan ly lop du lieu GIS",
+      "module": "M-012",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "line 4781",
+      "scope": "To chuc du lieu thanh lop GIS",
+      "business_rules": [
+        "To chuc thanh lop logic",
+        "Thiet lap quan he khong gian"
+      ],
+      "acceptance_criteria": [
+        "Quan ly lop GIS thanh cong"
+      ]
+    },
+    {
+      "id": "F-288",
+      "name": "Tich hop CSDL khong gian",
+      "module": "M-012",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "line 4784-4785",
+      "scope": "Tich hop hai do voi CSDL khong gian",
+      "business_rules": [
+        "Thiet ke schema CSDL khong gian"
+      ],
+      "acceptance_criteria": [
+        "Tich hop CSDL khong gian thanh cong"
+      ]
+    },
+    {
+      "id": "F-289",
+      "name": "Hieu toa WGS84 GIS",
+      "module": "M-012",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "line 2955, 4774",
+      "scope": "Chuan hoa hieu toa WGS84/EPGS:4326",
+      "business_rules": [
+        "Hieu toa WGS84",
+        "Chuan hoa he quy chieu"
+      ],
+      "acceptance_criteria": [
+        "Hieu toa GIS thanh cong"
+      ]
+    }
+  ],
+  "cross_references": {
+    "catalog_ref": "docs/intel/catalog.json#M-012",
+    "brief_ref": "docs/intel/doc-brief.md"
+  },
+  "do_d": {
+    "api_contract_complete": false,
+    "entity_schema_defined": false,
+    "business_rules_mapped": true,
+    "test_data_ready": false,
+    "acceptance_criteria_written": true,
+    "priority_assigned": true,
+    "source_traced": true
+  }
+}

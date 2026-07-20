@@ -10,7 +10,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class HeThongVTSResponse {
-    private Long id;
+    private java.util.UUID id;
     private String tenHeThong;
     private String viTri;
     private com.hanghai.kchtg.vts.entity.TinhTrangVTS tinhTrang;

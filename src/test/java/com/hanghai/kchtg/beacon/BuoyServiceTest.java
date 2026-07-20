@@ -93,8 +93,6 @@ class BuoyServiceTest {
                 .code("PHAO-001")
                 .name("Phao tiêu test")
                 .type(BuoyType.CARDINAL)
-                .latitude(10.5)
-                .longitude(106.5)
                 .color("Đỏ")
                 .shape("Hình trụ")
                 .lightCharacteristic("Chớp 3 giây")
@@ -197,7 +195,7 @@ class BuoyServiceTest {
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getName()).isEqualTo("Phao tiêu test");
             verify(buoyRepo).searchFiltered("Phao", "PHAO",
-                    BuoyType.CARDINAL.getValue(), BeaconStatus.DRAFT.getValue());
+                    BuoyType.CARDINAL, BeaconStatus.DRAFT);
         }
     }
 

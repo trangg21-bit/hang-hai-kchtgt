@@ -1,0 +1,277 @@
+{
+  "_pipeline": {
+    "created_at": "2026-07-01T10:33:19.351Z",
+    "pmo_session_id": "ses_0e2c4baebffeleNkXgbpCVHFvQ",
+    "updated_at": "2026-07-01T10:33:19.351Z"
+  },
+  "blocks": [
+    {
+      "id": "b_dadee074",
+      "level": 1,
+      "text": "QA Report Wave-2 — Module M-002 (Quản lý Tài sản Cảng Bến)",
+      "type": "heading"
+    },
+    {
+      "id": "b_bfadf56d",
+      "text": "**Date:** 2026-07-01 | **Tester:** AI QA Agent | **Scope:** 36 React pages (re-test after FE Dev Wave-2 fixes) | **Reference:** Wave-1 report `08-qa-report-w1.md` (10 MUST FIX items)",
+      "type": "paragraph"
+    },
+    {
+      "id": "b_75762d2b",
+      "type": "divider"
+    },
+    {
+      "id": "b_d6e4d554",
+      "level": 1,
+      "text": "1. Summary",
+      "type": "heading"
+    },
+    {
+      "columns": [
+        "Metric",
+        "Wave-1",
+        "Wave-2"
+      ],
+      "id": "b_d48d74f2",
+      "rows": [
+        [
+          "Total pages tested",
+          "36",
+          "36"
+        ],
+        [
+          "MUST FIX (open)",
+          "10",
+          "0"
+        ],
+        [
+          "SHOULD FIX",
+          "10",
+          "8"
+        ],
+        [
+          "NICE TO HAVE",
+          "8",
+          "8"
+        ]
+      ],
+      "type": "table"
+    },
+    {
+      "id": "b_a50b959b",
+      "text": "All 10 MUST FIX items from Wave-1 have been verified as fixed. No new MUST FIX items introduced. The 36 pages can be merged.",
+      "title": "Verdict: PASS",
+      "tone": "success",
+      "type": "callout"
+    },
+    {
+      "id": "b_d684e0ff",
+      "type": "divider"
+    },
+    {
+      "id": "b_1b9d1caa",
+      "level": 1,
+      "text": "2. MUST FIX Re-Verification (10 items)",
+      "type": "heading"
+    },
+    {
+      "columns": [
+        "#",
+        "Entity",
+        "Original Issue",
+        "Fix Applied",
+        "Verdict"
+      ],
+      "id": "b_ebec8eab",
+      "rows": [
+        [
+          "1",
+          "CangBien (UpdatePage)",
+          "maCang Form.Item missing name prop — field displays empty",
+          "Line 116: name=\"maCang\" added; form.setFieldsValue line 29 includes maCang",
+          "✅ FIXED"
+        ],
+        [
+          "2",
+          "BenCang (api.ts)",
+          "Uses raw fetch() instead of shared axios api",
+          "Line 5: import api from '../../services/api'; all 8 functions use shared axios",
+          "✅ FIXED"
+        ],
+        [
+          "3",
+          "BenCang (schema.ts)",
+          "approvalStatus enum mixed ASCII/diacritics",
+          "Line 7: all ASCII z.enum([\"CHO_PHE_DUYET\", \"DUOC_PHE_DUYET\", \"TU_CHOI\"])",
+          "✅ FIXED"
+        ],
+        [
+          "4",
+          "BenCang (types.ts)",
+          "types ASCII but schema diacritics — mismatch",
+          "types.ts line 27 already ASCII; schema.ts now matches",
+          "✅ FIXED"
+        ],
+        [
+          "5",
+          "BenCang (ListPage)",
+          "useEffect infinite re-render via useCallback dep",
+          "fetchData depends on stable primitives (page, pageSize, filter states); no loop",
+          "✅ RESOLVED"
+        ],
+        [
+          "6",
+          "BenCang (UpdatePage)",
+          "Status badge comparison against ASCII — wrong colors",
+          "Line 252: compares against ASCII 'CHO_PHE_DUYET'/'DUOC_PHE_DUYET'; BE returns ASCII",
+          "✅ FIXED"
+        ],
+        [
+          "7",
+          "VungNuoc (ListPage)",
+          "useEffect empty deps — never refetches on search",
+          "Line 65: depends on fetchData which captures all filter primitives",
+          "✅ FIXED"
+        ],
+        [
+          "8",
+          "VungNuoc (api.ts)",
+          "Sends search/filter params BE ignores",
+          "Lines 28-35: only sends page, pageSize, cangBienId — matches BE VungNuocController",
+          "✅ FIXED"
+        ],
+        [
+          "9",
+          "VungNuoc (types.ts)",
+          "VungNuocTrangThaiPheDuyet uses PHÊ (accent on Ê)",
+          "Lines 9-12: all ASCII CHO_PHE_DUYET|DUOC_PHE_DUYET|TU_CHOI",
+          "✅ FIXED"
+        ],
+        [
+          "10",
+          "CauCang (schema.ts)",
+          "benCangId uses z.string().min(1) not z.string().uuid()",
+          "Line 7: z.string().uuid(); Line 20: z.string().uuid().optional(); Line 63: z.string().uuid()",
+          "✅ FIXED"
+        ]
+      ],
+      "type": "table"
+    },
+    {
+      "id": "b_294d5322",
+      "text": "All 10 MUST FIX items verified against actual source files on disk. BE ground truth confirmed via `ApprovalStatus.java` (ASCII enum: CHO_PHE_DUYET, DUOC_PHE_DUYET, TU_CHOI), `VungNuocController.java` (accepts only page/size/orgUnitId/cangBienId), `CauCang.java` (benCangId as UUID).",
+      "type": "paragraph"
+    },
+    {
+      "id": "b_d615cc93",
+      "type": "divider"
+    },
+    {
+      "id": "b_b1435ed6",
+      "level": 1,
+      "text": "3. SHOULD FIX Re-assessment",
+      "type": "heading"
+    },
+    {
+      "columns": [
+        "#",
+        "Issue",
+        "Status"
+      ],
+      "id": "b_f1bf93a5",
+      "rows": [
+        [
+          "1",
+          "BenCang api.ts fetchBenCangList doesn't expose search params",
+          "✅ RESOLVED — BenCangListPage uses benCangCRUD.search() from cangbenService.ts"
+        ],
+        [
+          "2",
+          "CangBien ListPage loading uses <div>Loading...</div>",
+          "❌ Still open — plain text, not antd Spin/LoadingSkeleton"
+        ],
+        [
+          "3",
+          "CangBien ApprovePage uses raw <input> instead of antd Form",
+          "❌ Still open — lines 179, 196, 207"
+        ],
+        [
+          "4-8",
+          "CauCang typo, redundant userId, silent catch, VungNuoc userId, toast inconsistency",
+          "📋 Deferred to Wave-3"
+        ]
+      ],
+      "type": "table"
+    },
+    {
+      "id": "b_7371e286",
+      "type": "divider"
+    },
+    {
+      "id": "b_9fb6717a",
+      "level": 1,
+      "text": "4. NICE TO HAVE Items",
+      "type": "heading"
+    },
+    {
+      "id": "b_df653d35",
+      "text": "All 8 NICE TO HAVE items from Wave-1 remain unchanged. Low-priority technical debt for next sprint.",
+      "type": "paragraph"
+    },
+    {
+      "id": "b_2c777792",
+      "type": "divider"
+    },
+    {
+      "id": "b_89b4e5d0",
+      "level": 1,
+      "text": "5. Positive Findings",
+      "type": "heading"
+    },
+    {
+      "id": "b_a668b2cd",
+      "items": [
+        "All 10 MUST FIX items resolved with correct code changes",
+        "No new MUST FIX items introduced in any of the 36 pages",
+        "BenCang schema+types unified on ASCII matching BE ApprovalStatus enum",
+        "BenCang infinite re-render loop resolved",
+        "VungNuoc api only sends BE-accepted params",
+        "CauCang schema benCangId uses z.string().uuid() in all 3 locations",
+        "CangBien UpdatePage maCang field displays correctly with name prop",
+        "All field names match BE exactly",
+        "No phantom fields in any entity group"
+      ],
+      "type": "bullets"
+    },
+    {
+      "id": "b_9de90532",
+      "type": "divider"
+    },
+    {
+      "id": "b_0dd8eb6b",
+      "level": 1,
+      "text": "6. Recommendation",
+      "type": "heading"
+    },
+    {
+      "id": "b_691c77be",
+      "items": [
+        "Move to FE Dev Wave-3 — address 8 remaining SHOULD FIX items",
+        "Optional: Align trangThaiHoatDong from diacritics (HIỆN_HÀNH) to ASCII (HIEN_HANH) to match BE comparisons",
+        "Run end-to-end smoke tests against live BE to verify API integration"
+      ],
+      "type": "bullets"
+    }
+  ],
+  "created_at": "2026-07-01T10:33:19.351Z",
+  "doc_type": "report",
+  "id": "09-qa-report-w2",
+  "ready": true,
+  "schema_version": "1.0",
+  "session_id": "ses_0e2c4baebffeleNkXgbpCVHFvQ",
+  "sources": [
+    "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/08-qa-report-w1.md"
+  ],
+  "title": "QA Report Wave-2 — Module M-002",
+  "updated_at": "2026-07-01T10:33:19.351Z"
+}

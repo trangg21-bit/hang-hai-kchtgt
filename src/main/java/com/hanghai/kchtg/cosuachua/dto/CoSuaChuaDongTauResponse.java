@@ -10,13 +10,13 @@ import java.util.List;
 @Builder
 public class CoSuaChuaDongTauResponse {
 
-    private Long id;
+    private java.util.UUID id;
     private String tenCoSo;
     private String diaChi;
     private String tinhThanh;
     private String soDienThoai;
     private String email;
-    private String loaiCoSo;
+    private com.hanghai.kchtg.cosuachua.entity.LoaiCoSo loaiCoSo;
     private String khaNang;
     private String chuQuan;
     private java.util.UUID orgUnitId;

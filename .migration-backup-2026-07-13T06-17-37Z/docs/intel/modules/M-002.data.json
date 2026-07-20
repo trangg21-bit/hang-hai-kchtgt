@@ -1,0 +1,1453 @@
+{
+  "module_id": "M-002",
+  "module_name": "Quan ly tai san KCHTGT - Cang & Ben",
+  "description": "Quan ly cang bien (36), ben cang (301), cau cang (614), cang can (14), vung nuoc (77)",
+  "stack": [
+    "Spring Boot 17+",
+    "MSSQL Server 2022",
+    "ReactJS 18+",
+    "Nginx",
+    "MinIO",
+    "GeoServer"
+  ],
+  "actors": [
+    "A-002",
+    "A-003",
+    "A-004"
+  ],
+  "features": [
+    {
+      "id": "F-008",
+      "name": "Quan ly Cang bien - Tao moi",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3368, line ~3367",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Tao moi Cang bien",
+      "business_rules": [
+        "Cang bien phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Cang bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-009",
+      "name": "Quan ly Cang bien - Cap nhat",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3369, line ~3368",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Cap nhat Cang bien",
+      "business_rules": [
+        "Cap nhat Cang bien phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Cang bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-010",
+      "name": "Quan ly Cang bien - Xoa",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3370, line ~3369",
+      "scope": "Chuyen vien - Xoa Cang bien",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Cang bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-011",
+      "name": "Phe duyet Cang bien",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3371, line ~3370",
+      "scope": "Lanh dao - Phe duyet Cang bien",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Cang bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-012",
+      "name": "Xem chi tiet Cang bien",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3367, line ~3366",
+      "scope": "Tat ca roles - Xem chi tiet + van ban dinh kem + lich su",
+      "business_rules": [
+        "Xem chi tiet, van ban dinh kem, tai/xuong, lich su KCHT"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Cang bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-013",
+      "name": "Quan ly Cang bien - Lich su",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "line ~3372",
+      "scope": "Chuyen vien - Xem lich su thay doi KCHT",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Cang bien thanh cong"
+      ]
+    },
+    {
+      "id": "F-014",
+      "name": "Quan ly Ben cang - Tao moi",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3369, line ~3368",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Tao moi Ben cang",
+      "business_rules": [
+        "Ben cang phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Ben cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-015",
+      "name": "Quan ly Ben cang - Cap nhat",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3370, line ~3369",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Cap nhat Ben cang",
+      "business_rules": [
+        "Cap nhat Ben cang phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Ben cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-016",
+      "name": "Quan ly Ben cang - Xoa",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3371, line ~3370",
+      "scope": "Chuyen vien - Xoa Ben cang",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Ben cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-017",
+      "name": "Phe duyet Ben cang",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3372, line ~3371",
+      "scope": "Lanh dao - Phe duyet Ben cang",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Ben cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-018",
+      "name": "Xem chi tiet Ben cang",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3368, line ~3367",
+      "scope": "Tat ca roles - Xem chi tiet + van ban dinh kem + lich su",
+      "business_rules": [
+        "Xem chi tiet, van ban dinh kem, tai/xuong, lich su KCHT"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Ben cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-019",
+      "name": "Quan ly Ben cang - Lich su",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "line ~3373",
+      "scope": "Chuyen vien - Xem lich su thay doi KCHT",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Ben cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-020",
+      "name": "Quan ly Cau cang - Tao moi",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3376, line ~3375",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Tao moi Cau cang",
+      "business_rules": [
+        "Cau cang phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Cau cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-021",
+      "name": "Quan ly Cau cang - Cap nhat",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3377, line ~3376",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Cap nhat Cau cang",
+      "business_rules": [
+        "Cap nhat Cau cang phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Cau cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-022",
+      "name": "Quan ly Cau cang - Xoa",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3378, line ~3377",
+      "scope": "Chuyen vien - Xoa Cau cang",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Cau cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-023",
+      "name": "Phe duyet Cau cang",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3379, line ~3378",
+      "scope": "Lanh dao - Phe duyet Cau cang",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Cau cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-024",
+      "name": "Xem chi tiet Cau cang",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3375, line ~3374",
+      "scope": "Tat ca roles - Xem chi tiet + van ban dinh kem + lich su",
+      "business_rules": [
+        "Xem chi tiet, van ban dinh kem, tai/xuong, lich su KCHT"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Cau cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-025",
+      "name": "Quan ly Cau cang - Lich su",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "line ~3380",
+      "scope": "Chuyen vien - Xem lich su thay doi KCHT",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Cau cang thanh cong"
+      ]
+    },
+    {
+      "id": "F-026",
+      "name": "Quan ly Cang can - Tao moi",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3373, line ~3372",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Tao moi Cang can",
+      "business_rules": [
+        "Cang can phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Cang can thanh cong"
+      ]
+    },
+    {
+      "id": "F-027",
+      "name": "Quan ly Cang can - Cap nhat",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3374, line ~3373",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Cap nhat Cang can",
+      "business_rules": [
+        "Cap nhat Cang can phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Cang can thanh cong"
+      ]
+    },
+    {
+      "id": "F-028",
+      "name": "Quan ly Cang can - Xoa",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3375, line ~3374",
+      "scope": "Chuyen vien - Xoa Cang can",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Cang can thanh cong"
+      ]
+    },
+    {
+      "id": "F-029",
+      "name": "Phe duyet Cang can",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3376, line ~3375",
+      "scope": "Lanh dao - Phe duyet Cang can",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Cang can thanh cong"
+      ]
+    },
+    {
+      "id": "F-030",
+      "name": "Xem chi tiet Cang can",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3372, line ~3371",
+      "scope": "Tat ca roles - Xem chi tiet + van ban dinh kem + lich su",
+      "business_rules": [
+        "Xem chi tiet, van ban dinh kem, tai/xuong, lich su KCHT"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Cang can thanh cong"
+      ]
+    },
+    {
+      "id": "F-031",
+      "name": "Quan ly Cang can - Lich su",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "line ~3377",
+      "scope": "Chuyen vien - Xem lich su thay doi KCHT",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Cang can thanh cong"
+      ]
+    },
+    {
+      "id": "F-032",
+      "name": "Quan ly Vung nuoc - Tao moi",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3397, line ~3396",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Tao moi Vung nuoc",
+      "business_rules": [
+        "Vung nuoc phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Tao moi Vung nuoc thanh cong"
+      ]
+    },
+    {
+      "id": "F-033",
+      "name": "Quan ly Vung nuoc - Cap nhat",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3398, line ~3397",
+      "scope": "Chuyen vien, Nguoi dung tai Cang - Cap nhat Vung nuoc",
+      "business_rules": [
+        "Cap nhat Vung nuoc phai duoc phe duyet truoc khi khai thac"
+      ],
+      "acceptance_criteria": [
+        "Cap nhat Vung nuoc thanh cong"
+      ]
+    },
+    {
+      "id": "F-034",
+      "name": "Quan ly Vung nuoc - Xoa",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "UC-3399, line ~3398",
+      "scope": "Chuyen vien - Xoa Vung nuoc",
+      "business_rules": [
+        "Xoa chi voi du lieu da duoc phe duyet"
+      ],
+      "acceptance_criteria": [
+        "Xoa Vung nuoc thanh cong"
+      ]
+    },
+    {
+      "id": "F-035",
+      "name": "Phe duyet Vung nuoc",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3400, line ~3399",
+      "scope": "Lanh dao - Phe duyet Vung nuoc",
+      "business_rules": [
+        "2 cap duyet: phong -> Cuc"
+      ],
+      "acceptance_criteria": [
+        "Phe duyet Vung nuoc thanh cong"
+      ]
+    },
+    {
+      "id": "F-036",
+      "name": "Xem chi tiet Vung nuoc",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P0",
+      "source": "UC-3396, line ~3395",
+      "scope": "Tat ca roles - Xem chi tiet + van ban dinh kem + lich su",
+      "business_rules": [
+        "Xem chi tiet, van ban dinh kem, tai/xuong, lich su KCHT"
+      ],
+      "acceptance_criteria": [
+        "Xem chi tiet Vung nuoc thanh cong"
+      ]
+    },
+    {
+      "id": "F-037",
+      "name": "Quan ly Vung nuoc - Lich su",
+      "module": "M-002",
+      "confidence": "high",
+      "priority": "P1",
+      "source": "line ~3401",
+      "scope": "Chuyen vien - Xem lich su thay doi KCHT",
+      "business_rules": [
+        "Theo doi lich su thay doi"
+      ],
+      "acceptance_criteria": [
+        "Xem lich su Vung nuoc thanh cong"
+      ]
+    },
+    {
+      "id": "F-068",
+      "name": "Danh sách Cảng biển",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cung cấp công cụ quản lý tổng quan tất cả cảng biển đã đăng ký trong hệ thống, giúp người dùng nhanh chóng tra cứu, xác minh thông tin cơ bản và dẫn hướng đến các chức năng chi tiết (xem, sửa, xóa, phê duyệt). Đây là điểm vào chính cho mọi tác vụ quản lý cảng biển, đáp ứng yêu cầu nghiệp vụ tại UC 10 của TKCT và đảm bảo nguyên tắc QA W2 về phân trang.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Trang danh sách tải danh sách cảng biển qua API GET /api/v1/cang-bien với phân trang mặc định 20 bản ghi/page, tối đa 100, sắp xếp giảm dần theo updatedAt.",
+        "Ô tìm kiếm cho phép nhập từ khóa và lọc kết quả theo maCang, tenCang hoặc tinhThanhPho — hiển thị đúng các kết quả khớp và thông báo \"Không tìm thấy\" khi không có kết quả.",
+        "Bộ lọc trạng thái hoạt động (HIỆN_HÀNH / TẠM_NGƯNG) áp dụng thêm điều kiện lọc vào query parameters, kết quả hiển thị chính xác theo bộ lọc đã chọn.",
+        "Bảng hiển thị 5 cột: maCang, tenCang, tinhThanhPho, trạng thái (badge màu theo TRẠNG_THÁI_PHÊ_DUYỆT), updatedAt — sortable theo các cột này.",
+        "Các hành động (Xem chi tiết, Chỉnh sửa, Xóa, Lịch sử) xuất hiện trong mỗi hàng đúng theo phân quyền: Phê duyệt chỉ hiển thị cho Lãnh đạo, tất cả các hành động khác dựa trên quyền CRUD tương ứng.",
+        "Hỗ trợ điều hướng bàn phím: Tab di chuyển giữa ô tìm kiếm, bộ lọc và các nút hành động; Enter kích hoạt tìm kiếm và xác nhận hành động."
+      ]
+    },
+    {
+      "id": "F-069",
+      "name": "Chi tiết Cảng biển",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cung cấp một cái nhìn toàn diện về một cảng biển cụ thể, bao gồm tất cả thông tin kỹ thuật, địa lý và trạng thái, cho phép người dùng xác minh dữ liệu trước khi ra quyết định phê duyệt hoặc chỉnh sửa. Đây là nền tảng cho mọi thao tác tiếp theo (sửa, xóa, phê duyệt), đáp ứng yêu cầu UC 10 về đính kèm của TKCT.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Trang hiển thị đầy đủ 15 trường của entity CangBien với định dạng: GPS là ±XX.XXXXXX (5 chữ số thập phân), trangThaiPheDuyet là badge (vàng=CHO, xanh=DUOC, đỏ=TU_CHO), trangThaiHoatDong hiển thị rõ ràng.",
+        "Phần đính kèm hiển thị danh sách các file (PDF/DOCX/JPEG, tối đa 10MB/file) với nút Download và Print cho từng file.",
+        "Các hành động Phê duyệt và Từ chối chỉ hiển thị cho người dùng có vai trò Lãnh đạo; các hành động khác hiển thị đúng theo phân quyền CRUD.",
+        "Breadcrumb điều hướng hiển thị \"Quản lý cảng biển > Chi tiết cảng [maCang]\", cho phép quay lại danh sách hoặc trang trước.",
+        "Nút \"Chỉnh sửa\" mở trang F-071 với form được pre-fill từ dữ liệu hiện tại; \"Lịch sử\" mở F-094; \"Xóa\" mở hộp thoại xác nhận F-093.",
+        "Responsive trên desktop (≥ 1024px) và tablet (≥ 768px); layout chuyển thành cột đơn trên mobile."
+      ]
+    },
+    {
+      "id": "F-070",
+      "name": "Tạo mới Cảng biển",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép các tổ chức, cảng biển đăng ký thông tin cảng vào hệ thống quản lý tài sản cảng biển một cách có cấu trúc và được kiểm tra ngay lỗi. Việc tạo bản ghi mới với trạng thái CHỜ_PHÊ_DUYỆT đảm bảo tuân thủ quy trình phê duyệt, dữ liệu mới sẽ được Lãnh đạo xem xét và phê duyệt trước khi đưa vào hoạt động.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Form hiển thị đúng 7 trường (maCang, tenCang, tinhThanhPho, viDo, kinhDo, dienTich, khaNangTiepNhan) với validation inline qua React Hook Form + Zod schema.",
+        "maCang có regex validation định dạng VN-36 (độ dài 6-10 ký tự), sau khi tạo thành công không thể thay đổi (readonly).",
+        "viDo được kiểm tra range [-90, 90], kinhDo [-180, 180], dienTich [0, 5000] — hiển thị lỗi inline khi vượt quá giới hạn.",
+        "Submit thành công gọi POST /api/v1/cang-bien, trả về bản ghi mới với trangThaiPheDuyet = CHỜ_PHÊ_DUYỆT, hiển thị toast \"Tạo mới thành công — chờ phê duyệt\", điều hướng về danh sách.",
+        "Nếu maCang đã tồn tại, API trả HTTP 409 — form hiển thị toast lỗi \"Mã cảng đã tồn tại\", form giữ nguyên dữ liệu đã nhập.",
+        "Chỉ người dùng có quyền 'cangbien:create' (Admin, Lãnh đạo, Chuyên viên Cục/Cảng vụ, Doanh nghiệp cảng) mới thấy nút \"Tạo mới\"."
+      ]
+    },
+    {
+      "id": "F-071",
+      "name": "Cập nhật Cảng biển",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép các tổ chức cập nhật thông tin của cảng biển đã được đăng ký (tên, địa điểm, tọa độ, diện tích, khả năng tiếp nhận). Việc cập nhật yêu cầu phê duyệt lại đảm bảo tính toàn vẹn dữ liệu — mọi thay đổi đều phải được Lãnh đạo xác nhận. LichSuThayDoi record giúp truy vết mọi thay đổi đã thực hiện.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Form được pre-fill với dữ liệu hiện tại từ GET /api/v1/cang-bien/:id, maCang luôn ở chế độ readonly (không thể chỉnh sửa).",
+        "Cùng validation schema như trang tạo mới (F-070): required, regex VN-36 cho maCang, range GPS, max diện tích 5000 — inline validation React Hook Form + Zod.",
+        "Submit thành công gọi PUT /api/v1/cang-bien/:id, API trả bản ghi đã cập nhật với trangThaiPheDuyet = CHỜ_PHÊ_DUYỆT (reset từ trạng thái cũ).",
+        "Một bản ghi LichSuThayDoi được tạo tự động khi cập nhật, ghi nhận field nào thay đổi, giá trị cũ/mới, người thay đổi, thời gian thay đổi.",
+        "Toast \"Cập nhật thành công — chờ phê duyệt lại\" hiển thị sau khi cập nhật, hệ thống điều hướng về danh sách (F-068).",
+        "Nếu maCang đã tồn tại trong khi sửa (trường hợp hiếm), API trả HTTP 409 — form hiển thị toast lỗi."
+      ]
+    },
+    {
+      "id": "F-072",
+      "name": "Phê duyệt Cảng biển",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Đảm bảo mọi cảng biển được đăng ký hoặc cập nhật thông tin đều phải trải qua quy trình phê duyệt của Lãnh đạo trước khi được đưa vào hoạt động. PheDuyetLog lưu trữ lịch sử phê duyệt/từ chối để phục vụ kiểm toán và truy vết quyết định. Đây là mắt xích quan trọng trong quy trình quản lý tài sản cảng biển, đảm bảo tính chính xác và hợp lệ của dữ liệu.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Trang chỉ hiển thị các bản ghi có trangThaiPheDuyet = CHỜ_PHÊ_DUYỆT (pending list filter).",
+        "Nhấp \"Phê duyệt\" → confirmation dialog → gọi POST /:id/approve → trạng thái chuyển ĐƯỢC_PHÊ_DUYỆT, PheDuyetLog được tạo (trạng thái = DUOC_PHE_DUYỆT), toast \"Đã phê duyệt thành công\".",
+        "Nhấp \"Từ chối\" → form nhập lý do (required, tối thiểu 10 ký tự) → confirmation dialog → gọi POST /:id/reject?reason=... → trạng thái chuyển TỪ_CHỐI, PheDuyetLog được tạo (trạng thái = TỪ_CHỐI + lý do), toast \"Đã từ chối\".",
+        "Lý do từ chối tối thiểu 10 ký tự — nếu ít hơn, hệ thống hiển thị lỗi \"Lý do từ chối phải có ít nhất 10 ký tự\".",
+        "Chỉ người dùng có vai trò Lãnh đạo mới thấy và thực hiện được các hành động Phê duyệt/Từ chối (RBAC @auth.check('cangbien:approve')).",
+        "PheDuyetLog được lưu trữ bền vững với thông tin: cangBienId, nguoiPheDuyet, trangThai, lyDo (nếu từ chối), createdAt."
+      ]
+    },
+    {
+      "id": "F-073",
+      "name": "Danh sách Bến cảng",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép cán bộ quản lý tài sản cảng biển nắm bắt nhanh chóng toàn bộ danh sách bến cảng đang được vận hành hoặc tạm ngừng, hỗ trợ ra quyết định về phân bổ nguồn lực, điều chỉnh kế hoạch khai thác và giám sát tuân thủ trạng thái phê duyệt theo quy định của cơ quan quản lý nhà nước về giao thông vận tải biển.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Khi mở màn hình danh sách, hệ thống gọi API `GET /api/v1/ben-cang?page=1&pageSize=20&sortBy=updatedAt&sortOrder=DESC` và hiển thị tối đa 20 bản ghi mỗi trang.",
+        "Người dùng nhập từ khóa vào ô tìm kiếm (maBen hoặc tenBen) và nhấn Enter, hệ thống gọi `GET /api/v1/ben-cang?search=<keyword>` và hiển thị kết quả khớp trong vòng 500ms.",
+        "Dropdown lọc trạng thái hoạt động hiển thị các tùy chọn: \"Tất cả\", \"Hiện hành\", \"Tạm ngừng\". Khi chọn một trạng thái, bảng danh sách được lọc tương ứng và hiển thị kết quả trong vòng 500ms.",
+        "Mỗi hàng trong bảng hiển thị: maBen, tenBen, tên bến cảng cha (cangBienId resolved to CangBien.ten), viDo, kinhDo, badge trạng thái hoạt động, badge trạng thái phê duyệt, updatedAt. Badge trạng thái phê duyệt có màu: vàng (CHO_PHE_DUYET), xanh lá (DUOC_PHE_DUYET), đỏ (TU_CHO).",
+        "Nút \"Xem chi tiết\" trên mỗi hàng mở màn hình chi tiết Bến cảng (F-074) với id tương ứng.",
+        "Nút \"Chỉnh sửa\" mở màn hình cập nhật (F-076) với dữ liệu pre-filled của BenCang tương ứng.",
+        "Nút \"Xóa\" mở hộp thoại xác nhận xóa mềm; sau khi xác nhận, hệ thống gọi `DELETE /api/v1/ben-cang/:id` và bản ghi bị ẩn khỏi danh sách (soft-delete).",
+        "Nút \"Phê duyệt\" chỉ hiển thị cho các Role có quyền authentication `bencang:approve`; khi click, mở màn hình phê duyệt (F-077).",
+        "Nút \"Lịch sử\" mở màn hình lịch sử thay đổi (F-096) của BenCang tương ứng.",
+        "Người dùng có thể chuyển giữa các trang bằng phân phối số trang hoặc click Previous/Next; mỗi lần chuyển trang hiển thị tối đa 20 hoặc 100 mục (tùy chọn dropdown pageSize).",
+        "Phím Tab di chuyển focus giữa các ô nhập liệu và các nút hành động; phím Enter kích hoạt hành động của phần tử đang focus.",
+        "Khi danh sách trống (không có kết quả tìm kiếm), hiển thị thông báo \"Không tìm thấy Bến cảng nào phù hợp\" với hướng dẫn tạo mới."
+      ]
+    },
+    {
+      "id": "F-074",
+      "name": "Chi tiết Bến cảng",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cung cấp cái nhìn tổng quan, toàn diện về thông tin kỹ thuật và quản lý của từng Bến cảng, hỗ trợ cán bộ quản lý ra quyết định về vận hành, bảo trì, và phê duyệt trong thời gian thực, đồng thời tạo điều kiện cho việc kiểm toán và追溯 nguồn gốc thay đổi thông qua lịch sử phê duyệt.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Màn hình chi tiết hiển thị đầy đủ tất cả các trường của entity BenCang khi gọi `GET /api/v1/ben-cang/:id` thành công.",
+        "Breadcrumb điều hướng hiển thị: \"Danh sách Bến cảng\" (link về F-073) → \"Chi tiết: [maBen]\".",
+        "Trường cangBienId hiển thị tên của CangBien cha dưới dạng liên kết click được, khi click mở màn hình chi tiết CangBien tương ứng.",
+        "Tọa độ GPS (viDo, kinhDo) hiển thị với định dạng ±XX.XXXXXX (5 chữ số thập phân).",
+        "Badge trạng thái phê duyệt có màu: vàng (CHO_PHE_DUYET), xanh lá (DUOC_PHE_DUYET), đỏ (TU_CHO).",
+        "Badge trạng thái hoạt động có màu: xanh dương (HIEN_HANH), cam (TAM_NGUNG).",
+        "Các trường metadata (createdBy, updatedBy) hiển thị dạng string; createdAt, updatedAt hiển thị dạng datetime định dạng dd/MM/yyyy HH:mm:ss.",
+        "Nút \"Phê duyệt\" chỉ hiển thị cho người dùng có quyền Leader (authentication `bencang:approve`).",
+        "Khi nhấn \"Phê duyệt\", hệ thống mở hộp thoại xác nhận với thông báo \"Bạn có chắc chắn muốn phê duyệt Bến cảng này?\"; sau khi xác nhận gọi `POST /:id/approve` và cập nhật trạng thái thành DUOC_PHE_DUYET.",
+        "Khi nhấn \"Từ chối\", hệ thống mở hộp thoại yêu cầu lý do (ít nhất 10 ký tự); sau khi xác nhận gọi `POST /:id/reject` với lý do và cập nhật trạng thái thành TU_CHO.",
+        "Toast thông báo thành công \"Đã phê duyệt Bến cảng\" hoặc \"Đã từ chối Bến cảng\" được hiển thị sau khi API trả về HTTP 200.",
+        "Toast thông báo lỗi \"Không thể thực hiện thao tác: [error message]\" được hiển thị khi API trả về HTTP 4xx/5xx.",
+        "Các trường metadata (createdBy, updatedBy, createdAt, updatedAt) được hiển thị dưới dạng readable date-time (dd/MM/yyyy HH:mm:ss)."
+      ]
+    },
+    {
+      "id": "F-075",
+      "name": "Tạo mới Bến cảng",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng được ủy quyền tạo thông tin Bến cảng mới vào hệ thống quản lý tài sản cảng biển, đảm bảo dữ liệu đầu vào đầy đủ, chính xác và tuân thủ các quy tắc nghiệp vụ trước khi chuyển sang quy trình phê duyệt.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Form tạo mới hiển thị các trường: maBen (required, unique), tenBen (required), cangBienId (required dropdown), tuyenDuongThuy, viDo, kinhDo, chieuDai, chieuRong, loaiBen, doSauLuong, trangThaiHoatDong.",
+        "Dropdown cangBienId chỉ hiển thị các CangBien có trạng thái HIEN_HANH; được populate từ API `GET /api/v1/cang-bien?status=HIEN_HANH` khi form được mở.",
+        "Trường loaiBen là trường string tự do (không có enum cố định trong BE).",
+        "maBen là trường unique: khi người dùng nhập giá trị maBen trùng với bản ghi đã tồn tại, hệ thống hiển thị thông báo lỗi \"Mã bến đã tồn tại\" ngay sau khi blur.",
+        "viDo phải nằm trong khoảng [-90, 90]; ngoài khoảng này hiển thị lỗi \"Tọa độ vĩ độ phải nằm trong [-90, 90]\".",
+        "kinhDo phải nằm trong khoảng [-180, 180]; ngoài khoảng này hiển thị lỗi \"Tọa độ kinh độ phải nằm trong [-180, 180]\".",
+        "Khi nhấn \"Lưu\" với dữ liệu hợp lệ, hệ thống gọi `POST /api/v1/ben-cang` và trả về toast \"Đã tạo mới Bến cảng thành công, chờ phê duyệt\".",
+        "Sau khi tạo thành công, hệ thống tự động redirect về màn hình danh sách Bến cảng (F-073).",
+        "Nếu maBen đã tồn tại, API trả về 409 Conflict → toast \"Mã bến đã tồn tại\" và form không submit.",
+        "Nút \"Hủy\" quay về danh sách; nếu có thay đổi chưa lưu, hiển thị hộp thoại xác nhận \"Bạn có chắc chắn muốn hủy? Các thay đổi chưa lưu sẽ bị mất.\"",
+        "Trạng thái phê duyệt mặc định của bản ghi mới tạo là CHO_PHE_DUYET.",
+        "Tất cả các trường required phải được kiểm tra: nếu để trống, hiển thị lỗi \"Trường này là bắt buộc\" tại trường tương ứng."
+      ]
+    },
+    {
+      "id": "F-076",
+      "name": "Cập nhật Bến cảng",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng được ủy quyền cập nhật thông tin Bến cảng đã được tạo trước đó, đồng thời tự động đưa bản ghi về trạng thái chờ phê duyệt lại để đảm bảo toàn bộ thay đổi đều được xem xét và phê duyệt theo đúng quy trình quản lý tài sản, tạo lập lịch sử thay đổi để phục vụ kiểm toán và追溯 nguồn gốc.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Form cập nhật hiển thị đầy đủ các trường của BenCang khi gọi `GET /api/v1/ben-cang/:id` thành công, với dữ liệu pre-filled chính xác.",
+        "Trường maBen hiển thị readonly (không thể chỉnh sửa), được ghi rõ \"readonly — không thể thay đổi\" bên cạnh nhãn.",
+        "Dropdown cangBienId chỉ hiển thị các CangBien có trạng thái HIEN_HANH; được populate từ API `GET /api/v1/cang-bien?status=HIEN_HANH` khi form được mở.",
+        "Client-side validation: viDo phải nằm trong [-90, 90], kinhDo phải nằm trong [-180, 180]; validation áp dụng khi trường có giá trị (UpdateDTO không có required fields).",
+        "Khi nhấn \"Lưu\" với dữ liệu hợp lệ, hệ thống gọi `PUT /api/v1/ben-cang/:id` và trả về toast \"Đã cập nhật Bến cảng, chờ phê duyệt lại\".",
+        "Sau khi cập nhật thành công, backend tự động reset trạng thái phê duyệt về CHO_PHE_DUYET và tạo bản ghi LichSuThayDoi ghi lại toàn bộ thay đổi.",
+        "Nếu cập nhật thất bại (400 Bad Request, 404 Not Found), hệ thống hiển thị toast lỗi chi tiết và giữ nguyên form với dữ liệu hiện tại.",
+        "Nút \"Hủy\" quay về danh sách hoặc chi tiết; nếu có thay đổi chưa lưu, hiển thị hộp thoại xác nhận \"Bạn có chắc chắn muốn hủy? Các thay đổi chưa lưu sẽ bị mất.\"",
+        "Trạng thái phê duyệt mặc định sau khi cập nhật là CHO_PHE_DUYET (reset approval required).",
+        "Người dùng không có quyền update không nhìn thấy nút \"Chỉnh sửa\" trên danh sách hoặc chi tiết."
+      ]
+    },
+    {
+      "id": "F-077",
+      "name": "Phê duyệt Bến cảng",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Đảm bảo mọi thông tin Bến cảng mới tạo hoặc thay đổi đều được xem xét và phê duyệt bởi người có thẩm quyền trước khi chính thức đưa vào vận hành, tạo lập cơ chế kiểm soát chất lượng dữ liệu, phân quyền phê duyệt theo đơn vị, và lưu trữ bằng chứng phê duyệt/từ chối trong bảng PheDuyetLog để phục vụ kiểm toán và追溯 nguồn gốc.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Màn hình chỉ hiển thị các Bến cảng có trangThaiPheDuyet = CHO_PHE_DUYET khi gọi `GET /api/v1/ben-cang?status=CHO_PHE_DUYET`.",
+        "Danh sách hiển thị các cột: maBen, tenBen, loaiBen, trangThaiHoatDong, createdAt, updatedBy (người tạo).",
+        "Nút \"Phê duyệt\" và \"Từ chối\" chỉ hiển thị cho các Role có quyền `bencang:approve` (QuanTriCangBien, QuanLyDonVi, ThanhVienPheDuyet).",
+        "Khi nhấn \"Phê duyệt\", hệ thống mở hộp thoại xác nhận với thông báo \"Bạn có chắc chắn muốn phê duyệt Bến cảng [maBen]?\"; sau khi xác nhận gọi `POST /api/v1/ben-cang/:id/approve` → trạng thái chuyển thành DUOC_PHE_DUYET + tạo PheDuyetLog → toast \"Đã phê duyệt Bến cảng\" → bản ghi bị xóa khỏi danh sách.",
+        "Khi nhấn \"Từ chối\", hệ thống mở hộp thoại yêu cầu lý do (ít nhất 10 ký tự); sau khi xác nhận gọi `POST /api/v1/ben-cang/:id/reject` với lý do → trạng thái chuyển thành TU_CHO + tạo PheDuyetLog → toast \"Đã từ chối Bến cảng: [lý do]\" → bản ghi bị xóa khỏi danh sách.",
+        "Lý do từ chối có tối thiểu 10 ký tự; nếu nhập < 10 ký tự, hệ thống chặn submit và hiển thị lỗi \"Lý do từ chối phải có ít nhất 10 ký tự\".",
+        "PheDuyetLog được tạo tự động khi phê duyệt hoặc từ chối, lưu trữ: benCangId, pheDuyetAction (APPROVE/REJECT), pheDuyetBy, pheDuyetAt, lyDo (cho REJECT).",
+        "Sau khi phê duyệt hoặc từ chối thành công, bản ghi bị xóa khỏi danh sách chờ phê duyệt và không thể thao tác lại.",
+        "Toast thông báo lỗi \"Không thể thực hiện thao tác: [error message]\" được hiển thị khi API trả về HTTP 4xx/5xx.",
+        "Người dùng không có quyền `bencang:approve` không nhìn thấy các nút Phê duyệt/Từ chối và không thể truy cập màn hình này."
+      ]
+    },
+    {
+      "id": "F-078",
+      "name": "Danh sách Cầu cảng",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép quản lý viên và lãnh đạo theo dõi, tìm kiếm và lọc toàn bộ danh sách cầu cảng hiện có trong hệ thống, từ đó hỗ trợ ra quyết định vận hành và phê duyệt tài sản cảng một cách nhanh chóng và chính xác.",
+      "business_rules": [
+        "maCau phải là duy nhất trong toàn bộ hệ thống — không được phép tạo mới hoặc cập nhật với mã đã tồn tại.",
+        "Parent BenCang (benCangId) phải tồn tại trong hệ thống và có trangThaiHoatDong = HIEN_HANH — việc tạo cầu cảng cho bến cảng đang TAM_NGUNG hoặc không tồn tại sẽ bị từ chối.",
+        "Mặc định trangThaiPheDuyet = CHO_PHE_DUYET khi tạo mới cầu cảng — cầu cảng chưa được phê duyệt không được đưa vào vận hành.",
+        "Xóa cầu cảng là xóa mềm (soft-delete): set deletedAt → không xóa dữ liệu vật lý, vẫn hiển thị trong lịch sử."
+      ],
+      "acceptance_criteria": [
+        "Giao diện hiển thị danh sách cầu cảng với phân trang, mặc định 20 bản ghi/trang, có thể chọn 100 bản ghi/trang.",
+        "Danh sách được sắp xếp mặc định theo updatedAt giảm dần (mới nhất lên đầu).",
+        "Ô tìm kiếm cho phép tìm theo mã cầu cảng (maCau) và tên cầu cảng (tenCau) — kết quả trả về bất kỳ trường nào chứa từ khóa tìm kiếm.",
+        "Bộ lọc trạng thái hoạt động cho phép lọc theo giá trị HIEN_HANH hoặc TAM_NGUNG.",
+        "Bộ lọc trạng thái phê duyệt cho phép lọc theo giá trị CHO_PHE_DUYET, DUOC_PHE_DUYET hoặc TU_CHOI.",
+        "Bộ lọc theo bến cảng cha (benCangId) hiển thị danh sách dropdown các bến cảng có sẵn.",
+        "Mỗi dòng hiển thị đúng 7 cột: maCau, tenCau, tên benCang (từ FK), chieuDai (m), chieuRong (m), loaiCau, trangThaiHoatDong, trangThaiPheDuyet.",
+        "Thao tác \"Xem chi tiết\" chuyển người dùng đến trang F-079 với đúng cầu cảng được chọn.",
+        "Thao tác \"Chỉnh sửa\" chuyển người dùng đến trang F-081 với form đã điền sẵn dữ liệu cầu cảng được chọn.",
+        "Thao tác \"Xóa\" kích hoạt hộp thoại xác nhận trước khi gọi DELETE API (F-097).",
+        "Leader có thể click \"Phê duyệt\" để chuyển đến trang F-082 cho cầu cảng CHO_PHE_DUYET.",
+        "Thao tác \"Lịch sử\" chuyển người dùng đến trang F-098 cho cầu cảng được chọn.",
+        "Hỗ trợ điều hướng bằng bàn phím: Tab di chuyển giữa các thành phần, Enter kích hoạt hành động."
+      ]
+    },
+    {
+      "id": "F-079",
+      "name": "Chi tiết Cầu cảng",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cung cấp cái nhìn toàn diện về một cầu cảng cụ thể, bao gồm mọi thông tin kỹ thuật, trạng thái và tài liệu đính kèm, phục vụ cho việc ra quyết định phê duyệt, vận hành và bảo trì tài sản cảng biển.",
+      "business_rules": [
+        "maCau phải là duy nhất trong toàn bộ hệ thống — giá trị này không thể thay đổi khi xem chi tiết.",
+        "Parent BenCang (benCangId) phải tồn tại trong hệ thống và có trangThaiHoatDong = HIEN_HANH — nếu BenCang cha đã bị xóa hoặc không còn hoạt động, cầu cảng không được tạo (hoặc bị cảnh báo).",
+        "Mặc định trangThaiPheDuyet = CHO_PHE_DUYET khi tạo mới — cầu cảng chỉ hiển thị trạng thái DUOC_PHE_DUYET sau khi được Leader phê duyệt.",
+        "Tệp đính kèm bị giới hạn tối đa 10MB mỗi file và chỉ chấp nhận các định dạng PDF, DOCX, JPEG."
+      ],
+      "acceptance_criteria": [
+        "Trang chi tiết hiển thị đầy đủ tất cả các trường của entity CauCang: maCau, tenCau, benCangId (tên + link), chieuDai, chieuRong, loaiCau, ghiChu, trangThaiHoatDong, trangThaiPheDuyet, createdAt, updatedAt, createdBy, updatedBy.",
+        "Trường benCangId hiển thị dưới dạng tên bến cảng kèm hyperlink trỏ đến trang chi tiết BenCang tương ứng.",
+        "Badge trạng thái hoạt động (trangThaiHoatDong) có màu sắc phân biệt: xanh lá cho HIEN_HANH, vàng/đen cho TAM_NGUNG.",
+        "Badge trạng thái phê duyệt (trangThaiPheDuyet) có màu sắc phân biệt: vàng cho CHO_PHE_DUYET, xanh dương cho DUOC_PHE_DUYET, đỏ cho TU_CHOI.",
+        "Danh sách tệp đính kèm hiển thị đúng các file có định dạng PDF, DOCX, JPEG với kích thước tối đa 10MB mỗi file.",
+        "Mỗi tệp đính kèm có nút \"Tải xuống\" và nút \"In\" riêng biệt.",
+        "Leader có thể click \"Phê duyệt\" → chuyển đến F-082 với cầu cảng được chọn sẵn, trạng thái = CHO_PHE_DUYET.",
+        "Leader có thể click \"Từ chối\" → chuyển đến F-082 với yêu cầu nhập lý do ≥ 10 ký tự.",
+        "Breadcrumb hiển thị đường dẫn: Trang chủ > Quản lý Tài sản > Bến cảng > Cầu cảng > [tên cầu cảng].",
+        "Click \"Cầu cảng\" trong breadcrumb quay lại danh sách F-078.",
+        "Click tên BenCang trong breadcrumb hoặc chi tiết quay lại trang chi tiết BenCang."
+      ]
+    },
+    {
+      "id": "F-080",
+      "name": "Tạo mới Cầu cảng",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép quản lý viên đăng ký thông tin mới của cầu cảng vào hệ thống quản lý tài sản cảng biển, đảm bảo mọi thông tin được thu thập đầy đủ và tuân thủ các quy tắc nghiệp vụ trước khi đưa vào quá trình phê duyệt.",
+      "business_rules": [
+        "maCau phải là duy nhất trong toàn bộ hệ thống — không cho phép tạo mới với mã đã tồn tại, kiểm tra real-time qua API.",
+        "Parent BenCang (benCangId) phải tồn tại trong hệ thống và có trangThaiHoatDong = HIEN_HANH — backend kiểm tra (INT-005), không cho phép tạo cầu cảng cho bến cảng không tồn tại hoặc đang TAM_NGUNG.",
+        "Mặc định trangThaiPheDuyet = CHO_PHE_DUYET khi tạo mới — cầu cảng phải được Leader phê duyệt trước khi đưa vào vận hành.",
+        "Tất cả các trường bắt buộc (maCau, tenCau, benCangId, chieuDai, chieuRong, loaiCau) phải được điền đầy đủ — validation client và server.",
+        "chieuDai và chieuRong phải là số thập phân dương — không chấp nhận giá trị âm hoặc 0."
+      ],
+      "acceptance_criteria": [
+        "Form tạo mới hiển thị đầy đủ các trường: maCau, tenCau, benCangId, chieuDai, chieuRong, loaiCau, ghiChu.",
+        "Trường maCau có validation độc nhất: nếu mã đã tồn tại, hệ thống hiển thị lỗi \"Mã cầu cảng đã tồn tại\" và không cho phép submit.",
+        "Trường benCangId là dropdown chỉ hiển thị các bến cảng có trạngThaiHoatDong = HIEN_HANH (backend filter).",
+        "Trường tenCau là bắt buộc — nếu bỏ trống, hệ thống hiển thị lỗi \"Trường này là bắt buộc\".",
+        "Trường benCangId là bắt buộc — nếu không chọn bến cảng, hệ thống hiển thị lỗi tương ứng.",
+        "Các trường chieuDai và chieuRong chấp nhận giá trị thập phân dương, có validation định dạng số.",
+        "Trường loaiCau là dropdown với các tùy chọn: DAI_TRO, BIT_NEO, LAN_THANH, DO_BIN_DAU_LOI, THUY_SAN.",
+        "Trường ghiChu là text area tùy chọn, không giới hạn ký tự tối thiểu.",
+        "Sau khi POST thành công, cầu cảng được tạo với trạng thái mặc định = CHO_PHE_DUYET.",
+        "Toast thông báo \"Tạo mới cầu cảng thành công, chờ phê duyệt\" hiển thị sau khi submit thành công.",
+        "Người dùng được redirect về danh sách F-078 sau khi tạo mới thành công.",
+        "Nếu POST trả về lỗi từ backend (ví dụ: parent BenCang không tồn tại hoặc không HIEN_HANH), hệ thống hiển thị thông báo lỗi từ phản hồi API."
+      ]
+    },
+    {
+      "id": "F-081",
+      "name": "Cập nhật Cầu cảng",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép quản lý viên duy trì và cập nhật thông tin cầu cảng khi có thay đổi về thông tin kỹ thuật hoặc tổ chức, đảm bảo dữ liệu luôn chính xác và mọi thay đổi đều phải được phê duyệt lại trước khi đưa vào vận hành thực tế.",
+      "business_rules": [
+        "maCau không thể thay đổi khi cập nhật — trường là readonly, không cho phép submit nếu cố tình thay đổi giá trị.",
+        "Parent BenCang (benCangId) phải tồn tại trong hệ thống và có trangThaiHoatDong = HIEN_HANH — backend kiểm tra (INT-005), không cho phép cập nhật cầu cảng để trỏ đến bến cảng không tồn tại hoặc đang TAM_NGUNG.",
+        "Sau khi cập nhật thành công, trạng thái trangThaiPheDuyet được đặt lại về CHO_PHE_DUYET — cầu cảng cần được phê duyệt lại trước khi tiếp tục vận hành.",
+        "Mỗi lần cập nhật tạo một bản ghi LichSuThayDoi (INT-003) ghi lại: tên field, giá trị cũ, giá trị mới, người thay đổi, thời gian thay đổi.",
+        "Tất cả các trường bắt buộc (tenCau, benCangId, chieuDai, chieuRong, loaiCau) phải được điền đầy đủ sau khi chỉnh sửa — validation client và server.",
+        "chieuDai và chieuRong phải là số thập phân dương — không chấp nhận giá trị âm hoặc 0."
+      ],
+      "acceptance_criteria": [
+        "Form cập nhật hiển thị đầy đủ các trường: maCau (readonly), tenCau, benCangId, chieuDai, chieuRong, loaiCau, ghiChu — tất cả được điền sẵn từ dữ liệu hiện tại của cầu cảng.",
+        "Trường maCau không thể chỉnh sửa (readonly/disabled), chỉ hiển thị giá trị hiện tại.",
+        "Trường benCangId là dropdown chỉ hiển thị các bến cảng có trạngThaiHoatDong = HIEN_HANH (backend filter).",
+        "Trường tenCau là bắt buộc — nếu bỏ trống sau khi chỉnh sửa, hệ thống hiển thị lỗi \"Trường này là bắt buộc\".",
+        "Trường benCangId là bắt buộc — nếu không chọn bến cảng, hệ thống hiển thị lỗi tương ứng.",
+        "Các trường chieuDai và chieuRong chỉ chấp nhận giá trị thập phân dương, có validation định dạng số.",
+        "Trường loaiCau là dropdown với các tùy chọn: DAI_TRO, BIT_NEO, LAN_THANH, DO_BIN_DAU_LOI, THUY_SAN.",
+        "Trường ghiChu là text area tùy chọn, có thể để trống.",
+        "Sau khi PUT thành công, bản ghi LichSuThayDoi được tạo ghi lại tất cả thay đổi.",
+        "Sau khi PUT thành công, trạng thái trangThaiPheDuyet được đặt lại về CHO_PHE_DUYET.",
+        "Toast thông báo \"Cập nhật cầu cảng thành công, chờ phê duyệt lại\" hiển thị sau khi submit thành công.",
+        "Người dùng được redirect về trang chi tiết F-079 của cầu cảng sau khi cập nhật thành công.",
+        "Nếu PUT trả về lỗi từ backend, thông báo lỗi chi tiết được hiển thị ngay tại trường tương ứng."
+      ]
+    },
+    {
+      "id": "F-082",
+      "name": "Phê duyệt Cầu cảng",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Đảm bảo quy trình phê duyệt cầu cảng mới hoặc đã được cập nhật được thực hiện đúng quy định, chỉ những cầu cảng được Leader hoặc Admin phê duyệt chính thức mới được đưa vào vận hành thực tế, tạo tính minh bạch và trách nhiệm giải trình.",
+      "business_rules": [
+        "Chỉ các role Leader (Linh dao) và Admin mới có quyền phê duyệt hoặc từ chối cầu cảng — các role khác không thấy nút hành động.",
+        "Chỉ cầu cảng có trạng thái trangThaiPheDuyet = CHO_PHE_DUYET mới được phép phê duyệt hoặc từ chối — cầu cảng đã DUOC_PHE_DUYET hoặc TU_CHOI không thể thay đổi trạng thái phê duyệt.",
+        "Khi phê duyệt (approve): trạng thái chuyển ngay thành DUOC_PHE_DUYET, bản ghi PheDuyetLog được tạo với ketQua = DUOC_PHE_DUYET — không cần nhập lý do.",
+        "Khi từ chối (reject): trạng thái chuyển ngay thành TU_CHOI, bản ghi PheDuyetLog được tạo với ketQua = TU_CHOI và lyDoTuChoi phải có độ dài ≥ 10 ký tự — hệ thống không cho phép từ chối nếu lý do quá ngắn.",
+        "Mọi thao tác phê duyệt/từ chối đều được ghi nhận vào LichSuThayDoi của cầu cảng (INT-003).",
+        "PheDuyetBy được lấy từ đăng nhập hiện tại của người dùng — không cho phép người khác phê duyệt thay."
+      ],
+      "acceptance_criteria": [
+        "Chỉ các role Leader (Linh dao) và Admin mới thấy nút \"Phê duyệt\" và \"Từ chối\" — user thường không thấy các nút này.",
+        "Danh sách cầu cảng đang chờ phê duyệt được lọc theo trạng thái trangThaiPheDuyet = CHO_PHE_DUYET.",
+        "Khi click \"Phê duyệt\", hộp thoại xác nhận xuất hiện hiển thị thông tin: maCau, tenCau, loại cầu cảng, chiều dài, chiều rộng, tên benCang.",
+        "Khi người dùng xác nhận trong hộp thoại phê duyệt, hệ thống gọi POST /:id/approve.",
+        "Sau khi phê duyệt thành công, trạng thái trangThaiPheDuyet chuyển từ CHO_PHE_DUYET sang DUOC_PHE_DUYET.",
+        "Một bản ghi PheDuyetLog được tạo tự động khi phê duyệt, ghi nhận: cauCangId, pheDuyetBy (leader UUID), pheDuyetAt (timestamp), ketQua (DUOC_PHE_DUYET).",
+        "Khi click \"Từ chối\", hộp thoại xác nhận xuất hiện kèm form nhập lý do từ chối (text area, bắt buộc ≥ 10 ký tự).",
+        "Nếu lý do từ chối < 10 ký tự, hệ thống hiển thị lỗi \"Lý do từ chối phải có ít nhất 10 ký tự\" và không cho phép submit.",
+        "Sau khi từ chối thành công, trạng thái trangThaiPheDuyet chuyển từ CHO_PHE_DUYET sang TU_CHOI.",
+        "Một bản ghi PheDuyetLog được tạo tự động khi từ chối, ghi nhận: cauCangId, pheDuyetBy (leader UUID), pheDuyetAt (timestamp), ketQua (TU_CHOI), lyDoTuChoi (≥ 10 ký tự).",
+        "Toast \"Phê duyệt thành công\" hiển thị sau khi approve thành công.",
+        "Toast \"Từ chối thành công\" hiển thị sau khi reject thành công.",
+        "Sau khi phê duyệt/từ chối, danh sách cầu cảng được làm mới để phản ánh trạng thái mới."
+      ]
+    },
+    {
+      "id": "F-083",
+      "name": "Danh sách Cảng cạn",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cung cấp giao diện danh sách Cảng cạn giúp người dùng và lãnh đạo có thể nhanh chóng tìm kiếm, lọc và quản lý tất cả cảng cạn trong hệ thống, đồng thời thực hiện các thao tác xem, sửa, xóa và phê duyệt một cách trực quan và hiệu quả.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Khi mở trang, hệ thống gọi GET /api/v1/cang-can với pageSize=20, sortBy=updatedAt, sortOrder=DESC, hiển thị danh sách 20 cảng cạn đầu tiên sắp xếp theo thời gian cập nhật giảm dần.",
+        "Người dùng nhập từ khóa tìm kiếm vào ô tìm kiếm (chứa maCangCan/tenCangCan/diaChi) và nhấn Enter hoặc bấm nút Tìm — hệ thống gọi API với tham số search tương ứng, hiển thị kết quả khớp (ít nhất 1 kết quả hoặc thông báo \"không tìm thấy\").",
+        "Người dùng chọn một giá trị trong bộ lọc \"Trạng thái\" (HIEN_HANH hoặc TAM_NGUNG) và bộ lọc \"Tỉnh/Thành\" — hệ thống gọi API với filterStatus và filterTinhThanh, bảng cập nhật kết quả phù hợp.",
+        "Bảng danh sách hiển thị chính xác các cột: maCangCan, tenCangCan, diaChi, tinhThanh, trạng thái (có badge màu), updatedAt — không thiếu cột nào và thứ tự đúng.",
+        "Nhấp vào bất kỳ dòng nào trong bảng điều hướng người dùng đến trang Chi tiết Cảng cạn (F-084) với đúng entityId.",
+        "Nút \"Sửa\" trên mỗi dòng (chỉ hiển thị cho vai trò có quyền update) mở trang Cập nhật Cảng cạn (F-086) với đúng entityId tương ứng.",
+        "Nút \"Xóa\" trên mỗi dòng (chỉ hiển thị cho Leadership/Admin) kích hoạt hộp thoại xác nhận F-099, sau khi xác nhận gọi DELETE và danh sách cập nhật.",
+        "Nút \"Phê duyệt\" chỉ hiển thị cho vai trò Leadership, mở trang Phê duyệt (F-087) với đúng entityId.",
+        "Phân trang hiển thị đúng số trang, cho phép chuyển trang bằng nút Next/Previous hoặc nhập số trang trực tiếp, cập nhật danh sách khi chuyển trang.",
+        "Tất cả các ô nhập liệu, nút và liên kết có thể tiếp cận được bằng phím Tab, phím Enter kích hoạt hành động mặc định (chọn dòng, submit tìm kiếm)."
+      ]
+    },
+    {
+      "id": "F-084",
+      "name": "Chi tiết Cảng cạn",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cung cấp trang chi tiết Cảng cạn cho phép người dùng xem toàn bộ thông tin một cảng cạn bao gồm các trường dữ liệu, trạng thái, tệp đính kèm và thực hiện các hành động phê duyệt từ nơi duy nhất, giúp tăng hiệu quả công việc và giảm số bước thao tác.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Khi mở trang, hệ thống gọi GET /api/v1/cang-can/:id, hiển thị tất cả các trường: maCangCan, tenCangCan, diaChi, tinhThanh, ghiChu, trangThaiHoatDong, trangThaiPheDuyet, orgUnitId, createdBy, updatedBy, createdAt, updatedAt, deletedAt.",
+        "Badge trạng thái hoạt động có màu đúng: HIEN_HANH (xanh lá), TAM_NGUNG (cam).",
+        "Badge trạng thái phê duyệt có màu đúng: CHO_PHE_DUYET (vàng), DUOC_PHE_DUYET (xanh đậm), TU_CHOI (đỏ).",
+        "Tệp đính kèm (nếu có) hiển thị danh sách với tên file, kích thước, loại file; mỗi mục có nút \"Tải xuống\" và \"In\". Chỉ hỗ trợ file PDF, DOCX, JPEG với kích thước tối đa 10MB mỗi file.",
+        "Breadcrumb hiển thị đường dẫn \"Quản lý Cảng cạn > Chi tiết [maCangCan]\", nút \"Quản lý Cảng cạn\" điều hướng quay lại danh sách (F-083).",
+        "Nút \"Phê duyệt\" hiển thị cho vai trò Leadership, khi bấm gọi POST /:id/approve → trạng thái chuyển sang DUOC_PHE_DUYET, hiển thị toast thành công.",
+        "Nút \"Từ chối\" hiển thị cho vai trò Leadership, khi bấm yêu cầu nhập lý do (≥10 ký tự) → gọi POST /:id/reject → trạng thái chuyển sang TU_CHOI, hiển thị toast thành công.",
+        "Nhấp nút \"Chỉnh sửa\" mở trang Cập nhật Cảng cạn (F-086) với đúng entityId.",
+        "Nhấp nút \"Lịch sử\" mở trang Lịch sử Cảng cạn (F-100) với đúng entityId.",
+        "Các trường đọc chỉ hiển thị, không cho phép chỉnh sửa trực tiếp trên trang chi tiết — phải qua trang Cập nhật (F-086)."
+      ]
+    },
+    {
+      "id": "F-085",
+      "name": "Tạo mới Cảng cạn",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng có thẩm quyền khai báo cảng cạn mới vào hệ thống quản lý tài sản, đảm bảo thông tin được kiểm tra tính hợp lệ trước khi lưu và luôn đi qua quy trình phê duyệt để duy trì toàn vẹn dữ liệu tài sản giao thông vận tải biển.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Khi mở form Tạo mới, tất cả các trường đều trống hoặc mặc định; trường maCangCan tập trung focus đầu tiên.",
+        "Trường maCangCan, tenCangCan, diaChi, tinhThanh là bắt buộc — nếu người dùng bỏ trống và nhấn Lưu, hệ thống hiển thị thông báo lỗi bên dưới trường tương ứng với nội dung \"Đây là trường bắt buộc\" và không gửi API request.",
+        "Người dùng nhập maCangCan đã tồn tại trong hệ thống — khi nhấn Lưu, hệ thống gọi API xác nhận duy nhất, nhận phản hồi trùng mã và hiển thị lỗi \"Mã cảng cạn đã tồn tại\" ngay tại trường maCangCan.",
+        "Khi tất cả trường bắt buộc hợp lệ và maCangCan chưa tồn tại, bấm nút Lưu gửi POST /api/v1/cang-can với payload đầy đủ; backend trả về 201 và hệ thống hiển thị toast \"Tạo mới thành công\".",
+        "Sau khi tạo thành công, hệ thống tự động chuyển hướng về trang Danh sách Cảng cạn (F-083) với bộ lọc được làm mới, cảng cạn mới hiển thị trên trang đầu tiên.",
+        "Nếu người dùng hủy thao tác (bấm Hủy hoặc nhấn Esc), form đóng lại và quay về trang trước đó mà không tạo bản ghi nào.",
+        "Người dùng không có quyền create không thấy nút \"Tạo mới\" trên trang Danh sách (F-083) — điều này được kiểm soát bởi RBAC ở cấp giao diện."
+      ]
+    },
+    {
+      "id": "F-086",
+      "name": "Cập nhật Cảng cạn",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng có thẩm quyền duy trì và cập nhật thông tin cảng cạn đã tồn tại, đảm bảo mọi thay đổi đều được ghi nhận lịch sử và phải trải qua quy trình phê duyệt lại nhằm bảo toàn tính toàn vẹn và trách nhiệm giải trình của dữ liệu tài sản.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Khi mở form Cập nhật, hệ thống gọi GET /api/v1/cang-can/:id và điền đầy đủ dữ liệu hiện tại vào form; trường maCangCan hiển thị ở chế độ readonly không thể chỉnh sửa.",
+        "Trường tenCangCan, diaChi là các trường bắt buộc — nếu người dùng xóa nội dung và nhấn Lưu, hệ thống hiển thị thông báo lỗi \"Đây là trường bắt buộc\" tại trường tương ứng.",
+        "Trường tinhThanh hiển thị dưới dạng dropdown danh sách các tỉnh/thành; giá trị mặc định là giá trị hiện tại của cảng cạn đang được chỉnh sửa.",
+        "Khi bấm \"Lưu\" với tất cả dữ liệu hợp lệ, hệ thống gọi PUT /api/v1/cang-can/:id với payload chứa các trường đã sửa; backend trả về 200, ghi nhận LichSuThayDoi record và đặt lại trangThaiPheDuyet=CHO_PHE_DUYET.",
+        "Sau khi cập nhật thành công, hệ thống hiển thị toast \"Cập nhật thành công, chờ phê duyệt lại\" và người dùng vẫn ở trên trang form để tiếp tục chỉnh sửa nếu cần.",
+        "Nếu người dùng bấm \"Hủy\" hoặc nhấn Esc, form đóng lại, quay về trang trước đó (F-083 hoặc F-084) mà không lưu bất kỳ thay đổi nào.",
+        "Nếu người dùng thay đổi một trường (ví dụ: tenCangCan) và sau đó hủy — hệ thống không gọi API PUT, LichSuThayDoi không có bản ghi mới.",
+        "Chỉ vai trò có quyền update mới thấy nút \"Sửa\" trên trang Danh sách (F-083) và trang Chi tiết (F-084)."
+      ]
+    },
+    {
+      "id": "F-087",
+      "name": "Phê duyệt Cảng cạn",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cung cấp cơ chế phê duyệt Cảng cạn cho Lãnh đạo, đảm bảo mọi cảng cạn mới tạo hoặc được cập nhật đều phải được xem xét và chấp thuận trước khi hoạt động chính thức trong hệ thống, đồng thời ghi nhận đầy đủ lý do phê duyệt/từ chối để phục vụ truy xuất trách nhiệm giải trình.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Chỉ người dùng có vai trò Leadership/LanhDaoCuc mới thấy tab \"Phê duyệt\" hoặc nút \"Phê duyệt\" trên danh sách — người dùng không có quyền không thấy các yếu tố này.",
+        "Trang Phê duyệt gọi GET /api/v1/cang-can?filterTrangThaiPheDuyet=CHO_PHE_DUYET, hiển thị danh sách tất cả cảng cạn đang chờ phê duyệt với cột: maCangCan, tenCangCan, diaChi, tinhThanh, createdAt, createdBy.",
+        "Khi bấm \"Phê duyệt\" trên một bản ghi, hệ thống hiển thị hộp thoại xác nhận với tiêu đề \"Xác nhận phê duyệt\" và nội dung \"Bạn có chắc chắn muốn phê duyệt cảng cạn [maCangCan]?\"; bấm \"Xác nhận\" gọi POST /:id/approve.",
+        "Sau khi phê duyệt thành công (POST /:id/approve trả về 200), trạng thái của cảng cạn chuyển thành DUOC_PHE_DUYET, PheDuyetLog được ghi nhận với approvedBy=người dùng hiện tại, approvedAt=thời điểm hiện tại, và toast \"Phê duyệt thành công\" hiển thị.",
+        "Khi bấm \"Từ chối\" trên một bản ghi, hệ thống hiển thị form nhập lý do với trường bắt buộc có validation tối thiểu 10 ký tự; nếu nhập <10 ký tự và bấm \"Xác nhận\", hệ thống hiển thị lỗi \"Lý do từ chối phải có ít nhất 10 ký tự\".",
+        "Sau khi từ chối thành công (POST /:id/reject trả về 200), trạng thái của cảng cạn chuyển thành TU_CHOI, PheDuyetLog được ghi nhận với approvedBy=người dùng hiện tại, approvedAt=thời điểm hiện tại, lyDo=nội dung đã nhập, và toast \"Từ chối thành công\" hiển thị.",
+        "Một cảng cạn đã có trạng thái DUOC_PHE_DUYET hoặc TU_CHOI không xuất hiện trong danh sách chờ phê duyệt (không thể phê duyệt lại cùng một yêu cầu).",
+        "Phê duyệt/Từ chối là một hành động đơn định (atomic) — không thể phê duyệt rồi từ chối cùng một yêu cầu trong cùng một phiên."
+      ]
+    },
+    {
+      "id": "F-088",
+      "name": "Danh sách Vùng nước",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng quản lý, theo dõi và rà soát toàn bộ danh sách vùng nước đang tồn tại trong hệ thống quản lý tài sản cảng biển, hỗ trợ ra quyết định nhanh chóng thông qua bộ lọc, tìm kiếm và phân trang hiệu quả.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Khi mở trang, hệ thống gọi `GET /api/v1/vung-nuoc?page=0&size=20&sortBy=updatedAt&sortDir=DESC` và hiển thị danh sách vùng nước phân trang đúng 20 mục.",
+        "Tìm kiếm nhập vào ô \"Tìm kiếm\" với từ khóa chứa trong `maVungNuoc` hoặc `tenVungNuoc` trả về danh sách kết quả phù hợp, ví dụ nhập \"VN-001\" hiển thị vùng nước có mã \"VN-001\".",
+        "Lọc theo trạng thái hoạt động chọn \"HIEN_HANH\" chỉ hiển thị các vùng nước có `trangThaiHoatDong = HIEN_HANH`; chọn \"TAM_NGUNG\" chỉ hiển thị `TAM_NGUNG`; chọn \"Tất cả\" hiển thị toàn bộ.",
+        "Lọc theo cảng mẹ (`cangBienId`) bằng cách chọn một cảng từ dropdown, API được gọi với tham số `?cangBienId={id}` và chỉ hiển thị các vùng nước thuộc cảng được chọn (INT-004).",
+        "Sắp xếp theoUpdatedAt giảm dần: mục được cập nhật mới nhất hiển thị đầu tiên, các mục có cùng updatedAt được sắp xếp theo thứ tự không xác định.",
+        "Click nút \"Xem chi tiết\" (hoặc tên vùng nước) chuyển người dùng đến trang Chi tiết Vùng nước với đúng ID được chọn.",
+        "Click nút \"Chỉnh sửa\" chuyển người dùng đến trang Tạo/Cập nhật Vùng nước với dữ liệu pre-filled của vùng nước được chọn.",
+        "Click nút \"Xóa\" hiển thị hộp thoại xác nhận có nút \"Hủy\" và \"Xác nhận xóa\"; sau khi xác nhận, gọi `DELETE /api/v1/vung-nuoc/{id}` và danh sách tự động refresh.",
+        "Click nút \"Phê duyệt\" (chỉ hiển thị cho người dùng có quyền approve và vùng nước có `trangThaiPheDuyet = CHO_PHE_DUYET`) chuyển người dùng đến trang Phê duyệt Vùng nước với đúng ID.",
+        "Click nút \"Lịch sử\" chuyển người dùng đến trang Lịch sử Vùng nước với đúng ID được chọn.",
+        "Phân trang hiển thị đúng tổng số trang dựa trên tổng số kết quả và kích thước trang (20 hoặc 100), click chuyển trang reload dữ liệu đúng trang được chọn.",
+        "Giao diện hỗ trợ điều hướng bằng bàn phím: Tab di chuyển giữa các ô input, dropdown và nút; Enter kích hoạt hành động của nút được focus."
+      ]
+    },
+    {
+      "id": "F-089",
+      "name": "Chi tiết Vùng nước",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng xem toàn bộ thông tin chi tiết của một vùng nước cụ thể, bao gồm thông tin cảng mẹ, diện tích, độ sâu, trạng thái hoạt động và phê duyệt, phục vụ cho việc rà soát, đánh giá và ra quyết định phê duyệt hoặc từ chối vùng nước.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Khi mở trang Chi tiết Vùng nước từ danh sách (click tên hoặc nút \"Xem chi tiết\"), hệ thống gọi `GET /api/v1/vung-nuoc/{id}` và hiển thị đúng toàn bộ thông tin của vùng nước được chọn.",
+        "Breadcrumb hiển thị \"Danh sách Vùng nước > Chi tiết {tenVungNuoc}\", click \"Danh sách Vùng nước\" quay lại trang danh sách, click tên cảng mẹ (cangBienId) chuyển đến trang Chi tiết Cảng biển tương ứng.",
+        "Các trường số (dienTich, doSauMax, doSauTrungBinh) hiển thị định dạng số thập phân với đúng số chữ số thập phân theo precision/scale của entity.",
+        "Badge trạng thái hoạt động: màu xanh lá cho HIEN_HANH, màu đỏ cho TAM_NGUNG; Badge trạng thái phê duyệt: màu vàng cho CHỜ_PHÊ_DUYỆT, màu xanh dương cho ĐƯỢC_PHÊ_DUYỆT, màu đỏ cho TỪ_CHỐI.",
+        "Nếu có danh sách attachment, hệ thống hiển thị tên tệp, định dạng (PDF/DOCX/JPEG), kích thước (MB), với nút \"Tải xuống\" và \"In\" cho từng tệp; các tệp vượt quá 10MB không được phép hiển thị.",
+        "Khi vùng nước có `trangThaiPheDuyet = CHO_PHE_DUYET` và người dùng có quyền phê duyệt, hiển thị nút \"Phê duyệt\" và \"Từ chối\" — click \"Phê duyệt\" chuyển đến trang Phê duyệt với đúng ID, click \"Từ chối\" cũng chuyển đến trang Phê duyệt với đúng ID.",
+        "Các trường hệ thống (createdBy, updatedBy, createdAt, updatedAt) hiển thị dưới dạng chuỗi định dạng thời gian có giờ: phút: giây, ví dụ \"2026-07-01 10:30:45\"."
+      ]
+    },
+    {
+      "id": "F-090",
+      "name": "Tạo mới Vùng nước",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng khai báo và đăng ký một vùng nước mới vào hệ thống quản lý tài sản cảng biển, với các ràng buộc về tính duy nhất của mã, các trường số hợp lệ, và cảng mẹ đang hoạt động, đảm bảo dữ liệu đầu vào luôn chất lượng trước khi đi qua quy trình phê duyệt.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Khi mở trang Tạo mới, form hiển thị toàn bộ các trường: maVungNuoc (input text, unique check, required, length≤50), tenVungNuoc (input text, required, length≤255), loaiVungNuoc (input text, optional, length≤100), cangBienId (dropdown, required), dienTich (input number, optional, BigDecimal precision 15 scale 2), doSauMax (input number, optional, BigDecimal precision 10 scale 2), doSauTrungBinh (input number, optional, BigDecimal precision 10 scale 2), trangThaiHoatDong (input text, optional).",
+        "Dropdown cangBienId chỉ hiển thị các cảng biển có `trangThaiHoatDong = HIEN_HANH`, API gọi `GET /api/v1/cang-bien?trangThaiHoatDong=HIEN_HANH`.",
+        "Khi người dùng nhập maVungNuoc và chuyển ra khỏi ô input (blur), hệ thống gọi API kiểm tra tính duy nhất; nếu mã đã tồn tại, hiển thị thông báo lỗi \"Mã vùng nước đã tồn tại\" bên dưới ô input.",
+        "Các trường số (dienTich, doSauMax, doSauTrungBinh) phải là giá trị số hợp lệ; nếu không phải số hoặc vượt quá precision/scale quy định, hệ thống hiển thị lỗi và không cho phép submit form.",
+        "cangBienId phải được chọn từ dropdown danh sách cảng biển; không cho phép submit nếu chưa chọn cảng mẹ.",
+        "Sau khi click \"Tạo mới\" và form hợp lệ, hệ thống gọi `POST /api/v1/vung-nuoc`; sau khi tạo thành công, hiển thị toast \"Tạo mới vùng nước thành công — chờ phê duyệt\" và redirect về trang Danh sách Vùng nước (F-088).",
+        "Nếu tạo thất bại (ví dụ maVungNuoc đã tồn tại, hoặc cangBienId không hợp lệ), hệ thống hiển thị toast thông báo lỗi cụ thể và giữ lại dữ liệu đã nhập trong form để người dùng có thể sửa.",
+        "Vùng nước mới được tạo có `trangThaiPheDuyet = CHỜ_PHÊ_DUYỆT` theo mặc định (trangThaiHoatDong do người dùng chọn)."
+      ]
+    },
+    {
+      "id": "F-091",
+      "name": "Cập nhật Vùng nước",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng cập nhật thông tin của một vùng nước đã tồn tại (tên, loại, diện tích, độ sâu, hoặc cảng mẹ), với quy trình phê duyệt lại tự động đảm bảo mọi thay đổi đều được kiểm tra trước khi có hiệu lực chính thức.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Khi mở trang, form được pre-filled với toàn bộ dữ liệu của vùng nước từ API `GET /api/v1/vung-nuoc/{id}`; trường maVungNuoc hiển thị dưới dạng readonly (disabled input).",
+        "Dropdown cangBienId chỉ hiển thị các cảng biển có `trangThaiHoatDong = HIEN_HANH`, giá trị hiện tại của cangBienId được pre-selected.",
+        "Client-side validation: khi thay đổi maVungNuoc (nếu cho phép) và mất focus, hệ thống gọi API kiểm tra tính duy nhất; nếu mã đã tồn tại ở vùng nước khác, hiển thị lỗi \"Mã vùng nước đã tồn tại\".",
+        "Client-side validation: các trường số (dienTich, doSauMax, doSauTrungBinh) không phải giá trị hợp lệ hiển thị lỗi tương ứng và không cho phép submit.",
+        "Sau khi click \"Cập nhật\" và dữ liệu hợp lệ, hệ thống gọi `PUT /api/v1/vung-nuoc/{id}` — sau khi thành công, toast \"Cập nhật thành công — chờ phê duyệt lại\" được hiển thị.",
+        "Sau khi cập nhật, `trangThaiPheDuyet` được reset về `CHỜ_PHÊ_DUYỆT` và một bản ghi LichSuThayDoi được tự động tạo (INT-003) ghi nhận các trường thay đổi.",
+        "Sau khi toast hiển thị, hệ thống tự động redirect về trang Danh sách Vùng nước (F-088).",
+        "Nếu cập nhật thất bại (lỗi server, duplicate mã, v.v.), toast lỗi hiển thị và form giữ lại toàn bộ dữ liệu đã nhập."
+      ]
+    },
+    {
+      "id": "F-092",
+      "name": "Phê duyệt Vùng nước",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng có thẩm quyền phê duyệt rà soát và quyết định chính thức về việc chấp thuận hoặc từ chối một vùng nước mới được đăng ký, đảm bảo mọi thay đổi hoặc thêm mới đều trải qua quy trình kiểm tra trước khi đi vào hoạt động chính thức.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Trang hiển thị danh sách vùng nước có `trangThaiPheDuyet = CHỜ_PHÊ_DUYỆT`, các vùng nước đã được phê duyệt (ĐƯỢC_PHÊ_DUYỆT) hoặc bị từ chối (TỪ_CHỐI) không xuất hiện trong danh sách này.",
+        "Người dùng không có quyền phê duyệt (`@auth.check(authentication, 'vungnuoc:approve')`) không nhìn thấy tab hoặc nút \"Phê duyệt\" — giao diện chặn quyền truy cập trang Phê duyệt.",
+        "Khi click nút \"Phê duyệt\", hộp thoại xác nhận xuất hiện với tiêu đề \"Xác nhận phê duyệt {tenVungNuoc}\", mô tả \"Bạn có chắc chắn muốn phê duyệt vùng nước này?\", nút \"Hủy\" và \"Xác nhận\".",
+        "Sau khi click \"Xác nhận\" trong hộp thoại phê duyệt, hệ thống gọi `POST /api/v1/vung-nuoc/{id}/approve` — trạng thái chuyển thành `ĐƯỢC_PHÊ_DUYỆT`, bản ghi PheDuyetLog được tạo, toast \"Đã phê duyệt thành công\" xuất hiện, vùng nước biến khỏi danh sách chờ duyệt.",
+        "Khi click nút \"Từ chối\", form nhập lý do từ chối xuất hiện — trường lý do yêu cầu tối thiểu 10 ký tự, nếu nhập <10 ký tự hệ thống hiển thị lỗi \"Lý do từ chối phải có ít nhất 10 ký tự\" và không cho phép submit.",
+        "Sau khi submit lý do từ chối hợp lệ, hệ thống gọi `POST /api/v1/vung-nuoc/{id}/reject` — trạng thái chuyển thành `TỪ_CHỐI`, bản ghi PheDuyetLog được tạo, toast \"Đã từ chối\" xuất hiện.",
+        "Nút \"Phê duyệt\" và \"Từ chối\" chỉ hiển thị cho vùng nước có trạng thái CHỜ_PHÊ_DUYỆT; các vùng nước đã ĐƯỢC_PHÊ_DUYỆT hoặc TỪ_CHỐI không hiển thị các nút này.",
+        "Click \"Hủy\" trong hộp thoại xác nhận đóng hộp thoại mà không thực hiện bất kỳ hành động nào."
+      ]
+    },
+    {
+      "id": "F-093",
+      "name": "Xóa Cảng biển",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép Leadership loại bỏ cảng biển không còn hoạt động khỏi hệ thống mà vẫn giữ lại dữ liệu để phục vụ kiểm toán và truy vết. Soft delete đảm bảo dữ liệu lịch sử không bị mất, đồng thời ngăn xóa nhầm bằng cơ chế kiểm tra con (child guard) và xác nhận có chủ đích. Nếu cảng vẫn có dữ liệu con (BenCang/VungNuoc), xóa mềm bị chặn để bảo toàn tính toàn vẹn tham chiếu.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Chỉ Admin và Lãnh đạo mới thấy và thực hiện được hành động \"Xóa\" — các role khác không thấy nút xóa.",
+        "Trước khi xóa, hệ thống kiểm tra số lượng bản ghi con (BenCang/VungNuoc) — nếu > 0, hiển thị toast lỗi 409 \"Cảng này có X BenCang và Y VungNuoc liên kết, không thể xóa\".",
+        "Nếu không có bản ghi con, hiển thị confirmation dialog yêu cầu xác nhận (nhập \"XÓA\" hoặc tên cảng).",
+        "Xác nhận đúng → gọi DELETE /api/v1/cang-bien/:id → server set deletedAt = now() (soft delete) → toast \"Đã xóa thành công\" → điều hướng về danh sách (F-068).",
+        "Xác nhận sai hoặc đóng dialog → không thực hiện xóa, không có thay đổi nào.",
+        "Soft delete pattern: bản ghi vẫn tồn tại trong DB với deletedAt != null, không xuất hiện trong danh sách mặc định."
+      ]
+    },
+    {
+      "id": "F-094",
+      "name": "Lịch sử Cảng biển",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cung cấp khả năng truy vết (audit trail) toàn bộ lịch sử thay đổi của một cảng biển, giúp người dùng và người quản lý hiểu rõ ai đã thay đổi gì và khi nào. Điều này đặc biệt quan trọng cho các yêu cầu kiểm toán, giải quyết tranh chấp dữ liệu và đảm bảo tính minh bạch trong quy trình quản lý tài sản cảng biển.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Bảng lịch sử hiển thị tất cả các bản ghi LichSuThayDoi của một cảng biển cụ thể với 5 cột: Field, Old Value, New Value, Changed By, Changed At.",
+        "Các bản ghi được sắp xếp theo changedAt giảm dần (mới nhất hiển thị đầu tiên).",
+        "Mỗi bản ghi có indicator \"TẠO_MỚI\" hoặc \"CẬP_NHẬT\" phân biệt loại thao tác.",
+        "Lọc theo field name — hiển thị chỉ các bản ghi có field khớp với từ khóa lọc.",
+        "Trường \"Changed By\" hiển thị tên người dùng (từ userId), không chỉ hiển thị UUID.",
+        "Nếu không có bản ghi lịch sử, hiển thị thông báo \"Chưa có thay đổi\"."
+      ]
+    },
+    {
+      "id": "F-095",
+      "name": "Xóa Bến cảng",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng có thẩm quyền xóa Bến cảng khỏi danh sách hoạt động khi không còn nhu cầu sử dụng, đồng thời đảm bảo toàn vẹn dữ liệu bằng cách ngăn xóa mềm nếu còn con cháu (CauCang, VungNuoc) liên kết, sử dụng cơ chế soft-delete để giữ lại dữ liệu lịch sử cho mục đích kiểm toán và追溯 nguồn gốc, giới hạn quyền xóa cho các Role có thẩm quyền cao.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Nút \"Xóa\" chỉ hiển thị cho các Role có quyền `bencang:delete` (QuanTriCangBien, QuanLyDonVi — đơn vị mình).",
+        "Khi click nút \"Xóa\", hệ thống mở hộp thoại xác nhận với thông báo \"Bạn có chắc chắn muốn xóa Bến cảng [maBen]?\" và cảnh báo \"Dữ liệu sẽ được ẩn khỏi danh sách hoạt động nhưng vẫn được lưu trong lịch sử\".",
+        "Trước khi xóa, hệ thống tự động pre-check số lượng con cháu (CauCang và VungNuoc) có deletedAt = NULL liên kết với BenCang.",
+        "Nếu tồn tại con cháu (CauCang hoặc VungNuoc): hệ thống trả về HTTP 409 Conflict và hiển thị toast \"Không thể xóa Bến cảng vì còn [n] Cầu cảng và [m] vùng nước liên kết\" — không thực hiện xóa.",
+        "Nếu không có con cháu: người dùng xác nhận trong hộp thoại → hệ thống gọi `DELETE /api/v1/ben-cang/:id` → backend đặt deletedAt = datetime → toast \"Đã xóa Bến cảng [maBen]\" → danh sách/chi tiết được refresh.",
+        "Bản ghi sau khi xóa mềm (deletedAt != NULL) không còn xuất hiện trong danh sách hoạt động (F-073) hoặc chi tiết (F-074).",
+        "Toast thông báo lỗi \"Không thể thực hiện thao tác: [error message]\" được hiển thị khi API trả về HTTP 403 Forbidden, 404 Not Found, hoặc 500 Server Error.",
+        "Nút \"Hủy\" trong hộp thoại xác nhận đóng hộp thoại mà không thực hiện thao tác xóa.",
+        "Người dùng không có quyền `bencang:delete` không nhìn thấy nút \"Xóa\" trên danh sách hoặc chi tiết."
+      ]
+    },
+    {
+      "id": "F-096",
+      "name": "Lịch sử Bến cảng",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Tạo lập khả năng追溯 toàn bộ lịch sử thay đổi và phê duyệt của từng Bến cảng, phục vụ mục đích kiểm toán, phân tích nguyên nhân sự cố, và xác minh các thay đổi được thực hiện bởi ai, khi nào, và nội dung thay đổi — đảm bảo tính minh bạch và trách nhiệm giải trình trong quản lý tài sản cảng biển.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Màn hình hiển thị danh sách lịch sử thay đổi của BenCang khi gọi `GET /api/v1/ben-cang/:id/history` thành công.",
+        "Bảng hiển thị các cột: Field (hoặc Event Type cho phê duyệt/từ chối), Old Value, New Value (hoặc Action/Lý do cho phê duyệt/từ chối), Changed By (tên người dùng), Changed At (định dạng dd/MM/yyyy HH:mm:ss).",
+        "Dữ liệu được sắp xếp giảm dần theo changedAt (sự kiện mới nhất trên cùng).",
+        "Hỗ trợ phân trang với tùy chọn 20 hoặc 50 mục mỗi trang, mặc định 20 mục.",
+        "Dropdown filter loại sự kiện hiển thị các tùy chọn: \"Tất cả\", \"Tạo mới\", \"Cập nhật\", \"Phê duyệt\", \"Từ chối\"; khi chọn, bảng được lọc tương ứng.",
+        "Dropdown filter theo trường (Field filter) hiển thị danh sách các trường từng bị thay đổi; khi chọn một trường, bảng chỉ hiển thị các bản ghi liên quan đến trường đó.",
+        "Đối với sự kiện \"Tạo mới\", bảng hiển thị event_type=TaoMoi với các trường được populate bằng giá trị ban đầu (new value), oldValue = null.",
+        "Đối với sự kiện \"Cập nhật\", bảng hiển thị event_type=CapNhat với field, oldValue, newValue tương ứng của từng thay đổi.",
+        "Đối với sự kiện \"Phê duyệt\", bảng hiển thị event_type=PheDuyet với action=APPROVE, pheDuyetBy, pheDuyetAt.",
+        "Đối với sự kiện \"Từ chối\", bảng hiển thị event_type=TuChoi với action=REJECT, pheDuyetBy, pheDuyetAt, lyDo.",
+        "Nút \"Quay lại\" trở về danh sách (F-073) hoặc chi tiết (F-074) tùy điểm xuất phát.",
+        "Toast thông báo lỗi \"Không thể tải lịch sử: [error message]\" được hiển thị khi API trả về HTTP 4xx/5xx."
+      ]
+    },
+    {
+      "id": "F-097",
+      "name": "Xóa Cầu cảng",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép Leader hoặc Admin loại bỏ các cầu cảng không còn hoạt động hoặc sai lệch thông tin ra khỏi danh sách vận hành mà vẫn giữ nguyên dữ liệu gốc để phục vụ kiểm toán và phân tích lịch sử, tuân thủ nguyên tắc xóa mềm thay vì xóa vật lý.",
+      "business_rules": [
+        "Chỉ các role Leader (Linh dao) và Admin mới có quyền xóa cầu cảng — các role khác không thấy nút hành động xóa.",
+        "Xóa cầu cảng là xóa mềm (soft-delete): set deletedAt = current timestamp — bản ghi không bị xóa vật lý khỏi database, chỉ được ẩn khỏi danh sách hoạt động.",
+        "Không cần kiểm tra tồn tại child/entities con trước khi xóa vì CauCang là node lá (leaf node) — không có entity nào tham chiếu FK đến CauCang.",
+        "Cầu cảng bị xóa mềm vẫn giữ nguyên toàn bộ dữ liệu và có thể được phát hiện qua API history hoặc database query trực tiếp.",
+        "Mọi thao tác xóa được ghi nhận vào LichSuThayDoi của cầu cảng (INT-003) để phục vụ kiểm toán.",
+        "Nếu cầu cảng đã có deletedAt != null (đã bị xóa trước đó), thao tác xóa thêm sẽ trả về lỗi hoặc bỏ qua tùy theo nghiệp vụ."
+      ],
+      "acceptance_criteria": [
+        "Chỉ các role Leader (Linh dao) và Admin mới thấy nút \"Xóa\" trên danh sách cầu cảng — user thường không thấy nút này.",
+        "Click \"Xóa\" mở hộp thoại xác nhận (confirmation dialog) hiển thị thông tin cầu cảng: maCau, tenCau, loại cầu cảng, trạng thái hiện tại.",
+        "Hộp thoại xác nhận có cảnh báo: \"Hành động này sẽ xóa cầu cảng khỏi danh sách hoạt động, không thể hoàn tác.\"",
+        "Nút \"Hủy\" trong dialog đóng hộp thoại mà không thực hiện thao tác xóa.",
+        "Nút \"Xóa\" trong dialog xác nhận và gọi DELETE /api/v1/cau-cang/:id.",
+        "Sau khi DELETE thành công, trường deletedAt của CauCang được set thành timestamp hiện tại (xóa mềm).",
+        "Cầu cảng bị xóa mềm biến mất khỏi danh sách F-078 và không còn hiển thị khi tìm kiếm bình thường.",
+        "Toast \"Xóa cầu cảng thành công\" hiển thị sau khi xóa thành công.",
+        "Danh sách F-078 được làm mới sau khi xóa để phản ánh thay đổi.",
+        "Không có kiểm tra child/entities con trước khi xóa (CauCang là node lá) — khác với BenCang.",
+        "Nếu DELETE trả về lỗi (ví dụ: bản ghi đã bị xóa hoặc không tồn tại), toast lỗi được hiển thị.",
+        "Cầu cảng bị xóa vẫn tồn tại trong cơ sở dữ liệu và có thể được kiểm tra qua API history."
+      ]
+    },
+    {
+      "id": "F-098",
+      "name": "Lịch sử Cầu cảng",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cung cấp tính năng kiểm toán (audit trail) cho mọi thay đổi đối với cầu cảng, cho phép quản lý viên và lãnh đạo xem lại ai đã thay đổi thông tin gì, khi nào, và từ giá trị nào sang giá trị nào — đảm bảo tính minh bạch, trách nhiệm giải trình và khả năng truy vết lỗi dữ liệu.",
+      "business_rules": [
+        "Mọi thay đổi đối với cầu cảng (tạo mới, cập nhật, phê duyệt, từ chối, xóa mềm) đều tạo một bản ghi LichSuThayDoi — không có thay đổi nào bị bỏ qua.",
+        "Các bản ghi được sắp xếp theo changedAt DESC — thay đổi mới nhất luôn hiển thị đầu tiên trong bảng.",
+        "Trường fieldChanged được ánh xạ sang tên tiếng Việt để hiển thị cho người dùng (ví dụ: \"chieuDai\" → \"Chiều dài\", \"trangThaiPheDuyet\" → \"Trạng thái phê duyệt\").",
+        "Trường changedBy được hiển thị dưới dạng tên người dùng (hoTen) — không chỉ hiển thị UUID.",
+        "ActionType phân biệt rõ ràng các loại hành động: TAO_MOI (lần tạo đầu tiên), CAP_NHAT (cập nhật thông tin), PHE_DUYET (phê duyệt), TU_CHOI (từ chối), XOA_MEM (xóa mềm).",
+        "PheDuyetLog cũng được tích hợp vào cùng bảng lịch sử với LichSuThayDoi để người dùng có cái nhìn toàn diện về toàn bộ biến động của cầu cảng.",
+        "Dữ liệu lịch sử là read-only — không cho phép người dùng chỉnh sửa, xóa hoặc hoàn tác từ giao diện này."
+      ],
+      "acceptance_criteria": [
+        "Bảng lịch sử hiển thị tất cả các bản ghi LichSuThayDoi của cầu cảng, sắp xếp theo changedAt giảm dần (mới nhất lên đầu).",
+        "Mỗi hàng hiển thị đúng các cột: fieldChanged, oldValue, newValue, changedBy (tên người dùng), changedAt (ngày/giờ), actionType.",
+        "Cột fieldChanged hiển thị tên trường tiếng Việt dễ hiểu (ví dụ: \"Tên cầu cảng\", \"Chiều dài\", \"Loại cầu cảng\").",
+        "Trường changedBy hiển thị tên người dùng thực hiện thay đổi (không chỉ UUID).",
+        "Trường changedAt hiển thị ngày và giờ theo định dạng dễ đọc (ví dụ: dd/MM/yyyy HH:mm).",
+        "ActionType được hiển thị dưới dạng badge: \"Tạo mới\" (màu xanh) và \"Cập nhật\" (màu vàng).",
+        "Dropdown filter cho phép chọn lọc theo tên trường — chọn \"Tất cả\" hiển thị mọi thay đổi.",
+        "Khi chọn một giá trị lọc từ dropdown, bảng làm mới và chỉ hiển thị các bản ghi tương ứng.",
+        "Các bản ghi PheDuyetLog (phê duyệt/từ chối) cũng được hiển thị trong bảng với actionType tương ứng.",
+        "Giao diện read-only — không cho phép chỉnh sửa hoặc xóa bản ghi lịch sử.",
+        "Nếu không có bản ghi lịch sử nào, hiển thị thông báo \"Không có lịch sử thay đổi\".",
+        "Link \"Lịch sử\" từ danh sách F-078 mở trang lịch sử cho đúng cầu cảng được chọn."
+      ]
+    },
+    {
+      "id": "F-099",
+      "name": "Xóa Cảng cạn",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng có thẩm quyền loại bỏ cảng cạn khỏi danh sách hoạt động thông qua cơ chế xóa mềm, đảm bảo dữ liệu vẫn được lưu trữ để phục vụ truy xuất lịch sử nhưng không còn xuất hiện trong các giao diện hoạt động chính, đồng thời yêu cầu xác nhận bằng mã để ngăn chặn xóa nhầm.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Chỉ người dùng có vai trò Leadership (LanhDaoCuc) hoặc Admin (QuanTriHeThong) mới thấy nút \"Xóa\" trên trang Danh sách (F-083) và trang Chi tiết (F-084).",
+        "Khi bấm \"Xóa\" trên một dòng cảng cạn, hệ thống hiển thị hộp thoại xác nhận với nội dung: \"Bạn có chắc chắn muốn xóa cảng cạn [maCangCan] — [tenCangCan]? Hành động này không thể hoàn tác.\"",
+        "Hộp thoại xác nhận yêu cầu người dùng nhập lại chính xác mã cảng cạn (maCangCan) — nút \"Xác nhận xóa\" chỉ được kích hoạt khi giá trị nhập vào khớp với maCangCan.",
+        "Khi người dùng nhập đúng maCangCan và bấm \"Xác nhận xóa\", hệ thống gọi DELETE /api/v1/cang-can/:id; backend đặt deletedAt=now() và trả về 200.",
+        "Sau khi xóa mềm thành công, toast \"Xóa thành công\" hiển thị, cảng cạn biến khỏi danh sách hiện tại, và danh sách được tự động làm mới.",
+        "Nếu người dùng bấm \"Hủy\" hoặc nhấn Esc, hộp thoại đóng lại — không có thay đổi nào được thực hiện trên dữ liệu.",
+        "Nếu maCangCan nhập vào không khớp, nút \"Xác nhận xóa\" vẫn bị vô hiệu hóa và không có API call nào được thực hiện.",
+        "Sau khi xóa mềm, cảng cạn không còn xuất hiện trong kết quả tìm kiếm mặc định (deletedAt != null được backend lọc ra)."
+      ]
+    },
+    {
+      "id": "F-100",
+      "name": "Lịch sử Cảng cạn",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cung cấp khả năng truy xuất toàn bộ lịch sử thay đổi của một cảng cạn giúp người dùng và lãnh đạo giám sát, kiểm tra và giải trình mọi thay đổi dữ liệu, đảm bảo tính minh bạch và trách nhiệm giải trình trong quản lý tài sản giao thông vận tải biển.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Khi mở trang Lịch sử, hệ thống gọi GET /api/v1/cang-can/:id/history, trả về danh sách LichSuThayDoi record của cảng cạn được chỉ định, sắp xếp theo changedAt DESC.",
+        "Bảng hiển thị chính xác các cột: actionType (badge \"Tạo mới\" hoặc \"Cập nhật\"), field, oldValue, newValue, changedBy (tên người dùng), changedAt (định dạng ngày/giờ) — không thiếu cột nào.",
+        "Bản ghi đầu tiên trong danh sách luôn là bản ghi \"Tạo mới\" (actionType=CREATE) khi cảng cạn được tạo lần đầu, hiển thị badge màu xanh.",
+        "Các bản ghi sau đó là các bản ghi \"Cập nhật\" (actionType=UPDATE) khi cảng cạn được chỉnh sửa, hiển thị badge màu vàng.",
+        "Người dùng chọn một giá trị trong bộ lọc \"Trường\" (Field filter dropdown) — hệ thống gọi API với filterField tương ứng, chỉ hiển thị các bản ghi thay đổi trường được chọn.",
+        "Nhấp nút \"Quay lại\" hoặc breadcrumb \"Chi tiết\" điều hướng người dùng quay về trang Chi tiết Cảng cạn (F-084) với đúng entityId.",
+        "Phân trang hiển thị đúng số trang, cho phép chuyển trang — mặc định 20 bản ghi mỗi trang.",
+        "Cột changedBy hiển thị tên người dùng (không phải UUID) — hệ thống resolve UUID sang tên người dùng từ dịch vụ người dùng.",
+        "oldValue và newValue hiển thị giá trị ở dạng chuỗi dễ đọc — nếu giá trị tương đương null/empty, hiển thị \"—\".",
+        "Người dùng không có quyền read không thể truy cập trang Lịch sử — điều này được kiểm soát bởi RBAC ở cấp giao diện."
+      ]
+    },
+    {
+      "id": "F-101",
+      "name": "Xóa Vùng nước",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng có thẩm quyền loại bỏ các vùng nước không còn phù hợp hoặc đã lỗi thời khỏi danh sách hoạt động, đảm bảo dữ liệu luôn sạch và chính xác mà vẫn giữ lại lịch sử truy xuất thông qua cơ chế soft-delete.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Nút \"Xóa\" chỉ hiển thị cho người dùng có quyền xóa (`@auth.check(authentication, 'vungnuoc:delete')`) — tức LeDuan hoặc QuanTriCangBien.",
+        "Khi click nút \"Xóa\", hộp thoại xác nhận xuất hiện với tiêu đề \"Xác nhận xóa vùng nước {tenVungNuoc}\" và nút \"Hủy\" + \"Xác nhận xóa\".",
+        "Click \"Hủy\" trong hộp thoại đóng hộp thoại mà không thực hiện bất kỳ hành động nào.",
+        "Sau khi click \"Xác nhận xóa\", hệ thống gọi `DELETE /api/v1/vung-nuoc/{id}` — sau khi thành công, bản ghi được set `deletedAt` = current timestamp (soft-delete).",
+        "Hệ thống không kiểm tra sự hiện diện của child trước khi xóa — VungNuoc là leaf entity, không có child guard.",
+        "Sau khi xóa thành công, danh sách tự động refresh và vùng nước bị xóa biến mất khỏi bảng; toast \"Xóa thành công\" được hiển thị.",
+        "Nếu xóa thất bại (lỗi server, vùng nước đã bị xóa trước đó), toast lỗi hiển thị và danh sách không thay đổi."
+      ]
+    },
+    {
+      "id": "F-102",
+      "name": "Lịch sử Vùng nước",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng truy vết và kiểm toán toàn bộ lịch sử thay đổi của một vùng nước, bao gồm lần tạo đầu tiên và mọi lần cập nhật sau đó, phục vụ cho việc kiểm tra chất lượng dữ liệu, truy nguyên lỗi, và tuân thủ quy trình quản lý biến động thông tin.",
+      "business_rules": [],
+      "acceptance_criteria": [
+        "Khi mở trang, hệ thống gọi `GET /api/v1/vung-nuoc/{id}/history` và hiển thị danh sách bản ghi LichSuThayDoi của vùng nước tương ứng, sắp xếp theo changedAt giảm dần (mới nhất đầu tiên).",
+        "Dòng đầu tiên của lịch sử có indicator \"Tạo mới\" (CREATE) với Old Value = null cho tất cả các trường và New Value là giá trị ban đầu của vùng nước.",
+        "Các dòng sau indicator \"Cập nhật\" (UPDATE), Old Value và New Value thể hiện giá trị trước và sau khi thay đổi.",
+        "Bảng hiển thị đúng các cột: Field, Old Value, New Value, Changed By, Changed At (định dạng yyyy-MM-dd HH:mm:ss).",
+        "Dropdown Field filter hiển thị các lựa chọn: \"Tất cả\", \"maVungNuoc\", \"tenVungNuoc\", \"loaiVungNuoc\", \"cangBienId\", \"dienTich\", \"doSauMax\", \"doSauTrungBinh\", \"trangThaiHoatDong\", \"trangThaiPheDuyet\" — khi chọn một Field cụ thể, bảng chỉ hiển thị các dòng có Field trùng khớp.",
+        "Khi click một dòng trong bảng, drawer/modal mở ra hiển thị chi tiết: tên/username của Changed By, thời gian changedAt chi tiết, và giải thích thay đổi (nếu có).",
+        "Breadcrumb hiển thị \"Danh sách Vùng nước > Chi tiết {tenVungNuoc} > Lịch sử\", click \"Chi tiết\" quay lại trang Chi tiết Vùng nước.",
+        "Khi không có bản ghi LichSuThayDoi, hiển thị thông báo \"Không có lịch sử thay đổi\"."
+      ]
+    },
+    {
+      "id": "F-103",
+      "name": "Upload GiayTo Cảng biển",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng gắn các giấy tờ chứng từ liên quan trực tiếp vào từng Cảng biển, tạo lập một kho lưu trữ hồ sơ điện tử tập trung, giảm thiểu việc sử dụng giấy tờ và đảm bảo tính truy xuất, kiểm toán của các tài liệu quản lý cảng biển.",
+      "business_rules": [
+        "MIME type của file phải là application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document, hoặc image/jpeg — các loại MIME khác bị từ chối với mã lỗi tương ứng.",
+        "Kích thước file tối đa 10 MB (10485760 bytes) — file vượt quá giới hạn này bị từ chối ngay tại server trước khi lưu.",
+        "GiayTo phải được liên kết với một thực thể Cảng biển xác định thông qua entityType=\"CangBien\" và entityId (UUID) — không cho phép upload file không gắn với thực thể.",
+        "Dữ liệu binary của file không được lưu thực tế vào MinIO — chỉ metadata được lưu vào CSDL, binary được stub bằng console logging (đàm phán với W4 cho giai đoạn tiếp theo).",
+        "Apache Tika magic-byte content detection được deferred — chỉ dựa vào MIME type client-declared trong header Content-Type (chủ động xác thực lại tại server)."
+      ],
+      "acceptance_criteria": [
+        "Nút \"Thêm văn bản đính kèm\" hiển thị trên trang chi tiết Cảng biển (F-069) và mở modal upload khi được nhấn.",
+        "Modal upload cho phép chọn tối đa một file mỗi lần; hiển thị thông tin file (tên, kích thước, MIME type) trước khi xác nhận.",
+        "Hệ thống chỉ chấp nhận file có MIME type là application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document, hoặc image/jpeg — các loại khác bị từ chối với toast \"File không hợp lệ\".",
+        "File có kích thước lớn hơn 10 MB (10485760 bytes) bị từ chối với toast \"File quá lớn\".",
+        "Sau khi upload thành công, metadata được lưu vào CSDL với entityType=\"CangBien\" và entityId đúng của Cảng biển; toast \"Upload thành công\" được hiển thị.",
+        "Người dùng có thể xem danh sách file đính kèm trên trang chi tiết, mỗi mục hiển thị tên file, kích thước, ngày upload và người upload.",
+        "Nút \"Tải xuống\" cho từng file gọi GET /api/v1/giay-to/:id/download và trả về nội dung file.",
+        "Nút \"Xóa\" cho từng file gọi DELETE /api/v1/giay-to/:id và xóa metadata khỏi CSDL sau khi xác nhận; người dùng không có quyền giayto:delete không thấy nút này.",
+        "GET /api/v1/giay-to?entityType=CangBien&entityId={uuid} trả về đúng danh sách các file đính kèm cho Cảng biển cụ thể.",
+        "RBAC: các quyền upload (giayto:upload) và delete (giayto:delete) được kiểm tra đúng theo quy định; người dùng không có quyền upload không thấy nút \"Thêm văn bản đính kèm\"."
+      ]
+    },
+    {
+      "id": "F-104",
+      "name": "Upload GiayTo Bến cảng",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng gắn các giấy tờ chứng từ liên quan trực tiếp vào từng Bến cảng, tạo lập một kho lưu trữ hồ sơ điện tử tập trung, giảm thiểu việc sử dụng giấy tờ và đảm bảo tính truy xuất, kiểm toán của các tài liệu quản lý bến cảng.",
+      "business_rules": [
+        "MIME type của file là string tự do, hệ thống không giới hạn loại MIME cụ thể (BE chấp nhận bất kỳ MIME type nào).",
+        "Không có giới hạn kích thước file được áp đặt bởi BE (CreateGiayToRequest không có ràng buộc max size).",
+        "GiayTo phải được liên kết với một thực thể Bến cảng xác định thông qua entityType=\"ben-cang\" và entityId (string) — không cho phép upload file không gắn với thực thể.",
+        "Dữ liệu binary của file không được lưu thực tế vào MinIO — chỉ metadata được lưu vào CSDL, binary được stub bằng console logging (đàm phán với W4 cho giai đoạn tiếp theo).",
+        "Apache Tika magic-byte content detection được deferred — chỉ dựa vào MIME type client-declared trong header Content-Type (chủ động xác thực lại tại server)."
+      ],
+      "acceptance_criteria": [
+        "Nút \"Thêm văn bản đính kèm\" hiển thị trên trang chi tiết Bến cảng (F-074) và mở modal upload khi được nhấn.",
+        "Modal upload cho phép chọn tối đa một file mỗi lần; hiển thị thông tin file (tên, kích thước, MIME type) trước khi xác nhận.",
+        "Hệ thống chấp nhận file với bất kỳ MIME type nào, không giới hạn định dạng file cụ thể.",
+        "Kích thước file được ghi nhận nhưng không có giới hạn tối đa được áp đặt bởi BE (CreateGiayToRequest không có ràng buộc max size).",
+        "Sau khi upload thành công, metadata được lưu vào CSDL với entityType=\"ben-cang\" và entityId đúng của Bến cảng tương ứng; toast \"Upload thành công\" được hiển thị.",
+        "Người dùng có thể xem danh sách file đính kèm trên trang chi tiết, mỗi mục hiển thị tên file, kích thước, ngày upload và người upload.",
+        "Nút \"Tải xuống\" cho từng file gọi GET /api/v1/giay-to/:id/download và trả về nội dung file.",
+        "Nút \"Xóa\" cho từng file gọi DELETE /api/v1/giay-to/:id và xóa metadata khỏi CSDL sau khi xác nhận; người dùng không có quyền giayto:delete không thấy nút này.",
+        "GET /api/v1/giay-to?entityType=ben-cang&entityId={entityId} trả về đúng danh sách các file đính kèm cho Bến cảng cụ thể.",
+        "RBAC: các quyền upload (giayto:upload) và delete (giayto:delete) được kiểm tra đúng theo quy định; người dùng không có quyền upload không thấy nút \"Thêm văn bản đính kèm\"."
+      ]
+    },
+    {
+      "id": "F-105",
+      "name": "Upload GiayTo Cầu cảng",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng gắn các giấy tờ chứng từ liên quan trực tiếp vào từng Cầu cảng, tạo lập một kho lưu trữ hồ sơ điện tử tập trung, giảm thiểu việc sử dụng giấy tờ và đảm bảo tính truy xuất, kiểm toán của các tài liệu quản lý cầu cảng.",
+      "business_rules": [
+        "MIME type của file là string tự do, hệ thống không giới hạn loại MIME cụ thể (BE chấp nhận bất kỳ MIME type nào).",
+        "Không có giới hạn kích thước file được áp đặt bởi BE (CreateGiayToRequest không có ràng buộc max size).",
+        "GiayTo phải được liên kết với một thực thể Cầu cảng xác định thông qua entityType=\"cau-cang\" và entityId (string) — không cho phép upload file không gắn với thực thể.",
+        "Dữ liệu binary của file không được lưu thực tế vào MinIO — chỉ metadata được lưu vào CSDL, binary được stub bằng console logging (đàm phán với W4 cho giai đoạn tiếp theo).",
+        "Apache Tika magic-byte content detection được deferred — chỉ dựa vào MIME type client-declared trong header Content-Type (chủ động xác thực lại tại server)."
+      ],
+      "acceptance_criteria": [
+        "Nút \"Thêm văn bản đính kèm\" hiển thị trên trang chi tiết Cầu cảng (F-079) và mở modal upload khi được nhấn.",
+        "Modal upload cho phép chọn tối đa một file mỗi lần; hiển thị thông tin file (tên, kích thước, MIME type) trước khi xác nhận.",
+        "Hệ thống chấp nhận file với bất kỳ MIME type nào, không giới hạn định dạng file cụ thể.",
+        "Kích thước file được ghi nhận nhưng không có giới hạn tối đa được áp đặt bởi BE (CreateGiayToRequest không có ràng buộc max size).",
+        "Sau khi upload thành công, metadata được lưu vào CSDL với entityType=\"cau-cang\" và entityId đúng của Cầu cảng tương ứng; toast \"Upload thành công\" được hiển thị.",
+        "Người dùng có thể xem danh sách file đính kèm trên trang chi tiết, mỗi mục hiển thị tên file, kích thước, ngày upload và người upload.",
+        "Nút \"Tải xuống\" cho từng file gọi GET /api/v1/giay-to/:id/download và trả về nội dung file.",
+        "Nút \"Xóa\" cho từng file gọi DELETE /api/v1/giay-to/:id và xóa metadata khỏi CSDL sau khi xác nhận; người dùng không có quyền giayto:delete không thấy nút này.",
+        "GET /api/v1/giay-to?entityType=cau-cang&entityId={entityId} trả về đúng danh sách các file đính kèm cho Cầu cảng cụ thể.",
+        "RBAC: các quyền upload (giayto:upload) và delete (giayto:delete) được kiểm tra đúng theo quy định; người dùng không có quyền upload không thấy nút \"Thêm văn bản đính kèm\"."
+      ]
+    },
+    {
+      "id": "F-106",
+      "name": "Upload GiayTo Cảng cạn",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng gắn các giấy tờ chứng từ liên quan trực tiếp vào từng Cảng cạn, tạo lập một kho lưu trữ hồ sơ điện tử tập trung, giảm thiểu việc sử dụng giấy tờ và đảm bảo tính truy xuất, kiểm toán của các tài liệu quản lý cảng cạn.",
+      "business_rules": [
+        "MIME type của file là string tự do, hệ thống không giới hạn loại MIME cụ thể (BE chấp nhận bất kỳ MIME type nào).",
+        "Không có giới hạn kích thước file được áp đặt bởi BE (CreateGiayToRequest không có ràng buộc max size).",
+        "GiayTo phải được liên kết với một thực thể Cảng cạn xác định thông qua entityType=\"cang-can\" và entityId (string) — không cho phép upload file không gắn với thực thể.",
+        "Dữ liệu binary của file không được lưu thực tế vào MinIO — chỉ metadata được lưu vào CSDL, binary được stub bằng console logging (đàm phán với W4 cho giai đoạn tiếp theo).",
+        "Apache Tika magic-byte content detection được deferred — chỉ dựa vào MIME type client-declared trong header Content-Type (chủ động xác thực lại tại server)."
+      ],
+      "acceptance_criteria": [
+        "Nút \"Thêm văn bản đính kèm\" hiển thị trên trang chi tiết Cảng cạn (F-084) và mở modal upload khi được nhấn.",
+        "Modal upload cho phép chọn tối đa một file mỗi lần; hiển thị thông tin file (tên, kích thước, MIME type) trước khi xác nhận.",
+        "Hệ thống chấp nhận file với bất kỳ MIME type nào, không giới hạn định dạng file cụ thể.",
+        "Kích thước file được ghi nhận nhưng không có giới hạn tối đa được áp đặt bởi BE (CreateGiayToRequest không có ràng buộc max size).",
+        "Sau khi upload thành công, metadata được lưu vào CSDL với entityType=\"cang-can\" và entityId đúng của Cảng cạn tương ứng; toast \"Upload thành công\" được hiển thị.",
+        "Người dùng có thể xem danh sách file đính kèm trên trang chi tiết, mỗi mục hiển thị tên file, kích thước, ngày upload và người upload.",
+        "Nút \"Tải xuống\" cho từng file gọi GET /api/v1/giay-to/:id/download và trả về nội dung file.",
+        "Nút \"Xóa\" cho từng file gọi DELETE /api/v1/giay-to/:id và xóa metadata khỏi CSDL sau khi xác nhận; người dùng không có quyền giayto:delete không thấy nút này.",
+        "GET /api/v1/giay-to?entityType=cang-can&entityId={entityId} trả về đúng danh sách các file đính kèm cho Cảng cạn cụ thể.",
+        "RBAC: các quyền upload (giayto:upload) và delete (giayto:delete) được kiểm tra đúng theo quy định; người dùng không có quyền upload không thấy nút \"Thêm văn bản đính kèm\"."
+      ]
+    },
+    {
+      "id": "F-107",
+      "name": "Upload GiayTo Vùng nước",
+      "module": "M-002",
+      "status": "proposed",
+      "confidence": "high",
+      "priority": "medium",
+      "source": "feature-brief.md (UI track, frontend pending)",
+      "scope": "Cho phép người dùng gắn các giấy tờ chứng từ liên quan trực tiếp vào từng Vùng nước, tạo lập một kho lưu trữ hồ sơ điện tử tập trung, giảm thiểu việc sử dụng giấy tờ và đảm bảo tính truy xuất, kiểm toán của các tài liệu quản lý vùng nước.",
+      "business_rules": [
+        "MIME type của file là string tự do, hệ thống không giới hạn loại MIME cụ thể (BE chấp nhận bất kỳ MIME type nào).",
+        "Không có giới hạn kích thước file được áp đặt bởi BE (CreateGiayToRequest không có ràng buộc max size).",
+        "GiayTo phải được liên kết với một thực thể Vùng nước xác định thông qua entityType=\"vung-nuoc\" và entityId (string) — không cho phép upload file không gắn với thực thể.",
+        "Dữ liệu binary của file không được lưu thực tế vào MinIO — chỉ metadata được lưu vào CSDL, binary được stub bằng console logging (đàm phán với W4 cho giai đoạn tiếp theo).",
+        "Apache Tika magic-byte content detection được deferred — chỉ dựa vào MIME type client-declared trong header Content-Type (chủ động xác thực lại tại server)."
+      ],
+      "acceptance_criteria": [
+        "Nút \"Thêm văn bản đính kèm\" hiển thị trên trang chi tiết Vùng nước (F-089) và mở modal upload khi được nhấn.",
+        "Modal upload cho phép chọn tối đa một file mỗi lần; hiển thị thông tin file (tên, kích thước, MIME type) trước khi xác nhận.",
+        "Hệ thống chấp nhận file với bất kỳ MIME type nào, không giới hạn định dạng file cụ thể.",
+        "Kích thước file được ghi nhận nhưng không có giới hạn tối đa được áp đặt bởi BE (CreateGiayToRequest không có ràng buộc max size).",
+        "Sau khi upload thành công, metadata được lưu vào CSDL với entityType=\"vung-nuoc\" và entityId đúng của Vùng nước tương ứng; toast \"Upload thành công\" được hiển thị.",
+        "Người dùng có thể xem danh sách file đính kèm trên trang chi tiết, mỗi mục hiển thị tên file, kích thước, ngày upload và người upload.",
+        "Nút \"Tải xuống\" cho từng file gọi GET /api/v1/giay-to/:id/download và trả về nội dung file.",
+        "Nút \"Xóa\" cho từng file gọi DELETE /api/v1/giay-to/:id và xóa metadata khỏi CSDL sau khi xác nhận; người dùng không có quyền giayto:delete không thấy nút này.",
+        "GET /api/v1/giay-to?entityType=vung-nuoc&entityId={entityId} trả về đúng danh sách các file đính kèm cho Vùng nước cụ thể.",
+        "RBAC: các quyền upload (giayto:upload) và delete (giayto:delete) được kiểm tra đúng theo quy định; người dùng không có quyền upload không thấy nút \"Thêm văn bản đính kèm\"."
+      ]
+    }
+  ],
+  "cross_references": {
+    "catalog_ref": "docs/intel/catalog.json#M-002",
+    "brief_ref": "docs/intel/doc-brief.md"
+  },
+  "do_d": {
+    "api_contract_complete": false,
+    "entity_schema_defined": false,
+    "business_rules_mapped": true,
+    "test_data_ready": false,
+    "acceptance_criteria_written": true,
+    "priority_assigned": true,
+    "source_traced": true
+  }
+}

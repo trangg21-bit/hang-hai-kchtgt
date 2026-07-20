@@ -16,9 +16,30 @@ import org.springframework.transaction.annotation.Transactional;
 public class PointObjectSyncService {
 
     private final PointObjectRepository pointRepo;
+    private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
 
-    public PointObjectSyncService(PointObjectRepository pointRepo) {
+    public PointObjectSyncService(PointObjectRepository pointRepo, com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService) {
         this.pointRepo = pointRepo;
+        this.gisSpatialObjectService = gisSpatialObjectService;
+    }
+
+    private double[] getCoordinates(java.util.UUID khongGianId) {
+        if (khongGianId != null) {
+            var spatialObjOpt = gisSpatialObjectService.findById(khongGianId);
+            if (spatialObjOpt.isPresent()) {
+                String coordinates = spatialObjOpt.get().getCoordinates();
+                try {
+                    String clean = coordinates.replace("POINT", "").replace("(", "").replace(")", "").trim();
+                    String[] parts = clean.split("\\s+");
+                    if (parts.length == 2) {
+                        return new double[]{Double.parseDouble(parts[0]), Double.parseDouble(parts[1])};
+                    }
+                } catch (Exception ex) {
+                    // ignore
+                }
+            }
+        }
+        return new double[]{0.0, 0.0};
     }
 
     /**
@@ -33,8 +54,9 @@ public class PointObjectSyncService {
         point.setCode(entity.getCode());
         point.setName(entity.getName());
         point.setObjectType(PointObject.ObjectType.LIGHTHOUSE);
-        point.setLongitude(entity.getLongitude());
-        point.setLatitude(entity.getLatitude());
+        double[] coords = getCoordinates(entity.getKhongGianId());
+        point.setLongitude(coords[0]);
+        point.setLatitude(coords[1]);
         point.setDescription(entity.getDescription());
         point.setStatus(PointObject.Status.PUBLISHED);
         point.setUnitId(entity.getUnitId());
@@ -70,8 +92,9 @@ public class PointObjectSyncService {
         point.setCode(entity.getCode());
         point.setName(entity.getName());
         point.setObjectType(PointObject.ObjectType.BUOY);
-        point.setLongitude(entity.getLongitude());
-        point.setLatitude(entity.getLatitude());
+        double[] coords = getCoordinates(entity.getKhongGianId());
+        point.setLongitude(coords[0]);
+        point.setLatitude(coords[1]);
         point.setDescription(entity.getDescription());
         point.setStatus(PointObject.Status.PUBLISHED);
         point.setUnitId(entity.getUnitId());

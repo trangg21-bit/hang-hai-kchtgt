@@ -44,7 +44,7 @@ public class CoSuaChuaDongTauService {
         if (request.getToaDo() != null && !request.getToaDo().trim().isEmpty()) {
             com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
             com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = getSpatialObjectType(geomType);
-            UUID refId = UUID.nameUUIDFromBytes(("COSO_" + saved.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            UUID refId = saved.getId();
             com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
                     "Cơ sở sửa chữa tại " + request.getDiaChi(),
@@ -72,7 +72,7 @@ public class CoSuaChuaDongTauService {
         return toResponse(saved);
     }
 
-    public CoSuaChuaDongTauResponse getById(Long id) {
+    public CoSuaChuaDongTauResponse getById(UUID id) {
         CoSuaChuaDongTau entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
         if (entity.getIsDeleted()) {
@@ -85,7 +85,7 @@ public class CoSuaChuaDongTauService {
         return repository.findByTrangThaiAndIsDeletedFalse(CoSuaChuaApprovalStatus.APPROVED).stream().map(this::toResponse).toList();
     }
 
-    public CoSuaChuaDongTauResponse update(Long id, CoSuaChuaDongTauUpdateRequest request, String updatedBy) {
+    public CoSuaChuaDongTauResponse update(UUID id, CoSuaChuaDongTauUpdateRequest request, String updatedBy) {
         CoSuaChuaDongTau entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
@@ -116,7 +116,7 @@ public class CoSuaChuaDongTauService {
             } else {
                 com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
                 com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = getSpatialObjectType(geomType);
-                UUID refId = UUID.nameUUIDFromBytes(("COSO_" + entity.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                UUID refId = entity.getId();
                 com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                         entity.getKhongGianId(),
                         "Cơ sở sửa chữa tại " + (request.getDiaChi() != null ? request.getDiaChi() : entity.getDiaChi()),
@@ -132,7 +132,7 @@ public class CoSuaChuaDongTauService {
             }
         } else if (entity.getKhongGianId() != null && request.getDiaChi() != null) {
             gisSpatialObjectService.findById(entity.getKhongGianId()).ifPresent(spatialObj -> {
-                UUID refId = UUID.nameUUIDFromBytes(("COSO_" + entity.getId()).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                UUID refId = entity.getId();
                 gisSpatialObjectService.createOrUpdate(
                         spatialObj.getId(),
                         "Cơ sở sửa chữa tại " + request.getDiaChi(),
@@ -161,7 +161,7 @@ public class CoSuaChuaDongTauService {
         return toResponse(saved);
     }
 
-    public void delete(Long id, String deletedBy) {
+    public void delete(UUID id, String deletedBy) {
         CoSuaChuaDongTau entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
@@ -184,7 +184,7 @@ public class CoSuaChuaDongTauService {
         attachmentRepository.deleteByCoSuaChuaDongTauId(id);
     }
 
-    public CoSuaChuaDongTauResponse approveC1(Long id, PheDuyetRequest request, String approvedBy) {
+    public CoSuaChuaDongTauResponse approveC1(UUID id, PheDuyetRequest request, String approvedBy) {
         CoSuaChuaDongTau entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
@@ -216,7 +216,7 @@ public class CoSuaChuaDongTauService {
         return toResponse(saved);
     }
 
-    public CoSuaChuaDongTauResponse approveC2(Long id, PheDuyetRequest request, String approvedBy) {
+    public CoSuaChuaDongTauResponse approveC2(UUID id, PheDuyetRequest request, String approvedBy) {
         CoSuaChuaDongTau entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
@@ -253,7 +253,7 @@ public class CoSuaChuaDongTauService {
         return toResponse(saved);
     }
 
-    public List<HistoryEntry> getHistory(Long coSuaChuaId) {
+    public List<HistoryEntry> getHistory(UUID coSuaChuaId) {
         return historyRepository.findByCoSuaChuaIdOrderByNgayPheDuyetDesc(coSuaChuaId)
                 .stream().map(h -> HistoryEntry.builder()
                         .id(h.getId())

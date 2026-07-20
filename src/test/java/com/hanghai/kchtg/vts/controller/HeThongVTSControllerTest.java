@@ -17,6 +17,7 @@ import org.springframework.security.core.Authentication;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -25,6 +26,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class HeThongVTSControllerTest {
+
+    private static final UUID TEST_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     @Mock
     private HeThongVTSDataService service;
@@ -43,7 +46,7 @@ class HeThongVTSControllerTest {
                 .build();
 
         response = HeThongVTSResponse.builder()
-                .id(1L)
+                .id(TEST_ID)
                 .tenHeThong("VTS ABC")
                 .viTri("Hà Nội")
                 .trangThai(com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus.APPROVED)
@@ -60,12 +63,12 @@ class HeThongVTSControllerTest {
 
     @Test
     void testGetById() {
-        when(service.getById(1L)).thenReturn(response);
-        ResponseEntity<?> result = controller.getById(1L, mockAuth());
+        when(service.getById(TEST_ID)).thenReturn(response);
+        ResponseEntity<?> result = controller.getById(TEST_ID, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
         @SuppressWarnings("unchecked")
         HeThongVTSResponse body = ((ApiResponse<HeThongVTSResponse>) result.getBody()).getData();
-        assertEquals(1L, body.getId());
+        assertEquals(TEST_ID, body.getId());
     }
 
     @Test
@@ -79,38 +82,38 @@ class HeThongVTSControllerTest {
     void testUpdate() {
         HeThongVTSUpdateRequest updateReq = HeThongVTSUpdateRequest.builder()
                 .tenHeThong("VTS XYZ").build();
-        when(service.update(eq(1L), any(), anyString())).thenReturn(response);
-        ResponseEntity<?> result = controller.update(1L, updateReq, mockAuth());
+        when(service.update(eq(TEST_ID), any(), anyString())).thenReturn(response);
+        ResponseEntity<?> result = controller.update(TEST_ID, updateReq, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
     @Test
     void testDelete() {
-        doNothing().when(service).delete(eq(1L), anyString());
-        ResponseEntity<?> result = controller.delete(1L, mockAuth());
+        doNothing().when(service).delete(eq(TEST_ID), anyString());
+        ResponseEntity<?> result = controller.delete(TEST_ID, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
     @Test
     void testApproveC1() {
         PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
-        when(service.approveC1(eq(1L), any(), anyString())).thenReturn(response);
-        ResponseEntity<?> result = controller.approveC1(1L, req, mockAuth());
+        when(service.approveC1(eq(TEST_ID), any(), anyString())).thenReturn(response);
+        ResponseEntity<?> result = controller.approveC1(TEST_ID, req, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
     @Test
     void testApproveC2() {
         PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
-        when(service.approveC2(eq(1L), any(), anyString())).thenReturn(response);
-        ResponseEntity<?> result = controller.approveC2(1L, req, mockAuth());
+        when(service.approveC2(eq(TEST_ID), any(), anyString())).thenReturn(response);
+        ResponseEntity<?> result = controller.approveC2(TEST_ID, req, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
     @Test
     void testGetHistory() {
-        when(service.getHistory(1L)).thenReturn(Collections.emptyList());
-        ResponseEntity<?> result = controller.getHistory(1L);
+        when(service.getHistory(TEST_ID)).thenReturn(Collections.emptyList());
+        ResponseEntity<?> result = controller.getHistory(TEST_ID);
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 

@@ -93,11 +93,5 @@ public class UpdateCangBienRequest {
 
     private String ghiChu;
 
-    /**
-     * GPS paired-field constraint: viDo and kinhDo must both be present or both be absent.
-     */
-    @AssertTrue(message = "Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau")
-    public boolean isGpsPaired() {
-        return (viDo == null) == (kinhDo == null);
-    }
+
 }

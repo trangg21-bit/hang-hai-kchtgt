@@ -9,5 +9,5 @@ import java.util.List;
 @Repository("tramRadarPheDuyetLichSuRepository")
 public interface PheDuyetLichSuRepository extends JpaRepository<PheDuyetLichSu, Long> {
 
-    List<PheDuyetLichSu> findByTramRadarIdOrderByNgayPheDuyetDesc(Long tramRadarId);
+    List<PheDuyetLichSu> findByTramRadarIdOrderByNgayPheDuyetDesc(java.util.UUID tramRadarId);
 }

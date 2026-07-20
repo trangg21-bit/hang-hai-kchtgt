@@ -1157,18 +1157,7 @@ export default function BenCangListPage() {
 
           {/* SECTION 4: Thông tin vị trí (GIS) */}
           <Card title="Thông tin vị trí (GIS)" size="small" style={{ marginBottom: 16 }}>
-            <Row gutter={24}>
-              <Col span={12}>
-                <Form.Item label="Vĩ độ" name="viDo">
-                  <InputNumber min={-90} max={90} step={0.000001} precision={6} placeholder="VD: 20.859442" style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item label="Kinh độ" name="kinhDo">
-                  <InputNumber min={-180} max={180} step={0.000001} precision={6} placeholder="VD: 106.681560" style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
-            </Row>
+
             <Row gutter={24}>
               <Col span={12}>
                 <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
@@ -1433,18 +1422,7 @@ export default function BenCangListPage() {
 
           {/* SECTION 4: Thông tin vị trí (GIS) */}
           <Card title="Thông tin vị trí (GIS)" size="small" style={{ marginBottom: 16 }}>
-            <Row gutter={24}>
-              <Col span={12}>
-                <Form.Item label="Vĩ độ" name="viDo">
-                  <InputNumber min={-90} max={90} step={0.000001} precision={6} placeholder="VD: 20.859442" style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item label="Kinh độ" name="kinhDo">
-                  <InputNumber min={-180} max={180} step={0.000001} precision={6} placeholder="VD: 106.681560" style={{ width: '100%' }} />
-                </Form.Item>
-              </Col>
-            </Row>
+
             <Row gutter={24}>
               <Col span={12}>
                 <Form.Item label="Loại đối tượng *" name="loaiHinhHoc" rules={[{ required: true, message: 'Loại đối tượng không được để trống' }]}>
@@ -1633,12 +1611,7 @@ export default function BenCangListPage() {
               <Col span={24}>
                 <Card title="Thông tin vị trí (GIS)" size="small">
                   <Descriptions bordered column={2} size="small">
-                    <Descriptions.Item label="Vĩ độ">
-                      {selectedRecord.viDo != null ? selectedRecord.viDo.toFixed(6) : '—'}
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Kinh độ">
-                      {selectedRecord.kinhDo != null ? selectedRecord.kinhDo.toFixed(6) : '—'}
-                    </Descriptions.Item>
+
                     <Descriptions.Item label="Loại đối tượng">
                       {selectedRecord.loaiHinhHoc === 'POINT' ? 'Đối tượng điểm'
                         : selectedRecord.loaiHinhHoc === 'LINE' ? 'Đối tượng đường'

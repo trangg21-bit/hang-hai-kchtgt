@@ -137,7 +137,10 @@ export default function CoastalStationList() {
       };
 
       if (editingItem) {
-        await updateCoastalVTS(editingItem.id, payload);
+        const res = await updateCoastalVTS(editingItem.id, payload);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[editingItem.id] = res;
+        }
         message.success('Cập nhật đài duyên hải thành công!');
       } else {
         await createCoastalVTS(payload);

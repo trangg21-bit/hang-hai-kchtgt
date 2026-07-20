@@ -1,0 +1,21 @@
+feature_id: F-080
+module_id: M-004
+slug: quan-ly-nha-tram-phao-tao-moi
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: "src/main/java/com/hanghai/kchtg/nhatram/controller/NhaTramPhaoController.java"
+  consumers:
+    - "src/main/java/com/hanghai/kchtg/nhatram/service/NhaTramPhaoService.java"
+    - "src/main/java/com/hanghai/kchtg/nhatram/dto/phao/CreateNhaTramPhaoRequest.java"
+    - "src/main/java/com/hanghai/kchtg/nhatram/dto/phao/NhaTramPhaoResponse.java"
+    - "src/main/java/com/hanghai/kchtg/nhatram/entity/NhaTramPhao.java"
+    - "src/main/java/com/hanghai/kchtg/nhatram/entity/BaseNhaTram.java"
+    - "src/main/java/com/hanghai/kchtg/nhatram/repository/NhaTramPhaoRepository.java"
+
+# Cross-cutting: features consumed by other modules
+consumed_by_modules:
+  - module: M-007
+    description: "GIS point object sync — when nhà trạm phao is approved to L2/PUBLISHED, its location is synced to point_objects table"

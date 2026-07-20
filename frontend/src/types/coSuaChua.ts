@@ -7,7 +7,7 @@ export interface CoSuaChuaAttachment {
 }
 
 export interface CoSuaChuaResponse {
-  id: number;
+  id: string;
   tenCoSo: string;
   diaChi: string;
   tinhThanh: string;

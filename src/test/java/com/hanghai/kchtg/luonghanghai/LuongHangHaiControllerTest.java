@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -30,6 +31,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 @WithMockUser(username = "admin", roles = "SYSTEM_ADMIN")
 class LuongHangHaiControllerTest {
+
+        private static final UUID TEST_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        private static final UUID TEST_ID_2 = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
         @Autowired
         MockMvc mockMvc;
@@ -48,7 +52,7 @@ class LuongHangHaiControllerTest {
                 when(auth.check(any(), anyString())).thenReturn(true);
 
                 testResp = LuongHangHaiResponse.builder()
-                                .id(1L)
+                                .id(TEST_ID)
                                 .ten("Hai Phong")
                                 .soLuong(100)
                                 .ngayGhiNhan(LocalDate.of(2026, 1, 1))
@@ -105,17 +109,17 @@ class LuongHangHaiControllerTest {
 
         @Test
         void get_shouldReturnOne() throws Exception {
-                when(service.getById(1L)).thenReturn(testResp);
-                mockMvc.perform(get("/api/v1/luong-hang-hai/1"))
+                when(service.getById(TEST_ID)).thenReturn(testResp);
+                mockMvc.perform(get("/api/v1/luong-hang-hai/" + TEST_ID))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.data.ten").value("Hai Phong"));
         }
 
         @Test
         void update_shouldReturnUpdated() throws Exception {
-                LuongHangHaiResponse up = LuongHangHaiResponse.builder().id(1L).ten("Da cap nhat").build();
-                when(service.update(eq(1L), any(), anyString())).thenReturn(up);
-                mockMvc.perform(put("/api/v1/luong-hang-hai/1")
+                LuongHangHaiResponse up = LuongHangHaiResponse.builder().id(TEST_ID).ten("Da cap nhat").build();
+                when(service.update(eq(TEST_ID), any(), anyString())).thenReturn(up);
+                mockMvc.perform(put("/api/v1/luong-hang-hai/" + TEST_ID)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(createReq)))
                                 .andExpect(status().isOk())
@@ -124,8 +128,8 @@ class LuongHangHaiControllerTest {
 
         @Test
         void softDelete_shouldReturnOk() throws Exception {
-                doNothing().when(service).softDelete(1L);
-                mockMvc.perform(delete("/api/v1/luong-hang-hai/1"))
+                doNothing().when(service).softDelete(TEST_ID);
+                mockMvc.perform(delete("/api/v1/luong-hang-hai/" + TEST_ID))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.success").value(true));
         }
@@ -133,17 +137,18 @@ class LuongHangHaiControllerTest {
         @Test
         void approveC1_shouldReturnUnderReview() throws Exception {
                 PheDuyetResponse resp = PheDuyetResponse.builder()
-                                .luongHangHaiId(1L)
+                                .id(TEST_ID.toString())
+                                .luongHangHaiId(TEST_ID)
                                 .capPheDuyet(1)
                                 .trangThai("UNDER_REVIEW")
                                 .nguoiPheDuyet("Truong Phong")
                                 .build();
-                when(service.approveC1(eq(1L), any(), anyString())).thenReturn(resp);
+                when(service.approveC1(eq(TEST_ID), any(), anyString())).thenReturn(resp);
                 PheDuyetRequest req = PheDuyetRequest.builder()
                                 .trangThai("APPROVED")
                                 .lyDo("Phe cap 1")
                                 .build();
-                mockMvc.perform(post("/api/v1/luong-hang-hai/1/approve/c1")
+                mockMvc.perform(post("/api/v1/luong-hang-hai/" + TEST_ID + "/approve/c1")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(req)))
                                 .andExpect(status().isOk())
@@ -153,17 +158,18 @@ class LuongHangHaiControllerTest {
         @Test
         void approveC2_shouldReturnApproved() throws Exception {
                 PheDuyetResponse resp = PheDuyetResponse.builder()
-                                .luongHangHaiId(1L)
+                                .id(TEST_ID.toString())
+                                .luongHangHaiId(TEST_ID)
                                 .capPheDuyet(2)
                                 .trangThai("APPROVED")
                                 .nguoiPheDuyet("Giam Doc")
                                 .build();
-                when(service.approveC2(eq(1L), any(), anyString())).thenReturn(resp);
+                when(service.approveC2(eq(TEST_ID), any(), anyString())).thenReturn(resp);
                 PheDuyetRequest req = PheDuyetRequest.builder()
                                 .trangThai("APPROVED")
                                 .lyDo("Phe cap 2")
                                 .build();
-                mockMvc.perform(post("/api/v1/luong-hang-hai/1/approve/c2")
+                mockMvc.perform(post("/api/v1/luong-hang-hai/" + TEST_ID + "/approve/c2")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(req)))
                                 .andExpect(status().isOk())
@@ -176,29 +182,29 @@ class LuongHangHaiControllerTest {
         // @WithMockUser).
         @Test
         void approveC1_bindsApproverFromAuthentication_ignoresClientSuppliedName() throws Exception {
-                when(service.approveC1(eq(1L), any(), anyString()))
-                                .thenReturn(PheDuyetResponse.builder().luongHangHaiId(1L).capPheDuyet(1)
-                                                .trangThai("UNDER_REVIEW").build());
+                when(service.approveC1(eq(TEST_ID), any(), anyString()))
+                                .thenReturn(PheDuyetResponse.builder().luongHangHaiId(TEST_ID).capPheDuyet(1)
+                                                 .trangThai("UNDER_REVIEW").build());
                 // Raw body includes a spoofed approver name that no longer exists on
                 // PheDuyetRequest.
                 String spoofedBody = "{\"trangThai\":\"APPROVED\",\"nguoiPheDuyet\":\"HACKER\",\"lyDo\":\"x\"}";
                 var principal = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(
                                 "admin", null);
-                mockMvc.perform(post("/api/v1/luong-hang-hai/1/approve/c1")
+                mockMvc.perform(post("/api/v1/luong-hang-hai/" + TEST_ID + "/approve/c1")
                                 .principal(principal)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(spoofedBody))
                                 .andExpect(status().isOk());
-                verify(service).approveC1(eq(1L), any(), eq("admin"));
-                verify(service, never()).approveC1(eq(1L), any(), eq("HACKER"));
+                verify(service).approveC1(eq(TEST_ID), any(), eq("admin"));
+                verify(service, never()).approveC1(eq(TEST_ID), any(), eq("HACKER"));
         }
 
         @Test
         void history_shouldReturnEntries() throws Exception {
-                when(service.getApprovalHistory(1L)).thenReturn(List.of(
-                                HistoryEntry.builder().luongHangHaiId(1L).trangThai("PROPOSED").lyDo("Tao moi")
+                when(service.getApprovalHistory(TEST_ID)).thenReturn(List.of(
+                                HistoryEntry.builder().luongHangHaiId(TEST_ID).trangThai("PROPOSED").lyDo("Tao moi")
                                                 .build()));
-                mockMvc.perform(get("/api/v1/luong-hang-hai/1/history"))
+                mockMvc.perform(get("/api/v1/luong-hang-hai/" + TEST_ID + "/history"))
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.data[0].trangThai").value("PROPOSED"));
         }
@@ -206,7 +212,7 @@ class LuongHangHaiControllerTest {
         @Test
         void filterByApprovalStatus_shouldReturnResults() throws Exception {
                 LuongHangHaiResponse approvedResp = LuongHangHaiResponse.builder()
-                                .id(1L)
+                                .id(TEST_ID)
                                 .ten("Luong da duyet")
                                 .approvalStatus(LuongHangHaiApprovalStatus.APPROVED)
                                 .build();
@@ -246,10 +252,10 @@ class LuongHangHaiControllerTest {
 
         @Test
         void approveC1_shouldThrowWhenNotFound() throws Exception {
-                when(service.approveC1(eq(99L), any(), anyString()))
+                when(service.approveC1(eq(TEST_ID_2), any(), anyString()))
                                 .thenThrow(new IllegalArgumentException("Khong tim thay"));
                 PheDuyetRequest req = PheDuyetRequest.builder().trangThai("APPROVED").build();
-                mockMvc.perform(post("/api/v1/luong-hang-hai/99/approve/c1")
+                mockMvc.perform(post("/api/v1/luong-hang-hai/" + TEST_ID_2 + "/approve/c1")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(req)))
                                 .andExpect(status().isBadRequest());

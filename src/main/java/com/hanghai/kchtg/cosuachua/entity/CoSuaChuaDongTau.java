@@ -18,8 +18,9 @@ import java.time.LocalDateTime;
 public class CoSuaChuaDongTau {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "id", updatable = false, nullable = false)
+    private java.util.UUID id;
 
     @Column(name = "ten_co_so", nullable = false, length = 255)
     private String tenCoSo;
@@ -36,8 +37,8 @@ public class CoSuaChuaDongTau {
     @Column(name = "email", length = 100)
     private String email;
 
-    @Column(name = "loai_co_so", nullable = false, length = 100)
-    private String loaiCoSo;
+    @Column(name = "loai_co_so", nullable = false)
+    private LoaiCoSo loaiCoSo;
 
     @Column(name = "kha_nang", length = 255)
     private String khaNang;

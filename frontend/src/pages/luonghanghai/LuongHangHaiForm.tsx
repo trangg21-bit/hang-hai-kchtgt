@@ -160,7 +160,10 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
           navigate('/luong-hang-hai');
         }
       } else if (id && isEditMode) {
-        await luongHangHaiCRUD.update(id, payload as UpdateLuongHangHaiRequest);
+        const res = await luongHangHaiCRUD.update(id, payload as UpdateLuongHangHaiRequest);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = res;
+        }
         message.success('Cập nhật thành công');
         if (isModalMode) {
           onSuccess?.();
@@ -190,7 +193,10 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
           nguoiPheDuyet: currentUser?.username || 'unknown',
           trangThai: 'APPROVED',
         };
-        await luongHangHaiApproval.approveC1(id, pheDuyetData);
+        const res = await luongHangHaiApproval.approveC1(id, pheDuyetData);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = res;
+        }
         message.success('Phê duyệt C1 thành công');
         setRecord({ ...record, approvalStatus: 'UNDER_REVIEW' });
       } else if (action === 'approveC2') {
@@ -200,7 +206,10 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
           nguoiPheDuyet: currentUser?.username || 'unknown',
           trangThai: 'APPROVED',
         };
-        await luongHangHaiApproval.approveC2(id, pheDuyetData);
+        const res = await luongHangHaiApproval.approveC2(id, pheDuyetData);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = res;
+        }
         message.success('Phê duyệt C2 thành công');
         setRecord({ ...record, approvalStatus: 'APPROVED' });
       } else if (action === 'reject') {
@@ -213,10 +222,14 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
           lyDo: payload?.lyDo as string,
         };
 
+        let updatedRecord;
         if (record.approvalStatus === 'PROPOSED' || record.approvalStatus === 'REJECTED') {
-          await luongHangHaiApproval.approveC1(id, pheDuyetData);
+          updatedRecord = await luongHangHaiApproval.approveC1(id, pheDuyetData);
         } else if (record.approvalStatus === 'UNDER_REVIEW') {
-          await luongHangHaiApproval.approveC2(id, pheDuyetData);
+          updatedRecord = await luongHangHaiApproval.approveC2(id, pheDuyetData);
+        }
+        if (updatedRecord && window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id] = updatedRecord;
         }
 
         message.success('Từ chối thành công');

@@ -1,0 +1,36 @@
+module_id: M-017
+module_name: "Thống kê chuyên đề"
+type: bounded-context
+slug: thong-ke-chuyen-de
+
+implementations:
+  apps:
+    - path: "src/main/java/com/hanghai/kchtg"
+      type: spring-boot-app
+      description: "Main application containing M-017 thong ke chuyen de bounded context"
+  services: []
+  libs: []
+  packages:
+    - name: "statistics-core"
+      path: "src/main/java/com/hanghai/kchtg/statistics"
+      description: "Core statistics (F-148 to F-176)"
+      status: implemented
+    - name: "statistics-approval"
+      path: "src/main/java/com/hanghai/kchtg/statistics"
+      description: "Form approval workflow (F-148 to F-176)"
+      status: implemented
+    - name: "statistics-services"
+      path: "src/main/java/com/hanghai/kchtg/statistics"
+      description: "Specialized services: PortThroughput, CargoVolume, ShipMovement"
+      status: implemented
+    - name: "statistics-tests"
+      path: "src/test/java/com/hanghai/kchtg/statistics"
+      description: "Unit tests for statistics module"
+      status: implemented
+
+stakeholders:
+  business-owner: ""
+  tech-lead: ""
+  qa-lead: ""
+
+depends_on: []

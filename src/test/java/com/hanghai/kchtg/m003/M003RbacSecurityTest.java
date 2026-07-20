@@ -37,6 +37,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -72,6 +73,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(MethodSecurityTestConfig.class)
 @DisplayName("M-003 RBAC security tests — approve + delete deny/allow paths, all 5 domains")
 class M003RbacSecurityTest {
+
+    private static final String TEST_UUID = "11111111-1111-1111-1111-111111111111";
 
     @Autowired
     private MockMvc mockMvc;
@@ -121,7 +124,7 @@ class M003RbacSecurityTest {
     @DisplayName("luonghanghai: SYSTEM_ADMIN → approve/c1 allowed (200)")
     void luonghanghai_approveC1_withSystemAdmin_returns200() throws Exception {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(true);
-        mockMvc.perform(post("/api/v1/luong-hang-hai/1/approve/c1")
+        mockMvc.perform(post("/api/v1/luong-hang-hai/" + TEST_UUID + "/approve/c1")
                 .with(principalOf("admin"))
                 .contentType(MediaType.APPLICATION_JSON).content(LHH_APPROVE_BODY))
                 .andExpect(status().isOk());
@@ -131,7 +134,7 @@ class M003RbacSecurityTest {
     @DisplayName("deke: SYSTEM_ADMIN → approve/c1 allowed (200)")
     void deke_approveC1_withSystemAdmin_returns200() throws Exception {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(true);
-        mockMvc.perform(post("/api/v1/de-ke/1/approve/c1")
+        mockMvc.perform(post("/api/v1/de-ke/" + TEST_UUID + "/approve/c1")
                 .with(principalOf("admin"))
                 .contentType(MediaType.APPLICATION_JSON).content(DEKE_APPROVE_BODY))
                 .andExpect(status().isOk());
@@ -141,7 +144,7 @@ class M003RbacSecurityTest {
     @DisplayName("cosuachua: SYSTEM_ADMIN → approve/c1 allowed (200)")
     void cosuachua_approveC1_withSystemAdmin_returns200() throws Exception {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(true);
-        mockMvc.perform(post("/api/v1/co-so-sua-chua/1/approve/c1")
+        mockMvc.perform(post("/api/v1/co-so-sua-chua/" + TEST_UUID + "/approve/c1")
                 .with(principalOf("admin"))
                 .contentType(MediaType.APPLICATION_JSON).content(GENERIC_APPROVE_BODY))
                 .andExpect(status().isOk());
@@ -151,7 +154,7 @@ class M003RbacSecurityTest {
     @DisplayName("tramradar: SYSTEM_ADMIN → approve/c1 allowed (200)")
     void tramradar_approveC1_withSystemAdmin_returns200() throws Exception {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(true);
-        mockMvc.perform(post("/api/v1/tram-radar/1/approve/c1")
+        mockMvc.perform(post("/api/v1/tram-radar/" + TEST_UUID + "/approve/c1")
                 .with(principalOf("admin"))
                 .contentType(MediaType.APPLICATION_JSON).content(GENERIC_APPROVE_BODY))
                 .andExpect(status().isOk());
@@ -161,7 +164,7 @@ class M003RbacSecurityTest {
     @DisplayName("vts: SYSTEM_ADMIN → approve/c1 allowed (200)")
     void vts_approveC1_withSystemAdmin_returns200() throws Exception {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(true);
-        mockMvc.perform(post("/api/v1/he-thong-vts/1/approve/c1")
+        mockMvc.perform(post("/api/v1/he-thong-vts/" + TEST_UUID + "/approve/c1")
                 .with(principalOf("admin"))
                 .contentType(MediaType.APPLICATION_JSON).content(GENERIC_APPROVE_BODY))
                 .andExpect(status().isOk());
@@ -175,35 +178,35 @@ class M003RbacSecurityTest {
     @DisplayName("luonghanghai: SYSTEM_ADMIN → delete allowed (200)")
     void luonghanghai_delete_withSystemAdmin_returns200() throws Exception {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(true);
-        mockMvc.perform(delete("/api/v1/luong-hang-hai/1").with(principalOf("admin"))).andExpect(status().isOk());
+        mockMvc.perform(delete("/api/v1/luong-hang-hai/" + TEST_UUID).with(principalOf("admin"))).andExpect(status().isOk());
     }
 
     @Test @WithMockUser(roles = "SYSTEM_ADMIN")
     @DisplayName("deke: SYSTEM_ADMIN → delete allowed (200)")
     void deke_delete_withSystemAdmin_returns200() throws Exception {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(true);
-        mockMvc.perform(delete("/api/v1/de-ke/1").with(principalOf("admin"))).andExpect(status().isOk());
+        mockMvc.perform(delete("/api/v1/de-ke/" + TEST_UUID).with(principalOf("admin"))).andExpect(status().isOk());
     }
 
     @Test @WithMockUser(roles = "SYSTEM_ADMIN")
     @DisplayName("cosuachua: SYSTEM_ADMIN → delete allowed (200)")
     void cosuachua_delete_withSystemAdmin_returns200() throws Exception {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(true);
-        mockMvc.perform(delete("/api/v1/co-so-sua-chua/1").with(principalOf("admin"))).andExpect(status().isOk());
+        mockMvc.perform(delete("/api/v1/co-so-sua-chua/" + TEST_UUID).with(principalOf("admin"))).andExpect(status().isOk());
     }
 
     @Test @WithMockUser(roles = "SYSTEM_ADMIN")
     @DisplayName("tramradar: SYSTEM_ADMIN → delete allowed (200)")
     void tramradar_delete_withSystemAdmin_returns200() throws Exception {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(true);
-        mockMvc.perform(delete("/api/v1/tram-radar/1").with(principalOf("admin"))).andExpect(status().isOk());
+        mockMvc.perform(delete("/api/v1/tram-radar/" + TEST_UUID).with(principalOf("admin"))).andExpect(status().isOk());
     }
 
     @Test @WithMockUser(roles = "SYSTEM_ADMIN")
     @DisplayName("vts: SYSTEM_ADMIN → delete allowed (200)")
     void vts_delete_withSystemAdmin_returns200() throws Exception {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(true);
-        mockMvc.perform(delete("/api/v1/he-thong-vts/1").with(principalOf("admin"))).andExpect(status().isOk());
+        mockMvc.perform(delete("/api/v1/he-thong-vts/" + TEST_UUID).with(principalOf("admin"))).andExpect(status().isOk());
     }
 
     // =========================================================================
@@ -215,7 +218,7 @@ class M003RbacSecurityTest {
     void luonghanghai_approveC1_withoutAuthority_raisesAccessDenied() {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(false);
         assertThrows(Exception.class, () ->
-                mockMvc.perform(post("/api/v1/luong-hang-hai/1/approve/c1")
+                mockMvc.perform(post("/api/v1/luong-hang-hai/" + TEST_UUID + "/approve/c1")
                         .contentType(MediaType.APPLICATION_JSON).content(LHH_APPROVE_BODY)));
     }
 
@@ -224,7 +227,7 @@ class M003RbacSecurityTest {
     void deke_approveC1_withoutAuthority_raisesAccessDenied() {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(false);
         assertThrows(Exception.class, () ->
-                mockMvc.perform(post("/api/v1/de-ke/1/approve/c1")
+                mockMvc.perform(post("/api/v1/de-ke/" + TEST_UUID + "/approve/c1")
                         .contentType(MediaType.APPLICATION_JSON).content(DEKE_APPROVE_BODY)));
     }
 
@@ -233,7 +236,7 @@ class M003RbacSecurityTest {
     void cosuachua_approveC1_withoutAuthority_raisesAccessDenied() {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(false);
         assertThrows(Exception.class, () ->
-                mockMvc.perform(post("/api/v1/co-so-sua-chua/1/approve/c1")
+                mockMvc.perform(post("/api/v1/co-so-sua-chua/" + TEST_UUID + "/approve/c1")
                         .contentType(MediaType.APPLICATION_JSON).content(GENERIC_APPROVE_BODY)));
     }
 
@@ -242,7 +245,7 @@ class M003RbacSecurityTest {
     void tramradar_approveC1_withoutAuthority_raisesAccessDenied() {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(false);
         assertThrows(Exception.class, () ->
-                mockMvc.perform(post("/api/v1/tram-radar/1/approve/c1")
+                mockMvc.perform(post("/api/v1/tram-radar/" + TEST_UUID + "/approve/c1")
                         .contentType(MediaType.APPLICATION_JSON).content(GENERIC_APPROVE_BODY)));
     }
 
@@ -251,7 +254,7 @@ class M003RbacSecurityTest {
     void vts_approveC1_withoutAuthority_raisesAccessDenied() {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(false);
         assertThrows(Exception.class, () ->
-                mockMvc.perform(post("/api/v1/he-thong-vts/1/approve/c1")
+                mockMvc.perform(post("/api/v1/he-thong-vts/" + TEST_UUID + "/approve/c1")
                         .contentType(MediaType.APPLICATION_JSON).content(GENERIC_APPROVE_BODY)));
     }
 
@@ -264,7 +267,7 @@ class M003RbacSecurityTest {
     void luonghanghai_delete_withoutAuthority_raisesAccessDenied() {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(false);
         assertThrows(Exception.class, () ->
-                mockMvc.perform(delete("/api/v1/luong-hang-hai/1")));
+                mockMvc.perform(delete("/api/v1/luong-hang-hai/" + TEST_UUID)));
     }
 
     @Test @WithMockUser(roles = "VIEWER")
@@ -272,7 +275,7 @@ class M003RbacSecurityTest {
     void deke_delete_withoutAuthority_raisesAccessDenied() {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(false);
         assertThrows(Exception.class, () ->
-                mockMvc.perform(delete("/api/v1/de-ke/1")));
+                mockMvc.perform(delete("/api/v1/de-ke/" + TEST_UUID)));
     }
 
     @Test @WithMockUser(roles = "VIEWER")
@@ -280,7 +283,7 @@ class M003RbacSecurityTest {
     void cosuachua_delete_withoutAuthority_raisesAccessDenied() {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(false);
         assertThrows(Exception.class, () ->
-                mockMvc.perform(delete("/api/v1/co-so-sua-chua/1")));
+                mockMvc.perform(delete("/api/v1/co-so-sua-chua/" + TEST_UUID)));
     }
 
     @Test @WithMockUser(roles = "VIEWER")
@@ -288,7 +291,7 @@ class M003RbacSecurityTest {
     void tramradar_delete_withoutAuthority_raisesAccessDenied() {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(false);
         assertThrows(Exception.class, () ->
-                mockMvc.perform(delete("/api/v1/tram-radar/1")));
+                mockMvc.perform(delete("/api/v1/tram-radar/" + TEST_UUID)));
     }
 
     @Test @WithMockUser(roles = "VIEWER")
@@ -296,6 +299,6 @@ class M003RbacSecurityTest {
     void vts_delete_withoutAuthority_raisesAccessDenied() {
         when(auth.check(any(Authentication.class), anyString())).thenReturn(false);
         assertThrows(Exception.class, () ->
-                mockMvc.perform(delete("/api/v1/he-thong-vts/1")));
+                mockMvc.perform(delete("/api/v1/he-thong-vts/" + TEST_UUID)));
     }
 }

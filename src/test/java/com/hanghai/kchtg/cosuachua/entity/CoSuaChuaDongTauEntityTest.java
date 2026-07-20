@@ -3,6 +3,7 @@ package com.hanghai.kchtg.cosuachua.entity;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -14,7 +15,7 @@ class CoSuaChuaDongTauEntityTest {
                 .tenCoSo("Cơ sở ABC")
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
-                .loaiCoSo("Sửa chữa")
+                .loaiCoSo(LoaiCoSo.CS_SUA_CHUA)
                 .nguoiTao("test")
                 .build();
 
@@ -22,7 +23,7 @@ class CoSuaChuaDongTauEntityTest {
         assertEquals("Cơ sở ABC", entity.getTenCoSo());
         assertEquals("Hà Nội", entity.getDiaChi());
         assertEquals("Hà Nội", entity.getTinhThanh());
-        assertEquals("Sửa chữa", entity.getLoaiCoSo());
+        assertEquals(LoaiCoSo.CS_SUA_CHUA, entity.getLoaiCoSo());
         assertEquals("test", entity.getNguoiTao());
     }
 
@@ -32,7 +33,7 @@ class CoSuaChuaDongTauEntityTest {
                 .tenCoSo("ABC")
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
-                .loaiCoSo("Sửa chữa")
+                .loaiCoSo(LoaiCoSo.CS_SUA_CHUA)
                 .nguoiTao("test")
                 .build();
 
@@ -47,13 +48,14 @@ class CoSuaChuaDongTauEntityTest {
     @Test
     void testSettersAndGetters() {
         CoSuaChuaDongTau entity = new CoSuaChuaDongTau();
-        entity.setId(1L);
+        UUID uuid = UUID.randomUUID();
+        entity.setId(uuid);
         entity.setTenCoSo("Cơ sở ABC");
         entity.setDiaChi("Hà Nội");
         entity.setTinhThanh("Hà Nội");
         entity.setSoDienThoai("0123456789");
         entity.setEmail("test@example.com");
-        entity.setLoaiCoSo("Sửa chữa");
+        entity.setLoaiCoSo(LoaiCoSo.CS_SUA_CHUA);
         entity.setKhaNang("Khả năng 100");
         entity.setChuQuan("Bộ Quốc phòng");
         entity.setTrangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED);
@@ -67,12 +69,12 @@ class CoSuaChuaDongTauEntityTest {
         entity.setNguoiSuaDoi("admin");
         entity.setNgaySuaDoi(LocalDateTime.now());
 
-        assertEquals(1L, entity.getId());
+        assertEquals(uuid, entity.getId());
         assertEquals("Cơ sở ABC", entity.getTenCoSo());
         assertEquals("Hà Nội", entity.getDiaChi());
         assertEquals("0123456789", entity.getSoDienThoai());
         assertEquals("test@example.com", entity.getEmail());
-        assertEquals("Sửa chữa", entity.getLoaiCoSo());
+        assertEquals(LoaiCoSo.CS_SUA_CHUA, entity.getLoaiCoSo());
         assertEquals("Khả năng 100", entity.getKhaNang());
         assertEquals("Bộ Quốc phòng", entity.getChuQuan());
         assertEquals(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED, entity.getTrangThai());
@@ -93,7 +95,7 @@ class CoSuaChuaDongTauEntityTest {
                 .tenCoSo("ABC")
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
-                .loaiCoSo("Sửa chữa")
+                .loaiCoSo(LoaiCoSo.CS_SUA_CHUA)
                 .nguoiTao("test")
                 .build();
 
@@ -109,7 +111,7 @@ class CoSuaChuaDongTauEntityTest {
                 .tenCoSo("ABC")
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
-                .loaiCoSo("Sửa chữa")
+                .loaiCoSo(LoaiCoSo.CS_SUA_CHUA)
                 .nguoiTao("test")
                 .build();
 
@@ -125,7 +127,7 @@ class CoSuaChuaDongTauEntityTest {
                 .tenCoSo("ABC")
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
-                .loaiCoSo("Sửa chữa")
+                .loaiCoSo(LoaiCoSo.CS_SUA_CHUA)
                 .nguoiTao("test")
                 .build();
 
@@ -141,7 +143,7 @@ class CoSuaChuaDongTauEntityTest {
                 .tenCoSo("ABC")
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
-                .loaiCoSo("Sửa chữa")
+                .loaiCoSo(LoaiCoSo.CS_SUA_CHUA)
                 .nguoiTao("test")
                 .build();
 
@@ -157,7 +159,7 @@ class CoSuaChuaDongTauEntityTest {
                 .tenCoSo("ABC")
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
-                .loaiCoSo("Sửa chữa")
+                .loaiCoSo(LoaiCoSo.CS_SUA_CHUA)
                 .nguoiTao("test")
                 .build();
 
@@ -171,7 +173,7 @@ class CoSuaChuaDongTauEntityTest {
                 .tenCoSo("ABC")
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
-                .loaiCoSo("Sửa chữa")
+                .loaiCoSo(LoaiCoSo.CS_SUA_CHUA)
                 .trangThai(com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.UNDER_REVIEW)
                 .pheDuyetC1(true)
                 .pheDuyetC2(false)
@@ -194,7 +196,7 @@ class CoSuaChuaDongTauEntityTest {
                 .tenCoSo("Cơ sở ABC")
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
-                .loaiCoSo("Sửa chữa")
+                .loaiCoSo(LoaiCoSo.CS_SUA_CHUA)
                 .nguoiTao("user1")
                 .build();
 
@@ -236,21 +238,22 @@ class CoSuaChuaDongTauEntityTest {
         entity.setTenCoSo("ABC");
         entity.setDiaChi("Hà Nội");
         entity.setTinhThanh("Hà Nội");
-        entity.setLoaiCoSo("Sửa chữa");
+        entity.setLoaiCoSo(LoaiCoSo.CS_SUA_CHUA);
         entity.setNguoiTao("test");
 
         assertEquals("ABC", entity.getTenCoSo());
         assertEquals("Hà Nội", entity.getDiaChi());
         assertEquals("Hà Nội", entity.getTinhThanh());
-        assertEquals("Sửa chữa", entity.getLoaiCoSo());
+        assertEquals(LoaiCoSo.CS_SUA_CHUA, entity.getLoaiCoSo());
         assertEquals("test", entity.getNguoiTao());
     }
 
     @Test
     void testAllArgsConstructor() {
+        UUID uuid = UUID.randomUUID();
         CoSuaChuaDongTau entity = new CoSuaChuaDongTau(
-                1L, "ABC", "Hà Nội", "Hà Nội", "0123456789", "test@test.com",
-                "Sửa chữa", "Khả năng 100", "Bộ Quốc phòng", null, null, com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED,
+                uuid, "ABC", "Hà Nội", "Hà Nội", "0123456789", "test@test.com",
+                LoaiCoSo.CS_SUA_CHUA, "Khả năng 100", "Bộ Quốc phòng", null, null, com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED,
                 true, "admin1", LocalDateTime.now(),
                 true, "director", LocalDateTime.now(),
                 null, "user1", LocalDateTime.now(),
@@ -258,7 +261,7 @@ class CoSuaChuaDongTauEntityTest {
                 new java.util.ArrayList<>()
         );
 
-        assertEquals(1L, entity.getId());
+        assertEquals(uuid, entity.getId());
         assertEquals("ABC", entity.getTenCoSo());
         assertTrue(entity.getPheDuyetC1());
         assertTrue(entity.getPheDuyetC2());
@@ -267,10 +270,11 @@ class CoSuaChuaDongTauEntityTest {
 
     @Test
     void testAllArgsConstructor_ListType() {
+        UUID uuid = UUID.randomUUID();
         java.util.List<CoSuaChuaDongTauAttachment> emptyList = new java.util.ArrayList<>();
         CoSuaChuaDongTau entity = new CoSuaChuaDongTau(
-                1L, "ABC", "Hà Nội", "Hà Nội", "0123456789", "test@test.com",
-                "Sửa chữa", "Khả năng 100", "Bộ Quốc phòng", null, null, com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED,
+                uuid, "ABC", "Hà Nội", "Hà Nội", "0123456789", "test@test.com",
+                LoaiCoSo.CS_SUA_CHUA, "Khả năng 100", "Bộ Quốc phòng", null, null, com.hanghai.kchtg.cosuachua.entity.CoSuaChuaApprovalStatus.APPROVED,
                 true, "admin1", LocalDateTime.now(),
                 true, "director", LocalDateTime.now(),
                 null, "user1", LocalDateTime.now(),
@@ -286,7 +290,7 @@ class CoSuaChuaDongTauEntityTest {
                 .tenCoSo("ABC")
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
-                .loaiCoSo("Sửa chữa")
+                .loaiCoSo(LoaiCoSo.CS_SUA_CHUA)
                 .nguoiTao("test")
                 .build();
 
@@ -294,7 +298,7 @@ class CoSuaChuaDongTauEntityTest {
                 .tenCoSo("ABC")
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
-                .loaiCoSo("Sửa chữa")
+                .loaiCoSo(LoaiCoSo.CS_SUA_CHUA)
                 .nguoiTao("test")
                 .build();
 
@@ -308,7 +312,7 @@ class CoSuaChuaDongTauEntityTest {
                 .tenCoSo("ABC")
                 .diaChi("Hà Nội")
                 .tinhThanh("Hà Nội")
-                .loaiCoSo("Sửa chữa")
+                .loaiCoSo(LoaiCoSo.CS_SUA_CHUA)
                 .nguoiTao("test")
                 .build();
 

@@ -1,0 +1,171 @@
+module_id: M-007
+module_name: "GIS / Bản đồ"
+type: bounded-context
+slug: gis-ban-do
+
+# Map logical module → physical implementations across apps/services/libs.
+# Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
+implementations:
+  apps:
+    - path: "src/main/java/com/hanghai/kchtg"
+      type: spring-boot-app
+      description: "Main application containing M-007 GIS bounded context"
+  services: []
+  libs: []
+  packages:
+    - name: "gis-point"
+      path: "src/main/java/com/hanghai/kchtg/gis/point"
+      files:
+        - "controller/PointObjectController.java"
+        - "service/PointObjectService.java"
+        - "repository/PointObjectRepository.java"
+        - "repository/PointHistoryRepository.java"
+        - "repository/ObjectCategoryRepository.java"
+        - "entity/PointObject.java"
+        - "entity/PointHistory.java"
+        - "entity/PointAttachment.java"
+        - "entity/ObjectCategory.java"
+        - "dto/CreatePointObjectRequest.java"
+        - "dto/UpdatePointObjectRequest.java"
+        - "dto/PointObjectResponse.java"
+      description: "Point object management (F-136)"
+      status: implemented
+    - name: "gis-line"
+      path: "src/main/java/com/hanghai/kchtg/gis/line"
+      files:
+        - "controller/LineObjectController.java"
+        - "service/LineObjectService.java"
+        - "repository/LineObjectRepository.java"
+        - "repository/LineHistoryRepository.java"
+        - "repository/LineCategoryRepository.java"
+        - "entity/LineObject.java"
+        - "entity/LineHistory.java"
+        - "entity/LineCategory.java"
+        - "entity/LineAttachment.java"
+        - "dto/CreateLineObjectRequest.java"
+        - "dto/UpdateLineObjectRequest.java"
+        - "dto/LineObjectResponse.java"
+      description: "Line object management (F-137)"
+      status: implemented
+    - name: "gis-polygon"
+      path: "src/main/java/com/hanghai/kchtg/gis/polygon"
+      files:
+        - "controller/PolygonObjectController.java"
+        - "service/PolygonObjectService.java"
+        - "repository/PolygonObjectRepository.java"
+        - "repository/PolygonHistoryRepository.java"
+        - "repository/PolygonCategoryRepository.java"
+        - "entity/PolygonObject.java"
+        - "entity/PolygonHistory.java"
+        - "entity/PolygonCategory.java"
+        - "entity/PolygonAttachment.java"
+        - "entity/PolygonOverlap.java"
+        - "dto/CreatePolygonObjectRequest.java"
+        - "dto/UpdatePolygonObjectRequest.java"
+        - "dto/PolygonObjectResponse.java"
+      description: "Polygon object management (F-138)"
+      status: implemented
+    - name: "gis-layer"
+      path: "src/main/java/com/hanghai/kchtg/gis/layer"
+      files:
+        - "controller/MapLayerController.java"
+        - "service/MapLayerService.java"
+        - "repository/MapLayerRepository.java"
+        - "repository/MapViewRepository.java"
+        - "repository/MapStyleRepository.java"
+        - "repository/MapOverlayRepository.java"
+        - "entity/MapLayer.java"
+        - "entity/MapView.java"
+        - "entity/MapStyle.java"
+        - "entity/MapOverlay.java"
+        - "dto/CreateMapLayerRequest.java"
+        - "dto/UpdateMapLayerRequest.java"
+        - "dto/MapLayerResponse.java"
+        - "dto/CreateMapViewRequest.java"
+        - "dto/UpdateMapViewRequest.java"
+        - "dto/MapViewResponse.java"
+        - "dto/CreateMapStyleRequest.java"
+        - "dto/UpdateMapStyleRequest.java"
+        - "dto/MapStyleResponse.java"
+        - "dto/CreateMapOverlayRequest.java"
+        - "dto/UpdateMapOverlayRequest.java"
+        - "dto/MapOverlayResponse.java"
+      description: "Map layer and view management (F-139)"
+      status: implemented
+    - name: "gis-search"
+      path: "src/main/java/com/hanghai/kchtg/gis/search"
+      files:
+        - "controller/SearchController.java"
+        - "service/SearchService.java"
+        - "repository/SearchQueryRepository.java"
+        - "entity/SearchResult.java"
+        - "entity/SearchQuery.java"
+        - "dto/SearchRequest.java"
+        - "dto/SearchResponse.java"
+        - "dto/SearchHistoryResponse.java"
+      description: "KCHT search on map (F-140)"
+      status: implemented
+    - name: "gis-service"
+      path: "src/main/java/com/hanghai/kchtg/gis/service"
+      files:
+        - "S52StyleService.java"
+        - "CoordinateCalibrationService.java"
+        - "ChartIntegrationService.java"
+      description: "GIS shared services — S52 styling, coordinate calibration, chart integration (F-140 support)"
+      status: implemented
+    - name: "gis-parser"
+      path: "src/main/java/com/hanghai/kchtg/gis/parser"
+      files:
+        - "S57Parser.java"
+      description: "S-57 nautical chart parser (M-012)"
+      status: implemented
+    - name: "gis-entity"
+      path: "src/main/java/com/hanghai/kchtg/gis/entity"
+      files:
+        - "ChartCell.java"
+        - "ChartFeature.java"
+        - "S63Permit.java"
+      description: "Chart entities (M-012)"
+      status: implemented
+    - name: "gis-repository"
+      path: "src/main/java/com/hanghai/kchtg/gis/repository"
+      files:
+        - "ChartCellRepository.java"
+        - "ChartFeatureRepository.java"
+        - "S63PermitRepository.java"
+      description: "Chart repositories (M-012)"
+      status: implemented
+    - name: "gis-controller"
+      path: "src/main/java/com/hanghai/kchtg/gis/controller"
+      files:
+        - "ChartController.java"
+      description: "Chart display controller (M-012)"
+      status: implemented
+    - name: "gis-tests"
+      path: "src/test/java/com/hanghai/kchtg/gis"
+      files:
+        - "point/PointObjectServiceTest.java"
+        - "point/PointObjectControllerTest.java"
+        - "line/LineObjectServiceTest.java"
+        - "line/LineObjectControllerTest.java"
+        - "polygon/PolygonObjectServiceTest.java"
+        - "polygon/PolygonObjectControllerTest.java"
+        - "layer/MapLayerServiceTest.java"
+        - "layer/MapLayerControllerTest.java"
+        - "search/SearchServiceTest.java"
+        - "search/SearchControllerTest.java"
+        - "service/CoordinateCalibrationServiceTest.java"
+        - "service/ChartIntegrationServiceTest.java"
+        - "controller/ChartControllerTest.java"
+      description: "Unit tests for GIS module"
+      status: implemented
+
+# Stakeholder roster (BA fills business-owner; tech-lead fills tech-lead)
+stakeholders:
+  business-owner: ""
+  tech-lead: ""
+  qa-lead: ""
+
+# Cross-references
+depends_on:
+  - M-006: GIS framework base

@@ -1,0 +1,71 @@
+{
+  "validated-at": "2026-06-16T14:00:00Z",
+  "mode": "LARGE",
+  "source-hash": "TKCT_CucHH_KetCauHaTangGiaoThong.docx",
+  "summary": { "HIGH": 0, "MEDIUM": 0, "LOW": 5, "pass": true },
+  "issues": [
+    {
+      "id": "ISSUE-001",
+      "severity": "LOW",
+      "type": "naming-artifact",
+      "location": "catalog.json M-008 (F-141, F-188, F-189)",
+      "detail": "M-008 report feature names have 'Bao cao Bao cao' duplication pattern (e.g., 'Bao cao Bao cao tang giam tai san', 'Bao cao Bao cao ke khai'). This is a cosmetic extraction artifact where the report template prefix was prepended to the report name. It does not affect functionality but should be cleaned for readability.",
+      "suggested-fix": "Rename to 'Bao cao tang giam tai san', 'Bao cao ke khai, tinh hinh quan ly TS KCHTGT', etc."
+    },
+    {
+      "id": "ISSUE-002",
+      "severity": "LOW",
+      "type": "encoding-artifact",
+      "location": "catalog.json M-008 M-009 (F-167, F-172, F-259, F-264, F-193, F-230)",
+      "detail": "A few feature names contain Unicode encoding artifacts (e.g., 'thuyá»n' instead of 'thuyền', 'trÃ¡nh trÃº bÃ£o' instead of 'tránh trú bão'). These appear in 7 feature names across M-008 and M-009. This is a file encoding issue from the extraction process.",
+      "suggested-fix": "Run UTF-8 normalization on catalog.json and module data files to fix encoding artifacts."
+    },
+    {
+      "id": "ISSUE-003",
+      "severity": "LOW",
+      "type": "enrichment-gap",
+      "location": "catalog.json (global)",
+      "detail": "Entity-to-entity relationship cardinality mappings are limited to 6 simple string entries. raw-extract.md section 7 identifies 19 entity types with counts, and doc-brief.md section 6.1 lists 6 databases with relationships (cang_bien 1:N ben_cang, cang_bien 1:N cau_cang, etc.). A comprehensive 1:N mapping for all 19 KCHT entity types is needed for SDLC scaffolding.",
+      "suggested-fix": "Create a relationships.json or extend catalog.json with complete entity cardinality mappings (1:1, 1:N) for all 19 KCHT object types."
+    },
+    {
+      "id": "ISSUE-004",
+      "severity": "LOW",
+      "type": "enrichment-gap",
+      "location": "docs/intel/ (global)",
+      "detail": "test-data-hints.md does not exist. This file would provide sample data values for each entity field matching MSSQL types from tech-brief.md. It is expected in the enrichment layer for SDLC readiness.",
+      "suggested-fix": "Create test-data-hints.md with sample values for each entity field, organized by module."
+    },
+    {
+      "id": "ISSUE-005",
+      "severity": "LOW",
+      "type": "sdlc-readiness",
+      "location": "modules/*.data.json (all 12)",
+      "detail": "do_d checklist items api_contract_complete and entity_schema_defined are set to false across all 12 module files. This is expected at Layer 1 (intel extraction phase) — these fields become true after Layer 2 (URD) produces API contracts and entity schemas. Documented as informational.",
+      "suggested-fix": "No action needed at Layer 1. These will be updated by the designer specialist in Layer 2."
+    }
+  ],
+  "metrics": {
+    "features": 289,
+    "rules": 432,
+    "entities": 19,
+    "screens": 49,
+    "modules": 12,
+    "relationships": 6,
+    "feature-per-module-ratio": 24.08,
+    "rule-per-feature-ratio": 1.49,
+    "source-traceability-rate": 1.0,
+    "sdlc-readiness": {
+      "rules-with-feature-ref": 1.0,
+      "features-with-priority": 1.0,
+      "relationships-with-cardinality": 0.33,
+      "features-with-explicit-scope": 1.0
+    },
+    "enrichment": {
+      "fields-with-type-inferred": 0.0,
+      "test-data-hints-present": false,
+      "dod-checklist-complete": false,
+      "insights-subsections-populated": 3
+    }
+  }
+}

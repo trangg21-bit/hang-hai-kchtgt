@@ -7,11 +7,10 @@ export interface TramRadarAttachment {
 }
 
 export interface TramRadarResponse {
-  id: number;
+  id: string;
   tenTram?: string; // optional
   viTri: string;
-  kinhDo?: number; // BigDecimal on BE, number on FE
-  viDo?: number;
+
   loaiTram?: string;
   coTrinh?: string;
   dienTichPhaXa?: number;
@@ -38,15 +37,14 @@ export interface TramRadarResponse {
   khongGianId?: string;
   chieuCaoThapRadar?: number;
   tamHieuLucRadar?: number;
-  heThongVtsId?: number;
+  heThongVtsId?: string;
   tenHeThongVts?: string;
 }
 
 export interface CreateTramRadarRequest {
   tenTram?: string;
   viTri: string;
-  kinhDo?: number;
-  viDo?: number;
+
   loaiTram?: string;
   coTrinh?: string;
   dienTichPhaXa?: number;
@@ -58,7 +56,7 @@ export interface CreateTramRadarRequest {
   bieuTuongId?: string;
   chieuCaoThapRadar?: number;
   tamHieuLucRadar?: number;
-  heThongVtsId?: number;
+  heThongVtsId?: string;
 }
 
 export interface UpdateTramRadarRequest extends CreateTramRadarRequest {}

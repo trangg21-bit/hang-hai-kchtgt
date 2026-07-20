@@ -1,0 +1,118 @@
+{
+  "actors": [
+    {
+      "id": "A-001",
+      "name": "Quan tri he thong",
+      "source": "Phan 2 - Phan quyen chuc nang, Bang danh sach nguoi dung he thong",
+      "multi_role": true,
+      "type": "internal",
+      "role": "Admin",
+      "permissions": [
+        "Quan ly tai khoan",
+        "Quan ly nhom",
+        "Quan ly don vi",
+        "Quan ly admin",
+        "Quan ly log",
+        "Quan ly ban do",
+        "Quan ly lien thong"
+      ]
+    },
+    {
+      "id": "A-002",
+      "name": "Lanh dao",
+      "source": "Phan 2 - Phan quyen chuc nang",
+      "multi_role": false,
+      "type": "internal",
+      "role": "Leader",
+      "permissions": [
+        "Duyet du lieu",
+        "Phe duyet tai san",
+        "Xem bao cao"
+      ]
+    },
+    {
+      "id": "A-003",
+      "name": "Chuyen vien",
+      "source": "Phan 2 - Chuyen vien tai Cang vu, chi cuc, Cuc",
+      "multi_role": true,
+      "type": "internal",
+      "role": "Specialist",
+      "permissions": [
+        "Khoi tao du lieu",
+        "Cap nhat du lieu",
+        "Quan ly",
+        "Kiem ke",
+        "Bao cao"
+      ]
+    },
+    {
+      "id": "A-004",
+      "name": "Nguoi dung tai Cang",
+      "source": "Phan 2 - Nguoi dung tai cac Cang",
+      "multi_role": false,
+      "type": "internal",
+      "role": "Port Operator",
+      "permissions": [
+        "Khai thac du lieu",
+        "Cap nhat du lieu duoc cap quyen"
+      ]
+    },
+    {
+      "id": "A-005",
+      "name": "Ca nhan/To chuc ben ngoai",
+      "source": "Phan 2 - Ca nhan, doanh nghiep co nhu cau",
+      "multi_role": false,
+      "type": "external",
+      "role": "Public User",
+      "permissions": [
+        "Tra cuu thong tin KCHT qua web"
+      ]
+    },
+    {
+      "id": "A-006",
+      "name": "HTTT-ĐV (Cang vu, TCT)",
+      "source": "Phan 2 - Phan 2 - TCT BDTATHH, VISHIPEL, Cang vu",
+      "multi_role": false,
+      "type": "external",
+      "role": "External System",
+      "permissions": [
+        "Lien thong du lieu qua API"
+      ]
+    },
+    {
+      "id": "A-007",
+      "name": "Truc LGSP",
+      "source": "Phan 2 - Truc tong hop chia se du lieu Bo GTVT",
+      "multi_role": false,
+      "type": "external",
+      "role": "Integration Bus",
+      "permissions": [
+        "Dong bo du lieu -> CSDL Bo GTVT"
+      ]
+    },
+    {
+      "id": "A-008",
+      "name": "Truc NDXP",
+      "source": "Phan 2 - Truc lien thong Quoc gia",
+      "multi_role": false,
+      "type": "external",
+      "role": "National Bus",
+      "permissions": [
+        "Chia sẻ -> CSDL Quoc gia ve tai san cong"
+      ]
+    },
+    {
+      "id": "A-009",
+      "name": "He SIEM",
+      "source": "Phan 2 - Máy chủ SIEM, Phần mềm ATTT",
+      "multi_role": false,
+      "type": "system",
+      "role": "Security Monitoring",
+      "permissions": [
+        "Giám sát ATTT",
+        "Phân tích sự kiện",
+        "Cảnh báo thời gian thực"
+      ]
+    }
+  ]
+}

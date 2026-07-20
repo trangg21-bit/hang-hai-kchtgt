@@ -92,7 +92,10 @@ export default function BeaconForm() {
           description: values.description,
           unitId: values.unitId,
         };
-        await beaconLightCRUD.update(id!, payload);
+        const res = await beaconLightCRUD.update(id!, payload);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[id!] = res;
+        }
         toast.success('Đã cập nhật đèn biển');
       } else {
         const payload: CreateBeaconLightRequest = {

@@ -17,7 +17,7 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 @AllArgsConstructor
 @Builder
 public class DeKeResponse {
-    private Long id;
+    private java.util.UUID id;
     private com.hanghai.kchtg.deke.entity.LoaiDe loaiDe;
     private String viTri;
     private String tenDeKe;

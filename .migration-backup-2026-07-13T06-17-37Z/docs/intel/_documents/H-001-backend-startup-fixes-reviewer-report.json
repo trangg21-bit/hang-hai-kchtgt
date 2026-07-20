@@ -1,0 +1,351 @@
+{
+  "_pipeline": {
+    "created_at": "2026-06-28T16:38:37.870Z",
+    "pmo_session_id": "ses_0f0ee5aa7ffekgv0WNX9OZRDG5",
+    "updated_at": "2026-06-28T16:38:37.870Z"
+  },
+  "blocks": [
+    {
+      "id": "b_b0c0594b",
+      "text": "H-001 Code Review Report — Final Quality Gate",
+      "type": "heading"
+    },
+    {
+      "id": "b_003fddd4",
+      "text": "---\nfeature-id: H-001\nstage: final-quality-gate\nagent: engineering-code-reviewer (orchestrator)\nverdict: Changes-requested\nmust-fix-count: 2\nshould-fix-count: 2\nlast-updated: \"2026-06-29T00:10:00+07:00\"\n---",
+      "type": "paragraph"
+    },
+    {
+      "id": "b_74fe2025",
+      "level": 2,
+      "text": "Scope Reviewed",
+      "type": "heading"
+    },
+    {
+      "id": "b_b4bdbb92",
+      "text": "- **Hotfix:** H-001 — Fix backend startup failures (module M-001)\n- **Severity:** High\n- **Pipeline path:** Tech-lead → Dev → QA → Reviewer (BA/SA skipped as hotfix)\n\n### Files Reviewed On Disk\n\n| Fix ID | File | Lines Reviewed | Status |\n|--------|------|---------------|--------|\n| FIX-1 | `src/main/resources/application-local.properties` | Full file (23 lines) | Read ✅ |\n| FIX-2 | `src/main/java/com/hanghai/kchtg/accesslog/scheduler/LogStatsScheduler.java` | Full file (46 lines) | Read ✅ |\n| FIX-3 | `src/main/java/com/hanghai/kchtg/config/RolePermissionSeeder.java` | Full file (256 lines) | Read ✅ |\n| FIX-4 | `src/main/java/com/hanghai/kchtg/seeder/DataSeeder.java` | Full file (288 lines) | Read ✅ |\n| FIX-5 | `src/test/java/com/hanghai/kchtg/orgunit/service/OrganizationServiceTest.java` | Full file (371 lines) | Read ✅ |\n\n### Supporting Artifacts Read\n\n- `_state.md` — hotfix state, severity, stages-queue\n- `patch-brief.md` — patch summary (incomplete — many `[CẦN BỔ SUNG]`)\n- `tech-lead/04-plan.md` — execution plan with evidence and assessments\n- `dev/05-dev-w1-verify.md` — developer verification (BUILD SUCCESS, static-only)\n- `qa/07-qa-report-w1.md` — QA verification with runtime findings (DEFECT-1 Critical)\n\n---",
+      "type": "paragraph"
+    },
+    {
+      "id": "b_0b8c3b70",
+      "level": 2,
+      "text": "Integration with QA Findings",
+      "type": "heading"
+    },
+    {
+      "id": "b_c8444fa3",
+      "text": "The QA Engineer (wave 1) executed **runtime verification** by running `mvn spring-boot:run -Dspring-boot.run.profiles=local` and discovered a critical defect that neither the tech-lead plan nor the dev verification caught:\n\n### DEFECT-1 (Critical) — Detached Entity Crash at Runtime\n\nThe application **partially starts** (8.226 seconds to \"Started KchtgApplication\"), `RolePermissionSeeder` (Order 1) successfully seeds 8 roles with ~22 permissions, and `DataSeeder` (Order 2) seeds categories and icons. But **`DataSeeder.seedUsers()` crashes** with:\n\n```\norg.hibernate.PersistentObjectException: detached entity passed to persist: com.hanghai.kchtg.user.entity.Role\n```\n\n**Root cause:** The `User` entity at `User.java` line 87 defines:\n\n```java\n@ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.PERSIST)\n@JoinTable(name = \"user_roles\", ...)\nprivate Set<Role> roles = new HashSet<>();\n```\n\nWhen `DataSeeder.seedUsers()` retrieves the `Role` via `roleRepo.findByCode(\"ROLE_SYSTEM_ADMIN\")` and adds it to a new `User`, then calls `userRepo.save(admin)`, Hibernate's `CascadeType.PERSIST` on `User.roles` attempts to `persist()` the already-persisted Role → **crash**.\n\n**Why FIX-4's `@Transactional` does NOT solve this:** The Role was persisted in `RolePermissionSeeder`'s `run()` method (which has no `@Transactional`), so it becomes **detached** after that transaction commits. The `@Transactional` on `seedUsers()` only affects the current transaction boundary — it cannot reattach an entity committed from a **different** transaction.\n\n**The comment on DataSeeder.java line 186** — \"cascade PERSIST on it is a no-op\" — is **incorrect**. Cascade PERSIST does attempt to persist, which causes the crash.\n\n**Fix options recommended by QA:**\n(a) Add `@Transactional` to `RolePermissionSeeder.run()` so the Role remains managed when DataSeeder re-fetches it\n(b) Change `User.roles` cascade to `CascadeType.MERGE`\n(c) In `seedUsers()`, use `entityManager.merge(adminRole)` before adding to user\n(d) Make both seeders participate in the same transaction\n\n### DEFECT-2 (Major) — Process Gap\n\nBoth tech-lead plan and dev verification assessed FIX-4 as \"Correct ✅\" based solely on **static code review** (presence of `@Order(2)`, `ROLE_SYSTEM_ADMIN` code, `@Transactional`). Neither ran `spring-boot:run` to confirm the application actually starts. QA is the first stage to discover this runtime failure.\n\n---",
+      "type": "paragraph"
+    },
+    {
+      "id": "b_12ab674f",
+      "level": 2,
+      "text": "Per-Fix Assessment (Updated with QA Findings)",
+      "type": "heading"
+    },
+    {
+      "id": "b_2f7c257f",
+      "level": 3,
+      "text": "FIX-1: application-local.properties — `spring.sql.init.mode=never`",
+      "type": "heading"
+    },
+    {
+      "id": "b_3713112c",
+      "text": "**File:** `src/main/resources/application-local.properties` (23 lines)\n\n**Lines verified:**\n```\nLine 22: # Disable data.sql — use RolePermissionSeeder + DataSeeder instead (they handle seeding at @Profile(\"local\"))\nLine 23: spring.sql.init.mode=never\n```\n\n**Assessment: Correct ✅**\n- Disables Spring Boot's `data.sql` auto-execution in the local profile only\n- The `-local` suffix correctly scopes this property\n- The project has dedicated seeders (`RolePermissionSeeder` and `DataSeeder`) that handle RBAC seeding\n\n**Limitation:** This only affects the `local` profile. The `dev` profile in `application.yml` (line 97-99) still sets `spring.sql.init.mode=always`, which will execute `data.sql` and fail.\n\n---",
+      "type": "paragraph"
+    },
+    {
+      "id": "b_a83dcc7e",
+      "level": 3,
+      "text": "FIX-2: LogStatsScheduler.java — Cron expression",
+      "type": "heading"
+    },
+    {
+      "id": "b_976a8575",
+      "text": "**File:** `src/main/java/com/hanghai/kchtg/accesslog/scheduler/LogStatsScheduler.java` (46 lines)\n\n**Lines verified:**\n```\nLine 32: @Scheduled(cron = \"${LOG_STATS_CRON:0 0 3 * * ?}\")\n```\n\n**Assessment: Correct ✅**\n- `0 0 3 * * ?` is a valid 6-field Spring cron: seconds=0, minutes=0, hours=3, day=*, month=*, dayOfWeek=?\n- Runs daily aggregate at 03:00 as documented in Javadoc (lines 15-16, 30)\n- Externalized via `${LOG_STATS_CRON:...}` — supports runtime override\n- Exception handling catches and logs without failing scheduler (lines 41-44)\n\n**Full codebase scan confirmed:** All 4 other `@Scheduled` annotations are also valid:\n- `LogCleanupScheduler.java:33` — `\"0 0 2 * * ?\"` ✅\n- `BackupService.java:244` — `\"0 0 0 * * SUN\"` ✅\n- `VerificationTokenService.java:121` — `fixedRate = 3600000` ✅\n- `SchedulerConfig.java:14` — Javadoc only ✅\n\n---",
+      "type": "paragraph"
+    },
+    {
+      "id": "b_54da9f78",
+      "level": 3,
+      "text": "FIX-3: RolePermissionSeeder.java — @Order + remove duplicate save",
+      "type": "heading"
+    },
+    {
+      "id": "b_951c9b62",
+      "text": "**File:** `src/main/java/com/hanghai/kchtg/config/RolePermissionSeeder.java` (256 lines)\n\n**Lines verified:**\n```\nLine 33: @Order(1)\nLine 34: @Profile(\"local\")\nLine 149: // Permissions will be saved automatically via @ManyToMany cascade when saving roles.\nLine 228: roleRepository.saveAll(roles);\n```\n\n**Assessment: Correct ✅ (but with important runtime caveat)**\n- `@Order(1)` ensures execution before `DataSeeder` (Order 2)\n- `@Profile(\"local\")` confines to local profile only\n- Explicit `permissionRepository.saveAll()` removed — permissions saved via `@ManyToMany` cascade\n- Idempotent: checks `existsByCode()` for each role (lines 57-62)\n- All 8 roles defined with proper permission assignments\n- **Runtime impact:** RolePermissionSeeder runs successfully in local profile (verified by QA). However, its `run()` method has **no `@Transactional`**, which contributes to DEFECT-1 in FIX-4.\n\n---",
+      "type": "paragraph"
+    },
+    {
+      "id": "b_34820859",
+      "level": 3,
+      "text": "FIX-4: DataSeeder.java — @Order + role code fix",
+      "type": "heading"
+    },
+    {
+      "id": "b_eb79492d",
+      "text": "**File:** `src/main/java/com/hanghai/kchtg/seeder/DataSeeder.java` (288 lines)\n\n**Lines verified:**\n```\nLine 45: @Component\nLine 46: @Order(2)\nLine 47: @Profile(\"local\")\nLine 171: @Transactional\nLines 183-186:\n  Role adminRole = roleRepo.findByCode(\"ROLE_SYSTEM_ADMIN\")\n      .orElseThrow(() -> new IllegalStateException(\"Role not found: ROLE_SYSTEM_ADMIN\"));\n  // adminRole is managed by the transactional context — cascade PERSIST on it is a no-op\n```\n\n**Assessment: INCOMPLETE ❌**\n\nThe annotations and role code are correct. However, the fix does NOT resolve the startup failure:\n\n- `@Order(2)` correctly follows `@Order(1)` — ✅\n- `@Profile(\"local\")` restricts execution — ✅\n- `@Transactional` on `seedUsers()` — **does not solve the detached entity issue** — ❌\n- `ROLE_SYSTEM_ADMIN` matches `RolePermissionSeeder` definition — ✅\n\n**Critical runtime failure (DEFECT-1):** When `userRepo.save(admin)` is called, Hibernate's `CascadeType.PERSIST` on `User.roles` attempts to re-persist the already-committed Role entity → `PersistentObjectException`. The `@Transactional` on `seedUsers()` cannot fix this because the Role was persisted in a **different transaction** (RolePermissionSeeder's `run()` has no `@Transactional`).\n\n**The comment on line 186** — \"cascade PERSIST on it is a no-op\" — is **factually incorrect** based on runtime evidence. Cascade PERSIST does attempt to persist, which causes the crash.\n\n**Recommended fix:** Add `@Transactional` to `RolePermissionSeeder.run()` so Role entities remain managed within the same transaction boundary as DataSeeder.\n\n---",
+      "type": "paragraph"
+    },
+    {
+      "id": "b_5f6b6895",
+      "level": 3,
+      "text": "FIX-5: OrganizationServiceTest.java — BigDecimal type fix",
+      "type": "heading"
+    },
+    {
+      "id": "b_99adb1a8",
+      "text": "**File:** `src/test/java/com/hanghai/kchtg/orgunit/service/OrganizationServiceTest.java` (371 lines)\n\n**Lines verified (all `setCoefficient()` calls):**\n| Line | Call |\n|------|------|\n| 90 | `request.setCoefficient(BigDecimal.valueOf(1.5));` |\n| 305 | `request.setCoefficient(BigDecimal.ZERO);` |\n| 320 | `request.setCoefficient(BigDecimal.valueOf(-0.5));` |\n| 334 | `request.setCoefficient(BigDecimal.valueOf(1.50));` |\n| 366 | `unit.setCoefficient(BigDecimal.valueOf(1.0));` |\n\n**Assessment: Correct ✅**\n- All 5 occurrences use `BigDecimal.valueOf()` or `BigDecimal.ZERO`\n- `java.math.BigDecimal` import present (line 23)\n- `UpdateOrgUnitRequest` import added (line 4)\n- `mvn test-compile` BUILD SUCCESS confirms zero compile errors\n\n**Test execution:** Cannot run due to Java 25 / ByteBuddy incompatibility (pre-existing environment issue, not related to FIX-5). The compile fix is sufficient evidence.\n\n**Test coverage:** BR-013 (unique code), BR-014 (delete guard), BR-015 (approval workflow), BR-016 (circular ref), BR-017 (coefficient validation) — comprehensive business rule coverage.\n\n---",
+      "type": "paragraph"
+    },
+    {
+      "id": "b_df2c4fbf",
+      "level": 2,
+      "text": "8 Review Dimensions",
+      "type": "heading"
+    },
+    {
+      "columns": [
+        "Dimension",
+        "Assessment",
+        "Evidence"
+      ],
+      "id": "b_27a733cc",
+      "rows": [
+        [
+          "Requirement Alignment",
+          "Partially aligned",
+          "FIX-1, FIX-2, FIX-3, FIX-5 correct. FIX-4 partially correct (code annotations right, but runtime failure not addressed)."
+        ],
+        [
+          "Architecture Alignment",
+          "Flawed cascade design",
+          "FIX-4's `@Transactional` does not solve the detached entity issue. Root cause is `CascadeType.PERSIST` on `User.roles` combined with non-transactional RolePermissionSeeder."
+        ],
+        [
+          "Code Quality",
+          "Good — except DEFECT-1",
+          "FIX-1 (clear comment), FIX-2 (externalized cron), FIX-3 (documented cascade), FIX-5 (correct type). FIX-4 (misleading comment on line 186)."
+        ],
+        [
+          "Security",
+          "No production risk",
+          "Seeders are `@Profile(\"local\")` only. Hardcoded password `admin123` and plaintext token only in local dev. Prod uses PostgreSQL."
+        ],
+        [
+          "Reliability/Operability",
+          "Flawed — DEFECT-1",
+          "Seeder idempotency (`count() > 0` guard) is correct. Circular dependency prevention (`@Lazy`) correct. But cascade PERSIST + separate transactions = crash."
+        ],
+        [
+          "Test Adequacy",
+          "Compile verified, not executed",
+          "FIX-5 compiles cleanly. Tests cannot run (Java 25/ByteBuddy). Business rule coverage (BR-013 to BR-017) is good."
+        ],
+        [
+          "Documentation",
+          "Comment misleading",
+          "FIX-3 line 149 comment correct. FIX-4 line 186 comment \"cascade PERSIST on it is a no-op\" is factually incorrect."
+        ],
+        [
+          "Deployment Readiness",
+          "Partial — profile gap",
+          "Local profile safe. Dev profile (`application.yml` line 97-99) still sets `spring.sql.init.mode=always` — will execute `data.sql` and fail."
+        ]
+      ],
+      "type": "table"
+    },
+    {
+      "id": "b_f6ece3b3",
+      "level": 2,
+      "text": "Security Findings",
+      "type": "heading"
+    },
+    {
+      "caption": "No secrets exposure risk in production profile. All seeders are `@Profile(\"local\")` only.",
+      "columns": [
+        "Finding",
+        "Severity",
+        "Details"
+      ],
+      "id": "b_0e2a4cf8",
+      "rows": [
+        [
+          "Hardcoded admin password",
+          "Observation",
+          "`DataSeeder.java` line 181: `passwordEncoder.encode(\"admin123\")` — BCrypt encoded, `@Profile(\"local\")` only."
+        ],
+        [
+          "Plaintext token in seeder",
+          "Observation",
+          "`DataSeeder.java` line 209: `\"integration-secret-token-2026\"` — plaintext, `@Profile(\"local\")` only."
+        ],
+        [
+          "JWT secret / encryption key",
+          "Observation",
+          "`application.yml` uses `${ENV_VAR:default}` pattern — acceptable for local, requires env override for prod."
+        ],
+        [
+          "RSA private key",
+          "Observation",
+          "`application.yml` lines 73-74: commented-out TODO — not active."
+        ]
+      ],
+      "type": "table"
+    },
+    {
+      "id": "b_c007986c",
+      "level": 2,
+      "text": "Open Execution Questions from Tech-Lead Plan",
+      "type": "heading"
+    },
+    {
+      "columns": [
+        "Q#",
+        "Question",
+        "Status"
+      ],
+      "id": "b_d7780ae0",
+      "rows": [
+        [
+          "Q1",
+          "Profile coverage — is `application-prod.properties` or `application.yml` affected?",
+          "⚠️ Partially addressed. Production path safe (PostgreSQL + `ddl-auto: validate`). Dev profile still problematic."
+        ],
+        [
+          "Q2",
+          "`data.sql` removal — should it be deleted?",
+          "❌ Not addressed. File still present at `src/main/resources/data.sql` (54 lines)."
+        ],
+        [
+          "Q3",
+          "Additional `@Scheduled` beans?",
+          "✅ Resolved. Full scan confirmed all 5 `@Scheduled` annotations valid."
+        ],
+        [
+          "Q4",
+          "Integration `DataSeeder` conflict?",
+          "✅ Resolved. Uses `@Component(\"integrationDataSeeder\")`, `@Order(3)`, independent of RBAC."
+        ]
+      ],
+      "type": "table"
+    },
+    {
+      "id": "b_04b4c14e",
+      "level": 2,
+      "text": "Must-Fix Items",
+      "type": "heading"
+    },
+    {
+      "columns": [
+        "ID",
+        "Description",
+        "Severity",
+        "Owner",
+        "Closure Criteria"
+      ],
+      "id": "b_b47251ae",
+      "rows": [
+        [
+          "DEFECT-1",
+          "`DataSeeder.seedUsers()` crashes with `detached entity passed to persist: Role`. Fix: add `@Transactional` to `RolePermissionSeeder.run()` or use `entityManager.merge()` on Role.",
+          "Critical",
+          "Backend developer",
+          "Application starts fully — all seeders complete, admin user seeded, no crash."
+        ],
+        [
+          "PROF-001",
+          "`application.yml` dev profile sets `spring.sql.init.mode=always` — `data.sql` will execute and fail. Fix: add `spring.sql.init.mode=never` to dev profile or remove `data.sql`.",
+          "Medium",
+          "Backend developer",
+          "Dev profile starts successfully or `data.sql` removed."
+        ]
+      ],
+      "type": "table"
+    },
+    {
+      "id": "b_f8fd5e4a",
+      "level": 2,
+      "text": "Should-Fix Items",
+      "type": "heading"
+    },
+    {
+      "columns": [
+        "ID",
+        "Description",
+        "Risk",
+        "Action"
+      ],
+      "id": "b_335a7713",
+      "rows": [
+        [
+          "data.sql removal",
+          "`src/main/resources/data.sql` still exists — dead artifact referencing non-existent `role` column.",
+          "Low",
+          "Remove or archive to `src/test/resources/`."
+        ],
+        [
+          "Profile config conflict",
+          "`application-local.yml` (line 16: `spring.sql.init.mode=always`) conflicts with `application-local.properties` (line 23: `never`). Properties wins, but fragile.",
+          "Low",
+          "Consolidate local profile into single file format."
+        ],
+        [
+          "@Order convention doc",
+          "Future `CommandLineRunner` beans may break ordering without documented convention.",
+          "Low",
+          "Document in coding standards."
+        ],
+        [
+          "Java 25/ByteBuddy",
+          "Tests cannot execute — Mockito mock instrumentation fails on Java 25.",
+          "Medium",
+          "Downgrade Java or upgrade ByteBuddy/Mockito."
+        ]
+      ],
+      "type": "table"
+    },
+    {
+      "id": "b_db099450",
+      "level": 2,
+      "text": "Follow-up Recommendations",
+      "type": "heading"
+    },
+    {
+      "id": "b_969eecdd",
+      "items": [
+        "Remove or archive `data.sql` — dead artifact referencing non-existent schema column.",
+        "Consolidate local profile configuration — choose either `application-local.yml` or `application-local.properties`, avoid mixing formats.",
+        "Document `@Order` convention for all `CommandLineRunner` beans to prevent future race conditions.",
+        "Fix DEFECT-1 before release — add `@Transactional` to `RolePermissionSeeder.run()` (simplest fix, minimal risk).",
+        "Resolve Java 25/ByteBuddy compatibility for test execution in CI pipeline.",
+        "Add CI verification with production deployment profile (not just `local`)."
+      ],
+      "type": "bullets"
+    },
+    {
+      "id": "b_fa4b7d9f",
+      "level": 2,
+      "text": "Final Review Summary",
+      "type": "heading"
+    },
+    {
+      "id": "b_4901623e",
+      "text": "**All 5 code fixes are technically correct in their annotations and compile cleanly:**\n\n| Fix | Code Annotations | Runtime Result |\n|-----|-----------------|----------------|\n| FIX-1 | `spring.sql.init.mode=never` ✅ | Local profile safe ✅ |\n| FIX-2 | 6-field cron valid ✅ | Scheduler will run correctly ✅ |\n| FIX-3 | `@Order(1)`, removed `permissionRepository.saveAll()` ✅ | Roles seeded successfully ✅ |\n| FIX-4 | `@Order(2)`, `ROLE_SYSTEM_ADMIN` ✅ | **CRASH at runtime** ❌ (DEFECT-1) |\n| FIX-5 | `BigDecimal.valueOf()` ✅ | Compiles, tests cannot execute (env issue) |\n\n**Three of five fixes (FIX-1, FIX-2, FIX-3) are complete and safe.**\n\n**FIX-5 (test fix) compiles cleanly — test execution blocked by pre-existing Java 25/ByteBuddy environment issue.**\n\n**FIX-4 is INCOMPLETE — the `@Transactional` annotation on `seedUsers()` does not solve the detached entity problem. The application crashes at runtime with `detached entity passed to persist: Role` when `DataSeeder.seedUsers()` adds a fetched Role to a new User and calls `userRepo.save(admin)`. This is a **Critical** defect that prevents application startup.**\n\n**Two additional must-fix items:**\n1. `application.yml` dev profile still sets `spring.sql.init.mode=always` — `data.sql` will execute and fail in dev profile (PROF-001)\n2. `data.sql` file still on disk — recommendation to remove or archive (should-fix)\n\n**No security, reliability, or deployment-risk blockers identified beyond DEFECT-1.** All seeders are `@Profile(\"local\")` confined. The production path (via `prod` profile) uses PostgreSQL with `ddl-auto: validate` and does not reference `data.sql`. The hotfix commit is atomic and reversible.\n\n**However, the critical runtime defect (DEFECT-1) means the hotfix CANNOT be released as-is.** A backend-developer fix for the detached entity issue is required before release.",
+      "type": "paragraph"
+    },
+    {
+      "code": "<verdict_envelope>\n  <verdict>Changes-requested</verdict>\n  <confidence>high</confidence>\n  <structured_summary>\n    <key_findings>\n      <item>FIX-1: Correct for local profile — spring.sql.init.mode=never disables data.sql (line 23 verified)</item>\n      <item>FIX-2: 6-field Spring cron 0 0 3 * * ? valid — all 4 other @Scheduled annotations also valid (full scan confirmed)</item>\n      <item>FIX-3: @Order(1) present, permissionRepository.saveAll() removed, RolePermissionSeeder seeds 8 roles successfully</item>\n      <item>FIX-4: @Order(2) and ROLE_SYSTEM_ADMIN correct, BUT crashes at runtime with \"detached entity passed to persist: Role\" — @Transactional does not solve because Role persisted in separate seeder transaction. DEFECT-1 Critical.</item>\n      <item>FIX-5: All 5 BigDecimal fixes compile-clean — mvn test-compile BUILD SUCCESS (625+95 files, zero errors)</item>\n      <item>Build: mvn clean compile test-compile = BUILD SUCCESS (625 main + 95 test, 12.2s)</item>\n      <item>Startup: Application starts in 8.226s, RolePermissionSeeder succeeds, DataSeeder.seedUsers() crashes (DEFECT-1)</item>\n      <item>Profile gap: application.yml dev profile still sets spring.sql.init.mode=always — data.sql will execute and fail (PROF-001)</item>\n    </key_findings>\n    <artifacts_produced>\n      <item>docs/hotfixes/H-001-backend-startup-fixes/reviewer/08-review-report.md</item>\n      <item>docs/hotfixes/H-001-backend-startup-fixes/qa/07-qa-report-w1.md</item>\n    </artifacts_produced>\n  </structured_summary>\n  <blockers>\n    <blocker><code>DEFECT-1</code><description>DataSeeder.seedUsers() crashes with \"detached entity passed to persist: Role\" — User.roles has CascadeType.PERSIST, Role entity persisted in separate seeder transaction (no @Transactional on RolePermissionSeeder.run()). Fix needed: add @Transactional to RolePermissionSeeder.run() or use entityManager.merge() on the Role in seedUsers(). Severity: Critical — prevents application startup.</description></blocker>\n    <blocker><code>PROF-001</code><description>application.yml dev profile sets spring.sql.init.mode=always — data.sql will execute and fail. Required action: add spring.sql.init.mode=never to dev profile section OR remove data.sql entirely. Owner: backend-developer.</description></blocker>\n  </blockers>\n</verdict_envelope>",
+      "id": "b_e2b5d6fa",
+      "lang": "xml",
+      "type": "code"
+    }
+  ],
+  "created_at": "2026-06-28T16:38:37.870Z",
+  "doc_type": "generic",
+  "id": "H-001-backend-startup-fixes-reviewer-report",
+  "schema_version": "1.0",
+  "session_id": "ses_0f0ee5aa7ffekgv0WNX9OZRDG5",
+  "title": "H-001 Code Review Report — Final Quality Gate",
+  "updated_at": "2026-06-28T16:38:37.870Z"
+}

@@ -1,0 +1,15 @@
+feature_id: F-076
+module_id: M-004
+slug: quan-ly-phao-tieu-xoa
+
+# Map logical feature → physical code locations.
+# Primary owner = service that implements feature's main flow.
+# Consumers = services/apps that read or invoke this feature.
+implementations:
+  primary: "src/main/java/com/hanghai/kchtg/beacon/service/BuoyService.java#delete"
+  consumers:
+    - "src/main/java/com/hanghai/kchtg/beacon/controller/BuoyController.java#delete"
+    - "src/main/java/com/hanghai/kchtg/beacon/service/PointObjectSyncService.java#hideFromMapBuoy"
+
+# Cross-cutting: features consumed by multiple modules
+consumed_by_modules: []

@@ -12,13 +12,13 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface TramRadarRepository extends JpaRepository<TramRadar, Long> {
+public interface TramRadarRepository extends JpaRepository<TramRadar, java.util.UUID> {
 
     List<TramRadar> findByTrangThaiAndIsDeletedFalse(TramRadarApprovalStatus trangThai);
 
-    List<TramRadar> findByHeThongVtsId(Long heThongVtsId);
+    List<TramRadar> findByHeThongVtsId(java.util.UUID heThongVtsId);
 
-    long countByHeThongVtsId(Long heThongVtsId);
+    long countByHeThongVtsId(java.util.UUID heThongVtsId);
 
     @Query("""
         SELECT t FROM TramRadar t

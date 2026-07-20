@@ -1,0 +1,272 @@
+{
+  "entry": {
+    "aggregate_size_status": "yellow",
+    "depends_on": [],
+    "feature_count": 17,
+    "features": {
+      "F-254": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-254",
+        "name": "tich-hop-kchtgt-tau-bien-ra-vao-cang",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-254-tich-hop-kchtgt-tau-bien-ra-vao-cang/",
+        "slug": "tich-hop-kchtgt-tau-bien-ra-vao-cang",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-255": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-255",
+        "name": "tich-hop-kchtgt-phuong-tien-thuy-noi-dia",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-255-tich-hop-kchtgt-phuong-tien-thuy-noi-dia/",
+        "slug": "tich-hop-kchtgt-phuong-tien-thuy-noi-dia",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-256": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-256",
+        "name": "tich-hop-kchtgt-tau-bien-nuoc-ngoai",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-256-tich-hop-kchtgt-tau-bien-nuoc-ngoai/",
+        "slug": "tich-hop-kchtgt-tau-bien-nuoc-ngoai",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-257": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-257",
+        "name": "tich-hop-kchtgt-tau-bien-vn-van-tai-quoc-te",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-257-tich-hop-kchtgt-tau-bien-vn-van-tai-quoc-te/",
+        "slug": "tich-hop-kchtgt-tau-bien-vn-van-tai-quoc-te",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-258": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-258",
+        "name": "tich-hop-kchtgt-khoi-luong-hang-hoa-hanh-khach",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-258-tich-hop-kchtgt-khoi-luong-hang-hoa-hanh-khach/",
+        "slug": "tich-hop-kchtgt-khoi-luong-hang-hoa-hanh-khach",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-259": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-259",
+        "name": "tich-hop-kchtgt-luot-tau-thuyen-vao-roi-cang",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-259-tich-hop-kchtgt-luot-tau-thuyen-vao-roi-cang/",
+        "slug": "tich-hop-kchtgt-luot-tau-thuyen-vao-roi-cang",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-260": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-260",
+        "name": "tich-hop-kchtgt-khoi-luong-hang-hoa-doi-tau-vn",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-260-tich-hop-kchtgt-khoi-luong-hang-hoa-doi-tau-vn/",
+        "slug": "tich-hop-kchtgt-khoi-luong-hang-hoa-doi-tau-vn",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-261": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-261",
+        "name": "tich-hop-kchtgt-khoi-luong-hang-hoa-trong-khu-quan-ly",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-261-tich-hop-kchtgt-khoi-luong-hang-hoa-trong-khu-quan-ly/",
+        "slug": "tich-hop-kchtgt-khoi-luong-hang-hoa-trong-khu-quan-ly",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-262": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-262",
+        "name": "tich-hop-kchtgt-thuyen-vien-hoa-tieu",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-262-tich-hop-kchtgt-thuyen-vien-hoa-tieu/",
+        "slug": "tich-hop-kchtgt-thuyen-vien-hoa-tieu",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-263": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-263",
+        "name": "tich-hop-kchtgt-tau-bien-co-quoc-tich-vn",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-263-tich-hop-kchtgt-tau-bien-co-quoc-tich-vn/",
+        "slug": "tich-hop-kchtgt-tau-bien-co-quoc-tich-vn",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-264": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-264",
+        "name": "tich-hop-kchtgt-tau-thuyen-lai-dhat",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-264-tich-hop-kchtgt-tau-thuyen-lai-dhat/",
+        "slug": "tich-hop-kchtgt-tau-thuyen-lai-dhat",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-265": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-265",
+        "name": "tich-hop-kchtgt-co-so-dong-moi-sua-chua",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-265-tich-hop-kchtgt-co-so-dong-moi-sua-chua/",
+        "slug": "tich-hop-kchtgt-co-so-dong-moi-sua-chua",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-266": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-266",
+        "name": "tich-hop-kchtgt-nang-luc-thong-qua-ben-cang",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-266-tich-hop-kchtgt-nang-luc-thong-qua-ben-cang/",
+        "slug": "tich-hop-kchtgt-nang-luc-thong-qua-ben-cang",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-267": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-267",
+        "name": "tich-hop-kchtgt-nang-luc-thong-qua-cang",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-267-tich-hop-kchtgt-nang-luc-thong-qua-cang/",
+        "slug": "tich-hop-kchtgt-nang-luc-thong-qua-cang",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-268": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-268",
+        "name": "tich-hop-kchtgt-khoi-luong-hang-hoa-theo-thang",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-268-tich-hop-kchtgt-khoi-luong-hang-hoa-theo-thang/",
+        "slug": "tich-hop-kchtgt-khoi-luong-hang-hoa-theo-thang",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-269": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-269",
+        "name": "tich-hop-kchtgt-khoi-luong-hang-hoa-theo-nam",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-269-tich-hop-kchtgt-khoi-luong-hang-hoa-theo-nam/",
+        "slug": "tich-hop-kchtgt-khoi-luong-hang-hoa-theo-nam",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      },
+      "F-270": {
+        "classification": "local",
+        "confidence": "high",
+        "consumed_by_modules": [],
+        "depends_on": [],
+        "id": "F-270",
+        "name": "tich-hop-kchtgt-san-luong-dich-vu-van-tai",
+        "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/_features/F-270-tich-hop-kchtgt-san-luong-dich-vu-van-tai/",
+        "slug": "tich-hop-kchtgt-san-luong-dich-vu-van-tai",
+        "status": "proposed",
+        "version": 1,
+        "visibility": [
+          "PRIVATE"
+        ]
+      }
+    },
+    "id": "M-020",
+    "name": "Tích hợp dữ liệu nghiệp vụ",
+    "path": "docs/modules/M-020-tich-hop-du-lieu-nghiep-vu/",
+    "slug": "tich-hop-du-lieu-nghiep-vu",
+    "status": "in-progress",
+    "version": 1
+  },
+  "module_id": "M-020",
+  "schema_version": "1.0"
+}

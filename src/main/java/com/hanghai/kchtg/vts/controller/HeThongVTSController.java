@@ -51,7 +51,7 @@ public class HeThongVTSController {
     @PreAuthorize("@auth.check(authentication, 'vts:read')")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<HeThongVTSResponse>> getById(
-            @PathVariable Long id,
+            @PathVariable java.util.UUID id,
             Authentication authentication) {
         HeThongVTSResponse response = service.getById(id);
         return ResponseEntity.ok(ApiResponse.success("Xem chi tiết thành công", response));
@@ -60,7 +60,7 @@ public class HeThongVTSController {
     @PreAuthorize("@auth.check(authentication, 'vts:update')")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<HeThongVTSResponse>> update(
-            @PathVariable Long id,
+            @PathVariable java.util.UUID id,
             @Valid @RequestBody HeThongVTSUpdateRequest request,
             Authentication authentication) {
         try {
@@ -74,7 +74,7 @@ public class HeThongVTSController {
     @PreAuthorize("@auth.check(authentication, 'vts:delete')")
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(
-            @PathVariable Long id,
+            @PathVariable java.util.UUID id,
             Authentication authentication) {
         try {
             service.delete(id, authentication.getName());
@@ -87,7 +87,7 @@ public class HeThongVTSController {
     @PreAuthorize("@auth.check(authentication, 'vts:approvec1')")
     @PostMapping("/{id}/approve/c1")
     public ResponseEntity<ApiResponse<HeThongVTSResponse>> approveC1(
-            @PathVariable Long id,
+            @PathVariable java.util.UUID id,
             @Valid @RequestBody PheDuyetRequest request,
             Authentication authentication) {
         try {
@@ -101,7 +101,7 @@ public class HeThongVTSController {
     @PreAuthorize("@auth.check(authentication, 'vts:approvec2')")
     @PostMapping("/{id}/approve/c2")
     public ResponseEntity<ApiResponse<HeThongVTSResponse>> approveC2(
-            @PathVariable Long id,
+            @PathVariable java.util.UUID id,
             @Valid @RequestBody PheDuyetRequest request,
             Authentication authentication) {
         try {
@@ -126,7 +126,7 @@ public class HeThongVTSController {
     @PreAuthorize("@auth.check(authentication, 'vts:history')")
     @GetMapping("/{id}/history")
     public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(
-            @PathVariable Long id) {
+            @PathVariable java.util.UUID id) {
         List<HistoryEntry> entries = service.getHistory(id);
         return ResponseEntity.ok(ApiResponse.success("Lịch sử phê duyệt thành công", entries));
     }

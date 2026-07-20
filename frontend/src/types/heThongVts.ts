@@ -19,7 +19,7 @@ export interface HeThongVTSAttachment {
 }
 
 export interface HeThongVTSResponse {
-  id: number;
+  id: string;
   tenHeThong?: string;
   viTri: string;
   tinhTrang?: TinhTrangVTS;

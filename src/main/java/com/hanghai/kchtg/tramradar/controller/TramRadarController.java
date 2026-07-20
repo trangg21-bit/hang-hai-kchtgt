@@ -36,7 +36,7 @@ public class TramRadarController {
 
     @PreAuthorize("@auth.check(authentication, 'tramradar:read')")
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<TramRadarResponse>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<TramRadarResponse>> getById(@PathVariable java.util.UUID id) {
         try {
             TramRadarResponse response = service.getById(id);
             return ResponseEntity.ok(ApiResponse.success("Xem chi tiết thành công", response));
@@ -62,7 +62,7 @@ public class TramRadarController {
 
     @PreAuthorize("@auth.check(authentication, 'tramradar:update')")
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<TramRadarResponse>> update(@PathVariable Long id,
+    public ResponseEntity<ApiResponse<TramRadarResponse>> update(@PathVariable java.util.UUID id,
                                     @Valid @RequestBody TramRadarUpdateRequest request,
                                     Authentication authentication) {
         try {
@@ -77,7 +77,7 @@ public class TramRadarController {
 
     @PreAuthorize("@auth.check(authentication, 'tramradar:delete')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id, Authentication authentication) {
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable java.util.UUID id, Authentication authentication) {
         try {
             String username = authentication != null ? authentication.getName() : "system";
             service.delete(id, username);
@@ -90,7 +90,7 @@ public class TramRadarController {
 
     @PreAuthorize("@auth.check(authentication, 'tramradar:approvec1')")
     @PostMapping("/{id}/approve/c1")
-    public ResponseEntity<ApiResponse<TramRadarResponse>> approveC1(@PathVariable Long id,
+    public ResponseEntity<ApiResponse<TramRadarResponse>> approveC1(@PathVariable java.util.UUID id,
                                        @Valid @RequestBody PheDuyetRequest request,
                                        Authentication authentication) {
         try {
@@ -105,7 +105,7 @@ public class TramRadarController {
 
     @PreAuthorize("@auth.check(authentication, 'tramradar:approvec2')")
     @PostMapping("/{id}/approve/c2")
-    public ResponseEntity<ApiResponse<TramRadarResponse>> approveC2(@PathVariable Long id,
+    public ResponseEntity<ApiResponse<TramRadarResponse>> approveC2(@PathVariable java.util.UUID id,
                                        @Valid @RequestBody PheDuyetRequest request,
                                        Authentication authentication) {
         try {
@@ -120,7 +120,7 @@ public class TramRadarController {
 
     @PreAuthorize("@auth.check(authentication, 'tramradar:history')")
     @GetMapping("/{id}/history")
-    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getHistory(@PathVariable java.util.UUID id) {
         try {
             List<HistoryEntry> history = service.getHistory(id);
             return ResponseEntity.ok(ApiResponse.success("Lịch sử phê duyệt thành công", history));

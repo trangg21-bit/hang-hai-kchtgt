@@ -26,7 +26,7 @@ import {
   CloseCircleOutlined,
   EyeOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { buoyCRUD, approval } from '../../services/beaconService';
 import type { Buoy, CreateBuoyRequest, UpdateBuoyRequest } from '../../types/beacon';
 import {
@@ -68,8 +68,34 @@ export default function BuoyList() {
   const [isDetailMode, setIsDetailMode] = useState(false);
   const [orgTree, setOrgTree] = useState<any[]>([]);
 
+  const [searchParams] = useSearchParams();
+  const isIframeModal = (window.self !== window.top) && searchParams.has('action');
+
+  const action = searchParams.get('action');
+  const id = searchParams.get('id');
+
   useEffect(() => {
-    if (isInIframe) return;
+    if (id && (action === 'detail' || action === 'edit')) {
+      (async () => {
+        try {
+          setIsLoading(true);
+          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          const data = cached || await buoyCRUD.findById(id);
+          if (action === 'detail') {
+            openDetailModal(data);
+          } else {
+            openEditModal(data);
+          }
+        } catch (err: any) {
+          message.error(err.message || 'Lỗi khi tải thông tin chi tiết phao tiêu');
+        } finally {
+          setIsLoading(false);
+        }
+      })();
+    }
+  }, [action, id]);
+
+  useEffect(() => {
     (async () => {
       try {
         const orgs = await organizationService.getTree();
@@ -176,6 +202,14 @@ export default function BuoyList() {
     setIsModalOpen(true);
   }, [form]);
 
+  const handleCancel = useCallback(() => {
+    setIsModalOpen(false);
+    form.resetFields();
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
+  }, [form]);
+
   const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields();
@@ -217,7 +251,10 @@ export default function BuoyList() {
           unitId: values.unitId,
           bieuTuongId: gisLocation?.bieuTuongId || undefined,
         };
-        await buoyCRUD.update(editingRecord.id, payload);
+        const updated = await buoyCRUD.update(editingRecord.id, payload);
+        if (window.parent && (window.parent as any).kchtDetailCache) {
+          (window.parent as any).kchtDetailCache[editingRecord.id] = updated;
+        }
         toast.success('Đã cập nhật phao tiêu');
       } else {
         const payload: CreateBuoyRequest = {
@@ -237,6 +274,9 @@ export default function BuoyList() {
       }
 
       setIsModalOpen(false);
+      if (window.self !== window.top) {
+        window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+      }
       void fetchData();
     } catch {
       // validation error
@@ -245,7 +285,7 @@ export default function BuoyList() {
     }
   }, [editingRecord, form, fetchData]);
 
-  useEffect(() => { if (!isInIframe) void fetchData(); }, [fetchData, isInIframe]);
+  useEffect(() => { if (!isIframeModal) void fetchData(); }, [fetchData, isIframeModal]);
 
   const handleDelete = useCallback(
     async (record: Buoy) => {
@@ -475,102 +515,119 @@ export default function BuoyList() {
 
   return (
     <>
-      <Card style={{ marginBottom: 16 }}>
-        <Row gutter={[12, 12]} align="middle" justify="space-between">
-          <Col xs={24} md={16}>
-            <Space wrap>
-              <Input
-                placeholder="Lọc theo tên"
-                allowClear
-                style={{ width: 160 }}
-                value={filterName}
-                onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
-              />
-              <Input
-                placeholder="Lọc theo mã"
-                allowClear
-                style={{ width: 140 }}
-                value={filterCode}
-                onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
-              />
-              <Select
-                placeholder="Loại phao tiêu"
-                allowClear
-                style={{ width: 190 }}
-                value={filterType}
-                onChange={(val) => { setFilterType(val); setPage(1); }}
-                options={BUOY_TYPE_OPTIONS}
-              />
-              <Select
-                placeholder="Trạng thái"
-                allowClear
-                style={{ width: 160 }}
-                value={filterStatus}
-                onChange={(val) => { setFilterStatus(val); setPage(1); }}
-                options={Object.entries(BEACON_STATUS_MAP).map(([value, { label }]) => ({ value, label }))}
-              />
-            </Space>
-          </Col>
-          <Col xs={24} md={8} style={{ textAlign: 'right' }}>
-            <Space>
-              <Tooltip title="Tải lại">
-                <Button icon={<ReloadOutlined />} onClick={fetchData} />
-              </Tooltip>
-              <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-                Tạo phao tiêu
-              </Button>
-            </Space>
-          </Col>
-        </Row>
-      </Card>
+      {!isIframeModal && (
+        <>
+          <Card style={{ marginBottom: 16 }}>
+            <Row gutter={[12, 12]} align="middle" justify="space-between">
+              <Col xs={24} md={16}>
+                <Space wrap>
+                  <Input
+                    placeholder="Lọc theo tên"
+                    allowClear
+                    style={{ width: 160 }}
+                    value={filterName}
+                    onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
+                  />
+                  <Input
+                    placeholder="Lọc theo mã"
+                    allowClear
+                    style={{ width: 140 }}
+                    value={filterCode}
+                    onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
+                  />
+                  <Select
+                    placeholder="Loại phao tiêu"
+                    allowClear
+                    style={{ width: 190 }}
+                    value={filterType}
+                    onChange={(val) => { setFilterType(val); setPage(1); }}
+                    options={BUOY_TYPE_OPTIONS}
+                  />
+                  <Select
+                    placeholder="Trạng thái"
+                    allowClear
+                    style={{ width: 160 }}
+                    value={filterStatus}
+                    onChange={(val) => { setFilterStatus(val); setPage(1); }}
+                    options={Object.entries(BEACON_STATUS_MAP).map(([value, { label }]) => ({ value, label }))}
+                  />
+                </Space>
+              </Col>
+              <Col xs={24} md={8} style={{ textAlign: 'right' }}>
+                <Space>
+                  <Tooltip title="Tải lại">
+                    <Button icon={<ReloadOutlined />} onClick={fetchData} />
+                  </Tooltip>
+                  <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+                    Tạo phao tiêu
+                  </Button>
+                </Space>
+              </Col>
+            </Row>
+          </Card>
 
-      <Card>
-        {isLoading && <LoadingSkeleton rows={8} type="table" />}
-        {isError && (
-          <ErrorState
-            message={error?.message || 'Không thể tải danh sách phao tiêu'}
-            onRetry={fetchData}
-          />
-        )}
-        {!isLoading && !isError && dataSource.length === 0 && (
-          <EmptyState
-            description={filterName || filterCode || filterType || filterStatus ? 'Không tìm thấy' : 'Chưa có phao tiêu nào'}
-          />
-        )}
-        {!isLoading && !isError && dataSource.length > 0 && (
-          <DataTable<Buoy>
-            columns={columns}
-            dataSource={dataSource}
-            rowKey="id"
-            scroll={{ x: 1400 }}
-            pagination={{
-              current: page,
-              pageSize,
-              total,
-              onChange: (p: number, sz?: number) => {
-                setPage(p);
-                if (sz) setPageSize(sz);
-              },
-              showSizeChanger: true,
-              showTotal: (t: number) => `Tổng ${t} phao tiêu`,
-              pageSizeOptions: ['10', '20', '50'],
-            }}
-          />
-        )}
-      </Card>
+          <Card>
+            {isLoading && <LoadingSkeleton rows={8} type="table" />}
+            {isError && (
+              <ErrorState
+                message={error?.message || 'Không thể tải danh sách phao tiêu'}
+                onRetry={fetchData}
+              />
+            )}
+            {!isLoading && !isError && dataSource.length === 0 && (
+              <EmptyState
+                description={filterName || filterCode || filterType || filterStatus ? 'Không tìm thấy' : 'Chưa có phao tiêu nào'}
+                ctaText="Tạo phao tiêu đầu tiên"
+                onCta={openCreateModal}
+              />
+            )}
+            {!isLoading && !isError && dataSource.length > 0 && (
+              <DataTable<Buoy>
+                columns={columns}
+                dataSource={dataSource}
+                rowKey="id"
+                scroll={{ x: 1400 }}
+                pagination={{
+                  current: page,
+                  pageSize,
+                  total,
+                  onChange: (p: number, sz?: number) => {
+                    setPage(p);
+                    if (sz) setPageSize(sz);
+                  },
+                  showSizeChanger: true,
+                  showTotal: (t: number) => `Tổng ${t} phao tiêu`,
+                  pageSizeOptions: ['10', '20', '50'],
+                }}
+              />
+            )}
+          </Card>
+        </>
+      )}
 
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isDetailMode ? 'Chi tiết phao tiêu' : (editingRecord ? 'Chỉnh sửa phao tiêu' : 'Thêm phao tiêu mới')}</span>}
+        title={isIframeModal ? null : (<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isDetailMode ? 'Chi tiết phao tiêu' : (editingRecord ? 'Chỉnh sửa phao tiêu' : 'Thêm phao tiêu mới')}</span>)}
         open={isModalOpen}
-        onOk={isDetailMode ? () => setIsModalOpen(false) : handleSubmit}
-        onCancel={() => setIsModalOpen(false)}
+        onOk={isDetailMode ? handleCancel : handleSubmit}
+        onCancel={handleCancel}
         destroyOnClose
         confirmLoading={submitting}
         okText={isDetailMode ? 'Đóng' : (editingRecord ? 'Cập nhật' : 'Tạo mới')}
         cancelButtonProps={isDetailMode ? { style: { display: 'none' } } : undefined}
         cancelText="Hủy"
-        width={700}
-        mask={{ closable: false }}
+        width={isIframeModal ? '100%' : 700}
+        mask={!isIframeModal}
+        closable={!isIframeModal}
+        style={isIframeModal ? { top: 0, margin: 0, padding: 0, maxWidth: 'none', height: '100vh' } : undefined}
+        styles={isIframeModal ? { body: { padding: '16px 24px', overflowY: 'auto', maxHeight: 'calc(100vh - 110px)' } } : undefined}
+        footer={isIframeModal ? (
+          isDetailMode ? [
+            <Button key="close" type="primary" onClick={handleCancel}>Đóng</Button>
+          ] : [
+            <Button key="cancel" onClick={handleCancel}>Hủy</Button>,
+            <Button key="submit" type="primary" onClick={handleSubmit} loading={submitting}>{editingRecord ? 'Cập nhật' : 'Tạo mới'}</Button>
+          ]
+        ) : undefined}
       >
         <Form form={form} layout="vertical" disabled={isDetailMode} style={{ marginTop: 16, maxHeight: '60vh', overflowY: 'auto', paddingRight: 12 }}>
           <FormField

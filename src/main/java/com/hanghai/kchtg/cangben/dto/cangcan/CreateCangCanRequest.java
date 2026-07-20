@@ -40,11 +40,8 @@ public class CreateCangCanRequest {
     private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
     private String toaDo;
 
-    /**
-     * GPS paired-field constraint: viDo and kinhDo must both be present or both be absent.
-     */
-    @AssertTrue(message = "Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau")
+    @AssertTrue(message = "Vĩ độ và kinh độ phải được điền đồng thời")
     public boolean isGpsPaired() {
-        return (viDo == null) == (kinhDo == null);
+        return (viDo == null && kinhDo == null) || (viDo != null && kinhDo != null);
     }
 }

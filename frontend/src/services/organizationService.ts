@@ -1,4 +1,4 @@
-﻿import api from "./api";
+import api from "./api";
 import type { PaginatedResponse } from "../types/common";
 import { MOCK_ORGANIZATIONS } from './mockData';
 
@@ -127,6 +127,29 @@ function mapOrgUnit(
   };
 }
 
+const getGlobalWindow = (): any => {
+  try {
+    return window.top || window;
+  } catch {
+    return window;
+  }
+};
+
+const getCachedOrgs = (): Organization[] | null => {
+  const globalWin = getGlobalWindow();
+  return globalWin.__orgUnitsCache || null;
+};
+
+const setCachedOrgs = (orgs: Organization[]) => {
+  const globalWin = getGlobalWindow();
+  globalWin.__orgUnitsCache = orgs;
+};
+
+const clearCachedOrgs = () => {
+  const globalWin = getGlobalWindow();
+  globalWin.__orgUnitsCache = null;
+};
+
 export const organizationService = {
   /**
    * GET /api/org-units
@@ -134,8 +157,24 @@ export const organizationService = {
    * Frontend applies pagination client-side.
    */
   async list(
-    params?: { page?: number; pageSize?: number; search?: string; status?: string }
+    params?: { page?: number; pageSize?: number; search?: string; status?: string; parentId?: string }
   ): Promise<PaginatedResponse<Organization>> {
+    const isCacheable = !params?.search && !params?.status && !params?.parentId;
+    if (isCacheable) {
+      const cached = getCachedOrgs();
+      if (cached) {
+        const page = params?.page || 1;
+        const pageSize = params?.pageSize || 1000;
+        const start = (page - 1) * pageSize;
+        return {
+          data: cached.slice(start, start + pageSize),
+          total: cached.length,
+          page,
+          pageSize,
+        };
+      }
+    }
+
     try {
       const resp = await api.get("/org-units", {
         params: {
@@ -218,6 +257,10 @@ export const organizationService = {
         };
       });
 
+      if (isCacheable) {
+        setCachedOrgs(data);
+      }
+
       // Apply filters
       let filtered: Organization[] = [...data];
 
@@ -258,6 +301,11 @@ export const organizationService = {
       const page = params?.page || 1;
       const pageSize = params?.pageSize || 1000;
       const start = (page - 1) * pageSize;
+
+      if (isCacheable) {
+        setCachedOrgs(filtered);
+      }
+
       return {
         data: filtered.slice(start, start + pageSize),
         total: filtered.length,
@@ -437,6 +485,7 @@ export const organizationService = {
   async create(
     payload: CreateOrganizationPayload
   ): Promise<Organization> {
+    clearCachedOrgs();
     try {
       const resp = await api.post("/org-units", {
         name: payload.name,
@@ -508,6 +557,7 @@ export const organizationService = {
     id: string,
     payload: UpdateOrganizationPayload
   ): Promise<Organization> {
+    clearCachedOrgs();
     try {
       const body: Record<string, any> = {
         name: payload.name,
@@ -567,6 +617,7 @@ export const organizationService = {
    * DELETE /api/org-units/:id
    */
   async delete(id: string): Promise<void> {
+    clearCachedOrgs();
     try {
       await api.delete(`/org-units/${id}`);
     } catch {
@@ -581,6 +632,7 @@ export const organizationService = {
    * POST /api/org-units/:id/submit
    */
   async submit(id: string): Promise<Organization> {
+    clearCachedOrgs();
     try {
       const resp = await api.post(`/org-units/${id}/submit`);
       const item: any = extractData(resp);
@@ -613,6 +665,7 @@ export const organizationService = {
    * POST /api/org-units/:id/approve
    */
   async approve(id: string, comments?: string): Promise<Organization> {
+    clearCachedOrgs();
     try {
       const resp = await api.post(`/org-units/${id}/approve`, null, {
         params: comments ? { comments } : undefined,
@@ -647,6 +700,7 @@ export const organizationService = {
    * POST /api/org-units/:id/reject
    */
   async reject(id: string, comments?: string): Promise<Organization> {
+    clearCachedOrgs();
     try {
       const resp = await api.post(`/org-units/${id}/reject`, null, {
         params: comments ? { comments } : undefined,

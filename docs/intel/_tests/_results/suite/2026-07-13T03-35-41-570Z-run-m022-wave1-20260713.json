@@ -1,0 +1,359 @@
+{
+  "schema_version": "1.0",
+  "test_plan_id": "suite",
+  "run_id": "run-m022-wave1-20260713",
+  "run_at": "2026-07-13T03:35:41.570Z",
+  "agent": "utility-test-runner",
+  "session_id": "ses_0a6751bf2ffejg765kV5TscRpN",
+  "base_url": "",
+  "total": 12,
+  "passed": 0,
+  "failed": 12,
+  "skipped": 0,
+  "cases": [
+    {
+      "tc_id": "TC-M022-001",
+      "name": "Dashboard page renders without crash after login",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable (Playwright not resolved). Cannot login via UI at /login or verify dashboard rendering. Frontend dev server at :3001 is reachable (200 OK).",
+      "duration_ms": 1000
+    },
+    {
+      "tc_id": "TC-M022-002",
+      "name": "ErrorBoundary catches rendering errors gracefully",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable. Cannot verify ErrorBoundary rendering on dashboard. Need real browser to execute E2E test.",
+      "duration_ms": 1000
+    },
+    {
+      "tc_id": "TC-M022-003",
+      "name": "All 6 stats cards render in the grid row",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable. Cannot verify 6 KPI/Approval/Hero cards. Need real browser to inspect dashboard DOM.",
+      "duration_ms": 1000
+    },
+    {
+      "tc_id": "TC-M022-004",
+      "name": "MiniKpiCard displays correct KPI data",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable. Cannot verify MiniKpiCard labels, sparklines, or delta indicators.",
+      "duration_ms": 1000
+    },
+    {
+      "tc_id": "TC-M022-005",
+      "name": "HeroCard renders with correct structure",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable. Cannot verify HeroCard gradient, KPI number, delta, or sparkline.",
+      "duration_ms": 1000
+    },
+    {
+      "tc_id": "TC-M022-006",
+      "name": "ApprovalCards render with progress bars and legends",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "status": "skip"
+        },
+        {
+          "no": 6,
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable. Cannot verify Phê duyệt tài sản / KCHT cards.",
+      "duration_ms": 1000
+    },
+    {
+      "tc_id": "TC-M022-007",
+      "name": "Stacked bar chart 'Hàng hóa thông qua cảng theo tháng' renders",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable. Cannot verify ECharts cargo chart.",
+      "duration_ms": 1000
+    },
+    {
+      "tc_id": "TC-M022-008",
+      "name": "Polar passenger chart 'Lượt hành khách qua cảng' renders",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable. Cannot verify ECharts polar passenger chart.",
+      "duration_ms": 1000
+    },
+    {
+      "tc_id": "TC-M022-009",
+      "name": "Map section 'Bản đồ tra cứu Kết cấu hạ tầng' renders",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable. Cannot verify DashboardMap component.",
+      "duration_ms": 1000
+    },
+    {
+      "tc_id": "TC-M022-010",
+      "name": "Infrastructure table renders 10 rows with pill badges",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable. Cannot verify Ant Table with 10 rows.",
+      "duration_ms": 1000
+    },
+    {
+      "tc_id": "TC-M022-011",
+      "name": "FilterBar renders with 3 dropdowns + timestamp",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "status": "skip"
+        },
+        {
+          "no": 6,
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable. Cannot verify FilterBar dropdowns.",
+      "duration_ms": 1000
+    },
+    {
+      "tc_id": "TC-M022-012",
+      "name": "FilterBar year change triggers data refresh",
+      "status": "error",
+      "steps": [
+        {
+          "no": 1,
+          "status": "skip"
+        },
+        {
+          "no": 2,
+          "status": "skip"
+        },
+        {
+          "no": 3,
+          "status": "skip"
+        },
+        {
+          "no": 4,
+          "status": "skip"
+        },
+        {
+          "no": 5,
+          "status": "skip"
+        }
+      ],
+      "error": "Browser tool unavailable. Cannot interact with year dropdown or verify data refresh.",
+      "duration_ms": 1000
+    }
+  ]
+}

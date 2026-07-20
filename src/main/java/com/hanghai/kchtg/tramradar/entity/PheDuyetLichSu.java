@@ -21,7 +21,7 @@ public class PheDuyetLichSu {
     private Long id;
 
     @Column(name = "tram_radar_id", nullable = true)
-    private Long tramRadarId;
+    private java.util.UUID tramRadarId;
 
     @Column(name = "cap_phe_duyet", nullable = false)
     private Integer capPheDuyet;

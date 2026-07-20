@@ -28,11 +28,13 @@ import {
   updateNhaTramDen,
   deleteNhaTramDen,
 } from '../../services/nhatram/api';
-import { colors } from '../../theme';
-import { fontWeightBold, fontSizeLg } from '../../tokens';
 import type { NhaTramDenResponse, CreateNhaTramDenRequest } from '../../services/nhatram/types';
 import dayjs from 'dayjs';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+
+import { useSearchParams } from 'react-router-dom';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 export default function NhaTramDenList() {
   const [dataSource, setDataSource] = useState<NhaTramDenResponse[]>([]);
@@ -48,7 +50,33 @@ export default function NhaTramDenList() {
   // Form states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<NhaTramDenResponse | null>(null);
+  const [isReadOnly, setIsReadOnly] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
+
+  const [searchParams] = useSearchParams();
+  const isIframeModal = (window.self !== window.top) && searchParams.has('action');
+
+  const action = searchParams.get('action');
+  const id = searchParams.get('id');
+
+  useEffect(() => {
+    if (id && (action === 'detail' || action === 'edit')) {
+      (async () => {
+        try {
+          setLoading(true);
+          const cached = (window.parent as any)?.kchtDetailCache?.[id];
+          const data = cached || await fetchNhaTramDenById(id);
+          setIsReadOnly(action === 'detail');
+          handleOpenModal(data);
+        } catch (err: any) {
+          message.error(err.message || 'Lỗi khi tải thông tin chi tiết nhà trạm');
+        } finally {
+          setLoading(false);
+        }
+      })();
+    }
+  }, [action, id]);
 
   const watchLoaiHinhHoc = Form.useWatch('loaiHinhHoc', form) || 'POINT';
 
@@ -71,8 +99,9 @@ export default function NhaTramDenList() {
   }, [page, pageSize, filterKeyword, filterType]);
 
   useEffect(() => {
+    if (isIframeModal) return;
     loadData();
-  }, [loadData]);
+  }, [loadData, isIframeModal]);
 
   const handleOpenModal = (record?: NhaTramDenResponse) => {
     if (record) {
@@ -107,10 +136,14 @@ export default function NhaTramDenList() {
   const handleCancel = () => {
     setIsModalOpen(false);
     form.resetFields();
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+    }
   };
 
   const handleSubmit = async () => {
     try {
+      setSubmitting(true);
       const values = await form.validateFields();
       const payload: CreateNhaTramDenRequest = {
         unitId: editingItem?.unitId || '00000000-0000-0000-0000-000000000000',
@@ -136,6 +169,8 @@ export default function NhaTramDenList() {
       loadData();
     } catch (err: any) {
       message.error(err.message || 'Có lỗi xảy ra khi lưu nhà trạm');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -223,64 +258,78 @@ export default function NhaTramDenList() {
   ];
 
   return (
-    <Card
-      title="Danh sách Nhà trạm đèn biển"
-      extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
-          Thêm mới
-        </Button>
-      }
-    >
-      <Space style={{ marginBottom: 16 }}>
-        <Input
-          placeholder="Tìm theo tên nhà trạm..."
-          value={filterKeyword}
-          onChange={(e) => setFilterKeyword(e.target.value)}
-          style={{ width: 250 }}
-        />
-        <Select
-          placeholder="Lọc theo loại..."
-          allowClear
-          value={filterType}
-          onChange={(val) => setFilterType(val)}
-          style={{ width: 200 }}
+    <>
+      {!isIframeModal && (
+        <Card
+          title="Danh sách Nhà trạm đèn biển"
+          extra={
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
+              Thêm mới
+            </Button>
+          }
         >
-          <Select.Option value="LIGHTHOUSE">Hải đăng</Select.Option>
-          <Select.Option value="BEACON_LIGHT">Đèn báo</Select.Option>
-          <Select.Option value="BEACON_MARK">Cọc tiêu</Select.Option>
-        </Select>
-        <Button icon={<ReloadOutlined />} onClick={loadData}>Tải lại</Button>
-      </Space>
+          <Space style={{ marginBottom: 16 }}>
+            <Input
+              placeholder="Tìm theo tên nhà trạm..."
+              value={filterKeyword}
+              onChange={(e) => setFilterKeyword(e.target.value)}
+              style={{ width: 250 }}
+            />
+            <Select
+              placeholder="Lọc theo loại..."
+              allowClear
+              value={filterType}
+              onChange={(val) => setFilterType(val)}
+              style={{ width: 200 }}
+            >
+              <Select.Option value="LIGHTHOUSE">Hải đăng</Select.Option>
+              <Select.Option value="BEACON_LIGHT">Đèn báo</Select.Option>
+              <Select.Option value="BEACON_MARK">Cọc tiêu</Select.Option>
+            </Select>
+            <Button icon={<ReloadOutlined />} onClick={loadData}>Tải lại</Button>
+          </Space>
 
-      <Table
-        dataSource={dataSource}
-        columns={columns}
-        rowKey="id"
-        loading={loading}
-        pagination={{
-          current: page,
-          pageSize: pageSize,
-          total: total,
-          onChange: (p, s) => {
-            setPage(p);
-            setPageSize(s);
-          },
-          showSizeChanger: true,
-          showTotal: (totalCount) => `Tổng ${totalCount} nhà trạm`,
-          locale: { items_per_page: '/ trang' },
-        }}
-      />
+          <Table
+            dataSource={dataSource}
+            columns={columns}
+            rowKey="id"
+            loading={loading}
+            pagination={{
+              current: page,
+              pageSize: pageSize,
+              total: total,
+              onChange: (p, s) => {
+                setPage(p);
+                setPageSize(s);
+              },
+              showSizeChanger: true,
+              showTotal: (totalCount) => `Tổng ${totalCount} nhà trạm`,
+              locale: { items_per_page: '/ trang' },
+            }}
+          />
+        </Card>
+      )}
 
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingItem ? 'Chỉnh sửa thông tin nhà trạm' : 'Thêm mới nhà trạm đèn biển'}</span>}
+        title={isIframeModal ? null : (<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isReadOnly ? 'Chi tiết nhà trạm đèn biển' : (editingItem ? 'Chỉnh sửa thông tin nhà trạm' : 'Thêm mới nhà trạm đèn biển')}</span>)}
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}
         okText="Lưu"
         cancelText="Hủy"
-        width={700}
+        width={isIframeModal ? '100%' : 700}
+        mask={!isIframeModal}
+        closable={!isIframeModal}
+        style={isIframeModal ? { top: 0, margin: 0, padding: 0, maxWidth: 'none', height: '100vh' } : undefined}
+        styles={isIframeModal ? { body: { padding: '16px 24px', overflowY: 'auto', maxHeight: 'calc(100vh - 110px)' } } : undefined}
+        footer={isReadOnly ? [
+          <Button key="close" type="primary" onClick={handleCancel}>Đóng</Button>
+        ] : (isIframeModal ? [
+          <Button key="cancel" onClick={handleCancel}>Hủy</Button>,
+          <Button key="submit" type="primary" onClick={handleSubmit} loading={submitting}>Lưu</Button>
+        ] : undefined)}
       >
-        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+        <Form form={form} layout="vertical" style={{ marginTop: 16, maxHeight: '60vh', overflowY: 'auto', paddingRight: 12 }} disabled={isReadOnly}>
           <Space size="large" style={{ display: 'flex', width: '100%' }}>
             <Form.Item
               name="code"
@@ -381,6 +430,6 @@ export default function NhaTramDenList() {
           </Form.Item>
         </Form>
       </Modal>
-    </Card>
+    </>
   );
 }

@@ -11,7 +11,7 @@ export interface DeKeAttachment {
 export type LoaiDe = 'DE_CHAN_SONG' | 'DE_CHAN_CAT' | 'KE_HUONG_DONG' | 'KE_BAO_VE_BO' | 'GIAO_THONG' | 'KE_CHAN_SONG' | 'KE_CHAN_CAT';
 
 export interface DeKeResponse {
-  id: number;
+  id: string;
   loaiDe: LoaiDe;
   viTri: string;
   tenDeKe?: string;
@@ -63,7 +63,7 @@ export interface CreateDeKeRequest {
 }
 
 export interface UpdateDeKeRequest extends CreateDeKeRequest {
-  id: number;
+  id: string;
 }
 
 export interface PheDuyetRequest {
@@ -74,7 +74,7 @@ export interface PheDuyetRequest {
 }
 
 export interface PheDuyetResponse {
-  id: number;
+  id: string;
   capPheDuyet?: number;
   trangThai: string;
   nguoiPheDuyet: string;

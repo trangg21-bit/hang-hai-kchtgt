@@ -1,0 +1,16 @@
+{
+  "entry": {
+    "aggregate_size_status": "green",
+    "depends_on": [],
+    "feature_count": 0,
+    "features": {},
+    "id": "M-999",
+    "name": "Test",
+    "path": "docs/modules/M-999-test-write/",
+    "slug": "test-write",
+    "status": "in-progress",
+    "version": 1
+  },
+  "module_id": "M-999",
+  "schema_version": "1.0"
+}
