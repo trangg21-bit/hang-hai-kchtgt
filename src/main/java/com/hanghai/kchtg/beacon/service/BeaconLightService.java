@@ -101,7 +101,7 @@ public class BeaconLightService {
                 .nguonCungCapNangLuongChoDen(request.getNguonCungCapNangLuongChoDen())
                 .soLuongNhanSuBoTri(request.getSoLuongNhanSuBoTri())
                 .dienTichSuDungTram(request.getDienTichSuDungTram())
-                .status(BeaconStatus.PENDING_APPROVAL)
+                .status(BeaconStatus.DRAFT)
                 .approvalLevel(1)
                 .approvalStatus(BeaconApprovalStatus.PENDING)
                 .build();

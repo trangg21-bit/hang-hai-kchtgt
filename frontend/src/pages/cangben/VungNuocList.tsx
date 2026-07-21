@@ -47,7 +47,7 @@ export default function VungNuocList() {
   const [filterLoai, setFilterLoai] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<VungNuoc[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -76,7 +76,7 @@ export default function VungNuocList() {
     }
   }, [page, pageSize, filterMa, filterTen, filterLoai, filterStatus]);
 
-  useEffect(() => { void fetchData(); }, []);
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);

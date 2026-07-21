@@ -24,4 +24,11 @@ public interface NhaTramPhaoRepository extends JpaRepository<NhaTramPhao, UUID> 
                      @Param("code") String code,
                      @Param("type") BuoyType type,
                      @Param("status") NhaTramStatus status);
+    @Query("SELECT p FROM NhaTramPhao p WHERE " +
+            "p.deletedAt IS NULL AND " +
+            "(:orgUnitId IS NULL OR p.unitId = :orgUnitId) AND " +
+            "(:search IS NULL OR LOWER(p.name) LIKE :search OR LOWER(p.code) LIKE :search)")
+    List<NhaTramPhao> searchGis(
+            @Param("orgUnitId") UUID orgUnitId,
+            @Param("search") String search);
 }

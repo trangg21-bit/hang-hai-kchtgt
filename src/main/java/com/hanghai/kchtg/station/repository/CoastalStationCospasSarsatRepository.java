@@ -29,4 +29,13 @@ public interface CoastalStationCospasSarsatRepository extends JpaRepository<Coas
 
     @Query("SELECT c FROM CoastalStationCospasSarsat c WHERE c.deletedAt IS NULL")
     List<CoastalStationCospasSarsat> findByDeletedAtIsNull();
+
+    @Query("SELECT c FROM CoastalStationCospasSarsat c WHERE " +
+            "c.deletedAt IS NULL AND " +
+            "c.approvalStatus = com.hanghai.kchtg.station.entity.StationApprovalStatus.APPROVED_L2 AND " +
+            "(:orgUnitId IS NULL OR c.unitId = :orgUnitId) AND " +
+            "(:search IS NULL OR LOWER(c.name) LIKE :search OR LOWER(c.code) LIKE :search)")
+    List<CoastalStationCospasSarsat> searchGis(
+            @Param("orgUnitId") UUID orgUnitId,
+            @Param("search") String search);
 }

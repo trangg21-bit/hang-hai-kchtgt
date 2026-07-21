@@ -12,11 +12,11 @@ import {
   Empty,
   Descriptions,
   Space,
-  message,
   Breadcrumb,
   Modal,
   DatePicker,
 } from 'antd';
+import toast from '../../components/ToastNotification';
 import { dekeCRUD, deKeApproval } from '../../services/deKeService';
 import { organizationService } from '../../services/organizationService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -68,6 +68,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
 
+  const isIframe = window.self !== window.top;
   const isModalMode = open !== undefined;
   const id = isModalMode ? (editId || undefined) : routeId;
   const isEditMode = isModalMode ? mode === 'edit' : searchParams.get('mode') === 'edit';
@@ -182,23 +183,27 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
 
       if (isCreateMode) {
         await dekeCRUD.create(payload);
-        message.success('Tạo mới thành công');
+        toast.success('Tạo mới thành công');
         if (isModalMode) {
           onSuccess?.();
+        } else if (isIframe) {
+          window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
         } else {
           navigate('/de-ke');
         }
       } else if (id && isEditMode) {
         await dekeCRUD.update(id, payload as UpdateDeKeRequest);
-        message.success('Cập nhật thành công');
+        toast.success('Cập nhật thành công');
         if (isModalMode) {
           onSuccess?.();
+        } else if (isIframe) {
+          window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
         } else {
           navigate('/de-ke');
         }
       }
     } catch (err) {
-      message.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
+      toast.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
     } finally {
       setIsSubmitting(false);
     }
@@ -218,7 +223,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
           quyetDinh: 'APPROVED',
         };
         await deKeApproval.approveC1(id, pheDuyetData);
-        message.success('Phê duyệt C1 thành công');
+        toast.success('Phê duyệt C1 thành công');
         setRecord({ ...record, trangThaiPheDuyet: 'UNDER_REVIEW' });
         setHasChanges(true);
       } else if (action === 'approveC2') {
@@ -227,7 +232,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
           quyetDinh: 'APPROVED',
         };
         await deKeApproval.approveC2(id, pheDuyetData);
-        message.success('Phê duyệt C2 thành công');
+        toast.success('Phê duyệt C2 thành công');
         setRecord({ ...record, trangThaiPheDuyet: 'APPROVED' });
         setHasChanges(true);
       } else if (action === 'reject') {
@@ -243,7 +248,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
           await deKeApproval.approveC2(id, pheDuyetData);
         }
 
-        message.success('Từ chối thành công');
+        toast.success('Từ chối thành công');
         setRecord({
           ...record,
           trangThaiPheDuyet: 'REJECTED',
@@ -252,15 +257,17 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
         setHasChanges(true);
       } else if (action === 'delete') {
         await dekeCRUD.delete(id);
-        message.success('Xóa thành công');
+        toast.success('Xóa thành công');
         if (isModalMode && onSuccess) {
           onSuccess();
+        } else if (isIframe) {
+          window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
         } else {
           navigate('/de-ke');
         }
       }
     } catch (err) {
-      message.error(err instanceof Error ? err.message : 'Lỗi thực hiện thao tác');
+      toast.error(err instanceof Error ? err.message : 'Lỗi thực hiện thao tác');
     } finally {
       setIsSubmitting(false);
     }
@@ -579,7 +586,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
           <Button type="primary" htmlType="submit" loading={isSubmitting}>
             {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
           </Button>
-          <Button onClick={isModalMode ? onCancel : () => navigate('/de-ke')}>
+          <Button onClick={isModalMode ? onCancel : (isIframe ? () => window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*') : () => navigate('/de-ke'))}>
             Hủy
           </Button>
         </Space>
@@ -594,8 +601,8 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
         open={open}
         onCancel={handleCloseModal}
         footer={null}
-        destroyOnClose
-        maskClosable={false}
+        destroyOnHidden
+        mask={{ closable: false }}
       >
         <Spin spinning={isLoading}>
           {formContent}
@@ -606,10 +613,13 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
 
   // Create/Edit form view
   return (
-    <div style={{ padding: '24px' }}>
-      <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />
-      <Card style={{ maxWidth: '800px' }}>
-        <h2>{isCreateMode ? 'Tạo mới Đê/Kè' : 'Chỉnh sửa Đê/Kè'}</h2>
+    <div style={isIframe ? { padding: '16px 24px', background: '#fff', minHeight: '100vh' } : { padding: '24px' }}>
+      {!isIframe && <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />}
+      <Card
+        style={isIframe ? { border: 'none', boxShadow: 'none', padding: 0 } : { maxWidth: '800px' }}
+        styles={isIframe ? { body: { padding: 0 } } : undefined}
+      >
+        {!isIframe && <h2>{isCreateMode ? 'Tạo mới Đê/Kè' : 'Chỉnh sửa Đê/Kè'}</h2>}
         {formContent}
       </Card>
     </div>

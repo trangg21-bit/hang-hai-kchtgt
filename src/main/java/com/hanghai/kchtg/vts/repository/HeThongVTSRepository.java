@@ -33,4 +33,11 @@ public interface HeThongVTSRepository extends JpaRepository<HeThongVTS, java.uti
         @Param("trangThai") HeThongVTSApprovalStatus trangThai,
         Pageable pageable
     );
+    @Query("SELECT t FROM HeThongVTS t WHERE " +
+           "t.isDeleted = false AND " +
+           "(:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId) AND " +
+           "(:search IS NULL OR LOWER(t.tenHeThong) LIKE :search OR LOWER(t.viTri) LIKE :search)")
+    List<HeThongVTS> searchFiltered(
+            @Param("orgUnitId") java.util.UUID orgUnitId,
+            @Param("search") String search);
 }

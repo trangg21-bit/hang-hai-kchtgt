@@ -34,7 +34,7 @@ import {
   BUOY_TYPE_OPTIONS,
   BUOY_TYPE_MAP,
 } from '../../types/beacon';
-import DataTable from '../../components/DataTable';
+import { ScreenHeader, FilterBar, DataTable, Pagination } from '../../components/list-view';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
@@ -43,7 +43,7 @@ import FormField from '../../components/FormField';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { organizationService } from '../../services/organizationService';
 import { colors } from '../../theme';
-import { fontWeightBold, fontSizeLg } from '../../tokens';
+import { fontWeightBold, fontSizeLg, cardStyle } from '../../tokens';
 
 export default function BuoyList() {
   const isInIframe = window.self !== window.top;
@@ -358,20 +358,23 @@ export default function BuoyList() {
   );
 
   const columns = [
-    { title: '#', width: 60, render: (_: unknown, __: Buoy, idx: number) => (page - 1) * pageSize + idx + 1 },
+    { key: 'stt', label: '#', width: 60, render: (_: unknown, __: Buoy, idx: number) => (page - 1) * pageSize + idx + 1 },
     {
-      title: 'Mã',
+      key: 'code',
+      label: 'Mã',
       dataIndex: 'code',
       width: 160,
       render: (code: string) => <Tag color="cyan">{code}</Tag>,
     },
     {
-      title: 'Tên',
+      key: 'name',
+      label: 'Tên',
       dataIndex: 'name',
       ellipsis: true,
     },
     {
-      title: 'Loại',
+      key: 'type',
+      label: 'Loại',
       dataIndex: 'type',
       width: 180,
       render: (type: string) => {
@@ -380,25 +383,29 @@ export default function BuoyList() {
       },
     },
     {
-      title: 'Vĩ độ',
+      key: 'latitude',
+      label: 'Vĩ độ',
       dataIndex: 'latitude',
       width: 100,
       render: (v: number) => v?.toFixed(4) || '—',
     },
     {
-      title: 'Kinh độ',
+      key: 'longitude',
+      label: 'Kinh độ',
       dataIndex: 'longitude',
       width: 100,
       render: (v: number) => v?.toFixed(4) || '—',
     },
     {
-      title: 'Bán kính (km)',
+      key: 'range',
+      label: 'Bán kính (km)',
       dataIndex: 'range',
       width: 110,
       render: (v: number) => v?.toFixed(1) || '—',
     },
     {
-      title: 'Trạng thái',
+      key: 'status',
+      label: 'Trạng thái',
       dataIndex: 'status',
       width: 140,
       render: (status: string) => {
@@ -407,8 +414,8 @@ export default function BuoyList() {
       },
     },
     {
-      title: 'Thao tác',
       key: 'actions',
+      label: 'Thao tác',
       width: 140,
       fixed: 'right' as const,
       render: (_: unknown, record: Buoy) => (
@@ -513,61 +520,66 @@ export default function BuoyList() {
     },
   ];
 
+  const filterFields = useMemo(() => [
+    { key: 'name', type: 'search' as const, label: 'Tên phao tiêu', placeholder: 'Tìm theo tên...' },
+    { key: 'code', type: 'search' as const, label: 'Mã phao tiêu', placeholder: 'Tìm theo mã...' },
+    {
+      key: 'type',
+      type: 'select' as const,
+      label: 'Loại phao tiêu',
+      placeholder: 'Chọn loại phao',
+      options: BUOY_TYPE_OPTIONS,
+    },
+    {
+      key: 'status',
+      type: 'select' as const,
+      label: 'Trạng thái',
+      placeholder: 'Chọn trạng thái',
+      options: Object.entries(BEACON_STATUS_MAP).map(([value, { label }]) => ({ value, label })),
+    },
+  ], []);
+
+  const headerActions = useMemo(() => [
+    {
+      key: 'create',
+      label: 'Tạo phao tiêu',
+      variant: 'primary' as const,
+      icon: <PlusOutlined />,
+      onClick: openCreateModal,
+    },
+  ], [openCreateModal]);
+
+  const handleFilterSearch = useCallback((values: Record<string, any>) => {
+    setFilterName(values.name || '');
+    setFilterCode(values.code || '');
+    setFilterType(values.type || undefined);
+    setFilterStatus(values.status || undefined);
+    setPage(1);
+  }, []);
+
+  const handleFilterReset = useCallback(() => {
+    setFilterName('');
+    setFilterCode('');
+    setFilterType(undefined);
+    setFilterStatus(undefined);
+    setPage(1);
+  }, []);
+
   return (
-    <>
+    <div style={{ minHeight: '100%', marginTop: -8 }}>
       {!isIframeModal && (
         <>
-          <Card style={{ marginBottom: 16 }}>
-            <Row gutter={[12, 12]} align="middle" justify="space-between">
-              <Col xs={24} md={16}>
-                <Space wrap>
-                  <Input
-                    placeholder="Lọc theo tên"
-                    allowClear
-                    style={{ width: 160 }}
-                    value={filterName}
-                    onChange={(e) => { setFilterName(e.target.value); setPage(1); }}
-                  />
-                  <Input
-                    placeholder="Lọc theo mã"
-                    allowClear
-                    style={{ width: 140 }}
-                    value={filterCode}
-                    onChange={(e) => { setFilterCode(e.target.value); setPage(1); }}
-                  />
-                  <Select
-                    placeholder="Loại phao tiêu"
-                    allowClear
-                    style={{ width: 190 }}
-                    value={filterType}
-                    onChange={(val) => { setFilterType(val); setPage(1); }}
-                    options={BUOY_TYPE_OPTIONS}
-                  />
-                  <Select
-                    placeholder="Trạng thái"
-                    allowClear
-                    style={{ width: 160 }}
-                    value={filterStatus}
-                    onChange={(val) => { setFilterStatus(val); setPage(1); }}
-                    options={Object.entries(BEACON_STATUS_MAP).map(([value, { label }]) => ({ value, label }))}
-                  />
-                </Space>
-              </Col>
-              <Col xs={24} md={8} style={{ textAlign: 'right' }}>
-                <Space>
-                  <Tooltip title="Tải lại">
-                    <Button icon={<ReloadOutlined />} onClick={fetchData} />
-                  </Tooltip>
-                  <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-                    Tạo phao tiêu
-                  </Button>
-                </Space>
-              </Col>
-            </Row>
-          </Card>
-
-          <Card>
-            {isLoading && <LoadingSkeleton rows={8} type="table" />}
+          <ScreenHeader
+            breadcrumb={[{ label: 'Báo hiệu hàng hải' }, { label: 'Quản lý phao tiêu' }]}
+            actions={headerActions}
+          />
+          <FilterBar
+            fields={filterFields}
+            onSearch={handleFilterSearch}
+            onReset={handleFilterReset}
+          />
+          <div style={{ ...cardStyle, padding: '8px 16px' }}>
+            {isLoading && <LoadingSkeleton rows={8} />}
             {isError && (
               <ErrorState
                 message={error?.message || 'Không thể tải danh sách phao tiêu'}
@@ -582,26 +594,25 @@ export default function BuoyList() {
               />
             )}
             {!isLoading && !isError && dataSource.length > 0 && (
-              <DataTable<Buoy>
-                columns={columns}
-                dataSource={dataSource}
-                rowKey="id"
-                scroll={{ x: 1400 }}
-                pagination={{
-                  current: page,
-                  pageSize,
-                  total,
-                  onChange: (p: number, sz?: number) => {
+              <div style={{ overflowX: 'auto' }}>
+                <DataTable
+                  columns={columns}
+                  dataSource={dataSource}
+                  rowKey="id"
+                  scroll={{ x: 1400 }}
+                />
+                <Pagination
+                  total={total}
+                  current={page}
+                  pageSize={pageSize}
+                  onChange={(p, sz) => {
                     setPage(p);
                     if (sz) setPageSize(sz);
-                  },
-                  showSizeChanger: true,
-                  showTotal: (t: number) => `Tổng ${t} phao tiêu`,
-                  pageSizeOptions: ['10', '20', '50'],
-                }}
-              />
+                  }}
+                />
+              </div>
             )}
-          </Card>
+          </div>
         </>
       )}
 
@@ -710,6 +721,6 @@ export default function BuoyList() {
           />
         </Form>
       </Modal>
-    </>
+    </div>
   );
 }

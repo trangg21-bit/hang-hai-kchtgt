@@ -44,7 +44,7 @@ export default function BenCangList() {
   const [filterLoaiBen, setFilterLoaiBen] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<BenCang[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -73,7 +73,7 @@ export default function BenCangList() {
     }
   }, [page, pageSize, filterMaBen, filterTenBen, filterLoaiBen, filterStatus]);
 
-  useEffect(() => { void fetchData(); }, []);
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);

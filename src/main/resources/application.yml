@@ -121,8 +121,8 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_POSTGIS_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:kchtg_m001}}
     driver-class-name: org.postgresql.Driver
-    username: ${SPRING_DATASOURCE_POSTGIS_USERNAME:${DB_USER:kchtg}}
-    password: ${SPRING_DATASOURCE_POSTGIS_PASSWORD:${DB_PASS:kchtg}}
+    username: ${SPRING_DATASOURCE_POSTGIS_USERNAME:${DB_USER:admin}}
+    password: ${SPRING_DATASOURCE_POSTGIS_PASSWORD:${DB_PASS:Etc@1234}}
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:

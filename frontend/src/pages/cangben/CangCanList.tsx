@@ -47,7 +47,7 @@ export default function CangCanList() {
   const [filterTinh, setFilterTinh] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<CangCan[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -76,7 +76,7 @@ export default function CangCanList() {
     }
   }, [page, pageSize, filterMa, filterTen, filterTinh, filterStatus]);
 
-  useEffect(() => { void fetchData(); }, []);
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const handleSearch = useCallback((value: string) => {
     setSearch(value);

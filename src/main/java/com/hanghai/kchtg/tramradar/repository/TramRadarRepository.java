@@ -38,4 +38,11 @@ public interface TramRadarRepository extends JpaRepository<TramRadar, java.util.
         @Param("trangThai") TramRadarApprovalStatus trangThai,
         Pageable pageable
     );
+    @Query("SELECT t FROM TramRadar t WHERE " +
+           "t.isDeleted = false AND " +
+           "(:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId) AND " +
+           "(:search IS NULL OR LOWER(t.tenTram) LIKE :search OR LOWER(t.viTri) LIKE :search)")
+    List<TramRadar> searchFiltered(
+            @Param("orgUnitId") java.util.UUID orgUnitId,
+            @Param("search") String search);
 }

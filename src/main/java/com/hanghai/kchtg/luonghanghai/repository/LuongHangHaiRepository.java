@@ -32,4 +32,11 @@ public interface LuongHangHaiRepository extends JpaRepository<LuongHangHai, java
             @org.springframework.data.repository.query.Param("taiTrong") String taiTrong,
             @org.springframework.data.repository.query.Param("trangThaiPheDuyet") LuongHangHaiApprovalStatus trangThaiPheDuyet,
             Pageable pageable);
+    @Query("SELECT l FROM LuongHangHai l WHERE " +
+            "l.isDeleted = false AND " +
+            "(:orgUnitId IS NULL OR l.donViId = :orgUnitId) AND " +
+            "(:search IS NULL OR LOWER(l.ten) LIKE :search)")
+    List<LuongHangHai> searchFiltered(
+            @org.springframework.data.repository.query.Param("orgUnitId") java.util.UUID orgUnitId,
+            @org.springframework.data.repository.query.Param("search") String search);
 }

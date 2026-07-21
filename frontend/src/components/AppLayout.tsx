@@ -601,7 +601,7 @@ export default function AppLayout() {
           transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
         }
       `}</style>
-        <Layout style={{ minHeight: '100vh', position: 'relative' }}>
+      <Layout style={{ height: '100vh', position: 'relative', overflow: 'hidden' }}>
       {/* Desktop Sidebar */}
       {!isMobile && !sidebarHidden && (
         <Sider
@@ -640,7 +640,7 @@ export default function AppLayout() {
             display: 'flex', 
             flexDirection: 'column',
             paddingLeft: (!isMobile && !sidebarHidden) ? layout.sidebarWidth : 0,
-            minHeight: '100vh',
+            height: '100vh',
           }}
         >
           {/* Header */}
@@ -743,8 +743,7 @@ export default function AppLayout() {
         <Content
           style={{
             padding: location.pathname === '/gis/map' ? 0 : 24,
-            minHeight: 'calc(100vh - 64px)',
-            height: location.pathname === '/gis/map' ? 'calc(100vh - 64px)' : undefined,
+            height: 'calc(100vh - 64px)',
             overflow: location.pathname === '/gis/map' ? 'hidden' : 'auto',
           }}
         >
