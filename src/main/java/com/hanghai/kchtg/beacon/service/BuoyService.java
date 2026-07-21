@@ -293,16 +293,15 @@ public class BuoyService {
                     "Không ở trạng thái chờ phê duyệt L1");
         }
 
-        Long creatorId = resolveCreatedBy(entity);
-        Long approverUserId = Long.parseLong(approverId);
-        if (creatorId != null && creatorId.equals(approverUserId)) {
+        String creatorId = resolveCreatedBy(entity);
+        if (creatorId != null && creatorId.equals(approverId)) {
             throw new IllegalStateException(
                     "Bạn không thể phê duyệt bản do chính mình gửi");
         }
 
         entity.setStatus(BeaconStatus.APPROVED_L1);
         entity.setApprovalStatus(BeaconApprovalStatus.APPROVED);
-        entity.setApprovedBy(approverUserId);
+        entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         buoyRepo.save(entity);
 
@@ -323,10 +322,9 @@ public class BuoyService {
                     "Không ở trạng thái chờ phê duyệt L2");
         }
 
-        Long approverUserId = Long.parseLong(approverId);
         entity.setStatus(BeaconStatus.PUBLISHED);
         entity.setApprovalStatus(BeaconApprovalStatus.APPROVED);
-        entity.setApprovedBy(approverUserId);
+        entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         buoyRepo.save(entity);
 
@@ -475,8 +473,8 @@ public class BuoyService {
         return 1L;
     }
 
-    private Long resolveCreatedBy(Buoy entity) {
-        return entity.getApprovedBy();
+    private String resolveCreatedBy(Buoy entity) {
+        return entity.getCreatedBy();
     }
 
     // -- BUG FIX #1: Shared ObjectMapper + JsonNode comparison --

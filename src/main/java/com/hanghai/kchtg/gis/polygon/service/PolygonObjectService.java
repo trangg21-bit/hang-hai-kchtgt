@@ -147,7 +147,7 @@ public class PolygonObjectService {
 
         entity.setStatus(Status.APPROVED_L1);
         entity.setApprovalStatus(com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ApprovalStatus.APPROVED);
-        entity.setApprovedBy(Long.parseLong(approverId));
+        entity.setApprovedBy(approverId);
         entity.setApprovedDate(java.time.LocalDateTime.now());
         entity = repository.save(entity);
 
@@ -174,7 +174,7 @@ public class PolygonObjectService {
         }
 
         entity.setStatus(Status.PUBLISHED);
-        entity.setApprovedBy(Long.parseLong(approverId));
+        entity.setApprovedBy(approverId);
         entity.setApprovedDate(java.time.LocalDateTime.now());
         entity = repository.save(entity);
 

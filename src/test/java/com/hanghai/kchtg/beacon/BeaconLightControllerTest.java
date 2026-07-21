@@ -354,7 +354,7 @@ class BeaconLightControllerTest {
     void testApproveL1() throws Exception {
         UUID id = UUID.randomUUID();
         BeaconLightResponse approved = makeResponse(id, "Đã duyệt L1", BeaconLightType.LIGHTHOUSE, BeaconStatus.APPROVED_L1);
-        approved.setApprovedBy(2L);
+        approved.setApprovedBy("2");
         when(beaconLightService.approveL1(eq(id), anyString())).thenReturn(approved);
 
         mockMvc.perform(post("/api/beacon-lights/{id}/approve-l1", id)
@@ -386,7 +386,7 @@ class BeaconLightControllerTest {
     void testApproveL2() throws Exception {
         UUID id = UUID.randomUUID();
         BeaconLightResponse published = makeResponse(id, "Đã duyệt L2", BeaconLightType.LIGHTHOUSE, BeaconStatus.PUBLISHED);
-        published.setApprovedBy(3L);
+        published.setApprovedBy("3");
         when(beaconLightService.approveL2(eq(id), anyString())).thenReturn(published);
 
         mockMvc.perform(post("/api/beacon-lights/{id}/approve-l2", id)

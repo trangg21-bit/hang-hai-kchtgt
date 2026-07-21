@@ -45,7 +45,7 @@ public abstract class BaseStation {
     protected StationApprovalStatus approvalStatus;
 
     protected Integer approvalLevel;
-    protected Long approvedBy;
+    protected String approvedBy;
     protected LocalDateTime approvedDate;
 
     @Column(length = 1000)

@@ -64,7 +64,7 @@ public class GisSpatialObject extends BaseEntity {
     private UUID unitId;
 
     @Column(name = "approved_by")
-    private Long approvedBy;
+    private String approvedBy;
 
     @Column(name = "approved_date")
     private LocalDateTime approvedDate;

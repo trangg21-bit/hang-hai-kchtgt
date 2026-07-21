@@ -137,7 +137,7 @@ public class CoastalStationHaiphongService {
                 entity.setStatus(StationStatus.PUBLISHED);
                 entity.setApprovalStatus(StationApprovalStatus.APPROVED_L2);
             }
-            entity.setApprovedBy(userId);
+            entity.setApprovedBy(String.valueOf(userId));
             entity.setApprovedDate(LocalDateTime.now());
             entity.setRejectionReason(null);
 

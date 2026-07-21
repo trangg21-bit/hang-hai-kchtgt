@@ -39,7 +39,7 @@ public class NhaTramDenResponse {
     private NhaTramStatus status;
     private NhaTramApprovalStatus approvalStatus;
     private Integer approvalLevel;
-    private Long approvedBy;
+    private String approvedBy;
     private LocalDateTime approvedDate;
     private String rejectionReason;
     private LocalDateTime createdAt;

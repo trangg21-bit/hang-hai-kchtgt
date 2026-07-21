@@ -538,7 +538,7 @@ class BuoyServiceTest {
             Buoy saved = buoyCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo(BeaconStatus.APPROVED_L1);
             assertThat(saved.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.APPROVED);
-            assertThat(saved.getApprovedBy()).isEqualTo(2L);
+            assertThat(saved.getApprovedBy()).isEqualTo("2");
             assertThat(saved.getApprovedDate()).isNotNull();
             assertThat(result.getStatus()).isEqualTo(BeaconStatus.APPROVED_L1);
             verify(historyRepo).save(any());
@@ -563,7 +563,7 @@ class BuoyServiceTest {
         void approveL2() {
             UUID id = UUID.randomUUID();
             Buoy entity = makeEntity(id, BeaconStatus.APPROVED_L1);
-            entity.setApprovedBy(2L);
+            entity.setApprovedBy("2");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -573,7 +573,7 @@ class BuoyServiceTest {
             Buoy saved = buoyCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo(BeaconStatus.PUBLISHED);
             assertThat(saved.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.APPROVED);
-            assertThat(saved.getApprovedBy()).isEqualTo(3L);
+            assertThat(saved.getApprovedBy()).isEqualTo("3");
             assertThat(result.getStatus()).isEqualTo(BeaconStatus.PUBLISHED);
             verify(historyRepo).save(any());
         }
