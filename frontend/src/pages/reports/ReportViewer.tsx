@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Card,
   Row,
@@ -21,9 +21,11 @@ import {
   DeleteOutlined,
   ReloadOutlined,
   SearchOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { reportService } from '../../services/reportService';
+import { bcc157Service } from '../../services/bcc157Service';
 import type { ReportRequest, ReportResponse } from '../../types/report';
 import { REPORT_TEMPLATES } from './ReportList';
 import { organizationService } from '../../services/organizationService';
@@ -48,6 +50,7 @@ const {
 const { RangePicker } = DatePicker;
 export default function ReportViewer() {
   const { code } = useParams<{ code: string }>();
+  const navigate = useNavigate();
 
   const reportCode = code || '';
   const template = REPORT_TEMPLATES.find((t) => t.code === reportCode);
@@ -162,24 +165,66 @@ export default function ReportViewer() {
         if (dateRange[1]) request.endDate = dateRange[1].format('YYYY-MM-DD');
       }
 
-      let data;
-      try {
-        data = await reportService.getPreview(request);
-      } catch (err: any) {
-        console.warn('API error:', err);
-        // [COMMENTED] Hardcoded F-141 mock data block — use real API
-        if (reportCode !== 'F-141') {
-          data = {
-            reportCode,
-            headers: ['STT', 'Mã chỉ tiêu', 'Tên chỉ tiêu', 'Giá trị báo cáo'],
-            rows: [
-              { 'STT': 1, 'Mã chỉ tiêu': 'CT-001', 'Tên chỉ tiêu': 'Số lượng tài sản', 'Giá trị báo cáo': 120 },
-              { 'STT': 2, 'Mã chỉ tiêu': 'CT-002', 'Tên chỉ tiêu': 'Tổng giá trị (VNĐ)', 'Giá trị báo cáo': 58500000000 },
-            ],
-            summary: { 'Tổng số dòng': 2 }
-          };
+      let data: any;
+
+      // For F-142 with nguonDuLieu='2', fetch from CRUD data source
+      if (reportCode === 'F-142' && nguonDuLieu === '2') {
+        try {
+          const year = selectedYear ? selectedYear.year() : dayjs().year();
+          const savedReports = await bcc157Service.search({
+            orgUnitId: selectedOrgId,
+            reportYear: year,
+            nguonDuLieu: '2',
+          });
+          if (savedReports && savedReports.length > 0) {
+            const report = savedReports[0];
+            // Build preview response from saved CRUD data
+            data = {
+              reportCode,
+              headers: ['STT', 'Chỉ tiêu', 'Mã số', 'TSHT hàng hải', 'Tổng cộng'],
+              rows: [
+                { 'STT': '1', 'Chỉ tiêu': 'Nguyên giá - Số dư đầu năm', 'Mã số': report.maSoNguyenGiaSoDuDauNam || '1.1', 'TSHT hàng hải': report.taiSanNguyenGiaSoDuDauNam ?? 0, 'Tổng cộng': report.taiSanNguyenGiaSoDuDauNam ?? 0 },
+                { 'STT': '', 'Chỉ tiêu': 'Nguyên giá - Tăng trong năm', 'Mã số': report.maSoNguyenGiaTangTrongNam || '1.2', 'TSHT hàng hải': report.taiSanNguyenGiaTangTrongNam ?? 0, 'Tổng cộng': report.taiSanNguyenGiaTangTrongNam ?? 0 },
+                { 'STT': '', 'Chỉ tiêu': 'Nguyên giá - Giảm trong năm', 'Mã số': report.maSoNguyenGiaGiamTrongNam || '1.3', 'TSHT hàng hải': report.taiSanNguyenGiaGiamTrongNam ?? 0, 'Tổng cộng': report.taiSanNguyenGiaGiamTrongNam ?? 0 },
+                { 'STT': '', 'Chỉ tiêu': 'Nguyên giá - Số dư cuối năm', 'Mã số': report.maSoNguyenGiaSoDuCuoiNam || '1.4', 'TSHT hàng hải': report.taiSanNguyenGiaSoDuCuoiNam ?? 0, 'Tổng cộng': report.taiSanNguyenGiaSoDuCuoiNam ?? 0 },
+                { 'STT': '2', 'Chỉ tiêu': 'Giá trị hao mòn lũy kế - Số dư đầu năm', 'Mã số': report.maSoGiaTriHaoMonSoDuDauNam || '2.1', 'TSHT hàng hải': report.taiSanGiaTriHaoMonSoDuDauNam ?? 0, 'Tổng cộng': report.taiSanGiaTriHaoMonSoDuDauNam ?? 0 },
+                { 'STT': '', 'Chỉ tiêu': 'Giá trị hao mòn lũy kế - Tăng trong năm', 'Mã số': report.maSoGiaTriHaoMonTangTrongNam || '2.2', 'TSHT hàng hải': report.taiSanGiaTriHaoMonTangTrongNam ?? 0, 'Tổng cộng': report.taiSanGiaTriHaoMonTangTrongNam ?? 0 },
+                { 'STT': '', 'Chỉ tiêu': 'Giá trị hao mòn lũy kế - Giảm trong năm', 'Mã số': report.maSoGiaTriHaoMonGiamTrongNam || '2.3', 'TSHT hàng hải': report.taiSanGiaTriHaoMonGiamTrongNam ?? 0, 'Tổng cộng': report.taiSanGiaTriHaoMonGiamTrongNam ?? 0 },
+                { 'STT': '', 'Chỉ tiêu': 'Giá trị hao mòn lũy kế - Số dư cuối năm', 'Mã số': report.maSoGiaTriHaoMonSoDuCuoiNam || '2.4', 'TSHT hàng hải': report.taiSanGiaTriHaoMonSoDuCuoiNam ?? 0, 'Tổng cộng': report.taiSanGiaTriHaoMonSoDuCuoiNam ?? 0 },
+                { 'STT': '3', 'Chỉ tiêu': 'Giá trị còn lại - Đầu năm', 'Mã số': report.maSoGiaTriConLaiTuNgayDauNam || '3.1', 'TSHT hàng hải': report.taiSanGiaTriConLaiTuNgayDauNam ?? 0, 'Tổng cộng': report.taiSanGiaTriConLaiTuNgayDauNam ?? 0 },
+                { 'STT': '', 'Chỉ tiêu': 'Giá trị còn lại - Cuối năm', 'Mã số': report.maSoGiaTriConLaiTuNgayCuoiNam || '3.2', 'TSHT hàng hải': report.taiSanGiaTriConLaiTuNgayCuoiNam ?? 0, 'Tổng cộng': report.taiSanGiaTriConLaiTuNgayCuoiNam ?? 0 },
+              ],
+              summary: {},
+            };
+          } else {
+            data = null;
+          }
+        } catch (err) {
+          console.warn('Failed to load BCC_157 data:', err);
         }
       }
+
+      // Fall back to auto-generated preview if no CRUD data
+      if (!data) {
+        try {
+          data = await reportService.getPreview(request);
+        } catch (err: any) {
+          console.warn('API error:', err);
+          // [COMMENTED] Hardcoded F-141 mock data block — use real API
+          if (reportCode !== 'F-141') {
+            data = {
+              reportCode,
+              headers: ['STT', 'Mã chỉ tiêu', 'Tên chỉ tiêu', 'Giá trị báo cáo'],
+              rows: [
+                { 'STT': 1, 'Mã chỉ tiêu': 'CT-001', 'Tên chỉ tiêu': 'Số lượng tài sản', 'Giá trị báo cáo': 120 },
+                { 'STT': 2, 'Mã chỉ tiêu': 'CT-002', 'Tên chỉ tiêu': 'Tổng giá trị (VNĐ)', 'Giá trị báo cáo': 58500000000 },
+              ],
+              summary: { 'Tổng số dòng': 2 }
+            };
+          }
+        }
+      }
+
       setReportData(data);
     } catch (err: any) {
       console.error(err);
@@ -317,6 +362,9 @@ export default function ReportViewer() {
           { label: `${template.code} - ${template.name}` },
         ]}
         actions={[
+          ...(reportCode === 'F-142'
+            ? [{ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: <PlusOutlined />, onClick: () => navigate(`/reports/F-142/create`) }]
+            : []),
           { key: 'export-pdf', label: '', variant: 'subtle' as const, icon: <Tooltip title="Xuất PDF" placement="bottom"><FileTextOutlined style={{ color: colors.error, fontSize: fontSizeLg }} /></Tooltip>, borderColor: `${colors.error}80`, color: colors.error, onClick: () => handleExport('PDF') },
           { key: 'export-excel', label: '', variant: 'subtle' as const, icon: <Tooltip title="Xuất Excel" placement="bottom"><FileExcelOutlined style={{ color: statusOperational, fontSize: fontSizeLg }} /></Tooltip>, borderColor: `${statusOperational}80`, color: statusOperational, onClick: () => handleExport('EXCEL') },
         ]}
