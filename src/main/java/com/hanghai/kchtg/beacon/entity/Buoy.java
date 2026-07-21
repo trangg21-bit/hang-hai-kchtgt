@@ -82,7 +82,7 @@ public class Buoy extends BaseEntity {
     private Integer approvalLevel;
 
     @Column(name = "approved_by")
-    private Long approvedBy;
+    private String approvedBy;
 
     @Column(name = "approved_date")
     private java.time.LocalDateTime approvedDate;

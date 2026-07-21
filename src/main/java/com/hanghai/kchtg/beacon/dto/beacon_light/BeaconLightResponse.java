@@ -40,7 +40,7 @@ public class BeaconLightResponse {
     private BeaconStatus status;
     private BeaconApprovalStatus approvalStatus;
     private Integer approvalLevel;
-    private Long approvedBy;
+    private String approvedBy;
     private LocalDateTime approvedDate;
     private String rejectionReason;
     private LocalDateTime createdAt;

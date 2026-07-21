@@ -44,7 +44,7 @@ public abstract class BaseNhaTram {
     private NhaTramApprovalStatus approvalStatus;
 
     private Integer approvalLevel;
-    private Long approvedBy;
+    private String approvedBy;
     private LocalDateTime approvedDate;
 
     @Column(length = 1000)

@@ -224,7 +224,7 @@ class BeaconLightServiceTest {
             assertThat(result.getCode()).isEqualTo("DEN-002");
             assertThat(result.getName()).isEqualTo("Đèn biển mới");
             assertThat(result.getType()).isEqualTo(BeaconLightType.BEACON_LIGHT);
-            assertThat(result.getStatus()).isEqualTo(BeaconStatus.DRAFT);
+            assertThat(result.getStatus()).isEqualTo(BeaconStatus.PENDING_APPROVAL);
             assertThat(result.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.PENDING);
 
             verify(beaconLightRepo, atLeastOnce()).save(any());
@@ -523,7 +523,7 @@ class BeaconLightServiceTest {
             BeaconLight saved = beaconLightCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo(BeaconStatus.APPROVED_L1);
             assertThat(saved.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.APPROVED);
-            assertThat(saved.getApprovedBy()).isEqualTo(2L);
+            assertThat(saved.getApprovedBy()).isEqualTo("2");
             assertThat(saved.getApprovedDate()).isNotNull();
             assertThat(result.getStatus()).isEqualTo(BeaconStatus.APPROVED_L1);
             verify(historyRepo).save(any());
@@ -548,7 +548,7 @@ class BeaconLightServiceTest {
         void approveL2() {
             UUID id = UUID.randomUUID();
             BeaconLight entity = makeEntity(id, BeaconStatus.APPROVED_L1);
-            entity.setApprovedBy(2L);
+            entity.setApprovedBy("2");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconLightRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -558,7 +558,7 @@ class BeaconLightServiceTest {
             BeaconLight saved = beaconLightCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo(BeaconStatus.PUBLISHED);
             assertThat(saved.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.APPROVED);
-            assertThat(saved.getApprovedBy()).isEqualTo(3L);
+            assertThat(saved.getApprovedBy()).isEqualTo("3");
             assertThat(result.getStatus()).isEqualTo(BeaconStatus.PUBLISHED);
             verify(historyRepo).save(any());
         }

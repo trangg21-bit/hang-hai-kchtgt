@@ -16,6 +16,7 @@ interface User {
   permissions: string[];
   role: string;
   status: string;
+  userId?: string;
 }
 
 interface AuthState {
@@ -53,6 +54,7 @@ export const useAuthStore = create<AuthState>((set) => {
       permissions: claims.permissions || [],
       role: claims.role || 'ROLE_USER',
       status: 'authenticated',
+      userId: claims.user_id,
     };
   }
 
@@ -71,6 +73,7 @@ export const useAuthStore = create<AuthState>((set) => {
           permissions: claims.permissions || [],
           role,
           status: 'authenticated',
+          userId: claims.user_id,
         },
         isAuthenticated: true,
         token,

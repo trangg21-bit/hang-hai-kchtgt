@@ -47,6 +47,19 @@ public class BeaconLightController {
                 beaconLightService.search(name, code, type, status)));
     }
 
+    @GetMapping("/search-paged")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<BeaconLightResponse>>> searchPaged(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) BeaconLightType type,
+            @RequestParam(required = false) BeaconStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        return ResponseEntity.ok(ApiResponse.success(
+                beaconLightService.searchPaged(name, code, type, status, pageable)));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<BeaconLightResponse>> create(
             @Valid @RequestBody CreateBeaconLightRequest request) {

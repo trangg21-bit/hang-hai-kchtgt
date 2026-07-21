@@ -147,7 +147,7 @@ public class PointObjectService {
 
         entity.setStatus(Status.APPROVED_L1);
         entity.setApprovalStatus(com.hanghai.kchtg.gis.point.entity.PointObject.ApprovalStatus.APPROVED);
-        entity.setApprovedBy(Long.parseLong(approverId));
+        entity.setApprovedBy(approverId);
         entity.setApprovedDate(java.time.LocalDateTime.now());
         entity = repository.save(entity);
 
@@ -174,7 +174,7 @@ public class PointObjectService {
         }
 
         entity.setStatus(Status.PUBLISHED);
-        entity.setApprovedBy(Long.parseLong(approverId));
+        entity.setApprovedBy(approverId);
         entity.setApprovedDate(java.time.LocalDateTime.now());
         entity = repository.save(entity);
 
@@ -182,7 +182,7 @@ public class PointObjectService {
         historyRepository.save(PointHistory.builder()
                 .objectId(entity.getId().toString())
                 .actionType(PointHistory.ActionType.APPROVE)
-                .previousValue("APPROVED_L1")
+                .previousValue(entity.getStatus() == null ? "null" : entity.getStatus().toString())
                 .newValue("PUBLISHED")
                 .reason("Level 2 approval by: " + approverId)
                 .build());

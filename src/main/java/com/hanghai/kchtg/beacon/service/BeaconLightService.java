@@ -65,6 +65,13 @@ public class BeaconLightService {
                 .toList();
     }
 
+    public org.springframework.data.domain.Page<BeaconLightResponse> searchPaged(
+            String name, String code, BeaconLightType type, BeaconStatus status,
+            org.springframework.data.domain.Pageable pageable) {
+        return beaconLightRepo.searchFilteredPaged(name, code, type, status, pageable)
+                .map(this::toResponse);
+    }
+
     // -- CREATE --
 
     @Transactional
@@ -316,16 +323,15 @@ public class BeaconLightService {
                     "Không ở trạng thái chờ phê duyệt L1");
         }
 
-        Long creatorId = resolveCreatedBy(entity);
-        Long approverUserId = Long.parseLong(approverId);
-        if (creatorId != null && creatorId.equals(approverUserId)) {
+        String creatorId = resolveCreatedBy(entity);
+        if (creatorId != null && creatorId.equals(approverId)) {
             throw new IllegalStateException(
                     "Bạn không thể phê duyệt bản do chính mình gửi");
         }
 
         entity.setStatus(BeaconStatus.APPROVED_L1);
         entity.setApprovalStatus(BeaconApprovalStatus.APPROVED);
-        entity.setApprovedBy(approverUserId);
+        entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         beaconLightRepo.save(entity);
 
@@ -346,10 +352,9 @@ public class BeaconLightService {
                     "Không ở trạng thái chờ phê duyệt L2");
         }
 
-        Long approverUserId = Long.parseLong(approverId);
         entity.setStatus(BeaconStatus.PUBLISHED);
         entity.setApprovalStatus(BeaconApprovalStatus.APPROVED);
-        entity.setApprovedBy(approverUserId);
+        entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         beaconLightRepo.save(entity);
 
@@ -503,8 +508,8 @@ public class BeaconLightService {
         return 1L;
     }
 
-    private Long resolveCreatedBy(BeaconLight entity) {
-        return entity.getApprovedBy();
+    private String resolveCreatedBy(BeaconLight entity) {
+        return entity.getCreatedBy();
     }
 
     // -- BUG FIX #1: Shared ObjectMapper + JsonNode comparison --
