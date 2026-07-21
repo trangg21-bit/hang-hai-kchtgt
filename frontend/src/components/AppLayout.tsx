@@ -306,7 +306,7 @@ export default function AppLayout() {
             { key: '/reports/F-148', label: 'Biểu 01-N: Năng lực thông qua cảng biển, cầu cảng, cảng bến thủy nội địa' },
             { key: '/reports/F-149', label: 'Biểu 02-N: Năng lực thông qua cảng biển' },
             { key: '/reports/F-150', label: 'Biểu 03-N: Thống kê cầu cảng' },
-            { key: '/reports/F-151', label: <span style={{ color: 'red' }}>Biểu 04-N: Thống kê luồng hàng hải</span> },
+            { key: '/reports/F-151', label: 'Biểu 04-N: Thống kê luồng hàng hải' },
             { key: '/reports/F-152', label: <span style={{ color: 'red' }}>Biểu 06-N: Thống kê vùng đón trả hoa tiêu, vùng quay trở tàu, ga tránh tàu, khu neo tránh trú bão</span> },
             { key: '/reports/F-153', label: <span style={{ color: 'red' }}>Biểu 05-N: Thống kê khu chuyển tải, khu neo đậu</span> },
             { key: '/reports/F-154', label: <span style={{ color: 'red' }}>Biểu 07-N: Thống kê bến phao, khu neo đậu</span> },
