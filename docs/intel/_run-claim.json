@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-06-27T18:29:15.473Z",
-  "last_modified_at": "2026-06-27T22:47:04.985Z",
+  "last_modified_at": "2026-07-21T08:29:40.952Z",
   "modules": {
     "M-001": {
       "depends_on": [],
@@ -22,18 +22,21 @@
     "M-002": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "in_progress",
-      "claimed_by": "tab-debug1",
-      "claimed_at": "2026-06-27T22:47:04.985Z",
-      "heartbeat_at": "2026-06-27T22:47:04.985Z",
+      "status": "skipped",
+      "claimed_by": "tab-9c7d364a52faceaf",
+      "claimed_at": "2026-07-21T04:35:29.956Z",
+      "heartbeat_at": "2026-07-21T04:43:17.384Z",
       "current_stage": null,
       "started_at": "2026-06-27T22:47:04.985Z",
-      "completed_at": null,
+      "completed_at": "2026-07-21T04:43:17.384Z",
       "auto_pass_count": 0,
-      "attempt": 1,
+      "attempt": 5,
       "name": "Quản lý tài sản KCHTGT - Cảng & Bến",
       "slug": "quan-ly-tai-san-kchtgt-cang-ben",
-      "risk_path": "M"
+      "risk_path": "M",
+      "previous_claimed_by": "tab-debug1",
+      "claimed_pid": null,
+      "claimed_host": null
     },
     "M-003": {
       "depends_on": [],
@@ -54,50 +57,56 @@
     "M-004": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "queued",
-      "claimed_by": null,
-      "claimed_at": null,
-      "heartbeat_at": null,
+      "status": "done",
+      "claimed_by": "tab-89c508a075f42506",
+      "claimed_at": "2026-07-21T02:34:20.537Z",
+      "heartbeat_at": "2026-07-21T02:55:13.395Z",
       "current_stage": null,
-      "started_at": null,
-      "completed_at": null,
+      "started_at": "2026-07-21T02:34:20.537Z",
+      "completed_at": "2026-07-21T02:55:13.395Z",
       "auto_pass_count": 0,
-      "attempt": 0,
+      "attempt": 1,
       "name": "Quản lý tài sản Báo hiệu & Thông tin",
       "slug": "quan-ly-tai-san-bao-hieu-thong-tin",
-      "risk_path": "M"
+      "risk_path": "M",
+      "claimed_pid": null,
+      "claimed_host": null
     },
     "M-005": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "queued",
-      "claimed_by": null,
-      "claimed_at": null,
-      "heartbeat_at": null,
+      "status": "done",
+      "claimed_by": "tab-c731e8b7f5cc5ada",
+      "claimed_at": "2026-07-21T06:50:40.370Z",
+      "heartbeat_at": "2026-07-21T08:19:25.978Z",
       "current_stage": null,
-      "started_at": null,
-      "completed_at": null,
+      "started_at": "2026-07-21T06:50:40.370Z",
+      "completed_at": "2026-07-21T08:19:25.978Z",
       "auto_pass_count": 0,
-      "attempt": 0,
+      "attempt": 1,
       "name": "Quản lý biến động tài sản KCHTGT",
       "slug": "quan-ly-bien-dong-tai-san-kchtgt",
-      "risk_path": "M"
+      "risk_path": "M",
+      "claimed_pid": null,
+      "claimed_host": null
     },
     "M-006": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "queued",
-      "claimed_by": null,
-      "claimed_at": null,
-      "heartbeat_at": null,
+      "status": "done",
+      "claimed_by": "tab-df2673e626bc4da4",
+      "claimed_at": "2026-07-21T08:22:16.321Z",
+      "heartbeat_at": "2026-07-21T08:29:40.952Z",
       "current_stage": null,
-      "started_at": null,
-      "completed_at": null,
+      "started_at": "2026-07-21T08:22:16.321Z",
+      "completed_at": "2026-07-21T08:29:40.952Z",
       "auto_pass_count": 0,
-      "attempt": 0,
+      "attempt": 1,
       "name": "Quản lý văn bản & Thông tin nghiệp vụ",
       "slug": "quan-ly-van-ban-thong-tin-ghiep-vu",
-      "risk_path": "M"
+      "risk_path": "M",
+      "claimed_pid": null,
+      "claimed_host": null
     },
     "M-007": {
       "depends_on": [],
@@ -230,18 +239,20 @@
     "M-015": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "queued",
-      "claimed_by": null,
-      "claimed_at": null,
-      "heartbeat_at": null,
+      "status": "done",
+      "claimed_by": "tab-fd4f56c33fbfad3e",
+      "claimed_at": "2026-07-21T03:02:27.077Z",
+      "heartbeat_at": "2026-07-21T03:13:30.239Z",
       "current_stage": null,
-      "started_at": null,
-      "completed_at": null,
+      "started_at": "2026-07-21T03:02:27.077Z",
+      "completed_at": "2026-07-21T03:13:30.239Z",
       "auto_pass_count": 0,
-      "attempt": 0,
+      "attempt": 1,
       "name": "Quản lý Đài thông tin duyên hải",
       "slug": "quan-ly-dai-thong-tin-duyen-hai",
-      "risk_path": "M"
+      "risk_path": "M",
+      "claimed_pid": null,
+      "claimed_host": null
     },
     "M-016": {
       "depends_on": [],
@@ -360,10 +371,71 @@
     "tab-debug1": {
       "started_at": "2026-06-27T22:47:04.985Z",
       "last_seen": "2026-06-27T22:47:04.985Z",
-      "claimed_modules": [
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-763526d70e389e9c": {
+      "started_at": "2026-07-20T07:22:06.352Z",
+      "last_seen": "2026-07-20T07:35:32.624Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [
         "M-002"
       ],
+      "skipped_modules": [
+        "M-002"
+      ]
+    },
+    "tab-89c508a075f42506": {
+      "started_at": "2026-07-21T02:34:20.537Z",
+      "last_seen": "2026-07-21T02:55:13.395Z",
+      "claimed_modules": [],
+      "completed_modules": [
+        "M-004"
+      ],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-fd4f56c33fbfad3e": {
+      "started_at": "2026-07-21T03:02:27.077Z",
+      "last_seen": "2026-07-21T03:13:30.239Z",
+      "claimed_modules": [],
+      "completed_modules": [
+        "M-015"
+      ],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-9c7d364a52faceaf": {
+      "started_at": "2026-07-21T04:12:23.127Z",
+      "last_seen": "2026-07-21T04:43:17.384Z",
+      "claimed_modules": [],
       "completed_modules": [],
+      "failed_modules": [],
+      "skipped_modules": [
+        "M-002",
+        "M-002"
+      ]
+    },
+    "tab-c731e8b7f5cc5ada": {
+      "started_at": "2026-07-21T06:50:40.370Z",
+      "last_seen": "2026-07-21T08:19:25.978Z",
+      "claimed_modules": [],
+      "completed_modules": [
+        "M-005"
+      ],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-df2673e626bc4da4": {
+      "started_at": "2026-07-21T08:22:16.321Z",
+      "last_seen": "2026-07-21T08:29:40.952Z",
+      "claimed_modules": [],
+      "completed_modules": [
+        "M-006"
+      ],
       "failed_modules": [],
       "skipped_modules": []
     }

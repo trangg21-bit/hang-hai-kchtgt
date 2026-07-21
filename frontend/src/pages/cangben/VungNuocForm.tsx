@@ -2,14 +2,11 @@ import { useState, useCallback, useEffect } from 'react';
 import { Card, Form, Button, Space, Typography, Row, Col, message, Tag } from 'antd';
 import { ArrowLeftOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
-import { vungNuocCRUD, vungNuocApproval } from '../../services/cangbenService';
+import { vungNuocCRUD, vungNuocApproval, cangBienCRUD } from '../../services/cangbenService';
 import type { CreateVungNuocRequest, UpdateVungNuocRequest } from '../../types/cangben';
-import {
-  BECBANG_STATUS_MAP,
-  type CangBenStatus,
-} from '../../types/cangben';
+import { BECBANG_STATUS_MAP, type CangBenStatus } from '../../types/cangben';
 import FormField from '../../components/FormField';
-import { radiusPill, fontSizeMd, borderDefault, textSecondary } from '../../tokens';
+import { radiusPill, fontSizeMd, borderDefault, textSecondary, actionPrimary } from '../../tokens';
 import toast from '../../components/ToastNotification';
 
 export default function VungNuocForm() {
@@ -20,6 +17,16 @@ export default function VungNuocForm() {
   const [submitting, setSubmitting] = useState(false);
   const [entityData, setEntityData] = useState<{ status: CangBenStatus } | null>(null);
   const [rejectLoading, setRejectLoading] = useState(false);
+  const [cangBienOptions, setCangBienOptions] = useState<{ value: string; label: string }[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await cangBienCRUD.search({ page: 1, pageSize: 1000 });
+        setCangBienOptions((res.data || []).map((cb: any) => ({ value: cb.id, label: cb.tenCang })));
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   useEffect(() => {
     if (isEdit) {
@@ -48,7 +55,6 @@ export default function VungNuocForm() {
   const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields();
-
       setSubmitting(true);
 
       if (isEdit) {
@@ -69,7 +75,6 @@ export default function VungNuocForm() {
           loaiVungNuoc: values.loaiVungNuoc,
           trangThaiHoatDong: values.trangThaiHoatDong,
           trangThaiPheDuyet: 'DRAFT',
-          orgUnitId: '',
         };
         await vungNuocCRUD.create(payload);
         toast.success('Đã tạo vùng nước');
@@ -109,7 +114,6 @@ export default function VungNuocForm() {
 
   const handleApproveL1 = useCallback(async () => {
     if (!id) return;
-    const approverId = localStorage.getItem('user_id') || '1';
     try {
       await vungNuocApproval.approve(id);
       toast.success('Đã phê duyệt cấp 1');
@@ -121,7 +125,6 @@ export default function VungNuocForm() {
 
   const handleApproveL2 = useCallback(async () => {
     if (!id) return;
-    const approverId = localStorage.getItem('user_id') || '1';
     try {
       await vungNuocApproval.approve(id);
       toast.success('Đã phê duyệt cấp 2');
@@ -160,7 +163,19 @@ export default function VungNuocForm() {
         </Space>
       </Card>
 
-      <Card style={{ maxWidth: 700, margin: '0 auto', marginBottom: 16 }}>
+      {/* Approval status tag for edit mode */}
+      {isEdit && entityData && (
+        <Card style={{ maxWidth: 800, margin: '0 auto', marginBottom: 16, padding: '12px 24px' }}>
+          <Space>
+            <Typography.Text strong>Trạng thái phê duyệt:</Typography.Text>
+            <Tag color={BECBANG_STATUS_MAP[entityData.status]?.color || 'default'}>
+              {BECBANG_STATUS_MAP[entityData.status]?.label || entityData.status}
+            </Tag>
+          </Space>
+        </Card>
+      )}
+
+      <Card style={{ maxWidth: 800, margin: '0 auto', marginBottom: 16 }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           {!isEdit && (
             <FormField
@@ -172,7 +187,6 @@ export default function VungNuocForm() {
               help="Mã định danh duy nhất cho vùng nước"
             />
           )}
-
           {isEdit && (
             <FormField
               type="text"
@@ -191,78 +205,80 @@ export default function VungNuocForm() {
           />
 
           <FormField
-            type="text"
+            type="select"
             name="cangBienId"
-            label="ID Cảng biển"
-            placeholder="Nhập ID cảng biển cha"
-            help="ID của cảng biển chứa vùng nước này"
+            label="Cảng biển"
+            placeholder="Chọn cảng biển cha"
+            options={cangBienOptions}
+            help="Chọn cảng biển chứa vùng nước này"
           />
 
-           <FormField
-             type="number"
-             name="dienTich"
-             label="Diện tích (m²)"
-             required
-             min={0}
-             step={0.01}
-             placeholder="VD: 100000.0"
-             help="Diện tích vùng nước tính bằng mét vuông"
-           />
+          <FormField
+            type="select"
+            name="loaiVungNuoc"
+            label="Loại vùng nước"
+            options={[
+              { label: 'Khu neo đậu', value: 'NEO_DAU' },
+              { label: 'Khu kiểm dịch', value: 'KIEM_DICH' },
+              { label: 'Khu đón trả hoa tiêu', value: 'DON_TRA_HOA_TIEU' },
+              { label: 'Vùng quay trở tàu', value: 'QUAY_TRO_TAU' },
+              { label: 'Bến phao', value: 'BEN_PHAO' },
+              { label: 'Khu chuyển tải', value: 'CHUYEN_TAI' },
+              { label: 'Khu tránh trú bão', value: 'TRANH_BAO' },
+            ]}
+            disabled={isEdit && (entityData?.status === 'APPROVED_L2' || entityData?.status === 'PUBLISHED')}
+          />
 
-           <FormField
-             type="number"
-             name="doSauMax"
-             label="Độ sâu tối đa (m)"
-             required
-             min={0}
-             step={0.01}
-             placeholder="VD: 15.0"
-             help="Độ sâu tối đa của vùng nước"
-           />
+          <Row gutter={16}>
+            <Col xs={24} md={8}>
+              <FormField
+                type="number"
+                name="dienTich"
+                label="Diện tích (m²)"
+                min={0}
+                step={0.01}
+                placeholder="VD: 100000.0"
+                help="Diện tích vùng nước tính bằng mét vuông"
+              />
+            </Col>
+            <Col xs={24} md={8}>
+              <FormField
+                type="number"
+                name="doSauMax"
+                label="Độ sâu tối đa (m)"
+                min={0}
+                step={0.01}
+                placeholder="VD: 15.0"
+                help="Độ sâu tối đa của vùng nước"
+              />
+            </Col>
+            <Col xs={24} md={8}>
+              <FormField
+                type="number"
+                name="doSauTrungBinh"
+                label="Độ sâu trung bình (m)"
+                min={0}
+                step={0.01}
+                placeholder="VD: 10.0"
+                help="Độ sâu trung bình của vùng nước"
+              />
+            </Col>
+          </Row>
 
-           <FormField
-             type="number"
-             name="doSauTrungBinh"
-             label="Độ sâu trung bình (m)"
-             required
-             min={0}
-             step={0.01}
-             placeholder="VD: 10.0"
-             help="Độ sâu trung bình của vùng nước"
-           />
-
-            <FormField
-              type="select"
-              name="loaiVungNuoc"
-              label="Loại vùng nước"
-              required
-              options={[
-                { label: 'Khu neo đậu', value: 'NEO_DAU' },
-                { label: 'Khu kiểm dịch', value: 'KIEM_DICH' },
-                { label: 'Khu đón trả hoa tiêu', value: 'DON_TRA_HOA_TIEU' },
-                { label: 'Vùng quay trở tàu', value: 'QUAY_TRO_TAU' },
-                { label: 'Bến phao', value: 'BEN_PHAO' },
-                { label: 'Khu chuyển tải', value: 'CHUYEN_TAI' },
-                { label: 'Khu tránh trú bão', value: 'TRANH_BAO' },
-              ]}
-              disabled={isEdit && (entityData?.status === 'APPROVED_L2' || entityData?.status === 'PUBLISHED')}
-            />
-
-           <FormField
-             type="select"
-             name="trangThaiHoatDong"
-             label="Trạng thái hoạt động"
-             required
-             options={[
-               { label: 'Hoạt động', value: 'ACTIVE' },
-               { label: 'Ngừng hoạt động', value: 'INACTIVE' },
-               { label: 'Bảo trì', value: 'MAINTENANCE' },
-             ]}
-           />
+          <FormField
+            type="select"
+            name="trangThaiHoatDong"
+            label="Trạng thái hoạt động"
+            options={[
+              { label: 'Hiện hành', value: 'HIEN_HANH' },
+              { label: 'Tạm ngừng', value: 'TAM_NGUNG' },
+            ]}
+          />
 
           <Form.Item style={{ marginTop: 24 }}>
             <Space>
-              <Button type="primary" htmlType="submit" loading={submitting}>
+              <Button type="primary" htmlType="submit" loading={submitting}
+                style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>
                 {isEdit ? 'Cập nhật' : 'Tạo vùng nước'}
               </Button>
               <Button onClick={() => navigate('/vungnuoc')} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>
@@ -273,78 +289,29 @@ export default function VungNuocForm() {
 
       {/* Approval actions — shown only when editing */}
       {isEdit && entityData && (
-        <Card style={{ maxWidth: 700, margin: '0 auto' }}>
+        <Card style={{ maxWidth: 800, margin: '0 auto' }}>
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thao tác phê duyệt
           </Typography.Text>
           <Space wrap>
-            <Tag color={BECBANG_STATUS_MAP[entityData.status]?.color || 'default'}>
-              {BECBANG_STATUS_MAP[entityData.status]?.label || entityData.status}
-            </Tag>
-
-            <Button
-              type="dashed"
-              onClick={() => navigate(`/history?entityId=${id}&type=VUNG_NUOC`)}
-            >
-              Lịch sử thay đổi
-            </Button>
-
+            <Button type="dashed" onClick={() => navigate(`/history?entityId=${id}&type=VUNG_NUOC`)}>Lịch sử thay đổi</Button>
             {entityData.status === 'DRAFT' && (
-              <Button
-                icon={<SendOutlined />}
-                onClick={handleSubmitApproval}
-              >
-                Gửi duyệt
-              </Button>
+              <Button icon={<SendOutlined />} onClick={handleSubmitApproval}>Gửi duyệt</Button>
             )}
-
             {entityData.status === 'PENDING_APPROVAL' && (
               <>
-                <Button
-                  type="primary"
-                  icon={<CheckCircleOutlined />}
-                  onClick={handleApproveL1}
-                >
-                  Phê duyệt L1
-                </Button>
-                <Button
-                  danger
-                  icon={<CloseCircleOutlined />}
-                  loading={rejectLoading}
-                  onClick={handleReject}
-                >
-                  Từ chối
-                </Button>
+                <Button type="primary" icon={<CheckCircleOutlined />} onClick={handleApproveL1}>Phê duyệt L1</Button>
+                <Button danger icon={<CloseCircleOutlined />} loading={rejectLoading} onClick={handleReject}>Từ chối</Button>
               </>
             )}
-
             {entityData.status === 'APPROVED_L1' && (
               <>
-                <Button
-                  type="primary"
-                  icon={<CheckCircleOutlined />}
-                  onClick={handleApproveL2}
-                >
-                  Phê duyệt L2
-                </Button>
-                <Button
-                  danger
-                  icon={<CloseCircleOutlined />}
-                  loading={rejectLoading}
-                  onClick={handleReject}
-                >
-                  Từ chối
-                </Button>
+                <Button type="primary" icon={<CheckCircleOutlined />} onClick={handleApproveL2}>Phê duyệt L2</Button>
+                <Button danger icon={<CloseCircleOutlined />} loading={rejectLoading} onClick={handleReject}>Từ chối</Button>
               </>
             )}
-
             {entityData.status === 'DRAFT' && (
-              <Button
-                danger
-                onClick={handleDelete}
-              >
-                Xóa
-              </Button>
+              <Button danger onClick={handleDelete}>Xóa</Button>
             )}
           </Space>
         </Card>

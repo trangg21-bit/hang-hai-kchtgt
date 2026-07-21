@@ -2,14 +2,11 @@ import { useState, useCallback, useEffect } from 'react';
 import { Card, Form, Button, Space, Typography, Row, Col, message, Tag } from 'antd';
 import { ArrowLeftOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
-import { cauCangCRUD, cauCangApproval } from '../../services/cangbenService';
+import { cauCangCRUD, cauCangApproval, benCangCRUD } from '../../services/cangbenService';
 import type { CreateCauCangRequest, UpdateCauCangRequest } from '../../types/cangben';
-import {
-  BECBANG_STATUS_MAP,
-  type CangBenStatus,
-} from '../../types/cangben';
+import { BECBANG_STATUS_MAP, type CangBenStatus } from '../../types/cangben';
 import FormField from '../../components/FormField';
-import { radiusPill, fontSizeMd, borderDefault, textSecondary } from '../../tokens';
+import { radiusPill, fontSizeMd, borderDefault, textSecondary, actionPrimary } from '../../tokens';
 import toast from '../../components/ToastNotification';
 
 export default function CauCangForm() {
@@ -20,6 +17,16 @@ export default function CauCangForm() {
   const [submitting, setSubmitting] = useState(false);
   const [entityData, setEntityData] = useState<{ status: CangBenStatus } | null>(null);
   const [rejectLoading, setRejectLoading] = useState(false);
+  const [benCangOptions, setBenCangOptions] = useState<{ value: string; label: string }[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await benCangCRUD.search({ page: 1, pageSize: 1000 });
+        setBenCangOptions((res.data || []).map((bc: any) => ({ value: bc.id, label: bc.tenBen })));
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   useEffect(() => {
     if (isEdit) {
@@ -47,7 +54,6 @@ export default function CauCangForm() {
   const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields();
-
       setSubmitting(true);
 
       if (isEdit) {
@@ -67,7 +73,6 @@ export default function CauCangForm() {
           loaiCau: values.loaiCau,
           trangThaiHoatDong: values.trangThaiHoatDong,
           trangThaiPheDuyet: 'DRAFT',
-          orgUnitId: '',
         };
         await cauCangCRUD.create(payload);
         toast.success('Đã tạo cầu cảng');
@@ -107,7 +112,6 @@ export default function CauCangForm() {
 
   const handleApproveL1 = useCallback(async () => {
     if (!id) return;
-    const approverId = localStorage.getItem('user_id') || '1';
     try {
       await cauCangApproval.approve(id);
       toast.success('Đã phê duyệt cấp 1');
@@ -119,7 +123,6 @@ export default function CauCangForm() {
 
   const handleApproveL2 = useCallback(async () => {
     if (!id) return;
-    const approverId = localStorage.getItem('user_id') || '1';
     try {
       await cauCangApproval.approve(id);
       toast.success('Đã phê duyệt cấp 2');
@@ -158,7 +161,19 @@ export default function CauCangForm() {
         </Space>
       </Card>
 
-      <Card style={{ maxWidth: 700, margin: '0 auto', marginBottom: 16 }}>
+      {/* Approval status tag for edit mode */}
+      {isEdit && entityData && (
+        <Card style={{ maxWidth: 800, margin: '0 auto', marginBottom: 16, padding: '12px 24px' }}>
+          <Space>
+            <Typography.Text strong>Trạng thái phê duyệt:</Typography.Text>
+            <Tag color={BECBANG_STATUS_MAP[entityData.status]?.color || 'default'}>
+              {BECBANG_STATUS_MAP[entityData.status]?.label || entityData.status}
+            </Tag>
+          </Space>
+        </Card>
+      )}
+
+      <Card style={{ maxWidth: 800, margin: '0 auto', marginBottom: 16 }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           {!isEdit && (
             <FormField
@@ -170,7 +185,6 @@ export default function CauCangForm() {
               help="Mã định danh duy nhất cho cầu cảng"
             />
           )}
-
           {isEdit && (
             <FormField
               type="text"
@@ -189,63 +203,61 @@ export default function CauCangForm() {
           />
 
           <FormField
-            type="text"
+            type="select"
             name="benCangId"
-            label="ID Bến cảng"
-            placeholder="Nhập ID bến cảng cha"
-            help="ID của bến cảng chứa cầu này"
+            label="Bến cảng"
+            placeholder="Chọn bến cảng cha"
+            options={benCangOptions}
+            help="Chọn bến cảng chứa cầu này"
           />
 
-           <FormField
-             type="number"
-             name="chieuDai"
-             label="Chiều dài (m)"
-             required
-             min={0}
-             step={0.01}
-             placeholder="VD: 100.0"
-             help="Chiều dài cầu cảng tính bằng mét"
-           />
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <FormField
+                type="number"
+                name="chieuDai"
+                label="Chiều dài (m)"
+                min={0}
+                step={0.01}
+                placeholder="VD: 100.0"
+                help="Chiều dài cầu cảng tính bằng mét"
+              />
+            </Col>
+            <Col xs={24} md={12}>
+              <FormField
+                type="number"
+                name="taiTrong"
+                label="Tải trọng (tấn)"
+                min={0}
+                step={0.01}
+                placeholder="VD: 500.0"
+                help="Tải trọng tối đa tính bằng tấn"
+              />
+            </Col>
+          </Row>
 
-           <FormField
-             type="number"
-             name="taiTrong"
-             label="Tải trọng (tấn)"
-             required
-             min={0}
-             step={0.01}
-             placeholder="VD: 500.0"
-             help="Tải trọng tối đa tính bằng tấn"
-           />
+          <FormField
+            type="text"
+            name="loaiCau"
+            label="Loại cầu"
+            placeholder="VD: Cầu tàu thẳng, Cầu tàu góc..."
+            disabled={isEdit && (entityData?.status === 'APPROVED_L2' || entityData?.status === 'PUBLISHED')}
+          />
 
-           <FormField
-             type="select"
-             name="loaiCau"
-             label="Loại cầu"
-             required
-             options={[
-               { label: 'Cầu tàu thẳng', value: 'STRAIGHT' },
-               { label: 'Cầu tàu góc', value: 'ANGLED' },
-               { label: 'Cầu tàu dạng chữ T', value: 'T_SHAPED' },
-             ]}
-             disabled={isEdit && (entityData?.status === 'APPROVED_L2' || entityData?.status === 'PUBLISHED')}
-           />
-
-           <FormField
-             type="select"
-             name="trangThaiHoatDong"
-             label="Trạng thái hoạt động"
-             required
-             options={[
-               { label: 'Hoạt động', value: 'ACTIVE' },
-               { label: 'Ngừng hoạt động', value: 'INACTIVE' },
-               { label: 'Bảo trì', value: 'MAINTENANCE' },
-             ]}
-           />
+          <FormField
+            type="select"
+            name="trangThaiHoatDong"
+            label="Trạng thái hoạt động"
+            options={[
+              { label: 'Hiện hành', value: 'HIEN_HANH' },
+              { label: 'Tạm ngừng', value: 'TAM_NGUNG' },
+            ]}
+          />
 
           <Form.Item style={{ marginTop: 24 }}>
             <Space>
-              <Button type="primary" htmlType="submit" loading={submitting}>
+              <Button type="primary" htmlType="submit" loading={submitting}
+                style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>
                 {isEdit ? 'Cập nhật' : 'Tạo cầu cảng'}
               </Button>
               <Button onClick={() => navigate('/caucang')} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>
@@ -256,78 +268,29 @@ export default function CauCangForm() {
 
       {/* Approval actions — shown only when editing */}
       {isEdit && entityData && (
-        <Card style={{ maxWidth: 700, margin: '0 auto' }}>
+        <Card style={{ maxWidth: 800, margin: '0 auto' }}>
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thao tác phê duyệt
           </Typography.Text>
           <Space wrap>
-            <Tag color={BECBANG_STATUS_MAP[entityData.status]?.color || 'default'}>
-              {BECBANG_STATUS_MAP[entityData.status]?.label || entityData.status}
-            </Tag>
-
-            <Button
-              type="dashed"
-              onClick={() => navigate(`/history?entityId=${id}&type=CAU_CANG`)}
-            >
-              Lịch sử thay đổi
-            </Button>
-
+            <Button type="dashed" onClick={() => navigate(`/history?entityId=${id}&type=CAU_CANG`)}>Lịch sử thay đổi</Button>
             {entityData.status === 'DRAFT' && (
-              <Button
-                icon={<SendOutlined />}
-                onClick={handleSubmitApproval}
-              >
-                Gửi duyệt
-              </Button>
+              <Button icon={<SendOutlined />} onClick={handleSubmitApproval}>Gửi duyệt</Button>
             )}
-
             {entityData.status === 'PENDING_APPROVAL' && (
               <>
-                <Button
-                  type="primary"
-                  icon={<CheckCircleOutlined />}
-                  onClick={handleApproveL1}
-                >
-                  Phê duyệt L1
-                </Button>
-                <Button
-                  danger
-                  icon={<CloseCircleOutlined />}
-                  loading={rejectLoading}
-                  onClick={handleReject}
-                >
-                  Từ chối
-                </Button>
+                <Button type="primary" icon={<CheckCircleOutlined />} onClick={handleApproveL1}>Phê duyệt L1</Button>
+                <Button danger icon={<CloseCircleOutlined />} loading={rejectLoading} onClick={handleReject}>Từ chối</Button>
               </>
             )}
-
             {entityData.status === 'APPROVED_L1' && (
               <>
-                <Button
-                  type="primary"
-                  icon={<CheckCircleOutlined />}
-                  onClick={handleApproveL2}
-                >
-                  Phê duyệt L2
-                </Button>
-                <Button
-                  danger
-                  icon={<CloseCircleOutlined />}
-                  loading={rejectLoading}
-                  onClick={handleReject}
-                >
-                  Từ chối
-                </Button>
+                <Button type="primary" icon={<CheckCircleOutlined />} onClick={handleApproveL2}>Phê duyệt L2</Button>
+                <Button danger icon={<CloseCircleOutlined />} loading={rejectLoading} onClick={handleReject}>Từ chối</Button>
               </>
             )}
-
             {entityData.status === 'DRAFT' && (
-              <Button
-                danger
-                onClick={handleDelete}
-              >
-                Xóa
-              </Button>
+              <Button danger onClick={handleDelete}>Xóa</Button>
             )}
           </Space>
         </Card>

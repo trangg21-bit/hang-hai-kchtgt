@@ -4,12 +4,9 @@ import { ArrowLeftOutlined, SendOutlined, CheckCircleOutlined, CloseCircleOutlin
 import { useNavigate, useParams } from 'react-router-dom';
 import { cangCanCRUD, cangCanApproval } from '../../services/cangbenService';
 import type { CreateCangCanRequest, UpdateCangCanRequest } from '../../types/cangben';
-import {
-  BECBANG_STATUS_MAP,
-  type CangBenStatus,
-} from '../../types/cangben';
+import { BECBANG_STATUS_MAP, type CangBenStatus } from '../../types/cangben';
 import FormField from '../../components/FormField';
-import { radiusPill, fontSizeMd, borderDefault, textSecondary } from '../../tokens';
+import { radiusPill, fontSizeMd, borderDefault, textSecondary, actionPrimary } from '../../tokens';
 import { VIETNAM_PROVINCES } from '../../types/common';
 import toast from '../../components/ToastNotification';
 
@@ -50,12 +47,18 @@ export default function CangCanForm() {
     try {
       const values = await form.validateFields();
 
-      // WGS84 validation
-      if (values.viDo < -90 || values.viDo > 90) {
+      // GPS pair constraint: both or neither
+      const hasViDo = values.viDo !== undefined && values.viDo !== null && values.viDo !== '';
+      const hasKinhDo = values.kinhDo !== undefined && values.kinhDo !== null && values.kinhDo !== '';
+      if (hasViDo !== hasKinhDo) {
+        message.error('Vui lòng nhập cả Vĩ độ và Kinh độ hoặc bỏ qua cả hai');
+        return;
+      }
+      if (hasViDo && (values.viDo < -90 || values.viDo > 90)) {
         message.error('Vĩ độ phải từ -90 đến 90');
         return;
       }
-      if (values.kinhDo < -180 || values.kinhDo > 180) {
+      if (hasKinhDo && (values.kinhDo < -180 || values.kinhDo > 180)) {
         message.error('Kinh độ phải từ -180 đến 180');
         return;
       }
@@ -120,7 +123,6 @@ export default function CangCanForm() {
 
   const handleApproveL1 = useCallback(async () => {
     if (!id) return;
-    const approverId = localStorage.getItem('user_id') || '1';
     try {
       await cangCanApproval.approve(id);
       toast.success('Đã phê duyệt cấp 1');
@@ -132,7 +134,6 @@ export default function CangCanForm() {
 
   const handleApproveL2 = useCallback(async () => {
     if (!id) return;
-    const approverId = localStorage.getItem('user_id') || '1';
     try {
       await cangCanApproval.approve(id);
       toast.success('Đã phê duyệt cấp 2');
@@ -171,7 +172,19 @@ export default function CangCanForm() {
         </Space>
       </Card>
 
-      <Card style={{ maxWidth: 700, margin: '0 auto', marginBottom: 16 }}>
+      {/* Approval status tag for edit mode */}
+      {isEdit && entityData && (
+        <Card style={{ maxWidth: 800, margin: '0 auto', marginBottom: 16, padding: '12px 24px' }}>
+          <Space>
+            <Typography.Text strong>Trạng thái phê duyệt:</Typography.Text>
+            <Tag color={BECBANG_STATUS_MAP[entityData.status]?.color || 'default'}>
+              {BECBANG_STATUS_MAP[entityData.status]?.label || entityData.status}
+            </Tag>
+          </Space>
+        </Card>
+      )}
+
+      <Card style={{ maxWidth: 800, margin: '0 auto', marginBottom: 16 }}>
         <Form form={form} layout="vertical" onFinish={handleSubmit}>
           {!isEdit && (
             <FormField
@@ -183,7 +196,6 @@ export default function CangCanForm() {
               help="Mã định danh duy nhất cho cảng cạn"
             />
           )}
-
           {isEdit && (
             <FormField
               type="text"
@@ -205,77 +217,76 @@ export default function CangCanForm() {
             type="select"
             name="tinhThanhPho"
             label="Tỉnh / Thành phố"
-            required
             placeholder="Chọn tỉnh/thành phố..."
             options={VIETNAM_PROVINCES.map(p => ({ value: p, label: p }))}
           />
 
-           <Row style={{ display: 'flex', gap: 16 }}>
-             <Col style={{ flex: 1 }}>
-               <FormField
-                 type="number"
-                 name="viDo"
-                 label="Vĩ độ (Latitude)"
-                 required
-                 min={-90}
-                 max={90}
-                 step={0.0001}
-                 placeholder="21.0"
-                 help="WGS84: -90 ~ 90"
-               />
-             </Col>
-             <Col style={{ flex: 1 }}>
-               <FormField
-                 type="number"
-                 name="kinhDo"
-                 label="Kinh độ (Longitude)"
-                 required
-                 min={-180}
-                 max={180}
-                 step={0.0001}
-                 placeholder="105.8"
-                 help="WGS84: -180 ~ 180"
-               />
-             </Col>
-           </Row>
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <FormField
+                type="number"
+                name="viDo"
+                label="Vĩ độ (Latitude)"
+                min={-90}
+                max={90}
+                step={0.0001}
+                placeholder="21.0"
+                help="WGS84: -90 ~ 90"
+              />
+            </Col>
+            <Col xs={24} md={12}>
+              <FormField
+                type="number"
+                name="kinhDo"
+                label="Kinh độ (Longitude)"
+                min={-180}
+                max={180}
+                step={0.0001}
+                placeholder="105.8"
+                help="WGS84: -180 ~ 180"
+              />
+            </Col>
+          </Row>
 
-           <FormField
-             type="number"
-             name="dienTich"
-             label="Diện tích (m²)"
-             required
-             min={0}
-             step={0.01}
-             placeholder="VD: 50000.0"
-             help="Diện tích cảng cạn tính bằng mét vuông"
-           />
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <FormField
+                type="number"
+                name="dienTich"
+                label="Diện tích (m²)"
+                min={0}
+                step={0.01}
+                placeholder="VD: 50000.0"
+                help="Diện tích cảng cạn tính bằng mét vuông"
+              />
+            </Col>
+            <Col xs={24} md={12}>
+              <FormField
+                type="number"
+                name="congSuatTEU"
+                label="Công suất (TEU)"
+                min={0}
+                step={1}
+                placeholder="VD: 100000"
+                help="Công suất xử lý container tính bằng TEU"
+              />
+            </Col>
+          </Row>
 
-           <FormField
-             type="number"
-             name="congSuatTEU"
-             label="Công suất (TEU)"
-             required
-             min={0}
-             step={1}
-             placeholder="VD: 100000"
-             help="Công suất xử lý container tính bằng TEU"
-           />
-
-           <FormField
-             type="select"
-             name="trangThaiHoatDong"
-             label="Trạng thái hoạt động"
-             required
-             options={[
-               { label: 'Hoạt động', value: 'ACTIVE' },
-               { label: 'Ngừng hoạt động', value: 'INACTIVE' },
-               { label: 'Bảo trì', value: 'MAINTENANCE' },
-             ]}
-           />
+          <FormField
+            type="select"
+            name="trangThaiHoatDong"
+            label="Trạng thái hoạt động"
+            options={[
+              { label: 'Hiện hành', value: 'HIEN_HANH' },
+              { label: 'Tạm ngừng', value: 'TAM_NGUNG' },
+            ]}
+          />
 
           <Form.Item style={{ marginTop: 24 }}>
             <Space>
-              <Button type="primary" htmlType="submit" loading={submitting}>
+              <Button type="primary" htmlType="submit" loading={submitting}
+                style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>
                 {isEdit ? 'Cập nhật' : 'Tạo cảng cạn'}
               </Button>
               <Button onClick={() => navigate('/cangcan')} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>
@@ -286,78 +297,29 @@ export default function CangCanForm() {
 
       {/* Approval actions — shown only when editing */}
       {isEdit && entityData && (
-        <Card style={{ maxWidth: 700, margin: '0 auto' }}>
+        <Card style={{ maxWidth: 800, margin: '0 auto' }}>
           <Typography.Text strong style={{ display: 'block', marginBottom: 12 }}>
             Thao tác phê duyệt
           </Typography.Text>
           <Space wrap>
-            <Tag color={BECBANG_STATUS_MAP[entityData.status]?.color || 'default'}>
-              {BECBANG_STATUS_MAP[entityData.status]?.label || entityData.status}
-            </Tag>
-
-            <Button
-              type="dashed"
-              onClick={() => navigate(`/history?entityId=${id}&type=CANG_CAN`)}
-            >
-              Lịch sử thay đổi
-            </Button>
-
+            <Button type="dashed" onClick={() => navigate(`/history?entityId=${id}&type=CANG_CAN`)}>Lịch sử thay đổi</Button>
             {entityData.status === 'DRAFT' && (
-              <Button
-                icon={<SendOutlined />}
-                onClick={handleSubmitApproval}
-              >
-                Gửi duyệt
-              </Button>
+              <Button icon={<SendOutlined />} onClick={handleSubmitApproval}>Gửi duyệt</Button>
             )}
-
             {entityData.status === 'PENDING_APPROVAL' && (
               <>
-                <Button
-                  type="primary"
-                  icon={<CheckCircleOutlined />}
-                  onClick={handleApproveL1}
-                >
-                  Phê duyệt L1
-                </Button>
-                <Button
-                  danger
-                  icon={<CloseCircleOutlined />}
-                  loading={rejectLoading}
-                  onClick={handleReject}
-                >
-                  Từ chối
-                </Button>
+                <Button type="primary" icon={<CheckCircleOutlined />} onClick={handleApproveL1}>Phê duyệt L1</Button>
+                <Button danger icon={<CloseCircleOutlined />} loading={rejectLoading} onClick={handleReject}>Từ chối</Button>
               </>
             )}
-
             {entityData.status === 'APPROVED_L1' && (
               <>
-                <Button
-                  type="primary"
-                  icon={<CheckCircleOutlined />}
-                  onClick={handleApproveL2}
-                >
-                  Phê duyệt L2
-                </Button>
-                <Button
-                  danger
-                  icon={<CloseCircleOutlined />}
-                  loading={rejectLoading}
-                  onClick={handleReject}
-                >
-                  Từ chối
-                </Button>
+                <Button type="primary" icon={<CheckCircleOutlined />} onClick={handleApproveL2}>Phê duyệt L2</Button>
+                <Button danger icon={<CloseCircleOutlined />} loading={rejectLoading} onClick={handleReject}>Từ chối</Button>
               </>
             )}
-
             {entityData.status === 'DRAFT' && (
-              <Button
-                danger
-                onClick={handleDelete}
-              >
-                Xóa
-              </Button>
+              <Button danger onClick={handleDelete}>Xóa</Button>
             )}
           </Space>
         </Card>

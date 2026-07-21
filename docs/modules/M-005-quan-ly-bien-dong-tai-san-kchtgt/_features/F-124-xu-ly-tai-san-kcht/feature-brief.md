@@ -1,15 +1,18 @@
 ---
 id: F-124
-name: "Xử lý tài sản KCHT"
+name: Xử lý tài sản KCHT
 slug: xu-ly-tai-san-kcht
 module-id: M-005
 status: proposed
 classification: local
 priority: high
-created: "2026-06-16T04:41:00Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:41:00Z
+last-updated: 2026-07-21T08:00:25Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/assetmovement/controller/HoSoXuLyTaiSanController.java
+  - src/main/java/com/hanghai/kchtg/assetmovement/service/HoSoXuLyTaiSanService.java
 ---
 # Feature: Xử lý tài sản KCHT
 

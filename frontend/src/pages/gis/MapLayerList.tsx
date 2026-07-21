@@ -4,7 +4,6 @@ import {
   Space,
   Tag,
   Tooltip,
-  Popconfirm,
   Switch,
   Typography,
   Modal,
@@ -264,13 +263,20 @@ export default function MapLayerList() {
             </Tooltip>
           )}
           {hasPerm('gis.layer.delete') && (
-            <Popconfirm title="Xác nhận xóa" description={`Bạn có chắc muốn xóa "${record.name}"?`}
-              okText="Xóa" okType="danger" cancelText="Hủy"
-              onConfirm={() => handleDelete(record)}>
-              <Tooltip title="Xóa">
-                <Button type="link" size="small" danger icon={<DeleteOutlined />} />
-              </Tooltip>
-            </Popconfirm>
+            <Tooltip title="Xóa">
+              <Button type="link" size="small" danger icon={<DeleteOutlined />}
+                onClick={() => {
+                  Modal.confirm({
+                    title: 'Xác nhận xóa',
+                    content: `Bạn có chắc muốn xóa "${record.name}"?`,
+                    okText: 'Xóa',
+                    okType: 'danger',
+                    cancelText: 'Hủy',
+                    onOk: () => handleDelete(record),
+                  });
+                }}
+              />
+            </Tooltip>
           )}
         </Space>
       ),

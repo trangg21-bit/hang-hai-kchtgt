@@ -4,7 +4,6 @@ import {
   Space,
   Tag,
   Tooltip,
-  Popconfirm,
   Modal,
   Form,
   Input,
@@ -308,36 +307,61 @@ export default function PolygonObjectList() {
             </Tooltip>
           )}
           {hasPerm('gis.polygon.delete') && record.status === 'DRAFT' && (
-            <Popconfirm title="Xác nhận xóa" description={`Bạn có chắc muốn xóa "${record.name}"?`}
-              okText="Xóa" okType="danger" cancelText="Hủy"
-              onConfirm={() => handleDelete(record)}>
-              <Tooltip title="Xóa">
-                <Button type="link" size="small" danger icon={<DeleteOutlined />} />
-              </Tooltip>
-            </Popconfirm>
+            <Tooltip title="Xóa">
+              <Button type="link" size="small" danger icon={<DeleteOutlined />}
+                onClick={() => {
+                  Modal.confirm({
+                    title: 'Xác nhận xóa',
+                    content: `Bạn có chắc muốn xóa "${record.name}"?`,
+                    okText: 'Xóa',
+                    okType: 'danger',
+                    cancelText: 'Hủy',
+                    onOk: () => handleDelete(record),
+                  });
+                }}
+              />
+            </Tooltip>
           )}
           {record.status === 'DRAFT' && hasPerm('gis.polygon.submit') && (
             <Tooltip title="Gửi duyệt">
-              <Popconfirm title="Gửi duyệt đối tượng?" okText="Gửi" cancelText="Hủy"
-                onConfirm={() => handleSubmitApproval(record)}>
-                <Button type="link" size="small" icon={<SendOutlined />} />
-              </Popconfirm>
+              <Button type="link" size="small" icon={<SendOutlined />}
+                onClick={() => {
+                  Modal.confirm({
+                    title: 'Gửi duyệt đối tượng?',
+                    okText: 'Gửi',
+                    cancelText: 'Hủy',
+                    onOk: () => handleSubmitApproval(record),
+                  });
+                }}
+              />
             </Tooltip>
           )}
           {record.status === 'PENDING_APPROVAL' && hasPerm('gis.polygon.approve-l1') && (
             <Tooltip title="Phê duyệt L1">
-              <Popconfirm title="Phê duyệt cấp 1?" okText="Phê duyệt" cancelText="Hủy"
-                onConfirm={() => handleApproveL1(record)}>
-                <Button type="link" size="small" icon={<CheckCircleOutlined />} />
-              </Popconfirm>
+              <Button type="link" size="small" icon={<CheckCircleOutlined />}
+                onClick={() => {
+                  Modal.confirm({
+                    title: 'Phê duyệt cấp 1?',
+                    okText: 'Phê duyệt',
+                    cancelText: 'Hủy',
+                    onOk: () => handleApproveL1(record),
+                  });
+                }}
+              />
             </Tooltip>
           )}
           {record.status === 'APPROVED_L1' && hasPerm('gis.polygon.approve-l2') && (
             <Tooltip title="Phê duyệt L2">
-              <Popconfirm title="Phê duyệt cấp 2?" okText="Phê duyệt" cancelText="Hủy"
-                onConfirm={() => handleApproveL2(record)}>
-                <Button type="link" size="small" icon={<CheckCircleOutlined />} />
-              </Popconfirm>
+              <Button type="link" size="small" icon={<CheckCircleOutlined />}
+                onClick={() => {
+                  Modal.confirm({
+                    title: 'Phê duyệt cấp 2?',
+                    okText: 'Phê duyệt',
+                    cancelText: 'Hủy',
+                    onOk: () => handleApproveL2(record),
+                  });
+                }}
+              />
             </Tooltip>
           )}
         </Space>

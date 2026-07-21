@@ -1,17 +1,19 @@
 ---
 id: F-080
-name: "Quản lý Nhà trạm phao - Tạo mới"
+name: Quản lý Nhà trạm phao - Tạo mới
 slug: quan-ly-nha-tram-phao-tao-moi
 module-id: M-004
 status: proposed
 classification: local
 priority: medium
-created: "2026-07-07T03:32:42Z"
-last-updated: "2026-07-07T03:32:42Z"
+created: 2026-07-07T03:32:42Z
+last-updated: 2026-07-21T02:49:00Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/nhatram/
+  - src/test/java/com/hanghai/kchtg/nhatram/
 ---
-
 # Feature: Quản lý Nhà trạm phao - Tạo mới
 
 ## Description

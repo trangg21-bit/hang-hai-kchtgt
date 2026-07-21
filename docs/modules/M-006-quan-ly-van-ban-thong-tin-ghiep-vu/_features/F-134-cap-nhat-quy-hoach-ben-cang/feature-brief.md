@@ -1,15 +1,23 @@
 ---
 id: F-134
-name: "Cập nhật quy hoạch bến cảng"
+name: Cập nhật quy hoạch bến cảng
 slug: cap-nhat-quy-hoach-ben-cang
 module-id: M-006
 status: proposed
 classification: local
 priority: high
-created: "2026-06-16T04:41:29Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:41:29Z
+last-updated: 2026-07-21T08:29:30Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/vanban/entity/DieuChinhQuyHoach.java
+  - src/main/java/com/hanghai/kchtg/vanban/controller/DieuChinhQuyHoachController.java
+  - src/main/java/com/hanghai/kchtg/vanban/service/DieuChinhQuyHoachService.java
+  - src/main/java/com/hanghai/kchtg/vanban/repository/DieuChinhQuyHoachRepository.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/DieuChinhQuyHoachResponse.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/DieuChinhQuyHoachCreateRequest.java
+  - src/test/java/com/hanghai/kchtg/vanban/DieuChinhQuyHoachControllerTest.java
 ---
 # Feature: Cập nhật quy hoạch bến cảng
 

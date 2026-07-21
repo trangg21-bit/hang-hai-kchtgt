@@ -1,15 +1,19 @@
 ---
 id: F-122
-name: "Tăng tài sản KCHT"
+name: Tăng tài sản KCHT
 slug: tang-tai-san-kcht
 module-id: M-005
 status: proposed
 classification: local
 priority: high
-created: "2026-06-16T04:41:00Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:41:00Z
+last-updated: 2026-07-21T08:00:13Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/assetmovement/controller/YeuCauTangTaiSanController.java
+  - src/main/java/com/hanghai/kchtg/assetmovement/service/YeuCauTangTaiSanService.java
+  - src/test/java/com/hanghai/kchtg/assetmovement/service/YeuCauTangTaiSanServiceTest.java
 ---
 # Feature: Tăng tài sản KCHT
 

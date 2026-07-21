@@ -1,15 +1,19 @@
 ---
 id: F-125
-name: "Kiểm kê tài sản KCHT"
+name: Kiểm kê tài sản KCHT
 slug: kiem-ke-tai-san-kcht
 module-id: M-005
 status: proposed
 classification: local
 priority: medium
-created: "2026-06-16T04:41:00Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:41:00Z
+last-updated: 2026-07-21T08:00:25Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/assetmovement/controller/KeHoachKiemKeController.java
+  - src/main/java/com/hanghai/kchtg/assetmovement/service/KeHoachKiemKeService.java
+  - src/test/java/com/hanghai/kchtg/assetmovement/service/KeHoachKiemKeServiceTest.java
 ---
 # Feature: Kiểm kê tài sản KCHT
 

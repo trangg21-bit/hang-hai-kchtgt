@@ -1,0 +1,589 @@
+{
+  "schema_version": "1.0.0",
+  "module": "M-005",
+  "module_title": "Quản lý biến động tài sản KCHTGT",
+  "features": [
+    {
+      "feature": "F-122",
+      "feature_title": "Tăng tài sản KCHT",
+      "ac_cases": [
+        {
+          "ac_id": "F122-AC-01",
+          "title": "Tạo yêu cầu tăng tài sản với các trường bắt buộc",
+          "file": "F122TangTaiSanAcceptanceTest.java",
+          "test_name": "testF122AC01_CreateTangTaiSan",
+          "layer": "gray-box",
+          "tags": ["F-122", "create", "tang-tai-san"],
+          "priority": "critical",
+          "steps": {
+            "given": "Người dùng có quyền asset:yeu-cau-tang",
+            "when": "Tạo yêu cầu tăng tài sản với taiSanId, tenTaiSan, lyDo, soLuong",
+            "then": "Yêu cầu được tạo với trạng thái CHO_PHE_DUYET và trả về HTTP 201"
+          }
+        },
+        {
+          "ac_id": "F122-AC-02",
+          "title": "Tự động kiểm tra dữ liệu đầu vào trước khi lưu",
+          "file": "F122TangTaiSanAcceptanceTest.java",
+          "test_name": "testF122AC02_ValidateInput",
+          "layer": "gray-box",
+          "tags": ["F-122", "validation"],
+          "priority": "high",
+          "steps": {
+            "given": "Dữ liệu yêu cầu tăng tài sản không hợp lệ",
+            "when": "Gửi yêu cầu tạo với dữ liệu thiếu trường bắt buộc",
+            "then": "Hệ thống từ chối với lỗi validation (hiện tại chỉ có @Valid một phần)"
+          }
+        },
+        {
+          "ac_id": "F122-AC-03",
+          "title": "Tự động cập nhật tổng giá trị tài sản — CHƯA TRIỂN KHAI",
+          "file": "F122TangTaiSanAcceptanceTest.java",
+          "test_name": "testF122AC03_AutoUpdateTotalValue_NotImplemented",
+          "layer": "gray-box",
+          "tags": ["F-122", "gap"],
+          "priority": "medium",
+          "steps": {
+            "given": "Yêu cầu tăng tài sản được phê duyệt",
+            "when": "Hệ thống cập nhật tổng giá trị tài sản",
+            "then": "GAP: Chức năng chưa được triển khai — loaiTaiSan bị hardcode null"
+          }
+        },
+        {
+          "ac_id": "F122-AC-04",
+          "title": "Chuyển luồng phê duyệt F-127 — CHƯA TRIỂN KHAI",
+          "file": "F122TangTaiSanAcceptanceTest.java",
+          "test_name": "testF122AC04_RouteToF127_NotImplemented",
+          "layer": "gray-box",
+          "tags": ["F-122", "F-127", "gap"],
+          "priority": "medium",
+          "steps": {
+            "given": "Yêu cầu tăng tài sản được tạo",
+            "when": "Hệ thống tự động chuyển đến luồng phê duyệt F-127",
+            "then": "GAP: F-127 tách rời — không có routing tự động"
+          }
+        },
+        {
+          "ac_id": "F122-AC-01",
+          "title": "Truy vấn yêu cầu tăng tài sản theo ID",
+          "file": "F122TangTaiSanAcceptanceTest.java",
+          "test_name": "testF122AC01_GetById",
+          "layer": "gray-box",
+          "tags": ["F-122", "read"],
+          "priority": "high",
+          "steps": {
+            "given": "Yêu cầu tăng tài sản đã tồn tại trong hệ thống",
+            "when": "Truy vấn yêu cầu theo ID",
+            "then": "Trả về thông tin yêu cầu đầy đủ"
+          }
+        },
+        {
+          "ac_id": "F122-AC-01",
+          "title": "Truy vấn yêu cầu không tồn tại trả về 404",
+          "file": "F122TangTaiSanAcceptanceTest.java",
+          "test_name": "testF122AC01_GetById_NotFound",
+          "layer": "gray-box",
+          "tags": ["F-122", "error"],
+          "priority": "high",
+          "steps": {
+            "given": "ID yêu cầu không tồn tại",
+            "when": "Truy vấn yêu cầu theo ID",
+            "then": "Ném EntityNotFoundException"
+          }
+        },
+        {
+          "ac_id": "F122-AC-01",
+          "title": "Danh sách yêu cầu tăng tài sản phân trang",
+          "file": "F122TangTaiSanAcceptanceTest.java",
+          "test_name": "testF122AC01_FindAllPaged",
+          "layer": "gray-box",
+          "tags": ["F-122", "pagination"],
+          "priority": "medium",
+          "steps": {
+            "given": "Có nhiều yêu cầu tăng tài sản trong hệ thống",
+            "when": "Truy vấn danh sách có phân trang",
+            "then": "Trả về trang kết quả theo Pageable"
+          }
+        },
+        {
+          "ac_id": "F122-AC-02",
+          "title": "Xóa yêu cầu tăng tài sản khi tồn tại",
+          "file": "F122TangTaiSanAcceptanceTest.java",
+          "test_name": "testF122AC02_Delete_WhenExists",
+          "layer": "gray-box",
+          "tags": ["F-122", "delete"],
+          "priority": "high",
+          "steps": {
+            "given": "Yêu cầu tăng tài sản tồn tại",
+            "when": "Xóa yêu cầu theo ID",
+            "then": "Xóa thành công (hard delete)"
+          }
+        },
+        {
+          "ac_id": "F122-AC-02",
+          "title": "Xóa yêu cầu tăng tài sản không tồn tại trả về 404",
+          "file": "F122TangTaiSanAcceptanceTest.java",
+          "test_name": "testF122AC02_Delete_WhenNotFound",
+          "layer": "gray-box",
+          "tags": ["F-122", "error"],
+          "priority": "high",
+          "steps": {
+            "given": "ID yêu cầu không tồn tại",
+            "when": "Xóa yêu cầu theo ID",
+            "then": "Ném EntityNotFoundException"
+          }
+        }
+      ]
+    },
+    {
+      "feature": "F-123",
+      "feature_title": "Giảm tài sản KCHT",
+      "ac_cases": [
+        {
+          "ac_id": "F123-AC-01",
+          "title": "Tạo yêu cầu giảm tài sản với lý do từ danh sách enum",
+          "file": "F123GiamTaiSanAcceptanceTest.java",
+          "test_name": "testF123AC01_CreateGiamTaiSan",
+          "layer": "gray-box",
+          "tags": ["F-123", "create"],
+          "priority": "critical",
+          "steps": {
+            "given": "Người dùng có quyền asset:yeu-cau-giam",
+            "when": "Tạo yêu cầu giảm tài sản với nguyenNhanGiam và lyDo",
+            "then": "Yêu cầu được tạo với trạng thái CHO_PHE_DUYET"
+          }
+        },
+        {
+          "ac_id": "F123-AC-01",
+          "title": "Phê duyệt giảm tài sản chuyển trạng thái tài sản theo nguyên nhân",
+          "file": "F123GiamTaiSanAcceptanceTest.java",
+          "test_name": "testF123AC01_ApproveCascadesAssetStatus",
+          "layer": "gray-box",
+          "tags": ["F-123", "approve"],
+          "priority": "critical",
+          "steps": {
+            "given": "Yêu cầu giảm tài sản ở trạng thái CHO_PHE_DUYET với nguyên nhân GIAI_THE",
+            "when": "Phê duyệt yêu cầu",
+            "then": "Tài sản KCHT chuyển trạng thái GIAI_THE (tương ứng từng nguyên nhân)"
+          }
+        },
+        {
+          "ac_id": "F123-AC-02",
+          "title": "Tự động tính khấu hao — CHƯA TRIỂN KHAI",
+          "file": "F123GiamTaiSanAcceptanceTest.java",
+          "test_name": "testF123AC02_Depreciation_NotImplemented",
+          "layer": "gray-box",
+          "tags": ["F-123", "gap"],
+          "priority": "medium",
+          "steps": {
+            "given": "Yêu cầu giảm tài sản được tạo",
+            "when": "Hệ thống tự động tính khấu hao",
+            "then": "GAP: Chức năng tính khấu hao chưa được triển khai"
+          }
+        },
+        {
+          "ac_id": "F123-AC-03",
+          "title": "Giá trị giảm <= giá trị còn lại — CHƯA TRIỂN KHAI",
+          "file": "F123GiamTaiSanAcceptanceTest.java",
+          "test_name": "testF123AC03_DecreaseNotExceedResidual_NotImplemented",
+          "layer": "gray-box",
+          "tags": ["F-123", "gap"],
+          "priority": "medium",
+          "steps": {
+            "given": "Tài sản có giá trị còn lại X",
+            "when": "Giá trị giảm yêu cầu > X",
+            "then": "GAP: Kiểm tra giới hạn giá trị còn lại chưa được triển khai"
+          }
+        },
+        {
+          "ac_id": "F123-AC-04",
+          "title": "Chuyển luồng phê duyệt F-127 — CHƯA TRIỂN KHAI",
+          "file": "F123GiamTaiSanAcceptanceTest.java",
+          "test_name": "testF123AC04_RouteToF127_NotImplemented",
+          "layer": "gray-box",
+          "tags": ["F-123", "F-127", "gap"],
+          "priority": "medium",
+          "steps": {
+            "given": "Yêu cầu giảm tài sản được tạo",
+            "when": "Hệ thống tự động chuyển đến luồng phê duyệt F-127",
+            "then": "GAP: F-127 tách rời — không có routing tự động"
+          }
+        },
+        {
+          "ac_id": "F123-AC-01",
+          "title": "Từ chối yêu cầu giảm tài sản đặt trạng thái TU_CHOI",
+          "file": "F123GiamTaiSanAcceptanceTest.java",
+          "test_name": "testF123AC01_RejectSetsStatus",
+          "layer": "gray-box",
+          "tags": ["F-123", "reject"],
+          "priority": "high",
+          "steps": {
+            "given": "Yêu cầu giảm tài sản ở trạng thái CHO_PHE_DUYET",
+            "when": "Từ chối yêu cầu với lý do",
+            "then": "Trạng thái chuyển thành TU_CHOI và lưu thông tin từ chối"
+          }
+        }
+      ]
+    },
+    {
+      "feature": "F-124",
+      "feature_title": "Xử lý tài sản KCHT",
+      "ac_cases": [
+        {
+          "ac_id": "F124-AC-01",
+          "title": "Tạo hồ sơ xử lý tài sản với loại xử lý từ danh sách enum",
+          "file": "F124XuLyTaiSanAcceptanceTest.java",
+          "test_name": "testF124AC01_CreateHoSoXuLy",
+          "layer": "gray-box",
+          "tags": ["F-124", "create"],
+          "priority": "critical",
+          "steps": {
+            "given": "Người dùng có quyền asset:ho-so-xu-ly",
+            "when": "Tạo hồ sơ xử lý tài sản với taiSanId, loaiXuLy, moTa",
+            "then": "Hồ sơ được tạo với trạng thái CHO_PHE_DUYET"
+          }
+        },
+        {
+          "ac_id": "F124-AC-02",
+          "title": "Kiểm tra yêu cầu giảm đã được phê duyệt — CHƯA TRIỂN KHAI",
+          "file": "F124XuLyTaiSanAcceptanceTest.java",
+          "test_name": "testF124AC02_CheckApprovedDecrease_NotImplemented",
+          "layer": "gray-box",
+          "tags": ["F-124", "gap"],
+          "priority": "medium",
+          "steps": {
+            "given": "Hồ sơ xử lý tài sản được tạo",
+            "when": "Kiểm tra yêu cầu giảm tài sản đã được phê duyệt",
+            "then": "GAP: Không có kiểm tra tiền điều kiện"
+          }
+        },
+        {
+          "ac_id": "F124-AC-03",
+          "title": "Chuyển luồng phê duyệt F-127 — CHƯA TRIỂN KHAI",
+          "file": "F124XuLyTaiSanAcceptanceTest.java",
+          "test_name": "testF124AC03_RouteToF127_NotImplemented",
+          "layer": "gray-box",
+          "tags": ["F-124", "F-127", "gap"],
+          "priority": "medium",
+          "steps": {
+            "given": "Hồ sơ xử lý tài sản được tạo",
+            "when": "Hệ thống tự động chuyển đến F-127",
+            "then": "GAP: F-127 tách rời — không có routing tự động"
+          }
+        },
+        {
+          "ac_id": "F124-AC-04",
+          "title": "Tự động cập nhật trạng thái tài sản sau phê duyệt — CHƯA TRIỂN KHAI",
+          "file": "F124XuLyTaiSanAcceptanceTest.java",
+          "test_name": "testF124AC04_AutoUpdateAssetStatus_NotImplemented",
+          "layer": "gray-box",
+          "tags": ["F-124", "gap"],
+          "priority": "medium",
+          "steps": {
+            "given": "Hồ sơ xử lý tài sản được phê duyệt",
+            "when": "Cập nhật trạng thái tài sản KCHT",
+            "then": "GAP: F-124 không có approve/reject — không có cascade nào"
+          }
+        },
+        {
+          "ac_id": "F124-AC-01",
+          "title": "Truy vấn hồ sơ xử lý theo ID",
+          "file": "F124XuLyTaiSanAcceptanceTest.java",
+          "test_name": "testF124AC01_GetById",
+          "layer": "gray-box",
+          "tags": ["F-124", "read"],
+          "priority": "high",
+          "steps": {
+            "given": "Hồ sơ xử lý tài sản tồn tại trong hệ thống",
+            "when": "Truy vấn hồ sơ theo ID",
+            "then": "Trả về thông tin hồ sơ đầy đủ"
+          }
+        },
+        {
+          "ac_id": "F124-AC-01",
+          "title": "Truy vấn hồ sơ xử lý không tồn tại trả về 404",
+          "file": "F124XuLyTaiSanAcceptanceTest.java",
+          "test_name": "testF124AC01_GetById_NotFound",
+          "layer": "gray-box",
+          "tags": ["F-124", "error"],
+          "priority": "high",
+          "steps": {
+            "given": "ID hồ sơ không tồn tại",
+            "when": "Truy vấn hồ sơ theo ID",
+            "then": "Ném EntityNotFoundException"
+          }
+        }
+      ]
+    },
+    {
+      "feature": "F-125",
+      "feature_title": "Kiểm kê tài sản KCHT",
+      "ac_cases": [
+        {
+          "ac_id": "F125-AC-01",
+          "title": "Tạo kế hoạch kiểm kê với các trường bắt buộc",
+          "file": "F125KiemKeAcceptanceTest.java",
+          "test_name": "testF125AC01_CreateKeHoachKiemKe",
+          "layer": "gray-box",
+          "tags": ["F-125", "create", "ke-hoach"],
+          "priority": "critical",
+          "steps": {
+            "given": "Người dùng có quyền asset:ke-hoach-kiem-ke",
+            "when": "Tạo kế hoạch kiểm kê với tenKeHoach, loaiKiemKe, ngayBatDau, ngayKetThuc",
+            "then": "Kế hoạch được tạo với trạng thái CHO_PHE_DUYET"
+          }
+        },
+        {
+          "ac_id": "F125-AC-02",
+          "title": "Tự động tạo danh sách tài sản từ phạm vi — CHƯA TRIỂN KHAI",
+          "file": "F125KiemKeAcceptanceTest.java",
+          "test_name": "testF125AC02_AutoGenerateAssetList_NotImplemented",
+          "layer": "gray-box",
+          "tags": ["F-125", "gap"],
+          "priority": "medium",
+          "steps": {
+            "given": "Kế hoạch kiểm kê được phê duyệt",
+            "when": "Hệ thống tự động tạo danh sách tài sản từ phạm vi",
+            "then": "GAP: Danh sách tài sản phải được tạo thủ công"
+          }
+        },
+        {
+          "ac_id": "F125-AC-03",
+          "title": "Tự động phát hiện chênh lệch — CHƯA TRIỂN KHAI",
+          "file": "F125KiemKeAcceptanceTest.java",
+          "test_name": "testF125AC03_AutoDetectDiscrepancies",
+          "layer": "gray-box",
+          "tags": ["F-125", "gap", "bao-cao"],
+          "priority": "medium",
+          "steps": {
+            "given": "Báo cáo kiểm kê được tạo với số lượng chênh lệch",
+            "when": "Hệ thống tính toán soThua/soThieu từ soLuongChenhLech",
+            "then": "soThua = số dương, soThieu = số âm (phụ thuộc vào giá trị soLuongChenhLech)"
+          }
+        },
+        {
+          "ac_id": "F125-AC-04",
+          "title": "Tự động báo cáo lên F-127 — CHƯA TRIỂN KHAI",
+          "file": "F125KiemKeAcceptanceTest.java",
+          "test_name": "testF125AC04_AutoReportToF127_NotImplemented",
+          "layer": "gray-box",
+          "tags": ["F-125", "F-127", "gap"],
+          "priority": "medium",
+          "steps": {
+            "given": "Báo cáo kiểm kê được phê duyệt",
+            "when": "Hệ thống tự động báo cáo lên F-127",
+            "then": "GAP: F-127 tách rời — không có tự động báo cáo"
+          }
+        },
+        {
+          "ac_id": "F125-AC-01",
+          "title": "Vòng đời kế hoạch kiểm kê: phê duyệt → thực hiện → hoàn thành",
+          "file": "F125KiemKeAcceptanceTest.java",
+          "test_name": "testF125AC01_KeHoachLifecycle",
+          "layer": "gray-box",
+          "tags": ["F-125", "lifecycle"],
+          "priority": "critical",
+          "steps": {
+            "given": "Kế hoạch kiểm kê ở trạng thái CHO_PHE_DUYET",
+            "when": "Phê duyệt → bắt đầu thực hiện → hoàn thành",
+            "then": "Trạng thái chuyển: DA_PHE_DUYET → DANG_THUC_HIEN → HOAN_THANH"
+          }
+        },
+        {
+          "ac_id": "F125-AC-01",
+          "title": "Từ chối kế hoạch kiểm kê đặt trạng thái TU_CHOI",
+          "file": "F125KiemKeAcceptanceTest.java",
+          "test_name": "testF125AC01_RejectKeHoach",
+          "layer": "gray-box",
+          "tags": ["F-125", "reject"],
+          "priority": "high",
+          "steps": {
+            "given": "Kế hoạch kiểm kê ở trạng thái CHO_PHE_DUYET",
+            "when": "Từ chối kế hoạch với lý do",
+            "then": "Trạng thái chuyển thành TU_CHOI"
+          }
+        },
+        {
+          "ac_id": "F125-AC-01",
+          "title": "Tạo báo cáo kiểm kê với số lượng chênh lệch",
+          "file": "F125KiemKeAcceptanceTest.java",
+          "test_name": "testF125AC01_CreateBaoCaoKiemKe",
+          "layer": "gray-box",
+          "tags": ["F-125", "create", "bao-cao"],
+          "priority": "critical",
+          "steps": {
+            "given": "Người dùng có quyền asset:bao-cao-kiem-ke",
+            "when": "Tạo báo cáo kiểm kê với keHoachId, tongSoLuong, soLuongChenhLech",
+            "then": "Báo cáo được tạo với trạng thái CHO_PHE_DUYET và soThua/soThieu theo dấu soLuongChenhLech"
+          }
+        }
+      ]
+    },
+    {
+      "feature": "F-126",
+      "feature_title": "Khai thác tài sản KCHT",
+      "ac_cases": [
+        {
+          "ac_id": "F126-AC-01",
+          "title": "Cập nhật dữ liệu khai thác định kỳ",
+          "file": "F126KhaiThacAcceptanceTest.java",
+          "test_name": "testF126AC01_CreateKhaiThac",
+          "layer": "gray-box",
+          "tags": ["F-126", "create"],
+          "priority": "critical",
+          "steps": {
+            "given": "Người dùng có quyền asset:khai-thac",
+            "when": "Tạo bản ghi khai thác tài sản với taiSanId, namKhaiThac",
+            "then": "Bản ghi được tạo (các trường không bắt buộc bị hardcode null)"
+          }
+        },
+        {
+          "ac_id": "F126-AC-02",
+          "title": "Tính lại khấu hao — HÀM STUB",
+          "file": "F126KhaiThacAcceptanceTest.java",
+          "test_name": "testF126AC02_CalculateHaoMon_Stub",
+          "layer": "gray-box",
+          "tags": ["F-126", "gap"],
+          "priority": "medium",
+          "steps": {
+            "given": "Tài sản có dữ liệu khai thác",
+            "when": "Gọi calculateHaoMon(taiSanId)",
+            "then": "Trả về chiPhiVanHanh thay vì giá trị khấu hao thực tế (STUB)"
+          }
+        },
+        {
+          "ac_id": "F126-AC-03",
+          "title": "Cảnh báo bất thường — CHƯA TRIỂN KHAI",
+          "file": "F126KhaiThacAcceptanceTest.java",
+          "test_name": "testF126AC03_AnomalyAlerts_NotImplemented",
+          "layer": "gray-box",
+          "tags": ["F-126", "gap"],
+          "priority": "medium",
+          "steps": {
+            "given": "Dữ liệu khai thác vượt ngưỡng",
+            "when": "Hệ thống phát hiện bất thường",
+            "then": "GAP: Chức năng cảnh báo chưa được triển khai"
+          }
+        },
+        {
+          "ac_id": "F126-AC-04",
+          "title": "Báo cáo định kỳ — CHƯA TRIỂN KHAI",
+          "file": "F126KhaiThacAcceptanceTest.java",
+          "test_name": "testF126AC04_PeriodicReports_NotImplemented",
+          "layer": "gray-box",
+          "tags": ["F-126", "gap"],
+          "priority": "low",
+          "steps": {
+            "given": "Có dữ liệu khai thác trong kỳ",
+            "when": "Yêu cầu báo cáo định kỳ",
+            "then": "GAP: Chức năng báo cáo chưa được triển khai"
+          }
+        },
+        {
+          "ac_id": "F126-AC-01",
+          "title": "Kiểm tra validation namKhaiThac với @Min/@Max",
+          "file": "F126KhaiThacAcceptanceTest.java",
+          "test_name": "testF126AC01_ValidateNamKhaiThac",
+          "layer": "gray-box",
+          "tags": ["F-126", "validation"],
+          "priority": "high",
+          "steps": {
+            "given": "Dữ liệu khai thác với namKhaiThac ngoài khoảng 1900-2100",
+            "when": "Tạo bản ghi khai thác",
+            "then": "Service validateRequest ném IllegalArgumentException cho null taiSanId/null namKhaiThac"
+          }
+        }
+      ]
+    },
+    {
+      "feature": "F-127",
+      "feature_title": "Phê duyệt biến động tài sản",
+      "ac_cases": [
+        {
+          "ac_id": "F127-AC-03",
+          "title": "Tạo yêu cầu biến động với loại biến động từ enum",
+          "file": "F127PheDuyetAcceptanceTest.java",
+          "test_name": "testF127AC03_CreateYeuCauBienDong",
+          "layer": "gray-box",
+          "tags": ["F-127", "create", "yeu-cau-bien-dong"],
+          "priority": "critical",
+          "steps": {
+            "given": "Người dùng có quyền asset:yeu-cau-bien-dong",
+            "when": "Tạo yêu cầu biến động với loaiBienDong, tenTaiSan, moTa",
+            "then": "Yêu cầu được tạo với trạng thái CHO_PHE_DUYET"
+          }
+        },
+        {
+          "ac_id": "F127-AC-03",
+          "title": "Tạo bản ghi phê duyệt với kết quả PHE_DUYET hoặc TU_CHOI",
+          "file": "F127PheDuyetAcceptanceTest.java",
+          "test_name": "testF127AC03_CreateLuuPheDuyet",
+          "layer": "gray-box",
+          "tags": ["F-127", "create", "luu-phe-duyet"],
+          "priority": "critical",
+          "steps": {
+            "given": "Người dùng có quyền asset:luu-phe-duyet",
+            "when": "Tạo bản ghi phê duyệt với yeuCauId, ketQua, ghiChu",
+            "then": "Bản ghi được tạo với capPheDuyet=1 (hardcode) và nguoiPheDuyet=null"
+          }
+        },
+        {
+          "ac_id": "F127-AC-03",
+          "title": "Từ chối phê duyệt với lý do",
+          "file": "F127PheDuyetAcceptanceTest.java",
+          "test_name": "testF127AC03_RejectWithReason",
+          "layer": "gray-box",
+          "tags": ["F-127", "reject", "luu-phe-duyet"],
+          "priority": "high",
+          "steps": {
+            "given": "Bản ghi phê duyệt được tạo với ketQua=TU_CHOI và ghiChu",
+            "when": "Truy vấn bản ghi phê duyệt",
+            "then": "Kết quả là TU_CHOI và ghiChu được lưu"
+          }
+        },
+        {
+          "ac_id": "F127-AC-01",
+          "title": "Tự động phân loại và định tuyến — CHƯA TRIỂN KHAI",
+          "file": "F127PheDuyetAcceptanceTest.java",
+          "test_name": "testF127AC01_AutoClassifyRoute_NotImplemented",
+          "layer": "gray-box",
+          "tags": ["F-127", "gap"],
+          "priority": "medium",
+          "steps": {
+            "given": "Yêu cầu biến động được tạo",
+            "when": "Hệ thống tự động phân loại và định tuyến phê duyệt",
+            "then": "GAP: Không có routing — capPheDuyet=1 hardcode"
+          }
+        },
+        {
+          "ac_id": "F127-AC-02",
+          "title": "Thông báo cho người phê duyệt — CHƯA TRIỂN KHAI",
+          "file": "F127PheDuyetAcceptanceTest.java",
+          "test_name": "testF127AC02_NotifyApprover_NotImplemented",
+          "layer": "gray-box",
+          "tags": ["F-127", "gap"],
+          "priority": "medium",
+          "steps": {
+            "given": "Yêu cầu biến động cần phê duyệt",
+            "when": "Hệ thống thông báo cho người phê duyệt",
+            "then": "GAP: Không có hạ tầng thông báo"
+          }
+        },
+        {
+          "ac_id": "F127-AC-04",
+          "title": "Tự động kích hoạt thao tác sau phê duyệt — CHƯA TRIỂN KHAI",
+          "file": "F127PheDuyetAcceptanceTest.java",
+          "test_name": "testF127AC04_AutoTriggerOperations_NotImplemented",
+          "layer": "gray-box",
+          "tags": ["F-127", "gap"],
+          "priority": "medium",
+          "steps": {
+            "given": "Bản ghi phê duyệt với ketQua=PHE_DUYET",
+            "when": "Hệ thống tự động kích hoạt thao tác sau phê duyệt",
+            "then": "GAP: Không có trigger nào — F-127 tách rời hoàn toàn"
+          }
+        }
+      ]
+    }
+  ]
+}

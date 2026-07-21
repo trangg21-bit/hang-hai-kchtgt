@@ -1,53 +1,60 @@
-import { useState, useCallback, useEffect } from 'react';
-import {
-  Button,
-  Space,
-  Tag,
-  Card,
-  Row,
-  Col,
-  Input,
-  Select,
-  Tooltip,
-  Popconfirm,
-} from 'antd';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { Button, Space, Tag, Tooltip, Popconfirm } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  SearchOutlined,
-  ReloadOutlined,
   SendOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  FileExcelOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import {
-  cangCanCRUD as cangcanCRUD,
-  cangCanApproval as cangcanApproval,
+  cangCanCRUD,
+  cangCanApproval,
 } from '../../services/cangbenService';
 import type { CangCan } from '../../types/cangben';
 import {
   BECBANG_STATUS_MAP,
   CANGCAN_TINH_OPTIONS,
-  CANGCAN_TINH_MAP,
 } from '../../types/cangben';
-import DataTable from '../../components/DataTable';
+import { ScreenHeader, FilterBar, DataTable } from '../../components/list-view';
+import Pagination from '../../components/list-view/Pagination';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
+import {
+  statusOperational,
+  statusAttention,
+  statusCritical,
+  cardStyle,
+  textPrimary,
+  textSecondary,
+  fontSizeMd,
+} from '../../tokens';
+
+const STATUS_STYLE_MAP: Record<string, { color: string; label: string }> = {
+  HIEN_HANH: { color: '#1BAF7A', label: 'Hiện hành' },
+  TAM_NGUNG: { color: '#EDA100', label: 'Tạm ngừng' },
+};
+
+const APPROVAL_STYLE_MAP: Record<string, { color: string; label: string }> = {
+  CHO_PHE_DUYET: { color: '#EDA100', label: 'Chờ phê duyệt' },
+  DUOC_PHE_DUYET: { color: '#1BAF7A', label: 'Được phê duyệt' },
+  TU_CHOI: { color: '#E34948', label: 'Từ chối' },
+};
 
 export default function CangCanList() {
   const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
-  const [filterMa, setFilterMa] = useState('');
-  const [filterTen, setFilterTen] = useState('');
   const [filterTinh, setFilterTinh] = useState<string | undefined>();
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<CangCan[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,13 +65,13 @@ export default function CangCanList() {
     setIsLoading(true);
     setIsError(false);
     try {
-      const res = await cangcanCRUD.search({
+      const res = await cangCanCRUD.search({
         page,
         pageSize,
-        maCang: filterMa || undefined,
-        tenCang: filterTen || undefined,
-        tinhThanh: filterTinh,
-        status: filterStatus,
+        maCangCan: search || undefined,
+        tenCangCan: search || undefined,
+        tinhThanhPho: filterTinh,
+        trangThaiHoatDong: filterStatus,
       });
       setDataSource(res.data);
       setTotal(res.total);
@@ -74,21 +81,28 @@ export default function CangCanList() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterMa, filterTen, filterTinh, filterStatus]);
+  }, [page, pageSize, search, filterTinh, filterStatus]);
 
-  useEffect(() => { void fetchData(); }, []);
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
-  const handleSearch = useCallback((value: string) => {
-    setSearch(value);
-    setFilterMa(value);
-    setFilterTen(value);
+  const handleFilterSearch = useCallback((values: Record<string, any>) => {
+    setSearch(values.search || '');
+    setFilterTinh(values.tinhThanhPho || undefined);
+    setFilterStatus(values.trangThaiPheDuyet || undefined);
+    setPage(1);
+  }, []);
+
+  const handleFilterReset = useCallback(() => {
+    setSearch('');
+    setFilterTinh(undefined);
+    setFilterStatus(undefined);
     setPage(1);
   }, []);
 
   const handleDelete = useCallback(
     async (record: CangCan) => {
       try {
-        await cangcanCRUD.delete(record.id);
+        await cangCanCRUD.delete(record.id);
         toast.success('Đã xóa cảng căn cứ');
         fetchData();
       } catch (err: unknown) {
@@ -101,7 +115,7 @@ export default function CangCanList() {
   const handleSubmitApproval = useCallback(
     async (record: CangCan) => {
       try {
-        await cangcanApproval.submitForApproval(record.id);
+        await cangCanApproval.submitForApproval?.(record.id);
         toast.success('Đã gửi duyệt cảng căn cứ');
         fetchData();
       } catch (err: unknown) {
@@ -113,9 +127,8 @@ export default function CangCanList() {
 
   const handleApproveL1 = useCallback(
     async (record: CangCan) => {
-      const approverId = localStorage.getItem('user_id') || '1';
       try {
-        await cangcanApproval.approveL1(record.id, approverId);
+        await cangCanApproval.approveL1?.(record.id, localStorage.getItem('user_id') || '1');
         toast.success('Đã phê duyệt cấp 1');
         fetchData();
       } catch (err: unknown) {
@@ -127,9 +140,8 @@ export default function CangCanList() {
 
   const handleApproveL2 = useCallback(
     async (record: CangCan) => {
-      const approverId = localStorage.getItem('user_id') || '1';
       try {
-        await cangcanApproval.approveL2(record.id, approverId);
+        await cangCanApproval.approveL2?.(record.id, localStorage.getItem('user_id') || '1');
         toast.success('Đã phê duyệt cấp 2');
         fetchData();
       } catch (err: unknown) {
@@ -141,11 +153,10 @@ export default function CangCanList() {
 
   const handleReject = useCallback(
     async (record: CangCan) => {
-      const approverId = localStorage.getItem('user_id') || '1';
       const reason = window.prompt('Lý do từ chối:', '');
-      if (reason === null) return; // user cancelled
+      if (reason === null) return;
       try {
-        await cangcanApproval.reject(record.id, reason, approverId);
+        await cangCanApproval.reject(record.id, reason, localStorage.getItem('user_id') || '1');
         toast.success('Đã từ chối');
         fetchData();
       } catch (err: unknown) {
@@ -155,266 +166,84 @@ export default function CangCanList() {
     [fetchData],
   );
 
-  const columns = [
-    { title: '#', width: 60, render: (_: unknown, __: CangCan, idx: number) => (page - 1) * pageSize + idx + 1 },
+  const filterFields = useMemo(() => [
+    { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo mã, tên...' },
+    { key: 'tinhThanhPho', type: 'select' as const, label: 'Tỉnh/thành phố', placeholder: 'Chọn tỉnh/thành', options: CANGCAN_TINH_OPTIONS },
+  ], []);
+
+  const headerActions = useMemo(() => [
+    { key: 'create', label: 'Tạo cảng căn cứ', variant: 'primary' as const, icon: <PlusOutlined />, onClick: () => navigate('/cangcan/create') },
+    { key: 'export', label: '', variant: 'subtle' as const, icon: <FileExcelOutlined style={{ color: statusOperational }} />, borderColor: `${statusOperational}80`, color: statusOperational, onClick: () => {} },
+  ], [navigate]);
+
+  const columns = useMemo(() => [
+    { key: 'stt', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: CangCan, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
+    { key: 'maCangCan', label: 'Mã', dataIndex: 'maCangCan', width: 140, render: (maCangCan: string) => <Tag color="cyan">{maCangCan}</Tag> },
+    { key: 'tenCangCan', label: 'Tên', dataIndex: 'tenCangCan', ellipsis: true },
+    { key: 'tinhThanhPho', label: 'Tỉnh/thành phố', dataIndex: 'tinhThanhPho', width: 180 },
+    { key: 'viDo', label: 'Vĩ độ', dataIndex: 'viDo', width: 100, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(4) || '—'}</span> },
+    { key: 'kinhDo', label: 'Kinh độ', dataIndex: 'kinhDo', width: 100, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(4) || '—'}</span> },
+    { key: 'dienTich', label: 'Diện tích', dataIndex: 'dienTich', width: 120, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(1) || '—'}</span> },
+    { key: 'congSuatTEU', label: 'Công suất TEU', dataIndex: 'congSuatTEU', width: 120, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(0) || '—'}</span> },
     {
-      title: 'Mã',
-      dataIndex: 'maCangCan',
-      width: 160,
-      render: (maCangCan: string) => <Tag color="cyan">{maCangCan}</Tag>,
-    },
-    {
-      title: 'Tên',
-      dataIndex: 'tenCangCan',
-      ellipsis: true,
-    },
-    {
-      title: 'Tỉnh/thành phố',
-      dataIndex: 'tinhThanhPho',
-      width: 180,
-      render: (tinhThanhPho: string) => tinhThanhPho || '—',
-    },
-    {
-      title: 'Vĩ độ',
-      dataIndex: 'viDo',
-      width: 100,
-      render: (v: number) => v?.toFixed(4) || '—',
-    },
-    {
-      title: 'Kinh độ',
-      dataIndex: 'kinhDo',
-      width: 100,
-      render: (v: number) => v?.toFixed(4) || '—',
-    },
-    {
-      title: 'Diện tích',
-      dataIndex: 'dienTich',
-      width: 120,
-      render: (v: number) => v?.toFixed(1) || '—',
-    },
-    {
-      title: 'Công suất TEU',
-      dataIndex: 'congSuatTEU',
-      width: 120,
-      render: (v: number) => v?.toFixed(0) || '—',
-    },
-    {
-      title: 'Trạng thái hoạt động',
-      dataIndex: 'isActive',
-      width: 140,
-      render: (isActive: boolean) => (
-        <Tag color={isActive ? 'green' : 'default'}>{isActive ? 'Hoạt động' : 'Ngừng'}</Tag>
-      ),
-    },
-    {
-      title: 'Trạng thái phê duyệt',
-      dataIndex: 'approvalStatus',
-      width: 160,
+      key: 'trangThaiHoatDong', label: 'Trạng thái hoạt động', dataIndex: 'trangThaiHoatDong', width: 160, align: 'center' as const,
       render: (status: string) => {
-        const s = BECBANG_STATUS_MAP[status as keyof typeof BECBANG_STATUS_MAP] || { color: 'default', label: status };
-        return <Tag color={s.color}>{s.label}</Tag>;
+        const s = STATUS_STYLE_MAP[status] || { color: textSecondary, label: status };
+        return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: 500, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
       },
     },
     {
-      title: 'Thao tác',
-      key: 'actions',
-      width: 340,
-      fixed: 'right' as const,
-      render: (_: unknown, record: CangCan) => (
-        <Space size="small">
-          <Tooltip title="Xem chi tiết">
-            <Button
-              type="link"
-              size="small"
-              onClick={() => navigate(`/cangcan/${record.id}`)}
-            >
-              <span style={{ fontSize: 13 }}>Chi tiết</span>
-            </Button>
-          </Tooltip>
-          <Tooltip title="Sửa">
-            <Button
-              type="link"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => navigate(`/cangcan/${record.id}`)}
-            />
-          </Tooltip>
-          {record.status === 'DRAFT' && (
-            <Tooltip title="Gửi duyệt">
-              <Popconfirm
-                title="Gửi duyệt cảng căn cứ?"
-                description="Sau khi gửi, cảng căn cứ sẽ chuyển sang trạng thái chờ phê duyệt cấp 1."
-                okText="Gửi"
-                cancelText="Hủy"
-                onConfirm={() => handleSubmitApproval(record)}
-              >
-                <Button type="link" size="small" icon={<SendOutlined />} />
-              </Popconfirm>
-            </Tooltip>
-          )}
-          {record.status === 'PENDING_APPROVAL' && (
-            <>
-              <Tooltip title="Phê duyệt cấp 1">
-                <Popconfirm
-                  title="Phê duyệt cấp 1?"
-                  description="Sau khi phê duyệt, cảng căn cứ sẽ chuyển sang trạng thái chờ phê duyệt cấp 2."
-                  okText="Phê duyệt"
-                  cancelText="Hủy"
-                  onConfirm={() => handleApproveL1(record)}
-                >
-                  <Button type="link" size="small" icon={<CheckCircleOutlined />} />
-                </Popconfirm>
-              </Tooltip>
-              <Tooltip title="Từ chối">
-                <Popconfirm
-                  title="Từ chối?"
-                  description="Bạn sẽ cần nhập lý do từ chối."
-                  okText="Từ chối"
-                  cancelText="Hủy"
-                  onConfirm={() => handleReject(record)}
-                >
-                  <Button type="link" size="small" danger icon={<CloseCircleOutlined />} />
-                </Popconfirm>
-              </Tooltip>
-            </>
-          )}
-          {record.status === 'APPROVED_L1' && (
-            <>
-              <Tooltip title="Phê duyệt cấp 2">
-                <Popconfirm
-                  title="Phê duyệt cấp 2?"
-                  description="Sau khi phê duyệt, cảng căn cứ sẽ được công bố chính thức."
-                  okText="Phê duyệt"
-                  cancelText="Hủy"
-                  onConfirm={() => handleApproveL2(record)}
-                >
-                  <Button type="link" size="small" icon={<CheckCircleOutlined />} />
-                </Popconfirm>
-              </Tooltip>
-              <Tooltip title="Từ chối">
-                <Popconfirm
-                  title="Từ chối?"
-                  description="Bạn sẽ cần nhập lý do từ chối."
-                  okText="Từ chối"
-                  cancelText="Hủy"
-                  onConfirm={() => handleReject(record)}
-                >
-                  <Button type="link" size="small" danger icon={<CloseCircleOutlined />} />
-                </Popconfirm>
-              </Tooltip>
-            </>
-          )}
-          {record.status === 'DRAFT' && (
-            <Tooltip title="Xóa">
-              <Popconfirm
-                title="Xác nhận xóa"
-                description={`Bạn có chắc muốn xóa cảng căn cứ "${record.tenCangCan}"?`}
-                okText="Xóa"
-                okType="danger"
-                cancelText="Hủy"
-                onConfirm={() => handleDelete(record)}
-              >
-                <Button type="link" size="small" danger icon={<DeleteOutlined />} />
-              </Popconfirm>
-            </Tooltip>
-          )}
-        </Space>
-      ),
+      key: 'trangThaiPheDuyet', label: 'Trạng thái phê duyệt', dataIndex: 'trangThaiPheDuyet', width: 170, align: 'center' as const,
+      render: (status: string) => {
+        const s = APPROVAL_STYLE_MAP[status] || BECBANG_STATUS_MAP[status as keyof typeof BECBANG_STATUS_MAP] || { color: textSecondary, label: status };
+        return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 999, fontSize: fontSizeMd, fontWeight: 500, background: `${s.color}15`, color: s.color }}>{s.label}</span>;
+      },
     },
-  ];
+    {
+      key: 'createdAt', label: 'Ngày tạo', dataIndex: 'createdAt', width: 160, align: 'center' as const,
+      render: (v: string) => v ? <span style={{ color: textSecondary }}>{new Date(v).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> : '—',
+    },
+  ], [page, pageSize]);
+
+  const rowActions = useCallback((record: CangCan) => {
+    const actions: { key: string; label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }[] = [];
+    actions.push({ key: 'view', label: 'Xem chi tiết', icon: <EyeOutlined />, onClick: () => navigate(`/cangcan/${record.id}`) });
+    actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => navigate(`/cangcan/${record.id}`) });
+    if (record.trangThaiPheDuyet === 'DRAFT') {
+      actions.push({ key: 'submit', label: 'Gửi duyệt', icon: <SendOutlined />, onClick: () => handleSubmitApproval(record) });
+      actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
+    }
+    if (record.trangThaiPheDuyet === 'PENDING_APPROVAL') {
+      actions.push({ key: 'approve1', label: 'Phê duyệt L1', icon: <CheckCircleOutlined />, onClick: () => handleApproveL1(record) });
+      actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, onClick: () => handleReject(record), danger: true });
+    }
+    if (record.trangThaiPheDuyet === 'APPROVED_L1') {
+      actions.push({ key: 'approve2', label: 'Phê duyệt L2', icon: <CheckCircleOutlined />, onClick: () => handleApproveL2(record) });
+      actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseCircleOutlined />, onClick: () => handleReject(record), danger: true });
+    }
+    return actions;
+  }, [navigate, handleSubmitApproval, handleDelete, handleApproveL1, handleApproveL2, handleReject]);
+
+  const renderContent = () => {
+    if (isLoading) return <LoadingSkeleton rows={8} />;
+    if (isError) return <ErrorState message={error?.message || 'Không thể tải danh sách cảng căn cứ'} onRetry={fetchData} />;
+    if (dataSource.length === 0) {
+      if (search || filterTinh || filterStatus) return <EmptyState description="Không tìm thấy cảng căn cứ nào phù hợp" />;
+      return <EmptyState description="Chưa có cảng căn cứ nào" />;
+    }
+    return <div style={{ overflowX: 'auto' }}>
+      <DataTable columns={columns} dataSource={dataSource} rowKey="id" rowActions={rowActions} scroll={{ x: 1400 }} />
+      <Pagination total={total} current={page} pageSize={pageSize} onChange={(p, ps) => { setPage(p); setPageSize(ps); }} />
+    </div>;
+  };
 
   return (
-    <>
-      <Card style={{ marginBottom: 16 }}>
-        <Row gutter={[12, 12]} align="middle" justify="space-between">
-          <Col xs={24} md={16}>
-            <Space wrap>
-              <Input.Search
-                placeholder="Tìm theo mã, tên..."
-                allowClear
-                style={{ width: 260 }}
-                prefix={<SearchOutlined />}
-                onSearch={handleSearch}
-              />
-              <Input
-                placeholder="Lọc theo mã"
-                allowClear
-                style={{ width: 160 }}
-                value={filterMa}
-                onChange={(e) => { setFilterMa(e.target.value); setPage(1); }}
-              />
-              <Input
-                placeholder="Lọc theo tên"
-                allowClear
-                style={{ width: 180 }}
-                value={filterTen}
-                onChange={(e) => { setFilterTen(e.target.value); setPage(1); }}
-              />
-              <Select
-                placeholder="Tỉnh/thành phố"
-                allowClear
-                style={{ width: 180 }}
-                value={filterTinh}
-                onChange={(val) => { setFilterTinh(val); setPage(1); }}
-                options={CANGCAN_TINH_OPTIONS}
-              />
-              <Select
-                placeholder="Trạng thái phê duyệt"
-                allowClear
-                style={{ width: 180 }}
-                value={filterStatus}
-                onChange={(val) => { setFilterStatus(val); setPage(1); }}
-                options={Object.entries(BECBANG_STATUS_MAP).map(([value, { label }]) => ({ value, label }))}
-              />
-            </Space>
-          </Col>
-          <Col xs={24} md={8} style={{ textAlign: 'right' }}>
-            <Space>
-              <Tooltip title="Tải lại">
-                <Button icon={<ReloadOutlined />} onClick={fetchData} />
-              </Tooltip>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/cangcan/create')}>
-                Tạo cảng căn cứ
-              </Button>
-            </Space>
-          </Col>
-        </Row>
-      </Card>
-
-      <Card>
-        {isLoading && <LoadingSkeleton rows={8} type="table" />}
-        {isError && (
-          <ErrorState
-            message={error?.message || 'Không thể tải danh sách cảng căn cứ'}
-            onRetry={fetchData}
-          />
-        )}
-        {!isLoading && !isError && dataSource.length === 0 && (
-          <EmptyState
-            description={search || filterMa || filterTen || filterTinh || filterStatus ? 'Không tìm thấy' : 'Chưa có cảng căn cứ nào'}
-          />
-        )}
-        {!isLoading && !isError && dataSource.length > 0 && (
-          <DataTable<CangCan>
-            columns={columns}
-            dataSource={dataSource}
-            rowKey="id"
-            scroll={{ x: 1400 }}
-            pagination={{
-              current: page,
-              pageSize,
-              total,
-              onChange: (p: number, sz?: number) => {
-                setPage(p);
-                if (sz) setPageSize(sz);
-              },
-              showSizeChanger: true,
-              showTotal: (t: number) => `Tổng ${t} cảng căn cứ`,
-              pageSizeOptions: ['10', '20', '50'],
-            }}
-          />
-        )}
-      </Card>
-    </>
+    <div style={{ minHeight: '100%', marginTop: -8 }}>
+      <ScreenHeader breadcrumb={[{ label: 'Quản lý cảng căn cứ' }]} actions={headerActions} />
+      <FilterBar fields={filterFields} onSearch={handleFilterSearch} onReset={handleFilterReset} />
+      <div style={{ ...cardStyle, padding: '8px 16px' }}>
+        {renderContent()}
+      </div>
+    </div>
   );
 }

@@ -1,17 +1,20 @@
 ---
 id: F-068
-name: "Danh sách Cảng biển"
+name: Danh sách Cảng biển
 slug: ui-ql-cb-danh-sach
 module-id: M-002
 status: proposed
 classification: local
 priority: medium
-created: "2026-07-01T04:08:08Z"
-last-updated: "2026-07-01T04:08:08Z"
+created: 2026-07-01T04:08:08Z
+last-updated: 2026-07-21T04:38:14Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - frontend/src/pages/cangben/CangBienList.tsx
+  - frontend/src/services/cangbenService.ts
+  - test/cangben-service.test.ts
 ---
-
 # Feature: Danh sách Cảng biển
 
 ## Description

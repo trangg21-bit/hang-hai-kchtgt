@@ -1,15 +1,23 @@
 ---
 id: F-132
-name: "Quản lý quy hoạch bến cảng"
+name: Quản lý quy hoạch bến cảng
 slug: quan-ly-quy-hoach-ben-cang
 module-id: M-006
 status: proposed
 classification: local
 priority: high
-created: "2026-06-16T04:41:29Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:41:29Z
+last-updated: 2026-07-21T08:29:20Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/vanban/entity/QuyHoachBenCang.java
+  - src/main/java/com/hanghai/kchtg/vanban/controller/QuyHoachBenCangController.java
+  - src/main/java/com/hanghai/kchtg/vanban/service/QuyHoachBenCangService.java
+  - src/main/java/com/hanghai/kchtg/vanban/repository/QuyHoachBenCangRepository.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/QuyHoachBenCangResponse.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/QuyHoachBenCangCreateRequest.java
+  - src/test/java/com/hanghai/kchtg/vanban/QuyHoachBenCangControllerTest.java
 ---
 # Feature: Quản lý quy hoạch bến cảng
 

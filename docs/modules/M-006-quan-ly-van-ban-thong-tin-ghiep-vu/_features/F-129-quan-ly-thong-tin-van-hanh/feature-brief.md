@@ -1,15 +1,23 @@
 ---
 id: F-129
-name: "Quản lý thông tin vận hành"
+name: Quản lý thông tin vận hành
 slug: quan-ly-thong-tin-van-hanh
 module-id: M-006
 status: proposed
 classification: local
 priority: high
-created: "2026-06-16T04:40:21Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:40:21Z
+last-updated: 2026-07-21T08:29:20Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/vanban/entity/KeHoachVanHanh.java
+  - src/main/java/com/hanghai/kchtg/vanban/controller/KeHoachVanHanhController.java
+  - src/main/java/com/hanghai/kchtg/vanban/service/KeHoachVanHanhService.java
+  - src/main/java/com/hanghai/kchtg/vanban/repository/KeHoachVanHanhRepository.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/KeHoachVanHanhResponse.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/KeHoachVanHanhCreateRequest.java
+  - src/test/java/com/hanghai/kchtg/vanban/KeHoachVanHanhControllerTest.java
 ---
 # Feature: Quản lý thông tin vận hành
 
