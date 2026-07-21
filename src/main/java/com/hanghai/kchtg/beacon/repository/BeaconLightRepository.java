@@ -35,5 +35,18 @@ public interface BeaconLightRepository extends JpaRepository<BeaconLight, UUID> 
         @Param("status") BeaconStatus status
     );
 
+    @Query("SELECT b FROM BeaconLight b WHERE " +
+           "(:name IS NULL OR LOWER(b.name) LIKE LOWER(CONCAT('%', cast(:name as string), '%'))) AND " +
+           "(:code IS NULL OR LOWER(b.code) LIKE LOWER(CONCAT('%', cast(:code as string), '%'))) AND " +
+           "(:type IS NULL OR b.type = :type) AND " +
+           "(:status IS NULL OR b.status = :status)")
+    Page<BeaconLight> searchFilteredPaged(
+        @Param("name") String name,
+        @Param("code") String code,
+        @Param("type") BeaconLightType type,
+        @Param("status") BeaconStatus status,
+        Pageable pageable
+    );
+
     long countByStatus(BeaconStatus status);
 }

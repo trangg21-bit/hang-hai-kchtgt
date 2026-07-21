@@ -319,16 +319,15 @@ public class NhaTramDenService {
                     "Không ở trạng thái chờ phê duyệt L1");
         }
 
-        Long creatorId = resolveCreatedBy(entity);
-        Long approverUserId = Long.parseLong(approverId);
-        if (creatorId != null && creatorId.equals(approverUserId)) {
+        String creatorId = resolveCreatedBy(entity);
+        if (creatorId != null && creatorId.equals(approverId)) {
             throw new IllegalStateException(
                     "Bạn không thể phê duyệt bản do chính mình gửi");
         }
 
         entity.setStatus(NhaTramStatus.APPROVED_L1);
         entity.setApprovalStatus(NhaTramApprovalStatus.APPROVED);
-        entity.setApprovedBy(approverUserId);
+        entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         denRepo.save(entity);
 
@@ -349,10 +348,9 @@ public class NhaTramDenService {
                     "Không ở trạng thái chờ phê duyệt L2");
         }
 
-        Long approverUserId = Long.parseLong(approverId);
         entity.setStatus(NhaTramStatus.PUBLISHED);
         entity.setApprovalStatus(NhaTramApprovalStatus.APPROVED);
-        entity.setApprovedBy(approverUserId);
+        entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         denRepo.save(entity);
 
@@ -485,7 +483,7 @@ public class NhaTramDenService {
         return 1L;
     }
 
-    private Long resolveCreatedBy(NhaTramDen entity) {
+    private String resolveCreatedBy(NhaTramDen entity) {
         return entity.getApprovedBy();
     }
 

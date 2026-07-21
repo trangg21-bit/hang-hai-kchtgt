@@ -1,0 +1,1 @@
+ALTER TABLE chi_tiet_tuyen_luong ADD COLUMN IF NOT EXISTS chieu_cao_tinh_khong VARCHAR(20);

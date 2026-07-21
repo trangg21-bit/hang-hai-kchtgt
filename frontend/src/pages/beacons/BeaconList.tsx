@@ -54,11 +54,13 @@ import { beaconHistory } from '../../services/beaconService';
 import { organizationService } from '../../services/organizationService';
 import { colors } from '../../theme';
 import { fontWeightBold, fontSizeLg } from '../../tokens';
+import { useAuthStore } from '../../store/authStore';
 
 export default function BeaconList() {
   const isInIframe = window.self !== window.top;
   const navigate = useNavigate();
 
+  const userId = useAuthStore((state) => state.user?.userId) || 'system';
   const [filterName, setFilterName] = useState('');
   const [filterCode, setFilterCode] = useState('');
   const [filterType, setFilterType] = useState<string | undefined>();
@@ -158,9 +160,7 @@ export default function BeaconList() {
         type: filterType,
         status: filterStatus,
       });
-      const startIndex = (page - 1) * pageSize;
-      const paginatedData = res.data.slice(startIndex, startIndex + pageSize);
-      setDataSource(paginatedData);
+      setDataSource(res.data);
       setTotal(res.total);
     } catch (err: unknown) {
       setIsError(true);
@@ -396,7 +396,7 @@ export default function BeaconList() {
 
   const handleApproveL1 = useCallback(
     async (record: BeaconLight) => {
-      const approverId = localStorage.getItem('user_id') || '1';
+      const approverId = userId;
       try {
         await approval.approveL1(record.id, approverId);
         toast.success('Đã phê duyệt cấp 1');
@@ -411,7 +411,7 @@ export default function BeaconList() {
 
   const handleApproveL2 = useCallback(
     async (record: BeaconLight) => {
-      const approverId = localStorage.getItem('user_id') || '1';
+      const approverId = userId;
       try {
         await approval.approveL2(record.id, approverId);
         toast.success('Đã phê duyệt cấp 2');
@@ -435,7 +435,7 @@ export default function BeaconList() {
   const handleRejectConfirm = useCallback(
     async (reason: string) => {
       if (!rejectTarget) return;
-      const approverId = localStorage.getItem('user_id') || '1';
+      const approverId = userId;
       try {
         await approval.reject(rejectTarget.id, reason, approverId);
         toast.success('Đã từ chối');
@@ -756,14 +756,25 @@ export default function BeaconList() {
             {/* Approval Action Buttons */}
             <Space wrap style={{ marginTop: 16, marginBottom: 16 }}>
               {editingRecord.status === 'DRAFT' && (
-                <Popconfirm
-                  title="Gửi duyệt đèn biển?"
-                  okText="Gửi"
-                  cancelText="Hủy"
-                  onConfirm={() => { handleSubmitApproval(editingRecord); }}
-                >
-                  <Button type="primary" icon={<SendOutlined />}>Gửi duyệt</Button>
-                </Popconfirm>
+                <>
+                  <Popconfirm
+                    title="Gửi duyệt đèn biển?"
+                    okText="Gửi"
+                    cancelText="Hủy"
+                    onConfirm={() => { handleSubmitApproval(editingRecord); }}
+                  >
+                    <Button type="primary" icon={<SendOutlined />}>Gửi duyệt</Button>
+                  </Popconfirm>
+                  <Popconfirm
+                    title={`Xóa đèn biển "${editingRecord.name}"?`}
+                    okText="Xóa"
+                    okType="danger"
+                    cancelText="Hủy"
+                    onConfirm={() => { handleDelete(editingRecord); }}
+                  >
+                    <Button danger icon={<DeleteOutlined />}>Xóa</Button>
+                  </Popconfirm>
+                </>
               )}
               {editingRecord.status === 'PENDING_APPROVAL' && (
                 <>
@@ -790,17 +801,6 @@ export default function BeaconList() {
                   </Popconfirm>
                   <Button danger icon={<CloseCircleOutlined />} onClick={() => handleReject(editingRecord)}>Từ chối</Button>
                 </>
-              )}
-              {editingRecord.status === 'DRAFT' && (
-                <Popconfirm
-                  title={`Xóa đèn biển "${editingRecord.name}"?`}
-                  okText="Xóa"
-                  okType="danger"
-                  cancelText="Hủy"
-                  onConfirm={() => { handleDelete(editingRecord); }}
-                >
-                  <Button danger icon={<DeleteOutlined />}>Xóa</Button>
-                </Popconfirm>
               )}
             </Space>
 
@@ -896,7 +896,7 @@ export default function BeaconList() {
                   name="lightColor"
                   label="Màu sắc bên ngoài của tháp đèn"
                   required
-                  placeholder="VD: Trắng, Đỏ chớp"
+                  placeholder="VD: Trắng, Đỏ, ..."
                 />
               </Col>
             </Row>

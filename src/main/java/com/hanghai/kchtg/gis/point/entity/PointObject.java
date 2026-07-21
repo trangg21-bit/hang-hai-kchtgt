@@ -121,7 +121,7 @@ public class PointObject extends BaseEntity {
     private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
 
     @Column(name = "approved_by")
-    private Long approvedBy;
+    private String approvedBy;
 
     @Column(name = "approved_date")
     private java.time.LocalDateTime approvedDate;

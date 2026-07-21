@@ -13,7 +13,6 @@ import {
   Popconfirm,
   Table,
   Empty,
-  TimePicker,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import {
@@ -45,8 +44,7 @@ export default function LuongHangHaiList() {
   const userPermissions = currentUser?.permissions || [];
 
   const [filterKeyword, setFilterKeyword] = useState('');
-  const [filterGioDien, setFilterGioDien] = useState<dayjs.Dayjs | null>(null);
-  const [filterTaiTrong, setFilterTaiTrong] = useState<number | undefined>();
+  const [filterMaLuongHangHai, setFilterMaLuongHangHai] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -80,8 +78,7 @@ export default function LuongHangHaiList() {
         page: page - 1,
         size: pageSize,
         keyword: filterKeyword || undefined,
-        gioDien: filterGioDien ? filterGioDien.format('HH:mm') : undefined,
-        taiTrong: filterTaiTrong,
+        maLuongHangHai: filterMaLuongHangHai || undefined,
         trangThaiPheDuyet: filterStatus as any,
       };
       const res = await luongHangHaiCRUD.search(params);
@@ -93,14 +90,13 @@ export default function LuongHangHaiList() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, filterKeyword, filterGioDien, filterTaiTrong, filterStatus]);
+  }, [page, pageSize, filterKeyword, filterMaLuongHangHai, filterStatus]);
 
   useEffect(() => { if (!isInIframe) fetchData(); }, [fetchData, isInIframe]);
 
   const handleReset = useCallback(() => {
     setFilterKeyword('');
-    setFilterGioDien(null);
-    setFilterTaiTrong(undefined);
+    setFilterMaLuongHangHai('');
     setFilterStatus(undefined);
     setPage(1);
   }, []);
@@ -129,36 +125,46 @@ export default function LuongHangHaiList() {
       sorter: true,
     },
     {
-      title: 'Số lượng',
-      dataIndex: 'soLuong',
-      key: 'soLuong',
-      width: 80,
+      title: 'Mã luồng hàng hải',
+      dataIndex: 'maLuongHangHai',
+      key: 'maLuongHangHai',
+      width: 150,
     },
     {
-      title: 'Giờ điện',
-      dataIndex: 'gioDien',
-      key: 'gioDien',
+      title: 'Số lượng trạm',
+      dataIndex: 'soLuongTram',
+      key: 'soLuongTram',
       width: 100,
     },
     {
-      title: 'Tải trọng (DWT)',
-      dataIndex: 'taiTrong',
-      key: 'taiTrong',
-      width: 120,
-    },
-    {
-      title: 'Diện tích đăng bộ',
-      dataIndex: 'dienTichDangBo',
-      key: 'dienTichDangBo',
-      width: 120,
-    },
-    {
-      title: 'Ngày ghi nhận',
-      dataIndex: 'ngayGhiNhan',
-      key: 'ngayGhiNhan',
+      title: 'Thời điểm sửa chữa trạm gần nhất',
+      dataIndex: 'thoiDiemSuaChuaTramGanNhat',
+      key: 'thoiDiemSuaChuaTramGanNhat',
       render: (val: string) => (val ? dayjs(val).format('DD/MM/YYYY') : '—'),
       sorter: true,
+      width: 150,
+    },
+    {
+      title: 'Cảng biển ID',
+      dataIndex: 'cangBienId',
+      key: 'cangBienId',
+      width: 150,
+      ellipsis: true,
+      render: (val: string) => val || '—',
+    },
+    {
+      title: 'Địa điểm',
+      dataIndex: 'diaDiem',
+      key: 'diaDiem',
       width: 120,
+      render: (val: string) => val || '—',
+    },
+    {
+      title: 'Chiều cao tĩnh không',
+      dataIndex: 'chieuCaoTinhKhong',
+      key: 'chieuCaoTinhKhong',
+      width: 130,
+      render: (val: string) => val || '—',
     },
     {
       title: 'Đơn vị quản lý',
@@ -199,7 +205,7 @@ export default function LuongHangHaiList() {
                 aria-label="Xem chi tiết"
               />
             )}
-            {canUpdate && isProposed && (
+            {canUpdate && (
               <Button
                 type="link"
                 size="small"
@@ -241,21 +247,13 @@ export default function LuongHangHaiList() {
                 onChange={(e) => setFilterKeyword(e.target.value)}
                 style={{ width: 200 }}
               />
-              <TimePicker
-                placeholder="Giờ điện"
-                format="HH:mm"
-                value={filterGioDien}
-                onChange={(val) => { setFilterGioDien(val); setPage(1); }}
+              <Input.Search
+                placeholder="Tìm mã luồng hàng hải..."
                 allowClear
-                style={{ width: 150 }}
-              />
-              <Input
-                type="number"
-                placeholder="Tải trọng max"
-                value={filterTaiTrong || ''}
-                onChange={(e) => setFilterTaiTrong(e.target.value ? Number(e.target.value) : undefined)}
-                allowClear
-                style={{ width: 150 }}
+                value={filterMaLuongHangHai}
+                onSearch={(val) => { setFilterMaLuongHangHai(val); setPage(1); }}
+                onChange={(e) => setFilterMaLuongHangHai(e.target.value)}
+                style={{ width: 200 }}
               />
               <Select
                 placeholder="Trạng thái phê duyệt"

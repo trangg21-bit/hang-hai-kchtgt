@@ -33,7 +33,7 @@ public class PolygonObjectResponse {
     private UUID refId;
     private Integer refType;
     private ApprovalStatus approvalStatus;
-    private Long approvedBy;
+    private String approvedBy;
     private LocalDateTime approvedDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

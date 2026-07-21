@@ -17,17 +17,38 @@ public class LuongHangHaiUpdateRequest {
 
     private String ten;
 
-    private Integer soLuong;
+    private Integer soLuongTram;
 
-    private LocalDate ngayGhiNhan;
+    private LocalDate thoiDiemSuaChuaTramGanNhat;
 
-    private String gioDien;
-
-    private String taiTrong;
-
-    private String dienTichDangBo;
+    private java.math.BigDecimal dienTichTram;
 
     private String ghiChu;
+
+    private String maLuongHangHai;
+
+    private java.util.UUID cangBienId;
+
+    private java.util.UUID donViVanHanhId;
+
+    private String diaDiem;
+
+    private String diaDiemChiTiet;
+
+    private String tramQuanLyLuong;
+
+    private Integer soLuongNhanSuTaiTram;
+
+    private Integer namBaoTriGanNhat;
+
+    private java.math.BigDecimal khoiLuongNaoVet;
+
+    @Builder.Default private Integer soLuongPhao = 0;
+
+    @Builder.Default private Integer soLuongTieu = 0;
+
+    @Builder.Default private Integer tinhTrang = 1;
+
     private java.util.UUID donViId;
     private GisGeometryType loaiHinhHoc;
     private String toaDo;

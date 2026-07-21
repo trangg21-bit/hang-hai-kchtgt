@@ -196,7 +196,7 @@ class NhaTramDenControllerTest {
     void testApproveL1() throws Exception {
         UUID id = UUID.randomUUID();
         NhaTramDenResponse resp = makeResponse(id);
-        resp.setApprovedBy(2L);
+        resp.setApprovedBy("2");
         when(service.approveL1(eq(id), anyString())).thenReturn(resp);
 
         mockMvc.perform(post("/api/v1/nhatram/den/{id}/approve-l1", id)
@@ -212,7 +212,7 @@ class NhaTramDenControllerTest {
     void testApproveL2() throws Exception {
         UUID id = UUID.randomUUID();
         NhaTramDenResponse resp = makeResponse(id);
-        resp.setApprovedBy(3L);
+        resp.setApprovedBy("3");
         when(service.approveL2(eq(id), anyString())).thenReturn(resp);
 
         mockMvc.perform(post("/api/v1/nhatram/den/{id}/approve-l2", id)

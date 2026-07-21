@@ -349,7 +349,7 @@ class BuoyControllerTest {
     void testApproveL1() throws Exception {
         UUID id = UUID.randomUUID();
         BuoyResponse approved = makeResponse(id, "Đã duyệt L1", BuoyType.CARDINAL, BeaconStatus.APPROVED_L1);
-        approved.setApprovedBy(2L);
+        approved.setApprovedBy("2");
         when(buoyService.approveL1(eq(id), anyString())).thenReturn(approved);
 
         mockMvc.perform(post("/api/buoys/{id}/approve-l1", id)
@@ -369,7 +369,7 @@ class BuoyControllerTest {
     void testApproveL2() throws Exception {
         UUID id = UUID.randomUUID();
         BuoyResponse published = makeResponse(id, "Đã duyệt L2", BuoyType.CARDINAL, BeaconStatus.PUBLISHED);
-        published.setApprovedBy(3L);
+        published.setApprovedBy("3");
         when(buoyService.approveL2(eq(id), anyString())).thenReturn(published);
 
         mockMvc.perform(post("/api/buoys/{id}/approve-l2", id)

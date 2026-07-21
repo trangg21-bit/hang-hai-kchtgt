@@ -34,7 +34,7 @@ public class CoastalStationInmarsatResponse {
     private StationStatus status;
     private StationApprovalStatus approvalStatus;
     private Integer approvalLevel;
-    private Long approvedBy;
+    private String approvedBy;
     private LocalDateTime approvedDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

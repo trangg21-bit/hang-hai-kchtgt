@@ -33,7 +33,7 @@ public class PointObjectResponse {
     private String purpose;
     private String restrictionLevel;
     private ApprovalStatus approvalStatus;
-    private Long approvedBy;
+    private String approvedBy;
     private LocalDateTime approvedDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

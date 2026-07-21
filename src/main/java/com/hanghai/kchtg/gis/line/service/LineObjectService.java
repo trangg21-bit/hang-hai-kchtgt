@@ -151,7 +151,7 @@ public class LineObjectService {
 
         entity.setStatus(Status.APPROVED_L1);
         entity.setApprovalStatus(com.hanghai.kchtg.gis.line.entity.LineObject.ApprovalStatus.APPROVED);
-        entity.setApprovedBy(Long.parseLong(approverId));
+        entity.setApprovedBy(approverId);
         entity.setApprovedDate(java.time.LocalDateTime.now());
         entity = repository.save(entity);
 
@@ -178,7 +178,7 @@ public class LineObjectService {
         }
 
         entity.setStatus(Status.PUBLISHED);
-        entity.setApprovedBy(Long.parseLong(approverId));
+        entity.setApprovedBy(approverId);
         entity.setApprovedDate(java.time.LocalDateTime.now());
         entity = repository.save(entity);
 

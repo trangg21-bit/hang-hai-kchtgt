@@ -29,8 +29,7 @@ export const luongHangHaiCRUD = {
       params: {
         orgUnitId: params?.orgUnitId,
         keyword: params?.keyword,
-        gioDien: params?.gioDien,
-        taiTrong: params?.taiTrong,
+        maLuongHangHai: params?.maLuongHangHai,
         trangThaiPheDuyet: params?.trangThaiPheDuyet,
         page: params?.page || 0,
         size: params?.size || 20,

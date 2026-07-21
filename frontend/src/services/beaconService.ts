@@ -48,14 +48,16 @@ export const beaconLightCRUD = {
       code: params?.code,
       type: params?.type,
       status: params?.status,
+      page: params?.page !== undefined ? params.page - 1 : 0,
+      size: params?.pageSize || 20,
     });
-    const res = await api.get(`/beacon-lights/search?${sp}`);
-    const data = res.data.data || [];
+    const res = await api.get(`/beacon-lights/search-paged?${sp}`);
+    const pageData = res.data.data;
     return {
-      data,
-      total: data.length,
-      page: params?.page || 1,
-      pageSize: params?.pageSize || 10,
+      data: pageData.content || [],
+      total: pageData.totalElements ?? 0,
+      page: (pageData.number ?? 0) + 1,
+      pageSize: pageData.size ?? 20,
     };
   },
 
