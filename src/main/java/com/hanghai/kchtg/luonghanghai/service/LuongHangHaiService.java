@@ -8,6 +8,7 @@ import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
@@ -29,17 +30,37 @@ public class LuongHangHaiService {
     private final LuongHangHaiRepository repo;
     private final PheDuyetLichSuRepository pheDuyetLichSuRepo;
     private final GisSpatialObjectService gisSpatialObjectService;
+    private final OrgUnitRepository orgUnitRepository;
 
     @Transactional
     public LuongHangHaiResponse create(LuongHangHaiCreateRequest req, String username) {
+        String maLuongHangHai = req.getMaLuongHangHai();
+        if (maLuongHangHai == null || maLuongHangHai.trim().isEmpty()) {
+            String orgCode = orgUnitRepository.findById(req.getDonViId())
+                    .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getCode)
+                    .orElseThrow(() -> new IllegalArgumentException("Khong tim thay don vi voi id: " + req.getDonViId()));
+            long count = repo.countByDonViId(req.getDonViId());
+            maLuongHangHai = orgCode + "-LHH-" + String.format("%06d", count + 1);
+        }
+
         LuongHangHai l = LuongHangHai.builder()
                 .ten(req.getTen())
-                .soLuong(req.getSoLuong())
-                .ngayGhiNhan(req.getNgayGhiNhan())
-                .gioDien(req.getGioDien())
-                .taiTrong(req.getTaiTrong())
-                .dienTichDangBo(req.getDienTichDangBo())
+                .maLuongHangHai(maLuongHangHai)
+                .soLuongTram(req.getSoLuongTram())
+                .thoiDiemSuaChuaTramGanNhat(req.getThoiDiemSuaChuaTramGanNhat())
+                .dienTichTram(req.getDienTichTram())
                 .ghiChu(req.getGhiChu())
+                .cangBienId(req.getCangBienId())
+                .donViVanHanhId(req.getDonViVanHanhId())
+                .diaDiem(req.getDiaDiem())
+                .diaDiemChiTiet(req.getDiaDiemChiTiet())
+                .tramQuanLyLuong(req.getTramQuanLyLuong())
+                .soLuongNhanSuTaiTram(req.getSoLuongNhanSuTaiTram())
+                .namBaoTriGanNhat(req.getNamBaoTriGanNhat())
+                .khoiLuongNaoVet(req.getKhoiLuongNaoVet())
+                .soLuongPhao(req.getSoLuongPhao())
+                .soLuongTieu(req.getSoLuongTieu())
+                .tinhTrang(req.getTinhTrang())
                 .donViId(req.getDonViId())
                 .approvalStatus(LuongHangHaiApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
@@ -91,7 +112,7 @@ public class LuongHangHaiService {
     }
 
     @Transactional(readOnly = true)
-    public Page<LuongHangHaiResponse> search(UUID orgUnitId, String keyword, String gioDien, String taiTrong,
+    public Page<LuongHangHaiResponse> search(UUID orgUnitId, String keyword,
                                              String approvalStatusStr, int page, int size) {
         Page<LuongHangHai> results;
         LuongHangHaiApprovalStatus approvalStatus = null;
@@ -99,7 +120,7 @@ public class LuongHangHaiService {
             try { approvalStatus = LuongHangHaiApprovalStatus.valueOf(approvalStatusStr); } catch (Exception ignored) {}
         }
         if (orgUnitId != null || (keyword != null && !keyword.isEmpty())) {
-            results = repo.searchDocuments(orgUnitId, keyword, gioDien, taiTrong, approvalStatus,
+            results = repo.searchDocuments(orgUnitId, keyword, approvalStatus,
                     PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         } else {
             results = repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
@@ -113,12 +134,22 @@ public class LuongHangHaiService {
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
         if (req.getTen() != null) l.setTen(req.getTen());
-        if (req.getSoLuong() != null) l.setSoLuong(req.getSoLuong());
-        if (req.getNgayGhiNhan() != null) l.setNgayGhiNhan(req.getNgayGhiNhan());
-        if (req.getGioDien() != null) l.setGioDien(req.getGioDien());
-        if (req.getTaiTrong() != null) l.setTaiTrong(req.getTaiTrong());
-        if (req.getDienTichDangBo() != null) l.setDienTichDangBo(req.getDienTichDangBo());
+        if (req.getSoLuongTram() != null) l.setSoLuongTram(req.getSoLuongTram());
+        if (req.getThoiDiemSuaChuaTramGanNhat() != null) l.setThoiDiemSuaChuaTramGanNhat(req.getThoiDiemSuaChuaTramGanNhat());
+        if (req.getDienTichTram() != null) l.setDienTichTram(req.getDienTichTram());
         if (req.getGhiChu() != null) l.setGhiChu(req.getGhiChu());
+        if (req.getMaLuongHangHai() != null) l.setMaLuongHangHai(req.getMaLuongHangHai());
+        if (req.getCangBienId() != null) l.setCangBienId(req.getCangBienId());
+        if (req.getDonViVanHanhId() != null) l.setDonViVanHanhId(req.getDonViVanHanhId());
+        if (req.getDiaDiem() != null) l.setDiaDiem(req.getDiaDiem());
+        if (req.getDiaDiemChiTiet() != null) l.setDiaDiemChiTiet(req.getDiaDiemChiTiet());
+        if (req.getTramQuanLyLuong() != null) l.setTramQuanLyLuong(req.getTramQuanLyLuong());
+        if (req.getSoLuongNhanSuTaiTram() != null) l.setSoLuongNhanSuTaiTram(req.getSoLuongNhanSuTaiTram());
+        if (req.getNamBaoTriGanNhat() != null) l.setNamBaoTriGanNhat(req.getNamBaoTriGanNhat());
+        if (req.getKhoiLuongNaoVet() != null) l.setKhoiLuongNaoVet(req.getKhoiLuongNaoVet());
+        if (req.getSoLuongPhao() != null) l.setSoLuongPhao(req.getSoLuongPhao());
+        if (req.getSoLuongTieu() != null) l.setSoLuongTieu(req.getSoLuongTieu());
+        if (req.getTinhTrang() != null) l.setTinhTrang(req.getTinhTrang());
         if (req.getDonViId() != null) l.setDonViId(req.getDonViId());
         l.setUpdatedBy(username);
 
@@ -306,15 +337,13 @@ public class LuongHangHaiService {
     }
 
     @Transactional(readOnly = true)
-    public KetQuaTimKiemResponse searchDocuments(UUID orgUnitId, String kw, String gioDien, String taiTrong, String trangThaiStr, int page, int size) {
+    public KetQuaTimKiemResponse searchDocuments(UUID orgUnitId, String kw, String trangThaiStr, int page, int size) {
         LuongHangHaiApprovalStatus trangThai = null;
         if (trangThaiStr != null && !trangThaiStr.trim().isEmpty()) {
             try { trangThai = LuongHangHaiApprovalStatus.valueOf(trangThaiStr.trim()); } catch (Exception ignored) {}
         }
         String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
-        String gioDienVal = (gioDien != null && !gioDien.trim().isEmpty()) ? gioDien.trim() : null;
-        String taiTrongVal = (taiTrong != null && !taiTrong.trim().isEmpty()) ? taiTrong.trim() : null;
-        Page<LuongHangHai> r = repo.searchDocuments(orgUnitId, keywordLike, gioDienVal, taiTrongVal, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        Page<LuongHangHai> r = repo.searchDocuments(orgUnitId, keywordLike, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
         return KetQuaTimKiemResponse.builder()
                 .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())
@@ -362,16 +391,56 @@ public class LuongHangHaiService {
             }
         }
 
+        List<ChiTietTuyenLuongResponse> chiTietList = l.getChiTietTuyenLuongList() != null
+                ? l.getChiTietTuyenLuongList().stream()
+                        .map(ct -> ChiTietTuyenLuongResponse.builder()
+                                .id(ct.getId())
+                                .stt(ct.getStt())
+                                .phanLoai(ct.getPhanLoai())
+                                .ma(ct.getMa())
+                                .ten(ct.getTen())
+                                .loaiTuyenLuong(ct.getLoaiTuyenLuong())
+                                .doSauHienTai(ct.getDoSauHienTai())
+                                .maiDocThietKe(ct.getMaiDocThietKe())
+                                .chieuDai(ct.getChieuDai())
+                                .rongLonNhat(ct.getRongLonNhat())
+                                .rongNhoNhat(ct.getRongNhoNhat())
+                                .doSau(ct.getDoSau())
+                                .khoiLuongNaoVet(ct.getKhoiLuongNaoVet())
+                                .congCong(ct.getCongCong())
+                                .chuyenDung(ct.getChuyenDung())
+                                .chieuCaoTinhKhong(ct.getChieuCaoTinhKhong())
+                                .viTriVungQuayTau(ct.getViTriVungQuayTau())
+                                .banKinhVungQuayTau(ct.getBanKinhVungQuayTau())
+                                .banKinhCongNhoNhat(ct.getBanKinhCongNhoNhat())
+                                .phamViBaoVeLuong(ct.getPhamViBaoVeLuong())
+                                .build())
+                        .collect(Collectors.toList())
+                : new ArrayList<>();
+
+        String resolvedDonViTen = resolveDonViTen(l.getDonViId());
+
         return LuongHangHaiResponse.builder()
                 .id(l.getId())
                 .ten(l.getTen())
-                .soLuong(l.getSoLuong())
-                .ngayGhiNhan(l.getNgayGhiNhan())
-                .gioDien(l.getGioDien())
-                .taiTrong(l.getTaiTrong())
-                .dienTichDangBo(l.getDienTichDangBo())
+                .soLuongTram(l.getSoLuongTram())
+                .thoiDiemSuaChuaTramGanNhat(l.getThoiDiemSuaChuaTramGanNhat())
+                .dienTichTram(l.getDienTichTram())
                 .ghiChu(l.getGhiChu())
+                .maLuongHangHai(l.getMaLuongHangHai())
+                .cangBienId(l.getCangBienId())
+                .donViVanHanhId(l.getDonViVanHanhId())
+                .diaDiem(l.getDiaDiem())
+                .diaDiemChiTiet(l.getDiaDiemChiTiet())
+                .tramQuanLyLuong(l.getTramQuanLyLuong())
+                .soLuongNhanSuTaiTram(l.getSoLuongNhanSuTaiTram())
+                .namBaoTriGanNhat(l.getNamBaoTriGanNhat())
+                .khoiLuongNaoVet(l.getKhoiLuongNaoVet())
+                .soLuongPhao(l.getSoLuongPhao())
+                .soLuongTieu(l.getSoLuongTieu())
+                .tinhTrang(l.getTinhTrang())
                 .donViId(l.getDonViId())
+                .donViTen(resolvedDonViTen)
                 .approvalStatus(l.getApprovalStatus())
                 .pheDuyetC1(l.getPheDuyetC1())
                 .nguoiPheDuyetC1(l.getNguoiPheDuyetC1())
@@ -387,10 +456,19 @@ public class LuongHangHaiService {
                 .updatedBy(l.getUpdatedBy())
                 .attachments(atts)
                 .approvalHistory(hist)
+                .chieuCaoTinhKhong(l.getChieuCaoTinhKhong())
+                .chiTietTuyenLuongList(chiTietList)
                 .khongGianId(l.getKhongGianId())
                 .loaiHinhHoc(geomType)
                 .toaDo(coords)
                 .build();
+    }
+
+    private String resolveDonViTen(java.util.UUID donViId) {
+        if (donViId == null) return null;
+        return orgUnitRepository.findById(donViId)
+                .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
+                .orElse(null);
     }
 
     private GisGeometryType parseGeometryType(String typeStr) {

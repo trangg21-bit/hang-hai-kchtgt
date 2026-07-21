@@ -11,11 +11,22 @@ export interface LuongHangHaiAttachment {
 export interface LuongHangHaiResponse {
   id: string;
   ten: string;
-  soLuong?: number;
-  ngayGhiNhan?: string; // date
-  gioDien?: string;
-  taiTrong?: string | number;
-  dienTichDangBo?: string | number;
+  maLuongHangHai?: string;
+  soLuongTram?: number;
+  thoiDiemSuaChuaTramGanNhat?: string; // date
+  cangBienId?: string;
+  donViVanHanhId?: string;
+  diaDiem?: string;
+  diaDiemChiTiet?: string;
+  tramQuanLyLuong?: string;
+  soLuongNhanSuTaiTram?: number;
+  namBaoTriGanNhat?: number;
+  khoiLuongNaoVet?: number;
+  soLuongPhao?: number;
+  soLuongTieu?: number;
+  tinhTrang?: number;
+  chieuCaoTinhKhong?: string;
+  dienTichTram?: number;
   ghiChu?: string;
   donViId?: string;
   approvalStatus: ApprovalStatus;
@@ -42,11 +53,22 @@ export interface LuongHangHaiResponse {
 
 export interface CreateLuongHangHaiRequest {
   ten: string;
-  soLuong?: number;
-  ngayGhiNhan?: string;
-  gioDien?: string;
-  taiTrong?: string | number;
-  dienTichDangBo?: string | number;
+  maLuongHangHai?: string;
+  soLuongTram?: number;
+  thoiDiemSuaChuaTramGanNhat?: string;
+  cangBienId?: string;
+  donViVanHanhId?: string;
+  diaDiem?: string;
+  diaDiemChiTiet?: string;
+  tramQuanLyLuong?: string;
+  soLuongNhanSuTaiTram?: number;
+  namBaoTriGanNhat?: number;
+  khoiLuongNaoVet?: number;
+  soLuongPhao?: number;
+  soLuongTieu?: number;
+  tinhTrang?: number;
+  chieuCaoTinhKhong?: string;
+  dienTichTram?: number;
   ghiChu?: string;
   donViId?: string;
   loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
@@ -88,8 +110,7 @@ export interface ListParams {
   size?: number;
   donViId?: string;
   keyword?: string;
-  gioDien?: string;
-  taiTrong?: string | number;
+  maLuongHangHai?: string;
   trangThaiPheDuyet?: ApprovalStatus;
 }
 

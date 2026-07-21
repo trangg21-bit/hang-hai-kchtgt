@@ -557,7 +557,7 @@ export default function ReportViewer() {
                 </div>
 
                 <Pagination
-                  total={reportData.rows.length}
+                  total={reportData.summary?.total ?? reportData.rows.length}
                   current={currentPage}
                   pageSize={pageSize}
                   onChange={(page, size) => {

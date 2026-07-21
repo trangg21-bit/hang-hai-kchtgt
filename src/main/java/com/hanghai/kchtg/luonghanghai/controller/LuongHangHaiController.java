@@ -101,11 +101,9 @@ public class LuongHangHaiController {
     public ResponseEntity<ApiResponse<KetQuaTimKiemResponse>> search(
             @RequestParam(name = "orgUnitId", required = false) java.util.UUID orgUnitId,
             @RequestParam(name = "keyword", required = false) String keyword,
-            @RequestParam(name = "gioDien", required = false) String gioDien,
-            @RequestParam(name = "taiTrong", required = false) String taiTrong,
             @RequestParam(name = "trangThaiPheDuyet", required = false) String trangThaiPheDuyet,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.success(service.searchDocuments(orgUnitId, keyword, gioDien, taiTrong, trangThaiPheDuyet, page, size)));
+        return ResponseEntity.ok(ApiResponse.success(service.searchDocuments(orgUnitId, keyword, trangThaiPheDuyet, page, size)));
     }
 }

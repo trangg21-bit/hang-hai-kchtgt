@@ -54,11 +54,9 @@ class LuongHangHaiControllerTest {
                 testResp = LuongHangHaiResponse.builder()
                                 .id(TEST_ID)
                                 .ten("Hai Phong")
-                                .soLuong(100)
-                                .ngayGhiNhan(LocalDate.of(2026, 1, 1))
-                                .gioDien("12:00")
-                                .taiTrong("1000")
-                                .dienTichDangBo("200")
+                                .soLuongTram(100)
+                                .thoiDiemSuaChuaTramGanNhat(LocalDate.of(2026, 1, 1))
+                                .dienTichTram(new java.math.BigDecimal("200"))
                                 .ghiChu("Test ghi chu")
                                 .approvalStatus(LuongHangHaiApprovalStatus.PROPOSED)
                                 .pheDuyetC1(false)
@@ -67,12 +65,11 @@ class LuongHangHaiControllerTest {
                                 .build();
 
                 createReq = LuongHangHaiCreateRequest.builder()
+                                .maLuongHangHai("LHH-001")
                                 .ten("Luong moi")
-                                .soLuong(50)
-                                .ngayGhiNhan(LocalDate.of(2026, 6, 15))
-                                .gioDien("14:00")
-                                .taiTrong("800")
-                                .dienTichDangBo("150")
+                                .soLuongTram(50)
+                                .thoiDiemSuaChuaTramGanNhat(LocalDate.of(2026, 6, 15))
+                                .dienTichTram(new java.math.BigDecimal("150"))
                                 .ghiChu("Create test")
                                 .build();
         }
@@ -100,7 +97,7 @@ class LuongHangHaiControllerTest {
 
         @Test
         void create_shouldRejectNull() throws Exception {
-                LuongHangHaiCreateRequest bad = LuongHangHaiCreateRequest.builder().ten(null).build();
+                LuongHangHaiCreateRequest bad = LuongHangHaiCreateRequest.builder().ten("").build();
                 mockMvc.perform(post("/api/v1/luong-hang-hai")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(bad)))
@@ -233,7 +230,7 @@ class LuongHangHaiControllerTest {
                                 .currentPage(0)
                                 .pageSize(20)
                                 .build();
-                when(service.searchDocuments(eq(null), eq("Hai"), eq(null), eq(null), eq(null), eq(0), eq(20)))
+                when(service.searchDocuments(eq(null), eq("Hai"), eq(null), eq(0), eq(20)))
                                 .thenReturn(sr);
                 mockMvc.perform(get("/api/v1/luong-hang-hai/search")
                                 .param("keyword", "Hai")

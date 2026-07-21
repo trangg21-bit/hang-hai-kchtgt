@@ -19,11 +19,9 @@ class LuongHangHaiEntityTest {
         LuongHangHai e = LuongHangHai.builder()
                 .id(TEST_ID)
                 .ten("Luong hang hai")
-                .soLuong(100)
-                .ngayGhiNhan(LocalDate.of(2026, 1, 1))
-                .gioDien("12:00")
-                .taiTrong("1000")
-                .dienTichDangBo("200")
+                .soLuongTram(100)
+                .thoiDiemSuaChuaTramGanNhat(LocalDate.of(2026, 1, 1))
+                .dienTichTram(new java.math.BigDecimal("200"))
                 .ghiChu("Test ghi chu")
                 .approvalStatus(LuongHangHaiApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
@@ -35,7 +33,7 @@ class LuongHangHaiEntityTest {
         assertThat(e.getTen()).isEqualTo("Luong hang hai");
         assertThat(e.getApprovalStatus()).isEqualTo(LuongHangHaiApprovalStatus.PROPOSED);
         assertThat(e.getPheDuyetC1()).isFalse();
-        assertThat(e.getSoLuong()).isEqualTo(100);
+        assertThat(e.getSoLuongTram()).isEqualTo(100);
     }
 
     @Test void getterSetter_shouldWork() {
@@ -43,10 +41,8 @@ class LuongHangHaiEntityTest {
         UUID uuid = UUID.randomUUID();
         e.setId(uuid);
         e.setTen("Luong hang hai moi");
-        e.setSoLuong(200);
-        e.setGioDien("14:30");
-        e.setTaiTrong("2000");
-        e.setDienTichDangBo("300");
+        e.setSoLuongTram(200);
+        e.setDienTichTram(new java.math.BigDecimal("300"));
         e.setGhiChu("Test setter");
         e.setApprovalStatus(LuongHangHaiApprovalStatus.APPROVED);
         e.setCreatedBy("User");
@@ -135,11 +131,9 @@ class LuongHangHaiEntityTest {
         LuongHangHai e = LuongHangHai.builder()
                 .id(TEST_ID_2)
                 .ten("Luong hang hai full")
-                .soLuong(500)
-                .ngayGhiNhan(LocalDate.of(2026, 3, 15))
-                .gioDien("09:00")
-                .taiTrong("5000")
-                .dienTichDangBo("400")
+                .soLuongTram(500)
+                .thoiDiemSuaChuaTramGanNhat(LocalDate.of(2026, 3, 15))
+                .dienTichTram(new java.math.BigDecimal("400"))
                 .ghiChu("Full test")
                 .approvalStatus(LuongHangHaiApprovalStatus.APPROVED)
                 .pheDuyetC1(true)
@@ -152,7 +146,7 @@ class LuongHangHaiEntityTest {
                 .updatedBy("User")
                 .build();
         assertThat(e.getId()).isEqualTo(TEST_ID_2);
-        assertThat(e.getSoLuong()).isEqualTo(500);
+        assertThat(e.getSoLuongTram()).isEqualTo(500);
         assertThat(e.getPheDuyetC1()).isTrue();
         assertThat(e.getPheDuyetC2()).isTrue();
         assertThat(e.getNguoiPheDuyetC1()).isEqualTo("Phong");

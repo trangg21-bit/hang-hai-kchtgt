@@ -3805,6 +3805,75 @@ if (expr != null && (expr.contains("table.")
                         }
                     }
                 }
+                
+                // F-151: child rows (column L = Tên trạm QL luồng empty) should not be bold
+                if ("F-151".equalsIgnoreCase(request.getReportCode())) {
+                    // Pass 1: clear STT and unbold child rows (only after data section starts)
+                    boolean dataStarted1 = false;
+                    for (int r = 0; r <= destSheet.getLastRowNum(); r++) {
+                        Row row = destSheet.getRow(r);
+                        if (row == null) continue;
+                        // Detect start of data: row where column A is "A"
+                        if (!dataStarted1) {
+                            Cell cellA = row.getCell(0);
+                            if (cellA != null && cellA.getCellType() == CellType.STRING && "A".equals(cellA.getStringCellValue().trim())) {
+                                dataStarted1 = true;
+                            }
+                            continue;
+                        }
+                        Cell cellL = row.getCell(11); // Column L = Tên trạm QL luồng
+                        boolean isChild = (cellL == null)
+                                || (cellL.getCellType() == CellType.BLANK)
+                                || (cellL.getCellType() == CellType.STRING && cellL.getStringCellValue().trim().isEmpty());
+                        if (!isChild) continue;
+                        // Clear STT number for child rows
+                        Cell cellSTT = row.getCell(0);
+                        if (cellSTT != null) {
+                            cellSTT.setCellValue("");
+                        }
+                        // Child row: unbold all cells in this row
+                        for (int c = 0; c < row.getLastCellNum(); c++) {
+                            Cell cell = row.getCell(c);
+                            if (cell == null) continue;
+                            CellStyle style = cell.getCellStyle();
+                            if (style == null) continue;
+                            org.apache.poi.ss.usermodel.Font font = workbook.getFontAt(style.getFontIndex());
+                            if (font != null && font.getBold()) {
+                                CellStyle unboldStyle = workbook.createCellStyle();
+                                unboldStyle.cloneStyleFrom(style);
+                                org.apache.poi.ss.usermodel.Font unboldFont = workbook.createFont();
+                                unboldFont.setFontName(font.getFontName());
+                                unboldFont.setFontHeightInPoints(font.getFontHeightInPoints());
+                                unboldFont.setBold(false);
+                                unboldStyle.setFont(unboldFont);
+                                cell.setCellStyle(unboldStyle);
+                            }
+                        }
+                    }
+                    // Pass 2: renumber parent rows sequentially (1,2,3...), skipping header rows
+                    int parentStt = 0;
+                    boolean dataStarted = false;
+                    for (int r = 0; r <= destSheet.getLastRowNum(); r++) {
+                        Row row = destSheet.getRow(r);
+                        if (row == null) continue;
+                        // Detect start of data: row where column A is "A" (column-letter reference row)
+                        if (!dataStarted) {
+                            Cell cellA = row.getCell(0);
+                            if (cellA != null && cellA.getCellType() == CellType.STRING && "A".equals(cellA.getStringCellValue().trim())) {
+                                dataStarted = true;
+                            }
+                            continue;
+                        }
+                        Cell cellL = row.getCell(11);
+                        boolean isParent = (cellL != null)
+                                && (cellL.getCellType() == CellType.STRING && !cellL.getStringCellValue().trim().isEmpty());
+                        if (!isParent) continue;
+                        parentStt++;
+                        Cell cellSTT = row.getCell(0);
+                        if (cellSTT == null) cellSTT = row.createCell(0);
+                        cellSTT.setCellValue(parentStt);
+                    }
+                }
 
                 return outputWorkbook(workbook, destSheet, isExcel);
             }

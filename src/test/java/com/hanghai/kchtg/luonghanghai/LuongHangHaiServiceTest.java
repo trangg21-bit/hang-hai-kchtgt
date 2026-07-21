@@ -4,6 +4,10 @@ import com.hanghai.kchtg.luonghanghai.dto.*;
 import com.hanghai.kchtg.luonghanghai.entity.*;
 import com.hanghai.kchtg.luonghanghai.repository.LuongHangHaiRepository;
 import com.hanghai.kchtg.luonghanghai.repository.PheDuyetLichSuRepository;
+import com.hanghai.kchtg.orgunit.entity.OrgUnit;
+import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
+import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
+import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.luonghanghai.service.LuongHangHaiService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,21 +42,30 @@ class LuongHangHaiServiceTest {
     @Mock LuongHangHaiRepository repo;
     @Mock PheDuyetLichSuRepository pheDuyetLichSuRepo;
     @Mock com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+    @Mock OrgUnitRepository orgUnitRepository;
     LuongHangHaiService service;
 
     private LuongHangHai testEntity;
     private LuongHangHaiCreateRequest createReq;
 
     @BeforeEach void setUp() {
-        service = new LuongHangHaiService(repo, pheDuyetLichSuRepo, gisSpatialObjectService);
+        service = new LuongHangHaiService(repo, pheDuyetLichSuRepo, gisSpatialObjectService, orgUnitRepository);
+        OrgUnit mockOrg = OrgUnit.builder()
+                .code("TCT")
+                .name("TCT")
+                .path("/TCT/")
+                .level(1)
+                .sortOrder(1)
+                .type(OrgUnitType.TCT)
+                .status(OrgUnitStatus.APPROVED)
+                .build();
+        when(orgUnitRepository.findById(TEST_ID)).thenReturn(Optional.of(mockOrg));
         testEntity = LuongHangHai.builder()
                 .id(TEST_ID)
                 .ten("Luong hang hai")
-                .soLuong(100)
-                .ngayGhiNhan(LocalDate.of(2026, 1, 1))
-                .gioDien("12:00")
-                .taiTrong("1000")
-                .dienTichDangBo("200")
+                .soLuongTram(100)
+                .thoiDiemSuaChuaTramGanNhat(LocalDate.of(2026, 1, 1))
+                .dienTichTram(new java.math.BigDecimal("200"))
                 .ghiChu("Test ghi chu")
                 .approvalStatus(LuongHangHaiApprovalStatus.PROPOSED)
                 .pheDuyetC1(false)
@@ -63,12 +76,11 @@ class LuongHangHaiServiceTest {
                 .build();
         createReq = LuongHangHaiCreateRequest.builder()
                 .ten("Luong hang hai moi")
-                .soLuong(50)
-                .ngayGhiNhan(LocalDate.of(2026, 6, 15))
-                .gioDien("14:00")
-                .taiTrong("800")
-                .dienTichDangBo("150")
+                .soLuongTram(50)
+                .thoiDiemSuaChuaTramGanNhat(LocalDate.of(2026, 6, 15))
+                .dienTichTram(new java.math.BigDecimal("150"))
                 .ghiChu("Create test")
+                .donViId(TEST_ID)
                 .build();
     }
 
@@ -110,7 +122,6 @@ class LuongHangHaiServiceTest {
     @Test void update_shouldUpdateFields() {
         LuongHangHaiUpdateRequest ur = LuongHangHaiUpdateRequest.builder()
                 .ten("Da cap nhat")
-                .taiTrong("Da Nang")
                 .build();
         when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
         when(repo.save(any())).thenReturn(testEntity);
@@ -270,23 +281,23 @@ class LuongHangHaiServiceTest {
 
     @Test void searchDocuments_shouldReturnPaginated() {
         Page<LuongHangHai> p = new PageImpl<>(List.of(testEntity));
-        when(repo.searchDocuments(eq(null), eq("%luong hang hai%"), eq("12:00"), eq("1000"),
+        when(repo.searchDocuments(eq(null), eq("%luong hang hai%"),
                 eq(LuongHangHaiApprovalStatus.APPROVED), any(Pageable.class))).thenReturn(p);
-        KetQuaTimKiemResponse r = service.searchDocuments(null, "Luong hang hai", "12:00", "1000", "APPROVED", 0, 20);
+        KetQuaTimKiemResponse r = service.searchDocuments(null, "Luong hang hai", "APPROVED", 0, 20);
         assertThat(r.getTotalElements()).isEqualTo(1);
     }
 
     @Test void searchDocuments_shouldHandleNullKeyword() {
         Page<LuongHangHai> p = new PageImpl<>(List.of(testEntity));
-        when(repo.searchDocuments(eq(null), eq(null), eq(null), eq(null), eq(null), any(Pageable.class))).thenReturn(p);
-        KetQuaTimKiemResponse r = service.searchDocuments(null, null, null, null, null, 0, 20);
+        when(repo.searchDocuments(eq(null), eq(null), eq(null), any(Pageable.class))).thenReturn(p);
+        KetQuaTimKiemResponse r = service.searchDocuments(null, null, null, 0, 20);
         assertThat(r).isNotNull();
     }
 
     @Test void searchDocuments_shouldHandleInvalidEnum() {
         Page<LuongHangHai> p = new PageImpl<>(List.of(testEntity));
-        when(repo.searchDocuments(eq(null), eq(null), eq(null), eq(null), eq(null), any(Pageable.class))).thenReturn(p);
-        KetQuaTimKiemResponse r = service.searchDocuments(null, null, null, null, "INVALID", 0, 20);
+        when(repo.searchDocuments(eq(null), eq(null), eq(null), any(Pageable.class))).thenReturn(p);
+        KetQuaTimKiemResponse r = service.searchDocuments(null, null, "INVALID", 0, 20);
         assertThat(r).isNotNull();
     }
 }
