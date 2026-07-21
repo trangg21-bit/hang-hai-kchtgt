@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.hanghai.kchtg.beacon.entity.BeaconApprovalStatus;
+
 public interface BeaconLightRepository extends JpaRepository<BeaconLight, UUID> {
 
     Optional<BeaconLight> findByCode(String code);
@@ -49,4 +51,13 @@ public interface BeaconLightRepository extends JpaRepository<BeaconLight, UUID> 
     );
 
     long countByStatus(BeaconStatus status);
+
+    @Query("SELECT b FROM BeaconLight b WHERE " +
+            "b.deletedAt IS NULL AND " +
+            "b.approvalStatus = com.hanghai.kchtg.beacon.entity.BeaconApprovalStatus.APPROVED AND " +
+            "(:orgUnitId IS NULL OR b.unitId = :orgUnitId) AND " +
+            "(:search IS NULL OR LOWER(b.name) LIKE :search OR LOWER(b.code) LIKE :search)")
+    List<BeaconLight> searchGis(
+            @Param("orgUnitId") UUID orgUnitId,
+            @Param("search") String search);
 }

@@ -26,18 +26,16 @@ public class KchtGis155RestController {
     private final KchtGis155Service kchtGis155Service;
 
     @GetMapping("/search")
-    public ResponseEntity<ApiResponse<Page<KchtGisSearchResult>>> search(
+    public ResponseEntity<ApiResponse<List<KchtGisSearchResult>>> search(
             @RequestParam(required = false) UUID orgUnitId,
             @RequestParam(required = false) List<KchtType> kchtType,
             @RequestParam(required = false) String tinhThanhPho,
             @RequestParam(required = false) String search,
-            @RequestParam(required = false) GisObjectType objectType,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(required = false) GisObjectType objectType) {
 
         TinhThanhPho mappedEnum = TinhThanhPho.fromString(tinhThanhPho);
-        Page<KchtGisSearchResult> result = kchtGis155Service.search(
-                orgUnitId, kchtType, mappedEnum, search, objectType, page, size);
+        List<KchtGisSearchResult> result = kchtGis155Service.search(
+                orgUnitId, kchtType, mappedEnum, search, objectType);
 
         return ResponseEntity.ok(ApiResponse.success("Tìm kiếm kết cấu hạ tầng thành công", result));
     }

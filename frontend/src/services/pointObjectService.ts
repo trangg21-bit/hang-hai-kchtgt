@@ -17,12 +17,16 @@ export const pointObjectService = {
     if (params?.status) searchParams.set('status', params.status);
 
     const res = await api.get(`/point-objects/search?${searchParams}`);
-    const data = res.data.data || [];
+    const allData = res.data.data || [];
+    const page = params?.page || 1;
+    const pageSize = params?.pageSize || 20;
+    const startIndex = (page - 1) * pageSize;
+    const slicedData = allData.slice(startIndex, startIndex + pageSize);
     return {
-      data,
-      total: data.length,
-      page: params?.page || 1,
-      pageSize: params?.pageSize || 10,
+      data: slicedData,
+      total: allData.length,
+      page,
+      pageSize,
     };
   },
 

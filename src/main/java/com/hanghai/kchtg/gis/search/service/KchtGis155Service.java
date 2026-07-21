@@ -346,19 +346,24 @@ public class KchtGis155Service {
         results.add(result);
     }
 
-    public Page<KchtGisSearchResult> search(
-            UUID orgUnitId,
+    public List<KchtGisSearchResult> search(
+            UUID rawOrgUnitId,
             List<KchtType> kchtTypes,
             TinhThanhPho tinhThanhPho,
             String search,
-            GisObjectType objectType,
-            int page,
-            int size) {
+            GisObjectType objectType) {
 
         List<KchtGisSearchResult> results = new ArrayList<>();
         Map<String, UUID> spatialIdMap = new HashMap<>();
-        List<KchtType> types = (kchtTypes == null || kchtTypes.isEmpty()) ? Arrays.asList(KchtType.values())
-                : kchtTypes;
+        List<KchtType> types;
+        if (kchtTypes == null || kchtTypes.isEmpty()) {
+            types = Arrays.asList(KchtType.values());
+        } else {
+            types = kchtTypes.stream().filter(t -> t != null).collect(Collectors.toList());
+            if (types.isEmpty()) {
+                types = Arrays.asList(KchtType.values());
+            }
+        }
         String searchLower = (search == null || search.trim().isEmpty()) ? null : search.toLowerCase().trim();
         String tinhThanhStr = (tinhThanhPho != null) ? tinhThanhPho.getDisplayName() : null;
 
@@ -375,39 +380,20 @@ public class KchtGis155Service {
         }
 
         boolean isRootOrg = false;
-        if (orgUnitId == null) {
+        if (rawOrgUnitId == null) {
             isRootOrg = true;
         } else {
-            String orgName = orgNameMap.getOrDefault(orgUnitId, "");
+            String orgName = orgNameMap.getOrDefault(rawOrgUnitId, "");
             if (orgName.contains("Cục Hàng hải Việt Nam")) {
                 isRootOrg = true;
             }
         }
+        final UUID orgUnitId = isRootOrg ? null : rawOrgUnitId;
 
 
 
         for (KchtType type : types) {
             long tStart = System.currentTimeMillis();
-            // Filter by geometry compatibility if objectType is set
-            if (objectType != null) {
-                boolean isPointType = (type == KchtType.CANGBIEN || type == KchtType.BENCANG || type == KchtType.CAUCANG
-                        ||
-                        type == KchtType.CANGCAN || type == KchtType.DENBIEN || type == KchtType.PHAOTIEU ||
-                        type == KchtType.TRAM_RADAR || type == KchtType.HE_THONG_VTS || type == KchtType.COSO_SUACHUA ||
-                        type == KchtType.DAI_TTDH || type == KchtType.DAI_INMARSAT || type == KchtType.DAI_COSPAS_SARSAT ||
-                        type == KchtType.DAI_LRIT || type == KchtType.DAI_HANOI || type == KchtType.NHATRAM_PHAO);
-                boolean isLineType = (type == KchtType.LUONGHANGHAI || type == KchtType.DEKE || type == KchtType.CAUCANG);
-                boolean isPolygonType = (type == KchtType.VUNGNUOC || type == KchtType.BENPHAO
-                        || type == KchtType.KHUNEO_DAU ||
-                        type == KchtType.KHUCHUYEN_TAI || type == KchtType.KHUTRANH_TRU_BAO);
-
-                if (objectType == GisObjectType.POINT && !isPointType)
-                    continue;
-                if (objectType == GisObjectType.LINE && !isLineType)
-                    continue;
-                if (objectType == GisObjectType.POLYGON && !isPolygonType)
-                    continue;
-            }
 
             switch (type) {
                 case CANGBIEN:
@@ -599,7 +585,7 @@ public class KchtGis155Service {
                         cangBienRepository.findAllById(vnCbIds).forEach(cb -> vnCangBienMap.put(cb.getId(), cb));
                     }
                     Map<UUID, GisSpatialObject> vnSpatialMap = new HashMap<>();
-                    if (objectType != null) {
+                    if (!vungNuocs.isEmpty()) {
                         List<UUID> vnSpatialIds = vungNuocs.stream().map(VungNuoc::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!vnSpatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(vnSpatialIds).forEach(so -> vnSpatialMap.put(so.getId(), so));
@@ -610,8 +596,10 @@ public class KchtGis155Service {
                         String parentProvince = (parent != null && parent.getTinhThanhPho() != null)
                                 ? parent.getTinhThanhPho()
                                 : "";
-                        Double viDo = null;
-                        Double kinhDo = null;
+                        GisSpatialObject spatial = vnSpatialMap.get(vn.getKhongGianId());
+                        double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
+                        Double viDo = coords != null ? coords[0] : null;
+                        Double kinhDo = coords != null ? coords[1] : null;
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(vn.getId() != null ? vn.getId().toString() : null)
@@ -637,28 +625,31 @@ public class KchtGis155Service {
                     break;
 
                 case LUONGHANGHAI:
-                    List<LuongHangHai> luongList = luongHangHaiRepository.findAll().stream()
-                            .filter(x -> !Boolean.TRUE.equals(x.getIsDeleted()))
-                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getDonViId()))
-                            .filter(x -> searchLower == null ||
-                                    (x.getTen() != null && x.getTen().toLowerCase().contains(searchLower)))
-                            .collect(Collectors.toList());
+                    String searchParam = (searchLower == null) ? null : "%" + searchLower + "%";
+                    List<LuongHangHai> luongList = luongHangHaiRepository.searchFiltered(orgUnitId, searchParam);
                     Map<UUID, GisSpatialObject> luongSpatialMap = new HashMap<>();
-                    if (objectType != null) {
+                    if (!luongList.isEmpty()) {
                         List<UUID> spatialIds = luongList.stream().map(LuongHangHai::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!spatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(spatialIds).forEach(so -> luongSpatialMap.put(so.getId(), so));
                         }
                     }
                     for (LuongHangHai l : luongList) {
+                        GisSpatialObject spatial = luongSpatialMap.get(l.getKhongGianId());
+                        double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
+                        Double lat = coords != null ? coords[0] : null;
+                        Double lng = coords != null ? coords[1] : null;
+
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(String.valueOf(l.getId()))
-                                .name("Luồng hàng hải " + l.getId() + " - " + l.getTen())
+                                .name(l.getTen() != null && !l.getTen().isEmpty() ? l.getTen() : "Luồng hàng hải")
                                 .ma("LUONG_" + l.getId())
                                 .orgName(getOrgName(l.getDonViId(), orgNameMap))
                                 .kchtTypeLabel("Luồng hàng hải")
                                 .diaDiem("")
                                 .diaChiChiTiet(l.getGhiChu() != null ? l.getGhiChu() : "")
+                                .latitude(lat)
+                                .longitude(lng)
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, l.getKhongGianId(), objectType, GisObjectType.LINE, luongSpatialMap);
@@ -676,21 +667,28 @@ public class KchtGis155Service {
                             orgUnitId, searchLower, null, null, DeKeApprovalStatus.APPROVED, PageRequest.of(0, 10000))
                             .getContent();
                     Map<UUID, GisSpatialObject> deKeSpatialMap = new HashMap<>();
-                    if (objectType != null) {
+                    if (!deKeList.isEmpty()) {
                         List<UUID> spatialIds = deKeList.stream().map(DeKe::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!spatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(spatialIds).forEach(so -> deKeSpatialMap.put(so.getId(), so));
                         }
                     }
                     for (DeKe dk : deKeList) {
+                        GisSpatialObject spatial = deKeSpatialMap.get(dk.getKhongGianId());
+                        double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
+                        Double lat = coords != null ? coords[0] : null;
+                        Double lng = coords != null ? coords[1] : null;
+
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(String.valueOf(dk.getId()))
-                                .name("Đê kè " + dk.getId() + " - " + dk.getLoaiDe())
+                                .name(dk.getTenDeKe() != null && !dk.getTenDeKe().isEmpty() ? dk.getTenDeKe() : "Đê kè")
                                 .ma("DEKE_" + dk.getId())
                                 .orgName(getOrgName(dk.getDonViId(), orgNameMap))
                                 .kchtTypeLabel("Đê kè")
                                 .diaDiem("")
                                 .diaChiChiTiet(dk.getViTri() != null ? dk.getViTri() : "")
+                                .latitude(lat)
+                                .longitude(lng)
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, dk.getKhongGianId(), objectType, GisObjectType.LINE, deKeSpatialMap);
@@ -704,21 +702,21 @@ public class KchtGis155Service {
                     break;
  
                 case COSO_SUACHUA:
-                    List<CoSuaChuaDongTau> csList = coSuaChuaDongTauRepository.findAll().stream()
-                            .filter(x -> !Boolean.TRUE.equals(x.getIsDeleted()))
-                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getOrgUnitId()))
-                            .filter(x -> searchLower == null ||
-                                    (x.getTenCoSo() != null && x.getTenCoSo().toLowerCase().contains(searchLower)) ||
-                                    (x.getDiaChi() != null && x.getDiaChi().toLowerCase().contains(searchLower)))
-                            .collect(Collectors.toList());
+                    String csSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
+                    List<CoSuaChuaDongTau> csList = coSuaChuaDongTauRepository.searchFiltered(orgUnitId, csSearchParam);
                     Map<UUID, GisSpatialObject> csSpatialMap = new HashMap<>();
-                    if (objectType != null) {
+                    if (!csList.isEmpty()) {
                         List<UUID> csSpatialIds = csList.stream().map(CoSuaChuaDongTau::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!csSpatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(csSpatialIds).forEach(so -> csSpatialMap.put(so.getId(), so));
                         }
                     }
                     for (CoSuaChuaDongTau cs : csList) {
+                        GisSpatialObject spatial = csSpatialMap.get(cs.getKhongGianId());
+                        double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
+                        Double lat = coords != null ? coords[0] : null;
+                        Double lng = coords != null ? coords[1] : null;
+
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(String.valueOf(cs.getId()))
                                 .name(cs.getTenCoSo())
@@ -727,8 +725,8 @@ public class KchtGis155Service {
                                 .kchtTypeLabel("Cơ sở sửa chữa")
                                 .diaDiem(cs.getTinhThanh() != null ? cs.getTinhThanh() : "")
                                 .diaChiChiTiet(cs.getDiaChi() != null ? cs.getDiaChi() : "")
-                                .latitude(null)
-                                .longitude(null)
+                                .latitude(lat)
+                                .longitude(lng)
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, cs.getKhongGianId(), objectType, GisObjectType.POINT, csSpatialMap);
@@ -743,13 +741,8 @@ public class KchtGis155Service {
 
                 case DENBIEN:
                     // 1. Fetch from NhaTramDen
-                    List<NhaTramDen> denList = nhaTramDenRepository.findAll().stream()
-                            .filter(x -> x.getDeletedAt() == null)
-                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getUnitId()))
-                            .filter(x -> searchLower == null ||
-                                    (x.getName() != null && x.getName().toLowerCase().contains(searchLower)) ||
-                                    (x.getCode() != null && x.getCode().toLowerCase().contains(searchLower)))
-                            .collect(Collectors.toList());
+                    String denSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
+                    List<NhaTramDen> denList = nhaTramDenRepository.searchGis(orgUnitId, denSearchParam);
                     Map<UUID, GisSpatialObject> denSpatialMap = new HashMap<>();
                     if (objectType != null && !denList.isEmpty()) {
                         List<UUID> denIds = denList.stream().map(NhaTramDen::getId).collect(Collectors.toList());
@@ -777,14 +770,7 @@ public class KchtGis155Service {
                     }
 
                     // 2. Fetch from BeaconLight
-                    List<BeaconLight> beaconList = beaconLightRepository.findAll().stream()
-                            .filter(x -> x.getDeletedAt() == null)
-                            .filter(x -> x.getApprovalStatus() == BeaconApprovalStatus.APPROVED)
-                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getUnitId()))
-                            .filter(x -> searchLower == null ||
-                                     (x.getName() != null && x.getName().toLowerCase().contains(searchLower)) ||
-                                     (x.getCode() != null && x.getCode().toLowerCase().contains(searchLower)))
-                            .collect(Collectors.toList());
+                    List<BeaconLight> beaconList = beaconLightRepository.searchGis(orgUnitId, denSearchParam);
                     Map<UUID, GisSpatialObject> beaconSpatialMap = new HashMap<>();
                     if (!beaconList.isEmpty()) {
                         List<UUID> beaconIds = beaconList.stream().map(BeaconLight::getId).collect(Collectors.toList());
@@ -818,14 +804,8 @@ public class KchtGis155Service {
                     break;
 
                 case PHAOTIEU:
-                    List<Buoy> buoyList = buoyRepository.findAll().stream()
-                            .filter(x -> x.getDeletedAt() == null)
-                            .filter(x -> x.getApprovalStatus() == BeaconApprovalStatus.APPROVED)
-                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getUnitId()))
-                            .filter(x -> searchLower == null ||
-                                    (x.getName() != null && x.getName().toLowerCase().contains(searchLower)) ||
-                                    (x.getCode() != null && x.getCode().toLowerCase().contains(searchLower)))
-                            .collect(Collectors.toList());
+                    String buoySearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
+                    List<Buoy> buoyList = buoyRepository.searchGis(orgUnitId, buoySearchParam);
                     Map<UUID, GisSpatialObject> buoySpatialMap = new HashMap<>();
                     if (!buoyList.isEmpty()) {
                         List<UUID> buoyIds = buoyList.stream().map(Buoy::getId).collect(Collectors.toList());
@@ -859,13 +839,8 @@ public class KchtGis155Service {
                     break;
 
                 case NHATRAM_PHAO:
-                    List<NhaTramPhao> phaoList = nhaTramPhaoRepository.findAll().stream()
-                            .filter(x -> x.getDeletedAt() == null)
-                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getUnitId()))
-                            .filter(x -> searchLower == null ||
-                                    (x.getName() != null && x.getName().toLowerCase().contains(searchLower)) ||
-                                    (x.getCode() != null && x.getCode().toLowerCase().contains(searchLower)))
-                            .collect(Collectors.toList());
+                    String phaoSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
+                    List<NhaTramPhao> phaoList = nhaTramPhaoRepository.searchGis(orgUnitId, phaoSearchParam);
                     Map<UUID, GisSpatialObject> phaoSpatialMap = new HashMap<>();
                     if (objectType != null && !phaoList.isEmpty()) {
                         List<UUID> phaoIds = phaoList.stream().map(NhaTramPhao::getId).collect(Collectors.toList());
@@ -894,14 +869,8 @@ public class KchtGis155Service {
                     break;
 
                 case DAI_TTDH:
-                    List<CoastalStationVTS> vtsStationList = coastalStationVTSRepository.findAll().stream()
-                            .filter(x -> x.getDeletedAt() == null)
-                            .filter(x -> x.getApprovalStatus() == StationApprovalStatus.APPROVED_L2)
-                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getUnitId()))
-                            .filter(x -> searchLower == null ||
-                                    (x.getName() != null && x.getName().toLowerCase().contains(searchLower)) ||
-                                    (x.getCode() != null && x.getCode().toLowerCase().contains(searchLower)))
-                            .collect(Collectors.toList());
+                    String vtsStSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
+                    List<CoastalStationVTS> vtsStationList = coastalStationVTSRepository.searchGis(orgUnitId, vtsStSearchParam);
                     Map<UUID, GisSpatialObject> vtsStationSpatialMap = new HashMap<>();
                     if (objectType != null && !vtsStationList.isEmpty()) {
                         List<UUID> vtsStationIds = vtsStationList.stream().map(CoastalStationVTS::getId).collect(Collectors.toList());
@@ -930,14 +899,8 @@ public class KchtGis155Service {
                     break;
 
                 case DAI_INMARSAT:
-                    List<CoastalStationInmarsat> inmarsatList = coastalStationInmarsatRepository.findAll().stream()
-                            .filter(x -> x.getDeletedAt() == null)
-                            .filter(x -> x.getApprovalStatus() == StationApprovalStatus.APPROVED_L2)
-                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getUnitId()))
-                            .filter(x -> searchLower == null ||
-                                    (x.getName() != null && x.getName().toLowerCase().contains(searchLower)) ||
-                                    (x.getCode() != null && x.getCode().toLowerCase().contains(searchLower)))
-                            .collect(Collectors.toList());
+                    String inmarsatSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
+                    List<CoastalStationInmarsat> inmarsatList = coastalStationInmarsatRepository.searchGis(orgUnitId, inmarsatSearchParam);
                     Map<UUID, GisSpatialObject> inmarsatSpatialMap = new HashMap<>();
                     if (objectType != null && !inmarsatList.isEmpty()) {
                         List<UUID> inmarsatIds = inmarsatList.stream().map(CoastalStationInmarsat::getId).collect(Collectors.toList());
@@ -966,14 +929,8 @@ public class KchtGis155Service {
                     break;
 
                 case DAI_COSPAS_SARSAT:
-                    List<CoastalStationCospasSarsat> cospasSarsatList = coastalStationCospasSarsatRepository.findAll().stream()
-                            .filter(x -> x.getDeletedAt() == null)
-                            .filter(x -> x.getApprovalStatus() == StationApprovalStatus.APPROVED_L2)
-                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getUnitId()))
-                            .filter(x -> searchLower == null ||
-                                    (x.getName() != null && x.getName().toLowerCase().contains(searchLower)) ||
-                                    (x.getCode() != null && x.getCode().toLowerCase().contains(searchLower)))
-                            .collect(Collectors.toList());
+                    String cospasSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
+                    List<CoastalStationCospasSarsat> cospasSarsatList = coastalStationCospasSarsatRepository.searchGis(orgUnitId, cospasSearchParam);
                     Map<UUID, GisSpatialObject> cospasSarsatSpatialMap = new HashMap<>();
                     if (objectType != null && !cospasSarsatList.isEmpty()) {
                         List<UUID> cospasSarsatIds = cospasSarsatList.stream().map(CoastalStationCospasSarsat::getId).collect(Collectors.toList());
@@ -1002,14 +959,8 @@ public class KchtGis155Service {
                     break;
 
                 case DAI_LRIT:
-                    List<CoastalStationLRIT> lritList = coastalStationLRITRepository.findAll().stream()
-                            .filter(x -> x.getDeletedAt() == null)
-                            .filter(x -> x.getApprovalStatus() == StationApprovalStatus.APPROVED_L2)
-                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getUnitId()))
-                            .filter(x -> searchLower == null ||
-                                    (x.getName() != null && x.getName().toLowerCase().contains(searchLower)) ||
-                                    (x.getCode() != null && x.getCode().toLowerCase().contains(searchLower)))
-                            .collect(Collectors.toList());
+                    String lritSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
+                    List<CoastalStationLRIT> lritList = coastalStationLRITRepository.searchGis(orgUnitId, lritSearchParam);
                     Map<UUID, GisSpatialObject> lritSpatialMap = new HashMap<>();
                     if (objectType != null && !lritList.isEmpty()) {
                         List<UUID> lritIds = lritList.stream().map(CoastalStationLRIT::getId).collect(Collectors.toList());
@@ -1038,14 +989,8 @@ public class KchtGis155Service {
                     break;
 
                 case DAI_HANOI:
-                    List<CoastalStationHaiphong> haiphongList = coastalStationHaiphongRepository.findAll().stream()
-                            .filter(x -> x.getDeletedAt() == null)
-                            .filter(x -> x.getApprovalStatus() == StationApprovalStatus.APPROVED_L2)
-                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getUnitId()))
-                            .filter(x -> searchLower == null ||
-                                    (x.getName() != null && x.getName().toLowerCase().contains(searchLower)) ||
-                                    (x.getCode() != null && x.getCode().toLowerCase().contains(searchLower)))
-                            .collect(Collectors.toList());
+                    String haiphongSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
+                    List<CoastalStationHaiphong> haiphongList = coastalStationHaiphongRepository.searchGis(orgUnitId, haiphongSearchParam);
                     Map<UUID, GisSpatialObject> haiphongSpatialMap = new HashMap<>();
                     if (objectType != null && !haiphongList.isEmpty()) {
                         List<UUID> haiphongIds = haiphongList.stream().map(CoastalStationHaiphong::getId).collect(Collectors.toList());
@@ -1074,22 +1019,21 @@ public class KchtGis155Service {
                     break;
 
                 case HE_THONG_VTS:
-                    List<HeThongVTS> vtsList = heThongVTSRepository.findAll().stream()
-                            .filter(x -> !Boolean.TRUE.equals(x.getIsDeleted()))
-                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getOrgUnitId()))
-                            .filter(x -> searchLower == null ||
-                                    (x.getTenHeThong() != null && x.getTenHeThong().toLowerCase().contains(searchLower))
-                                    ||
-                                    (x.getViTri() != null && x.getViTri().toLowerCase().contains(searchLower)))
-                            .collect(Collectors.toList());
+                    String vtsSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
+                    List<HeThongVTS> vtsList = heThongVTSRepository.searchFiltered(orgUnitId, vtsSearchParam);
                     Map<UUID, GisSpatialObject> vtsSpatialMap = new HashMap<>();
-                    if (objectType != null) {
+                    if (!vtsList.isEmpty()) {
                         List<UUID> vtsSpatialIds = vtsList.stream().map(HeThongVTS::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!vtsSpatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(vtsSpatialIds).forEach(so -> vtsSpatialMap.put(so.getId(), so));
                         }
                     }
                     for (HeThongVTS vts : vtsList) {
+                        GisSpatialObject spatial = vtsSpatialMap.get(vts.getKhongGianId());
+                        double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
+                        Double lat = coords != null ? coords[0] : null;
+                        Double lng = coords != null ? coords[1] : null;
+
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(String.valueOf(vts.getId()))
                                 .name(vts.getTenHeThong())
@@ -1098,8 +1042,8 @@ public class KchtGis155Service {
                                 .kchtTypeLabel("Hệ thống VTS")
                                 .diaDiem("")
                                 .diaChiChiTiet("Vị trí: " + (vts.getViTri() != null ? vts.getViTri() : "") + ", Tình trạng: " + (vts.getTinhTrang() != null ? (vts.getTinhTrang() == com.hanghai.kchtg.vts.entity.TinhTrangVTS.TOT ? "Tốt" : vts.getTinhTrang() == com.hanghai.kchtg.vts.entity.TinhTrangVTS.XUONG_CAP ? "Xuống cấp" : "Hư hỏng") : "") + ", Mức độ phụ trách: " + (vts.getMucDoPhuTrach() != null ? vts.getMucDoPhuTrach() : ""))
-                                .latitude(null)
-                                .longitude(null)
+                                .latitude(lat)
+                                .longitude(lng)
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, vts.getKhongGianId(), objectType, GisObjectType.POINT, vtsSpatialMap);
@@ -1113,13 +1057,8 @@ public class KchtGis155Service {
                     break;
 
                 case TRAM_RADAR:
-                    List<TramRadar> radarList = tramRadarRepository.findAll().stream()
-                            .filter(x -> !Boolean.TRUE.equals(x.getIsDeleted()))
-                            .filter(x -> orgUnitId == null || orgUnitId.equals(x.getOrgUnitId()))
-                            .filter(x -> searchLower == null ||
-                                    (x.getTenTram() != null && x.getTenTram().toLowerCase().contains(searchLower)) ||
-                                    (x.getViTri() != null && x.getViTri().toLowerCase().contains(searchLower)))
-                            .collect(Collectors.toList());
+                    String radarSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
+                    List<TramRadar> radarList = tramRadarRepository.searchFiltered(orgUnitId, radarSearchParam);
                     Map<UUID, GisSpatialObject> radarSpatialMap = new HashMap<>();
                     if (!radarList.isEmpty()) {
                         List<UUID> radarIds = radarList.stream().map(TramRadar::getId).collect(Collectors.toList());
@@ -1163,7 +1102,7 @@ public class KchtGis155Service {
                         cangBienRepository.findAllById(bpCbIds).forEach(cb -> bpCangBienMap.put(cb.getId(), cb));
                     }
                     Map<UUID, GisSpatialObject> bpSpatialMap = new HashMap<>();
-                    if (objectType != null) {
+                    if (!benPhaos.isEmpty()) {
                         List<UUID> bpSpatialIds = benPhaos.stream().map(VungNuoc::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!bpSpatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(bpSpatialIds).forEach(so -> bpSpatialMap.put(so.getId(), so));
@@ -1174,8 +1113,10 @@ public class KchtGis155Service {
                         String parentProvince = (parent != null && parent.getTinhThanhPho() != null)
                                 ? parent.getTinhThanhPho()
                                 : "";
-                        Double viDo = null;
-                        Double kinhDo = null;
+                        GisSpatialObject spatial = bpSpatialMap.get(vn.getKhongGianId());
+                        double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
+                        Double viDo = coords != null ? coords[0] : null;
+                        Double kinhDo = coords != null ? coords[1] : null;
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(vn.getId() != null ? vn.getId().toString() : null)
@@ -1210,7 +1151,7 @@ public class KchtGis155Service {
                         cangBienRepository.findAllById(knCbIds).forEach(cb -> knCangBienMap.put(cb.getId(), cb));
                     }
                     Map<UUID, GisSpatialObject> knSpatialMap = new HashMap<>();
-                    if (objectType != null) {
+                    if (!khuNeos.isEmpty()) {
                         List<UUID> knSpatialIds = khuNeos.stream().map(VungNuoc::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!knSpatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(knSpatialIds).forEach(so -> knSpatialMap.put(so.getId(), so));
@@ -1221,8 +1162,10 @@ public class KchtGis155Service {
                         String parentProvince = (parent != null && parent.getTinhThanhPho() != null)
                                 ? parent.getTinhThanhPho()
                                 : "";
-                        Double viDo = null;
-                        Double kinhDo = null;
+                        GisSpatialObject spatial = knSpatialMap.get(vn.getKhongGianId());
+                        double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
+                        Double viDo = coords != null ? coords[0] : null;
+                        Double kinhDo = coords != null ? coords[1] : null;
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(vn.getId() != null ? vn.getId().toString() : null)
@@ -1257,7 +1200,7 @@ public class KchtGis155Service {
                         cangBienRepository.findAllById(kcCbIds).forEach(cb -> kcCangBienMap.put(cb.getId(), cb));
                     }
                     Map<UUID, GisSpatialObject> kcSpatialMap = new HashMap<>();
-                    if (objectType != null) {
+                    if (!khuChuyens.isEmpty()) {
                         List<UUID> kcSpatialIds = khuChuyens.stream().map(VungNuoc::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!kcSpatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(kcSpatialIds).forEach(so -> kcSpatialMap.put(so.getId(), so));
@@ -1268,8 +1211,10 @@ public class KchtGis155Service {
                         String parentProvince = (parent != null && parent.getTinhThanhPho() != null)
                                 ? parent.getTinhThanhPho()
                                 : "";
-                        Double viDo = null;
-                        Double kinhDo = null;
+                        GisSpatialObject spatial = kcSpatialMap.get(vn.getKhongGianId());
+                        double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
+                        Double viDo = coords != null ? coords[0] : null;
+                        Double kinhDo = coords != null ? coords[1] : null;
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(vn.getId() != null ? vn.getId().toString() : null)
@@ -1304,7 +1249,7 @@ public class KchtGis155Service {
                         cangBienRepository.findAllById(ktCbIds).forEach(cb -> ktCangBienMap.put(cb.getId(), cb));
                     }
                     Map<UUID, GisSpatialObject> ktSpatialMap = new HashMap<>();
-                    if (objectType != null) {
+                    if (!khuTranhs.isEmpty()) {
                         List<UUID> ktSpatialIds = khuTranhs.stream().map(VungNuoc::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!ktSpatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(ktSpatialIds).forEach(so -> ktSpatialMap.put(so.getId(), so));
@@ -1315,8 +1260,10 @@ public class KchtGis155Service {
                         String parentProvince = (parent != null && parent.getTinhThanhPho() != null)
                                 ? parent.getTinhThanhPho()
                                 : "";
-                        Double viDo = null;
-                        Double kinhDo = null;
+                        GisSpatialObject spatial = ktSpatialMap.get(vn.getKhongGianId());
+                        double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
+                        Double viDo = coords != null ? coords[0] : null;
+                        Double kinhDo = coords != null ? coords[1] : null;
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(vn.getId() != null ? vn.getId().toString() : null)
@@ -1344,14 +1291,9 @@ public class KchtGis155Service {
             log.info("PERF: Type {} took {} ms, results size {}", type, System.currentTimeMillis() - tStart, results.size());
         }
 
-        // Apply pagination
-        int start = Math.min(page * size, results.size());
-        int end = Math.min(start + size, results.size());
-        List<KchtGisSearchResult> subList = results.subList(start, end);
-
-        // Populate spatial data for only the paginated subList
-        if (objectType == null && !subList.isEmpty()) {
-            List<UUID> targetIds = subList.stream()
+        // Populate spatial data for all results
+        if (objectType == null && !results.isEmpty()) {
+            List<UUID> targetIds = results.stream()
                     .map(r -> spatialIdMap.get(r.getId()))
                     .filter(Objects::nonNull)
                     .distinct()
@@ -1371,7 +1313,7 @@ public class KchtGis155Service {
                     }
                 });
             }
-            for (KchtGisSearchResult r : subList) {
+            for (KchtGisSearchResult r : results) {
                 UUID lookupId = spatialIdMap.get(r.getId());
                 if (lookupId != null) {
                     GisSpatialObject spatial = pageSpatialMap.get(lookupId);
@@ -1393,7 +1335,15 @@ public class KchtGis155Service {
             }
         }
 
-        Pageable pageable = PageRequest.of(page, size);
-        return new PageImpl<>(subList, pageable, results.size());
+        // Apply location/province filter post-collection
+        if (tinhThanhStr != null && !tinhThanhStr.isEmpty()) {
+            final String targetProv = tinhThanhStr.toLowerCase();
+            results = results.stream()
+                    .filter(r -> (r.getDiaDiem() != null && r.getDiaDiem().toLowerCase().contains(targetProv)) ||
+                                 (r.getOrgName() != null && r.getOrgName().toLowerCase().contains(targetProv)))
+                    .collect(Collectors.toList());
+        }
+
+        return results;
     }
 }

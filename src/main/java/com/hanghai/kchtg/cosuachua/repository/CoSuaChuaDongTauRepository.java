@@ -26,4 +26,11 @@ public interface CoSuaChuaDongTauRepository extends JpaRepository<CoSuaChuaDongT
                                     @Param("tinhThanh") String tinhThanh,
                                     @Param("trangThai") CoSuaChuaApprovalStatus trangThai,
                                     @Param("trangThaiPheDuyet") CoSuaChuaApprovalStatus trangThaiPheDuyet);
+    @Query("SELECT c FROM CoSuaChuaDongTau c WHERE " +
+           "c.isDeleted = false AND " +
+           "(:orgUnitId IS NULL OR c.orgUnitId = :orgUnitId) AND " +
+           "(:search IS NULL OR LOWER(c.tenCoSo) LIKE :search OR LOWER(c.diaChi) LIKE :search)")
+    List<CoSuaChuaDongTau> searchFiltered(
+            @Param("orgUnitId") java.util.UUID orgUnitId,
+            @Param("search") String search);
 }

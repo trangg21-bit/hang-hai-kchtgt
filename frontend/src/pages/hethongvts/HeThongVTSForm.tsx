@@ -10,11 +10,11 @@ import {
   Empty,
   Descriptions,
   Space,
-  message,
   Breadcrumb,
   Modal,
 } from 'antd';
 import dayjs from 'dayjs';
+import toast from '../../components/ToastNotification';
 import { heThongVTSCRUD, heThongVTSApproval } from '../../services/heThongVtsService';
 import { organizationService } from '../../services/organizationService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -26,6 +26,8 @@ import type {
   HistoryEntry,
 } from '../../types/heThongVts';
 import { TINH_TRANG_VTS_OPTIONS, TINH_TRANG_VTS_MAP } from '../../types/heThongVts';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 type ApprovalStatus = 'PROPOSED' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
 import { useAuthStore } from '../../store/authStore';
@@ -50,6 +52,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
 
+  const isIframe = window.self !== window.top;
   const isModalMode = open !== undefined;
   const id = isModalMode ? (editId || undefined) : routeId;
   const isEditMode = isModalMode ? mode === 'edit' : searchParams.get('mode') === 'edit';
@@ -161,9 +164,11 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
 
       if (isCreateMode) {
         await heThongVTSCRUD.create(payload as CreateHeThongVTSRequest);
-        message.success('Tạo mới thành công');
+        toast.success('Tạo mới thành công');
         if (isModalMode) {
           onSuccess?.();
+        } else if (isIframe) {
+          window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
         } else {
           navigate('/he-thong-vts');
         }
@@ -172,15 +177,17 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = res;
         }
-        message.success('Cập nhật thành công');
+        toast.success('Cập nhật thành công');
         if (isModalMode) {
           onSuccess?.();
+        } else if (isIframe) {
+          window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
         } else {
           navigate('/he-thong-vts');
         }
       }
     } catch (err) {
-      message.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
+      toast.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
     } finally {
       setIsSubmitting(false);
     }
@@ -202,7 +209,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = updated;
         }
-        message.success('Phê duyệt C1 thành công');
+        toast.success('Phê duyệt C1 thành công');
         setRecord(updated);
         setHasChanges(true);
       } else if (action === 'approveC2') {
@@ -213,7 +220,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = updated;
         }
-        message.success('Phê duyệt C2 thành công');
+        toast.success('Phê duyệt C2 thành công');
         setRecord(updated);
         setHasChanges(true);
       } else if (action === 'reject') {
@@ -232,21 +239,23 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
           (window.parent as any).kchtDetailCache[id] = updatedRecord;
         }
 
-        message.success('Từ chối thành công');
+        toast.success('Từ chối thành công');
         const updated = { ...record, lyDoTuChoi: payload?.lyDo as string };
         setRecord(updated);
         setHasChanges(true);
       } else if (action === 'delete') {
         await heThongVTSCRUD.delete(id);
-        message.success('Xóa thành công');
+        toast.success('Xóa thành công');
         if (isModalMode && onSuccess) {
           onSuccess();
+        } else if (isIframe) {
+          window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
         } else {
           navigate('/he-thong-vts');
         }
       }
     } catch (err) {
-      message.error(err instanceof Error ? err.message : 'Lỗi thực hiện thao tác');
+      toast.error(err instanceof Error ? err.message : 'Lỗi thực hiện thao tác');
     } finally {
       setIsSubmitting(false);
     }
@@ -398,12 +407,12 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
   if (isModalMode) {
     return (
       <Modal
-        title={isCreateMode ? 'Tạo mới Hệ thống VTS' : 'Chỉnh sửa Hệ thống VTS'}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isCreateMode ? 'Tạo mới Hệ thống VTS' : 'Chỉnh sửa Hệ thống VTS'}</span>}
         open={open}
         onCancel={handleCloseModal}
         footer={null}
-        destroyOnClose
-        maskClosable={false}
+        destroyOnHidden
+        mask={{ closable: false }}
       >
         <Spin spinning={isLoading}>
           <Form
@@ -491,10 +500,13 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
   }
   // Create/Edit form view
   return (
-    <div style={{ padding: '24px' }}>
-      <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />
-      <Card style={{ maxWidth: '800px' }}>
-        <h2>{isCreateMode ? 'Tạo mới Hệ thống VTS' : 'Chỉnh sửa Hệ thống VTS'}</h2>
+    <div style={isIframe ? { padding: '16px 24px', background: '#fff', minHeight: '100vh' } : { padding: '24px' }}>
+      {!isIframe && <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />}
+      <Card
+        style={isIframe ? { border: 'none', boxShadow: 'none', padding: 0 } : { maxWidth: '800px' }}
+        styles={isIframe ? { body: { padding: 0 } } : undefined}
+      >
+        {!isIframe && <h2>{isCreateMode ? 'Tạo mới Hệ thống VTS' : 'Chỉnh sửa Hệ thống VTS'}</h2>}
         <Form
           form={form}
           layout="vertical"
@@ -585,7 +597,7 @@ export default function HeThongVTSForm({ open, editId, mode, onCancel, onSuccess
               <Button type="primary" htmlType="submit" loading={isSubmitting}>
                 {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
               </Button>
-              <Button onClick={() => navigate('/he-thong-vts')}>
+              <Button onClick={isIframe ? () => window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*') : () => navigate('/he-thong-vts')}>
                 Hủy
               </Button>
             </Space>

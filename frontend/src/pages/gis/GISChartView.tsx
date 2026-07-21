@@ -446,15 +446,35 @@ const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[]
     return [
       { key: 'maCau', label: 'Mã cầu cảng' },
       { key: 'tenCau', label: 'Tên cầu cảng' },
-      { key: 'loaiCau', label: 'Loại cầu cảng' },
-      { key: 'congNangKhaiThac', label: 'Công năng khai thác' },
-      { key: 'chieuDai', label: 'Chiều dài (m)' },
-      { key: 'taiTrong', label: 'Trọng tải tiếp nhận (DWT)' },
-      { key: 'benCangId', label: 'Thuộc bến cảng' },
       { key: 'orgUnitId', label: 'Đơn vị quản lý' },
-      { key: 'trangThaiHoatDong', label: 'Trạng thái hoạt động' },
-      { key: 'trangThaiPheDuyet', label: 'Trạng thái phê duyệt' },
-      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+      { key: 'diaDiem', label: 'Địa điểm (Tỉnh/ Thành phố)' },
+      { key: 'diaDiemChiTiet', label: 'Địa điểm chi tiết' },
+      { key: 'ngayCapNhat', label: 'Ngày cập nhật' },
+      { key: 'canBoCapNhat', label: 'Cán bộ cập nhật' },
+      { key: 'cangBienId', label: 'Thuộc cảng biển' },
+      { key: 'luongHangHaiId', label: 'Thuộc luồng hàng hải' },
+      { key: 'loaiKetCau', label: 'Loại kết cấu cầu cảng' },
+      { key: 'congNangKhaiThac', label: 'Công năng khai thác' },
+      { key: 'trangThaiHoatDong', label: 'Tình trạng' },
+      { key: 'trangThaiPheDuyet', label: 'Trạng thái' },
+      { key: 'thoiDiemCongBoMo', label: 'Thời điểm công bố mở, đưa vào sử dụng' },
+      { key: 'quyetDinhCongBo', label: 'Quyết định công bố/ Văn bản cho phép khai thác' },
+      { key: 'vanBanThoaThuanDauTu', label: 'Văn bản thỏa thuận đầu tư xây dựng' },
+      { key: 'benCangId', label: 'Thuộc bến cảng' },
+      { key: 'phanCap', label: 'Phân cấp công trình' },
+      { key: 'chieuDai', label: 'Chiều dài (m)' },
+      { key: 'chieuRong', label: 'Chiều rộng (m)' },
+      { key: 'thoiDiemPheDuyetQuyTrinhBaoTriCongTrinh', label: 'Thời điểm phê duyệt quy trình bảo trì công trình' },
+      { key: 'thoiDiemDuocChapThuanHoSoBaoCaoDanhGiaAnToanCongTrinh', label: 'Thời điểm được chấp thuận hồ sơ báo cáo đánh giá an toàn công trình (gần nhất)' },
+      { key: 'thoiDiemKiemDinhGanNhat', label: 'Thời điểm kiểm định gần nhất' },
+      { key: 'soLuongCauCangDangKhaiThac', label: 'Số lượng cầu cảng đang khai thác' },
+      { key: 'soLuongCauCangDaCongBo', label: 'Số lượng cầu cảng đã công bố' },
+      { key: 'soLuongCauCangDangDuocThoaThuanDauTuXayDung', label: 'Số lượng cầu cảng đang được thỏa thuận đầu tư xây dựng' },
+      { key: 'sanLuongHangThongQua', label: 'Sản lượng hàng thông qua' },
+      { key: 'tiepNhanTauCoTrongTaiLonHonThongSoTaiQuyetDinhCongBo', label: 'Tiếp nhận tàu có trọng tải lớn hơn thông số tại quyết định công bố' },
+      { key: 'soVanBan', label: 'Số văn bản' },
+      { key: 'ngayVanBan', label: 'Ngày văn bản' },
+      { key: 'phamViKhuNuocNeoBuocTau', label: 'Phạm vi khu nước neo buộc tàu' }
     ];
   }
 
@@ -581,14 +601,25 @@ const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[]
 
   if (normType === 'Cơ sở sửa chữa' || normType === 'Cơ sở sửa chữa/đóng tàu') {
     return [
-      { key: 'maCoSo', label: 'Mã cơ sở' },
-      { key: 'tenCoSo', label: 'Tên cơ sở đóng/sửa tàu' },
-      { key: 'nangLucNang', label: 'Năng lực nâng (tấn)' },
-      { key: 'kichThuocDoc', label: 'Kích thước đốc (m)' },
+      { key: 'maCoSo', label: 'Mã cơ sở sửa chữa, đóng tàu' },
+      { key: 'tenCoSo', label: 'Tên cơ sở sửa chữa, đóng tàu' },
       { key: 'orgUnitId', label: 'Đơn vị quản lý' },
-      { key: 'trangThaiHoatDong', label: 'Trạng thái hoạt động' },
-      { key: 'trangThaiPheDuyet', label: 'Trạng thái phê duyệt' },
-      { key: 'loaiHinhHoc', label: 'Loại hình học' }
+      { key: 'tinhThanh', label: 'Địa điểm (Tỉnh/ Thành phố)' },
+      { key: 'diaChi', label: 'Địa điểm chi tiết' },
+      { key: 'ngaySuaDoi', label: 'Ngày cập nhật' },
+      { key: 'nguoiSuaDoi', label: 'Cán bộ cập nhật' },
+      { key: 'ghiChu', label: 'Ghi chú' },
+      { key: 'cangBienId', label: 'Thuộc cảng biển' },
+      { key: 'trangThaiHoatDong', label: 'Tình trạng' },
+      { key: 'trangThai', label: 'Trạng thái' },
+      { key: 'cauCangId', label: 'Thuộc cầu cảng' },
+      { key: 'congNangSuDung', label: 'Công năng sử dụng' },
+      { key: 'dienTichNhaXuongKhoBai', label: 'Diện tích nhà xưởng, kho bãi' },
+      { key: 'loaiTauDongMoiSuaChua', label: 'Loại tàu đóng mới, sửa chữa' },
+      { key: 'coTau', label: 'Cỡ tàu' },
+      { key: 'loaiHinhDoanhNghiep', label: 'Loại hình doanh nghiệp' },
+      { key: 'hoatDong', label: 'Hoạt động' },
+      { key: 'soLuongTrienDa', label: 'Số lượng triền đà' }
     ];
   }
 
@@ -990,6 +1021,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
             if (k === 'loaiBen') val = getLoaiBenText(val);
             if (k === 'loaiCau') val = getLoaiCauText(val);
             if (k === 'thoiDiemCongBoMo') val = formatDate(val);
+            if (k === 'ngaySuaDoi') val = formatDateTime(val);
           }
           
           rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(val)}</td></tr>`;
@@ -1083,11 +1115,15 @@ const fetchAndFormatPopupDetails = async (record: any) => {
 
       if (data.updatedAt || data.ngayCapNhat) {
         const updateDate = data.updatedAt || data.ngayCapNhat;
-        rowsHtml += `<tr><td style="${tdLabelStyle}">Ngày cập nhật:</td><td style="${tdValStyle}">${formatDateTime(updateDate)}</td></tr>`;
+        if (!renderedKeys.has('ngaySuaDoi') && !renderedKeys.has('ngayCapNhat') && !renderedKeys.has('updatedAt')) {
+          rowsHtml += `<tr><td style="${tdLabelStyle}">Ngày cập nhật:</td><td style="${tdValStyle}">${formatDateTime(updateDate)}</td></tr>`;
+        }
       }
       if (data.updatedBy || data.canBoCapNhat) {
         const updater = data.updatedBy || data.canBoCapNhat;
-        rowsHtml += `<tr><td style="${tdLabelStyle}">Cán bộ cập nhật:</td><td style="${tdValStyle}">${formatVal(updater)}</td></tr>`;
+        if (!renderedKeys.has('nguoiSuaDoi') && !renderedKeys.has('canBoCapNhat') && !renderedKeys.has('updatedBy')) {
+          rowsHtml += `<tr><td style="${tdLabelStyle}">Cán bộ cập nhật:</td><td style="${tdValStyle}">${formatVal(updater)}</td></tr>`;
+        }
       }
     } else {
       // Fallback
@@ -1417,8 +1453,7 @@ export default function GISChartView() {
   const [searchingInfrastructure, setSearchingInfrastructure] = useState(false);
   const [infrastructureResults, setInfrastructureResults] = useState<any[]>([]);
   const [totalSearchElements, setTotalSearchElements] = useState(0);
-  const [searchPage, setSearchPage] = useState(1);
-  const [searchPageSize, setSearchPageSize] = useState(20);
+  const [hasSearched, setHasSearched] = useState(false);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
   const [searchPanelVisible, setSearchPanelVisible] = useState(true);
@@ -1467,6 +1502,7 @@ export default function GISChartView() {
   const handleSearchInfrastructure = useCallback(async () => {
     setSearchingInfrastructure(true);
     setSelectedRowKeys([]);
+    hasSearchedRef.current = true;
     try {
       const values = searchForm.getFieldsValue();
       const orgUnitValue = !values ? undefined : values.orgUnitId;
@@ -1480,8 +1516,6 @@ export default function GISChartView() {
 
       const res = await api.get('/v1/kchtgis/kchtgis_155/search', {
         params: {
-          page: searchPage - 1,
-          size: searchPageSize,
           orgUnitId,
           kchtType: kchtTypes.join(','),
           tinhThanhPho,
@@ -1490,8 +1524,10 @@ export default function GISChartView() {
         }
       });
 
-      const pageData = res.data.data;
-      const list = (pageData.content || []).map((x: any) => ({
+      const rawData = res.data.data || [];
+      const totalElements = rawData.length;
+
+      const list = rawData.map((x: any) => ({
         ...x,
         id: x.id,
         name: x.name,
@@ -1506,13 +1542,13 @@ export default function GISChartView() {
 
       setInfrastructureResults(list);
       setSelectedRowKeys([]);
-      setTotalSearchElements(pageData.totalElements || list.length);
+      setTotalSearchElements(totalElements);
     } catch (err) {
       console.error(err);
     } finally {
       setSearchingInfrastructure(false);
     }
-  }, [searchForm, searchPage, searchPageSize]);
+  }, [searchForm]);
 
   // Load Org Units & Symbols on Mount
   useEffect(() => {
@@ -1537,10 +1573,15 @@ export default function GISChartView() {
     (window as any).kchtSymbols = symbols;
   }, [symbols]);
 
-  // Trigger search on pagination changes
+  const hasSearchedRef = useRef(false);
+
+  // Trigger search on mount if url params exist
   useEffect(() => {
-    handleSearchInfrastructure();
-  }, [searchPage, searchPageSize, handleSearchInfrastructure]);
+    const hasUrlParams = !!urlProvince || urlKchtType.length > 0 || !!urlSearch;
+    if (searchPanelVisible && hasUrlParams) {
+      handleSearchInfrastructure();
+    }
+  }, [handleSearchInfrastructure, searchPanelVisible, urlProvince, urlKchtType.length, urlSearch]);
 
   // Update map size when search panel is shown/hidden
   useEffect(() => {
@@ -2682,7 +2723,7 @@ export default function GISChartView() {
     
     searchVertexMarkersGroupRef.current.clearLayers();
 
-    const selectedRecords = infrastructureResults.filter((record) => selectedRowKeys.includes(record.id));
+    const selectedRecords = infrastructureResults;
     const zoom = mapRef.current.getZoom();
     if (zoom < 10) return;
 
@@ -2794,7 +2835,7 @@ export default function GISChartView() {
       const tempGroup = L.layerGroup(vertexMarkers);
       searchVertexMarkersGroupRef.current.addLayer(tempGroup);
     }
-  }, [infrastructureResults, selectedRowKeys, symbols]);
+  }, [infrastructureResults, symbols]);
 
   const renderSearchMarkers = useCallback(() => {
     const L = window.L;
@@ -2808,7 +2849,7 @@ export default function GISChartView() {
       searchVertexMarkersGroupRef.current.clearLayers();
     }
 
-    const selectedRecords = infrastructureResults.filter((record) => selectedRowKeys.includes(record.id));
+    const selectedRecords = infrastructureResults;
     if (selectedRecords.length === 0) return;
 
     const bounds = mapRef.current.getBounds();
@@ -3011,7 +3052,7 @@ export default function GISChartView() {
 
     const endTime = performance.now();
     console.log(`[Map] Draw completed in ${(endTime - startTime).toFixed(2)} ms. Rendered ${selectedRecords.length} records (${markers.length} main layers in viewport).`);
-  }, [infrastructureResults, symbols, selectedRowKeys, renderVertexMarkers]);
+  }, [infrastructureResults, symbols, renderVertexMarkers]);
 
   useEffect(() => {
     renderVertexMarkersRef.current = renderVertexMarkers;
@@ -3024,12 +3065,12 @@ export default function GISChartView() {
   // Trigger search result rendering whenever data or selections change
   useEffect(() => {
     renderSearchMarkers();
-  }, [infrastructureResults, symbols, selectedRowKeys, renderSearchMarkers]);
+  }, [infrastructureResults, symbols, renderSearchMarkers]);
 
   // Run fitBounds ONCE when the list of selected records changes (to avoid movement loop)
   useEffect(() => {
     if (!mapRef.current || !leafletLoaded) return;
-    const selectedRecords = infrastructureResults.filter((record) => selectedRowKeys.includes(record.id));
+    const selectedRecords = infrastructureResults;
     if (selectedRecords.length === 0) return;
 
     try {
@@ -3065,7 +3106,7 @@ export default function GISChartView() {
     } catch (e) {
       // ignore
     }
-  }, [selectedRowKeys, infrastructureResults, leafletLoaded]);
+  }, [infrastructureResults, leafletLoaded]);
 
   const [parsedLayers, setParsedLayers] = useState<Array<{
     minZoom: number;
@@ -3727,9 +3768,17 @@ export default function GISChartView() {
                         <Button 
                           icon={<DeleteOutlined />} 
                           onClick={() => {
+                            hasSearchedRef.current = false;
                             searchForm.resetFields();
                             setInfrastructureResults([]);
                             setTotalSearchElements(0);
+                            setSelectedRowKeys([]);
+                            if (searchMarkersGroupRef.current) {
+                              searchMarkersGroupRef.current.clearLayers();
+                            }
+                            if (searchVertexMarkersGroupRef.current) {
+                              searchVertexMarkersGroupRef.current.clearLayers();
+                            }
                           }}
                           style={{ borderColor: '#ff4d4f', color: '#ff4d4f' }}
                         >
@@ -3746,107 +3795,6 @@ export default function GISChartView() {
                       </div>
                     </Form>
 
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '16px 0 8px 0', fontSize: '13px' }}>
-                      <span>{totalSearchElements > 0 ? `${(searchPage - 1) * searchPageSize + 1}-${Math.min(searchPage * searchPageSize, totalSearchElements)} trong ${totalSearchElements}` : '0 trong 0'}</span>
-                      <Space size={4}>
-                        <Button 
-                          size="small" 
-                          disabled={searchPage <= 1} 
-                          onClick={() => { setSearchPage(p => p - 1); }}
-                        >
-                          &lt;
-                        </Button>
-                        <Button 
-                          size="small" 
-                          disabled={searchPage * searchPageSize >= totalSearchElements} 
-                          onClick={() => { setSearchPage(p => p + 1); }}
-                        >
-                          &gt;
-                        </Button>
-                        <Select
-                          size="small"
-                          value={searchPageSize}
-                          onChange={(val) => { setSearchPageSize(val); setSearchPage(1); }}
-                          options={[
-                            { value: 20, label: '20 / trang' },
-                            { value: 50, label: '50 / trang' },
-                            { value: 100, label: '100 / trang' },
-                            { value: 5000, label: '5000 / trang' },
-                          ]}
-                          style={{ width: 120 }}
-                        />
-                      </Space>
-                    </div>
-                      </div>
-
-                      {/* Table fills all remaining vertical space */}
-                      <div ref={tableWrapperRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden', width: '100%', maxWidth: '100%', padding: '0 12px 12px 12px' }}>
-                    <Table
-                      style={{ width: '100%' }}
-                      loading={searchingInfrastructure}
-                      rowSelection={{
-                        type: 'checkbox',
-                        fixed: true,
-                        columnWidth: 50,
-                        selectedRowKeys: selectedRowKeys,
-                        onChange: (keys) => {
-                          setSelectedRowKeys(keys);
-                        },
-                        getCheckboxProps: () => ({
-                          disabled: searchingInfrastructure
-                        })
-                      }}
-                      columns={[
-                        {
-                          title: 'STT',
-                          dataIndex: 'stt',
-                          key: 'stt',
-                          width: 60,
-                          render: (_text, _record, index) => (searchPage - 1) * searchPageSize + index + 1,
-                        },
-                        {
-                          title: 'Đơn vị quản lý',
-                          dataIndex: 'orgName',
-                          key: 'orgName',
-                          width: 200,
-                        },
-                        {
-                          title: 'Loại KCHT',
-                          dataIndex: 'kchtTypeLabel',
-                          key: 'kchtTypeLabel',
-                          width: 120,
-                        },
-                        {
-                          title: 'Địa điểm (Tỉnh/Thành phố)',
-                          dataIndex: 'diaDiem',
-                          key: 'diaDiem',
-                          width: 180,
-                        },
-                        {
-                          title: 'Địa chỉ chi tiết',
-                          dataIndex: 'diaChiChiTiet',
-                          key: 'diaChiChiTiet',
-                          width: 220,
-                        },
-                        {
-                          title: 'KCHT',
-                          dataIndex: 'name',
-                          key: 'name',
-                          width: 200,
-                        }
-                      ]}
-                      dataSource={infrastructureResults}
-                      rowKey="id"
-                      pagination={false}
-                      size="small"
-                      bordered
-                      virtual={infrastructureResults.length > 100}
-                      scroll={{ x: 980, y: tableHeight }}
-                      onRow={(record) => ({
-                        onClick: () => handleRowClick(record),
-                        style: { cursor: 'pointer' }
-                      })}
-                    />
                       </div>
                     </div>
                   ),

@@ -24,4 +24,11 @@ public interface NhaTramDenRepository extends JpaRepository<NhaTramDen, UUID> {
                      @Param("code") String code,
                      @Param("type") BeaconLightType type,
                      @Param("status") NhaTramStatus status);
+    @Query("SELECT d FROM NhaTramDen d WHERE " +
+            "d.deletedAt IS NULL AND " +
+            "(:orgUnitId IS NULL OR d.unitId = :orgUnitId) AND " +
+            "(:search IS NULL OR LOWER(d.name) LIKE :search OR LOWER(d.code) LIKE :search)")
+    List<NhaTramDen> searchGis(
+            @Param("orgUnitId") UUID orgUnitId,
+            @Param("search") String search);
 }

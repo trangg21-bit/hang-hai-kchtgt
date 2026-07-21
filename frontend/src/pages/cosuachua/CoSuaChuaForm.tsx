@@ -10,10 +10,10 @@ import {
   Empty,
   Descriptions,
   Space,
-  message,
   Breadcrumb,
   Modal,
 } from 'antd';
+import toast from '../../components/ToastNotification';
 import { coSuaChuaCRUD, coSuaChuaApproval } from '../../services/coSuaChuaService';
 import { organizationService } from '../../services/organizationService';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
@@ -52,6 +52,7 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
 
+  const isIframe = window.self !== window.top;
   const isModalMode = open !== undefined;
   const id = isModalMode ? (editId || undefined) : routeParams.id;
   const isEditMode = isModalMode ? (mode === 'edit') : searchParams.get('mode') === 'edit';
@@ -157,9 +158,11 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
 
       if (isCreateMode) {
         await coSuaChuaCRUD.create(payload as CreateCoSuaChuaRequest);
-        message.success('Tạo mới thành công');
+        toast.success('Tạo mới thành công');
         if (isModalMode) {
           onSuccess?.();
+        } else if (isIframe) {
+          window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
         } else {
           navigate('/co-so-sua-chua');
         }
@@ -168,15 +171,17 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = res;
         }
-        message.success('Cập nhật thành công');
+        toast.success('Cập nhật thành công');
         if (isModalMode) {
           onSuccess?.();
+        } else if (isIframe) {
+          window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
         } else {
           navigate('/co-so-sua-chua');
         }
       }
     } catch (err) {
-      message.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
+      toast.error(err instanceof Error ? err.message : 'Lỗi lưu dữ liệu');
     } finally {
       setIsSubmitting(false);
     }
@@ -199,7 +204,7 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = res;
         }
-        message.success('Phê duyệt C1 thành công');
+        toast.success('Phê duyệt C1 thành công');
         setRecord({ ...record, trangThai: 'UNDER_REVIEW' });
       } else if (action === 'approveC2') {
         const pheDuyetData: PheDuyetRequest = {
@@ -210,7 +215,7 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[id] = res;
         }
-        message.success('Phê duyệt C2 thành công');
+        toast.success('Phê duyệt C2 thành công');
         setRecord({ ...record, trangThai: 'APPROVED' });
       } else if (action === 'reject') {
         const pheDuyetData: PheDuyetRequest = {
@@ -228,7 +233,7 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
           (window.parent as any).kchtDetailCache[id] = updatedRecord;
         }
 
-        message.success('Từ chối thành công');
+        toast.success('Từ chối thành công');
         setRecord({
           ...record,
           trangThai: 'REJECTED',
@@ -236,11 +241,17 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
         });
       } else if (action === 'delete') {
         await coSuaChuaCRUD.delete(id);
-        message.success('Xóa thành công');
-        navigate('/co-so-sua-chua');
+        toast.success('Xóa thành công');
+        if (isModalMode && onSuccess) {
+          onSuccess();
+        } else if (isIframe) {
+          window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
+        } else {
+          navigate('/co-so-sua-chua');
+        }
       }
     } catch (err) {
-      message.error(err instanceof Error ? err.message : 'Lỗi thực hiện thao tác');
+      toast.error(err instanceof Error ? err.message : 'Lỗi thực hiện thao tác');
     } finally {
       setIsSubmitting(false);
     }
@@ -503,10 +514,13 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
 
   // Create/Edit form view
   return (
-    <div style={{ padding: '24px' }}>
-      <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />
-      <Card style={{ maxWidth: '800px' }}>
-        <h2>{isCreateMode ? 'Tạo mới Cơ sở Sửa chữa' : 'Chỉnh sửa Cơ sở Sửa chữa'}</h2>
+    <div style={isIframe ? { padding: '16px 24px', background: '#fff', minHeight: '100vh' } : { padding: '24px' }}>
+      {!isIframe && <Breadcrumb items={breadcrumbs} style={{ marginBottom: '16px' }} />}
+      <Card
+        style={isIframe ? { border: 'none', boxShadow: 'none', padding: 0 } : { maxWidth: '800px' }}
+        styles={isIframe ? { body: { padding: 0 } } : undefined}
+      >
+        {!isIframe && <h2>{isCreateMode ? 'Tạo mới Cơ sở Sửa chữa' : 'Chỉnh sửa Cơ sở Sửa chữa'}</h2>}
         <Form
           form={form}
           layout="vertical"
@@ -623,7 +637,7 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
               <Button type="primary" htmlType="submit" loading={isSubmitting}>
                 {isCreateMode ? 'Tạo mới' : 'Cập nhật'}
               </Button>
-              <Button onClick={() => navigate('/co-so-sua-chua')}>
+              <Button onClick={isIframe ? () => window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*') : () => navigate('/co-so-sua-chua')}>
                 Hủy
               </Button>
             </Space>
