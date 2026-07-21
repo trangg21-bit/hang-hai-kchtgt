@@ -21,6 +21,7 @@ import S63PermitsPage from './pages/gis/S63PermitsPage';
 import LoginPage from './pages/Login';
 import ReportList from './pages/reports/ReportList';
 import ReportViewer from './pages/reports/ReportViewer';
+import Bcc157Form from './pages/reports/Bcc157Form';
 import ConnectionList from './pages/connections/ConnectionList';
 import ConnectionForm from './pages/connections/ConnectionForm';
 import ConnectionHealth from './pages/connections/ConnectionHealth';
@@ -164,6 +165,7 @@ export default function App() {
                 {/* Reports & Statistics */}
                 <Route path="/reports" element={<PermissionGuard permission="report:read"><ReportList /></PermissionGuard>} />
                 <Route path="/reports/:code" element={<PermissionGuard permission="report:read"><ReportViewer /></PermissionGuard>} />
+                <Route path="/reports/F-142/create" element={<PermissionGuard permission="report:create"><Bcc157Form /></PermissionGuard>} />
 
                 {/* Beacon Lights & Buoys — Báo hiệu hàng hải */}
                 <Route path="/beacons" element={<PermissionGuard permission="data:read"><BeaconList /></PermissionGuard>} />
