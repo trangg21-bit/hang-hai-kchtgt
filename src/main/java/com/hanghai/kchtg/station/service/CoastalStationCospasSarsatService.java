@@ -20,6 +20,10 @@ public class CoastalStationCospasSarsatService {
     private final HistoryService historyService;
 
     public CoastalStationCospasSarsat createStation(CoastalStationCospasSarsatRequest request) {
+        if (repository.findByCode(request.getStationCode()).isPresent()) {
+            throw new IllegalArgumentException("Mã đã tồn tại: " + request.getStationCode());
+        }
+
         CoastalStationCospasSarsat entity = new CoastalStationCospasSarsat();
         entity.setCode(request.getStationCode());
         entity.setName(request.getStationName());
@@ -51,17 +55,17 @@ public class CoastalStationCospasSarsatService {
         CoastalStationCospasSarsat entity = repository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
 
-        entity.setName(request.getStationName());
-        entity.setFrequency(request.getFrequency());
-        entity.setCoverageArea(request.getCoverageArea());
-        entity.setBeaconProtocol(request.getBeaconProtocol());
-        entity.setEmergencyChannel(request.getEmergencyChannel());
-        entity.setAntennaType(request.getAntennaType());
-        entity.setLocationAddress(request.getLocationAddress());
-        entity.setContactPerson(request.getContactPerson());
-        entity.setContactPhone(request.getContactPhone());
-        entity.setSignalRange(request.getSignalRange());
-        entity.setOperatingMode(request.getOperatingMode());
+        if (request.getStationName() != null) entity.setName(request.getStationName());
+        if (request.getFrequency() != null) entity.setFrequency(request.getFrequency());
+        if (request.getCoverageArea() != null) entity.setCoverageArea(request.getCoverageArea());
+        if (request.getBeaconProtocol() != null) entity.setBeaconProtocol(request.getBeaconProtocol());
+        if (request.getEmergencyChannel() != null) entity.setEmergencyChannel(request.getEmergencyChannel());
+        if (request.getAntennaType() != null) entity.setAntennaType(request.getAntennaType());
+        if (request.getLocationAddress() != null) entity.setLocationAddress(request.getLocationAddress());
+        if (request.getContactPerson() != null) entity.setContactPerson(request.getContactPerson());
+        if (request.getContactPhone() != null) entity.setContactPhone(request.getContactPhone());
+        if (request.getSignalRange() != null) entity.setSignalRange(request.getSignalRange());
+        if (request.getOperatingMode() != null) entity.setOperatingMode(request.getOperatingMode());
 
         CoastalStationCospasSarsat saved = repository.save(entity);
         historyService.recordHistory(
@@ -114,6 +118,11 @@ public class CoastalStationCospasSarsatService {
         CoastalStationCospasSarsat entity = repository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
 
+        Long creatorId = resolveCreatedBy(entity);
+        if (creatorId != null && creatorId.equals(userId)) {
+            throw new IllegalStateException("Bạn không thể phê duyệt bản do chính mình gửi");
+        }
+
         if (approved) {
             Integer currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel() : 0;
             if (currentLevel == 0) {
@@ -163,6 +172,10 @@ public class CoastalStationCospasSarsatService {
         CoastalStationCospasSarsat entity = repository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
 
+        if (rejectionReason == null || rejectionReason.length() < 10) {
+            throw new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự");
+        }
+
         entity.setApprovalStatus(StationApprovalStatus.PENDING);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
         entity.setRejectionReason(rejectionReason);
@@ -198,6 +211,12 @@ public class CoastalStationCospasSarsatService {
                     return r;
                 })
                 .toList();
+    }
+
+    // -- HELPERS --
+
+    private Long resolveCreatedBy(BaseStation entity) {
+        return entity.getApprovedBy();
     }
 
     public CoastalStationCospasSarsatResponse buildResponse(CoastalStationCospasSarsat entity) {

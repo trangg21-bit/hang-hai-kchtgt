@@ -19,6 +19,10 @@ public class CoastalStationHaiphongService {
     private final HistoryService historyService;
 
     public CoastalStationHaiphong createStation(CoastalStationHaiphongRequest request) {
+        if (repository.findByCode(request.getStationCode()).isPresent()) {
+            throw new IllegalArgumentException("Mã đã tồn tại: " + request.getStationCode());
+        }
+
         CoastalStationHaiphong entity = new CoastalStationHaiphong();
         entity.setCode(request.getStationCode());
         entity.setName(request.getStationName());
@@ -55,22 +59,22 @@ public class CoastalStationHaiphongService {
         CoastalStationHaiphong entity = repository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Haiphong station not found with id: " + id));
 
-        entity.setName(request.getStationName());
-        entity.setPortName(request.getPortName());
-        entity.setDistrict(request.getDistrict());
-        entity.setWard(request.getWard());
-        entity.setOperationalLicense(request.getOperationalLicense());
-        entity.setLicenseExpiry(request.getLicenseExpiry());
-        entity.setInspectorName(request.getInspectorName());
-        entity.setInspectorPhone(request.getInspectorPhone());
-        entity.setLastInspectionDate(request.getLastInspectionDate());
-        entity.setNextInspectionDate(request.getNextInspectionDate());
-        entity.setCoverageArea(request.getCoverageArea());
-        entity.setEquipmentType(request.getEquipmentType());
-        entity.setCommunicationFrequency(request.getCommunicationFrequency());
-        entity.setLocationAddress(request.getLocationAddress());
-        entity.setContactPerson(request.getContactPerson());
-        entity.setContactPhone(request.getContactPhone());
+        if (request.getStationName() != null) entity.setName(request.getStationName());
+        if (request.getPortName() != null) entity.setPortName(request.getPortName());
+        if (request.getDistrict() != null) entity.setDistrict(request.getDistrict());
+        if (request.getWard() != null) entity.setWard(request.getWard());
+        if (request.getOperationalLicense() != null) entity.setOperationalLicense(request.getOperationalLicense());
+        if (request.getLicenseExpiry() != null) entity.setLicenseExpiry(request.getLicenseExpiry());
+        if (request.getInspectorName() != null) entity.setInspectorName(request.getInspectorName());
+        if (request.getInspectorPhone() != null) entity.setInspectorPhone(request.getInspectorPhone());
+        if (request.getLastInspectionDate() != null) entity.setLastInspectionDate(request.getLastInspectionDate());
+        if (request.getNextInspectionDate() != null) entity.setNextInspectionDate(request.getNextInspectionDate());
+        if (request.getCoverageArea() != null) entity.setCoverageArea(request.getCoverageArea());
+        if (request.getEquipmentType() != null) entity.setEquipmentType(request.getEquipmentType());
+        if (request.getCommunicationFrequency() != null) entity.setCommunicationFrequency(request.getCommunicationFrequency());
+        if (request.getLocationAddress() != null) entity.setLocationAddress(request.getLocationAddress());
+        if (request.getContactPerson() != null) entity.setContactPerson(request.getContactPerson());
+        if (request.getContactPhone() != null) entity.setContactPhone(request.getContactPhone());
 
         CoastalStationHaiphong saved = repository.save(entity);
         historyService.recordHistory(
@@ -123,6 +127,11 @@ public class CoastalStationHaiphongService {
         CoastalStationHaiphong entity = repository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Haiphong station not found with id: " + id));
 
+        Long creatorId = resolveCreatedBy(entity);
+        if (creatorId != null && creatorId.equals(userId)) {
+            throw new IllegalStateException("Bạn không thể phê duyệt bản do chính mình gửi");
+        }
+
         if (approved) {
             Integer currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel() : 0;
             if (currentLevel == 0) {
@@ -172,6 +181,10 @@ public class CoastalStationHaiphongService {
         CoastalStationHaiphong entity = repository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Haiphong station not found with id: " + id));
 
+        if (rejectionReason == null || rejectionReason.length() < 10) {
+            throw new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự");
+        }
+
         entity.setApprovalStatus(StationApprovalStatus.PENDING);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
         entity.setRejectionReason(rejectionReason);
@@ -207,6 +220,12 @@ public class CoastalStationHaiphongService {
                     return r;
                 })
                 .toList();
+    }
+
+    // -- HELPERS --
+
+    private Long resolveCreatedBy(BaseStation entity) {
+        return entity.getApprovedBy();
     }
 
     public CoastalStationHaiphongResponse buildResponse(CoastalStationHaiphong entity) {

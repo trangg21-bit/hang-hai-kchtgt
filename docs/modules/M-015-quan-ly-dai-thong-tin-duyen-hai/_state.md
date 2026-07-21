@@ -1,4 +1,4 @@
-﻿---
+---
 feature-id: M-015
 feature-name: Quản lý Đài thông tin duyên hải
 pipeline-type: sdlc
@@ -6,14 +6,15 @@ status: done
 sealed: true
 sealed-at: 2026-06-29T12:00:00Z
 closed-at: 2026-06-29T12:00:00Z
+aggregate-id: M-015
 depends-on: []
 blocked-by: []
 created: 2026-06-16T15:42:46Z
 last-updated: 2026-06-29T12:00:00Z
 current-stage: closed
 source-file-count: 52
-test-file-count: 0
-test-method-count: 0
+test-file-count: 5
+test-method-count: 67
 output-mode: lean
 repo-type: mini
 repo-path: .
@@ -74,13 +75,7 @@ children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
 agent-flags: {}
-feature-req:
-  file: docs/modules/M-015-quan-ly-dai-thong-tin-duyen-hai/module-brief.md
-  canonical-fallback: docs/intel/_snapshot.md
-  scope-modules: []
-  scope-features: []
-  dev-unit: ""
-  clarification-notes: ""
+feature-req: docs/modules/M-015-quan-ly-dai-thong-tin-duyen-hai/module-brief.md
 name: Quản lý Đài thông tin duyên hải
 ---
 # Pipeline State: Quản lý Đài thông tin duyên hải

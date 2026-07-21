@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellReference;
 import java.io.InputStream;
 import java.io.ByteArrayOutputStream;
 import java.time.Instant;
@@ -32,7 +33,10 @@ import com.hanghai.kchtg.cangben.repository.CauCangRepository;
 import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
 import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
 import com.hanghai.kchtg.nhatram.repository.NhaTramDenRepository;
+import com.hanghai.kchtg.report.dto.Bcc157Response;
 import com.hanghai.kchtg.report.handler.ReportHandler;
+import com.hanghai.kchtg.tsql.entity.TsQl;
+import com.hanghai.kchtg.tsql.repository.TsQlRepository;
 
 /**
  * Service core cho quản lý báo cáo M-016 (Báo cáo & Tổng hợp).
@@ -55,6 +59,8 @@ public class ReportService {
     private final PolygonObjectRepository polygonObjectRepository;
     private final NhaTramDenRepository nhaTramDenRepository;
     private final List<ReportHandler> reportHandlers;
+    private final Bcc157Service bcc157Service;
+    private final TsQlRepository tsQlRepository;
 
     /**
      * Tạo báo cáo mới với status = PENDING.
@@ -286,7 +292,7 @@ public class ReportService {
     }
 
     private ReportResponse getPreviewF142(ReportPreviewRequest request) {
-        List<String> headers = new ArrayList<>(List.of("STT", "Chỉ tiêu", "Mã số", "Giá trị báo cáo (VNĐ)"));
+        List<String> headers = new ArrayList<>(List.of("STT", "Chỉ tiêu", "Mã số", "TSHT hàng hải", "Tổng cộng"));
 
         List<Map<String, Object>> rows = new ArrayList<>();
 
@@ -295,6 +301,59 @@ public class ReportService {
         java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
 
         int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
+
+        // 1. Try to read real data from bcc157_report table (nguonDuLieu='1')
+        if (targetUnitId != null) {
+            Bcc157Response savedData = bcc157Service.findByOrgUnitIdAndReportYearAndNguonDuLieu(
+                    targetUnitId, reportYear, "1");
+            if (savedData != null) {
+                // Build preview rows from real saved data — matching frontend ReportViewer.tsx lines 182-196
+                rows.add(buildF142Row("1", "Nguyên giá - Số dư đầu năm",
+                        savedData.getMaSoNguyenGiaSoDuDauNam(), "1.1",
+                        savedData.getTaiSanNguyenGiaSoDuDauNam()));
+                rows.add(buildF142Row("", "Nguyên giá - Tăng trong năm",
+                        savedData.getMaSoNguyenGiaTangTrongNam(), "1.2",
+                        savedData.getTaiSanNguyenGiaTangTrongNam()));
+                rows.add(buildF142Row("", "Nguyên giá - Giảm trong năm",
+                        savedData.getMaSoNguyenGiaGiamTrongNam(), "1.3",
+                        savedData.getTaiSanNguyenGiaGiamTrongNam()));
+                rows.add(buildF142Row("", "Nguyên giá - Số dư cuối năm",
+                        savedData.getMaSoNguyenGiaSoDuCuoiNam(), "1.4",
+                        savedData.getTaiSanNguyenGiaSoDuCuoiNam()));
+                rows.add(buildF142Row("2", "Giá trị hao mòn lũy kế - Số dư đầu năm",
+                        savedData.getMaSoGiaTriHaoMonSoDuDauNam(), "2.1",
+                        savedData.getTaiSanGiaTriHaoMonSoDuDauNam()));
+                rows.add(buildF142Row("", "Giá trị hao mòn lũy kế - Tăng trong năm",
+                        savedData.getMaSoGiaTriHaoMonTangTrongNam(), "2.2",
+                        savedData.getTaiSanGiaTriHaoMonTangTrongNam()));
+                rows.add(buildF142Row("", "Giá trị hao mòn lũy kế - Giảm trong năm",
+                        savedData.getMaSoGiaTriHaoMonGiamTrongNam(), "2.3",
+                        savedData.getTaiSanGiaTriHaoMonGiamTrongNam()));
+                rows.add(buildF142Row("", "Giá trị hao mòn lũy kế - Số dư cuối năm",
+                        savedData.getMaSoGiaTriHaoMonSoDuCuoiNam(), "2.4",
+                        savedData.getTaiSanGiaTriHaoMonSoDuCuoiNam()));
+                rows.add(buildF142Row("3", "Giá trị còn lại - Đầu năm",
+                        savedData.getMaSoGiaTriConLaiTuNgayDauNam(), "3.1",
+                        savedData.getTaiSanGiaTriConLaiTuNgayDauNam()));
+                rows.add(buildF142Row("", "Giá trị còn lại - Cuối năm",
+                        savedData.getMaSoGiaTriConLaiTuNgayCuoiNam(), "3.2",
+                        savedData.getTaiSanGiaTriConLaiTuNgayCuoiNam()));
+
+                summary.put("Tổng số tài sản", rows.size() / 4);
+                summary.put("Nguyên giá cuối năm",
+                        savedData.getTaiSanNguyenGiaSoDuCuoiNam() != null
+                                ? savedData.getTaiSanNguyenGiaSoDuCuoiNam().longValue()
+                                : 0L);
+                summary.put("Giá trị còn lại cuối năm",
+                        savedData.getTaiSanGiaTriConLaiTuNgayCuoiNam() != null
+                                ? savedData.getTaiSanGiaTriConLaiTuNgayCuoiNam().longValue()
+                                : 0L);
+
+                return buildPreviewResponse("F-142", headers, rows, summary);
+            }
+        }
+
+        // 2. Fallback: existing GIS PointObject auto-generate
         List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId, reportYear);
         long totalNguyenGia = 0;
 
@@ -306,26 +365,26 @@ public class ReportService {
         long hMonTang = (long) (totalNguyenGia * 0.04);
         long hMonCuoiNam = hMonDauNam + hMonTang;
 
-        rows.add(Map.of("STT", "1", "Chỉ tiêu", "Nguyên giá - Số dư đầu năm", "Mã số", "1.1", "Giá trị báo cáo (VNĐ)",
-                totalNguyenGia));
-        rows.add(Map.of("STT", "", "Chỉ tiêu", "Nguyên giá - Tăng trong năm", "Mã số", "1.2", "Giá trị báo cáo (VNĐ)",
-                0L));
-        rows.add(Map.of("STT", "", "Chỉ tiêu", "Nguyên giá - Giảm trong năm", "Mã số", "1.3", "Giá trị báo cáo (VNĐ)",
-                0L));
-        rows.add(Map.of("STT", "", "Chỉ tiêu", "Nguyên giá - Số dư cuối năm", "Mã số", "1.4", "Giá trị báo cáo (VNĐ)",
-                totalNguyenGia));
+        rows.add(Map.of("STT", "1", "Chỉ tiêu", "Nguyên giá - Số dư đầu năm", "Mã số", "1.1", "TSHT hàng hải",
+                totalNguyenGia, "Tổng cộng", totalNguyenGia));
+        rows.add(Map.of("STT", "", "Chỉ tiêu", "Nguyên giá - Tăng trong năm", "Mã số", "1.2", "TSHT hàng hải",
+                0L, "Tổng cộng", 0L));
+        rows.add(Map.of("STT", "", "Chỉ tiêu", "Nguyên giá - Giảm trong năm", "Mã số", "1.3", "TSHT hàng hải",
+                0L, "Tổng cộng", 0L));
+        rows.add(Map.of("STT", "", "Chỉ tiêu", "Nguyên giá - Số dư cuối năm", "Mã số", "1.4", "TSHT hàng hải",
+                totalNguyenGia, "Tổng cộng", totalNguyenGia));
         rows.add(Map.of("STT", "2", "Chỉ tiêu", "Giá trị hao mòn lũy kế - Số dư đầu năm", "Mã số", "2.1",
-                "Giá trị báo cáo (VNĐ)", hMonDauNam));
+                "TSHT hàng hải", hMonDauNam, "Tổng cộng", hMonDauNam));
         rows.add(Map.of("STT", "", "Chỉ tiêu", "Giá trị hao mòn lũy kế - Tăng trong năm", "Mã số", "2.2",
-                "Giá trị báo cáo (VNĐ)", hMonTang));
+                "TSHT hàng hải", hMonTang, "Tổng cộng", hMonTang));
         rows.add(Map.of("STT", "", "Chỉ tiêu", "Giá trị hao mòn lũy kế - Giảm trong năm", "Mã số", "2.3",
-                "Giá trị báo cáo (VNĐ)", 0L));
+                "TSHT hàng hải", 0L, "Tổng cộng", 0L));
         rows.add(Map.of("STT", "", "Chỉ tiêu", "Giá trị hao mòn lũy kế - Số dư cuối năm", "Mã số", "2.4",
-                "Giá trị báo cáo (VNĐ)", hMonCuoiNam));
-        rows.add(Map.of("STT", "3", "Chỉ tiêu", "Giá trị còn lại - Đầu năm", "Mã số", "3.1", "Giá trị báo cáo (VNĐ)",
-                totalNguyenGia - hMonDauNam));
-        rows.add(Map.of("STT", "", "Chỉ tiêu", "Giá trị còn lại - Cuối năm", "Mã số", "3.2", "Giá trị báo cáo (VNĐ)",
-                totalNguyenGia - hMonCuoiNam));
+                "TSHT hàng hải", hMonCuoiNam, "Tổng cộng", hMonCuoiNam));
+        rows.add(Map.of("STT", "3", "Chỉ tiêu", "Giá trị còn lại - Đầu năm", "Mã số", "3.1", "TSHT hàng hải",
+                totalNguyenGia - hMonDauNam, "Tổng cộng", totalNguyenGia - hMonDauNam));
+        rows.add(Map.of("STT", "", "Chỉ tiêu", "Giá trị còn lại - Cuối năm", "Mã số", "3.2", "TSHT hàng hải",
+                totalNguyenGia - hMonCuoiNam, "Tổng cộng", totalNguyenGia - hMonCuoiNam));
         summary.put("Tổng số tài sản", points.size());
         summary.put("Nguyên giá cuối năm", totalNguyenGia);
         summary.put("Giá trị còn lại cuối năm", totalNguyenGia - hMonCuoiNam);
@@ -333,20 +392,200 @@ public class ReportService {
         return buildPreviewResponse("F-142", headers, rows, summary);
     }
 
+    /**
+     * Helper to build a single F-142 preview row from Bcc157Response fields.
+     * Matches the frontend pattern in ReportViewer.tsx lines 182-196:
+     * - Mã số uses the saved maSo* value, falling back to the default code
+     * - TSHT hàng hải / Tổng cộng use the saved taiSan* BigDecimal, falling back to 0
+     * Both columns carry the same value (B04a/BCTC form — no sub-category breakdown).
+     */
+    private Map<String, Object> buildF142Row(String stt, String chiTieu, String maSo, String defaultMaSo,
+                                              java.math.BigDecimal giaTri) {
+        Map<String, Object> row = new HashMap<>();
+        row.put("STT", stt);
+        row.put("Chỉ tiêu", chiTieu);
+        row.put("Mã số", maSo != null ? maSo : defaultMaSo);
+        row.put("TSHT hàng hải", giaTri != null ? giaTri.longValue() : 0L);
+        row.put("Tổng cộng", giaTri != null ? giaTri.longValue() : 0L);
+        return row;
+    }
+
     private ReportResponse getPreviewF143(ReportPreviewRequest request) {
         List<String> headers = new ArrayList<>(List.of(
                 "STT", "Danh mục tài sản", "Đơn vị tính", "Số lượng", "Năm xây dựng",
-                "Năm sử dụng", "Diện tích đất", "Sàn sử dụng", "Nguyên giá (nghìn đồng)",
-                "Giá trị còn lại (nghìn đồng)", "Tình trạng tài sản", "Ghi chú"
-
+                "Năm sử dụng", "Diện tích đất (m2)", "Diện tích sàn sử dụng (m2)",
+                "Nguyên giá (nghìn đồng)", "Giá trị còn lại (nghìn đồng)",
+                "Tình trạng tài sản", "Ghi chú"
         ));
 
         List<Map<String, Object>> rows = new ArrayList<>();
-
         Map<String, Object> summary = new LinkedHashMap<>();
 
         java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
+        String bcNoiDung = request.getBcNoiDung();
 
+        // 1. Try TS_QL real data first (F-143 reads from Tài sản Quản lý table)
+        boolean useTsQl = false;
+        List<TsQl> tsqlList = new ArrayList<>();
+
+        if (targetUnitId != null) {
+            if ("1".equals(bcNoiDung)) {
+                // Kê khai lần đầu: ngày kê khai <= 4/4/2025
+                tsqlList = tsQlRepository.findByOrgUnitIdAndNgayKeKhaiLessThanEqual(
+                        targetUnitId, LocalDate.of(2025, 4, 4));
+            } else if ("2".equals(bcNoiDung)) {
+                // Kê khai bổ sung: ngày kê khai > 4/4/2025
+                tsqlList = tsQlRepository.findByOrgUnitIdAndNgayKeKhaiAfter(
+                        targetUnitId, LocalDate.of(2025, 4, 4));
+            } else {
+                // Default: no date filter
+                tsqlList = tsQlRepository.findByOrgUnitId(targetUnitId);
+            }
+
+            if (!tsqlList.isEmpty()) {
+                useTsQl = true;
+            }
+        }
+
+        if (useTsQl) {
+            // Group by nhom using getNhomCategoryNamesMap
+            Map<String, String> nhomCategoryNames = getNhomCategoryNamesMap();
+            Map<String, List<TsQl>> grouped = new LinkedHashMap<>();
+            for (Map.Entry<String, String> entry : nhomCategoryNames.entrySet()) {
+                String nhomKey = entry.getKey();
+                // Collect all TsQl for this nhom key
+                List<TsQl> groupItems = new ArrayList<>();
+                for (TsQl ts : tsqlList) {
+                    String tsNhom = ts.getNhom() != null ? ts.getNhom() : "OTHER";
+                    if (nhomKey.equals(tsNhom)) {
+                        groupItems.add(ts);
+                    }
+                }
+                if (!groupItems.isEmpty()) {
+                    grouped.put(nhomKey, groupItems);
+                }
+            }
+
+            // Also handle nhom values not in the predefined map
+            for (TsQl ts : tsqlList) {
+                String tsNhom = ts.getNhom() != null ? ts.getNhom() : "OTHER";
+                if (!grouped.containsKey(tsNhom)) {
+                    List<TsQl> rest = new ArrayList<>();
+                    rest.add(ts);
+                    grouped.put(tsNhom, rest);
+                } else {
+                    // Already handled above
+                }
+            }
+
+            int stt = 1;
+            java.math.BigDecimal grandTotalNguyenGia = java.math.BigDecimal.ZERO;
+            java.math.BigDecimal grandTotalGiaTriConLai = java.math.BigDecimal.ZERO;
+
+            for (Map.Entry<String, List<TsQl>> entry : grouped.entrySet()) {
+                String nhomKey = entry.getKey();
+                List<TsQl> groupItems = entry.getValue();
+
+                // Compute group totals
+                java.math.BigDecimal groupNguyenGia = java.math.BigDecimal.ZERO;
+                java.math.BigDecimal groupGiaTriConLai = java.math.BigDecimal.ZERO;
+                for (TsQl ts : groupItems) {
+                    if (ts.getNguyenGia() != null) {
+                        groupNguyenGia = groupNguyenGia.add(ts.getNguyenGia());
+                    }
+                    if (ts.getGiaTriConLai() != null) {
+                        groupGiaTriConLai = groupGiaTriConLai.add(ts.getGiaTriConLai());
+                    }
+                }
+
+                // Category header row
+                String categoryName = nhomCategoryNames.getOrDefault(nhomKey, nhomKey);
+                Map<String, Object> catRow = new LinkedHashMap<>();
+                catRow.put("_rowType", "section");
+                catRow.put("STT", "");
+                catRow.put("Danh mục tài sản", categoryName);
+                catRow.put("Đơn vị tính", "");
+                catRow.put("Số lượng", "");
+                catRow.put("Năm xây dựng", "");
+                catRow.put("Năm sử dụng", "");
+                catRow.put("Diện tích đất (m2)", "");
+                catRow.put("Diện tích sàn sử dụng (m2)", "");
+                catRow.put("Nguyên giá (nghìn đồng)", "");
+                catRow.put("Giá trị còn lại (nghìn đồng)", "");
+                catRow.put("Tình trạng tài sản", "");
+                catRow.put("Ghi chú", "");
+                rows.add(catRow);
+
+                // Detail rows for each TsQl in the group
+                for (TsQl ts : groupItems) {
+                    Map<String, Object> r = new LinkedHashMap<>();
+                    r.put("STT", stt++);
+                    r.put("Danh mục tài sản", ts.getTsTen() != null ? ts.getTsTen() : "");
+                    r.put("Đơn vị tính", ts.getDonViTinh() != null ? ts.getDonViTinh() : "");
+                    r.put("Số lượng", ts.getSoLuong() != null ? ts.getSoLuong().doubleValue() : 1.0);
+                    r.put("Năm xây dựng", ts.getNamXayDung() != null ? ts.getNamXayDung() : "");
+                    r.put("Năm sử dụng", ts.getNamSuDung() != null ? ts.getNamSuDung() : "");
+                    r.put("Diện tích đất (m2)", ts.getDienTichDat() != null ? ts.getDienTichDat().doubleValue() : 0.0);
+                    r.put("Diện tích sàn sử dụng (m2)", ts.getSanSuDung() != null ? ts.getSanSuDung().doubleValue() : 0.0);
+
+                    java.math.BigDecimal ngVal = ts.getNguyenGia() != null ? ts.getNguyenGia() : java.math.BigDecimal.ZERO;
+                    java.math.BigDecimal clVal = ts.getGiaTriConLai() != null ? ts.getGiaTriConLai() : java.math.BigDecimal.ZERO;
+
+                    // Convert to nghìn đồng
+                    r.put("Nguyên giá (nghìn đồng)", ngVal.longValue() / 1000);
+                    r.put("Giá trị còn lại (nghìn đồng)", clVal.longValue() / 1000);
+                    r.put("Tình trạng tài sản", ts.getTinhTrang() != null ? ts.getTinhTrang() : "");
+                    r.put("Ghi chú", ts.getGhiChu() != null ? ts.getGhiChu() : "");
+
+                    rows.add(r);
+                }
+
+                // Tổng cộng row for the group
+                Map<String, Object> groupTotalRow = new LinkedHashMap<>();
+                groupTotalRow.put("_rowType", "groupTotal");
+                groupTotalRow.put("STT", "");
+                groupTotalRow.put("Danh mục tài sản", "Tổng cộng");
+                groupTotalRow.put("Đơn vị tính", "");
+                groupTotalRow.put("Số lượng", groupItems.size());
+                groupTotalRow.put("Năm xây dựng", "");
+                groupTotalRow.put("Năm sử dụng", "");
+                groupTotalRow.put("Diện tích đất (m2)", "");
+                groupTotalRow.put("Diện tích sàn sử dụng (m2)", "");
+                groupTotalRow.put("Nguyên giá (nghìn đồng)", groupNguyenGia.longValue() / 1000);
+                groupTotalRow.put("Giá trị còn lại (nghìn đồng)", groupGiaTriConLai.longValue() / 1000);
+                groupTotalRow.put("Tình trạng tài sản", "");
+                groupTotalRow.put("Ghi chú", "");
+                rows.add(groupTotalRow);
+
+                grandTotalNguyenGia = grandTotalNguyenGia.add(groupNguyenGia);
+                grandTotalGiaTriConLai = grandTotalGiaTriConLai.add(groupGiaTriConLai);
+            }
+
+            // Final TỔNG CỘNG row
+            Map<String, Object> finalTotalRow = new LinkedHashMap<>();
+            finalTotalRow.put("_rowType", "grandTotal");
+            finalTotalRow.put("STT", "");
+            finalTotalRow.put("Danh mục tài sản", "TỔNG CỘNG");
+            finalTotalRow.put("Đơn vị tính", "");
+            finalTotalRow.put("Số lượng", "");
+            finalTotalRow.put("Năm xây dựng", "");
+            finalTotalRow.put("Năm sử dụng", "");
+            finalTotalRow.put("Diện tích đất (m2)", "");
+            finalTotalRow.put("Diện tích sàn sử dụng (m2)", "");
+            finalTotalRow.put("Nguyên giá (nghìn đồng)", grandTotalNguyenGia.longValue() / 1000);
+            finalTotalRow.put("Giá trị còn lại (nghìn đồng)", grandTotalGiaTriConLai.longValue() / 1000);
+            finalTotalRow.put("Tình trạng tài sản", "");
+            finalTotalRow.put("Ghi chú", "");
+            rows.add(finalTotalRow);
+
+            summary.put("Tổng số dòng", rows.size());
+            summary.put("Tổng nguyên giá (nghìn đồng)", grandTotalNguyenGia.longValue() / 1000);
+            summary.put("Tổng giá trị còn lại (nghìn đồng)", grandTotalGiaTriConLai.longValue() / 1000);
+
+            return buildPreviewResponse("F-143", headers, rows, summary);
+        }
+
+        // 2. Fallback: existing GIS PointObject auto-generate
         int reportYear = request.getStartDate() != null ? request.getStartDate().getYear() : LocalDate.now().getYear();
         List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPointsForF143(targetUnitId, reportYear,
                 request.getBcNoiDung());
@@ -366,15 +605,15 @@ public class ReportService {
 
             r.put("Năm xây dựng", pYear);
             r.put("Năm sử dụng", pYear);
-            r.put("Diện tích đất", 0.0);
-            r.put("Sàn sử dụng", 0.0);
+            r.put("Diện tích đất (m2)", 0.0);
+            r.put("Diện tích sàn sử dụng (m2)", 0.0);
 
-            long val = getPointAssetValue(p);
-            long gTriConLai = (long) (val * 0.8);
+            long val = 0;
+            long gTriConLai = 0;
 
             r.put("Nguyên giá (nghìn đồng)", val);
             r.put("Giá trị còn lại (nghìn đồng)", gTriConLai);
-            r.put("Tình trạng tài sản", "Đang hoạt động tốt");
+            r.put("Tình trạng tài sản", "");
             r.put("Ghi chú", "");
 
             totalNguyenGia += val;
@@ -1089,34 +1328,92 @@ public class ReportService {
                         : LocalDate.now().getYear();
                 Map<String, String> replacements = buildReplacements(request, reportYear);
                 java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
-                List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPoints(targetUnitId,
-                        reportYear);
 
-                long totalNguyenGia = 0;
+                // 1. CRUD-first: try to read real data from bcc157_report table (nguonDuLieu='1')
+                boolean useCrudData = false;
+                if (targetUnitId != null) {
+                    Bcc157Response savedData = bcc157Service.findByOrgUnitIdAndReportYearAndNguonDuLieu(
+                            targetUnitId, reportYear, "1");
+                    if (savedData != null) {
+                        useCrudData = true;
+                        replacements.put("${zobjComReport.maSoNguyenGiaSoDuDauNam.asText()}",
+                                nullToEmpty(savedData.getMaSoNguyenGiaSoDuDauNam()));
+                        replacements.put("${zobjComReport.taiSanNguyenGiaSoDuDauNam.asText()}",
+                                bigDecimalToPlainString(savedData.getTaiSanNguyenGiaSoDuDauNam()));
 
-                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
-                    totalNguyenGia += getPointAssetValue(p);
+                        replacements.put("${zobjComReport.maSoNguyenGiaTangTrongNam.asText()}",
+                                nullToEmpty(savedData.getMaSoNguyenGiaTangTrongNam()));
+                        replacements.put("${zobjComReport.taiSanNguyenGiaTangTrongNam.asText()}",
+                                bigDecimalToPlainString(savedData.getTaiSanNguyenGiaTangTrongNam()));
+
+                        replacements.put("${zobjComReport.maSoNguyenGiaGiamTrongNam.asText()}",
+                                nullToEmpty(savedData.getMaSoNguyenGiaGiamTrongNam()));
+                        replacements.put("${zobjComReport.taiSanNguyenGiaGiamTrongNam.asText()}",
+                                bigDecimalToPlainString(savedData.getTaiSanNguyenGiaGiamTrongNam()));
+
+                        replacements.put("${zobjComReport.maSoNguyenGiaSoDuCuoiNam.asText()}",
+                                nullToEmpty(savedData.getMaSoNguyenGiaSoDuCuoiNam()));
+                        replacements.put("${zobjComReport.taiSanNguyenGiaSoDuCuoiNam.asText()}",
+                                bigDecimalToPlainString(savedData.getTaiSanNguyenGiaSoDuCuoiNam()));
+
+                        replacements.put("${zobjComReport.maSoGiaTriHaoMonSoDuDauNam.asText()}",
+                                nullToEmpty(savedData.getMaSoGiaTriHaoMonSoDuDauNam()));
+                        replacements.put("${zobjComReport.taiSanGiaTriHaoMonSoDuDauNam.asText()}",
+                                bigDecimalToPlainString(savedData.getTaiSanGiaTriHaoMonSoDuDauNam()));
+
+                        replacements.put("${zobjComReport.maSoGiaTriHaoMonTangTrongNam.asText()}",
+                                nullToEmpty(savedData.getMaSoGiaTriHaoMonTangTrongNam()));
+                        replacements.put("${zobjComReport.taiSanGiaTriHaoMonTangTrongNam.asText()}",
+                                bigDecimalToPlainString(savedData.getTaiSanGiaTriHaoMonTangTrongNam()));
+
+                        replacements.put("${zobjComReport.maSoGiaTriHaoMonGiamTrongNam.asText()}",
+                                nullToEmpty(savedData.getMaSoGiaTriHaoMonGiamTrongNam()));
+                        replacements.put("${zobjComReport.taiSanGiaTriHaoMonGiamTrongNam.asText()}",
+                                bigDecimalToPlainString(savedData.getTaiSanGiaTriHaoMonGiamTrongNam()));
+
+                        replacements.put("${zobjComReport.maSoGiaTriHaoMonSoDuCuoiNam.asText()}",
+                                nullToEmpty(savedData.getMaSoGiaTriHaoMonSoDuCuoiNam()));
+                        replacements.put("${zobjComReport.taiSanGiaTriHaoMonSoDuCuoiNam.asText()}",
+                                bigDecimalToPlainString(savedData.getTaiSanGiaTriHaoMonSoDuCuoiNam()));
+
+                        replacements.put("${zobjComReport.maSoGiaTriConLaiTuNgayDauNam.asText()}",
+                                nullToEmpty(savedData.getMaSoGiaTriConLaiTuNgayDauNam()));
+                        replacements.put("${zobjComReport.taiSanGiaTriConLaiTuNgayDauNam.asText()}",
+                                bigDecimalToPlainString(savedData.getTaiSanGiaTriConLaiTuNgayDauNam()));
+
+                        replacements.put("${zobjComReport.maSoGiaTriConLaiTuNgayCuoiNam.asText()}",
+                                nullToEmpty(savedData.getMaSoGiaTriConLaiTuNgayCuoiNam()));
+                        replacements.put("${zobjComReport.taiSanGiaTriConLaiTuNgayCuoiNam.asText()}",
+                                bigDecimalToPlainString(savedData.getTaiSanGiaTriConLaiTuNgayCuoiNam()));
+                    }
                 }
 
-                long hMonDauNam = (long) (totalNguyenGia * 0.20);
-                long hMonTang = (long) (totalNguyenGia * 0.04);
+                // 2. Fallback: if no CRUD data was found, set all data placeholders to safe defaults
+                // so Excel formulas don't produce #VALUE! from literal unreplaced placeholders.
+                if (!useCrudData) {
+                    replacements.put("${zobjComReport.maSoNguyenGiaSoDuDauNam.asText()}", "1.1");
+                    replacements.put("${zobjComReport.taiSanNguyenGiaSoDuDauNam.asText()}", "0");
+                    replacements.put("${zobjComReport.maSoNguyenGiaTangTrongNam.asText()}", "1.2");
+                    replacements.put("${zobjComReport.taiSanNguyenGiaTangTrongNam.asText()}", "0");
+                    replacements.put("${zobjComReport.maSoNguyenGiaGiamTrongNam.asText()}", "1.3");
+                    replacements.put("${zobjComReport.taiSanNguyenGiaGiamTrongNam.asText()}", "0");
+                    replacements.put("${zobjComReport.maSoNguyenGiaSoDuCuoiNam.asText()}", "1.4");
+                    replacements.put("${zobjComReport.taiSanNguyenGiaSoDuCuoiNam.asText()}", "0");
 
-                replacements.put("${zobjComReport.maSoNguyenGiaSoDuDauNam.asText()}", "1.1");
-                replacements.put("${zobjComReport.maSoNguyenGiaTangTrongNam.asText()}", "1.2");
-                replacements.put("${zobjComReport.maSoNguyenGiaGiamTrongNam.asText()}", "1.3");
-                replacements.put("${zobjComReport.maSoNguyenGiaSoDuCuoiNam.asText()}", "1.4");
-                replacements.put("${zobjComReport.maSoGiaTriHaoMonSoDuDauNam.asText()}", "2.1");
-                replacements.put("${zobjComReport.maSoGiaTriHaoMonTangTrongNam.asText()}", "2.2");
-                replacements.put("${zobjComReport.maSoGiaTriHaoMonGiamTrongNam.asText()}", "2.3");
-                replacements.put("${zobjComReport.maSoGiaTriHaoMonSoDuCuoiNam.asText()}", "2.4");
-                replacements.put("${zobjComReport.maSoGiaTriConLaiTuNgayDauNam.asText()}", "3.1");
-                replacements.put("${zobjComReport.maSoGiaTriConLaiTuNgayCuoiNam.asText()}", "3.2");
-                replacements.put("${zobjComReport.taiSanNguyenGiaSoDuDauNam.asText()}", String.valueOf(totalNguyenGia));
-                replacements.put("${zobjComReport.taiSanNguyenGiaTangTrongNam.asText()}", "0.0");
-                replacements.put("${zobjComReport.taiSanNguyenGiaGiamTrongNam.asText()}", "0.0");
-                replacements.put("${zobjComReport.taiSanGiaTriHaoMonSoDuDauNam.asText()}", String.valueOf(hMonDauNam));
-                replacements.put("${zobjComReport.taiSanGiaTriHaoMonTangTrongNam.asText()}", String.valueOf(hMonTang));
-                replacements.put("${zobjComReport.taiSanGiaTriHaoMonGiamTrongNam.asText()}", "0.0");
+                    replacements.put("${zobjComReport.maSoGiaTriHaoMonSoDuDauNam.asText()}", "2.1");
+                    replacements.put("${zobjComReport.taiSanGiaTriHaoMonSoDuDauNam.asText()}", "0");
+                    replacements.put("${zobjComReport.maSoGiaTriHaoMonTangTrongNam.asText()}", "2.2");
+                    replacements.put("${zobjComReport.taiSanGiaTriHaoMonTangTrongNam.asText()}", "0");
+                    replacements.put("${zobjComReport.maSoGiaTriHaoMonGiamTrongNam.asText()}", "2.3");
+                    replacements.put("${zobjComReport.taiSanGiaTriHaoMonGiamTrongNam.asText()}", "0");
+                    replacements.put("${zobjComReport.maSoGiaTriHaoMonSoDuCuoiNam.asText()}", "2.4");
+                    replacements.put("${zobjComReport.taiSanGiaTriHaoMonSoDuCuoiNam.asText()}", "0");
+
+                    replacements.put("${zobjComReport.maSoGiaTriConLaiTuNgayDauNam.asText()}", "3.1");
+                    replacements.put("${zobjComReport.taiSanGiaTriConLaiTuNgayDauNam.asText()}", "0");
+                    replacements.put("${zobjComReport.maSoGiaTriConLaiTuNgayCuoiNam.asText()}", "3.2");
+                    replacements.put("${zobjComReport.taiSanGiaTriConLaiTuNgayCuoiNam.asText()}", "0");
+                }
 
                 // Copy statically
 
@@ -1151,6 +1448,13 @@ public class ReportService {
 
                 finalizeWorkbookSheet(workbook);
 
+                // Compute BCC_157 formula cells directly from replacements map values
+                directComputeBcc157FromReplacements(destSheet, replacements);
+
+                // Force-overwrite computed cells: removeFormula() + setCellType(NUMERIC) + setCellValue()
+                // This defeats any stale formula/string formatting that survived copyCell + directCompute
+                forceWriteNumericCells(destSheet, replacements);
+
                 return outputWorkbook(workbook, destSheet, isExcel);
             }
         }
@@ -1175,200 +1479,287 @@ public class ReportService {
                 Map<String, String> replacements = buildReplacements(request, reportYear);
 
                 java.util.UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
-                List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPointsForF143(targetUnitId,
-                        reportYear, request.getBcNoiDung());
-                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> categoryNames = getCategoryNamesMap();
 
-                // F-143 Group points by ObjectType
+                // 1. Try TS_QL real data first (F-143 reads from Tài sản Quản lý table)
+                boolean useTsQl = false;
+                List<TsQl> tsqlList = new ArrayList<>();
+                Map<String, String> nhomCategoryNames = getNhomCategoryNamesMap();
 
-                Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, List<com.hanghai.kchtg.gis.point.entity.PointObject>> groupedPoints = new LinkedHashMap<>();
-
-                for (com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type : categoryNames.keySet()) {
-                    groupedPoints.put(type, new ArrayList<>());
+                if (targetUnitId != null) {
+                    String bcNoiDung = request.getBcNoiDung();
+                    if ("1".equals(bcNoiDung)) {
+                        // Kê khai lần đầu: ngày kê khai <= 4/4/2025
+                        tsqlList = tsQlRepository.findByOrgUnitIdAndNgayKeKhaiLessThanEqual(
+                                targetUnitId, LocalDate.of(2025, 4, 4));
+                    } else if ("2".equals(bcNoiDung)) {
+                        // Kê khai bổ sung: ngày kê khai > 4/4/2025
+                        tsqlList = tsQlRepository.findByOrgUnitIdAndNgayKeKhaiAfter(
+                                targetUnitId, LocalDate.of(2025, 4, 4));
+                    } else {
+                        // Default: no date filter
+                        tsqlList = tsQlRepository.findByOrgUnitId(targetUnitId);
+                    }
+                    if (!tsqlList.isEmpty()) {
+                        useTsQl = true;
+                    }
                 }
 
-                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
-                    com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type = p.getObjectType();
+                // Variables shared by both TS_QL and GIS fallback paths
+                int totalCategoryRows;
+                int totalDetailRows;
+                int offset;
+                long totalNguyenGiaExport;
+                long cLaiDauNamExport;
+                int destRowIdx;
 
-                    if (type == null)
-                        type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                if (useTsQl) {
+                    // TS_QL path: group by nhom
+                    Map<String, List<TsQl>> groupedTsQl = new LinkedHashMap<>();
+                    for (String nhomKey : nhomCategoryNames.keySet()) {
+                        groupedTsQl.put(nhomKey, new ArrayList<>());
+                    }
+                    for (TsQl ts : tsqlList) {
+                        String nhomKey = ts.getNhom() != null ? ts.getNhom() : "OTHER";
+                        groupedTsQl.computeIfAbsent(nhomKey, k -> new ArrayList<>()).add(ts);
+                    }
 
-                    groupedPoints.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
-                }
+                    // Remove empty groups
+                    groupedTsQl.entrySet().removeIf(e -> e.getValue().isEmpty());
 
-                int totalCategoryRows = groupedPoints.size();
-                int totalDetailRows = points.size();
-                int offset = (totalCategoryRows + totalDetailRows) - 2;
-                long totalNguyenGia = 0;
+                    totalCategoryRows = groupedTsQl.size();
+                    totalDetailRows = tsqlList.size();
+                    offset = (totalCategoryRows + totalDetailRows) - 2;
+                    totalNguyenGiaExport = tsqlList.stream()
+                            .filter(ts -> ts.getNguyenGia() != null)
+                            .mapToLong(ts -> ts.getNguyenGia().longValue())
+                            .sum();
+                    cLaiDauNamExport = tsqlList.stream()
+                            .filter(ts -> ts.getGiaTriConLai() != null)
+                            .mapToLong(ts -> ts.getGiaTriConLai().longValue())
+                            .sum();
+                    destRowIdx = 0;
 
-                for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
-                    totalNguyenGia += getPointAssetValue(p);
-                }
+                    for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
+                        Row srcRow = srcSheet.getRow(r);
+                        if (srcRow == null) continue;
 
-                long cLaiDauNam = (long) (totalNguyenGia * 0.8);
-                int destRowIdx = 0;
-
-                for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
-                    Row srcRow = srcSheet.getRow(r);
-
-                    if (srcRow == null)
-                        continue;
-
-                    if (r < 10) {
-                        // Copy Row 0 to 9 (Header & Tổng cộng)
-
-                        Row destRow = destSheet.createRow(r);
-
-                        destRow.setHeight(srcRow.getHeight());
-
-                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
-                            Cell srcCell = srcRow.getCell(c);
-
-                            if (srcCell != null) {
-                                Cell destCell = destRow.createCell(c);
-
-                                copyCell(srcCell, destCell, replacements);
-
-                                if (r == 9) {
-                                    if (c == 8)
-                                        setNumericValue(destCell, (double) totalNguyenGia);
-                                    else if (c == 9)
-                                        setNumericValue(destCell, (double) cLaiDauNam);
-                                }
-                            }
-                        }
-
-                        destRowIdx = r + 1;
-                    } else if (r == 10) {
-                        // Dynamic rendering of Categories and Details
-
-                        Row srcRow10 = srcSheet.getRow(10);
-                        Row srcRow11 = srcSheet.getRow(11);
-
-                        for (var entry : groupedPoints.entrySet()) {
-                            List<com.hanghai.kchtg.gis.point.entity.PointObject> list = entry.getValue();
-                            int overallIdx = 1;
-                            String catName = categoryNames.getOrDefault(entry.getKey(), entry.getKey().name());
-
-                            // Category Header Row
-
-                            Row catHeaderRow = destSheet.createRow(destRowIdx);
-
-                            catHeaderRow.setHeight(srcRow10.getHeight());
-
-                            long catNguyenGia = 0;
-
-                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
-                                catNguyenGia += getPointAssetValue(p);
-                            }
-
-                            long catGiaTriConLai = (long) (catNguyenGia * 0.8);
-
-                            for (int c = 0; c < srcRow10.getLastCellNum(); c++) {
-                                Cell srcCell = srcRow10.getCell(c);
-
+                        if (r < 10) {
+                            // Copy Row 0 to 9 (Header & Tổng cộng)
+                            Row destRow = destSheet.createRow(r);
+                            destRow.setHeight(srcRow.getHeight());
+                            for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                                Cell srcCell = srcRow.getCell(c);
                                 if (srcCell != null) {
-                                    Cell destCell = catHeaderRow.createCell(c);
-
-                                    destCell.setCellStyle(srcCell.getCellStyle());
-
-                                    if (c == 1)
-                                        destCell.setCellValue(catName);
-                                    else if (c == 8)
-                                        setNumericValue(destCell, (double) catNguyenGia);
-                                    else if (c == 9)
-                                        setNumericValue(destCell, (double) catGiaTriConLai);
-                                }
-                            }
-
-                            destRowIdx++;
-
-                            // Details
-
-                            for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
-                                Row detailRow = destSheet.createRow(destRowIdx);
-
-                                detailRow.setHeight(srcRow11.getHeight());
-
-                                long val = getPointAssetValue(p);
-                                long gTriConLai = (long) (val * 0.8);
-                                String unitName = getPointAssetUnit(p);
-                                int pYear = p.getCreatedAt() != null ? p.getCreatedAt().getYear() : reportYear;
-
-                                for (int c = 0; c < srcRow11.getLastCellNum(); c++) {
-                                    Cell srcCell = srcRow11.getCell(c);
-
-                                    if (srcCell != null) {
-                                        Cell destCell = detailRow.createCell(c);
-
-                                        destCell.setCellStyle(srcCell.getCellStyle());
-
-                                        switch (c) {
-                                            case 0:
-                                                destCell.setCellValue(overallIdx);
-                                                break;
-
-                                            case 1:
-                                                destCell.setCellValue(p.getName() != null ? p.getName() : "");
-                                                break;
-
-                                            case 2:
-                                                destCell.setCellValue(unitName);
-                                                break;
-
-                                            case 3:
-                                                destCell.setCellValue(1.0);
-                                                break;
-
-                                            case 4, 5:
-                                                destCell.setCellValue(pYear);
-                                                break;
-
-                                            case 6, 7:
-                                                destCell.setCellValue(0.0);
-                                                break;
-
-                                            case 8:
-                                                destCell.setCellValue((double) val);
-                                                break;
-
-                                            case 9:
-                                                destCell.setCellValue((double) gTriConLai);
-                                                break;
-
-                                            case 10:
-                                                destCell.setCellValue("Đang hoạt động tốt");
-                                                break;
-
-                                            case 11:
-                                                destCell.setCellValue("");
-                                                break;
-
-                                            default:
-                                                break;
-                                        }
+                                    Cell destCell = destRow.createCell(c);
+                                    copyCell(srcCell, destCell, replacements);
+                                    if (r == 9) {
+                                        if (c == 8) setNumericValue(destCell, (double) totalNguyenGiaExport);
+                                        else if (c == 9) setNumericValue(destCell, (double) cLaiDauNamExport);
                                     }
                                 }
+                            }
+                            destRowIdx = r + 1;
+                        } else if (r == 10) {
+                            // Dynamic rendering of Categories and Details from TS_QL
+                            Row srcRow10 = srcSheet.getRow(10);
+                            Row srcRow11 = srcSheet.getRow(11);
 
-                                overallIdx++;
+                            for (var entry : groupedTsQl.entrySet()) {
+                                List<TsQl> list = entry.getValue();
+                                int overallIdx = 1;
+                                String catName = nhomCategoryNames.getOrDefault(entry.getKey(), entry.getKey());
 
+                                // Category Header Row
+                                Row catHeaderRow = destSheet.createRow(destRowIdx);
+                                catHeaderRow.setHeight(srcRow10.getHeight());
+
+                                long catNguyenGia = list.stream()
+                                        .filter(ts -> ts.getNguyenGia() != null)
+                                        .mapToLong(ts -> ts.getNguyenGia().longValue())
+                                        .sum();
+                                long catGiaTriConLai = list.stream()
+                                        .filter(ts -> ts.getGiaTriConLai() != null)
+                                        .mapToLong(ts -> ts.getGiaTriConLai().longValue())
+                                        .sum();
+
+                                for (int c = 0; c < srcRow10.getLastCellNum(); c++) {
+                                    Cell srcCell = srcRow10.getCell(c);
+                                    if (srcCell != null) {
+                                        Cell destCell = catHeaderRow.createCell(c);
+                                        destCell.setCellStyle(srcCell.getCellStyle());
+                                        if (c == 1) destCell.setCellValue(catName);
+                                        else if (c == 8) setNumericValue(destCell, (double) catNguyenGia);
+                                        else if (c == 9) setNumericValue(destCell, (double) catGiaTriConLai);
+                                    }
+                                }
                                 destRowIdx++;
+
+                                // Details
+                                for (TsQl ts : list) {
+                                    Row detailRow = destSheet.createRow(destRowIdx);
+                                    detailRow.setHeight(srcRow11.getHeight());
+
+                                    long val = ts.getNguyenGia() != null ? ts.getNguyenGia().longValue() : 0L;
+                                    long gTriConLai = ts.getGiaTriConLai() != null ? ts.getGiaTriConLai().longValue() : 0L;
+                                    String unitName = ts.getDonViTinh() != null ? ts.getDonViTinh() : "";
+                                    int pYear = ts.getNamXayDung() != null ? ts.getNamXayDung() : reportYear;
+                                    int pYearSuDung = ts.getNamSuDung() != null ? ts.getNamSuDung() : pYear;
+                                    String tinhTrang = ts.getTinhTrang() != null ? ts.getTinhTrang() : "";
+                                    String ghiChu = ts.getGhiChu() != null ? ts.getGhiChu() : "";
+                                    double dienTichDat = ts.getDienTichDat() != null ? ts.getDienTichDat().doubleValue() : 0.0;
+                                    double sanSuDung = ts.getSanSuDung() != null ? ts.getSanSuDung().doubleValue() : 0.0;
+
+                                    for (int c = 0; c < srcRow11.getLastCellNum(); c++) {
+                                        Cell srcCell = srcRow11.getCell(c);
+                                        if (srcCell != null) {
+                                            Cell destCell = detailRow.createCell(c);
+                                            destCell.setCellStyle(srcCell.getCellStyle());
+                                            switch (c) {
+                                                case 0: destCell.setCellValue(overallIdx); break;
+                                                case 1: destCell.setCellValue(ts.getTsTen() != null ? ts.getTsTen() : ""); break;
+                                                case 2: destCell.setCellValue(unitName); break;
+                                                case 3: destCell.setCellValue(ts.getSoLuong() != null ? ts.getSoLuong().doubleValue() : 1.0); break;
+                                                case 4: destCell.setCellValue(pYear); break;
+                                                case 5: destCell.setCellValue(pYearSuDung); break;
+                                                case 6: destCell.setCellValue(dienTichDat); break;
+                                                case 7: destCell.setCellValue(sanSuDung); break;
+                                                case 8: destCell.setCellValue((double) val); break;
+                                                case 9: destCell.setCellValue((double) gTriConLai); break;
+                                                case 10: destCell.setCellValue(tinhTrang); break;
+                                                case 11: destCell.setCellValue(ghiChu); break;
+                                                default: break;
+                                            }
+                                        }
+                                    }
+                                    overallIdx++;
+                                    destRowIdx++;
+                                }
+                            }
+                        } else if (r > 11) {
+                            // Copy Footers
+                            Row destRow = destSheet.createRow(r + offset);
+                            destRow.setHeight(srcRow.getHeight());
+                            for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                                Cell srcCell = srcRow.getCell(c);
+                                if (srcCell != null) {
+                                    Cell destCell = destRow.createCell(c);
+                                    copyCell(srcCell, destCell, replacements);
+                                }
                             }
                         }
-                    } else if (r > 11) {
-                        // Copy Footers
+                    }
+                } else {
+                    // 2. Fallback: existing GIS PointObject logic
+                    List<com.hanghai.kchtg.gis.point.entity.PointObject> points = getFilteredPointsForF143(targetUnitId,
+                            reportYear, request.getBcNoiDung());
+                    Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, String> categoryNames = getCategoryNamesMap();
 
-                        Row destRow = destSheet.createRow(r + offset);
+                    Map<com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType, List<com.hanghai.kchtg.gis.point.entity.PointObject>> groupedPoints = new LinkedHashMap<>();
+                    for (com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type : categoryNames.keySet()) {
+                        groupedPoints.put(type, new ArrayList<>());
+                    }
+                    for (com.hanghai.kchtg.gis.point.entity.PointObject p : points) {
+                        com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType type = p.getObjectType();
+                        if (type == null) type = com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType.OTHER;
+                        groupedPoints.computeIfAbsent(type, k -> new ArrayList<>()).add(p);
+                    }
 
-                        destRow.setHeight(srcRow.getHeight());
+                    totalCategoryRows = groupedPoints.size();
+                    totalDetailRows = points.size();
+                    offset = (totalCategoryRows + totalDetailRows) - 2;
+                    totalNguyenGiaExport = 0; // no real asset value data in V2 entities
+                    cLaiDauNamExport = 0;
+                    destRowIdx = 0;
 
-                        for (int c = 0; c < srcRow.getLastCellNum(); c++) {
-                            Cell srcCell = srcRow.getCell(c);
+                    for (int r = 0; r <= srcSheet.getLastRowNum(); r++) {
+                        Row srcRow = srcSheet.getRow(r);
+                        if (srcRow == null) continue;
 
-                            if (srcCell != null) {
-                                Cell destCell = destRow.createCell(c);
+                        if (r < 10) {
+                            Row destRow = destSheet.createRow(r);
+                            destRow.setHeight(srcRow.getHeight());
+                            for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                                Cell srcCell = srcRow.getCell(c);
+                                if (srcCell != null) {
+                                    Cell destCell = destRow.createCell(c);
+                                    copyCell(srcCell, destCell, replacements);
+                                    if (r == 9) {
+                                        if (c == 8) setNumericValue(destCell, (double) totalNguyenGiaExport);
+                                        else if (c == 9) setNumericValue(destCell, (double) cLaiDauNamExport);
+                                    }
+                                }
+                            }
+                            destRowIdx = r + 1;
+                        } else if (r == 10) {
+                            // Dynamic rendering of Categories and Details (GIS fallback)
+                            Row srcRow10 = srcSheet.getRow(10);
+                            Row srcRow11 = srcSheet.getRow(11);
 
-                                copyCell(srcCell, destCell, replacements);
+                            for (var entry : groupedPoints.entrySet()) {
+                                List<com.hanghai.kchtg.gis.point.entity.PointObject> list = entry.getValue();
+                                int overallIdx = 1;
+                                String catName = categoryNames.getOrDefault(entry.getKey(), entry.getKey().name());
+
+                                Row catHeaderRow = destSheet.createRow(destRowIdx);
+                                catHeaderRow.setHeight(srcRow10.getHeight());
+
+                                long catNguyenGia = 0;
+                                long catGiaTriConLai = 0;
+
+                                for (int c = 0; c < srcRow10.getLastCellNum(); c++) {
+                                    Cell srcCell = srcRow10.getCell(c);
+                                    if (srcCell != null) {
+                                        Cell destCell = catHeaderRow.createCell(c);
+                                        destCell.setCellStyle(srcCell.getCellStyle());
+                                        if (c == 1) destCell.setCellValue(catName);
+                                        else if (c == 8) setNumericValue(destCell, (double) catNguyenGia);
+                                        else if (c == 9) setNumericValue(destCell, (double) catGiaTriConLai);
+                                    }
+                                }
+                                destRowIdx++;
+
+                                for (com.hanghai.kchtg.gis.point.entity.PointObject p : list) {
+                                    Row detailRow = destSheet.createRow(destRowIdx);
+                                    detailRow.setHeight(srcRow11.getHeight());
+
+                                    long val = 0;
+                                    long gTriConLai = 0;
+                                    String unitName = getPointAssetUnit(p);
+                                    int pYear = p.getCreatedAt() != null ? p.getCreatedAt().getYear() : reportYear;
+
+                                    for (int c = 0; c < srcRow11.getLastCellNum(); c++) {
+                                        Cell srcCell = srcRow11.getCell(c);
+                                        if (srcCell != null) {
+                                            Cell destCell = detailRow.createCell(c);
+                                            destCell.setCellStyle(srcCell.getCellStyle());
+                                            switch (c) {
+                                                case 0: destCell.setCellValue(overallIdx); break;
+                                                case 1: destCell.setCellValue(p.getName() != null ? p.getName() : ""); break;
+                                                case 2: destCell.setCellValue(unitName); break;
+                                                case 3: destCell.setCellValue(1.0); break;
+                                                case 4: case 5: destCell.setCellValue(pYear); break;
+                                                case 6: case 7: destCell.setCellValue(0.0); break;
+                                                case 8: destCell.setCellValue((double) val); break;
+                                                case 9: destCell.setCellValue((double) gTriConLai); break;
+                                                case 10: destCell.setCellValue(""); break;
+                                                case 11: destCell.setCellValue(""); break;
+                                                default: break;
+                                            }
+                                        }
+                                    }
+                                    overallIdx++;
+                                    destRowIdx++;
+                                }
+                            }
+                        } else if (r > 11) {
+                            Row destRow = destSheet.createRow(r + offset);
+                            destRow.setHeight(srcRow.getHeight());
+                            for (int c = 0; c < srcRow.getLastCellNum(); c++) {
+                                Cell srcCell = srcRow.getCell(c);
+                                if (srcCell != null) {
+                                    Cell destCell = destRow.createCell(c);
+                                    copyCell(srcCell, destCell, replacements);
+                                }
                             }
                         }
                     }
@@ -3150,9 +3541,9 @@ public class ReportService {
                         style.setVerticalAlignment(org.apache.poi.ss.usermodel.VerticalAlignment.CENTER);
                         c.setCellStyle(style);
                     }
+                finalizeWorkbookSheet(workbook);
 
-                    finalizeWorkbookSheet(workbook);
-                    return outputWorkbook(workbook, destSheet, isExcel);
+                return outputWorkbook(workbook, destSheet, isExcel);
                 } else if ("F-149".equalsIgnoreCase(request.getReportCode())) {
                     // Custom hierarchical export for F-149 (BCKCHT_164) using real CangBien
                     // entities
@@ -3404,9 +3795,9 @@ public class ReportService {
                         applyStaticRemergeAndOverflowMerge(destSheet, false, 10, 10 + totalGeneratedRows - 1);
                     }
 
-                    finalizeWorkbookSheet(workbook);
+                finalizeWorkbookSheet(workbook);
 
-                    return outputWorkbook(workbook, destSheet, isExcel);
+                return outputWorkbook(workbook, destSheet, isExcel);
                 }
 
                 List<Map<String, Object>> arrResult = null;
@@ -4098,6 +4489,9 @@ if (expr != null && (expr.contains("table.")
 
         replacements.put("${this.getCateOtherText('DM_APP_PARAM',objInput.getBcNoiDung(), 'NOI_DUNG_BAO_CAO_158')}",
                 bcNoiDungLabel);
+        // Template BCC_158.xlsx uses "thiz" not "this" — add the thiz variant
+        replacements.put("${thiz.getCateOtherText('DM_APP_PARAM',objInput.getBcNoiDung(), 'NOI_DUNG_BAO_CAO_158')}",
+                bcNoiDungLabel);
         replacements.put("${idx+1}", "1");
         replacements.put("${idx + 1}", "1");
 
@@ -4166,7 +4560,28 @@ if (expr != null && (expr.contains("table.")
         return map;
     }
 
-
+    /**
+     * Maps nhom (TS_QL asset group code) to a human-readable Vietnamese category name
+     * used in F-143 export category header rows.
+     */
+    private Map<String, String> getNhomCategoryNamesMap() {
+        Map<String, String> map = new LinkedHashMap<>();
+        map.put("CB", "I. CẢNG BIỂN");
+        map.put("BC", "II. BẾN CẢNG");
+        map.put("CC", "III. CẦU CẢNG");
+        map.put("BP", "IV. BẾN PHAO");
+        map.put("TTB", "V. TRẠM THÔNG TIN BÁO HIỆU");
+        map.put("CT", "VI. CẢNG TỔNG HỢP");
+        map.put("ND", "VII. KHU NEO ĐẬU");
+        map.put("CSSCDT", "VIII. CƠ SỞ SỬA CHỮA ĐÓNG TÀU");
+        map.put("LHH", "IX. LUỒNG HÀNG HẢI");
+        map.put("DBNT", "X. ĐÈN BIỂN / NHÀ TRẠM");
+        map.put("NT", "XI. NHÀ TRẠM");
+        map.put("PT", "XII. PHAO TIÊU");
+        map.put("VTS", "XIII. HỆ THỐNG VTS");
+        map.put("OTHER", "XIV. KHÁC");
+        return map;
+    }
 
     private List<Map<String, Object>> buildDynamicResultList(
             List<com.hanghai.kchtg.gis.point.entity.PointObject> points, String reportCode) {
@@ -4671,16 +5086,313 @@ if (expr != null && (expr.contains("table.")
                 return baos.toByteArray();
             }
         } else {
-            try {
-                workbook.getCreationHelper().createFormulaEvaluator().evaluateAll();
-            } catch (Exception evalEx) {
-                log.warn("Failed to evaluate formulas: {}", evalEx.getMessage());
-            }
-
             return convertExcelToPdf(destSheet);
         }
     }
 
+    /**
+     * Resolves a formula cell by computing its value in Java and replacing the formula
+     * with the computed result. This handles formulas like =VALUE(D14)+VALUE(D15)-VALUE(D16)
+     * where POI's built-in evaluator may not support the VALUE() function.
+     */
+    private void resolveFormulaCell(Cell cell) {
+        if (cell.getCellType() != CellType.FORMULA) return;
+        String formula = cell.getCellFormula();
+        if (formula == null) return;
+
+        try {
+            // Replace VALUE(X99) with just the numeric reference X99
+            // Since referenced cells already contain numbers, VALUE() is redundant
+            String simplified = formula.replaceAll("VALUE\\(([A-Z]+\\d+)\\)", "$1");
+
+            // Parse cell references and read values
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("([A-Z]+)(\\d+)").matcher(simplified);
+            String expr = simplified;
+            while (m.find()) {
+                String colLetters = m.group(1);
+                int rowNum = Integer.parseInt(m.group(2)) - 1; // 0-indexed
+                int colNum = CellReference.convertColStringToIndex(colLetters);
+
+                Row refRow = cell.getSheet().getRow(rowNum);
+                double val = 0;
+                if (refRow != null) {
+                    Cell refCell = refRow.getCell(colNum);
+                    if (refCell != null) {
+                        try {
+                            val = refCell.getNumericCellValue();
+                        } catch (Exception e) {
+                            try {
+                                DataFormatter formatter = new DataFormatter();
+                                String s = formatter.formatCellValue(refCell);
+                                val = Double.parseDouble(s.replaceAll("[^\\d.-]", ""));
+                            } catch (Exception ignored) {
+                            }
+                        }
+                    }
+                }
+                String cellRef = m.group(0);
+                expr = expr.replace(cellRef, String.valueOf(val));
+            }
+
+            // Evaluate arithmetic expression (only + and - needed)
+            double result = evaluateSimpleArithmetic(expr);
+            cell.setCellValue(result);
+            setNumericCellFormat(cell, result);
+        } catch (Exception e) {
+            log.warn("resolveFormulaCell failed for formula [{}]: {}", formula, e.getMessage());
+        }
+    }
+
+    /**
+     * Simple left-to-right evaluation for arithmetic expressions with + and - only.
+     */
+    private double evaluateSimpleArithmetic(String expr) {
+        String[] parts = expr.split("(?=[+-])|(?<=[+-])");
+        double result = 0;
+        char op = '+';
+        for (String part : parts) {
+            part = part.trim();
+            if (part.equals("+")) {
+                op = '+';
+            } else if (part.equals("-")) {
+                op = '-';
+            } else if (!part.isEmpty()) {
+                double val = Double.parseDouble(part);
+                if (op == '+') result += val;
+                else result -= val;
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Direct computation for BCC_157 (F-142) template.
+     * Reads known placeholder values from D column, computes formula cells (D and E columns),
+     * and writes the results directly. This replaces all formula evaluation which POI cannot
+     * handle for VALUE() functions and complex formulas.
+     */
+    private void directComputeBcc157(Sheet sheet) {
+        try {
+            // Read source values from placeholder cells (rows are 0-indexed in POI)
+            // Excel rows: 14=rowIdx13, 15=rowIdx14, 16=rowIdx15, 17=rowIdx16,
+            //              19=rowIdx18, 20=rowIdx19, 21=rowIdx20, 22=rowIdx21,
+            //              24=rowIdx23, 25=rowIdx24
+            // Column D = colIdx 3, Column E = colIdx 4
+
+            double d14 = getCellNumericValue(sheet, 13, 3); // taiSanNguyenGiaSoDuDauNam
+            double d15 = getCellNumericValue(sheet, 14, 3); // taiSanNguyenGiaTangTrongNam
+            double d16 = getCellNumericValue(sheet, 15, 3); // taiSanNguyenGiaGiamTrongNam
+            double d19 = getCellNumericValue(sheet, 18, 3); // taiSanGiaTriHaoMonSoDuDauNam
+            double d20 = getCellNumericValue(sheet, 19, 3); // taiSanGiaTriHaoMonTangTrongNam
+            double d21 = getCellNumericValue(sheet, 20, 3); // taiSanGiaTriHaoMonGiamTrongNam
+
+            // Compute formula results
+            double d17 = d14 + d15 - d16;         // Số dư cuối năm Nguyên giá
+            double d22 = d19 + d20 - d21;         // Số dư cuối năm Hao mòn
+            double d24 = d14 - d19;               // Giá trị còn lại Đầu năm
+            double d25 = d17 - d22;               // Giá trị còn lại Cuối năm
+
+            // Write D column computed cells
+            setCellNumericValue(sheet, 16, 3, d17);  // D17
+            setCellNumericValue(sheet, 21, 3, d22);  // D22
+            setCellNumericValue(sheet, 23, 3, d24);  // D24
+            setCellNumericValue(sheet, 24, 3, d25);  // D25
+
+            // Write E column (Tổng cộng = D column values)
+            setCellNumericValue(sheet, 13, 4, d14);  // E14 = D14
+            setCellNumericValue(sheet, 14, 4, d15);  // E15 = D15
+            setCellNumericValue(sheet, 15, 4, d16);  // E16 = D16
+            setCellNumericValue(sheet, 16, 4, d17);  // E17 = D17
+            setCellNumericValue(sheet, 18, 4, d19);  // E19 = D19
+            setCellNumericValue(sheet, 19, 4, d20);  // E20 = D20
+            setCellNumericValue(sheet, 20, 4, d21);  // E21 = D21
+            setCellNumericValue(sheet, 21, 4, d22);  // E22 = D22
+            setCellNumericValue(sheet, 23, 4, d24);  // E24 = D24
+            setCellNumericValue(sheet, 24, 4, d25);  // E25 = D25
+
+        } catch (Exception e) {
+            log.warn("directComputeBcc157 failed: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Computes BCC_157 formula cells directly from the replacements map values.
+     * This is more reliable than reading from the sheet because the replacements map
+     * already contains all correct values from the CRUD data, while the sheet may still
+     * have unresolved formula text at this point in the export pipeline.
+     *
+     * @param sheet       the destination sheet to write computed values to
+     * @param replacements the replacements map containing all placeholder → value mappings
+     */
+    private void directComputeBcc157FromReplacements(Sheet sheet, Map<String, String> replacements) {
+        try {
+            // Read values directly from replacements map — these are already correct
+            // from the CRUD data, unlike reading from the sheet which may have formula text
+            double d14 = parseReplacement(replacements, "${zobjComReport.taiSanNguyenGiaSoDuDauNam.asText()}");
+            double d15 = parseReplacement(replacements, "${zobjComReport.taiSanNguyenGiaTangTrongNam.asText()}");
+            double d16 = parseReplacement(replacements, "${zobjComReport.taiSanNguyenGiaGiamTrongNam.asText()}");
+            double d19 = parseReplacement(replacements, "${zobjComReport.taiSanGiaTriHaoMonSoDuDauNam.asText()}");
+            double d20 = parseReplacement(replacements, "${zobjComReport.taiSanGiaTriHaoMonTangTrongNam.asText()}");
+            double d21 = parseReplacement(replacements, "${zobjComReport.taiSanGiaTriHaoMonGiamTrongNam.asText()}");
+
+            // Compute formula results
+            double d17 = d14 + d15 - d16;         // Số dư cuối năm Nguyên giá
+            double d22 = d19 + d20 - d21;         // Số dư cuối năm Hao mòn
+            double d24 = d14 - d19;               // Giá trị còn lại Đầu năm
+            double d25 = d17 - d22;               // Giá trị còn lại Cuối năm
+
+            // Write D column computed cells
+            setCellNumericValue(sheet, 16, 3, d17);  // D17 - Số dư cuối năm Nguyên giá
+            setCellNumericValue(sheet, 21, 3, d22);  // D22 - Số dư cuối năm Hao mòn
+            setCellNumericValue(sheet, 23, 3, d24);  // D24 - Giá trị còn lại Đầu năm
+            setCellNumericValue(sheet, 24, 3, d25);  // D25 - Giá trị còn lại Cuối năm
+
+            // Write E column (Tổng cộng = D column values)
+            setCellNumericValue(sheet, 13, 4, d14);  // E14 = D14
+            setCellNumericValue(sheet, 14, 4, d15);  // E15 = D15
+            setCellNumericValue(sheet, 15, 4, d16);  // E16 = D16
+            setCellNumericValue(sheet, 16, 4, d17);  // E17 = D17
+            setCellNumericValue(sheet, 18, 4, d19);  // E19 = D19
+            setCellNumericValue(sheet, 19, 4, d20);  // E20 = D20
+            setCellNumericValue(sheet, 20, 4, d21);  // E21 = D21
+            setCellNumericValue(sheet, 21, 4, d22);  // E22 = D22
+            setCellNumericValue(sheet, 23, 4, d24);  // E24 = D24
+            setCellNumericValue(sheet, 24, 4, d25);  // E25 = D25
+
+        } catch (Exception e) {
+            log.warn("directComputeBcc157FromReplacements failed: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Force-overwrites computed numeric cells in BCC_157 (F-142) export.
+     * For each computed cell: removeFormula() + setCellType(NUMERIC) + setCellValue().
+     * This is the final defense against stale formulas or string placeholders that survived
+     * copyCell and directComputeBcc157FromReplacements (which uses setCellNumericValue
+     * without removeFormula/setCellType).
+     * <p>
+     * Follows the same pattern as F-148's exportDynamicReport — programmatic values only,
+     * no template formulas.
+     *
+     * @param sheet       the destination sheet
+     * @param replacements the replacements map containing all placeholder → value mappings
+     */
+    private void forceWriteNumericCells(Sheet sheet, Map<String, String> replacements) {
+        // Read input values from replacements map
+        double d14 = parseReplacement(replacements, "${zobjComReport.taiSanNguyenGiaSoDuDauNam.asText()}");
+        double d15 = parseReplacement(replacements, "${zobjComReport.taiSanNguyenGiaTangTrongNam.asText()}");
+        double d16 = parseReplacement(replacements, "${zobjComReport.taiSanNguyenGiaGiamTrongNam.asText()}");
+        double d19 = parseReplacement(replacements, "${zobjComReport.taiSanGiaTriHaoMonSoDuDauNam.asText()}");
+        double d20 = parseReplacement(replacements, "${zobjComReport.taiSanGiaTriHaoMonTangTrongNam.asText()}");
+        double d21 = parseReplacement(replacements, "${zobjComReport.taiSanGiaTriHaoMonGiamTrongNam.asText()}");
+
+        // Compute formula results
+        double d17 = d14 + d15 - d16;         // Số dư cuối năm Nguyên giá
+        double d22 = d19 + d20 - d21;         // Số dư cuối năm Hao mòn
+        double d24 = d14 - d19;               // Giá trị còn lại Đầu năm
+        double d25 = d17 - d22;               // Giá trị còn lại Cuối năm
+
+        // Force-write D column: removeFormula() + setCellType(NUMERIC) + setCellValue()
+        forceCellValue(sheet, 16, 3, d17);   // D17
+        forceCellValue(sheet, 21, 3, d22);   // D22
+        forceCellValue(sheet, 23, 3, d24);   // D24
+        forceCellValue(sheet, 24, 3, d25);   // D25
+
+        // Force-write E column (Tổng cộng = D column values)
+        forceCellValue(sheet, 13, 4, d14);   // E14
+        forceCellValue(sheet, 14, 4, d15);   // E15
+        forceCellValue(sheet, 15, 4, d16);   // E16
+        forceCellValue(sheet, 16, 4, d17);   // E17
+        forceCellValue(sheet, 18, 4, d19);   // E19
+        forceCellValue(sheet, 19, 4, d20);   // E20
+        forceCellValue(sheet, 20, 4, d21);   // E21
+        forceCellValue(sheet, 21, 4, d22);   // E22
+        forceCellValue(sheet, 23, 4, d24);   // E24
+        forceCellValue(sheet, 24, 4, d25);   // E25
+    }
+
+    /**
+     * Forcibly sets a numeric value in a cell by removing any formula, setting
+     * the cell type to NUMERIC, then setting the value — defeating any stale
+     * formula or string formatting on the cell.
+     *
+     * @param sheet  the sheet
+     * @param rowIdx 0-based row index
+     * @param colIdx 0-based column index
+     * @param value  the numeric value to set
+     */
+    private void forceCellValue(Sheet sheet, int rowIdx, int colIdx, double value) {
+        Row row = sheet.getRow(rowIdx);
+        if (row == null) row = sheet.createRow(rowIdx);
+        Cell cell = row.getCell(colIdx);
+        if (cell == null) cell = row.createCell(colIdx);
+        // Remove any formula the cell may have (from the copied template)
+        cell.removeFormula();
+        // Force type to NUMERIC — defeats any stale STRING placeholder
+        cell.setCellType(CellType.NUMERIC);
+        // Set the computed value
+        cell.setCellValue(value);
+        // Apply format
+        setNumericCellFormat(cell, value);
+    }
+
+    /**
+     * Parses a numeric value from the replacements map for a given key.
+     * Returns 0 if the key is missing, blank, or unparseable.
+     *
+     * @param replacements the replacements map
+     * @param key          the placeholder key to look up
+     * @return the parsed double value, or 0 if unavailable
+     */
+    private double parseReplacement(Map<String, String> replacements, String key) {
+        String val = replacements.get(key);
+        if (val == null || val.isBlank()) return 0;
+        try {
+            return Double.parseDouble(val);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Reads a numeric value from a cell, handling both NUMERIC and STRING cell types.
+     * Returns 0 if the cell is empty or unparseable.
+     */
+    private double getCellNumericValue(Sheet sheet, int rowIdx, int colIdx) {
+        Row row = sheet.getRow(rowIdx);
+        if (row == null) return 0;
+        Cell cell = row.getCell(colIdx);
+        if (cell == null) return 0;
+        try {
+            return cell.getNumericCellValue();
+        } catch (Exception e) {
+            try {
+                return Double.parseDouble(cell.getStringCellValue().replaceAll("[^\\d.-]", ""));
+            } catch (Exception ignored) {
+                return 0;
+            }
+        }
+    }
+
+    /**
+     * Sets a numeric value in a cell with proper formatting.
+     * Creates the row/cell if it doesn't exist.
+     */
+    private void setCellNumericValue(Sheet sheet, int rowIdx, int colIdx, double value) {
+        Row row = sheet.getRow(rowIdx);
+        if (row == null) row = sheet.createRow(rowIdx);
+        Cell cell = row.getCell(colIdx);
+        if (cell == null) cell = row.createCell(colIdx);
+        cell.setCellValue(value);
+        setNumericCellFormat(cell, value);
+    }
+
+    /**
+     * @deprecated Returns fake/hardcoded asset values — no real asset value data exists in V2 entities.
+     *             Replaced with literal 0 in F-143 methods. Scheduled for removal once a real asset
+     *             value source is available.
+     */
+    @Deprecated
     private long getPointAssetValue(com.hanghai.kchtg.gis.point.entity.PointObject p) {
         long val = 500000000L;
 
@@ -4692,6 +5404,21 @@ if (expr != null && (expr.contains("table.")
         }
 
         return val;
+    }
+
+    /**
+     * Null-safe converter: returns the String value, or empty string if null.
+     */
+    private static String nullToEmpty(String value) {
+        return value != null ? value : "";
+    }
+
+    /**
+     * Converts a BigDecimal to plain string (no scientific notation).
+     * Returns empty string if the value is null.
+     */
+    private static String bigDecimalToPlainString(java.math.BigDecimal value) {
+        return value != null ? value.toPlainString() : "";
     }
 
     private void setNumericValue(Cell cell, double value) {
@@ -4749,7 +5476,7 @@ if (expr != null && (expr.contains("table.")
             if (d == Math.floor(d)) {
                 newStyle.setDataFormat(wb.createDataFormat().getFormat("#,##0"));
             } else {
-                newStyle.setDataFormat(wb.createDataFormat().getFormat("#,##0.00"));
+                newStyle.setDataFormat(wb.createDataFormat().getFormat("#,##0.0000"));
             }
 
             cell.setCellStyle(newStyle);
@@ -4785,16 +5512,47 @@ if (expr != null && (expr.contains("table.")
 
                                 break;
                             } catch (NumberFormatException e) {
-                                destCell.setCellValue(repVal);
+                                if (repVal == null || repVal.isBlank()) {
+                                    destCell.setCellValue(0);
+                                    setNumericCellFormat(destCell, 0);
+                                } else {
+                                    destCell.setCellValue(repVal);
+                                }
 
                                 break;
                             }
                         }
                     }
 
+                    // Normalize thiz → this for template compatibility (BCC_158.xlsx uses thiz)
+                    if (val.contains("thiz.")) {
+                        val = val.replace("thiz.", "this.");
+                    }
+
                     for (Map.Entry<String, String> entry : replacements.entrySet()) {
                         if (val.contains(entry.getKey())) {
                             val = val.replace(entry.getKey(), entry.getValue() != null ? entry.getValue() : "");
+                        }
+                    }
+
+                    if (val.startsWith("=")) {
+                        destCell.setCellFormula(val.substring(1));
+                        // Use Java-side resolveFormulaCell() which strips VALUE(), reads
+                        // referenced cell values, computes arithmetic, and replaces the formula
+                        // with a plain numeric value. POI's evaluateFormulaCell() fails on
+                        // VALUE() and corrupts the cell to ERROR type, causing formula text
+                        // to show in PDF export.
+                        resolveFormulaCell(destCell);
+                        break;
+                    }
+
+                    if (val.matches("^-?\\d+(\\.\\d+)?$")) {
+                        try {
+                            double d = Double.parseDouble(val);
+                            destCell.setCellValue(d);
+                            setNumericCellFormat(destCell, d);
+                            break;
+                        } catch (NumberFormatException ignored) {
                         }
                     }
                 }
@@ -4810,8 +5568,33 @@ if (expr != null && (expr.contains("table.")
                 break;
 
             case FORMULA:
-
-                destCell.setCellFormula(srcCell.getCellFormula());
+                String formulaText = srcCell.getCellFormula();
+                destCell.setCellFormula(formulaText);
+                // BCC_157 template stores placeholders as FORMULA cells (not STRING)
+                // e.g. formula="${zobjComReport.taiSanNguyenGiaSoDuDauNam.asText()}"
+                // We must check if this is actually a placeholder, not a real formula
+                if (formulaText != null && formulaText.trim().startsWith("${") && formulaText.trim().endsWith("}")) {
+                    // This is a placeholder formula — replace with actual value from replacements map
+                    String trimFormula = formulaText.trim();
+                    if (replacements.containsKey(trimFormula)) {
+                        String repVal = replacements.get(trimFormula);
+                        try {
+                            double d = Double.parseDouble(repVal);
+                            destCell.setCellValue(d);
+                            setNumericCellFormat(destCell, d);
+                        } catch (NumberFormatException e) {
+                            if (repVal == null || repVal.isBlank()) {
+                                destCell.setCellValue(0);
+                                setNumericCellFormat(destCell, 0);
+                            } else {
+                                destCell.setCellValue(repVal);
+                            }
+                        }
+                    }
+                } else {
+                    // Real Excel formula — resolve with Java compute
+                    resolveFormulaCell(destCell);
+                }
 
                 break;
 

@@ -1,15 +1,20 @@
 ---
 id: F-127
-name: "Phê duyệt biến động tài sản"
+name: Phê duyệt biến động tài sản
 slug: phe-duyet-bien-dong-tai-san
 module-id: M-005
 status: proposed
 classification: local
 priority: high
-created: "2026-06-16T04:41:00Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:41:00Z
+last-updated: 2026-07-21T08:00:25Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/assetmovement/controller/YeuCauBienDongController.java
+  - src/main/java/com/hanghai/kchtg/assetmovement/controller/LuuPheDuyetController.java
+  - src/main/java/com/hanghai/kchtg/assetmovement/service/YeuCauBienDongService.java
+  - src/main/java/com/hanghai/kchtg/assetmovement/service/LuuPheDuyetService.java
 ---
 # Feature: Phê duyệt biến động tài sản
 

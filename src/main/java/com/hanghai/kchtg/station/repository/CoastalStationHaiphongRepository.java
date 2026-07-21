@@ -8,9 +8,13 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CoastalStationHaiphongRepository extends JpaRepository<CoastalStationHaiphong, UUID> {
+
+    @Query("SELECT c FROM CoastalStationHaiphong c WHERE c.code = :code AND c.deletedAt IS NULL")
+    Optional<CoastalStationHaiphong> findByCode(@Param("code") String code);
 
     @Query("SELECT c FROM CoastalStationHaiphong c WHERE c.portName = :portName AND c.deletedAt IS NULL")
     List<CoastalStationHaiphong> findByPortName(@Param("portName") String portName);

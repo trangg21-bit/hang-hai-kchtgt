@@ -1,17 +1,19 @@
 ---
 id: F-092
-name: "Quản lý Đài TTDH - Tạo mới"
+name: Quản lý Đài TTDH - Tạo mới
 slug: quan-ly-dai-ttdh-tao-moi
 module-id: M-004
 status: proposed
 classification: local
 priority: medium
-created: "2026-07-07T03:32:57Z"
-last-updated: "2026-07-07T03:32:57Z"
+created: 2026-07-07T03:32:57Z
+last-updated: 2026-07-21T02:49:08Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/station/
+  - src/test/java/com/hanghai/kchtg/station/
 ---
-
 # Feature: Quản lý Đài TTDH - Tạo mới
 
 ## Description

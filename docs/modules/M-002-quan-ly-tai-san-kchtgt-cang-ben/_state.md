@@ -2,23 +2,19 @@
 feature-id: M-002
 feature-name: Quản lý tài sản KCHTGT - Cảng & Bến
 pipeline-type: sdlc
-status: in-progress
+status: done
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:22Z
-last-updated: 2026-07-01T07:35:10Z
-current-stage: engineering-designer
+last-updated: 2026-07-21T04:43:04Z
+current-stage: closed
 output-mode: lean
 repo-type: mini
 repo-path: .
 project: ""
 docs-path: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben
 intel-path: docs/intel
-stages-queue:
-  - engineering-designer
-  - engineering-frontend-developer-wave-1
-  - engineering-qa-engineer-ui-wave-1
-  - engineering-code-reviewer
+stages-queue: []
 completed-stages:
   consulting-intelligence-extractor:
     verdict: Ready for BA
@@ -50,9 +46,29 @@ completed-stages:
     artifact: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w3.md
     completed-at: 2026-06-29
   engineering-code-reviewer:
-    verdict: Approved
-    artifact: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/reviewer/final-verdict-rereview.md
-    completed-at: 2026-06-29
+    verdict: Changes-requested
+    artifact: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/reviewer/08-review-report.md
+    completed-at: 2026-07-21
+  engineering-designer:
+    verdict: Pass
+    artifact: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/designer/cangbien/01-list-ui-spec.md
+    completed-at: 2026-07-21
+  engineering-frontend-developer-wave-1:
+    verdict: Pass
+    artifact: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/issues/dev-wave-1-reassess.md
+    completed-at: 2026-07-21
+  engineering-qa-engineer-ui-wave-1:
+    verdict: Changes-requested
+    artifact: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w1.md
+    completed-at: 2026-07-21
+  engineering-qa-engineer-ui-wave-2:
+    verdict: Changes-requested
+    artifact: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w2.md
+    completed-at: 2026-07-21
+  engineering-code-reviewer-wave-2:
+    verdict: Pass
+    artifact: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/reviewer/08-review-report.md
+    completed-at: 2026-07-21
 kpi:
   tokens-total: 0
   cycle-time-start: 2026-06-16T04:39:22Z
@@ -70,7 +86,6 @@ partial-redo: []
 agent-flags: {}
 feature-req: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md
 clarification-notes: ""
-ui-status: pending
 ---
 # Pipeline State: Quản lý tài sản KCHTGT - Cảng & Bến
 
@@ -80,28 +95,31 @@ Quản lý cảng biển (36), bến cảng (301), cầu cảng (614), cảng c�
 
 ## Stage Progress
 
-| Stage | Verdict | Artifact | Date |
-|---|---|---|---|
-| Intake (intelligence-extractor) | Ready for BA | docs/intel/_snapshot.md | 2026-06-16 |
-| engineering-business-analyst | Ready |  | 2026-06-27 |
-| engineering-system-architect | Ready |  | 2026-06-27 |
-| engineering-technical-lead | Ready |  | 2026-06-27 |
-| engineering-backend-developer-wave-1 | Pass |  | 2026-06-28 |
-| engineering-backend-developer-wave-2 | Pass |  | 2026-06-29 |
-| engineering-qa-engineer-wave-2 | Pass | qa/07-qa-report-w2.md | 2026-06-29 |
-| engineering-backend-developer-wave-3 | Pass |  | 2026-06-29 |
-| engineering-qa-engineer-wave-3 | Pass | qa/07-qa-report-w3.md | 2026-06-29 |
-| engineering-code-reviewer | Approved | reviewer/final-verdict-rereview.md | 2026-06-29 |
-
-_Backend track complete (waves 1–3 + code review, 2026-06-29). UI/frontend track pending — see Current Stage._
+| # | Stage | Agent | Verdict | Artifact | Date |
+|---|---|---|---|---|---|
+| 1 | Intake | consulting-intelligence-extractor | Ready for BA | — | 2026-06-16T04:39:22Z |
+| 2 | engineering-business-analyst | engineering-business-analyst | Ready | — | 2026-06-27 |
+| 3 | engineering-system-architect | engineering-system-architect | Ready | — | 2026-06-27 |
+| 4 | engineering-technical-lead | engineering-technical-lead | Ready | — | 2026-06-27 |
+| 5 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | Pass | — | 2026-06-28 |
+| 6 | engineering-backend-developer-wave-2 | engineering-backend-developer-wave-2 | Pass | — | 2026-06-29 |
+| 7 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w2.md | 2026-06-29 |
+| 8 | engineering-backend-developer-wave-3 | engineering-backend-developer-wave-3 | Pass | — | 2026-06-29 |
+| 9 | engineering-qa-engineer-wave-3 | engineering-qa-engineer-wave-3 | Pass | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w3.md | 2026-06-29 |
+| 10 | engineering-code-reviewer | engineering-code-reviewer | Changes-requested | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/reviewer/08-review-report.md | 2026-07-21 |
+| 11 | engineering-designer | engineering-designer | Pass | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/designer/cangbien/01-list-ui-spec.md | 2026-07-21 |
+| 12 | engineering-frontend-developer-wave-1 | engineering-frontend-developer-wave-1 | Pass | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/issues/dev-wave-1-reassess.md | 2026-07-21 |
+| 13 | engineering-qa-engineer-ui-wave-1 | engineering-qa-engineer-ui-wave-1 | Changes-requested | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w1.md | 2026-07-21 |
+| 14 | engineering-qa-engineer-ui-wave-2 | engineering-qa-engineer-ui-wave-2 | Changes-requested | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/qa/07-qa-report-w2.md | 2026-07-21 |
+| 15 | engineering-code-reviewer-wave-2 | engineering-code-reviewer-wave-2 | Pass | docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/reviewer/08-review-report.md | 2026-07-21 |
 
 ## Current Stage
 
-**engineering-designer** — UI/frontend track in progress (`ui-status: pending`). Input: `docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md` + designer artifacts under `designer/`. 40 UI features (F-068–F-107, status `proposed`) awaiting designer → frontend-developer → qa-engineer-ui.
+**closed** — Pipeline complete.
 
 ## Next Action
 
-Run: `/resume-module M-002` để đẩy tiếp track UI (engineering-designer → engineering-frontend-developer-wave-1 → engineering-qa-engineer-ui-wave-1 → code-reviewer).
+Awaiting human release approval — run `ai-kit sdlc state update --op released --kind module --id M-002 --workspace .` once production sign-off is granted.
 
 ## Active Blockers
 

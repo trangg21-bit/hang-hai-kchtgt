@@ -1,15 +1,24 @@
 ---
 id: F-135
-name: "Quản lý văn bản - Tìm kiếm"
+name: Quản lý văn bản - Tìm kiếm
 slug: quan-ly-van-ban-tim-kiem
 module-id: M-006
 status: proposed
 classification: local
 priority: high
-created: "2026-06-16T04:41:29Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:41:29Z
+last-updated: 2026-07-21T08:29:30Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/vanban/entity/TimKiemLog.java
+  - src/main/java/com/hanghai/kchtg/vanban/entity/GoiYTimKiem.java
+  - src/main/java/com/hanghai/kchtg/vanban/repository/TimKiemLogRepository.java
+  - src/main/java/com/hanghai/kchtg/vanban/repository/GoiYTimKiemRepository.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/TimKiemRequest.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/TimKiemLogResponse.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/TimKiemLogRequest.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/KetQuaTimKiemResponse.java
 ---
 # Feature: Quản lý văn bản - Tìm kiếm
 

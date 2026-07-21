@@ -1,198 +1,250 @@
+
 ---
 feature-id: M-002
 stage: validation
-agent: sdlc-qa
-verdict: Pass
+agent: engineering-qa-engineer
 wave: 2
-critical-ac-total: 5
-critical-ac-verified: 5
-last-updated: 2026-06-29
+verdict: Changes-requested
+critical-ac-total: 6
+critical-ac-verified: 3
+last-updated: 2026-07-21
 ---
 
-# QA Report — Wave 2 RE-VALIDATION
-**Module:** M-002 Quản lý tài sản KCHTGT - Cảng & Bến
-**Wave:** 2 (re-validation after dev-wave-2 rework)
+# QA Report (Wave 2) — M-002 Cảng & Bến Pages Re-validation
 
----
+## Overview
 
-## 1. Feature / Change Overview
+Re-validated all 10 cangben pages (5 List + 5 Form) against 36 designer UI specs after a general agent applied fixes. **TypeScript compilation passes** (`tsc --noEmit` exits 0, verified this session). **28 of 40 previously reported gaps are resolved.** 12 gaps remain (3 Critical, 5 Major, 4 Minor/Observation).
 
-Re-QA following dev-wave-2 rework that addressed all wave-1 Fail gaps:
-- HIGH-1: missing DB migrations for V22-V25
-- HIGH-2: missing cangben test suite (~77 tests)
-- HIGH-3: BUG-RBAC-001 — `PermissionAuthorizationManager.check()` returned `AuthorizationDecision` (always-truthy object in SpEL → always granted); fixed to return `boolean`
-- MED: child-delete guard (F-010), GPS/area Bean Validation (F-008), BenCang parent HIEN_HANH guard (F-014)
-- LOW: LichSuThayDoi + PheDuyetLog persistence (F-013/019/025/031/037)
+## Gap Resolution Summary
 
----
+| Severity | Fixed | Still Open | Total |
+|----------|-------|------------|-------|
+| Critical | 11 | 3 | 14 |
+| Major | 14 | 5 | 19 |
+| Minor | 3 | 4 | 7 |
+| **Total** | **28** | **12** | **40** |
 
-## 2. Test Scope
+## Per-Domain Verification Results
 
-### 2.1 Included
-| Area | Verification method |
-|---|---|
-| V22-V25 migration files exist + match JPA entities | Static: file read + entity @Table/@Column cross-check |
-| cangben test suite presence + pass count | Executed: `mvn -Dtest='com.hanghai.kchtg.cangben.**' test` |
-| RBAC check() return type fix | Static: source read of PermissionAuthorizationManager.java |
-| RBAC deny-path runtime proof | Executed: CangBienRbacSecurityTest logs show `granted=false` for unauthorized user |
-| F-008 GPS/area Bean Validation | Static: CreateCangBienRequest.java annotations verified |
-| F-010 child-delete guard | Static: CangBienService.java delete guard logic verified |
-| F-014 BenCang parent HIEN_HANH guard | Static: BenCangService.java HIEN_HANH status check verified |
-| F-013/019/025/031/037 LichSuThayDoi+PheDuyetLog wiring | Static: repository + service references confirmed |
-| Compile correctness | Executed: `mvn -q -DskipTests compile` |
+### 1. Cảng biển (cangbien)
 
-### 2.2 Excluded
-- Integration tests against a live database (H2/Testcontainers not configured; tests use Mockito)
-- End-to-end approval workflow with real MinIO file attachments
-- Performance / load testing
+#### CangBienList (`CangBienList.tsx`)
+| Check | Status | Note |
+|-------|--------|------|
+| Uses ScreenHeader+FilterBar+DataTable | ✅ | Already correct in w1 |
+| Columns match spec (maCang, tenCang, tinhThanhPho, dienTich, khaNangTiepNhan, trangThaiHoatDong, trangThaiPheDuyet, createdAt) | ✅ | All present |
+| No unnecessary viDo/kinhDo columns | ⚠️ | Still present (minor, spec lists them as display-only, not in table) |
+| Filter controls match spec (search + status + approvalStatus) | ❌ | Still only search filter |
+| STATUS_STYLE_MAP uses semantic tokens | ❌ | Hardcoded hex `#1BAF7A`, `#EDA100`, `#E34948` |
+| `<Tag color="cyan">` for maCang | ❌ | Hardcoded AntD Tag color |
 
-### 2.3 Assumptions and Constraints
-- Tests run with profile `local`; no real DB required (mocked repositories)
-- JaCoCo/Java 25 and Mockito mock-maker warnings observed; these are environmental, not M-002 blockers
-- `PermissionAuthorizationManager.check()` is app-wide; fix closes BUG-RBAC-001 across all modules
+#### CangBienForm (`CangBienForm.tsx`)
+| Check | Status | Note |
+|-------|--------|------|
+| viDo/kinhDo optional | ✅ | `required` removed |
+| khaNangTiepNhan optional | ✅ | `required` removed |
+| trangThaiHoatDong values = HIEN_HANH/TAM_NGUNG | ✅ | Fixed from ACTIVE/SUSPENDED/INACTIVE |
+| GPS pair constraint validation | ✅ | Added `hasViDo !== hasKinhDo` check |
+| 2-column grid layout | ✅ | Row+Col with gutter |
+| Approval status tag in edit mode | ✅ | Added |
+| trangThaiPheDuyet Select in create mode | ❌ | Still missing |
+| trangThaiPheDuyet default = 'CHỜ_PHE_DUYỆT' | ❌ | Still 'DRAFT' |
+| tinhThanhPho = Input (not Select) | ❌ | Still Select from VIETNAM_PROVINCES |
+| L1/L2 approval workflow matches spec | ❌ | Still multi-level (DRAFT→PENDING→APPROVED_L1→...) |
 
----
+### 2. Bến cảng (bencang)
 
-## 3. Requirement Coverage Matrix
+#### BenCangList (`BenCangList.tsx`)
+| Check | Status | Note |
+|-------|--------|------|
+| Uses list-view components | ✅ | Already correct |
+| Has createdAt column | ✅ | Already present |
+| Has cangBienId filter | ✅ | Already present |
+| STATUS_STYLE_MAP uses semantic tokens | ❌ | Hardcoded hex |
+| `<Tag color="cyan">` for maBen | ❌ | Hardcoded Tag color |
 
-| Gap ID | Requirement | Verification | Coverage status | Evidence |
-|---|---|---|---|---|
-| HIGH-1 | V22 vung_nuoc migration | Static: file + entity match | CLOSED | V22 CREATE TABLE matches VungNuoc @Table(name="vung_nuoc") all columns align |
-| HIGH-1 | V23 giay_to migration | Static | CLOSED | V23 CREATE TABLE matches GiayTo @Table(name="giay_to") |
-| HIGH-1 | V24 lich_su_thay_doi migration | Static | CLOSED | V24 CREATE TABLE matches LichSuThayDoi @Table(name="lich_su_thay_doi") |
-| HIGH-1 | V25 phe_duyet_log migration | Static | CLOSED | V25 CREATE TABLE matches PheDuyetLog @Table(name="phe_duyet_log") |
-| HIGH-2 | cangben test suite ~77 tests | Executed | CLOSED | 77 tests run: 0 failures, 0 errors, 0 skipped |
-| HIGH-3 | check() returns boolean (not AuthorizationDecision) | Static + Executed | CLOSED | Source: `public boolean check(...)` line 27; deny-path: `Failed to authorize... granted=false` in test log |
-| MED-F008 | GPS latitude @DecimalMin(-90)/@DecimalMax(90) | Static | CLOSED | CreateCangBienRequest.java lines 29-31 |
-| MED-F008 | Longitude @DecimalMin(-180)/@DecimalMax(180) | Static | CLOSED | CreateCangBienRequest.java lines 33-35 |
-| MED-F008 | Area @DecimalMin(0,inclusive=false) | Static | CLOSED | CreateCangBienRequest.java line 37 |
-| MED-F010 | Child-delete guard (BenCang + VungNuoc count check) | Static | CLOSED | CangBienService.java lines 141-148 |
-| MED-F014 | BenCang parent HIEN_HANH guard | Static | CLOSED | BenCangService.java line 52: `if (!parent.getTrangThaiHoatDong().equals("HIEN_HANH"))` |
-| LOW-F013/019/025/031/037 | LichSuThayDoi + PheDuyetLog repositories wired | Static | CLOSED | Both repositories exist; referenced in BenCangApprovalService, CauCangApprovalService, CangCanApprovalService, CangCanService, BenCangService |
+#### BenCangForm (`BenCangForm.tsx`)
+| Check | Status | Note |
+|-------|--------|------|
+| cangBienId = Select (API-loaded) | ✅ | Fixed from text Input |
+| viDo/kinhDo optional | ✅ | `required` removed |
+| loaiBen = free text | ✅ | Fixed from enum Select |
+| chieuDai, chieuRong, doSauLuong optional | ✅ | All `required` removed |
+| trangThaiHoatDong = HIEN_HANH/TAM_NGUNG | ✅ | Fixed |
+| GPS pair constraint | ✅ | Added |
+| 2-column grid layout | ✅ | Row+Col with gutter |
+| Approval status tag in edit mode | ✅ | Added |
+| L1/L2 workflow matches spec | ❌ | Still multi-level |
 
----
+### 3. Cầu cảng (caucang)
 
-## 4. Test Strategy
+#### CauCangList (`CauCangList.tsx`)
+| Check | Status | Note |
+|-------|--------|------|
+| Uses list-view components | ✅ | Already correct |
+| trangThaiHoatDong dataIndex correct | ✅ | Already correct |
+| Has createdAt column | ✅ | Already present |
+| Missing benCangId filter | ❌ | Still absent |
+| STATUS_STYLE_MAP uses semantic tokens | ❌ | Hardcoded hex |
+| `<Tag color="cyan">` for maCau | ❌ | Hardcoded Tag color |
 
-### 4.1 Happy Path
-Covered: CangBienServiceTest, BenCangServiceTest — create, update, list, soft-delete flows.
+#### CauCangForm (`CauCangForm.tsx`)
+| Check | Status | Note |
+|-------|--------|------|
+| benCangId = Select (API-loaded) | ✅ | Fixed from text Input |
+| loaiCau = free text | ✅ | Fixed from enum Select |
+| chieuDai, taiTrong optional | ✅ | `required` removed |
+| trangThaiHoatDong = HIEN_HANH/TAM_NGUNG | ✅ | Fixed |
+| Approval status tag in edit mode | ✅ | Added |
+| L1/L2 workflow matches spec | ❌ | Still multi-level |
 
-### 4.2 Negative Path
-Covered: CreateCangBienRequestValidationTest (14 cases — invalid GPS, empty name, out-of-range area); BenCangServiceTest parent-not-HIEN_HANH rejection; CangBienServiceTest child-delete guard returning 409.
+### 4. Cảng cạn (cangcan)
 
-### 4.3 Edge Cases
-Covered: boundary GPS values (±90 lat, ±180 lon), area exactly 0 rejected, null optional fields accepted.
+#### CangCanList (`CangCanList.tsx`) — **NOTABLY FIXED**
+| Check | Status | Note |
+|-------|--------|------|
+| Uses ScreenHeader+FilterBar+DataTable | ✅ | **FIXED — was legacy Card+Row+Col** |
+| dataIndex: 'trangThaiHoatDong' | ✅ | **FIXED — was 'isActive'** |
+| dataIndex: 'trangThaiPheDuyet' | ✅ | **FIXED — was 'approvalStatus'** |
+| createdAt column present | ✅ | **FIXED — was absent** |
+| Filter uses FilterBar component | ✅ | **FIXED — was custom Input+Select** |
+| STATUS_STYLE_MAP uses semantic tokens | ❌ | Hardcoded hex |
+| `<Tag color="cyan">` for maCangCan | ❌ | Hardcoded Tag color |
 
-### 4.4 Permission / Role Cases
-Covered: CangBienRbacSecurityTest (4 cases) — admin with permission granted, user without permission denied (assert AccessDeniedException / 403), approver with `cangbien:approve` granted, user without `cangbien:delete` denied.
+#### CangCanForm (`CangCanForm.tsx`)
+| Check | Status | Note |
+|-------|--------|------|
+| viDo/kinhDo optional | ✅ | `required` removed |
+| tinhThanhPho optional | ✅ | `required` removed |
+| congSuatTEU optional | ✅ | `required` removed |
+| trangThaiHoatDong = HIEN_HANH/TAM_NGUNG | ✅ | Fixed |
+| GPS pair constraint | ✅ | Added |
+| 2-column grid layout | ✅ | Row+Col with gutter |
+| Approval status tag in edit mode | ✅ | Added |
+| trangThaiPheDuyet Select in create mode | ❌ | Still missing |
+| trangThaiPheDuyet default = 'CHỜ_PHE_DUYỆT' | ❌ | Still 'DRAFT' |
+| L1/L2 workflow matches spec | ❌ | Still multi-level |
 
-### 4.5 Integration Cases
-Analytical: approval service wires PheDuyetLog correctly per BenCangApprovalService/CauCangApprovalService source. Not executed against real DB.
+### 5. Vùng nước (vungnuoc)
 
-### 4.6 Data / State Transition Cases
-Covered: CangBienApprovalServiceTest (8 cases) — approve, reject, re-submit, invalid transition. ApprovalWorkflowServiceTest covers multi-step workflow.
+#### VungNuocList (`VungNuocList.tsx`) — **NOTABLY FIXED**
+| Check | Status | Note |
+|-------|--------|------|
+| Uses ScreenHeader+FilterBar+DataTable | ✅ | **FIXED — was legacy Card+Row+Col** |
+| dataIndex: 'trangThaiHoatDong' | ✅ | **FIXED — was 'isActive'** |
+| dataIndex: 'trangThaiPheDuyet' | ✅ | **FIXED — was 'approvalStatus'** |
+| createdAt column present | ✅ | **FIXED — was absent** |
+| tenCangBien entity name | ✅ | **FIXED — was raw UUID** |
+| Missing cangBienId filter | ❌ | Still absent |
+| STATUS_STYLE_MAP uses semantic tokens | ❌ | Hardcoded hex |
+| `<Tag color="cyan">` for maVungNuoc | ❌ | Hardcoded Tag color |
 
-### 4.7 Regression Scope
-`PermissionAuthorizationManager.check()` return-type fix is app-wide. No regression test suite was run for other modules. Existing tests for M-001 / M-007 / M-009 etc. should be run as regression gate by sdlc-reviewer before release.
+#### VungNuocForm (`VungNuocForm.tsx`)
+| Check | Status | Note |
+|-------|--------|------|
+| cangBienId = Select (API-loaded) | ✅ | Fixed from text Input |
+| dienTich, doSauMax, doSauTrungBinh optional | ✅ | All `required` removed |
+| trangThaiHoatDong = HIEN_HANH/TAM_NGUNG | ✅ | Fixed |
+| Approval status tag in edit mode | ✅ | Added |
+| loaiVungNuoc = free text | ❌ | Still Select enum |
+| L1/L2 workflow matches spec | ❌ | Still multi-level |
 
----
+### 6. Giấy tờ (giayto)
 
-## 5. Test Cases (summary — 77 executed)
+| Check | Status |
+|-------|--------|
+| Upload modal from spec | ❌ | No page file exists (spec describes modal, not page) |
 
-| Suite | Tests | Failures | Errors | Skipped |
-|---|---|---|---|---|
-| CangBienRbacSecurityTest | 4 | 0 | 0 | 0 |
-| CreateCangBienRequestValidationTest | 14 | 0 | 0 | 0 |
-| CangBienApprovalServiceTest | 8 | 0 | 0 | 0 |
-| BenCangServiceTest | 9 | 0 | 0 | 0 |
-| CangBienServiceTest | (subset of 77) | 0 | 0 | 0 |
-| BenCangControllerTest | (subset of 77) | 0 | 0 | 0 |
-| CangBienControllerTest | (subset of 77) | 0 | 0 | 0 |
-| ApprovalWorkflowServiceTest | (subset of 77) | 0 | 0 | 0 |
-| **TOTAL** | **77** | **0** | **0** | **0** |
+## Execution Results
 
----
+`tsc --noEmit` exit code: **0** (verified)
 
-## 6. Execution Results
+| Result | Count |
+|--------|-------|
+| Gaps FIXED | 28 |
+| Gaps REMAINING | 12 |
+| Total Gaps (w1) | 40 |
+| Fix Rate | 70% |
 
-| Evidence type | Command / Source | Result |
-|---|---|---|
-| Executed | `mvn -q -DskipTests compile` | BUILD SUCCESS — 0 errors |
-| Executed | `mvn -Dtest='com.hanghai.kchtg.cangben.**' test` | 77 tests run, 0 failures, 0 errors, 0 skipped — BUILD SUCCESS |
-| Executed (RBAC deny-path) | CangBienRbacSecurityTest log | `Failed to authorize... granted=false, expressionAttribute=@auth.check(authentication, 'cangbien:approve')` and `'cangbien:delete'` — confirms fail-closed behavior |
-| Analytical | PermissionAuthorizationManager.java line 27 | `public boolean check(...)` — correct return type, BUG-RBAC-001 closed |
-| Analytical | CreateCangBienRequest.java lines 29-37 | @DecimalMin/@DecimalMax on viDo, kinhDo, dienTich — F-008 closed |
-| Analytical | CangBienService.java lines 141-148 | countBenCangByCangBienId + countVungNuocByCangBienId guard — F-010 closed |
-| Analytical | BenCangService.java line 52 | HIEN_HANH string equality guard — F-014 closed |
-| Analytical | V22-V25 migrations vs entity @Table/@Column | Column names, types, constraints match 1:1 — HIGH-1 closed |
+## Remaining Defects (12 gaps)
 
----
+### Critical Remaining
 
-## 7. Defects Found
+| ID | Domain | Page | Issue | Expected | Actual |
+|----|--------|------|-------|----------|--------|
+| DEF-006-R | All (5) | All *Form | Approval workflow architecture | Direct approve/reject based on trangThaiPheDuyet (CHỜ_PHE_DUYỆT→ĐƯỢC_PHE_DUYỆT/TỪ_CHỐI) | Multi-level workflow (DRAFT→PENDING→APPROVED_L1→APPROVED_L2) |
+| DEF-013-R | cangbien | CangBienForm | Missing trangThaiPheDuyet Select in create mode | Present with CHỜ_PHE_DUYỆT default | Absent |
+| DEF-014-R | cangcan | CangCanForm | Missing trangThaiPheDuyet Select in create mode | Present with CHỜ_PHE_DUYỆT default | Absent |
 
-None. All wave-1 defects verified closed.
+### Major Remaining
 
----
+| ID | Domain | Page | Issue | Expected | Actual |
+|----|--------|------|-------|----------|--------|
+| DEF-012-R | vungnuoc | VungNuocForm | loaiVungNuoc field type | Free text Input | Select enum (NEO_DAU, KIEM_DICH, ...) |
+| DEF-024-R | cangbien | CangBienForm | trangThaiPheDuyet default | 'CHỜ_PHE_DUYỆT' | 'DRAFT' |
+| DEF-025-R | cangcan | CangCanForm | trangThaiPheDuyet default | 'CHỜ_PHE_DUYỆT' | 'DRAFT' |
+| DEF-031-R | cangbien | CangBienList | Missing filter controls | search + status + approvalStatus + orgUnitId | Only search |
+| DEF-032-R | cangbien | CangBienForm | tinhThanhPho field type | Free text Input | Select from VIETNAM_PROVINCES |
 
-## 8. NFR Observations
+### Minor/Observation Remaining
 
-### 8.1 Security Behavior
-BUG-RBAC-001 (always-truthy AuthorizationDecision in SpEL) is confirmed fixed. `check()` now returns `boolean`; runtime test log proves deny-path fires correctly. App-wide impact means all modules benefit from this fix.
+| ID | Domain | Page | Issue |
+|----|--------|------|-------|
+| DEF-034-R | All (5) | All *List | STATUS_STYLE_MAP hardcoded hex (#1BAF7A, #EDA100, #E34948) instead of semantic tokens (statusOperational, statusAttention, statusCritical) — tokens are imported but unused in maps |
+| DEF-035-R | All (5) | All *List | APPROVAL_STYLE_MAP hardcoded hex instead of semantic tokens |
+| DEF-036-R | All (5) | All *List | ma* columns rendered with `<Tag color="cyan">` — hardcoded AntD Tag color |
+| New | caucang | CauCangList | Missing benCangId filter per spec (spec lists 3 filters: search, status, approval, benCangFilter) |
+| New | vungnuoc | VungNuocList | Missing cangBienId filter per spec (spec lists 3 filters: search, status, approval, cangBienFilter) |
+| New | giayto | — | GiayTo domain has 1 upload spec but no modal/page implemented |
 
-### 8.2 Performance Concerns
-No new performance concerns introduced. Child-count queries use indexed FK columns (`cang_bien_id`).
+## Fixes Verified This Wave
 
-### 8.3 Audit / Logging
-LichSuThayDoi (V24) and PheDuyetLog (V25) tables are INSERT-only by DDL comment; no UPDATE/DELETE columns exposed. Repositories wired in approval services.
+### List pages — major fixes confirmed:
+1. **CangCanList**: Complete rewrite from legacy Card+Row+Col custom pattern → ScreenHeader+FilterBar+DataTable + Pagination from list-view
+2. **CangCanList**: `isActive` → `trangThaiHoatDong`, `approvalStatus` → `trangThaiPheDuyet`
+3. **CangCanList**: `createdAt` column added
+4. **CangCanList**: Proper 4-state rendering (Loading→Error→Empty→Data)
+5. **VungNuocList**: Same legacy→list-view migration
+6. **VungNuocList**: `isActive` → `trangThaiHoatDong`, `approvalStatus` → `trangThaiPheDuyet`
+7. **VungNuocList**: `createdAt` column added
+8. **VungNuocList**: `cangBienId` (raw UUID) → `tenCangBien` (entity name)
 
-### 8.4 Reliability / Resilience
-Migrations use `CREATE TABLE IF NOT EXISTS` — idempotent on re-run. No risk of migration failure on existing schema.
+### Form pages — major fixes confirmed:
+1. **CangBienForm**: `required` removed from viDo, kinhDo, khaNangTiepNhan
+2. **CangBienForm**: trangThaiHoatDong values changed to HIEN_HANH/TAM_NGUNG
+3. **CangBienForm**: GPS pair constraint added (`hasViDo !== hasKinhDo`)
+4. **CangBienForm**: 2-column grid layout (Row+Col with gutter)
+5. **CangBienForm**: Approval status tag in edit mode
+6. **BenCangForm**: cangBienId changed from text Input to Select (API-loaded options via `cangBienCRUD.search`)
+7. **BenCangForm**: `required` removed from viDo, kinhDo, chieuDai, chieuRong, doSauLuong
+8. **BenCangForm**: loaiBen changed from Select enum (WATER/SHORE/BREAKWATER) to free text Input
+9. **BenCangForm**: trangThaiHoatDong values fixed, 2-column grid, GPS constraint
+10. **CauCangForm**: benCangId changed from text Input to Select (API-loaded options via `benCangCRUD.search`)
+11. **CauCangForm**: loaiCau changed from Select enum (STRAIGHT/ANGLED/T_SHAPED) to free text Input
+12. **CauCangForm**: `required` removed from chieuDai, taiTrong
+13. **CauCangForm**: trangThaiHoatDong values fixed, 2-column grid
+14. **CangCanForm**: `required` removed from viDo, kinhDo, tinhThanhPho, congSuatTEU
+15. **CangCanForm**: trangThaiHoatDong values fixed, GPS constraint, 2-column grid
+16. **VungNuocForm**: cangBienId changed from text Input to Select (API-loaded)
+17. **VungNuocForm**: `required` removed from dienTich, doSauMax, doSauTrungBinh
+18. **VungNuocForm**: trangThaiHoatDong values fixed, 2-column grid
+19. **All 5 forms**: Approval status tag added in edit mode
 
-### 8.5 Usability Concerns
-None in scope (backend-only module).
+## NFR Observations
 
----
+- **70% fix rate** from w1 — most critical defects resolved
+- **TypeScript compilation clean** — no type errors introduced
+- **Shared component adoption**: Now 5/5 list pages use list-view components (was 3/5)
+- **Status enum alignment**: All 5 forms now use HIEN_HANH/TAM_NGUNG (was mixed ACTIVE/INACTIVE/MAINTENANCE)
+- **Parent entity selection**: 3 forms migrated from text Input to API-loaded Select dropdown
+- **GPS fields**: 4 forms now have GPS constraints (was 0)
+- **Remaining theme debt**: STATUS_STYLE_MAP and APPROVAL_STYLE_MAP still use hardcoded hex values despite importing `statusOperational`, `statusAttention`, `statusCritical` from tokens
 
-## 9. Regression Impact Assessment
+## Release Recommendation
 
-| Scope | Risk | Mitigation |
-|---|---|---|
-| PermissionAuthorizationManager.check() — app-wide | Medium: all @PreAuthorize guards now return boolean; previously always-truthy means this is a behavior change | Existing M-001/M-007/M-009/etc. test suites should be run as regression gate. Wave-1 report noted this as app-wide concern. |
-| V22-V25 migrations — additive DDL | Low: `IF NOT EXISTS` guards; FK to pre-existing cang_bien table | No rollback risk on clean environments |
-| cangben controllers @PreAuthorize — new enforcement | Medium: endpoints that were silently open (bug) now enforce RBAC | Callers without correct permissions will now receive 403; expected behavior post-fix |
+**CONDITIONAL RELEASE** — The 12 remaining gaps are lower-severity than w1's 40-gap block. Fix rate is 70%. Recommend addressing the 3 Critical remaining items (approval workflow architecture, missing trangThaiPheDuyet in 2 forms) before final release. The Minor theme-compliance items (hardcoded hex) and Major filter/field-type gaps can be deferred to a follow-up wave without blocking.
 
----
+## QA Verdict
 
-## 10. Test Limitations / Gaps
-
-| Gap | Impact | Reason |
-|---|---|---|
-| No full-module regression run (M-001, M-007, M-009, etc.) | Medium — RBAC fix is app-wide | Out of scope for M-002 wave-2; sdlc-reviewer should trigger full suite before release |
-| Tests use Mockito mocks — no live DB integration | Low — schema verified via static migration/entity review | H2/Testcontainers not configured in project |
-| MinIO file attachment upload (GiayTo) not end-to-end tested | Low — entity + repository + migration verified | MinIO not available in test environment |
-
----
-
-## 11. Release Recommendation
-
-**All wave-1 HIGH gaps are closed with executed evidence.** MED and LOW gaps are closed with static evidence supported by the passing test suite. No defects found.
-
-Recommendation: **Pass** — forward to sdlc-reviewer with the caveat that a full-module regression run (all modules, not just cangben) should be triggered before production release due to the app-wide RBAC fix.
-
----
-
-## 12. QA Verdict
-
-**Pass**
-
----
-
-## QA → Handoff Summary
-
-**Verdict:** Pass
-**AC coverage:** 5/5 critical ACs verified (HIGH-1 x4 migrations, HIGH-2 test suite, HIGH-3 RBAC fix + deny-path proof)
-**Evidence type split:** 3 executed / 8 analytical
-**Defects found:** 0
-**Top defect for reviewer attention:** None — all prior defects closed. Reviewer should note app-wide scope of RBAC fix (check() return type) and recommend full regression suite before production release.
-**NFR observations:** BUG-RBAC-001 closed (security); LichSuThayDoi/PheDuyetLog INSERT-only DDL correct (audit); migrations idempotent (reliability).
-**Test gaps reviewer should note:** No live-DB integration tests; MinIO GiayTo flow not end-to-end; full-module regression not run (M-001/M-007/M-009 etc.) — RBAC fix is app-wide so cross-module regression is advised before release.
+**Changes-requested** — 28 of 40 gaps resolved (70%). 12 remain (3 Critical, 5 Major, 4 Minor). The most impactful architectural defects (legacy list pages, wrong dataIndex names, wrong status enums, parent entity text inputs, missing required fields, missing GPS validation, missing createdAt columns) are all fixed. Remaining items are incremental improvements: approval workflow redesign, 3 missing filters, 2 missing trangThaiPheDuyet selects, 2 field type corrections, and theme token compliance. TypeScript compiles cleanly.

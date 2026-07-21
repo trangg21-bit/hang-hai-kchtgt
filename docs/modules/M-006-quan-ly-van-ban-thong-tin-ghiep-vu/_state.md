@@ -2,11 +2,12 @@
 feature-id: M-006
 feature-name: Quản lý văn bản & Thông tin nghiệp vụ
 pipeline-type: sdlc
-status: done
+status: in-progress
+aggregate-id: M-006
 depends-on: []
 blocked-by: []
 created: 2026-06-16T04:39:13Z
-last-updated: 2026-06-29T00:00:00Z
+last-updated: 2026-07-21T08:27:52Z
 current-stage: closed
 output-mode: lean
 repo-type: mini
@@ -34,6 +35,10 @@ completed-stages:
   engineering-code-reviewer:
     verdict: Pass
     completed-at: 2026-06-29T00:00:00Z
+  engineering-qa-engineer-wave-2:
+    verdict: Pass
+    artifact: docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/qa/07-qa-report-w2.md
+    completed-at: 2026-07-21
 kpi:
   tokens-total: 0
   cycle-time-start: 2026-06-16T04:39:13Z
@@ -47,18 +52,7 @@ children-close-policy: TERMINATE
 child-events: []
 partial-redo: []
 agent-flags: {}
-feature-req:
-  file: docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/module-brief.md
-  canonical-fallback: docs/intel/_snapshot.md
-  scope-modules: []
-  scope-features: []
-  dev-unit: ""
-  clarification-notes: ""
-source-file-count: 65
-test-file-count: 1
-test-method-count: 6
-sealed: true
-sealed-at: 2026-06-29T00:00:00Z
+feature-req: docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/module-brief.md
 ---
 # Pipeline State: Quản lý văn bản & Thông tin nghiệp vụ
 
@@ -70,20 +64,21 @@ Quản lý văn bản pháp lý, vận hành, bảo trì, sự cố, quy hoạch
 
 | # | Stage | Agent | Verdict | Artifact | Date |
 |---|---|---|---|---|---|
-| 1 | Intake | consulting-intelligence-extractor | Pass | docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/module-brief.md | 2026-06-16T04:39:13Z |
-| 2 | engineering-system-architect | engineering-system-architect | Pass | src/main/java/com/hanghai/kchtg/vanban/ | 2026-06-29T00:00:00Z |
-| 3 | engineering-technical-lead | engineering-technical-lead | Pass | src/main/java/com/hanghai/kchtg/vanban/ (65 files) | 2026-06-29T00:00:00Z |
-| 4 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | Pass | src/main/java/com/hanghai/kchtg/vanban/ + src/test/java/com/hanghai/kchtg/vanban/ | 2026-06-29T00:00:00Z |
-| 5 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | Pass | src/test/java/com/hanghai/kchtg/vanban/VanBanPhapLyControllerTest.java | 2026-06-29T00:00:00Z |
-| 6 | engineering-code-reviewer | engineering-code-reviewer | Pass | mvn compile (BUILD SUCCESS) | 2026-06-29T00:00:00Z |
+| 1 | Intake | consulting-intelligence-extractor | Ready for BA | — | 2026-06-16T04:39:13Z |
+| 2 | engineering-system-architect | engineering-system-architect | Pass | — | 2026-06-29T00:00:00Z |
+| 3 | engineering-technical-lead | engineering-technical-lead | Pass | — | 2026-06-29T00:00:00Z |
+| 4 | engineering-backend-developer-wave-1 | engineering-backend-developer-wave-1 | Pass | — | 2026-06-29T00:00:00Z |
+| 5 | engineering-qa-engineer-wave-1 | engineering-qa-engineer-wave-1 | Pass | — | 2026-06-29T00:00:00Z |
+| 6 | engineering-code-reviewer | engineering-code-reviewer | Pass | — | 2026-06-29T00:00:00Z |
+| 7 | engineering-qa-engineer-wave-2 | engineering-qa-engineer-wave-2 | Pass | docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/qa/07-qa-report-w2.md | 2026-07-21 |
 
 ## Current Stage
 
-**closed** — Module sealed. Package: `com.hanghai.kchtg.vanban/`. Verified counts: 65 source files, 1 test files, 6 @Test methods.
+**closed** — Pipeline complete.
 
 ## Next Action
 
-Module M-006 is SEALED. No further action required.
+Awaiting human release approval — run `ai-kit sdlc state update --op released --kind module --id M-006 --workspace .` once production sign-off is granted.
 
 ## Active Blockers
 

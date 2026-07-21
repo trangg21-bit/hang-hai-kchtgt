@@ -1,15 +1,23 @@
 ---
 id: F-128
-name: "Quản lý văn bản pháp lý"
+name: Quản lý văn bản pháp lý
 slug: quan-ly-van-ban-phap-ly
 module-id: M-006
 status: proposed
 classification: local
 priority: high
-created: "2026-06-16T04:40:21Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:40:21Z
+last-updated: 2026-07-21T08:29:20Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/vanban/entity/VanBanPhapLy.java
+  - src/main/java/com/hanghai/kchtg/vanban/controller/VanBanPhapLyController.java
+  - src/main/java/com/hanghai/kchtg/vanban/service/VanBanPhapLyService.java
+  - src/main/java/com/hanghai/kchtg/vanban/repository/VanBanPhapLyRepository.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/VanBanPhapLyResponse.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/VanBanPhapLyCreateRequest.java
+  - src/test/java/com/hanghai/kchtg/vanban/VanBanPhapLyControllerTest.java
 ---
 # Feature: Quản lý văn bản pháp lý
 
