@@ -121,8 +121,8 @@ public class CoastalStationInmarsatService {
         CoastalStationInmarsat entity = repository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
 
-        Long creatorId = resolveCreatedBy(entity);
-        if (creatorId != null && creatorId.equals(userId)) {
+        String creatorId = resolveCreatedBy(entity);
+        if (creatorId != null && creatorId.equals(String.valueOf(userId))) {
             throw new IllegalStateException("Bạn không thể phê duyệt bản do chính mình gửi");
         }
 
@@ -230,7 +230,7 @@ public class CoastalStationInmarsatService {
         }
     }
 
-    private Long resolveCreatedBy(BaseStation entity) {
+    private String resolveCreatedBy(BaseStation entity) {
         return entity.getApprovedBy();
     }
 
