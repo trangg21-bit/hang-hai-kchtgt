@@ -178,10 +178,46 @@
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
       "version": 8
     },
+    "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/qa/07-qa-report-w1.md": {
+      "content_hash": "sha256:e34e0775244239eb8626956d49cd624d0ff3387213a63711609ccf367c0a4ef0",
+      "last_modified": "2026-07-21T02:50:38Z",
+      "last_producer": "ai-kit/state-update(auto-lock-qa)",
+      "locked_fields": [
+        "content_hash"
+      ],
+      "version": 1
+    },
+    "docs/modules/M-004-quan-ly-tai-san-bao-hieu-thong-tin/qa/07-qa-report-w2.md": {
+      "content_hash": "sha256:082505454b53e0f0a528d7622228edce42c53b9f799052b173f800ea140623ca",
+      "last_modified": "2026-07-21T02:51:28Z",
+      "last_producer": "ai-kit/state-update(auto-lock-qa)",
+      "locked_fields": [
+        "content_hash"
+      ],
+      "version": 1
+    },
     "docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/module-brief.md": {
       "content_hash": "sha256:63d2d39195d687b52805a1df901c8e79edd86444df203eeda642f1280eae6861",
       "last_modified": "2026-06-16T04:42:53Z",
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
+      "version": 1
+    },
+    "docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/qa/07-qa-report-w1.md": {
+      "content_hash": "sha256:e5a9d02d549e768b5aab7fbae8714f067689fb8de2afa6d7de3f010580bc8ada",
+      "last_modified": "2026-07-21T08:07:40Z",
+      "last_producer": "ai-kit/state-update(auto-lock-qa)",
+      "locked_fields": [
+        "content_hash"
+      ],
+      "version": 1
+    },
+    "docs/modules/M-005-quan-ly-bien-dong-tai-san-kchtgt/qa/07-qa-report-w2.md": {
+      "content_hash": "sha256:1107640c5a89f190fe66109edee7848de34fbfce948172c25364f43d1139f004",
+      "last_modified": "2026-07-21T08:09:52Z",
+      "last_producer": "ai-kit/state-update(auto-lock-qa)",
+      "locked_fields": [
+        "content_hash"
+      ],
       "version": 1
     },
     "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/module-brief.md": {
@@ -189,6 +225,15 @@
       "last_modified": "2026-06-16T05:21:20Z",
       "last_producer": "ai-kit/state-update-rebuild-projection-module-brief",
       "version": 2
+    },
+    "docs/modules/M-006-quan-ly-van-ban-thong-tin-ghiep-vu/qa/07-qa-report-w2.md": {
+      "content_hash": "sha256:7877895c66cc555bde5a898b94456903d3a383243883a7679bf417179dde87a7",
+      "last_modified": "2026-07-21T08:27:52Z",
+      "last_producer": "ai-kit/state-update(auto-lock-qa)",
+      "locked_fields": [
+        "content_hash"
+      ],
+      "version": 1
     },
     "docs/modules/M-007-gis-ban-do/module-brief.md": {
       "content_hash": "sha256:02252b73e0e0957c7bde0ae56067f622336143a0427c8a6f4926a91387ed5950",

@@ -20,6 +20,12 @@ public class CoastalStationInmarsatService {
     private final HistoryService historyService;
 
     public CoastalStationInmarsat createStation(CoastalStationInmarsatRequest request) {
+        if (repository.findByDeviceCode(request.getDeviceCode()).isPresent()) {
+            throw new IllegalArgumentException("Mã đã tồn tại: " + request.getDeviceCode());
+        }
+
+        validateCoordinates(request.getLongitude(), request.getLatitude());
+
         CoastalStationInmarsat entity = new CoastalStationInmarsat();
         entity.setDeviceCode(request.getDeviceCode());
         entity.setCode(request.getDeviceCode());
@@ -51,17 +57,18 @@ public class CoastalStationInmarsatService {
         CoastalStationInmarsat entity = repository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
 
-        entity.setDeviceCode(request.getDeviceCode());
-        entity.setName(request.getStationName());
-        entity.setLatitude(request.getLatitude());
-        entity.setLongitude(request.getLongitude());
-        entity.setModemType(request.getModemType());
-        entity.setFrequency(request.getFrequency());
-        entity.setCoverageZone(request.getCoverageZone());
-        entity.setSarCode(request.getSarCode());
-        entity.setLocationAddress(request.getLocationAddress());
-        entity.setContactPerson(request.getContactPerson());
-        entity.setContactPhone(request.getContactPhone());
+        validateCoordinates(request.getLongitude(), request.getLatitude());
+
+        if (request.getStationName() != null) entity.setName(request.getStationName());
+        if (request.getLatitude() != null) entity.setLatitude(request.getLatitude());
+        if (request.getLongitude() != null) entity.setLongitude(request.getLongitude());
+        if (request.getModemType() != null) entity.setModemType(request.getModemType());
+        if (request.getFrequency() != null) entity.setFrequency(request.getFrequency());
+        if (request.getCoverageZone() != null) entity.setCoverageZone(request.getCoverageZone());
+        if (request.getSarCode() != null) entity.setSarCode(request.getSarCode());
+        if (request.getLocationAddress() != null) entity.setLocationAddress(request.getLocationAddress());
+        if (request.getContactPerson() != null) entity.setContactPerson(request.getContactPerson());
+        if (request.getContactPhone() != null) entity.setContactPhone(request.getContactPhone());
 
         CoastalStationInmarsat saved = repository.save(entity);
         historyService.recordHistory(
@@ -114,6 +121,11 @@ public class CoastalStationInmarsatService {
         CoastalStationInmarsat entity = repository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
 
+        Long creatorId = resolveCreatedBy(entity);
+        if (creatorId != null && creatorId.equals(userId)) {
+            throw new IllegalStateException("Bạn không thể phê duyệt bản do chính mình gửi");
+        }
+
         if (approved) {
             Integer currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel() : 0;
             if (currentLevel == 0) {
@@ -163,6 +175,10 @@ public class CoastalStationInmarsatService {
         CoastalStationInmarsat entity = repository.findById(id)
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
 
+        if (rejectionReason == null || rejectionReason.length() < 10) {
+            throw new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự");
+        }
+
         entity.setApprovalStatus(StationApprovalStatus.PENDING);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
         entity.setRejectionReason(rejectionReason);
@@ -198,6 +214,24 @@ public class CoastalStationInmarsatService {
                     return r;
                 })
                 .toList();
+    }
+
+    // -- HELPERS --
+
+    private void validateCoordinates(Double longitude, Double latitude) {
+        if (longitude == null || latitude == null) {
+            throw new IllegalArgumentException("Tọa độ không được để trống");
+        }
+        if (longitude < -180.0 || longitude > 180.0) {
+            throw new IllegalArgumentException("Kinh độ phải trong khoảng -180~180 (WGS84)");
+        }
+        if (latitude < -90.0 || latitude > 90.0) {
+            throw new IllegalArgumentException("Vĩ độ phải trong khoảng -90~90 (WGS84)");
+        }
+    }
+
+    private Long resolveCreatedBy(BaseStation entity) {
+        return entity.getApprovedBy();
     }
 
     public CoastalStationInmarsatResponse buildResponse(CoastalStationInmarsat entity) {

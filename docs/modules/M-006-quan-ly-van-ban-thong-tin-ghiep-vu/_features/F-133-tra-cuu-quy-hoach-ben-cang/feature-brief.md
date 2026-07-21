@@ -1,15 +1,23 @@
 ---
 id: F-133
-name: "Tra cứu quy hoạch bến cảng"
+name: Tra cứu quy hoạch bến cảng
 slug: tra-cuu-quy-hoach-ben-cang
 module-id: M-006
 status: proposed
 classification: local
 priority: high
-created: "2026-06-16T04:41:29Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:41:29Z
+last-updated: 2026-07-21T08:29:30Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/vanban/entity/TraCuuLog.java
+  - src/main/java/com/hanghai/kchtg/vanban/entity/KetQuaTraCuuEntity.java
+  - src/main/java/com/hanghai/kchtg/vanban/repository/TraCuuLogRepository.java
+  - src/main/java/com/hanghai/kchtg/vanban/repository/KetQuaTraCuuRepository.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/TraCuuRequest.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/TraCuuLogResponse.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/KetQuaTraCuuResponse.java
 ---
 # Feature: Tra cứu quy hoạch bến cảng
 

@@ -1,17 +1,19 @@
 ---
 id: F-068
-name: "Quản lý Đèn biển - Tạo mới"
+name: Quản lý Đèn biển - Tạo mới
 slug: quan-ly-den-bien-tao-moi
 module-id: M-004
 status: proposed
 classification: local
 priority: medium
-created: "2026-07-07T03:32:17Z"
-last-updated: "2026-07-07T03:32:17Z"
+created: 2026-07-07T03:32:17Z
+last-updated: 2026-07-21T02:49:04Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/beacon/
+  - src/test/java/com/hanghai/kchtg/beacon/
 ---
-
 # Feature: Quản lý Đèn biển - Tạo mới
 
 ## Description

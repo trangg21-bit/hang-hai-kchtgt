@@ -1,15 +1,23 @@
 ---
 id: F-131
-name: "Quản lý thông tin sự cố"
+name: Quản lý thông tin sự cố
 slug: quan-ly-thong-tin-su-co
 module-id: M-006
 status: proposed
 classification: local
 priority: high
-created: "2026-06-16T04:41:29Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:41:29Z
+last-updated: 2026-07-21T08:29:20Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/vanban/entity/SuCo.java
+  - src/main/java/com/hanghai/kchtg/vanban/controller/SuCoController.java
+  - src/main/java/com/hanghai/kchtg/vanban/service/SuCoService.java
+  - src/main/java/com/hanghai/kchtg/vanban/repository/SuCoRepository.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/SuCoResponse.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/SuCoCreateRequest.java
+  - src/test/java/com/hanghai/kchtg/vanban/SuCoControllerTest.java
 ---
 # Feature: Quản lý thông tin sự cố
 

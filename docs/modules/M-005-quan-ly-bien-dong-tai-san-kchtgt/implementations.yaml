@@ -7,7 +7,14 @@ slug: quan-ly-bien-dong-tai-san-kchtgt
 # Updated by `from-code` Phase 5 (auto-detect) or `dev` agent (manual).
 implementations:
   apps: []
-  services: []
+  services:
+    - name: assetmovement-backend
+      description: "Spring Boot REST API — 10 controllers, 10 services, 10 repositories under com.hanghai.kchtg.assetmovement"
+      path: src/main/java/com/hanghai/kchtg/assetmovement/
+      type: spring-boot-service
+      features: [F-122, F-123, F-124, F-125, F-126, F-127]
+      test_path: src/test/java/com/hanghai/kchtg/assetmovement/
+      api_base: /api/v1/asset/
   libs: []
   packages: []
 

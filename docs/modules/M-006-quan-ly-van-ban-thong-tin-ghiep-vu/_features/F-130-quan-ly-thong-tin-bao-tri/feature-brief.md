@@ -1,15 +1,23 @@
 ---
 id: F-130
-name: "Quản lý thông tin bảo trì"
+name: Quản lý thông tin bảo trì
 slug: quan-ly-thong-tin-bao-tri
 module-id: M-006
 status: proposed
 classification: local
 priority: high
-created: "2026-06-16T04:41:29Z"
-last-updated: "2026-06-26T00:00:00Z"
+created: 2026-06-16T04:41:29Z
+last-updated: 2026-07-21T08:29:20Z
 locked-fields: []
 consumed_by_modules: []
+source-paths:
+  - src/main/java/com/hanghai/kchtg/vanban/entity/KeHoachBaoTri.java
+  - src/main/java/com/hanghai/kchtg/vanban/controller/KeHoachBaoTriController.java
+  - src/main/java/com/hanghai/kchtg/vanban/service/KeHoachBaoTriService.java
+  - src/main/java/com/hanghai/kchtg/vanban/repository/KeHoachBaoTriRepository.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/KeHoachBaoTriResponse.java
+  - src/main/java/com/hanghai/kchtg/vanban/dto/KeHoachBaoTriCreateRequest.java
+  - src/test/java/com/hanghai/kchtg/vanban/KeHoachBaoTriControllerTest.java
 ---
 # Feature: Quản lý thông tin bảo trì
 
