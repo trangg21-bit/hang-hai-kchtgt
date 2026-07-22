@@ -224,7 +224,7 @@ class BeaconLightServiceTest {
             assertThat(result.getCode()).isEqualTo("DEN-002");
             assertThat(result.getName()).isEqualTo("Đèn biển mới");
             assertThat(result.getType()).isEqualTo(BeaconLightType.BEACON_LIGHT);
-            assertThat(result.getStatus()).isEqualTo(BeaconStatus.PENDING_APPROVAL);
+            assertThat(result.getStatus()).isEqualTo(BeaconStatus.DRAFT);
             assertThat(result.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.PENDING);
 
             verify(beaconLightRepo, atLeastOnce()).save(any());

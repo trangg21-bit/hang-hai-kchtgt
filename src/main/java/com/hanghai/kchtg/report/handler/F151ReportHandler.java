@@ -37,8 +37,11 @@ public class F151ReportHandler extends BaseReportHandler {
                 .findByIsDeletedFalse(Sort.unsorted())
                 .stream()
                 .filter(lhh -> skipFilter || targetUnitId.equals(lhh.getDonViId()))
-                .filter(lhh -> lhh.getUpdatedAt() != null && lhh.getUpdatedAt().getYear() == reportYear)
-                .filter(lhh -> lhh.getApprovalStatus() == com.hanghai.kchtg.luonghanghai.entity.LuongHangHaiApprovalStatus.APPROVED)
+                .filter(lhh -> (lhh.getUpdatedAt() == null && lhh.getCreatedAt() == null)
+                        || (lhh.getUpdatedAt() != null && lhh.getUpdatedAt().getYear() <= reportYear)
+                        || (lhh.getCreatedAt() != null && lhh.getCreatedAt().getYear() <= reportYear))
+                .filter(lhh -> lhh.getApprovalStatus() == null
+                        || lhh.getApprovalStatus() == com.hanghai.kchtg.luonghanghai.entity.LuongHangHaiApprovalStatus.APPROVED)
                 .toList();
 
         List<String> headers = List.of(
@@ -137,8 +140,11 @@ public class F151ReportHandler extends BaseReportHandler {
                 .findByIsDeletedFalse(Sort.unsorted())
                 .stream()
                 .filter(lhh -> skipFilter || targetUnitId.equals(lhh.getDonViId()))
-                .filter(lhh -> lhh.getUpdatedAt() != null && lhh.getUpdatedAt().getYear() == reportYear)
-                .filter(lhh -> lhh.getApprovalStatus() == com.hanghai.kchtg.luonghanghai.entity.LuongHangHaiApprovalStatus.APPROVED)
+                .filter(lhh -> (lhh.getUpdatedAt() == null && lhh.getCreatedAt() == null)
+                        || (lhh.getUpdatedAt() != null && lhh.getUpdatedAt().getYear() <= reportYear)
+                        || (lhh.getCreatedAt() != null && lhh.getCreatedAt().getYear() <= reportYear))
+                .filter(lhh -> lhh.getApprovalStatus() == null
+                        || lhh.getApprovalStatus() == com.hanghai.kchtg.luonghanghai.entity.LuongHangHaiApprovalStatus.APPROVED)
                 .toList();
 
         List<Map<String, Object>> arrResult = new ArrayList<>();

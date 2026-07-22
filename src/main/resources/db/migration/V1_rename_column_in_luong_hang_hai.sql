@@ -1,1 +1,0 @@
-ALTER TABLE luong_hang_hai RENAME COLUMN loai_tau TO ten;
