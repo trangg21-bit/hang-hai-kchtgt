@@ -1,4 +1,4 @@
-CREATE TABLE ts_ql (
+CREATE TABLE IF NOT EXISTS ts_ql (
     id UUID PRIMARY KEY,
     org_unit_id UUID,
     nhom VARCHAR(20) NOT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE ts_ql (
     updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE bcc157_report (
+CREATE TABLE IF NOT EXISTS bcc157_report (
     id UUID PRIMARY KEY,
     org_unit_id UUID NOT NULL,
     report_year INT NOT NULL,
