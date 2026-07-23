@@ -60,14 +60,14 @@
       "Bash(ls .resume-lock)",
       "Bash(npm run *)",
       "Bash(pnpm build *)",
-      "Bash(grep -hnE \"'/api|\\\\`/api|approve/c1|approve/c2|/history|/search\" src/services/luongHangHaiService.ts src/services/heThongVtsService.ts)",
+      "Bash(grep -hnE \"'/api|\\\\`/api|approve/c1|approve/c2|/history|/search\" src/services/navigationChannelService.ts src/services/heThongVtsService.ts)",
       "Bash(node_modules/.bin/tsc -b --noEmit)",
-      "Bash(timeout 30 node_modules/.bin/playwright test e2e/m003-luong-hang-hai.spec.ts --project=desktop --reporter=line)",
+      "Bash(timeout 30 node_modules/.bin/playwright test e2e/m003-navigation-channel.spec.ts --project=desktop --reporter=line)",
       "Bash(node_modules/.bin/playwright test *)",
       "Bash(curl *)",
       "Bash(./node_modules/.bin/tsc -b --noEmit)",
-      "Bash(./node_modules/.bin/tsc --noEmit frontend/src/pages/luonghanghai/*.tsx)",
-      "Bash(./node_modules/.bin/tsc --noEmit src/pages/luonghanghai/LuongHangHaiList.tsx src/pages/luonghanghai/LuongHangHaiForm.tsx)"
+      "Bash(./node_modules/.bin/tsc --noEmit frontend/src/pages/navigationchannel/*.tsx)",
+      "Bash(./node_modules/.bin/tsc --noEmit src/pages/navigationchannel/NavigationChannelList.tsx src/pages/navigationchannel/NavigationChannelForm.tsx)"
     ]
   }
 }

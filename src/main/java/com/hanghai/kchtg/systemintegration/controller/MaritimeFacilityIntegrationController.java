@@ -62,10 +62,10 @@ public class MaritimeFacilityIntegrationController {
         return ResponseEntity.ok(facilityService.integrateDeKe(request));
     }
 
-    @PostMapping("/luong-hang-hai")
-    public ResponseEntity<SystemIntegrationResponse> integrateLuongHangHai(
+    @PostMapping("/navigation-channel")
+    public ResponseEntity<SystemIntegrationResponse> integrateNavigationChannel(
             @RequestBody SystemIntegrationRequest request) {
-        return ResponseEntity.ok(facilityService.integrateLuongHangHai(request));
+        return ResponseEntity.ok(facilityService.integrateNavigationChannel(request));
     }
 
     @PostMapping("/cang-can")

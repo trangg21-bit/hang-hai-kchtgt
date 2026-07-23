@@ -7,7 +7,7 @@ public enum KchtType {
     CANGCAN,
     VUNGNUOC,
     DEKE,
-    LUONGHANGHAI,
+    NAVIGATION_CHANNEL,
     COSO_SUACHUA,
     DENBIEN,
     PHAOTIEU,

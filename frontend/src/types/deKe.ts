@@ -69,7 +69,7 @@ export interface UpdateDeKeRequest extends CreateDeKeRequest {
 export interface PheDuyetRequest {
   capPheDuyet?: number;
   nguoiPheDuyet: string;
-  quyetDinh: string; // Different from LuongHangHai — uses quyetDinh instead of trangThai
+  quyetDinh: string; // Different from NavigationChannel — uses quyetDinh instead of trangThai
   lyDo?: string;
 }
 

@@ -69,7 +69,7 @@ const LOAI_KCHT_OPTIONS = [
   { value: 'DEKE', label: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' },
   { value: 'DAI_TTDH', label: 'Đài TTDH' },
   { value: 'DAI_INMARSAT', label: 'Đài Thông tin Vệ tinh mặt đất Inmarsat Hải Phòng' },
-  { value: 'LUONGHANGHAI', label: 'Luồng hàng hải' },
+  { value: 'NAVIGATION_CHANNEL', label: 'Luồng hàng hải' },
   { value: 'DAI_LRIT', label: 'Đài Thông tin nhận dạng và truy theo tầm xa (LRIT)' },
   { value: 'KHUNEO_DAU', label: 'Khu neo đậu' },
   { value: 'NHATRAM_PHAO', label: 'Nhà trạm quản lý vận hành phao tiêu' },
@@ -88,7 +88,7 @@ const mapToPointObjectType = (val: string): string => {
 };
 
 const mapToLineObjectType = (val: string): string => {
-  if (val === 'LUONGHANGHAI') return 'SHIPPING_ROUTE';
+  if (val === 'NAVIGATION_CHANNEL') return 'SHIPPING_ROUTE';
   if (val === 'DEKE') return 'COASTLINE';
   return 'OTHER';
 };
@@ -109,7 +109,7 @@ const mapToCategoryId = (val: string): number => {
   if (val === 'KHUCHUYEN_TAI') return 6;
   if (val === 'KHUNEO_DAU') return 7;
   if (val === 'KHUTRANH_TRU_BAO') return 8;
-  if (val === 'LUONGHANGHAI') return 9;
+  if (val === 'NAVIGATION_CHANNEL') return 9;
   if (val === 'PHAOTIEU') return 10;
   if (val === 'TRAM_RADAR') return 11;
   if (val === 'VUNGNUOC') return 12;

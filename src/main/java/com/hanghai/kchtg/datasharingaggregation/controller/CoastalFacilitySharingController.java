@@ -22,10 +22,10 @@ public class CoastalFacilitySharingController {
         return ResponseEntity.ok(service.shareDeChanSongDeChanCat(dataPayload));
     }
 
-    @PostMapping("/luong-hang-hai")
-    public ResponseEntity<DataSharingAggregationResponse> shareLuongHangHai(
+    @PostMapping("/navigation-channel")
+    public ResponseEntity<DataSharingAggregationResponse> shareNavigationChannel(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareLuongHangHai(dataPayload));
+        return ResponseEntity.ok(service.shareNavigationChannel(dataPayload));
     }
 
     @PostMapping("/he-thong-de-ke")

@@ -7,8 +7,8 @@ import com.hanghai.kchtg.deke.entity.DeKeApprovalStatus;
 import com.hanghai.kchtg.deke.repository.DeKeRepository;
 import com.hanghai.kchtg.cosuachua.entity.CoSuaChuaDongTau;
 import com.hanghai.kchtg.cosuachua.repository.CoSuaChuaDongTauRepository;
-import com.hanghai.kchtg.luonghanghai.entity.LuongHangHai;
-import com.hanghai.kchtg.luonghanghai.repository.LuongHangHaiRepository;
+import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
+import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
 import com.hanghai.kchtg.nhatram.entity.NhaTramDen;
 import com.hanghai.kchtg.nhatram.entity.NhaTramPhao;
 import com.hanghai.kchtg.nhatram.repository.NhaTramDenRepository;
@@ -58,7 +58,7 @@ public class KchtGis155Service {
     private final CauCangRepository cauCangRepository;
     private final CangCanRepository cangCanRepository;
     private final VungNuocRepository vungNuocRepository;
-    private final LuongHangHaiRepository luongHangHaiRepository;
+    private final NavigationChannelRepository navigationChannelRepository;
     private final DeKeRepository deKeRepository;
     private final CoSuaChuaDongTauRepository coSuaChuaDongTauRepository;
     private final NhaTramDenRepository nhaTramDenRepository;
@@ -624,39 +624,39 @@ public class KchtGis155Service {
                     }
                     break;
 
-                case LUONGHANGHAI:
+                case NAVIGATION_CHANNEL:
                     String searchParam = (searchLower == null) ? null : "%" + searchLower + "%";
-                    List<LuongHangHai> luongList = luongHangHaiRepository.searchFiltered(orgUnitId, searchParam);
-                    Map<UUID, GisSpatialObject> luongSpatialMap = new HashMap<>();
-                    if (!luongList.isEmpty()) {
-                        List<UUID> spatialIds = luongList.stream().map(LuongHangHai::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                    List<NavigationChannel> ncList = navigationChannelRepository.searchFiltered(orgUnitId, searchParam);
+                    Map<UUID, GisSpatialObject> ncSpatialMap = new HashMap<>();
+                    if (!ncList.isEmpty()) {
+                        List<UUID> spatialIds = ncList.stream().map(NavigationChannel::getSpatialId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!spatialIds.isEmpty()) {
-                            gisSpatialObjectRepository.findAllById(spatialIds).forEach(so -> luongSpatialMap.put(so.getId(), so));
+                            gisSpatialObjectRepository.findAllById(spatialIds).forEach(so -> ncSpatialMap.put(so.getId(), so));
                         }
                     }
-                    for (LuongHangHai l : luongList) {
-                        GisSpatialObject spatial = luongSpatialMap.get(l.getKhongGianId());
+                    for (NavigationChannel nc : ncList) {
+                        GisSpatialObject spatial = ncSpatialMap.get(nc.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double lat = coords != null ? coords[0] : null;
                         Double lng = coords != null ? coords[1] : null;
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
-                                .id(String.valueOf(l.getId()))
-                                .name(l.getTen() != null && !l.getTen().isEmpty() ? l.getTen() : "Luồng hàng hải")
-                                .ma("LUONG_" + l.getId())
-                                .orgName(getOrgName(l.getDonViId(), orgNameMap))
+                                .id(String.valueOf(nc.getId()))
+                                .name(nc.getChannelName() != null && !nc.getChannelName().isEmpty() ? nc.getChannelName() : "Luồng hàng hải")
+                                .ma("NC_" + nc.getId())
+                                .orgName(getOrgName(nc.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Luồng hàng hải")
                                 .diaDiem("")
-                                .diaChiChiTiet(l.getGhiChu() != null ? l.getGhiChu() : "")
+                                .diaChiChiTiet(nc.getNote() != null ? nc.getNote() : "")
                                 .latitude(lat)
                                 .longitude(lng)
                                 .build();
                         if (objectType != null) {
-                            populateSpatialAndFilterFromMap(results, r, l.getKhongGianId(), objectType, GisObjectType.LINE, luongSpatialMap);
+                            populateSpatialAndFilterFromMap(results, r, nc.getSpatialId(), objectType, GisObjectType.LINE, ncSpatialMap);
                         } else {
                             results.add(r);
-                            if (l.getKhongGianId() != null) {
-                                spatialIdMap.put(r.getId(), l.getKhongGianId());
+                            if (nc.getSpatialId() != null) {
+                                spatialIdMap.put(r.getId(), nc.getSpatialId());
                             }
                         }
                     }

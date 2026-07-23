@@ -72,11 +72,11 @@ public class PortAndAssetSharingService {
         return mainService.create(req);
     }
 
-    public DataSharingAggregationResponse shareTongHopKCHTGT_LuongHangHai(String dataPayload) {
+    public DataSharingAggregationResponse shareTongHopKCHTGT_NavigationChannel(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
-        req.setSharingType(SharingType.TONG_HOP_KCHTGT_LUONG_HANG_HAI);
+        req.setSharingType(SharingType.TONG_HOP_KCHTGT_NAVIGATION_CHANNEL);
         req.setDataPayload(dataPayload);
-        req.setTargetSystem("TONG_HOP_KCHTGT_LUONG_HANG_HAI");
+        req.setTargetSystem("TONG_HOP_KCHTGT_NAVIGATION_CHANNEL");
         return mainService.create(req);
     }
 

@@ -24,11 +24,11 @@ public class CoastalFacilitySharingService {
         return mainService.create(req);
     }
 
-    public DataSharingAggregationResponse shareLuongHangHai(String dataPayload) {
+    public DataSharingAggregationResponse shareNavigationChannel(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
-        req.setSharingType(SharingType.LUONG_HANG_HAI);
+        req.setSharingType(SharingType.NAVIGATION_CHANNEL);
         req.setDataPayload(dataPayload);
-        req.setTargetSystem("LUONG_HANG_HAI");
+        req.setTargetSystem("NAVIGATION_CHANNEL");
         return mainService.create(req);
     }
 

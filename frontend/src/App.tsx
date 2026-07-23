@@ -59,8 +59,8 @@ import VungNuocListPage from './app/vungnuoc/VungNuocListPage';
 import GiayToUploadPage from './app/giayto/GiayToUploadPage';
 
 // M-003: Khu nước & VTS — Quản lý tàu bè
-import LuongHangHaiList from './pages/luonghanghai/LuongHangHaiList';
-import LuongHangHaiForm from './pages/luonghanghai/LuongHangHaiForm';
+import NavigationChannelList from './pages/navigationchannel/NavigationChannelList';
+import NavigationChannelForm from './pages/navigationchannel/NavigationChannelForm';
 import DeKeList from './pages/deke/DeKeList';
 import DeKeForm from './pages/deke/DeKeForm';
 import CoSuaChuaList from './pages/cosuachua/CoSuaChuaList';
@@ -197,9 +197,9 @@ export default function App() {
                 {/* M-003: Khu nước & VTS — Quản lý tàu bè */}
 
                 {/* Luồng hàng hải */}
-                <Route path="/luong-hang-hai" element={<PermissionGuard permission="luonghanghai:read"><LuongHangHaiList /></PermissionGuard>} />
-                <Route path="/luong-hang-hai/create" element={<PermissionGuard permission="luonghanghai:create"><LuongHangHaiForm /></PermissionGuard>} />
-                <Route path="/luong-hang-hai/:id" element={<PermissionGuard permission="luonghanghai:read"><LuongHangHaiForm /></PermissionGuard>} />
+                <Route path="/navigation-channel" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelList /></PermissionGuard>} />
+                <Route path="/navigation-channel/create" element={<PermissionGuard permission="navigationchannel:create"><NavigationChannelForm /></PermissionGuard>} />
+                <Route path="/navigation-channel/:id" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelForm /></PermissionGuard>} />
 
                 {/* Đê/kè */}
                 <Route path="/de-ke" element={<PermissionGuard permission="deke:read"><DeKeList /></PermissionGuard>} />

@@ -52,7 +52,7 @@ import {
 import { beaconLightCRUD, buoyCRUD } from '../../services/beaconService';
 import { fetchNhaTramDenById, fetchNhaTramPhaoById } from '../../services/nhatram/api';
 import { dekeCRUD } from '../../services/deKeService';
-import { luongHangHaiCRUD } from '../../services/luongHangHaiService';
+import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { tramRadarCRUD } from '../../services/tramRadarService';
 import { heThongVTSCRUD } from '../../services/heThongVtsService';
 import { coSuaChuaCRUD } from '../../services/coSuaChuaService';
@@ -423,7 +423,7 @@ const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[]
       { key: 'tinhThanhPho', label: 'Địa điểm (Tỉnh/ Thành phố)' },
       { key: 'diaDiemChiTiet', label: 'Địa điểm chi tiết' },
       { key: 'cangBienId', label: 'Thuộc cảng biển' },
-      { key: 'luongHangHaiId', label: 'Thuộc luồng hàng hải' },
+      { key: 'navigationChannelId', label: 'Thuộc luồng hàng hải' },
       { key: 'loaiKetCau', label: 'Loại kết cấu cầu cảng' },
       { key: 'congNangKhaiThac', label: 'Công năng khai thác' },
       { key: 'trangThaiHoatDong', label: 'Trạng thái hoạt động' },
@@ -452,7 +452,7 @@ const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[]
       { key: 'ngayCapNhat', label: 'Ngày cập nhật' },
       { key: 'canBoCapNhat', label: 'Cán bộ cập nhật' },
       { key: 'cangBienId', label: 'Thuộc cảng biển' },
-      { key: 'luongHangHaiId', label: 'Thuộc luồng hàng hải' },
+      { key: 'navigationChannelId', label: 'Thuộc luồng hàng hải' },
       { key: 'loaiKetCau', label: 'Loại kết cấu cầu cảng' },
       { key: 'congNangKhaiThac', label: 'Công năng khai thác' },
       { key: 'trangThaiHoatDong', label: 'Tình trạng' },
@@ -814,7 +814,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     loaiKetCau: 'Loại kết cấu cầu cảng',
     tinhThanhPho: 'Địa điểm (Tỉnh/ Thành phố)',
     diaDiemChiTiet: 'Địa điểm chi tiết',
-    luongHangHaiId: 'Thuộc luồng hàng hải',
+    navigationChannelId: 'Thuộc luồng hàng hải',
 
     // Cảng cạn
     maCangCan: 'Mã cảng cạn',
@@ -933,7 +933,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     } else if (type === 'Đê kè') {
       data = await dekeCRUD.getById(id);
     } else if (type === 'Luồng hàng hải') {
-      data = await luongHangHaiCRUD.getById(id);
+      data = await navigationChannelCRUD.getById(id);
     } else if (type === 'Trạm radar') {
       data = await tramRadarCRUD.getById(id);
     } else if (type === 'Hệ thống VTS') {
@@ -1293,7 +1293,7 @@ export default function GISChartView() {
       const isListPage = [
         '/tram-radar',
         '/de-ke',
-        '/luong-hang-hai',
+        '/navigation-channel',
         '/he-thong-vts',
         '/co-so-sua-chua',
         '/den-bien',
@@ -1363,7 +1363,7 @@ export default function GISChartView() {
       ) {
         path = `/vungnuoc?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('luồng hàng hải') || label.includes('luong hang hai')) {
-        path = `/luong-hang-hai/${id}${action === 'edit' ? '?mode=edit' : ''}`;
+        path = `/navigation-channel/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('đê') || label.includes('kè') || label.includes('de') || label.includes('ke')) {
         path = `/de-ke/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('cơ sở sửa chữa') || label.includes('co so sua chua')) {
@@ -2536,7 +2536,7 @@ export default function GISChartView() {
             if (catId === 6) return 'KHUCHUYEN_TAI';
             if (catId === 7) return 'KHUNEO_DAU';
             if (catId === 8) return 'KHUTRANH_TRU_BAO';
-            if (catId === 9) return 'LUONGHANGHAI';
+            if (catId === 9) return 'NAVIGATION_CHANNEL';
             if (catId === 10) return 'PHAOTIEU';
             if (catId === 11) return 'TRAM_RADAR';
             if (catId === 12) return 'VUNGNUOC';
@@ -3702,7 +3702,7 @@ export default function GISChartView() {
                             { value: 'DEKE', label: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' },
                             { value: 'DAI_TTDH', label: 'Đài TTDH' },
                             { value: 'DAI_INMARSAT', label: 'Đài Thông tin Vệ tinh mặt đất Inmarsat Hải Phòng' },
-                            { value: 'LUONGHANGHAI', label: 'Luồng hàng hải' },
+                            { value: 'NAVIGATION_CHANNEL', label: 'Luồng hàng hải' },
                             { value: 'DAI_LRIT', label: 'Đài Thông tin nhận dạng và truy theo tầm xa (LRIT)' },
                             { value: 'KHUNEO_DAU', label: 'Khu neo đậu' },
                             { value: 'NHATRAM_PHAO', label: 'Nhà trạm quản lý vận hành phao tiêu' },
