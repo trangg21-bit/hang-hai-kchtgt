@@ -2,10 +2,10 @@ package com.hanghai.kchtg.report.handler;
 
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
-import com.hanghai.kchtg.deke.entity.DeKe;
-import com.hanghai.kchtg.deke.entity.DeKeApprovalStatus;
-import com.hanghai.kchtg.deke.entity.LoaiDe;
-import com.hanghai.kchtg.deke.repository.DeKeRepository;
+import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
+import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
+import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
+import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import java.util.*;
@@ -18,7 +18,7 @@ import java.util.Comparator;
 public class F160ReportHandler extends BaseReportHandler {
 
     @Autowired
-    private DeKeRepository deKeRepository;
+    private DikeRevetmentRepository dikeRevetmentRepository;
 
     @Override
     public boolean supports(String reportCode) {
@@ -31,10 +31,10 @@ public class F160ReportHandler extends BaseReportHandler {
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
         int reportYear = getReportYear(request);
 
-        List<DeKe> items = deKeRepository
-                .findByTrangThaiPheDuyetAndIsDeletedFalse(DeKeApprovalStatus.APPROVED)
+        List<DikeRevetment> items = dikeRevetmentRepository
+                .findByApprovalStatusAndIsDeletedFalse(DikeRevetmentApprovalStatus.APPROVED)
                 .stream()
-                .sorted(Comparator.comparing(DeKe::getId))
+                .sorted(Comparator.comparing(DikeRevetment::getId))
                 .filter(d -> skipFilter || targetUnitId.equals(d.getDonViId()))
                 .filter(d -> d.getUpdatedAt() == null || d.getUpdatedAt().getYear() <= reportYear)
                 .toList();
@@ -47,23 +47,23 @@ public class F160ReportHandler extends BaseReportHandler {
 
         List<Map<String, Object>> rows = new ArrayList<>();
         int stt = 1;
-        for (DeKe d : items) {
+        for (DikeRevetment dr : items) {
             Map<String, Object> r = new LinkedHashMap<>();
             r.put("STT", stt++);
-            r.put("Tên công trình", d.getTenDeKe() != null ? d.getTenDeKe() : "");
-            r.put("Loại công trình", loaiDeLabel(d.getLoaiDe()));
-            r.put("Vị trí (địa danh)", d.getViTri() != null ? d.getViTri() : "");
+            r.put("Tên công trình", dr.getDikeRevetmentName() != null ? dr.getDikeRevetmentName() : "");
+            r.put("Loại công trình", dikeRevetmentTypeLabel(dr.getDikeRevetmentType()));
+            r.put("Vị trí (địa danh)", dr.getLocation() != null ? dr.getLocation() : "");
             r.put("Thời gian đưa vào khai thác (năm)",
-                    d.getThoiDiemDuaVaoKhaiThac() != null
-                            ? String.valueOf(d.getThoiDiemDuaVaoKhaiThac().getYear())
+                    dr.getCommissioningDate() != null
+                            ? String.valueOf(dr.getCommissioningDate().getYear())
                             : "");
-            r.put("Chiều dài", d.getChieuDai() != null ? (d.getChieuDai() % 1 == 0 ? String.valueOf(d.getChieuDai().longValue()) : String.valueOf(d.getChieuDai())) : "0");
-            r.put("Chiều cao", d.getChieuCao() != null ? (d.getChieuCao() % 1 == 0 ? String.valueOf(d.getChieuCao().longValue()) : String.valueOf(d.getChieuCao())) : "0");
-            r.put("Cao trình đỉnh", formatCaoTrinhDinh(d.getCaoTrinhDinh()));
-            r.put("Hiện trạng của công trình", tinhTrangLabel(d.getTinhTrang()));
+            r.put("Chiều dài", dr.getLength() != null ? (dr.getLength() % 1 == 0 ? String.valueOf(dr.getLength().longValue()) : String.valueOf(dr.getLength())) : "0");
+            r.put("Chiều cao", dr.getHeight() != null ? (dr.getHeight() % 1 == 0 ? String.valueOf(dr.getHeight().longValue()) : String.valueOf(dr.getHeight())) : "0");
+            r.put("Cao trình đỉnh", formatCaoTrinhDinh(dr.getCrestElevation()));
+            r.put("Hiện trạng của công trình", statusLabel(dr.getStatus()));
             String donVi = "";
-            if (d.getDonViId() != null) {
-                donVi = orgUnitRepository.findById(d.getDonViId())
+            if (dr.getDonViId() != null) {
+                donVi = orgUnitRepository.findById(dr.getDonViId())
                         .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
                         .orElse("");
             }
@@ -82,43 +82,43 @@ public class F160ReportHandler extends BaseReportHandler {
         UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
 
-        List<DeKe> items = deKeRepository
-                .findByTrangThaiPheDuyetAndIsDeletedFalse(DeKeApprovalStatus.APPROVED)
+        List<DikeRevetment> items = dikeRevetmentRepository
+                .findByApprovalStatusAndIsDeletedFalse(DikeRevetmentApprovalStatus.APPROVED)
                 .stream()
-                .sorted(Comparator.comparing(DeKe::getId))
+                .sorted(Comparator.comparing(DikeRevetment::getId))
                 .filter(d -> skipFilter || targetUnitId.equals(d.getDonViId()))
                 .filter(d -> d.getUpdatedAt() == null || d.getUpdatedAt().getYear() <= reportYear)
                 .toList();
 
         List<Map<String, Object>> arrResult = new ArrayList<>();
-        for (DeKe deKe : items) {
+        for (DikeRevetment dikeRev : items) {
             Map<String, Object> item = new HashMap<>();
             // Backward-compatible generic keys
-            item.put("ten", deKe.getViTri() != null ? deKe.getViTri() : "");
+            item.put("ten", dikeRev.getLocation() != null ? dikeRev.getLocation() : "");
             item.put("code", "");
-            item.put("name", deKe.getViTri() != null ? deKe.getViTri() : "");
-            item.put("description", loaiDeLabel(deKe.getLoaiDe()));
-            item.put("unitId", deKe.getDonViId() != null ? deKe.getDonViId().toString() : "");
-            item.put("status", deKe.getTinhTrang() != null ? deKe.getTinhTrang() : "");
-            item.put("tenDeKe", deKe.getTenDeKe() != null ? deKe.getTenDeKe() : "");
-            item.put("viTri", deKe.getViTri() != null ? deKe.getViTri() : "");
-            item.put("matVatLieu", deKe.getMatVatLieu() != null ? deKe.getMatVatLieu() : "");
-            item.put("ghiChu", deKe.getGhiChu() != null ? deKe.getGhiChu() : "");
+            item.put("name", dikeRev.getLocation() != null ? dikeRev.getLocation() : "");
+            item.put("description", dikeRevetmentTypeLabel(dikeRev.getDikeRevetmentType()));
+            item.put("unitId", dikeRev.getDonViId() != null ? dikeRev.getDonViId().toString() : "");
+            item.put("status", dikeRev.getStatus() != null ? dikeRev.getStatus() : "");
+            item.put("tenDeKe", dikeRev.getDikeRevetmentName() != null ? dikeRev.getDikeRevetmentName() : "");
+            item.put("viTri", dikeRev.getLocation() != null ? dikeRev.getLocation() : "");
+            item.put("matVatLieu", dikeRev.getSurfaceMaterial() != null ? dikeRev.getSurfaceMaterial() : "");
+            item.put("ghiChu", dikeRev.getNote() != null ? dikeRev.getNote() : "");
             // Template BCKCHT_175 keys
-            item.put("tenCongTrinh", deKe.getTenDeKe() != null ? deKe.getTenDeKe() : "");
-            item.put("loaiCongTrinh", loaiDeLabel(deKe.getLoaiDe()));
-            item.put("viTriDiaDanh", deKe.getViTri() != null ? deKe.getViTri() : "");
+            item.put("tenCongTrinh", dikeRev.getDikeRevetmentName() != null ? dikeRev.getDikeRevetmentName() : "");
+            item.put("loaiCongTrinh", dikeRevetmentTypeLabel(dikeRev.getDikeRevetmentType()));
+            item.put("viTriDiaDanh", dikeRev.getLocation() != null ? dikeRev.getLocation() : "");
             item.put("thoiGianDuaVaoKhaiThac",
-                    deKe.getThoiDiemDuaVaoKhaiThac() != null
-                            ? String.valueOf(deKe.getThoiDiemDuaVaoKhaiThac().getYear())
+                    dikeRev.getCommissioningDate() != null
+                            ? String.valueOf(dikeRev.getCommissioningDate().getYear())
                             : "");
-            item.put("chieuDai", deKe.getChieuDai() != null ? (deKe.getChieuDai() % 1 == 0 ? String.valueOf(deKe.getChieuDai().longValue()) : String.valueOf(deKe.getChieuDai())) : "0");
-            item.put("chieuCao", deKe.getChieuCao() != null ? (deKe.getChieuCao() % 1 == 0 ? String.valueOf(deKe.getChieuCao().longValue()) : String.valueOf(deKe.getChieuCao())) : "0");
-            item.put("caoTrinhDinh", formatCaoTrinhDinh(deKe.getCaoTrinhDinh()));
-            item.put("hienTrang", tinhTrangLabel(deKe.getTinhTrang()));
+            item.put("chieuDai", dikeRev.getLength() != null ? (dikeRev.getLength() % 1 == 0 ? String.valueOf(dikeRev.getLength().longValue()) : String.valueOf(dikeRev.getLength())) : "0");
+            item.put("chieuCao", dikeRev.getHeight() != null ? (dikeRev.getHeight() % 1 == 0 ? String.valueOf(dikeRev.getHeight().longValue()) : String.valueOf(dikeRev.getHeight())) : "0");
+            item.put("caoTrinhDinh", formatCaoTrinhDinh(dikeRev.getCrestElevation()));
+            item.put("hienTrang", statusLabel(dikeRev.getStatus()));
             String donVi = "";
-            if (deKe.getDonViId() != null) {
-                donVi = orgUnitRepository.findById(deKe.getDonViId())
+            if (dikeRev.getDonViId() != null) {
+                donVi = orgUnitRepository.findById(dikeRev.getDonViId())
                         .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
                         .orElse("");
             }
@@ -134,7 +134,7 @@ public class F160ReportHandler extends BaseReportHandler {
         return String.valueOf(value);
     }
 
-    private String tinhTrangLabel(String value) {
+    private String statusLabel(String value) {
         if (value == null) return "";
         switch (value) {
             case "1": return "Chưa khai thác/vận hành";
@@ -144,17 +144,17 @@ public class F160ReportHandler extends BaseReportHandler {
         }
     }
 
-    private String loaiDeLabel(LoaiDe loaiDe) {
-        if (loaiDe == null) return "";
-        switch (loaiDe) {
-            case DE_CHAN_SONG:  return "Đê chắn sóng";
-            case DE_CHAN_CAT:   return "Đê chắn cát";
-            case KE_HUONG_DONG: return "Kè hướng dòng";
-            case KE_BAO_VE_BO:  return "Kè bảo vệ bờ";
-            case GIAO_THONG:    return "Giao thông";
-            case KE_CHAN_SONG:  return "Kè chắn sóng";
-            case KE_CHAN_CAT:   return "Kè chắn cát";
-            default:            return loaiDe.name();
+    private String dikeRevetmentTypeLabel(DikeRevetmentType type) {
+        if (type == null) return "";
+        switch (type) {
+            case RIVER_DIKE:  return "Đê chắn sóng";
+            case SAND_DIKE:   return "Đê chắn cát";
+            case FLOW_GUIDE_REVETMENT: return "Kè hướng dòng";
+            case BANK_PROTECTION_REVETMENT:  return "Kè bảo vệ bờ";
+            case TRAFFIC:    return "Giao thông";
+            case WAVE_BREAK_REVETMENT:  return "Kè chắn sóng";
+            case SAND_BREAK_REVETMENT:   return "Kè chắn cát";
+            default:            return type.name();
         }
     }
 }

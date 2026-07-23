@@ -28,10 +28,10 @@ public class CoastalFacilitySharingController {
         return ResponseEntity.ok(service.shareNavigationChannel(dataPayload));
     }
 
-    @PostMapping("/he-thong-de-ke")
-    public ResponseEntity<DataSharingAggregationResponse> shareHeThongDeKe(
+    @PostMapping("/dike-revetment")
+    public ResponseEntity<DataSharingAggregationResponse> shareDikeRevetment(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareHeThongDeKe(dataPayload));
+        return ResponseEntity.ok(service.shareDikeRevetment(dataPayload));
     }
 
     @GetMapping

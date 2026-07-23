@@ -51,7 +51,7 @@ import {
 } from '../../services/cangbenService';
 import { beaconLightCRUD, buoyCRUD } from '../../services/beaconService';
 import { fetchNhaTramDenById, fetchNhaTramPhaoById } from '../../services/nhatram/api';
-import { dekeCRUD } from '../../services/deKeService';
+import { dikeRevetmentCRUD } from '../../services/dikeRevetmentService';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { tramRadarCRUD } from '../../services/tramRadarService';
 import { heThongVTSCRUD } from '../../services/heThongVtsService';
@@ -931,7 +931,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       data = await fetchNhaTramPhaoById(id);
       displayType = 'Phao tiêu';
     } else if (type === 'Đê kè') {
-      data = await dekeCRUD.getById(id);
+      data = await dikeRevetmentCRUD.getById(id);
     } else if (type === 'Luồng hàng hải') {
       data = await navigationChannelCRUD.getById(id);
     } else if (type === 'Trạm radar') {
@@ -1292,7 +1292,7 @@ export default function GISChartView() {
 
       const isListPage = [
         '/tram-radar',
-        '/de-ke',
+        '/dike-revetment',
         '/navigation-channel',
         '/he-thong-vts',
         '/co-so-sua-chua',
@@ -1365,7 +1365,7 @@ export default function GISChartView() {
       } else if (label.includes('luồng hàng hải') || label.includes('luong hang hai')) {
         path = `/navigation-channel/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('đê') || label.includes('kè') || label.includes('de') || label.includes('ke')) {
-        path = `/de-ke/${id}${action === 'edit' ? '?mode=edit' : ''}`;
+        path = `/dike-revetment/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('cơ sở sửa chữa') || label.includes('co so sua chua')) {
         path = `/co-so-sua-chua/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('radar')) {
@@ -2530,7 +2530,7 @@ export default function GISChartView() {
           const getLoaiKchtValue = (catId?: number) => {
             if (catId === 1) return 'CANGBIEN';
             if (catId === 2) return 'COSO_SUACHUA';
-            if (catId === 3) return 'DEKE';
+            if (catId === 3) return 'DIKE_REVETMENT';
             if (catId === 4) return 'DENBIEN';
             if (catId === 5) return 'HE_THONG_VTS';
             if (catId === 6) return 'KHUCHUYEN_TAI';
@@ -3699,7 +3699,7 @@ export default function GISChartView() {
                             { value: 'COSO_SUACHUA', label: 'Cơ sở sửa chữa, đóng tàu' },
                             { value: 'KHUCHUYEN_TAI', label: 'Khu chuyển tải' },
                             { value: 'DENBIEN', label: 'Đèn biển và nhà trạm gắn liền với đèn biển' },
-                            { value: 'DEKE', label: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' },
+                            { value: 'DIKE_REVETMENT', label: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' },
                             { value: 'DAI_TTDH', label: 'Đài TTDH' },
                             { value: 'DAI_INMARSAT', label: 'Đài Thông tin Vệ tinh mặt đất Inmarsat Hải Phòng' },
                             { value: 'NAVIGATION_CHANNEL', label: 'Luồng hàng hải' },

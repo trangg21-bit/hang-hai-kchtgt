@@ -56,10 +56,10 @@ public class MaritimeFacilityIntegrationController {
         return ResponseEntity.ok(facilityService.integrateCoSoSuaChua(request));
     }
 
-    @PostMapping("/de-ke")
-    public ResponseEntity<SystemIntegrationResponse> integrateDeKe(
+    @PostMapping("/dike-revetment")
+    public ResponseEntity<SystemIntegrationResponse> integrateDikeRevetment(
             @RequestBody SystemIntegrationRequest request) {
-        return ResponseEntity.ok(facilityService.integrateDeKe(request));
+        return ResponseEntity.ok(facilityService.integrateDikeRevetment(request));
     }
 
     @PostMapping("/navigation-channel")

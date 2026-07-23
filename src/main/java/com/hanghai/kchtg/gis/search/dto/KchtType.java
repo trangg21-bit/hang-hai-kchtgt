@@ -6,7 +6,7 @@ public enum KchtType {
     CAUCANG,
     CANGCAN,
     VUNGNUOC,
-    DEKE,
+    DIKE_REVETMENT,
     NAVIGATION_CHANNEL,
     COSO_SUACHUA,
     DENBIEN,

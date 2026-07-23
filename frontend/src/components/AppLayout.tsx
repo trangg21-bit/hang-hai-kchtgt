@@ -55,7 +55,7 @@ const MENU_PERMISSION_MAP: Record<string, string> = {
   '/cangcan': 'cangcan:read',
   '/vungnuoc': 'vungnuoc:read',
   '/navigation-channel': 'navigationchannel:read',
-  '/de-ke': 'deke:read',
+  '/dike-revetment': 'dikerevetment:read',
   '/co-so-sua-chua': 'cosuachua:read',
   '/tram-radar': 'tramradar:read',
   '/he-thong-vts': 'vts:read',
@@ -96,7 +96,7 @@ const pageTitles: Record<string, string> = {
   '/cangcan': 'Quản lý cảng cạn',
   '/vungnuoc': 'Quản lý vùng nước',
   '/navigation-channel': 'Luồng hàng hải',
-  '/de-ke': 'Đê/Kè',
+  '/dike-revetment': 'Đê/Kè',
   '/co-so-sua-chua': 'Cơ sở sửa chữa & đóng tàu',
   '/tram-radar': 'Trạm Radar',
   '/he-thong-vts': 'Hệ thống VTS',
@@ -151,7 +151,7 @@ export default function AppLayout() {
     selectedKey = deepKey;
   } else if (pathSegments[0] === 'cangbien' || pathSegments[0] === 'bencang' || pathSegments[0] === 'caucang' || pathSegments[0] === 'cangcan' || pathSegments[0] === 'vungnuoc') {
     selectedKey = '/' + pathSegments[0];
-  } else if (pathSegments[0] === 'navigation-channel' || pathSegments[0] === 'de-ke' || pathSegments[0] === 'co-so-sua-chua' || pathSegments[0] === 'tram-radar' || pathSegments[0] === 'he-thong-vts') {
+  } else if (pathSegments[0] === 'navigation-channel' || pathSegments[0] === 'dike-revetment' || pathSegments[0] === 'co-so-sua-chua' || pathSegments[0] === 'tram-radar' || pathSegments[0] === 'he-thong-vts') {
     selectedKey = '/' + pathSegments[0];
   } else if (pathSegments[0] === 'reports') {
     selectedKey = location.pathname;
@@ -171,7 +171,7 @@ export default function AppLayout() {
         setOpenKeys(['asset-movement']);
       } else if (selectedKey.startsWith('/vanban')) {
         setOpenKeys(['vanban-suco']);
-      } else if (['/navigation-channel', '/de-ke', '/co-so-sua-chua', '/tram-radar', '/he-thong-vts'].includes(selectedKey)) {
+      } else if (['/navigation-channel', '/dike-revetment', '/co-so-sua-chua', '/tram-radar', '/he-thong-vts'].includes(selectedKey)) {
         setOpenKeys(['khu-nuoc-vts']);
       } else if (selectedKey.startsWith('/station')) {
         setOpenKeys(['stations']);
@@ -264,7 +264,7 @@ export default function AppLayout() {
       label: 'Khu nước & VTS',
       children: [
         canAccessMenu('/navigation-channel') ? { key: '/navigation-channel', label: 'Luồng hàng hải' } : null,
-        canAccessMenu('/de-ke') ? { key: '/de-ke', label: 'Đê/Kè' } : null,
+        canAccessMenu('/dike-revetment') ? { key: '/dike-revetment', label: 'Đê/Kè' } : null,
         canAccessMenu('/co-so-sua-chua') ? { key: '/co-so-sua-chua', label: 'Cơ sở sửa chữa & đóng tàu' } : null,
         canAccessMenu('/tram-radar') ? { key: '/tram-radar', label: 'Trạm Radar' } : null,
         canAccessMenu('/he-thong-vts') ? { key: '/he-thong-vts', label: 'Hệ thống VTS' } : null,

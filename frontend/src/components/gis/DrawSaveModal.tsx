@@ -66,7 +66,7 @@ const LOAI_KCHT_OPTIONS = [
   { value: 'COSO_SUACHUA', label: 'Cơ sở sửa chữa, đóng tàu' },
   { value: 'KHUCHUYEN_TAI', label: 'Khu chuyển tải' },
   { value: 'DENBIEN', label: 'Đèn biển và nhà trạm gắn liền với đèn biển' },
-  { value: 'DEKE', label: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' },
+  { value: 'DIKE_REVETMENT', label: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' },
   { value: 'DAI_TTDH', label: 'Đài TTDH' },
   { value: 'DAI_INMARSAT', label: 'Đài Thông tin Vệ tinh mặt đất Inmarsat Hải Phòng' },
   { value: 'NAVIGATION_CHANNEL', label: 'Luồng hàng hải' },
@@ -89,7 +89,7 @@ const mapToPointObjectType = (val: string): string => {
 
 const mapToLineObjectType = (val: string): string => {
   if (val === 'NAVIGATION_CHANNEL') return 'SHIPPING_ROUTE';
-  if (val === 'DEKE') return 'COASTLINE';
+  if (val === 'DIKE_REVETMENT') return 'COASTLINE';
   return 'OTHER';
 };
 
@@ -103,7 +103,7 @@ const mapToPolygonObjectType = (val: string): string => {
 const mapToCategoryId = (val: string): number => {
   if (val === 'CANGBIEN') return 1;
   if (val === 'COSO_SUACHUA') return 2;
-  if (val === 'DEKE') return 3;
+  if (val === 'DIKE_REVETMENT') return 3;
   if (val === 'DENBIEN') return 4;
   if (val === 'HE_THONG_VTS') return 5;
   if (val === 'KHUCHUYEN_TAI') return 6;

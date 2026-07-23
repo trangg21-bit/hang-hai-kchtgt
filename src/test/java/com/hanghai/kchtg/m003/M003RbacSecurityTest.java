@@ -6,8 +6,8 @@ import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import com.hanghai.kchtg.cangben.MethodSecurityTestConfig;
 import com.hanghai.kchtg.cosuachua.controller.CoSuaChuaDongTauController;
 import com.hanghai.kchtg.cosuachua.service.CoSuaChuaDongTauService;
-import com.hanghai.kchtg.deke.controller.DeKeController;
-import com.hanghai.kchtg.deke.service.DeKeService;
+import com.hanghai.kchtg.dikerevetment.controller.DikeRevetmentController;
+import com.hanghai.kchtg.dikerevetment.service.DikeRevetmentService;
 import com.hanghai.kchtg.navigationchannel.controller.NavigationChannelController;
 import com.hanghai.kchtg.navigationchannel.service.NavigationChannelService;
 import com.hanghai.kchtg.security.JwtUtil;
@@ -49,11 +49,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * RBAC deny/allow path tests for all 5 M-003 domains:
- *   navigationchannel, deke, cosuachua, tramradar, vts.
+ *   navigationchannel, dikerevetment, cosuachua, tramradar, vts.
  */
 @WebMvcTest(controllers = {
         NavigationChannelController.class,
-        DeKeController.class,
+        DikeRevetmentController.class,
         CoSuaChuaDongTauController.class,
         TramRadarController.class,
         HeThongVTSController.class
@@ -70,7 +70,7 @@ class M003RbacSecurityTest {
 
     // ── Service mocks ───────────────────────────────────────────────────────
     @MockBean private NavigationChannelService navigationChannelService;
-    @MockBean private DeKeService deKeService;
+    @MockBean private DikeRevetmentService dikeRevetmentService;
     @MockBean private CoSuaChuaDongTauService coSuaChuaDongTauService;
     @MockBean private TramRadarService tramRadarService;
     @MockBean private HeThongVTSDataService heThongVTSDataService;
@@ -100,7 +100,7 @@ class M003RbacSecurityTest {
     // Valid JSON bodies that satisfy @NotBlank constraints on each domain's PheDuyetRequest
     private static final String NC_APPROVE_BODY =
             "{\"nguoiPheDuyet\":\"Admin\",\"trangThai\":\"APPROVED\"}";
-    private static final String DEKE_APPROVE_BODY =
+    private static final String DIKEREVETMENT_APPROVE_BODY =
             "{\"nguoiPheDuyet\":\"Admin\",\"quyetDinh\":\"APPROVED\"}";
     private static final String GENERIC_APPROVE_BODY =
             "{\"quyetDinh\":\"APPROVED\"}";

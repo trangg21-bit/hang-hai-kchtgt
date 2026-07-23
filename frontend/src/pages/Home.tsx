@@ -822,7 +822,7 @@ function HomeDashboard() {
                   { value: 'COSO_SUACHUA', label: 'Cơ sở sửa chữa, đóng tàu' },
                   { value: 'KHUCHUYEN_TAI', label: 'Khu chuyển tải' },
                   { value: 'DENBIEN', label: 'Đèn biển và nhà trạm gắn liền với đèn biển' },
-                  { value: 'DEKE', label: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' },
+                  { value: 'DIKE_REVETMENT', label: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' },
                   { value: 'DAI_TTDH', label: 'Đài TTDH' },
                   { value: 'DAI_INMARSAT', label: 'Đài Thông tin Vệ tinh mặt đất Inmarsat Hải Phòng' },
                   { value: 'NAVIGATION_CHANNEL', label: 'Luồng hàng hải' },

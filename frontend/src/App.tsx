@@ -61,8 +61,8 @@ import GiayToUploadPage from './app/giayto/GiayToUploadPage';
 // M-003: Khu nước & VTS — Quản lý tàu bè
 import NavigationChannelList from './pages/navigationchannel/NavigationChannelList';
 import NavigationChannelForm from './pages/navigationchannel/NavigationChannelForm';
-import DeKeList from './pages/deke/DeKeList';
-import DeKeForm from './pages/deke/DeKeForm';
+import DikeRevetmentList from './pages/dikerevetment/DikeRevetmentList';
+import DikeRevetmentForm from './pages/dikerevetment/DikeRevetmentForm';
 import CoSuaChuaList from './pages/cosuachua/CoSuaChuaList';
 import CoSuaChuaForm from './pages/cosuachua/CoSuaChuaForm';
 import TramRadarList from './pages/tramradar/TramRadarList';
@@ -202,9 +202,9 @@ export default function App() {
                 <Route path="/navigation-channel/:id" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelForm /></PermissionGuard>} />
 
                 {/* Đê/kè */}
-                <Route path="/de-ke" element={<PermissionGuard permission="deke:read"><DeKeList /></PermissionGuard>} />
-                <Route path="/de-ke/create" element={<PermissionGuard permission="deke:create"><DeKeForm /></PermissionGuard>} />
-                <Route path="/de-ke/:id" element={<PermissionGuard permission="deke:read"><DeKeForm /></PermissionGuard>} />
+                <Route path="/dike-revetment" element={<PermissionGuard permission="dikerevetment:read"><DikeRevetmentList /></PermissionGuard>} />
+                <Route path="/dike-revetment/create" element={<PermissionGuard permission="dikerevetment:create"><DikeRevetmentForm /></PermissionGuard>} />
+                <Route path="/dike-revetment/:id" element={<PermissionGuard permission="dikerevetment:read"><DikeRevetmentForm /></PermissionGuard>} />
 
                 {/* Cơ sở sửa chữa/đóng tàu */}
                 <Route path="/co-so-sua-chua" element={<PermissionGuard permission="cosuachua:read"><CoSuaChuaList /></PermissionGuard>} />

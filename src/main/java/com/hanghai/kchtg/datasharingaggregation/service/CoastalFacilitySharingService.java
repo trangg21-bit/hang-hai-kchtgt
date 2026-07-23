@@ -32,11 +32,11 @@ public class CoastalFacilitySharingService {
         return mainService.create(req);
     }
 
-    public DataSharingAggregationResponse shareHeThongDeKe(String dataPayload) {
+    public DataSharingAggregationResponse shareDikeRevetment(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
-        req.setSharingType(SharingType.TONG_HOP_KCHTGT_HE_THONG_DE_KE);
+        req.setSharingType(SharingType.TONG_HOP_KCHTGT_DIKE_REVETMENT);
         req.setDataPayload(dataPayload);
-        req.setTargetSystem("HE_THONG_DE_KE");
+        req.setTargetSystem("DIKE_REVETMENT");
         return mainService.create(req);
     }
 

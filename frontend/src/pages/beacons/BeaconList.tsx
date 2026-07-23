@@ -730,7 +730,7 @@ export default function BeaconList() {
         ) : undefined}
       >
         {isDetailMode ? (
-          // Read-only Descriptions view (like DeKe)
+          // Read-only Descriptions view (like DikeRevetment)
           editingRecord && (<>
             <Descriptions column={2} bordered size="small" style={{ marginTop: 16 }}>
               <Descriptions.Item label="Mã đèn biển">{editingRecord.code}</Descriptions.Item>

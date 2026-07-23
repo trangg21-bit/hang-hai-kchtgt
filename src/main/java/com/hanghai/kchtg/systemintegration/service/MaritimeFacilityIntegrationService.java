@@ -47,8 +47,8 @@ public class MaritimeFacilityIntegrationService {
         return integrationService.createIntegration(request);
     }
 
-    public SystemIntegrationResponse integrateDeKe(SystemIntegrationRequest request) {
-        request.setIntegrationType(IntegrationType.DE_KE);
+    public SystemIntegrationResponse integrateDikeRevetment(SystemIntegrationRequest request) {
+        request.setIntegrationType(IntegrationType.DIKE_REVETMENT);
         return integrationService.createIntegration(request);
     }
 

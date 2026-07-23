@@ -30,6 +30,8 @@ import HistoryTimeline from '../../components/shared/HistoryTimeline';
 import AttachmentList from '../../components/shared/AttachmentList';
 import ApprovalStatusBadge from '../../components/shared/ApprovalStatusBadge';
 import GisLocationSelector from '../../components/gis/GisLocationSelector';
+import { colors } from '../../theme';
+import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 const LOAI_TRAM_MAP: Record<string, string> = {
   'MAIN': 'Trạm radar chính',
