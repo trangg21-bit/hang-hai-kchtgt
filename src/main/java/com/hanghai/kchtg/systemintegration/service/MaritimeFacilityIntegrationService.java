@@ -47,13 +47,13 @@ public class MaritimeFacilityIntegrationService {
         return integrationService.createIntegration(request);
     }
 
-    public SystemIntegrationResponse integrateDeKe(SystemIntegrationRequest request) {
-        request.setIntegrationType(IntegrationType.DE_KE);
+    public SystemIntegrationResponse integrateDikeRevetment(SystemIntegrationRequest request) {
+        request.setIntegrationType(IntegrationType.DIKE_REVETMENT);
         return integrationService.createIntegration(request);
     }
 
-    public SystemIntegrationResponse integrateLuongHangHai(SystemIntegrationRequest request) {
-        request.setIntegrationType(IntegrationType.LUONG_HANG_HAI);
+    public SystemIntegrationResponse integrateNavigationChannel(SystemIntegrationRequest request) {
+        request.setIntegrationType(IntegrationType.NAVIGATION_CHANNEL);
         return integrationService.createIntegration(request);
     }
 

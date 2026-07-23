@@ -554,7 +554,7 @@ export default function ReportViewer() {
                   description={
                     reportCode === 'F-151' ? (
                       <div>
-                        <p>Dữ liệu được lấy từ bảng <strong>Luồng hàng hải</strong> (<code>luong_hang_hai</code>) kết hợp với dữ liệu không gian từ <strong>GIS</strong> (<code>gis_spatial_objects</code>) qua liên kết <code>spatial_id</code>.</p>
+                        <p>Dữ liệu được lấy từ bảng <strong>Luồng hàng hải</strong> (<code>navigation_channel</code>) kết hợp với dữ liệu không gian từ <strong>GIS</strong> (<code>gis_spatial_objects</code>) qua liên kết <code>spatial_id</code>.</p>
                         <p>Một số thông số kỹ thuật chi tiết (chiều rộng, độ sâu, mái dốc, khối lượng nạo vét) hiện chưa có trong cấu trúc dữ liệu hiện tại và sẽ hiển thị trống trên báo cáo.</p>
                       </div>
                     ) : reportCode === 'F-155' ? (

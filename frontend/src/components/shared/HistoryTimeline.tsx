@@ -2,11 +2,19 @@ import { Timeline, Empty, Spin, Alert, Button } from 'antd';
 import dayjs from 'dayjs';
 
 interface HistoryEntry {
-  id: number;
+  id?: number;
+  // English (new)
+  status?: string;
+  approver?: string;
+  approvalDate?: string;
+  approvalLevel?: number | string;
+  reason?: string;
+  // Vietnamese (old — for backward compatibility)
   trangThai?: string;
   nguoiPheDuyet?: string;
   ngayPheDuyet?: string;
   lyDo?: string;
+  capPheDuyet?: number | string;
 }
 
 interface HistoryTimelineProps {
@@ -56,19 +64,22 @@ export default function HistoryTimeline({ history, loading, error, onRetry }: Hi
   }
 
   const items = history.map((entry) => {
-    const statusColor = STATUS_COLOR_MAP[entry.trangThai || ''] || 'gray';
-    const formattedDate = entry.ngayPheDuyet
-      ? dayjs(entry.ngayPheDuyet).format('DD/MM/YYYY HH:mm')
-      : 'N/A';
+    const status = entry.status || entry.trangThai || '';
+    const approver = entry.approver || entry.nguoiPheDuyet || '';
+    const date = entry.approvalDate || entry.ngayPheDuyet;
+    const reason = entry.reason || entry.lyDo || '';
+
+    const statusColor = STATUS_COLOR_MAP[status] || 'gray';
+    const formattedDate = date ? dayjs(date).format('DD/MM/YYYY HH:mm') : 'N/A';
 
     return {
       dot: <div style={{ width: '12px', height: '12px', backgroundColor: statusColor, borderRadius: '50%' }} />,
       children: (
         <>
           <p style={{ marginBottom: '4px', fontWeight: 500 }}>
-            {entry.trangThai} — {entry.nguoiPheDuyet} — {formattedDate}
+            {status} — {approver} — {formattedDate}
           </p>
-          {entry.lyDo && <p style={{ marginBottom: 0, color: '#666' }}>{entry.lyDo}</p>}
+          {reason && <p style={{ marginBottom: 0, color: '#666' }}>{reason}</p>}
         </>
       ),
     };
