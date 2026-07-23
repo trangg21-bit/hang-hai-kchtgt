@@ -53,11 +53,11 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class KchtGis155Service {
 
-    private final CangBienRepository cangBienRepository;
-    private final BenCangRepository benCangRepository;
-    private final CauCangRepository cauCangRepository;
-    private final CangCanRepository cangCanRepository;
-    private final VungNuocRepository vungNuocRepository;
+    private final PortRepository portRepository;
+    private final BerthRepository berthRepository;
+    private final PierRepository pierRepository;
+    private final DryPortRepository dryPortRepository;
+    private final WaterZoneRepository waterZoneRepository;
     private final NavigationChannelRepository navigationChannelRepository;
     private final DikeRevetmentRepository dikeRevetmentRepository;
     private final CoSuaChuaDongTauRepository coSuaChuaDongTauRepository;
@@ -129,7 +129,7 @@ public class KchtGis155Service {
         return val.toString();
     }
 
-    private void explainAndLogCauCangQuery(UUID orgUnitId, String search, TrangThaiHoatDong hd, TrangThaiPheDuyet pd) {
+    private void explainAndLogPierQuery(UUID orgUnitId, String search, TrangThaiHoatDong hd, TrangThaiPheDuyet pd) {
         String sql = "EXPLAIN ANALYZE SELECT id, ten_cau, ma_cau FROM public.cau_cang WHERE deleted_at IS NULL " +
                 "AND (CAST(:orgUnitId AS uuid) IS NULL OR org_unit_id = CAST(:orgUnitId AS uuid)) " +
                 "AND (CAST(:search AS text) IS NULL OR (LOWER(ma_cau) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')) OR LOWER(ten_cau) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')))) " +
@@ -161,7 +161,7 @@ public class KchtGis155Service {
         }
     }
 
-    private void explainAndLogBenCangQuery(UUID orgUnitId, String search, TrangThaiHoatDong hd, TrangThaiPheDuyet pd) {
+    private void explainAndLogBerthQuery(UUID orgUnitId, String search, TrangThaiHoatDong hd, TrangThaiPheDuyet pd) {
         String sql = "EXPLAIN ANALYZE SELECT id, ten_ben, ma_ben FROM public.ben_cang WHERE deleted_at IS NULL " +
                 "AND (CAST(:orgUnitId AS uuid) IS NULL OR org_unit_id = CAST(:orgUnitId AS uuid)) " +
                 "AND (CAST(:search AS text) IS NULL OR (LOWER(ma_ben) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')) OR LOWER(ten_ben) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')))) " +
@@ -193,7 +193,7 @@ public class KchtGis155Service {
         }
     }
 
-    private void explainAndLogCangBienQuery(UUID orgUnitId, String search, TrangThaiHoatDong hd, TrangThaiPheDuyet pd) {
+    private void explainAndLogPortQuery(UUID orgUnitId, String search, TrangThaiHoatDong hd, TrangThaiPheDuyet pd) {
         String sql = "EXPLAIN ANALYZE SELECT id, ten_cang, ma_cang FROM public.cang_bien WHERE deleted_at IS NULL " +
                 "AND (CAST(:orgUnitId AS uuid) IS NULL OR org_unit_id = CAST(:orgUnitId AS uuid)) " +
                 "AND (CAST(:search AS text) IS NULL OR (LOWER(ma_cang) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')) OR LOWER(ten_cang) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')))) " +
@@ -225,7 +225,7 @@ public class KchtGis155Service {
         }
     }
 
-    private void explainAndLogVungNuocQuery(UUID orgUnitId, String search, TrangThaiHoatDong hd, TrangThaiPheDuyet pd) {
+    private void explainAndLogWaterZoneQuery(UUID orgUnitId, String search, TrangThaiHoatDong hd, TrangThaiPheDuyet pd) {
         String sql = "EXPLAIN ANALYZE SELECT id, ten_vung_nuoc, ma_vung_nuoc FROM public.vung_nuoc WHERE deleted_at IS NULL " +
                 "AND (CAST(:orgUnitId AS uuid) IS NULL OR org_unit_id = CAST(:orgUnitId AS uuid)) " +
                 "AND (CAST(:search AS text) IS NULL OR (LOWER(ma_vung_nuoc) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')) OR LOWER(ten_vung_nuoc) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')))) " +
@@ -397,16 +397,16 @@ public class KchtGis155Service {
 
             switch (type) {
                 case CANGBIEN:
-                    List<CangBien> cangBiens = cangBienRepository.searchCangBien(
+                    List<Port> cangBiens = portRepository.searchPorts(
                             orgUnitId, null, null, tinhThanhStr, TrangThaiHoatDong.HIEN_HANH,
                             TrangThaiPheDuyet.DUOC_PHE_DUYET, searchLower, PageRequest.of(0, 10000)).getContent();
                     Map<UUID, GisSpatialObject> cbSpatialMap = new HashMap<>();
                     if (!cangBiens.isEmpty()) {
-                        List<UUID> cbIds = cangBiens.stream().map(CangBien::getId).collect(Collectors.toList());
+                        List<UUID> cbIds = cangBiens.stream().map(Port::getId).collect(Collectors.toList());
                         gisSpatialObjectRepository.findByRefIdInAndRefType(cbIds, KchtType.CANGBIEN)
                                 .forEach(so -> cbSpatialMap.put(so.getRefId(), so));
                     }
-                    for (CangBien cb : cangBiens) {
+                    for (Port cb : cangBiens) {
                         GisSpatialObject spatial = cbSpatialMap.get(cb.getId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double lat = coords != null ? coords[0] : null;
@@ -414,15 +414,15 @@ public class KchtGis155Service {
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(cb.getId() != null ? cb.getId().toString() : null)
-                                .name(cb.getTenCang())
-                                .ma(cb.getMaCang())
+                                .name(cb.getPortName())
+                                .ma(cb.getPortCode())
                                 .orgName(getOrgName(cb.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Cảng biển")
-                                .diaDiem(cb.getTinhThanhPho() != null ? cb.getTinhThanhPho() : "")
+                                .diaDiem(cb.getProvince() != null ? cb.getProvince() : "")
                                 .diaChiChiTiet("")
                                 .latitude(lat)
                                 .longitude(lng)
-                                .bieuTuongId(cb.getBieuTuongId())
+                                .bieuTuongId(cb.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, cb.getId(), objectType, GisObjectType.POINT, cbSpatialMap);
@@ -434,24 +434,24 @@ public class KchtGis155Service {
                     break;
 
                 case BENCANG:
-                    List<BenCang> benCangs = benCangRepository.searchBenCang(
+                    List<Berth> benCangs = berthRepository.searchBerths(
                             orgUnitId, searchLower, null, null, null, null, null, TrangThaiHoatDong.HIEN_HANH,
                             TrangThaiPheDuyet.DUOC_PHE_DUYET, PageRequest.of(0, 10000)).getContent();
-                    List<UUID> cbIds = benCangs.stream().map(BenCang::getCangBienId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
-                    Map<UUID, CangBien> bcCangBienMap = new HashMap<>();
+                    List<UUID> cbIds = benCangs.stream().map(Berth::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                    Map<UUID, Port> bcPortMap = new HashMap<>();
                     if (!cbIds.isEmpty()) {
-                        cangBienRepository.findAllById(cbIds).forEach(cb -> bcCangBienMap.put(cb.getId(), cb));
+                        portRepository.findAllById(cbIds).forEach(cb -> bcPortMap.put(cb.getId(), cb));
                     }
                     Map<UUID, GisSpatialObject> bcSpatialMap = new HashMap<>();
                     if (!benCangs.isEmpty()) {
-                        List<UUID> bcIds = benCangs.stream().map(BenCang::getId).collect(Collectors.toList());
+                        List<UUID> bcIds = benCangs.stream().map(Berth::getId).collect(Collectors.toList());
                         gisSpatialObjectRepository.findByRefIdInAndRefType(bcIds, KchtType.BENCANG)
                                 .forEach(so -> bcSpatialMap.put(so.getRefId(), so));
                     }
-                    for (BenCang bc : benCangs) {
-                        CangBien parent = (bc.getCangBienId() != null) ? bcCangBienMap.get(bc.getCangBienId()) : null;
-                        String parentProvince = (parent != null && parent.getTinhThanhPho() != null)
-                                ? parent.getTinhThanhPho()
+                    for (Berth bc : benCangs) {
+                        Port parent = (bc.getPortId() != null) ? bcPortMap.get(bc.getPortId()) : null;
+                        String parentProvince = (parent != null && parent.getProvince() != null)
+                                ? parent.getProvince()
                                 : "";
                         GisSpatialObject spatial = bcSpatialMap.get(bc.getId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
@@ -460,15 +460,15 @@ public class KchtGis155Service {
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(bc.getId() != null ? bc.getId().toString() : null)
-                                .name(bc.getTenBen())
-                                .ma(bc.getMaBen())
+                                .name(bc.getBerthName())
+                                .ma(bc.getBerthCode())
                                 .orgName(getOrgName(bc.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Bến cảng")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet(bc.getTuyenDuongThuy() != null ? bc.getTuyenDuongThuy() : "")
+                                .diaChiChiTiet(bc.getWaterway() != null ? bc.getWaterway() : "")
                                 .latitude(lat)
                                 .longitude(lng)
-                                .bieuTuongId(bc.getBieuTuongId())
+                                .bieuTuongId(bc.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, bc.getId(), objectType, GisObjectType.POINT, bcSpatialMap);
@@ -480,18 +480,18 @@ public class KchtGis155Service {
                     break;
 
                 case CAUCANG:
-                    List<CauCang> cauCangs = cauCangRepository.searchCauCang(
+                    List<Pier> cauCangs = pierRepository.searchPiers(
                             orgUnitId, searchLower, null, null, TrangThaiHoatDong.HIEN_HANH,
                             TrangThaiPheDuyet.DUOC_PHE_DUYET, PageRequest.of(0, 10000)).getContent();
-                    List<UUID> parentBenIds = cauCangs.stream().map(CauCang::getBenCangId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
-                    Map<UUID, BenCang> benCangMap = new HashMap<>();
+                    List<UUID> parentBenIds = cauCangs.stream().map(Pier::getBerthId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                    Map<UUID, Berth> benCangMap = new HashMap<>();
                     if (!parentBenIds.isEmpty()) {
-                        benCangRepository.findAllById(parentBenIds).forEach(bc -> benCangMap.put(bc.getId(), bc));
+                        berthRepository.findAllById(parentBenIds).forEach(bc -> benCangMap.put(bc.getId(), bc));
                     }
-                    List<UUID> parentCbIds = benCangMap.values().stream().map(BenCang::getCangBienId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
-                    Map<UUID, CangBien> cangBienMap = new HashMap<>();
+                    List<UUID> parentCbIds = benCangMap.values().stream().map(Berth::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                    Map<UUID, Port> cangBienMap = new HashMap<>();
                     if (!parentCbIds.isEmpty()) {
-                        cangBienRepository.findAllById(parentCbIds).forEach(cb -> cangBienMap.put(cb.getId(), cb));
+                        portRepository.findAllById(parentCbIds).forEach(cb -> cangBienMap.put(cb.getId(), cb));
                     }
                     Map<UUID, GisSpatialObject> parentBenSpatialMap = new HashMap<>();
                     if (!parentBenIds.isEmpty()) {
@@ -500,15 +500,15 @@ public class KchtGis155Service {
                     }
                     Map<UUID, GisSpatialObject> spatialMap = new HashMap<>();
                     if (objectType != null) {
-                        List<UUID> spatialIds = cauCangs.stream().map(CauCang::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        List<UUID> spatialIds = cauCangs.stream().map(Pier::getSpatialId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!spatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(spatialIds).forEach(so -> spatialMap.put(so.getId(), so));
                         }
                     }
-                    for (CauCang cc : cauCangs) {
-                        BenCang parentBen = (cc.getBenCangId() != null) ? benCangMap.get(cc.getBenCangId()) : null;
-                        CangBien parentCb = (parentBen != null && parentBen.getCangBienId() != null) ? cangBienMap.get(parentBen.getCangBienId()) : null;
-                        String parentProvince = (parentCb != null && parentCb.getTinhThanhPho() != null) ? parentCb.getTinhThanhPho() : "";
+                    for (Pier cc : cauCangs) {
+                        Berth parentBen = (cc.getBerthId() != null) ? benCangMap.get(cc.getBerthId()) : null;
+                        Port parentCb = (parentBen != null && parentBen.getPortId() != null) ? cangBienMap.get(parentBen.getPortId()) : null;
+                        String parentProvince = (parentCb != null && parentCb.getProvince() != null) ? parentCb.getProvince() : "";
                         
                         GisSpatialObject parentBenSpatial = (parentBen != null) ? parentBenSpatialMap.get(parentBen.getId()) : null;
                         double[] coords = parentBenSpatial != null ? parseFirstCoordinateFromWkt(parentBenSpatial.getCoordinates()) : null;
@@ -517,38 +517,38 @@ public class KchtGis155Service {
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(cc.getId() != null ? cc.getId().toString() : null)
-                                .name(cc.getTenCau())
-                                .ma(cc.getMaCau())
-                                .orgName(getOrgName(cc.getDonViId(), orgNameMap))
+                                .name(cc.getPierName())
+                                .ma(cc.getPierCode())
+                                .orgName(getOrgName(cc.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Cầu cảng")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet(parentBen != null ? "Thuộc bến cảng: " + parentBen.getTenBen() : "")
+                                .diaChiChiTiet(parentBen != null ? "Thuộc bến cảng: " + parentBen.getBerthName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
-                                .bieuTuongId(cc.getBieuTuongId())
+                                .bieuTuongId(cc.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
-                            populateSpatialAndFilterFromMap(results, r, cc.getKhongGianId(), objectType, GisObjectType.LINE, spatialMap);
+                            populateSpatialAndFilterFromMap(results, r, cc.getSpatialId(), objectType, GisObjectType.LINE, spatialMap);
                         } else {
                             results.add(r);
-                            if (cc.getKhongGianId() != null) {
-                                spatialIdMap.put(r.getId(), cc.getKhongGianId());
+                            if (cc.getSpatialId() != null) {
+                                spatialIdMap.put(r.getId(), cc.getSpatialId());
                             }
                         }
                     }
                     break;
 
                 case CANGCAN:
-                    List<CangCan> cangCans = cangCanRepository.searchCangCan(
+                    List<DryPort> cangCans = dryPortRepository.searchDryPorts(
                             orgUnitId, searchLower, TrangThaiHoatDong.HIEN_HANH, TrangThaiPheDuyet.DUOC_PHE_DUYET,
                             PageRequest.of(0, 10000)).getContent();
                     Map<UUID, GisSpatialObject> ccSpatialMap = new HashMap<>();
                     if (!cangCans.isEmpty()) {
-                        List<UUID> ccIds = cangCans.stream().map(CangCan::getId).collect(Collectors.toList());
+                        List<UUID> ccIds = cangCans.stream().map(DryPort::getId).collect(Collectors.toList());
                         gisSpatialObjectRepository.findByRefIdInAndRefType(ccIds, KchtType.CANGCAN)
                                 .forEach(so -> ccSpatialMap.put(so.getRefId(), so));
                     }
-                    for (CangCan cc : cangCans) {
+                    for (DryPort cc : cangCans) {
                         GisSpatialObject spatial = ccSpatialMap.get(cc.getId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double lat = coords != null ? coords[0] : null;
@@ -556,15 +556,15 @@ public class KchtGis155Service {
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(cc.getId() != null ? cc.getId().toString() : null)
-                                .name(cc.getTenCangCan())
-                                .ma(cc.getMaCangCan())
+                                .name(cc.getDryPortName())
+                                .ma(cc.getDryPortCode())
                                 .orgName(getOrgName(cc.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Cảng cạn")
-                                .diaDiem(cc.getTinhThanhPho() != null ? cc.getTinhThanhPho() : "")
+                                .diaDiem(cc.getProvince() != null ? cc.getProvince() : "")
                                 .diaChiChiTiet("")
                                 .latitude(lat)
                                 .longitude(lng)
-                                .bieuTuongId(cc.getBieuTuongId())
+                                .bieuTuongId(cc.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, cc.getId(), objectType, GisObjectType.POINT, ccSpatialMap);
@@ -576,49 +576,49 @@ public class KchtGis155Service {
                     break;
 
                 case VUNGNUOC:
-                    List<VungNuoc> vungNuocs = vungNuocRepository.searchVungNuoc(
+                    List<WaterZone> vungNuocs = waterZoneRepository.searchWaterZones(
                             orgUnitId, null, searchLower, null, TrangThaiHoatDong.HIEN_HANH,
                             TrangThaiPheDuyet.DUOC_PHE_DUYET, PageRequest.of(0, 10000)).getContent();
-                    List<UUID> vnCbIds = vungNuocs.stream().map(VungNuoc::getCangBienId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
-                    Map<UUID, CangBien> vnCangBienMap = new HashMap<>();
+                    List<UUID> vnCbIds = vungNuocs.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                    Map<UUID, Port> vnPortMap = new HashMap<>();
                     if (!vnCbIds.isEmpty()) {
-                        cangBienRepository.findAllById(vnCbIds).forEach(cb -> vnCangBienMap.put(cb.getId(), cb));
+                        portRepository.findAllById(vnCbIds).forEach(cb -> vnPortMap.put(cb.getId(), cb));
                     }
                     Map<UUID, GisSpatialObject> vnSpatialMap = new HashMap<>();
                     if (!vungNuocs.isEmpty()) {
-                        List<UUID> vnSpatialIds = vungNuocs.stream().map(VungNuoc::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        List<UUID> vnSpatialIds = vungNuocs.stream().map(WaterZone::getSpatialId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!vnSpatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(vnSpatialIds).forEach(so -> vnSpatialMap.put(so.getId(), so));
                         }
                     }
-                    for (VungNuoc vn : vungNuocs) {
-                        CangBien parent = (vn.getCangBienId() != null) ? vnCangBienMap.get(vn.getCangBienId()) : null;
-                        String parentProvince = (parent != null && parent.getTinhThanhPho() != null)
-                                ? parent.getTinhThanhPho()
+                    for (WaterZone vn : vungNuocs) {
+                        Port parent = (vn.getPortId() != null) ? vnPortMap.get(vn.getPortId()) : null;
+                        String parentProvince = (parent != null && parent.getProvince() != null)
+                                ? parent.getProvince()
                                 : "";
-                        GisSpatialObject spatial = vnSpatialMap.get(vn.getKhongGianId());
+                        GisSpatialObject spatial = vnSpatialMap.get(vn.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double viDo = coords != null ? coords[0] : null;
                         Double kinhDo = coords != null ? coords[1] : null;
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(vn.getId() != null ? vn.getId().toString() : null)
-                                .name(vn.getTenVungNuoc())
-                                .ma(vn.getMaVungNuoc())
-                                .orgName(getOrgName(vn.getDonViId(), orgNameMap))
+                                .name(vn.getWaterZoneName())
+                                .ma(vn.getWaterZoneCode())
+                                .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Vùng nước")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getTenCang() : "")
+                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
-                                .bieuTuongId(vn.getBieuTuongId())
+                                .bieuTuongId(vn.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
-                            populateSpatialAndFilterFromMap(results, r, vn.getKhongGianId(), objectType, GisObjectType.POLYGON, vnSpatialMap);
+                            populateSpatialAndFilterFromMap(results, r, vn.getSpatialId(), objectType, GisObjectType.POLYGON, vnSpatialMap);
                         } else {
                             results.add(r);
-                            if (vn.getKhongGianId() != null) {
-                                spatialIdMap.put(r.getId(), vn.getKhongGianId());
+                            if (vn.getSpatialId() != null) {
+                                spatialIdMap.put(r.getId(), vn.getSpatialId());
                             }
                         }
                     }
@@ -1093,196 +1093,196 @@ public class KchtGis155Service {
                     break;
 
                 case BENPHAO:
-                    List<VungNuoc> benPhaos = vungNuocRepository.searchVungNuoc(
+                    List<WaterZone> benPhaos = waterZoneRepository.searchWaterZones(
                             orgUnitId, null, searchLower, LoaiVungNuoc.BEN_PHAO, TrangThaiHoatDong.HIEN_HANH,
                             TrangThaiPheDuyet.DUOC_PHE_DUYET, PageRequest.of(0, 10000)).getContent();
-                    List<UUID> bpCbIds = benPhaos.stream().map(VungNuoc::getCangBienId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
-                    Map<UUID, CangBien> bpCangBienMap = new HashMap<>();
+                    List<UUID> bpCbIds = benPhaos.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                    Map<UUID, Port> bpPortMap = new HashMap<>();
                     if (!bpCbIds.isEmpty()) {
-                        cangBienRepository.findAllById(bpCbIds).forEach(cb -> bpCangBienMap.put(cb.getId(), cb));
+                        portRepository.findAllById(bpCbIds).forEach(cb -> bpPortMap.put(cb.getId(), cb));
                     }
                     Map<UUID, GisSpatialObject> bpSpatialMap = new HashMap<>();
                     if (!benPhaos.isEmpty()) {
-                        List<UUID> bpSpatialIds = benPhaos.stream().map(VungNuoc::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        List<UUID> bpSpatialIds = benPhaos.stream().map(WaterZone::getSpatialId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!bpSpatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(bpSpatialIds).forEach(so -> bpSpatialMap.put(so.getId(), so));
                         }
                     }
-                    for (VungNuoc vn : benPhaos) {
-                        CangBien parent = (vn.getCangBienId() != null) ? bpCangBienMap.get(vn.getCangBienId()) : null;
-                        String parentProvince = (parent != null && parent.getTinhThanhPho() != null)
-                                ? parent.getTinhThanhPho()
+                    for (WaterZone vn : benPhaos) {
+                        Port parent = (vn.getPortId() != null) ? bpPortMap.get(vn.getPortId()) : null;
+                        String parentProvince = (parent != null && parent.getProvince() != null)
+                                ? parent.getProvince()
                                 : "";
-                        GisSpatialObject spatial = bpSpatialMap.get(vn.getKhongGianId());
+                        GisSpatialObject spatial = bpSpatialMap.get(vn.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double viDo = coords != null ? coords[0] : null;
                         Double kinhDo = coords != null ? coords[1] : null;
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(vn.getId() != null ? vn.getId().toString() : null)
-                                .name(vn.getTenVungNuoc())
-                                .ma(vn.getMaVungNuoc())
-                                .orgName(getOrgName(vn.getDonViId(), orgNameMap))
+                                .name(vn.getWaterZoneName())
+                                .ma(vn.getWaterZoneCode())
+                                .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Bến phao")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getTenCang() : "")
+                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
-                                .bieuTuongId(vn.getBieuTuongId())
+                                .bieuTuongId(vn.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
-                            populateSpatialAndFilterFromMap(results, r, vn.getKhongGianId(), objectType, GisObjectType.POLYGON, bpSpatialMap);
+                            populateSpatialAndFilterFromMap(results, r, vn.getSpatialId(), objectType, GisObjectType.POLYGON, bpSpatialMap);
                         } else {
                             results.add(r);
-                            if (vn.getKhongGianId() != null) {
-                                spatialIdMap.put(r.getId(), vn.getKhongGianId());
+                            if (vn.getSpatialId() != null) {
+                                spatialIdMap.put(r.getId(), vn.getSpatialId());
                             }
                         }
                     }
                     break;
 
                 case KHUNEO_DAU:
-                    List<VungNuoc> khuNeos = vungNuocRepository.searchVungNuoc(
+                    List<WaterZone> khuNeos = waterZoneRepository.searchWaterZones(
                             orgUnitId, null, searchLower, LoaiVungNuoc.NEO_DAU, TrangThaiHoatDong.HIEN_HANH,
                             TrangThaiPheDuyet.DUOC_PHE_DUYET, PageRequest.of(0, 10000)).getContent();
-                    List<UUID> knCbIds = khuNeos.stream().map(VungNuoc::getCangBienId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
-                    Map<UUID, CangBien> knCangBienMap = new HashMap<>();
+                    List<UUID> knCbIds = khuNeos.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                    Map<UUID, Port> knPortMap = new HashMap<>();
                     if (!knCbIds.isEmpty()) {
-                        cangBienRepository.findAllById(knCbIds).forEach(cb -> knCangBienMap.put(cb.getId(), cb));
+                        portRepository.findAllById(knCbIds).forEach(cb -> knPortMap.put(cb.getId(), cb));
                     }
                     Map<UUID, GisSpatialObject> knSpatialMap = new HashMap<>();
                     if (!khuNeos.isEmpty()) {
-                        List<UUID> knSpatialIds = khuNeos.stream().map(VungNuoc::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        List<UUID> knSpatialIds = khuNeos.stream().map(WaterZone::getSpatialId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!knSpatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(knSpatialIds).forEach(so -> knSpatialMap.put(so.getId(), so));
                         }
                     }
-                    for (VungNuoc vn : khuNeos) {
-                        CangBien parent = (vn.getCangBienId() != null) ? knCangBienMap.get(vn.getCangBienId()) : null;
-                        String parentProvince = (parent != null && parent.getTinhThanhPho() != null)
-                                ? parent.getTinhThanhPho()
+                    for (WaterZone vn : khuNeos) {
+                        Port parent = (vn.getPortId() != null) ? knPortMap.get(vn.getPortId()) : null;
+                        String parentProvince = (parent != null && parent.getProvince() != null)
+                                ? parent.getProvince()
                                 : "";
-                        GisSpatialObject spatial = knSpatialMap.get(vn.getKhongGianId());
+                        GisSpatialObject spatial = knSpatialMap.get(vn.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double viDo = coords != null ? coords[0] : null;
                         Double kinhDo = coords != null ? coords[1] : null;
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(vn.getId() != null ? vn.getId().toString() : null)
-                                .name(vn.getTenVungNuoc())
-                                .ma(vn.getMaVungNuoc())
-                                .orgName(getOrgName(vn.getDonViId(), orgNameMap))
+                                .name(vn.getWaterZoneName())
+                                .ma(vn.getWaterZoneCode())
+                                .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Khu neo đậu")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getTenCang() : "")
+                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
-                                .bieuTuongId(vn.getBieuTuongId())
+                                .bieuTuongId(vn.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
-                            populateSpatialAndFilterFromMap(results, r, vn.getKhongGianId(), objectType, GisObjectType.POLYGON, knSpatialMap);
+                            populateSpatialAndFilterFromMap(results, r, vn.getSpatialId(), objectType, GisObjectType.POLYGON, knSpatialMap);
                         } else {
                             results.add(r);
-                            if (vn.getKhongGianId() != null) {
-                                spatialIdMap.put(r.getId(), vn.getKhongGianId());
+                            if (vn.getSpatialId() != null) {
+                                spatialIdMap.put(r.getId(), vn.getSpatialId());
                             }
                         }
                     }
                     break;
 
                 case KHUCHUYEN_TAI:
-                    List<VungNuoc> khuChuyens = vungNuocRepository.searchVungNuoc(
+                    List<WaterZone> khuChuyens = waterZoneRepository.searchWaterZones(
                             orgUnitId, null, searchLower, LoaiVungNuoc.CHUYEN_TAI, TrangThaiHoatDong.HIEN_HANH,
                             TrangThaiPheDuyet.DUOC_PHE_DUYET, PageRequest.of(0, 10000)).getContent();
-                    List<UUID> kcCbIds = khuChuyens.stream().map(VungNuoc::getCangBienId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
-                    Map<UUID, CangBien> kcCangBienMap = new HashMap<>();
+                    List<UUID> kcCbIds = khuChuyens.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                    Map<UUID, Port> kcPortMap = new HashMap<>();
                     if (!kcCbIds.isEmpty()) {
-                        cangBienRepository.findAllById(kcCbIds).forEach(cb -> kcCangBienMap.put(cb.getId(), cb));
+                        portRepository.findAllById(kcCbIds).forEach(cb -> kcPortMap.put(cb.getId(), cb));
                     }
                     Map<UUID, GisSpatialObject> kcSpatialMap = new HashMap<>();
                     if (!khuChuyens.isEmpty()) {
-                        List<UUID> kcSpatialIds = khuChuyens.stream().map(VungNuoc::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        List<UUID> kcSpatialIds = khuChuyens.stream().map(WaterZone::getSpatialId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!kcSpatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(kcSpatialIds).forEach(so -> kcSpatialMap.put(so.getId(), so));
                         }
                     }
-                    for (VungNuoc vn : khuChuyens) {
-                        CangBien parent = (vn.getCangBienId() != null) ? kcCangBienMap.get(vn.getCangBienId()) : null;
-                        String parentProvince = (parent != null && parent.getTinhThanhPho() != null)
-                                ? parent.getTinhThanhPho()
+                    for (WaterZone vn : khuChuyens) {
+                        Port parent = (vn.getPortId() != null) ? kcPortMap.get(vn.getPortId()) : null;
+                        String parentProvince = (parent != null && parent.getProvince() != null)
+                                ? parent.getProvince()
                                 : "";
-                        GisSpatialObject spatial = kcSpatialMap.get(vn.getKhongGianId());
+                        GisSpatialObject spatial = kcSpatialMap.get(vn.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double viDo = coords != null ? coords[0] : null;
                         Double kinhDo = coords != null ? coords[1] : null;
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(vn.getId() != null ? vn.getId().toString() : null)
-                                .name(vn.getTenVungNuoc())
-                                .ma(vn.getMaVungNuoc())
-                                .orgName(getOrgName(vn.getDonViId(), orgNameMap))
+                                .name(vn.getWaterZoneName())
+                                .ma(vn.getWaterZoneCode())
+                                .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Khu chuyển tải")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getTenCang() : "")
+                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
-                                .bieuTuongId(vn.getBieuTuongId())
+                                .bieuTuongId(vn.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
-                            populateSpatialAndFilterFromMap(results, r, vn.getKhongGianId(), objectType, GisObjectType.POLYGON, kcSpatialMap);
+                            populateSpatialAndFilterFromMap(results, r, vn.getSpatialId(), objectType, GisObjectType.POLYGON, kcSpatialMap);
                         } else {
                             results.add(r);
-                            if (vn.getKhongGianId() != null) {
-                                spatialIdMap.put(r.getId(), vn.getKhongGianId());
+                            if (vn.getSpatialId() != null) {
+                                spatialIdMap.put(r.getId(), vn.getSpatialId());
                             }
                         }
                     }
                     break;
 
                 case KHUTRANH_TRU_BAO:
-                    List<VungNuoc> khuTranhs = vungNuocRepository.searchVungNuoc(
+                    List<WaterZone> khuTranhs = waterZoneRepository.searchWaterZones(
                             orgUnitId, null, searchLower, LoaiVungNuoc.TRANH_BAO, TrangThaiHoatDong.HIEN_HANH,
                             TrangThaiPheDuyet.DUOC_PHE_DUYET, PageRequest.of(0, 10000)).getContent();
-                    List<UUID> ktCbIds = khuTranhs.stream().map(VungNuoc::getCangBienId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
-                    Map<UUID, CangBien> ktCangBienMap = new HashMap<>();
+                    List<UUID> ktCbIds = khuTranhs.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                    Map<UUID, Port> ktPortMap = new HashMap<>();
                     if (!ktCbIds.isEmpty()) {
-                        cangBienRepository.findAllById(ktCbIds).forEach(cb -> ktCangBienMap.put(cb.getId(), cb));
+                        portRepository.findAllById(ktCbIds).forEach(cb -> ktPortMap.put(cb.getId(), cb));
                     }
                     Map<UUID, GisSpatialObject> ktSpatialMap = new HashMap<>();
                     if (!khuTranhs.isEmpty()) {
-                        List<UUID> ktSpatialIds = khuTranhs.stream().map(VungNuoc::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        List<UUID> ktSpatialIds = khuTranhs.stream().map(WaterZone::getSpatialId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!ktSpatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(ktSpatialIds).forEach(so -> ktSpatialMap.put(so.getId(), so));
                         }
                     }
-                    for (VungNuoc vn : khuTranhs) {
-                        CangBien parent = (vn.getCangBienId() != null) ? ktCangBienMap.get(vn.getCangBienId()) : null;
-                        String parentProvince = (parent != null && parent.getTinhThanhPho() != null)
-                                ? parent.getTinhThanhPho()
+                    for (WaterZone vn : khuTranhs) {
+                        Port parent = (vn.getPortId() != null) ? ktPortMap.get(vn.getPortId()) : null;
+                        String parentProvince = (parent != null && parent.getProvince() != null)
+                                ? parent.getProvince()
                                 : "";
-                        GisSpatialObject spatial = ktSpatialMap.get(vn.getKhongGianId());
+                        GisSpatialObject spatial = ktSpatialMap.get(vn.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double viDo = coords != null ? coords[0] : null;
                         Double kinhDo = coords != null ? coords[1] : null;
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(vn.getId() != null ? vn.getId().toString() : null)
-                                .name(vn.getTenVungNuoc())
-                                .ma(vn.getMaVungNuoc())
-                                .orgName(getOrgName(vn.getDonViId(), orgNameMap))
+                                .name(vn.getWaterZoneName())
+                                .ma(vn.getWaterZoneCode())
+                                .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Khu tránh trú bão")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getTenCang() : "")
+                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
-                                .bieuTuongId(vn.getBieuTuongId())
+                                .bieuTuongId(vn.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
-                            populateSpatialAndFilterFromMap(results, r, vn.getKhongGianId(), objectType, GisObjectType.POLYGON, ktSpatialMap);
+                            populateSpatialAndFilterFromMap(results, r, vn.getSpatialId(), objectType, GisObjectType.POLYGON, ktSpatialMap);
                         } else {
                             results.add(r);
-                            if (vn.getKhongGianId() != null) {
-                                spatialIdMap.put(r.getId(), vn.getKhongGianId());
+                            if (vn.getSpatialId() != null) {
+                                spatialIdMap.put(r.getId(), vn.getSpatialId());
                             }
                         }
                     }

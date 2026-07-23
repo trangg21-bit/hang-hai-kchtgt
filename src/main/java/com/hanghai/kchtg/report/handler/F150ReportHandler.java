@@ -2,8 +2,8 @@ package com.hanghai.kchtg.report.handler;
 
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
-import com.hanghai.kchtg.cangben.entity.CauCang;
-import com.hanghai.kchtg.cangben.repository.CauCangRepository;
+import com.hanghai.kchtg.cangben.entity.Pier;
+import com.hanghai.kchtg.cangben.repository.PierRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -13,7 +13,7 @@ import java.util.*;
 public class F150ReportHandler extends BaseReportHandler {
 
     @Autowired
-    private CauCangRepository cauCangRepository;
+    private PierRepository pierRepository;
 
     @Override
     public boolean supports(String reportCode) {
@@ -26,9 +26,9 @@ public class F150ReportHandler extends BaseReportHandler {
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
         int reportYear = getReportYear(request);
 
-        List<CauCang> berths = cauCangRepository.findAll().stream()
-                .filter(b -> skipFilter || targetUnitId.equals(b.getDonViId()))
-                                    .filter(b -> b.getCreatedAt() == null || b.getCreatedAt().getYear() <= reportYear)
+        List<Pier> berths = pierRepository.findAll().stream()
+                .filter(b -> skipFilter || targetUnitId.equals(b.getOrgUnitId()))
+                .filter(b -> b.getCreatedAt() == null || b.getCreatedAt().getYear() <= reportYear)
                 .toList();
 
         double containerNam = 0;
@@ -59,10 +59,10 @@ public class F150ReportHandler extends BaseReportHandler {
         double khacDaiThayDoi = 0;
         double hanhKhachDaiThayDoi = 0;
 
-        for (CauCang b : berths) {
-            String type = classifyCauCang(b.getLoaiCau(), b.getCongNangKhaiThac());
+        for (Pier b : berths) {
+            String type = classifyPier(b.getPierType(), b.getOperationalFunction());
             boolean isNewThisYear = b.getUpdatedAt() != null && b.getUpdatedAt().getYear() == reportYear;
-            double len = b.getChieuDai() != null ? b.getChieuDai().doubleValue() : 0.0;
+            double len = b.getLength() != null ? b.getLength().doubleValue() : 0.0;
 
             switch (type) {
                 case "CONTAINER":
@@ -214,8 +214,8 @@ public class F150ReportHandler extends BaseReportHandler {
         UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
 
-        List<CauCang> berths = cauCangRepository.findAll().stream()
-                .filter(b -> skipFilter || targetUnitId.equals(b.getDonViId()))
+        List<Pier> berths = pierRepository.findAll().stream()
+                .filter(b -> skipFilter || targetUnitId.equals(b.getOrgUnitId()))
                 .filter(b -> b.getCreatedAt() == null || b.getCreatedAt().getYear() <= reportYear)
                 .toList();
 
@@ -247,10 +247,10 @@ public class F150ReportHandler extends BaseReportHandler {
         double khacDaiThayDoi = 0;
         double hanhKhachDaiThayDoi = 0;
 
-        for (CauCang b : berths) {
-            String type = classifyCauCang(b.getLoaiCau(), b.getCongNangKhaiThac());
+        for (Pier b : berths) {
+            String type = classifyPier(b.getPierType(), b.getOperationalFunction());
             boolean isNewThisYear = b.getUpdatedAt() != null && b.getUpdatedAt().getYear() == reportYear;
-            double len = b.getChieuDai() != null ? b.getChieuDai().doubleValue() : 0.0;
+            double len = b.getLength() != null ? b.getLength().doubleValue() : 0.0;
 
             switch (type) {
                 case "CONTAINER":
@@ -305,33 +305,33 @@ public class F150ReportHandler extends BaseReportHandler {
         }
 
         Map<String, Object> item = new HashMap<>();
-        item.put("soLuongCauCangContainerNamBaoCao", containerNam);
-        item.put("soLuongCauCangTongHopNamBaoCao", tongHopNam);
-        item.put("soLuongCauCangChuyenDungHangRoiQuangNamBaoCao", roiQuangNam);
-        item.put("soLuongCauCangChuyenDungXangDauKhiHoaLongNamBaoCao", xangDauNam);
-        item.put("soLuongCauCangChuyenDungKhacNamBaoCao", khacNam);
-        item.put("soLuongCauCangHanhKhachNamBaoCao", hanhKhachNam);
+        item.put("soLuongPierContainerNamBaoCao", containerNam);
+        item.put("soLuongPierTongHopNamBaoCao", tongHopNam);
+        item.put("soLuongPierChuyenDungHangRoiQuangNamBaoCao", roiQuangNam);
+        item.put("soLuongPierChuyenDungXangDauKhiHoaLongNamBaoCao", xangDauNam);
+        item.put("soLuongPierChuyenDungKhacNamBaoCao", khacNam);
+        item.put("soLuongPierHanhKhachNamBaoCao", hanhKhachNam);
 
-        item.put("soLuongCauCangContainerThayDoi", containerThayDoi);
-        item.put("soLuongCauCangTongHopThayDoi", tongHopThayDoi);
-        item.put("soLuongCauCangChuyenDungHangRoiQuangThayDoi", roiQuangThayDoi);
-        item.put("soLuongCauCangChuyenDungXangDauKhiHoaLongThayDoi", xangDauThayDoi);
-        item.put("soLuongCauCangChuyenDungKhacThayDoi", khacThayDoi);
-        item.put("soLuongCauCangHanhKhachThayDoi", hanhKhachThayDoi);
+        item.put("soLuongPierContainerThayDoi", containerThayDoi);
+        item.put("soLuongPierTongHopThayDoi", tongHopThayDoi);
+        item.put("soLuongPierChuyenDungHangRoiQuangThayDoi", roiQuangThayDoi);
+        item.put("soLuongPierChuyenDungXangDauKhiHoaLongThayDoi", xangDauThayDoi);
+        item.put("soLuongPierChuyenDungKhacThayDoi", khacThayDoi);
+        item.put("soLuongPierHanhKhachThayDoi", hanhKhachThayDoi);
 
-        item.put("chieuDaiCauCangContainerNamBaoCao", containerDaiNam);
-        item.put("chieuDaiCauCangTongHopNamBaoCao", tongHopDaiNam);
-        item.put("chieuDaiCauCangChuyenDungHangRoiQuangNamBaoCao", roiQuangDaiNam);
-        item.put("chieuDaiCauCangChuyenDungXangDauKhiHoaLongNamBaoCao", xangDauDaiNam);
-        item.put("chieuDaiCauCangChuyenDungKhacNamBaoCao", khacDaiNam);
-        item.put("chieuDaiCauCangHanhKhachNamBaoCao", hanhKhachDaiNam);
+        item.put("chieuDaiPierContainerNamBaoCao", containerDaiNam);
+        item.put("chieuDaiPierTongHopNamBaoCao", tongHopDaiNam);
+        item.put("chieuDaiPierChuyenDungHangRoiQuangNamBaoCao", roiQuangDaiNam);
+        item.put("chieuDaiPierChuyenDungXangDauKhiHoaLongNamBaoCao", xangDauDaiNam);
+        item.put("chieuDaiPierChuyenDungKhacNamBaoCao", khacDaiNam);
+        item.put("chieuDaiPierHanhKhachNamBaoCao", hanhKhachDaiNam);
 
-        item.put("chieuDaiCauCangContainerThayDoi", containerDaiThayDoi);
-        item.put("chieuDaiCauCangTongHopThayDoi", tongHopDaiThayDoi);
-        item.put("chieuDaiCauCangChuyenDungHangRoiQuangThayDoi", roiQuangDaiThayDoi);
-        item.put("chieuDaiCauCangChuyenDungXangDauKhiHoaLongThayDoi", xangDauDaiThayDoi);
-        item.put("chieuDaiCauCangChuyenDungKhacThayDoi", khacDaiThayDoi);
-        item.put("chieuDaiCauCangHanhKhachNamThayDoi", hanhKhachDaiThayDoi);
+        item.put("chieuDaiPierContainerThayDoi", containerDaiThayDoi);
+        item.put("chieuDaiPierTongHopThayDoi", tongHopDaiThayDoi);
+        item.put("chieuDaiPierChuyenDungHangRoiQuangThayDoi", roiQuangDaiThayDoi);
+        item.put("chieuDaiPierChuyenDungXangDauKhiHoaLongThayDoi", xangDauDaiThayDoi);
+        item.put("chieuDaiPierChuyenDungKhacThayDoi", khacDaiThayDoi);
+        item.put("chieuDaiPierHanhKhachNamThayDoi", hanhKhachDaiThayDoi);
 
         item.put("nangLucContainerNamBaoCao", "-");
         item.put("nangLucTongHopNamBaoCao", "-");
@@ -354,9 +354,9 @@ public class F150ReportHandler extends BaseReportHandler {
         return list;
     }
 
-    private String classifyCauCang(com.hanghai.kchtg.cangben.entity.LoaiCau loaiCau, String congNang) {
-        if (loaiCau == null) return "KHAC";
-        switch (loaiCau) {
+    private String classifyPier(com.hanghai.kchtg.cangben.entity.LoaiCau pierType, String operationalFunction) {
+        if (pierType == null) return "KHAC";
+        switch (pierType) {
             case CONTAINER:
                 return "CONTAINER";
             case TONG_HOP:

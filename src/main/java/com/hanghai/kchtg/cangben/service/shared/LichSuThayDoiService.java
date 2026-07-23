@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.cangben.service.shared;
 
-import com.hanghai.kchtg.cangben.entity.LichSuThayDoi;
-import com.hanghai.kchtg.cangben.repository.LichSuThayDoiRepository;
+import com.hanghai.kchtg.cangben.entity.ChangeLog;
+import com.hanghai.kchtg.cangben.repository.ChangeLogRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +27,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class LichSuThayDoiService {
 
-    private final LichSuThayDoiRepository lichSuThayDoiRepository;
+    private final ChangeLogRepository changeLogRepository;
 
     /**
      * Compare old and new entity values field-by-field and record changes.
@@ -78,7 +78,7 @@ public class LichSuThayDoiService {
                             entityName, entityId, fieldName, oldValueStr, newValueStr);
 
                     // Insert a LichSuThayDoi record into the database
-                    LichSuThayDoi history = LichSuThayDoi.builder()
+                    ChangeLog history = ChangeLog.builder()
                             .id(UUID.randomUUID())
                             .entityType(entityName)
                             .entityId(entityId)
@@ -90,7 +90,7 @@ public class LichSuThayDoiService {
                             .createdAt(LocalDateTime.now())
                             .build();
 
-                    lichSuThayDoiRepository.save(history);
+                    changeLogRepository.save(history);
                     changedFields.add(fieldName);
                 }
             } catch (IllegalAccessException e) {

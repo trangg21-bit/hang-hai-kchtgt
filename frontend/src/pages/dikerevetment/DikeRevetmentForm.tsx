@@ -26,7 +26,6 @@ import type {
   UpdateDikeRevetmentRequest,
   ApprovalRequest,
   ApprovalStatus,
-  DikeRevetmentType,
 } from '../../types/dikeRevetment';
 import { useAuthStore } from '../../store/authStore';
 import { colors } from '../../theme';

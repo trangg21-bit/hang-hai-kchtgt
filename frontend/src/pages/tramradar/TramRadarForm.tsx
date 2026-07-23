@@ -374,7 +374,7 @@ export default function TramRadarForm({ open, editId, mode, onCancel, onSuccess 
                   : '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
-                <ApprovalStatusBadge status={record.trangThaiPheDuyet} />
+                <ApprovalStatusBadge status={record.approvalStatus} />
               </Descriptions.Item>
               {record.lyDoTuChoi && (
                 <Descriptions.Item label="Lý do từ chối" span={2}>

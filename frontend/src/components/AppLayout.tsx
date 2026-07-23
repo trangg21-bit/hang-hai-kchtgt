@@ -13,7 +13,6 @@ import {
   Space,
 } from 'antd';
 import {
-  MenuOutlined,
   UserOutlined,
   LogoutOutlined,
   DashboardOutlined,
@@ -23,7 +22,6 @@ import {
   BarChartOutlined,
   ApiOutlined,
   ContainerOutlined,
-  LeftOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
@@ -49,11 +47,11 @@ const MENU_PERMISSION_MAP: Record<string, string> = {
   '/den-bien': 'data:read',
   '/buoys': 'data:read',
   '/history': 'data:read',
-  '/cangbien': 'cangbien:read',
-  '/bencang': 'bencang:read',
-  '/caucang': 'caucang:read',
-  '/cangcan': 'cangcan:read',
-  '/vungnuoc': 'vungnuoc:read',
+  '/Port': 'Port:read',
+  '/Berth': 'Berth:read',
+  '/Pier': 'Pier:read',
+  '/DryPort': 'DryPort:read',
+  '/WaterZone': 'WaterZone:read',
   '/navigation-channel': 'navigationchannel:read',
   '/dike-revetment': 'dikerevetment:read',
   '/co-so-sua-chua': 'cosuachua:read',
@@ -90,11 +88,11 @@ const pageTitles: Record<string, string> = {
   '/nhatram/den': 'Nhà trạm đèn biển',
   '/nhatram/phao': 'Nhà trạm phao tiêu',
   '/history': 'Lịch sử thay đổi',
-  '/cangbien': 'Quản lý cảng biển',
-  '/bencang': 'Quản lý bến cảng',
-  '/caucang': 'Quản lý cầu cảng',
-  '/cangcan': 'Quản lý cảng cạn',
-  '/vungnuoc': 'Quản lý vùng nước',
+  '/Port': 'Quản lý cảng biển',
+  '/Berth': 'Quản lý bến cảng',
+  '/Pier': 'Quản lý cầu cảng',
+  '/DryPort': 'Quản lý cảng cạn',
+  '/WaterZone': 'Quản lý vùng nước',
   '/navigation-channel': 'Luồng hàng hải',
   '/dike-revetment': 'Đê/Kè',
   '/co-so-sua-chua': 'Cơ sở sửa chữa & đóng tàu',
@@ -149,7 +147,7 @@ export default function AppLayout() {
   } else if (pathSegments[0] === 'nhatram' || pathSegments[0] === 'vanban' || pathSegments[0] === 'station' || pathSegments[0] === 'asset') {
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
-  } else if (pathSegments[0] === 'cangbien' || pathSegments[0] === 'bencang' || pathSegments[0] === 'caucang' || pathSegments[0] === 'cangcan' || pathSegments[0] === 'vungnuoc') {
+  } else if (pathSegments[0] === 'Port' || pathSegments[0] === 'Berth' || pathSegments[0] === 'Pier' || pathSegments[0] === 'DryPort' || pathSegments[0] === 'WaterZone') {
     selectedKey = '/' + pathSegments[0];
   } else if (pathSegments[0] === 'navigation-channel' || pathSegments[0] === 'dike-revetment' || pathSegments[0] === 'co-so-sua-chua' || pathSegments[0] === 'tram-radar' || pathSegments[0] === 'he-thong-vts') {
     selectedKey = '/' + pathSegments[0];
@@ -165,7 +163,7 @@ export default function AppLayout() {
         setOpenKeys(['beacon']);
       } else if (selectedKey.startsWith('/gis')) {
         setOpenKeys(['gis']);
-      } else if (['/cangbien', '/bencang', '/caucang', '/cangcan', '/vungnuoc'].includes(selectedKey)) {
+      } else if (['/Port', '/Berth', '/Pier', '/DryPort', '/WaterZone'].includes(selectedKey)) {
         setOpenKeys(['cangben']);
       } else if (selectedKey.startsWith('/asset')) {
         setOpenKeys(['asset-movement']);
@@ -229,11 +227,11 @@ export default function AppLayout() {
       icon: <ContainerOutlined />,
       label: 'Quản lý KCHT Hàng Hải',
       children: [
-        canAccessMenu('/cangbien') ? { key: '/cangbien', label: 'Quản lý cảng biển' } : null,
-        canAccessMenu('/bencang') ? { key: '/bencang', label: 'Quản lý bến cảng' } : null,
-        canAccessMenu('/caucang') ? { key: '/caucang', label: 'Quản lý cầu cảng' } : null,
-        canAccessMenu('/cangcan') ? { key: '/cangcan', label: 'Quản lý cảng cạn' } : null,
-        canAccessMenu('/vungnuoc') ? { key: '/vungnuoc', label: 'Quản lý vùng nước' } : null,
+        canAccessMenu('/Port') ? { key: '/Port', label: 'Quản lý cảng biển' } : null,
+        canAccessMenu('/Berth') ? { key: '/Berth', label: 'Quản lý bến cảng' } : null,
+        canAccessMenu('/Pier') ? { key: '/Pier', label: 'Quản lý cầu cảng' } : null,
+        canAccessMenu('/DryPort') ? { key: '/DryPort', label: 'Quản lý cảng cạn' } : null,
+        canAccessMenu('/WaterZone') ? { key: '/WaterZone', label: 'Quản lý vùng nước' } : null,
       ].filter(Boolean),
     },
     {
@@ -519,11 +517,11 @@ export default function AppLayout() {
   const [searchParams] = useSearchParams();
   const hasAction = searchParams.has('action');
   const isListPage = [
-    '/cangbien',
-    '/bencang',
-    '/caucang',
-    '/cangcan',
-    '/vungnuoc'
+    '/Port',
+    '/Berth',
+    '/Pier',
+    '/DryPort',
+    '/WaterZone'
   ].includes(location.pathname);
 
   if (isInIframe) {

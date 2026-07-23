@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Button,
   Space,
@@ -53,7 +52,6 @@ const STATUS_OPTIONS = [
 ];
 
 export default function DikeRevetmentList() {
-  const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
   const userPermissions = currentUser?.permissions || [];
 
@@ -110,14 +108,6 @@ export default function DikeRevetmentList() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  const handleReset = useCallback(() => {
-    setFilterKeyword('');
-    setFilterType(undefined);
-    setFilterStatusVal(undefined);
-    setFilterApprovalStatus(undefined);
-    setPage(1);
-  }, []);
 
   const handleDelete = async (id: string) => {
     try {

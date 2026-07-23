@@ -60,6 +60,12 @@ public abstract class BaseEntity {
     private LocalDateTime deletedAt;
 
     /**
+     * User ID who soft-deleted the entity (null = not deleted).
+     */
+    @Column(name = "deleted_by", length = 36)
+    private String deletedBy;
+
+    /**
      * User ID who created the entity.
      */
     @org.springframework.data.annotation.CreatedBy
@@ -74,9 +80,19 @@ public abstract class BaseEntity {
     private String updatedBy;
 
     /**
-     * Mark this entity as soft-deleted.
+     * Mark this entity as soft-deleted (no tracking of who deleted it).
      */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Mark this entity as soft-deleted, recording who performed the deletion.
+     *
+     * @param deletedBy User ID of the deleter
+     */
+    public void softDelete(String deletedBy) {
+        this.deletedAt = LocalDateTime.now();
+        this.deletedBy = deletedBy;
     }
 }

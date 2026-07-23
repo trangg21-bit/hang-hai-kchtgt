@@ -9,7 +9,7 @@ import {
   spaceXs, spaceSm, spaceFormField, spaceMd, spaceLg, spaceXl,
 } from '../../tokens';
 import { organizationService } from '../../services/organizationService';
-import { cangBienCRUD } from '../../services/cangbenService';
+import { portCRUD } from '../../services/portService';
 import { pointObjectService } from '../../services/pointObjectService';
 import { lineObjectService } from '../../services/lineObjectService';
 import { polygonObjectService } from '../../services/polygonObjectService';
@@ -34,7 +34,7 @@ interface DrawSaveModalProps {
     code: string;
     loaiKcht: string;
     unitId?: string;
-    cangBien?: string;
+    Port?: string;
     diaDiem?: string;
     diaDiemChiTiet?: string;
     moTa?: string;
@@ -58,11 +58,11 @@ const BTN_STYLE: React.CSSProperties = { borderRadius: radiusPill, height: 40, f
 
 // Danh sách 16 loại KCHT khớp với dropdown filter bên ngoài
 const LOAI_KCHT_OPTIONS = [
-  { value: 'BENCANG', label: 'Bến cảng' },
+  { value: 'Berth', label: 'Bến cảng' },
   { value: 'BENPHAO', label: 'Bến phao' },
-  { value: 'CANGBIEN', label: 'Cảng biển' },
-  { value: 'CAUCANG', label: 'Cầu cảng' },
-  { value: 'CANGCAN', label: 'Cảng cạn' },
+  { value: 'Port', label: 'Cảng biển' },
+  { value: 'Pier', label: 'Cầu cảng' },
+  { value: 'DryPort', label: 'Cảng cạn' },
   { value: 'COSO_SUACHUA', label: 'Cơ sở sửa chữa, đóng tàu' },
   { value: 'KHUCHUYEN_TAI', label: 'Khu chuyển tải' },
   { value: 'DENBIEN', label: 'Đèn biển và nhà trạm gắn liền với đèn biển' },
@@ -81,7 +81,7 @@ const LOAI_KCHT_OPTIONS = [
 ];
 
 const mapToPointObjectType = (val: string): string => {
-  if (val === 'CANGBIEN') return 'PORT';
+  if (val === 'Port') return 'PORT';
   if (val === 'DENBIEN') return 'LIGHTHOUSE';
   if (val === 'PHAOTIEU') return 'BUOY';
   return 'OTHER';
@@ -94,14 +94,14 @@ const mapToLineObjectType = (val: string): string => {
 };
 
 const mapToPolygonObjectType = (val: string): string => {
-  if (val === 'VUNGNUOC') return 'WATER_ZONE';
+  if (val === 'WaterZone') return 'WATER_ZONE';
   if (['KHUNEO_DAU', 'KHUCHUYEN_TAI'].includes(val)) return 'ANCHORAGE';
   if (val === 'KHUTRANH_TRU_BAO') return 'STORM_SHELTER';
   return 'OTHER';
 };
 
 const mapToCategoryId = (val: string): number => {
-  if (val === 'CANGBIEN') return 1;
+  if (val === 'Port') return 1;
   if (val === 'COSO_SUACHUA') return 2;
   if (val === 'DIKE_REVETMENT') return 3;
   if (val === 'DENBIEN') return 4;
@@ -112,8 +112,8 @@ const mapToCategoryId = (val: string): number => {
   if (val === 'NAVIGATION_CHANNEL') return 9;
   if (val === 'PHAOTIEU') return 10;
   if (val === 'TRAM_RADAR') return 11;
-  if (val === 'VUNGNUOC') return 12;
-  if (val === 'CANGCAN') return 13;
+  if (val === 'WaterZone') return 12;
+  if (val === 'DryPort') return 13;
   return 99; // Khác
 };
 
@@ -132,12 +132,12 @@ export default function DrawSaveModal({
 }: DrawSaveModalProps) {
   const [form] = Form.useForm();
   const loaiKcht = Form.useWatch('loaiKcht', form);
-  const isCangBien = loaiKcht === 'CANGBIEN';
+  const isCangBien = loaiKcht === 'Port';
 
   // Automatically clear seaport field if current category is Seaport
   useEffect(() => {
     if (isCangBien) {
-      form.setFieldValue('cangBien', undefined);
+      form.setFieldValue('Port', undefined);
     }
   }, [isCangBien, form]);
 
@@ -209,7 +209,7 @@ export default function DrawSaveModal({
     try {
       setFetchingMore(true);
       const size = 20;
-      const res = await cangBienCRUD.findAll({ orgUnitId: orgId, page: pageNum, size });
+      const res = await portCRUD.findAll({ orgUnitId: orgId, page: pageNum, size });
       
       const newPorts = res.data || [];
       if (append) {
@@ -231,7 +231,7 @@ export default function DrawSaveModal({
 
   // Load seaports dynamically based on selected managing unit (matching the original project)
   const handleOrgChange = async (value: string) => {
-    form.setFieldValue('cangBien', undefined);
+    form.setFieldValue('Port', undefined);
     setSelectedOrgId(value || null);
     setSeaPortList([]);
     setPortsPage(1);
@@ -262,7 +262,7 @@ export default function DrawSaveModal({
           ma: editRecord.code,
           loaiKcht: editRecord.loaiKcht,
           donViQuanLy: editRecord.unitId,
-          cangBien: editRecord.cangBien,
+          Port: editRecord.Port,
           diaDiem: editRecord.diaDiem,
           diaDiemChiTiet: editRecord.diaDiemChiTiet,
           moTa: editRecord.moTa,
@@ -364,8 +364,8 @@ export default function DrawSaveModal({
           description: values.moTa,
           unitId: values.donViQuanLy,
           status: values.trangThai,
-          refId: values.cangBien || null,
-          refType: values.cangBien ? 0 : null,
+          refId: values.Port || null,
+          refType: values.Port ? 0 : null,
           purpose: values.diaDiem || null,
           restrictionLevel: values.diaDiemChiTiet || null,
         };
@@ -384,8 +384,8 @@ export default function DrawSaveModal({
           description: values.moTa,
           unitId: values.donViQuanLy,
           status: values.trangThai,
-          refId: values.cangBien || null,
-          refType: values.cangBien ? 0 : null,
+          refId: values.Port || null,
+          refType: values.Port ? 0 : null,
           purpose: values.diaDiem || null,
           restrictionLevel: values.diaDiemChiTiet || null,
         };
@@ -404,8 +404,8 @@ export default function DrawSaveModal({
           description: values.moTa,
           unitId: values.donViQuanLy,
           status: values.trangThai,
-          refId: values.cangBien || null,
-          refType: values.cangBien ? 0 : null,
+          refId: values.Port || null,
+          refType: values.Port ? 0 : null,
           purpose: values.diaDiem || null,
           restrictionLevel: values.diaDiemChiTiet || null,
         };
@@ -595,12 +595,12 @@ export default function DrawSaveModal({
 
         <Form.Item
           label="Thuộc cảng biển"
-          name="cangBien"
+          name="Port"
           style={{ marginBottom: spaceFormField }}
         >
           <Select
             placeholder={isCangBien ? "Không áp dụng cho Cảng biển" : "Chọn cảng biển"}
-            options={seaPortList.map((item) => ({ label: item.tenCang, value: item.id }))}
+            options={seaPortList.map((item) => ({ label: item.portName, value: item.id }))}
             showSearch
             filterOption={(input, opt) =>
               (opt?.label as string)?.toLowerCase().includes(input.toLowerCase())
