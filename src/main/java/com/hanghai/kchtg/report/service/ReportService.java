@@ -4739,9 +4739,9 @@ if (expr != null && (expr.contains("table.")
                 item.put("tamHieuLucAnhSang", 0.0);
                 item.put("nguonCungCapNangLuongChoDen", "");
                 item.put("dienTichSuDungTram", 0.0);
-                item.put("dienTichTheoThongBaoGanNhatTenLuongHangHai", 0.0);
-                item.put("tinhTrangHoatDongChuaCongBoTenLuongHangHai", "");
-                item.put("tinhTrangHoatDongDaCongBoTenLuongHangHai", "");
+                item.put("dienTichTheoThongBaoGanNhatTenNavigationChannel", 0.0);
+                item.put("tinhTrangHoatDongChuaCongBoTenNavigationChannel", "");
+                item.put("tinhTrangHoatDongDaCongBoTenNavigationChannel", "");
                 item.put("coTauKhaiThac", "");
                 item.put("daCongBoHoatDong", "");
                 item.put("soLuongHienCoKhuChuyenTaiCoPhaoNeo", 0.0);

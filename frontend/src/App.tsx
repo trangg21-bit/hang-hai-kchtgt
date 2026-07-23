@@ -59,10 +59,10 @@ import WaterZoneListPage from './app/waterzone/WaterZoneListPage';
 import DocumentUploadPage from './app/document/DocumentUploadPage';
 
 // M-003: Khu nước & VTS — Quản lý tàu bè
-import LuongHangHaiList from './pages/luonghanghai/LuongHangHaiList';
-import LuongHangHaiForm from './pages/luonghanghai/LuongHangHaiForm';
-import DeKeList from './pages/deke/DeKeList';
-import DeKeForm from './pages/deke/DeKeForm';
+import NavigationChannelList from './pages/navigationchannel/NavigationChannelList';
+import NavigationChannelForm from './pages/navigationchannel/NavigationChannelForm';
+import DikeRevetmentList from './pages/dikerevetment/DikeRevetmentList';
+import DikeRevetmentForm from './pages/dikerevetment/DikeRevetmentForm';
 import CoSuaChuaList from './pages/cosuachua/CoSuaChuaList';
 import CoSuaChuaForm from './pages/cosuachua/CoSuaChuaForm';
 import TramRadarList from './pages/tramradar/TramRadarList';
@@ -197,14 +197,14 @@ export default function App() {
                 {/* M-003: Khu nước & VTS — Quản lý tàu bè */}
 
                 {/* Luồng hàng hải */}
-                <Route path="/luong-hang-hai" element={<PermissionGuard permission="luonghanghai:read"><LuongHangHaiList /></PermissionGuard>} />
-                <Route path="/luong-hang-hai/create" element={<PermissionGuard permission="luonghanghai:create"><LuongHangHaiForm /></PermissionGuard>} />
-                <Route path="/luong-hang-hai/:id" element={<PermissionGuard permission="luonghanghai:read"><LuongHangHaiForm /></PermissionGuard>} />
+                <Route path="/navigation-channel" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelList /></PermissionGuard>} />
+                <Route path="/navigation-channel/create" element={<PermissionGuard permission="navigationchannel:create"><NavigationChannelForm /></PermissionGuard>} />
+                <Route path="/navigation-channel/:id" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelForm /></PermissionGuard>} />
 
                 {/* Đê/kè */}
-                <Route path="/de-ke" element={<PermissionGuard permission="deke:read"><DeKeList /></PermissionGuard>} />
-                <Route path="/de-ke/create" element={<PermissionGuard permission="deke:create"><DeKeForm /></PermissionGuard>} />
-                <Route path="/de-ke/:id" element={<PermissionGuard permission="deke:read"><DeKeForm /></PermissionGuard>} />
+                <Route path="/dike-revetment" element={<PermissionGuard permission="dikerevetment:read"><DikeRevetmentList /></PermissionGuard>} />
+                <Route path="/dike-revetment/create" element={<PermissionGuard permission="dikerevetment:create"><DikeRevetmentForm /></PermissionGuard>} />
+                <Route path="/dike-revetment/:id" element={<PermissionGuard permission="dikerevetment:read"><DikeRevetmentForm /></PermissionGuard>} />
 
                 {/* Cơ sở sửa chữa/đóng tàu */}
                 <Route path="/co-so-sua-chua" element={<PermissionGuard permission="cosuachua:read"><CoSuaChuaList /></PermissionGuard>} />

@@ -58,10 +58,10 @@ public class PortAndAssetSharingController {
         return ResponseEntity.ok(service.shareTongHopKCHTGT_BenCangCauCang(dataPayload));
     }
 
-    @PostMapping("/tong-hop-luong-hang-hai")
-    public ResponseEntity<DataSharingAggregationResponse> shareTongHopKCHTGT_LuongHangHai(
+    @PostMapping("/tong-hop-navigation-channel")
+    public ResponseEntity<DataSharingAggregationResponse> shareTongHopKCHTGT_NavigationChannel(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareTongHopKCHTGT_LuongHangHai(dataPayload));
+        return ResponseEntity.ok(service.shareTongHopKCHTGT_NavigationChannel(dataPayload));
     }
 
     @PostMapping("/tong-hop-khu-chuyen-tai")

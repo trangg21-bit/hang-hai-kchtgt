@@ -56,16 +56,16 @@ public class MaritimeFacilityIntegrationController {
         return ResponseEntity.ok(facilityService.integrateCoSoSuaChua(request));
     }
 
-    @PostMapping("/de-ke")
-    public ResponseEntity<SystemIntegrationResponse> integrateDeKe(
+    @PostMapping("/dike-revetment")
+    public ResponseEntity<SystemIntegrationResponse> integrateDikeRevetment(
             @RequestBody SystemIntegrationRequest request) {
-        return ResponseEntity.ok(facilityService.integrateDeKe(request));
+        return ResponseEntity.ok(facilityService.integrateDikeRevetment(request));
     }
 
-    @PostMapping("/luong-hang-hai")
-    public ResponseEntity<SystemIntegrationResponse> integrateLuongHangHai(
+    @PostMapping("/navigation-channel")
+    public ResponseEntity<SystemIntegrationResponse> integrateNavigationChannel(
             @RequestBody SystemIntegrationRequest request) {
-        return ResponseEntity.ok(facilityService.integrateLuongHangHai(request));
+        return ResponseEntity.ok(facilityService.integrateNavigationChannel(request));
     }
 
     @PostMapping("/cang-can")

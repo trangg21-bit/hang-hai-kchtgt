@@ -22,16 +22,16 @@ public class CoastalFacilitySharingController {
         return ResponseEntity.ok(service.shareDeChanSongDeChanCat(dataPayload));
     }
 
-    @PostMapping("/luong-hang-hai")
-    public ResponseEntity<DataSharingAggregationResponse> shareLuongHangHai(
+    @PostMapping("/navigation-channel")
+    public ResponseEntity<DataSharingAggregationResponse> shareNavigationChannel(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareLuongHangHai(dataPayload));
+        return ResponseEntity.ok(service.shareNavigationChannel(dataPayload));
     }
 
-    @PostMapping("/he-thong-de-ke")
-    public ResponseEntity<DataSharingAggregationResponse> shareHeThongDeKe(
+    @PostMapping("/dike-revetment")
+    public ResponseEntity<DataSharingAggregationResponse> shareDikeRevetment(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareHeThongDeKe(dataPayload));
+        return ResponseEntity.ok(service.shareDikeRevetment(dataPayload));
     }
 
     @GetMapping

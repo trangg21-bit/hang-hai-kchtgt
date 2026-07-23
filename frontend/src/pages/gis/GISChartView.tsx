@@ -9,35 +9,22 @@ import {
   Select,
   Form,
   Input,
-  InputNumber,
   Tag,
-  Radio,
   Tabs,
-  Upload,
-  Divider,
   List,
-  Collapse,
   Drawer,
   Checkbox,
-  Table,
   Cascader,
   Modal,
 } from 'antd';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
-  CompassOutlined,
-  UploadOutlined,
-  ReloadOutlined,
-  FilterOutlined,
-  GlobalOutlined,
   InfoCircleOutlined,
   SlidersOutlined,
   AppstoreOutlined,
   SearchOutlined,
   DeleteOutlined,
   CloseOutlined,
-  CopyOutlined,
-  EditOutlined,
 } from '@ant-design/icons';
 import { chartService } from '../../services/chartService';
 import type { ChartCell, ChartFeature } from '../../services/chartService';
@@ -51,8 +38,8 @@ import {
 } from '../../services/portService';
 import { beaconLightCRUD, buoyCRUD } from '../../services/beaconService';
 import { fetchNhaTramDenById, fetchNhaTramPhaoById } from '../../services/nhatram/api';
-import { dekeCRUD } from '../../services/deKeService';
-import { luongHangHaiCRUD } from '../../services/luongHangHaiService';
+import { dikeRevetmentCRUD } from '../../services/dikeRevetmentService';
+import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { tramRadarCRUD } from '../../services/tramRadarService';
 import { heThongVTSCRUD } from '../../services/heThongVtsService';
 import { coSuaChuaCRUD } from '../../services/coSuaChuaService';
@@ -423,7 +410,7 @@ const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[]
       { key: 'province', label: 'Địa điểm (Tỉnh/ Thành phố)' },
       { key: 'diaDiemChiTiet', label: 'Địa điểm chi tiết' },
       { key: 'portId', label: 'Thuộc cảng biển' },
-      { key: 'luongHangHaiId', label: 'Thuộc luồng hàng hải' },
+      { key: 'navigationChannelId', label: 'Thuộc luồng hàng hải' },
       { key: 'loaiKetCau', label: 'Loại kết cấu cầu cảng' },
       { key: 'congNangKhaiThac', label: 'Công năng khai thác' },
       { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
@@ -452,7 +439,7 @@ const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[]
       { key: 'ngayCapNhat', label: 'Ngày cập nhật' },
       { key: 'canBoCapNhat', label: 'Cán bộ cập nhật' },
       { key: 'portId', label: 'Thuộc cảng biển' },
-      { key: 'luongHangHaiId', label: 'Thuộc luồng hàng hải' },
+      { key: 'navigationChannelId', label: 'Thuộc luồng hàng hải' },
       { key: 'loaiKetCau', label: 'Loại kết cấu cầu cảng' },
       { key: 'congNangKhaiThac', label: 'Công năng khai thác' },
       { key: 'operationalStatus', label: 'Tình trạng' },
@@ -814,7 +801,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     loaiKetCau: 'Loại kết cấu cầu cảng',
     province: 'Địa điểm (Tỉnh/ Thành phố)',
     diaDiemChiTiet: 'Địa điểm chi tiết',
-    luongHangHaiId: 'Thuộc luồng hàng hải',
+    navigationChannelId: 'Thuộc luồng hàng hải',
 
     // Cảng cạn
     dryPortCode: 'Mã cảng cạn',
@@ -931,9 +918,9 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       data = await fetchNhaTramPhaoById(id);
       displayType = 'Phao tiêu';
     } else if (type === 'Đê kè') {
-      data = await dekeCRUD.getById(id);
+      data = await dikeRevetmentCRUD.getById(id);
     } else if (type === 'Luồng hàng hải') {
-      data = await luongHangHaiCRUD.getById(id);
+      data = await navigationChannelCRUD.getById(id);
     } else if (type === 'Trạm radar') {
       data = await tramRadarCRUD.getById(id);
     } else if (type === 'Hệ thống VTS') {
@@ -1292,8 +1279,8 @@ export default function GISChartView() {
 
       const isListPage = [
         '/tram-radar',
-        '/de-ke',
-        '/luong-hang-hai',
+        '/dike-revetment',
+        '/navigation-channel',
         '/he-thong-vts',
         '/co-so-sua-chua',
         '/den-bien',
@@ -1363,9 +1350,9 @@ export default function GISChartView() {
       ) {
         path = `/WaterZone?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('luồng hàng hải') || label.includes('luong hang hai')) {
-        path = `/luong-hang-hai/${id}${action === 'edit' ? '?mode=edit' : ''}`;
+        path = `/navigation-channel/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('đê') || label.includes('kè') || label.includes('de') || label.includes('ke')) {
-        path = `/de-ke/${id}${action === 'edit' ? '?mode=edit' : ''}`;
+        path = `/dike-revetment/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('cơ sở sửa chữa') || label.includes('co so sua chua')) {
         path = `/co-so-sua-chua/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('radar')) {
@@ -1625,7 +1612,6 @@ export default function GISChartView() {
   const planningGroupRef = useRef<any>(null);
   const calibratorMarkerRef = useRef<any>(null);
   const tableWrapperRef = useRef<HTMLDivElement>(null);
-  const lastFittedCellIdRef = useRef<string | null>(null);
   const renderChartFeaturesRef = useRef<() => void>();
   const renderVertexMarkersRef = useRef<() => void>();
   const renderSearchMarkersRef = useRef<() => void>();
@@ -2530,13 +2516,13 @@ export default function GISChartView() {
           const getLoaiKchtValue = (catId?: number) => {
             if (catId === 1) return 'Port';
             if (catId === 2) return 'COSO_SUACHUA';
-            if (catId === 3) return 'DEKE';
+            if (catId === 3) return 'DIKE_REVETMENT';
             if (catId === 4) return 'DENBIEN';
             if (catId === 5) return 'HE_THONG_VTS';
             if (catId === 6) return 'KHUCHUYEN_TAI';
             if (catId === 7) return 'KHUNEO_DAU';
             if (catId === 8) return 'KHUTRANH_TRU_BAO';
-            if (catId === 9) return 'LUONGHANGHAI';
+            if (catId === 9) return 'NAVIGATION_CHANNEL';
             if (catId === 10) return 'PHAOTIEU';
             if (catId === 11) return 'TRAM_RADAR';
             if (catId === 12) return 'WaterZone';
@@ -3699,10 +3685,10 @@ export default function GISChartView() {
                             { value: 'COSO_SUACHUA', label: 'Cơ sở sửa chữa, đóng tàu' },
                             { value: 'KHUCHUYEN_TAI', label: 'Khu chuyển tải' },
                             { value: 'DENBIEN', label: 'Đèn biển và nhà trạm gắn liền với đèn biển' },
-                            { value: 'DEKE', label: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' },
+                            { value: 'DIKE_REVETMENT', label: 'Đê chắn sóng, đê chắn cát, kè hướng dòng, kè bảo vệ bờ' },
                             { value: 'DAI_TTDH', label: 'Đài TTDH' },
                             { value: 'DAI_INMARSAT', label: 'Đài Thông tin Vệ tinh mặt đất Inmarsat Hải Phòng' },
-                            { value: 'LUONGHANGHAI', label: 'Luồng hàng hải' },
+                            { value: 'NAVIGATION_CHANNEL', label: 'Luồng hàng hải' },
                             { value: 'DAI_LRIT', label: 'Đài Thông tin nhận dạng và truy theo tầm xa (LRIT)' },
                             { value: 'KHUNEO_DAU', label: 'Khu neo đậu' },
                             { value: 'NHATRAM_PHAO', label: 'Nhà trạm quản lý vận hành phao tiêu' },

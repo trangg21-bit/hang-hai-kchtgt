@@ -2,13 +2,13 @@ package com.hanghai.kchtg.gis.search.service;
 
 import com.hanghai.kchtg.cangben.entity.*;
 import com.hanghai.kchtg.cangben.repository.*;
-import com.hanghai.kchtg.deke.entity.DeKe;
-import com.hanghai.kchtg.deke.entity.DeKeApprovalStatus;
-import com.hanghai.kchtg.deke.repository.DeKeRepository;
+import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
+import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
+import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
 import com.hanghai.kchtg.cosuachua.entity.CoSuaChuaDongTau;
 import com.hanghai.kchtg.cosuachua.repository.CoSuaChuaDongTauRepository;
-import com.hanghai.kchtg.luonghanghai.entity.LuongHangHai;
-import com.hanghai.kchtg.luonghanghai.repository.LuongHangHaiRepository;
+import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
+import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
 import com.hanghai.kchtg.nhatram.entity.NhaTramDen;
 import com.hanghai.kchtg.nhatram.entity.NhaTramPhao;
 import com.hanghai.kchtg.nhatram.repository.NhaTramDenRepository;
@@ -58,8 +58,8 @@ public class KchtGis155Service {
     private final PierRepository pierRepository;
     private final DryPortRepository dryPortRepository;
     private final WaterZoneRepository waterZoneRepository;
-    private final LuongHangHaiRepository luongHangHaiRepository;
-    private final DeKeRepository deKeRepository;
+    private final NavigationChannelRepository navigationChannelRepository;
+    private final DikeRevetmentRepository dikeRevetmentRepository;
     private final CoSuaChuaDongTauRepository coSuaChuaDongTauRepository;
     private final NhaTramDenRepository nhaTramDenRepository;
     private final NhaTramPhaoRepository nhaTramPhaoRepository;
@@ -624,74 +624,74 @@ public class KchtGis155Service {
                     }
                     break;
 
-                case LUONGHANGHAI:
+                case NAVIGATION_CHANNEL:
                     String searchParam = (searchLower == null) ? null : "%" + searchLower + "%";
-                    List<LuongHangHai> luongList = luongHangHaiRepository.searchFiltered(orgUnitId, searchParam);
-                    Map<UUID, GisSpatialObject> luongSpatialMap = new HashMap<>();
-                    if (!luongList.isEmpty()) {
-                        List<UUID> spatialIds = luongList.stream().map(LuongHangHai::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                    List<NavigationChannel> ncList = navigationChannelRepository.searchFiltered(orgUnitId, searchParam);
+                    Map<UUID, GisSpatialObject> ncSpatialMap = new HashMap<>();
+                    if (!ncList.isEmpty()) {
+                        List<UUID> spatialIds = ncList.stream().map(NavigationChannel::getSpatialId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!spatialIds.isEmpty()) {
-                            gisSpatialObjectRepository.findAllById(spatialIds).forEach(so -> luongSpatialMap.put(so.getId(), so));
+                            gisSpatialObjectRepository.findAllById(spatialIds).forEach(so -> ncSpatialMap.put(so.getId(), so));
                         }
                     }
-                    for (LuongHangHai l : luongList) {
-                        GisSpatialObject spatial = luongSpatialMap.get(l.getKhongGianId());
+                    for (NavigationChannel nc : ncList) {
+                        GisSpatialObject spatial = ncSpatialMap.get(nc.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double lat = coords != null ? coords[0] : null;
                         Double lng = coords != null ? coords[1] : null;
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
-                                .id(String.valueOf(l.getId()))
-                                .name(l.getTen() != null && !l.getTen().isEmpty() ? l.getTen() : "Luồng hàng hải")
-                                .ma("LUONG_" + l.getId())
-                                .orgName(getOrgName(l.getDonViId(), orgNameMap))
+                                .id(String.valueOf(nc.getId()))
+                                .name(nc.getChannelName() != null && !nc.getChannelName().isEmpty() ? nc.getChannelName() : "Luồng hàng hải")
+                                .ma("NC_" + nc.getId())
+                                .orgName(getOrgName(nc.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Luồng hàng hải")
                                 .diaDiem("")
-                                .diaChiChiTiet(l.getGhiChu() != null ? l.getGhiChu() : "")
+                                .diaChiChiTiet(nc.getNote() != null ? nc.getNote() : "")
                                 .latitude(lat)
                                 .longitude(lng)
                                 .build();
                         if (objectType != null) {
-                            populateSpatialAndFilterFromMap(results, r, l.getKhongGianId(), objectType, GisObjectType.LINE, luongSpatialMap);
+                            populateSpatialAndFilterFromMap(results, r, nc.getSpatialId(), objectType, GisObjectType.LINE, ncSpatialMap);
                         } else {
                             results.add(r);
-                            if (l.getKhongGianId() != null) {
-                                spatialIdMap.put(r.getId(), l.getKhongGianId());
+                            if (nc.getSpatialId() != null) {
+                                spatialIdMap.put(r.getId(), nc.getSpatialId());
                             }
                         }
                     }
                     break;
  
-                case DEKE:
-                    List<DeKe> deKeList = deKeRepository.searchDocuments(
-                            orgUnitId, searchLower, null, null, DeKeApprovalStatus.APPROVED, PageRequest.of(0, 10000))
+                case DIKE_REVETMENT:
+                    List<DikeRevetment> dikeRevList = dikeRevetmentRepository.searchDocuments(
+                            orgUnitId, searchLower, null, null, DikeRevetmentApprovalStatus.APPROVED, PageRequest.of(0, 10000))
                             .getContent();
-                    Map<UUID, GisSpatialObject> deKeSpatialMap = new HashMap<>();
-                    if (!deKeList.isEmpty()) {
-                        List<UUID> spatialIds = deKeList.stream().map(DeKe::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                    Map<UUID, GisSpatialObject> dikeRevSpatialMap = new HashMap<>();
+                    if (!dikeRevList.isEmpty()) {
+                        List<UUID> spatialIds = dikeRevList.stream().map(DikeRevetment::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!spatialIds.isEmpty()) {
-                            gisSpatialObjectRepository.findAllById(spatialIds).forEach(so -> deKeSpatialMap.put(so.getId(), so));
+                            gisSpatialObjectRepository.findAllById(spatialIds).forEach(so -> dikeRevSpatialMap.put(so.getId(), so));
                         }
                     }
-                    for (DeKe dk : deKeList) {
-                        GisSpatialObject spatial = deKeSpatialMap.get(dk.getKhongGianId());
+                    for (DikeRevetment dk : dikeRevList) {
+                        GisSpatialObject spatial = dikeRevSpatialMap.get(dk.getKhongGianId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double lat = coords != null ? coords[0] : null;
                         Double lng = coords != null ? coords[1] : null;
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(String.valueOf(dk.getId()))
-                                .name(dk.getTenDeKe() != null && !dk.getTenDeKe().isEmpty() ? dk.getTenDeKe() : "Đê kè")
-                                .ma("DEKE_" + dk.getId())
+                                .name(dk.getDikeRevetmentName() != null && !dk.getDikeRevetmentName().isEmpty() ? dk.getDikeRevetmentName() : "Đê kè")
+                                .ma("DIR_" + dk.getId())
                                 .orgName(getOrgName(dk.getDonViId(), orgNameMap))
                                 .kchtTypeLabel("Đê kè")
                                 .diaDiem("")
-                                .diaChiChiTiet(dk.getViTri() != null ? dk.getViTri() : "")
+                                .diaChiChiTiet(dk.getLocation() != null ? dk.getLocation() : "")
                                 .latitude(lat)
                                 .longitude(lng)
                                 .build();
                         if (objectType != null) {
-                            populateSpatialAndFilterFromMap(results, r, dk.getKhongGianId(), objectType, GisObjectType.LINE, deKeSpatialMap);
+                            populateSpatialAndFilterFromMap(results, r, dk.getKhongGianId(), objectType, GisObjectType.LINE, dikeRevSpatialMap);
                         } else {
                             results.add(r);
                             if (dk.getKhongGianId() != null) {

@@ -153,36 +153,36 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "Xem báo cáo an ninh, cảnh báo");
 
         // ---- M-003 entity permissions (5 entities × 7 actions) ----
-        // luonghanghai
-        seedPermission(permissionsByCode, "luonghanghai", "create", "Tạo lương hàng hải",
+        // navigationchannel
+        seedPermission(permissionsByCode, "navigationchannel", "create", "Tạo lương hàng hải",
                 "Tạo mới lương hàng hải");
-        seedPermission(permissionsByCode, "luonghanghai", "read", "Xem lương hàng hải",
+        seedPermission(permissionsByCode, "navigationchannel", "read", "Xem lương hàng hải",
                 "Xem danh sách và chi tiết lương hàng hải");
-        seedPermission(permissionsByCode, "luonghanghai", "update", "Cập nhật lương hàng hải",
+        seedPermission(permissionsByCode, "navigationchannel", "update", "Cập nhật lương hàng hải",
                 "Chỉnh sửa lương hàng hải");
-        seedPermission(permissionsByCode, "luonghanghai", "delete", "Xóa lương hàng hải",
+        seedPermission(permissionsByCode, "navigationchannel", "delete", "Xóa lương hàng hải",
                 "Xóa lương hàng hải");
-        seedPermission(permissionsByCode, "luonghanghai", "approvec1", "Phê duyệt C1 lương hàng hải",
+        seedPermission(permissionsByCode, "navigationchannel", "approvec1", "Phê duyệt C1 lương hàng hải",
                 "Phê duyệt cấp 1 lương hàng hải");
-        seedPermission(permissionsByCode, "luonghanghai", "approvec2", "Phê duyệt C2 lương hàng hải",
+        seedPermission(permissionsByCode, "navigationchannel", "approvec2", "Phê duyệt C2 lương hàng hải",
                 "Phê duyệt cấp 2 lương hàng hải");
-        seedPermission(permissionsByCode, "luonghanghai", "history", "Xem lịch sử lương hàng hải",
+        seedPermission(permissionsByCode, "navigationchannel", "history", "Xem lịch sử lương hàng hải",
                 "Xem lịch sử thay đổi lương hàng hải");
 
-        // deke
-        seedPermission(permissionsByCode, "deke", "create", "Tạo đề kế",
+        // dikerevetment
+        seedPermission(permissionsByCode, "dikerevetment", "create", "Tạo đề kế",
                 "Tạo mới đề kế");
-        seedPermission(permissionsByCode, "deke", "read", "Xem đề kế",
+        seedPermission(permissionsByCode, "dikerevetment", "read", "Xem đề kế",
                 "Xem danh sách và chi tiết đề kế");
-        seedPermission(permissionsByCode, "deke", "update", "Cập nhật đề kế",
+        seedPermission(permissionsByCode, "dikerevetment", "update", "Cập nhật đề kế",
                 "Chỉnh sửa đề kế");
-        seedPermission(permissionsByCode, "deke", "delete", "Xóa đề kế",
+        seedPermission(permissionsByCode, "dikerevetment", "delete", "Xóa đề kế",
                 "Xóa đề kế");
-        seedPermission(permissionsByCode, "deke", "approvec1", "Phê duyệt C1 đề kế",
+        seedPermission(permissionsByCode, "dikerevetment", "approvec1", "Phê duyệt C1 đề kế",
                 "Phê duyệt cấp 1 đề kế");
-        seedPermission(permissionsByCode, "deke", "approvec2", "Phê duyệt C2 đề kế",
+        seedPermission(permissionsByCode, "dikerevetment", "approvec2", "Phê duyệt C2 đề kế",
                 "Phê duyệt cấp 2 đề kế");
-        seedPermission(permissionsByCode, "deke", "history", "Xem lịch sử đề kế",
+        seedPermission(permissionsByCode, "dikerevetment", "history", "Xem lịch sử đề kế",
                 "Xem lịch sử thay đổi đề kế");
 
         // cosuachua
@@ -243,10 +243,10 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "admin:manage", "log:manage", "map:manage", "connection:manage",
                 "data:read", "data:create", "data:update", "data:approve",
                 // M-003 all actions
-                "luonghanghai:create", "luonghanghai:read", "luonghanghai:update", "luonghanghai:delete",
-                "luonghanghai:approvec1", "luonghanghai:approvec2", "luonghanghai:history",
-                "deke:create", "deke:read", "deke:update", "deke:delete",
-                "deke:approvec1", "deke:approvec2", "deke:history",
+                "navigationchannel:create", "navigationchannel:read", "navigationchannel:update", "navigationchannel:delete",
+                "navigationchannel:approvec1", "navigationchannel:approvec2", "navigationchannel:history",
+                "dikerevetment:create", "dikerevetment:read", "dikerevetment:update", "dikerevetment:delete",
+                "dikerevetment:approvec1", "dikerevetment:approvec2", "dikerevetment:history",
                 "cosuachua:create", "cosuachua:read", "cosuachua:update", "cosuachua:delete",
                 "cosuachua:approvec1", "cosuachua:approvec2", "cosuachua:history",
                 "tramradar:create", "tramradar:read", "tramradar:update", "tramradar:delete",
@@ -258,8 +258,8 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "orgunit:manage", "orgunit:read", "orgunit:approve", "group:manage", "user:read",
                 "report:read", "connection:read", "data:read", "data:approve",
                 // M-003 read + approve actions
-                "luonghanghai:read", "luonghanghai:approvec1", "luonghanghai:approvec2",
-                "deke:read", "deke:approvec1", "deke:approvec2",
+                "navigationchannel:read", "navigationchannel:approvec1", "navigationchannel:approvec2",
+                "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
                 "cosuachua:read", "cosuachua:approvec1", "cosuachua:approvec2",
                 "tramradar:read", "tramradar:approvec1", "tramradar:approvec2",
                 "vts:read", "vts:approvec1", "vts:approvec2"
@@ -267,8 +267,8 @@ public class RolePermissionSeeder implements CommandLineRunner {
         rolePermissionMap.put("ROLE_LEADER", List.of(
                 "orgunit:read", "data:approve", "report:read", "approve:action",
                 // M-003 read + approve actions
-                "luonghanghai:read", "luonghanghai:approvec1", "luonghanghai:approvec2",
-                "deke:read", "deke:approvec1", "deke:approvec2",
+                "navigationchannel:read", "navigationchannel:approvec1", "navigationchannel:approvec2",
+                "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
                 "cosuachua:read", "cosuachua:approvec1", "cosuachua:approvec2",
                 "tramradar:read", "tramradar:approvec1", "tramradar:approvec2",
                 "vts:read", "vts:approvec1", "vts:approvec2"
@@ -277,8 +277,8 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "orgunit:read", "data:create", "data:update", "data:read",
                 "report:read", "check:read",
                 // M-003 create/read/update
-                "luonghanghai:create", "luonghanghai:read", "luonghanghai:update",
-                "deke:create", "deke:read", "deke:update",
+                "navigationchannel:create", "navigationchannel:read", "navigationchannel:update",
+                "dikerevetment:create", "dikerevetment:read", "dikerevetment:update",
                 "cosuachua:create", "cosuachua:read", "cosuachua:update",
                 "tramradar:create", "tramradar:read", "tramradar:update",
                 "vts:create", "vts:read", "vts:update"
@@ -286,19 +286,19 @@ public class RolePermissionSeeder implements CommandLineRunner {
         rolePermissionMap.put("ROLE_PORT_OPERATOR", List.of(
                 "orgunit:read", "data:read", "data:update",
                 // M-003 read only
-                "luonghanghai:read", "deke:read", "cosuachua:read",
+                "navigationchannel:read", "dikerevetment:read", "cosuachua:read",
                 "tramradar:read", "vts:read"
         ));
         rolePermissionMap.put("ROLE_PUBLIC_USER", List.of(
                 "orgunit:read", "data:read",
                 // M-003 read only
-                "luonghanghai:read", "deke:read", "cosuachua:read",
+                "navigationchannel:read", "dikerevetment:read", "cosuachua:read",
                 "tramradar:read", "vts:read"
         ));
         rolePermissionMap.put("ROLE_INTEGRATION", List.of(
                 "data:read", "data:write", "api:share",
                 // M-003 read only
-                "luonghanghai:read", "deke:read", "cosuachua:read",
+                "navigationchannel:read", "dikerevetment:read", "cosuachua:read",
                 "tramradar:read", "vts:read"
         ));
         rolePermissionMap.put("ROLE_SECURITY_MONITOR", List.of(
