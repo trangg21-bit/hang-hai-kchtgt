@@ -84,7 +84,7 @@ export default function CoSuaChuaList() {
       const params: ListParams = {
         keyword: filterKeyword || undefined,
         tinhThanh: filterTinhThanh,
-        trangThaiPheDuyet: filterStatus,
+        approvalStatus: filterStatus,
       };
       const res = await coSuaChuaCRUD.search(params);
       // CoSuaChua search returns List<> (not paginated) — set total = items.length

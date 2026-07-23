@@ -14,7 +14,7 @@ export interface LuongHangHaiResponse {
   maLuongHangHai?: string;
   soLuongTram?: number;
   thoiDiemSuaChuaTramGanNhat?: string; // date
-  cangBienId?: string;
+  portId?: string;
   donViVanHanhId?: string;
   diaDiem?: string;
   diaDiemChiTiet?: string;
@@ -27,7 +27,7 @@ export interface LuongHangHaiResponse {
   tinhTrang?: number;
   chieuCaoTinhKhong?: string;
   dienTichTram?: number;
-  ghiChu?: string;
+  remarks?: string;
   donViId?: string;
   approvalStatus: ApprovalStatus;
   pheDuyetC1?: boolean;
@@ -56,7 +56,7 @@ export interface CreateLuongHangHaiRequest {
   maLuongHangHai?: string;
   soLuongTram?: number;
   thoiDiemSuaChuaTramGanNhat?: string;
-  cangBienId?: string;
+  portId?: string;
   donViVanHanhId?: string;
   diaDiem?: string;
   diaDiemChiTiet?: string;
@@ -69,7 +69,7 @@ export interface CreateLuongHangHaiRequest {
   tinhTrang?: number;
   chieuCaoTinhKhong?: string;
   dienTichTram?: number;
-  ghiChu?: string;
+  remarks?: string;
   donViId?: string;
   loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
   toaDo?: string;
@@ -111,7 +111,7 @@ export interface ListParams {
   donViId?: string;
   keyword?: string;
   maLuongHangHai?: string;
-  trangThaiPheDuyet?: ApprovalStatus;
+  approvalStatus?: ApprovalStatus;
 }
 
 export interface SearchResponse<T> {

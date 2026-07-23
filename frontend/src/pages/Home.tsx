@@ -814,11 +814,11 @@ function HomeDashboard() {
                 onChange={setSelectedKchtType}
                 allowClear
                 options={[
-                  { value: 'BENCANG', label: 'Bến cảng' },
+                  { value: 'Berth', label: 'Bến cảng' },
                   { value: 'BENPHAO', label: 'Bến phao' },
-                  { value: 'CANGBIEN', label: 'Cảng biển' },
-                  { value: 'CAUCANG', label: 'Cầu cảng' },
-                  { value: 'CANGCAN', label: 'Cảng cạn' },
+                  { value: 'Port', label: 'Cảng biển' },
+                  { value: 'Pier', label: 'Cầu cảng' },
+                  { value: 'DryPort', label: 'Cảng cạn' },
                   { value: 'COSO_SUACHUA', label: 'Cơ sở sửa chữa, đóng tàu' },
                   { value: 'KHUCHUYEN_TAI', label: 'Khu chuyển tải' },
                   { value: 'DENBIEN', label: 'Đèn biển và nhà trạm gắn liền với đèn biển' },

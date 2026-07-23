@@ -30,7 +30,7 @@ export const luongHangHaiCRUD = {
         orgUnitId: params?.orgUnitId,
         keyword: params?.keyword,
         maLuongHangHai: params?.maLuongHangHai,
-        trangThaiPheDuyet: params?.trangThaiPheDuyet,
+        approvalStatus: params?.approvalStatus,
         page: params?.page || 0,
         size: params?.size || 20,
       },

@@ -15,15 +15,15 @@ export interface DeKeResponse {
   loaiDe: LoaiDe;
   viTri: string;
   tenDeKe?: string;
-  chieuDai?: number;
+  length?: number;
   caoTrinhDinh?: number;
   thoiDiemDuaVaoKhaiThac?: string;
   chieuCao?: number;
   matVatLieu?: string;
   tinhTrang?: string;
-  ghiChu?: string;
+  remarks?: string;
   donViId?: string;
-  trangThaiPheDuyet: ApprovalStatus;
+  approvalStatus: ApprovalStatus;
   pheDuyetC1?: boolean;
   nguoiPheDuyetC1?: string;
   ngayPheDuyetC1?: string;
@@ -49,13 +49,13 @@ export interface CreateDeKeRequest {
   loaiDe: LoaiDe;
   viTri: string;
   tenDeKe: string;
-  chieuDai?: number;
+  length?: number;
   caoTrinhDinh?: number;
   thoiDiemDuaVaoKhaiThac?: string;
   chieuCao?: number;
   matVatLieu?: string;
   tinhTrang?: string;
-  ghiChu?: string;
+  remarks?: string;
   donViId?: string;
   loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
   toaDo?: string;
@@ -98,7 +98,7 @@ export interface ListParams {
   keyword?: string;
   loaiDe?: LoaiDe;
   tinhTrang?: string;
-  trangThaiPheDuyet?: ApprovalStatus;
+  approvalStatus?: ApprovalStatus;
 }
 
 export interface SearchResponse<T> {

@@ -31,7 +31,7 @@ export const coSuaChuaCRUD = {
         keyword: params?.keyword,
         tinhThanh: params?.tinhThanh,
         trangThai: params?.trangThai,
-        trangThaiPheDuyet: params?.trangThaiPheDuyet,
+        approvalStatus: params?.approvalStatus,
       },
     });
     const data = res.data || {};

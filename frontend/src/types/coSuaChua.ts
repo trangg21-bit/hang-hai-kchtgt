@@ -76,7 +76,7 @@ export interface ListParams {
   keyword?: string;
   tinhThanh?: string;
   trangThai?: string;
-  trangThaiPheDuyet?: string;
+  approvalStatus?: string;
 }
 
 export interface SearchResponse<T> {

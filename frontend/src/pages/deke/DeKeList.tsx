@@ -94,7 +94,7 @@ export default function DeKeList() {
         keyword: filterKeyword || undefined,
         loaiDe: filterLoaiDe,
         tinhTrang: filterTinhTrang,
-        trangThaiPheDuyet: filterStatus as any,
+        approvalStatus: filterStatus as any,
       };
       const res = await dekeCRUD.search(params);
       setDataSource(res.items);
@@ -169,8 +169,8 @@ export default function DeKeList() {
     },
     {
       title: 'Chiều dài (m)',
-      dataIndex: 'chieuDai',
-      key: 'chieuDai',
+      dataIndex: 'length',
+      key: 'length',
       width: 100,
       render: (val: number) => (val !== undefined ? val.toFixed(2) : '—'),
     },
@@ -233,8 +233,8 @@ export default function DeKeList() {
     },
     {
       title: 'Trạng thái',
-      dataIndex: 'trangThaiPheDuyet',
-      key: 'trangThaiPheDuyet',
+      dataIndex: 'approvalStatus',
+      key: 'approvalStatus',
       width: 120,
       render: (status: string) => <ApprovalStatusBadge status={status} />,
     },
@@ -246,7 +246,7 @@ export default function DeKeList() {
         const canRead = userPermissions.includes('deke:read');
         const canUpdate = userPermissions.includes('deke:update');
         const canDelete = userPermissions.includes('deke:delete');
-        const isProposed = record.trangThaiPheDuyet === 'PROPOSED';
+        const isProposed = record.approvalStatus === 'PROPOSED';
 
         return (
           <Space size="small" wrap>
@@ -270,7 +270,7 @@ export default function DeKeList() {
                 aria-label="Chỉnh sửa"
               />
             )}
-            {canDelete && record.trangThaiPheDuyet === 'APPROVED' && (
+            {canDelete && record.approvalStatus === 'APPROVED' && (
               <Popconfirm
                 title="Xác nhận xóa"
                 description="Bạn chắc chắn muốn xóa bản ghi này?"

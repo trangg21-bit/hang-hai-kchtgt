@@ -115,13 +115,13 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
             loaiDe: data.loaiDe,
             viTri: data.viTri,
             tenDeKe: data.tenDeKe,
-            chieuDai: data.chieuDai,
+            length: data.length,
             caoTrinhDinh: data.caoTrinhDinh,
             thoiDiemDuaVaoKhaiThac: data.thoiDiemDuaVaoKhaiThac ? dayjs(data.thoiDiemDuaVaoKhaiThac) : null,
             chieuCao: data.chieuCao,
             matVatLieu: data.matVatLieu,
             tinhTrang: data.tinhTrang,
-            ghiChu: data.ghiChu,
+            remarks: data.remarks,
             donViId: data.donViId,
             spatialData: {
               loaiHinhHoc: data.loaiHinhHoc,
@@ -166,7 +166,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
         loaiDe: values.loaiDe,
         viTri: values.viTri,
         tenDeKe: values.tenDeKe,
-        chieuDai: values.chieuDai,
+        length: values.length,
         caoTrinhDinh: values.caoTrinhDinh,
         thoiDiemDuaVaoKhaiThac: values.thoiDiemDuaVaoKhaiThac || undefined,
         chieuCao: values.chieuCao,
@@ -177,8 +177,8 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
         toaDo: spatialData?.toaDo,
         bieuTuongId: spatialData?.bieuTuongId,
       };
-      if (values.ghiChu !== undefined) {
-        (payload as any).ghiChu = values.ghiChu;
+      if (values.remarks !== undefined) {
+        (payload as any).remarks = values.remarks;
       }
 
       if (isCreateMode) {
@@ -224,7 +224,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
         };
         await deKeApproval.approveC1(id, pheDuyetData);
         toast.success('Phê duyệt C1 thành công');
-        setRecord({ ...record, trangThaiPheDuyet: 'UNDER_REVIEW' });
+        setRecord({ ...record, approvalStatus: 'UNDER_REVIEW' });
         setHasChanges(true);
       } else if (action === 'approveC2') {
         const pheDuyetData: PheDuyetRequest = {
@@ -233,7 +233,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
         };
         await deKeApproval.approveC2(id, pheDuyetData);
         toast.success('Phê duyệt C2 thành công');
-        setRecord({ ...record, trangThaiPheDuyet: 'APPROVED' });
+        setRecord({ ...record, approvalStatus: 'APPROVED' });
         setHasChanges(true);
       } else if (action === 'reject') {
         const pheDuyetData: PheDuyetRequest = {
@@ -242,16 +242,16 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
           lyDo: payload?.lyDo as string,
         };
 
-        if (record.trangThaiPheDuyet === 'PROPOSED' || record.trangThaiPheDuyet === 'REJECTED') {
+        if (record.approvalStatus === 'PROPOSED' || record.approvalStatus === 'REJECTED') {
           await deKeApproval.approveC1(id, pheDuyetData);
-        } else if (record.trangThaiPheDuyet === 'UNDER_REVIEW') {
+        } else if (record.approvalStatus === 'UNDER_REVIEW') {
           await deKeApproval.approveC2(id, pheDuyetData);
         }
 
         toast.success('Từ chối thành công');
         setRecord({
           ...record,
-          trangThaiPheDuyet: 'REJECTED',
+          approvalStatus: 'REJECTED',
           lyDoTuChoi: payload?.lyDo as string,
         });
         setHasChanges(true);
@@ -320,7 +320,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
               <Descriptions.Item label="Vị trí">{record.viTri}</Descriptions.Item>
               <Descriptions.Item label="Tên đê kè">{record.tenDeKe || '—'}</Descriptions.Item>
               <Descriptions.Item label="Chiều dài (m)">
-                {record.chieuDai !== undefined ? record.chieuDai.toFixed(2) : '—'}
+                {record.length !== undefined ? record.length.toFixed(2) : '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Cao trình đỉnh (m)">
                 {record.caoTrinhDinh !== undefined ? record.caoTrinhDinh.toFixed(2) : '—'}
@@ -338,13 +338,13 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
                 {TINH_TRANG_MAP[record.tinhTrang] || record.tinhTrang || '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Ghi chú" span={2}>
-                {(record as any).ghiChu ?? '—'}
+                {(record as any).remarks ?? '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Đơn vị quản lý" span={2}>
                 {record.donViId ? organizations.find(o => o.id === record.donViId)?.name || record.donViId : '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
-                <ApprovalStatusBadge status={record.trangThaiPheDuyet} />
+                <ApprovalStatusBadge status={record.approvalStatus} />
               </Descriptions.Item>
             </Descriptions>
           )}
@@ -362,7 +362,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
         {record && (
           <Card style={{ marginBottom: '24px' }}>
             <ApprovalActionBar
-              currentStatus={record.trangThaiPheDuyet as ApprovalStatus}
+              currentStatus={record.approvalStatus as ApprovalStatus}
               permissions={userPermissions}
               entityPermissionPrefix="deke"
               currentUserId={currentUser?.username}
@@ -465,7 +465,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
 
       <Form.Item
         label="Chiều dài (m)"
-        name="chieuDai"
+        name="length"
         rules={[
           {
             validator: (_, value) => {
@@ -560,7 +560,7 @@ export default function DeKeForm({ open, editId, mode, onCancel, onSuccess }: De
 
       <Form.Item
         label="Ghi chú"
-        name="ghiChu"
+        name="remarks"
       >
         <Input.TextArea
           placeholder="Nhập ghi chú"

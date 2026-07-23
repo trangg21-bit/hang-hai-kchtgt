@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Form,
@@ -96,7 +96,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
             maLuongHangHai: data.maLuongHangHai,
             soLuongTram: data.soLuongTram,
             thoiDiemSuaChuaTramGanNhat: data.thoiDiemSuaChuaTramGanNhat ? dayjs(data.thoiDiemSuaChuaTramGanNhat) : null,
-            cangBienId: data.cangBienId,
+            portId: data.portId,
             donViVanHanhId: data.donViVanHanhId,
             diaDiem: data.diaDiem,
             diaDiemChiTiet: data.diaDiemChiTiet,
@@ -109,7 +109,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
             tinhTrang: data.tinhTrang,
             chieuCaoTinhKhong: data.chieuCaoTinhKhong,
             dienTichTram: data.dienTichTram,
-            ghiChu: data.ghiChu,
+            remarks: data.remarks,
             donViId: data.donViId,
             spatialData: {
               loaiHinhHoc: data.loaiHinhHoc,
@@ -169,7 +169,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
         ten: '',
         phanLoai: '',
         loaiTuyenLuong: undefined,
-        chieuDai: undefined,
+        length: undefined,
         rongLonNhat: undefined,
         rongNhoNhat: undefined,
         doSau: undefined,
@@ -235,12 +235,12 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
     },
     {
       title: 'Chiều dài (km)',
-      dataIndex: 'chieuDai',
+      dataIndex: 'length',
       width: 120,
       render: (value: number, _: any, index: number) => (
         <InputNumber
           value={value}
-          onChange={(v) => updateChiTietField(index, 'chieuDai', v)}
+          onChange={(v) => updateChiTietField(index, 'length', v)}
           placeholder="Chiều dài"
           size="small"
           style={{ width: '100%' }}
@@ -352,7 +352,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
         maLuongHangHai: values.maLuongHangHai,
         soLuongTram: values.soLuongTram,
         thoiDiemSuaChuaTramGanNhat: values.thoiDiemSuaChuaTramGanNhat ? values.thoiDiemSuaChuaTramGanNhat.format('YYYY-MM-DD') : undefined,
-        cangBienId: values.cangBienId,
+        portId: values.portId,
         donViVanHanhId: values.donViVanHanhId,
         diaDiem: values.diaDiem,
         diaDiemChiTiet: values.diaDiemChiTiet,
@@ -365,7 +365,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
         tinhTrang: values.tinhTrang,
         chieuCaoTinhKhong: values.chieuCaoTinhKhong,
         dienTichTram: values.dienTichTram,
-        ghiChu: values.ghiChu,
+        remarks: values.remarks,
         donViId: values.donViId,
         loaiHinhHoc: spatialData?.loaiHinhHoc,
         toaDo: spatialData?.toaDo,
@@ -519,7 +519,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
               <Descriptions.Item label="Thời điểm sửa chữa trạm gần nhất">
                 {record.thoiDiemSuaChuaTramGanNhat ? dayjs(record.thoiDiemSuaChuaTramGanNhat).format('DD/MM/YYYY') : '—'}
               </Descriptions.Item>
-              <Descriptions.Item label="Cảng biển ID">{record.cangBienId ?? '—'}</Descriptions.Item>
+              <Descriptions.Item label="Cảng biển ID">{record.portId ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Đơn vị vận hành ID">{record.donViVanHanhId ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Địa điểm">{record.diaDiem ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Địa điểm chi tiết">{record.diaDiemChiTiet ?? '—'}</Descriptions.Item>
@@ -533,7 +533,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
               <Descriptions.Item label="Chiều cao tĩnh không">{record.chieuCaoTinhKhong ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Diện tích trạm">{record.dienTichTram ?? '—'}</Descriptions.Item>
               <Descriptions.Item label="Ghi chú" span={2}>
-                {record.ghiChu ?? '—'}
+                {record.remarks ?? '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Đơn vị quản lý" span={2}>
                 {record.donViId ? organizations.find(o => o.id === record.donViId)?.name || record.donViId : '—'}
@@ -562,7 +562,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
                   title: 'Loại tuyến', width: 130,
                   render: (_: any, record: any) => record.loaiTuyenLuong === 1 ? 'Công cộng' : record.loaiTuyenLuong === 2 ? 'Chuyên dùng' : '—'
                 },
-                { title: 'Dài (km)', dataIndex: 'chieuDai', width: 100 },
+                { title: 'Dài (km)', dataIndex: 'length', width: 100 },
                 { title: 'Rộng LN (m)', dataIndex: 'rongLonNhat', width: 110 },
                 { title: 'Rộng NN (m)', dataIndex: 'rongNhoNhat', width: 110 },
                 { title: 'Độ sâu (m)', dataIndex: 'doSau', width: 100 },
@@ -730,7 +730,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
 
             <Row gutter={16}>
               <Col span={12}>
-                <Form.Item label="Cảng biển" name="cangBienId">
+                <Form.Item label="Cảng biển" name="portId">
                   <Input placeholder="Nhập ID cảng biển" />
                 </Form.Item>
               </Col>
@@ -827,7 +827,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
               />
             </Form.Item>
 
-            <Form.Item label="Ghi chú" name="ghiChu">
+            <Form.Item label="Ghi chú" name="remarks">
               <Input.TextArea
                 placeholder="Nhập ghi chú"
                 maxLength={500}
@@ -941,7 +941,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
 
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item label="Cảng biển" name="cangBienId">
+              <Form.Item label="Cảng biển" name="portId">
                 <Input placeholder="Nhập ID cảng biển" />
               </Form.Item>
             </Col>
@@ -1038,7 +1038,7 @@ export default function LuongHangHaiForm({ open, editId, mode, onCancel, onSucce
             />
           </Form.Item>
 
-          <Form.Item label="Ghi chú" name="ghiChu">
+          <Form.Item label="Ghi chú" name="remarks">
             <Input.TextArea
               placeholder="Nhập ghi chú"
               maxLength={500}

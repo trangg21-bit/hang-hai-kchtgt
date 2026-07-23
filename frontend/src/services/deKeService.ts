@@ -31,7 +31,7 @@ export const dekeCRUD = {
         keyword: params?.keyword,
         loaiDe: params?.loaiDe,
         tinhTrang: params?.tinhTrang,
-        trangThaiPheDuyet: params?.trangThaiPheDuyet,
+        approvalStatus: params?.approvalStatus,
         page: params?.page || 0,
         size: params?.size || 20,
       },

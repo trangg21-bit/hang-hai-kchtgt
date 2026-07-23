@@ -1,8 +1,8 @@
 package com.hanghai.kchtg.cangben.service.shared;
 
-import com.hanghai.kchtg.cangben.entity.PheDuyetLog;
+import com.hanghai.kchtg.cangben.entity.ApprovalLog;
 import com.hanghai.kchtg.cangben.entity.base.ApprovalStatus;
-import com.hanghai.kchtg.cangben.repository.PheDuyetLogRepository;
+import com.hanghai.kchtg.cangben.repository.ApprovalLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,7 +28,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ApprovalWorkflowService {
 
-    private final PheDuyetLogRepository pheDuyetLogRepository;
+    private final ApprovalLogRepository approvalLogRepository;
 
     /**
      * Transition entity to approved.
@@ -53,7 +53,7 @@ public class ApprovalWorkflowService {
         log.info("APPROVE: {} [{}] approved by {}", entityType, entityId, decidedBy);
 
         // Insert PheDuyetLog record
-        PheDuyetLog approvalLog = PheDuyetLog.builder()
+        ApprovalLog approvalLog = ApprovalLog.builder()
                 .id(UUID.randomUUID())
                 .entityType(entityType)
                 .entityId(entityId)
@@ -63,7 +63,7 @@ public class ApprovalWorkflowService {
                 .decidedAt(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
                 .build();
-        pheDuyetLogRepository.save(approvalLog);
+        approvalLogRepository.save(approvalLog);
 
         return ApprovalStatus.DUOC_PHE_DUYET;
     }
@@ -97,7 +97,7 @@ public class ApprovalWorkflowService {
         log.info("REJECT: {} [{}] rejected by {} — reason: {}", entityType, entityId, decidedBy, reason);
 
         // Insert PheDuyetLog record
-        PheDuyetLog rejectionLog = PheDuyetLog.builder()
+        ApprovalLog rejectionLog = ApprovalLog.builder()
                 .id(UUID.randomUUID())
                 .entityType(entityType)
                 .entityId(entityId)
@@ -107,7 +107,7 @@ public class ApprovalWorkflowService {
                 .decidedAt(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
                 .build();
-        pheDuyetLogRepository.save(rejectionLog);
+        approvalLogRepository.save(rejectionLog);
 
         return ApprovalStatus.TU_CHOI;
     }

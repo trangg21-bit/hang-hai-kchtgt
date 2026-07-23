@@ -79,7 +79,7 @@ export default function LuongHangHaiList() {
         size: pageSize,
         keyword: filterKeyword || undefined,
         maLuongHangHai: filterMaLuongHangHai || undefined,
-        trangThaiPheDuyet: filterStatus as any,
+        approvalStatus: filterStatus as any,
       };
       const res = await luongHangHaiCRUD.search(params);
       setDataSource(res.items);
@@ -146,8 +146,8 @@ export default function LuongHangHaiList() {
     },
     {
       title: 'Cảng biển ID',
-      dataIndex: 'cangBienId',
-      key: 'cangBienId',
+      dataIndex: 'portId',
+      key: 'portId',
       width: 150,
       ellipsis: true,
       render: (val: string) => val || '—',
