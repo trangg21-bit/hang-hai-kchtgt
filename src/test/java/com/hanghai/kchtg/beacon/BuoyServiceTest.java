@@ -88,18 +88,18 @@ class BuoyServiceTest {
                 .thenReturn(dummySpatial);
     }
 
-    private Buoy makeEntity(UUID id, BeaconStatus status) {
+    private Buoy makeEntity(UUID id, String status) {
         Buoy entity = Buoy.builder()
                 .code("PHAO-001")
                 .name("Phao tiêu test")
-                .type(BuoyType.CARDINAL)
+                .type("CARDINAL")
                 .color("Đỏ")
                 .shape("Hình trụ")
                 .lightCharacteristic("Chớp 3 giây")
                 .range(12.0)
                 .isActive(true)
                 .status(status)
-                .approvalStatus(BeaconApprovalStatus.PENDING)
+                .approvalStatus("PENDING")
                 .build();
         setId(entity, id);
         entity.setCreatedAt(LocalDateTime.now().minusDays(1));
@@ -121,7 +121,7 @@ class BuoyServiceTest {
         return CreateBuoyRequest.builder()
                 .code("PHAO-002")
                 .name("Phao tiêu mới")
-                .type(BuoyType.SAFE_WATER)
+                .type("SAFE_WATER")
                 .latitude(10.5)
                 .longitude(106.5)
                 .range(15.0)
@@ -143,7 +143,7 @@ class BuoyServiceTest {
         @Test
         @DisplayName("findAll returns list of responses")
         void findAll() {
-            Buoy entity = makeEntity(UUID.randomUUID(), BeaconStatus.DRAFT);
+            Buoy entity = makeEntity(UUID.randomUUID(), "DRAFT");
             when(buoyRepo.findAll()).thenReturn(List.of(entity));
 
             List<BuoyResponse> result = service.findAll();
@@ -158,7 +158,7 @@ class BuoyServiceTest {
         @DisplayName("findById returns response when found")
         void findById() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.DRAFT);
+            Buoy entity = makeEntity(id, "DRAFT");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
             BuoyResponse result = service.findById(id);
@@ -185,17 +185,17 @@ class BuoyServiceTest {
         @DisplayName("search returns filtered results")
         void search() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.DRAFT);
+            Buoy entity = makeEntity(id, "DRAFT");
             when(buoyRepo.searchFiltered(any(), any(), any(), any()))
                     .thenReturn(List.of(entity));
 
             List<BuoyResponse> result = service.search(
-                    "Phao", "PHAO", BuoyType.CARDINAL, BeaconStatus.DRAFT);
+                    "Phao", "PHAO", "CARDINAL", "DRAFT");
 
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getName()).isEqualTo("Phao tiêu test");
             verify(buoyRepo).searchFiltered("Phao", "PHAO",
-                    BuoyType.CARDINAL, BeaconStatus.DRAFT);
+                    "CARDINAL", "DRAFT");
         }
     }
 
@@ -224,9 +224,9 @@ class BuoyServiceTest {
             assertThat(result.getId()).isEqualTo(savedId);
             assertThat(result.getCode()).isEqualTo("PHAO-002");
             assertThat(result.getName()).isEqualTo("Phao tiêu mới");
-            assertThat(result.getType()).isEqualTo(BuoyType.SAFE_WATER);
-            assertThat(result.getStatus()).isEqualTo(BeaconStatus.DRAFT);
-            assertThat(result.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.PENDING);
+            assertThat(result.getType()).isEqualTo("SAFE_WATER");
+            assertThat(result.getStatus()).isEqualTo("DRAFT");
+            assertThat(result.getApprovalStatus()).isEqualTo("PENDING");
 
             verify(buoyRepo, atLeastOnce()).save(any());
             verify(historyRepo).save(any());
@@ -277,7 +277,7 @@ class BuoyServiceTest {
 
             BuoyResponse result = service.create(request);
 
-            assertThat(result.getStatus()).isEqualTo(BeaconStatus.PENDING_APPROVAL);
+            assertThat(result.getStatus()).isEqualTo("PENDING_APPROVAL");
             assertThat(result.getApprovalLevel()).isEqualTo(1);
         }
 
@@ -325,7 +325,7 @@ class BuoyServiceTest {
         @DisplayName("update mutable fields — saves and returns updated response")
         void updateSuccess() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.DRAFT);
+            Buoy entity = makeEntity(id, "DRAFT");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -353,7 +353,7 @@ class BuoyServiceTest {
         @DisplayName("update deleted entity — throws EntityNotFoundException")
         void updateDeletedEntity() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.DELETED);
+            Buoy entity = makeEntity(id, "DELETED");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
             UpdateBuoyRequest request = UpdateBuoyRequest.builder()
@@ -371,12 +371,12 @@ class BuoyServiceTest {
         @DisplayName("update with approved type change — throws IllegalArgumentException")
         void updateApprovedTypeChange() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.PUBLISHED);
-            entity.setType(BuoyType.CARDINAL);
+            Buoy entity = makeEntity(id, "PUBLISHED");
+            entity.setType("CARDINAL");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
             UpdateBuoyRequest request = UpdateBuoyRequest.builder()
-                    .type(BuoyType.SECTOR)
+                    .type("SECTOR")
                     .build();
 
             assertThatThrownBy(() -> service.update(id, request))
@@ -388,8 +388,8 @@ class BuoyServiceTest {
         @DisplayName("update on approved entity — reverts status to DRAFT")
         void updateApprovedEntityRevertsStatus() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.APPROVED_L1);
-            entity.setApprovalStatus(BeaconApprovalStatus.APPROVED);
+            Buoy entity = makeEntity(id, "APPROVED_L1");
+            entity.setApprovalStatus("APPROVED");
             entity.setApprovalLevel(1);
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -400,8 +400,8 @@ class BuoyServiceTest {
 
             BuoyResponse result = service.update(id, request);
 
-            assertThat(result.getStatus()).isEqualTo(BeaconStatus.DRAFT);
-            assertThat(result.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.PENDING);
+            assertThat(result.getStatus()).isEqualTo("DRAFT");
+            assertThat(result.getApprovalStatus()).isEqualTo("PENDING");
             assertThat(result.getApprovalLevel()).isEqualTo(1);
         }
 
@@ -409,7 +409,7 @@ class BuoyServiceTest {
         @DisplayName("update keeps code immutable (no code field in update request)")
         void updateCannotChangeCode() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.DRAFT);
+            Buoy entity = makeEntity(id, "DRAFT");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -433,7 +433,7 @@ class BuoyServiceTest {
         @DisplayName("delete active entity — sets DELETED status")
         void deleteSuccess() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.DRAFT);
+            Buoy entity = makeEntity(id, "DRAFT");
             entity.setKhongGianId(UUID.randomUUID());
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -442,7 +442,7 @@ class BuoyServiceTest {
 
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
-            assertThat(saved.getStatus()).isEqualTo(BeaconStatus.DELETED);
+            assertThat(saved.getStatus()).isEqualTo("DELETED");
             assertThat(saved.getDeletedAt()).isNotNull();
             verify(historyRepo).save(any());
             verify(gisSpatialObjectService).delete(entity.getKhongGianId());
@@ -452,7 +452,7 @@ class BuoyServiceTest {
         @DisplayName("delete already deleted entity — throws IllegalArgumentException")
         void deleteAlreadyDeleted() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.DELETED);
+            Buoy entity = makeEntity(id, "DELETED");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
             assertThatThrownBy(() -> service.delete(id))
@@ -466,7 +466,7 @@ class BuoyServiceTest {
         @DisplayName("delete entity in approval process — throws IllegalStateException")
         void deleteInApprovalProcess() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.PENDING_APPROVAL);
+            Buoy entity = makeEntity(id, "PENDING_APPROVAL");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
             assertThatThrownBy(() -> service.delete(id))
@@ -496,7 +496,7 @@ class BuoyServiceTest {
         @DisplayName("submitForApproval — transitions from DRAFT to PENDING_APPROVAL")
         void submitForApproval() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.DRAFT);
+            Buoy entity = makeEntity(id, "DRAFT");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -504,8 +504,8 @@ class BuoyServiceTest {
 
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
-            assertThat(saved.getStatus()).isEqualTo(BeaconStatus.PENDING_APPROVAL);
-            assertThat(saved.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.PENDING);
+            assertThat(saved.getStatus()).isEqualTo("PENDING_APPROVAL");
+            assertThat(saved.getApprovalStatus()).isEqualTo("PENDING");
             assertThat(saved.getApprovalLevel()).isEqualTo(1);
             verify(notificationService).sendApprovalNotificationBuoy(entity);
         }
@@ -514,7 +514,7 @@ class BuoyServiceTest {
         @DisplayName("submitForApproval — throws when not DRAFT")
         void submitForApprovalNotDraft() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.PENDING_APPROVAL);
+            Buoy entity = makeEntity(id, "PENDING_APPROVAL");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
             assertThatThrownBy(() -> service.submitForApproval(id))
@@ -528,7 +528,7 @@ class BuoyServiceTest {
         @DisplayName("approveL1 — transitions from PENDING_APPROVAL to APPROVED_L1")
         void approveL1() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.PENDING_APPROVAL);
+            Buoy entity = makeEntity(id, "PENDING_APPROVAL");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -536,11 +536,11 @@ class BuoyServiceTest {
 
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
-            assertThat(saved.getStatus()).isEqualTo(BeaconStatus.APPROVED_L1);
-            assertThat(saved.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.APPROVED);
+            assertThat(saved.getStatus()).isEqualTo("APPROVED_L1");
+            assertThat(saved.getApprovalStatus()).isEqualTo("APPROVED");
             assertThat(saved.getApprovedBy()).isEqualTo("2");
             assertThat(saved.getApprovedDate()).isNotNull();
-            assertThat(result.getStatus()).isEqualTo(BeaconStatus.APPROVED_L1);
+            assertThat(result.getStatus()).isEqualTo("APPROVED_L1");
             verify(historyRepo).save(any());
             verify(notificationService).sendL2ApprovalNotificationBuoy(entity);
         }
@@ -549,7 +549,7 @@ class BuoyServiceTest {
         @DisplayName("approveL1 — throws when not PENDING_APPROVAL")
         void approveL1WrongStatus() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.DRAFT);
+            Buoy entity = makeEntity(id, "DRAFT");
             entity.setApprovedBy(null);
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
@@ -562,7 +562,7 @@ class BuoyServiceTest {
         @DisplayName("approveL2 — transitions from APPROVED_L1 to PUBLISHED")
         void approveL2() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.APPROVED_L1);
+            Buoy entity = makeEntity(id, "APPROVED_L1");
             entity.setApprovedBy("2");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -571,10 +571,10 @@ class BuoyServiceTest {
 
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
-            assertThat(saved.getStatus()).isEqualTo(BeaconStatus.PUBLISHED);
-            assertThat(saved.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.APPROVED);
+            assertThat(saved.getStatus()).isEqualTo("PUBLISHED");
+            assertThat(saved.getApprovalStatus()).isEqualTo("APPROVED");
             assertThat(saved.getApprovedBy()).isEqualTo("3");
-            assertThat(result.getStatus()).isEqualTo(BeaconStatus.PUBLISHED);
+            assertThat(result.getStatus()).isEqualTo("PUBLISHED");
             verify(historyRepo).save(any());
         }
 
@@ -582,7 +582,7 @@ class BuoyServiceTest {
         @DisplayName("approveL2 — throws when not APPROVED_L1")
         void approveL2WrongStatus() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.PENDING_APPROVAL);
+            Buoy entity = makeEntity(id, "PENDING_APPROVAL");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
             assertThatThrownBy(() -> service.approveL2(id, "3"))
@@ -594,7 +594,7 @@ class BuoyServiceTest {
         @DisplayName("reject with valid reason — transitions to DRAFT + REJECTED")
         void rejectValid() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.PENDING_APPROVAL);
+            Buoy entity = makeEntity(id, "PENDING_APPROVAL");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -603,11 +603,11 @@ class BuoyServiceTest {
 
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
-            assertThat(saved.getStatus()).isEqualTo(BeaconStatus.DRAFT);
-            assertThat(saved.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.REJECTED);
+            assertThat(saved.getStatus()).isEqualTo("DRAFT");
+            assertThat(saved.getApprovalStatus()).isEqualTo("REJECTED");
             assertThat(saved.getRejectionReason()).isEqualTo("Lý do từ chối hợp lệ (đủ 10 ký tự)");
-            assertThat(result.getStatus()).isEqualTo(BeaconStatus.DRAFT);
-            assertThat(result.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.REJECTED);
+            assertThat(result.getStatus()).isEqualTo("DRAFT");
+            assertThat(result.getApprovalStatus()).isEqualTo("REJECTED");
             verify(notificationService).sendRejectionNotificationBuoy(entity,
                     "Lý do từ chối hợp lệ (đủ 10 ký tự)");
         }
@@ -616,7 +616,7 @@ class BuoyServiceTest {
         @DisplayName("reject with short reason — throws IllegalArgumentException")
         void rejectShortReason() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.PENDING_APPROVAL);
+            Buoy entity = makeEntity(id, "PENDING_APPROVAL");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
             assertThatThrownBy(() -> service.reject(id, "Ngắn", "2"))
@@ -628,7 +628,7 @@ class BuoyServiceTest {
         @DisplayName("reject with null reason — throws IllegalArgumentException")
         void rejectNullReason() {
             UUID id = UUID.randomUUID();
-            Buoy entity = makeEntity(id, BeaconStatus.PENDING_APPROVAL);
+            Buoy entity = makeEntity(id, "PENDING_APPROVAL");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
             assertThatThrownBy(() -> service.reject(id, null, "2"))

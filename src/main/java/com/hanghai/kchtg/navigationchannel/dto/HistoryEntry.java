@@ -15,9 +15,9 @@ public class HistoryEntry {
 
     private Long id;
     private java.util.UUID navigationChannelId;
-    private Integer capPheDuyet;
-    private String trangThai;
-    private String nguoiPheDuyet;
-    private LocalDate ngayPheDuyet;
-    private String lyDo;
+    private Integer approvalLevel;
+    private String status;
+    private String approvedBy;
+    private LocalDate approvedDate;
+    private String reason;
 }

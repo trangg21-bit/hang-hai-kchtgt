@@ -63,12 +63,12 @@ import NavigationChannelList from './pages/navigationchannel/NavigationChannelLi
 import NavigationChannelForm from './pages/navigationchannel/NavigationChannelForm';
 import DikeRevetmentList from './pages/dikerevetment/DikeRevetmentList';
 import DikeRevetmentForm from './pages/dikerevetment/DikeRevetmentForm';
-import CoSuaChuaList from './pages/cosuachua/CoSuaChuaList';
-import CoSuaChuaForm from './pages/cosuachua/CoSuaChuaForm';
-import TramRadarList from './pages/tramradar/TramRadarList';
-import TramRadarForm from './pages/tramradar/TramRadarForm';
-import HeThongVTSList from './pages/hethongvts/HeThongVTSList';
-import HeThongVTSForm from './pages/hethongvts/HeThongVTSForm';
+import ShipRepairFacilityList from './pages/shiprepair/ShipRepairFacilityList';
+import ShipRepairFacilityForm from './pages/shiprepair/ShipRepairFacilityForm';
+import RadarStationList from './pages/radarstation/RadarStationList';
+import RadarStationForm from './pages/radarstation/RadarStationForm';
+import VtsSystemList from './pages/vtssystem/VtsSystemList';
+import VtsSystemForm from './pages/vtssystem/VtsSystemForm';
 
 // M-005 & M-006: Biến động tài sản & Văn bản pháp lý
 import AssetIncreaseList from './pages/assetmovement/AssetIncreaseList';
@@ -168,9 +168,9 @@ export default function App() {
                 <Route path="/reports/F-142/create" element={<PermissionGuard permission="report:create"><Bcc157Form /></PermissionGuard>} />
 
                 {/* Beacon Lights & Buoys — Báo hiệu hàng hải */}
-                <Route path="/den-bien" element={<PermissionGuard permission="data:read"><BeaconList /></PermissionGuard>} />
-                <Route path="/den-bien/tao-moi" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
-                <Route path="/den-bien/:id" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
+                <Route path="/beacon-lights" element={<PermissionGuard permission="data:read"><BeaconList /></PermissionGuard>} />
+                <Route path="/beacon-lights/create" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
+                <Route path="/beacon-lights/:id" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
                 <Route path="/buoys" element={<PermissionGuard permission="data:read"><BuoyList /></PermissionGuard>} />
                 <Route path="/buoys/create" element={<PermissionGuard permission="data:read"><BuoyForm /></PermissionGuard>} />
                 <Route path="/buoys/:id" element={<PermissionGuard permission="data:read"><BuoyForm /></PermissionGuard>} />
@@ -207,19 +207,19 @@ export default function App() {
                 <Route path="/dike-revetment/:id" element={<PermissionGuard permission="dikerevetment:read"><DikeRevetmentForm /></PermissionGuard>} />
 
                 {/* Cơ sở sửa chữa/đóng tàu */}
-                <Route path="/co-so-sua-chua" element={<PermissionGuard permission="cosuachua:read"><CoSuaChuaList /></PermissionGuard>} />
-                <Route path="/co-so-sua-chua/create" element={<PermissionGuard permission="cosuachua:create"><CoSuaChuaForm /></PermissionGuard>} />
-                <Route path="/co-so-sua-chua/:id" element={<PermissionGuard permission="cosuachua:read"><CoSuaChuaForm /></PermissionGuard>} />
+                <Route path="/ship-repair-facility" element={<PermissionGuard permission="shiprepair:read"><ShipRepairFacilityList /></PermissionGuard>} />
+                <Route path="/ship-repair-facility/create" element={<PermissionGuard permission="shiprepair:create"><ShipRepairFacilityForm /></PermissionGuard>} />
+                <Route path="/ship-repair-facility/:id" element={<PermissionGuard permission="shiprepair:read"><ShipRepairFacilityForm /></PermissionGuard>} />
 
                 {/* Trạm radar */}
-                <Route path="/tram-radar" element={<PermissionGuard permission="tramradar:read"><TramRadarList /></PermissionGuard>} />
-                <Route path="/tram-radar/create" element={<PermissionGuard permission="tramradar:create"><TramRadarForm /></PermissionGuard>} />
-                <Route path="/tram-radar/:id" element={<PermissionGuard permission="tramradar:read"><TramRadarForm /></PermissionGuard>} />
+                <Route path="/radar-station" element={<PermissionGuard permission="radarstation:read"><RadarStationList /></PermissionGuard>} />
+                <Route path="/radar-station/create" element={<PermissionGuard permission="radarstation:create"><RadarStationForm /></PermissionGuard>} />
+                <Route path="/radar-station/:id" element={<PermissionGuard permission="radarstation:read"><RadarStationForm /></PermissionGuard>} />
 
                 {/* Hệ thống VTS */}
-                <Route path="/he-thong-vts" element={<PermissionGuard permission="vts:read"><HeThongVTSList /></PermissionGuard>} />
-                <Route path="/he-thong-vts/create" element={<PermissionGuard permission="vts:create"><HeThongVTSForm /></PermissionGuard>} />
-                <Route path="/he-thong-vts/:id" element={<PermissionGuard permission="vts:read"><HeThongVTSForm /></PermissionGuard>} />
+                <Route path="/vts-system" element={<PermissionGuard permission="vts:read"><VtsSystemList /></PermissionGuard>} />
+                <Route path="/vts-system/create" element={<PermissionGuard permission="vts:create"><VtsSystemForm /></PermissionGuard>} />
+                <Route path="/vts-system/:id" element={<PermissionGuard permission="vts:read"><VtsSystemForm /></PermissionGuard>} />
 
                 {/* M-005: Biến động tài sản */}
                 <Route path="/asset/increase" element={<PermissionGuard permission="asset:yeu-cau-tang"><AssetIncreaseList /></PermissionGuard>} />
@@ -233,8 +233,8 @@ export default function App() {
                 <Route path="/vanban/quyhoach" element={<PermissionGuard permission="vanban:manage"><QuyHoachList /></PermissionGuard>} />
 
                 {/* M-014: Quản lý Nhà trạm */}
-                <Route path="/nhatram/den" element={<PermissionGuard permission="nhatram:read"><NhaTramDenList /></PermissionGuard>} />
-                <Route path="/nhatram/phao" element={<PermissionGuard permission="nhatram:read"><NhaTramPhaoList /></PermissionGuard>} />
+                <Route path="/lighthouse-station" element={<PermissionGuard permission="lighthouse:read"><NhaTramDenList /></PermissionGuard>} />
+                <Route path="/buoy-station" element={<PermissionGuard permission="buoy:read"><NhaTramPhaoList /></PermissionGuard>} />
 
                 {/* M-015: Đài duyên hải */}
                 <Route path="/station/coastal" element={<PermissionGuard permission="station:read"><CoastalStationList /></PermissionGuard>} />

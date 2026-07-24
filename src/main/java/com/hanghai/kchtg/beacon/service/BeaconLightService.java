@@ -54,7 +54,7 @@ public class BeaconLightService {
     }
 
     public List<BeaconLightResponse> search(
-            String name, String code, BeaconLightType type, BeaconStatus status) {
+            String name, String code, String type, String status) {
         return beaconLightRepo.searchFiltered(
                 name,
                 code,
@@ -66,7 +66,7 @@ public class BeaconLightService {
     }
 
     public org.springframework.data.domain.Page<BeaconLightResponse> searchPaged(
-            String name, String code, BeaconLightType type, BeaconStatus status,
+            String name, String code, String type, String status,
             org.springframework.data.domain.Pageable pageable) {
         return beaconLightRepo.searchFilteredPaged(name, code, type, status, pageable)
                 .map(this::toResponse);
@@ -82,7 +82,7 @@ public class BeaconLightService {
         }
 
         validateCoordinates(request.getLongitude(), request.getLatitude());
-        validateMaintenanceDates(request.getLastMaintenanceDate(), request.getNextMaintenanceDate());
+        validateMaintenanceDates(request.getLastRepairDate(), request.getCommissionedDate());
 
         BeaconLight entity = BeaconLight.builder()
                 .code(request.getCode())
@@ -91,26 +91,26 @@ public class BeaconLightService {
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
                 .lightRange(request.getLightRange())
-                .lightColor(request.getLightColor())
-                .lightCharacteristic(request.getLightCharacteristic())
-                .range(request.getRange())
-                .description(request.getDescription())
+                .towerColor(request.getTowerColor())
+                .primaryLightModel(request.getPrimaryLightModel())
+                .area(request.getArea())
+                .location(request.getLocation())
                 .unitId(request.getUnitId())
-                .lastMaintenanceDate(request.getLastMaintenanceDate())
-                .nextMaintenanceDate(request.getNextMaintenanceDate())
+                .lastRepairDate(request.getLastRepairDate())
+                .commissionedDate(request.getCommissionedDate())
                 .isActive(request.getIsActive())
-                .hinhDang(request.getHinhDang())
-                .ketCau(request.getKetCau())
-                .chieuCaoThapDen(request.getChieuCaoThapDen())
-                .chieuCaoTamSang(request.getChieuCaoTamSang())
-                .tamHieuLucDiaLy(request.getTamHieuLucDiaLy())
-                .chungLoaiDenDuPhong(request.getChungLoaiDenDuPhong())
-                .nguonCungCapNangLuongChoDen(request.getNguonCungCapNangLuongChoDen())
-                .soLuongNhanSuBoTri(request.getSoLuongNhanSuBoTri())
-                .dienTichSuDungTram(request.getDienTichSuDungTram())
-                .status(BeaconStatus.DRAFT)
+                .shape(request.getShape())
+                .structure(request.getStructure())
+                .towerHeight(request.getTowerHeight())
+                .lightHeight(request.getLightHeight())
+                .geographicRange(request.getGeographicRange())
+                .backupLightModel(request.getBackupLightModel())
+                .powerSupply(request.getPowerSupply())
+                .staffCount(request.getStaffCount())
+                .stationArea(request.getStationArea())
+                .status("DRAFT")
                 .approvalLevel(1)
-                .approvalStatus(BeaconApprovalStatus.PENDING)
+                .approvalStatus("PENDING")
                 .build();
 
         if (entity.getUnitId() == null) {
@@ -118,7 +118,7 @@ public class BeaconLightService {
         }
 
         if ("submit".equals(request.getAction())) {
-            entity.setStatus(BeaconStatus.PENDING_APPROVAL);
+            entity.setStatus("PENDING_APPROVAL");
             entity.setApprovalLevel(1);
         }
 
@@ -152,7 +152,7 @@ public class BeaconLightService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Đèn biển không tìm thấy: " + id));
 
-        if (entity.getStatus() == BeaconStatus.DELETED) {
+        if ("DELETED".equals(entity.getStatus())) {
             throw new EntityNotFoundException("Đèn biển đã bị xóa");
         }
 
@@ -162,8 +162,8 @@ public class BeaconLightService {
         if (request.getName() != null) entity.setName(request.getName());
 
         // Handle type field update conditionally (BR-069-02)
-        if (request.getType() != null && request.getType() != entity.getType()) {
-            if (entity.getStatus() == BeaconStatus.APPROVED_L2 || entity.getStatus() == BeaconStatus.PUBLISHED) {
+        if (request.getType() != null && !request.getType().equals(entity.getType())) {
+            if ("APPROVED_L2".equals(entity.getStatus()) || "PUBLISHED".equals(entity.getStatus())) {
                 throw new IllegalArgumentException("Loại đèn biển không thể thay đổi khi đèn biển đã được phê duyệt.");
             }
             entity.setType(request.getType());
@@ -196,37 +196,37 @@ public class BeaconLightService {
             wkt = "POINT(" + finalLon + " " + finalLat + ")";
         }
 
-        if (request.getLightColor() != null) entity.setLightColor(request.getLightColor());
-        if (request.getLightCharacteristic() != null) {
-            entity.setLightCharacteristic(request.getLightCharacteristic());
+        if (request.getTowerColor() != null) entity.setTowerColor(request.getTowerColor());
+        if (request.getPrimaryLightModel() != null) {
+            entity.setPrimaryLightModel(request.getPrimaryLightModel());
         }
         // BUG FIX #2: Apply lightRange on update
         if (request.getLightRange() != null) entity.setLightRange(request.getLightRange());
-        if (request.getRange() != null) entity.setRange(request.getRange());
-        if (request.getDescription() != null) entity.setDescription(request.getDescription());
+        if (request.getArea() != null) entity.setArea(request.getArea());
+        if (request.getLocation() != null) entity.setLocation(request.getLocation());
         if (request.getUnitId() != null) entity.setUnitId(request.getUnitId());
-        if (request.getLastMaintenanceDate() != null) {
-            entity.setLastMaintenanceDate(request.getLastMaintenanceDate());
+        if (request.getLastRepairDate() != null) {
+            entity.setLastRepairDate(request.getLastRepairDate());
         }
-        if (request.getNextMaintenanceDate() != null) {
-            entity.setNextMaintenanceDate(request.getNextMaintenanceDate());
+        if (request.getCommissionedDate() != null) {
+            entity.setCommissionedDate(request.getCommissionedDate());
         }
         if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
 
-        if (request.getHinhDang() != null) entity.setHinhDang(request.getHinhDang());
-        if (request.getKetCau() != null) entity.setKetCau(request.getKetCau());
-        if (request.getChieuCaoThapDen() != null) entity.setChieuCaoThapDen(request.getChieuCaoThapDen());
-        if (request.getChieuCaoTamSang() != null) entity.setChieuCaoTamSang(request.getChieuCaoTamSang());
-        if (request.getTamHieuLucDiaLy() != null) entity.setTamHieuLucDiaLy(request.getTamHieuLucDiaLy());
-        if (request.getChungLoaiDenDuPhong() != null) entity.setChungLoaiDenDuPhong(request.getChungLoaiDenDuPhong());
-        if (request.getNguonCungCapNangLuongChoDen() != null) entity.setNguonCungCapNangLuongChoDen(request.getNguonCungCapNangLuongChoDen());
-        if (request.getSoLuongNhanSuBoTri() != null) entity.setSoLuongNhanSuBoTri(request.getSoLuongNhanSuBoTri());
-        if (request.getDienTichSuDungTram() != null) entity.setDienTichSuDungTram(request.getDienTichSuDungTram());
+        if (request.getShape() != null) entity.setShape(request.getShape());
+        if (request.getStructure() != null) entity.setStructure(request.getStructure());
+        if (request.getTowerHeight() != null) entity.setTowerHeight(request.getTowerHeight());
+        if (request.getLightHeight() != null) entity.setLightHeight(request.getLightHeight());
+        if (request.getGeographicRange() != null) entity.setGeographicRange(request.getGeographicRange());
+        if (request.getBackupLightModel() != null) entity.setBackupLightModel(request.getBackupLightModel());
+        if (request.getPowerSupply() != null) entity.setPowerSupply(request.getPowerSupply());
+        if (request.getStaffCount() != null) entity.setStaffCount(request.getStaffCount());
+        if (request.getStationArea() != null) entity.setStationArea(request.getStationArea());
 
         // Status revert logic for approved states
         if (isApprovedStatus(entity.getStatus())) {
-            entity.setStatus(BeaconStatus.DRAFT);
-            entity.setApprovalStatus(BeaconApprovalStatus.PENDING);
+            entity.setStatus("DRAFT");
+            entity.setApprovalStatus("PENDING");
             entity.setApprovalLevel(1);
         }
 
@@ -267,7 +267,7 @@ public class BeaconLightService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Đèn biển không tìm thấy: " + id));
 
-        if (entity.getStatus() == BeaconStatus.DELETED) {
+        if ("DELETED".equals(entity.getStatus())) {
             throw new IllegalArgumentException("Đèn biển này đã bị xóa trước đó");
         }
 
@@ -276,7 +276,7 @@ public class BeaconLightService {
                     "Không thể xóa đèn biển đang chờ phê duyệt");
         }
 
-        entity.setStatus(BeaconStatus.DELETED);
+        entity.setStatus("DELETED");
         entity.softDelete();
         beaconLightRepo.save(entity);
 
@@ -295,13 +295,13 @@ public class BeaconLightService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Đèn biển không tìm thấy: " + id));
 
-        if (entity.getStatus() != BeaconStatus.DRAFT) {
+        if (!"DRAFT".equals(entity.getStatus())) {
             throw new IllegalStateException(
                     "Chỉ có thể gửi phê duyệt khi status = DRAFT");
         }
 
-        entity.setStatus(BeaconStatus.PENDING_APPROVAL);
-        entity.setApprovalStatus(BeaconApprovalStatus.PENDING);
+        entity.setStatus("PENDING_APPROVAL");
+        entity.setApprovalStatus("PENDING");
         entity.setApprovalLevel(1);
         beaconLightRepo.save(entity);
 
@@ -314,7 +314,7 @@ public class BeaconLightService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Đèn biển không tìm thấy: " + id));
 
-        if (entity.getStatus() != BeaconStatus.PENDING_APPROVAL) {
+        if (!"PENDING_APPROVAL".equals(entity.getStatus())) {
             throw new IllegalStateException(
                     "Không ở trạng thái chờ phê duyệt L1");
         }
@@ -325,8 +325,8 @@ public class BeaconLightService {
                     "Bạn không thể phê duyệt bản do chính mình gửi");
         }
 
-        entity.setStatus(BeaconStatus.APPROVED_L1);
-        entity.setApprovalStatus(BeaconApprovalStatus.APPROVED);
+        entity.setStatus("APPROVED_L1");
+        entity.setApprovalStatus("APPROVED");
         entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         beaconLightRepo.save(entity);
@@ -343,13 +343,13 @@ public class BeaconLightService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Đèn biển không tìm thấy: " + id));
 
-        if (entity.getStatus() != BeaconStatus.APPROVED_L1) {
+        if (!"APPROVED_L1".equals(entity.getStatus())) {
             throw new IllegalStateException(
                     "Không ở trạng thái chờ phê duyệt L2");
         }
 
-        entity.setStatus(BeaconStatus.PUBLISHED);
-        entity.setApprovalStatus(BeaconApprovalStatus.APPROVED);
+        entity.setStatus("PUBLISHED");
+        entity.setApprovalStatus("APPROVED");
         entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         beaconLightRepo.save(entity);
@@ -370,8 +370,8 @@ public class BeaconLightService {
                     "Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
-        entity.setStatus(BeaconStatus.DRAFT);
-        entity.setApprovalStatus(BeaconApprovalStatus.REJECTED);
+        entity.setStatus("DRAFT");
+        entity.setApprovalStatus("REJECTED");
         entity.setRejectionReason(rejectReason);
         beaconLightRepo.save(entity);
 
@@ -455,14 +455,14 @@ public class BeaconLightService {
                 .latitude(latitude)
                 .longitude(longitude)
                 .lightRange(entity.getLightRange())
-                .lightColor(entity.getLightColor())
-                .lightCharacteristic(entity.getLightCharacteristic())
-                .range(entity.getRange())
-                .description(entity.getDescription())
+                .towerColor(entity.getTowerColor())
+                .primaryLightModel(entity.getPrimaryLightModel())
+                .area(entity.getArea())
+                .location(entity.getLocation())
                 .unitId(entity.getUnitId())
                 .unitName(unitName)
-                .lastMaintenanceDate(entity.getLastMaintenanceDate())
-                .nextMaintenanceDate(entity.getNextMaintenanceDate())
+                .lastRepairDate(entity.getLastRepairDate())
+                .commissionedDate(entity.getCommissionedDate())
                 .isActive(entity.getIsActive())
                 .status(entity.getStatus())
                 .approvalStatus(entity.getApprovalStatus())
@@ -470,30 +470,30 @@ public class BeaconLightService {
                 .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())
                 .rejectionReason(entity.getRejectionReason())
-                .hinhDang(entity.getHinhDang())
-                .ketCau(entity.getKetCau())
-                .chieuCaoThapDen(entity.getChieuCaoThapDen())
-                .chieuCaoTamSang(entity.getChieuCaoTamSang())
-                .tamHieuLucDiaLy(entity.getTamHieuLucDiaLy())
-                .chungLoaiDenDuPhong(entity.getChungLoaiDenDuPhong())
-                .nguonCungCapNangLuongChoDen(entity.getNguonCungCapNangLuongChoDen())
-                .soLuongNhanSuBoTri(entity.getSoLuongNhanSuBoTri())
-                .dienTichSuDungTram(entity.getDienTichSuDungTram())
+                .shape(entity.getShape())
+                .structure(entity.getStructure())
+                .towerHeight(entity.getTowerHeight())
+                .lightHeight(entity.getLightHeight())
+                .geographicRange(entity.getGeographicRange())
+                .backupLightModel(entity.getBackupLightModel())
+                .powerSupply(entity.getPowerSupply())
+                .staffCount(entity.getStaffCount())
+                .stationArea(entity.getStationArea())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
     }
 
-    private boolean isApprovedStatus(BeaconStatus status) {
-        return status == BeaconStatus.APPROVED_L1
-                || status == BeaconStatus.APPROVED_L2
-                || status == BeaconStatus.PUBLISHED;
+    private boolean isApprovedStatus(String status) {
+        return "APPROVED_L1".equals(status)
+                || "APPROVED_L2".equals(status)
+                || "PUBLISHED".equals(status);
     }
 
-    private boolean isInApprovalProcess(BeaconStatus status) {
-        return status == BeaconStatus.PENDING_APPROVAL
-                || status == BeaconStatus.APPROVED_L1
-                || status == BeaconStatus.APPROVED_L2;
+    private boolean isInApprovalProcess(String status) {
+        return "PENDING_APPROVAL".equals(status)
+                || "APPROVED_L1".equals(status)
+                || "APPROVED_L2".equals(status);
     }
 
     private java.util.UUID getCurrentUserUnitId() {

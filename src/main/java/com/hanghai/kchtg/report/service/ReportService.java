@@ -32,7 +32,7 @@ import com.hanghai.kchtg.cangben.repository.BerthRepository;
 import com.hanghai.kchtg.cangben.repository.PierRepository;
 import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
 import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
-import com.hanghai.kchtg.nhatram.repository.NhaTramDenRepository;
+import com.hanghai.kchtg.station.repository.LighthouseStationRepository;
 import com.hanghai.kchtg.report.dto.Bcc157Response;
 import com.hanghai.kchtg.report.handler.ReportHandler;
 import com.hanghai.kchtg.tsql.entity.TsQl;
@@ -57,7 +57,7 @@ public class ReportService {
     private final PierRepository cauCangRepository;
     private final LineObjectRepository lineObjectRepository;
     private final PolygonObjectRepository polygonObjectRepository;
-    private final NhaTramDenRepository nhaTramDenRepository;
+    private final LighthouseStationRepository lighthouseStationRepository;
     private final List<ReportHandler> reportHandlers;
     private final Bcc157Service bcc157Service;
     private final TsQlRepository tsQlRepository;
@@ -4651,8 +4651,8 @@ if (expr != null && (expr.contains("table.")
 
                 item.put("viTriKhu", viTri);
                 item.put("viTriDiemNeo", viTri);
-                item.put("hinhDang", "");
-                item.put("dienTich", "");
+                item.put("shape", "");
+                item.put("area", "");
                 item.put("coTauKhaiThac", "");
 
                 String donVi = "";
@@ -4708,7 +4708,7 @@ if (expr != null && (expr.contains("table.")
                 item.put("ngaySuaChua", "");
                 item.put("nhanSuBoTriTaiTramQlLuong", 0.0);
                 item.put("nhanSuBoTriTaiTramQL", 0.0);
-                item.put("soLuongNhanSuBoTri", 0.0);
+                item.put("staffCount", 0.0);
                 item.put("daiLuong", 0.0);
                 item.put("rongLonNhat", 0.0);
                 item.put("rongNhoNhat", 0.0);
@@ -4730,15 +4730,15 @@ if (expr != null && (expr.contains("table.")
                 item.put("viTri", "");
                 item.put("viTriKhu", "");
                 item.put("viTriDiemNeo", "");
-                item.put("hinhDang", "");
-                item.put("ketCau", "");
-                item.put("mauSacBenNgoaiCuaThapDen", "");
-                item.put("chieuCaoThapDen", 0.0);
-                item.put("chieuCaoTamSang", 0.0);
-                item.put("tamHieuLucDiaLy", 0.0);
-                item.put("tamHieuLucAnhSang", 0.0);
-                item.put("nguonCungCapNangLuongChoDen", "");
-                item.put("dienTichSuDungTram", 0.0);
+                item.put("shape", "");
+                item.put("structure", "");
+                item.put("towerColor", "");
+                item.put("towerHeight", 0.0);
+                item.put("lightHeight", 0.0);
+                item.put("geographicRange", 0.0);
+                item.put("lightRange", 0.0);
+                item.put("powerSupply", "");
+                item.put("stationArea", 0.0);
                 item.put("dienTichTheoThongBaoGanNhatTenNavigationChannel", 0.0);
                 item.put("tinhTrangHoatDongChuaCongBoTenNavigationChannel", "");
                 item.put("tinhTrangHoatDongDaCongBoTenNavigationChannel", "");

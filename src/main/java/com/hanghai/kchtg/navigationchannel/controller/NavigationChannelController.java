@@ -66,9 +66,9 @@ public class NavigationChannelController {
 
     @PostMapping("/{id}/approve/c1")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:approvec1')")
-    public ResponseEntity<ApiResponse<PheDuyetResponse>> approveC1(
+    public ResponseEntity<ApiResponse<ApprovalResponse>> approveC1(
             @PathVariable java.util.UUID id,
-            @RequestBody @Valid PheDuyetRequest req,
+            @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt C1 thành công", service.approveC1(id, req, username)));
@@ -76,9 +76,9 @@ public class NavigationChannelController {
 
     @PostMapping("/{id}/approve/c2")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:approvec2')")
-    public ResponseEntity<ApiResponse<PheDuyetResponse>> approveC2(
+    public ResponseEntity<ApiResponse<ApprovalResponse>> approveC2(
             @PathVariable java.util.UUID id,
-            @RequestBody @Valid PheDuyetRequest req,
+            @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt C2 thành công", service.approveC2(id, req, username)));

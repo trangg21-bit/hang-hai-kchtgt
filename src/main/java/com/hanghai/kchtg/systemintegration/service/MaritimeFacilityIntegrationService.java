@@ -42,7 +42,7 @@ public class MaritimeFacilityIntegrationService {
         return integrationService.createIntegration(request);
     }
 
-    public SystemIntegrationResponse integrateCoSoSuaChua(SystemIntegrationRequest request) {
+    public SystemIntegrationResponse integrateShipRepairFacility(SystemIntegrationRequest request) {
         request.setIntegrationType(IntegrationType.CO_SO_SUA_CHUA);
         return integrationService.createIntegration(request);
     }

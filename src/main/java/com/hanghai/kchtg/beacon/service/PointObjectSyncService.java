@@ -57,7 +57,7 @@ public class PointObjectSyncService {
         double[] coords = getCoordinates(entity.getKhongGianId());
         point.setLongitude(coords[0]);
         point.setLatitude(coords[1]);
-        point.setDescription(entity.getDescription());
+        point.setDescription(entity.getLocation());
         point.setStatus(PointObject.Status.PUBLISHED);
         point.setUnitId(entity.getUnitId());
         point.setApprovalStatus(PointObject.ApprovalStatus.APPROVED);

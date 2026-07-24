@@ -27,7 +27,7 @@ export async function fetchNhaTramDenList(params: {
   if (params.status) sp.set('status', params.status);
 
   const hasFilter = params.code || params.name || params.type || params.status;
-  const url = hasFilter ? '/v1/nhatram/den/search' : '/v1/nhatram/den';
+  const url = hasFilter ? '/v1/lighthouse-station/search' : '/v1/lighthouse-station';
 
   const res = await api.get(`${url}?${sp}`);
   const list = res.data.data || [];
@@ -41,22 +41,22 @@ export async function fetchNhaTramDenList(params: {
 }
 
 export async function fetchNhaTramDenById(id: string): Promise<NhaTramDenResponse> {
-  const res = await api.get(`/v1/nhatram/den/${id}`);
+  const res = await api.get(`/v1/lighthouse-station/${id}`);
   return res.data.data;
 }
 
 export async function createNhaTramDen(payload: CreateNhaTramDenRequest): Promise<NhaTramDenResponse> {
-  const res = await api.post('/v1/nhatram/den', payload);
+  const res = await api.post('/v1/lighthouse-station', payload);
   return res.data.data;
 }
 
 export async function updateNhaTramDen(id: string, payload: CreateNhaTramDenRequest): Promise<NhaTramDenResponse> {
-  const res = await api.put(`/v1/nhatram/den/${id}`, payload);
+  const res = await api.put(`/v1/lighthouse-station/${id}`, payload);
   return res.data.data;
 }
 
 export async function deleteNhaTramDen(id: string): Promise<void> {
-  await api.delete(`/v1/nhatram/den/${id}`);
+  await api.delete(`/v1/lighthouse-station/${id}`);
 }
 
 // ==========================================
@@ -79,7 +79,7 @@ export async function fetchNhaTramPhaoList(params: {
   if (params.status) sp.set('status', params.status);
 
   const hasFilter = params.code || params.name || params.type || params.status;
-  const url = hasFilter ? '/v1/nhatram/phao/search' : '/v1/nhatram/phao';
+  const url = hasFilter ? '/v1/buoy-station/search' : '/v1/buoy-station';
 
   const res = await api.get(`${url}?${sp}`);
   const list = res.data.data || [];
@@ -93,20 +93,20 @@ export async function fetchNhaTramPhaoList(params: {
 }
 
 export async function fetchNhaTramPhaoById(id: string): Promise<NhaTramPhaoResponse> {
-  const res = await api.get(`/v1/nhatram/phao/${id}`);
+  const res = await api.get(`/v1/buoy-station/${id}`);
   return res.data.data;
 }
 
 export async function createNhaTramPhao(payload: CreateNhaTramPhaoRequest): Promise<NhaTramPhaoResponse> {
-  const res = await api.post('/v1/nhatram/phao', payload);
+  const res = await api.post('/v1/buoy-station', payload);
   return res.data.data;
 }
 
 export async function updateNhaTramPhao(id: string, payload: CreateNhaTramPhaoRequest): Promise<NhaTramPhaoResponse> {
-  const res = await api.put(`/v1/nhatram/phao/${id}`, payload);
+  const res = await api.put(`/v1/buoy-station/${id}`, payload);
   return res.data.data;
 }
 
 export async function deleteNhaTramPhao(id: string): Promise<void> {
-  await api.delete(`/v1/nhatram/phao/${id}`);
+  await api.delete(`/v1/buoy-station/${id}`);
 }

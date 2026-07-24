@@ -88,17 +88,17 @@ class BeaconLightServiceTest {
                 .thenReturn(dummySpatial);
     }
 
-    private BeaconLight makeEntity(UUID id, BeaconStatus status) {
+    private BeaconLight makeEntity(UUID id, String status) {
         BeaconLight entity = BeaconLight.builder()
                 .code("DEN-001")
                 .name("Đèn biển test")
-                .type(BeaconLightType.LIGHTHOUSE)
+                .type("LIGHTHOUSE")
                 .lightRange(15.0)
-                .lightColor("Trắng")
-                .range(12.0)
+                .towerColor("Trắng")
+                .area(12.0)
                 .isActive(true)
                 .status(status)
-                .approvalStatus(BeaconApprovalStatus.PENDING)
+                .approvalStatus("PENDING")
                 .build();
         setId(entity, id);
         entity.setCreatedAt(LocalDateTime.now().minusDays(1));
@@ -120,14 +120,14 @@ class BeaconLightServiceTest {
         return CreateBeaconLightRequest.builder()
                 .code("DEN-002")
                 .name("Đèn biển mới")
-                .type(BeaconLightType.BEACON_LIGHT)
+                .type("BEACON_LIGHT")
                 .latitude(10.5)
                 .longitude(106.5)
                 .lightRange(15.0)
-                .lightColor("Đỏ")
-                .lightCharacteristic("Chớp 5 giây")
-                .range(12.0)
-                .description("Mô tả")
+                .towerColor("Đỏ")
+                .primaryLightModel("Chớp 5 giây")
+                .area(12.0)
+                .location("Mô tả")
                 .isActive(true)
                 .action("draft")
                 .build();
@@ -142,7 +142,7 @@ class BeaconLightServiceTest {
         @Test
         @DisplayName("findAll returns list of responses")
         void findAll() {
-            BeaconLight entity = makeEntity(UUID.randomUUID(), BeaconStatus.DRAFT);
+            BeaconLight entity = makeEntity(UUID.randomUUID(), "DRAFT");
             when(beaconLightRepo.findAll()).thenReturn(List.of(entity));
 
             List<BeaconLightResponse> result = service.findAll();
@@ -157,7 +157,7 @@ class BeaconLightServiceTest {
         @DisplayName("findById returns response when found")
         void findById() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.DRAFT);
+            BeaconLight entity = makeEntity(id, "DRAFT");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
 
             BeaconLightResponse result = service.findById(id);
@@ -184,17 +184,17 @@ class BeaconLightServiceTest {
         @DisplayName("search returns filtered results")
         void search() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.DRAFT);
+            BeaconLight entity = makeEntity(id, "DRAFT");
             when(beaconLightRepo.searchFiltered(any(), any(), any(), any()))
                     .thenReturn(List.of(entity));
 
             List<BeaconLightResponse> result = service.search(
-                    "Đèn", "DEN", BeaconLightType.LIGHTHOUSE, BeaconStatus.DRAFT);
+                    "Đèn", "DEN", "LIGHTHOUSE", "DRAFT");
 
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getName()).isEqualTo("Đèn biển test");
             verify(beaconLightRepo).searchFiltered("Đèn", "DEN",
-                    BeaconLightType.LIGHTHOUSE, BeaconStatus.DRAFT);
+                    "LIGHTHOUSE", "DRAFT");
         }
     }
 
@@ -223,9 +223,9 @@ class BeaconLightServiceTest {
             assertThat(result.getId()).isEqualTo(savedId);
             assertThat(result.getCode()).isEqualTo("DEN-002");
             assertThat(result.getName()).isEqualTo("Đèn biển mới");
-            assertThat(result.getType()).isEqualTo(BeaconLightType.BEACON_LIGHT);
-            assertThat(result.getStatus()).isEqualTo(BeaconStatus.DRAFT);
-            assertThat(result.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.PENDING);
+            assertThat(result.getType()).isEqualTo("BEACON_LIGHT");
+            assertThat(result.getStatus()).isEqualTo("DRAFT");
+            assertThat(result.getApprovalStatus()).isEqualTo("PENDING");
 
             verify(beaconLightRepo, atLeastOnce()).save(any());
             verify(historyRepo).save(any());
@@ -262,7 +262,7 @@ class BeaconLightServiceTest {
 
             BeaconLightResponse result = service.create(request);
 
-            assertThat(result.getStatus()).isEqualTo(BeaconStatus.PENDING_APPROVAL);
+            assertThat(result.getStatus()).isEqualTo("PENDING_APPROVAL");
             assertThat(result.getApprovalLevel()).isEqualTo(1);
         }
 
@@ -287,7 +287,7 @@ class BeaconLightServiceTest {
         @DisplayName("create with future lastMaintenanceDate — throws IllegalArgumentException")
         void createFutureMaintenanceDate() {
             CreateBeaconLightRequest request = makeCreateRequest();
-            request.setLastMaintenanceDate(LocalDate.now().plusDays(30));
+            request.setLastRepairDate(LocalDate.now().plusDays(30));
 
             when(beaconLightRepo.existsByCode("DEN-002")).thenReturn(false);
             when(buoyRepo.existsByCode("DEN-002")).thenReturn(false);
@@ -310,21 +310,21 @@ class BeaconLightServiceTest {
         @DisplayName("update mutable fields — saves and returns updated response")
         void updateSuccess() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.DRAFT);
+            BeaconLight entity = makeEntity(id, "DRAFT");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconLightRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
             UpdateBeaconLightRequest request = UpdateBeaconLightRequest.builder()
                     .name("Tên mới")
-                    .lightColor("Xanh")
-                    .range(18.0)
+                    .towerColor("Xanh")
+                    .area(18.0)
                     .build();
 
             BeaconLightResponse result = service.update(id, request);
 
             assertThat(result.getName()).isEqualTo("Tên mới");
-            assertThat(result.getLightColor()).isEqualTo("Xanh");
-            assertThat(result.getRange()).isEqualTo(18.0);
+            assertThat(result.getTowerColor()).isEqualTo("Xanh");
+            assertThat(result.getArea()).isEqualTo(18.0);
             // Code should remain immutable
             assertThat(result.getCode()).isEqualTo("DEN-001");
 
@@ -336,7 +336,7 @@ class BeaconLightServiceTest {
         @DisplayName("update deleted entity — throws EntityNotFoundException")
         void updateDeletedEntity() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.DELETED);
+            BeaconLight entity = makeEntity(id, "DELETED");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
 
             UpdateBeaconLightRequest request = UpdateBeaconLightRequest.builder()
@@ -354,12 +354,12 @@ class BeaconLightServiceTest {
         @DisplayName("update with approved type change — throws IllegalArgumentException")
         void updateApprovedTypeChange() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.PUBLISHED);
-            entity.setType(BeaconLightType.LIGHTHOUSE);
+            BeaconLight entity = makeEntity(id, "PUBLISHED");
+            entity.setType("LIGHTHOUSE");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
 
             UpdateBeaconLightRequest request = UpdateBeaconLightRequest.builder()
-                    .type(BeaconLightType.BEACON_MARK)
+                    .type("BEACON_MARK")
                     .build();
 
             assertThatThrownBy(() -> service.update(id, request))
@@ -371,8 +371,8 @@ class BeaconLightServiceTest {
         @DisplayName("update on approved entity — reverts status to DRAFT")
         void updateApprovedEntityRevertsStatus() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.APPROVED_L1);
-            entity.setApprovalStatus(BeaconApprovalStatus.APPROVED);
+            BeaconLight entity = makeEntity(id, "APPROVED_L1");
+            entity.setApprovalStatus("APPROVED");
             entity.setApprovalLevel(1);
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconLightRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -383,8 +383,8 @@ class BeaconLightServiceTest {
 
             BeaconLightResponse result = service.update(id, request);
 
-            assertThat(result.getStatus()).isEqualTo(BeaconStatus.DRAFT);
-            assertThat(result.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.PENDING);
+            assertThat(result.getStatus()).isEqualTo("DRAFT");
+            assertThat(result.getApprovalStatus()).isEqualTo("PENDING");
             assertThat(result.getApprovalLevel()).isEqualTo(1);
         }
 
@@ -392,7 +392,7 @@ class BeaconLightServiceTest {
         @DisplayName("update keeps code immutable")
         void updateCannotChangeCode() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.DRAFT);
+            BeaconLight entity = makeEntity(id, "DRAFT");
             // The UpdateBeaconLightRequest has no code field — it's not mutable
             // Verify that the entity's code stays unchanged after any update
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
@@ -418,7 +418,7 @@ class BeaconLightServiceTest {
         @DisplayName("delete active entity — sets DELETED status")
         void deleteSuccess() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.DRAFT);
+            BeaconLight entity = makeEntity(id, "DRAFT");
             entity.setKhongGianId(UUID.randomUUID());
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconLightRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -427,7 +427,7 @@ class BeaconLightServiceTest {
 
             verify(beaconLightRepo).save(beaconLightCaptor.capture());
             BeaconLight saved = beaconLightCaptor.getValue();
-            assertThat(saved.getStatus()).isEqualTo(BeaconStatus.DELETED);
+            assertThat(saved.getStatus()).isEqualTo("DELETED");
             assertThat(saved.getDeletedAt()).isNotNull();
             verify(historyRepo).save(any());
             verify(gisSpatialObjectService).delete(entity.getKhongGianId());
@@ -437,7 +437,7 @@ class BeaconLightServiceTest {
         @DisplayName("delete already deleted entity — throws IllegalArgumentException")
         void deleteAlreadyDeleted() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.DELETED);
+            BeaconLight entity = makeEntity(id, "DELETED");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
 
             assertThatThrownBy(() -> service.delete(id))
@@ -451,7 +451,7 @@ class BeaconLightServiceTest {
         @DisplayName("delete entity in approval process — throws IllegalStateException")
         void deleteInApprovalProcess() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.PENDING_APPROVAL);
+            BeaconLight entity = makeEntity(id, "PENDING_APPROVAL");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
 
             assertThatThrownBy(() -> service.delete(id))
@@ -481,7 +481,7 @@ class BeaconLightServiceTest {
         @DisplayName("submitForApproval — transitions from DRAFT to PENDING_APPROVAL")
         void submitForApproval() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.DRAFT);
+            BeaconLight entity = makeEntity(id, "DRAFT");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconLightRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -489,8 +489,8 @@ class BeaconLightServiceTest {
 
             verify(beaconLightRepo).save(beaconLightCaptor.capture());
             BeaconLight saved = beaconLightCaptor.getValue();
-            assertThat(saved.getStatus()).isEqualTo(BeaconStatus.PENDING_APPROVAL);
-            assertThat(saved.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.PENDING);
+            assertThat(saved.getStatus()).isEqualTo("PENDING_APPROVAL");
+            assertThat(saved.getApprovalStatus()).isEqualTo("PENDING");
             assertThat(saved.getApprovalLevel()).isEqualTo(1);
             verify(notificationService).sendApprovalNotification(entity);
         }
@@ -499,7 +499,7 @@ class BeaconLightServiceTest {
         @DisplayName("submitForApproval — throws when not DRAFT")
         void submitForApprovalNotDraft() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.PENDING_APPROVAL);
+            BeaconLight entity = makeEntity(id, "PENDING_APPROVAL");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
 
             assertThatThrownBy(() -> service.submitForApproval(id))
@@ -513,7 +513,7 @@ class BeaconLightServiceTest {
         @DisplayName("approveL1 — transitions from PENDING_APPROVAL to APPROVED_L1")
         void approveL1() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.PENDING_APPROVAL);
+            BeaconLight entity = makeEntity(id, "PENDING_APPROVAL");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconLightRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -521,11 +521,11 @@ class BeaconLightServiceTest {
 
             verify(beaconLightRepo).save(beaconLightCaptor.capture());
             BeaconLight saved = beaconLightCaptor.getValue();
-            assertThat(saved.getStatus()).isEqualTo(BeaconStatus.APPROVED_L1);
-            assertThat(saved.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.APPROVED);
+            assertThat(saved.getStatus()).isEqualTo("APPROVED_L1");
+            assertThat(saved.getApprovalStatus()).isEqualTo("APPROVED");
             assertThat(saved.getApprovedBy()).isEqualTo("2");
             assertThat(saved.getApprovedDate()).isNotNull();
-            assertThat(result.getStatus()).isEqualTo(BeaconStatus.APPROVED_L1);
+            assertThat(result.getStatus()).isEqualTo("APPROVED_L1");
             verify(historyRepo).save(any());
             verify(notificationService).sendL2ApprovalNotification(entity);
         }
@@ -534,7 +534,7 @@ class BeaconLightServiceTest {
         @DisplayName("approveL1 — throws when not PENDING_APPROVAL")
         void approveL1WrongStatus() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.DRAFT);
+            BeaconLight entity = makeEntity(id, "DRAFT");
             entity.setApprovedBy(null);
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
 
@@ -547,7 +547,7 @@ class BeaconLightServiceTest {
         @DisplayName("approveL2 — transitions from APPROVED_L1 to PUBLISHED")
         void approveL2() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.APPROVED_L1);
+            BeaconLight entity = makeEntity(id, "APPROVED_L1");
             entity.setApprovedBy("2");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconLightRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -556,10 +556,10 @@ class BeaconLightServiceTest {
 
             verify(beaconLightRepo).save(beaconLightCaptor.capture());
             BeaconLight saved = beaconLightCaptor.getValue();
-            assertThat(saved.getStatus()).isEqualTo(BeaconStatus.PUBLISHED);
-            assertThat(saved.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.APPROVED);
+            assertThat(saved.getStatus()).isEqualTo("PUBLISHED");
+            assertThat(saved.getApprovalStatus()).isEqualTo("APPROVED");
             assertThat(saved.getApprovedBy()).isEqualTo("3");
-            assertThat(result.getStatus()).isEqualTo(BeaconStatus.PUBLISHED);
+            assertThat(result.getStatus()).isEqualTo("PUBLISHED");
             verify(historyRepo).save(any());
         }
 
@@ -567,7 +567,7 @@ class BeaconLightServiceTest {
         @DisplayName("approveL2 — throws when not APPROVED_L1")
         void approveL2WrongStatus() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.PENDING_APPROVAL);
+            BeaconLight entity = makeEntity(id, "PENDING_APPROVAL");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
 
             assertThatThrownBy(() -> service.approveL2(id, "3"))
@@ -579,7 +579,7 @@ class BeaconLightServiceTest {
         @DisplayName("reject with valid reason — transitions to DRAFT + REJECTED")
         void rejectValid() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.PENDING_APPROVAL);
+            BeaconLight entity = makeEntity(id, "PENDING_APPROVAL");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconLightRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -588,11 +588,11 @@ class BeaconLightServiceTest {
 
             verify(beaconLightRepo).save(beaconLightCaptor.capture());
             BeaconLight saved = beaconLightCaptor.getValue();
-            assertThat(saved.getStatus()).isEqualTo(BeaconStatus.DRAFT);
-            assertThat(saved.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.REJECTED);
+            assertThat(saved.getStatus()).isEqualTo("DRAFT");
+            assertThat(saved.getApprovalStatus()).isEqualTo("REJECTED");
             assertThat(saved.getRejectionReason()).isEqualTo("Lý do từ chối hợp lệ (đủ 10 ký tự)");
-            assertThat(result.getStatus()).isEqualTo(BeaconStatus.DRAFT);
-            assertThat(result.getApprovalStatus()).isEqualTo(BeaconApprovalStatus.REJECTED);
+            assertThat(result.getStatus()).isEqualTo("DRAFT");
+            assertThat(result.getApprovalStatus()).isEqualTo("REJECTED");
             verify(notificationService).sendRejectionNotification(entity,
                     "Lý do từ chối hợp lệ (đủ 10 ký tự)");
         }
@@ -601,7 +601,7 @@ class BeaconLightServiceTest {
         @DisplayName("reject with short reason — throws IllegalArgumentException")
         void rejectShortReason() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.PENDING_APPROVAL);
+            BeaconLight entity = makeEntity(id, "PENDING_APPROVAL");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
 
             assertThatThrownBy(() -> service.reject(id, "Ngắn", "2"))
@@ -613,7 +613,7 @@ class BeaconLightServiceTest {
         @DisplayName("reject with null reason — throws IllegalArgumentException")
         void rejectNullReason() {
             UUID id = UUID.randomUUID();
-            BeaconLight entity = makeEntity(id, BeaconStatus.PENDING_APPROVAL);
+            BeaconLight entity = makeEntity(id, "PENDING_APPROVAL");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
 
             assertThatThrownBy(() -> service.reject(id, null, "2"))

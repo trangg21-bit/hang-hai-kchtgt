@@ -66,14 +66,14 @@ export interface BeaconLight {
   latitude: number;
   longitude: number;
   lightRange: number;
-  lightColor?: string;
-  lightCharacteristic?: string;
-  range?: number;
-  description?: string;
+  towerColor?: string;
+  primaryLightModel?: string;
+  area?: number;
+  location?: string;
   unitId?: string;
   unitName?: string;
-  lastMaintenanceDate?: string;
-  nextMaintenanceDate?: string;
+  lastRepairDate?: string;
+  commissionedDate?: string;
   isActive: boolean;
   status: BeaconStatus;
   approvalStatus: string;
@@ -83,15 +83,15 @@ export interface BeaconLight {
   rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
-  hinhDang?: string;
-  ketCau?: string;
-  chieuCaoThapDen?: number;
-  chieuCaoTamSang?: number;
-  tamHieuLucDiaLy?: string;
-  chungLoaiDenDuPhong?: string;
-  nguonCungCapNangLuongChoDen?: string;
-  soLuongNhanSuBoTri?: number;
-  dienTichSuDungTram?: number;
+  shape?: string;
+  structure?: string;
+  towerHeight?: number;
+  lightHeight?: number;
+  geographicRange?: string;
+  backupLightModel?: string;
+  powerSupply?: string;
+  staffCount?: number;
+  stationArea?: number;
 }
 
 export interface CreateBeaconLightRequest {
@@ -101,24 +101,24 @@ export interface CreateBeaconLightRequest {
   latitude: number;
   longitude: number;
   lightRange: number;
-  lightColor?: string;
-  lightCharacteristic?: string;
-  range?: number;
-  description?: string;
+  towerColor?: string;
+  primaryLightModel?: string;
+  area?: number;
+  location?: string;
   unitId?: string;
-  lastMaintenanceDate?: string;
-  nextMaintenanceDate?: string;
+  lastRepairDate?: string;
+  commissionedDate?: string;
   isActive?: boolean;
   action?: 'draft' | 'submit';
-  hinhDang?: string;
-  ketCau?: string;
-  chieuCaoThapDen?: number;
-  chieuCaoTamSang?: number;
-  tamHieuLucDiaLy?: string;
-  chungLoaiDenDuPhong?: string;
-  nguonCungCapNangLuongChoDen?: string;
-  soLuongNhanSuBoTri?: number;
-  dienTichSuDungTram?: number;
+  shape?: string;
+  structure?: string;
+  towerHeight?: number;
+  lightHeight?: number;
+  geographicRange?: string;
+  backupLightModel?: string;
+  powerSupply?: string;
+  staffCount?: number;
+  stationArea?: number;
 }
 
 export interface UpdateBeaconLightRequest {
@@ -127,23 +127,23 @@ export interface UpdateBeaconLightRequest {
   latitude?: number;
   longitude?: number;
   lightRange?: number;
-  lightColor?: string;
-  lightCharacteristic?: string;
-  range?: number;
-  description?: string;
+  towerColor?: string;
+  primaryLightModel?: string;
+  area?: number;
+  location?: string;
   unitId?: string;
-  lastMaintenanceDate?: string;
-  nextMaintenanceDate?: string;
+  lastRepairDate?: string;
+  commissionedDate?: string;
   isActive?: boolean;
-  hinhDang?: string;
-  ketCau?: string;
-  chieuCaoThapDen?: number;
-  chieuCaoTamSang?: number;
-  tamHieuLucDiaLy?: string;
-  chungLoaiDenDuPhong?: string;
-  nguonCungCapNangLuongChoDen?: string;
-  soLuongNhanSuBoTri?: number;
-  dienTichSuDungTram?: number;
+  shape?: string;
+  structure?: string;
+  towerHeight?: number;
+  lightHeight?: number;
+  geographicRange?: string;
+  backupLightModel?: string;
+  powerSupply?: string;
+  staffCount?: number;
+  stationArea?: number;
 }
 
 export interface Buoy {

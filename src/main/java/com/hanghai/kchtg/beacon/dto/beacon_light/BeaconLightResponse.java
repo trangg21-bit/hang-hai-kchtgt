@@ -1,8 +1,5 @@
 package com.hanghai.kchtg.beacon.dto.beacon_light;
 
-import com.hanghai.kchtg.beacon.entity.BeaconApprovalStatus;
-import com.hanghai.kchtg.beacon.entity.BeaconLightType;
-import com.hanghai.kchtg.beacon.entity.BeaconStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,21 +21,21 @@ public class BeaconLightResponse {
     private UUID id;
     private String code;
     private String name;
-    private BeaconLightType type;
+    private String type;
     private Double latitude;
     private Double longitude;
     private Double lightRange;
-    private String lightColor;
-    private String lightCharacteristic;
-    private Double range;
-    private String description;
+    private String towerColor;
+    private String primaryLightModel;
+    private Double area;
+    private String location;
     private UUID unitId;
     private String unitName;
-    private LocalDate lastMaintenanceDate;
-    private LocalDate nextMaintenanceDate;
+    private LocalDate lastRepairDate;
+    private LocalDate commissionedDate;
     private Boolean isActive;
-    private BeaconStatus status;
-    private BeaconApprovalStatus approvalStatus;
+    private String status;
+    private String approvalStatus;
     private Integer approvalLevel;
     private String approvedBy;
     private LocalDateTime approvedDate;
@@ -46,13 +43,13 @@ public class BeaconLightResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    private String hinhDang;
-    private String ketCau;
-    private Double chieuCaoThapDen;
-    private Double chieuCaoTamSang;
-    private String tamHieuLucDiaLy;
-    private String chungLoaiDenDuPhong;
-    private String nguonCungCapNangLuongChoDen;
-    private Integer soLuongNhanSuBoTri;
-    private Double dienTichSuDungTram;
+    private String shape;
+    private String structure;
+    private Double towerHeight;
+    private Double lightHeight;
+    private String geographicRange;
+    private String backupLightModel;
+    private String powerSupply;
+    private Integer staffCount;
+    private Double stationArea;
 }

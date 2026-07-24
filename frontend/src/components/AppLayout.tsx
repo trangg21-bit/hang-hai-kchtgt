@@ -44,7 +44,7 @@ const MENU_PERMISSION_MAP: Record<string, string> = {
   '/gis/search': 'data:read',
   '/gis/map': 'data:read',
   '/gis/permits': 'data:read',
-  '/den-bien': 'data:read',
+  '/beacon-lights': 'data:read',
   '/buoys': 'data:read',
   '/history': 'data:read',
   '/Port': 'Port:read',
@@ -54,9 +54,9 @@ const MENU_PERMISSION_MAP: Record<string, string> = {
   '/WaterZone': 'WaterZone:read',
   '/navigation-channel': 'navigationchannel:read',
   '/dike-revetment': 'dikerevetment:read',
-  '/co-so-sua-chua': 'cosuachua:read',
-  '/tram-radar': 'tramradar:read',
-  '/he-thong-vts': 'vts:read',
+  '/ship-repair-facility': 'shiprepair:read',
+  '/radar-station': 'radarstation:read',
+  '/vts-system': 'vts:read',
   '/connections': 'connection:read',
   '/reports': 'report:read',
   '/settings': 'admin:manage',
@@ -83,10 +83,10 @@ const pageTitles: Record<string, string> = {
   '/gis/search': 'Tra cứu thông tin KCHT hàng hải trên bản đồ',
   '/gis/map': 'Quản lý thông tin KCHT hàng hải trên bản đồ',
   '/gis/permits': 'Giấy phép S-63',
-  '/den-bien': 'Đèn biển',
+  '/beacon-lights': 'Đèn biển',
   '/buoys': 'Phao tiêu',
-  '/nhatram/den': 'Nhà trạm đèn biển',
-  '/nhatram/phao': 'Nhà trạm phao tiêu',
+  '/lighthouse-station': 'Nhà trạm đèn biển',
+  '/buoy-station': 'Nhà trạm phao tiêu',
   '/history': 'Lịch sử thay đổi',
   '/Port': 'Quản lý cảng biển',
   '/Berth': 'Quản lý bến cảng',
@@ -95,9 +95,9 @@ const pageTitles: Record<string, string> = {
   '/WaterZone': 'Quản lý vùng nước',
   '/navigation-channel': 'Luồng hàng hải',
   '/dike-revetment': 'Đê/Kè',
-  '/co-so-sua-chua': 'Cơ sở sửa chữa & đóng tàu',
-  '/tram-radar': 'Trạm Radar',
-  '/he-thong-vts': 'Hệ thống VTS',
+  '/ship-repair-facility': 'Cơ sở sửa chữa & đóng tàu',
+  '/radar-station': 'Trạm Radar',
+  '/vts-system': 'Hệ thống VTS',
   '/connections': 'Liên thông dữ liệu',
   '/reports': 'Báo cáo & Thống kê',
   '/settings': 'Cấu hình hệ thống',
@@ -144,12 +144,12 @@ export default function AppLayout() {
     // For GIS, select the deepest valid key: /gis/points, /gis/lines, etc.
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
-  } else if (pathSegments[0] === 'nhatram' || pathSegments[0] === 'vanban' || pathSegments[0] === 'station' || pathSegments[0] === 'asset') {
+  } else if (pathSegments[0] === 'nhatram' || pathSegments[0] === 'lighthouse-station' || pathSegments[0] === 'buoy-station' || pathSegments[0] === 'vanban' || pathSegments[0] === 'station' || pathSegments[0] === 'asset') {
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
   } else if (pathSegments[0] === 'Port' || pathSegments[0] === 'Berth' || pathSegments[0] === 'Pier' || pathSegments[0] === 'DryPort' || pathSegments[0] === 'WaterZone') {
     selectedKey = '/' + pathSegments[0];
-  } else if (pathSegments[0] === 'navigation-channel' || pathSegments[0] === 'dike-revetment' || pathSegments[0] === 'co-so-sua-chua' || pathSegments[0] === 'tram-radar' || pathSegments[0] === 'he-thong-vts') {
+  } else if (pathSegments[0] === 'navigation-channel' || pathSegments[0] === 'dike-revetment' || pathSegments[0] === 'ship-repair-facility' || pathSegments[0] === 'radar-station' || pathSegments[0] === 'vts-system') {
     selectedKey = '/' + pathSegments[0];
   } else if (pathSegments[0] === 'reports') {
     selectedKey = location.pathname;
@@ -159,7 +159,7 @@ export default function AppLayout() {
 
   useEffect(() => {
     if (selectedKey) {
-      if (selectedKey.startsWith('/nhatram') || selectedKey === '/den-bien' || selectedKey === '/buoys' || selectedKey === '/history') {
+      if (selectedKey.startsWith('/nhatram') || selectedKey.startsWith('/lighthouse-station') || selectedKey.startsWith('/buoy-station') || selectedKey === '/beacon-lights' || selectedKey === '/buoys' || selectedKey === '/history') {
         setOpenKeys(['beacon']);
       } else if (selectedKey.startsWith('/gis')) {
         setOpenKeys(['gis']);
@@ -169,7 +169,7 @@ export default function AppLayout() {
         setOpenKeys(['asset-movement']);
       } else if (selectedKey.startsWith('/vanban')) {
         setOpenKeys(['vanban-suco']);
-      } else if (['/navigation-channel', '/dike-revetment', '/co-so-sua-chua', '/tram-radar', '/he-thong-vts'].includes(selectedKey)) {
+      } else if (['/navigation-channel', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system'].includes(selectedKey)) {
         setOpenKeys(['khu-nuoc-vts']);
       } else if (selectedKey.startsWith('/station')) {
         setOpenKeys(['stations']);
@@ -214,10 +214,10 @@ export default function AppLayout() {
       icon: <SettingOutlined />,
       label: 'Báo hiệu hàng hải',
       children: [
-        canAccessMenu('/den-bien') ? { key: '/den-bien', label: 'Đèn biển' } : null,
+        canAccessMenu('/beacon-lights') ? { key: '/beacon-lights', label: 'Đèn biển' } : null,
         canAccessMenu('/buoys') ? { key: '/buoys', label: 'Phao tiêu' } : null,
-        canAccessMenu('/nhatram/den') ? { key: '/nhatram/den', label: 'Nhà trạm đèn biển' } : null,
-        canAccessMenu('/nhatram/phao') ? { key: '/nhatram/phao', label: 'Nhà trạm phao tiêu' } : null,
+        canAccessMenu('/lighthouse-station') ? { key: '/lighthouse-station', label: 'Nhà trạm đèn biển' } : null,
+        canAccessMenu('/buoy-station') ? { key: '/buoy-station', label: 'Nhà trạm phao tiêu' } : null,
         canAccessMenu('/history') ? { key: '/history', label: 'Lịch sử thay đổi' } : null,
       ].filter(Boolean),
     },
@@ -263,9 +263,9 @@ export default function AppLayout() {
       children: [
         canAccessMenu('/navigation-channel') ? { key: '/navigation-channel', label: 'Luồng hàng hải' } : null,
         canAccessMenu('/dike-revetment') ? { key: '/dike-revetment', label: 'Đê/Kè' } : null,
-        canAccessMenu('/co-so-sua-chua') ? { key: '/co-so-sua-chua', label: 'Cơ sở sửa chữa & đóng tàu' } : null,
-        canAccessMenu('/tram-radar') ? { key: '/tram-radar', label: 'Trạm Radar' } : null,
-        canAccessMenu('/he-thong-vts') ? { key: '/he-thong-vts', label: 'Hệ thống VTS' } : null,
+        canAccessMenu('/ship-repair-facility') ? { key: '/ship-repair-facility', label: 'Cơ sở sửa chữa & đóng tàu' } : null,
+        canAccessMenu('/radar-station') ? { key: '/radar-station', label: 'Trạm Radar' } : null,
+        canAccessMenu('/vts-system') ? { key: '/vts-system', label: 'Hệ thống VTS' } : null,
       ].filter(Boolean),
     },
     {

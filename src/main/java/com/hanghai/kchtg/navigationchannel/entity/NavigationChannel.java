@@ -55,7 +55,7 @@ public class NavigationChannel {
     @Column(name = "deleted_at") private LocalDateTime deletedAt;
     @Column(name = "deleted_by", length = 100) private String deletedBy;
     @OneToMany(mappedBy = "navigationChannel", cascade = CascadeType.ALL, orphanRemoval = true) @Builder.Default private List<NavigationChannelAttachment> attachments = new ArrayList<>();
-    @OneToMany(mappedBy = "navigationChannel", cascade = CascadeType.ALL, orphanRemoval = true) @Builder.Default private List<PheDuyetLichSu> approvalHistory = new ArrayList<>();
+    @OneToMany(mappedBy = "navigationChannel", cascade = CascadeType.ALL, orphanRemoval = true) @Builder.Default private List<ApprovalHistory> approvalHistory = new ArrayList<>();
     @OneToMany(mappedBy = "navigationChannel", cascade = CascadeType.ALL, orphanRemoval = true) @Builder.Default private List<ChiTietTuyenLuong> chiTietTuyenLuongList = new ArrayList<>();
     @PrePersist protected void onCreate() { this.createdAt = LocalDateTime.now(); }
     @PreUpdate protected void onUpdate() { this.updatedAt = LocalDateTime.now(); }

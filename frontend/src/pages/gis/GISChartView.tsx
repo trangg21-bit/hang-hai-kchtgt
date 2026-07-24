@@ -40,9 +40,9 @@ import { beaconLightCRUD, buoyCRUD } from '../../services/beaconService';
 import { fetchNhaTramDenById, fetchNhaTramPhaoById } from '../../services/nhatram/api';
 import { dikeRevetmentCRUD } from '../../services/dikeRevetmentService';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
-import { tramRadarCRUD } from '../../services/tramRadarService';
-import { heThongVTSCRUD } from '../../services/heThongVtsService';
-import { coSuaChuaCRUD } from '../../services/coSuaChuaService';
+import { radarStationCRUD } from '../../services/radarStationService';
+import { vtsSystemCRUD } from '../../services/vtsSystemService';
+import { shipRepairFacilityCRUD } from '../../services/shipRepairFacilityService';
 import { organizationService } from '../../services/organizationService';
 import { userService } from '../../services/userService';
 import { VIETNAM_PROVINCES } from '../../types/common';
@@ -577,7 +577,7 @@ const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[]
   if (normType === 'Hệ thống VTS') {
     return [
       { key: 'maHeThong', label: 'Mã hệ thống' },
-      { key: 'tenHeThong', label: 'Tên hệ thống VTS' },
+      { key: 'systemName', label: 'Tên hệ thống VTS' },
       { key: 'vtsCenter', label: 'Trung tâm VTS' },
       { key: 'orgUnitId', label: 'Đơn vị quản lý' },
       { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
@@ -589,16 +589,16 @@ const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[]
   if (normType === 'Cơ sở sửa chữa' || normType === 'Cơ sở sửa chữa/đóng tàu') {
     return [
       { key: 'maCoSo', label: 'Mã cơ sở sửa chữa, đóng tàu' },
-      { key: 'tenCoSo', label: 'Tên cơ sở sửa chữa, đóng tàu' },
+      { key: 'facilityName', label: 'Tên cơ sở sửa chữa, đóng tàu' },
       { key: 'orgUnitId', label: 'Đơn vị quản lý' },
-      { key: 'tinhThanh', label: 'Địa điểm (Tỉnh/ Thành phố)' },
-      { key: 'diaChi', label: 'Địa điểm chi tiết' },
-      { key: 'ngaySuaDoi', label: 'Ngày cập nhật' },
-      { key: 'nguoiSuaDoi', label: 'Cán bộ cập nhật' },
+      { key: 'province', label: 'Địa điểm (Tỉnh/ Thành phố)' },
+      { key: 'address', label: 'Địa điểm chi tiết' },
+      { key: 'updatedDate', label: 'Ngày cập nhật' },
+      { key: 'updatedBy', label: 'Cán bộ cập nhật' },
       { key: 'remarks', label: 'Ghi chú' },
       { key: 'portId', label: 'Thuộc cảng biển' },
       { key: 'operationalStatus', label: 'Tình trạng' },
-      { key: 'trangThai', label: 'Trạng thái' },
+      { key: 'approvalStatus', label: 'Trạng thái' },
       { key: 'cauCangId', label: 'Thuộc cầu cảng' },
       { key: 'congNangSuDung', label: 'Công năng sử dụng' },
       { key: 'dienTichNhaXuongKhoBai', label: 'Diện tích nhà xưởng, kho bãi' },
@@ -853,12 +853,12 @@ const fetchAndFormatPopupDetails = async (record: any) => {
 
     // Hệ thống VTS
     maHeThong: 'Mã hệ thống',
-    tenHeThong: 'Tên hệ thống VTS',
+    systemName: 'Tên hệ thống VTS',
     vtsCenter: 'Trung tâm VTS',
 
     // Cơ sở đóng sửa tàu
     maCoSo: 'Mã cơ sở',
-    tenCoSo: 'Tên cơ sở đóng/sửa tàu',
+    facilityName: 'Tên cơ sở đóng/sửa tàu',
     nangLucNang: 'Năng lực nâng (tấn)',
     kichThuocDoc: 'Kích thước đốc (m)',
 
@@ -922,11 +922,11 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     } else if (type === 'Luồng hàng hải') {
       data = await navigationChannelCRUD.getById(id);
     } else if (type === 'Trạm radar') {
-      data = await tramRadarCRUD.getById(id);
+      data = await radarStationCRUD.getById(id);
     } else if (type === 'Hệ thống VTS') {
       data = await heThongVTSCRUD.getById(id);
     } else if (type === 'Cơ sở sửa chữa' || type === 'Cơ sở sửa chữa/đóng tàu') {
-      data = await coSuaChuaCRUD.getById(id);
+      data = await shipRepairFacilityCRUD.getById(id);
     } else if (
       type === 'Đài TTDH' ||
       type.toLowerCase().includes('duyên hải') ||
@@ -1008,7 +1008,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
             if (k === 'loaiBen') val = getLoaiBenText(val);
             if (k === 'loaiCau') val = getLoaiCauText(val);
             if (k === 'thoiDiemCongBoMo') val = formatDate(val);
-            if (k === 'ngaySuaDoi') val = formatDateTime(val);
+            if (k === 'ngaySuaDoi' || k === 'updatedDate') val = formatDateTime(val);
           }
           
           rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(val)}</td></tr>`;
@@ -1017,12 +1017,12 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       } else {
         const orderedKeys = [
           'ma', 'portCode', 'berthCode', 'pierCode', 'waterZoneCode', 'maDeKe', 'maLuong', 'maTram', 'maHeThong', 'maCoSo', 'code', 'beaconCode', 'buoyCode',
-          'name', 'ten', 'portName', 'berthName', 'pierName', 'waterZoneName', 'tenDeKe', 'tenLuong', 'tenTram', 'tenHeThong', 'tenCoSo', 'beaconName', 'buoyName',
+          'name', 'ten', 'portName', 'berthName', 'pierName', 'waterZoneName', 'tenDeKe', 'tenLuong', 'tenTram', 'systemName', 'facilityName', 'beaconName', 'buoyName',
           'orgName', 'orgUnitName', 'donViQuanLy', 'orgUnitId', 'donViId', 'unitId',
           'portId', 'tenCangBien', 'berthId', 'tenBenCang',
-          'tinhThanh', 'province', 'diaDiem', 'diaChiChiTiet', 'diaDiemChiTiet',
+          'province', 'diaDiem', 'diaChiChiTiet', 'diaDiemChiTiet',
           'operationalStatus', 'status', 'tinhTrang',
-          'approvalStatus', 'trangThai',
+          'approvalStatus',
           'loaiHinhHoc', 'geomType',
         ];
         
@@ -1102,7 +1102,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
 
       if (data.updatedAt || data.ngayCapNhat) {
         const updateDate = data.updatedAt || data.ngayCapNhat;
-        if (!renderedKeys.has('ngaySuaDoi') && !renderedKeys.has('ngayCapNhat') && !renderedKeys.has('updatedAt')) {
+        if (!renderedKeys.has('updatedDate') && !renderedKeys.has('ngaySuaDoi') && !renderedKeys.has('ngayCapNhat') && !renderedKeys.has('updatedAt')) {
           rowsHtml += `<tr><td style="${tdLabelStyle}">Ngày cập nhật:</td><td style="${tdValStyle}">${formatDateTime(updateDate)}</td></tr>`;
         }
       }
@@ -1271,19 +1271,19 @@ export default function GISChartView() {
         return;
       }
 
-      // Also skip closing if the pathname includes an ID segment (e.g. /den-bien/123)
+      // Also skip closing if the pathname includes an ID segment (e.g. /beacon-lights/123)
       const segments = pathname.split('/').filter(Boolean);
       if (segments.length >= 2) {
         return;
       }
 
       const isListPage = [
-        '/tram-radar',
+        '/radar-station',
         '/dike-revetment',
         '/navigation-channel',
-        '/he-thong-vts',
-        '/co-so-sua-chua',
-        '/den-bien',
+        '/vts-system',
+        '/ship-repair-facility',
+        '/beacon-lights',
         '/buoys',
         '/Port',
         '/Berth',
@@ -1326,9 +1326,9 @@ export default function GISChartView() {
       const label = (typeLabel || '').trim().toLowerCase();
       let path = '';
       if (label === 'nhà trạm đèn biển' || label === 'nha tram den bien') {
-        path = `/nhatram/den?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+        path = `/lighthouse-station?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label === 'nhà trạm phao tiêu' || label === 'nha tram phao tieu') {
-        path = `/nhatram/phao?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+        path = `/buoy-station?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('đèn biển') || label.includes('den bien')) {
         path = `/beacons/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('phao tiêu') || label.includes('phao tieu') || label.includes('phao, tiêu')) {
@@ -1354,11 +1354,11 @@ export default function GISChartView() {
       } else if (label.includes('đê') || label.includes('kè') || label.includes('de') || label.includes('ke')) {
         path = `/dike-revetment/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('cơ sở sửa chữa') || label.includes('co so sua chua')) {
-        path = `/co-so-sua-chua/${id}${action === 'edit' ? '?mode=edit' : ''}`;
+        path = `/ship-repair-facility/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('radar')) {
-        path = `/tram-radar/${id}${action === 'edit' ? '?mode=edit' : ''}`;
+        path = `/radar-station/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('hệ thống vts') || label.includes('he thong vts')) {
-        path = `/he-thong-vts/${id}${action === 'edit' ? '?mode=edit' : ''}`;
+        path = `/vts-system/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('đài ttdh') || label.includes('dai ttdh') || label.includes('đài duyên hải') || label.includes('dai duyen hai') || label.includes('hải phòng') || label.includes('hà nội') || label.includes('haiphong')) {
         path = `/station/coastal?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('inmarsat') || label.includes('cospas') || label.includes('lrit') || label.includes('vệ tinh')) {

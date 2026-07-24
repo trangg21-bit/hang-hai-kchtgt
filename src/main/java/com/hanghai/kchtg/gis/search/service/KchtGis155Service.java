@@ -5,25 +5,24 @@ import com.hanghai.kchtg.cangben.repository.*;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
-import com.hanghai.kchtg.cosuachua.entity.CoSuaChuaDongTau;
-import com.hanghai.kchtg.cosuachua.repository.CoSuaChuaDongTauRepository;
+import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
+import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
-import com.hanghai.kchtg.nhatram.entity.NhaTramDen;
-import com.hanghai.kchtg.nhatram.entity.NhaTramPhao;
-import com.hanghai.kchtg.nhatram.repository.NhaTramDenRepository;
-import com.hanghai.kchtg.nhatram.repository.NhaTramPhaoRepository;
-import com.hanghai.kchtg.vts.entity.HeThongVTS;
-import com.hanghai.kchtg.vts.repository.HeThongVTSRepository;
-import com.hanghai.kchtg.tramradar.entity.TramRadar;
-import com.hanghai.kchtg.tramradar.repository.TramRadarRepository;
+import com.hanghai.kchtg.station.entity.LighthouseStation;
+import com.hanghai.kchtg.station.entity.BuoyStation;
+import com.hanghai.kchtg.station.repository.LighthouseStationRepository;
+import com.hanghai.kchtg.station.repository.BuoyStationRepository;
+import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
+import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
+import com.hanghai.kchtg.radarstation.entity.RadarStation;
+import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.beacon.entity.BeaconLight;
 import com.hanghai.kchtg.beacon.entity.Buoy;
-import com.hanghai.kchtg.beacon.entity.BeaconApprovalStatus;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.station.entity.*;
@@ -60,11 +59,11 @@ public class KchtGis155Service {
     private final WaterZoneRepository waterZoneRepository;
     private final NavigationChannelRepository navigationChannelRepository;
     private final DikeRevetmentRepository dikeRevetmentRepository;
-    private final CoSuaChuaDongTauRepository coSuaChuaDongTauRepository;
-    private final NhaTramDenRepository nhaTramDenRepository;
-    private final NhaTramPhaoRepository nhaTramPhaoRepository;
-    private final HeThongVTSRepository heThongVTSRepository;
-    private final TramRadarRepository tramRadarRepository;
+    private final ShipRepairFacilityRepository shipRepairFacilityRepository;
+    private final LighthouseStationRepository lighthouseStationRepository;
+    private final BuoyStationRepository buoyStationRepository;
+    private final VtsSystemRepository vtsSystemRepository;
+    private final RadarStationRepository radarStationRepository;
     private final OrgUnitRepository orgUnitRepository;
     private final GisSpatialObjectRepository gisSpatialObjectRepository;
     private final BeaconLightRepository beaconLightRepository;
@@ -698,53 +697,53 @@ public class KchtGis155Service {
  
                 case COSO_SUACHUA:
                     String csSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
-                    List<CoSuaChuaDongTau> csList = coSuaChuaDongTauRepository.searchFiltered(orgUnitId, csSearchParam);
+                    List<ShipRepairFacility> csList = shipRepairFacilityRepository.searchFiltered(orgUnitId, csSearchParam);
                     Map<UUID, GisSpatialObject> csSpatialMap = new HashMap<>();
                     if (!csList.isEmpty()) {
-                        List<UUID> csSpatialIds = csList.stream().map(CoSuaChuaDongTau::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        List<UUID> csSpatialIds = csList.stream().map(ShipRepairFacility::getSpatialId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!csSpatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(csSpatialIds).forEach(so -> csSpatialMap.put(so.getId(), so));
                         }
                     }
-                    for (CoSuaChuaDongTau cs : csList) {
-                        GisSpatialObject spatial = csSpatialMap.get(cs.getKhongGianId());
+                    for (ShipRepairFacility cs : csList) {
+                        GisSpatialObject spatial = csSpatialMap.get(cs.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double lat = coords != null ? coords[0] : null;
                         Double lng = coords != null ? coords[1] : null;
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(String.valueOf(cs.getId()))
-                                .name(cs.getTenCoSo())
+                                .name(cs.getFacilityName())
                                 .ma("COSO_" + cs.getId())
                                 .orgName(getOrgName(cs.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Cơ sở sửa chữa")
-                                .diaDiem(cs.getTinhThanh() != null ? cs.getTinhThanh() : "")
-                                .diaChiChiTiet(cs.getDiaChi() != null ? cs.getDiaChi() : "")
+                                .diaDiem(cs.getProvince() != null ? cs.getProvince() : "")
+                                .diaChiChiTiet(cs.getAddress() != null ? cs.getAddress() : "")
                                 .latitude(lat)
                                 .longitude(lng)
                                 .build();
                         if (objectType != null) {
-                            populateSpatialAndFilterFromMap(results, r, cs.getKhongGianId(), objectType, GisObjectType.POINT, csSpatialMap);
+                            populateSpatialAndFilterFromMap(results, r, cs.getSpatialId(), objectType, GisObjectType.POINT, csSpatialMap);
                         } else {
                             results.add(r);
-                            if (cs.getKhongGianId() != null) {
-                                spatialIdMap.put(r.getId(), cs.getKhongGianId());
+                            if (cs.getSpatialId() != null) {
+                                spatialIdMap.put(r.getId(), cs.getSpatialId());
                             }
                         }
                     }
                     break;
 
                 case DENBIEN:
-                    // 1. Fetch from NhaTramDen
+                    // 1. Fetch from LighthouseStation
                     String denSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
-                    List<NhaTramDen> denList = nhaTramDenRepository.searchGis(orgUnitId, denSearchParam);
+                    List<LighthouseStation> denList = lighthouseStationRepository.searchGis(orgUnitId, denSearchParam);
                     Map<UUID, GisSpatialObject> denSpatialMap = new HashMap<>();
                     if (objectType != null && !denList.isEmpty()) {
-                        List<UUID> denIds = denList.stream().map(NhaTramDen::getId).collect(Collectors.toList());
+                        List<UUID> denIds = denList.stream().map(LighthouseStation::getId).collect(Collectors.toList());
                         gisSpatialObjectRepository.findByRefIdInAndRefType(denIds, KchtType.DENBIEN)
                                 .forEach(so -> denSpatialMap.put(so.getRefId(), so));
                     }
-                    for (NhaTramDen den : denList) {
+                    for (LighthouseStation den : denList) {
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(den.getId() != null ? den.getId().toString() : null)
                                 .name(den.getName())
@@ -785,7 +784,7 @@ public class KchtGis155Service {
                                 .orgName(getOrgName(beacon.getUnitId(), orgNameMap))
                                 .kchtTypeLabel("Đèn biển")
                                 .diaDiem("")
-                                .diaChiChiTiet("Mô tả: " + (beacon.getDescription() != null ? beacon.getDescription() : "") + ", Đặc tính ánh sáng: " + (beacon.getLightCharacteristic() != null ? beacon.getLightCharacteristic() : "") + ", Tầm hiệu lực: " + (beacon.getLightRange() != null ? beacon.getLightRange() : "") + " hải lý")
+                                .diaChiChiTiet("Mô tả: " + (beacon.getLocation() != null ? beacon.getLocation() : "") + ", Đặc tính ánh sáng: " + (beacon.getPrimaryLightModel() != null ? beacon.getPrimaryLightModel() : "") + ", Tầm hiệu lực: " + (beacon.getLightRange() != null ? beacon.getLightRange() : "") + " hải lý")
                                 .latitude(lat)
                                 .longitude(lng)
                                 .build();
@@ -835,14 +834,14 @@ public class KchtGis155Service {
 
                 case NHATRAM_PHAO:
                     String phaoSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
-                    List<NhaTramPhao> phaoList = nhaTramPhaoRepository.searchGis(orgUnitId, phaoSearchParam);
+                    List<BuoyStation> phaoList = buoyStationRepository.searchGis(orgUnitId, phaoSearchParam);
                     Map<UUID, GisSpatialObject> phaoSpatialMap = new HashMap<>();
                     if (objectType != null && !phaoList.isEmpty()) {
-                        List<UUID> phaoIds = phaoList.stream().map(NhaTramPhao::getId).collect(Collectors.toList());
+                        List<UUID> phaoIds = phaoList.stream().map(BuoyStation::getId).collect(Collectors.toList());
                         gisSpatialObjectRepository.findByRefIdInAndRefType(phaoIds, KchtType.NHATRAM_PHAO)
                                 .forEach(so -> phaoSpatialMap.put(so.getRefId(), so));
                     }
-                    for (NhaTramPhao phao : phaoList) {
+                    for (BuoyStation phao : phaoList) {
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(phao.getId() != null ? phao.getId().toString() : null)
                                 .name(phao.getName())
@@ -1015,15 +1014,15 @@ public class KchtGis155Service {
 
                 case HE_THONG_VTS:
                     String vtsSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
-                    List<HeThongVTS> vtsList = heThongVTSRepository.searchFiltered(orgUnitId, vtsSearchParam);
+                    List<VtsSystem> vtsList = vtsSystemRepository.searchFiltered(orgUnitId, vtsSearchParam);
                     Map<UUID, GisSpatialObject> vtsSpatialMap = new HashMap<>();
                     if (!vtsList.isEmpty()) {
-                        List<UUID> vtsSpatialIds = vtsList.stream().map(HeThongVTS::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        List<UUID> vtsSpatialIds = vtsList.stream().map(VtsSystem::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!vtsSpatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(vtsSpatialIds).forEach(so -> vtsSpatialMap.put(so.getId(), so));
                         }
                     }
-                    for (HeThongVTS vts : vtsList) {
+                    for (VtsSystem vts : vtsList) {
                         GisSpatialObject spatial = vtsSpatialMap.get(vts.getKhongGianId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double lat = coords != null ? coords[0] : null;
@@ -1031,12 +1030,12 @@ public class KchtGis155Service {
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(String.valueOf(vts.getId()))
-                                .name(vts.getTenHeThong())
+                                .name(vts.getSystemName())
                                 .ma("VTS_" + vts.getId())
                                 .orgName(getOrgName(vts.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Hệ thống VTS")
                                 .diaDiem("")
-                                .diaChiChiTiet("Vị trí: " + (vts.getViTri() != null ? vts.getViTri() : "") + ", Tình trạng: " + (vts.getTinhTrang() != null ? (vts.getTinhTrang() == com.hanghai.kchtg.vts.entity.TinhTrangVTS.TOT ? "Tốt" : vts.getTinhTrang() == com.hanghai.kchtg.vts.entity.TinhTrangVTS.XUONG_CAP ? "Xuống cấp" : "Hư hỏng") : "") + ", Mức độ phụ trách: " + (vts.getMucDoPhuTrach() != null ? vts.getMucDoPhuTrach() : ""))
+                                .diaChiChiTiet("Vị trí: " + (vts.getLocation() != null ? vts.getLocation() : "") + ", Tình trạng: " + (vts.getConditionStatus() != null ? ("TOT".equals(vts.getConditionStatus()) ? "Tốt" : "XUONG_CAP".equals(vts.getConditionStatus()) ? "Xuống cấp" : "Hư hỏng") : "") + ", Mức độ phụ trách: " + (vts.getResponsibilityLevel() != null ? vts.getResponsibilityLevel() : ""))
                                 .latitude(lat)
                                 .longitude(lng)
                                 .build();
@@ -1053,28 +1052,28 @@ public class KchtGis155Service {
 
                 case TRAM_RADAR:
                     String radarSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
-                    List<TramRadar> radarList = tramRadarRepository.searchFiltered(orgUnitId, radarSearchParam);
+                    List<RadarStation> radarList = radarStationRepository.searchFiltered(orgUnitId, radarSearchParam);
                     Map<UUID, GisSpatialObject> radarSpatialMap = new HashMap<>();
                     if (!radarList.isEmpty()) {
-                        List<UUID> radarIds = radarList.stream().map(TramRadar::getId).collect(Collectors.toList());
+                        List<UUID> radarIds = radarList.stream().map(RadarStation::getId).collect(Collectors.toList());
                         gisSpatialObjectRepository.findByRefIdInAndRefType(radarIds, KchtType.TRAM_RADAR)
                                 .forEach(so -> radarSpatialMap.put(so.getRefId(), so));
                     }
-                    for (TramRadar tr : radarList) {
-                        UUID dtoId = tr.getId();
+                    for (RadarStation rs : radarList) {
+                        UUID dtoId = rs.getId();
                         GisSpatialObject spatial = radarSpatialMap.get(dtoId);
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double lat = coords != null ? coords[0] : null;
                         Double lng = coords != null ? coords[1] : null;
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
-                                .id(String.valueOf(tr.getId()))
-                                .name(tr.getTenTram())
-                                .ma("RADAR_" + tr.getId())
-                                .orgName(getOrgName(tr.getOrgUnitId(), orgNameMap))
+                                .id(String.valueOf(rs.getId()))
+                                .name(rs.getStationName())
+                                .ma("RADAR_" + rs.getId())
+                                .orgName(getOrgName(rs.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Trạm radar")
                                 .diaDiem("")
-                                .diaChiChiTiet("Vị trí: " + (tr.getViTri() != null ? tr.getViTri() : "") + ", Loại trạm: " + (tr.getLoaiTram() != null ? tr.getLoaiTram() : "") + ", Tình trạng: " + (tr.getTinhTrang() != null ? tr.getTinhTrang() : ""))
+                                .diaChiChiTiet("Vị trí: " + (rs.getLocation() != null ? rs.getLocation() : "") + ", Loại trạm: " + (rs.getStationType() != null ? rs.getStationType() : "") + ", Tình trạng: " + (rs.getConditionStatus() != null ? rs.getConditionStatus() : ""))
                                 .latitude(lat)
                                 .longitude(lng)
                                 .build();

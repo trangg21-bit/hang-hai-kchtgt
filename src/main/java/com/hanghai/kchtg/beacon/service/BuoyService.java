@@ -54,7 +54,7 @@ public class BuoyService {
     }
 
     public List<BuoyResponse> search(
-            String name, String code, BuoyType type, BeaconStatus status) {
+            String name, String code, String type, String status) {
         return buoyRepo.searchFiltered(
                 name,
                 code,
@@ -90,8 +90,8 @@ public class BuoyService {
                 .lastInspectionDate(request.getLastInspectionDate())
                 .nextInspectionDate(request.getNextInspectionDate())
                 .isActive(request.getIsActive())
-                .status(BeaconStatus.DRAFT)
-                .approvalStatus(BeaconApprovalStatus.PENDING)
+                .status("DRAFT")
+                .approvalStatus("PENDING")
                 .build();
 
         if (entity.getUnitId() == null) {
@@ -99,7 +99,7 @@ public class BuoyService {
         }
 
         if ("submit".equals(request.getAction())) {
-            entity.setStatus(BeaconStatus.PENDING_APPROVAL);
+            entity.setStatus("PENDING_APPROVAL");
             entity.setApprovalLevel(1);
         }
 
@@ -133,7 +133,7 @@ public class BuoyService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Phao tiêu không tìm thấy: " + id));
 
-        if (entity.getStatus() == BeaconStatus.DELETED) {
+        if ("DELETED".equals(entity.getStatus())) {
             throw new EntityNotFoundException("Phao tiêu đã bị xóa");
         }
 
@@ -143,8 +143,8 @@ public class BuoyService {
         if (request.getName() != null) entity.setName(request.getName());
 
         // Handle type field update conditionally (BR-075-02)
-        if (request.getType() != null && request.getType() != entity.getType()) {
-            if (entity.getStatus() == BeaconStatus.APPROVED_L2 || entity.getStatus() == BeaconStatus.PUBLISHED) {
+        if (request.getType() != null && !request.getType().equals(entity.getType())) {
+            if ("APPROVED_L2".equals(entity.getStatus()) || "PUBLISHED".equals(entity.getStatus())) {
                 throw new IllegalArgumentException("Loại phao tiêu không thể thay đổi khi đã được phê duyệt.");
             }
             entity.setType(request.getType());
@@ -195,8 +195,8 @@ public class BuoyService {
 
         // Status revert logic for approved states (same as BeaconLight)
         if (isApprovedStatus(entity.getStatus())) {
-            entity.setStatus(BeaconStatus.DRAFT);
-            entity.setApprovalStatus(BeaconApprovalStatus.PENDING);
+            entity.setStatus("DRAFT");
+            entity.setApprovalStatus("PENDING");
             entity.setApprovalLevel(1);
         }
 
@@ -237,7 +237,7 @@ public class BuoyService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Phao tiêu không tìm thấy: " + id));
 
-        if (entity.getStatus() == BeaconStatus.DELETED) {
+        if ("DELETED".equals(entity.getStatus())) {
             throw new IllegalArgumentException("Phao tiêu này đã bị xóa trước đó");
         }
 
@@ -246,7 +246,7 @@ public class BuoyService {
                     "Không thể xóa phao tiêu đang chờ phê duyệt");
         }
 
-        entity.setStatus(BeaconStatus.DELETED);
+        entity.setStatus("DELETED");
         entity.softDelete();
         buoyRepo.save(entity);
 
@@ -265,13 +265,13 @@ public class BuoyService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Phao tiêu không tìm thấy: " + id));
 
-        if (entity.getStatus() != BeaconStatus.DRAFT) {
+        if (!"DRAFT".equals(entity.getStatus())) {
             throw new IllegalStateException(
                     "Chỉ có thể gửi phê duyệt khi status = DRAFT");
         }
 
-        entity.setStatus(BeaconStatus.PENDING_APPROVAL);
-        entity.setApprovalStatus(BeaconApprovalStatus.PENDING);
+        entity.setStatus("PENDING_APPROVAL");
+        entity.setApprovalStatus("PENDING");
         entity.setApprovalLevel(1);
         buoyRepo.save(entity);
 
@@ -284,7 +284,7 @@ public class BuoyService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Phao tiêu không tìm thấy: " + id));
 
-        if (entity.getStatus() != BeaconStatus.PENDING_APPROVAL) {
+        if (!"PENDING_APPROVAL".equals(entity.getStatus())) {
             throw new IllegalStateException(
                     "Không ở trạng thái chờ phê duyệt L1");
         }
@@ -295,8 +295,8 @@ public class BuoyService {
                     "Bạn không thể phê duyệt bản do chính mình gửi");
         }
 
-        entity.setStatus(BeaconStatus.APPROVED_L1);
-        entity.setApprovalStatus(BeaconApprovalStatus.APPROVED);
+        entity.setStatus("APPROVED_L1");
+        entity.setApprovalStatus("APPROVED");
         entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         buoyRepo.save(entity);
@@ -313,13 +313,13 @@ public class BuoyService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Phao tiêu không tìm thấy: " + id));
 
-        if (entity.getStatus() != BeaconStatus.APPROVED_L1) {
+        if (!"APPROVED_L1".equals(entity.getStatus())) {
             throw new IllegalStateException(
                     "Không ở trạng thái chờ phê duyệt L2");
         }
 
-        entity.setStatus(BeaconStatus.PUBLISHED);
-        entity.setApprovalStatus(BeaconApprovalStatus.APPROVED);
+        entity.setStatus("PUBLISHED");
+        entity.setApprovalStatus("APPROVED");
         entity.setApprovedBy(approverId);
         entity.setApprovedDate(LocalDateTime.now());
         buoyRepo.save(entity);
@@ -340,8 +340,8 @@ public class BuoyService {
                     "Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
-        entity.setStatus(BeaconStatus.DRAFT);
-        entity.setApprovalStatus(BeaconApprovalStatus.REJECTED);
+        entity.setStatus("DRAFT");
+        entity.setApprovalStatus("REJECTED");
         entity.setRejectionReason(rejectReason);
         buoyRepo.save(entity);
 
@@ -449,16 +449,16 @@ public class BuoyService {
                 .build();
     }
 
-    private boolean isApprovedStatus(BeaconStatus status) {
-        return status == BeaconStatus.APPROVED_L1
-                || status == BeaconStatus.APPROVED_L2
-                || status == BeaconStatus.PUBLISHED;
+    private boolean isApprovedStatus(String status) {
+        return "APPROVED_L1".equals(status)
+                || "APPROVED_L2".equals(status)
+                || "PUBLISHED".equals(status);
     }
 
-    private boolean isInApprovalProcess(BeaconStatus status) {
-        return status == BeaconStatus.PENDING_APPROVAL
-                || status == BeaconStatus.APPROVED_L1
-                || status == BeaconStatus.APPROVED_L2;
+    private boolean isInApprovalProcess(String status) {
+        return "PENDING_APPROVAL".equals(status)
+                || "APPROVED_L1".equals(status)
+                || "APPROVED_L2".equals(status);
     }
 
     private java.util.UUID getCurrentUserUnitId() {

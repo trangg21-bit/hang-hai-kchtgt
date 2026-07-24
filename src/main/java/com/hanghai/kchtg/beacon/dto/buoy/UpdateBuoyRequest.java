@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.beacon.dto.buoy;
 
-import com.hanghai.kchtg.beacon.entity.BuoyType;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
@@ -25,7 +24,7 @@ public class UpdateBuoyRequest {
     @Size(max = 200)
     private String name;
 
-    private BuoyType type;
+    private String type;
 
     @DecimalMin("-180.0")
     @DecimalMax("180.0")
