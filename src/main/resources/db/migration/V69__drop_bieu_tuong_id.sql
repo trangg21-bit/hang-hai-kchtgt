@@ -10,6 +10,7 @@ BEGIN
         WHERE table_schema = 'public' 
           AND table_type = 'BASE TABLE'
           AND table_name NOT IN ('spatial_object_categories', 'map_symbols')
+          AND table_name NOT LIKE 'flyway_%'
     LOOP
         BEGIN
             EXECUTE format('ALTER TABLE %I DROP COLUMN IF EXISTS bieu_tuong_id', t_name);
