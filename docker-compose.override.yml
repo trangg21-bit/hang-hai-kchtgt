@@ -1,0 +1,19 @@
+services:
+  vmd-csdl-v2:
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: registry.etc.vn/library/redis:8.0.2-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.redis
+    ports:
+      - "6379:6379"
+    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
