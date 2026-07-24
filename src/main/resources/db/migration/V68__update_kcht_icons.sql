@@ -1,4 +1,4 @@
--- V68: Update bieu_tuong_id of existing KCHT and gis_spatial_objects from spatial_object_categories
+-- V68: Update bieu_tuong_id/map_symbol_id of existing KCHT and gis_spatial_objects from spatial_object_categories
 
 DO $$
 DECLARE
@@ -8,14 +8,22 @@ BEGIN
     SELECT icon_id INTO cat_icon FROM spatial_object_categories WHERE code = 'CANG_BIEN' LIMIT 1;
     IF cat_icon IS NOT NULL THEN
         UPDATE gis_spatial_objects SET bieu_tuong_id = cat_icon WHERE ref_type = 0;
-        UPDATE cang_bien SET bieu_tuong_id = cat_icon;
+        IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'cang_bien') THEN
+            UPDATE cang_bien SET bieu_tuong_id = cat_icon;
+        ELSIF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'ports') THEN
+            UPDATE ports SET map_symbol_id = cat_icon;
+        END IF;
     END IF;
 
     -- 1: BENCANG
     SELECT icon_id INTO cat_icon FROM spatial_object_categories WHERE code = 'BEN_CANG' LIMIT 1;
     IF cat_icon IS NOT NULL THEN
         UPDATE gis_spatial_objects SET bieu_tuong_id = cat_icon WHERE ref_type = 1;
-        UPDATE ben_cang SET bieu_tuong_id = cat_icon;
+        IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'ben_cang') THEN
+            UPDATE ben_cang SET bieu_tuong_id = cat_icon;
+        ELSIF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'berths') THEN
+            UPDATE berths SET map_symbol_id = cat_icon;
+        END IF;
     END IF;
 
     -- 3: CANGCAN
@@ -28,7 +36,11 @@ BEGIN
     SELECT icon_id INTO cat_icon FROM spatial_object_categories WHERE code = 'VUNG_NUOC' LIMIT 1;
     IF cat_icon IS NOT NULL THEN
         UPDATE gis_spatial_objects SET bieu_tuong_id = cat_icon WHERE ref_type = 4;
-        UPDATE vung_nuoc SET bieu_tuong_id = cat_icon;
+        IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'vung_nuoc') THEN
+            UPDATE vung_nuoc SET bieu_tuong_id = cat_icon;
+        ELSIF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'water_zones') THEN
+            UPDATE water_zones SET map_symbol_id = cat_icon;
+        END IF;
     END IF;
 
     -- 5: DEKE

@@ -1,5 +1,20 @@
 -- Migration: Convert map_layers layer_type to INTEGER and status to BOOLEAN
 
+-- Drop any existing check constraints on map_layers first
+DO $$
+DECLARE
+    constraint_name_var text;
+BEGIN
+    FOR constraint_name_var IN 
+        SELECT conname 
+        FROM pg_constraint 
+        WHERE conrelid = 'map_layers'::regclass 
+          AND contype = 'c'
+    LOOP
+        EXECUTE 'ALTER TABLE map_layers DROP CONSTRAINT IF EXISTS ' || quote_ident(constraint_name_var);
+    END LOOP;
+END $$;
+
 -- 1. Convert layer_type column to INTEGER
 ALTER TABLE map_layers ALTER COLUMN layer_type TYPE INTEGER USING (
     CASE UPPER(layer_type::text)
