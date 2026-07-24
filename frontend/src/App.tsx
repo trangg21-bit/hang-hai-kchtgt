@@ -65,10 +65,10 @@ import DikeRevetmentList from './pages/dikerevetment/DikeRevetmentList';
 import DikeRevetmentForm from './pages/dikerevetment/DikeRevetmentForm';
 import ShipRepairFacilityList from './pages/shiprepair/ShipRepairFacilityList';
 import ShipRepairFacilityForm from './pages/shiprepair/ShipRepairFacilityForm';
-import TramRadarList from './pages/tramradar/TramRadarList';
-import TramRadarForm from './pages/tramradar/TramRadarForm';
-import HeThongVTSList from './pages/hethongvts/HeThongVTSList';
-import HeThongVTSForm from './pages/hethongvts/HeThongVTSForm';
+import RadarStationList from './pages/radarstation/RadarStationList';
+import RadarStationForm from './pages/radarstation/RadarStationForm';
+import VtsSystemList from './pages/vtssystem/VtsSystemList';
+import VtsSystemForm from './pages/vtssystem/VtsSystemForm';
 
 // M-005 & M-006: Biến động tài sản & Văn bản pháp lý
 import AssetIncreaseList from './pages/assetmovement/AssetIncreaseList';
@@ -212,14 +212,14 @@ export default function App() {
                 <Route path="/ship-repair-facility/:id" element={<PermissionGuard permission="shiprepair:read"><ShipRepairFacilityForm /></PermissionGuard>} />
 
                 {/* Trạm radar */}
-                <Route path="/tram-radar" element={<PermissionGuard permission="tramradar:read"><TramRadarList /></PermissionGuard>} />
-                <Route path="/tram-radar/create" element={<PermissionGuard permission="tramradar:create"><TramRadarForm /></PermissionGuard>} />
-                <Route path="/tram-radar/:id" element={<PermissionGuard permission="tramradar:read"><TramRadarForm /></PermissionGuard>} />
+                <Route path="/radar-station" element={<PermissionGuard permission="radarstation:read"><RadarStationList /></PermissionGuard>} />
+                <Route path="/radar-station/create" element={<PermissionGuard permission="radarstation:create"><RadarStationForm /></PermissionGuard>} />
+                <Route path="/radar-station/:id" element={<PermissionGuard permission="radarstation:read"><RadarStationForm /></PermissionGuard>} />
 
                 {/* Hệ thống VTS */}
-                <Route path="/he-thong-vts" element={<PermissionGuard permission="vts:read"><HeThongVTSList /></PermissionGuard>} />
-                <Route path="/he-thong-vts/create" element={<PermissionGuard permission="vts:create"><HeThongVTSForm /></PermissionGuard>} />
-                <Route path="/he-thong-vts/:id" element={<PermissionGuard permission="vts:read"><HeThongVTSForm /></PermissionGuard>} />
+                <Route path="/vts-system" element={<PermissionGuard permission="vts:read"><VtsSystemList /></PermissionGuard>} />
+                <Route path="/vts-system/create" element={<PermissionGuard permission="vts:create"><VtsSystemForm /></PermissionGuard>} />
+                <Route path="/vts-system/:id" element={<PermissionGuard permission="vts:read"><VtsSystemForm /></PermissionGuard>} />
 
                 {/* M-005: Biến động tài sản */}
                 <Route path="/asset/increase" element={<PermissionGuard permission="asset:yeu-cau-tang"><AssetIncreaseList /></PermissionGuard>} />

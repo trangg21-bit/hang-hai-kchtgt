@@ -201,20 +201,20 @@ public class RolePermissionSeeder implements CommandLineRunner {
         seedPermission(permissionsByCode, "shiprepair", "history", "Xem lịch sử cơ sở chữa chạy",
                 "Xem lịch sử thay đổi cơ sở chữa chạy");
 
-        // tramradar
-        seedPermission(permissionsByCode, "tramradar", "create", "Tạo trạm radar",
+        // radarstation
+        seedPermission(permissionsByCode, "radarstation", "create", "Tạo trạm radar",
                 "Tạo mới trạm radar");
-        seedPermission(permissionsByCode, "tramradar", "read", "Xem trạm radar",
+        seedPermission(permissionsByCode, "radarstation", "read", "Xem trạm radar",
                 "Xem danh sách và chi tiết trạm radar");
-        seedPermission(permissionsByCode, "tramradar", "update", "Cập nhật trạm radar",
+        seedPermission(permissionsByCode, "radarstation", "update", "Cập nhật trạm radar",
                 "Chỉnh sửa trạm radar");
-        seedPermission(permissionsByCode, "tramradar", "delete", "Xóa trạm radar",
+        seedPermission(permissionsByCode, "radarstation", "delete", "Xóa trạm radar",
                 "Xóa trạm radar");
-        seedPermission(permissionsByCode, "tramradar", "approvec1", "Phê duyệt C1 trạm radar",
+        seedPermission(permissionsByCode, "radarstation", "approvec1", "Phê duyệt C1 trạm radar",
                 "Phê duyệt cấp 1 trạm radar");
-        seedPermission(permissionsByCode, "tramradar", "approvec2", "Phê duyệt C2 trạm radar",
+        seedPermission(permissionsByCode, "radarstation", "approvec2", "Phê duyệt C2 trạm radar",
                 "Phê duyệt cấp 2 trạm radar");
-        seedPermission(permissionsByCode, "tramradar", "history", "Xem lịch sử trạm radar",
+        seedPermission(permissionsByCode, "radarstation", "history", "Xem lịch sử trạm radar",
                 "Xem lịch sử thay đổi trạm radar");
 
         // vts
@@ -249,8 +249,8 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "dikerevetment:approvec1", "dikerevetment:approvec2", "dikerevetment:history",
                 "shiprepair:create", "shiprepair:read", "shiprepair:update", "shiprepair:delete",
                 "shiprepair:approvec1", "shiprepair:approvec2", "shiprepair:history",
-                "tramradar:create", "tramradar:read", "tramradar:update", "tramradar:delete",
-                "tramradar:approvec1", "tramradar:approvec2", "tramradar:history",
+                "radarstation:create", "radarstation:read", "radarstation:update", "radarstation:delete",
+                "radarstation:approvec1", "radarstation:approvec2", "radarstation:history",
                 "vts:create", "vts:read", "vts:update", "vts:delete",
                 "vts:approvec1", "vts:approvec2", "vts:history"
         ));
@@ -261,7 +261,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "navigationchannel:read", "navigationchannel:approvec1", "navigationchannel:approvec2",
                 "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
                 "shiprepair:read", "shiprepair:approvec1", "shiprepair:approvec2",
-                "tramradar:read", "tramradar:approvec1", "tramradar:approvec2",
+                "radarstation:read", "radarstation:approvec1", "radarstation:approvec2",
                 "vts:read", "vts:approvec1", "vts:approvec2"
         ));
         rolePermissionMap.put("ROLE_LEADER", List.of(
@@ -270,7 +270,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "navigationchannel:read", "navigationchannel:approvec1", "navigationchannel:approvec2",
                 "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
                 "shiprepair:read", "shiprepair:approvec1", "shiprepair:approvec2",
-                "tramradar:read", "tramradar:approvec1", "tramradar:approvec2",
+                "radarstation:read", "radarstation:approvec1", "radarstation:approvec2",
                 "vts:read", "vts:approvec1", "vts:approvec2"
         ));
         rolePermissionMap.put("ROLE_SPECIALIST", List.of(
@@ -280,26 +280,26 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "navigationchannel:create", "navigationchannel:read", "navigationchannel:update",
                 "dikerevetment:create", "dikerevetment:read", "dikerevetment:update",
                 "shiprepair:create", "shiprepair:read", "shiprepair:update",
-                "tramradar:create", "tramradar:read", "tramradar:update",
+                "radarstation:create", "radarstation:read", "radarstation:update",
                 "vts:create", "vts:read", "vts:update"
         ));
         rolePermissionMap.put("ROLE_PORT_OPERATOR", List.of(
                 "orgunit:read", "data:read", "data:update",
                 // M-003 read only
                 "navigationchannel:read", "dikerevetment:read", "shiprepair:read",
-                "tramradar:read", "vts:read"
+                "radarstation:read", "vts:read"
         ));
         rolePermissionMap.put("ROLE_PUBLIC_USER", List.of(
                 "orgunit:read", "data:read",
                 // M-003 read only
                 "navigationchannel:read", "dikerevetment:read", "shiprepair:read",
-                "tramradar:read", "vts:read"
+                "radarstation:read", "vts:read"
         ));
         rolePermissionMap.put("ROLE_INTEGRATION", List.of(
                 "data:read", "data:write", "api:share",
                 // M-003 read only
                 "navigationchannel:read", "dikerevetment:read", "shiprepair:read",
-                "tramradar:read", "vts:read"
+                "radarstation:read", "vts:read"
         ));
         rolePermissionMap.put("ROLE_SECURITY_MONITOR", List.of(
                 "security:monitor", "security:read"

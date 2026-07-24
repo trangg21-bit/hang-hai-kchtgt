@@ -15,11 +15,11 @@ import com.hanghai.kchtg.security.PermissionAuthorizationManager;
 import com.hanghai.kchtg.security.service.JwtSessionService;
 import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.security.service.TokenValidationService;
-import com.hanghai.kchtg.tramradar.controller.TramRadarController;
-import com.hanghai.kchtg.tramradar.service.TramRadarService;
+import com.hanghai.kchtg.radarstation.controller.RadarStationController;
+import com.hanghai.kchtg.radarstation.service.RadarStationService;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.vts.controller.HeThongVTSController;
-import com.hanghai.kchtg.vts.service.HeThongVTSDataService;
+import com.hanghai.kchtg.vtssystem.controller.VtsSystemController;
+import com.hanghai.kchtg.vtssystem.service.VtsSystemService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,14 +49,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * RBAC deny/allow path tests for all 5 M-003 domains:
- *   navigationchannel, dikerevetment, shiprepairfacility, tramradar, vts.
+ *   navigationchannel, dikerevetment, shiprepairfacility, radarstation, vts.
  */
 @WebMvcTest(controllers = {
         NavigationChannelController.class,
         DikeRevetmentController.class,
         ShipRepairFacilityController.class,
-        TramRadarController.class,
-        HeThongVTSController.class
+        RadarStationController.class,
+        VtsSystemController.class
 })
 @AutoConfigureMockMvc(addFilters = false)
 @Import(MethodSecurityTestConfig.class)
@@ -72,8 +72,8 @@ class M003RbacSecurityTest {
     @MockBean private NavigationChannelService navigationChannelService;
     @MockBean private DikeRevetmentService dikeRevetmentService;
     @MockBean private ShipRepairFacilityService shipRepairFacilityService;
-    @MockBean private TramRadarService tramRadarService;
-    @MockBean private HeThongVTSDataService heThongVTSDataService;
+    @MockBean private RadarStationService radarStationService;
+    @MockBean private VtsSystemService vtsSystemService;
 
     // ── Security bean ───────────────────────────────────────────────────────
     @MockBean(name = "auth")

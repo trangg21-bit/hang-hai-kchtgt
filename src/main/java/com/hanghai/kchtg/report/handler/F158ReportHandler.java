@@ -2,12 +2,11 @@ package com.hanghai.kchtg.report.handler;
 
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
-import com.hanghai.kchtg.vts.entity.HeThongVTS;
-import com.hanghai.kchtg.vts.entity.HeThongVTSApprovalStatus;
-import com.hanghai.kchtg.vts.repository.HeThongVTSRepository;
-import com.hanghai.kchtg.tramradar.entity.TramRadar;
-import com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus;
-import com.hanghai.kchtg.tramradar.repository.TramRadarRepository;
+import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
+import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
+import com.hanghai.kchtg.radarstation.entity.RadarStation;
+import com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus;
+import com.hanghai.kchtg.radarstation.repository.RadarStationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -17,8 +16,8 @@ import java.util.*;
 @Component
 public class F158ReportHandler extends BaseReportHandler {
 
-    @Autowired private HeThongVTSRepository heThongVTSRepository;
-    @Autowired private TramRadarRepository tramRadarRepository;
+    @Autowired private VtsSystemRepository vtsSystemRepository;
+    @Autowired private RadarStationRepository radarStationRepository;
 
     @Override
     public boolean supports(String reportCode) {
@@ -31,13 +30,13 @@ public class F158ReportHandler extends BaseReportHandler {
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
         int reportYear = getReportYear(request);
 
-        // Cache HeThongVTS lookup
-        Map<UUID, HeThongVTS> vtsCache = new HashMap<>();
+        // Cache VtsSystem lookup
+        Map<UUID, VtsSystem> vtsCache = new HashMap<>();
 
-        List<TramRadar> tramList = tramRadarRepository.findAll().stream()
-                .filter(t -> t.getTrangThai() == TramRadarApprovalStatus.APPROVED)
+        List<RadarStation> stationList = radarStationRepository.findAll().stream()
+                .filter(t -> t.getApprovalStatus() == RadarStationApprovalStatus.APPROVED)
                 .filter(t -> t.getIsDeleted() == null || !t.getIsDeleted())
-                .filter(t -> t.getNgaySuaDoi() == null || t.getNgaySuaDoi().getYear() <= reportYear)
+                .filter(t -> t.getUpdatedDate() == null || t.getUpdatedDate().getYear() <= reportYear)
                 .toList();
 
         List<String> headers = List.of(
@@ -49,30 +48,30 @@ public class F158ReportHandler extends BaseReportHandler {
         List<Map<String, Object>> rows = new ArrayList<>();
         int stt = 1;
         Set<UUID> seenVtsIds = new HashSet<>();
-        for (TramRadar tram : tramList) {
-            UUID vtsId = tram.getHeThongVtsId();
+        for (RadarStation station : stationList) {
+            UUID vtsId = station.getVtsSystemId();
             if (vtsId == null) continue;
 
-            HeThongVTS vts = vtsCache.computeIfAbsent(vtsId, id ->
-                heThongVTSRepository.findById(id).orElse(null));
+            VtsSystem vts = vtsCache.computeIfAbsent(vtsId, id ->
+                vtsSystemRepository.findById(id).orElse(null));
             if (vts == null) continue;
-            if (vts.getTrangThai() != HeThongVTSApprovalStatus.APPROVED) continue;
+            if (!"APPROVED".equals(vts.getApprovalStatus())) continue;
             if (vts.getIsDeleted() != null && vts.getIsDeleted()) continue;
             if (!skipFilter && !targetUnitId.equals(vts.getOrgUnitId())) continue;
-            if (vts.getNgaySuaDoi() != null && vts.getNgaySuaDoi().getYear() > reportYear) continue;
+            if (vts.getUpdatedDate() != null && vts.getUpdatedDate().getYear() > reportYear) continue;
 
             boolean isFirst = seenVtsIds.add(vtsId);
             String donVi = resolveOrgName(vts.getOrgUnitId());
 
             Map<String, Object> r = new LinkedHashMap<>();
             r.put("STT", stt++);
-            r.put("Tên hệ thống", vts.getTenHeThong() != null ? vts.getTenHeThong() : "");
+            r.put("Tên hệ thống", vts.getSystemName() != null ? vts.getSystemName() : "");
             r.put("Đơn vị quản lý, khai thác", donVi.isEmpty() ? "" : donVi + " - " + donVi);
-            r.put("Phạm vi vùng phủ sóng", isFirst ? (vts.getPhamViApDung() != null ? vts.getPhamViApDung() : "") : "");
-            r.put("Vị trí Trung tâm điều hành", vts.getViTri() != null ? vts.getViTri() : "");
-            r.put("Vị trí, Địa danh", tram.getViTri() != null ? tram.getViTri() : "");
-            r.put("Chiều cao tháp radar (m)", formatMeter(tram.getChieuCaoThapRadar(), "m"));
-            r.put("Tầm hiệu lực radar", formatMeter(tram.getTamHieuLucRadar(), "Nm"));
+            r.put("Phạm vi vùng phủ sóng", isFirst ? (vts.getScope() != null ? vts.getScope() : "") : "");
+            r.put("Vị trí Trung tâm điều hành", vts.getLocation() != null ? vts.getLocation() : "");
+            r.put("Vị trí, Địa danh", station.getLocation() != null ? station.getLocation() : "");
+            r.put("Chiều cao tháp radar (m)", formatMeter(station.getTowerHeight(), "m"));
+            r.put("Tầm hiệu lực radar", formatMeter(station.getRadarRange(), "Nm"));
             rows.add(r);
         }
 
@@ -86,40 +85,40 @@ public class F158ReportHandler extends BaseReportHandler {
         UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
 
-        Map<UUID, HeThongVTS> vtsCache = new HashMap<>();
+        Map<UUID, VtsSystem> vtsCache = new HashMap<>();
 
-        List<TramRadar> tramList = tramRadarRepository.findAll().stream()
-                .filter(t -> t.getTrangThai() == TramRadarApprovalStatus.APPROVED)
+        List<RadarStation> stationList = radarStationRepository.findAll().stream()
+                .filter(t -> t.getApprovalStatus() == RadarStationApprovalStatus.APPROVED)
                 .filter(t -> t.getIsDeleted() == null || !t.getIsDeleted())
-                .filter(t -> t.getNgaySuaDoi() == null || t.getNgaySuaDoi().getYear() <= reportYear)
+                .filter(t -> t.getUpdatedDate() == null || t.getUpdatedDate().getYear() <= reportYear)
                 .toList();
 
         List<Map<String, Object>> arrResult = new ArrayList<>();
         Set<UUID> seenVtsIds = new HashSet<>();
-        for (TramRadar tram : tramList) {
-            UUID vtsId = tram.getHeThongVtsId();
+        for (RadarStation station : stationList) {
+            UUID vtsId = station.getVtsSystemId();
             if (vtsId == null) continue;
 
-            HeThongVTS vts = vtsCache.computeIfAbsent(vtsId, id ->
-                heThongVTSRepository.findById(id).orElse(null));
+            VtsSystem vts = vtsCache.computeIfAbsent(vtsId, id ->
+                vtsSystemRepository.findById(id).orElse(null));
             if (vts == null) continue;
-            if (vts.getTrangThai() != HeThongVTSApprovalStatus.APPROVED) continue;
+            if (!"APPROVED".equals(vts.getApprovalStatus())) continue;
             if (vts.getIsDeleted() != null && vts.getIsDeleted()) continue;
             if (!skipFilter && !targetUnitId.equals(vts.getOrgUnitId())) continue;
-            if (vts.getNgaySuaDoi() != null && vts.getNgaySuaDoi().getYear() > reportYear) continue;
+            if (vts.getUpdatedDate() != null && vts.getUpdatedDate().getYear() > reportYear) continue;
 
             boolean isFirst = seenVtsIds.add(vtsId);
 
             Map<String, Object> item = new HashMap<>();
-            item.put("ten", vts.getTenHeThong() != null ? vts.getTenHeThong() : "");
+            item.put("ten", vts.getSystemName() != null ? vts.getSystemName() : "");
             item.put("fkDonViQl", vts.getOrgUnitId() != null ? resolveOrgName(vts.getOrgUnitId()) : "");
             item.put("fkDonViKt", vts.getOrgUnitId() != null ? resolveOrgName(vts.getOrgUnitId()) : "");
-            item.put("vungPhuSong", isFirst ? (vts.getPhamViApDung() != null ? vts.getPhamViApDung() : "") : "");
-            item.put("diaDiem", vts.getViTri() != null ? vts.getViTri() : "");
+            item.put("vungPhuSong", isFirst ? (vts.getScope() != null ? vts.getScope() : "") : "");
+            item.put("diaDiem", vts.getLocation() != null ? vts.getLocation() : "");
             item.put("soLuong", "");
-            item.put("viTriDiaDanh", tram.getViTri() != null ? tram.getViTri() : "");
-            item.put("chieuCaoThapRadar", formatMeter(tram.getChieuCaoThapRadar(), "m"));
-            item.put("tamHieuLucRadar", formatMeter(tram.getTamHieuLucRadar(), "Nm"));
+            item.put("viTriDiaDanh", station.getLocation() != null ? station.getLocation() : "");
+            item.put("chieuCaoThapRadar", formatMeter(station.getTowerHeight(), "m"));
+            item.put("tamHieuLucRadar", formatMeter(station.getRadarRange(), "Nm"));
             item.put("donViQuanLyKhaiThac", resolveOrgName(vts.getOrgUnitId()));
             arrResult.add(item);
         }
