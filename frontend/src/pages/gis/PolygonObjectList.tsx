@@ -179,6 +179,7 @@ export default function PolygonObjectList() {
       render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },
     { key: 'iconUrl', label: 'Biểu tượng', dataIndex: 'iconUrl', width: 120, align: 'center' as const,
       render: (iconUrl: string, record: SpatialObjectCategory) => {
+        const sym = symbols.find(s => s.id === record.iconId);
         const imgSrc = iconUrl || sym?.image;
         return imgSrc ? (
           <img src={imgSrc} alt={record.name} style={{ height: 28, maxWidth: 50, objectFit: 'contain' }} />
