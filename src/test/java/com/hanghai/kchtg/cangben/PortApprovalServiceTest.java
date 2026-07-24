@@ -1,12 +1,12 @@
 package com.hanghai.kchtg.cangben;
 
-import com.hanghai.kchtg.cangben.entity.CangBien;
-import com.hanghai.kchtg.cangben.entity.LichSuThayDoi;
-import com.hanghai.kchtg.cangben.entity.PheDuyetLog;
-import com.hanghai.kchtg.cangben.repository.CangBienRepository;
-import com.hanghai.kchtg.cangben.repository.LichSuThayDoiRepository;
-import com.hanghai.kchtg.cangben.repository.PheDuyetLogRepository;
-import com.hanghai.kchtg.cangben.service.CangBienApprovalService;
+import com.hanghai.kchtg.cangben.entity.Port;
+import com.hanghai.kchtg.cangben.entity.ChangeLog;
+import com.hanghai.kchtg.cangben.entity.ApprovalLog;
+import com.hanghai.kchtg.cangben.repository.PortRepository;
+import com.hanghai.kchtg.cangben.repository.ChangeLogRepository;
+import com.hanghai.kchtg.cangben.repository.ApprovalLogRepository;
+import com.hanghai.kchtg.cangben.service.PortApprovalService;
 import com.hanghai.kchtg.cangben.service.shared.ApprovalWorkflowService;
 import com.hanghai.kchtg.cangben.service.shared.CangBenNotificationService;
 import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
@@ -32,14 +32,14 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("CangBienApprovalService unit tests — F-011/F-013")
-class CangBienApprovalServiceTest {
+@DisplayName("PortApprovalService unit tests — F-011/F-013")
+class PortApprovalServiceTest {
 
     @InjectMocks
-    private CangBienApprovalService approvalService;
+    private PortApprovalService approvalService;
 
     @Mock
-    private CangBienRepository cangBienRepository;
+    private PortRepository portRepository;
 
     @Mock
     private ApprovalWorkflowService approvalWorkflowService;
@@ -48,70 +48,70 @@ class CangBienApprovalServiceTest {
     private CangBenNotificationService notificationService;
 
     @Mock
-    private LichSuThayDoiRepository lichSuThayDoiRepository;
+    private ChangeLogRepository changeLogRepository;
 
     @Mock
-    private PheDuyetLogRepository pheDuyetLogRepository;
+    private ApprovalLogRepository approvalLogRepository;
 
     private UUID testId;
-    private CangBien testEntity;
+    private Port testEntity;
 
     @BeforeEach
     void setUp() {
         testId = UUID.randomUUID();
-        testEntity = new CangBien();
+        testEntity = new Port();
         ReflectionTestUtils.setField(testEntity, "id", testId);
-        testEntity.setMaCang("CB-001");
-        testEntity.setTenCang("Cảng Test");
-        testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
+        testEntity.setPortCode("CB-001");
+        testEntity.setPortName("Cảng Test");
+        testEntity.setApprovalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET);
     }
 
     // ── APPROVE (F-011) ────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("F-011: approve — sets status to DUOC_PHE_DUYET and persists PheDuyetLog")
+    @DisplayName("F-011: approve — sets status to DUOC_PHE_DUYET and persists ApprovalLog")
     void approve_setsApprovedStatus() {
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-        when(cangBienRepository.save(any())).thenReturn(testEntity);
+        when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+        when(portRepository.save(any())).thenReturn(testEntity);
 
         approvalService.approve(testId, "user-1", null); // null reason = approve
 
-        assertEquals(TrangThaiPheDuyet.DUOC_PHE_DUYET, testEntity.getTrangThaiPheDuyet());
-        verify(cangBienRepository).save(testEntity);
-        verify(approvalWorkflowService).approve(eq("CHO_PHE_DUYET"), eq("CangBien"), eq(testId.toString()), eq("user-1"));
-        verify(notificationService).sendApprovalNotification(eq("CangBien"), eq(testId.toString()), eq("user-1"), eq(null));
+        assertEquals(TrangThaiPheDuyet.DUOC_PHE_DUYET, testEntity.getApprovalStatus());
+        verify(portRepository).save(testEntity);
+        verify(approvalWorkflowService).approve(eq("CHO_PHE_DUYET"), eq("Port"), eq(testId.toString()), eq("user-1"));
+        verify(notificationService).sendApprovalNotification(eq("Port"), eq(testId.toString()), eq("user-1"), eq(null));
     }
 
     @Test
     @DisplayName("F-011: approve — blank reason also treated as approve")
     void approve_blankReason_treatedAsApprove() {
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-        when(cangBienRepository.save(any())).thenReturn(testEntity);
+        when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+        when(portRepository.save(any())).thenReturn(testEntity);
 
         approvalService.approve(testId, "user-1", "  "); // blank = approve
 
-        assertEquals(TrangThaiPheDuyet.DUOC_PHE_DUYET, testEntity.getTrangThaiPheDuyet());
+        assertEquals(TrangThaiPheDuyet.DUOC_PHE_DUYET, testEntity.getApprovalStatus());
         verify(approvalWorkflowService).approve(any(), any(), any(), any());
     }
 
     @Test
-    @DisplayName("F-011: reject — sets status to TU_CHOI and persists PheDuyetLog")
+    @DisplayName("F-011: reject — sets status to TU_CHOI and persists ApprovalLog")
     void reject_setsTuChoiStatus() {
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-        when(cangBienRepository.save(any())).thenReturn(testEntity);
+        when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+        when(portRepository.save(any())).thenReturn(testEntity);
 
         approvalService.approve(testId, "user-1", "Thiếu tài liệu"); // non-blank reason = reject
 
-        assertEquals(TrangThaiPheDuyet.TU_CHOI, testEntity.getTrangThaiPheDuyet());
-        verify(cangBienRepository).save(testEntity);
-        verify(approvalWorkflowService).reject(eq("CHO_PHE_DUYET"), eq("CangBien"), eq(testId.toString()),
+        assertEquals(TrangThaiPheDuyet.TU_CHOI, testEntity.getApprovalStatus());
+        verify(portRepository).save(testEntity);
+        verify(approvalWorkflowService).reject(eq("CHO_PHE_DUYET"), eq("Port"), eq(testId.toString()),
                 eq("user-1"), eq("Thiếu tài liệu"));
     }
 
     @Test
     @DisplayName("F-011: approve — throws EntityNotFoundException when entity missing")
     void approve_entityNotFound_throws() {
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.empty());
+        when(portRepository.findById(testId)).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> approvalService.approve(testId, "user-1", null));
     }
@@ -119,13 +119,13 @@ class CangBienApprovalServiceTest {
     @Test
     @DisplayName("F-011: approve — throws IllegalStateException when not in CHO_PHE_DUYET (via workflow)")
     void approve_wrongStatus_throwsViaWorkflow() {
-        testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.DUOC_PHE_DUYET);
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+        testEntity.setApprovalStatus(TrangThaiPheDuyet.DUOC_PHE_DUYET);
+        when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
         doThrow(new IllegalStateException("Cannot approve: already approved"))
                 .when(approvalWorkflowService).approve(eq("DUOC_PHE_DUYET"), any(), any(), any());
 
         assertThrows(IllegalStateException.class, () -> approvalService.approve(testId, "user-1", null));
-        verify(cangBienRepository, never()).save(any());
+        verify(portRepository, never()).save(any());
     }
 
     // ── HISTORY (F-013) ────────────────────────────────────────────────────
@@ -133,22 +133,22 @@ class CangBienApprovalServiceTest {
     @Test
     @DisplayName("F-013: getHistory — returns map with changeHistory and approvalLog")
     void getHistory_returnsPersistedRows() {
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+        when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
 
-        LichSuThayDoi changeRecord = LichSuThayDoi.builder()
+        ChangeLog changeRecord = ChangeLog.builder()
                 .id(UUID.randomUUID())
-                .entityType("CangBien")
+                .entityType("Port")
                 .entityId(testId.toString())
-                .fieldName("tenCang")
+                .fieldName("portName")
                 .oldValue("Cu")
                 .newValue("Moi")
                 .changedBy("user-1")
                 .changedAt(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
                 .build();
-        PheDuyetLog pheDuyetLog = PheDuyetLog.builder()
+        ApprovalLog approvalLog = ApprovalLog.builder()
                 .id(UUID.randomUUID())
-                .entityType("CangBien")
+                .entityType("Port")
                 .entityId(testId.toString())
                 .decision("APPROVED")
                 .decidedBy("user-1")
@@ -156,25 +156,25 @@ class CangBienApprovalServiceTest {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        when(lichSuThayDoiRepository.findByEntityTypeAndEntityId("CangBien", testId.toString()))
+        when(changeLogRepository.findByEntityTypeAndEntityId("Port", testId.toString()))
                 .thenReturn(List.of(changeRecord));
-        when(pheDuyetLogRepository.findByEntityTypeAndEntityId("CangBien", testId.toString()))
-                .thenReturn(List.of(pheDuyetLog));
+        when(approvalLogRepository.findByEntityTypeAndEntityId("Port", testId.toString()))
+                .thenReturn(List.of(approvalLog));
 
         Map<String, Object> result = approvalService.getHistory(testId);
 
         assertNotNull(result);
         assertEquals(testId.toString(), result.get("entityId"));
-        assertEquals("CangBien", result.get("entityType"));
+        assertEquals("Port", result.get("entityType"));
         assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.get("currentApprovalStatus"));
 
         @SuppressWarnings("unchecked")
-        List<LichSuThayDoi> history = (List<LichSuThayDoi>) result.get("changeHistory");
+        List<ChangeLog> history = (List<ChangeLog>) result.get("changeHistory");
         assertEquals(1, history.size());
-        assertEquals("tenCang", history.get(0).getFieldName());
+        assertEquals("portName", history.get(0).getFieldName());
 
         @SuppressWarnings("unchecked")
-        List<PheDuyetLog> logs = (List<PheDuyetLog>) result.get("approvalLog");
+        List<ApprovalLog> logs = (List<ApprovalLog>) result.get("approvalLog");
         assertEquals(1, logs.size());
         assertEquals("APPROVED", logs.get(0).getDecision());
     }
@@ -182,10 +182,10 @@ class CangBienApprovalServiceTest {
     @Test
     @DisplayName("F-013: getHistory — empty lists when no history exists")
     void getHistory_emptyWhenNoRecords() {
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-        when(lichSuThayDoiRepository.findByEntityTypeAndEntityId(any(), any()))
+        when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+        when(changeLogRepository.findByEntityTypeAndEntityId(any(), any()))
                 .thenReturn(List.of());
-        when(pheDuyetLogRepository.findByEntityTypeAndEntityId(any(), any()))
+        when(approvalLogRepository.findByEntityTypeAndEntityId(any(), any()))
                 .thenReturn(List.of());
 
         Map<String, Object> result = approvalService.getHistory(testId);
@@ -201,7 +201,7 @@ class CangBienApprovalServiceTest {
     @Test
     @DisplayName("F-013: getHistory — throws EntityNotFoundException when entity missing")
     void getHistory_entityNotFound_throws() {
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.empty());
+        when(portRepository.findById(testId)).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> approvalService.getHistory(testId));
     }

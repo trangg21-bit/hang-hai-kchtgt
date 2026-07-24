@@ -110,7 +110,6 @@ public class PortService {
                     geomType,
                     objType,
                     coordinates,
-                    request.getMapSymbolId(),
                     refId,
                     com.hanghai.kchtg.gis.search.dto.KchtType.CANGBIEN
             );
@@ -288,7 +287,6 @@ public class PortService {
                     geomType,
                     objType,
                     coordinates,
-                    request.getMapSymbolId(),
                     refId,
                     com.hanghai.kchtg.gis.search.dto.KchtType.CANGBIEN
             );

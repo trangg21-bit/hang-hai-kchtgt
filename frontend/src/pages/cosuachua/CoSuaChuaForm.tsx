@@ -102,7 +102,6 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
             spatialData: {
               loaiHinhHoc: data.loaiHinhHoc,
               toaDo: data.toaDo,
-              bieuTuongId: data.bieuTuongId,
             }
           });
         } catch (err) {
@@ -153,7 +152,6 @@ export default function CoSuaChuaForm({ open, editId, mode, onCancel, onSuccess 
         orgUnitId: values.orgUnitId,
         loaiHinhHoc: spatialData?.loaiHinhHoc,
         toaDo: spatialData?.toaDo,
-        bieuTuongId: spatialData?.bieuTuongId,
       };
 
       if (isCreateMode) {

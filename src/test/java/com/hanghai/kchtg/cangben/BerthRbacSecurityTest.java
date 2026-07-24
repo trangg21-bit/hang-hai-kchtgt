@@ -2,9 +2,9 @@ package com.hanghai.kchtg.cangben;
 
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
-import com.hanghai.kchtg.cangben.controller.BenCangController;
-import com.hanghai.kchtg.cangben.service.BenCangApprovalService;
-import com.hanghai.kchtg.cangben.service.BenCangService;
+import com.hanghai.kchtg.cangben.controller.BerthController;
+import com.hanghai.kchtg.cangben.service.BerthApprovalService;
+import com.hanghai.kchtg.cangben.service.BerthService;
 import com.hanghai.kchtg.security.JwtUtil;
 import com.hanghai.kchtg.security.PermissionAuthorizationManager;
 import com.hanghai.kchtg.security.service.JwtSessionService;
@@ -43,33 +43,22 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * RBAC security tests for BenCangController.
- *
- * Mirrors the pattern in CangBienRbacSecurityTest.
- * Uses @AutoConfigureMockMvc(addFilters = false) so AccessDeniedException propagates
- * out of MockMvc.perform() rather than being translated to HTTP 403 by
- * ExceptionTranslationFilter. This is the authoritative proof of fail-closed behaviour.
- *
- * Covers:
- *  - user WITH bencang:approve → 200 OK
- *  - user WITH bencang:delete → 200 OK
- *  - user WITHOUT bencang:approve → AccessDeniedException (fail-closed)
- *  - user WITHOUT bencang:delete → AccessDeniedException (fail-closed)
+ * RBAC security tests for BerthController.
  */
-@WebMvcTest(BenCangController.class)
+@WebMvcTest(BerthController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @Import(MethodSecurityTestConfig.class)
-@DisplayName("BenCangController RBAC / @PreAuthorize security tests — M-002")
-class BenCangRbacSecurityTest {
+@DisplayName("BerthController RBAC / @PreAuthorize security tests — M-002")
+class BerthRbacSecurityTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockBean
-    private BenCangService benCangService;
+    private BerthService berthService;
 
     @MockBean
-    private BenCangApprovalService benCangApprovalService;
+    private BerthApprovalService berthApprovalService;
 
     // The @auth bean — mocked to control grant/deny decision
     @MockBean(name = "auth")
@@ -86,7 +75,6 @@ class BenCangRbacSecurityTest {
     private UserRepository userRepository;
     @MockBean
     private AdminAuditLogRepository adminAuditLogRepository;
-
 
     @MockBean
     private TokenService tokenService;
@@ -105,12 +93,6 @@ class BenCangRbacSecurityTest {
 
     // ── Helper ─────────────────────────────────────────────────────────────
 
-    /**
-     * RequestPostProcessor that sets the user principal on MockHttpServletRequest.
-     * Spring MVC's ServletRequestMethodArgumentResolver resolves the Authentication
-     * method parameter via request.getUserPrincipal(). The SecurityContext for
-     * @PreAuthorize SpEL is provided separately by @WithMockUser.
-     */
     private RequestPostProcessor principalOf(String username) {
         UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(
                 username, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
@@ -131,7 +113,7 @@ class BenCangRbacSecurityTest {
         when(auth.check(any(Authentication.class), eq("bencang:approve")))
                 .thenReturn(true);
 
-        mockMvc.perform(post("/api/v1/ben-cang/{id}/approve", id)
+        mockMvc.perform(post("/api/v1/berths/{id}/approve", id)
                         .with(principalOf("approver-user")))
                 .andExpect(status().isOk());
     }
@@ -145,14 +127,11 @@ class BenCangRbacSecurityTest {
         when(auth.check(any(Authentication.class), eq("bencang:delete")))
                 .thenReturn(true);
 
-        mockMvc.perform(delete("/api/v1/ben-cang/{id}", id))
+        mockMvc.perform(delete("/api/v1/berths/{id}", id))
                 .andExpect(status().isOk());
     }
 
     // ── Tests proving WITHOUT-permission path is fail-closed ──────────────
-    // ExceptionTranslationFilter is absent (addFilters = false), so AccessDeniedException
-    // propagates out of MockMvc.perform() as a NestedServletException wrapping
-    // AccessDeniedException. assertThrows captures this and verifies the root cause.
 
     @Test
     @WithMockUser(username = "test-user")
@@ -164,7 +143,7 @@ class BenCangRbacSecurityTest {
                 .thenReturn(false);
 
         Exception thrown = assertThrows(Exception.class, () ->
-                mockMvc.perform(post("/api/v1/ben-cang/{id}/approve", id)),
+                mockMvc.perform(post("/api/v1/berths/{id}/approve", id)),
                 "Expected AccessDeniedException propagated for denied bencang:approve");
 
         // Verify the root cause is AccessDeniedException
@@ -191,7 +170,7 @@ class BenCangRbacSecurityTest {
                 .thenReturn(false);
 
         Exception thrown = assertThrows(Exception.class, () ->
-                mockMvc.perform(delete("/api/v1/ben-cang/{id}", id)),
+                mockMvc.perform(delete("/api/v1/berths/{id}", id)),
                 "Expected AccessDeniedException propagated for denied bencang:delete");
 
         // Verify the root cause is AccessDeniedException

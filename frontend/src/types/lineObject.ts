@@ -3,7 +3,6 @@ export interface LineObject {
   name: string;
   code: string;
   objectType: LineObject.ObjectType;
-  categoryId?: number;
   lineSymbolId?: number;
   coordinates: string;
   description?: string;
@@ -52,7 +51,6 @@ export interface CreateLineObjectPayload {
   name: string;
   code: string;
   objectType: LineObject.ObjectType;
-  categoryId?: number;
   lineSymbolId?: number;
   coordinates: string;
   description?: string;
@@ -69,7 +67,6 @@ export interface UpdateLineObjectPayload {
   name?: string;
   code?: string;
   objectType?: LineObject.ObjectType;
-  categoryId?: number;
   lineSymbolId?: number;
   coordinates?: string;
   description?: string;

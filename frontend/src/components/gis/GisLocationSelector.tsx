@@ -8,7 +8,6 @@ import { colors } from '../../theme';
 interface GisLocationSelectorValue {
   loaiHinhHoc: string;
   toaDo: string;
-  bieuTuongId?: string;
 }
 
 interface GisLocationSelectorProps {
@@ -326,7 +325,6 @@ export default function GisLocationSelector({
         onChange({
           loaiHinhHoc: newGeom,
           toaDo: newWkt,
-          bieuTuongId: newSym,
         });
       }
     },

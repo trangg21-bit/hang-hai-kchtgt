@@ -112,7 +112,6 @@ public class NhaTramDenService {
                     geomType,
                     objType,
                     toaDo,
-                    request.getBieuTuongId(),
                     refId,
                     com.hanghai.kchtg.gis.search.dto.KchtType.DENBIEN
             );
@@ -215,7 +214,6 @@ public class NhaTramDenService {
                     geomType,
                     objType,
                     toaDo,
-                    request.getBieuTuongId(),
                     refId,
                     com.hanghai.kchtg.gis.search.dto.KchtType.DENBIEN
             );
@@ -243,7 +241,6 @@ public class NhaTramDenService {
                     geomType,
                     objType,
                     "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")",
-                    request.getBieuTuongId(),
                     entity.getId(),
                     com.hanghai.kchtg.gis.search.dto.KchtType.DENBIEN
             );
@@ -456,8 +453,7 @@ public class NhaTramDenService {
             builder.khongGianId(entity.getKhongGianId());
             gisSpatialObjectService.findById(entity.getKhongGianId()).ifPresent(spatialObj -> {
                 builder.loaiHinhHoc(spatialObj.getGeometryType());
-                builder.toaDo(spatialObj.getCoordinates());
-                builder.bieuTuongId(spatialObj.getBieuTuongId());
+                builder.toaDo(spatialObj.getCoordinates());;
             });
         }
         return builder.build();

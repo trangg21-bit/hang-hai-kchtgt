@@ -60,7 +60,6 @@ public class WaterZoneService {
                     geomType,
                     objType,
                     request.getCoordinates(),
-                    request.getMapSymbolId(),
                     waterZoneId,
                     com.hanghai.kchtg.gis.search.dto.KchtType.VUNGNUOC
             );
@@ -223,7 +222,6 @@ public class WaterZoneService {
                         geomType,
                         objType,
                         request.getCoordinates(),
-                        request.getMapSymbolId(),
                         entity.getId(),
                         com.hanghai.kchtg.gis.search.dto.KchtType.VUNGNUOC
                 );
@@ -238,7 +236,6 @@ public class WaterZoneService {
                         spatialObj.getGeometryType(),
                         spatialObj.getObjectType(),
                         spatialObj.getCoordinates(),
-                        spatialObj.getBieuTuongId(),
                         entity.getId(),
                         com.hanghai.kchtg.gis.search.dto.KchtType.VUNGNUOC
                 );

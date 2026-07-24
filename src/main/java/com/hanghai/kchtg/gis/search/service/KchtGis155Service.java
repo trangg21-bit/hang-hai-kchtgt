@@ -422,7 +422,6 @@ public class KchtGis155Service {
                                 .diaChiChiTiet("")
                                 .latitude(lat)
                                 .longitude(lng)
-                                .bieuTuongId(cb.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, cb.getId(), objectType, GisObjectType.POINT, cbSpatialMap);
@@ -468,7 +467,6 @@ public class KchtGis155Service {
                                 .diaChiChiTiet(bc.getWaterway() != null ? bc.getWaterway() : "")
                                 .latitude(lat)
                                 .longitude(lng)
-                                .bieuTuongId(bc.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, bc.getId(), objectType, GisObjectType.POINT, bcSpatialMap);
@@ -525,7 +523,6 @@ public class KchtGis155Service {
                                 .diaChiChiTiet(parentBen != null ? "Thuộc bến cảng: " + parentBen.getBerthName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
-                                .bieuTuongId(cc.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, cc.getSpatialId(), objectType, GisObjectType.LINE, spatialMap);
@@ -564,7 +561,6 @@ public class KchtGis155Service {
                                 .diaChiChiTiet("")
                                 .latitude(lat)
                                 .longitude(lng)
-                                .bieuTuongId(cc.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, cc.getId(), objectType, GisObjectType.POINT, ccSpatialMap);
@@ -611,7 +607,6 @@ public class KchtGis155Service {
                                 .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
-                                .bieuTuongId(vn.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, vn.getSpatialId(), objectType, GisObjectType.POLYGON, vnSpatialMap);
@@ -1128,7 +1123,6 @@ public class KchtGis155Service {
                                 .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
-                                .bieuTuongId(vn.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, vn.getSpatialId(), objectType, GisObjectType.POLYGON, bpSpatialMap);
@@ -1177,7 +1171,6 @@ public class KchtGis155Service {
                                 .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
-                                .bieuTuongId(vn.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, vn.getSpatialId(), objectType, GisObjectType.POLYGON, knSpatialMap);
@@ -1226,7 +1219,6 @@ public class KchtGis155Service {
                                 .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
-                                .bieuTuongId(vn.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, vn.getSpatialId(), objectType, GisObjectType.POLYGON, kcSpatialMap);
@@ -1275,7 +1267,6 @@ public class KchtGis155Service {
                                 .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
-                                .bieuTuongId(vn.getMapSymbolId())
                                 .build();
                         if (objectType != null) {
                             populateSpatialAndFilterFromMap(results, r, vn.getSpatialId(), objectType, GisObjectType.POLYGON, ktSpatialMap);
@@ -1321,9 +1312,6 @@ public class KchtGis155Service {
                         String geomTypeStr = spatial.getGeometryType() != null ? spatial.getGeometryType().name() : null;
                         r.setLoaiHinhHoc(geomTypeStr);
                         r.setToaDo(spatial.getCoordinates());
-                        if (spatial.getBieuTuongId() != null) {
-                            r.setBieuTuongId(spatial.getBieuTuongId());
-                        }
 
                         double[] coords = parseFirstCoordinateFromWkt(spatial.getCoordinates());
                         if (coords != null) {

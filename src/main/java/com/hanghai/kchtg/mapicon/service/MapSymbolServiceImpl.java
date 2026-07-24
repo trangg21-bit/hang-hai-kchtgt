@@ -48,7 +48,7 @@ public class MapSymbolServiceImpl implements MapSymbolService {
                 .code(request.getCode())
                 .name(request.getName())
                 .description(request.getDescription())
-                .hinhAnh(request.getHinhAnh())
+                .image(request.getImage())
                 .status(request.getStatus())
                 .createdBy(username)
                 .build();
@@ -62,7 +62,7 @@ public class MapSymbolServiceImpl implements MapSymbolService {
                 .orElseThrow(() -> new IllegalArgumentException("Ký hiệu không tồn tại: " + id));
         symbol.setName(request.getName());
         symbol.setDescription(request.getDescription());
-        symbol.setHinhAnh(request.getHinhAnh());
+        symbol.setImage(request.getImage());
         symbol.setStatus(request.getStatus());
         return MapSymbolResponse.from(repository.save(symbol));
     }

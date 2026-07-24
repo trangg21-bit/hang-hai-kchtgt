@@ -104,7 +104,9 @@ export default function MapLayerList() {
         if (filterType && l.layerType !== filterType) return false;
         return true;
       });
-      setDataSource(filtered);
+      const start = (page - 1) * pageSize;
+      const paginated = filtered.slice(start, start + pageSize);
+      setDataSource(paginated);
       setTotal(filtered.length);
     } catch (err: unknown) {
       setIsError(true);
@@ -315,7 +317,7 @@ export default function MapLayerList() {
       <ScreenHeader
         breadcrumb={[
           { label: 'Trang chủ', path: '/' },
-          { label: 'Quản lý KCHT trên nền bản đồ (GIS)' },
+          { label: 'Quản lý KCHT trên nền bản đồ (GIS)', path: '#' },
           { label: 'Quản lý lớp bản đồ' },
         ]}
         actions={headerActions}
@@ -358,7 +360,7 @@ export default function MapLayerList() {
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={() => setIsModalOpen(false)}
-        destroyOnClose
+        destroyOnHidden
         confirmLoading={submitting}
         okText={editingRecord ? 'Cập nhật' : 'Tạo lớp'}
         cancelText="Hủy"

@@ -63,7 +63,6 @@ public class TramRadarService {
                     geomType,
                     objType,
                     toaDo,
-                    request.getBieuTuongId(),
                     refId,
                     com.hanghai.kchtg.gis.search.dto.KchtType.TRAM_RADAR
             );
@@ -139,7 +138,6 @@ public class TramRadarService {
                     geomType,
                     objType,
                     toaDo,
-                    request.getBieuTuongId(),
                     refId,
                     com.hanghai.kchtg.gis.search.dto.KchtType.TRAM_RADAR
             );
@@ -318,8 +316,7 @@ public class TramRadarService {
             builder.khongGianId(entity.getKhongGianId());
             gisSpatialObjectService.findById(entity.getKhongGianId()).ifPresent(spatialObj -> {
                 builder.loaiHinhHoc(spatialObj.getGeometryType());
-                builder.toaDo(spatialObj.getCoordinates());
-                builder.bieuTuongId(spatialObj.getBieuTuongId());
+                builder.toaDo(spatialObj.getCoordinates());;
                 try {
                     String clean = spatialObj.getCoordinates().replace("POINT", "").replace("(", "").replace(")", "").trim();
                     String[] parts = clean.split("\\s+");

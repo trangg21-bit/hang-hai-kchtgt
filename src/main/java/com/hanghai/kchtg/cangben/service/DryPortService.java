@@ -65,7 +65,6 @@ public class DryPortService {
                     geomType,
                     objType,
                     coordinates,
-                    request.getMapSymbolId(),
                     refId,
                     com.hanghai.kchtg.gis.search.dto.KchtType.CANGCAN
             );
@@ -168,7 +167,6 @@ public class DryPortService {
                     geomType,
                     objType,
                     coordinates,
-                    request.getMapSymbolId(),
                     refId,
                     com.hanghai.kchtg.gis.search.dto.KchtType.CANGCAN
             );

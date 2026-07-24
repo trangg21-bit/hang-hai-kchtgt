@@ -14,7 +14,7 @@ public class UpdateMapSymbolRequest {
     private String description;
 
     @NotBlank(message = "Hình ảnh không được để trống")
-    private String hinhAnh;
+    private String image;
 
     @jakarta.validation.constraints.NotNull(message = "Trạng thái không được để trống")
     private MapSymbolStatus status;

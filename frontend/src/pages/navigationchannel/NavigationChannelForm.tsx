@@ -114,7 +114,6 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
             spatialData: {
               loaiHinhHoc: data.loaiHinhHoc,
               toaDo: data.toaDo,
-              bieuTuongId: data.bieuTuongId,
             }
           });
           if (data.chiTietTuyenLuongList) {
@@ -369,7 +368,6 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         orgUnitId: values.orgUnitId,
         loaiHinhHoc: spatialData?.loaiHinhHoc,
         toaDo: spatialData?.toaDo,
-        bieuTuongId: spatialData?.bieuTuongId,
         chiTietTuyenLuongList: chiTietList,
       };
 

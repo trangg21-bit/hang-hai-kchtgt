@@ -47,7 +47,7 @@ class CoSuaChuaDongTauServiceTest {
 
     @BeforeEach
     void setUp() {
-        lenient().when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        lenient().when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenAnswer(inv -> {
                     com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatial = new com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject();
                     spatial.setId(UUID.randomUUID());

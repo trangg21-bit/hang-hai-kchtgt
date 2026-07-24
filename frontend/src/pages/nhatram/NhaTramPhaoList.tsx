@@ -122,9 +122,7 @@ export default function NhaTramPhaoList() {
         loaiHinhHoc: record.loaiHinhHoc || 'POINT',
         gisLocation: {
           loaiHinhHoc: record.loaiHinhHoc || 'POINT',
-          toaDo: record.toaDo || '',
-          bieuTuongId: record.bieuTuongId
-        }
+          toaDo: record.toaDo || '',}
       });
     } else {
       setEditingItem(null);
@@ -152,7 +150,6 @@ export default function NhaTramPhaoList() {
         ...values,
         lastInspectionDate: values.lastInspectionDate ? values.lastInspectionDate.format('YYYY-MM-DD') : '',
         nextInspectionDate: values.nextInspectionDate ? values.nextInspectionDate.format('YYYY-MM-DD') : '',
-        bieuTuongId: values.gisLocation?.bieuTuongId || undefined,
         loaiHinhHoc: values.loaiHinhHoc,
         toaDo: values.gisLocation?.toaDo,
       };

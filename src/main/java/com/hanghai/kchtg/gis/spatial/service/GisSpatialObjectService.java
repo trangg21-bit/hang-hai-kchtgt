@@ -26,7 +26,6 @@ public class GisSpatialObjectService {
             GisGeometryType geometryType,
             GisSpatialObjectType objectType,
             String coordinates,
-            UUID bieuTuongId,
             UUID refId,
             com.hanghai.kchtg.gis.search.dto.KchtType refType) {
         
@@ -43,7 +42,6 @@ public class GisSpatialObjectService {
         entity.setGeometryType(geometryType);
         entity.setObjectType(objectType);
         entity.setCoordinates(coordinates);
-        entity.setBieuTuongId(bieuTuongId);
         entity.setRefId(refId);
         entity.setRefType(refType);
         entity.setStatus(GisSpatialStatus.PUBLISHED); // Default to PUBLISHED for direct KCHT integration

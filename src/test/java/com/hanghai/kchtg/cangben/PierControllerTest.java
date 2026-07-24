@@ -2,10 +2,10 @@ package com.hanghai.kchtg.cangben;
 
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
-import com.hanghai.kchtg.cangben.controller.CauCangController;
-import com.hanghai.kchtg.cangben.dto.caucang.CauCangResponse;
-import com.hanghai.kchtg.cangben.service.CauCangApprovalService;
-import com.hanghai.kchtg.cangben.service.CauCangService;
+import com.hanghai.kchtg.cangben.controller.PierController;
+import com.hanghai.kchtg.cangben.dto.caucang.PierResponse;
+import com.hanghai.kchtg.cangben.service.PierApprovalService;
+import com.hanghai.kchtg.cangben.service.PierService;
 import com.hanghai.kchtg.security.JwtUtil;
 import com.hanghai.kchtg.security.service.JwtSessionService;
 import com.hanghai.kchtg.security.service.TokenService;
@@ -44,22 +44,22 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Controller slice tests for CauCangController — security filters disabled.
+ * Controller slice tests for PierController — security filters disabled.
  * Covers F-020 through F-025 endpoints + INT-003 (change history validation).
  */
-@WebMvcTest(CauCangController.class)
+@WebMvcTest(PierController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@DisplayName("CauCangController web MVC tests — M-002")
-class CauCangControllerTest {
+@DisplayName("PierController web MVC tests — M-002")
+class PierControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockBean
-    private CauCangService cauCangService;
+    private PierService pierService;
 
     @MockBean
-    private CauCangApprovalService cauCangApprovalService;
+    private PierApprovalService pierApprovalService;
 
     // Security / infrastructure stubs required by @WebMvcTest context
     @MockBean
@@ -72,7 +72,6 @@ class CauCangControllerTest {
     private UserRepository userRepository;
     @MockBean
     private AdminAuditLogRepository adminAuditLogRepository;
-
 
     @MockBean
     private TokenService tokenService;
@@ -91,15 +90,15 @@ class CauCangControllerTest {
 
     // ── helpers ─────────────────────────────────────────────────────────
 
-    private CauCangResponse makeResponse(UUID id) {
-        return CauCangResponse.builder()
+    private PierResponse makeResponse(UUID id) {
+        return PierResponse.builder()
                 .id(id)
-                .maCau("CAU-001")
-                .tenCau("Cầu Cảng Demo")
-                .chieuDai(new BigDecimal("200.00"))
-                .taiTrong(new BigDecimal("50000.00"))
-                .trangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH)
-                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .pierCode("CAU-001")
+                .pierName("Cầu Cảng Demo")
+                .length(new BigDecimal("200.00"))
+                .designLoad(new BigDecimal("50000.00"))
+                .operationalStatus(TrangThaiHoatDong.HIEN_HANH)
+                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
                 .build();
     }
 
@@ -124,99 +123,99 @@ class CauCangControllerTest {
         };
     }
 
-    // ── GET /api/v1/cau-cang ────────────────────────────────────────────
+    // ── GET /api/v1/piers ────────────────────────────────────────────
 
     @Test
-    @DisplayName("GET /api/v1/cau-cang — returns 200 with paged list")
+    @DisplayName("GET /api/v1/piers — returns 200 with paged list")
     void findAll_returns200WithPagedList() throws Exception {
         UUID id = UUID.randomUUID();
-        Page<CauCangResponse> page = new PageImpl<>(List.of(makeResponse(id)));
-        when(cauCangService.findAll(0, 20, null, null, null, null, null, null)).thenReturn(page);
+        Page<PierResponse> page = new PageImpl<>(List.of(makeResponse(id)));
+        when(pierService.findAll(0, 20, null, null, null, null, null, null)).thenReturn(page);
 
-        mockMvc.perform(get("/api/v1/cau-cang")
+        mockMvc.perform(get("/api/v1/piers")
                         .param("page", "0")
                         .param("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.content[0].maCau").value("CAU-001"));
+                .andExpect(jsonPath("$.data.content[0].pierCode").value("CAU-001"));
 
-        verify(cauCangService).findAll(0, 20, null, null, null, null, null, null);
+        verify(pierService).findAll(0, 20, null, null, null, null, null, null);
     }
 
-    // ── GET /api/v1/cau-cang/{id} ────────────────────────────────────────
+    // ── GET /api/v1/piers/{id} ────────────────────────────────────────
 
     @Test
-    @DisplayName("GET /api/v1/cau-cang/{id} — returns 200 with entity")
+    @DisplayName("GET /api/v1/piers/{id} — returns 200 with entity")
     void getById_returns200() throws Exception {
         UUID id = UUID.randomUUID();
-        when(cauCangService.getById(id)).thenReturn(makeResponse(id));
+        when(pierService.getById(id)).thenReturn(makeResponse(id));
 
-        mockMvc.perform(get("/api/v1/cau-cang/{id}", id))
+        mockMvc.perform(get("/api/v1/piers/{id}", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.maCau").value("CAU-001"));
+                .andExpect(jsonPath("$.data.pierCode").value("CAU-001"));
 
-        verify(cauCangService).getById(id);
+        verify(pierService).getById(id);
     }
 
-    // ── POST /api/v1/cau-cang/{id}/approve ──────────────────────────────
+    // ── POST /api/v1/piers/{id}/approve ──────────────────────────────
 
     @Test
-    @DisplayName("POST /api/v1/cau-cang/{id}/approve — returns 200, userId from Authentication")
+    @DisplayName("POST /api/v1/piers/{id}/approve — returns 200, userId from Authentication")
     void approve_returns200() throws Exception {
         UUID id = UUID.randomUUID();
 
-        mockMvc.perform(post("/api/v1/cau-cang/{id}/approve", id)
+        mockMvc.perform(post("/api/v1/piers/{id}/approve", id)
                         .with(userPrincipal("test-approver")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(cauCangApprovalService).approve(id, "test-approver", null);
+        verify(pierApprovalService).approve(id, "test-approver", null);
     }
 
-    // ── POST /api/v1/cau-cang/{id}/reject ──────────────────────────────
+    // ── POST /api/v1/piers/{id}/reject ──────────────────────────────
 
     @Test
-    @DisplayName("POST /api/v1/cau-cang/{id}/reject — reason >= 10 chars returns 200")
+    @DisplayName("POST /api/v1/piers/{id}/reject — reason >= 10 chars returns 200")
     void reject_validReason_returns200() throws Exception {
         UUID id = UUID.randomUUID();
 
-        mockMvc.perform(post("/api/v1/cau-cang/{id}/reject", id)
+        mockMvc.perform(post("/api/v1/piers/{id}/reject", id)
                         .param("reason", "Không đủ tài liệu hợp lệ")
                         .with(userPrincipal("test-approver")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(cauCangApprovalService).approve(id, "test-approver", "Không đủ tài liệu hợp lệ");
+        verify(pierApprovalService).approve(id, "test-approver", "Không đủ tài liệu hợp lệ");
     }
 
     @Test
-    @DisplayName("POST /api/v1/cau-cang/{id}/reject — reason < 10 chars returns 400 Bad Request")
+    @DisplayName("POST /api/v1/piers/{id}/reject — reason < 10 chars returns 400 Bad Request")
     void reject_tooShortReason_returns400() throws Exception {
         UUID id = UUID.randomUUID();
 
         // reason = "Too short" has exactly 9 characters, violates @Size(min=10)
-        mockMvc.perform(post("/api/v1/cau-cang/{id}/reject", id)
+        mockMvc.perform(post("/api/v1/piers/{id}/reject", id)
                         .param("reason", "Too short")
                         .with(userPrincipal("test-approver")))
                 .andExpect(status().isBadRequest());
     }
 
-    // ── GET /api/v1/cau-cang/{id}/history ────────────────────────────────
+    // ── GET /api/v1/piers/{id}/history ────────────────────────────────
 
     @Test
-    @DisplayName("GET /api/v1/cau-cang/{id}/history — returns 200 with history map")
+    @DisplayName("GET /api/v1/piers/{id}/history — returns 200 with history map")
     void getHistory_returns200() throws Exception {
         UUID id = UUID.randomUUID();
-        when(cauCangApprovalService.getHistory(id))
+        when(pierApprovalService.getHistory(id))
                 .thenReturn(Map.of("entityId", id.toString(), "changeHistory", List.of(),
                         "approvalLog", List.of(), "currentApprovalStatus", "CHO_PHE_DUYET",
-                        "entityType", "CauCang"));
+                        "entityType", "Pier"));
 
-        mockMvc.perform(get("/api/v1/cau-cang/{id}/history", id))
+        mockMvc.perform(get("/api/v1/piers/{id}/history", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(cauCangApprovalService).getHistory(id);
+        verify(pierApprovalService).getHistory(id);
     }
 }

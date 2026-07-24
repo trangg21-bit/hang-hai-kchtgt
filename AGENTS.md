@@ -12,11 +12,11 @@ Vite v8 dev mode does **NOT** resolve `export { x } from './module'` bindings wh
 
 ```ts
 // ❌ BROKEN in Vite dev (ReferenceError at runtime):
-export { dataNavy } from './tokens';
+export { dataNavy } from "./tokens";
 export const colors = [dataNavy]; // dataNavy is not defined!
 
 // ✅ FIX — explicit import, then re-export:
-import { dataNavy } from './tokens';
+import { dataNavy } from "./tokens";
 export { dataNavy };
 export const colors = [dataNavy]; // works
 ```
@@ -37,11 +37,11 @@ This project is built on **spring-boot**. Its CLI/generator is `mvn`. Prefer the
 
 Toàn bộ token thiết kế, CSS class, và cấu trúc layout được định nghĩa tại **3 file**:
 
-| Thứ tự đọc | File | Vai trò | Agent nào phải đọc |
-|---|---|---|---|
-| 1 | `frontend/src/theme.ts` | Design tokens + AntD ConfigProvider + globalCssVars + Rules 1-14 | **Tất cả** (BA, Dev, QA, Auditor) |
-| 2 | `frontend/src/components/AppLayout.tsx` | Layout chung cho 22 module (Sidebar + Topbar) | **Dev, QA** |
-| 3 | `docs/intel/ui-audit-report.md` | Danh sách pass/fail từng UI component | **PMO lead** trước khi dispatch |
+| Thứ tự đọc | File                                    | Vai trò                                                          | Agent nào phải đọc                |
+| ---------- | --------------------------------------- | ---------------------------------------------------------------- | --------------------------------- |
+| 1          | `frontend/src/theme.ts`                 | Design tokens + AntD ConfigProvider + globalCssVars + Rules 1-14 | **Tất cả** (BA, Dev, QA, Auditor) |
+| 2          | `frontend/src/components/AppLayout.tsx` | Layout chung cho 22 module (Sidebar + Topbar)                    | **Dev, QA**                       |
+| 3          | `docs/intel/ui-audit-report.md`         | Danh sách pass/fail từng UI component                            | **PMO lead** trước khi dispatch   |
 
 ### Cách dùng theme token
 
@@ -86,15 +86,15 @@ PMO Lead
 
 ### 7 nguyên lý (bắt buộc tuân thủ)
 
-| # | Nguyên lý | Ý nghĩa |
-|---|---|---|
-| 1 | **Token vai trò, không giá trị** | `statusOperational` — không phải `greenColor`. Token trả lời "tại sao", không phải "cái gì" |
-| 2 | **Palette đóng (13 màu)** | Không thêm token màu mới nếu không design review |
-| 3 | **Thang số — cấm giá trị giữa** | Radius: 4/8/12/999. Font: 11/13/15/20/28. Weight: 400/500/600. Spacing: 4/8/12/16/24/32. Cấm 6, 7, 10, 14, 18 |
-| 4 | **Thứ bậc text** | `textPrimary` (số KPI) → `textSecondary` (nhãn) → `textTertiary` (metadata) — nhất quán mọi màn |
-| 5 | **Accent budget ≤ 3** | `actionPrimary` xuất hiện tối đa 3 lần/màn hình |
-| 6 | **Nhiệt độ màu** | Tất cả surface xám dùng chung undertone lạnh |
-| 7 | **Quy ước loại ND → cách thể hiện** | metadata → `metaStyle`, card → `cardStyle`, action → `actionStyle`, badge → `badgeBaseStyle` |
+| #   | Nguyên lý                           | Ý nghĩa                                                                                                       |
+| --- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| 1   | **Token vai trò, không giá trị**    | `statusOperational` — không phải `greenColor`. Token trả lời "tại sao", không phải "cái gì"                   |
+| 2   | **Palette đóng (13 màu)**           | Không thêm token màu mới nếu không design review                                                              |
+| 3   | **Thang số — cấm giá trị giữa**     | Radius: 4/8/12/999. Font: 11/13/15/20/28. Weight: 400/500/600. Spacing: 4/8/12/16/24/32. Cấm 6, 7, 10, 14, 18 |
+| 4   | **Thứ bậc text**                    | `textPrimary` (số KPI) → `textSecondary` (nhãn) → `textTertiary` (metadata) — nhất quán mọi màn               |
+| 5   | **Accent budget ≤ 3**               | `actionPrimary` xuất hiện tối đa 3 lần/màn hình                                                               |
+| 6   | **Nhiệt độ màu**                    | Tất cả surface xám dùng chung undertone lạnh                                                                  |
+| 7   | **Quy ước loại ND → cách thể hiện** | metadata → `metaStyle`, card → `cardStyle`, action → `actionStyle`, badge → `badgeBaseStyle`                  |
 
 ### Cách dùng
 
@@ -111,10 +111,10 @@ style={{ color: '#1BAF7A', fontSize: 28 }}
 
 ```ts
 // tokens.ts: semantic role tokens (cho component nội dung)
-import { statusOperational, textPrimary, spaceMd } from '../tokens';
+import { statusOperational, textPrimary, spaceMd } from "../tokens";
 
 // theme.ts: layout/infrastructure tokens (cho sidebar, header, AntD config)
-import { colors, layout } from '../theme';
+import { colors, layout } from "../theme";
 ```
 
 ### Agent workflow cho UI mới
@@ -135,13 +135,13 @@ PMO Lead
 
 Mọi màn hình danh sách (quản lý người dùng, vai trò, đơn vị, v.v.) **PHẢI** dùng 5 components share từ `frontend/src/components/list-view/`:
 
-| Component | Vai trò |
-|---|---|
-| `ScreenHeader` | Breadcrumb + nút hành động (Thêm mới, Xuất Excel) |
-| `FilterBar` | Ô tìm kiếm, select lọc, date range + nút Tìm kiếm/Reload |
-| `StatusTabs` | Tab trạng thái kèm số lượng |
-| `DataTable` | Bảng dữ liệu có sort + dropdown hành động |
-| `Pagination` | Điều hướng trang |
+| Component      | Vai trò                                                  |
+| -------------- | -------------------------------------------------------- |
+| `ScreenHeader` | Breadcrumb + nút hành động (Thêm mới, Xuất Excel)        |
+| `FilterBar`    | Ô tìm kiếm, select lọc, date range + nút Tìm kiếm/Reload |
+| `StatusTabs`   | Tab trạng thái kèm số lượng                              |
+| `DataTable`    | Bảng dữ liệu có sort + dropdown hành động                |
+| `Pagination`   | Điều hướng trang                                         |
 
 ### Form/Modal Pattern
 
@@ -190,13 +190,13 @@ PMO Lead
 ## SDLC convention
 
 All SDLC scaffolding goes through `ai-kit` CLI (ADR-005).
-Skills MUST NOT Write/mkdir under docs/{modules,features,hotfixes}/**.
+Skills MUST NOT Write/mkdir under docs/{modules,features,hotfixes}/\*\*.
 
 ## AI Checklist for Reports & Gaps (BẮT BUỘC TUÂN THỦ)
 
 Mỗi lần thực hiện rà soát, sửa đổi báo cáo hoặc logic nghiệp vụ, AI **phải luôn luôn kiểm tra trực tiếp** các điểm sau trước khi tiến hành viết code:
 
-1. **Kiểm chứng Sự tồn tại của Màn hình Quản trị (Management UI)**: 
+1. **Kiểm chứng Sự tồn tại của Màn hình Quản trị (Management UI)**:
    - Kiểm tra xem đối tượng dữ liệu trong báo cáo đã có màn hình quản lý (CRUD) và Route trên Frontend chưa.
    - Không được giả định màn hình đã tồn tại khi chỉ thấy dữ liệu thô (GIS point/polygon).
 
@@ -207,3 +207,5 @@ Mỗi lần thực hiện rà soát, sửa đổi báo cáo hoặc logic nghiệ
 3. **Nguyên tắc "Data thật - Không gán mặc định"**:
    - Tuân thủ yêu cầu: Không tự động gán dữ liệu giả lập hoặc mặc định (placeholder/hardcoded) cho các cột báo cáo khi database thực tế không có trường dữ liệu tương ứng.
 
+4. **Nguyên tắc "Bảo tồn Code & Không Revert File"**:
+   - Trợ lý AI tuyệt đối không được tự ý xóa các đoạn mã nguồn đang hoạt động, xóa tính năng đã phát triển hoặc tự ý revert/reset file về trạng thái cũ trừ khi có yêu cầu chỉ định trực tiếp và rõ ràng từ người dùng.

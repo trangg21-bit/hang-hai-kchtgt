@@ -8,8 +8,10 @@ import {
 import { colors } from '../../theme';
 
 export interface ScreenHeaderProps {
-  breadcrumb: { label: string; path?: string }[];
-  actions?: { key: string; label: string; icon?: React.ReactNode; variant: 'primary' | 'outline' | 'subtle'; onClick: () => void; borderColor?: string; color?: string; }[];
+  title?: string;
+  breadcrumb?: { label: string; href?: string; path?: string }[];
+  breadcrumbs?: { label: string; href?: string; path?: string }[];
+  actions?: React.ReactNode | { key: string; label: string; icon?: React.ReactNode; variant: 'primary' | 'outline' | 'subtle'; onClick: () => void; borderColor?: string; color?: string; }[];
 }
 
 const variantStyles: Record<string, React.CSSProperties> = {
@@ -18,26 +20,45 @@ const variantStyles: Record<string, React.CSSProperties> = {
   subtle: { background: 'transparent', color: textSecondary, border: `1px solid ${borderDefault}`, borderRadius: radiusPill, fontWeight: fontWeightMedium, height: 40, fontSize: fontSizeMd },
 };
 
-const ScreenHeader: React.FC<ScreenHeaderProps> = ({ breadcrumb, actions }) => (
-  <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-    <Breadcrumb
-      separator={<span style={{ color: textTertiary }}>&gt;</span>}
-      items={breadcrumb.map((item, idx) => ({
-        title: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{item.label}</span>,
-      }))}
-    />
-    {actions && actions.length > 0 && (
-      <div style={{ display: 'flex', gap: spaceSm, flexShrink: 0, marginLeft: 'auto' }}>
-        {actions.map((action) => (
-          <Button key={action.key} icon={action.icon} onClick={action.onClick}
-            style={{ ...variantStyles[action.variant], ...(action.borderColor ? { borderColor: action.borderColor } : {}), ...(action.color ? { color: action.color } : {}) }}
-            type={action.variant === 'primary' ? 'primary' : 'default'}>
-            {action.label}
-          </Button>
-        ))}
-      </div>
-    )}
-  </div>
-);
+const ScreenHeader: React.FC<ScreenHeaderProps> = ({ breadcrumb, breadcrumbs, actions }) => {
+  const items = breadcrumbs || breadcrumb || [];
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+      {items.length > 0 && (
+        <Breadcrumb
+          separator={<span style={{ color: textTertiary }}>&gt;</span>}
+          items={items.map((item, idx) => ({
+            title: (
+              <span style={{
+                color: idx === items.length - 1 ? colors.sidebarBg : textSecondary,
+                fontWeight: idx === items.length - 1 ? fontWeightBold : fontWeightMedium,
+                fontSize: idx === items.length - 1 ? fontSizeLg : 13,
+              }}>
+                {item.label}
+              </span>
+            ),
+          }))}
+        />
+      )}
+      {actions && (
+        Array.isArray(actions) ? (
+          <div style={{ display: 'flex', gap: spaceSm, flexShrink: 0, marginLeft: 'auto' }}>
+            {actions.map((action: any) => (
+              <Button key={action.key} icon={action.icon} onClick={action.onClick}
+                style={{ ...variantStyles[action.variant], ...(action.borderColor ? { borderColor: action.borderColor } : {}), ...(action.color ? { color: action.color } : {}) }}
+                type={action.variant === 'primary' ? 'primary' : 'default'}>
+                {action.label}
+              </Button>
+            ))}
+          </div>
+        ) : (
+          <div style={{ marginLeft: 'auto', flexShrink: 0 }}>
+            {actions}
+          </div>
+        )
+      )}
+    </div>
+  );
+};
 
 export default ScreenHeader;

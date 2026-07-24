@@ -62,7 +62,6 @@ public class HeThongVTSDataService {
                     geomType,
                     objType,
                     request.getToaDo(),
-                    request.getBieuTuongId(),
                     refId,
                     com.hanghai.kchtg.gis.search.dto.KchtType.HE_THONG_VTS
             );
@@ -134,7 +133,6 @@ public class HeThongVTSDataService {
                         geomType,
                         objType,
                         request.getToaDo(),
-                        request.getBieuTuongId(),
                         refId,
                         com.hanghai.kchtg.gis.search.dto.KchtType.HE_THONG_VTS
                 );
@@ -150,7 +148,6 @@ public class HeThongVTSDataService {
                         spatialObj.getGeometryType(),
                         spatialObj.getObjectType(),
                         spatialObj.getCoordinates(),
-                        spatialObj.getBieuTuongId(),
                         refId,
                         com.hanghai.kchtg.gis.search.dto.KchtType.HE_THONG_VTS
                 );
@@ -316,7 +313,6 @@ public class HeThongVTSDataService {
                 com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatial = spatialOpt.get();
                 geomType = spatial.getGeometryType();
                 coords = spatial.getCoordinates();
-                symbolId = spatial.getBieuTuongId();
             }
         }
 
@@ -346,7 +342,6 @@ public class HeThongVTSDataService {
                 .khongGianId(entity.getKhongGianId())
                 .loaiHinhHoc(geomType)
                 .toaDo(coords)
-                .bieuTuongId(symbolId)
                 .build();
     }
 

@@ -66,7 +66,6 @@ public class PierService {
                     geomType,
                     objType,
                     request.getCoordinates(),
-                    request.getMapSymbolId(),
                     pierId,
                     com.hanghai.kchtg.gis.search.dto.KchtType.CAUCANG
             );
@@ -235,7 +234,6 @@ public class PierService {
                         geomType,
                         objType,
                         request.getCoordinates(),
-                        request.getMapSymbolId(),
                         entity.getId(),
                         com.hanghai.kchtg.gis.search.dto.KchtType.CAUCANG
                 );
@@ -250,7 +248,6 @@ public class PierService {
                         spatialObj.getGeometryType(),
                         spatialObj.getObjectType(),
                         spatialObj.getCoordinates(),
-                        spatialObj.getBieuTuongId(),
                         entity.getId(),
                         com.hanghai.kchtg.gis.search.dto.KchtType.CAUCANG
                 );

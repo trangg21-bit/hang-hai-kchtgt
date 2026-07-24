@@ -42,9 +42,6 @@ public class GisSpatialObject extends BaseEntity {
     @Column(name = "category_id")
     private Long categoryId;
 
-    @Column(name = "bieu_tuong_id")
-    private UUID bieuTuongId;
-
     @NotBlank(message = "Tọa độ không được để trống")
     @Column(name = "coordinates", nullable = false, columnDefinition = "TEXT")
     private String coordinates;

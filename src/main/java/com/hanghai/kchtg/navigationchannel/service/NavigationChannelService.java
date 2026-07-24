@@ -83,7 +83,6 @@ public class NavigationChannelService {
                     geomType,
                     objType,
                     req.getToaDo(),
-                    req.getBieuTuongId(),
                     refId,
                     KchtType.NAVIGATION_CHANNEL
             );
@@ -171,7 +170,6 @@ public class NavigationChannelService {
                         geomType,
                         objType,
                         req.getToaDo(),
-                        req.getBieuTuongId(),
                         refId,
                         KchtType.NAVIGATION_CHANNEL
                 );
@@ -187,7 +185,6 @@ public class NavigationChannelService {
                         spatialObj.getGeometryType(),
                         spatialObj.getObjectType(),
                         spatialObj.getCoordinates(),
-                        spatialObj.getBieuTuongId(),
                         refId,
                         KchtType.NAVIGATION_CHANNEL
                 );

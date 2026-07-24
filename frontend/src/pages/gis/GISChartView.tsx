@@ -2734,11 +2734,49 @@ export default function GISChartView() {
       const lineBounds = L.latLngBounds(lineLatLngs);
       if (!bounds.intersects(lineBounds)) return;
 
-      const symId = record.bieuTuongId || record.iconId;
-      const sym = symbols.find((s) => s.id === symId);
+      // Find symbol based on kchtTypeLabel (for infrastructureResults) or loaiKcht (for customGisFeatures)
+      const loai = (record.kchtTypeLabel || record.loaiKcht || '').toUpperCase();
+      let sym = null;
+      if (loai.includes('CẢNG BIỂN') || loai.includes('CANGBIEN') || loai.includes('CANG_BIEN')) {
+        sym = symbols.find(s => s.code === 'SEAPORT');
+      } else if (loai.includes('BẾN CẢNG')) {
+        sym = symbols.find(s => s.code === 'TERMINAL');
+      } else if (loai.includes('CẢNG CẠN')) {
+        sym = symbols.find(s => s.code === 'DRY_PORT');
+      } else if (loai.includes('CẦU CẢNG')) {
+        sym = symbols.find(s => s.code === 'QUAY');
+      } else if (loai.includes('KHU NEO ĐẬU')) {
+        sym = symbols.find(s => s.code === 'ANCHORAGE');
+      } else if (loai.includes('BẾN PHAO')) {
+        sym = symbols.find(s => s.code === 'MOORING');
+      } else if (loai.includes('TRÚ BÃO') || loai.includes('TRÁNH BÃO') || loai.includes('TRÁNH, TRÚ BÃO')) {
+        sym = symbols.find(s => s.code === 'SHELTER');
+      } else if (loai.includes('CHUYỂN TẢI')) {
+        sym = symbols.find(s => s.code === 'TRANSSHIP');
+      } else if (loai.includes('SỬA CHỮA') || loai.includes('ĐÓNG TÀU')) {
+        sym = symbols.find(s => s.code === 'SHIPYARD');
+      } else if (loai.includes('ĐÈN BIỂN') || loai.includes('DENBIEN')) {
+        sym = symbols.find(s => s.code === 'LIGHTHOUSE');
+      } else if (loai.includes('PHAO') || loai.includes('TIÊU') || loai.includes('PHAOTIEU')) {
+        sym = symbols.find(s => s.code === 'BUOY');
+      } else if (loai.includes('LUỒNG HÀNG HẢI') || loai.includes('LUONGHANGHAI')) {
+        sym = symbols.find(s => s.code === 'CHANNEL');
+      } else if (loai.includes('ĐÊ') || loai.includes('KÈ') || loai.includes('DEKE')) {
+        sym = symbols.find(s => s.code === 'BREAKWATER');
+      } else if (loai.includes('VTS')) {
+        sym = symbols.find(s => s.code === 'VTS' || s.code === 'VTS_INFRA');
+      } else if (loai.includes('RADAR')) {
+        sym = symbols.find(s => s.code === 'RADAR');
+      } else if (loai.includes('AIS')) {
+        sym = symbols.find(s => s.code === 'AIS');
+      } else if (loai.includes('CCTV')) {
+        sym = symbols.find(s => s.code === 'CCTV');
+      } else if (loai.includes('SCADA')) {
+        sym = symbols.find(s => s.code === 'SCADA');
+      }
       
       let markerIcon: any;
-      if (sym && sym.hinhAnh) {
+      if (sym && sym.image) {
         markerIcon = L.divIcon({
           html: `
             <div style="
@@ -2753,7 +2791,7 @@ export default function GISChartView() {
               box-shadow: 0 2px 5px rgba(0,0,0,0.3);
               overflow: hidden;
             ">
-              <img src="${sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}"
+              <img src="${sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}"
                    style="width: 22px; height: 22px; object-fit: contain;" />
             </div>
           `,
@@ -2872,13 +2910,50 @@ export default function GISChartView() {
             return;
           }
 
-          // Find symbol
-          const symId = record.bieuTuongId || record.iconId;
-          const sym = symbols.find((s) => s.id === symId);
+          // Find symbol based on kchtTypeLabel (for infrastructureResults) or loaiKcht (for customGisFeatures)
+          const loai = (record.kchtTypeLabel || record.loaiKcht || '').toUpperCase();
+          let sym = null;
+          if (loai.includes('CẢNG BIỂN') || loai.includes('CANGBIEN') || loai.includes('CANG_BIEN')) {
+            sym = symbols.find(s => s.code === 'SEAPORT');
+          } else if (loai.includes('BẾN CẢNG')) {
+            sym = symbols.find(s => s.code === 'TERMINAL');
+          } else if (loai.includes('CẢNG CẠN')) {
+            sym = symbols.find(s => s.code === 'DRY_PORT');
+          } else if (loai.includes('CẦU CẢNG')) {
+            sym = symbols.find(s => s.code === 'QUAY');
+          } else if (loai.includes('KHU NEO ĐẬU')) {
+            sym = symbols.find(s => s.code === 'ANCHORAGE');
+          } else if (loai.includes('BẾN PHAO')) {
+            sym = symbols.find(s => s.code === 'MOORING');
+          } else if (loai.includes('TRÚ BÃO') || loai.includes('TRÁNH BÃO') || loai.includes('TRÁNH, TRÚ BÃO')) {
+            sym = symbols.find(s => s.code === 'SHELTER');
+          } else if (loai.includes('CHUYỂN TẢI')) {
+            sym = symbols.find(s => s.code === 'TRANSSHIP');
+          } else if (loai.includes('SỬA CHỮA') || loai.includes('ĐÓNG TÀU')) {
+            sym = symbols.find(s => s.code === 'SHIPYARD');
+          } else if (loai.includes('ĐÈN BIỂN') || loai.includes('DENBIEN')) {
+            sym = symbols.find(s => s.code === 'LIGHTHOUSE');
+          } else if (loai.includes('PHAO') || loai.includes('TIÊU') || loai.includes('PHAOTIEU')) {
+            sym = symbols.find(s => s.code === 'BUOY');
+          } else if (loai.includes('LUỒNG HÀNG HẢI') || loai.includes('LUONGHANGHAI')) {
+            sym = symbols.find(s => s.code === 'CHANNEL');
+          } else if (loai.includes('ĐÊ') || loai.includes('KÈ') || loai.includes('DEKE')) {
+            sym = symbols.find(s => s.code === 'BREAKWATER');
+          } else if (loai.includes('VTS')) {
+            sym = symbols.find(s => s.code === 'VTS' || s.code === 'VTS_INFRA');
+          } else if (loai.includes('RADAR')) {
+            sym = symbols.find(s => s.code === 'RADAR');
+          } else if (loai.includes('AIS')) {
+            sym = symbols.find(s => s.code === 'AIS');
+          } else if (loai.includes('CCTV')) {
+            sym = symbols.find(s => s.code === 'CCTV');
+          } else if (loai.includes('SCADA')) {
+            sym = symbols.find(s => s.code === 'SCADA');
+          }
 
           let marker;
           let markerIcon: any;
-          if (sym && sym.hinhAnh) {
+          if (sym && sym.image) {
             markerIcon = L.divIcon({
               html: `
                 <div style="
@@ -2893,7 +2968,7 @@ export default function GISChartView() {
                   box-shadow: 0 2px 5px rgba(0,0,0,0.3);
                   overflow: hidden;
                 ">
-                  <img src="${sym.hinhAnh.startsWith('data:') ? sym.hinhAnh : `data:image/png;base64,${sym.hinhAnh}`}"
+                  <img src="${sym.image.startsWith('data:') ? sym.image : `data:image/png;base64,${sym.image}`}"
                        style="width: 22px; height: 22px; object-fit: contain;" />
                 </div>
               `,

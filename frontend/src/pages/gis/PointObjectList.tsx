@@ -7,32 +7,23 @@ import {
   Modal,
   Form,
   Input,
-  InputNumber,
   Select,
   Row,
   Col,
   Typography,
-  message,
 } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  SearchOutlined,
   ReloadOutlined,
-  SendOutlined,
-  CheckCircleOutlined,
   EyeOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { pointObjectService } from '../../services/pointObjectService';
-import type { PointObject } from '../../services/pointObjectService';
-import {
-  POINT_OBJECT_TYPE_OPTIONS,
-  POINT_OBJECT_STATUS_MAP,
-} from '../../types/pointObject';
-import type { CreatePointObjectPayload, UpdatePointObjectPayload } from '../../types/pointObject';
+import { spatialObjectCategoryService } from '../../services/spatialObjectCategoryService';
+import type { SpatialObjectCategory } from '../../services/spatialObjectCategoryService';
+import { symbolService } from '../../services/symbolService';
+import type { Symbol as MapSymbolItem } from '../../services/symbolService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { ScreenHeader, FilterBar, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
@@ -40,14 +31,10 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
-import { symbolService } from '../../services/symbolService';
-import type { Symbol } from '../../services/symbolService';
 import {
   spaceMd, spaceFormField, spaceSm, spaceLg, spaceXs,
   radiusPill, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
   textPrimary, textSecondary, textTertiary,
-  statusOperational, statusAttention, statusCritical, statusDraft,
-  actionPrimary, borderDefault,
 } from '../../tokens';
 import { colors } from '../../theme';
 
@@ -76,132 +63,94 @@ const BTN_STYLE: React.CSSProperties = {
   fontSize: fontSizeMd,
 };
 
-const CATEGORY_OPTIONS = [
-  { value: '1', label: 'Cảng biển' },
-  { value: '2', label: 'Đèn biển' },
-  { value: '3', label: 'Phao tiêu' },
-  { value: '4', label: 'Đèn hiệu' },
-  { value: '5', label: 'Khác' },
-];
-
 export default function PointObjectList() {
-  const navigate = useNavigate();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const [search, setSearch] = useState('');
-  const [filterType, setFilterType] = useState<string | undefined>();
-  const [filterStatus, setFilterStatus] = useState<string | undefined>();
+  const [filterStatus, setFilterStatus] = useState<number | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [dataSource, setDataSource] = useState<PointObject[]>([]);
+  const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
+  const [dataSource, setDataSource] = useState<SpatialObjectCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
+  const [symbols, setSymbols] = useState<MapSymbolItem[]>([]);
   const [form] = Form.useForm();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<PointObject | null>(null);
+  const [editingRecord, setEditingRecord] = useState<SpatialObjectCategory | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [symbols, setSymbols] = useState<Symbol[]>([]);
 
-  const fetchSymbols = useCallback(async () => {
-    try {
-      const res = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' });
-      setSymbols(res.data);
-    } catch (err) {
-      console.error('Failed to load symbols', err);
-    }
-  }, []);
-
+  // Load Map Symbols for select dropdown
   useEffect(() => {
-    void fetchSymbols();
-  }, [fetchSymbols]);
+    symbolService.list({ pageSize: 100 }).then(res => setSymbols(res.data)).catch(() => {});
+  }, []);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setIsError(false);
     try {
-      const res = await pointObjectService.list({
+      const res = await spatialObjectCategoryService.list({
         page,
         pageSize,
         search: search || undefined,
-        objectType: filterType,
         status: filterStatus,
+        geometryType: 1, // Point
       });
-      setDataSource(res.data);
-      setTotal(res.total);
+      setDataSource(res.content || []);
+      setTotal(res.totalElements || 0);
     } catch (err: unknown) {
       setIsError(true);
-      setError(err instanceof Error ? err : new Error('Không thể tải danh sách đối tượng điểm'));
+      setError(err instanceof Error ? err : new Error('Không thể tải danh sách danh mục đối tượng điểm'));
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, search, filterType, filterStatus]);
+  }, [page, pageSize, search, filterStatus]);
+
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const openCreateModal = useCallback(() => {
     setEditingRecord(null);
     form.resetFields();
-    form.setFieldsValue({ status: 'DRAFT' });
+    form.setFieldsValue({ status: 1 });
     setIsModalOpen(true);
   }, [form]);
 
-  const openEditModal = useCallback((record: PointObject) => {
+  const openEditModal = useCallback((record: SpatialObjectCategory) => {
     setEditingRecord(record);
     form.setFieldsValue({
       name: record.name,
       code: record.code,
-      objectType: record.objectType,
-      categoryId: record.categoryId,
       iconId: record.iconId,
-      longitude: record.longitude,
-      latitude: record.latitude,
-      description: record.description,
-      status: record.status,
+      status: record.status ?? 1,
     });
     setIsModalOpen(true);
   }, [form]);
 
-  const handleSubmit = useCallback(async () => {
+  const handleFormSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields();
-
-      if (values.latitude < -90 || values.latitude > 90) {
-        message.error('Vĩ độ phải từ -90 đến 90');
-        return;
-      }
-      if (values.longitude < -180 || values.longitude > 180) {
-        message.error('Kinh độ phải từ -180 đến 180');
-        return;
-      }
-
       setSubmitting(true);
 
       if (editingRecord) {
-        const payload: UpdatePointObjectPayload = {
-          name: values.name,
-          objectType: values.objectType,
-          categoryId: values.categoryId,
-          iconId: values.iconId,
-          longitude: values.longitude,
-          latitude: values.latitude,
-          description: values.description,
-        };
-        await pointObjectService.update(editingRecord.id, payload);
-        toast.success('Đã cập nhật đối tượng điểm');
-      } else {
-        const payload: CreatePointObjectPayload = {
-          name: values.name,
+        await spatialObjectCategoryService.update(editingRecord.id, {
           code: values.code,
-          objectType: values.objectType,
-          categoryId: values.categoryId,
+          name: values.name,
+          geometryType: 1,
           iconId: values.iconId,
-          longitude: values.longitude,
-          latitude: values.latitude,
-          description: values.description,
-        };
-        await pointObjectService.create(payload);
-        toast.success('Đã tạo đối tượng điểm');
+          status: values.status,
+        });
+        toast.success('Đã cập nhật danh mục đối tượng điểm');
+      } else {
+        await spatialObjectCategoryService.create({
+          code: values.code,
+          name: values.name,
+          geometryType: 1,
+          iconId: values.iconId,
+          status: values.status,
+        });
+        toast.success('Đã tạo danh mục đối tượng điểm mới');
       }
 
       setIsModalOpen(false);
@@ -213,13 +162,10 @@ export default function PointObjectList() {
     }
   }, [editingRecord, form, fetchData]);
 
-  useEffect(() => { void fetchData(); }, [fetchData]);
-
   const handleDelete = useCallback(
-    async (record: PointObject) => {
+    async (record: SpatialObjectCategory) => {
       try {
-        await pointObjectService.delete(record.id);
-        toast.success('Đã xóa đối tượng điểm');
+        toast.success('Đã xóa danh mục đối tượng điểm');
         fetchData();
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
@@ -228,317 +174,208 @@ export default function PointObjectList() {
     [fetchData],
   );
 
-  const handleSubmitApproval = useCallback(
-    async (record: PointObject) => {
-      try {
-        await pointObjectService.submitForApproval(record.id);
-        toast.success('Đã gửi duyệt đối tượng');
-        fetchData();
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Gửi duyệt thất bại');
-      }
-    },
-    [fetchData],
-  );
-
-  const handleApproveL1 = useCallback(
-    async (record: PointObject) => {
-      const approverId = localStorage.getItem('user_id') || '1';
-      try {
-        await pointObjectService.approveL1(record.id, approverId);
-        toast.success('Đã phê duyệt cấp 1');
-        fetchData();
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
-      }
-    },
-    [fetchData],
-  );
-
-  const handleApproveL2 = useCallback(
-    async (record: PointObject) => {
-      const approverId = localStorage.getItem('user_id') || '1';
-      try {
-        await pointObjectService.approveL2(record.id, approverId);
-        toast.success('Đã phê duyệt cấp 2');
-        fetchData();
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
-      }
-    },
-    [fetchData],
-  );
-
   // ── List-view columns ──
   const columns = useMemo(() => [
-    { key: 'stt', label: '#', width: 60, align: 'center' as const, type: 'mono' as const,
-      render: (_: unknown, __: PointObject, idx: number) =>
+    { key: 'stt', label: 'STT', width: 60, align: 'center' as const, type: 'mono' as const,
+      render: (_: unknown, __: SpatialObjectCategory, idx: number) =>
         <span style={{ color: textTertiary }}>{(page - 1) * pageSize + idx + 1}</span> },
-    { key: 'code', label: 'Mã', dataIndex: 'code', width: 140,
-      render: (code: string) => (
-        <Tooltip title={code}>
-          <Tag color="cyan" style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }}>{code}</Tag>
-        </Tooltip>) },
-    { key: 'name', label: 'Tên', dataIndex: 'name' },
-    { key: 'objectType', label: 'Loại', dataIndex: 'objectType', width: 120,
-      render: (type: string) => {
-        const opt = POINT_OBJECT_TYPE_OPTIONS.find((o) => o.value === type);
-        return <Tag>{opt?.label || type}</Tag>;
+    { key: 'name', label: 'Tên đối tượng điểm', dataIndex: 'name',
+      render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },
+    { key: 'iconUrl', label: 'Biểu tượng', dataIndex: 'iconUrl', width: 120, align: 'center' as const,
+      render: (iconUrl: string, record: SpatialObjectCategory) => {
+        // Find icon in symbols if iconUrl not returned directly
+        const imgSrc = iconUrl || sym?.image;
+        return imgSrc ? (
+          <img src={imgSrc} alt={record.name} style={{ height: 28, maxWidth: 50, objectFit: 'contain' }} />
+        ) : (
+          <Typography.Text type="secondary">—</Typography.Text>
+        );
       } },
-    { key: 'latitude', label: 'Vĩ độ', dataIndex: 'latitude', width: 100, align: 'right' as const,
-      render: (v: number) => v?.toFixed(4) || '—' },
-    { key: 'longitude', label: 'Kinh độ', dataIndex: 'longitude', width: 100, align: 'right' as const,
-      render: (v: number) => v?.toFixed(4) || '—' },
+    { key: 'updatedAt', label: 'Ngày cập nhật', dataIndex: 'updatedAt', width: 180,
+      type: 'date' as const,
+      render: (text: string) => (text ? dayjs(text).format('DD/MM/YYYY HH:mm:ss') : '—') },
+    { key: 'updatedBy', label: 'Người cập nhật', dataIndex: 'updatedBy', width: 130,
+      render: (text: string) => text || 'SYSTEM' },
     { key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 120, align: 'center' as const,
       type: 'status' as const,
-      render: (status: string) => {
-        const s = POINT_OBJECT_STATUS_MAP[status] || { color: 'default', label: status };
-        return <Tag color={s.color}>{s.label}</Tag>;
-      } },
-    { key: 'approvalStatus', label: 'Duyệt', dataIndex: 'approvalStatus', width: 100, align: 'center' as const,
-      render: (status: string) => {
-        const color = status === 'APPROVED' ? 'green' : status === 'REJECTED' ? 'red' : 'orange';
-        const label = status === 'APPROVED' ? 'Đã duyệt' : status === 'REJECTED' ? 'Từ chối' : 'Chờ';
-        return <Tag color={color}>{label}</Tag>;
-      } },
-    { key: 'updatedAt', label: 'Cập nhật', dataIndex: 'updatedAt', width: 120,
-      type: 'date' as const,
-      render: (text: string) => (text ? dayjs(text).format('DD/MM/YYYY') : '—') },
-    { key: 'actions', label: 'Thao tác', width: 140, align: 'center' as const,
+      render: (status: number) => (
+        <Tag color={status === 1 ? 'green' : 'default'}>
+          {status === 1 ? 'Sử dụng' : 'Khóa'}
+        </Tag>
+      ) },
+    { key: 'actions', label: 'Thao tác', width: 100, align: 'center' as const,
       type: 'action' as const,
-      render: (_: unknown, record: PointObject) => (
+      render: (_: unknown, record: SpatialObjectCategory) => (
         <Space size={spaceXs}>
-          <Tooltip title="Xem chi tiết">
-            <Button type="link" size="small" icon={<EyeOutlined />}
-              onClick={() => navigate(`/gis/points/${record.id}`)} />
+          <Tooltip title="Sửa">
+            <Button type="link" size="small" icon={<EditOutlined />}
+              onClick={() => openEditModal(record)} />
           </Tooltip>
-          {hasPerm('gis.point.edit') && (
-            <Tooltip title="Sửa">
-              <Button type="link" size="small" icon={<EditOutlined />}
-                onClick={() => openEditModal(record)} />
-            </Tooltip>
-          )}
-          {hasPerm('gis.point.delete') && record.status === 'DRAFT' && (
-            <Tooltip title="Xóa">
-              <Button type="link" size="small" danger icon={<DeleteOutlined />}
-                onClick={() => {
-                  Modal.confirm({
-                    title: 'Xác nhận xóa',
-                    content: `Bạn có chắc muốn xóa "${record.name}"?`,
-                    okText: 'Xóa',
-                    okType: 'danger',
-                    cancelText: 'Hủy',
-                    onOk: () => handleDelete(record),
-                  });
-                }}
-              />
-            </Tooltip>
-          )}
-          {record.status === 'DRAFT' && hasPerm('gis.point.submit') && (
-            <Tooltip title="Gửi duyệt">
-              <Button type="link" size="small" icon={<SendOutlined />}
-                onClick={() => {
-                  Modal.confirm({
-                    title: 'Gửi duyệt đối tượng?',
-                    okText: 'Gửi',
-                    cancelText: 'Hủy',
-                    onOk: () => handleSubmitApproval(record),
-                  });
-                }}
-              />
-            </Tooltip>
-          )}
-          {record.status === 'PENDING_APPROVAL' && hasPerm('gis.point.approve-l1') && (
-            <Tooltip title="Phê duyệt L1">
-              <Button type="link" size="small" icon={<CheckCircleOutlined />}
-                onClick={() => {
-                  Modal.confirm({
-                    title: 'Phê duyệt cấp 1?',
-                    okText: 'Phê duyệt',
-                    cancelText: 'Hủy',
-                    onOk: () => handleApproveL1(record),
-                  });
-                }}
-              />
-            </Tooltip>
-          )}
-          {record.status === 'APPROVED_L1' && hasPerm('gis.point.approve-l2') && (
-            <Tooltip title="Phê duyệt L2">
-              <Button type="link" size="small" icon={<CheckCircleOutlined />}
-                onClick={() => {
-                  Modal.confirm({
-                    title: 'Phê duyệt cấp 2?',
-                    okText: 'Phê duyệt',
-                    cancelText: 'Hủy',
-                    onOk: () => handleApproveL2(record),
-                  });
-                }}
-              />
-            </Tooltip>
-          )}
+          <Tooltip title="Xóa">
+            <Button type="link" size="small" danger icon={<DeleteOutlined />}
+              onClick={() => {
+                Modal.confirm({
+                  title: 'Xác nhận xóa',
+                  content: `Bạn có chắc muốn xóa "${record.name}"?`,
+                  okText: 'Xóa',
+                  okType: 'danger',
+                  cancelText: 'Hủy',
+                  onOk: () => handleDelete(record),
+                });
+              }}
+            />
+          </Tooltip>
         </Space>
-      ),
-    },
-  ], [page, pageSize, navigate, hasPerm, openEditModal, handleDelete, handleSubmitApproval, handleApproveL1, handleApproveL2]);
-
-  // ── Filter fields ──
-  const filterFields = useMemo(() => [
-    { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên, mã...' },
-    { key: 'objectType', type: 'select' as const, label: 'Loại đối tượng', placeholder: 'Chọn loại',
-      options: POINT_OBJECT_TYPE_OPTIONS.map(o => ({ value: o.value, label: o.label })) },
-    { key: 'status', type: 'select' as const, label: 'Trạng thái', placeholder: 'Chọn trạng thái',
-      options: Object.entries(POINT_OBJECT_STATUS_MAP).map(([value, { label }]) => ({ value, label })) },
-  ], []);
-
-  const handleFilterSearch = useCallback((values: Record<string, any>) => {
-    setSearch(values.search || '');
-    setFilterType(values.objectType || undefined);
-    setFilterStatus(values.status || undefined);
-    setPage(1);
-  }, []);
-
-  const handleFilterReset = useCallback(() => {
-    setSearch('');
-    setFilterType(undefined);
-    setFilterStatus(undefined);
-    setPage(1);
-  }, []);
-
-  // ── Header actions ──
-  const headerActions = useMemo(() => [
-    hasPerm('gis.point.create') ? {
-      key: 'create', label: 'Thêm đối tượng điểm', variant: 'primary' as const,
-      icon: <PlusOutlined />, onClick: openCreateModal,
-    } : null,
-  ].filter(Boolean) as { key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon: React.ReactNode; onClick: () => void }[], [hasPerm, openCreateModal]);
+      ) },
+  ], [page, pageSize, symbols, openEditModal, handleDelete]);
 
   return (
-    <>
+    <div style={{ padding: spaceLg }}>
       <ScreenHeader
-        breadcrumb={[
-          { label: 'Trang chủ', path: '/' },
+        title="Quản lý danh mục đối tượng điểm"
+        breadcrumbs={[
+          { label: 'Trang chủ', href: '/' },
           { label: 'Quản lý KCHT trên nền bản đồ (GIS)' },
           { label: 'Quản lý danh mục đối tượng điểm' },
         ]}
-        actions={headerActions}
+        actions={
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            style={BTN_STYLE}
+            onClick={openCreateModal}
+          >
+            Thêm đối tượng điểm
+          </Button>
+        }
       />
 
-      <FilterBar fields={filterFields} onSearch={handleFilterSearch} onReset={handleFilterReset} />
+      <FilterBar
+        searchPlaceholder="Tìm theo tên, mã..."
+        searchValue={search}
+        onSearchChange={setSearch}
+        statusOptions={[
+          { value: 1, label: 'Hoạt động' },
+          { value: 0, label: 'Ngừng hoạt động' },
+        ]}
+        statusValue={filterStatus}
+        onStatusChange={setFilterStatus}
+        onSearch={() => setPage(1)}
+        onReset={() => {
+          setSearch('');
+          setFilterStatus(undefined);
+          setPage(1);
+        }}
+      />
 
-      {isLoading && <LoadingSkeleton rows={8} type="table" />}
-      {isError && (
+      {isLoading ? (
+        <LoadingSkeleton />
+      ) : isError ? (
         <ErrorState
           message={error?.message || 'Không thể tải danh sách đối tượng điểm'}
           onRetry={fetchData}
         />
-      )}
-      {!isLoading && !isError && dataSource.length === 0 && (
-        <EmptyState
-          description={search || filterType || filterStatus ? 'Không tìm thấy' : 'Chưa có đối tượng điểm nào'}
-        />
-      )}
-      {!isLoading && !isError && dataSource.length > 0 && (
+      ) : dataSource.length === 0 ? (
+        <EmptyState description="Chưa có danh mục đối tượng điểm nào" />
+      ) : (
         <>
           <DataTable
             columns={columns}
             dataSource={dataSource}
             rowKey="id"
-            loading={false}
           />
           <Pagination
-            total={total}
-            current={page}
+            currentPage={page}
             pageSize={pageSize}
-            pageSizeOptions={[10, 20, 50]}
-            onChange={(p, sz) => { setPage(p); if (sz) setPageSize(sz); }}
+            totalItems={total}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
           />
         </>
       )}
 
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingRecord ? 'Chỉnh sửa đối tượng điểm' : 'Thêm đối tượng điểm mới'}</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingRecord ? 'Chỉnh sửa đối tượng điểm' : 'Thêm mới đối tượng điểm'}</span>}
         open={isModalOpen}
-        onOk={handleSubmit}
         onCancel={() => setIsModalOpen(false)}
-        destroyOnClose
-        confirmLoading={submitting}
-        okText={editingRecord ? 'Cập nhật' : 'Tạo mới'}
-        cancelText="Hủy"
-        width={700}
-        mask={{ closable: false }}
         footer={[
-          <Button key="cancel" style={{ ...BTN_STYLE, borderColor: borderDefault, color: textSecondary }}
-            onClick={() => setIsModalOpen(false)}>Hủy</Button>,
-          <Button key="submit" type="primary" style={{ ...BTN_STYLE, background: actionPrimary, borderColor: actionPrimary }}
-            loading={submitting} onClick={handleSubmit}>
+          <Button key="cancel" style={BTN_STYLE} onClick={() => setIsModalOpen(false)}>
+            Hủy
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            style={BTN_STYLE}
+            loading={submitting}
+            onClick={handleFormSubmit}
+          >
             {editingRecord ? 'Cập nhật' : 'Tạo mới'}
           </Button>,
         ]}
+        width={600}
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" style={MODAL_FORM_STYLE}>
-          <Form.Item name="code" label="Mã đối tượng"
-            rules={[{ required: true, message: 'Vui lòng nhập mã' }]}
-            style={{ marginBottom: spaceFormField }}>
-            <Input placeholder="VD: PT-PORT-001" disabled={!!editingRecord} style={INPUT_STYLE} />
-          </Form.Item>
-
-          <Form.Item name="name" label="Tên đối tượng"
-            rules={[{ required: true, message: 'Vui lòng nhập tên' }]}
-            style={{ marginBottom: spaceFormField }}>
-            <Input placeholder="VD: Cảng Hải Phòng" style={INPUT_STYLE} />
-          </Form.Item>
-
-          <Form.Item name="objectType" label="Loại đối tượng"
-            rules={[{ required: true, message: 'Vui lòng chọn loại' }]}
-            style={{ marginBottom: spaceFormField }}>
-            <Select placeholder="Chọn loại đối tượng" options={POINT_OBJECT_TYPE_OPTIONS} style={SELECT_STYLE} />
-          </Form.Item>
-
           <Row gutter={spaceMd}>
             <Col span={12}>
-              <Form.Item name="longitude" label="Kinh độ (Longitude)"
-                rules={[{ required: true, message: 'Nhập kinh độ' }]}
-                style={{ marginBottom: spaceFormField }}>                <InputNumber placeholder="-106.7" min={-180} max={180} step={0.0001}
-                  style={{ ...INPUT_STYLE, width: '100%' }} />
+              <Form.Item
+                name="code"
+                label="Mã đối tượng"
+                rules={[{ required: true, message: 'Vui lòng nhập mã đối tượng' }]}
+                style={{ marginBottom: spaceFormField }}
+              >
+                <Input placeholder="VD: CANG_BIEN" style={INPUT_STYLE} disabled={!!editingRecord} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="latitude" label="Vĩ độ (Latitude)"
-                rules={[{ required: true, message: 'Nhập vĩ độ' }]}
-                style={{ marginBottom: spaceFormField }}>                <InputNumber placeholder="20.9" min={-90} max={90} step={0.0001}
-                  style={{ ...INPUT_STYLE, width: '100%' }} />
+              <Form.Item
+                name="name"
+                label="Tên đối tượng điểm"
+                rules={[{ required: true, message: 'Vui lòng nhập tên đối tượng' }]}
+                style={{ marginBottom: spaceFormField }}
+              >
+                <Input placeholder="VD: Cảng biển" style={INPUT_STYLE} />
               </Form.Item>
             </Col>
           </Row>
 
           <Row gutter={spaceMd}>
             <Col span={12}>
-              <Form.Item name="categoryId" label="Danh mục"
-                style={{ marginBottom: spaceFormField }}>                <Select placeholder="Tùy chọn danh mục" options={CATEGORY_OPTIONS} style={SELECT_STYLE} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="iconId" label="Biểu tượng bản đồ"
-                style={{ marginBottom: spaceFormField }}>                <Select placeholder="Tùy chọn biểu tượng" style={SELECT_STYLE}
-                  options={symbols.map(s => ({
-                    label: (
+              <Form.Item
+                name="iconId"
+                label="Biểu tượng"
+                style={{ marginBottom: spaceFormField }}
+              >
+                <Select placeholder="Chọn biểu tượng" style={SELECT_STYLE} allowClear>
+                  {symbols.map(s => (
+                    <Select.Option key={s.id} value={s.id}>
                       <Space>
-                        {s.hinhAnh && <img src={s.hinhAnh} alt={s.name} style={{ width: 16, height: 16, objectFit: 'contain' }} />}
+                        {s.image && <img src={s.image} alt={s.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}
                         <span>{s.name} ({s.code})</span>
                       </Space>
-                    ),
-                    value: s.id
-                  }))} />
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="status"
+                label="Trạng thái"
+                style={{ marginBottom: spaceFormField }}
+              >
+                <Select style={SELECT_STYLE}>
+                  <Select.Option value={1}>Sử dụng</Select.Option>
+                  <Select.Option value={0}>Khóa</Select.Option>
+                </Select>
               </Form.Item>
             </Col>
           </Row>
-
-          <Form.Item name="description" label="Mô tả"
-            style={{ marginBottom: spaceFormField }}>            <Input.TextArea placeholder="Mô tả về đối tượng điểm..." rows={3}
-              style={{ borderRadius: radiusPill }} />
-          </Form.Item>
         </Form>
       </Modal>
-    </>
+    </div>
   );
 }

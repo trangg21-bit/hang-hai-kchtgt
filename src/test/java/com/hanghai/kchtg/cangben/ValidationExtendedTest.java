@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.cangben;
 
-import com.hanghai.kchtg.cangben.dto.cangbien.CreateCangBienRequest;
-import com.hanghai.kchtg.cangben.dto.cangcan.CreateCangCanRequest;
+import com.hanghai.kchtg.cangben.dto.cangbien.CreatePortRequest;
+import com.hanghai.kchtg.cangben.dto.cangcan.CreateDryPortRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -30,18 +30,18 @@ class ValidationExtendedTest {
         validator = factory.getValidator();
     }
 
-    // ── CreateCangCanRequest GPS tests ────────────────────────────────────────
+    // ── CreateDryPortRequest GPS tests ────────────────────────────────────────
 
     @Test
-    @DisplayName("CreateCangCanRequest — viDo set, kinhDo null → gpsPaired violation")
-    void createCangCanRequest_gpsPartial_viDoSetKinhDoNull_invalid() {
-        CreateCangCanRequest request = new CreateCangCanRequest();
-        request.setMaCangCan("CC-001");
-        request.setTenCangCan("Cảng cạn test");
-        request.setViDo(new BigDecimal("21.028"));
-        request.setKinhDo(null); // partial — triggers violation
+    @DisplayName("CreateDryPortRequest — latitude set, longitude null → gpsPaired violation")
+    void createDryPortRequest_gpsPartial_latitudeSetLongitudeNull_invalid() {
+        CreateDryPortRequest request = new CreateDryPortRequest();
+        request.setDryPortCode("CC-001");
+        request.setDryPortName("Cảng cạn test");
+        request.setLatitude(new BigDecimal("21.028"));
+        request.setLongitude(null); // partial — triggers violation
 
-        Set<ConstraintViolation<CreateCangCanRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<CreateDryPortRequest>> violations = validator.validate(request);
 
         boolean hasGpsPairedViolation = violations.stream()
                 .anyMatch(v -> v.getPropertyPath().toString().contains("gpsPaired"));
@@ -50,15 +50,15 @@ class ValidationExtendedTest {
     }
 
     @Test
-    @DisplayName("CreateCangCanRequest — both GPS null → valid (no gpsPaired violation)")
-    void createCangCanRequest_bothGpsNull_valid() {
-        CreateCangCanRequest request = new CreateCangCanRequest();
-        request.setMaCangCan("CC-001");
-        request.setTenCangCan("Cảng cạn test");
-        request.setViDo(null);
-        request.setKinhDo(null);
+    @DisplayName("CreateDryPortRequest — both GPS null → valid (no gpsPaired violation)")
+    void createDryPortRequest_bothGpsNull_valid() {
+        CreateDryPortRequest request = new CreateDryPortRequest();
+        request.setDryPortCode("CC-001");
+        request.setDryPortName("Cảng cạn test");
+        request.setLatitude(null);
+        request.setLongitude(null);
 
-        Set<ConstraintViolation<CreateCangCanRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<CreateDryPortRequest>> violations = validator.validate(request);
 
         boolean hasGpsPairedViolation = violations.stream()
                 .anyMatch(v -> v.getPropertyPath().toString().contains("gpsPaired"));
@@ -67,15 +67,15 @@ class ValidationExtendedTest {
     }
 
     @Test
-    @DisplayName("CreateCangCanRequest — both GPS set → valid (no gpsPaired violation)")
-    void createCangCanRequest_bothGpsSet_valid() {
-        CreateCangCanRequest request = new CreateCangCanRequest();
-        request.setMaCangCan("CC-001");
-        request.setTenCangCan("Cảng cạn test");
-        request.setViDo(new BigDecimal("21.028"));
-        request.setKinhDo(new BigDecimal("105.854"));
+    @DisplayName("CreateDryPortRequest — both GPS set → valid (no gpsPaired violation)")
+    void createDryPortRequest_bothGpsSet_valid() {
+        CreateDryPortRequest request = new CreateDryPortRequest();
+        request.setDryPortCode("CC-001");
+        request.setDryPortName("Cảng cạn test");
+        request.setLatitude(new BigDecimal("21.028"));
+        request.setLongitude(new BigDecimal("105.854"));
 
-        Set<ConstraintViolation<CreateCangCanRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<CreateDryPortRequest>> violations = validator.validate(request);
 
         boolean hasGpsPairedViolation = violations.stream()
                 .anyMatch(v -> v.getPropertyPath().toString().contains("gpsPaired"));
@@ -83,18 +83,18 @@ class ValidationExtendedTest {
                 "Expected no gpsPaired violation but got: " + violations);
     }
 
-    // ── CreateCangBienRequest GPS tests ───────────────────────────────────────
+    // ── CreatePortRequest GPS tests ───────────────────────────────────────
 
     @Test
-    @DisplayName("CreateCangBienRequest — viDo set, kinhDo null → gpsPaired violation")
-    void createCangBienRequest_gpsPartial_viDoSet_kinhDoNull_invalid() {
-        CreateCangBienRequest request = new CreateCangBienRequest();
-        request.setMaCang("CB-001");
-        request.setTenCang("Cảng biển test");
-        request.setViDo(new BigDecimal("20.845"));
-        request.setKinhDo(null); // partial — triggers violation
+    @DisplayName("CreatePortRequest — latitude set, longitude null → gpsPaired violation")
+    void createPortRequest_gpsPartial_latitudeSet_longitudeNull_invalid() {
+        CreatePortRequest request = new CreatePortRequest();
+        request.setPortCode("CB-001");
+        request.setPortName("Cảng biển test");
+        request.setLatitude(new BigDecimal("20.845"));
+        request.setLongitude(null); // partial — triggers violation
 
-        Set<ConstraintViolation<CreateCangBienRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<CreatePortRequest>> violations = validator.validate(request);
 
         boolean hasGpsPairedViolation = violations.stream()
                 .anyMatch(v -> v.getPropertyPath().toString().contains("gpsPaired"));
@@ -103,15 +103,15 @@ class ValidationExtendedTest {
     }
 
     @Test
-    @DisplayName("CreateCangBienRequest — both GPS set → valid (no gpsPaired violation)")
-    void createCangBienRequest_bothGpsSet_valid() {
-        CreateCangBienRequest request = new CreateCangBienRequest();
-        request.setMaCang("CB-001");
-        request.setTenCang("Cảng biển test");
-        request.setViDo(new BigDecimal("20.845"));
-        request.setKinhDo(new BigDecimal("106.688"));
+    @DisplayName("CreatePortRequest — both GPS set → valid (no gpsPaired violation)")
+    void createPortRequest_bothGpsSet_valid() {
+        CreatePortRequest request = new CreatePortRequest();
+        request.setPortCode("CB-001");
+        request.setPortName("Cảng biển test");
+        request.setLatitude(new BigDecimal("20.845"));
+        request.setLongitude(new BigDecimal("106.688"));
 
-        Set<ConstraintViolation<CreateCangBienRequest>> violations = validator.validate(request);
+        Set<ConstraintViolation<CreatePortRequest>> violations = validator.validate(request);
 
         boolean hasGpsPairedViolation = violations.stream()
                 .anyMatch(v -> v.getPropertyPath().toString().contains("gpsPaired"));

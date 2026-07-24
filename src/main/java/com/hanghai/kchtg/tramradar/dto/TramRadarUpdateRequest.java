@@ -23,5 +23,4 @@ public class TramRadarUpdateRequest {
     private java.util.UUID heThongVtsId;
     private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
     private String toaDo;
-    private java.util.UUID bieuTuongId;
 }

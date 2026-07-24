@@ -1,11 +1,16 @@
 package com.hanghai.kchtg.gis.layer.entity;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
+
+import java.util.Arrays;
 
 @Entity
 @Table(name = "map_layers")
@@ -17,17 +22,62 @@ import org.hibernate.annotations.SQLRestriction;
 @Builder
 public class MapLayer extends BaseEntity {
 
+    @Getter
     public enum LayerType {
-        POINT,
-        LINE,
-        POLYGON,
-        BASEMAP,
-        OVERLAY
+        POINT(1),
+        LINE(2),
+        POLYGON(3),
+        BASEMAP(4),
+        OVERLAY(5);
+
+        private final int value;
+
+        LayerType(int value) {
+            this.value = value;
+        }
+
+        @JsonValue
+        public int getValue() {
+            return value;
+        }
+
+        @JsonCreator
+        public static LayerType fromValue(Object input) {
+            if (input == null) return null;
+            if (input instanceof Number) {
+                int val = ((Number) input).intValue();
+                return Arrays.stream(values())
+                        .filter(v -> v.value == val)
+                        .findFirst()
+                        .orElse(null);
+            }
+            String str = input.toString().trim();
+            try {
+                int val = Integer.parseInt(str);
+                return Arrays.stream(values())
+                        .filter(v -> v.value == val)
+                        .findFirst()
+                        .orElse(null);
+            } catch (NumberFormatException ex) {
+                return Arrays.stream(values())
+                        .filter(v -> v.name().equalsIgnoreCase(str))
+                        .findFirst()
+                        .orElse(null);
+            }
+        }
     }
 
-    public enum Status {
-        ACTIVE,
-        INACTIVE
+    @Converter(autoApply = true)
+    public static class LayerTypeConverter implements AttributeConverter<LayerType, Integer> {
+        @Override
+        public Integer convertToDatabaseColumn(LayerType attribute) {
+            return attribute != null ? attribute.getValue() : null;
+        }
+
+        @Override
+        public LayerType convertToEntityAttribute(Integer dbData) {
+            return dbData != null ? LayerType.fromValue(dbData) : null;
+        }
     }
 
     @NotBlank(message = "Tên lớp bản đồ không được để trống")
@@ -40,8 +90,8 @@ public class MapLayer extends BaseEntity {
     @Column(nullable = false, unique = true, length = 50)
     private String code;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @NotNull(message = "Loại lớp bản đồ không được để trống")
+    @Column(name = "layer_type", nullable = false)
     private LayerType layerType;
 
     @Column(length = 200)
@@ -62,8 +112,7 @@ public class MapLayer extends BaseEntity {
     @Column(name = "style_config", columnDefinition = "TEXT")
     private String styleConfig;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false)
     @Builder.Default
-    private Status status = Status.ACTIVE;
+    private Boolean status = true;
 }

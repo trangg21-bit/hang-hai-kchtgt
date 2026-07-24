@@ -84,7 +84,7 @@ class BuoyServiceTest {
 
         GisSpatialObject dummySpatial = new GisSpatialObject();
         dummySpatial.setId(UUID.randomUUID());
-        lenient().when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        lenient().when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(dummySpatial);
     }
 

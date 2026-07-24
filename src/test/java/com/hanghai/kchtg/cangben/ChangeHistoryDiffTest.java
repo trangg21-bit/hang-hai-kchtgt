@@ -1,8 +1,8 @@
 package com.hanghai.kchtg.cangben;
 
-import com.hanghai.kchtg.cangben.entity.CangBien;
-import com.hanghai.kchtg.cangben.entity.LichSuThayDoi;
-import com.hanghai.kchtg.cangben.repository.LichSuThayDoiRepository;
+import com.hanghai.kchtg.cangben.entity.Port;
+import com.hanghai.kchtg.cangben.entity.ChangeLog;
+import com.hanghai.kchtg.cangben.repository.ChangeLogRepository;
 import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,7 +38,7 @@ import static org.mockito.Mockito.*;
 class ChangeHistoryDiffTest {
 
     @Mock
-    private LichSuThayDoiRepository lichSuThayDoiRepository;
+    private ChangeLogRepository changeLogRepository;
 
     @InjectMocks
     private LichSuThayDoiService lichSuThayDoiService;
@@ -50,75 +50,75 @@ class ChangeHistoryDiffTest {
         entityId = UUID.randomUUID();
         // Save returns whatever is passed in (default Mockito behavior is fine since
         // we use captors on the save invocation)
-        when(lichSuThayDoiRepository.save(any(LichSuThayDoi.class)))
+        when(changeLogRepository.save(any(ChangeLog.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
     }
 
     @Test
-    @DisplayName("INT-003: update changing tenCang → saves LichSuThayDoi with fieldName='tenCang', old/new values")
-    void update_recordsChangedField_tenCang() {
-        // Build old snapshot (tenCang = "Old Name")
-        CangBien oldEntity = CangBien.builder()
-                .tenCang("Old Name")
-                .tinhThanhPho("Hải Phòng")
-                .dienTich(new BigDecimal("5000.00"))
-                .trangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH)
-                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
+    @DisplayName("INT-003: update changing portName → saves ChangeLog with fieldName='portName', old/new values")
+    void update_recordsChangedField_portName() {
+        // Build old snapshot (portName = "Old Name")
+        Port oldEntity = Port.builder()
+                .portName("Old Name")
+                .province("Hải Phòng")
+                .area(new BigDecimal("5000.00"))
+                .operationalStatus(TrangThaiHoatDong.HIEN_HANH)
+                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
                 .build();
 
-        // Build new entity (tenCang = "New Name", everything else same)
-        CangBien newEntity = CangBien.builder()
-                .tenCang("New Name")
-                .tinhThanhPho("Hải Phòng")
-                .dienTich(new BigDecimal("5000.00"))
-                .trangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH)
-                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
+        // Build new entity (portName = "New Name", everything else same)
+        Port newEntity = Port.builder()
+                .portName("New Name")
+                .province("Hải Phòng")
+                .area(new BigDecimal("5000.00"))
+                .operationalStatus(TrangThaiHoatDong.HIEN_HANH)
+                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
                 .build();
 
         List<String> changedFields = lichSuThayDoiService.recordChanges(
-                "CangBien", entityId.toString(), "user-1", oldEntity, newEntity);
+                "Port", entityId.toString(), "user-1", oldEntity, newEntity);
 
-        // Verify tenCang was detected as changed
-        assertTrue(changedFields.contains("tenCang"),
-                "Expected tenCang in changedFields but got: " + changedFields);
+        // Verify portName was detected as changed
+        assertTrue(changedFields.contains("portName"),
+                "Expected portName in changedFields but got: " + changedFields);
 
-        // Capture the LichSuThayDoi saved for tenCang
-        ArgumentCaptor<LichSuThayDoi> captor = ArgumentCaptor.forClass(LichSuThayDoi.class);
-        verify(lichSuThayDoiRepository, atLeastOnce()).save(captor.capture());
+        // Capture the ChangeLog saved for portName
+        ArgumentCaptor<ChangeLog> captor = ArgumentCaptor.forClass(ChangeLog.class);
+        verify(changeLogRepository, atLeastOnce()).save(captor.capture());
 
-        boolean foundTenCangRecord = captor.getAllValues().stream()
-                .anyMatch(r -> "tenCang".equals(r.getFieldName())
+        boolean foundPortNameRecord = captor.getAllValues().stream()
+                .anyMatch(r -> "portName".equals(r.getFieldName())
                         && "Old Name".equals(r.getOldValue())
                         && "New Name".equals(r.getNewValue()));
 
-        assertTrue(foundTenCangRecord,
-                "Expected a LichSuThayDoi record for tenCang old='Old Name' new='New Name'");
+        assertTrue(foundPortNameRecord,
+                "Expected a ChangeLog record for portName old='Old Name' new='New Name'");
     }
 
     @Test
     @DisplayName("INT-003: no changes → save never called")
     void update_noChanges_noHistoryRecorded() {
-        CangBien oldEntity = CangBien.builder()
-                .tenCang("Same Name")
-                .tinhThanhPho("Hải Phòng")
-                .dienTich(new BigDecimal("5000.00"))
-                .trangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH)
-                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
+        Port oldEntity = Port.builder()
+                .portName("Same Name")
+                .province("Hải Phòng")
+                .area(new BigDecimal("5000.00"))
+                .operationalStatus(TrangThaiHoatDong.HIEN_HANH)
+                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
                 .build();
 
-        CangBien newEntity = CangBien.builder()
-                .tenCang("Same Name")
-                .tinhThanhPho("Hải Phòng")
-                .dienTich(new BigDecimal("5000.00"))
-                .trangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH)
-                .trangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET)
+        Port newEntity = Port.builder()
+                .portName("Same Name")
+                .province("Hải Phòng")
+                .area(new BigDecimal("5000.00"))
+                .operationalStatus(TrangThaiHoatDong.HIEN_HANH)
+                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
                 .build();
 
         List<String> changedFields = lichSuThayDoiService.recordChanges(
-                "CangBien", entityId.toString(), "user-1", oldEntity, newEntity);
+                "Port", entityId.toString(), "user-1", oldEntity, newEntity);
 
         assertTrue(changedFields.isEmpty(),
                 "Expected no changed fields but got: " + changedFields);
-        verify(lichSuThayDoiRepository, never()).save(any());
+        verify(changeLogRepository, never()).save(any());
     }
 }

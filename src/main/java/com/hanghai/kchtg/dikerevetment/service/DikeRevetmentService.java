@@ -66,7 +66,6 @@ public class DikeRevetmentService {
                     geomType,
                     objType,
                     req.getToaDo(),
-                    req.getBieuTuongId(),
                     refId,
                     com.hanghai.kchtg.gis.search.dto.KchtType.DIKE_REVETMENT
             );
@@ -163,7 +162,6 @@ public class DikeRevetmentService {
                         geomType,
                         objType,
                         req.getToaDo(),
-                        req.getBieuTuongId(),
                         refId,
                         com.hanghai.kchtg.gis.search.dto.KchtType.DIKE_REVETMENT
                 );
@@ -179,7 +177,6 @@ public class DikeRevetmentService {
                         spatialObj.getGeometryType(),
                         spatialObj.getObjectType(),
                         spatialObj.getCoordinates(),
-                        spatialObj.getBieuTuongId(),
                         refId,
                         com.hanghai.kchtg.gis.search.dto.KchtType.DIKE_REVETMENT
                 );

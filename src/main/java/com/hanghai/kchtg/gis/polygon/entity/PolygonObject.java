@@ -82,9 +82,7 @@ public class PolygonObject extends BaseEntity {
 
     @Column(name = "category_id")
     private Long categoryId;
-
-    @Column(name = "bieu_tuong_id")
-    private java.util.UUID fillSymbolId;
+private java.util.UUID fillSymbolId;
 
     @Column(name = "coordinates", nullable = false, columnDefinition = "TEXT")
     private String coordinates;

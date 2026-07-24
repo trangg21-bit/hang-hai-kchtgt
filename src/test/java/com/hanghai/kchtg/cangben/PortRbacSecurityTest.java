@@ -2,9 +2,9 @@ package com.hanghai.kchtg.cangben;
 
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
-import com.hanghai.kchtg.cangben.controller.CangBienController;
-import com.hanghai.kchtg.cangben.service.CangBienApprovalService;
-import com.hanghai.kchtg.cangben.service.CangBienService;
+import com.hanghai.kchtg.cangben.controller.PortController;
+import com.hanghai.kchtg.cangben.service.PortApprovalService;
+import com.hanghai.kchtg.cangben.service.PortService;
 import com.hanghai.kchtg.security.JwtUtil;
 import com.hanghai.kchtg.security.PermissionAuthorizationManager;
 import com.hanghai.kchtg.security.service.JwtSessionService;
@@ -42,37 +42,22 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * RBAC security tests for CangBienController.
- *
- * check() returns boolean so SpEL evaluates the actual grant/deny result.
- * BUG-RBAC-001 is fixed: the deny path now correctly raises AccessDeniedException
- * (fail-closed).
- *
- * Test context note: @AutoConfigureMockMvc(addFilters = false) disables the
- * security filter chain (including ExceptionTranslationFilter). Consequently,
- * AccessDeniedException propagates as a resolved servlet exception rather than
- * being translated to HTTP 403. The deny-path tests assert the resolved exception
- * type directly, which is the authoritative proof of fail-closed behaviour. In a
- * full integration context (addFilters = true) the same exception maps to HTTP 403.
- *
- * Covers:
- *  - authenticated user WITH permission → endpoint succeeds (200)
- *  - authenticated user WITHOUT permission → AccessDeniedException raised (fail-closed)
+ * RBAC security tests for PortController.
  */
-@WebMvcTest(CangBienController.class)
+@WebMvcTest(PortController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @Import(MethodSecurityTestConfig.class)
-@DisplayName("CangBienController RBAC / @PreAuthorize security tests — M-002")
-class CangBienRbacSecurityTest {
+@DisplayName("PortController RBAC / @PreAuthorize security tests — M-002")
+class PortRbacSecurityTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockBean
-    private CangBienService cangBienService;
+    private PortService portService;
 
     @MockBean
-    private CangBienApprovalService cangBienApprovalService;
+    private PortApprovalService portApprovalService;
 
     // The @auth bean — mocked to control grant/deny decision
     @MockBean(name = "auth")
@@ -89,7 +74,6 @@ class CangBienRbacSecurityTest {
     private UserRepository userRepository;
     @MockBean
     private AdminAuditLogRepository adminAuditLogRepository;
-
 
     @MockBean
     private TokenService tokenService;
@@ -108,12 +92,6 @@ class CangBienRbacSecurityTest {
 
     // ── Helper ─────────────────────────────────────────────────────────────
 
-    /**
-     * RequestPostProcessor that sets the user principal on MockHttpServletRequest.
-     * Spring MVC's ServletRequestMethodArgumentResolver resolves the Authentication
-     * method parameter via request.getUserPrincipal(). The SecurityContext for
-     * @PreAuthorize SpEL is provided separately by @WithMockUser.
-     */
     private RequestPostProcessor principalOf(String username) {
         UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(
                 username, null, List.of(new SimpleGrantedAuthority("ROLE_USER")));
@@ -134,7 +112,7 @@ class CangBienRbacSecurityTest {
         when(auth.check(any(Authentication.class), eq("cangbien:approve")))
                 .thenReturn(true);
 
-        mockMvc.perform(post("/api/v1/cang-bien/{id}/approve", id)
+        mockMvc.perform(post("/api/v1/ports/{id}/approve", id)
                         .with(principalOf("approver-user")))
                 .andExpect(status().isOk());
     }
@@ -148,16 +126,11 @@ class CangBienRbacSecurityTest {
         when(auth.check(any(Authentication.class), eq("cangbien:delete")))
                 .thenReturn(true);
 
-        mockMvc.perform(delete("/api/v1/cang-bien/{id}", id))
+        mockMvc.perform(delete("/api/v1/ports/{id}", id))
                 .andExpect(status().isOk());
     }
 
     // ── Tests proving WITHOUT-permission path is fail-closed ──────────────
-    // ExceptionTranslationFilter is absent (addFilters = false), so AccessDeniedException
-    // propagates out of MockMvc.perform() as a NestedServletException wrapping
-    // AccessDeniedException. assertThrows captures this and verifies the root cause.
-    // This is the authoritative proof of fail-closed behaviour.
-    // In a full integration context (addFilters = true) the same exception maps to HTTP 403.
 
     @Test
     @WithMockUser(username = "test-user")
@@ -169,7 +142,7 @@ class CangBienRbacSecurityTest {
                 .thenReturn(false);
 
         assertThrows(Exception.class, () ->
-                mockMvc.perform(post("/api/v1/cang-bien/{id}/approve", id)),
+                mockMvc.perform(post("/api/v1/ports/{id}/approve", id)),
                 "Expected AccessDeniedException propagated for denied cangbien:approve");
     }
 
@@ -183,7 +156,7 @@ class CangBienRbacSecurityTest {
                 .thenReturn(false);
 
         assertThrows(Exception.class, () ->
-                mockMvc.perform(delete("/api/v1/cang-bien/{id}", id)),
+                mockMvc.perform(delete("/api/v1/ports/{id}", id)),
                 "Expected AccessDeniedException propagated for denied cangbien:delete");
     }
 }

@@ -48,8 +48,6 @@ export default function PointObjectForm() {
             name: data.name,
             code: data.code,
             objectType: data.objectType,
-            categoryId: data.categoryId,
-            iconId: data.iconId,
             longitude: data.longitude,
             latitude: data.latitude,
             description: data.description,
@@ -82,8 +80,6 @@ export default function PointObjectForm() {
         const payload: UpdatePointObjectPayload = {
           name: values.name,
           objectType: values.objectType,
-          categoryId: values.categoryId,
-          iconId: values.iconId,
           longitude: values.longitude,
           latitude: values.latitude,
           description: values.description,
@@ -95,8 +91,6 @@ export default function PointObjectForm() {
           name: values.name,
           code: values.code,
           objectType: values.objectType,
-          categoryId: values.categoryId,
-          iconId: values.iconId,
           longitude: values.longitude,
           latitude: values.latitude,
           description: values.description,
@@ -173,32 +167,8 @@ export default function PointObjectForm() {
           </Row>
 
           <Row gutter={spaceMd}>
-            <Col span={12}>
-              <Form.Item name="categoryId" label="Danh mục"
-                style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Tùy chọn danh mục" style={SELECT_STYLE}
-                  options={[
-                    { label: 'Cảng biển', value: 1 },
-                    { label: 'Đèn biển', value: 2 },
-                    { label: 'Phao tiêu', value: 3 },
-                    { label: 'Đèn hiệu', value: 4 },
-                    { label: 'Khác', value: 5 },
-                  ]} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="iconId" label="Biểu tượng bản đồ"
-                style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Tùy chọn biểu tượng" style={SELECT_STYLE}
-                  options={[
-                    { label: 'Icon Cảng biển', value: 1 },
-                    { label: 'Icon Đèn biển', value: 2 },
-                    { label: 'Icon Phao tiêu', value: 3 },
-                    { label: 'Icon Đèn hiệu', value: 4 },
-                    { label: 'Icon Khác (Default)', value: 5 },
-                  ]} />
-              </Form.Item>
-            </Col>
+            
+            
           </Row>
 
           <Form.Item name="description" label="Mô tả"

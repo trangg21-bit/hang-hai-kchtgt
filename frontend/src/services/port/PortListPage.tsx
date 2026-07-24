@@ -1280,12 +1280,12 @@ export default function PortListPage() {
                               {symbols.map((sym) => (
                                 <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
                                   <Space>
-                                    {sym.hinhAnh && (
+                                    {sym.image && (
                                       <img
                                         src={
-                                          sym.hinhAnh.startsWith('data:')
-                                            ? sym.hinhAnh
-                                            : `data:image/png;base64,${sym.hinhAnh}`
+                                          sym.image.startsWith('data:')
+                                            ? sym.image
+                                            : `data:image/png;base64,${sym.image}`
                                         }
                                         alt={sym.name}
                                         style={{ width: 20, height: 20, objectFit: 'contain' }}
@@ -1725,12 +1725,12 @@ export default function PortListPage() {
                               {symbols.map((sym) => (
                                 <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
                                   <Space>
-                                    {sym.hinhAnh && (
+                                    {sym.image && (
                                       <img
                                         src={
-                                          sym.hinhAnh.startsWith('data:')
-                                            ? sym.hinhAnh
-                                            : `data:image/png;base64,${sym.hinhAnh}`
+                                          sym.image.startsWith('data:')
+                                            ? sym.image
+                                            : `data:image/png;base64,${sym.image}`
                                         }
                                         alt={sym.name}
                                         style={{ width: 20, height: 20, objectFit: 'contain' }}

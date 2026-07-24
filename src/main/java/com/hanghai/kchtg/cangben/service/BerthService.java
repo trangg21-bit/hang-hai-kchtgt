@@ -101,7 +101,6 @@ public class BerthService {
                     geomType,
                     objType,
                     coordinates,
-                    request.getMapSymbolId(),
                     refId,
                     com.hanghai.kchtg.gis.search.dto.KchtType.BENCANG
             );
@@ -321,7 +320,6 @@ public class BerthService {
                     geomType,
                     objType,
                     coordinates,
-                    request.getMapSymbolId(),
                     refId,
                     com.hanghai.kchtg.gis.search.dto.KchtType.BENCANG
             );

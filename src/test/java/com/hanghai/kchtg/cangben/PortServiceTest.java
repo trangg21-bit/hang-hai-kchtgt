@@ -1,13 +1,13 @@
 package com.hanghai.kchtg.cangben;
 
-import com.hanghai.kchtg.cangben.dto.cangbien.CreateCangBienRequest;
-import com.hanghai.kchtg.cangben.dto.cangbien.CangBienResponse;
-import com.hanghai.kchtg.cangben.dto.cangbien.UpdateCangBienRequest;
-import com.hanghai.kchtg.cangben.entity.CangBien;
-import com.hanghai.kchtg.cangben.repository.BenCangRepository;
-import com.hanghai.kchtg.cangben.repository.CangBienRepository;
-import com.hanghai.kchtg.cangben.repository.VungNuocRepository;
-import com.hanghai.kchtg.cangben.service.CangBienService;
+import com.hanghai.kchtg.cangben.dto.cangbien.CreatePortRequest;
+import com.hanghai.kchtg.cangben.dto.cangbien.PortResponse;
+import com.hanghai.kchtg.cangben.dto.cangbien.UpdatePortRequest;
+import com.hanghai.kchtg.cangben.entity.Port;
+import com.hanghai.kchtg.cangben.repository.BerthRepository;
+import com.hanghai.kchtg.cangben.repository.PortRepository;
+import com.hanghai.kchtg.cangben.repository.WaterZoneRepository;
+import com.hanghai.kchtg.cangben.service.PortService;
 import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
 import com.hanghai.kchtg.cangben.service.shared.UserResolverService;
 import jakarta.persistence.EntityNotFoundException;
@@ -37,20 +37,20 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("CangBienService unit tests — F-008/F-009/F-010")
-class CangBienServiceTest {
+@DisplayName("PortService unit tests — F-008/F-009/F-010")
+class PortServiceTest {
 
     @InjectMocks
-    private CangBienService service;
+    private PortService service;
 
     @Mock
-    private CangBienRepository cangBienRepository;
+    private PortRepository portRepository;
 
     @Mock
-    private BenCangRepository benCangRepository;
+    private BerthRepository berthRepository;
 
     @Mock
-    private VungNuocRepository vungNuocRepository;
+    private WaterZoneRepository waterZoneRepository;
 
     @Mock
     private LichSuThayDoiService lichSuThayDoiService;
@@ -62,7 +62,7 @@ class CangBienServiceTest {
     private com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
 
     private UUID testId;
-    private CangBien testEntity;
+    private Port testEntity;
 
     @BeforeEach
     void setUp() {
@@ -70,7 +70,7 @@ class CangBienServiceTest {
             String arg = inv.getArgument(0);
             return arg != null ? arg : "SYSTEM";
         });
-        lenient().when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        lenient().when(gisSpatialObjectService.createOrUpdate(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenAnswer(inv -> {
                     com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatial = new com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject();
                     spatial.setId(UUID.randomUUID());
@@ -78,14 +78,14 @@ class CangBienServiceTest {
                 });
 
         testId = UUID.randomUUID();
-        testEntity = new CangBien();
+        testEntity = new Port();
         ReflectionTestUtils.setField(testEntity, "id", testId);
-        testEntity.setMaCang("CB-001");
-        testEntity.setTenCang("Cảng Biển Demo");
-        testEntity.setTinhThanhPho("Hải Phòng");
-        testEntity.setDienTich(new BigDecimal("5000.00"));
-        testEntity.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
-        testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.CHO_PHE_DUYET);
+        testEntity.setPortCode("CB-001");
+        testEntity.setPortName("Cảng Biển Demo");
+        testEntity.setProvince("Hải Phòng");
+        testEntity.setArea(new BigDecimal("5000.00"));
+        testEntity.setOperationalStatus(TrangThaiHoatDong.HIEN_HANH);
+        testEntity.setApprovalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET);
     }
 
     // ── CREATE (F-008) ─────────────────────────────────────────────────────
@@ -93,37 +93,37 @@ class CangBienServiceTest {
     @Test
     @DisplayName("F-008: create — succeeds and returns response")
     void create_succeeds() {
-        CreateCangBienRequest request = buildCreateRequest("CB-002", "Cảng mới",
+        CreatePortRequest request = buildCreateRequest("CB-002", "Cảng mới",
                 new BigDecimal("20.0"), new BigDecimal("106.0"), new BigDecimal("1000.00"));
 
-        when(cangBienRepository.existsByMaCang("CB-002")).thenReturn(false);
-        when(cangBienRepository.save(any(CangBien.class))).thenAnswer(inv -> {
-            CangBien saved = inv.getArgument(0);
+        when(portRepository.existsByPortCode("CB-002")).thenReturn(false);
+        when(portRepository.save(any(Port.class))).thenAnswer(inv -> {
+            Port saved = inv.getArgument(0);
             ReflectionTestUtils.setField(saved, "id", UUID.randomUUID());
             return saved;
         });
 
-        CangBienResponse result = service.create(request);
+        PortResponse result = service.create(request);
 
         assertNotNull(result);
-        assertEquals("CB-002", result.getMaCang());
-        assertEquals("Cảng mới", result.getTenCang());
-        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getTrangThaiPheDuyet());
-        verify(cangBienRepository, times(2)).save(any(CangBien.class));
+        assertEquals("CB-002", result.getPortCode());
+        assertEquals("Cảng mới", result.getPortName());
+        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getApprovalStatus());
+        verify(portRepository, times(2)).save(any(Port.class));
     }
 
     @Test
     @DisplayName("F-008: create — duplicate code throws IllegalArgumentException")
     void create_duplicateCode_throwsConflict() {
-        CreateCangBienRequest request = buildCreateRequest("CB-001", "Duplicate",
+        CreatePortRequest request = buildCreateRequest("CB-001", "Duplicate",
                 new BigDecimal("10.0"), new BigDecimal("100.0"), new BigDecimal("100.00"));
 
-        when(cangBienRepository.existsByMaCang("CB-001")).thenReturn(true);
+        when(portRepository.existsByPortCode("CB-001")).thenReturn(true);
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> service.create(request));
         assertTrue(ex.getMessage().contains("CB-001"));
-        verify(cangBienRepository, never()).save(any());
+        verify(portRepository, never()).save(any());
     }
 
     // ── READ ───────────────────────────────────────────────────────────────
@@ -131,18 +131,18 @@ class CangBienServiceTest {
     @Test
     @DisplayName("F-012: getById — returns response when found")
     void getById_found() {
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+        when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
 
-        CangBienResponse result = service.getById(testId);
+        PortResponse result = service.getById(testId);
 
-        assertEquals("CB-001", result.getMaCang());
-        assertEquals("Cảng Biển Demo", result.getTenCang());
+        assertEquals("CB-001", result.getPortCode());
+        assertEquals("Cảng Biển Demo", result.getPortName());
     }
 
     @Test
     @DisplayName("F-012: getById — throws EntityNotFoundException when not found")
     void getById_notFound_throws() {
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.empty());
+        when(portRepository.findById(testId)).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> service.getById(testId));
     }
@@ -150,24 +150,24 @@ class CangBienServiceTest {
     @Test
     @DisplayName("F-012: findAll — pagination honored, defaults max 100")
     void findAll_paginationHonored() {
-        Page<CangBien> mockPage = new PageImpl<>(List.of(testEntity));
-        when(cangBienRepository.searchCangBien(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
+        Page<Port> mockPage = new PageImpl<>(List.of(testEntity));
+        when(portRepository.searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
 
-        Page<CangBienResponse> result = service.findAll(0, 20, null);
+        Page<PortResponse> result = service.findAll(0, 20, null);
 
         assertEquals(1, result.getTotalElements());
-        verify(cangBienRepository).searchCangBien(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
+        verify(portRepository).searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class));
     }
 
     @Test
     @DisplayName("F-012: findAll — size capped at 5000")
     void findAll_sizeCappedAt5000() {
-        Page<CangBien> mockPage = new PageImpl<>(List.of());
-        when(cangBienRepository.searchCangBien(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
+        Page<Port> mockPage = new PageImpl<>(List.of());
+        when(portRepository.searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(mockPage);
 
         service.findAll(0, 9999, null);
 
-        verify(cangBienRepository).searchCangBien(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), argThat(p -> p.getPageSize() == 5000));
+        verify(portRepository).searchPorts(isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), argThat(p -> p.getPageSize() == 5000));
     }
 
     // ── UPDATE (F-009) ─────────────────────────────────────────────────────
@@ -175,30 +175,30 @@ class CangBienServiceTest {
     @Test
     @DisplayName("F-009: update — applies mutable fields, resets approval to CHO_PHE_DUYET")
     void update_appliesMutableFields() {
-        testEntity.setTrangThaiPheDuyet(TrangThaiPheDuyet.DUOC_PHE_DUYET); // was approved
+        testEntity.setApprovalStatus(TrangThaiPheDuyet.DUOC_PHE_DUYET); // was approved
 
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-        when(cangBienRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+        when(portRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateCangBienRequest request = new UpdateCangBienRequest();
+        UpdatePortRequest request = new UpdatePortRequest();
         request.setId(testId);
-        request.setTenCang("Cảng Đã Cập Nhật");
-        request.setTinhThanhPho("Đà Nẵng");
+        request.setPortName("Cảng Đã Cập Nhật");
+        request.setProvince("Đà Nẵng");
 
-        CangBienResponse result = service.update(request);
+        PortResponse result = service.update(request);
 
-        assertEquals("Cảng Đã Cập Nhật", result.getTenCang());
-        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getTrangThaiPheDuyet()); // reset
-        assertEquals("CB-001", result.getMaCang()); // code unchanged
+        assertEquals("Cảng Đã Cập Nhật", result.getPortName());
+        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getApprovalStatus()); // reset
+        assertEquals("CB-001", result.getPortCode()); // code unchanged
     }
 
     @Test
     @DisplayName("F-009: update — throws EntityNotFoundException when not found")
     void update_notFound_throws() {
-        UpdateCangBienRequest request = new UpdateCangBienRequest();
+        UpdatePortRequest request = new UpdatePortRequest();
         request.setId(testId);
 
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.empty());
+        when(portRepository.findById(testId)).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> service.update(request));
     }
@@ -208,49 +208,49 @@ class CangBienServiceTest {
     @Test
     @DisplayName("F-010: softDelete — succeeds when no active children")
     void softDelete_noChildren_succeeds() {
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-        when(benCangRepository.countByCangBienIdAndDeletedAtIsNull(testId)).thenReturn(0L);
-        when(vungNuocRepository.countByCangBienIdAndDeletedAtIsNull(testId)).thenReturn(0L);
-        when(cangBienRepository.save(any())).thenReturn(testEntity);
+        when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+        when(berthRepository.countByPortIdAndDeletedAtIsNull(testId)).thenReturn(0L);
+        when(waterZoneRepository.countByPortIdAndDeletedAtIsNull(testId)).thenReturn(0L);
+        when(portRepository.save(any())).thenReturn(testEntity);
 
         service.softDelete(testId);
 
         assertNotNull(testEntity.getDeletedAt()); // softDelete() sets deletedAt
-        verify(cangBienRepository).save(testEntity);
+        verify(portRepository).save(testEntity);
     }
 
     @Test
-    @DisplayName("F-010: softDelete — blocked when BenCang children exist")
-    void softDelete_blockedByBenCangChildren() {
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-        when(benCangRepository.countByCangBienIdAndDeletedAtIsNull(testId)).thenReturn(2L);
-        when(vungNuocRepository.countByCangBienIdAndDeletedAtIsNull(testId)).thenReturn(0L);
+    @DisplayName("F-010: softDelete — blocked when Berth children exist")
+    void softDelete_blockedByBerthChildren() {
+        when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+        when(berthRepository.countByPortIdAndDeletedAtIsNull(testId)).thenReturn(2L);
+        when(waterZoneRepository.countByPortIdAndDeletedAtIsNull(testId)).thenReturn(0L);
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> service.softDelete(testId));
         assertTrue(ex.getMessage().contains("bến cảng"));
-        verify(cangBienRepository, never()).save(any());
+        verify(portRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("F-010: softDelete — blocked when VungNuoc children exist")
-    void softDelete_blockedByVungNuocChildren() {
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-        when(benCangRepository.countByCangBienIdAndDeletedAtIsNull(testId)).thenReturn(0L);
-        when(vungNuocRepository.countByCangBienIdAndDeletedAtIsNull(testId)).thenReturn(3L);
+    @DisplayName("F-010: softDelete — blocked when WaterZone children exist")
+    void softDelete_blockedByWaterZoneChildren() {
+        when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+        when(berthRepository.countByPortIdAndDeletedAtIsNull(testId)).thenReturn(0L);
+        when(waterZoneRepository.countByPortIdAndDeletedAtIsNull(testId)).thenReturn(3L);
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> service.softDelete(testId));
         assertTrue(ex.getMessage().contains("vùng nước"));
-        verify(cangBienRepository, never()).save(any());
+        verify(portRepository, never()).save(any());
     }
 
     @Test
     @DisplayName("F-010: softDelete — blocked when both child types exist, message lists both counts")
     void softDelete_blockedByBothChildTypes() {
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-        when(benCangRepository.countByCangBienIdAndDeletedAtIsNull(testId)).thenReturn(1L);
-        when(vungNuocRepository.countByCangBienIdAndDeletedAtIsNull(testId)).thenReturn(1L);
+        when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
+        when(berthRepository.countByPortIdAndDeletedAtIsNull(testId)).thenReturn(1L);
+        when(waterZoneRepository.countByPortIdAndDeletedAtIsNull(testId)).thenReturn(1L);
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> service.softDelete(testId));
@@ -261,23 +261,23 @@ class CangBienServiceTest {
     @Test
     @DisplayName("F-010: softDelete — throws EntityNotFoundException when entity missing")
     void softDelete_notFound_throws() {
-        when(cangBienRepository.findById(testId)).thenReturn(Optional.empty());
+        when(portRepository.findById(testId)).thenReturn(Optional.empty());
 
         assertThrows(EntityNotFoundException.class, () -> service.softDelete(testId));
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    private CreateCangBienRequest buildCreateRequest(String maCang, String tenCang,
-                                                      BigDecimal viDo, BigDecimal kinhDo,
-                                                      BigDecimal dienTich) {
-        CreateCangBienRequest req = new CreateCangBienRequest();
-        req.setMaCang(maCang);
-        req.setTenCang(tenCang);
-        req.setViDo(viDo);
-        req.setKinhDo(kinhDo);
-        req.setDienTich(dienTich);
-        req.setTrangThaiHoatDong(TrangThaiHoatDong.HIEN_HANH);
+    private CreatePortRequest buildCreateRequest(String portCode, String portName,
+                                                     BigDecimal latitude, BigDecimal longitude,
+                                                     BigDecimal area) {
+        CreatePortRequest req = new CreatePortRequest();
+        req.setPortCode(portCode);
+        req.setPortName(portName);
+        req.setLatitude(latitude);
+        req.setLongitude(longitude);
+        req.setArea(area);
+        req.setOperationalStatus(TrangThaiHoatDong.HIEN_HANH);
         return req;
     }
 }

@@ -132,9 +132,7 @@ public class BeaconLightService {
                 "DENBIEN_" + entity.getCode(),
                 com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT,
                 com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_LIGHTHOUSE,
-                wkt,
-                null,
-                entity.getId(),
+                wkt, entity.getId(),
                 com.hanghai.kchtg.gis.search.dto.KchtType.DENBIEN
         );
         entity.setKhongGianId(spatialObj.getId());
@@ -242,9 +240,7 @@ public class BeaconLightService {
                     "DENBIEN_" + entity.getCode(),
                     com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT,
                     com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_LIGHTHOUSE,
-                    wkt,
-                    null,
-                    entity.getId(),
+                    wkt, entity.getId(),
                     com.hanghai.kchtg.gis.search.dto.KchtType.DENBIEN
             );
             if (entity.getKhongGianId() == null) {

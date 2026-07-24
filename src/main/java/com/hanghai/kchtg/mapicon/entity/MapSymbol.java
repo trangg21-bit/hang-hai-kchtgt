@@ -32,8 +32,8 @@ public class MapSymbol extends BaseEntity {
     private String description;
 
     @NotBlank(message = "Hình ảnh không được để trống")
-    @Column(name = "hinh_anh", columnDefinition = "TEXT", nullable = false)
-    private String hinhAnh;
+    @Column(name = "image", columnDefinition = "TEXT", nullable = false)
+    private String image;
 
     @Column(nullable = false)
     private MapSymbolStatus status;
