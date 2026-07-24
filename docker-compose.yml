@@ -23,6 +23,9 @@ services:
 
   redis:
     image: registry.etc.vn/library/redis:8.0.2-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.redis
     ports:
       - "6379:6379"
     restart: always
