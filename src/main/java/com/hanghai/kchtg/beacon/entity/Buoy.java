@@ -33,8 +33,7 @@ public class Buoy extends BaseEntity {
     private String name;
 
     @Column(nullable = false)
-    @Convert(converter = BuoyTypeConverter.class)
-    private BuoyType type;
+    private String type;
 
 
     @Size(max = 50)
@@ -69,14 +68,12 @@ public class Buoy extends BaseEntity {
     private Boolean isActive = true;
 
     @Column(nullable = false)
-    @Convert(converter = BeaconStatusConverter.class)
     @Builder.Default
-    private BeaconStatus status = BeaconStatus.DRAFT;
+    private String status = "DRAFT";
 
     @Column(name = "approval_status", nullable = false)
-    @Convert(converter = BeaconApprovalStatusConverter.class)
     @Builder.Default
-    private BeaconApprovalStatus approvalStatus = BeaconApprovalStatus.PENDING;
+    private String approvalStatus = "PENDING";
 
     @Column(name = "approval_level")
     private Integer approvalLevel;

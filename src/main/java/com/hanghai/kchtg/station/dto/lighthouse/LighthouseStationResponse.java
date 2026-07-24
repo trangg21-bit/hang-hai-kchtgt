@@ -1,4 +1,4 @@
-package com.hanghai.kchtg.beacon.dto.beacon_light;
+package com.hanghai.kchtg.station.dto.lighthouse;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,13 +10,13 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Response DTO for BeaconLight detail view (F-072).
+ * Response DTO cho chi tiết nhà trạm đèn biển (F-091).
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class BeaconLightResponse {
+public class LighthouseStationResponse {
 
     private UUID id;
     private String code;
@@ -25,14 +25,13 @@ public class BeaconLightResponse {
     private Double latitude;
     private Double longitude;
     private Double lightRange;
-    private String towerColor;
-    private String primaryLightModel;
-    private Double area;
-    private String location;
+    private String lightColor;
+    private String lightCharacteristic;
+    private Double range;
+    private String description;
     private UUID unitId;
-    private String unitName;
-    private LocalDate lastRepairDate;
-    private LocalDate commissionedDate;
+    private LocalDate lastMaintenanceDate;
+    private LocalDate nextMaintenanceDate;
     private Boolean isActive;
     private String status;
     private String approvalStatus;
@@ -43,13 +42,7 @@ public class BeaconLightResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    private String shape;
-    private String structure;
-    private Double towerHeight;
-    private Double lightHeight;
-    private String geographicRange;
-    private String backupLightModel;
-    private String powerSupply;
-    private Integer staffCount;
-    private Double stationArea;
+    private java.util.UUID khongGianId;
+    private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
+    private String toaDo;
 }

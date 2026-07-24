@@ -3,8 +3,6 @@ package com.hanghai.kchtg.beacon.controller;
 import com.hanghai.kchtg.beacon.dto.beacon_light.BeaconLightResponse;
 import com.hanghai.kchtg.beacon.dto.beacon_light.CreateBeaconLightRequest;
 import com.hanghai.kchtg.beacon.dto.beacon_light.UpdateBeaconLightRequest;
-import com.hanghai.kchtg.beacon.entity.BeaconLightType;
-import com.hanghai.kchtg.beacon.entity.BeaconStatus;
 import com.hanghai.kchtg.beacon.service.BeaconLightService;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import jakarta.validation.Valid;
@@ -41,8 +39,8 @@ public class BeaconLightController {
     public ResponseEntity<ApiResponse<List<BeaconLightResponse>>> search(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String code,
-            @RequestParam(required = false) BeaconLightType type,
-            @RequestParam(required = false) BeaconStatus status) {
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status) {
         return ResponseEntity.ok(ApiResponse.success(
                 beaconLightService.search(name, code, type, status)));
     }
@@ -51,8 +49,8 @@ public class BeaconLightController {
     public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<BeaconLightResponse>>> searchPaged(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String code,
-            @RequestParam(required = false) BeaconLightType type,
-            @RequestParam(required = false) BeaconStatus status,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);

@@ -168,9 +168,9 @@ export default function App() {
                 <Route path="/reports/F-142/create" element={<PermissionGuard permission="report:create"><Bcc157Form /></PermissionGuard>} />
 
                 {/* Beacon Lights & Buoys — Báo hiệu hàng hải */}
-                <Route path="/den-bien" element={<PermissionGuard permission="data:read"><BeaconList /></PermissionGuard>} />
-                <Route path="/den-bien/tao-moi" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
-                <Route path="/den-bien/:id" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
+                <Route path="/beacon-lights" element={<PermissionGuard permission="data:read"><BeaconList /></PermissionGuard>} />
+                <Route path="/beacon-lights/create" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
+                <Route path="/beacon-lights/:id" element={<PermissionGuard permission="data:read"><BeaconForm /></PermissionGuard>} />
                 <Route path="/buoys" element={<PermissionGuard permission="data:read"><BuoyList /></PermissionGuard>} />
                 <Route path="/buoys/create" element={<PermissionGuard permission="data:read"><BuoyForm /></PermissionGuard>} />
                 <Route path="/buoys/:id" element={<PermissionGuard permission="data:read"><BuoyForm /></PermissionGuard>} />
@@ -233,8 +233,8 @@ export default function App() {
                 <Route path="/vanban/quyhoach" element={<PermissionGuard permission="vanban:manage"><QuyHoachList /></PermissionGuard>} />
 
                 {/* M-014: Quản lý Nhà trạm */}
-                <Route path="/nhatram/den" element={<PermissionGuard permission="nhatram:read"><NhaTramDenList /></PermissionGuard>} />
-                <Route path="/nhatram/phao" element={<PermissionGuard permission="nhatram:read"><NhaTramPhaoList /></PermissionGuard>} />
+                <Route path="/lighthouse-station" element={<PermissionGuard permission="lighthouse:read"><NhaTramDenList /></PermissionGuard>} />
+                <Route path="/buoy-station" element={<PermissionGuard permission="buoy:read"><NhaTramPhaoList /></PermissionGuard>} />
 
                 {/* M-015: Đài duyên hải */}
                 <Route path="/station/coastal" element={<PermissionGuard permission="station:read"><CoastalStationList /></PermissionGuard>} />

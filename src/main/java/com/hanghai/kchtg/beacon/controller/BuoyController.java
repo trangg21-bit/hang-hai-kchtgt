@@ -3,8 +3,6 @@ package com.hanghai.kchtg.beacon.controller;
 import com.hanghai.kchtg.beacon.dto.buoy.BuoyResponse;
 import com.hanghai.kchtg.beacon.dto.buoy.CreateBuoyRequest;
 import com.hanghai.kchtg.beacon.dto.buoy.UpdateBuoyRequest;
-import com.hanghai.kchtg.beacon.entity.BeaconStatus;
-import com.hanghai.kchtg.beacon.entity.BuoyType;
 import com.hanghai.kchtg.beacon.service.BuoyService;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import jakarta.validation.Valid;
@@ -41,8 +39,8 @@ public class BuoyController {
     public ResponseEntity<ApiResponse<List<BuoyResponse>>> search(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String code,
-            @RequestParam(required = false) BuoyType type,
-            @RequestParam(required = false) BeaconStatus status) {
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status) {
         return ResponseEntity.ok(ApiResponse.success(
                 buoyService.search(name, code, type, status)));
     }

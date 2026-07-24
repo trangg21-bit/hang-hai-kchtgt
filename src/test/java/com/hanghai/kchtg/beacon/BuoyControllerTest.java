@@ -4,9 +4,6 @@ import com.hanghai.kchtg.beacon.controller.BuoyController;
 import com.hanghai.kchtg.beacon.dto.buoy.BuoyResponse;
 import com.hanghai.kchtg.beacon.dto.buoy.CreateBuoyRequest;
 import com.hanghai.kchtg.beacon.dto.buoy.UpdateBuoyRequest;
-import com.hanghai.kchtg.beacon.entity.BeaconApprovalStatus;
-import com.hanghai.kchtg.beacon.entity.BeaconStatus;
-import com.hanghai.kchtg.beacon.entity.BuoyType;
 import com.hanghai.kchtg.beacon.service.BuoyService;
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
@@ -67,10 +64,10 @@ class BuoyControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     private BuoyResponse makeResponse(UUID id) {
-        return makeResponse(id, "Phao tiêu test", BuoyType.CARDINAL, BeaconStatus.DRAFT);
+        return makeResponse(id, "Phao tiêu test", "CARDINAL", "DRAFT");
     }
 
-    private BuoyResponse makeResponse(UUID id, String name, BuoyType type, BeaconStatus status) {
+    private BuoyResponse makeResponse(UUID id, String name, String type, String status) {
         return BuoyResponse.builder()
                 .id(id)
                 .code("PHAO-001")
@@ -85,7 +82,7 @@ class BuoyControllerTest {
                 .description("Mô tả phao tiêu")
                 .isActive(true)
                 .status(status)
-                .approvalStatus(BeaconApprovalStatus.PENDING)
+                .approvalStatus("PENDING")
                 .approvalLevel(0)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -168,7 +165,7 @@ class BuoyControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(buoyService).search("Phao", "PHAO", BuoyType.CARDINAL, BeaconStatus.DRAFT);
+        verify(buoyService).search("Phao", "PHAO", "CARDINAL", "DRAFT");
     }
 
     // ── CREATE ───────────────────────────────────────────────────
@@ -189,7 +186,7 @@ class BuoyControllerTest {
                   "shape": "Hình cầu"
                 }
                 """;
-        BuoyResponse response = makeResponse(id, "Phao tiêu mới", BuoyType.SAFE_WATER, BeaconStatus.DRAFT);
+        BuoyResponse response = makeResponse(id, "Phao tiêu mới", "SAFE_WATER", "DRAFT");
         when(buoyService.create(any(CreateBuoyRequest.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/buoys")
@@ -257,7 +254,7 @@ class BuoyControllerTest {
                   "range": 20.0
                 }
                 """;
-        BuoyResponse updated = makeResponse(id, "Phao tiêu cập nhật", BuoyType.CARDINAL, BeaconStatus.DRAFT);
+        BuoyResponse updated = makeResponse(id, "Phao tiêu cập nhật", "CARDINAL", "DRAFT");
         when(buoyService.update(eq(id), any(UpdateBuoyRequest.class))).thenReturn(updated);
 
         mockMvc.perform(put("/api/buoys/{id}", id)
@@ -348,7 +345,7 @@ class BuoyControllerTest {
     @DisplayName("POST /api/buoys/{id}/approve-l1 — returns 200 with approved entity")
     void testApproveL1() throws Exception {
         UUID id = UUID.randomUUID();
-        BuoyResponse approved = makeResponse(id, "Đã duyệt L1", BuoyType.CARDINAL, BeaconStatus.APPROVED_L1);
+        BuoyResponse approved = makeResponse(id, "Đã duyệt L1", "CARDINAL", "APPROVED_L1");
         approved.setApprovedBy("2");
         when(buoyService.approveL1(eq(id), anyString())).thenReturn(approved);
 
@@ -368,7 +365,7 @@ class BuoyControllerTest {
     @DisplayName("POST /api/buoys/{id}/approve-l2 — returns 200 with published entity")
     void testApproveL2() throws Exception {
         UUID id = UUID.randomUUID();
-        BuoyResponse published = makeResponse(id, "Đã duyệt L2", BuoyType.CARDINAL, BeaconStatus.PUBLISHED);
+        BuoyResponse published = makeResponse(id, "Đã duyệt L2", "CARDINAL", "PUBLISHED");
         published.setApprovedBy("3");
         when(buoyService.approveL2(eq(id), anyString())).thenReturn(published);
 
@@ -388,9 +385,9 @@ class BuoyControllerTest {
     @DisplayName("POST /api/buoys/{id}/reject — returns 200 with rejected entity")
     void testReject() throws Exception {
         UUID id = UUID.randomUUID();
-        BuoyResponse rejected = makeResponse(id, "Bị từ chối", BuoyType.CARDINAL, BeaconStatus.DRAFT);
+        BuoyResponse rejected = makeResponse(id, "Bị từ chối", "CARDINAL", "DRAFT");
         rejected.setRejectionReason("Lý do từ chối hợp lệ");
-        rejected.setApprovalStatus(BeaconApprovalStatus.REJECTED);
+        rejected.setApprovalStatus("REJECTED");
         when(buoyService.reject(eq(id), anyString(), anyString())).thenReturn(rejected);
 
         mockMvc.perform(post("/api/buoys/{id}/reject", id)

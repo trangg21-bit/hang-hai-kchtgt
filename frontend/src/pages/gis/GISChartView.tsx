@@ -1271,7 +1271,7 @@ export default function GISChartView() {
         return;
       }
 
-      // Also skip closing if the pathname includes an ID segment (e.g. /den-bien/123)
+      // Also skip closing if the pathname includes an ID segment (e.g. /beacon-lights/123)
       const segments = pathname.split('/').filter(Boolean);
       if (segments.length >= 2) {
         return;
@@ -1283,7 +1283,7 @@ export default function GISChartView() {
         '/navigation-channel',
         '/vts-system',
         '/ship-repair-facility',
-        '/den-bien',
+        '/beacon-lights',
         '/buoys',
         '/Port',
         '/Berth',
@@ -1326,9 +1326,9 @@ export default function GISChartView() {
       const label = (typeLabel || '').trim().toLowerCase();
       let path = '';
       if (label === 'nhà trạm đèn biển' || label === 'nha tram den bien') {
-        path = `/nhatram/den?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+        path = `/lighthouse-station?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label === 'nhà trạm phao tiêu' || label === 'nha tram phao tieu') {
-        path = `/nhatram/phao?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+        path = `/buoy-station?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('đèn biển') || label.includes('den bien')) {
         path = `/beacons/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('phao tiêu') || label.includes('phao tieu') || label.includes('phao, tiêu')) {

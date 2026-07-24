@@ -186,21 +186,21 @@ export default function BeaconList() {
       code: record.code,
       type: record.type,
       lightRange: record.lightRange,
-      lightColor: record.lightColor,
-      description: record.description,
-      hinhDang: record.hinhDang,
-      ketCau: record.ketCau,
-      chieuCaoThapDen: record.chieuCaoThapDen,
-      chieuCaoTamSang: record.chieuCaoTamSang,
-      tamHieuLucDiaLy: record.tamHieuLucDiaLy,
-      chungLoaiDenDuPhong: record.chungLoaiDenDuPhong,
-      nguonCungCapNangLuongChoDen: record.nguonCungCapNangLuongChoDen,
-      soLuongNhanSuBoTri: record.soLuongNhanSuBoTri,
-      dienTichSuDungTram: record.dienTichSuDungTram,
-      lightCharacteristic: record.lightCharacteristic,
-      range: record.range,
-      lastMaintenanceDate: record.lastMaintenanceDate ? dayjs(record.lastMaintenanceDate) : null,
-      nextMaintenanceDate: record.nextMaintenanceDate ? dayjs(record.nextMaintenanceDate) : null,
+      towerColor: record.towerColor,
+      location: record.location,
+      shape: record.shape,
+      structure: record.structure,
+      towerHeight: record.towerHeight,
+      lightHeight: record.lightHeight,
+      geographicRange: record.geographicRange,
+      backupLightModel: record.backupLightModel,
+      powerSupply: record.powerSupply,
+      staffCount: record.staffCount,
+      stationArea: record.stationArea,
+      primaryLightModel: record.primaryLightModel,
+      area: record.area,
+      lastRepairDate: record.lastRepairDate ? dayjs(record.lastRepairDate) : null,
+      commissionedDate: record.commissionedDate ? dayjs(record.commissionedDate) : null,
       unitId: record.unitId,
       gisLocation: {
         loaiHinhHoc: 'POINT',
@@ -217,21 +217,21 @@ export default function BeaconList() {
       code: record.code,
       type: record.type,
       lightRange: record.lightRange,
-      lightColor: record.lightColor,
-      description: record.description,
-      hinhDang: record.hinhDang,
-      ketCau: record.ketCau,
-      chieuCaoThapDen: record.chieuCaoThapDen,
-      chieuCaoTamSang: record.chieuCaoTamSang,
-      tamHieuLucDiaLy: record.tamHieuLucDiaLy,
-      chungLoaiDenDuPhong: record.chungLoaiDenDuPhong,
-      nguonCungCapNangLuongChoDen: record.nguonCungCapNangLuongChoDen,
-      soLuongNhanSuBoTri: record.soLuongNhanSuBoTri,
-      dienTichSuDungTram: record.dienTichSuDungTram,
-      lightCharacteristic: record.lightCharacteristic,
-      range: record.range,
-      lastMaintenanceDate: record.lastMaintenanceDate ? dayjs(record.lastMaintenanceDate) : null,
-      nextMaintenanceDate: record.nextMaintenanceDate ? dayjs(record.nextMaintenanceDate) : null,
+      towerColor: record.towerColor,
+      location: record.location,
+      shape: record.shape,
+      structure: record.structure,
+      towerHeight: record.towerHeight,
+      lightHeight: record.lightHeight,
+      geographicRange: record.geographicRange,
+      backupLightModel: record.backupLightModel,
+      powerSupply: record.powerSupply,
+      staffCount: record.staffCount,
+      stationArea: record.stationArea,
+      primaryLightModel: record.primaryLightModel,
+      area: record.area,
+      lastRepairDate: record.lastRepairDate ? dayjs(record.lastRepairDate) : null,
+      commissionedDate: record.commissionedDate ? dayjs(record.commissionedDate) : null,
       unitId: record.unitId,
       gisLocation: {
         loaiHinhHoc: 'POINT',
@@ -298,21 +298,21 @@ export default function BeaconList() {
           longitude,
           latitude,
           lightRange: values.lightRange,
-          lightColor: values.lightColor,
-          description: values.description,
-          hinhDang: values.hinhDang,
-          ketCau: values.ketCau,
-          chieuCaoThapDen: values.chieuCaoThapDen,
-          chieuCaoTamSang: values.chieuCaoTamSang,
-          tamHieuLucDiaLy: values.tamHieuLucDiaLy,
-          chungLoaiDenDuPhong: values.chungLoaiDenDuPhong,
-          nguonCungCapNangLuongChoDen: values.nguonCungCapNangLuongChoDen,
-          soLuongNhanSuBoTri: values.soLuongNhanSuBoTri,
-          dienTichSuDungTram: values.dienTichSuDungTram,
-          lightCharacteristic: values.lightCharacteristic,
-          range: values.range,
-          lastMaintenanceDate: values.lastMaintenanceDate,
-          nextMaintenanceDate: values.nextMaintenanceDate,
+          towerColor: values.towerColor,
+          location: values.location,
+          shape: values.shape,
+          structure: values.structure,
+          towerHeight: values.towerHeight,
+          lightHeight: values.lightHeight,
+          geographicRange: values.geographicRange,
+          backupLightModel: values.backupLightModel,
+          powerSupply: values.powerSupply,
+          staffCount: values.staffCount,
+          stationArea: values.stationArea,
+          primaryLightModel: values.primaryLightModel,
+          area: values.area,
+          lastRepairDate: values.lastRepairDate,
+          commissionedDate: values.commissionedDate,
           unitId: values.unitId,
         };
         const updated = await beaconLightCRUD.update(editingRecord.id, payload);
@@ -328,21 +328,21 @@ export default function BeaconList() {
           longitude,
           latitude,
           lightRange: values.lightRange,
-          lightColor: values.lightColor,
-          description: values.description,
-          hinhDang: values.hinhDang,
-          ketCau: values.ketCau,
-          chieuCaoThapDen: values.chieuCaoThapDen,
-          chieuCaoTamSang: values.chieuCaoTamSang,
-          tamHieuLucDiaLy: values.tamHieuLucDiaLy,
-          chungLoaiDenDuPhong: values.chungLoaiDenDuPhong,
-          nguonCungCapNangLuongChoDen: values.nguonCungCapNangLuongChoDen,
-          soLuongNhanSuBoTri: values.soLuongNhanSuBoTri,
-          dienTichSuDungTram: values.dienTichSuDungTram,
-          lightCharacteristic: values.lightCharacteristic,
-          range: values.range,
-          lastMaintenanceDate: values.lastMaintenanceDate,
-          nextMaintenanceDate: values.nextMaintenanceDate,
+          towerColor: values.towerColor,
+          location: values.location,
+          shape: values.shape,
+          structure: values.structure,
+          towerHeight: values.towerHeight,
+          lightHeight: values.lightHeight,
+          geographicRange: values.geographicRange,
+          backupLightModel: values.backupLightModel,
+          powerSupply: values.powerSupply,
+          staffCount: values.staffCount,
+          stationArea: values.stationArea,
+          primaryLightModel: values.primaryLightModel,
+          area: values.area,
+          lastRepairDate: values.lastRepairDate,
+          commissionedDate: values.commissionedDate,
           unitId: values.unitId,
         };
         await beaconLightCRUD.create(payload);
@@ -736,21 +736,21 @@ export default function BeaconList() {
               <Descriptions.Item label="Kinh độ">{editingRecord.longitude?.toFixed(6) || '—'}</Descriptions.Item>
               <Descriptions.Item label="Vĩ độ">{editingRecord.latitude?.toFixed(6) || '—'}</Descriptions.Item>
               <Descriptions.Item label="Tầm hiệu lực ánh sáng">{editingRecord.lightRange != null ? `${editingRecord.lightRange} hải lý` : '—'}</Descriptions.Item>
-              <Descriptions.Item label="Màu sắc bên ngoài của tháp đèn">{editingRecord.lightColor || '—'}</Descriptions.Item>
-              <Descriptions.Item label="Địa điểm đặt trạm đèn" span={2}>{editingRecord.description || '—'}</Descriptions.Item>
-              <Descriptions.Item label="Hình dáng">{editingRecord.hinhDang || '—'}</Descriptions.Item>
-              <Descriptions.Item label="Kết cấu">{editingRecord.ketCau || '—'}</Descriptions.Item>
-              <Descriptions.Item label="Chiều cao tháp đèn (m)">{editingRecord.chieuCaoThapDen != null ? editingRecord.chieuCaoThapDen : '—'}</Descriptions.Item>
-              <Descriptions.Item label="Chiều cao tâm sáng (m)">{editingRecord.chieuCaoTamSang != null ? editingRecord.chieuCaoTamSang : '—'}</Descriptions.Item>
-              <Descriptions.Item label="Tầm hiệu lực địa lý">{editingRecord.tamHieuLucDiaLy || '—'}</Descriptions.Item>
-              <Descriptions.Item label="Đèn dự phòng">{editingRecord.chungLoaiDenDuPhong || '—'}</Descriptions.Item>
-              <Descriptions.Item label="Nguồn cung cấp năng lượng" span={2}>{editingRecord.nguonCungCapNangLuongChoDen || '—'}</Descriptions.Item>
-              <Descriptions.Item label="Nhân sự bố trí (người)">{editingRecord.soLuongNhanSuBoTri != null ? editingRecord.soLuongNhanSuBoTri : '—'}</Descriptions.Item>
-              <Descriptions.Item label="Diện tích sử dụng trạm (m²)">{editingRecord.dienTichSuDungTram != null ? editingRecord.dienTichSuDungTram : '—'}</Descriptions.Item>
-              <Descriptions.Item label="Đèn chính">{editingRecord.lightCharacteristic || '—'}</Descriptions.Item>
-              <Descriptions.Item label="Diện tích (m²)">{editingRecord.range != null ? editingRecord.range : '—'}</Descriptions.Item>
-              <Descriptions.Item label="Thời điểm sửa chữa gần nhất">{editingRecord.lastMaintenanceDate || '—'}</Descriptions.Item>
-              <Descriptions.Item label="Thời điểm đưa vào sử dụng">{editingRecord.nextMaintenanceDate || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Màu sắc bên ngoài của tháp đèn">{editingRecord.towerColor || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Địa điểm đặt trạm đèn" span={2}>{editingRecord.location || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Hình dáng">{editingRecord.shape || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Kết cấu">{editingRecord.structure || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Chiều cao tháp đèn (m)">{editingRecord.towerHeight != null ? editingRecord.towerHeight : '—'}</Descriptions.Item>
+              <Descriptions.Item label="Chiều cao tâm sáng (m)">{editingRecord.lightHeight != null ? editingRecord.lightHeight : '—'}</Descriptions.Item>
+              <Descriptions.Item label="Tầm hiệu lực địa lý">{editingRecord.geographicRange || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Đèn dự phòng">{editingRecord.backupLightModel || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Nguồn cung cấp năng lượng" span={2}>{editingRecord.powerSupply || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Nhân sự bố trí (người)">{editingRecord.staffCount != null ? editingRecord.staffCount : '—'}</Descriptions.Item>
+              <Descriptions.Item label="Diện tích sử dụng trạm (m²)">{editingRecord.stationArea != null ? editingRecord.stationArea : '—'}</Descriptions.Item>
+              <Descriptions.Item label="Đèn chính">{editingRecord.primaryLightModel || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Diện tích (m²)">{editingRecord.area != null ? editingRecord.area : '—'}</Descriptions.Item>
+              <Descriptions.Item label="Thời điểm sửa chữa gần nhất">{editingRecord.lastRepairDate || '—'}</Descriptions.Item>
+              <Descriptions.Item label="Thời điểm đưa vào sử dụng">{editingRecord.commissionedDate || '—'}</Descriptions.Item>
               <Descriptions.Item label="Trạng thái phê duyệt">
                 <ApprovalStatusBadge status={editingRecord.approvalStatus} />
               </Descriptions.Item>
@@ -898,7 +898,7 @@ export default function BeaconList() {
               <Col span={12}>
                 <FormField
                   type="text"
-                  name="lightColor"
+                  name="towerColor"
                   label="Màu sắc bên ngoài của tháp đèn"
                   required
                   placeholder="VD: Trắng, Đỏ, ..."
@@ -908,7 +908,7 @@ export default function BeaconList() {
 
             <FormField
               type="textarea"
-              name="description"
+              name="location"
               label="Địa điểm đặt trạm đèn"
               placeholder="Mô tả về đặc tính đèn biển..."
             />
@@ -917,7 +917,7 @@ export default function BeaconList() {
               <Col span={12}>
                 <FormField
                   type="text"
-                  name="hinhDang"
+                  name="shape"
                   label="Hình dáng"
                   placeholder="VD: Hình trụ tròn"
                 />
@@ -925,7 +925,7 @@ export default function BeaconList() {
               <Col span={12}>
                 <FormField
                   type="number"
-                  name="chieuCaoThapDen"
+                  name="towerHeight"
                   label="Chiều cao tháp đèn (m)"
                   min={0}
                   step={0.01}
@@ -936,7 +936,7 @@ export default function BeaconList() {
 
             <FormField
               type="textarea"
-              name="ketCau"
+              name="structure"
               label="Kết cấu"
               placeholder="VD: Bê tông cốt thép..."
             />
@@ -945,7 +945,7 @@ export default function BeaconList() {
               <Col span={12}>
                 <FormField
                   type="number"
-                  name="chieuCaoTamSang"
+                  name="lightHeight"
                   label="Chiều cao tâm sáng (m)"
                   min={0}
                   step={0.01}
@@ -955,7 +955,7 @@ export default function BeaconList() {
               <Col span={12}>
                 <FormField
                   type="text"
-                  name="tamHieuLucDiaLy"
+                  name="geographicRange"
                   label="Tầm hiệu lực địa lý"
                   placeholder="VD: 15 hải lý"
                 />
@@ -964,14 +964,14 @@ export default function BeaconList() {
 
             <FormField
               type="text"
-              name="chungLoaiDenDuPhong"
+              name="backupLightModel"
               label="Đèn dự phòng"
               placeholder="VD: LED 200W"
             />
 
             <FormField
               type="text"
-              name="nguonCungCapNangLuongChoDen"
+              name="powerSupply"
               label="Nguồn cung cấp năng lượng cho đèn"
               placeholder="VD: Pin mặt trời, điện lưới..."
             />
@@ -980,7 +980,7 @@ export default function BeaconList() {
               <Col span={12}>
                 <FormField
                   type="number"
-                  name="soLuongNhanSuBoTri"
+                  name="staffCount"
                   label="Nhân sự bố trí (người)"
                   min={0}
                   max={99999}
@@ -991,7 +991,7 @@ export default function BeaconList() {
               <Col span={12}>
                 <FormField
                   type="number"
-                  name="dienTichSuDungTram"
+                  name="stationArea"
                   label="Diện tích sử dụng trạm (m²)"
                   min={0}
                   step={0.01}
@@ -1004,7 +1004,7 @@ export default function BeaconList() {
               <Col span={12}>
                 <FormField
                   type="text"
-                  name="lightCharacteristic"
+                  name="primaryLightModel"
                   label="Đèn chính"
                   placeholder="VD: VMS.RB-400"
                 />
@@ -1012,7 +1012,7 @@ export default function BeaconList() {
               <Col span={12}>
                 <FormField
                   type="number"
-                  name="range"
+                  name="area"
                   label="Diện tích (m²)"
                   min={0}
                   step={0.01}
@@ -1023,13 +1023,13 @@ export default function BeaconList() {
 
             <FormField
               type="date"
-              name="lastMaintenanceDate"
+              name="lastRepairDate"
               label="Thời điểm sửa chữa gần nhất"
             />
 
             <FormField
               type="date"
-              name="nextMaintenanceDate"
+              name="commissionedDate"
               label="Thời điểm đưa vào sử dụng"
             />
           </Form>

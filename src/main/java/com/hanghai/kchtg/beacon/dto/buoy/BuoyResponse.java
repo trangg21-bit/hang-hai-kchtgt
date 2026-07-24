@@ -1,8 +1,5 @@
 package com.hanghai.kchtg.beacon.dto.buoy;
 
-import com.hanghai.kchtg.beacon.entity.BeaconApprovalStatus;
-import com.hanghai.kchtg.beacon.entity.BeaconStatus;
-import com.hanghai.kchtg.beacon.entity.BuoyType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,7 +21,7 @@ public class BuoyResponse {
     private UUID id;
     private String code;
     private String name;
-    private BuoyType type;
+    private String type;
     private Double latitude;
     private Double longitude;
     private String color;
@@ -37,8 +34,8 @@ public class BuoyResponse {
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
     private Boolean isActive;
-    private BeaconStatus status;
-    private BeaconApprovalStatus approvalStatus;
+    private String status;
+    private String approvalStatus;
     private Integer approvalLevel;
     private String approvedBy;
     private LocalDateTime approvedDate;

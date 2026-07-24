@@ -76,8 +76,8 @@ public class PortAndAssetSharingController {
         return ResponseEntity.ok(service.shareTongHopKCHTGT_PhaoTieu(dataPayload));
     }
 
-    @PostMapping("/tong-hop-den-bien")
-    public ResponseEntity<DataSharingAggregationResponse> shareTongHopKCHTGT_HeThongDenBien(
+    @PostMapping("/lighthouse-summary")
+    public ResponseEntity<DataSharingAggregationResponse> lighthouseSummary(
             @RequestBody String dataPayload) {
         return ResponseEntity.ok(service.shareTongHopKCHTGT_HeThongDenBien(dataPayload));
     }

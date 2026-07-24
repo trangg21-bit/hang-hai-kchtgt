@@ -4,9 +4,6 @@ import com.hanghai.kchtg.beacon.controller.BeaconLightController;
 import com.hanghai.kchtg.beacon.dto.beacon_light.BeaconLightResponse;
 import com.hanghai.kchtg.beacon.dto.beacon_light.CreateBeaconLightRequest;
 import com.hanghai.kchtg.beacon.dto.beacon_light.UpdateBeaconLightRequest;
-import com.hanghai.kchtg.beacon.entity.BeaconApprovalStatus;
-import com.hanghai.kchtg.beacon.entity.BeaconLightType;
-import com.hanghai.kchtg.beacon.entity.BeaconStatus;
 import com.hanghai.kchtg.beacon.service.BeaconLightService;
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
@@ -67,10 +64,10 @@ class BeaconLightControllerTest {
     private JpaMetamodelMappingContext jpaMetamodelMappingContext;
 
     private BeaconLightResponse makeResponse(UUID id) {
-        return makeResponse(id, "Đèn biển test", BeaconLightType.LIGHTHOUSE, BeaconStatus.DRAFT);
+        return makeResponse(id, "Đèn biển test", "LIGHTHOUSE", "DRAFT");
     }
 
-    private BeaconLightResponse makeResponse(UUID id, String name, BeaconLightType type, BeaconStatus status) {
+    private BeaconLightResponse makeResponse(UUID id, String name, String type, String status) {
         return BeaconLightResponse.builder()
                 .id(id)
                 .code("DEN-001")
@@ -79,13 +76,13 @@ class BeaconLightControllerTest {
                 .latitude(10.5)
                 .longitude(106.5)
                 .lightRange(15.0)
-                .lightColor("Trắng")
-                .lightCharacteristic("Chớp 3 giây")
-                .range(12.0)
-                .description("Mô tả")
+                .towerColor("Trắng")
+                .primaryLightModel("Chớp 3 giây")
+                .area(12.0)
+                .location("Mô tả")
                 .isActive(true)
                 .status(status)
-                .approvalStatus(BeaconApprovalStatus.PENDING)
+                .approvalStatus("PENDING")
                 .approvalLevel(0)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -169,7 +166,7 @@ class BeaconLightControllerTest {
                 .andExpect(jsonPath("$.success").value(true));
 
         verify(beaconLightService)
-                .search("Đèn", "DEN", BeaconLightType.LIGHTHOUSE, BeaconStatus.DRAFT);
+                .search("Đèn", "DEN", "LIGHTHOUSE", "DRAFT");
     }
 
     // ── CREATE ───────────────────────────────────────────────────
@@ -191,7 +188,7 @@ class BeaconLightControllerTest {
                   "lightCharacteristic": "Chớp 5 giây"
                 }
                 """;
-        BeaconLightResponse response = makeResponse(id, "Đèn biển mới", BeaconLightType.BEACON_LIGHT, BeaconStatus.DRAFT);
+        BeaconLightResponse response = makeResponse(id, "Đèn biển mới", "BEACON_LIGHT", "DRAFT");
         when(beaconLightService.create(any(CreateBeaconLightRequest.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/beacon-lights")
@@ -261,7 +258,7 @@ class BeaconLightControllerTest {
                   "range": 18.0
                 }
                 """;
-        BeaconLightResponse updated = makeResponse(id, "Đèn biển cập nhật", BeaconLightType.LIGHTHOUSE, BeaconStatus.DRAFT);
+        BeaconLightResponse updated = makeResponse(id, "Đèn biển cập nhật", "LIGHTHOUSE", "DRAFT");
         when(beaconLightService.update(eq(id), any(UpdateBeaconLightRequest.class))).thenReturn(updated);
 
         mockMvc.perform(put("/api/beacon-lights/{id}", id)
@@ -353,7 +350,7 @@ class BeaconLightControllerTest {
     @DisplayName("POST /api/beacon-lights/{id}/approve-l1 — returns 200 with approved entity")
     void testApproveL1() throws Exception {
         UUID id = UUID.randomUUID();
-        BeaconLightResponse approved = makeResponse(id, "Đã duyệt L1", BeaconLightType.LIGHTHOUSE, BeaconStatus.APPROVED_L1);
+        BeaconLightResponse approved = makeResponse(id, "Đã duyệt L1", "LIGHTHOUSE", "APPROVED_L1");
         approved.setApprovedBy("2");
         when(beaconLightService.approveL1(eq(id), anyString())).thenReturn(approved);
 
@@ -385,7 +382,7 @@ class BeaconLightControllerTest {
     @DisplayName("POST /api/beacon-lights/{id}/approve-l2 — returns 200 with published entity")
     void testApproveL2() throws Exception {
         UUID id = UUID.randomUUID();
-        BeaconLightResponse published = makeResponse(id, "Đã duyệt L2", BeaconLightType.LIGHTHOUSE, BeaconStatus.PUBLISHED);
+        BeaconLightResponse published = makeResponse(id, "Đã duyệt L2", "LIGHTHOUSE", "PUBLISHED");
         published.setApprovedBy("3");
         when(beaconLightService.approveL2(eq(id), anyString())).thenReturn(published);
 
@@ -405,9 +402,9 @@ class BeaconLightControllerTest {
     @DisplayName("POST /api/beacon-lights/{id}/reject — returns 200 with rejected entity")
     void testReject() throws Exception {
         UUID id = UUID.randomUUID();
-        BeaconLightResponse rejected = makeResponse(id, "Bị từ chối", BeaconLightType.LIGHTHOUSE, BeaconStatus.DRAFT);
+        BeaconLightResponse rejected = makeResponse(id, "Bị từ chối", "LIGHTHOUSE", "DRAFT");
         rejected.setRejectionReason("Lý do từ chối hợp lệ");
-        rejected.setApprovalStatus(BeaconApprovalStatus.REJECTED);
+        rejected.setApprovalStatus("REJECTED");
         when(beaconLightService.reject(eq(id), anyString(), anyString())).thenReturn(rejected);
 
         mockMvc.perform(post("/api/beacon-lights/{id}/reject", id)

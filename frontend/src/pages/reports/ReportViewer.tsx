@@ -560,7 +560,7 @@ export default function ReportViewer() {
                     ) : reportCode === 'F-155' ? (
                       <div>
                         <p>Hệ thống hiện tại chưa cấu hình đầy đủ các bảng thuộc tính hạ tầng kỹ thuật chi tiết của đèn biển như dự án gốc <strong>hh.csdl</strong> (ví dụ: các trường hình dáng, kết cấu, chiều cao tháp đèn, chiều cao tâm sáng, chủng loại thiết bị đèn chính/phụ,...).</p>
-                        <p>Toàn bộ dữ liệu đèn biển hiện tại được lấy từ bảng thực thể <strong>Nhà trạm đèn biển</strong> (<code>nha_tram_den</code>) tại màn hình <strong>Nhà trạm đèn biển</strong> (<code>/nhatram/den</code>).</p>
+                        <p>Toàn bộ dữ liệu đèn biển hiện tại được lấy từ bảng thực thể <strong>Nhà trạm đèn biển</strong> (<code>lighthouse_station</code>) tại màn hình <strong>Nhà trạm đèn biển</strong> (<code>/lighthouse-station</code>).</p>
                         <p>Do cấu trúc dữ liệu hiện tại chỉ lưu trữ các trường cơ bản (tên, mã, tầm hiệu lực ánh sáng, màu sắc ánh sáng, ngày bảo trì) nên các thông số kỹ thuật chi tiết khác sẽ hiển thị trống trên báo cáo.</p>
                       </div>
                     ) : ['F-156', 'F-157', 'F-159'].includes(reportCode) ? (

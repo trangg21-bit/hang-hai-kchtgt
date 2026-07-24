@@ -9,10 +9,10 @@ import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
 import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
-import com.hanghai.kchtg.nhatram.entity.NhaTramDen;
-import com.hanghai.kchtg.nhatram.entity.NhaTramPhao;
-import com.hanghai.kchtg.nhatram.repository.NhaTramDenRepository;
-import com.hanghai.kchtg.nhatram.repository.NhaTramPhaoRepository;
+import com.hanghai.kchtg.station.entity.LighthouseStation;
+import com.hanghai.kchtg.station.entity.BuoyStation;
+import com.hanghai.kchtg.station.repository.LighthouseStationRepository;
+import com.hanghai.kchtg.station.repository.BuoyStationRepository;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
@@ -23,7 +23,6 @@ import com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.beacon.entity.BeaconLight;
 import com.hanghai.kchtg.beacon.entity.Buoy;
-import com.hanghai.kchtg.beacon.entity.BeaconApprovalStatus;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import com.hanghai.kchtg.station.entity.*;
@@ -61,8 +60,8 @@ public class KchtGis155Service {
     private final NavigationChannelRepository navigationChannelRepository;
     private final DikeRevetmentRepository dikeRevetmentRepository;
     private final ShipRepairFacilityRepository shipRepairFacilityRepository;
-    private final NhaTramDenRepository nhaTramDenRepository;
-    private final NhaTramPhaoRepository nhaTramPhaoRepository;
+    private final LighthouseStationRepository lighthouseStationRepository;
+    private final BuoyStationRepository buoyStationRepository;
     private final VtsSystemRepository vtsSystemRepository;
     private final RadarStationRepository radarStationRepository;
     private final OrgUnitRepository orgUnitRepository;
@@ -735,16 +734,16 @@ public class KchtGis155Service {
                     break;
 
                 case DENBIEN:
-                    // 1. Fetch from NhaTramDen
+                    // 1. Fetch from LighthouseStation
                     String denSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
-                    List<NhaTramDen> denList = nhaTramDenRepository.searchGis(orgUnitId, denSearchParam);
+                    List<LighthouseStation> denList = lighthouseStationRepository.searchGis(orgUnitId, denSearchParam);
                     Map<UUID, GisSpatialObject> denSpatialMap = new HashMap<>();
                     if (objectType != null && !denList.isEmpty()) {
-                        List<UUID> denIds = denList.stream().map(NhaTramDen::getId).collect(Collectors.toList());
+                        List<UUID> denIds = denList.stream().map(LighthouseStation::getId).collect(Collectors.toList());
                         gisSpatialObjectRepository.findByRefIdInAndRefType(denIds, KchtType.DENBIEN)
                                 .forEach(so -> denSpatialMap.put(so.getRefId(), so));
                     }
-                    for (NhaTramDen den : denList) {
+                    for (LighthouseStation den : denList) {
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(den.getId() != null ? den.getId().toString() : null)
                                 .name(den.getName())
@@ -785,7 +784,7 @@ public class KchtGis155Service {
                                 .orgName(getOrgName(beacon.getUnitId(), orgNameMap))
                                 .kchtTypeLabel("Đèn biển")
                                 .diaDiem("")
-                                .diaChiChiTiet("Mô tả: " + (beacon.getDescription() != null ? beacon.getDescription() : "") + ", Đặc tính ánh sáng: " + (beacon.getLightCharacteristic() != null ? beacon.getLightCharacteristic() : "") + ", Tầm hiệu lực: " + (beacon.getLightRange() != null ? beacon.getLightRange() : "") + " hải lý")
+                                .diaChiChiTiet("Mô tả: " + (beacon.getLocation() != null ? beacon.getLocation() : "") + ", Đặc tính ánh sáng: " + (beacon.getPrimaryLightModel() != null ? beacon.getPrimaryLightModel() : "") + ", Tầm hiệu lực: " + (beacon.getLightRange() != null ? beacon.getLightRange() : "") + " hải lý")
                                 .latitude(lat)
                                 .longitude(lng)
                                 .build();
@@ -835,14 +834,14 @@ public class KchtGis155Service {
 
                 case NHATRAM_PHAO:
                     String phaoSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
-                    List<NhaTramPhao> phaoList = nhaTramPhaoRepository.searchGis(orgUnitId, phaoSearchParam);
+                    List<BuoyStation> phaoList = buoyStationRepository.searchGis(orgUnitId, phaoSearchParam);
                     Map<UUID, GisSpatialObject> phaoSpatialMap = new HashMap<>();
                     if (objectType != null && !phaoList.isEmpty()) {
-                        List<UUID> phaoIds = phaoList.stream().map(NhaTramPhao::getId).collect(Collectors.toList());
+                        List<UUID> phaoIds = phaoList.stream().map(BuoyStation::getId).collect(Collectors.toList());
                         gisSpatialObjectRepository.findByRefIdInAndRefType(phaoIds, KchtType.NHATRAM_PHAO)
                                 .forEach(so -> phaoSpatialMap.put(so.getRefId(), so));
                     }
-                    for (NhaTramPhao phao : phaoList) {
+                    for (BuoyStation phao : phaoList) {
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(phao.getId() != null ? phao.getId().toString() : null)
                                 .name(phao.getName())

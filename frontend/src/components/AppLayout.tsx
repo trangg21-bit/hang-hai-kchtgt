@@ -44,7 +44,7 @@ const MENU_PERMISSION_MAP: Record<string, string> = {
   '/gis/search': 'data:read',
   '/gis/map': 'data:read',
   '/gis/permits': 'data:read',
-  '/den-bien': 'data:read',
+  '/beacon-lights': 'data:read',
   '/buoys': 'data:read',
   '/history': 'data:read',
   '/Port': 'Port:read',
@@ -83,10 +83,10 @@ const pageTitles: Record<string, string> = {
   '/gis/search': 'Tra cứu thông tin KCHT hàng hải trên bản đồ',
   '/gis/map': 'Quản lý thông tin KCHT hàng hải trên bản đồ',
   '/gis/permits': 'Giấy phép S-63',
-  '/den-bien': 'Đèn biển',
+  '/beacon-lights': 'Đèn biển',
   '/buoys': 'Phao tiêu',
-  '/nhatram/den': 'Nhà trạm đèn biển',
-  '/nhatram/phao': 'Nhà trạm phao tiêu',
+  '/lighthouse-station': 'Nhà trạm đèn biển',
+  '/buoy-station': 'Nhà trạm phao tiêu',
   '/history': 'Lịch sử thay đổi',
   '/Port': 'Quản lý cảng biển',
   '/Berth': 'Quản lý bến cảng',
@@ -144,7 +144,7 @@ export default function AppLayout() {
     // For GIS, select the deepest valid key: /gis/points, /gis/lines, etc.
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
-  } else if (pathSegments[0] === 'nhatram' || pathSegments[0] === 'vanban' || pathSegments[0] === 'station' || pathSegments[0] === 'asset') {
+  } else if (pathSegments[0] === 'nhatram' || pathSegments[0] === 'lighthouse-station' || pathSegments[0] === 'buoy-station' || pathSegments[0] === 'vanban' || pathSegments[0] === 'station' || pathSegments[0] === 'asset') {
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
   } else if (pathSegments[0] === 'Port' || pathSegments[0] === 'Berth' || pathSegments[0] === 'Pier' || pathSegments[0] === 'DryPort' || pathSegments[0] === 'WaterZone') {
@@ -159,7 +159,7 @@ export default function AppLayout() {
 
   useEffect(() => {
     if (selectedKey) {
-      if (selectedKey.startsWith('/nhatram') || selectedKey === '/den-bien' || selectedKey === '/buoys' || selectedKey === '/history') {
+      if (selectedKey.startsWith('/nhatram') || selectedKey.startsWith('/lighthouse-station') || selectedKey.startsWith('/buoy-station') || selectedKey === '/beacon-lights' || selectedKey === '/buoys' || selectedKey === '/history') {
         setOpenKeys(['beacon']);
       } else if (selectedKey.startsWith('/gis')) {
         setOpenKeys(['gis']);
@@ -214,10 +214,10 @@ export default function AppLayout() {
       icon: <SettingOutlined />,
       label: 'Báo hiệu hàng hải',
       children: [
-        canAccessMenu('/den-bien') ? { key: '/den-bien', label: 'Đèn biển' } : null,
+        canAccessMenu('/beacon-lights') ? { key: '/beacon-lights', label: 'Đèn biển' } : null,
         canAccessMenu('/buoys') ? { key: '/buoys', label: 'Phao tiêu' } : null,
-        canAccessMenu('/nhatram/den') ? { key: '/nhatram/den', label: 'Nhà trạm đèn biển' } : null,
-        canAccessMenu('/nhatram/phao') ? { key: '/nhatram/phao', label: 'Nhà trạm phao tiêu' } : null,
+        canAccessMenu('/lighthouse-station') ? { key: '/lighthouse-station', label: 'Nhà trạm đèn biển' } : null,
+        canAccessMenu('/buoy-station') ? { key: '/buoy-station', label: 'Nhà trạm phao tiêu' } : null,
         canAccessMenu('/history') ? { key: '/history', label: 'Lịch sử thay đổi' } : null,
       ].filter(Boolean),
     },

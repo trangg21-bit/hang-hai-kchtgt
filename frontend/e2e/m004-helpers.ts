@@ -27,7 +27,7 @@ export async function createNhaTramDen(
   token: string,
   tag: string,
 ): Promise<string> {
-  const res = await request.post(`${BE}/api/v1/nhatram/den`, {
+  const res = await request.post(`${BE}/api/v1/lighthouse-station`, {
     headers: { Authorization: `Bearer ${token}` },
     data: {
       code: `E2E-DEN-${tag}`,
@@ -47,7 +47,7 @@ export async function createNhaTramDen(
       status: 'DRAFT',
     },
   });
-  expect(res.ok(), `create nhatram-den failed: ${res.status()} ${await res.text()}`).toBeTruthy();
+  expect(res.ok(), `create lighthouse-station failed: ${res.status()} ${await res.text()}`).toBeTruthy();
   const body = await res.json();
   return (body.data ?? body).id;
 }
@@ -58,7 +58,7 @@ export async function createNhaTramPhao(
   token: string,
   tag: string,
 ): Promise<string> {
-  const res = await request.post(`${BE}/api/v1/nhatram/phao`, {
+  const res = await request.post(`${BE}/api/v1/buoy-station`, {
     headers: { Authorization: `Bearer ${token}` },
     data: {
       code: `E2E-PHAO-${tag}`,
@@ -78,7 +78,7 @@ export async function createNhaTramPhao(
       status: 'DRAFT',
     },
   });
-  expect(res.ok(), `create nhatram-phao failed: ${res.status()} ${await res.text()}`).toBeTruthy();
+  expect(res.ok(), `create buoy-station failed: ${res.status()} ${await res.text()}`).toBeTruthy();
   const body = await res.json();
   return (body.data ?? body).id;
 }
