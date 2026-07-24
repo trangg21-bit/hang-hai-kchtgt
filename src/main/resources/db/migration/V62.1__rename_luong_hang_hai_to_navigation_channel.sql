@@ -29,7 +29,6 @@ ALTER TABLE public.navigation_channel RENAME COLUMN so_luong_tieu TO beacon_amou
 ALTER TABLE public.navigation_channel RENAME COLUMN so_luong_tram TO station_amountt;
 ALTER TABLE public.navigation_channel RENAME COLUMN thoi_diem_sua_chua_tram_gan_nhat TO latest_station_repair_date;
 ALTER TABLE public.navigation_channel RENAME COLUMN tram_quan_ly_luong TO channel_management_station;
-ALTER TABLE public.navigation_channel RENAME COLUMN ten TO channel_name;
 
 -- Add DEFAULT to id
 ALTER TABLE public.navigation_channel ALTER COLUMN id SET DEFAULT gen_random_uuid();
