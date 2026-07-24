@@ -41,28 +41,28 @@ import SymbolList from './pages/symbols/SymbolList';
 import HomePage from './pages/Home';
 import PermissionGuard from './components/PermissionGuard';
 import PasswordResetPage from './pages/PasswordResetPage';
-import CangBienList from './services/cangbien/CangBienListPage';
-import CangBienCreatePage from './services/cangbien/CangBienCreatePage';
-import CangBienUpdatePage from './services/cangbien/CangBienUpdatePage';
-import CangBienDetailPage from './services/cangbien/CangBienDetailPage';
-import CangBienApprovePage from './services/cangbien/CangBienApprovePage';
-import CangBienDeleteConfirm from './services/cangbien/CangBienDeleteConfirm';
+import PortList from './services/port/PortListPage';
+import PortCreatePage from './services/port/PortCreatePage';
+import PortUpdatePage from './services/port/PortUpdatePage';
+import PortDetailPage from './services/port/PortDetailPage';
+import PortApprovePage from './services/port/PortApprovePage';
+import PortDeleteConfirm from './services/port/PortDeleteConfirm';
 
-import BenCangListPage from './app/bencang/BenCangListPage';
+import BerthListPage from './app/berth/BerthListPage';
 
-import CauCangListPage from './app/caucang/CauCangListPage';
+import PierListPage from './app/pier/PierListPage';
 
-import CangCanListPage from './app/cangcan/CangCanListPage';
+import DryPortListPage from './app/dryport/DryPortListPage';
 
-import VungNuocListPage from './app/vungnuoc/VungNuocListPage';
+import WaterZoneListPage from './app/waterzone/WaterZoneListPage';
 
-import GiayToUploadPage from './app/giayto/GiayToUploadPage';
+import DocumentUploadPage from './app/document/DocumentUploadPage';
 
 // M-003: Khu nước & VTS — Quản lý tàu bè
-import LuongHangHaiList from './pages/luonghanghai/LuongHangHaiList';
-import LuongHangHaiForm from './pages/luonghanghai/LuongHangHaiForm';
-import DeKeList from './pages/deke/DeKeList';
-import DeKeForm from './pages/deke/DeKeForm';
+import NavigationChannelList from './pages/navigationchannel/NavigationChannelList';
+import NavigationChannelForm from './pages/navigationchannel/NavigationChannelForm';
+import DikeRevetmentList from './pages/dikerevetment/DikeRevetmentList';
+import DikeRevetmentForm from './pages/dikerevetment/DikeRevetmentForm';
 import CoSuaChuaList from './pages/cosuachua/CoSuaChuaList';
 import CoSuaChuaForm from './pages/cosuachua/CoSuaChuaForm';
 import TramRadarList from './pages/tramradar/TramRadarList';
@@ -177,34 +177,34 @@ export default function App() {
                 <Route path="/history" element={<PermissionGuard permission="data:read"><BeaconHistoryList /></PermissionGuard>} />
 
                 {/* M-002: Tài sản KCHTGT - Cảng & Bến */}
-                <Route path="/cangbien" element={<PermissionGuard permission="cangbien:read"><CangBienList /></PermissionGuard>} />
-                <Route path="/cangbien/create" element={<PermissionGuard permission="cangbien:create"><CangBienCreatePage /></PermissionGuard>} />
-                <Route path="/cangbien/:id" element={<PermissionGuard permission="cangbien:read"><CangBienDetailPage /></PermissionGuard>} />
-                <Route path="/cangbien/:id/edit" element={<PermissionGuard permission="cangbien:update"><CangBienUpdatePage /></PermissionGuard>} />
-                <Route path="/cangbien/:id/approve" element={<PermissionGuard permission="cangbien:approve"><CangBienApprovePage /></PermissionGuard>} />
-                <Route path="/cangbien/:id/delete" element={<PermissionGuard permission="cangbien:delete"><CangBienDeleteConfirm /></PermissionGuard>} />
+                <Route path="/Port" element={<PermissionGuard permission="Port:read"><PortList /></PermissionGuard>} />
+                <Route path="/Port/create" element={<PermissionGuard permission="Port:create"><PortCreatePage /></PermissionGuard>} />
+                <Route path="/Port/:id" element={<PermissionGuard permission="Port:read"><PortDetailPage /></PermissionGuard>} />
+                <Route path="/Port/:id/edit" element={<PermissionGuard permission="Port:update"><PortUpdatePage /></PermissionGuard>} />
+                <Route path="/Port/:id/approve" element={<PermissionGuard permission="Port:approve"><PortApprovePage /></PermissionGuard>} />
+                <Route path="/Port/:id/delete" element={<PermissionGuard permission="Port:delete"><PortDeleteConfirm /></PermissionGuard>} />
 
-                <Route path="/bencang" element={<PermissionGuard permission="bencang:read"><BenCangListPage /></PermissionGuard>} />
+                <Route path="/Berth" element={<PermissionGuard permission="Berth:read"><BerthListPage /></PermissionGuard>} />
 
-                <Route path="/caucang" element={<PermissionGuard permission="caucang:read"><CauCangListPage /></PermissionGuard>} />
+                <Route path="/Pier" element={<PermissionGuard permission="Pier:read"><PierListPage /></PermissionGuard>} />
 
-                <Route path="/cangcan" element={<PermissionGuard permission="cangcan:read"><CangCanListPage /></PermissionGuard>} />
+                <Route path="/DryPort" element={<PermissionGuard permission="DryPort:read"><DryPortListPage /></PermissionGuard>} />
 
-                <Route path="/vungnuoc" element={<PermissionGuard permission="vungnuoc:read"><VungNuocListPage /></PermissionGuard>} />
+                <Route path="/WaterZone" element={<PermissionGuard permission="WaterZone:read"><WaterZoneListPage /></PermissionGuard>} />
 
-                <Route path="/giayto/upload/:entityType/:entityId" element={<PermissionGuard permission="cangben:read"><GiayToUploadPage /></PermissionGuard>} />
+                <Route path="/document/upload/:entityType/:entityId" element={<PermissionGuard permission="cangben:read"><DocumentUploadPage /></PermissionGuard>} />
 
                 {/* M-003: Khu nước & VTS — Quản lý tàu bè */}
 
                 {/* Luồng hàng hải */}
-                <Route path="/luong-hang-hai" element={<PermissionGuard permission="luonghanghai:read"><LuongHangHaiList /></PermissionGuard>} />
-                <Route path="/luong-hang-hai/create" element={<PermissionGuard permission="luonghanghai:create"><LuongHangHaiForm /></PermissionGuard>} />
-                <Route path="/luong-hang-hai/:id" element={<PermissionGuard permission="luonghanghai:read"><LuongHangHaiForm /></PermissionGuard>} />
+                <Route path="/navigation-channel" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelList /></PermissionGuard>} />
+                <Route path="/navigation-channel/create" element={<PermissionGuard permission="navigationchannel:create"><NavigationChannelForm /></PermissionGuard>} />
+                <Route path="/navigation-channel/:id" element={<PermissionGuard permission="navigationchannel:read"><NavigationChannelForm /></PermissionGuard>} />
 
                 {/* Đê/kè */}
-                <Route path="/de-ke" element={<PermissionGuard permission="deke:read"><DeKeList /></PermissionGuard>} />
-                <Route path="/de-ke/create" element={<PermissionGuard permission="deke:create"><DeKeForm /></PermissionGuard>} />
-                <Route path="/de-ke/:id" element={<PermissionGuard permission="deke:read"><DeKeForm /></PermissionGuard>} />
+                <Route path="/dike-revetment" element={<PermissionGuard permission="dikerevetment:read"><DikeRevetmentList /></PermissionGuard>} />
+                <Route path="/dike-revetment/create" element={<PermissionGuard permission="dikerevetment:create"><DikeRevetmentForm /></PermissionGuard>} />
+                <Route path="/dike-revetment/:id" element={<PermissionGuard permission="dikerevetment:read"><DikeRevetmentForm /></PermissionGuard>} />
 
                 {/* Cơ sở sửa chữa/đóng tàu */}
                 <Route path="/co-so-sua-chua" element={<PermissionGuard permission="cosuachua:read"><CoSuaChuaList /></PermissionGuard>} />

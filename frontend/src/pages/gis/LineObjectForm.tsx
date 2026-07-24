@@ -48,8 +48,6 @@ export default function LineObjectForm() {
             name: data.name,
             code: data.code,
             objectType: data.objectType,
-            categoryId: data.categoryId,
-            lineSymbolId: data.lineSymbolId,
             coordinates: data.coordinates,
             description: data.description,
             length: data.length,
@@ -84,8 +82,6 @@ export default function LineObjectForm() {
         const payload: UpdateLineObjectPayload = {
           name: values.name,
           objectType: values.objectType,
-          categoryId: values.categoryId,
-          lineSymbolId: values.lineSymbolId,
           coordinates: values.coordinates,
           description: values.description,
           length: values.length,
@@ -99,8 +95,6 @@ export default function LineObjectForm() {
           name: values.name,
           code: values.code,
           objectType: values.objectType,
-          categoryId: values.categoryId,
-          lineSymbolId: values.lineSymbolId,
           coordinates: values.coordinates,
           description: values.description,
           length: values.length,
@@ -188,30 +182,6 @@ export default function LineObjectForm() {
           </Form.Item>
 
           <Row gutter={spaceMd}>
-            <Col span={12}>
-              <Form.Item name="categoryId" label="Danh mục"
-                style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Tùy chọn danh mục" style={SELECT_STYLE}
-                  options={[
-                    { label: 'Đường bờ biển', value: 1 },
-                    { label: 'Tuyến hàng hải', value: 2 },
-                    { label: 'Đường thủy', value: 3 },
-                    { label: 'Khác', value: 4 },
-                  ]} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="lineSymbolId" label="Ký hiệu đường"
-                style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Tùy chọn ký hiệu" style={SELECT_STYLE}
-                  options={[
-                    { label: 'Symbol Đường bờ biển', value: 1 },
-                    { label: 'Symbol Tuyến hàng hải', value: 2 },
-                    { label: 'Symbol Đường thủy', value: 3 },
-                    { label: 'Symbol Khác', value: 4 },
-                  ]} />
-              </Form.Item>
-            </Col>
           </Row>
 
           <Form.Item name="description" label="Mô tả"

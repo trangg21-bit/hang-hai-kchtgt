@@ -2,9 +2,9 @@ package com.hanghai.kchtg.report.handler;
 
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
-import com.hanghai.kchtg.cangben.entity.VungNuoc;
+import com.hanghai.kchtg.cangben.entity.WaterZone;
 import com.hanghai.kchtg.cangben.entity.LoaiVungNuoc;
-import com.hanghai.kchtg.cangben.repository.VungNuocRepository;
+import com.hanghai.kchtg.cangben.repository.WaterZoneRepository;
 import com.hanghai.kchtg.gis.line.entity.LineObject;
 import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,7 +17,7 @@ import java.util.*;
 public class F152ToF154ReportHandler extends BaseReportHandler {
 
     @Autowired
-    private VungNuocRepository vungNuocRepository;
+    private WaterZoneRepository waterZoneRepository;
 
     @Autowired
     private LineObjectRepository lineObjectRepository;
@@ -54,9 +54,9 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
 
         Set<LoaiVungNuoc> filterSet = getLoaiVungNuocFilter(request.getReportCode());
 
-        List<VungNuoc> vungNuocs = vungNuocRepository.findAll(Sort.unsorted()).stream()
-                .filter(v -> filterSet.contains(v.getLoaiVungNuoc()))
-                .filter(v -> skipFilter || targetUnitId.equals(v.getDonViId()))
+        List<WaterZone> waterZones = waterZoneRepository.findAll(Sort.unsorted()).stream()
+                .filter(v -> filterSet.contains(v.getWaterZoneType()))
+                .filter(v -> skipFilter || targetUnitId.equals(v.getOrgUnitId()))
                 .filter(v -> v.getCreatedAt() == null || v.getCreatedAt().getYear() <= reportYear)
                 .toList();
 
@@ -69,36 +69,36 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
 
         List<Map<String, Object>> rows = new ArrayList<>();
         int stt = 1;
-        for (VungNuoc v : vungNuocs) {
+        for (WaterZone v : waterZones) {
             Map<String, Object> r = new LinkedHashMap<>();
             r.put("STT", stt++);
-            r.put("Chỉ tiêu", v.getTenVungNuoc() != null ? v.getTenVungNuoc() : "");
+            r.put("Chỉ tiêu", v.getWaterZoneName() != null ? v.getWaterZoneName() : "");
 
-            // JOIN khongGianId → LineObject.coordinates
+            // JOIN spatialId → LineObject.coordinates
             String coordinates = "";
-            if (v.getKhongGianId() != null) {
-                Optional<LineObject> lineOpt = lineObjectRepository.findById(v.getKhongGianId());
+            if (v.getSpatialId() != null) {
+                Optional<LineObject> lineOpt = lineObjectRepository.findById(v.getSpatialId());
                 if (lineOpt.isPresent() && lineOpt.get().getCoordinates() != null) {
                     coordinates = lineOpt.get().getCoordinates();
                 }
             }
             r.put("Vị trí, tọa độ", coordinates);
             r.put("Hình dạng", "");
-            r.put("Diện tích (m2)", v.getDienTich() != null ? v.getDienTich().doubleValue() : 0.0);
+            r.put("Diện tích (m2)", v.getArea() != null ? v.getArea().doubleValue() : 0.0);
             r.put("Cỡ tàu lớn nhất (DWT)", 0.0);
 
             String donVi = "";
-            if (v.getDonViId() != null) {
-                donVi = orgUnitRepository.findById(v.getDonViId())
+            if (v.getOrgUnitId() != null) {
+                donVi = orgUnitRepository.findById(v.getOrgUnitId())
                         .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
                         .orElse("");
             }
             r.put("Đơn vị quản lý khai thác", donVi);
-            r.put("Độ sâu theo thiết kế (m)", v.getDoSauMax() != null ? v.getDoSauMax().doubleValue() : 0.0);
-            r.put("Độ sâu hiện tại (m)", v.getDoSauTrungBinh() != null ? v.getDoSauTrungBinh().doubleValue() : 0.0);
+            r.put("Độ sâu theo thiết kế (m)", v.getMaxDepth() != null ? v.getMaxDepth().doubleValue() : 0.0);
+            r.put("Độ sâu hiện tại (m)", v.getAvgDepth() != null ? v.getAvgDepth().doubleValue() : 0.0);
             r.put("Đã công bố", "");
             r.put("Năm công bố", "");
-            r.put("Ghi chú", v.getLoaiVungNuoc() != null ? v.getLoaiVungNuoc().name() : "");
+            r.put("Ghi chú", v.getWaterZoneType() != null ? v.getWaterZoneType().name() : "");
             rows.add(r);
         }
 
@@ -115,36 +115,36 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
 
         Set<LoaiVungNuoc> filterSet = getLoaiVungNuocFilter(request.getReportCode());
 
-        List<VungNuoc> vungNuocs = vungNuocRepository.findAll(Sort.unsorted()).stream()
-                .filter(v -> filterSet.contains(v.getLoaiVungNuoc()))
-                .filter(v -> skipFilter || targetUnitId.equals(v.getDonViId()))
+        List<WaterZone> waterZones = waterZoneRepository.findAll(Sort.unsorted()).stream()
+                .filter(v -> filterSet.contains(v.getWaterZoneType()))
+                .filter(v -> skipFilter || targetUnitId.equals(v.getOrgUnitId()))
                 .filter(v -> v.getCreatedAt() == null || v.getCreatedAt().getYear() <= reportYear)
                 .toList();
 
         List<Map<String, Object>> arrResult = new ArrayList<>();
-        for (VungNuoc v : vungNuocs) {
+        for (WaterZone v : waterZones) {
             Map<String, Object> item = new HashMap<>();
-            String tenVungNuoc = v.getTenVungNuoc() != null ? v.getTenVungNuoc() : "";
-            double dienTich = v.getDienTich() != null ? v.getDienTich().doubleValue() : 0.0;
-            double doSauMax = v.getDoSauMax() != null ? v.getDoSauMax().doubleValue() : 0.0;
-            double doSauTrungBinh = v.getDoSauTrungBinh() != null ? v.getDoSauTrungBinh().doubleValue() : 0.0;
+            String waterZoneName = v.getWaterZoneName() != null ? v.getWaterZoneName() : "";
+            double area = v.getArea() != null ? v.getArea().doubleValue() : 0.0;
+            double maxDepth = v.getMaxDepth() != null ? v.getMaxDepth().doubleValue() : 0.0;
+            double avgDepth = v.getAvgDepth() != null ? v.getAvgDepth().doubleValue() : 0.0;
 
-            item.put("ten", tenVungNuoc);
-            item.put("code", v.getMaVungNuoc() != null ? v.getMaVungNuoc() : "");
-            item.put("name", tenVungNuoc);
-            item.put("description", v.getLoaiVungNuoc() != null ? v.getLoaiVungNuoc().name() : "");
-            item.put("unitId", v.getDonViId() != null ? v.getDonViId().toString() : "");
+            item.put("ten", waterZoneName);
+            item.put("code", v.getWaterZoneCode() != null ? v.getWaterZoneCode() : "");
+            item.put("name", waterZoneName);
+            item.put("description", v.getWaterZoneType() != null ? v.getWaterZoneType().name() : "");
+            item.put("unitId", v.getOrgUnitId() != null ? v.getOrgUnitId().toString() : "");
             item.put("status", "");
 
-            item.put("tenCangBien", tenVungNuoc);
-            item.put("tenCang", tenVungNuoc);
-            item.put("loaiTaiSan", tenVungNuoc);
-            item.put("maTuyenLuong", v.getMaVungNuoc() != null ? v.getMaVungNuoc() : "");
-            item.put("tenTramQuanLyLuong", tenVungNuoc);
-            item.put("tenDiemNeo", tenVungNuoc);
+            item.put("tenCangBien", waterZoneName);
+            item.put("tenCang", waterZoneName);
+            item.put("loaiTaiSan", waterZoneName);
+            item.put("maTuyenLuong", v.getWaterZoneCode() != null ? v.getWaterZoneCode() : "");
+            item.put("tenTramQuanLyLuong", waterZoneName);
+            item.put("tenDiemNeo", waterZoneName);
 
             item.put("soLuongTram", 0.0);
-            item.put("dienTich", dienTich);
+            item.put("dienTich", area);
             item.put("thoiDiemSuaChuaGanNhat", "");
             item.put("thoiDiemCongBo", "");
             item.put("ngaySuaChua", "");
@@ -154,19 +154,19 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
             item.put("daiLuong", 0.0);
             item.put("rongLonNhat", 0.0);
             item.put("rongNhoNhat", 0.0);
-            item.put("doSau", doSauMax);
-            item.put("doSauThietKe", doSauMax);
-            item.put("doSauKhuNuocTheoThietKe", doSauMax);
+            item.put("doSau", maxDepth);
+            item.put("doSauThietKe", maxDepth);
+            item.put("doSauKhuNuocTheoThietKe", maxDepth);
             item.put("maiDoc", 0.0);
-            item.put("doSauHienTai", doSauTrungBinh);
+            item.put("doSauHienTai", avgDepth);
             item.put("khoiLuongNaoVetDuyTu", 0.0);
             item.put("congCong", 0.0);
             item.put("chuyenDung", 0.0);
             item.put("chieuCaoTinhKhong", 0.0);
 
             String donVi = "";
-            if (v.getDonViId() != null) {
-                donVi = orgUnitRepository.findById(v.getDonViId())
+            if (v.getOrgUnitId() != null) {
+                donVi = orgUnitRepository.findById(v.getOrgUnitId())
                         .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
                         .orElse("");
             }

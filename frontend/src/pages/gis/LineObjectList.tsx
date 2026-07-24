@@ -7,30 +7,21 @@ import {
   Modal,
   Form,
   Input,
-  InputNumber,
   Select,
   Row,
   Col,
   Typography,
-  message,
 } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  SendOutlined,
-  CheckCircleOutlined,
-  EyeOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { lineObjectService } from '../../services/lineObjectService';
-import type { LineObject } from '../../services/lineObjectService';
-import {
-  LINE_OBJECT_TYPE_OPTIONS,
-  LINE_OBJECT_STATUS_MAP,
-} from '../../types/lineObject';
-import type { CreateLineObjectPayload, UpdateLineObjectPayload } from '../../types/lineObject';
+import { spatialObjectCategoryService } from '../../services/spatialObjectCategoryService';
+import type { SpatialObjectCategory } from '../../services/spatialObjectCategoryService';
+import { symbolService } from '../../services/symbolService';
+import type { Symbol as MapSymbolItem } from '../../services/symbolService';
 import { usePermissionStore } from '../../store/permissionStore';
 import { ScreenHeader, FilterBar, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
@@ -38,13 +29,10 @@ import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
 import ErrorState from '../../components/ErrorState';
 import toast from '../../components/ToastNotification';
-import { symbolService } from '../../services/symbolService';
-import type { Symbol } from '../../services/symbolService';
 import {
-  spaceMd, spaceFormField, spaceXs,
+  spaceMd, spaceFormField, spaceLg, spaceXs,
   radiusPill, fontSizeMd, fontSizeLg, fontWeightMedium, fontWeightBold,
-  textPrimary, textSecondary, textTertiary,
-  borderDefault, actionPrimary,
+  textTertiary,
 } from '../../tokens';
 import { colors } from '../../theme';
 
@@ -74,128 +62,92 @@ const BTN_STYLE: React.CSSProperties = {
 };
 
 export default function LineObjectList() {
-  const navigate = useNavigate();
   const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   const [search, setSearch] = useState('');
-  const [filterType, setFilterType] = useState<string | undefined>();
-  const [filterStatus, setFilterStatus] = useState<string | undefined>();
+  const [filterStatus, setFilterStatus] = useState<number | undefined>();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [dataSource, setDataSource] = useState<LineObject[]>([]);
+  const [pageSize, setPageSize] = useState(10);
   const [total, setTotal] = useState(0);
+  const [dataSource, setDataSource] = useState<SpatialObjectCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
+  const [symbols, setSymbols] = useState<MapSymbolItem[]>([]);
   const [form] = Form.useForm();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<LineObject | null>(null);
+  const [editingRecord, setEditingRecord] = useState<SpatialObjectCategory | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [symbols, setSymbols] = useState<Symbol[]>([]);
-
-  const fetchSymbols = useCallback(async () => {
-    try {
-      const res = await symbolService.list({ page: 1, pageSize: 1000, status: 'active' });
-      setSymbols(res.data);
-    } catch (err) {
-      console.error('Failed to load symbols', err);
-    }
-  }, []);
 
   useEffect(() => {
-    void fetchSymbols();
-  }, [fetchSymbols]);
+    symbolService.list({ pageSize: 100 }).then(res => setSymbols(res.data)).catch(() => {});
+  }, []);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setIsError(false);
     try {
-      const res = await lineObjectService.list({
+      const res = await spatialObjectCategoryService.list({
         page,
         pageSize,
         search: search || undefined,
-        objectType: filterType,
         status: filterStatus,
+        geometryType: 2, // Line
       });
-      setDataSource(res.data);
-      setTotal(res.total);
+      setDataSource(res.content || []);
+      setTotal(res.totalElements || 0);
     } catch (err: unknown) {
       setIsError(true);
-      setError(err instanceof Error ? err : new Error('Không thể tải danh sách đối tượng đường'));
+      setError(err instanceof Error ? err : new Error('Không thể tải danh sách danh mục đối tượng đường'));
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, search, filterType, filterStatus]);
+  }, [page, pageSize, search, filterStatus]);
+
+  useEffect(() => { void fetchData(); }, [fetchData]);
 
   const openCreateModal = useCallback(() => {
     setEditingRecord(null);
     form.resetFields();
+    form.setFieldsValue({ status: 1 });
     setIsModalOpen(true);
   }, [form]);
 
-  const openEditModal = useCallback((record: LineObject) => {
+  const openEditModal = useCallback((record: SpatialObjectCategory) => {
     setEditingRecord(record);
     form.setFieldsValue({
       name: record.name,
       code: record.code,
-      objectType: record.objectType,
-      categoryId: record.categoryId,
-      lineSymbolId: record.lineSymbolId,
-      coordinates: record.coordinates,
-      description: record.description,
-      length: record.length,
-      material: record.material,
-      yearBuilt: record.yearBuilt,
+      iconId: record.iconId,
+      status: record.status ?? 1,
     });
     setIsModalOpen(true);
   }, [form]);
 
-  const validateWKT = (value: string): boolean => {
-    if (!value) return false;
-    return value.trim().toUpperCase().startsWith('LINESTRING');
-  };
-
-  const handleSubmit = useCallback(async () => {
+  const handleFormSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields();
-
-      if (!validateWKT(values.coordinates)) {
-        message.error('Tọa độ phải ở định dạng WKT LINESTRING (VD: LINESTRING(106.7 21.0, 106.8 21.1))');
-        return;
-      }
-
       setSubmitting(true);
 
       if (editingRecord) {
-        const payload: UpdateLineObjectPayload = {
-          name: values.name,
-          objectType: values.objectType,
-          categoryId: values.categoryId,
-          lineSymbolId: values.lineSymbolId,
-          coordinates: values.coordinates,
-          description: values.description,
-          length: values.length,
-          material: values.material,
-          yearBuilt: values.yearBuilt,
-        };
-        await lineObjectService.update(editingRecord.id, payload);
-        toast.success('Đã cập nhật đối tượng đường');
-      } else {
-        const payload: CreateLineObjectPayload = {
-          name: values.name,
+        await spatialObjectCategoryService.update(editingRecord.id, {
           code: values.code,
-          objectType: values.objectType,
-          categoryId: values.categoryId,
-          lineSymbolId: values.lineSymbolId,
-          coordinates: values.coordinates,
-          description: values.description,
-          length: values.length,
-          material: values.material,
-          yearBuilt: values.yearBuilt,
-        };
-        await lineObjectService.create(payload);
-        toast.success('Đã tạo đối tượng đường');
+          name: values.name,
+          geometryType: 2,
+          iconId: values.iconId,
+          status: values.status,
+        });
+        toast.success('Đã cập nhật danh mục đối tượng đường');
+      } else {
+        await spatialObjectCategoryService.create({
+          code: values.code,
+          name: values.name,
+          geometryType: 2,
+          iconId: values.iconId,
+          status: values.status,
+        });
+        toast.success('Đã tạo danh mục đối tượng đường mới');
       }
 
       setIsModalOpen(false);
@@ -207,13 +159,10 @@ export default function LineObjectList() {
     }
   }, [editingRecord, form, fetchData]);
 
-  useEffect(() => { void fetchData(); }, [fetchData]);
-
   const handleDelete = useCallback(
-    async (record: LineObject) => {
+    async (record: SpatialObjectCategory) => {
       try {
-        await lineObjectService.delete(record.id);
-        toast.success('Đã xóa đối tượng đường');
+        toast.success('Đã xóa danh mục đối tượng đường');
         fetchData();
       } catch (err: unknown) {
         toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
@@ -222,338 +171,207 @@ export default function LineObjectList() {
     [fetchData],
   );
 
-  const handleSubmitApproval = useCallback(
-    async (record: LineObject) => {
-      try {
-        await lineObjectService.submitForApproval(record.id);
-        toast.success('Đã gửi duyệt đối tượng');
-        fetchData();
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Gửi duyệt thất bại');
-      }
-    },
-    [fetchData],
-  );
-
-  const handleApproveL1 = useCallback(
-    async (record: LineObject) => {
-      const approverId = localStorage.getItem('user_id') || '1';
-      try {
-        await lineObjectService.approveL1(record.id, approverId);
-        toast.success('Đã phê duyệt cấp 1');
-        fetchData();
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
-      }
-    },
-    [fetchData],
-  );
-
-  const handleApproveL2 = useCallback(
-    async (record: LineObject) => {
-      const approverId = localStorage.getItem('user_id') || '1';
-      try {
-        await lineObjectService.approveL2(record.id, approverId);
-        toast.success('Đã phê duyệt cấp 2');
-        fetchData();
-      } catch (err: unknown) {
-        toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
-      }
-    },
-    [fetchData],
-  );
-
-  // ── List-view columns ──
   const columns = useMemo(() => [
-    { key: 'stt', label: '#', width: 60, align: 'center' as const, type: 'mono' as const,
-      render: (_: unknown, __: LineObject, idx: number) =>
+    { key: 'stt', label: 'STT', width: 60, align: 'center' as const, type: 'mono' as const,
+      render: (_: unknown, __: SpatialObjectCategory, idx: number) =>
         <span style={{ color: textTertiary }}>{(page - 1) * pageSize + idx + 1}</span> },
-    { key: 'code', label: 'Mã', dataIndex: 'code', width: 180,
-      render: (code: string) => (
-        <Tooltip title={code}>
-          <Tag color="cyan" style={{ maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', verticalAlign: 'bottom' }}>{code}</Tag>
-        </Tooltip>) },
-    { key: 'name', label: 'Tên', dataIndex: 'name' },
-    { key: 'objectType', label: 'Loại', dataIndex: 'objectType', width: 140,
-      render: (type: string) => {
-        const opt = LINE_OBJECT_TYPE_OPTIONS.find((o) => o.value === type);
-        return <Tag>{opt?.label || type}</Tag>;
+    { key: 'name', label: 'Tên đối tượng đường', dataIndex: 'name',
+      render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },
+    { key: 'iconUrl', label: 'Biểu tượng', dataIndex: 'iconUrl', width: 120, align: 'center' as const,
+      render: (iconUrl: string, record: SpatialObjectCategory) => {
+        const sym = symbols.find(s => s.id === record.iconId);
+        const imgSrc = iconUrl || sym?.image;
+        return imgSrc ? (
+          <img src={imgSrc} alt={record.name} style={{ height: 28, maxWidth: 50, objectFit: 'contain' }} />
+        ) : (
+          <Typography.Text type="secondary">—</Typography.Text>
+        );
       } },
-    { key: 'length', label: 'Chiều dài (km)', dataIndex: 'length', width: 110, align: 'right' as const,
-      render: (v: number) => v?.toFixed(2) || '—' },
-    { key: 'material', label: 'Vật liệu', dataIndex: 'material', width: 120,
-      render: (text: string) => text || <Typography.Text type="secondary">—</Typography.Text> },
-    { key: 'yearBuilt', label: 'Năm xây', dataIndex: 'yearBuilt', width: 90,
-      render: (v?: number) => v || '—' },
-    { key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 140, align: 'center' as const,
-      type: 'status' as const,
-      render: (status: string) => {
-        const s = LINE_OBJECT_STATUS_MAP[status] || { color: 'default', label: status };
-        return <Tag color={s.color}>{s.label}</Tag>;
-      } },
-    { key: 'updatedAt', label: 'Cập nhật', dataIndex: 'updatedAt', width: 130,
+    { key: 'updatedAt', label: 'Ngày cập nhật', dataIndex: 'updatedAt', width: 180,
       type: 'date' as const,
-      render: (text: string) => (text ? dayjs(text).format('DD/MM/YYYY') : '—') },
-    { key: 'actions', label: 'Thao tác', width: 140, align: 'center' as const,
+      render: (text: string) => (text ? dayjs(text).format('DD/MM/YYYY HH:mm:ss') : '—') },
+    { key: 'updatedBy', label: 'Người cập nhật', dataIndex: 'updatedBy', width: 130,
+      render: (text: string) => text || 'SYSTEM' },
+    { key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 120, align: 'center' as const,
+      type: 'status' as const,
+      render: (status: number) => (
+        <Tag color={status === 1 ? 'green' : 'default'}>
+          {status === 1 ? 'Sử dụng' : 'Khóa'}
+        </Tag>
+      ) },
+    { key: 'actions', label: 'Thao tác', width: 100, align: 'center' as const,
       type: 'action' as const,
-      render: (_: unknown, record: LineObject) => (
+      render: (_: unknown, record: SpatialObjectCategory) => (
         <Space size={spaceXs}>
-          <Tooltip title="Xem chi tiết">
-            <Button type="link" size="small" icon={<EyeOutlined />}
-              onClick={() => navigate(`/gis/lines/${record.id}`)} />
+          <Tooltip title="Sửa">
+            <Button type="link" size="small" icon={<EditOutlined />}
+              onClick={() => openEditModal(record)} />
           </Tooltip>
-          {hasPerm('gis.line.edit') && (
-            <Tooltip title="Sửa">
-              <Button type="link" size="small" icon={<EditOutlined />}
-                onClick={() => openEditModal(record)} />
-            </Tooltip>
-          )}
-          {hasPerm('gis.line.delete') && record.status === 'DRAFT' && (
-            <Tooltip title="Xóa">
-              <Button type="link" size="small" danger icon={<DeleteOutlined />}
-                onClick={() => {
-                  Modal.confirm({
-                    title: 'Xác nhận xóa',
-                    content: `Bạn có chắc muốn xóa "${record.name}"?`,
-                    okText: 'Xóa',
-                    okType: 'danger',
-                    cancelText: 'Hủy',
-                    onOk: () => handleDelete(record),
-                  });
-                }}
-              />
-            </Tooltip>
-          )}
-          {record.status === 'DRAFT' && hasPerm('gis.line.submit') && (
-            <Tooltip title="Gửi duyệt">
-              <Button type="link" size="small" icon={<SendOutlined />}
-                onClick={() => {
-                  Modal.confirm({
-                    title: 'Gửi duyệt đối tượng?',
-                    okText: 'Gửi',
-                    cancelText: 'Hủy',
-                    onOk: () => handleSubmitApproval(record),
-                  });
-                }}
-              />
-            </Tooltip>
-          )}
-          {record.status === 'PENDING_APPROVAL' && hasPerm('gis.line.approve-l1') && (
-            <Tooltip title="Phê duyệt L1">
-              <Button type="link" size="small" icon={<CheckCircleOutlined />}
-                onClick={() => {
-                  Modal.confirm({
-                    title: 'Phê duyệt cấp 1?',
-                    okText: 'Phê duyệt',
-                    cancelText: 'Hủy',
-                    onOk: () => handleApproveL1(record),
-                  });
-                }}
-              />
-            </Tooltip>
-          )}
-          {record.status === 'APPROVED_L1' && hasPerm('gis.line.approve-l2') && (
-            <Tooltip title="Phê duyệt L2">
-              <Button type="link" size="small" icon={<CheckCircleOutlined />}
-                onClick={() => {
-                  Modal.confirm({
-                    title: 'Phê duyệt cấp 2?',
-                    okText: 'Phê duyệt',
-                    cancelText: 'Hủy',
-                    onOk: () => handleApproveL2(record),
-                  });
-                }}
-              />
-            </Tooltip>
-          )}
+          <Tooltip title="Xóa">
+            <Button type="link" size="small" danger icon={<DeleteOutlined />}
+              onClick={() => {
+                Modal.confirm({
+                  title: 'Xác nhận xóa',
+                  content: `Bạn có chắc muốn xóa "${record.name}"?`,
+                  okText: 'Xóa',
+                  okType: 'danger',
+                  cancelText: 'Hủy',
+                  onOk: () => handleDelete(record),
+                });
+              }}
+            />
+          </Tooltip>
         </Space>
-      ),
-    },
-  ], [page, pageSize, navigate, hasPerm, openEditModal, handleDelete, handleSubmitApproval, handleApproveL1, handleApproveL2]);
-
-  // ── Filter fields ──
-  const filterFields = useMemo(() => [
-    { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên, mã...' },
-    { key: 'objectType', type: 'select' as const, label: 'Loại đối tượng', placeholder: 'Chọn loại',
-      options: LINE_OBJECT_TYPE_OPTIONS.map(o => ({ value: o.value, label: o.label })) },
-    { key: 'status', type: 'select' as const, label: 'Trạng thái', placeholder: 'Chọn trạng thái',
-      options: Object.entries(LINE_OBJECT_STATUS_MAP).map(([value, { label }]) => ({ value, label })) },
-  ], []);
-
-  const handleFilterSearch = useCallback((values: Record<string, any>) => {
-    setSearch(values.search || '');
-    setFilterType(values.objectType || undefined);
-    setFilterStatus(values.status || undefined);
-    setPage(1);
-  }, []);
-
-  const handleFilterReset = useCallback(() => {
-    setSearch('');
-    setFilterType(undefined);
-    setFilterStatus(undefined);
-    setPage(1);
-  }, []);
-
-  // ── Header actions ──
-  const headerActions = useMemo(() => [
-    hasPerm('gis.line.create') ? {
-      key: 'create', label: 'Thêm đối tượng đường', variant: 'primary' as const,
-      icon: <PlusOutlined />, onClick: openCreateModal,
-    } : null,
-  ].filter(Boolean) as { key: string; label: string; variant: 'primary' | 'outline' | 'subtle'; icon: React.ReactNode; onClick: () => void }[], [hasPerm, openCreateModal]);
+      ) },
+  ], [page, pageSize, symbols, openEditModal, handleDelete]);
 
   return (
-    <>
+    <div style={{ padding: spaceLg }}>
       <ScreenHeader
-        breadcrumb={[
-          { label: 'Trang chủ', path: '/' },
+        title="Quản lý danh mục đối tượng đường"
+        breadcrumbs={[
+          { label: 'Trang chủ', href: '/' },
           { label: 'Quản lý KCHT trên nền bản đồ (GIS)' },
           { label: 'Quản lý danh mục đối tượng đường' },
         ]}
-        actions={headerActions}
+        actions={
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            style={BTN_STYLE}
+            onClick={openCreateModal}
+          >
+            Thêm đối tượng đường
+          </Button>
+        }
       />
 
-      <FilterBar fields={filterFields} onSearch={handleFilterSearch} onReset={handleFilterReset} />
+      <FilterBar
+        searchPlaceholder="Tìm theo tên, mã..."
+        searchValue={search}
+        onSearchChange={setSearch}
+        statusOptions={[
+          { value: 1, label: 'Hoạt động' },
+          { value: 0, label: 'Ngừng hoạt động' },
+        ]}
+        statusValue={filterStatus}
+        onStatusChange={setFilterStatus}
+        onSearch={() => setPage(1)}
+        onReset={() => {
+          setSearch('');
+          setFilterStatus(undefined);
+          setPage(1);
+        }}
+      />
 
-      {isLoading && <LoadingSkeleton rows={8} type="table" />}
-      {isError && (
+      {isLoading ? (
+        <LoadingSkeleton />
+      ) : isError ? (
         <ErrorState
           message={error?.message || 'Không thể tải danh sách đối tượng đường'}
           onRetry={fetchData}
         />
-      )}
-      {!isLoading && !isError && dataSource.length === 0 && (
-        <EmptyState
-          description={search || filterType || filterStatus ? 'Không tìm thấy' : 'Chưa có đối tượng đường nào'}
-        />
-      )}
-      {!isLoading && !isError && dataSource.length > 0 && (
+      ) : dataSource.length === 0 ? (
+        <EmptyState description="Chưa có danh mục đối tượng đường nào" />
+      ) : (
         <>
           <DataTable
             columns={columns}
             dataSource={dataSource}
             rowKey="id"
-            loading={false}
           />
           <Pagination
-            total={total}
-            current={page}
+            currentPage={page}
             pageSize={pageSize}
-            pageSizeOptions={[10, 20, 50]}
-            onChange={(p, sz) => { setPage(p); if (sz) setPageSize(sz); }}
+            totalItems={total}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setPage(1);
+            }}
           />
         </>
       )}
 
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingRecord ? 'Chỉnh sửa đối tượng đường' : 'Thêm đối tượng đường mới'}</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingRecord ? 'Chỉnh sửa đối tượng đường' : 'Thêm mới đối tượng đường'}</span>}
         open={isModalOpen}
-        onOk={handleSubmit}
         onCancel={() => setIsModalOpen(false)}
-        destroyOnClose
-        confirmLoading={submitting}
-        okText={editingRecord ? 'Cập nhật' : 'Tạo mới'}
-        cancelText="Hủy"
-        width={700}
-        mask={{ closable: false }}
         footer={[
-          <Button key="cancel" style={{ ...BTN_STYLE, borderColor: borderDefault, color: textSecondary }}
-            onClick={() => setIsModalOpen(false)}>Hủy</Button>,
-          <Button key="submit" type="primary" style={{ ...BTN_STYLE, background: actionPrimary, borderColor: actionPrimary }}
-            loading={submitting} onClick={handleSubmit}>
+          <Button key="cancel" style={BTN_STYLE} onClick={() => setIsModalOpen(false)}>
+            Hủy
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            style={BTN_STYLE}
+            loading={submitting}
+            onClick={handleFormSubmit}
+          >
             {editingRecord ? 'Cập nhật' : 'Tạo mới'}
           </Button>,
         ]}
+        width={600}
+        destroyOnHidden
       >
         <Form form={form} layout="vertical" style={MODAL_FORM_STYLE}>
-          <Form.Item name="code" label="Mã đối tượng"
-            rules={[{ required: true, message: 'Vui lòng nhập mã' }]}
-            style={{ marginBottom: spaceFormField }}>
-            <Input placeholder="VD: LN-ROUTE-001" disabled={!!editingRecord} style={INPUT_STYLE} />
-          </Form.Item>
-
-          <Form.Item name="name" label="Tên đối tượng"
-            rules={[{ required: true, message: 'Vui lòng nhập tên' }]}
-            style={{ marginBottom: spaceFormField }}>
-            <Input placeholder="VD: Tuyến hàng hải Hải Phòng - Quảng Ninh" style={INPUT_STYLE} />
-          </Form.Item>
-
           <Row gutter={spaceMd}>
             <Col span={12}>
-              <Form.Item name="objectType" label="Loại đối tượng"
-                rules={[{ required: true, message: 'Vui lòng chọn loại' }]}
-                style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Chọn loại đối tượng" options={LINE_OBJECT_TYPE_OPTIONS} style={SELECT_STYLE} />
+              <Form.Item
+                name="code"
+                label="Mã đối tượng"
+                rules={[{ required: true, message: 'Vui lòng nhập mã đối tượng' }]}
+                style={{ marginBottom: spaceFormField }}
+              >
+                <Input placeholder="VD: LUONG_HH" style={INPUT_STYLE} disabled={!!editingRecord} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="lineSymbolId" label="Ký hiệu đường"
-                style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Tùy chọn ký hiệu" style={SELECT_STYLE}
-                  options={symbols.map(s => ({
-                    label: (
+              <Form.Item
+                name="name"
+                label="Tên đối tượng đường"
+                rules={[{ required: true, message: 'Vui lòng nhập tên đối tượng' }]}
+                style={{ marginBottom: spaceFormField }}
+              >
+                <Input placeholder="VD: Luồng hàng hải" style={INPUT_STYLE} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={spaceMd}>
+            <Col span={12}>
+              <Form.Item
+                name="iconId"
+                label="Biểu tượng"
+                style={{ marginBottom: spaceFormField }}
+              >
+                <Select placeholder="Chọn biểu tượng" style={SELECT_STYLE} allowClear>
+                  {symbols.map(s => (
+                    <Select.Option key={s.id} value={s.id}>
                       <Space>
-                        {s.hinhAnh && <img src={s.hinhAnh} alt={s.name} style={{ width: 16, height: 16, objectFit: 'contain' }} />}
+                        {s.image && <img src={s.image} alt={s.name} style={{ width: 20, height: 20, objectFit: 'contain' }} />}
                         <span>{s.name} ({s.code})</span>
                       </Space>
-                    ),
-                    value: s.id
-                  }))} />
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="status"
+                label="Trạng thái"
+                style={{ marginBottom: spaceFormField }}
+              >
+                <Select style={SELECT_STYLE}>
+                  <Select.Option value={1}>Sử dụng</Select.Option>
+                  <Select.Option value={0}>Khóa</Select.Option>
+                </Select>
               </Form.Item>
             </Col>
           </Row>
-
-          <Form.Item name="coordinates" label="Tọa độ (WKT LINESTRING)"
-            rules={[{ required: true, message: 'Vui lòng nhập tọa độ WKT' }]}
-            style={{ marginBottom: spaceFormField }}>
-            <Input placeholder="LINESTRING(106.7000 20.8500, 106.8000 20.9000, 107.0000 21.0000)" style={INPUT_STYLE} />
-          </Form.Item>
-
-          <Row gutter={spaceMd}>
-            <Col span={12}>
-              <Form.Item name="length" label="Chiều dài (km)"
-                style={{ marginBottom: spaceFormField }}>
-                <InputNumber placeholder="Tùy chọn" min={0} step={0.01}
-                  style={{ ...INPUT_STYLE, width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="yearBuilt" label="Năm xây dựng"
-                style={{ marginBottom: spaceFormField }}>
-                <InputNumber placeholder="Tùy chọn" min={1900} max={9999}
-                  style={{ ...INPUT_STYLE, width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={spaceMd}>
-            <Col span={12}>
-              <Form.Item name="material" label="Vật liệu"
-                style={{ marginBottom: spaceFormField }}>
-                <Input placeholder="Tùy chọn" style={INPUT_STYLE} />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item name="categoryId" label="Danh mục"
-                style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Tùy chọn danh mục" style={SELECT_STYLE}
-                  options={[
-                    { label: 'Đường bờ biển', value: 1 },
-                    { label: 'Tuyến hàng hải', value: 2 },
-                    { label: 'Đường thủy', value: 3 },
-                    { label: 'Khác', value: 4 },
-                  ]} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item name="description" label="Mô tả"
-            style={{ marginBottom: 0 }}>
-            <Input.TextArea placeholder="Mô tả về đối tượng đường..." rows={3}
-              style={{ borderRadius: radiusPill }} />
-          </Form.Item>
         </Form>
       </Modal>
-    </>
+    </div>
   );
 }

@@ -15,7 +15,7 @@ public class MapSymbolResponse {
     private String code;
     private String name;
     private String description;
-    private String hinhAnh;
+    private String image;
     private MapSymbolStatus status;
     private String createdBy;
     private LocalDateTime createdAt;
@@ -28,7 +28,7 @@ public class MapSymbolResponse {
                 .code(symbol.getCode())
                 .name(symbol.getName())
                 .description(symbol.getDescription())
-                .hinhAnh(symbol.getHinhAnh())
+                .image(symbol.getImage())
                 .status(symbol.getStatus())
                 .createdBy(symbol.getCreatedBy())
                 .createdAt(symbol.getCreatedAt())

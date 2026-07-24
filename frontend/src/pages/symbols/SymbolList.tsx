@@ -160,7 +160,7 @@ export default function SymbolList() {
       code: record.code,
       name: record.name,
       description: record.description,
-      hinhAnh: record.hinhAnh,
+      image: record.image,
       status: record.status,
     });
     setFormOpen(true);
@@ -179,7 +179,7 @@ export default function SymbolList() {
         const payload: UpdateSymbolPayload = {
           name: values.name,
           description: values.description,
-          hinhAnh: values.hinhAnh,
+          image: values.image,
           status: values.status,
         };
         await symbolService.update(editingSymbol.id, payload);
@@ -189,7 +189,7 @@ export default function SymbolList() {
           code: values.code,
           name: values.name,
           description: values.description,
-          hinhAnh: values.hinhAnh,
+          image: values.image,
         };
         await symbolService.create(payload);
         toast.success('Đã tạo biểu tượng');
@@ -257,7 +257,7 @@ export default function SymbolList() {
     },
     {
       title: 'Hình ảnh',
-      dataIndex: 'hinhAnh',
+      dataIndex: 'image',
       width: 120,
       align: 'center' as const,
       render: (src?: string) => (
@@ -444,7 +444,7 @@ export default function SymbolList() {
           </Row>
 
           <Form.Item
-            name="hinhAnh"
+            name="image"
             label="Hình ảnh"
             required
             rules={[{ required: true, message: 'Hình ảnh không được để trống' }]}
@@ -497,7 +497,7 @@ export default function SymbolList() {
               <Typography.Title level={4} style={{ margin: 0 }}>{previewSymbol.name}</Typography.Title>
               <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
                 <Tag color="cyan" style={{ fontSize: 16, padding: '4px 12px' }}>{previewSymbol.code}</Tag>
-                {previewSymbol.hinhAnh && (
+                {previewSymbol.image && (
                   <div
                     style={{
                       height: 60,
@@ -508,7 +508,7 @@ export default function SymbolList() {
                     }}
                   >
                     <img
-                      src={previewSymbol.hinhAnh}
+                      src={previewSymbol.image}
                       alt="Preview"
                       style={{ maxHeight: '100%', objectFit: 'contain' }}
                     />

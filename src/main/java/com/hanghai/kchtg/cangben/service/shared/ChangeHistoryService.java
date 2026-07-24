@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.cangben.service.shared;
 
-import com.hanghai.kchtg.cangben.entity.LichSuThayDoi;
-import com.hanghai.kchtg.cangben.repository.LichSuThayDoiRepository;
+import com.hanghai.kchtg.cangben.entity.ChangeLog;
+import com.hanghai.kchtg.cangben.repository.ChangeLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,7 +26,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ChangeHistoryService {
 
-    private final LichSuThayDoiRepository lichSuThayDoiRepository;
+    private final ChangeLogRepository changeLogRepository;
 
     /**
      * Insert a change history record into the database.
@@ -45,7 +45,7 @@ public class ChangeHistoryService {
         log.debug("LichSuThayDoi INSERT: {} [{}] {} = [{}] -> [{}]",
                 entityType, entityId, fieldName, oldValue, newValue);
 
-        LichSuThayDoi record = LichSuThayDoi.builder()
+        ChangeLog record = ChangeLog.builder()
                 .entityType(entityType)
                 .entityId(entityId.toString())
                 .fieldName(fieldName)
@@ -56,7 +56,7 @@ public class ChangeHistoryService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        lichSuThayDoiRepository.save(record);
+        changeLogRepository.save(record);
         return record.getId();
     }
 

@@ -175,9 +175,7 @@ export default function BuoyList() {
       unitId: record.unitId,
       gisLocation: {
         loaiHinhHoc: 'POINT',
-        toaDo: record.longitude != null && record.latitude != null ? `POINT(${record.longitude} ${record.latitude})` : '',
-        bieuTuongId: record.bieuTuongId
-      }
+        toaDo: record.longitude != null && record.latitude != null ? `POINT(${record.longitude} ${record.latitude})` : '',}
     });
     setIsModalOpen(true);
   }, [form]);
@@ -195,9 +193,7 @@ export default function BuoyList() {
       unitId: record.unitId,
       gisLocation: {
         loaiHinhHoc: 'POINT',
-        toaDo: record.longitude != null && record.latitude != null ? `POINT(${record.longitude} ${record.latitude})` : '',
-        bieuTuongId: record.bieuTuongId
-      }
+        toaDo: record.longitude != null && record.latitude != null ? `POINT(${record.longitude} ${record.latitude})` : '',}
     });
     setIsModalOpen(true);
   }, [form]);
@@ -249,7 +245,6 @@ export default function BuoyList() {
           color: values.color,
           description: values.description,
           unitId: values.unitId,
-          bieuTuongId: gisLocation?.bieuTuongId || undefined,
         };
         const updated = await buoyCRUD.update(editingRecord.id, payload);
         if (window.parent && (window.parent as any).kchtDetailCache) {
@@ -267,7 +262,6 @@ export default function BuoyList() {
           color: values.color,
           description: values.description,
           unitId: values.unitId,
-          bieuTuongId: gisLocation?.bieuTuongId || undefined,
         };
         await buoyCRUD.create(payload);
         toast.success('Đã tạo phao tiêu');

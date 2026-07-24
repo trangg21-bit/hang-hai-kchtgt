@@ -3,8 +3,6 @@ export interface PointObject {
   name: string;
   code: string;
   objectType: PointObject.ObjectType;
-  categoryId?: number;
-  iconId?: number;
   longitude: number;
   latitude: number;
   description?: string;
@@ -51,8 +49,6 @@ export interface CreatePointObjectPayload {
   name: string;
   code: string;
   objectType: PointObject.ObjectType;
-  categoryId?: number;
-  iconId?: number;
   longitude: number;
   latitude: number;
   description?: string;
@@ -66,8 +62,6 @@ export interface UpdatePointObjectPayload {
   name?: string;
   code?: string;
   objectType?: PointObject.ObjectType;
-  categoryId?: number;
-  iconId?: number;
   longitude?: number;
   latitude?: number;
   description?: string;

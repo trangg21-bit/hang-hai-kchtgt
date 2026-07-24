@@ -33,7 +33,6 @@ export interface TramRadarResponse {
   history?: HistoryEntry[];
   loaiHinhHoc?: string;
   toaDo?: string;
-  bieuTuongId?: string;
   khongGianId?: string;
   chieuCaoThapRadar?: number;
   tamHieuLucRadar?: number;
@@ -53,7 +52,6 @@ export interface CreateTramRadarRequest {
   orgUnitId?: string;
   loaiHinhHoc?: string;
   toaDo?: string;
-  bieuTuongId?: string;
   chieuCaoThapRadar?: number;
   tamHieuLucRadar?: number;
   heThongVtsId?: string;

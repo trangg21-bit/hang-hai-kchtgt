@@ -415,7 +415,7 @@ public class ChartIntegrationService {
         layer.setVisible(true);
         layer.setOpacity(0.8);
         layer.setOrder(100); // Higher order so overlays load on top of point/line maps
-        layer.setStatus(MapLayer.Status.ACTIVE);
+        layer.setStatus(true);
 
         mapLayerRepository.save(layer);
     }

@@ -110,7 +110,6 @@ export interface CreateBeaconLightRequest {
   nextMaintenanceDate?: string;
   isActive?: boolean;
   action?: 'draft' | 'submit';
-  bieuTuongId?: string;
   hinhDang?: string;
   ketCau?: string;
   chieuCaoThapDen?: number;
@@ -136,7 +135,6 @@ export interface UpdateBeaconLightRequest {
   lastMaintenanceDate?: string;
   nextMaintenanceDate?: string;
   isActive?: boolean;
-  bieuTuongId?: string;
   hinhDang?: string;
   ketCau?: string;
   chieuCaoThapDen?: number;
@@ -192,7 +190,6 @@ export interface CreateBuoyRequest {
   nextInspectionDate?: string;
   isActive?: boolean;
   action?: 'draft' | 'submit';
-  bieuTuongId?: string;
 }
 
 export interface UpdateBuoyRequest {
@@ -209,7 +206,6 @@ export interface UpdateBuoyRequest {
   lastInspectionDate?: string;
   nextInspectionDate?: string;
   isActive?: boolean;
-  bieuTuongId?: string;
 }
 
 // ── Shared / History ────────────────────────────────────────────────

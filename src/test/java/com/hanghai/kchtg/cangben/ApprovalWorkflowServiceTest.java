@@ -1,8 +1,8 @@
 package com.hanghai.kchtg.cangben;
 
-import com.hanghai.kchtg.cangben.entity.PheDuyetLog;
+import com.hanghai.kchtg.cangben.entity.ApprovalLog;
 import com.hanghai.kchtg.cangben.entity.base.ApprovalStatus;
-import com.hanghai.kchtg.cangben.repository.PheDuyetLogRepository;
+import com.hanghai.kchtg.cangben.repository.ApprovalLogRepository;
 import com.hanghai.kchtg.cangben.service.shared.ApprovalWorkflowService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,34 +21,34 @@ import static org.mockito.Mockito.*;
 /**
  * Unit tests for ApprovalWorkflowService — shared state-machine used by all
  * CangBen entity approval services (F-011/017/023/025/031).
- * Tests that PheDuyetLog is persisted on each decision.
+ * Tests that ApprovalLog is persisted on each decision.
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("ApprovalWorkflowService — state-machine + PheDuyetLog persistence")
+@DisplayName("ApprovalWorkflowService — state-machine + ApprovalLog persistence")
 class ApprovalWorkflowServiceTest {
 
     @InjectMocks
     private ApprovalWorkflowService workflowService;
 
     @Mock
-    private PheDuyetLogRepository pheDuyetLogRepository;
+    private ApprovalLogRepository approvalLogRepository;
 
-    private final String entityType = "CangBien";
+    private final String entityType = "Port";
     private final String entityId = UUID.randomUUID().toString();
     private final String userId = "user-approver-1";
 
     // ── APPROVE ────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("approve — CHO_PHE_DUYET → DUOC_PHE_DUYET + inserts PheDuyetLog")
+    @DisplayName("approve — CHO_PHE_DUYET → DUOC_PHE_DUYET + inserts ApprovalLog")
     void approve_fromChoPheduyet_transitionsAndPersistsLog() {
         ApprovalStatus result = workflowService.approve("CHO_PHE_DUYET", entityType, entityId, userId);
 
         assertEquals(ApprovalStatus.DUOC_PHE_DUYET, result);
 
-        ArgumentCaptor<PheDuyetLog> captor = ArgumentCaptor.forClass(PheDuyetLog.class);
-        verify(pheDuyetLogRepository).save(captor.capture());
-        PheDuyetLog log = captor.getValue();
+        ArgumentCaptor<ApprovalLog> captor = ArgumentCaptor.forClass(ApprovalLog.class);
+        verify(approvalLogRepository).save(captor.capture());
+        ApprovalLog log = captor.getValue();
         assertEquals(entityType, log.getEntityType());
         assertEquals(entityId, log.getEntityId());
         assertEquals("APPROVED", log.getDecision());
@@ -62,7 +62,7 @@ class ApprovalWorkflowServiceTest {
     void approve_wrongStatus_throwsWithoutLog() {
         assertThrows(IllegalStateException.class,
                 () -> workflowService.approve("DUOC_PHE_DUYET", entityType, entityId, userId));
-        verify(pheDuyetLogRepository, never()).save(any());
+        verify(approvalLogRepository, never()).save(any());
     }
 
     @Test
@@ -75,7 +75,7 @@ class ApprovalWorkflowServiceTest {
     // ── REJECT ─────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("reject — CHO_PHE_DUYET + reason → TU_CHOI + inserts PheDuyetLog")
+    @DisplayName("reject — CHO_PHE_DUYET + reason → TU_CHOI + inserts ApprovalLog")
     void reject_fromChoPheduyet_transitionsAndPersistsLog() {
         String reason = "Tài liệu không đầy đủ";
 
@@ -83,9 +83,9 @@ class ApprovalWorkflowServiceTest {
 
         assertEquals(ApprovalStatus.TU_CHOI, result);
 
-        ArgumentCaptor<PheDuyetLog> captor = ArgumentCaptor.forClass(PheDuyetLog.class);
-        verify(pheDuyetLogRepository).save(captor.capture());
-        PheDuyetLog log = captor.getValue();
+        ArgumentCaptor<ApprovalLog> captor = ArgumentCaptor.forClass(ApprovalLog.class);
+        verify(approvalLogRepository).save(captor.capture());
+        ApprovalLog log = captor.getValue();
         assertEquals("REJECTED", log.getDecision());
         assertEquals(reason, log.getReason());
         assertEquals(userId, log.getDecidedBy());
@@ -97,7 +97,7 @@ class ApprovalWorkflowServiceTest {
     void reject_blankReason_throwsWithoutLog() {
         assertThrows(IllegalArgumentException.class,
                 () -> workflowService.reject("CHO_PHE_DUYET", entityType, entityId, userId, "  "));
-        verify(pheDuyetLogRepository, never()).save(any());
+        verify(approvalLogRepository, never()).save(any());
     }
 
     @Test

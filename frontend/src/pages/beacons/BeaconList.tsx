@@ -204,9 +204,7 @@ export default function BeaconList() {
       unitId: record.unitId,
       gisLocation: {
         loaiHinhHoc: 'POINT',
-        toaDo: record.longitude != null && record.latitude != null ? `POINT(${record.longitude} ${record.latitude})` : '',
-        bieuTuongId: record.bieuTuongId
-      }
+        toaDo: record.longitude != null && record.latitude != null ? `POINT(${record.longitude} ${record.latitude})` : '',}
     });
     setIsModalOpen(true);
   }, [form]);
@@ -237,9 +235,7 @@ export default function BeaconList() {
       unitId: record.unitId,
       gisLocation: {
         loaiHinhHoc: 'POINT',
-        toaDo: record.longitude != null && record.latitude != null ? `POINT(${record.longitude} ${record.latitude})` : '',
-        bieuTuongId: record.bieuTuongId
-      }
+        toaDo: record.longitude != null && record.latitude != null ? `POINT(${record.longitude} ${record.latitude})` : '',}
     });
     // Load approval history
     setHistoryLoading(true);
@@ -318,7 +314,6 @@ export default function BeaconList() {
           lastMaintenanceDate: values.lastMaintenanceDate,
           nextMaintenanceDate: values.nextMaintenanceDate,
           unitId: values.unitId,
-          bieuTuongId: gisLocation?.bieuTuongId || undefined,
         };
         const updated = await beaconLightCRUD.update(editingRecord.id, payload);
         if (window.parent && (window.parent as any).kchtDetailCache) {
@@ -349,7 +344,6 @@ export default function BeaconList() {
           lastMaintenanceDate: values.lastMaintenanceDate,
           nextMaintenanceDate: values.nextMaintenanceDate,
           unitId: values.unitId,
-          bieuTuongId: gisLocation?.bieuTuongId || undefined,
         };
         await beaconLightCRUD.create(payload);
         toast.success('Đã tạo đèn biển');
@@ -730,7 +724,7 @@ export default function BeaconList() {
         ) : undefined}
       >
         {isDetailMode ? (
-          // Read-only Descriptions view (like DeKe)
+          // Read-only Descriptions view (like DikeRevetment)
           editingRecord && (<>
             <Descriptions column={2} bordered size="small" style={{ marginTop: 16 }}>
               <Descriptions.Item label="Mã đèn biển">{editingRecord.code}</Descriptions.Item>

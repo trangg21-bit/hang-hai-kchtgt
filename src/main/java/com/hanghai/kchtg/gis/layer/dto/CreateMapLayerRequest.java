@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.gis.layer.dto;
 
 import com.hanghai.kchtg.gis.layer.entity.MapLayer.LayerType;
-import com.hanghai.kchtg.gis.layer.entity.MapLayer.Status;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -29,5 +28,5 @@ public class CreateMapLayerRequest {
     private Double opacity;
     private Integer order;
     private String styleConfig;
-    private Status status;
+    private Boolean status;
 }

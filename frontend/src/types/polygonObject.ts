@@ -3,7 +3,6 @@ export interface PolygonObject {
   name: string;
   code: string;
   objectType: PolygonObject.ObjectType;
-  categoryId?: number;
   fillSymbolId?: number;
   coordinates: string;
   description?: string;
@@ -52,7 +51,6 @@ export interface CreatePolygonObjectPayload {
   name: string;
   code: string;
   objectType: PolygonObject.ObjectType;
-  categoryId?: number;
   fillSymbolId?: number;
   coordinates: string;
   description?: string;
@@ -67,7 +65,6 @@ export interface UpdatePolygonObjectPayload {
   name?: string;
   code?: string;
   objectType?: PolygonObject.ObjectType;
-  categoryId?: number;
   fillSymbolId?: number;
   coordinates?: string;
   description?: string;

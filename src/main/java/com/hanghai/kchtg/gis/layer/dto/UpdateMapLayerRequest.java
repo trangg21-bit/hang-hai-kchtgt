@@ -1,7 +1,6 @@
 package com.hanghai.kchtg.gis.layer.dto;
 
 import com.hanghai.kchtg.gis.layer.entity.MapLayer.LayerType;
-import com.hanghai.kchtg.gis.layer.entity.MapLayer.Status;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,5 +20,5 @@ public class UpdateMapLayerRequest {
     private Double opacity;
     private Integer order;
     private String styleConfig;
-    private Status status;
+    private Boolean status;
 }

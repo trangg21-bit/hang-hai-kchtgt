@@ -1,11 +1,11 @@
 package com.hanghai.kchtg.dashboard;
 
 import com.hanghai.kchtg.assetmovement.repository.YeuCauBienDongRepository;
-import com.hanghai.kchtg.cangben.repository.BenCangRepository;
-import com.hanghai.kchtg.cangben.repository.CangBienRepository;
-import com.hanghai.kchtg.cangben.repository.CangCanRepository;
-import com.hanghai.kchtg.cangben.repository.CauCangRepository;
-import com.hanghai.kchtg.cangben.repository.VungNuocRepository;
+import com.hanghai.kchtg.cangben.repository.BerthRepository;
+import com.hanghai.kchtg.cangben.repository.PortRepository;
+import com.hanghai.kchtg.cangben.repository.DryPortRepository;
+import com.hanghai.kchtg.cangben.repository.PierRepository;
+import com.hanghai.kchtg.cangben.repository.WaterZoneRepository;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
 import lombok.RequiredArgsConstructor;
@@ -24,11 +24,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class DashboardController {
 
-    private final CangBienRepository cangBienRepo;
-    private final BenCangRepository benCangRepo;
-    private final CauCangRepository cauCangRepo;
-    private final CangCanRepository cangCanRepo;
-    private final VungNuocRepository vungNuocRepo;
+    private final PortRepository portRepo;
+    private final BerthRepository berthRepo;
+    private final PierRepository pierRepo;
+    private final DryPortRepository dryPortRepo;
+    private final WaterZoneRepository waterZoneRepo;
     private final YeuCauBienDongRepository yeuCauRepo;
 
     /**
@@ -37,23 +37,23 @@ public class DashboardController {
      */
     @GetMapping("/approval-kcht")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getKchtApprovalStats() {
-        long approved = cangBienRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.DUOC_PHE_DUYET)
-                + benCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.DUOC_PHE_DUYET)
-                + cauCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.DUOC_PHE_DUYET)
-                + cangCanRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.DUOC_PHE_DUYET)
-                + vungNuocRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.DUOC_PHE_DUYET);
+        long approved = portRepo.countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet.DUOC_PHE_DUYET)
+                + berthRepo.countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet.DUOC_PHE_DUYET)
+                + pierRepo.countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet.DUOC_PHE_DUYET)
+                + dryPortRepo.countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet.DUOC_PHE_DUYET)
+                + waterZoneRepo.countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet.DUOC_PHE_DUYET);
 
-        long pending = cangBienRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.CHO_PHE_DUYET)
-                + benCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.CHO_PHE_DUYET)
-                + cauCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.CHO_PHE_DUYET)
-                + cangCanRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.CHO_PHE_DUYET)
-                + vungNuocRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.CHO_PHE_DUYET);
+        long pending = portRepo.countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                + berthRepo.countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                + pierRepo.countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                + dryPortRepo.countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                + waterZoneRepo.countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet.CHO_PHE_DUYET);
 
-        long rejected = cangBienRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.TU_CHOI)
-                + benCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.TU_CHOI)
-                + cauCangRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.TU_CHOI)
-                + cangCanRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.TU_CHOI)
-                + vungNuocRepo.countByTrangThaiPheDuyetAndDeletedAtIsNull(TrangThaiPheDuyet.TU_CHOI);
+        long rejected = portRepo.countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet.TU_CHOI)
+                + berthRepo.countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet.TU_CHOI)
+                + pierRepo.countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet.TU_CHOI)
+                + dryPortRepo.countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet.TU_CHOI)
+                + waterZoneRepo.countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet.TU_CHOI);
 
         long total = approved + pending + rejected;
 

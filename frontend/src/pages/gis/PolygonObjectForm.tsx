@@ -48,7 +48,6 @@ export default function PolygonObjectForm() {
             name: data.name,
             code: data.code,
             objectType: data.objectType,
-            categoryId: data.categoryId,
             fillSymbolId: data.fillSymbolId,
             coordinates: data.coordinates,
             description: data.description,
@@ -84,7 +83,6 @@ export default function PolygonObjectForm() {
         const payload: UpdatePolygonObjectPayload = {
           name: values.name,
           objectType: values.objectType,
-          categoryId: values.categoryId,
           fillSymbolId: values.fillSymbolId,
           coordinates: values.coordinates,
           description: values.description,
@@ -99,7 +97,6 @@ export default function PolygonObjectForm() {
           name: values.name,
           code: values.code,
           objectType: values.objectType,
-          categoryId: values.categoryId,
           fillSymbolId: values.fillSymbolId,
           coordinates: values.coordinates,
           description: values.description,
@@ -187,20 +184,7 @@ export default function PolygonObjectForm() {
           </Row>
 
           <Row gutter={spaceMd}>
-            <Col span={12}>
-              <Form.Item name="categoryId" label="Danh mục"
-                style={{ marginBottom: spaceFormField }}>
-                <Select placeholder="Tùy chọn danh mục" style={SELECT_STYLE}
-                  options={[
-                    { label: 'Vùng nước', value: 1 },
-                    { label: 'Vùng neo đậu', value: 2 },
-                    { label: 'Nơi tránh bão', value: 3 },
-                    { label: 'Khu vực cấm', value: 4 },
-                    { label: 'Khu vực hạn chế', value: 5 },
-                    { label: 'Khác', value: 6 },
-                  ]} />
-              </Form.Item>
-            </Col>
+            
             <Col span={12}>
               <Form.Item name="fillSymbolId" label="Ký hiệu vùng"
                 style={{ marginBottom: spaceFormField }}>

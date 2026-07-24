@@ -9,7 +9,7 @@ export interface Symbol {
   code: string;
   name: string;
   description?: string;
-  hinhAnh: string;
+  image: string;
   status: 'active' | 'inactive' | 'deprecated';
   createdBy: string;
   createdAt: string;
@@ -20,13 +20,13 @@ export interface CreateSymbolPayload {
   code: string;
   name: string;
   description?: string;
-  hinhAnh: string;
+  image: string;
 }
 
 export interface UpdateSymbolPayload {
   name?: string;
   description?: string;
-  hinhAnh?: string;
+  image?: string;
   status?: 'active' | 'inactive' | 'deprecated';
 }
 
@@ -48,7 +48,7 @@ function mapSymbol(item: any): Symbol {
     code: item.code ?? '',
     name: item.name ?? '',
     description: item.description ?? '',
-    hinhAnh: item.hinhAnh ?? '',
+    image: item.image ?? '',
     status: (item.status?.toLowerCase() as Symbol['status']) || 'active',
     createdBy: item.createdBy ?? '',
     createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : '',
@@ -102,7 +102,10 @@ export const symbolService = {
 
   async create(payload: CreateSymbolPayload): Promise<Symbol> {
     const resp = await api.post('/symbols', {
-      ...payload,
+      code: payload.code,
+      name: payload.name,
+      description: payload.description,
+      image: payload.image,
       status: 'ACTIVE'
     });
     return mapSymbol(extractData(resp));
@@ -110,7 +113,9 @@ export const symbolService = {
 
   async update(id: string, payload: UpdateSymbolPayload): Promise<Symbol> {
     const resp = await api.put(`/symbols/${id}`, {
-      ...payload,
+      name: payload.name,
+      description: payload.description,
+      image: payload.image,
       status: payload.status ? payload.status.toUpperCase() : undefined
     });
     return mapSymbol(extractData(resp));

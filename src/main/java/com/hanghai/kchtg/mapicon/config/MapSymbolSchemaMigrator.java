@@ -19,7 +19,8 @@ public class MapSymbolSchemaMigrator implements CommandLineRunner {
         try {
             // Check if map_symbols table exists and check status column data type
             String checkSql = "SELECT data_type FROM information_schema.columns " +
-                    "WHERE table_name = 'map_symbols' AND column_name = 'status'";
+                    "WHERE table_name = 'map_symbols' AND column_name = 'status' " +
+                    "AND table_schema = current_schema()";
             
             String dataType = jdbcTemplate.query(checkSql, rs -> {
                 if (rs.next()) {
@@ -42,6 +43,17 @@ public class MapSymbolSchemaMigrator implements CommandLineRunner {
                 log.info("Successfully migrated map_symbols.status column to INTEGER.");
             } else {
                 log.info("map_symbols.status column is already INTEGER (or table does not exist yet). No migration needed.");
+            }
+
+            // Check if hinh_anh column exists, if so rename to image
+            String checkColSql = "SELECT count(*) FROM information_schema.columns " +
+                    "WHERE table_name = 'map_symbols' AND column_name = 'hinh_anh' " +
+                    "AND table_schema = current_schema()";
+            Integer count = jdbcTemplate.queryForObject(checkColSql, Integer.class);
+            if (count != null && count > 0) {
+                log.info("Found map_symbols.hinh_anh column. Renaming to image...");
+                jdbcTemplate.execute("ALTER TABLE map_symbols RENAME COLUMN hinh_anh TO image");
+                log.info("Successfully renamed map_symbols.hinh_anh to image.");
             }
         } catch (Exception e) {
             log.error("Failed to migrate map_symbols.status column to INTEGER", e);

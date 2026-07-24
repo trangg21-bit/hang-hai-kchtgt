@@ -1,9 +1,9 @@
 package com.hanghai.kchtg.report;
 
-import com.hanghai.kchtg.luonghanghai.entity.ChiTietTuyenLuong;
-import com.hanghai.kchtg.luonghanghai.entity.LuongHangHai;
-import com.hanghai.kchtg.luonghanghai.repository.ChiTietTuyenLuongRepository;
-import com.hanghai.kchtg.luonghanghai.repository.LuongHangHaiRepository;
+import com.hanghai.kchtg.navigationchannel.entity.ChiTietTuyenLuong;
+import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
+import com.hanghai.kchtg.navigationchannel.repository.ChiTietTuyenLuongRepository;
+import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
@@ -32,7 +32,7 @@ import static org.mockito.Mockito.*;
 class F151ReportHandlerTest {
 
     @Mock
-    private LuongHangHaiRepository luongHangHaiRepository;
+    private NavigationChannelRepository navigationChannelRepository;
 
     @Mock
     private ChiTietTuyenLuongRepository chiTietTuyenLuongRepository;
@@ -44,12 +44,12 @@ class F151ReportHandlerTest {
     private F151ReportHandler handler;
 
     private UUID orgUnitId;
-    private UUID luongId;
+    private UUID ncId;
 
     @BeforeEach
     void setUp() {
         orgUnitId = UUID.randomUUID();
-        luongId = UUID.randomUUID();
+        ncId = UUID.randomUUID();
     }
 
     // ---------------------------------------------------------------
@@ -59,18 +59,18 @@ class F151ReportHandlerTest {
     void testPreview_producesParentAndChildHierarchicalRows() {
         /* ── given ─────────────────────────────────────────────── */
 
-        // One LuongHangHai parent with tram fields set
-        LuongHangHai lhh = LuongHangHai.builder()
-                .id(luongId)
-                .ten("Luồng hàng hải A")
-                .tramQuanLyLuong("Trạm QL luồng số 1")
-                .donViId(orgUnitId)
-                .soLuongTram(3)
-                .dienTichTram(new BigDecimal("500"))
-                .thoiDiemSuaChuaTramGanNhat(null)
+        // One NavigationChannel parent with tram fields set
+        NavigationChannel nc = NavigationChannel.builder()
+                .id(ncId)
+                .channelName("Luồng hàng hải A")
+                .channelManagementStation("Trạm QL luồng số 1")
+                .orgUnitId(orgUnitId)
+                .stationAmountt(3)
+                .stationArea(new BigDecimal("500"))
+                .latestStationRepairDate(null)
                 .createdAt(LocalDateTime.of(2025, 6, 1, 0, 0))
-                .soLuongNhanSuTaiTram(2)
-                .chieuCaoTinhKhong("10m")
+                .stationStaffAmount(2)
+                .clearanceHeight("10m")
                 .isDeleted(false)
                 .build();
 
@@ -106,9 +106,9 @@ class F151ReportHandlerTest {
                 .build();
 
         // Mocks
-        when(luongHangHaiRepository.findByIsDeletedFalse(any(org.springframework.data.domain.Sort.class)))
-                .thenReturn(List.of(lhh));
-        when(chiTietTuyenLuongRepository.findByLuongHangHaiIdOrderBySttAsc(luongId))
+        when(navigationChannelRepository.findByIsDeletedFalse(any(org.springframework.data.domain.Sort.class)))
+                .thenReturn(List.of(nc));
+        when(chiTietTuyenLuongRepository.findByNavigationChannelIdOrderBySttAsc(ncId))
                 .thenReturn(List.of(child1, child2));
         OrgUnit orgUnit = new OrgUnit();
         orgUnit.setId(orgUnitId);
@@ -172,16 +172,16 @@ class F151ReportHandlerTest {
     @Test
     void testExportData_providesCorrectTemplateFieldNames() {
         /* ── given ─────────────────────────────────────────────── */
-        LuongHangHai lhh = LuongHangHai.builder()
-                .id(luongId)
-                .ten("Luồng hàng hải A")
-                .tramQuanLyLuong("Trạm QL luồng số 1")
-                .donViId(orgUnitId)
-                .soLuongTram(3)
-                .dienTichTram(new BigDecimal("500"))
-                .thoiDiemSuaChuaTramGanNhat(LocalDate.of(2025, 3, 15))
-                .soLuongNhanSuTaiTram(2)
-                .chieuCaoTinhKhong("10m")
+        NavigationChannel nc = NavigationChannel.builder()
+                .id(ncId)
+                .channelName("Luồng hàng hải A")
+                .channelManagementStation("Trạm QL luồng số 1")
+                .orgUnitId(orgUnitId)
+                .stationAmountt(3)
+                .stationArea(new BigDecimal("500"))
+                .latestStationRepairDate(LocalDate.of(2025, 3, 15))
+                .stationStaffAmount(2)
+                .clearanceHeight("10m")
                 .isDeleted(false)
                 .build();
 
@@ -215,9 +215,9 @@ class F151ReportHandlerTest {
                 .chuyenDung(true)
                 .build();
 
-        when(luongHangHaiRepository.findByIsDeletedFalse(any(org.springframework.data.domain.Sort.class)))
-                .thenReturn(List.of(lhh));
-        when(chiTietTuyenLuongRepository.findByLuongHangHaiIdOrderBySttAsc(luongId))
+        when(navigationChannelRepository.findByIsDeletedFalse(any(org.springframework.data.domain.Sort.class)))
+                .thenReturn(List.of(nc));
+        when(chiTietTuyenLuongRepository.findByNavigationChannelIdOrderBySttAsc(ncId))
                 .thenReturn(List.of(child1, child2));
         OrgUnit orgUnit = new OrgUnit();
         orgUnit.setId(orgUnitId);
@@ -272,29 +272,29 @@ class F151ReportHandlerTest {
     void testPreview_filterByOrgUnit() {
         /* ── given ─────────────────────────────────────────────── */
         UUID otherOrgUnitId = UUID.randomUUID();
-        UUID otherLuongId = UUID.randomUUID();
+        UUID otherNcId = UUID.randomUUID();
 
-        LuongHangHai matchingLhh = LuongHangHai.builder()
-                .id(luongId)
-                .ten("Luồng A")
-                .donViId(orgUnitId)
+        NavigationChannel matchingNc = NavigationChannel.builder()
+                .id(ncId)
+                .channelName("Luồng A")
+                .orgUnitId(orgUnitId)
                 .createdAt(LocalDateTime.of(2025, 6, 1, 0, 0))
                 .isDeleted(false)
                 .build();
 
-        LuongHangHai nonMatchingLhh = LuongHangHai.builder()
-                .id(otherLuongId)
-                .ten("Luồng B")
-                .donViId(otherOrgUnitId)
+        NavigationChannel nonMatchingNc = NavigationChannel.builder()
+                .id(otherNcId)
+                .channelName("Luồng B")
+                .orgUnitId(otherOrgUnitId)
                 .createdAt(LocalDateTime.of(2025, 6, 1, 0, 0))
                 .isDeleted(false)
                 .build();
 
-        when(luongHangHaiRepository.findByIsDeletedFalse(any(org.springframework.data.domain.Sort.class)))
-                .thenReturn(List.of(matchingLhh, nonMatchingLhh));
+        when(navigationChannelRepository.findByIsDeletedFalse(any(org.springframework.data.domain.Sort.class)))
+                .thenReturn(List.of(matchingNc, nonMatchingNc));
 
-        // Only the matching lhh reaches the children query
-        when(chiTietTuyenLuongRepository.findByLuongHangHaiIdOrderBySttAsc(luongId))
+        // Only the matching nc reaches the children query
+        when(chiTietTuyenLuongRepository.findByNavigationChannelIdOrderBySttAsc(ncId))
                 .thenReturn(List.of());
 
         // isOrgUnitRoot(targetUnitId) + resolveDonViTen — same id, one stub covers both
@@ -328,7 +328,7 @@ class F151ReportHandlerTest {
     @Test
     void testPreview_emptyData_returnsZeroRows() {
         /* ── given ─────────────────────────────────────────────── */
-        when(luongHangHaiRepository.findByIsDeletedFalse(any(org.springframework.data.domain.Sort.class)))
+        when(navigationChannelRepository.findByIsDeletedFalse(any(org.springframework.data.domain.Sort.class)))
                 .thenReturn(List.of());
 
         ReportPreviewRequest request = ReportPreviewRequest.builder()
@@ -344,7 +344,7 @@ class F151ReportHandlerTest {
         assertNotNull(response);
         assertNotNull(response.getRows());
         assertEquals(0, response.getRows().size(),
-                "Rows must be empty when no LuongHangHai exists");
+                "Rows must be empty when no NavigationChannel exists");
         assertNotNull(response.getSummary());
         assertEquals(0, response.getSummary().get("Tổng số luồng"));
     }

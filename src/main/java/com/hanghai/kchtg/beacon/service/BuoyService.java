@@ -113,9 +113,7 @@ public class BuoyService {
                 "PHAOTIEU_" + entity.getCode(),
                 com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT,
                 com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_BUOY,
-                wkt,
-                null,
-                entity.getId(),
+                wkt, entity.getId(),
                 com.hanghai.kchtg.gis.search.dto.KchtType.PHAOTIEU
         );
         entity.setKhongGianId(spatialObj.getId());
@@ -212,9 +210,7 @@ public class BuoyService {
                     "PHAOTIEU_" + entity.getCode(),
                     com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT,
                     com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_BUOY,
-                    wkt,
-                    null,
-                    entity.getId(),
+                    wkt, entity.getId(),
                     com.hanghai.kchtg.gis.search.dto.KchtType.PHAOTIEU
             );
             if (entity.getKhongGianId() == null) {

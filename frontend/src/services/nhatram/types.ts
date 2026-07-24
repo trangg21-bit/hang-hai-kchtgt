@@ -24,7 +24,6 @@ export interface CreateNhaTramDenRequest {
   status: string;
   loaiHinhHoc?: string;
   toaDo?: string;
-  bieuTuongId?: string;
 }
 
 export interface NhaTramDenResponse {
@@ -51,7 +50,6 @@ export interface NhaTramDenResponse {
   updatedAt: string;
   loaiHinhHoc?: string;
   toaDo?: string;
-  bieuTuongId?: string;
   khongGianId?: string;
 }
 
@@ -73,7 +71,6 @@ export interface CreateNhaTramPhaoRequest {
   status: string;
   loaiHinhHoc?: string;
   toaDo?: string;
-  bieuTuongId?: string;
 }
 
 export interface NhaTramPhaoResponse {
@@ -100,6 +97,5 @@ export interface NhaTramPhaoResponse {
   updatedAt: string;
   loaiHinhHoc?: string;
   toaDo?: string;
-  bieuTuongId?: string;
   khongGianId?: string;
 }

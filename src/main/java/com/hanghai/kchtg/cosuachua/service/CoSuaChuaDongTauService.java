@@ -52,7 +52,6 @@ public class CoSuaChuaDongTauService {
                     geomType,
                     objType,
                     request.getToaDo(),
-                    request.getBieuTuongId(),
                     refId,
                     com.hanghai.kchtg.gis.search.dto.KchtType.COSO_SUACHUA
             );
@@ -124,7 +123,6 @@ public class CoSuaChuaDongTauService {
                         geomType,
                         objType,
                         request.getToaDo(),
-                        request.getBieuTuongId(),
                         refId,
                         com.hanghai.kchtg.gis.search.dto.KchtType.COSO_SUACHUA
                 );
@@ -140,7 +138,6 @@ public class CoSuaChuaDongTauService {
                         spatialObj.getGeometryType(),
                         spatialObj.getObjectType(),
                         spatialObj.getCoordinates(),
-                        spatialObj.getBieuTuongId(),
                         refId,
                         com.hanghai.kchtg.gis.search.dto.KchtType.COSO_SUACHUA
                 );
@@ -295,7 +292,6 @@ public class CoSuaChuaDongTauService {
                 com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatial = spatialOpt.get();
                 geomType = spatial.getGeometryType();
                 coords = spatial.getCoordinates();
-                symbolId = spatial.getBieuTuongId();
             }
         }
 
@@ -327,7 +323,6 @@ public class CoSuaChuaDongTauService {
                 .khongGianId(entity.getKhongGianId())
                 .loaiHinhHoc(geomType)
                 .toaDo(coords)
-                .bieuTuongId(symbolId)
                 .build();
     }
 

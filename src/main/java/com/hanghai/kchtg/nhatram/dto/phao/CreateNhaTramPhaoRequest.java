@@ -69,5 +69,4 @@ public class CreateNhaTramPhaoRequest {
 
     private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
     private String toaDo;
-    private java.util.UUID bieuTuongId;
 }

@@ -27,9 +27,9 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import com.hanghai.kchtg.cangben.repository.CangBienRepository;
-import com.hanghai.kchtg.cangben.repository.BenCangRepository;
-import com.hanghai.kchtg.cangben.repository.CauCangRepository;
+import com.hanghai.kchtg.cangben.repository.PortRepository;
+import com.hanghai.kchtg.cangben.repository.BerthRepository;
+import com.hanghai.kchtg.cangben.repository.PierRepository;
 import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
 import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
 import com.hanghai.kchtg.nhatram.repository.NhaTramDenRepository;
@@ -52,9 +52,9 @@ public class ReportService {
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final com.hanghai.kchtg.gis.point.repository.PointObjectRepository pointRepository;
     private final com.hanghai.kchtg.orgunit.repository.OrgUnitRepository orgUnitRepository;
-    private final CangBienRepository cangBienRepository;
-    private final BenCangRepository benCangRepository;
-    private final CauCangRepository cauCangRepository;
+    private final PortRepository cangBienRepository;
+    private final BerthRepository benCangRepository;
+    private final PierRepository cauCangRepository;
     private final LineObjectRepository lineObjectRepository;
     private final PolygonObjectRepository polygonObjectRepository;
     private final NhaTramDenRepository nhaTramDenRepository;
@@ -933,16 +933,16 @@ public class ReportService {
         final int reportYear = request.getStartDate() != null ? request.getStartDate().getYear()
                 : LocalDate.now().getYear();
 
-        // 1. Query CangBien (ports) as root — matching hh.csdl hierarchy: Cảng biển → Bến cảng → Cầu cảng
-        List<com.hanghai.kchtg.cangben.entity.CangBien> allPorts = cangBienRepository.findAll().stream()
+        // 1. Query Port (ports) as root — matching hh.csdl hierarchy: Cảng biển → Bến cảng → Cầu cảng
+        List<com.hanghai.kchtg.cangben.entity.Port> allPorts = cangBienRepository.findAll().stream()
                 .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
                 .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
-                .filter(cb -> filterNhom == null || filterNhom.equals(cb.getNhomCangBien()))
+                .filter(cb -> filterNhom == null || filterNhom.equals(cb.getPortGroup()))
                 .toList();
 
         // 2. ALL ports go to I. CẢNG BIỂN; Section II is always rendered (with no data rows)
-        List<com.hanghai.kchtg.cangben.entity.CangBien> group1Ports = new ArrayList<>(allPorts);
-        List<com.hanghai.kchtg.cangben.entity.CangBien> group2Ports = new ArrayList<>();
+        List<com.hanghai.kchtg.cangben.entity.Port> group1Ports = new ArrayList<>(allPorts);
+        List<com.hanghai.kchtg.cangben.entity.Port> group2Ports = new ArrayList<>();
 
         // 3. Headers exactly matching Excel template BCKCHT_163.xlsx row 9 columns
         List<String> headers = List.of(
@@ -981,7 +981,7 @@ public class ReportService {
             sectionRow.put("_rowType", "section");
             rows.add(sectionRow);
 
-            for (com.hanghai.kchtg.cangben.entity.CangBien port : group1Ports) {
+            for (com.hanghai.kchtg.cangben.entity.Port port : group1Ports) {
                 stt = appendF148Hierarchy(port, stt, rows, reportYear);
             }
         }
@@ -1004,7 +1004,7 @@ public class ReportService {
             sectionRow.put("_rowType", "section");
             rows.add(sectionRow);
 
-            for (com.hanghai.kchtg.cangben.entity.CangBien port : group2Ports) {
+            for (com.hanghai.kchtg.cangben.entity.Port port : group2Ports) {
                 stt = appendF148Hierarchy(port, stt, rows, reportYear);
             }
         }
@@ -1110,14 +1110,14 @@ public class ReportService {
     }
 
     /**
-     * Appends one CangBien port row, then its BenCang children, then each BenCang's CauCang children.
+     * Appends one Port port row, then its BenCang children, then each BenCang's Pier children.
      * Returns the next STT value.
      * <p>
      * This implements the hh.csdl hierarchy: Cảng biển → Bến cảng → Cầu cảng.
      * Port rows carry the sequential STT; berth and wharf rows are indented with empty STT.
      */
     private int appendF148Hierarchy(
-            com.hanghai.kchtg.cangben.entity.CangBien port,
+            com.hanghai.kchtg.cangben.entity.Port port,
             int stt,
             List<Map<String, Object>> rows,
             int reportYear) {
@@ -1133,26 +1133,26 @@ public class ReportService {
         // ── Port (Cảng biển) row ──
         Map<String, Object> portRow = new LinkedHashMap<>();
         portRow.put("STT", String.valueOf(stt++));
-        portRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", port.getTenCang());
+        portRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", port.getPortName());
         portRow.put("Đơn vị quản lý khai thác cảng", donViPort);
-        portRow.put("Địa điểm, vị trí cảng", port.getTinhThanhPho() != null ? port.getTinhThanhPho() : "");
+        portRow.put("Địa điểm, vị trí cảng", port.getProvince() != null ? port.getProvince() : "");
         portRow.put("Thời điểm công bố mở", f148FormatThoiDiem(port.getCreatedAt()));
         portRow.put("Công năng khai thác", "");
         portRow.put("Năng lực năm trước", "");
         portRow.put("Năng lực năm báo cáo", "");
         portRow.put("Đơn vị tính", "tấn/năm");
         portRow.put("Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)", "");
-        double portDwt = port.getKhaNangTiepNhan() != null
-                ? port.getKhaNangTiepNhan().doubleValue() : 0.0;
+        double portDwt = port.getMaxVesselCapacity() != null
+                ? port.getMaxVesselCapacity().doubleValue() : 0.0;
         portRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", portDwt);
         portRow.put("Ghi chú", "");
         portRow.put("_rowType", "port");
         rows.add(portRow);
 
         // ── Berths (Bến cảng) under this port ──
-        List<com.hanghai.kchtg.cangben.entity.BenCang> berths =
-                benCangRepository.findByCangBienIdAndDeletedAtIsNull(port.getId());
-        for (com.hanghai.kchtg.cangben.entity.BenCang berth : berths) {
+        List<com.hanghai.kchtg.cangben.entity.Berth> berths =
+                benCangRepository.findByPortIdAndDeletedAtIsNull(port.getId());
+        for (com.hanghai.kchtg.cangben.entity.Berth berth : berths) {
             String donViBerth = "";
             if (berth.getOrgUnitId() != null) {
                 donViBerth = orgUnitRepository.findById(berth.getOrgUnitId())
@@ -1160,63 +1160,63 @@ public class ReportService {
                         .orElse("");
             }
 
-            String diaDiemBerth = berth.getDiaDiem() != null ? berth.getDiaDiem()
-                    : (port.getTinhThanhPho() != null ? port.getTinhThanhPho() : "");
+            String diaDiemBerth = berth.getLocationCode() != null ? berth.getLocationCode()
+                    : (port.getProvince() != null ? port.getProvince() : "");
 
-            String thoiDiemBerth = f148FormatThoiDiem(berth.getThoiDiemCongBoMo());
+            String thoiDiemBerth = f148FormatThoiDiem(berth.getOpeningAnnouncementDate());
             if (thoiDiemBerth.isEmpty()) {
                 thoiDiemBerth = f148FormatThoiDiem(berth.getCreatedAt());
             }
 
-            double dwtBerth = berth.getCoTauTiepNhanLonNhat() != null
-                    ? berth.getCoTauTiepNhanLonNhat().doubleValue() : 0.0;
+            double dwtBerth = berth.getMaxVesselSize() != null
+                    ? berth.getMaxVesselSize().doubleValue() : 0.0;
 
             Map<String, Object> berthRow = new LinkedHashMap<>();
             berthRow.put("STT", "");
-            berthRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", "\u00A0\u00A0\u00A0\u00A0" + berth.getTenBen());
+            berthRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", "\u00A0\u00A0\u00A0\u00A0" + berth.getBerthName());
             berthRow.put("Đơn vị quản lý khai thác cảng", donViBerth);
             berthRow.put("Địa điểm, vị trí cảng", diaDiemBerth);
             berthRow.put("Thời điểm công bố mở", thoiDiemBerth);
             berthRow.put("Công năng khai thác",
-                    berth.getCongNangKhaiThac() != null ? berth.getCongNangKhaiThac() : "");
-            // Năng lực từ BenCang extended fields
-            // Năm báo cáo = nangLucThongQuaHienTrang
-            double nlBaoCao = berth.getNangLucThongQuaHienTrang() != null
-                    ? berth.getNangLucThongQuaHienTrang().doubleValue() : 0.0;
+                    berth.getOperationalFunction() != null ? berth.getOperationalFunction() : "");
+            // Năng lực từ Berth extended fields
+            // Năm báo cáo = currentThroughput
+            double nlBaoCao = berth.getCurrentThroughput() != null
+                    ? berth.getCurrentThroughput().doubleValue() : 0.0;
             berthRow.put("Năng lực năm báo cáo", nlBaoCao);
-            // Năm trước = nangLucThongQuaHienTrang if updatedAt.year == reportYear - 1
-            double nlTruoc = (berth.getNangLucThongQuaHienTrang() != null
+            // Năm trước = currentThroughput if updatedAt.year == reportYear - 1
+            double nlTruoc = (berth.getCurrentThroughput() != null
                     && berth.getUpdatedAt() != null
                     && berth.getUpdatedAt().getYear() == reportYear - 1)
-                    ? berth.getNangLucThongQuaHienTrang().doubleValue() : 0.0;
+                    ? berth.getCurrentThroughput().doubleValue() : 0.0;
             berthRow.put("Năng lực năm trước", nlTruoc);
             berthRow.put("Đơn vị tính", "tấn/năm");
             berthRow.put("Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)",
-                    berth.getChieuDai() != null ? berth.getChieuDai().doubleValue() : 0.0);
+                    berth.getLength() != null ? berth.getLength().doubleValue() : 0.0);
             berthRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", dwtBerth);
             berthRow.put("Ghi chú", "");
             rows.add(berthRow);
 
             // ── Wharves (Cầu cảng) under this berth ──
-            List<com.hanghai.kchtg.cangben.entity.CauCang> wharves =
-                    cauCangRepository.findByBenCangIdAndDeletedAtIsNull(berth.getId());
-            for (com.hanghai.kchtg.cangben.entity.CauCang wharf : wharves) {
-                double dwtWharf = wharf.getTaiTrong() != null
-                        ? wharf.getTaiTrong().doubleValue() : 0.0;
+            List<com.hanghai.kchtg.cangben.entity.Pier> wharves =
+                    cauCangRepository.findByBerthIdAndDeletedAtIsNull(berth.getId());
+            for (com.hanghai.kchtg.cangben.entity.Pier wharf : wharves) {
+                double dwtWharf = wharf.getDesignLoad() != null
+                        ? wharf.getDesignLoad().doubleValue() : 0.0;
 
                 Map<String, Object> wharfRow = new LinkedHashMap<>();
                 wharfRow.put("STT", "");
-                wharfRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", "\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0" + wharf.getTenCau());
+                wharfRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", "\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0" + wharf.getPierName());
                 wharfRow.put("Đơn vị quản lý khai thác cảng", "");
                 wharfRow.put("Địa điểm, vị trí cảng", "");
                 wharfRow.put("Thời điểm công bố mở", "");
                 wharfRow.put("Công năng khai thác",
-                        wharf.getCongNangKhaiThac() != null ? wharf.getCongNangKhaiThac() : "");
+                        wharf.getOperationalFunction() != null ? wharf.getOperationalFunction() : "");
                 wharfRow.put("Năng lực năm trước", "");
                 wharfRow.put("Năng lực năm báo cáo", "");
                 wharfRow.put("Đơn vị tính", "tấn/năm");
                 wharfRow.put("Chiều dài bến cảng, cầu cảng, cảng bến thủy nội địa (m)",
-                        wharf.getChieuDai() != null ? wharf.getChieuDai().doubleValue() : 0.0);
+                        wharf.getLength() != null ? wharf.getLength().doubleValue() : 0.0);
                 wharfRow.put("Tàu neo đậu, làm hàng lớn nhất (DWT)", dwtWharf);
                 wharfRow.put("Ghi chú", "");
                 rows.add(wharfRow);
@@ -1238,10 +1238,10 @@ public class ReportService {
         final Integer filterNhom = request.getNhomCangBien();
         final int reportYear = request.getStartDate() != null ? request.getStartDate().getYear()
                 : LocalDate.now().getYear();
-        List<com.hanghai.kchtg.cangben.entity.CangBien> ports = cangBienRepository.findAll().stream()
+        List<com.hanghai.kchtg.cangben.entity.Port> ports = cangBienRepository.findAll().stream()
                 .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
                 .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
-                .filter(cb -> filterNhom == null || filterNhom.equals(cb.getNhomCangBien()))
+                .filter(cb -> filterNhom == null || filterNhom.equals(cb.getPortGroup()))
                 .toList();
         List<String> headers = List.of(
                 "STT",
@@ -1251,14 +1251,14 @@ public class ReportService {
                 "Năng lực năm báo cáo (tấn/năm)",
                 "Năng lực tăng thêm");
         List<Map<String, Object>> rows = new ArrayList<>();
-        // Group ports by nhomCangBien (e.g. 1 -> Nhóm 1)
-        Map<String, List<com.hanghai.kchtg.cangben.entity.CangBien>> groups = new LinkedHashMap<>();
+        // Group ports by nhomPort (e.g. 1 -> Nhóm 1)
+        Map<String, List<com.hanghai.kchtg.cangben.entity.Port>> groups = new LinkedHashMap<>();
         for (int g = 1; g <= 5; g++) {
             if (filterNhom == null || filterNhom == g) {
                 final int nhomNum = g;
-                List<com.hanghai.kchtg.cangben.entity.CangBien> cbInNhom = ports.stream()
+                List<com.hanghai.kchtg.cangben.entity.Port> cbInNhom = ports.stream()
                         .filter(cb -> {
-                            int n = cb.getNhomCangBien() != null ? cb.getNhomCangBien() : 1;
+                            int n = cb.getPortGroup() != null ? cb.getPortGroup() : 1;
                             return n == nhomNum;
                         })
                         .toList();
@@ -1267,9 +1267,9 @@ public class ReportService {
                 }
             }
         }
-        for (Map.Entry<String, List<com.hanghai.kchtg.cangben.entity.CangBien>> entry : groups.entrySet()) {
+        for (Map.Entry<String, List<com.hanghai.kchtg.cangben.entity.Port>> entry : groups.entrySet()) {
             String groupName = entry.getKey();
-            List<com.hanghai.kchtg.cangben.entity.CangBien> groupItems = entry.getValue();
+            List<com.hanghai.kchtg.cangben.entity.Port> groupItems = entry.getValue();
             // Add Category Header row
             Map<String, Object> headerRow = new LinkedHashMap<>();
             headerRow.put("STT", "");
@@ -1281,23 +1281,23 @@ public class ReportService {
             headerRow.put("_rowType", "section");
             rows.add(headerRow);
             int idx = 1;
-            for (com.hanghai.kchtg.cangben.entity.CangBien cb : groupItems) {
+            for (com.hanghai.kchtg.cangben.entity.Port cb : groupItems) {
                 // Sum nangLuc from all BenCang children (BCKCHT_164 approach)
-                List<com.hanghai.kchtg.cangben.entity.BenCang> children = benCangRepository.findByCangBienIdAndDeletedAtIsNull(cb.getId());
+                List<com.hanghai.kchtg.cangben.entity.Berth> children = benCangRepository.findByPortIdAndDeletedAtIsNull(cb.getId());
                 double capBaoCao = children.stream()
-                        .filter(b -> b.getNangLucThongQuaHienTrang() != null)
-                        .filter(b -> b.getThoiDiemCongBoMo() != null && b.getThoiDiemCongBoMo().getYear() == reportYear)
-                        .mapToDouble(b -> b.getNangLucThongQuaHienTrang().doubleValue())
+                        .filter(b -> b.getCurrentThroughput() != null)
+                        .filter(b -> b.getOpeningAnnouncementDate() != null && b.getOpeningAnnouncementDate().getYear() == reportYear)
+                        .mapToDouble(b -> b.getCurrentThroughput().doubleValue())
                         .sum();
                 double capNamTruoc = children.stream()
-                        .filter(b -> b.getNangLucThongQuaHienTrang() != null)
-                        .filter(b -> b.getThoiDiemCongBoMo() != null && b.getThoiDiemCongBoMo().getYear() == reportYear - 1)
-                        .mapToDouble(b -> b.getNangLucThongQuaHienTrang().doubleValue())
+                        .filter(b -> b.getCurrentThroughput() != null)
+                        .filter(b -> b.getOpeningAnnouncementDate() != null && b.getOpeningAnnouncementDate().getYear() == reportYear - 1)
+                        .mapToDouble(b -> b.getCurrentThroughput().doubleValue())
                         .sum();
                 Map<String, Object> itemRow = new LinkedHashMap<>();
                 itemRow.put("STT", String.valueOf(idx++));
-                itemRow.put("Danh mục cảng", cb.getTenCang());
-                itemRow.put("Địa điểm (Tỉnh/TP)", cb.getTinhThanhPho() != null ? cb.getTinhThanhPho() : "");
+                itemRow.put("Danh mục cảng", cb.getPortName());
+                itemRow.put("Địa điểm (Tỉnh/TP)", cb.getProvince() != null ? cb.getProvince() : "");
                 itemRow.put("Năng lực năm trước (tấn/năm)", capNamTruoc);
                 itemRow.put("Năng lực năm báo cáo (tấn/năm)", capBaoCao);
                 itemRow.put("Năng lực tăng thêm", capBaoCao - capNamTruoc);
@@ -3374,7 +3374,7 @@ public class ReportService {
 
                 if ("F-148".equalsIgnoreCase(request.getReportCode())) {
                     // Custom hierarchical export for F-148 (BCKCHT_163)
-                    // Hierarchy: CangBien → BenCang → CauCang (same as getPreviewF148 + appendF148Hierarchy)
+                    // Hierarchy: Port → BenCang → Pier (same as getPreviewF148 + appendF148Hierarchy)
 
                     boolean isRoot = false;
                     if (targetUnitId != null) {
@@ -3386,16 +3386,16 @@ public class ReportService {
                     final boolean skipFilter = targetUnitId == null || isRoot;
                     final Integer filterNhom = request.getNhomCangBien();
 
-                    // 1. Query CangBien as root — same as getPreviewF148
-                    List<com.hanghai.kchtg.cangben.entity.CangBien> allPorts = cangBienRepository.findAll().stream()
+                    // 1. Query Port as root — same as getPreviewF148
+                    List<com.hanghai.kchtg.cangben.entity.Port> allPorts = cangBienRepository.findAll().stream()
                             .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
                             .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
-                            .filter(cb -> filterNhom == null || filterNhom.equals(cb.getNhomCangBien()))
+                            .filter(cb -> filterNhom == null || filterNhom.equals(cb.getPortGroup()))
                             .toList();
 
                     // 2. ALL ports go to I. CẢNG BIỂN; Section II is always rendered (with no data rows)
-                    List<com.hanghai.kchtg.cangben.entity.CangBien> group1Ports = new ArrayList<>(allPorts);
-                    List<com.hanghai.kchtg.cangben.entity.CangBien> group2Ports = new ArrayList<>();
+                    List<com.hanghai.kchtg.cangben.entity.Port> group1Ports = new ArrayList<>(allPorts);
+                    List<com.hanghai.kchtg.cangben.entity.Port> group2Ports = new ArrayList<>();
 
                     Row portTemplateRow = srcSheet.getRow(10); // Port / section header template row
                     Row wharfTemplateRow = srcSheet.getRow(11); // Berth / wharf template row
@@ -3442,7 +3442,7 @@ public class ReportService {
                         }
 
                         // Port rows with hierarchy
-                        for (com.hanghai.kchtg.cangben.entity.CangBien port : group1Ports) {
+                        for (com.hanghai.kchtg.cangben.entity.Port port : group1Ports) {
                             currentDestRow = writeF148PortHierarchyToSheet(destSheet, currentDestRow,
                                     portTemplateRow, wharfTemplateRow, port, stt, reportYear);
                             stt++;
@@ -3469,7 +3469,7 @@ public class ReportService {
                             }
                         }
 
-                        for (com.hanghai.kchtg.cangben.entity.CangBien port : group2Ports) {
+                        for (com.hanghai.kchtg.cangben.entity.Port port : group2Ports) {
                             currentDestRow = writeF148PortHierarchyToSheet(destSheet, currentDestRow,
                                     portTemplateRow, wharfTemplateRow, port, stt, reportYear);
                             stt++;
@@ -3545,7 +3545,7 @@ public class ReportService {
 
                 return outputWorkbook(workbook, destSheet, isExcel);
                 } else if ("F-149".equalsIgnoreCase(request.getReportCode())) {
-                    // Custom hierarchical export for F-149 (BCKCHT_164) using real CangBien
+                    // Custom hierarchical export for F-149 (BCKCHT_164) using real Port
                     // entities
 
                     boolean isRoot = false;
@@ -3560,13 +3560,13 @@ public class ReportService {
 
                     final Integer filterNhom = request.getNhomCangBien();
 
-                    List<com.hanghai.kchtg.cangben.entity.CangBien> ports = cangBienRepository.findAll().stream()
+                    List<com.hanghai.kchtg.cangben.entity.Port> ports = cangBienRepository.findAll().stream()
                             .filter(cb -> skipFilter || targetUnitId.equals(cb.getOrgUnitId()))
                             .filter(cb -> cb.getCreatedAt() == null || cb.getCreatedAt().getYear() <= reportYear)
-                            .filter(cb -> filterNhom == null || filterNhom.equals(cb.getNhomCangBien()))
+                            .filter(cb -> filterNhom == null || filterNhom.equals(cb.getPortGroup()))
                             .toList();
 
-                    // Group ports by nhomCangBien (e.g. 1 -> Nhóm 1)
+                    // Group ports by nhomPort (e.g. 1 -> Nhóm 1)
 
                     Map<String, List<Map<String, Object>>> groups = new LinkedHashMap<>();
 
@@ -3584,30 +3584,30 @@ public class ReportService {
 
                     int idx1 = 1, idx2 = 1, idx3 = 1, idx4 = 1, idx5 = 1;
 
-                    for (com.hanghai.kchtg.cangben.entity.CangBien cb : ports) {
+                    for (com.hanghai.kchtg.cangben.entity.Port cb : ports) {
                         Map<String, Object> item = new HashMap<>();
 
-                        item.put("tenCangBien", cb.getTenCang());
-                        item.put("diaDiemText", cb.getTinhThanhPho() != null ? cb.getTinhThanhPho() : "");
+                        item.put("tenPort", cb.getPortName());
+                        item.put("diaDiemText", cb.getProvince() != null ? cb.getProvince() : "");
 
                         // Sum nangLuc from all BenCang children (BCKCHT_164 approach)
-                        List<com.hanghai.kchtg.cangben.entity.BenCang> children = benCangRepository.findByCangBienIdAndDeletedAtIsNull(cb.getId());
+                        List<com.hanghai.kchtg.cangben.entity.Berth> children = benCangRepository.findByPortIdAndDeletedAtIsNull(cb.getId());
                         double capBaoCao = children.stream()
-                                .filter(b -> b.getNangLucThongQuaHienTrang() != null)
-                                .filter(b -> b.getThoiDiemCongBoMo() != null && b.getThoiDiemCongBoMo().getYear() == reportYear)
-                                .mapToDouble(b -> b.getNangLucThongQuaHienTrang().doubleValue())
+                                .filter(b -> b.getCurrentThroughput() != null)
+                                .filter(b -> b.getOpeningAnnouncementDate() != null && b.getOpeningAnnouncementDate().getYear() == reportYear)
+                                .mapToDouble(b -> b.getCurrentThroughput().doubleValue())
                                 .sum();
                         double capNamTruoc = children.stream()
-                                .filter(b -> b.getNangLucThongQuaHienTrang() != null)
-                                .filter(b -> b.getThoiDiemCongBoMo() != null && b.getThoiDiemCongBoMo().getYear() == reportYear - 1)
-                                .mapToDouble(b -> b.getNangLucThongQuaHienTrang().doubleValue())
+                                .filter(b -> b.getCurrentThroughput() != null)
+                                .filter(b -> b.getOpeningAnnouncementDate() != null && b.getOpeningAnnouncementDate().getYear() == reportYear - 1)
+                                .mapToDouble(b -> b.getCurrentThroughput().doubleValue())
                                 .sum();
 
                         item.put("nangLucThongQuaCangNamTruoc", capNamTruoc);
                         item.put("nangLucThongQuaCangNamBaoCao", capBaoCao);
                         item.put("nangLucTangThem", capBaoCao - capNamTruoc);
 
-                        int nhom = cb.getNhomCangBien() != null ? cb.getNhomCangBien() : 1;
+                        int nhom = cb.getPortGroup() != null ? cb.getPortGroup() : 1;
 
                         if (nhom == 1) {
                             item.put("idx", idx1++);
@@ -4640,7 +4640,7 @@ if (expr != null && (expr.contains("table.")
                 item.put("ten", p.getName());
                 item.put("code", p.getCode());
                 item.put("name", p.getName());
-                item.put("tenCangBien", p.getName());
+                item.put("tenPort", p.getName());
                 item.put("nhom", p.getObjectType() != null ? p.getObjectType().name() : "");
 
                 String viTri = "";
@@ -4691,7 +4691,7 @@ if (expr != null && (expr.contains("table.")
 
                 // Real fields mapping
 
-                item.put("tenCangBien", p.getName());
+                item.put("tenPort", p.getName());
                 item.put("tenCang", p.getName());
                 item.put("loaiTaiSan", p.getName());
                 item.put("maTuyenLuong", p.getCode());
@@ -4739,9 +4739,9 @@ if (expr != null && (expr.contains("table.")
                 item.put("tamHieuLucAnhSang", 0.0);
                 item.put("nguonCungCapNangLuongChoDen", "");
                 item.put("dienTichSuDungTram", 0.0);
-                item.put("dienTichTheoThongBaoGanNhatTenLuongHangHai", 0.0);
-                item.put("tinhTrangHoatDongChuaCongBoTenLuongHangHai", "");
-                item.put("tinhTrangHoatDongDaCongBoTenLuongHangHai", "");
+                item.put("dienTichTheoThongBaoGanNhatTenNavigationChannel", 0.0);
+                item.put("tinhTrangHoatDongChuaCongBoTenNavigationChannel", "");
+                item.put("tinhTrangHoatDongDaCongBoTenNavigationChannel", "");
                 item.put("coTauKhaiThac", "");
                 item.put("daCongBoHoatDong", "");
                 item.put("soLuongHienCoKhuChuyenTaiCoPhaoNeo", 0.0);
@@ -5617,7 +5617,7 @@ if (expr != null && (expr.contains("table.")
     }
 
     /**
-     * Writes one CangBien port row + its BenCang children + each BenCang's CauCang children
+     * Writes one Port port row + its BenCang children + each BenCang's Pier children
      * to the destination sheet. Returns the next available destination row index.
      * Used by F-148 (BCKCHT_163) hierarchical export.
      */
@@ -5626,7 +5626,7 @@ if (expr != null && (expr.contains("table.")
             int currentDestRow,
             Row portTemplateRow,
             Row wharfTemplateRow,
-            com.hanghai.kchtg.cangben.entity.CangBien port,
+            com.hanghai.kchtg.cangben.entity.Port port,
             int stt,
             int reportYear) {
 
@@ -5651,11 +5651,11 @@ if (expr != null && (expr.contains("table.")
                 if (c == 0) {
                     destCell.setCellValue(String.valueOf(stt));
                 } else if (c == 1) {
-                    destCell.setCellValue(port.getTenCang() != null ? port.getTenCang() : "");
+                    destCell.setCellValue(port.getPortName() != null ? port.getPortName() : "");
                 } else if (c == 2) {
                     destCell.setCellValue(donViPort);
                 } else if (c == 3) {
-                    destCell.setCellValue(port.getTinhThanhPho() != null ? port.getTinhThanhPho() : "");
+                    destCell.setCellValue(port.getProvince() != null ? port.getProvince() : "");
                 } else if (c == 4) {
                     destCell.setCellValue(f148FormatThoiDiem(port.getCreatedAt()));
                 } else if (c == 5) {
@@ -5669,8 +5669,8 @@ if (expr != null && (expr.contains("table.")
                 } else if (c == 9) {
                     destCell.setCellValue("");
                 } else if (c == 10) {
-                    double portDwt = port.getKhaNangTiepNhan() != null
-                            ? port.getKhaNangTiepNhan().doubleValue() : 0.0;
+                    double portDwt = port.getMaxVesselCapacity() != null
+                            ? port.getMaxVesselCapacity().doubleValue() : 0.0;
                     destCell.setCellValue(portDwt);
                     if (portDwt != 0) {
                         setNumericCellFormat(destCell, portDwt);
@@ -5685,9 +5685,9 @@ if (expr != null && (expr.contains("table.")
 
         // ── Berths (Bến cảng) under this port ──
         int numWharfCols = wharfTemplateRow.getLastCellNum();
-        List<com.hanghai.kchtg.cangben.entity.BenCang> berths =
-                benCangRepository.findByCangBienIdAndDeletedAtIsNull(port.getId());
-        for (com.hanghai.kchtg.cangben.entity.BenCang berth : berths) {
+        List<com.hanghai.kchtg.cangben.entity.Berth> berths =
+                benCangRepository.findByPortIdAndDeletedAtIsNull(port.getId());
+        for (com.hanghai.kchtg.cangben.entity.Berth berth : berths) {
             String donViBerth = "";
             if (berth.getOrgUnitId() != null) {
                 donViBerth = orgUnitRepository.findById(berth.getOrgUnitId())
@@ -5695,16 +5695,16 @@ if (expr != null && (expr.contains("table.")
                         .orElse("");
             }
 
-            String diaDiemBerth = berth.getDiaDiem() != null ? berth.getDiaDiem()
-                    : (port.getTinhThanhPho() != null ? port.getTinhThanhPho() : "");
+            String diaDiemBerth = berth.getLocationCode() != null ? berth.getLocationCode()
+                    : (port.getProvince() != null ? port.getProvince() : "");
 
-            String thoiDiemBerth = f148FormatThoiDiem(berth.getThoiDiemCongBoMo());
+            String thoiDiemBerth = f148FormatThoiDiem(berth.getOpeningAnnouncementDate());
             if (thoiDiemBerth.isEmpty()) {
                 thoiDiemBerth = f148FormatThoiDiem(berth.getCreatedAt());
             }
 
-            double dwtBerth = berth.getCoTauTiepNhanLonNhat() != null
-                    ? berth.getCoTauTiepNhanLonNhat().doubleValue() : 0.0;
+            double dwtBerth = berth.getMaxVesselSize() != null
+                    ? berth.getMaxVesselSize().doubleValue() : 0.0;
 
             Row berthRow = destSheet.createRow(currentDestRow++);
             berthRow.setHeight(wharfTemplateRow.getHeight());
@@ -5716,7 +5716,7 @@ if (expr != null && (expr.contains("table.")
                     if (c == 0) {
                         destCell.setCellValue("");
                     } else if (c == 1) {
-                        destCell.setCellValue("    " + (berth.getTenBen() != null ? berth.getTenBen() : ""));
+                        destCell.setCellValue("    " + (berth.getBerthName() != null ? berth.getBerthName() : ""));
                     } else if (c == 2) {
                         destCell.setCellValue(donViBerth);
                     } else if (c == 3) {
@@ -5724,21 +5724,21 @@ if (expr != null && (expr.contains("table.")
                     } else if (c == 4) {
                         destCell.setCellValue(thoiDiemBerth);
                     } else if (c == 5) {
-                        destCell.setCellValue(berth.getCongNangKhaiThac() != null ? berth.getCongNangKhaiThac() : "");
+                        destCell.setCellValue(berth.getOperationalFunction() != null ? berth.getOperationalFunction() : "");
                     } else if (c == 6) {
                         // Năm trước = nangLucThongQuaHienTrang if updatedAt.year == reportYear - 1
-                        double nlTruoc = (berth.getNangLucThongQuaHienTrang() != null
+                        double nlTruoc = (berth.getCurrentThroughput() != null
                                 && berth.getUpdatedAt() != null
                                 && berth.getUpdatedAt().getYear() == reportYear - 1)
-                                ? berth.getNangLucThongQuaHienTrang().doubleValue() : 0.0;
+                                ? berth.getCurrentThroughput().doubleValue() : 0.0;
                         destCell.setCellValue(nlTruoc);
                         if (nlTruoc != 0) {
                             setNumericCellFormat(destCell, nlTruoc);
                         }
                     } else if (c == 7) {
                         // Năm báo cáo = nangLucThongQuaHienTrang
-                        double nlBaoCao = berth.getNangLucThongQuaHienTrang() != null
-                                ? berth.getNangLucThongQuaHienTrang().doubleValue() : 0.0;
+                        double nlBaoCao = berth.getCurrentThroughput() != null
+                                ? berth.getCurrentThroughput().doubleValue() : 0.0;
                         destCell.setCellValue(nlBaoCao);
                         if (nlBaoCao != 0) {
                             setNumericCellFormat(destCell, nlBaoCao);
@@ -5746,7 +5746,7 @@ if (expr != null && (expr.contains("table.")
                     } else if (c == 8) {
                         destCell.setCellValue("tấn/năm");
                     } else if (c == 9) {
-                        double chieuDai = berth.getChieuDai() != null ? berth.getChieuDai().doubleValue() : 0.0;
+                        double chieuDai = berth.getLength() != null ? berth.getLength().doubleValue() : 0.0;
                         destCell.setCellValue(chieuDai);
                         if (chieuDai != 0) {
                             setNumericCellFormat(destCell, chieuDai);
@@ -5765,11 +5765,11 @@ if (expr != null && (expr.contains("table.")
             }
 
             // ── Wharves (Cầu cảng) under this berth ──
-            List<com.hanghai.kchtg.cangben.entity.CauCang> wharves =
-                    cauCangRepository.findByBenCangIdAndDeletedAtIsNull(berth.getId());
-            for (com.hanghai.kchtg.cangben.entity.CauCang wharf : wharves) {
-                double dwtWharf = wharf.getTaiTrong() != null
-                        ? wharf.getTaiTrong().doubleValue() : 0.0;
+            List<com.hanghai.kchtg.cangben.entity.Pier> wharves =
+                    cauCangRepository.findByBerthIdAndDeletedAtIsNull(berth.getId());
+            for (com.hanghai.kchtg.cangben.entity.Pier wharf : wharves) {
+                double dwtWharf = wharf.getDesignLoad() != null
+                        ? wharf.getDesignLoad().doubleValue() : 0.0;
 
                 Row wharfRow = destSheet.createRow(currentDestRow++);
                 wharfRow.setHeight(wharfTemplateRow.getHeight());
@@ -5781,7 +5781,7 @@ if (expr != null && (expr.contains("table.")
                         if (c == 0) {
                             destCell.setCellValue("");
                         } else if (c == 1) {
-                            destCell.setCellValue("        " + (wharf.getTenCau() != null ? wharf.getTenCau() : ""));
+                            destCell.setCellValue("        " + (wharf.getPierName() != null ? wharf.getPierName() : ""));
                         } else if (c == 2) {
                             destCell.setCellValue("");
                         } else if (c == 3) {
@@ -5789,7 +5789,7 @@ if (expr != null && (expr.contains("table.")
                         } else if (c == 4) {
                             destCell.setCellValue("");
                         } else if (c == 5) {
-                            destCell.setCellValue(wharf.getCongNangKhaiThac() != null ? wharf.getCongNangKhaiThac() : "");
+                            destCell.setCellValue(wharf.getOperationalFunction() != null ? wharf.getOperationalFunction() : "");
                         } else if (c == 6) {
                             destCell.setCellValue("");
                         } else if (c == 7) {
@@ -5797,7 +5797,7 @@ if (expr != null && (expr.contains("table.")
                         } else if (c == 8) {
                             destCell.setCellValue("tấn/năm");
                         } else if (c == 9) {
-                            double chieuDaiWharf = wharf.getChieuDai() != null ? wharf.getChieuDai().doubleValue() : 0.0;
+                            double chieuDaiWharf = wharf.getLength() != null ? wharf.getLength().doubleValue() : 0.0;
                             destCell.setCellValue(chieuDaiWharf);
                             if (chieuDaiWharf != 0) {
                                 setNumericCellFormat(destCell, chieuDaiWharf);

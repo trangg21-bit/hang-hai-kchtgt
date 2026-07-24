@@ -45,7 +45,6 @@ export interface HeThongVTSResponse {
   khongGianId?: string;
   loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
   toaDo?: string;
-  bieuTuongId?: string;
 }
 
 export interface CreateHeThongVTSRequest {
@@ -59,7 +58,6 @@ export interface CreateHeThongVTSRequest {
   phamViApDung?: string;
   loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
   toaDo?: string;
-  bieuTuongId?: string;
 }
 
 export interface UpdateHeThongVTSRequest extends CreateHeThongVTSRequest {}

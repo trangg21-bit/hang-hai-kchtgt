@@ -1,0 +1,98 @@
+// ── WaterZone Zod schemas ─────────────────────────────────────────────
+
+import { z } from 'zod';
+
+// ── Create schema ─────────────────────────────────────────────────────
+
+export const vungNuocCreateSchema = z.object({
+  waterZoneCode: z
+    .string()
+    .min(1, 'Mã vùng nước không được để trống')
+    .max(50, 'Mã vùng nước tối đa 50 ký tự'),
+  waterZoneName: z
+    .string()
+    .min(1, 'Tên vùng nước không được để trống')
+    .max(255, 'Tên vùng nước tối đa 255 ký tự'),
+  portId: z.string().uuid('Cảng biển chủ phải là UUID hợp lệ'),
+  area: z.coerce.number().optional().nullable(),
+  doSauMax: z.coerce.number().optional().nullable(),
+  doSauTrungBinh: z.coerce.number().optional().nullable(),
+  loaiVungNuoc: z.enum(['NEO_DAU', 'KIEM_DICH', 'DON_TRA_HOA_TIEU', 'QUAY_TRO_TAU', 'BEN_PHAO', 'CHUYEN_TAI', 'TRANH_BAO']).optional().nullable(),
+  operationalStatus: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional().default('HIEN_HANH'),
+  bieuTuongId: z.string().uuid().optional().or(z.literal('')),
+  loaiHinhHoc: z.string().optional(),
+  toaDo: z.string().optional(),
+});
+
+export type VungNuocCreateValues = z.infer<typeof vungNuocCreateSchema>;
+
+// ── Update schema ─────────────────────────────────────────────────────
+
+export const vungNuocUpdateSchema = z.object({
+  id: z.string().uuid('ID không được để trống'),
+  waterZoneName: z
+    .string()
+    .max(255, 'Tên vùng nước tối đa 255 ký tự')
+    .optional()
+    .nullable(),
+  portId: z.string().uuid('Cảng biển chủ phải là UUID hợp lệ').optional().nullable(),
+  area: z.coerce.number().optional().nullable(),
+  doSauMax: z.coerce.number().optional().nullable(),
+  doSauTrungBinh: z.coerce.number().optional().nullable(),
+  loaiVungNuoc: z.enum(['NEO_DAU', 'KIEM_DICH', 'DON_TRA_HOA_TIEU', 'QUAY_TRO_TAU', 'BEN_PHAO', 'CHUYEN_TAI', 'TRANH_BAO']).optional().nullable(),
+  operationalStatus: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
+  bieuTuongId: z.string().uuid().optional().nullable(),
+  loaiHinhHoc: z.string().optional(),
+  toaDo: z.string().optional(),
+});
+
+export type VungNuocUpdateValues = z.infer<typeof vungNuocUpdateSchema>;
+
+// ── Reject schema (for approve page) ──────────────────────────────────
+
+export const rejectSchema = z.object({
+  reason: z
+    .string()
+    .min(10, 'Lý do từ chối tối thiểu 10 ký tự')
+    .max(500, 'Lý do từ chối tối đa 500 ký tự'),
+  confirmed: z.boolean().refine((val) => val === true, {
+    message: 'Bạn cần xác nhận hành động này',
+  }),
+});
+
+export type RejectValues = z.infer<typeof rejectSchema>;
+
+// ── Approve confirm schema ────────────────────────────────────────────
+
+export const approveConfirmSchema = z.object({
+  confirmed: z.boolean().refine((val) => val === true, {
+    message: 'Bạn cần xác nhận hành động này',
+  }),
+});
+
+export type ApproveConfirmValues = z.infer<typeof approveConfirmSchema>;
+
+// ── Delete confirm schema ─────────────────────────────────────────────
+
+export const deleteConfirmSchema = z.object({
+  confirmed: z.boolean().refine((val) => val === true, {
+    message: 'Bạn cần xác nhận để xóa',
+  }),
+});
+
+export type DeleteConfirmValues = z.infer<typeof deleteConfirmSchema>;
+
+// ── List filters schema ───────────────────────────────────────────────
+
+export const listFiltersSchema = z.object({
+  search: z.string().optional(),
+  status: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
+  approvalStatus: z.enum(['CHO_PHE_DUYET', 'DUOC_PHE_DUYET', 'TU_CHOI']).optional(),
+  portId: z.string().uuid().optional(),
+  sortBy: z.enum(['waterZoneCode', 'waterZoneName', 'createdAt', 'updatedAt']).default('createdAt'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+  page: z.coerce.number().int().min(0).default(0),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export type ListFilters = z.infer<typeof listFiltersSchema>;
