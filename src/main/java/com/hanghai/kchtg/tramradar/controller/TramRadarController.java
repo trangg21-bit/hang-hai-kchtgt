@@ -91,7 +91,7 @@ public class TramRadarController {
     @PreAuthorize("@auth.check(authentication, 'tramradar:approvec1')")
     @PostMapping("/{id}/approve/c1")
     public ResponseEntity<ApiResponse<TramRadarResponse>> approveC1(@PathVariable java.util.UUID id,
-                                       @Valid @RequestBody PheDuyetRequest request,
+                                       @Valid @RequestBody ApprovalRequest request,
                                        Authentication authentication) {
         try {
             String username = authentication != null ? authentication.getName() : "system";
@@ -106,7 +106,7 @@ public class TramRadarController {
     @PreAuthorize("@auth.check(authentication, 'tramradar:approvec2')")
     @PostMapping("/{id}/approve/c2")
     public ResponseEntity<ApiResponse<TramRadarResponse>> approveC2(@PathVariable java.util.UUID id,
-                                       @Valid @RequestBody PheDuyetRequest request,
+                                       @Valid @RequestBody ApprovalRequest request,
                                        Authentication authentication) {
         try {
             String username = authentication != null ? authentication.getName() : "system";

@@ -63,8 +63,8 @@ import NavigationChannelList from './pages/navigationchannel/NavigationChannelLi
 import NavigationChannelForm from './pages/navigationchannel/NavigationChannelForm';
 import DikeRevetmentList from './pages/dikerevetment/DikeRevetmentList';
 import DikeRevetmentForm from './pages/dikerevetment/DikeRevetmentForm';
-import CoSuaChuaList from './pages/cosuachua/CoSuaChuaList';
-import CoSuaChuaForm from './pages/cosuachua/CoSuaChuaForm';
+import ShipRepairFacilityList from './pages/shiprepair/ShipRepairFacilityList';
+import ShipRepairFacilityForm from './pages/shiprepair/ShipRepairFacilityForm';
 import TramRadarList from './pages/tramradar/TramRadarList';
 import TramRadarForm from './pages/tramradar/TramRadarForm';
 import HeThongVTSList from './pages/hethongvts/HeThongVTSList';
@@ -207,9 +207,9 @@ export default function App() {
                 <Route path="/dike-revetment/:id" element={<PermissionGuard permission="dikerevetment:read"><DikeRevetmentForm /></PermissionGuard>} />
 
                 {/* Cơ sở sửa chữa/đóng tàu */}
-                <Route path="/co-so-sua-chua" element={<PermissionGuard permission="cosuachua:read"><CoSuaChuaList /></PermissionGuard>} />
-                <Route path="/co-so-sua-chua/create" element={<PermissionGuard permission="cosuachua:create"><CoSuaChuaForm /></PermissionGuard>} />
-                <Route path="/co-so-sua-chua/:id" element={<PermissionGuard permission="cosuachua:read"><CoSuaChuaForm /></PermissionGuard>} />
+                <Route path="/ship-repair-facility" element={<PermissionGuard permission="shiprepair:read"><ShipRepairFacilityList /></PermissionGuard>} />
+                <Route path="/ship-repair-facility/create" element={<PermissionGuard permission="shiprepair:create"><ShipRepairFacilityForm /></PermissionGuard>} />
+                <Route path="/ship-repair-facility/:id" element={<PermissionGuard permission="shiprepair:read"><ShipRepairFacilityForm /></PermissionGuard>} />
 
                 {/* Trạm radar */}
                 <Route path="/tram-radar" element={<PermissionGuard permission="tramradar:read"><TramRadarList /></PermissionGuard>} />

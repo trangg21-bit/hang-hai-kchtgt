@@ -2,7 +2,7 @@ package com.hanghai.kchtg.tramradar.service;
 
 import com.hanghai.kchtg.tramradar.dto.*;
 import com.hanghai.kchtg.tramradar.entity.*;
-import com.hanghai.kchtg.tramradar.repository.PheDuyetLichSuRepository;
+import com.hanghai.kchtg.tramradar.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.tramradar.repository.TramRadarRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,7 +33,7 @@ class TramRadarServiceTest {
     private TramRadarRepository repository;
 
     @Mock
-    private PheDuyetLichSuRepository historyRepository;
+    private ApprovalHistoryRepository historyRepository;
 
     @Mock
     private com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
@@ -79,7 +79,7 @@ class TramRadarServiceTest {
                 .nguoiTao("user1").attachments(new java.util.ArrayList<>()).build();
 
         when(repository.save(any())).thenReturn(saved);
-        when(historyRepository.save(any())).thenReturn(mock(PheDuyetLichSu.class));
+        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
         TramRadarResponse response = service.create(createRequest, "user1");
         assertNotNull(response);
@@ -107,7 +107,7 @@ class TramRadarServiceTest {
                 .tenTram("Tram mới").build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
-        when(historyRepository.save(any())).thenReturn(mock(PheDuyetLichSu.class));
+        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
         TramRadarResponse response = service.update(TEST_ID, updateReq, "user1");
         assertNotNull(response);
@@ -123,7 +123,7 @@ class TramRadarServiceTest {
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(approvedEntity));
         when(repository.save(any())).thenReturn(approvedEntity);
-        when(historyRepository.save(any())).thenReturn(mock(PheDuyetLichSu.class));
+        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
         service.delete(TEST_ID, "user1");
         assertTrue(approvedEntity.getIsDeleted());
@@ -137,10 +137,10 @@ class TramRadarServiceTest {
 
     @Test
     void testApproveC1_Approve() {
-        PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
+        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
-        when(historyRepository.save(any())).thenReturn(mock(PheDuyetLichSu.class));
+        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
         TramRadarResponse response = service.approveC1(TEST_ID, req, "admin");
         assertEquals(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.UNDER_REVIEW, entity.getTrangThai());
@@ -150,10 +150,10 @@ class TramRadarServiceTest {
     @Test
     void testApproveC2_Approve() {
         entity.setTrangThai(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.UNDER_REVIEW);
-        PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
+        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
-        when(historyRepository.save(any())).thenReturn(mock(PheDuyetLichSu.class));
+        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
         TramRadarResponse response = service.approveC2(TEST_ID, req, "director");
         assertEquals(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.APPROVED, entity.getTrangThai());
@@ -165,7 +165,7 @@ class TramRadarServiceTest {
         entity.setTrangThai(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.UNDER_REVIEW);
         entity.setPheDuyetC1(true);
         entity.setNguoiPheDuyetC1("user1");
-        PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
+        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
 
@@ -176,10 +176,10 @@ class TramRadarServiceTest {
 
     @Test
     void testRejectC1() {
-        PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("REJECTED").lyDo("Không đủ điều kiện").build();
+        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("REJECTED").reason("Không đủ điều kiện").build();
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
         when(repository.save(any())).thenReturn(entity);
-        when(historyRepository.save(any())).thenReturn(mock(PheDuyetLichSu.class));
+        when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
         TramRadarResponse response = service.approveC1(TEST_ID, req, "admin");
         assertEquals(com.hanghai.kchtg.tramradar.entity.TramRadarApprovalStatus.REJECTED, entity.getTrangThai());
@@ -188,16 +188,16 @@ class TramRadarServiceTest {
 
     @Test
     void testGetHistory() {
-        PheDuyetLichSu history = PheDuyetLichSu.builder()
-                .id(1L).tramRadarId(TEST_ID).capPheDuyet(1)
-                .trangThai("APPROVED").nguoiPheDuyet("admin")
-                .ngayPheDuyet(LocalDateTime.now()).lyDo("Duyệt").build();
-        when(historyRepository.findByTramRadarIdOrderByNgayPheDuyetDesc(TEST_ID)).thenReturn(Arrays.asList(history));
+        ApprovalHistory history = ApprovalHistory.builder()
+                .id(1L).tramRadarId(TEST_ID).approvalLevel(1)
+                .status("APPROVED").approvedBy("admin")
+                .approvedDate(LocalDateTime.now()).reason("Duyệt").build();
+        when(historyRepository.findByTramRadarIdOrderByApprovedDateDesc(TEST_ID)).thenReturn(Arrays.asList(history));
 
         List<HistoryEntry> entries = service.getHistory(TEST_ID);
         assertNotNull(entries);
         assertEquals(1, entries.size());
-        assertEquals("admin", entries.get(0).getNguoiPheDuyet());
+        assertEquals("admin", entries.get(0).getApprovedBy());
     }
 
     @Test

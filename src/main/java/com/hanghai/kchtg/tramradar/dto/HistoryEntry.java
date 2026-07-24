@@ -9,9 +9,9 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class HistoryEntry {
     private Long id;
-    private Integer capPheDuyet;
-    private String trangThai;
-    private String nguoiPheDuyet;
-    private LocalDateTime ngayPheDuyet;
-    private String lyDo;
+    private Integer approvalLevel;
+    private String status;
+    private String approvedBy;
+    private LocalDateTime approvedDate;
+    private String reason;
 }

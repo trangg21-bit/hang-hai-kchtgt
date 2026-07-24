@@ -96,7 +96,7 @@ class HeThongVTSControllerTest {
 
     @Test
     void testApproveC1() {
-        PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
+        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
         when(service.approveC1(eq(TEST_ID), any(), anyString())).thenReturn(response);
         ResponseEntity<?> result = controller.approveC1(TEST_ID, req, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
@@ -104,7 +104,7 @@ class HeThongVTSControllerTest {
 
     @Test
     void testApproveC2() {
-        PheDuyetRequest req = PheDuyetRequest.builder().quyetDinh("APPROVED").build();
+        ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
         when(service.approveC2(eq(TEST_ID), any(), anyString())).thenReturn(response);
         ResponseEntity<?> result = controller.approveC2(TEST_ID, req, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());

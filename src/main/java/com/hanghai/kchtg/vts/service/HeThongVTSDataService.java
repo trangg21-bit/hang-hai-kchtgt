@@ -2,7 +2,7 @@ package com.hanghai.kchtg.vts.service;
 
 import com.hanghai.kchtg.vts.dto.*;
 import com.hanghai.kchtg.vts.entity.*;
-import com.hanghai.kchtg.vts.repository.PheDuyetLichSuRepository;
+import com.hanghai.kchtg.vts.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.vts.repository.HeThongVTSRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,11 +21,11 @@ import java.util.stream.Collectors;
 public class HeThongVTSDataService {
 
     private final HeThongVTSRepository repository;
-    private final PheDuyetLichSuRepository historyRepository;
+    private final ApprovalHistoryRepository historyRepository;
     private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
 
     public HeThongVTSDataService(HeThongVTSRepository repository,
-                                PheDuyetLichSuRepository historyRepository,
+                                ApprovalHistoryRepository historyRepository,
                                 com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService) {
         this.repository = repository;
         this.historyRepository = historyRepository;
@@ -69,12 +69,12 @@ public class HeThongVTSDataService {
             saved = repository.save(saved);
         }
 
-        historyRepository.save(PheDuyetLichSu.builder()
+        historyRepository.save(ApprovalHistory.builder()
                 .heThongVTSId(saved.getId())
-                .capPheDuyet(0)
-                .trangThai("CREATED")
-                .nguoiPheDuyet(username)
-                .lyDo("Tạo mới hệ thống VTS")
+                .approvalLevel(0)
+                .status("CREATED")
+                .approvedBy(username)
+                .reason("Tạo mới hệ thống VTS")
                 .build());
 
         return toResponse(saved);
@@ -162,12 +162,12 @@ public class HeThongVTSDataService {
 
         HeThongVTS saved = repository.save(entity);
 
-        historyRepository.save(PheDuyetLichSu.builder()
+        historyRepository.save(ApprovalHistory.builder()
                 .heThongVTSId(saved.getId())
-                .capPheDuyet(0)
-                .trangThai("UPDATED")
-                .nguoiPheDuyet(username)
-                .lyDo("Cập nhật thông tin")
+                .approvalLevel(0)
+                .status("UPDATED")
+                .approvedBy(username)
+                .reason("Cập nhật thông tin")
                 .build());
 
         return toResponse(saved);
@@ -185,16 +185,16 @@ public class HeThongVTSDataService {
         entity.setNguoiSuaDoi(username);
         repository.save(entity);
 
-        historyRepository.save(PheDuyetLichSu.builder()
+        historyRepository.save(ApprovalHistory.builder()
                 .heThongVTSId(entity.getId())
-                .capPheDuyet(0)
-                .trangThai("DELETED")
-                .nguoiPheDuyet(username)
-                .lyDo("Xóa bản ghi")
+                .approvalLevel(0)
+                .status("DELETED")
+                .approvedBy(username)
+                .reason("Xóa bản ghi")
                 .build());
     }
 
-    public HeThongVTSResponse approveC1(UUID id, PheDuyetRequest request, String username) {
+    public HeThongVTSResponse approveC1(UUID id, ApprovalRequest request, String username) {
         HeThongVTS entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
@@ -204,7 +204,7 @@ public class HeThongVTSDataService {
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
             entity.setTrangThai(HeThongVTSApprovalStatus.REJECTED);
-            entity.setLyDoTuChoi(request.getLyDo());
+            entity.setLyDoTuChoi(request.getReason());
         } else {
             entity.setTrangThai(HeThongVTSApprovalStatus.UNDER_REVIEW);
         }
@@ -215,18 +215,18 @@ public class HeThongVTSDataService {
 
         HeThongVTS saved = repository.save(entity);
 
-        historyRepository.save(PheDuyetLichSu.builder()
+        historyRepository.save(ApprovalHistory.builder()
                 .heThongVTSId(saved.getId())
-                .capPheDuyet(1)
-                .trangThai(request.getQuyetDinh())
-                .nguoiPheDuyet(username)
-                .lyDo(request.getLyDo())
+                .approvalLevel(1)
+                .status(request.getQuyetDinh())
+                .approvedBy(username)
+                .reason(request.getReason())
                 .build());
 
         return toResponse(saved);
     }
 
-    public HeThongVTSResponse approveC2(UUID id, PheDuyetRequest request, String username) {
+    public HeThongVTSResponse approveC2(UUID id, ApprovalRequest request, String username) {
         HeThongVTS entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
 
@@ -241,7 +241,7 @@ public class HeThongVTSDataService {
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
             entity.setTrangThai(HeThongVTSApprovalStatus.REJECTED);
-            entity.setLyDoTuChoi(request.getLyDo());
+            entity.setLyDoTuChoi(request.getReason());
         } else {
             entity.setTrangThai(HeThongVTSApprovalStatus.APPROVED);
         }
@@ -252,12 +252,12 @@ public class HeThongVTSDataService {
 
         HeThongVTS saved = repository.save(entity);
 
-        historyRepository.save(PheDuyetLichSu.builder()
+        historyRepository.save(ApprovalHistory.builder()
                 .heThongVTSId(saved.getId())
-                .capPheDuyet(2)
-                .trangThai(request.getQuyetDinh())
-                .nguoiPheDuyet(username)
-                .lyDo(request.getLyDo())
+                .approvalLevel(2)
+                .status(request.getQuyetDinh())
+                .approvedBy(username)
+                .reason(request.getReason())
                 .build());
 
         return toResponse(saved);
@@ -266,14 +266,14 @@ public class HeThongVTSDataService {
     public List<HistoryEntry> getHistory(UUID id) {
         repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Hệ thống VTS với ID: " + id));
-        return historyRepository.findByHeThongVTSIdOrderByNgayPheDuyetDesc(id).stream()
+        return historyRepository.findByHeThongVTSIdOrderByApprovedDateDesc(id).stream()
                 .map(h -> HistoryEntry.builder()
                         .id(h.getId())
-                        .capPheDuyet(h.getCapPheDuyet())
-                        .trangThai(h.getTrangThai())
-                        .nguoiPheDuyet(h.getNguoiPheDuyet())
-                        .ngayPheDuyet(h.getNgayPheDuyet())
-                        .lyDo(h.getLyDo())
+                        .approvalLevel(h.getApprovalLevel())
+                        .status(h.getStatus())
+                        .approvedBy(h.getApprovedBy())
+                        .approvedDate(h.getApprovedDate())
+                        .reason(h.getReason())
                         .build())
                 .collect(Collectors.toList());
     }

@@ -50,10 +50,10 @@ public class MaritimeFacilityIntegrationController {
         return ResponseEntity.ok(facilityService.integrateKhuNeoDau(request));
     }
 
-    @PostMapping("/co-so-sua-chua")
-    public ResponseEntity<SystemIntegrationResponse> integrateCoSoSuaChua(
+    @PostMapping("/ship-repair-facility")
+    public ResponseEntity<SystemIntegrationResponse> integrateShipRepairFacility(
             @RequestBody SystemIntegrationRequest request) {
-        return ResponseEntity.ok(facilityService.integrateCoSoSuaChua(request));
+        return ResponseEntity.ok(facilityService.integrateShipRepairFacility(request));
     }
 
     @PostMapping("/dike-revetment")

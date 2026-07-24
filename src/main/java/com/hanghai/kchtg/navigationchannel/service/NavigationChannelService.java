@@ -3,7 +3,7 @@ package com.hanghai.kchtg.navigationchannel.service;
 import com.hanghai.kchtg.navigationchannel.dto.*;
 import com.hanghai.kchtg.navigationchannel.entity.*;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
-import com.hanghai.kchtg.navigationchannel.repository.PheDuyetLichSuRepository;
+import com.hanghai.kchtg.navigationchannel.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 public class NavigationChannelService {
 
     private final NavigationChannelRepository repo;
-    private final PheDuyetLichSuRepository pheDuyetLichSuRepo;
+    private final ApprovalHistoryRepository approvalHistoryRepo;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitRepository orgUnitRepository;
 
@@ -214,7 +214,7 @@ public class NavigationChannelService {
     }
 
     @Transactional
-    public PheDuyetResponse approveC1(UUID id, PheDuyetRequest req, String approvedBy) {
+    public ApprovalResponse approveC1(UUID id, ApprovalRequest req, String approvedBy) {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -227,19 +227,19 @@ public class NavigationChannelService {
         nc.setApproverLevel1(approvedBy);
         nc.setApprovedDateLevel1(LocalDate.now());
 
-        if ("APPROVED".equalsIgnoreCase(req.getTrangThai())) {
+        if ("APPROVED".equalsIgnoreCase(req.getStatus())) {
             nc.setApprovalStatus(NavigationChannelApprovalStatus.UNDER_REVIEW);
         } else {
             nc.setApprovalStatus(NavigationChannelApprovalStatus.REJECTED);
-            nc.setRejectionReason(req.getLyDo());
+            nc.setRejectionReason(req.getReason());
         }
 
-        saveApprovalHistory(nc, 1, req.getTrangThai(), approvedBy, req.getLyDo());
-        return buildPheDuyetResponse(nc, 1);
+        saveApprovalHistory(nc, 1, req.getStatus(), approvedBy, req.getReason());
+        return buildApprovalResponse(nc, 1);
     }
 
     @Transactional
-    public PheDuyetResponse approveC2(UUID id, PheDuyetRequest req, String approvedBy) {
+    public ApprovalResponse approveC2(UUID id, ApprovalRequest req, String approvedBy) {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -256,52 +256,52 @@ public class NavigationChannelService {
         nc.setApproverLevel2(approvedBy);
         nc.setApprovedDateLevel2(LocalDate.now());
 
-        if ("APPROVED".equalsIgnoreCase(req.getTrangThai())) {
+        if ("APPROVED".equalsIgnoreCase(req.getStatus())) {
             nc.setApprovalStatus(NavigationChannelApprovalStatus.APPROVED);
         } else {
             nc.setApprovalStatus(NavigationChannelApprovalStatus.REJECTED);
-            nc.setRejectionReason(req.getLyDo());
+            nc.setRejectionReason(req.getReason());
         }
 
-        saveApprovalHistory(nc, 2, req.getTrangThai(), approvedBy, req.getLyDo());
-        return buildPheDuyetResponse(nc, 2);
+        saveApprovalHistory(nc, 2, req.getStatus(), approvedBy, req.getReason());
+        return buildApprovalResponse(nc, 2);
     }
 
     @Transactional
-    public PheDuyetResponse reject(UUID id, PheDuyetRequest req, String approvedBy) {
+    public ApprovalResponse reject(UUID id, ApprovalRequest req, String approvedBy) {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
         nc.setApprovalStatus(NavigationChannelApprovalStatus.REJECTED);
-        nc.setRejectionReason(req.getLyDo());
+        nc.setRejectionReason(req.getReason());
 
-        Integer cap = req.getCapPheDuyet() != null ? req.getCapPheDuyet() : 1;
-        saveApprovalHistory(nc, cap, "REJECTED", approvedBy, req.getLyDo());
-        return buildPheDuyetResponse(nc, cap);
+        Integer cap = req.getApprovalLevel() != null ? req.getApprovalLevel() : 1;
+        saveApprovalHistory(nc, cap, "REJECTED", approvedBy, req.getReason());
+        return buildApprovalResponse(nc, cap);
     }
 
     private void saveApprovalHistory(NavigationChannel nc, Integer cap, String status, String user, String reason) {
-        PheDuyetLichSu hist = PheDuyetLichSu.builder()
+        ApprovalHistory hist = ApprovalHistory.builder()
                 .navigationChannel(nc)
-                .capPheDuyet(cap)
-                .trangThai(status)
-                .nguoiPheDuyet(user)
-                .ngayPheDuyet(LocalDate.now())
-                .lyDo(reason)
+                .approvalLevel(cap)
+                .status(status)
+                .approvedBy(user)
+                .approvedDate(LocalDate.now())
+                .reason(reason)
                 .build();
-        pheDuyetLichSuRepo.save(hist);
+        approvalHistoryRepo.save(hist);
         nc.getApprovalHistory().add(hist);
     }
 
-    private PheDuyetResponse buildPheDuyetResponse(NavigationChannel nc, Integer cap) {
-        return PheDuyetResponse.builder()
+    private ApprovalResponse buildApprovalResponse(NavigationChannel nc, Integer cap) {
+        return ApprovalResponse.builder()
                 .id(String.valueOf(nc.getId()))
                 .navigationChannelId(nc.getId())
-                .capPheDuyet(cap)
-                .trangThai(nc.getApprovalStatus().name())
-                .nguoiPheDuyet(cap == 1 ? nc.getApproverLevel1() : nc.getApproverLevel2())
-                .ngayPheDuyet(cap == 1 ? nc.getApprovedDateLevel1() : nc.getApprovedDateLevel2())
-                .lyDo(nc.getRejectionReason())
+                .approvalLevel(cap)
+                .status(nc.getApprovalStatus().name())
+                .approvedBy(cap == 1 ? nc.getApproverLevel1() : nc.getApproverLevel2())
+                .approvedDate(cap == 1 ? nc.getApprovedDateLevel1() : nc.getApprovedDateLevel2())
+                .reason(nc.getRejectionReason())
                 .build();
     }
 
@@ -310,15 +310,15 @@ public class NavigationChannelService {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
-        List<PheDuyetLichSu> history = pheDuyetLichSuRepo.findByNavigationChannelIdOrderByNgayPheDuyetDesc(id);
+        List<ApprovalHistory> history = approvalHistoryRepo.findByNavigationChannelIdOrderByApprovedDateDesc(id);
         return history.stream().map(h -> HistoryEntry.builder()
                 .id(h.getId())
                 .navigationChannelId(h.getNavigationChannel().getId())
-                .capPheDuyet(h.getCapPheDuyet())
-                .trangThai(h.getTrangThai())
-                .nguoiPheDuyet(h.getNguoiPheDuyet())
-                .ngayPheDuyet(h.getNgayPheDuyet())
-                .lyDo(h.getLyDo())
+                .approvalLevel(h.getApprovalLevel())
+                .status(h.getStatus())
+                .approvedBy(h.getApprovedBy())
+                .approvedDate(h.getApprovedDate())
+                .reason(h.getReason())
                 .build()).collect(Collectors.toList());
     }
 
@@ -364,16 +364,16 @@ public class NavigationChannelService {
                         .collect(Collectors.toList())
                 : new ArrayList<>();
 
-        List<PheDuyetResponse> hist = nc.getApprovalHistory() != null
+        List<ApprovalResponse> hist = nc.getApprovalHistory() != null
                 ? nc.getApprovalHistory().stream()
-                        .map(h -> PheDuyetResponse.builder()
+                        .map(h -> ApprovalResponse.builder()
                                 .id(String.valueOf(h.getId()))
                                 .navigationChannelId(h.getNavigationChannel().getId())
-                                .capPheDuyet(h.getCapPheDuyet())
-                                .trangThai(h.getTrangThai())
-                                .nguoiPheDuyet(h.getNguoiPheDuyet())
-                                .ngayPheDuyet(h.getNgayPheDuyet())
-                                .lyDo(h.getLyDo())
+                                .approvalLevel(h.getApprovalLevel())
+                                .status(h.getStatus())
+                                .approvedBy(h.getApprovedBy())
+                                .approvedDate(h.getApprovedDate())
+                                .reason(h.getReason())
                                 .build())
                         .collect(Collectors.toList())
                 : new ArrayList<>();

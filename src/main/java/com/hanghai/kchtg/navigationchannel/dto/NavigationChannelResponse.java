@@ -43,7 +43,7 @@ public class NavigationChannelResponse {
     private String createdBy;
     private String updatedBy;
     private List<NavigationChannelAttachmentResponse> attachments;
-    private List<PheDuyetResponse> approvalHistory;
+    private List<ApprovalResponse> approvalHistory;
     private List<HistoryEntry> history;
     private String clearanceHeight;
     private List<ChiTietTuyenLuongResponse> chiTietTuyenLuongList;

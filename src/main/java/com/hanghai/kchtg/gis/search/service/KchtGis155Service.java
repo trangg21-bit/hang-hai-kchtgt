@@ -5,8 +5,8 @@ import com.hanghai.kchtg.cangben.repository.*;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.repository.DikeRevetmentRepository;
-import com.hanghai.kchtg.cosuachua.entity.CoSuaChuaDongTau;
-import com.hanghai.kchtg.cosuachua.repository.CoSuaChuaDongTauRepository;
+import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairFacility;
+import com.hanghai.kchtg.shiprepairfacility.repository.ShipRepairFacilityRepository;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
 import com.hanghai.kchtg.nhatram.entity.NhaTramDen;
@@ -60,7 +60,7 @@ public class KchtGis155Service {
     private final WaterZoneRepository waterZoneRepository;
     private final NavigationChannelRepository navigationChannelRepository;
     private final DikeRevetmentRepository dikeRevetmentRepository;
-    private final CoSuaChuaDongTauRepository coSuaChuaDongTauRepository;
+    private final ShipRepairFacilityRepository shipRepairFacilityRepository;
     private final NhaTramDenRepository nhaTramDenRepository;
     private final NhaTramPhaoRepository nhaTramPhaoRepository;
     private final HeThongVTSRepository heThongVTSRepository;
@@ -698,37 +698,37 @@ public class KchtGis155Service {
  
                 case COSO_SUACHUA:
                     String csSearchParam = (searchLower == null) ? null : "%" + searchLower + "%";
-                    List<CoSuaChuaDongTau> csList = coSuaChuaDongTauRepository.searchFiltered(orgUnitId, csSearchParam);
+                    List<ShipRepairFacility> csList = shipRepairFacilityRepository.searchFiltered(orgUnitId, csSearchParam);
                     Map<UUID, GisSpatialObject> csSpatialMap = new HashMap<>();
                     if (!csList.isEmpty()) {
-                        List<UUID> csSpatialIds = csList.stream().map(CoSuaChuaDongTau::getKhongGianId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
+                        List<UUID> csSpatialIds = csList.stream().map(ShipRepairFacility::getSpatialId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                         if (!csSpatialIds.isEmpty()) {
                             gisSpatialObjectRepository.findAllById(csSpatialIds).forEach(so -> csSpatialMap.put(so.getId(), so));
                         }
                     }
-                    for (CoSuaChuaDongTau cs : csList) {
-                        GisSpatialObject spatial = csSpatialMap.get(cs.getKhongGianId());
+                    for (ShipRepairFacility cs : csList) {
+                        GisSpatialObject spatial = csSpatialMap.get(cs.getSpatialId());
                         double[] coords = spatial != null ? parseFirstCoordinateFromWkt(spatial.getCoordinates()) : null;
                         Double lat = coords != null ? coords[0] : null;
                         Double lng = coords != null ? coords[1] : null;
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(String.valueOf(cs.getId()))
-                                .name(cs.getTenCoSo())
+                                .name(cs.getFacilityName())
                                 .ma("COSO_" + cs.getId())
                                 .orgName(getOrgName(cs.getOrgUnitId(), orgNameMap))
                                 .kchtTypeLabel("Cơ sở sửa chữa")
-                                .diaDiem(cs.getTinhThanh() != null ? cs.getTinhThanh() : "")
-                                .diaChiChiTiet(cs.getDiaChi() != null ? cs.getDiaChi() : "")
+                                .diaDiem(cs.getProvince() != null ? cs.getProvince() : "")
+                                .diaChiChiTiet(cs.getAddress() != null ? cs.getAddress() : "")
                                 .latitude(lat)
                                 .longitude(lng)
                                 .build();
                         if (objectType != null) {
-                            populateSpatialAndFilterFromMap(results, r, cs.getKhongGianId(), objectType, GisObjectType.POINT, csSpatialMap);
+                            populateSpatialAndFilterFromMap(results, r, cs.getSpatialId(), objectType, GisObjectType.POINT, csSpatialMap);
                         } else {
                             results.add(r);
-                            if (cs.getKhongGianId() != null) {
-                                spatialIdMap.put(r.getId(), cs.getKhongGianId());
+                            if (cs.getSpatialId() != null) {
+                                spatialIdMap.put(r.getId(), cs.getSpatialId());
                             }
                         }
                     }

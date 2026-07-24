@@ -88,7 +88,7 @@ public class HeThongVTSController {
     @PostMapping("/{id}/approve/c1")
     public ResponseEntity<ApiResponse<HeThongVTSResponse>> approveC1(
             @PathVariable java.util.UUID id,
-            @Valid @RequestBody PheDuyetRequest request,
+            @Valid @RequestBody ApprovalRequest request,
             Authentication authentication) {
         try {
             HeThongVTSResponse response = service.approveC1(id, request, authentication.getName());
@@ -102,7 +102,7 @@ public class HeThongVTSController {
     @PostMapping("/{id}/approve/c2")
     public ResponseEntity<ApiResponse<HeThongVTSResponse>> approveC2(
             @PathVariable java.util.UUID id,
-            @Valid @RequestBody PheDuyetRequest request,
+            @Valid @RequestBody ApprovalRequest request,
             Authentication authentication) {
         try {
             HeThongVTSResponse response = service.approveC2(id, request, authentication.getName());

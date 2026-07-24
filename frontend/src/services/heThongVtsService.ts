@@ -4,7 +4,7 @@ import type {
   HeThongVTSResponse,
   CreateHeThongVTSRequest,
   UpdateHeThongVTSRequest,
-  PheDuyetRequest,
+  ApprovalRequest,
   HistoryEntry,
   ListParams,
   SearchResponse,
@@ -73,12 +73,12 @@ export const heThongVTSCRUD = {
 };
 
 export const heThongVTSApproval = {
-  async approveC1(id: string, data: PheDuyetRequest): Promise<HeThongVTSResponse> {
+  async approveC1(id: string, data: ApprovalRequest): Promise<HeThongVTSResponse> {
     const res = await api.post(`/v1/he-thong-vts/${id}/approve/c1`, data);
     return toSingle<HeThongVTSResponse>(res.data) || {} as HeThongVTSResponse;
   },
 
-  async approveC2(id: string, data: PheDuyetRequest): Promise<HeThongVTSResponse> {
+  async approveC2(id: string, data: ApprovalRequest): Promise<HeThongVTSResponse> {
     const res = await api.post(`/v1/he-thong-vts/${id}/approve/c2`, data);
     return toSingle<HeThongVTSResponse>(res.data) || {} as HeThongVTSResponse;
   },

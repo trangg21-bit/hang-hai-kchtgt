@@ -62,18 +62,18 @@ export interface CreateHeThongVTSRequest {
 
 export interface UpdateHeThongVTSRequest extends CreateHeThongVTSRequest {}
 
-export interface PheDuyetRequest {
+export interface ApprovalRequest {
   quyetDinh: string;
-  lyDo?: string;
+  reason?: string;
 }
 
 export interface HistoryEntry {
   id: number;
-  capPheDuyet?: number;
-  trangThai: string;
-  nguoiPheDuyet: string;
-  ngayPheDuyet: string;
-  lyDo?: string;
+  approvalLevel?: number;
+  status: string;
+  approvedBy: string;
+  approvedDate: string;
+  reason?: string;
 }
 
 export interface ListParams {

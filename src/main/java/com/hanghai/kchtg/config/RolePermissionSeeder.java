@@ -185,20 +185,20 @@ public class RolePermissionSeeder implements CommandLineRunner {
         seedPermission(permissionsByCode, "dikerevetment", "history", "Xem lịch sử đề kế",
                 "Xem lịch sử thay đổi đề kế");
 
-        // cosuachua
-        seedPermission(permissionsByCode, "cosuachua", "create", "Tạo cơ sở chữa chạy",
+        // shiprepair
+        seedPermission(permissionsByCode, "shiprepair", "create", "Tạo cơ sở chữa chạy",
                 "Tạo mới cơ sở chữa chạy");
-        seedPermission(permissionsByCode, "cosuachua", "read", "Xem cơ sở chữa chạy",
+        seedPermission(permissionsByCode, "shiprepair", "read", "Xem cơ sở chữa chạy",
                 "Xem danh sách và chi tiết cơ sở chữa chạy");
-        seedPermission(permissionsByCode, "cosuachua", "update", "Cập nhật cơ sở chữa chạy",
+        seedPermission(permissionsByCode, "shiprepair", "update", "Cập nhật cơ sở chữa chạy",
                 "Chỉnh sửa cơ sở chữa chạy");
-        seedPermission(permissionsByCode, "cosuachua", "delete", "Xóa cơ sở chữa chạy",
+        seedPermission(permissionsByCode, "shiprepair", "delete", "Xóa cơ sở chữa chạy",
                 "Xóa cơ sở chữa chạy");
-        seedPermission(permissionsByCode, "cosuachua", "approvec1", "Phê duyệt C1 cơ sở chữa chạy",
+        seedPermission(permissionsByCode, "shiprepair", "approvec1", "Phê duyệt C1 cơ sở chữa chạy",
                 "Phê duyệt cấp 1 cơ sở chữa chạy");
-        seedPermission(permissionsByCode, "cosuachua", "approvec2", "Phê duyệt C2 cơ sở chữa chạy",
+        seedPermission(permissionsByCode, "shiprepair", "approvec2", "Phê duyệt C2 cơ sở chữa chạy",
                 "Phê duyệt cấp 2 cơ sở chữa chạy");
-        seedPermission(permissionsByCode, "cosuachua", "history", "Xem lịch sử cơ sở chữa chạy",
+        seedPermission(permissionsByCode, "shiprepair", "history", "Xem lịch sử cơ sở chữa chạy",
                 "Xem lịch sử thay đổi cơ sở chữa chạy");
 
         // tramradar
@@ -247,8 +247,8 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 "navigationchannel:approvec1", "navigationchannel:approvec2", "navigationchannel:history",
                 "dikerevetment:create", "dikerevetment:read", "dikerevetment:update", "dikerevetment:delete",
                 "dikerevetment:approvec1", "dikerevetment:approvec2", "dikerevetment:history",
-                "cosuachua:create", "cosuachua:read", "cosuachua:update", "cosuachua:delete",
-                "cosuachua:approvec1", "cosuachua:approvec2", "cosuachua:history",
+                "shiprepair:create", "shiprepair:read", "shiprepair:update", "shiprepair:delete",
+                "shiprepair:approvec1", "shiprepair:approvec2", "shiprepair:history",
                 "tramradar:create", "tramradar:read", "tramradar:update", "tramradar:delete",
                 "tramradar:approvec1", "tramradar:approvec2", "tramradar:history",
                 "vts:create", "vts:read", "vts:update", "vts:delete",
@@ -260,7 +260,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 // M-003 read + approve actions
                 "navigationchannel:read", "navigationchannel:approvec1", "navigationchannel:approvec2",
                 "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
-                "cosuachua:read", "cosuachua:approvec1", "cosuachua:approvec2",
+                "shiprepair:read", "shiprepair:approvec1", "shiprepair:approvec2",
                 "tramradar:read", "tramradar:approvec1", "tramradar:approvec2",
                 "vts:read", "vts:approvec1", "vts:approvec2"
         ));
@@ -269,7 +269,7 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 // M-003 read + approve actions
                 "navigationchannel:read", "navigationchannel:approvec1", "navigationchannel:approvec2",
                 "dikerevetment:read", "dikerevetment:approvec1", "dikerevetment:approvec2",
-                "cosuachua:read", "cosuachua:approvec1", "cosuachua:approvec2",
+                "shiprepair:read", "shiprepair:approvec1", "shiprepair:approvec2",
                 "tramradar:read", "tramradar:approvec1", "tramradar:approvec2",
                 "vts:read", "vts:approvec1", "vts:approvec2"
         ));
@@ -279,26 +279,26 @@ public class RolePermissionSeeder implements CommandLineRunner {
                 // M-003 create/read/update
                 "navigationchannel:create", "navigationchannel:read", "navigationchannel:update",
                 "dikerevetment:create", "dikerevetment:read", "dikerevetment:update",
-                "cosuachua:create", "cosuachua:read", "cosuachua:update",
+                "shiprepair:create", "shiprepair:read", "shiprepair:update",
                 "tramradar:create", "tramradar:read", "tramradar:update",
                 "vts:create", "vts:read", "vts:update"
         ));
         rolePermissionMap.put("ROLE_PORT_OPERATOR", List.of(
                 "orgunit:read", "data:read", "data:update",
                 // M-003 read only
-                "navigationchannel:read", "dikerevetment:read", "cosuachua:read",
+                "navigationchannel:read", "dikerevetment:read", "shiprepair:read",
                 "tramradar:read", "vts:read"
         ));
         rolePermissionMap.put("ROLE_PUBLIC_USER", List.of(
                 "orgunit:read", "data:read",
                 // M-003 read only
-                "navigationchannel:read", "dikerevetment:read", "cosuachua:read",
+                "navigationchannel:read", "dikerevetment:read", "shiprepair:read",
                 "tramradar:read", "vts:read"
         ));
         rolePermissionMap.put("ROLE_INTEGRATION", List.of(
                 "data:read", "data:write", "api:share",
                 // M-003 read only
-                "navigationchannel:read", "dikerevetment:read", "cosuachua:read",
+                "navigationchannel:read", "dikerevetment:read", "shiprepair:read",
                 "tramradar:read", "vts:read"
         ));
         rolePermissionMap.put("ROLE_SECURITY_MONITOR", List.of(

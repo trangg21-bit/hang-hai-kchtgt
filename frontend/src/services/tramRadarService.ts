@@ -4,7 +4,7 @@ import type {
   TramRadarResponse,
   CreateTramRadarRequest,
   UpdateTramRadarRequest,
-  PheDuyetRequest,
+  ApprovalRequest,
   HistoryEntry,
   ListParams,
   SearchResponse,
@@ -69,12 +69,12 @@ export const tramRadarCRUD = {
 };
 
 export const tramRadarApproval = {
-  async approveC1(id: string, data: PheDuyetRequest): Promise<TramRadarResponse> {
+  async approveC1(id: string, data: ApprovalRequest): Promise<TramRadarResponse> {
     const res = await api.post(`/v1/tram-radar/${id}/approve/c1`, data);
     return toSingle<TramRadarResponse>(res.data) || {} as TramRadarResponse;
   },
 
-  async approveC2(id: string, data: PheDuyetRequest): Promise<TramRadarResponse> {
+  async approveC2(id: string, data: ApprovalRequest): Promise<TramRadarResponse> {
     const res = await api.post(`/v1/tram-radar/${id}/approve/c2`, data);
     return toSingle<TramRadarResponse>(res.data) || {} as TramRadarResponse;
   },

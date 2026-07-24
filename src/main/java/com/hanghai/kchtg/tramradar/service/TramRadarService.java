@@ -2,7 +2,7 @@ package com.hanghai.kchtg.tramradar.service;
 
 import com.hanghai.kchtg.tramradar.dto.*;
 import com.hanghai.kchtg.tramradar.entity.*;
-import com.hanghai.kchtg.tramradar.repository.PheDuyetLichSuRepository;
+import com.hanghai.kchtg.tramradar.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.tramradar.repository.TramRadarRepository;
 import com.hanghai.kchtg.vts.repository.HeThongVTSRepository;
 import com.hanghai.kchtg.vts.entity.HeThongVTS;
@@ -21,7 +21,7 @@ import java.math.BigDecimal;
 public class TramRadarService {
 
     private final TramRadarRepository repository;
-    private final PheDuyetLichSuRepository historyRepository;
+    private final ApprovalHistoryRepository historyRepository;
     private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
     private final HeThongVTSRepository heThongVTSRepository;
 
@@ -70,12 +70,12 @@ public class TramRadarService {
             saved = repository.save(saved);
         }
 
-        historyRepository.save(PheDuyetLichSu.builder()
+        historyRepository.save(ApprovalHistory.builder()
                 .tramRadarId(saved.getId())
-                .capPheDuyet(0)
-                .trangThai("CREATE")
-                .nguoiPheDuyet(createdBy)
-                .lyDo("Tạo mới trạm radar")
+                .approvalLevel(0)
+                .status("CREATE")
+                .approvedBy(createdBy)
+                .reason("Tạo mới trạm radar")
                 .build());
 
         return toResponse(saved);
@@ -145,12 +145,12 @@ public class TramRadarService {
             saved = repository.save(saved);
         }
 
-        historyRepository.save(PheDuyetLichSu.builder()
+        historyRepository.save(ApprovalHistory.builder()
                 .tramRadarId(saved.getId())
-                .capPheDuyet(0)
-                .trangThai("UPDATE")
-                .nguoiPheDuyet(updatedBy)
-                .lyDo("Cập nhật thông tin trạm radar")
+                .approvalLevel(0)
+                .status("UPDATE")
+                .approvedBy(updatedBy)
+                .reason("Cập nhật thông tin trạm radar")
                 .build());
 
         return toResponse(saved);
@@ -170,16 +170,16 @@ public class TramRadarService {
             gisSpatialObjectService.delete(entity.getKhongGianId());
         }
 
-        historyRepository.save(PheDuyetLichSu.builder()
+        historyRepository.save(ApprovalHistory.builder()
                 .tramRadarId(entity.getId())
-                .capPheDuyet(0)
-                .trangThai("DELETE")
-                .nguoiPheDuyet(deletedBy)
-                .lyDo("Xóa trạm radar")
+                .approvalLevel(0)
+                .status("DELETE")
+                .approvedBy(deletedBy)
+                .reason("Xóa trạm radar")
                 .build());
     }
 
-    public TramRadarResponse approveC1(UUID id, PheDuyetRequest request, String approvedBy) {
+    public TramRadarResponse approveC1(UUID id, ApprovalRequest request, String approvedBy) {
         TramRadar entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
@@ -189,7 +189,7 @@ public class TramRadarService {
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
             entity.setTrangThai(TramRadarApprovalStatus.REJECTED);
-            entity.setLyDoTuChoi(request.getLyDo());
+            entity.setLyDoTuChoi(request.getReason());
         } else {
             entity.setTrangThai(TramRadarApprovalStatus.UNDER_REVIEW);
             entity.setPheDuyetC1(true);
@@ -199,18 +199,18 @@ public class TramRadarService {
 
         TramRadar saved = repository.save(entity);
 
-        historyRepository.save(PheDuyetLichSu.builder()
+        historyRepository.save(ApprovalHistory.builder()
                 .tramRadarId(saved.getId())
-                .capPheDuyet(1)
-                .trangThai(request.getQuyetDinh())
-                .nguoiPheDuyet(approvedBy)
-                .lyDo(request.getLyDo())
+                .approvalLevel(1)
+                .status(request.getQuyetDinh())
+                .approvedBy(approvedBy)
+                .reason(request.getReason())
                 .build());
 
         return toResponse(saved);
     }
 
-    public TramRadarResponse approveC2(UUID id, PheDuyetRequest request, String approvedBy) {
+    public TramRadarResponse approveC2(UUID id, ApprovalRequest request, String approvedBy) {
         TramRadar entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
@@ -225,7 +225,7 @@ public class TramRadarService {
 
         if ("REJECTED".equals(request.getQuyetDinh())) {
             entity.setTrangThai(TramRadarApprovalStatus.REJECTED);
-            entity.setLyDoTuChoi(request.getLyDo());
+            entity.setLyDoTuChoi(request.getReason());
         } else {
             entity.setTrangThai(TramRadarApprovalStatus.APPROVED);
             entity.setPheDuyetC2(true);
@@ -235,26 +235,26 @@ public class TramRadarService {
 
         TramRadar saved = repository.save(entity);
 
-        historyRepository.save(PheDuyetLichSu.builder()
+        historyRepository.save(ApprovalHistory.builder()
                 .tramRadarId(saved.getId())
-                .capPheDuyet(2)
-                .trangThai(request.getQuyetDinh())
-                .nguoiPheDuyet(approvedBy)
-                .lyDo(request.getLyDo())
+                .approvalLevel(2)
+                .status(request.getQuyetDinh())
+                .approvedBy(approvedBy)
+                .reason(request.getReason())
                 .build());
 
         return toResponse(saved);
     }
 
     public List<HistoryEntry> getHistory(UUID tramRadarId) {
-        return historyRepository.findByTramRadarIdOrderByNgayPheDuyetDesc(tramRadarId)
+        return historyRepository.findByTramRadarIdOrderByApprovedDateDesc(tramRadarId)
                 .stream().map(h -> HistoryEntry.builder()
                         .id(h.getId())
-                        .capPheDuyet(h.getCapPheDuyet())
-                        .trangThai(h.getTrangThai())
-                        .nguoiPheDuyet(h.getNguoiPheDuyet())
-                        .ngayPheDuyet(h.getNgayPheDuyet())
-                        .lyDo(h.getLyDo())
+                        .approvalLevel(h.getApprovalLevel())
+                        .status(h.getStatus())
+                        .approvedBy(h.getApprovedBy())
+                        .approvedDate(h.getApprovedDate())
+                        .reason(h.getReason())
                         .build()).toList();
     }
 

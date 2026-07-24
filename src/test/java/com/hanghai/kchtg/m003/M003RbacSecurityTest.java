@@ -4,8 +4,8 @@ import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
 import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import com.hanghai.kchtg.cangben.MethodSecurityTestConfig;
-import com.hanghai.kchtg.cosuachua.controller.CoSuaChuaDongTauController;
-import com.hanghai.kchtg.cosuachua.service.CoSuaChuaDongTauService;
+import com.hanghai.kchtg.shiprepairfacility.controller.ShipRepairFacilityController;
+import com.hanghai.kchtg.shiprepairfacility.service.ShipRepairFacilityService;
 import com.hanghai.kchtg.dikerevetment.controller.DikeRevetmentController;
 import com.hanghai.kchtg.dikerevetment.service.DikeRevetmentService;
 import com.hanghai.kchtg.navigationchannel.controller.NavigationChannelController;
@@ -49,12 +49,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * RBAC deny/allow path tests for all 5 M-003 domains:
- *   navigationchannel, dikerevetment, cosuachua, tramradar, vts.
+ *   navigationchannel, dikerevetment, shiprepairfacility, tramradar, vts.
  */
 @WebMvcTest(controllers = {
         NavigationChannelController.class,
         DikeRevetmentController.class,
-        CoSuaChuaDongTauController.class,
+        ShipRepairFacilityController.class,
         TramRadarController.class,
         HeThongVTSController.class
 })
@@ -71,7 +71,7 @@ class M003RbacSecurityTest {
     // ── Service mocks ───────────────────────────────────────────────────────
     @MockBean private NavigationChannelService navigationChannelService;
     @MockBean private DikeRevetmentService dikeRevetmentService;
-    @MockBean private CoSuaChuaDongTauService coSuaChuaDongTauService;
+    @MockBean private ShipRepairFacilityService shipRepairFacilityService;
     @MockBean private TramRadarService tramRadarService;
     @MockBean private HeThongVTSDataService heThongVTSDataService;
 
