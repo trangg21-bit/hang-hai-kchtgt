@@ -7,170 +7,144 @@ status: done
 classification: local
 priority: high
 created: 2026-06-16T04:40:32Z
-last-updated: 2026-06-17T01:35:44Z
+last-updated: 2026-07-24T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quan ly tai khoan nguoi dung
+# QUẢN TRỊ HỆ THỐNG
 
-## Description
+## Quản lý tài khoản người dùng
 
-Quan tri tai khoan: tao, sua, xoa, khoa/mo khoa tai khoan theo vai tro
+### Mô tả chung
 
-## Business Intent
+| Nội dung | Mô tả |
+| --- | --- |
+| Mục đích | Cho phép người dùng quản lý toàn bộ vòng đời tài khoản người dùng trong hệ thống, bao gồm tạo mới, chỉnh sửa thông tin, xóa mềm, khóa/mở khóa tài khoản, phân quyền theo vai trò (RBAC), đặt lại mật khẩu, quên mật khẩu và phê duyệt tài khoản. |
+| Tác nhân | Người dùng được phân quyền chức năng Quản lý tài khoản người dùng. Quyền hạn cụ thể (xem, tạo, sửa, xóa, khóa/mở khóa, phân quyền, duyệt đăng ký) theo phân quyền hệ thống. |
+| Luồng chính | Người dùng truy cập màn hình Quản lý tài khoản người dùng. Hệ thống hiển thị danh sách người dùng với khu vực tìm kiếm, bộ lọc và các tab trạng thái. Người dùng có thể tìm kiếm theo tên/email, lọc theo vai trò và trạng thái. Người dùng nhấn Thêm mới để mở form tạo tài khoản, nhập tên đăng nhập, họ tên, email, mật khẩu, vai trò, đơn vị và nhấn Lưu. Hệ thống kiểm tra email unique và mật khẩu đáp ứng chính sách, tạo tài khoản thành công. Người dùng có thể sửa thông tin, khóa/mở khóa (kèm lý do, ghi UserStatusLog), hoặc xóa mềm tài khoản (không xóa nếu còn dữ liệu nghiệp vụ liên quan). Admin/Cán bộ tạo yêu cầu tài khoản mới → Lãnh đạo duyệt (Lãnh đạo tự tạo thì tự duyệt). Admin/Admin-Operation xem danh sách tài khoản chờ phê duyệt qua tab "Chờ phê duyệt", phê duyệt hoặc từ chối (kèm lý do). Người dùng quên mật khẩu có thể yêu cầu link reset qua email. |
+| Điều kiện trước | − Người dùng đã đăng nhập hệ thống (trừ chức năng quên mật khẩu là public). − Người dùng có quyền truy cập chức năng tương ứng. − Danh sách vai trò và đơn vị đã có sẵn trong hệ thống. |
+| Điều kiện sau | − Tài khoản được tạo/sửa/xóa thành công, hiển thị toast thông báo. − Tài khoản bị khóa: mọi session đang hoạt động bị vô hiệu ngay lập tức, không thể đăng nhập. − Tài khoản bị khóa sau 5 lần đăng nhập sai, tự động mở khóa sau 30 phút hoặc Admin mở thủ công. − Link reset mật khẩu hết hạn sau 1 giờ, token dùng một lần. − Phê duyệt: tạo User + gán vai trò + gửi thông báo (atomic transaction). − Mọi thay đổi trạng thái tài khoản được ghi vào UserStatusLog kèm lý do. |
+| Quy tắc nghiệp vụ | − Email phải là duy nhất trong toàn hệ thống. − Mật khẩu tối thiểu 8 ký tự, có chữ hoa, chữ thường, số (không bắt buộc ký tự đặc biệt). − Không được xóa tài khoản còn dữ liệu nghiệp vụ liên quan (phanhien, bao cao). − Tài khoản bị khóa không được đăng nhập; khi khóa, mọi session bị vô hiệu ngay. − Tài khoản tự động khóa sau 5 lần đăng nhập sai; tự mở khóa sau 30 phút hoặc Admin mở thủ công. − Chỉ Admin mới có quyền phân quyền cho vai trò khác. − Token reset mật khẩu hết hạn sau 1 giờ, dùng một lần. − Mật khẩu mới phải khác 3 mật khẩu gần nhất. − User không thể tự thay đổi vai trò của chính mình. − Mọi thay đổi trạng thái tài khoản phải ghi UserStatusLog kèm lý do. − Admin/Cán bộ tạo yêu cầu tài khoản → Lãnh đạo duyệt; Lãnh đạo tự tạo thì tự duyệt. − Admin được phân quyền truy cập module cụ thể. − Phê duyệt tài khoản là atomic transaction. − Admin không thể tự phê duyệt tài khoản của chính mình. |
 
-Quan tri he thong, Lanh dao, Chuyen vien - Tao, sua, xoa, khoa/mo khoa tai khoan
+### Mô tả màn hình
 
-## Flow Summary
+#### Danh sách người dùng
 
-Quan tri he thong, Lanh dao, Chuyen vien - Tao, sua, xoa, khoa/mo khoa tai khoan
+| STT | Tên trường / Điều khiển | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Mô tả |
+| --- | --- | --- | --- | --- | --- | --- |
+|  | TÌM KIẾM VÀ LỌC |  |  |  |  |  |
+| 1 | Ô Tìm kiếm | Textbox | Có | Không | Trống | Cho phép nhập từ khóa để tìm kiếm người dùng theo họ tên hoặc email. Tìm kiếm tương đối (contains). |
+| 2 | Bộ lọc Vai trò | Dropdown | Có | Không | Tất cả | Cho phép lọc danh sách theo vai trò người dùng. Danh sách lấy từ danh mục vai trò (F-001). |
+| 3 | Bộ lọc Trạng thái | Dropdown | Có | Không | Tất cả | Cho phép lọc danh sách theo trạng thái. Giá trị: Tất cả, Hoạt động (active), Đã khóa (locked), Không hoạt động (inactive), Chờ phê duyệt (pending). |
+| 4 | Nút Tìm kiếm | Button | Không | Không | — | Thực hiện tìm kiếm với các điều kiện đã nhập. |
+| 5 | Nút Làm mới | Button | Không | Không | — | Đưa toàn bộ điều kiện tìm kiếm và bộ lọc về mặc định. |
+|  | TAB TRẠNG THÁI |  |  |  |  |  |
+| 6 | Tab Tất cả | Tab | Có | Không | Tab mặc định | Hiển thị toàn bộ người dùng. Kèm số lượng tổng. |
+| 7 | Tab Hoạt động | Tab | Có | Không | — | Hiển thị người dùng có trạng thái active. Kèm số lượng. |
+| 8 | Tab Đã khóa | Tab | Có | Không | — | Hiển thị người dùng có trạng thái locked. Kèm số lượng. |
+| 9 | Tab Không hoạt động | Tab | Có | Không | — | Hiển thị người dùng có trạng thái inactive. Kèm số lượng. |
+| 10 | Tab Chờ phê duyệt | Tab | Có | Không | — | Hiển thị tài khoản đăng ký đang chờ phê duyệt (pending). Kèm số lượng. |
+|  | DANH SÁCH |  |  |  |  |  |
+| 1 | Cột STT | Label | Không | Không | Tự tăng | Hiển thị số thứ tự bản ghi trên danh sách. Giá trị tự động tăng theo thứ tự hiển thị, tính theo trang. |
+| 2 | Cột Họ và tên | Link | Không | Không | Theo dữ liệu hệ thống | Hiển thị họ tên người dùng. In đậm. Nhấn vào để mở chi tiết. Dữ liệu lấy từ APP_USERS.FULL_NAME. |
+| 3 | Cột Tên đăng nhập | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị tên đăng nhập. Dữ liệu lấy từ APP_USERS.USERNAME. |
+| 4 | Cột Email | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị email người dùng. Dữ liệu lấy từ APP_USERS.EMAIL. |
+| 5 | Cột Vai trò | Label (Badge) | Không | Không | Theo dữ liệu hệ thống | Hiển thị vai trò dạng badge màu. Dữ liệu lấy từ bảng ROLES liên kết qua USER_ROLES. |
+| 6 | Cột Đơn vị | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị đơn vị trực thuộc. Dữ liệu lấy từ ORGANIZATIONS. Trống hiển thị "—". |
+| 7 | Cột Đăng nhập cuối | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị thời gian đăng nhập gần nhất. Dữ liệu lấy từ APP_USERS.LAST_LOGIN_AT. Định dạng DD/MM/YYYY HH:mm. Chưa đăng nhập hiển thị "Chưa đăng nhập". |
+| 8 | Cột Trạng thái | Label (Badge) | Không | Không | Theo dữ liệu hệ thống | Hiển thị trạng thái dạng badge: Hoạt động (active, xanh lá), Đã khóa (locked, đỏ), Không hoạt động (inactive, xám). Dữ liệu lấy từ APP_USERS.STATUS. |
+| 9 | Cột Thao tác | Dropdown | Có | Không | — | Hiển thị danh sách hành động khả dụng theo quyền và trạng thái tài khoản: Sửa, Khóa/Mở khóa, Xóa. Đối với tài khoản đang chờ phê duyệt (pending): hiển thị Phê duyệt, Từ chối (theo phân quyền). |
+| 10 | Điều khiển phân trang | Pagination | Có | Không | 20 dòng/trang | Điều hướng trang và thay đổi số dòng/trang. Tối đa 100 dòng/trang. |
 
-## Acceptance Criteria
+#### Tạo mới / Chỉnh sửa tài khoản
 
-- Tao tai khoan thanh cong
-- Cap quyen theo vai tro
-- Khoa/mo khoa tai khoan
+| STT | Tên trường / Điều khiển | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Mô tả |
+| --- | --- | --- | --- | --- | --- | --- |
+|  | FORM NHẬP LIỆU |  |  |  |  |  |
+| 1 | Trường Tên đăng nhập | Textbox | Có (tạo mới) / Không (chỉnh sửa) | Có | Trống | Cho phép nhập tên đăng nhập. Giới hạn 3-50 ký tự, chỉ chữ thường, số và dấu gạch dưới. Chỉ hiển thị khi tạo mới. |
+| 2 | Trường Họ và tên | Textbox | Có | Có | Trống | Cho phép nhập họ tên đầy đủ. Giới hạn 2-100 ký tự. |
+| 3 | Trường Email | Textbox (email) | Có | Có | Trống | Cho phép nhập email. Định dạng email hợp lệ. Phải duy nhất trong toàn hệ thống (kiểm tra trùng khi blur). |
+| 4 | Trường Số điện thoại | Textbox | Có | Không | Trống | Cho phép nhập số điện thoại. Giới hạn 10-11 chữ số nếu nhập. |
+| 5 | Trường Mật khẩu | Password | Có (tạo mới) / Không (chỉnh sửa) | Có (tạo mới) | Trống | Cho phép nhập mật khẩu. Tối thiểu 8 ký tự, có chữ hoa, chữ thường, số. Có strength meter realtime. Chỉ hiển thị khi tạo mới. |
+| 6 | Trường Vai trò | Dropdown | Có | Có | (Chưa chọn) | Cho phép chọn vai trò cho người dùng. Danh sách lấy từ danh mục vai trò. |
+| 7 | Trường Đơn vị | Dropdown (searchable) | Có | Không | (Chưa chọn) | Cho phép chọn đơn vị trực thuộc. Danh sách lấy từ danh mục đơn vị. |
+| 8 | Trường Trạng thái | Dropdown | Có (chỉnh sửa) / Không (tạo mới) | Có (chỉnh sửa) | active (tạo mới) | Cho phép chọn trạng thái: Hoạt động (active), Không hoạt động (inactive). Chỉ hiển thị khi chỉnh sửa. |
+| 9 | Nút Hủy | Button | Không | Không | — | Đóng modal, không lưu thay đổi. |
+| 10 | Nút Lưu | Button | Không | Không | — | Lưu thông tin tài khoản. Nút bị disabled khi form có lỗi. Hiển thị loading khi đang xử lý. Toast thông báo khi hoàn tất. |
 
-## In Scope
+#### Khóa / Mở khóa tài khoản
 
-- Tạo mới tài khoản người dùng (CRUD)
-- Cập nhật thông tin tài khoản (họ tên, email, số điện thoại, vai trò)
-- Khóa/mở khóa tài khoản
-- Đặt lại mật khẩu (reset password)
-- Tìm kiếm và lọc người dùng theo tên, email, vai trò, trạng thái (active/blocked)
-- Phân quyền theo vai trò (system-admin, admin, user)
-- Quản lý danh sách vai trò và phân quyền chi tiết
-- Nhật ký thay đổi trạng thái tài khoản (UserStatusLog)
-- Quản lý phê duyệt tài khoản đăng ký tự động (approve/reject đăng ký mới)
-- Quản lý tài khoản admin: tạo/sửa/xóa/khóa/mở khóa, phê duyệt, phân quyền theo vai trò (system-admin, admin, user)
-- Cập nhật thông tin tài khoản admin (họ tên, email, số điện thoại, vai trò, module access)
-- Xem danh sách và phê duyệt yêu cầu đăng ký tài khoản mới từ người dùng
+| STT | Tên trường / Điều khiển | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Mô tả |
+| --- | --- | --- | --- | --- | --- | --- |
+|  | XÁC NHẬN KHÓA/MỞ KHÓA |  |  |  |  |  |
+| 1 | Nội dung xác nhận | Label | Không | Không | — | Hiển thị thông báo: "Tài khoản \"{họ tên}\" sẽ bị khóa và không thể đăng nhập. Tiếp tục?" (nếu đang khóa) hoặc "Tài khoản \"{họ tên}\" sẽ được mở khóa. Tiếp tục?" (nếu đang mở khóa). |
+| 2 | Trường Lý do | TextArea | Có | Có | Trống | Cho phép nhập lý do khóa/mở khóa. Tối thiểu 10 ký tự. Dữ liệu được ghi vào UserStatusLog. |
+| 3 | Nút Hủy | Button | Không | Không | — | Đóng modal, không thực hiện. |
+| 4 | Nút Khóa / Mở khóa | Button | Không | Không | — | Thực hiện khóa/mở khóa. Màu danger cho Khóa, primary cho Mở khóa. Toast thông báo khi hoàn tất. Khi khóa: mọi session đang hoạt động của user bị vô hiệu ngay. |
 
-## Out of Scope
+#### Xác nhận xóa tài khoản
 
-- Quản lý xác thực hai yếu tố (2FA/TOTP) — thuộc module bảo mật độc lập
-- Quản lý phiên đăng nhập (session management) — thuộc module session
-- Đồng bộ tài khoản với hệ thống LDAP/Active Directory bên ngoài
-- Tự đăng ký tài khoản mới qua giao diện công khai (public self-registration)
-- Tự xóa tài khoản (self-delete) — thuộc quy trình bảo mật riêng
-- Tích hợp SSO với bên thứ ba
+| STT | Tên trường / Điều khiển | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Mô tả |
+| --- | --- | --- | --- | --- | --- | --- |
+|  | XÁC NHẬN XÓA |  |  |  |  |  |
+| 1 | Nội dung xác nhận | Label | Không | Không | — | Hiển thị thông báo: "Bạn có chắc chắn muốn xóa người dùng \"{họ tên}\"? Hành động này không thể hoàn tác." |
+| 2 | Cảnh báo còn dữ liệu liên quan | Label | Không | Không | — | Nếu tài khoản còn dữ liệu nghiệp vụ liên quan (phanhien, bao cao): hiển thị lỗi "Không thể xóa — tài khoản còn dữ liệu nghiệp vụ" và không cho phép xóa. |
+| 3 | Nút Hủy | Button | Không | Không | — | Đóng modal. |
+| 4 | Nút Xóa | Button | Không | Không | — | Thực hiện xóa mềm (deletedAt = now). Màu danger. Chỉ hiển thị khi không có dữ liệu liên quan. |
 
-## Roles + Permissions
+#### Quên mật khẩu
 
-| Role | Level | Notes |
-|---|---|---|
-| system-admin | Full (CRUD + Lock/Unlock + Reset Password) | Có toàn quyền quản lý người dùng, vai trò, phân quyền; tạo/xóa tài khoản system-admin |
-| admin | CRUD + Lock/Unlock | Quản lý người dùng trong đơn vị/phân hệ của mình; không được tạo tài khoản system-admin |
-| user | Read-only | Chỉ có thể xem thông tin người dùng; không có quyền chỉnh sửa hoặc khóa tài khoản |
-| admin-operation | Full (CRUD + Approve + Lock/Unlock) | Quản lý tài khoản admin và phê duyệt đăng ký trong phạm vi vận hành |
+| STT | Tên trường / Điều khiển | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Mô tả |
+| --- | --- | --- | --- | --- | --- | --- |
+|  | FORM QUÊN MẬT KHẨU |  |  |  |  |  |
+| 1 | Trường Email đăng ký | Textbox (email) | Có | Có | Trống | Cho phép nhập email đã đăng ký. Định dạng email hợp lệ. Rate-limited: tối đa 3 lần/15 phút. |
+| 2 | Nút Gửi yêu cầu | Button | Không | Không | — | Gửi yêu cầu reset mật khẩu. Hệ thống tạo token (hết hạn 1 giờ) và gửi link reset qua email. Luôn hiển thị thông báo thành công (chống enumeration email). |
+| 3 | Nút Quay lại Đăng nhập | Button (link) | Không | Không | — | Điều hướng về trang đăng nhập. |
 
-## Entities
+#### Đặt lại mật khẩu
 
-- **User**: Bảng chính quản lý thông tin tài khoản người dùng (id, username, email, passwordHash, displayName, phone, status, roleId, createdAt, updatedAt)
-- **Role**: Danh sách các vai trò hệ thống (id, name, code, description, isSystem, createdAt)
-- **Permission**: Quyền chi tiết được gán cho từng vai trò (id, name, code, module, action, description)
-- **UserRole**: Bảng trung gian giữa User và Role (userId, roleId, assignedBy, assignedAt, expiresAt)
-- **UserStatusLog**: Nhật ký thay đổi trạng thái tài khoản (id, userId, previousStatus, newStatus, changedBy, changedAt, reason)
+| STT | Tên trường / Điều khiển | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Mô tả |
+| --- | --- | --- | --- | --- | --- | --- |
+|  | FORM ĐẶT LẠI MẬT KHẨU |  |  |  |  |  |
+| 1 | Trường Mật khẩu mới | Password | Có | Có | Trống | Cho phép nhập mật khẩu mới. Tối thiểu 8 ký tự, có chữ hoa, chữ thường, số. Có strength meter realtime: Yếu (<40%), Trung bình (40-80%), Mạnh (>80%). Token lấy từ URL (/reset-password/:token). |
+| 2 | Trường Xác nhận mật khẩu mới | Password | Có | Có | Trống | Cho phép nhập lại mật khẩu mới. Phải khớp với trường Mật khẩu mới. |
+| 3 | Nút Lưu mật khẩu mới | Button | Không | Không | — | Lưu mật khẩu mới. Token hết hạn sau 1 giờ, dùng một lần. Mật khẩu mới phải khác 3 mật khẩu gần nhất. |
 
-## Business Rules
+#### Phê duyệt / Từ chối tài khoản
 
-| ID | Rule | Applies-to | Source |
-|---|---|---|---|
-| BR-001-01 | Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt | Tạo/Sửa user | PDPD §24, Chính sách mật khẩu |
-| BR-001-02 | Tài khoản bị khóa sau 5 lần đăng nhập thất bại liên tiếp; tự mở khóa sau 30 phút hoặc do admin thao tác thủ công | Đăng nhập/Status | Chính sách bảo mật |
-| BR-001-03 | Email phải là duy nhất trong hệ thống; không cho phép trùng email khi tạo mới hoặc sửa | Tạo/Sửa user | Dữ liệu master |
-| BR-001-04 | Chỉ role `system-admin` mới được tạo hoặc xóa tài khoản `system-admin` | Role assignment | Phân quyền hệ thống |
-| BR-001-05 | Khi khóa tài khoản, mọi session đang hoạt động của user đó sẽ bị vô hiệu hóa ngay lập tức | Khóa tài khoản | Security module |
-| BR-001-06 | Khi tạo/reset password, mật khẩu mới phải khác 3 mật khẩu gần nhất của user | Reset password | Chính sách mật khẩu |
-| BR-001-07 | Mọi thay đổi trạng thái tài khoản (active/blocked) phải được ghi vào UserStatusLog với lý do | Lock/Unlock | Audit requirement |
-| BR-001-08 | User không thể tự thay đổi vai trò (role) của chính mình; chỉ admin/system-admin được phép gán/hủy vai trò | Role assignment | Phân quyền |
-| BR-001-09 | Tài khoản đăng ký tự động qua email/SĐT cần được admin phê duyệt trước khi kích hoạt | Đăng ký (F-271 M-010) | URD III.3.2 |
-| BR-001-10 | Admin được phân quyền truy cập module cụ thể (system-admin: tất cả, admin: phân hệ của mình, user: không) | Phân quyền | URD III.3.2 |
-| BR-001-11 | Khi admin phê duyệt tài khoản đăng ký, user account được kích hoạt và phân quyền theo vai trò đã chỉ định | Phê duyệt | URD III.3.2 |
-| BR-001-12 | Admin có thể xem và phê duyệt danh sách tài khoản đăng ký chờ xử lý, từ chối với lý do cụ thể | Phê duyệt | URD III.3.2 |
+| STT | Tên trường / Điều khiển | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Mô tả |
+| --- | --- | --- | --- | --- | --- | --- |
+|  | PHÊ DUYỆT |  |  |  |  |  |
+| 1 | Trường Ghi chú | TextArea | Có | Không | Trống | Ghi chú nội bộ cho phê duyệt. |
+| 2 | Nút Phê duyệt | Button | Không | Không | — | Thực hiện phê duyệt: tạo User với vai trò và đơn vị theo thông tin đăng ký + gửi thông báo (atomic transaction). Chống tự phê duyệt: không cho phép duyệt tài khoản có email trùng với email người duyệt. |
+|  | TỪ CHỐI |  |  |  |  |  |
+| 5 | Trường Lý do từ chối | TextArea | Có | Có | Trống | Cho phép nhập lý do từ chối. Tối thiểu 10 ký tự. |
+| 6 | Nút Từ chối | Button | Không | Không | — | Từ chối đơn đăng ký. Cập nhật trạng thái PendingApproval thành rejected. |
 
-## Testing Strategy
+#### Xem chi tiết tài khoản
 
-- **Unit Testing (Backend)**:
-  - Kiểm tra validation rules cho password policy (BR-001-01)
-  - Kiểm tra logic lockout sau N lần đăng nhập sai (BR-001-02)
-  - Kiểm tra unique constraint trên email (BR-001-03)
-  - Kiểm tra Authorization cho các endpoint tạo/xóa user theo role
-  - Kiểm tra UserStatusLog được ghi đầy đủ khi lock/unlock (BR-001-07)
-
-- **Integration Testing (Backend)**:
-  - Test flow đầy đủ: tạo user → login → lock → unlock → reset password
-  - Test tích hợp Spring Security + JWT: verify authorization headers
-  - Test DB constraints: duplicate email, cascade delete, foreign key integrity
-
-- **E2E Testing (Frontend + Backend)**:
-  - Test đầy đủ CRUD flow trên giao diện ReactJS
-  - Test filter/search theo name/email/role/status với pagination
-  - Test lock/unlock với confirmation modal và toast feedback
-  - Test password reset flow với validation realtime
-  - Test permission UI: ẩn/nút disabled theo role hiện tại
-
-- **Security Testing**:
-  - Kiểm tra rate limiting trên endpoint login (50/15 phút) và password reset (3/15 phút)
-  - Kiểm tra JWT không tiết lộ thông tin nhạy cảm trong payload
-  - Kiểm tra password hash (bcrypt/argon2) không lưu plaintext
-  - Kiểm tra session invalidation khi lock account (BR-001-05)
-
-- **Approval Testing**:
-  - Test workflow: tạo yêu cầu đăng ký → admin xem danh sách → duyệt/từ chối → kích hoạt user
-  - Test từ chối với lý do → gửi notification đến user
-  - Test admin không thể tự phê duyệt yêu cầu của chính mình (anti-self-approval)
-
-- **UI/UX Testing**:
-  - Responsive sidebar trên mobile (collapse hamburger)
-  - Data table sticky header, hover row, action column positioned last
-  - Loading skeleton/spinner, empty state, error state với retry
-  - Form validation realtime với error message dưới mỗi trường
-  - Toast notification cho action thành công/thất bại
-
-## UI/UX Requirements
-
-### Layout & Navigation
-- Bố cục cố định: Sidebar trái cố định (menu điều hướng), Header trên cùng (tên admin, avatar, nút logout), Khu vực nội dung chính phía dưới
-- Sidebar hiển thị menu: "Quản lý người dùng", "Quản lý nhóm", "Quản lý đơn vị", "Tài khoản Admin", "Log truy cập", "Biểu tượng bản đồ", "Kết nối liên thông"
-- Sidebar thu gọn thành icon/hamburger menu trên thiết bị di động (breakpoint < 768px)
-
-### Design Style
-- Giao diện dashboard admin hiện đại, tối giản
-- Bảng màu trung tính (xám/xanh dương), màu nhấn cho các hành động chính
-- Typography: font sans-serif (Inter hoặc Roboto), kích thước chữ rõ ràng
-- Card-based layout cho form và thông tin chi tiết
-
-### Data Tables
-- Sticky header, hover effect cho từng hàng
-- Cột hành động (Sửa/Xóa) luôn nằm cuối bảng
-- Phân trang (pagination) hiển thị số lượng record và điều hướng trang
-- Nút "Thêm mới" nổi bật ở góc trên bên phải bảng
-- Toolbar tìm kiếm và lọc phía trên bảng
-
-### States & Feedback
-- **Loading**: Skeleton screen hoặc spinner khi đang tải dữ liệu
-- **Empty State**: Thông điệp thân thiện + nút hành động (ví dụ: "Chưa có người dùng nào. Nhấn 'Thêm mới' để bắt đầu.")
-- **Error State**: Hiển thị thông báo lỗi rõ ràng + nút "Thử lại"
-- **Action Feedback**: Toast notification ("Đã lưu thành công", "Đã xóa thành công") cho thao tác thành công; xác nhận modal cho xóa/khóa tài khoản
-- **Form**: Validation realtime, lỗi hiển thị dưới mỗi trường, nút Submit disabled khi có lỗi + loading indicator khi gửi
-
-### Permission UI
-- Ẩn/hiện nút hành động dựa trên vai trò của người dùng hiện tại
-- Ví dụ: User thường chỉ thấy nút "Xem chi tiết", admin thấy "Thêm/Sửa/Xóa"
-- Điều khiển quyền ở mức giao diện (interface-level permission control)
-- Nút bị disabled với tooltip giải thích lý do khi user không có quyền
-
-### Specific Features
-- **Danh sách người dùng**: Bảng phân trang với search theo tên/email, filter theo vai trò và trạng thái, cột hiển thị avatar, tên, email, vai trò, trạng thái
-- **Form tạo/sửa user**: Validation realtime cho email (định dạng + duy nhất), mật khẩu (yêu cầu độ phức tạp), họ tên (bắt buộc)
-- **Role management**: Danh sách vai trò, tạo/sửa vai trò, gán quyền qua checkbox theo nhóm chức năng
-- **Lock/Unlock**: Modal xác nhận với lý do khóa/mở khóa, hiển thị trạng thái badge (màu xanh cho active, đỏ cho blocked)
-- **Password reset**: Modal nhập mật khẩu mới với validation strength indicator (mạnh/yếu/đạm)
+| STT | Tên trường / Điều khiển | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Mô tả |
+| --- | --- | --- | --- | --- | --- | --- |
+|  | THÔNG TIN TÀI KHOẢN |  |  |  |  |  |
+| 1 | Tên đăng nhập | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị tên đăng nhập. |
+| 2 | Họ và tên | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị họ tên đầy đủ. |
+| 3 | Email | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị email. |
+| 4 | Số điện thoại | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị số điện thoại. Trống hiển thị "—". |
+| 5 | Vai trò | Label (Badge) | Không | Không | Theo dữ liệu hệ thống | Hiển thị vai trò hiện tại dạng badge. |
+| 6 | Đơn vị | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị đơn vị trực thuộc. Trống hiển thị "—". |
+| 7 | Trạng thái | Label (Badge) | Không | Không | Theo dữ liệu hệ thống | Hiển thị trạng thái: active (xanh), locked (đỏ), inactive (xám), pending (vàng). |
+| 8 | Ngày tạo | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị ngày tạo tài khoản. Định dạng DD/MM/YYYY HH:mm. |
+| 9 | Đăng nhập cuối | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị thời gian đăng nhập gần nhất. Chưa đăng nhập hiển thị "Chưa đăng nhập". |
+|  | THAO TÁC |  |  |  |  |  |
+| 10 | Nút Sửa | Button | Có | Không | — | Mở modal chỉnh sửa tài khoản. Hiển thị theo phân quyền. |
+| 11 | Nút Khóa/Mở khóa | Button | Có | Không | — | Mở modal khóa/mở khóa (có nhập lý do). Hiển thị theo phân quyền. |
+| 12 | Nút Xóa | Button | Có | Không | — | Mở modal xác nhận xóa. Hiển thị theo phân quyền. |
+| 13 | Nút Phê duyệt | Button | Có | Không | — | Mở modal phê duyệt. Chỉ hiển thị khi tài khoản đang ở trạng thái pending và người dùng có quyền phê duyệt. |
+| 14 | Nút Từ chối | Button | Có | Không | — | Mở modal từ chối (nhập lý do). Chỉ hiển thị khi tài khoản đang ở trạng thái pending và người dùng có quyền phê duyệt. |
+| 15 | Nút Quay lại | Button | Không | Không | — | Quay về màn hình danh sách người dùng. |
 
 ## Context
 
-### Tech Stack
 - Backend: Spring Boot + Spring Security + JWT
 - Frontend: ReactJS
 - Database: MSSQL 2022
