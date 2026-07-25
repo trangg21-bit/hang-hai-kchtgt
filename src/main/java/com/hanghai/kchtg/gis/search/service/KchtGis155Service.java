@@ -32,7 +32,7 @@ import com.hanghai.kchtg.gis.search.dto.KchtType;
 import com.hanghai.kchtg.gis.search.dto.TinhThanhPho;
 import com.hanghai.kchtg.gis.search.dto.GisObjectType;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -76,14 +76,14 @@ public class KchtGis155Service {
     private final jakarta.persistence.EntityManager entityManager;
 
     /**
-     * Tra cứu tên đơn vị từ Map đã batch pre-load (tránh N+1 query).
-     * Map được nạp 1 lần duy nhất ở đầu method search().
+     * Tra cá»©u tÃªn Ä‘Æ¡n vá»‹ tá»« Map Ä‘Ã£ batch pre-load (trÃ¡nh N+1 query).
+     * Map Ä‘Æ°á»£c náº¡p 1 láº§n duy nháº¥t á»Ÿ Ä‘áº§u method search().
      */
     private String getOrgName(UUID orgUnitId, Map<UUID, String> orgNameMap) {
         if (orgUnitId == null) {
-            return "Cục Hàng hải Việt Nam";
+            return "Cá»¥c HÃ ng háº£i Viá»‡t Nam";
         }
-        return orgNameMap.getOrDefault(orgUnitId, "Cục Hàng hải Việt Nam");
+        return orgNameMap.getOrDefault(orgUnitId, "Cá»¥c HÃ ng háº£i Viá»‡t Nam");
     }
 
     private double[] parseFirstCoordinateFromWkt(String wkt) {
@@ -112,7 +112,7 @@ public class KchtGis155Service {
             .replace(":orgUnitId", s1)
             .replace(":search", s2)
             .replace(":trangThaiHoatDong", s3)
-            .replace(":trangThaiPheDuyet", s4);
+            .replace(":ApprovalStatus", s4);
     }
 
     private String formatValueForSql(Object val) {
@@ -128,18 +128,18 @@ public class KchtGis155Service {
         return val.toString();
     }
 
-    private void explainAndLogPierQuery(UUID orgUnitId, String search, TrangThaiHoatDong hd, TrangThaiPheDuyet pd) {
+    private void explainAndLogPierQuery(UUID orgUnitId, String search, TrangThaiHoatDong hd, ApprovalStatus pd) {
         String sql = "EXPLAIN ANALYZE SELECT id, ten_cau, ma_cau FROM public.cau_cang WHERE deleted_at IS NULL " +
                 "AND (CAST(:orgUnitId AS uuid) IS NULL OR org_unit_id = CAST(:orgUnitId AS uuid)) " +
                 "AND (CAST(:search AS text) IS NULL OR (LOWER(ma_cau) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')) OR LOWER(ten_cau) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')))) " +
                 "AND (CAST(:trangThaiHoatDong AS integer) IS NULL OR trang_thai_hoat_dong = CAST(:trangThaiHoatDong AS integer)) " +
-                "AND (CAST(:trangThaiPheDuyet AS integer) IS NULL OR trang_thai_phe_duyet = CAST(:trangThaiPheDuyet AS integer))";
+                "AND (CAST(:ApprovalStatus AS integer) IS NULL OR trang_thai_phe_duyet = CAST(:ApprovalStatus AS integer))";
         try {
             jakarta.persistence.Query query = entityManager.createNativeQuery(sql);
             query.setParameter("orgUnitId", orgUnitId);
             query.setParameter("search", search);
             query.setParameter("trangThaiHoatDong", hd != null ? hd.ordinal() : null);
-            query.setParameter("trangThaiPheDuyet", pd != null ? pd.ordinal() : null);
+            query.setParameter("ApprovalStatus", pd != null ? pd.ordinal() : null);
             List<?> result = query.getResultList();
             
             String execSql = getExecutableSql(sql, orgUnitId, search, hd != null ? hd.ordinal() : null, pd != null ? pd.ordinal() : null);
@@ -160,18 +160,18 @@ public class KchtGis155Service {
         }
     }
 
-    private void explainAndLogBerthQuery(UUID orgUnitId, String search, TrangThaiHoatDong hd, TrangThaiPheDuyet pd) {
+    private void explainAndLogBerthQuery(UUID orgUnitId, String search, TrangThaiHoatDong hd, ApprovalStatus pd) {
         String sql = "EXPLAIN ANALYZE SELECT id, ten_ben, ma_ben FROM public.ben_cang WHERE deleted_at IS NULL " +
                 "AND (CAST(:orgUnitId AS uuid) IS NULL OR org_unit_id = CAST(:orgUnitId AS uuid)) " +
                 "AND (CAST(:search AS text) IS NULL OR (LOWER(ma_ben) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')) OR LOWER(ten_ben) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')))) " +
                 "AND (CAST(:trangThaiHoatDong AS integer) IS NULL OR trang_thai_hoat_dong = CAST(:trangThaiHoatDong AS integer)) " +
-                "AND (CAST(:trangThaiPheDuyet AS integer) IS NULL OR trang_thai_phe_duyet = CAST(:trangThaiPheDuyet AS integer))";
+                "AND (CAST(:ApprovalStatus AS integer) IS NULL OR trang_thai_phe_duyet = CAST(:ApprovalStatus AS integer))";
         try {
             jakarta.persistence.Query query = entityManager.createNativeQuery(sql);
             query.setParameter("orgUnitId", orgUnitId);
             query.setParameter("search", search);
             query.setParameter("trangThaiHoatDong", hd != null ? hd.ordinal() : null);
-            query.setParameter("trangThaiPheDuyet", pd != null ? pd.ordinal() : null);
+            query.setParameter("ApprovalStatus", pd != null ? pd.ordinal() : null);
             List<?> result = query.getResultList();
             
             String execSql = getExecutableSql(sql, orgUnitId, search, hd != null ? hd.ordinal() : null, pd != null ? pd.ordinal() : null);
@@ -192,18 +192,18 @@ public class KchtGis155Service {
         }
     }
 
-    private void explainAndLogPortQuery(UUID orgUnitId, String search, TrangThaiHoatDong hd, TrangThaiPheDuyet pd) {
+    private void explainAndLogPortQuery(UUID orgUnitId, String search, TrangThaiHoatDong hd, ApprovalStatus pd) {
         String sql = "EXPLAIN ANALYZE SELECT id, ten_cang, ma_cang FROM public.cang_bien WHERE deleted_at IS NULL " +
                 "AND (CAST(:orgUnitId AS uuid) IS NULL OR org_unit_id = CAST(:orgUnitId AS uuid)) " +
                 "AND (CAST(:search AS text) IS NULL OR (LOWER(ma_cang) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')) OR LOWER(ten_cang) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')))) " +
                 "AND (CAST(:trangThaiHoatDong AS integer) IS NULL OR trang_thai_hoat_dong = CAST(:trangThaiHoatDong AS integer)) " +
-                "AND (CAST(:trangThaiPheDuyet AS integer) IS NULL OR trang_thai_phe_duyet = CAST(:trangThaiPheDuyet AS integer))";
+                "AND (CAST(:ApprovalStatus AS integer) IS NULL OR trang_thai_phe_duyet = CAST(:ApprovalStatus AS integer))";
         try {
             jakarta.persistence.Query query = entityManager.createNativeQuery(sql);
             query.setParameter("orgUnitId", orgUnitId);
             query.setParameter("search", search);
             query.setParameter("trangThaiHoatDong", hd != null ? hd.ordinal() : null);
-            query.setParameter("trangThaiPheDuyet", pd != null ? pd.ordinal() : null);
+            query.setParameter("ApprovalStatus", pd != null ? pd.ordinal() : null);
             List<?> result = query.getResultList();
             
             String execSql = getExecutableSql(sql, orgUnitId, search, hd != null ? hd.ordinal() : null, pd != null ? pd.ordinal() : null);
@@ -224,18 +224,18 @@ public class KchtGis155Service {
         }
     }
 
-    private void explainAndLogWaterZoneQuery(UUID orgUnitId, String search, TrangThaiHoatDong hd, TrangThaiPheDuyet pd) {
+    private void explainAndLogWaterZoneQuery(UUID orgUnitId, String search, TrangThaiHoatDong hd, ApprovalStatus pd) {
         String sql = "EXPLAIN ANALYZE SELECT id, ten_vung_nuoc, ma_vung_nuoc FROM public.vung_nuoc WHERE deleted_at IS NULL " +
                 "AND (CAST(:orgUnitId AS uuid) IS NULL OR org_unit_id = CAST(:orgUnitId AS uuid)) " +
                 "AND (CAST(:search AS text) IS NULL OR (LOWER(ma_vung_nuoc) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')) OR LOWER(ten_vung_nuoc) LIKE LOWER(CONCAT('%', CAST(:search AS text), '%')))) " +
                 "AND (CAST(:trangThaiHoatDong AS integer) IS NULL OR trang_thai_hoat_dong = CAST(:trangThaiHoatDong AS integer)) " +
-                "AND (CAST(:trangThaiPheDuyet AS integer) IS NULL OR trang_thai_phe_duyet = CAST(:trangThaiPheDuyet AS integer))";
+                "AND (CAST(:ApprovalStatus AS integer) IS NULL OR trang_thai_phe_duyet = CAST(:ApprovalStatus AS integer))";
         try {
             jakarta.persistence.Query query = entityManager.createNativeQuery(sql);
             query.setParameter("orgUnitId", orgUnitId);
             query.setParameter("search", search);
             query.setParameter("trangThaiHoatDong", hd != null ? hd.ordinal() : null);
-            query.setParameter("trangThaiPheDuyet", pd != null ? pd.ordinal() : null);
+            query.setParameter("ApprovalStatus", pd != null ? pd.ordinal() : null);
             List<?> result = query.getResultList();
             
             String execSql = getExecutableSql(sql, orgUnitId, search, hd != null ? hd.ordinal() : null, pd != null ? pd.ordinal() : null);
@@ -366,7 +366,7 @@ public class KchtGis155Service {
         String searchLower = (search == null || search.trim().isEmpty()) ? null : search.toLowerCase().trim();
         String tinhThanhStr = (tinhThanhPho != null) ? tinhThanhPho.getDisplayName() : null;
 
-        // Batch pre-load tất cả OrgUnit vào Map 1 lần (tránh N+1 query khi gọi getOrgName)
+        // Batch pre-load táº¥t cáº£ OrgUnit vÃ o Map 1 láº§n (trÃ¡nh N+1 query khi gá»i getOrgName)
         Map<UUID, String> orgNameMap = new HashMap<>();
         try {
             orgUnitRepository.findAll().forEach(org -> {
@@ -375,7 +375,7 @@ public class KchtGis155Service {
                 }
             });
         } catch (Exception e) {
-            log.warn("Không thể nạp danh sách OrgUnit: {}", e.getMessage());
+            log.warn("KhÃ´ng thá»ƒ náº¡p danh sÃ¡ch OrgUnit: {}", e.getMessage());
         }
 
         boolean isRootOrg = false;
@@ -383,7 +383,7 @@ public class KchtGis155Service {
             isRootOrg = true;
         } else {
             String orgName = orgNameMap.getOrDefault(rawOrgUnitId, "");
-            if (orgName.contains("Cục Hàng hải Việt Nam")) {
+            if (orgName.contains("Cá»¥c HÃ ng háº£i Viá»‡t Nam")) {
                 isRootOrg = true;
             }
         }
@@ -398,7 +398,7 @@ public class KchtGis155Service {
                 case CANGBIEN:
                     List<Port> cangBiens = portRepository.searchPorts(
                             orgUnitId, null, null, tinhThanhStr, TrangThaiHoatDong.HIEN_HANH,
-                            TrangThaiPheDuyet.DUOC_PHE_DUYET, searchLower, PageRequest.of(0, 10000)).getContent();
+                            ApprovalStatus.APPROVED, searchLower, PageRequest.of(0, 10000)).getContent();
                     Map<UUID, GisSpatialObject> cbSpatialMap = new HashMap<>();
                     if (!cangBiens.isEmpty()) {
                         List<UUID> cbIds = cangBiens.stream().map(Port::getId).collect(Collectors.toList());
@@ -416,7 +416,7 @@ public class KchtGis155Service {
                                 .name(cb.getPortName())
                                 .ma(cb.getPortCode())
                                 .orgName(getOrgName(cb.getOrgUnitId(), orgNameMap))
-                                .kchtTypeLabel("Cảng biển")
+                                .kchtTypeLabel("Cáº£ng biá»ƒn")
                                 .diaDiem(cb.getProvince() != null ? cb.getProvince() : "")
                                 .diaChiChiTiet("")
                                 .latitude(lat)
@@ -434,7 +434,7 @@ public class KchtGis155Service {
                 case BENCANG:
                     List<Berth> benCangs = berthRepository.searchBerths(
                             orgUnitId, searchLower, null, null, null, null, null, TrangThaiHoatDong.HIEN_HANH,
-                            TrangThaiPheDuyet.DUOC_PHE_DUYET, PageRequest.of(0, 10000)).getContent();
+                            ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
                     List<UUID> cbIds = benCangs.stream().map(Berth::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, Port> bcPortMap = new HashMap<>();
                     if (!cbIds.isEmpty()) {
@@ -461,7 +461,7 @@ public class KchtGis155Service {
                                 .name(bc.getBerthName())
                                 .ma(bc.getBerthCode())
                                 .orgName(getOrgName(bc.getOrgUnitId(), orgNameMap))
-                                .kchtTypeLabel("Bến cảng")
+                                .kchtTypeLabel("Báº¿n cáº£ng")
                                 .diaDiem(parentProvince)
                                 .diaChiChiTiet(bc.getWaterway() != null ? bc.getWaterway() : "")
                                 .latitude(lat)
@@ -479,7 +479,7 @@ public class KchtGis155Service {
                 case CAUCANG:
                     List<Pier> cauCangs = pierRepository.searchPiers(
                             orgUnitId, searchLower, null, null, TrangThaiHoatDong.HIEN_HANH,
-                            TrangThaiPheDuyet.DUOC_PHE_DUYET, PageRequest.of(0, 10000)).getContent();
+                            ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
                     List<UUID> parentBenIds = cauCangs.stream().map(Pier::getBerthId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, Berth> benCangMap = new HashMap<>();
                     if (!parentBenIds.isEmpty()) {
@@ -517,9 +517,9 @@ public class KchtGis155Service {
                                 .name(cc.getPierName())
                                 .ma(cc.getPierCode())
                                 .orgName(getOrgName(cc.getOrgUnitId(), orgNameMap))
-                                .kchtTypeLabel("Cầu cảng")
+                                .kchtTypeLabel("Cáº§u cáº£ng")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet(parentBen != null ? "Thuộc bến cảng: " + parentBen.getBerthName() : "")
+                                .diaChiChiTiet(parentBen != null ? "Thuá»™c báº¿n cáº£ng: " + parentBen.getBerthName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
                                 .build();
@@ -536,7 +536,7 @@ public class KchtGis155Service {
 
                 case CANGCAN:
                     List<DryPort> cangCans = dryPortRepository.searchDryPorts(
-                            orgUnitId, searchLower, TrangThaiHoatDong.HIEN_HANH, TrangThaiPheDuyet.DUOC_PHE_DUYET,
+                            orgUnitId, searchLower, TrangThaiHoatDong.HIEN_HANH, ApprovalStatus.APPROVED,
                             PageRequest.of(0, 10000)).getContent();
                     Map<UUID, GisSpatialObject> ccSpatialMap = new HashMap<>();
                     if (!cangCans.isEmpty()) {
@@ -555,7 +555,7 @@ public class KchtGis155Service {
                                 .name(cc.getDryPortName())
                                 .ma(cc.getDryPortCode())
                                 .orgName(getOrgName(cc.getOrgUnitId(), orgNameMap))
-                                .kchtTypeLabel("Cảng cạn")
+                                .kchtTypeLabel("Cáº£ng cáº¡n")
                                 .diaDiem(cc.getProvince() != null ? cc.getProvince() : "")
                                 .diaChiChiTiet("")
                                 .latitude(lat)
@@ -573,7 +573,7 @@ public class KchtGis155Service {
                 case VUNGNUOC:
                     List<WaterZone> vungNuocs = waterZoneRepository.searchWaterZones(
                             orgUnitId, null, searchLower, null, TrangThaiHoatDong.HIEN_HANH,
-                            TrangThaiPheDuyet.DUOC_PHE_DUYET, PageRequest.of(0, 10000)).getContent();
+                            ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
                     List<UUID> vnCbIds = vungNuocs.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, Port> vnPortMap = new HashMap<>();
                     if (!vnCbIds.isEmpty()) {
@@ -601,9 +601,9 @@ public class KchtGis155Service {
                                 .name(vn.getWaterZoneName())
                                 .ma(vn.getWaterZoneCode())
                                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
-                                .kchtTypeLabel("Vùng nước")
+                                .kchtTypeLabel("VÃ¹ng nÆ°á»›c")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
+                                .diaChiChiTiet(parent != null ? "Thuá»™c cáº£ng biá»ƒn: " + parent.getPortName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
                                 .build();
@@ -636,10 +636,10 @@ public class KchtGis155Service {
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(String.valueOf(nc.getId()))
-                                .name(nc.getChannelName() != null && !nc.getChannelName().isEmpty() ? nc.getChannelName() : "Luồng hàng hải")
+                                .name(nc.getChannelName() != null && !nc.getChannelName().isEmpty() ? nc.getChannelName() : "Luá»“ng hÃ ng háº£i")
                                 .ma("NC_" + nc.getId())
                                 .orgName(getOrgName(nc.getOrgUnitId(), orgNameMap))
-                                .kchtTypeLabel("Luồng hàng hải")
+                                .kchtTypeLabel("Luá»“ng hÃ ng háº£i")
                                 .diaDiem("")
                                 .diaChiChiTiet(nc.getNote() != null ? nc.getNote() : "")
                                 .latitude(lat)
@@ -675,10 +675,10 @@ public class KchtGis155Service {
 
                         KchtGisSearchResult r = KchtGisSearchResult.builder()
                                 .id(String.valueOf(dk.getId()))
-                                .name(dk.getDikeRevetmentName() != null && !dk.getDikeRevetmentName().isEmpty() ? dk.getDikeRevetmentName() : "Đê kè")
+                                .name(dk.getDikeRevetmentName() != null && !dk.getDikeRevetmentName().isEmpty() ? dk.getDikeRevetmentName() : "ÄÃª kÃ¨")
                                 .ma("DIR_" + dk.getId())
                                 .orgName(getOrgName(dk.getDonViId(), orgNameMap))
-                                .kchtTypeLabel("Đê kè")
+                                .kchtTypeLabel("ÄÃª kÃ¨")
                                 .diaDiem("")
                                 .diaChiChiTiet(dk.getLocation() != null ? dk.getLocation() : "")
                                 .latitude(lat)
@@ -716,7 +716,7 @@ public class KchtGis155Service {
                                 .name(cs.getFacilityName())
                                 .ma("COSO_" + cs.getId())
                                 .orgName(getOrgName(cs.getOrgUnitId(), orgNameMap))
-                                .kchtTypeLabel("Cơ sở sửa chữa")
+                                .kchtTypeLabel("CÆ¡ sá»Ÿ sá»­a chá»¯a")
                                 .diaDiem(cs.getProvince() != null ? cs.getProvince() : "")
                                 .diaChiChiTiet(cs.getAddress() != null ? cs.getAddress() : "")
                                 .latitude(lat)
@@ -749,9 +749,9 @@ public class KchtGis155Service {
                                 .name(den.getName())
                                 .ma(den.getCode())
                                 .orgName(getOrgName(den.getUnitId(), orgNameMap))
-                                .kchtTypeLabel("Nhà trạm đèn biển")
+                                .kchtTypeLabel("NhÃ  tráº¡m Ä‘Ã¨n biá»ƒn")
                                 .diaDiem("")
-                                .diaChiChiTiet("Mô tả: " + (den.getDescription() != null ? den.getDescription() : "") + ", Đặc tính ánh sáng: " + (den.getLightCharacteristic() != null ? den.getLightCharacteristic() : "") + ", Tầm hiệu lực: " + (den.getLightRange() != null ? den.getLightRange() : "") + " hải lý")
+                                .diaChiChiTiet("MÃ´ táº£: " + (den.getDescription() != null ? den.getDescription() : "") + ", Äáº·c tÃ­nh Ã¡nh sÃ¡ng: " + (den.getLightCharacteristic() != null ? den.getLightCharacteristic() : "") + ", Táº§m hiá»‡u lá»±c: " + (den.getLightRange() != null ? den.getLightRange() : "") + " háº£i lÃ½")
                                 .latitude(den.getLatitude() != null ? den.getLatitude() : null)
                                 .longitude(den.getLongitude() != null ? den.getLongitude() : null)
                                 .build();
@@ -782,9 +782,9 @@ public class KchtGis155Service {
                                 .name(beacon.getName())
                                 .ma(beacon.getCode())
                                 .orgName(getOrgName(beacon.getUnitId(), orgNameMap))
-                                .kchtTypeLabel("Đèn biển")
+                                .kchtTypeLabel("ÄÃ¨n biá»ƒn")
                                 .diaDiem("")
-                                .diaChiChiTiet("Mô tả: " + (beacon.getLocation() != null ? beacon.getLocation() : "") + ", Đặc tính ánh sáng: " + (beacon.getPrimaryLightModel() != null ? beacon.getPrimaryLightModel() : "") + ", Tầm hiệu lực: " + (beacon.getLightRange() != null ? beacon.getLightRange() : "") + " hải lý")
+                                .diaChiChiTiet("MÃ´ táº£: " + (beacon.getLocation() != null ? beacon.getLocation() : "") + ", Äáº·c tÃ­nh Ã¡nh sÃ¡ng: " + (beacon.getPrimaryLightModel() != null ? beacon.getPrimaryLightModel() : "") + ", Táº§m hiá»‡u lá»±c: " + (beacon.getLightRange() != null ? beacon.getLightRange() : "") + " háº£i lÃ½")
                                 .latitude(lat)
                                 .longitude(lng)
                                 .build();
@@ -817,9 +817,9 @@ public class KchtGis155Service {
                                 .name(buoy.getName())
                                 .ma(buoy.getCode())
                                 .orgName(getOrgName(buoy.getUnitId(), orgNameMap))
-                                .kchtTypeLabel("Phao, tiêu")
+                                .kchtTypeLabel("Phao, tiÃªu")
                                 .diaDiem("")
-                                .diaChiChiTiet("Mô tả: " + (buoy.getDescription() != null ? buoy.getDescription() : "") + ", Màu sắc: " + (buoy.getColor() != null ? buoy.getColor() : "") + ", Hình dạng: " + (buoy.getShape() != null ? buoy.getShape() : "") + ", Đặc tính ánh sáng: " + (buoy.getLightCharacteristic() != null ? buoy.getLightCharacteristic() : ""))
+                                .diaChiChiTiet("MÃ´ táº£: " + (buoy.getDescription() != null ? buoy.getDescription() : "") + ", MÃ u sáº¯c: " + (buoy.getColor() != null ? buoy.getColor() : "") + ", HÃ¬nh dáº¡ng: " + (buoy.getShape() != null ? buoy.getShape() : "") + ", Äáº·c tÃ­nh Ã¡nh sÃ¡ng: " + (buoy.getLightCharacteristic() != null ? buoy.getLightCharacteristic() : ""))
                                 .latitude(lat)
                                 .longitude(lng)
                                 .build();
@@ -847,9 +847,9 @@ public class KchtGis155Service {
                                 .name(phao.getName())
                                 .ma(phao.getCode())
                                 .orgName(getOrgName(phao.getUnitId(), orgNameMap))
-                                .kchtTypeLabel("Nhà trạm phao tiêu")
+                                .kchtTypeLabel("NhÃ  tráº¡m phao tiÃªu")
                                 .diaDiem("")
-                                .diaChiChiTiet("Mô tả: " + (phao.getDescription() != null ? phao.getDescription() : "") + ", Màu sắc: " + (phao.getColor() != null ? phao.getColor() : "") + ", Hình dạng: " + (phao.getShape() != null ? phao.getShape() : "") + ", Đặc tính ánh sáng: " + (phao.getLightCharacteristic() != null ? phao.getLightCharacteristic() : ""))
+                                .diaChiChiTiet("MÃ´ táº£: " + (phao.getDescription() != null ? phao.getDescription() : "") + ", MÃ u sáº¯c: " + (phao.getColor() != null ? phao.getColor() : "") + ", HÃ¬nh dáº¡ng: " + (phao.getShape() != null ? phao.getShape() : "") + ", Äáº·c tÃ­nh Ã¡nh sÃ¡ng: " + (phao.getLightCharacteristic() != null ? phao.getLightCharacteristic() : ""))
                                 .latitude(phao.getLatitude() != null ? phao.getLatitude() : null)
                                 .longitude(phao.getLongitude() != null ? phao.getLongitude() : null)
                                 .build();
@@ -877,9 +877,9 @@ public class KchtGis155Service {
                                 .name(vtsStation.getName())
                                 .ma(vtsStation.getCode())
                                 .orgName(getOrgName(vtsStation.getUnitId(), orgNameMap))
-                                .kchtTypeLabel("Đài TTDH")
+                                .kchtTypeLabel("ÄÃ i TTDH")
                                 .diaDiem("")
-                                .diaChiChiTiet("Mô tả: " + (vtsStation.getDescription() != null ? vtsStation.getDescription() : ""))
+                                .diaChiChiTiet("MÃ´ táº£: " + (vtsStation.getDescription() != null ? vtsStation.getDescription() : ""))
                                 .latitude(vtsStation.getLatitude() != null ? vtsStation.getLatitude() : null)
                                 .longitude(vtsStation.getLongitude() != null ? vtsStation.getLongitude() : null)
                                 .build();
@@ -907,9 +907,9 @@ public class KchtGis155Service {
                                 .name(inmarsat.getName())
                                 .ma(inmarsat.getCode())
                                 .orgName(getOrgName(inmarsat.getUnitId(), orgNameMap))
-                                .kchtTypeLabel("Đài Thông tin Vệ tinh mặt đất Inmarsat Hải Phòng")
+                                .kchtTypeLabel("ÄÃ i ThÃ´ng tin Vá»‡ tinh máº·t Ä‘áº¥t Inmarsat Háº£i PhÃ²ng")
                                 .diaDiem("")
-                                .diaChiChiTiet("Mô tả: " + (inmarsat.getDescription() != null ? inmarsat.getDescription() : ""))
+                                .diaChiChiTiet("MÃ´ táº£: " + (inmarsat.getDescription() != null ? inmarsat.getDescription() : ""))
                                 .latitude(inmarsat.getLatitude() != null ? inmarsat.getLatitude() : null)
                                 .longitude(inmarsat.getLongitude() != null ? inmarsat.getLongitude() : null)
                                 .build();
@@ -937,9 +937,9 @@ public class KchtGis155Service {
                                 .name(cospasSarsat.getName())
                                 .ma(cospasSarsat.getCode())
                                 .orgName(getOrgName(cospasSarsat.getUnitId(), orgNameMap))
-                                .kchtTypeLabel("Đài Thông tin vệ tinh mặt đất Cospas-Sarsat Việt Nam")
+                                .kchtTypeLabel("ÄÃ i ThÃ´ng tin vá»‡ tinh máº·t Ä‘áº¥t Cospas-Sarsat Viá»‡t Nam")
                                 .diaDiem("")
-                                .diaChiChiTiet("Mô tả: " + (cospasSarsat.getDescription() != null ? cospasSarsat.getDescription() : ""))
+                                .diaChiChiTiet("MÃ´ táº£: " + (cospasSarsat.getDescription() != null ? cospasSarsat.getDescription() : ""))
                                 .latitude(cospasSarsat.getLatitude() != null ? cospasSarsat.getLatitude() : null)
                                 .longitude(cospasSarsat.getLongitude() != null ? cospasSarsat.getLongitude() : null)
                                 .build();
@@ -967,9 +967,9 @@ public class KchtGis155Service {
                                 .name(lrit.getName())
                                 .ma(lrit.getCode())
                                 .orgName(getOrgName(lrit.getUnitId(), orgNameMap))
-                                .kchtTypeLabel("Đài Thông tin nhận dạng và truy theo tầm xa (LRIT)")
+                                .kchtTypeLabel("ÄÃ i ThÃ´ng tin nháº­n dáº¡ng vÃ  truy theo táº§m xa (LRIT)")
                                 .diaDiem("")
-                                .diaChiChiTiet("Mô tả: " + (lrit.getDescription() != null ? lrit.getDescription() : ""))
+                                .diaChiChiTiet("MÃ´ táº£: " + (lrit.getDescription() != null ? lrit.getDescription() : ""))
                                 .latitude(lrit.getLatitude() != null ? lrit.getLatitude() : null)
                                 .longitude(lrit.getLongitude() != null ? lrit.getLongitude() : null)
                                 .build();
@@ -997,9 +997,9 @@ public class KchtGis155Service {
                                 .name(haiphong.getName())
                                 .ma(haiphong.getCode())
                                 .orgName(getOrgName(haiphong.getUnitId(), orgNameMap))
-                                .kchtTypeLabel("Đài Trung tâm xử lý thông tin hàng hải Hà Nội")
+                                .kchtTypeLabel("ÄÃ i Trung tÃ¢m xá»­ lÃ½ thÃ´ng tin hÃ ng háº£i HÃ  Ná»™i")
                                 .diaDiem("")
-                                .diaChiChiTiet("Mô tả: " + (haiphong.getDescription() != null ? haiphong.getDescription() : ""))
+                                .diaChiChiTiet("MÃ´ táº£: " + (haiphong.getDescription() != null ? haiphong.getDescription() : ""))
                                 .latitude(haiphong.getLatitude() != null ? haiphong.getLatitude() : null)
                                 .longitude(haiphong.getLongitude() != null ? haiphong.getLongitude() : null)
                                 .build();
@@ -1033,9 +1033,9 @@ public class KchtGis155Service {
                                 .name(vts.getSystemName())
                                 .ma("VTS_" + vts.getId())
                                 .orgName(getOrgName(vts.getOrgUnitId(), orgNameMap))
-                                .kchtTypeLabel("Hệ thống VTS")
+                                .kchtTypeLabel("Há»‡ thá»‘ng VTS")
                                 .diaDiem("")
-                                .diaChiChiTiet("Vị trí: " + (vts.getLocation() != null ? vts.getLocation() : "") + ", Tình trạng: " + (vts.getConditionStatus() != null ? ("TOT".equals(vts.getConditionStatus()) ? "Tốt" : "XUONG_CAP".equals(vts.getConditionStatus()) ? "Xuống cấp" : "Hư hỏng") : "") + ", Mức độ phụ trách: " + (vts.getResponsibilityLevel() != null ? vts.getResponsibilityLevel() : ""))
+                                .diaChiChiTiet("Vá»‹ trÃ­: " + (vts.getLocation() != null ? vts.getLocation() : "") + ", TÃ¬nh tráº¡ng: " + (vts.getConditionStatus() != null ? ("TOT".equals(vts.getConditionStatus()) ? "Tá»‘t" : "XUONG_CAP".equals(vts.getConditionStatus()) ? "Xuá»‘ng cáº¥p" : "HÆ° há»ng") : "") + ", Má»©c Ä‘á»™ phá»¥ trÃ¡ch: " + (vts.getResponsibilityLevel() != null ? vts.getResponsibilityLevel() : ""))
                                 .latitude(lat)
                                 .longitude(lng)
                                 .build();
@@ -1071,9 +1071,9 @@ public class KchtGis155Service {
                                 .name(rs.getStationName())
                                 .ma("RADAR_" + rs.getId())
                                 .orgName(getOrgName(rs.getOrgUnitId(), orgNameMap))
-                                .kchtTypeLabel("Trạm radar")
+                                .kchtTypeLabel("Tráº¡m radar")
                                 .diaDiem("")
-                                .diaChiChiTiet("Vị trí: " + (rs.getLocation() != null ? rs.getLocation() : "") + ", Loại trạm: " + (rs.getStationType() != null ? rs.getStationType() : "") + ", Tình trạng: " + (rs.getConditionStatus() != null ? rs.getConditionStatus() : ""))
+                                .diaChiChiTiet("Vá»‹ trÃ­: " + (rs.getLocation() != null ? rs.getLocation() : "") + ", Loáº¡i tráº¡m: " + (rs.getStationType() != null ? rs.getStationType() : "") + ", TÃ¬nh tráº¡ng: " + (rs.getConditionStatus() != null ? rs.getConditionStatus() : ""))
                                 .latitude(lat)
                                 .longitude(lng)
                                 .build();
@@ -1089,7 +1089,7 @@ public class KchtGis155Service {
                 case BENPHAO:
                     List<WaterZone> benPhaos = waterZoneRepository.searchWaterZones(
                             orgUnitId, null, searchLower, LoaiVungNuoc.BEN_PHAO, TrangThaiHoatDong.HIEN_HANH,
-                            TrangThaiPheDuyet.DUOC_PHE_DUYET, PageRequest.of(0, 10000)).getContent();
+                            ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
                     List<UUID> bpCbIds = benPhaos.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, Port> bpPortMap = new HashMap<>();
                     if (!bpCbIds.isEmpty()) {
@@ -1117,9 +1117,9 @@ public class KchtGis155Service {
                                 .name(vn.getWaterZoneName())
                                 .ma(vn.getWaterZoneCode())
                                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
-                                .kchtTypeLabel("Bến phao")
+                                .kchtTypeLabel("Báº¿n phao")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
+                                .diaChiChiTiet(parent != null ? "Thuá»™c cáº£ng biá»ƒn: " + parent.getPortName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
                                 .build();
@@ -1137,7 +1137,7 @@ public class KchtGis155Service {
                 case KHUNEO_DAU:
                     List<WaterZone> khuNeos = waterZoneRepository.searchWaterZones(
                             orgUnitId, null, searchLower, LoaiVungNuoc.NEO_DAU, TrangThaiHoatDong.HIEN_HANH,
-                            TrangThaiPheDuyet.DUOC_PHE_DUYET, PageRequest.of(0, 10000)).getContent();
+                            ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
                     List<UUID> knCbIds = khuNeos.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, Port> knPortMap = new HashMap<>();
                     if (!knCbIds.isEmpty()) {
@@ -1165,9 +1165,9 @@ public class KchtGis155Service {
                                 .name(vn.getWaterZoneName())
                                 .ma(vn.getWaterZoneCode())
                                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
-                                .kchtTypeLabel("Khu neo đậu")
+                                .kchtTypeLabel("Khu neo Ä‘áº­u")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
+                                .diaChiChiTiet(parent != null ? "Thuá»™c cáº£ng biá»ƒn: " + parent.getPortName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
                                 .build();
@@ -1185,7 +1185,7 @@ public class KchtGis155Service {
                 case KHUCHUYEN_TAI:
                     List<WaterZone> khuChuyens = waterZoneRepository.searchWaterZones(
                             orgUnitId, null, searchLower, LoaiVungNuoc.CHUYEN_TAI, TrangThaiHoatDong.HIEN_HANH,
-                            TrangThaiPheDuyet.DUOC_PHE_DUYET, PageRequest.of(0, 10000)).getContent();
+                            ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
                     List<UUID> kcCbIds = khuChuyens.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, Port> kcPortMap = new HashMap<>();
                     if (!kcCbIds.isEmpty()) {
@@ -1213,9 +1213,9 @@ public class KchtGis155Service {
                                 .name(vn.getWaterZoneName())
                                 .ma(vn.getWaterZoneCode())
                                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
-                                .kchtTypeLabel("Khu chuyển tải")
+                                .kchtTypeLabel("Khu chuyá»ƒn táº£i")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
+                                .diaChiChiTiet(parent != null ? "Thuá»™c cáº£ng biá»ƒn: " + parent.getPortName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
                                 .build();
@@ -1233,7 +1233,7 @@ public class KchtGis155Service {
                 case KHUTRANH_TRU_BAO:
                     List<WaterZone> khuTranhs = waterZoneRepository.searchWaterZones(
                             orgUnitId, null, searchLower, LoaiVungNuoc.TRANH_BAO, TrangThaiHoatDong.HIEN_HANH,
-                            TrangThaiPheDuyet.DUOC_PHE_DUYET, PageRequest.of(0, 10000)).getContent();
+                            ApprovalStatus.APPROVED, PageRequest.of(0, 10000)).getContent();
                     List<UUID> ktCbIds = khuTranhs.stream().map(WaterZone::getPortId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
                     Map<UUID, Port> ktPortMap = new HashMap<>();
                     if (!ktCbIds.isEmpty()) {
@@ -1261,9 +1261,9 @@ public class KchtGis155Service {
                                 .name(vn.getWaterZoneName())
                                 .ma(vn.getWaterZoneCode())
                                 .orgName(getOrgName(vn.getOrgUnitId(), orgNameMap))
-                                .kchtTypeLabel("Khu tránh trú bão")
+                                .kchtTypeLabel("Khu trÃ¡nh trÃº bÃ£o")
                                 .diaDiem(parentProvince)
-                                .diaChiChiTiet(parent != null ? "Thuộc cảng biển: " + parent.getPortName() : "")
+                                .diaChiChiTiet(parent != null ? "Thuá»™c cáº£ng biá»ƒn: " + parent.getPortName() : "")
                                 .latitude(viDo)
                                 .longitude(kinhDo)
                                 .build();

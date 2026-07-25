@@ -2,7 +2,7 @@ package com.hanghai.kchtg.cangben.repository;
 
 import com.hanghai.kchtg.cangben.entity.Port;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -28,7 +28,7 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
             "AND (:orgUnitId IS NULL OR p.orgUnitId = :orgUnitId)")
     Page<Port> findAllActive(@Param("orgUnitId") UUID orgUnitId, Pageable pageable);
 
-    long countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet approvalStatus);
+    long countByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
     @Query("SELECT p FROM Port p WHERE p.deletedAt IS NULL " +
             "AND (:orgUnitId IS NULL OR p.orgUnitId = :orgUnitId) " +
@@ -44,7 +44,7 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
             @Param("portName") String portName,
             @Param("province") String province,
             @Param("operationalStatus") TrangThaiHoatDong operationalStatus,
-            @Param("approvalStatus") TrangThaiPheDuyet approvalStatus,
+            @Param("approvalStatus") ApprovalStatus approvalStatus,
             @Param("search") String search,
             Pageable pageable);
 }

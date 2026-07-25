@@ -22,7 +22,7 @@ public class DieuChinhQuyHoachService {
     private final PheDuyetDieuChinhRepository pheDuyetDieuChinhRepository;
     private final QuyHoachBenCangService quyHoachBenCangService;
 
-    // ── CRUD ──────────────────────────────────────────────────────────
+    // â”€â”€ CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Transactional
     public DieuChinhQuyHoachResponse create(DieuChinhQuyHoachCreateRequest request) {
@@ -43,7 +43,7 @@ public class DieuChinhQuyHoachService {
     @Transactional(readOnly = true)
     public DieuChinhQuyHoachResponse getById(Long id) {
         DieuChinhQuyHoach dc = dieuChinhQuyHoachRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy điều chỉnh với id: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y Ä‘iá»u chá»‰nh vá»›i id: " + id));
         return toResponse(dc);
     }
 
@@ -62,7 +62,7 @@ public class DieuChinhQuyHoachService {
     @Transactional
     public DieuChinhQuyHoachResponse update(Long id, DieuChinhQuyHoachCreateRequest request) {
         DieuChinhQuyHoach dc = dieuChinhQuyHoachRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy điều chỉnh với id: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y Ä‘iá»u chá»‰nh vá»›i id: " + id));
 
         if (request.getLoaiDieuChinh() != null) dc.setLoaiDieuChinh(request.getLoaiDieuChinh());
         if (request.getLyDo() != null) dc.setLyDo(request.getLyDo());
@@ -78,13 +78,13 @@ public class DieuChinhQuyHoachService {
     @Transactional
     public void delete(Long id) {
         if (!dieuChinhQuyHoachRepository.existsById(id)) {
-            throw new IllegalArgumentException("Không tìm thấy điều chỉnh với id: " + id);
+            throw new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y Ä‘iá»u chá»‰nh vá»›i id: " + id);
         }
         dieuChinhQuyHoachRepository.deleteById(id);
         log.info("Deleted DieuChinhQuyHoach with id: {}", id);
     }
 
-    // ── Search / Filter ───────────────────────────────────────────────
+    // â”€â”€ Search / Filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Transactional(readOnly = true)
     public List<DieuChinhQuyHoachResponse> findByTinhTrang(TinhTrangDieuChinh tinhTrang) {
@@ -92,13 +92,13 @@ public class DieuChinhQuyHoachService {
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
-    // ── Approval Workflow (F-134) ─────────────────────────────────────
+    // â”€â”€ Approval Workflow (F-134) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Transactional
     public PheDuyetDieuChinhResponse addApproval(Long dieuChinhId, PheDuyetDieuChinhRequest request) {
-        log.info("Adding PheDuyệtDieuChinh for dieuChinhId: {}", dieuChinhId);
+        log.info("Adding PheDuyá»‡tDieuChinh for dieuChinhId: {}", dieuChinhId);
         DieuChinhQuyHoach dc = dieuChinhQuyHoachRepository.findById(dieuChinhId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy điều chỉnh với id: " + dieuChinhId));
+                .orElseThrow(() -> new IllegalArgumentException("KhÃ´ng tÃ¬m tháº¥y Ä‘iá»u chá»‰nh vá»›i id: " + dieuChinhId));
 
         PheDuyetDieuChinh pd = PheDuyetDieuChinh.builder()
                 .dieuChinh(dc)
@@ -112,15 +112,15 @@ public class DieuChinhQuyHoachService {
         PheDuyetDieuChinh saved = pheDuyetDieuChinhRepository.save(pd);
 
         // Auto-update adjustment status to approved if approval status is positive
-        if ("DA_DUOC_PHE_DUYET".equals(request.getTrangThai())) {
-            dc.setTinhTrang(TinhTrangDieuChinh.DA_DUOC_PHE_DUYET);
+        if ("DA_APPROVED".equals(request.getTrangThai())) {
+            dc.setTinhTrang(TinhTrangDieuChinh.DA_APPROVED);
             dieuChinhQuyHoachRepository.save(dc);
         }
 
         return toPheDuyetResponse(saved);
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────
+    // â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private DieuChinhQuyHoachResponse toResponse(DieuChinhQuyHoach dc) {
         List<PheDuyetDieuChinhResponse> pheDuyetList = new ArrayList<>();

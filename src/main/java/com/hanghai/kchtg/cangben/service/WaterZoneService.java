@@ -4,7 +4,7 @@ import com.hanghai.kchtg.cangben.dto.vungnuoc.*;
 import com.hanghai.kchtg.cangben.entity.WaterZone;
 import com.hanghai.kchtg.cangben.entity.LoaiVungNuoc;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.cangben.repository.WaterZoneRepository;
 import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
 import com.hanghai.kchtg.cangben.service.shared.UserResolverService;
@@ -42,10 +42,10 @@ public class WaterZoneService {
     @Transactional
     public WaterZoneResponse create(CreateWaterZoneRequest request) {
         if (waterZoneRepository.existsByWaterZoneCode(request.getWaterZoneCode())) {
-            throw new IllegalArgumentException("Mã " + request.getWaterZoneCode() + " đã tồn tại");
+            throw new IllegalArgumentException("MÃ£ " + request.getWaterZoneCode() + " Ä‘Ã£ tá»“n táº¡i");
         }
         Port parent = portRepository.findById(request.getPortId())
-                .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
+                .orElseThrow(() -> new EntityNotFoundException("Cáº£ng biá»ƒn khÃ´ng tá»“n táº¡i: " + request.getPortId()));
 
         UUID waterZoneId = UUID.randomUUID();
         UUID spatialId = null;
@@ -73,7 +73,7 @@ public class WaterZoneService {
                 .maxDepth(request.getMaxDepth()).avgDepth(request.getAvgDepth())
                 .waterZoneType(request.getWaterZoneType()).operationalStatus(request.getOperationalStatus())
                 .orgUnitId(parent.getOrgUnitId())
-                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .approvalStatus(ApprovalStatus.PENDING)
                 .mapSymbolId(request.getMapSymbolId())
                 .spatialId(spatialId)
                 .build();
@@ -110,7 +110,7 @@ public class WaterZoneService {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
         TrangThaiHoatDong statusEnum = status != null ? TrangThaiHoatDong.fromString(status) : null;
-        TrangThaiPheDuyet approvalEnum = approvalStatus != null ? TrangThaiPheDuyet.fromString(approvalStatus) : null;
+        ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         Page<WaterZone> pageResult = waterZoneRepository.searchWaterZones(orgUnitId, portId, search, waterZoneType, statusEnum, approvalEnum, pageable);
 
         java.util.List<UUID> parentIds = pageResult.getContent().stream()
@@ -170,7 +170,7 @@ public class WaterZoneService {
     @Transactional(readOnly = true)
     public WaterZoneResponse findByCode(String waterZoneCode) {
         return toResponse(waterZoneRepository.findByWaterZoneCode(waterZoneCode)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy vùng nước với mã: " + waterZoneCode)));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy vùng nước vá»›i mÃ£: " + waterZoneCode)));
     }
 
     @Transactional
@@ -192,7 +192,7 @@ public class WaterZoneService {
         if (request.getPortId() != null) {
             entity.setPortId(request.getPortId());
             Port parent = portRepository.findById(request.getPortId())
-                    .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
+                    .orElseThrow(() -> new EntityNotFoundException("Cáº£ng biá»ƒn khÃ´ng tá»“n táº¡i: " + request.getPortId()));
             entity.setOrgUnitId(parent.getOrgUnitId());
         } else if (entity.getOrgUnitId() == null && entity.getPortId() != null) {
             portRepository.findById(entity.getPortId()).ifPresent(p -> {
@@ -242,7 +242,7 @@ public class WaterZoneService {
             });
         }
 
-        entity.setApprovalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET);
+        entity.setApprovalStatus(ApprovalStatus.PENDING);
 
         WaterZone saved = waterZoneRepository.save(entity);
 

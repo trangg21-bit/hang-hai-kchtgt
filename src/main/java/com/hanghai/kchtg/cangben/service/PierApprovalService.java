@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.cangben.service;
 
 import com.hanghai.kchtg.cangben.entity.Pier;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.cangben.entity.ChangeLog;
 import com.hanghai.kchtg.cangben.entity.ApprovalLog;
 import com.hanghai.kchtg.cangben.repository.PierRepository;
@@ -37,18 +37,18 @@ public class PierApprovalService {
         Pier entity = pierRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cầu cảng với id: " + id));
 
-        TrangThaiPheDuyet currentStatus = entity.getApprovalStatus();
+        ApprovalStatus currentStatus = entity.getApprovalStatus();
         String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
 
         if (reason == null || reason.isBlank()) {
             approvalWorkflowService.approve(currentStatusStr, "Pier", id.toString(), userId);
-            entity.setApprovalStatus(TrangThaiPheDuyet.DUOC_PHE_DUYET);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
             pierRepository.save(entity);
             log.info("Pier [{}] approved by {}", id, userId);
             notificationService.sendApprovalNotification("Pier", id.toString(), userId, null);
         } else {
             approvalWorkflowService.reject(currentStatusStr, "Pier", id.toString(), userId, reason);
-            entity.setApprovalStatus(TrangThaiPheDuyet.TU_CHOI);
+            entity.setApprovalStatus(ApprovalStatus.REJECTED);
             pierRepository.save(entity);
             log.info("Pier [{}] rejected by {}: {}", id, userId, reason);
         }

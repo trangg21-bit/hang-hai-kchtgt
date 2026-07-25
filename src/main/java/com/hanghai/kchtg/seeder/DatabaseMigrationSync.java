@@ -17,7 +17,7 @@ public class DatabaseMigrationSync implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        log.info("🔄 Checking and migrating database tables from Vietnamese to English schema...");
+        log.info("ðŸ”„ Checking and migrating database tables from Vietnamese to English schema...");
 
         // 1. ports <- cang_bien
         trySyncTable("ports", "cang_bien",
@@ -126,7 +126,7 @@ public class DatabaseMigrationSync implements CommandLineRunner {
             "SELECT id, ten_de_ke, vi_tri, chieu_cao, chieu_dai, chieu_rong, " +
             "    cao_trinh_dinh, CASE WHEN loai_de IS NOT NULL THEN CAST(loai_de AS INTEGER) END, " +
             "    mat_vat_lieu, tinh_trang, thoi_diem_dua_vao_khai_thac, " +
-            "    ghi_chu, ly_do_tu_choi, CASE WHEN trang_thai_phe_duyet IS NOT NULL THEN CAST(trang_thai_phe_duyet AS INTEGER) END, " +
+            "    ghi_chu, ly_do_REJECTED, CASE WHEN trang_thai_phe_duyet IS NOT NULL THEN CAST(trang_thai_phe_duyet AS INTEGER) END, " +
             "    phe_duyet_c1, phe_duyet_c2, nguoi_phe_duyet_c1, nguoi_phe_duyet_c2, ngay_phe_duyet_c1, ngay_phe_duyet_c2, " +
             "    created_at, created_by, updated_at, updated_by, deleted_at, deleted_by, don_vi_id, spatial_id " +
             "FROM de_ke " +
@@ -165,7 +165,7 @@ public class DatabaseMigrationSync implements CommandLineRunner {
             "ON CONFLICT (id) DO NOTHING"
         );
 
-        log.info("🏁 Database schema synchronization process finished.");
+        log.info("ðŸ Database schema synchronization process finished.");
     }
 
     private void trySyncTable(String targetTable, String sourceTable, String sql) {

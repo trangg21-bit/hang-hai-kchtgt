@@ -2,7 +2,7 @@ package com.hanghai.kchtg.cangben.repository;
 
 import com.hanghai.kchtg.cangben.entity.DryPort;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -24,7 +24,7 @@ public interface DryPortRepository extends JpaRepository<DryPort, UUID> {
             "AND (:orgUnitId IS NULL OR d.orgUnitId = :orgUnitId)")
     Page<DryPort> findAllActive(@Param("orgUnitId") UUID orgUnitId, Pageable pageable);
 
-    long countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet approvalStatus);
+    long countByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
     @Query("SELECT d FROM DryPort d WHERE d.deletedAt IS NULL " +
             "AND (:orgUnitId IS NULL OR d.orgUnitId = :orgUnitId) " +
@@ -35,6 +35,6 @@ public interface DryPortRepository extends JpaRepository<DryPort, UUID> {
             @Param("orgUnitId") UUID orgUnitId,
             @Param("search") String search,
             @Param("operationalStatus") TrangThaiHoatDong operationalStatus,
-            @Param("approvalStatus") TrangThaiPheDuyet approvalStatus,
+            @Param("approvalStatus") ApprovalStatus approvalStatus,
             Pageable pageable);
 }

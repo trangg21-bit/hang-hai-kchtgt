@@ -12,7 +12,7 @@ import com.hanghai.kchtg.cangben.repository.WaterZoneRepository;
 import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
 import com.hanghai.kchtg.cangben.service.shared.UserResolverService;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,8 +30,8 @@ import java.util.UUID;
  * Covers F-008 (create), F-009 (update), F-010 (soft-delete).
  * <p>
  * Business rules:
- * - Code (portCode) is immutable after creation — duplicate detection on create
- * - Approval status always set to CHO_PHE_DUYET on create/update
+ * - Code (portCode) is immutable after creation â€” duplicate detection on create
+ * - Approval status always set to PENDING on create/update
  * - Cannot soft-delete if active children (Berth, WaterZone) exist
  * </p>
  */
@@ -49,12 +49,12 @@ public class PortService {
     private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
     private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
 
-    // ── CREATE ──────────────────────────────────────────────────
+    // â”€â”€ CREATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Transactional
     public PortResponse create(CreatePortRequest request) {
         if (portRepository.existsByPortCode(request.getPortCode())) {
-            throw new IllegalArgumentException("Mã " + request.getPortCode() + " đã tồn tại");
+            throw new IllegalArgumentException("MÃ£ " + request.getPortCode() + " Ä‘Ã£ tá»“n táº¡i");
         }
 
         Port entity = Port.builder()
@@ -64,7 +64,7 @@ public class PortService {
                 .area(request.getArea())
                 .maxVesselCapacity(request.getMaxVesselCapacity())
                 .operationalStatus(request.getOperationalStatus())
-                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .approvalStatus(ApprovalStatus.PENDING)
                 .orgUnitId(request.getOrgUnitId())
                 .portGroup(request.getPortGroup())
                 .mapSymbolId(request.getMapSymbolId())
@@ -121,7 +121,7 @@ public class PortService {
         return toResponse(saved);
     }
 
-    // ── READ ─────────────────────────────────────────────────────────────
+    // â”€â”€ READ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Transactional(readOnly = true)
     public PortResponse getById(UUID id) {
@@ -144,7 +144,7 @@ public class PortService {
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
 
         TrangThaiHoatDong statusEnum = operationalStatus != null ? TrangThaiHoatDong.fromString(operationalStatus) : null;
-        TrangThaiPheDuyet approvalEnum = approvalStatus != null ? TrangThaiPheDuyet.fromString(approvalStatus) : null;
+        ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         Page<Port> results = portRepository.searchPorts(
                 orgUnitId, portCode, portName, province, statusEnum, approvalEnum, search, pageable);
 
@@ -171,7 +171,7 @@ public class PortService {
         return results.map(e -> toResponse(e, userNamesMap.get(e.getCreatedBy()), userNamesMap.get(e.getUpdatedBy())));
     }
 
-    // ── UPDATE ──────────────────────────────────────────────────
+    // â”€â”€ UPDATE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Transactional
     public PortResponse update(UpdatePortRequest request) {
@@ -221,7 +221,7 @@ public class PortService {
                 .remarks(entity.getRemarks())
                 .build();
 
-        // Update mutable fields — code (portCode) is immutable
+        // Update mutable fields â€” code (portCode) is immutable
         if (request.getPortName() != null) entity.setPortName(request.getPortName());
         if (request.getProvince() != null) entity.setProvince(request.getProvince());
 
@@ -248,7 +248,7 @@ public class PortService {
         if (request.getPortGroup() != null) entity.setPortGroup(request.getPortGroup());
         entity.setMapSymbolId(request.getMapSymbolId());
         entity.setOperationalStatus(request.getOperationalStatus() != null ? request.getOperationalStatus() : entity.getOperationalStatus());
-        entity.setApprovalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET);
+        entity.setApprovalStatus(ApprovalStatus.PENDING);
 
         // Update extended fields
         if (request.getDetailedLocation() != null) entity.setDetailedLocation(request.getDetailedLocation());
@@ -301,7 +301,7 @@ public class PortService {
         return toResponse(saved);
     }
 
-    // ── DELETE ──────────────────────────────────────────────────
+    // â”€â”€ DELETE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Transactional
     public void softDelete(UUID id) {
@@ -328,7 +328,7 @@ public class PortService {
         log.info("Soft-deleted Port [{}] code={}", entity.getId(), entity.getPortCode());
     }
 
-    // ── Count helpers ──────────────────────────────────────
+    // â”€â”€ Count helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private long countBerthByPortId(UUID portId) {
         return berthRepository.countByPortIdAndDeletedAtIsNull(portId);
@@ -338,7 +338,7 @@ public class PortService {
         return waterZoneRepository.countByPortIdAndDeletedAtIsNull(portId);
     }
 
-    // ── Internal helpers ─────────────────────────────────────────────────
+    // â”€â”€ Internal helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private PortResponse toResponse(Port entity) {
         return toResponse(entity, null, null);

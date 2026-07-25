@@ -20,7 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -82,14 +82,14 @@ class BerthServiceTest {
         parentHienHanh.setPortCode("CB-001");
         parentHienHanh.setPortName("Cảng Cha Hoạt Động");
         parentHienHanh.setOperationalStatus(TrangThaiHoatDong.HIEN_HANH);
-        parentHienHanh.setApprovalStatus(TrangThaiPheDuyet.DUOC_PHE_DUYET);
+        parentHienHanh.setApprovalStatus(ApprovalStatus.APPROVED);
 
         parentNotActive = new Port();
         ReflectionTestUtils.setField(parentNotActive, "id", parentId);
         parentNotActive.setPortCode("CB-002");
         parentNotActive.setPortName("Cảng Cha Không Hoạt Động");
         parentNotActive.setOperationalStatus(TrangThaiHoatDong.TAM_NGUNG);
-        parentNotActive.setApprovalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET);
+        parentNotActive.setApprovalStatus(ApprovalStatus.PENDING);
 
         testBerth = new Berth();
         ReflectionTestUtils.setField(testBerth, "id", testId);
@@ -97,7 +97,7 @@ class BerthServiceTest {
         testBerth.setBerthName("Bến Cảng Test");
         testBerth.setPortId(parentId);
         testBerth.setOperationalStatus(TrangThaiHoatDong.HIEN_HANH);
-        testBerth.setApprovalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET);
+        testBerth.setApprovalStatus(ApprovalStatus.PENDING);
     }
 
     // ── CREATE (F-014) ─────────────────────────────────────────────────────
@@ -120,7 +120,7 @@ class BerthServiceTest {
         assertNotNull(result);
         assertEquals("BEN-002", result.getBerthCode());
         assertEquals("Bến mới", result.getBerthName());
-        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getApprovalStatus());
+        assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus());
         verify(berthRepository).save(any(Berth.class));
     }
 

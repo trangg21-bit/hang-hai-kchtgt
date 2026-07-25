@@ -23,7 +23,7 @@ public class PortResponse {
     private BigDecimal area;
     private BigDecimal maxVesselCapacity;
     private com.hanghai.kchtg.common.entity.TrangThaiHoatDong operationalStatus;
-    private com.hanghai.kchtg.common.entity.TrangThaiPheDuyet approvalStatus;
+    private com.hanghai.kchtg.common.entity.ApprovalStatus approvalStatus;
     private UUID orgUnitId;
     private Integer portGroup;
     private String createdBy;
@@ -35,14 +35,14 @@ public class PortResponse {
     private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geometryType;
     private String coordinates;
 
-    // ── Extended fields (V53) ────────────────────────────────────────
+    // â”€â”€ Extended fields (V53) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private String detailedLocation;
     private Integer portClass;
     private Integer coordinateSystem;
     private Integer displayRule;
 
-    // ── zobjDataSub fields ───────────────────────────────────────────
+    // â”€â”€ zobjDataSub fields â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private String waterAreaScope;
     private Integer totalBerths;

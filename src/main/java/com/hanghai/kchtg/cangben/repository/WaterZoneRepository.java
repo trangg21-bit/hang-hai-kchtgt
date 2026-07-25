@@ -3,7 +3,7 @@ package com.hanghai.kchtg.cangben.repository;
 import com.hanghai.kchtg.cangben.entity.WaterZone;
 import com.hanghai.kchtg.cangben.entity.LoaiVungNuoc;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -39,7 +39,7 @@ public interface WaterZoneRepository extends JpaRepository<WaterZone, UUID> {
     @Query("SELECT COUNT(w) FROM WaterZone w WHERE w.deletedAt IS NULL AND w.portId = :portId")
     long countByPortIdAndDeletedAtIsNull(@Param("portId") UUID portId);
 
-    long countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet approvalStatus);
+    long countByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
     @Query("SELECT w FROM WaterZone w WHERE w.deletedAt IS NULL " +
             "AND (:orgUnitId IS NULL OR w.orgUnitId = :orgUnitId) " +
@@ -54,6 +54,6 @@ public interface WaterZoneRepository extends JpaRepository<WaterZone, UUID> {
             @Param("search") String search,
             @Param("waterZoneType") LoaiVungNuoc waterZoneType,
             @Param("operationalStatus") TrangThaiHoatDong operationalStatus,
-            @Param("approvalStatus") TrangThaiPheDuyet approvalStatus,
+            @Param("approvalStatus") ApprovalStatus approvalStatus,
             Pageable pageable);
 }

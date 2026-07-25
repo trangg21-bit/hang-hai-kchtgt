@@ -3,8 +3,8 @@ package com.hanghai.kchtg.cangben.entity;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDongConverter;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyetConverter;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatusConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -16,7 +16,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
- * Entity representing a port (Cảng biển) — M-002 root entity.
+ * Entity representing a port (Cáº£ng biá»ƒn) â€” M-002 root entity.
  * Corresponds to table: ports (renamed from cang_bien).
  * <p>
  * Uses BaseEntity for UUID PK, soft-delete, and JPA auditing.
@@ -55,8 +55,8 @@ public class Port extends BaseEntity {
     private TrangThaiHoatDong operationalStatus;
 
     @Column(name = "approval_status", nullable = false)
-    @Convert(converter = TrangThaiPheDuyetConverter.class)
-    private TrangThaiPheDuyet approvalStatus;
+    @Convert(converter = ApprovalStatusConverter.class)
+    private ApprovalStatus approvalStatus;
 
     @Column(name = "org_unit_id")
     private UUID orgUnitId;
@@ -70,7 +70,7 @@ public class Port extends BaseEntity {
     @Column(name = "spatial_id")
     private java.util.UUID spatialId;
 
-    // ── Extended fields (V53 — from hh.csdl Qlkc037Dto) ──────────────
+    // â”€â”€ Extended fields (V53 â€” from hh.csdl Qlkc037Dto) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Column(name = "detailed_location", length = 500)
     private String detailedLocation;
@@ -84,7 +84,7 @@ public class Port extends BaseEntity {
     @Column(name = "display_rule")
     private Integer displayRule;
 
-    // ── zobjDataSub fields ───────────────────────────────────────────
+    // â”€â”€ zobjDataSub fields â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Column(name = "water_area_scope", length = 2000)
     private String waterAreaScope;

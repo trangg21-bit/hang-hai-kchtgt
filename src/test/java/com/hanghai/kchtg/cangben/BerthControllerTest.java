@@ -25,7 +25,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -109,7 +109,7 @@ class BerthControllerTest {
                 .berthName("Bến Cảng Demo")
                 .portId(parentId)
                 .operationalStatus(TrangThaiHoatDong.HIEN_HANH)
-                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .approvalStatus(ApprovalStatus.PENDING)
                 .build();
     }
 
@@ -252,7 +252,7 @@ class BerthControllerTest {
         UUID id = UUID.randomUUID();
         when(berthApprovalService.getHistory(id))
                 .thenReturn(Map.of("entityId", id.toString(), "changeHistory", List.of(),
-                        "approvalLog", List.of(), "currentApprovalStatus", "CHO_PHE_DUYET",
+                        "approvalLog", List.of(), "currentApprovalStatus", "PENDING",
                         "entityType", "Berth"));
 
         mockMvc.perform(get("/api/v1/berths/{id}/history", id))

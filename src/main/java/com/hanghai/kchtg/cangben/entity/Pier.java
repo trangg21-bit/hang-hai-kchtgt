@@ -3,8 +3,8 @@ package com.hanghai.kchtg.cangben.entity;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDongConverter;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyetConverter;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatusConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -16,9 +16,9 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
- * Entity representing a pier (Cầu cảng) — child of Berth.
+ * Entity representing a pier (Cáº§u cáº£ng) â€” child of Berth.
  * Corresponds to table: piers (renamed from cau_cang).
- * FK: berth_id → berths.id (NOT NULL)
+ * FK: berth_id â†’ berths.id (NOT NULL)
  */
 @Entity
 @Table(name = "piers",
@@ -54,8 +54,8 @@ public class Pier extends BaseEntity {
     private TrangThaiHoatDong operationalStatus;
 
     @Column(name = "approval_status", nullable = false)
-    @Convert(converter = TrangThaiPheDuyetConverter.class)
-    private TrangThaiPheDuyet approvalStatus;
+    @Convert(converter = ApprovalStatusConverter.class)
+    private ApprovalStatus approvalStatus;
 
     @Column(name = "org_unit_id")
     private UUID orgUnitId;

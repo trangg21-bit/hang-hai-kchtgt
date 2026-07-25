@@ -9,7 +9,7 @@ import com.hanghai.kchtg.cangben.repository.ApprovalLogRepository;
 import com.hanghai.kchtg.cangben.service.PortApprovalService;
 import com.hanghai.kchtg.cangben.service.shared.ApprovalWorkflowService;
 import com.hanghai.kchtg.cangben.service.shared.CangBenNotificationService;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -63,22 +63,22 @@ class PortApprovalServiceTest {
         ReflectionTestUtils.setField(testEntity, "id", testId);
         testEntity.setPortCode("CB-001");
         testEntity.setPortName("Cảng Test");
-        testEntity.setApprovalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET);
+        testEntity.setApprovalStatus(ApprovalStatus.PENDING);
     }
 
     // ── APPROVE (F-011) ────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("F-011: approve — sets status to DUOC_PHE_DUYET and persists ApprovalLog")
+    @DisplayName("F-011: approve — sets status to APPROVED and persists ApprovalLog")
     void approve_setsApprovedStatus() {
         when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
         when(portRepository.save(any())).thenReturn(testEntity);
 
         approvalService.approve(testId, "user-1", null); // null reason = approve
 
-        assertEquals(TrangThaiPheDuyet.DUOC_PHE_DUYET, testEntity.getApprovalStatus());
+        assertEquals(ApprovalStatus.APPROVED, testEntity.getApprovalStatus());
         verify(portRepository).save(testEntity);
-        verify(approvalWorkflowService).approve(eq("CHO_PHE_DUYET"), eq("Port"), eq(testId.toString()), eq("user-1"));
+        verify(approvalWorkflowService).approve(eq("PENDING"), eq("Port"), eq(testId.toString()), eq("user-1"));
         verify(notificationService).sendApprovalNotification(eq("Port"), eq(testId.toString()), eq("user-1"), eq(null));
     }
 
@@ -90,21 +90,21 @@ class PortApprovalServiceTest {
 
         approvalService.approve(testId, "user-1", "  "); // blank = approve
 
-        assertEquals(TrangThaiPheDuyet.DUOC_PHE_DUYET, testEntity.getApprovalStatus());
+        assertEquals(ApprovalStatus.APPROVED, testEntity.getApprovalStatus());
         verify(approvalWorkflowService).approve(any(), any(), any(), any());
     }
 
     @Test
-    @DisplayName("F-011: reject — sets status to TU_CHOI and persists ApprovalLog")
+    @DisplayName("F-011: reject — sets status to REJECTED and persists ApprovalLog")
     void reject_setsTuChoiStatus() {
         when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
         when(portRepository.save(any())).thenReturn(testEntity);
 
         approvalService.approve(testId, "user-1", "Thiếu tài liệu"); // non-blank reason = reject
 
-        assertEquals(TrangThaiPheDuyet.TU_CHOI, testEntity.getApprovalStatus());
+        assertEquals(ApprovalStatus.REJECTED, testEntity.getApprovalStatus());
         verify(portRepository).save(testEntity);
-        verify(approvalWorkflowService).reject(eq("CHO_PHE_DUYET"), eq("Port"), eq(testId.toString()),
+        verify(approvalWorkflowService).reject(eq("PENDING"), eq("Port"), eq(testId.toString()),
                 eq("user-1"), eq("Thiếu tài liệu"));
     }
 
@@ -117,12 +117,12 @@ class PortApprovalServiceTest {
     }
 
     @Test
-    @DisplayName("F-011: approve — throws IllegalStateException when not in CHO_PHE_DUYET (via workflow)")
+    @DisplayName("F-011: approve — throws IllegalStateException when not in PENDING (via workflow)")
     void approve_wrongStatus_throwsViaWorkflow() {
-        testEntity.setApprovalStatus(TrangThaiPheDuyet.DUOC_PHE_DUYET);
+        testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
         when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
         doThrow(new IllegalStateException("Cannot approve: already approved"))
-                .when(approvalWorkflowService).approve(eq("DUOC_PHE_DUYET"), any(), any(), any());
+                .when(approvalWorkflowService).approve(eq("APPROVED"), any(), any(), any());
 
         assertThrows(IllegalStateException.class, () -> approvalService.approve(testId, "user-1", null));
         verify(portRepository, never()).save(any());
@@ -166,7 +166,7 @@ class PortApprovalServiceTest {
         assertNotNull(result);
         assertEquals(testId.toString(), result.get("entityId"));
         assertEquals("Port", result.get("entityType"));
-        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.get("currentApprovalStatus"));
+        assertEquals(ApprovalStatus.PENDING, result.get("currentApprovalStatus"));
 
         @SuppressWarnings("unchecked")
         List<ChangeLog> history = (List<ChangeLog>) result.get("changeHistory");

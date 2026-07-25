@@ -25,7 +25,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -98,7 +98,7 @@ class PierControllerTest {
                 .length(new BigDecimal("200.00"))
                 .designLoad(new BigDecimal("50000.00"))
                 .operationalStatus(TrangThaiHoatDong.HIEN_HANH)
-                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .approvalStatus(ApprovalStatus.PENDING)
                 .build();
     }
 
@@ -209,7 +209,7 @@ class PierControllerTest {
         UUID id = UUID.randomUUID();
         when(pierApprovalService.getHistory(id))
                 .thenReturn(Map.of("entityId", id.toString(), "changeHistory", List.of(),
-                        "approvalLog", List.of(), "currentApprovalStatus", "CHO_PHE_DUYET",
+                        "approvalLog", List.of(), "currentApprovalStatus", "PENDING",
                         "entityType", "Pier"));
 
         mockMvc.perform(get("/api/v1/piers/{id}/history", id))

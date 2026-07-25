@@ -22,7 +22,7 @@ public class WaterZoneResponse {
     private BigDecimal avgDepth;
     private com.hanghai.kchtg.cangben.entity.LoaiVungNuoc waterZoneType;
     private com.hanghai.kchtg.common.entity.TrangThaiHoatDong operationalStatus;
-    private com.hanghai.kchtg.common.entity.TrangThaiPheDuyet approvalStatus;
+    private com.hanghai.kchtg.common.entity.ApprovalStatus approvalStatus;
     private UUID orgUnitId;
     private String createdBy;
     private String updatedBy;

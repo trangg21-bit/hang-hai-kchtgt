@@ -3,8 +3,8 @@ package com.hanghai.kchtg.cangben.entity;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDongConverter;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyetConverter;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatusConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -16,7 +16,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
- * Entity representing an inland port / dry port (Cảng cạn) — independent, no parent FK.
+ * Entity representing an inland port / dry port (Cáº£ng cáº¡n) â€” independent, no parent FK.
  * Corresponds to table: dry_ports (renamed from cang_can).
  */
 @Entity
@@ -51,8 +51,8 @@ public class DryPort extends BaseEntity {
     private TrangThaiHoatDong operationalStatus;
 
     @Column(name = "approval_status", nullable = false)
-    @Convert(converter = TrangThaiPheDuyetConverter.class)
-    private TrangThaiPheDuyet approvalStatus;
+    @Convert(converter = ApprovalStatusConverter.class)
+    private ApprovalStatus approvalStatus;
 
     @Column(name = "org_unit_id")
     private UUID orgUnitId;

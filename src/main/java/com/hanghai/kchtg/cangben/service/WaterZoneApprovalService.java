@@ -3,7 +3,7 @@ package com.hanghai.kchtg.cangben.service;
 import com.hanghai.kchtg.cangben.entity.ChangeLog;
 import com.hanghai.kchtg.cangben.entity.ApprovalLog;
 import com.hanghai.kchtg.cangben.entity.WaterZone;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.cangben.repository.ChangeLogRepository;
 import com.hanghai.kchtg.cangben.repository.ApprovalLogRepository;
 import com.hanghai.kchtg.cangben.repository.WaterZoneRepository;
@@ -37,18 +37,18 @@ public class WaterZoneApprovalService {
         WaterZone entity = waterZoneRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy vùng nước với id: " + id));
 
-        TrangThaiPheDuyet currentStatus = entity.getApprovalStatus();
+        ApprovalStatus currentStatus = entity.getApprovalStatus();
         String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
 
         if (reason == null || reason.isBlank()) {
             approvalWorkflowService.approve(currentStatusStr, "WaterZone", id.toString(), userId);
-            entity.setApprovalStatus(TrangThaiPheDuyet.DUOC_PHE_DUYET);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
             waterZoneRepository.save(entity);
             log.info("WaterZone [{}] approved by {}", id, userId);
             notificationService.sendApprovalNotification("WaterZone", id.toString(), userId, null);
         } else {
             approvalWorkflowService.reject(currentStatusStr, "WaterZone", id.toString(), userId, reason);
-            entity.setApprovalStatus(TrangThaiPheDuyet.TU_CHOI);
+            entity.setApprovalStatus(ApprovalStatus.REJECTED);
             waterZoneRepository.save(entity);
             log.info("WaterZone [{}] rejected by {}: {}", id, userId, reason);
         }

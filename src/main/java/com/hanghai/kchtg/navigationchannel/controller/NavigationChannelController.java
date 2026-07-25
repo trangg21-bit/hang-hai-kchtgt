@@ -30,7 +30,7 @@ public class NavigationChannelController {
             @RequestBody @Valid NavigationChannelCreateRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("Tạo luồng hàng hải thành công", service.create(req, username)));
+        return ResponseEntity.ok(ApiResponse.success("Táº¡o luá»“ng hÃ ng háº£i thÃ nh cÃ´ng", service.create(req, username)));
     }
 
     @GetMapping("/{id}")
@@ -54,14 +54,14 @@ public class NavigationChannelController {
             @RequestBody @Valid NavigationChannelUpdateRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("Cập nhật luồng hàng hải thành công", service.update(id, req, username)));
+        return ResponseEntity.ok(ApiResponse.success("Cáº­p nháº­t luá»“ng hÃ ng háº£i thÃ nh cÃ´ng", service.update(id, req, username)));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:delete')")
     public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable java.util.UUID id) {
         service.softDelete(id);
-        return ResponseEntity.ok(ApiResponse.success("Xóa mềm luồng hàng hải thành công", null));
+        return ResponseEntity.ok(ApiResponse.success("XÃ³a má»m luá»“ng hÃ ng háº£i thÃ nh cÃ´ng", null));
     }
 
     @PostMapping("/{id}/approve/c1")
@@ -71,7 +71,7 @@ public class NavigationChannelController {
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt C1 thành công", service.approveC1(id, req, username)));
+        return ResponseEntity.ok(ApiResponse.success("PhÃª duyá»‡t C1 thÃ nh cÃ´ng", service.approveC1(id, req, username)));
     }
 
     @PostMapping("/{id}/approve/c2")
@@ -81,7 +81,7 @@ public class NavigationChannelController {
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
         String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt C2 thành công", service.approveC2(id, req, username)));
+        return ResponseEntity.ok(ApiResponse.success("PhÃª duyá»‡t C2 thÃ nh cÃ´ng", service.approveC2(id, req, username)));
     }
 
     @GetMapping("/{id}/history")
@@ -101,9 +101,9 @@ public class NavigationChannelController {
     public ResponseEntity<ApiResponse<KetQuaTimKiemResponse>> search(
             @RequestParam(name = "orgUnitId", required = false) java.util.UUID orgUnitId,
             @RequestParam(name = "keyword", required = false) String keyword,
-            @RequestParam(name = "trangThaiPheDuyet", required = false) String trangThaiPheDuyet,
+            @RequestParam(name = "ApprovalStatus", required = false) String ApprovalStatus,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,
             @RequestParam(name = "size", required = false, defaultValue = "20") int size) {
-        return ResponseEntity.ok(ApiResponse.success(service.searchDocuments(orgUnitId, keyword, trangThaiPheDuyet, page, size)));
+        return ResponseEntity.ok(ApiResponse.success(service.searchDocuments(orgUnitId, keyword, ApprovalStatus, page, size)));
     }
 }

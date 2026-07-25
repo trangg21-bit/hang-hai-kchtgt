@@ -11,10 +11,10 @@ spring:
     hibernate:
       ddl-auto: update
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-    defer-datasource-initialization: false
+    defer-datasource-initialization: true
   sql:
     init:
-      mode: never
+      mode: always
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration

@@ -3,7 +3,7 @@ package com.hanghai.kchtg.cangben.repository;
 import com.hanghai.kchtg.cangben.entity.Pier;
 import com.hanghai.kchtg.cangben.entity.LoaiCau;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -35,7 +35,7 @@ public interface PierRepository extends JpaRepository<Pier, UUID> {
     @Query("SELECT p FROM Pier p WHERE p.deletedAt IS NULL AND p.berthId = :berthId")
     Page<Pier> findByBerthId(@Param("berthId") UUID berthId, Pageable pageable);
 
-    long countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet approvalStatus);
+    long countByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
     @Query("SELECT p FROM Pier p WHERE p.deletedAt IS NULL " +
             "AND (:orgUnitId IS NULL OR p.orgUnitId = :orgUnitId) " +
@@ -50,6 +50,6 @@ public interface PierRepository extends JpaRepository<Pier, UUID> {
             @Param("berthId") UUID berthId,
             @Param("pierType") LoaiCau pierType,
             @Param("operationalStatus") TrangThaiHoatDong operationalStatus,
-            @Param("approvalStatus") TrangThaiPheDuyet approvalStatus,
+            @Param("approvalStatus") ApprovalStatus approvalStatus,
             Pageable pageable);
 }

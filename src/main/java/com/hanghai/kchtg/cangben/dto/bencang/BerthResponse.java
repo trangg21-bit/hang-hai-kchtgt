@@ -24,7 +24,7 @@ public class BerthResponse {
     private BigDecimal channelDepth;
     private String operationalFunction;
     private com.hanghai.kchtg.common.entity.TrangThaiHoatDong operationalStatus;
-    private com.hanghai.kchtg.common.entity.TrangThaiPheDuyet approvalStatus;
+    private com.hanghai.kchtg.common.entity.ApprovalStatus approvalStatus;
     private UUID orgUnitId;
     private String createdBy;
     private String updatedBy;
@@ -35,7 +35,7 @@ public class BerthResponse {
     private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geometryType;
     private String coordinates;
 
-    // ── Extended fields from hh.csdl legacy Qlkc038Dto ────────────────
+    // â”€â”€ Extended fields from hh.csdl legacy Qlkc038Dto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     private String locationCode;
     private String detailedLocation;

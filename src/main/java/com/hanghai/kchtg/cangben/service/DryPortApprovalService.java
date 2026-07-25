@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.cangben.service;
 
 import com.hanghai.kchtg.cangben.entity.DryPort;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.cangben.entity.ChangeLog;
 import com.hanghai.kchtg.cangben.entity.ApprovalLog;
 import com.hanghai.kchtg.cangben.repository.DryPortRepository;
@@ -37,18 +37,18 @@ public class DryPortApprovalService {
         DryPort entity = dryPortRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với id: " + id));
 
-        TrangThaiPheDuyet currentStatus = entity.getApprovalStatus();
+        ApprovalStatus currentStatus = entity.getApprovalStatus();
         String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
 
         if (reason == null || reason.isBlank()) {
             approvalWorkflowService.approve(currentStatusStr, "DryPort", id.toString(), userId);
-            entity.setApprovalStatus(TrangThaiPheDuyet.DUOC_PHE_DUYET);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
             dryPortRepository.save(entity);
             log.info("DryPort [{}] approved by {}", id, userId);
             notificationService.sendApprovalNotification("DryPort", id.toString(), userId, null);
         } else {
             approvalWorkflowService.reject(currentStatusStr, "DryPort", id.toString(), userId, reason);
-            entity.setApprovalStatus(TrangThaiPheDuyet.TU_CHOI);
+            entity.setApprovalStatus(ApprovalStatus.REJECTED);
             dryPortRepository.save(entity);
             log.info("DryPort [{}] rejected by {}: {}", id, userId, reason);
         }

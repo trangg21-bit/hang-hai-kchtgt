@@ -5,7 +5,7 @@ import com.hanghai.kchtg.cangben.entity.Berth;
 import com.hanghai.kchtg.cangben.entity.Pier;
 import com.hanghai.kchtg.cangben.entity.LoaiCau;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.cangben.repository.BerthRepository;
 import com.hanghai.kchtg.cangben.repository.PierRepository;
 import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
@@ -42,15 +42,15 @@ public class PierService {
     @Transactional
     public PierResponse create(CreatePierRequest request) {
         if (pierRepository.existsByPierCode(request.getPierCode())) {
-            throw new IllegalArgumentException("Mã " + request.getPierCode() + " đã tồn tại");
+            throw new IllegalArgumentException("MÃ£ " + request.getPierCode() + " Ä‘Ã£ tá»“n táº¡i");
         }
 
         Berth parent = berthRepository.findById(request.getBerthId())
                 .orElseThrow(() -> new EntityNotFoundException(
-                        "Bến cảng không tồn tại: " + request.getBerthId()));
+                        "Báº¿n cáº£ng khÃ´ng tá»“n táº¡i: " + request.getBerthId()));
         if (parent.getOperationalStatus() != TrangThaiHoatDong.HIEN_HANH) {
             throw new IllegalArgumentException(
-                    "Không thể tạo cầu cảng: bến cảng cha phải ở trạng thái hoạt động (HIEN_HANH)");
+                    "KhÃ´ng thá»ƒ táº¡o cầu cảng: bến cảng cha pháº£i á»Ÿ tráº¡ng thÃ¡i hoáº¡t Ä‘á»™ng (HIEN_HANH)");
         }
 
         UUID pierId = UUID.randomUUID();
@@ -80,7 +80,7 @@ public class PierService {
                 .operationalFunction(request.getOperationalFunction())
                 .operationalStatus(request.getOperationalStatus())
                 .orgUnitId(parent.getOrgUnitId())
-                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .approvalStatus(ApprovalStatus.PENDING)
                 .mapSymbolId(request.getMapSymbolId())
                 .spatialId(spatialId)
                 .build();
@@ -114,7 +114,7 @@ public class PierService {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
         TrangThaiHoatDong statusEnum = status != null ? TrangThaiHoatDong.fromString(status) : null;
-        TrangThaiPheDuyet approvalEnum = approvalStatus != null ? TrangThaiPheDuyet.fromString(approvalStatus) : null;
+        ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         Page<Pier> pageResult = pierRepository.searchPiers(orgUnitId, search, berthId, pierType, statusEnum, approvalEnum, pageable);
         
         java.util.List<UUID> parentIds = pageResult.getContent().stream()
@@ -174,7 +174,7 @@ public class PierService {
     @Transactional(readOnly = true)
     public PierResponse findByCode(String pierCode) {
         return toResponse(pierRepository.findByPierCode(pierCode)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cầu cảng với mã: " + pierCode)));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cầu cảng vá»›i mÃ£: " + pierCode)));
     }
 
     @Transactional
@@ -199,7 +199,7 @@ public class PierService {
             entity.setBerthId(request.getBerthId());
             Berth parent = berthRepository.findById(request.getBerthId())
                     .orElseThrow(
-                            () -> new EntityNotFoundException("Bến cảng không tồn tại: " + request.getBerthId()));
+                            () -> new EntityNotFoundException("Báº¿n cáº£ng khÃ´ng tá»“n táº¡i: " + request.getBerthId()));
             entity.setOrgUnitId(parent.getOrgUnitId());
         } else if (entity.getOrgUnitId() == null && entity.getBerthId() != null) {
             berthRepository.findById(entity.getBerthId()).ifPresent(p -> {
@@ -254,7 +254,7 @@ public class PierService {
             });
         }
 
-        entity.setApprovalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET);
+        entity.setApprovalStatus(ApprovalStatus.PENDING);
 
         Pier saved = pierRepository.save(entity);
 

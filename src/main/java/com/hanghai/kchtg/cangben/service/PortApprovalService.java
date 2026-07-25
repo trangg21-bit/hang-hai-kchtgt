@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.cangben.service;
 
 import com.hanghai.kchtg.cangben.entity.Port;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.cangben.entity.ChangeLog;
 import com.hanghai.kchtg.cangben.entity.ApprovalLog;
 import com.hanghai.kchtg.cangben.repository.PortRepository;
@@ -23,9 +23,9 @@ import java.util.UUID;
  * Handles approve/reject operations.
  * <p>
  * Uses ApprovalWorkflowService for state machine transitions.
- * On approve: sets approvalStatus = DUOC_PHE_DUYET.
- * On reject: sets approvalStatus = TU_CHOI.
- * On update: resets to CHO_PHE_DUYET (handled in PortService).
+ * On approve: sets approvalStatus = APPROVED.
+ * On reject: sets approvalStatus = REJECTED.
+ * On update: resets to PENDING (handled in PortService).
  * </p>
  */
 @Slf4j
@@ -44,18 +44,18 @@ public class PortApprovalService {
         Port entity = portRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng biển với id: " + id));
 
-        TrangThaiPheDuyet currentStatus = entity.getApprovalStatus();
+        ApprovalStatus currentStatus = entity.getApprovalStatus();
         String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
 
         if (reason == null || reason.isBlank()) {
             approvalWorkflowService.approve(currentStatusStr, "Port", id.toString(), userId);
-            entity.setApprovalStatus(TrangThaiPheDuyet.DUOC_PHE_DUYET);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
             portRepository.save(entity);
             log.info("Port [{}] approved by {}", id, userId);
             notificationService.sendApprovalNotification("Port", id.toString(), userId, null);
         } else {
             approvalWorkflowService.reject(currentStatusStr, "Port", id.toString(), userId, reason);
-            entity.setApprovalStatus(TrangThaiPheDuyet.TU_CHOI);
+            entity.setApprovalStatus(ApprovalStatus.REJECTED);
             portRepository.save(entity);
             log.info("Port [{}] rejected by {}: {}", id, userId, reason);
         }

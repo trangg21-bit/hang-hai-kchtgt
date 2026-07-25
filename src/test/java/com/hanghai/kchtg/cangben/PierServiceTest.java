@@ -20,7 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -69,7 +69,7 @@ class PierServiceTest {
         activeBerth.setBerthCode("BEN-001");
         activeBerth.setBerthName("Bến Cảng Demo");
         activeBerth.setOperationalStatus(TrangThaiHoatDong.HIEN_HANH);
-        activeBerth.setApprovalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET);
+        activeBerth.setApprovalStatus(ApprovalStatus.PENDING);
 
         testEntity = new Pier();
         ReflectionTestUtils.setField(testEntity, "id", testId);
@@ -79,7 +79,7 @@ class PierServiceTest {
         testEntity.setLength(new BigDecimal("200.00"));
         testEntity.setDesignLoad(new BigDecimal("50000.00"));
         testEntity.setOperationalStatus(TrangThaiHoatDong.HIEN_HANH);
-        testEntity.setApprovalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET);
+        testEntity.setApprovalStatus(ApprovalStatus.PENDING);
     }
 
     // ── CREATE — INT-005 parent guard ──────────────────────────────────────
@@ -139,16 +139,16 @@ class PierServiceTest {
         assertNotNull(result);
         assertEquals("CAU-NEW", result.getPierCode());
         assertEquals("Cầu mới", result.getPierName());
-        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getApprovalStatus());
+        assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus());
         verify(pierRepository).save(any(Pier.class));
     }
 
     // ── UPDATE ──────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("update — applies mutable fields, resets to CHO_PHE_DUYET, calls recordChanges")
+    @DisplayName("update — applies mutable fields, resets to PENDING, calls recordChanges")
     void update_appliesMutableFields_resetsApproval() {
-        testEntity.setApprovalStatus(TrangThaiPheDuyet.DUOC_PHE_DUYET);
+        testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
         when(pierRepository.findById(testId)).thenReturn(Optional.of(testEntity));
         when(pierRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -160,7 +160,7 @@ class PierServiceTest {
         PierResponse result = service.update(request);
 
         assertEquals("Cầu Đã Cập Nhật", result.getPierName());
-        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getApprovalStatus());
+        assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus());
         assertEquals("CAU-001", result.getPierCode()); // code unchanged
         verify(lichSuThayDoiService).recordChanges(eq("Pier"), any(), any(), any(), any());
     }

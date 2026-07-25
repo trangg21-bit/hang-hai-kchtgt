@@ -4,14 +4,14 @@ package com.hanghai.kchtg.cangben.entity.base;
  * State enum for all port-asset entities (CangBien, BenCang, CauCang, CangCan, VungNuoc).
  *
  * State machine:
- *   CREATE / UPDATE → CHO_PHE_DUYET
- *   APPROVE (CHO_PHE_DUYET) → Hien_Hanh
- *   REJECT (CHO_PHE_DUYET) → Chinh_Sua
- *   UPDATE (Hien_Hanh or Chinh_Sua) → CHO_PHE_DUYET
- *   SOFT_DELETE → DA_XOA (terminal)
+ *   CREATE / UPDATE â†’ PENDING
+ *   APPROVE (PENDING) â†’ Hien_Hanh
+ *   REJECT (PENDING) â†’ Chinh_Sua
+ *   UPDATE (Hien_Hanh or Chinh_Sua) â†’ PENDING
+ *   SOFT_DELETE â†’ DA_XOA (terminal)
  */
 public enum CangBienStatus {
-    CHO_PHE_DUYET,
+    PENDING,
     HIEN_HANH,
     CHINH_SUA,
     DA_XOA

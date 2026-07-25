@@ -40,11 +40,11 @@ class ApprovalWorkflowServiceTest {
     // ── APPROVE ────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("approve — CHO_PHE_DUYET → DUOC_PHE_DUYET + inserts ApprovalLog")
+    @DisplayName("approve — PENDING → APPROVED + inserts ApprovalLog")
     void approve_fromChoPheduyet_transitionsAndPersistsLog() {
-        ApprovalStatus result = workflowService.approve("CHO_PHE_DUYET", entityType, entityId, userId);
+        ApprovalStatus result = workflowService.approve("PENDING", entityType, entityId, userId);
 
-        assertEquals(ApprovalStatus.DUOC_PHE_DUYET, result);
+        assertEquals(ApprovalStatus.APPROVED, result);
 
         ArgumentCaptor<ApprovalLog> captor = ArgumentCaptor.forClass(ApprovalLog.class);
         verify(approvalLogRepository).save(captor.capture());
@@ -58,30 +58,30 @@ class ApprovalWorkflowServiceTest {
     }
 
     @Test
-    @DisplayName("approve — not CHO_PHE_DUYET throws IllegalStateException, no log inserted")
+    @DisplayName("approve — not PENDING throws IllegalStateException, no log inserted")
     void approve_wrongStatus_throwsWithoutLog() {
         assertThrows(IllegalStateException.class,
-                () -> workflowService.approve("DUOC_PHE_DUYET", entityType, entityId, userId));
+                () -> workflowService.approve("APPROVED", entityType, entityId, userId));
         verify(approvalLogRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("approve — TU_CHOI status throws IllegalStateException")
+    @DisplayName("approve — REJECTED status throws IllegalStateException")
     void approve_fromTuChoi_throws() {
         assertThrows(IllegalStateException.class,
-                () -> workflowService.approve("TU_CHOI", entityType, entityId, userId));
+                () -> workflowService.approve("REJECTED", entityType, entityId, userId));
     }
 
     // ── REJECT ─────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("reject — CHO_PHE_DUYET + reason → TU_CHOI + inserts ApprovalLog")
+    @DisplayName("reject — PENDING + reason → REJECTED + inserts ApprovalLog")
     void reject_fromChoPheduyet_transitionsAndPersistsLog() {
         String reason = "Tài liệu không đầy đủ";
 
-        ApprovalStatus result = workflowService.reject("CHO_PHE_DUYET", entityType, entityId, userId, reason);
+        ApprovalStatus result = workflowService.reject("PENDING", entityType, entityId, userId, reason);
 
-        assertEquals(ApprovalStatus.TU_CHOI, result);
+        assertEquals(ApprovalStatus.REJECTED, result);
 
         ArgumentCaptor<ApprovalLog> captor = ArgumentCaptor.forClass(ApprovalLog.class);
         verify(approvalLogRepository).save(captor.capture());
@@ -96,7 +96,7 @@ class ApprovalWorkflowServiceTest {
     @DisplayName("reject — blank reason throws IllegalArgumentException, no transition")
     void reject_blankReason_throwsWithoutLog() {
         assertThrows(IllegalArgumentException.class,
-                () -> workflowService.reject("CHO_PHE_DUYET", entityType, entityId, userId, "  "));
+                () -> workflowService.reject("PENDING", entityType, entityId, userId, "  "));
         verify(approvalLogRepository, never()).save(any());
     }
 
@@ -104,27 +104,27 @@ class ApprovalWorkflowServiceTest {
     @DisplayName("reject — null reason throws IllegalArgumentException")
     void reject_nullReason_throws() {
         assertThrows(IllegalArgumentException.class,
-                () -> workflowService.reject("CHO_PHE_DUYET", entityType, entityId, userId, null));
+                () -> workflowService.reject("PENDING", entityType, entityId, userId, null));
     }
 
     @Test
-    @DisplayName("reject — not CHO_PHE_DUYET throws IllegalStateException")
+    @DisplayName("reject — not PENDING throws IllegalStateException")
     void reject_wrongStatus_throws() {
         assertThrows(IllegalStateException.class,
-                () -> workflowService.reject("DUOC_PHE_DUYET", entityType, entityId, userId, "reason"));
+                () -> workflowService.reject("APPROVED", entityType, entityId, userId, "reason"));
     }
 
     // ── RESET ──────────────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("resetToPending — always returns CHO_PHE_DUYET")
+    @DisplayName("resetToPending — always returns PENDING")
     void resetToPending_returnsChoPheduyet() {
-        assertEquals(ApprovalStatus.CHO_PHE_DUYET,
-                workflowService.resetToPending("DUOC_PHE_DUYET"));
-        assertEquals(ApprovalStatus.CHO_PHE_DUYET,
-                workflowService.resetToPending("TU_CHOI"));
-        assertEquals(ApprovalStatus.CHO_PHE_DUYET,
-                workflowService.resetToPending("CHO_PHE_DUYET"));
+        assertEquals(ApprovalStatus.PENDING,
+                workflowService.resetToPending("APPROVED"));
+        assertEquals(ApprovalStatus.PENDING,
+                workflowService.resetToPending("REJECTED"));
+        assertEquals(ApprovalStatus.PENDING,
+                workflowService.resetToPending("PENDING"));
     }
 
     @Test

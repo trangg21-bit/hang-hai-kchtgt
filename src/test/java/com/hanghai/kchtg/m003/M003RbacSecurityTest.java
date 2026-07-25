@@ -99,9 +99,9 @@ class M003RbacSecurityTest {
 
     // Valid JSON bodies that satisfy @NotBlank constraints on each domain's PheDuyetRequest
     private static final String NC_APPROVE_BODY =
-            "{\"nguoiPheDuyet\":\"Admin\",\"trangThai\":\"APPROVED\"}";
+            "{\"nguoiPheDuyet\":\"Admin\",\"status\":\"APPROVED\"}";
     private static final String DIKEREVETMENT_APPROVE_BODY =
-            "{\"nguoiPheDuyet\":\"Admin\",\"quyetDinh\":\"APPROVED\"}";
+            "{\"nguoiPheDuyet\":\"Admin\",\"decision\":\"APPROVED\"}";
     private static final String GENERIC_APPROVE_BODY =
             "{\"quyetDinh\":\"APPROVED\"}";
 

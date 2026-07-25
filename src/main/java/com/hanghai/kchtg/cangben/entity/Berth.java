@@ -3,8 +3,8 @@ package com.hanghai.kchtg.cangben.entity;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDongConverter;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyetConverter;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.ApprovalStatusConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -17,9 +17,9 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Entity representing a berth (Bến cảng) — child of Port.
+ * Entity representing a berth (Báº¿n cáº£ng) â€” child of Port.
  * Corresponds to table: berths (renamed from ben_cang).
- * FK: port_id → ports.id (NOT NULL)
+ * FK: port_id â†’ ports.id (NOT NULL)
  */
 @Entity
 @Table(name = "berths",
@@ -63,8 +63,8 @@ public class Berth extends BaseEntity {
     private TrangThaiHoatDong operationalStatus;
 
     @Column(name = "approval_status", nullable = false)
-    @Convert(converter = TrangThaiPheDuyetConverter.class)
-    private TrangThaiPheDuyet approvalStatus;
+    @Convert(converter = ApprovalStatusConverter.class)
+    private ApprovalStatus approvalStatus;
 
     @Column(name = "org_unit_id")
     private UUID orgUnitId;
@@ -78,7 +78,7 @@ public class Berth extends BaseEntity {
     @Column(name = "spatial_id")
     private java.util.UUID spatialId;
 
-    // ── Extended fields from hh.csdl legacy Qlkc038Dto ────────────────
+    // â”€â”€ Extended fields from hh.csdl legacy Qlkc038Dto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @Column(name = "location_code", length = 100)
     private String locationCode;

@@ -15,9 +15,9 @@ import java.util.UUID;
  * Approval workflow state machine.
  * <p>
  * Transitions:
- *   - APPROVE(CHO_PHE_DUYET) → DUOC_PHE_DUYET + insert PheDuyetLog
- *   - REJECT(CHO_PHE_DUYET) → TU_CHOI + insert PheDuyetLog (reason required)
- *   - Any transition from non-CHO_PHE_DUYET → throws IllegalStateException (422)
+ *   - APPROVE(PENDING) â†’ APPROVED + insert PheDuyetLog
+ *   - REJECT(PENDING) â†’ REJECTED + insert PheDuyetLog (reason required)
+ *   - Any transition from non-PENDING â†’ throws IllegalStateException (422)
  * </p>
  *
  * This is the single source of truth for approval state-machine logic.
@@ -43,8 +43,8 @@ public class ApprovalWorkflowService {
     public ApprovalStatus approve(String currentStatus, String entityType, String entityId, String decidedBy) {
         ApprovalStatus status = parseStatus(currentStatus);
 
-        if (status != ApprovalStatus.CHO_PHE_DUYET) {
-            String msg = String.format("Cannot approve: %s [%s] is in state %s (must be CHO_PHE_DUYET)",
+        if (status != ApprovalStatus.PENDING) {
+            String msg = String.format("Cannot approve: %s [%s] is in state %s (must be PENDING)",
                     entityType, entityId, status);
             log.warn("Approval rejected: {}", msg);
             throw new IllegalStateException(msg);
@@ -65,7 +65,7 @@ public class ApprovalWorkflowService {
                 .build();
         approvalLogRepository.save(approvalLog);
 
-        return ApprovalStatus.DUOC_PHE_DUYET;
+        return ApprovalStatus.APPROVED;
     }
 
     /**
@@ -87,14 +87,14 @@ public class ApprovalWorkflowService {
 
         ApprovalStatus status = parseStatus(currentStatus);
 
-        if (status != ApprovalStatus.CHO_PHE_DUYET) {
-            String msg = String.format("Cannot reject: %s [%s] is in state %s (must be CHO_PHE_DUYET)",
+        if (status != ApprovalStatus.PENDING) {
+            String msg = String.format("Cannot reject: %s [%s] is in state %s (must be PENDING)",
                     entityType, entityId, status);
             log.warn("Reject rejected: {}", msg);
             throw new IllegalStateException(msg);
         }
 
-        log.info("REJECT: {} [{}] rejected by {} — reason: {}", entityType, entityId, decidedBy, reason);
+        log.info("REJECT: {} [{}] rejected by {} â€” reason: {}", entityType, entityId, decidedBy, reason);
 
         // Insert PheDuyetLog record
         ApprovalLog rejectionLog = ApprovalLog.builder()
@@ -109,19 +109,19 @@ public class ApprovalWorkflowService {
                 .build();
         approvalLogRepository.save(rejectionLog);
 
-        return ApprovalStatus.TU_CHOI;
+        return ApprovalStatus.REJECTED;
     }
 
     /**
-     * Reset approval status to CHO_PHE_DUYET when entity is updated
+     * Reset approval status to PENDING when entity is updated
      * (must re-approve after changes).
      *
      * @param currentStatus current approval status from the entity
-     * @return new approval status (always CHO_PHE_DUYET)
+     * @return new approval status (always PENDING)
      */
     public ApprovalStatus resetToPending(String currentStatus) {
         parseStatus(currentStatus); // validate it exists
-        return ApprovalStatus.CHO_PHE_DUYET;
+        return ApprovalStatus.PENDING;
     }
 
     private ApprovalStatus parseStatus(String raw) {

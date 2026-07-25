@@ -25,7 +25,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -89,7 +89,7 @@ class DryPortServiceTest {
             testEntity.setArea(new BigDecimal("10000.00"));
             testEntity.setTeuCapacity(new BigDecimal("50000.00"));
             testEntity.setOperationalStatus(TrangThaiHoatDong.HIEN_HANH);
-            testEntity.setApprovalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET);
+            testEntity.setApprovalStatus(ApprovalStatus.PENDING);
         }
 
         @Test
@@ -108,7 +108,7 @@ class DryPortServiceTest {
             assertNotNull(result);
             assertEquals("CC-NEW", result.getDryPortCode());
             assertEquals("Cảng cạn mới", result.getDryPortName());
-            assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getApprovalStatus());
+            assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus());
             verify(dryPortRepository).save(any(DryPort.class));
         }
 
@@ -125,9 +125,9 @@ class DryPortServiceTest {
         }
 
         @Test
-        @DisplayName("F-027: update — applies mutable fields, resets to CHO_PHE_DUYET, calls recordChanges")
+        @DisplayName("F-027: update — applies mutable fields, resets to PENDING, calls recordChanges")
         void update_appliesMutableFields() {
-            testEntity.setApprovalStatus(TrangThaiPheDuyet.DUOC_PHE_DUYET);
+            testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
             when(dryPortRepository.findById(testId)).thenReturn(Optional.of(testEntity));
             when(dryPortRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -139,7 +139,7 @@ class DryPortServiceTest {
             DryPortResponse result = service.update(request);
 
             assertEquals("Cảng Cạn Cập Nhật", result.getDryPortName());
-            assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getApprovalStatus());
+            assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus());
             assertEquals("CC-001", result.getDryPortCode()); // code unchanged
             verify(lichSuThayDoiService).recordChanges(eq("DryPort"), any(), any(), any(), any());
         }
@@ -218,33 +218,33 @@ class DryPortServiceTest {
             ReflectionTestUtils.setField(testEntity, "id", testId);
             testEntity.setDryPortCode("CC-001");
             testEntity.setDryPortName("Cảng Cạn Demo");
-            testEntity.setApprovalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET);
+            testEntity.setApprovalStatus(ApprovalStatus.PENDING);
         }
 
         @Test
-        @DisplayName("F-030: approve — null reason → sets DUOC_PHE_DUYET")
+        @DisplayName("F-030: approve — null reason → sets APPROVED")
         void approve_setsApprovedStatus() {
             when(dryPortRepository.findById(testId)).thenReturn(Optional.of(testEntity));
             when(dryPortRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             approvalService.approve(testId, "admin-user", null);
 
-            assertEquals(TrangThaiPheDuyet.DUOC_PHE_DUYET, testEntity.getApprovalStatus());
-            verify(approvalWorkflowService).approve(eq("CHO_PHE_DUYET"), eq("DryPort"),
+            assertEquals(ApprovalStatus.APPROVED, testEntity.getApprovalStatus());
+            verify(approvalWorkflowService).approve(eq("PENDING"), eq("DryPort"),
                     eq(testId.toString()), eq("admin-user"));
             verify(dryPortRepository).save(testEntity);
         }
 
         @Test
-        @DisplayName("F-030: reject — non-blank reason → sets TU_CHOI")
+        @DisplayName("F-030: reject — non-blank reason → sets REJECTED")
         void reject_setsTuChoiStatus() {
             when(dryPortRepository.findById(testId)).thenReturn(Optional.of(testEntity));
             when(dryPortRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             approvalService.approve(testId, "admin-user", "Hồ sơ chưa đầy đủ");
 
-            assertEquals(TrangThaiPheDuyet.TU_CHOI, testEntity.getApprovalStatus());
-            verify(approvalWorkflowService).reject(eq("CHO_PHE_DUYET"), eq("DryPort"),
+            assertEquals(ApprovalStatus.REJECTED, testEntity.getApprovalStatus());
+            verify(approvalWorkflowService).reject(eq("PENDING"), eq("DryPort"),
                     eq(testId.toString()), eq("admin-user"), eq("Hồ sơ chưa đầy đủ"));
             verify(dryPortRepository).save(testEntity);
         }
@@ -252,10 +252,10 @@ class DryPortServiceTest {
         @Test
         @DisplayName("F-030: approve on already approved entity → approvalWorkflowService.approve throws IllegalStateException")
         void doubleApprove_throwsIllegalState() {
-            testEntity.setApprovalStatus(TrangThaiPheDuyet.DUOC_PHE_DUYET);
+            testEntity.setApprovalStatus(ApprovalStatus.APPROVED);
             when(dryPortRepository.findById(testId)).thenReturn(Optional.of(testEntity));
-            when(approvalWorkflowService.approve(eq("DUOC_PHE_DUYET"), any(), any(), any()))
-                    .thenThrow(new IllegalStateException("Cannot approve: state is DUOC_PHE_DUYET"));
+            when(approvalWorkflowService.approve(eq("APPROVED"), any(), any(), any()))
+                    .thenThrow(new IllegalStateException("Cannot approve: state is APPROVED"));
 
             assertThrows(IllegalStateException.class,
                     () -> approvalService.approve(testId, "admin-user", null));

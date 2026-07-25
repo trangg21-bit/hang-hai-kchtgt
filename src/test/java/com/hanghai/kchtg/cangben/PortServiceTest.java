@@ -23,7 +23,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -85,7 +85,7 @@ class PortServiceTest {
         testEntity.setProvince("Hải Phòng");
         testEntity.setArea(new BigDecimal("5000.00"));
         testEntity.setOperationalStatus(TrangThaiHoatDong.HIEN_HANH);
-        testEntity.setApprovalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET);
+        testEntity.setApprovalStatus(ApprovalStatus.PENDING);
     }
 
     // ── CREATE (F-008) ─────────────────────────────────────────────────────
@@ -108,7 +108,7 @@ class PortServiceTest {
         assertNotNull(result);
         assertEquals("CB-002", result.getPortCode());
         assertEquals("Cảng mới", result.getPortName());
-        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getApprovalStatus());
+        assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus());
         verify(portRepository, times(2)).save(any(Port.class));
     }
 
@@ -173,9 +173,9 @@ class PortServiceTest {
     // ── UPDATE (F-009) ─────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("F-009: update — applies mutable fields, resets approval to CHO_PHE_DUYET")
+    @DisplayName("F-009: update — applies mutable fields, resets approval to PENDING")
     void update_appliesMutableFields() {
-        testEntity.setApprovalStatus(TrangThaiPheDuyet.DUOC_PHE_DUYET); // was approved
+        testEntity.setApprovalStatus(ApprovalStatus.APPROVED); // was approved
 
         when(portRepository.findById(testId)).thenReturn(Optional.of(testEntity));
         when(portRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -188,7 +188,7 @@ class PortServiceTest {
         PortResponse result = service.update(request);
 
         assertEquals("Cảng Đã Cập Nhật", result.getPortName());
-        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getApprovalStatus()); // reset
+        assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus()); // reset
         assertEquals("CB-001", result.getPortCode()); // code unchanged
     }
 

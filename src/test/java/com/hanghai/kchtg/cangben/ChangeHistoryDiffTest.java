@@ -17,7 +17,7 @@ import org.mockito.quality.Strictness;
 
 import java.math.BigDecimal;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import java.util.List;
 import java.util.UUID;
 
@@ -63,7 +63,7 @@ class ChangeHistoryDiffTest {
                 .province("Hải Phòng")
                 .area(new BigDecimal("5000.00"))
                 .operationalStatus(TrangThaiHoatDong.HIEN_HANH)
-                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .approvalStatus(ApprovalStatus.PENDING)
                 .build();
 
         // Build new entity (portName = "New Name", everything else same)
@@ -72,7 +72,7 @@ class ChangeHistoryDiffTest {
                 .province("Hải Phòng")
                 .area(new BigDecimal("5000.00"))
                 .operationalStatus(TrangThaiHoatDong.HIEN_HANH)
-                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .approvalStatus(ApprovalStatus.PENDING)
                 .build();
 
         List<String> changedFields = lichSuThayDoiService.recordChanges(
@@ -103,7 +103,7 @@ class ChangeHistoryDiffTest {
                 .province("Hải Phòng")
                 .area(new BigDecimal("5000.00"))
                 .operationalStatus(TrangThaiHoatDong.HIEN_HANH)
-                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .approvalStatus(ApprovalStatus.PENDING)
                 .build();
 
         Port newEntity = Port.builder()
@@ -111,7 +111,7 @@ class ChangeHistoryDiffTest {
                 .province("Hải Phòng")
                 .area(new BigDecimal("5000.00"))
                 .operationalStatus(TrangThaiHoatDong.HIEN_HANH)
-                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .approvalStatus(ApprovalStatus.PENDING)
                 .build();
 
         List<String> changedFields = lichSuThayDoiService.recordChanges(

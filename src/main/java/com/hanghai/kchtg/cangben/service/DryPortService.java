@@ -4,7 +4,7 @@ import com.hanghai.kchtg.cangben.dto.cangcan.*;
 import com.hanghai.kchtg.cangben.entity.DryPort;
 import java.math.BigDecimal;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.cangben.repository.DryPortRepository;
 import com.hanghai.kchtg.cangben.service.shared.AuditLogService;
 import com.hanghai.kchtg.cangben.service.shared.LichSuThayDoiService;
@@ -39,13 +39,13 @@ public class DryPortService {
     @Transactional
     public DryPortResponse create(CreateDryPortRequest request) {
         if (dryPortRepository.existsByDryPortCode(request.getDryPortCode())) {
-            throw new IllegalArgumentException("Mã " + request.getDryPortCode() + " đã tồn tại");
+            throw new IllegalArgumentException("MÃ£ " + request.getDryPortCode() + " Ä‘Ã£ tá»“n táº¡i");
         }
         DryPort entity = DryPort.builder()
                 .dryPortCode(request.getDryPortCode()).dryPortName(request.getDryPortName())
                 .province(request.getProvince()).area(request.getArea())
                 .teuCapacity(request.getTeuCapacity()).operationalStatus(request.getOperationalStatus())
-                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .approvalStatus(ApprovalStatus.PENDING)
                 .mapSymbolId(request.getMapSymbolId()).build();
         DryPort saved = dryPortRepository.save(entity);
 
@@ -93,7 +93,7 @@ public class DryPortService {
         int pageSize = Math.min(Math.max(size, 1), 5000);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
         TrangThaiHoatDong statusEnum = status != null ? TrangThaiHoatDong.fromString(status) : null;
-        TrangThaiPheDuyet approvalEnum = approvalStatus != null ? TrangThaiPheDuyet.fromString(approvalStatus) : null;
+        ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         Page<DryPort> pageResult = dryPortRepository.searchDryPorts(orgUnitId, search, statusEnum, approvalEnum, pageable);
 
         java.util.Set<UUID> userUuids = new java.util.HashSet<>();
@@ -122,7 +122,7 @@ public class DryPortService {
     @Transactional(readOnly = true)
     public DryPortResponse findByCode(String dryPortCode) {
         return toResponse(dryPortRepository.findByDryPortCode(dryPortCode)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn với mã: " + dryPortCode)));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cảng cạn vá»›i mÃ£: " + dryPortCode)));
     }
 
     @Transactional
@@ -147,7 +147,7 @@ public class DryPortService {
         if (request.getTeuCapacity() != null) entity.setTeuCapacity(request.getTeuCapacity());
         if (request.getOperationalStatus() != null) entity.setOperationalStatus(request.getOperationalStatus());
         entity.setMapSymbolId(request.getMapSymbolId());
-        entity.setApprovalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET);
+        entity.setApprovalStatus(ApprovalStatus.PENDING);
 
         DryPort saved = dryPortRepository.save(entity);
 

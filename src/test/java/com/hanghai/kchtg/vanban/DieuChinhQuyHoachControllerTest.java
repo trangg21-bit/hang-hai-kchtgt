@@ -52,7 +52,7 @@ class DieuChinhQuyHoachControllerTest {
                 .lyDo("Thay đổi quy hoạch tổng thể khu vực")
                 .moTaChiTiet("Mở rộng khu vực tiếp nhận tàu từ 50m lên 80m")
                 .phamViAnhHuong("Khu vực Bắc Bến Cảng A")
-                .tinhTrang(TinhTrangDieuChinh.DA_DUOC_PHE_DUYET)
+                .tinhTrang(TinhTrangDieuChinh.DA_APPROVED)
                 .nguoiDangKy("Kỹ sư D")
                 .ngayDangKy(LocalDate.of(2026, 6, 20).atStartOfDay())
                 .build();
@@ -68,7 +68,7 @@ class DieuChinhQuyHoachControllerTest {
 
         approvalRequest = PheDuyetDieuChinhRequest.builder()
                 .capPheDuyet("CAP_1")
-                .trangThai("DA_DUOC_PHE_DUYET")
+                .trangThai("DA_APPROVED")
                 .nguoiPheDuyet("Giám đốc Sở")
                 .ngayPheDuyet(LocalDate.of(2026, 7, 1))
                 .ghiChu("Được phê duyệt vì phù hợp quy hoạch tổng thể")
@@ -150,7 +150,7 @@ class DieuChinhQuyHoachControllerTest {
         when(dieuChinhQuyHoachService.findByTinhTrang(any(TinhTrangDieuChinh.class)))
                 .thenReturn(List.of(testResponse));
 
-        mockMvc.perform(get("/api/v1/dieu-chinh-quy-hoach/status/DA_DUOC_PHE_DUYET"))
+        mockMvc.perform(get("/api/v1/dieu-chinh-quy-hoach/status/DA_APPROVED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
@@ -161,7 +161,7 @@ class DieuChinhQuyHoachControllerTest {
                 .id(1L)
                 .dieuChinhId(1L)
                 .capPheDuyet("CAP_1")
-                .trangThai("DA_DUOC_PHE_DUYET")
+                .trangThai("DA_APPROVED")
                 .nguoiPheDuyet("Giám đốc Sở")
                 .ghiChu("Được phê duyệt vì phù hợp quy hoạch tổng thể")
                 .build();
@@ -174,6 +174,6 @@ class DieuChinhQuyHoachControllerTest {
                         .content(objectMapper.writeValueAsString(approvalRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.trangThai").value("DA_DUOC_PHE_DUYET"));
+                .andExpect(jsonPath("$.data.trangThai").value("DA_APPROVED"));
     }
 }

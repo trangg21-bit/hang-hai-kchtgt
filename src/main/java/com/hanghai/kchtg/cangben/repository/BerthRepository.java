@@ -3,7 +3,7 @@ package com.hanghai.kchtg.cangben.repository;
 import com.hanghai.kchtg.cangben.entity.Berth;
 import com.hanghai.kchtg.cangben.entity.LoaiBen;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -35,7 +35,7 @@ public interface BerthRepository extends JpaRepository<Berth, UUID> {
     @Query("SELECT b FROM Berth b WHERE b.deletedAt IS NULL AND b.portId = :portId")
     Page<Berth> findByPortId(@Param("portId") UUID portId, Pageable pageable);
 
-    long countByApprovalStatusAndDeletedAtIsNull(TrangThaiPheDuyet approvalStatus);
+    long countByApprovalStatusAndDeletedAtIsNull(ApprovalStatus approvalStatus);
 
     @Query("SELECT b FROM Berth b WHERE b.deletedAt IS NULL " +
             "AND (:orgUnitId IS NULL OR b.orgUnitId = :orgUnitId) " +
@@ -56,6 +56,6 @@ public interface BerthRepository extends JpaRepository<Berth, UUID> {
             @Param("waterway") String waterway,
             @Param("berthType") LoaiBen berthType,
             @Param("operationalStatus") TrangThaiHoatDong operationalStatus,
-            @Param("approvalStatus") TrangThaiPheDuyet approvalStatus,
+            @Param("approvalStatus") ApprovalStatus approvalStatus,
             Pageable pageable);
 }

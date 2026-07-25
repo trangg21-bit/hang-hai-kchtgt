@@ -1,7 +1,7 @@
 package com.hanghai.kchtg.cangben.service;
 
 import com.hanghai.kchtg.cangben.entity.Berth;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.cangben.entity.ChangeLog;
 import com.hanghai.kchtg.cangben.entity.ApprovalLog;
 import com.hanghai.kchtg.cangben.repository.BerthRepository;
@@ -37,18 +37,18 @@ public class BerthApprovalService {
         Berth entity = berthRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với id: " + id));
 
-        TrangThaiPheDuyet currentStatus = entity.getApprovalStatus();
+        ApprovalStatus currentStatus = entity.getApprovalStatus();
         String currentStatusStr = currentStatus != null ? currentStatus.name() : null;
 
         if (reason == null || reason.isBlank()) {
             approvalWorkflowService.approve(currentStatusStr, "Berth", id.toString(), userId);
-            entity.setApprovalStatus(TrangThaiPheDuyet.DUOC_PHE_DUYET);
+            entity.setApprovalStatus(ApprovalStatus.APPROVED);
             berthRepository.save(entity);
             log.info("Berth [{}] approved by {}", id, userId);
             notificationService.sendApprovalNotification("Berth", id.toString(), userId, null);
         } else {
             approvalWorkflowService.reject(currentStatusStr, "Berth", id.toString(), userId, reason);
-            entity.setApprovalStatus(TrangThaiPheDuyet.TU_CHOI);
+            entity.setApprovalStatus(ApprovalStatus.REJECTED);
             berthRepository.save(entity);
             log.info("Berth [{}] rejected by {}: {}", id, userId, reason);
         }

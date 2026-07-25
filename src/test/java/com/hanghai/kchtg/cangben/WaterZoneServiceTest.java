@@ -20,7 +20,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -88,7 +88,7 @@ class WaterZoneServiceTest {
         testEntity.setAvgDepth(new BigDecimal("12.00"));
         testEntity.setWaterZoneType(com.hanghai.kchtg.cangben.entity.LoaiVungNuoc.NEO_DAU);
         testEntity.setOperationalStatus(TrangThaiHoatDong.HIEN_HANH);
-        testEntity.setApprovalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET);
+        testEntity.setApprovalStatus(ApprovalStatus.PENDING);
     }
 
     // ── findAll — INT-004 two-filter overload ─────────────────────────────
@@ -140,7 +140,7 @@ class WaterZoneServiceTest {
         assertNotNull(result);
         assertEquals("VN-NEW", result.getWaterZoneCode());
         assertEquals("Vùng nước mới", result.getWaterZoneName());
-        assertEquals(TrangThaiPheDuyet.CHO_PHE_DUYET, result.getApprovalStatus());
+        assertEquals(ApprovalStatus.PENDING, result.getApprovalStatus());
         verify(waterZoneRepository).save(any(WaterZone.class));
     }
 

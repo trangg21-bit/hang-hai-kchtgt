@@ -3,7 +3,7 @@ package com.hanghai.kchtg.cangben.service;
 import com.hanghai.kchtg.cangben.dto.bencang.*;
 import com.hanghai.kchtg.cangben.entity.Berth;
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import java.math.BigDecimal;
 import java.util.Optional;
 import com.hanghai.kchtg.cangben.entity.Port;
@@ -46,14 +46,14 @@ public class BerthService {
     @Transactional
     public BerthResponse create(CreateBerthRequest request) {
         if (berthRepository.existsByBerthCode(request.getBerthCode())) {
-            throw new IllegalArgumentException("Mã " + request.getBerthCode() + " đã tồn tại");
+            throw new IllegalArgumentException("MÃ£ " + request.getBerthCode() + " Ä‘Ã£ tá»“n táº¡i");
         }
         Port parent = portRepository.findById(request.getPortId())
-                .orElseThrow(() -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
+                .orElseThrow(() -> new EntityNotFoundException("Cáº£ng biá»ƒn khÃ´ng tá»“n táº¡i: " + request.getPortId()));
 
         if (parent.getOperationalStatus() != TrangThaiHoatDong.HIEN_HANH) {
             throw new IllegalArgumentException(
-                    "Không thể tạo bến cảng: cảng biển cha phải ở trạng thái hoạt động (HIEN_HANH)");
+                    "KhÃ´ng thá»ƒ táº¡o bến cảng: cảng biển cha pháº£i á»Ÿ tráº¡ng thÃ¡i hoáº¡t Ä‘á»™ng (HIEN_HANH)");
         }
 
         Berth entity = Berth.builder()
@@ -64,7 +64,7 @@ public class BerthService {
                 .operationalFunction(request.getOperationalFunction())
                 .operationalStatus(request.getOperationalStatus())
                 .orgUnitId(parent.getOrgUnitId())
-                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .approvalStatus(ApprovalStatus.PENDING)
                 .mapSymbolId(request.getMapSymbolId())
                 // Extended fields
                 .locationCode(request.getLocationCode())
@@ -132,7 +132,7 @@ public class BerthService {
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")));
         TrangThaiHoatDong statusEnum = operationalStatus != null ? TrangThaiHoatDong.fromString(operationalStatus)
                 : null;
-        TrangThaiPheDuyet approvalEnum = approvalStatus != null ? TrangThaiPheDuyet.fromString(approvalStatus)
+        ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus)
                 : null;
         com.hanghai.kchtg.cangben.entity.LoaiBen berthTypeEnum = null;
         if (berthType != null && !berthType.trim().isEmpty()) {
@@ -188,7 +188,7 @@ public class BerthService {
     @Transactional(readOnly = true)
     public BerthResponse findByCode(String berthCode) {
         return toResponse(berthRepository.findByBerthCode(berthCode)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng với mã: " + berthCode)));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bến cảng vá»›i mÃ£: " + berthCode)));
     }
 
     @Transactional(readOnly = true)
@@ -241,7 +241,7 @@ public class BerthService {
             entity.setPortId(request.getPortId());
             Port parent = portRepository.findById(request.getPortId())
                     .orElseThrow(
-                            () -> new EntityNotFoundException("Cảng biển không tồn tại: " + request.getPortId()));
+                            () -> new EntityNotFoundException("Cáº£ng biá»ƒn khÃ´ng tá»“n táº¡i: " + request.getPortId()));
             entity.setOrgUnitId(parent.getOrgUnitId());
             
             pierRepository.findByBerthIdAndDeletedAtIsNull(entity.getId()).forEach(cc -> {
@@ -305,7 +305,7 @@ public class BerthService {
         if (request.getStructureType() != null)
             entity.setStructureType(request.getStructureType());
         entity.setMapSymbolId(request.getMapSymbolId());
-        entity.setApprovalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET);
+        entity.setApprovalStatus(ApprovalStatus.PENDING);
 
         Berth saved = berthRepository.save(entity);
 

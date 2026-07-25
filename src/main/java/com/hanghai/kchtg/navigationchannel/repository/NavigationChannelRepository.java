@@ -23,12 +23,12 @@ public interface NavigationChannelRepository extends JpaRepository<NavigationCha
     @Query("SELECT l FROM NavigationChannel l WHERE " +
             "(:orgUnitId IS NULL OR l.orgUnitId = :orgUnitId) AND " +
             "(:keyword IS NULL OR LOWER(l.channelName) LIKE :keyword) AND " +
-            "(:trangThaiPheDuyet IS NULL OR l.approvalStatus = :trangThaiPheDuyet) AND " +
+            "(:ApprovalStatus IS NULL OR l.approvalStatus = :ApprovalStatus) AND " +
             "l.isDeleted = false")
     Page<NavigationChannel> searchDocuments(
             @org.springframework.data.repository.query.Param("orgUnitId") java.util.UUID orgUnitId,
             @org.springframework.data.repository.query.Param("keyword") String keyword,
-            @org.springframework.data.repository.query.Param("trangThaiPheDuyet") NavigationChannelApprovalStatus trangThaiPheDuyet,
+            @org.springframework.data.repository.query.Param("ApprovalStatus") NavigationChannelApprovalStatus ApprovalStatus,
             Pageable pageable);
     @Query("SELECT l FROM NavigationChannel l WHERE " +
             "l.isDeleted = false AND " +

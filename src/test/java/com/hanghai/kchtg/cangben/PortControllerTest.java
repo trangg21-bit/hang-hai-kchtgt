@@ -25,7 +25,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.hanghai.kchtg.common.entity.TrangThaiHoatDong;
-import com.hanghai.kchtg.common.entity.TrangThaiPheDuyet;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -100,7 +100,7 @@ class PortControllerTest {
                 .longitude(new BigDecimal("106.688"))
                 .area(new BigDecimal("5000.00"))
                 .operationalStatus(TrangThaiHoatDong.HIEN_HANH)
-                .approvalStatus(TrangThaiPheDuyet.CHO_PHE_DUYET)
+                .approvalStatus(ApprovalStatus.PENDING)
                 .build();
     }
 
@@ -293,7 +293,7 @@ class PortControllerTest {
         UUID id = UUID.randomUUID();
         when(portApprovalService.getHistory(id))
                 .thenReturn(Map.of("entityId", id.toString(), "changeHistory", List.of(),
-                        "approvalLog", List.of(), "currentApprovalStatus", "CHO_PHE_DUYET",
+                        "approvalLog", List.of(), "currentApprovalStatus", "PENDING",
                         "entityType", "Port"));
 
         mockMvc.perform(get("/api/v1/ports/{id}/history", id))
