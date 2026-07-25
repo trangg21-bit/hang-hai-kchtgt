@@ -136,15 +136,20 @@ BEGIN
 
 END $$;
 
--- Update RBAC Permissions
-UPDATE roles_permissions SET permission = 'asset:increase-request' WHERE permission = 'asset:yeu-cau-tang';
-UPDATE roles_permissions SET permission = 'asset:decrease-request' WHERE permission = 'asset:yeu-cau-giam';
-UPDATE roles_permissions SET permission = 'asset:movement-request' WHERE permission = 'asset:yeu-cau-bien-dong';
-UPDATE roles_permissions SET permission = 'asset:inventory-report' WHERE permission = 'asset:bao-cao-kiem-ke';
-UPDATE roles_permissions SET permission = 'asset:inventory-plan' WHERE permission = 'asset:ke-hoach-kiem-ke';
-UPDATE roles_permissions SET permission = 'asset:inventory-asset' WHERE permission = 'asset:tai-san-kiem-ke';
-UPDATE roles_permissions SET permission = 'asset:infra-asset' WHERE permission = 'asset:tai-san';
-UPDATE roles_permissions SET permission = 'asset:processing-record' WHERE permission = 'asset:ho-so-xu-ly';
-UPDATE roles_permissions SET permission = 'asset:approval-record' WHERE permission = 'asset:luu-phe-duyet';
-UPDATE roles_permissions SET permission = 'asset:inventory' WHERE permission = 'asset:kiem-ke';
-UPDATE roles_permissions SET permission = 'asset:exploitation' WHERE permission = 'asset:khai-thac';
+-- Update RBAC Permissions (only if table exists)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'roles_permissions') THEN
+        UPDATE roles_permissions SET permission = 'asset:increase-request' WHERE permission = 'asset:yeu-cau-tang';
+        UPDATE roles_permissions SET permission = 'asset:decrease-request' WHERE permission = 'asset:yeu-cau-giam';
+        UPDATE roles_permissions SET permission = 'asset:movement-request' WHERE permission = 'asset:yeu-cau-bien-dong';
+        UPDATE roles_permissions SET permission = 'asset:inventory-report' WHERE permission = 'asset:bao-cao-kiem-ke';
+        UPDATE roles_permissions SET permission = 'asset:inventory-plan' WHERE permission = 'asset:ke-hoach-kiem-ke';
+        UPDATE roles_permissions SET permission = 'asset:inventory-asset' WHERE permission = 'asset:tai-san-kiem-ke';
+        UPDATE roles_permissions SET permission = 'asset:infra-asset' WHERE permission = 'asset:tai-san';
+        UPDATE roles_permissions SET permission = 'asset:processing-record' WHERE permission = 'asset:ho-so-xu-ly';
+        UPDATE roles_permissions SET permission = 'asset:approval-record' WHERE permission = 'asset:luu-phe-duyet';
+        UPDATE roles_permissions SET permission = 'asset:inventory' WHERE permission = 'asset:kiem-ke';
+        UPDATE roles_permissions SET permission = 'asset:exploitation' WHERE permission = 'asset:khai-thac';
+    END IF;
+END $$;
