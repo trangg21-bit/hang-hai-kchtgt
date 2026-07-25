@@ -22,20 +22,20 @@ import {
   CloseOutlined,
 } from '@ant-design/icons';
 import {
-  fetchYeuCauTangList,
-  createYeuCauTang,
-  updateYeuCauTang,
-  deleteYeuCauTang,
-  fetchTaiSanKCHTList,
-  approveYeuCauTang,
-  rejectYeuCauTang,
+  fetchAssetIncreaseList,
+  createAssetIncrease,
+  updateAssetIncrease,
+  deleteAssetIncrease,
+  fetchInfraAssetList,
+  approveAssetIncrease,
+  rejectAssetIncrease,
 } from '../../services/assetmovement/api';
-import type { YeuCauTangTaiSanResponse, YeuCauTangTaiSanRequest } from '../../services/assetmovement/types';
+import type { AssetIncreaseResponse, AssetIncreaseRequest } from '../../services/assetmovement/types';
 import { colors } from '../../theme';
 import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 export default function AssetIncreaseList() {
-  const [dataSource, setDataSource] = useState<YeuCauTangTaiSanResponse[]>([]);
+  const [dataSource, setDataSource] = useState<AssetIncreaseResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -43,11 +43,11 @@ export default function AssetIncreaseList() {
 
   // Form Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<YeuCauTangTaiSanResponse | null>(null);
+  const [editingItem, setEditingItem] = useState<AssetIncreaseResponse | null>(null);
   const [form] = Form.useForm();
 
   // Danh sách tài sản KCHT
-  const [taiSanList, setTaiSanList] = useState<any[]>([]);
+  const [assetList, setTaiSanList] = useState<any[]>([]);
 
   // States phê duyệt/từ chối
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
@@ -57,7 +57,7 @@ export default function AssetIncreaseList() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchYeuCauTangList({
+      const res = await fetchAssetIncreaseList({
         page: page - 1,
         size: pageSize,
       });
@@ -70,9 +70,9 @@ export default function AssetIncreaseList() {
     }
   }, [page, pageSize]);
 
-  const loadTaiSanList = async () => {
+  const loadAssetList = async () => {
     try {
-      const res = await fetchTaiSanKCHTList({ page: 0, size: 200 });
+      const res = await fetchInfraAssetList({ page: 0, size: 200 });
       setTaiSanList(res.content || []);
     } catch (err: any) {
       console.error('Không thể tải danh sách tài sản', err);
@@ -81,15 +81,15 @@ export default function AssetIncreaseList() {
 
   useEffect(() => {
     loadData();
-    loadTaiSanList();
+    loadAssetList();
   }, [loadData]);
 
-  const handleOpenModal = (record?: YeuCauTangTaiSanResponse) => {
+  const handleOpenModal = (record?: AssetIncreaseResponse) => {
     if (record) {
       setEditingItem(record);
       form.setFieldsValue({
-        taiSanId: record.taiSanId,
-        lyDo: record.lyDo,
+        assetId: record.assetId,
+        reason: record.reason,
       });
     } else {
       setEditingItem(null);
@@ -106,20 +106,20 @@ export default function AssetIncreaseList() {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      const payload: YeuCauTangTaiSanRequest = {
-        taiSanId: values.taiSanId,
-        lyDo: values.lyDo,
-        tenTaiSan: '',
+      const payload: AssetIncreaseRequest = {
+        assetId: values.assetId,
+        reason: values.reason,
+        assetName: '',
         soLuong: 1,
         donViTinh: 'Cái',
         maSoTang: '',
       };
 
       if (editingItem) {
-        await updateYeuCauTang(editingItem.id, payload);
+        await updateAssetIncrease(editingItem.id, payload);
         message.success('Cập nhật yêu cầu tăng tài sản thành công!');
       } else {
-        await createYeuCauTang(payload);
+        await createAssetIncrease(payload);
         message.success('Tạo mới yêu cầu tăng tài sản thành công!');
       }
 
@@ -133,7 +133,7 @@ export default function AssetIncreaseList() {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteYeuCauTang(id);
+      await deleteAssetIncrease(id);
       message.success('Xóa yêu cầu thành công!');
       loadData();
     } catch (err: any) {
@@ -143,7 +143,7 @@ export default function AssetIncreaseList() {
 
   const handleApprove = async (id: string) => {
     try {
-      await approveYeuCauTang(id);
+      await approveAssetIncrease(id);
       message.success('Đã phê duyệt yêu cầu tăng tài sản!');
       loadData();
     } catch (err: any) {
@@ -160,7 +160,7 @@ export default function AssetIncreaseList() {
   const handleRejectConfirm = async () => {
     if (!rejectingId) return;
     try {
-      await rejectYeuCauTang(rejectingId, rejectRemarks);
+      await rejectAssetIncrease(rejectingId, rejectRemarks);
       message.success('Đã từ chối yêu cầu tăng tài sản!');
       setIsRejectModalOpen(false);
       loadData();
@@ -184,8 +184,8 @@ export default function AssetIncreaseList() {
     },
     {
       title: 'Tên tài sản',
-      dataIndex: 'tenTaiSan',
-      key: 'tenTaiSan',
+      dataIndex: 'assetName',
+      key: 'assetName',
     },
     {
       title: 'Đơn vị tính',
@@ -194,13 +194,13 @@ export default function AssetIncreaseList() {
     },
     {
       title: 'Lý do tăng',
-      dataIndex: 'lyDo',
-      key: 'lyDo',
+      dataIndex: 'reason',
+      key: 'reason',
     },
     {
       title: 'Trạng thái',
-      dataIndex: 'trangThai',
-      key: 'trangThai',
+      dataIndex: 'status',
+      key: 'status',
       render: (status: string) => getStatusTag(status),
     },
     {
@@ -211,8 +211,8 @@ export default function AssetIncreaseList() {
     {
       title: 'Thao tác',
       key: 'action',
-      render: (_: any, record: YeuCauTangTaiSanResponse) => {
-        const isPending = !record.trangThai || record.trangThai === 'CHO_PHE_DUYET' || record.trangThai === 'PENDING';
+      render: (_: any, record: AssetIncreaseResponse) => {
+        const isPending = !record.status || record.status === 'CHO_PHE_DUYET' || record.status === 'PENDING';
         return (
           <Space size="middle">
             {isPending && (
@@ -309,7 +309,7 @@ export default function AssetIncreaseList() {
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
-            name="taiSanId"
+            name="assetId"
             label="Chọn tài sản KCHT"
             rules={[{ required: true, message: 'Vui lòng chọn tài sản KCHT' }]}
           >
@@ -318,16 +318,16 @@ export default function AssetIncreaseList() {
               showSearch
               optionFilterProp="children"
             >
-              {taiSanList.map(ts => (
+              {assetList.map(ts => (
                 <Select.Option key={ts.id} value={ts.id}>
-                  [{ts.maTaiSan}] {ts.tenTaiSan}
+                  [{ts.assetCode}] {ts.assetName}
                 </Select.Option>
               ))}
             </Select>
           </Form.Item>
 
           <Form.Item
-            name="lyDo"
+            name="reason"
             label="Lý do tăng"
             rules={[{ required: true, message: 'Vui lòng nhập lý do' }]}
           >

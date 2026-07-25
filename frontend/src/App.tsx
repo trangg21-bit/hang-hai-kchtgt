@@ -222,10 +222,10 @@ export default function App() {
                 <Route path="/vts-system/:id" element={<PermissionGuard permission="vts:read"><VtsSystemForm /></PermissionGuard>} />
 
                 {/* M-005: Biến động tài sản */}
-                <Route path="/asset/increase" element={<PermissionGuard permission="asset:yeu-cau-tang"><AssetIncreaseList /></PermissionGuard>} />
-                <Route path="/asset/decrease" element={<PermissionGuard permission="asset:yeu-cau-giam"><AssetDecreaseList /></PermissionGuard>} />
-                <Route path="/asset/inventory" element={<PermissionGuard permission="asset:kiem-ke"><InventoryList /></PermissionGuard>} />
-                <Route path="/asset/exploitation" element={<PermissionGuard permission="asset:khai-thac"><AssetExploitationList /></PermissionGuard>} />
+                <Route path="/asset/increase" element={<PermissionGuard permission="asset:increase-request"><AssetIncreaseList /></PermissionGuard>} />
+                <Route path="/asset/decrease" element={<PermissionGuard permission="asset:decrease-request"><AssetDecreaseList /></PermissionGuard>} />
+                <Route path="/asset/inventory" element={<PermissionGuard permission="asset:inventory"><InventoryList /></PermissionGuard>} />
+                <Route path="/asset/exploitation" element={<PermissionGuard permission="asset:exploitation"><AssetExploitationList /></PermissionGuard>} />
 
                 {/* M-006: Văn bản pháp lý */}
                 <Route path="/vanban/phaply" element={<PermissionGuard permission="vanban:manage"><VanBanPhapLyList /></PermissionGuard>} />

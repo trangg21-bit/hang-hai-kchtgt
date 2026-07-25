@@ -1,131 +1,131 @@
 import api from '../api';
 import type {
   PageResponse,
-  YeuCauTangTaiSanRequest,
-  YeuCauTangTaiSanResponse,
-  YeuCauGiamTaiSanRequest,
-  YeuCauGiamTaiSanResponse,
-  KeHoachKiemKeRequest,
-  KeHoachKiemKeResponse,
-  BaoCaoKiemKeRequest,
-  BaoCaoKiemKeResponse,
-  KhaiThacTaiSanRequest,
-  KhaiThacTaiSanResponse,
-  HoSoXuLyTaiSanRequest,
-  HoSoXuLyTaiSanResponse,
+  AssetIncreaseRequest,
+  AssetIncreaseResponse,
+  AssetDecreaseRequest,
+  AssetDecreaseResponse,
+  InventoryPlanRequest,
+  InventoryPlanResponse,
+  InventoryReportRequest,
+  InventoryReportResponse,
+  AssetExploitationRequest,
+  AssetExploitationResponse,
+  AssetProcessingRecordRequest,
+  AssetProcessingRecordResponse,
 } from './types';
 
 // ==========================================
 // 1. Yêu cầu tăng tài sản
 // ==========================================
-export async function fetchYeuCauTangList(params: {
+export async function fetchAssetIncreaseList(params: {
   page?: number;
   size?: number;
-  taiSanId?: string;
-}): Promise<PageResponse<YeuCauTangTaiSanResponse>> {
+  assetId?: string;
+}): Promise<PageResponse<AssetIncreaseResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
-  if (params.taiSanId) sp.set('taiSanId', params.taiSanId);
+  if (params.assetId) sp.set('assetId', params.assetId);
 
-  const res = await api.get(`/v1/asset/yeu-cau-tang?${sp}`);
+  const res = await api.get(`/v1/asset/asset-increase-requests?${sp}`);
   return res.data.data;
 }
 
-export async function fetchYeuCauTangById(id: string): Promise<YeuCauTangTaiSanResponse> {
-  const res = await api.get(`/v1/asset/yeu-cau-tang/${id}`);
+export async function fetchAssetIncreaseById(id: string): Promise<AssetIncreaseResponse> {
+  const res = await api.get(`/v1/asset/asset-increase-requests/${id}`);
   return res.data.data;
 }
 
-export async function createYeuCauTang(payload: YeuCauTangTaiSanRequest): Promise<YeuCauTangTaiSanResponse> {
-  const res = await api.post('/v1/asset/yeu-cau-tang', payload);
+export async function createAssetIncrease(payload: AssetIncreaseRequest): Promise<AssetIncreaseResponse> {
+  const res = await api.post('/v1/asset/asset-increase-requests', payload);
   return res.data.data;
 }
 
-export async function updateYeuCauTang(id: string, payload: YeuCauTangTaiSanRequest): Promise<YeuCauTangTaiSanResponse> {
-  const res = await api.put(`/v1/asset/yeu-cau-tang/${id}`, payload);
+export async function updateAssetIncrease(id: string, payload: AssetIncreaseRequest): Promise<AssetIncreaseResponse> {
+  const res = await api.put(`/v1/asset/asset-increase-requests/${id}`, payload);
   return res.data.data;
 }
 
-export async function deleteYeuCauTang(id: string): Promise<void> {
-  await api.delete(`/v1/asset/yeu-cau-tang/${id}`);
+export async function deleteAssetIncrease(id: string): Promise<void> {
+  await api.delete(`/v1/asset/asset-increase-requests/${id}`);
 }
 
 // ==========================================
 // 2. Yêu cầu giảm tài sản
 // ==========================================
-export async function fetchYeuCauGiamList(params: {
+export async function fetchAssetDecreaseList(params: {
   page?: number;
   size?: number;
-  taiSanId?: string;
-}): Promise<PageResponse<YeuCauGiamTaiSanResponse>> {
+  assetId?: string;
+}): Promise<PageResponse<AssetDecreaseResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
-  if (params.taiSanId) sp.set('taiSanId', params.taiSanId);
+  if (params.assetId) sp.set('assetId', params.assetId);
 
-  const res = await api.get(`/v1/asset/yeu-cau-giam?${sp}`);
+  const res = await api.get(`/v1/asset/asset-decrease-requests?${sp}`);
   return res.data.data;
 }
 
-export async function fetchYeuCauGiamById(id: string): Promise<YeuCauGiamTaiSanResponse> {
-  const res = await api.get(`/v1/asset/yeu-cau-giam/${id}`);
+export async function fetchAssetDecreaseById(id: string): Promise<AssetDecreaseResponse> {
+  const res = await api.get(`/v1/asset/asset-decrease-requests/${id}`);
   return res.data.data;
 }
 
-export async function createYeuCauGiam(payload: YeuCauGiamTaiSanRequest): Promise<YeuCauGiamTaiSanResponse> {
-  const res = await api.post('/v1/asset/yeu-cau-giam', payload);
+export async function createAssetDecrease(payload: AssetDecreaseRequest): Promise<AssetDecreaseResponse> {
+  const res = await api.post('/v1/asset/asset-decrease-requests', payload);
   return res.data.data;
 }
 
-export async function updateYeuCauGiam(id: string, payload: YeuCauGiamTaiSanRequest): Promise<YeuCauGiamTaiSanResponse> {
-  const res = await api.put(`/v1/asset/yeu-cau-giam/${id}`, payload);
+export async function updateAssetDecrease(id: string, payload: AssetDecreaseRequest): Promise<AssetDecreaseResponse> {
+  const res = await api.put(`/v1/asset/asset-decrease-requests/${id}`, payload);
   return res.data.data;
 }
 
-export async function deleteYeuCauGiam(id: string): Promise<void> {
-  await api.delete(`/v1/asset/yeu-cau-giam/${id}`);
+export async function deleteAssetDecrease(id: string): Promise<void> {
+  await api.delete(`/v1/asset/asset-decrease-requests/${id}`);
 }
 
 // ==========================================
 // 3. Kế hoạch kiểm kê
 // ==========================================
-export async function fetchKeHoachKiemKeList(params: {
+export async function fetchInventoryPlanList(params: {
   page?: number;
   size?: number;
-}): Promise<PageResponse<KeHoachKiemKeResponse>> {
+}): Promise<PageResponse<InventoryPlanResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
 
-  const res = await api.get(`/v1/asset/ke-hoach-kiem-ke?${sp}`);
+  const res = await api.get(`/v1/asset/inventory-plans?${sp}`);
   return res.data.data;
 }
 
-export async function createKeHoachKiemKe(payload: KeHoachKiemKeRequest): Promise<KeHoachKiemKeResponse> {
-  const res = await api.post('/v1/asset/ke-hoach-kiem-ke', payload);
+export async function createInventoryPlan(payload: InventoryPlanRequest): Promise<InventoryPlanResponse> {
+  const res = await api.post('/v1/asset/inventory-plans', payload);
   return res.data.data;
 }
 
 // ==========================================
 // 4. Báo cáo kiểm kê
 // ==========================================
-export async function fetchBaoCaoKiemKeList(params: {
+export async function fetchInventoryReportList(params: {
   page?: number;
   size?: number;
-  keHoachId?: string;
-}): Promise<PageResponse<BaoCaoKiemKeResponse>> {
+  planId?: string;
+}): Promise<PageResponse<InventoryReportResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
-  if (params.keHoachId) sp.set('keHoachId', params.keHoachId);
+  if (params.planId) sp.set('planId', params.planId);
 
-  const res = await api.get(`/v1/asset/bao-cao-kiem-ke?${sp}`);
+  const res = await api.get(`/v1/asset/inventory-reports?${sp}`);
   return res.data.data;
 }
 
-export async function createBaoCaoKiemKe(payload: BaoCaoKiemKeRequest): Promise<BaoCaoKiemKeResponse> {
-  const res = await api.post('/v1/asset/bao-cao-kiem-ke', payload);
+export async function createInventoryReport(payload: InventoryReportRequest): Promise<InventoryReportResponse> {
+  const res = await api.post('/v1/asset/inventory-reports', payload);
   return res.data.data;
 }
 
@@ -135,26 +135,26 @@ export async function createBaoCaoKiemKe(payload: BaoCaoKiemKeRequest): Promise<
 export async function fetchKhaiThacList(params: {
   page?: number;
   size?: number;
-  taiSanId?: string;
-  namKhaiThac?: number;
-}): Promise<PageResponse<KhaiThacTaiSanResponse>> {
+  assetId?: string;
+  exploitationYear?: number;
+}): Promise<PageResponse<AssetExploitationResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
-  if (params.taiSanId) sp.set('taiSanId', params.taiSanId);
-  if (params.namKhaiThac !== undefined) sp.set('namKhaiThac', String(params.namKhaiThac));
+  if (params.assetId) sp.set('assetId', params.assetId);
+  if (params.exploitationYear !== undefined) sp.set('exploitationYear', String(params.exploitationYear));
 
-  const res = await api.get(`/v1/asset/khai-thac?${sp}`);
+  const res = await api.get(`/v1/asset/asset-exploitations?${sp}`);
   return res.data.data;
 }
 
-export async function createKhaiThac(payload: KhaiThacTaiSanRequest): Promise<KhaiThacTaiSanResponse> {
-  const res = await api.post('/v1/asset/khai-thac', payload);
+export async function createKhaiThac(payload: AssetExploitationRequest): Promise<AssetExploitationResponse> {
+  const res = await api.post('/v1/asset/asset-exploitations', payload);
   return res.data.data;
 }
 
 export async function deleteKhaiThac(id: string): Promise<void> {
-  await api.delete(`/v1/asset/khai-thac/${id}`);
+  await api.delete(`/v1/asset/asset-exploitations/${id}`);
 }
 
 // ==========================================
@@ -163,26 +163,26 @@ export async function deleteKhaiThac(id: string): Promise<void> {
 export async function fetchHoSoXuLyList(params: {
   page?: number;
   size?: number;
-  taiSanId?: string;
-}): Promise<PageResponse<HoSoXuLyTaiSanResponse>> {
+  assetId?: string;
+}): Promise<PageResponse<AssetProcessingRecordResponse>> {
   const sp = new URLSearchParams();
   if (params.page !== undefined) sp.set('page', String(params.page));
   if (params.size !== undefined) sp.set('size', String(params.size));
-  if (params.taiSanId) sp.set('taiSanId', params.taiSanId);
+  if (params.assetId) sp.set('assetId', params.assetId);
 
-  const res = await api.get(`/v1/asset/ho-so-xu-ly?${sp}`);
+  const res = await api.get(`/v1/asset/asset-processing-records?${sp}`);
   return res.data.data;
 }
 
-export async function createHoSoXuLy(payload: HoSoXuLyTaiSanRequest): Promise<HoSoXuLyTaiSanResponse> {
-  const res = await api.post('/v1/asset/ho-so-xu-ly', payload);
+export async function createHoSoXuLy(payload: AssetProcessingRecordRequest): Promise<AssetProcessingRecordResponse> {
+  const res = await api.post('/v1/asset/asset-processing-records', payload);
   return res.data.data;
 }
 
 // ==========================================
 // 7. Lưu phê duyệt (Note: UTF-8 encoded Vietnamese characters in URL)
 // ==========================================
-export async function fetchLuuPheDuyetHistory(id: string): Promise<any> {
+export async function fetchApprovalRecordHistory(id: string): Promise<any> {
   const res = await api.get(`/v1/asset/luu-phe-duy%E1%BB%87t/${id}`);
   return res.data.data;
 }
@@ -190,64 +190,64 @@ export async function fetchLuuPheDuyetHistory(id: string): Promise<any> {
 // ==========================================
 // 8. Bổ sung: Lấy danh sách tài sản KCHT và duyệt tăng/giam
 // ==========================================
-export async function fetchTaiSanKCHTList(params?: {
+export async function fetchInfraAssetList(params?: {
   page?: number;
   size?: number;
 }): Promise<PageResponse<any>> {
   const sp = new URLSearchParams();
   if (params?.page !== undefined) sp.set('page', String(params.page));
   if (params?.size !== undefined) sp.set('size', String(params.size));
-  const res = await api.get(`/v1/asset/tai-san?${sp}`);
+  const res = await api.get(`/v1/asset/infra-assets?${sp}`);
   return res.data.data;
 }
 
-export async function approveYeuCauTang(id: string, remarks?: string): Promise<YeuCauTangTaiSanResponse> {
-  const res = await api.post(`/v1/asset/yeu-cau-tang/${id}/approve`, { remarks });
+export async function approveAssetIncrease(id: string, remarks?: string): Promise<AssetIncreaseResponse> {
+  const res = await api.post(`/v1/asset/asset-increase-requests/${id}/approve`, { remarks });
   return res.data.data;
 }
 
-export async function rejectYeuCauTang(id: string, remarks?: string): Promise<YeuCauTangTaiSanResponse> {
-  const res = await api.post(`/v1/asset/yeu-cau-tang/${id}/reject`, { remarks });
+export async function rejectAssetIncrease(id: string, remarks?: string): Promise<AssetIncreaseResponse> {
+  const res = await api.post(`/v1/asset/asset-increase-requests/${id}/reject`, { remarks });
   return res.data.data;
 }
 
-export async function approveYeuCauGiam(id: string, remarks?: string): Promise<YeuCauGiamTaiSanResponse> {
-  const res = await api.post(`/v1/asset/yeu-cau-giam/${id}/approve`, { remarks });
+export async function approveAssetDecrease(id: string, remarks?: string): Promise<AssetDecreaseResponse> {
+  const res = await api.post(`/v1/asset/asset-decrease-requests/${id}/approve`, { remarks });
   return res.data.data;
 }
 
-export async function rejectYeuCauGiam(id: string, remarks?: string): Promise<YeuCauGiamTaiSanResponse> {
-  const res = await api.post(`/v1/asset/yeu-cau-giam/${id}/reject`, { remarks });
+export async function rejectAssetDecrease(id: string, remarks?: string): Promise<AssetDecreaseResponse> {
+  const res = await api.post(`/v1/asset/asset-decrease-requests/${id}/reject`, { remarks });
   return res.data.data;
 }
 
-export async function approveKeHoachKiemKe(id: string, remarks?: string): Promise<KeHoachKiemKeResponse> {
-  const res = await api.post(`/v1/asset/ke-hoach-kiem-ke/${id}/approve`, { remarks });
+export async function approveInventoryPlan(id: string, remarks?: string): Promise<InventoryPlanResponse> {
+  const res = await api.post(`/v1/asset/inventory-plans/${id}/approve`, { remarks });
   return res.data.data;
 }
 
-export async function rejectKeHoachKiemKe(id: string, remarks?: string): Promise<KeHoachKiemKeResponse> {
-  const res = await api.post(`/v1/asset/ke-hoach-kiem-ke/${id}/reject`, { remarks });
+export async function rejectInventoryPlan(id: string, remarks?: string): Promise<InventoryPlanResponse> {
+  const res = await api.post(`/v1/asset/inventory-plans/${id}/reject`, { remarks });
   return res.data.data;
 }
 
-export async function startKeHoachKiemKe(id: string): Promise<KeHoachKiemKeResponse> {
-  const res = await api.post(`/v1/asset/ke-hoach-kiem-ke/${id}/start`);
+export async function startInventoryPlan(id: string): Promise<InventoryPlanResponse> {
+  const res = await api.post(`/v1/asset/inventory-plans/${id}/start`);
   return res.data.data;
 }
 
-export async function completeKeHoachKiemKe(id: string): Promise<KeHoachKiemKeResponse> {
-  const res = await api.post(`/v1/asset/ke-hoach-kiem-ke/${id}/complete`);
+export async function completeInventoryPlan(id: string): Promise<InventoryPlanResponse> {
+  const res = await api.post(`/v1/asset/inventory-plans/${id}/complete`);
   return res.data.data;
 }
 
-export async function approveBaoCaoKiemKe(id: string, remarks?: string): Promise<BaoCaoKiemKeResponse> {
-  const res = await api.post(`/v1/asset/bao-cao-kiem-ke/${id}/approve`, { remarks });
+export async function approveInventoryReport(id: string, remarks?: string): Promise<InventoryReportResponse> {
+  const res = await api.post(`/v1/asset/inventory-reports/${id}/approve`, { remarks });
   return res.data.data;
 }
 
-export async function rejectBaoCaoKiemKe(id: string, remarks?: string): Promise<BaoCaoKiemKeResponse> {
-  const res = await api.post(`/v1/asset/bao-cao-kiem-ke/${id}/reject`, { remarks });
+export async function rejectInventoryReport(id: string, remarks?: string): Promise<InventoryReportResponse> {
+  const res = await api.post(`/v1/asset/inventory-reports/${id}/reject`, { remarks });
   return res.data.data;
 }
 
