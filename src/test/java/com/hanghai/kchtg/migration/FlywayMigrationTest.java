@@ -60,63 +60,24 @@ class FlywayMigrationTest {
     }
 
     /**
-     * Recreates the parts of the UAT schema the new migrations touch, the way
-     * Hibernate would have created them.
+     * Loads {@code uat-schema-fixture.sql}, which recreates the parts of the UAT
+     * database the new migrations touch.
+     *
+     * <p>The document tables in that fixture are generated from the {@code IF EXISTS}
+     * guards inside V86, so every rename it performs actually runs. Leaving them out
+     * is what let the {@code loai_bao_tri TO loai_bao_tri} self-rename reach UAT: with
+     * no such table present, all of V86 skipped itself and the test still passed.
      */
     private static void seedUatShapedSchema() throws Exception {
+        String sql;
+        try (var in = FlywayMigrationTest.class.getResourceAsStream("/uat-schema-fixture.sql")) {
+            if (in == null) {
+                throw new IllegalStateException("uat-schema-fixture.sql missing from the test classpath");
+            }
+            sql = new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        }
         try (Connection c = dataSource.getConnection(); Statement s = c.createStatement()) {
-            for (String table : STATION_TABLES) {
-                s.execute("""
-                        CREATE TABLE %s (
-                            id              UUID PRIMARY KEY,
-                            latitude        DOUBLE PRECISION,
-                            longitude       DOUBLE PRECISION,
-                            status          VARCHAR(50) DEFAULT 'DRAFT'
-                                            CHECK (status IN ('DRAFT','PENDING_APPROVAL','APPROVED_L1',
-                                                              'APPROVED_L2','PUBLISHED','DELETED')),
-                            approval_status VARCHAR(50) DEFAULT 'PENDING'
-                                            CHECK (approval_status IN ('PENDING','APPROVED_L1',
-                                                                       'APPROVED_L2','REJECTED')),
-                            created_by      VARCHAR(100),
-                            updated_by      VARCHAR(100),
-                            deleted_by      VARCHAR(100)
-                        )""".formatted(table));
-
-                // A row per table so the type change has data to convert, and a
-                // username in created_by so V90's non-UUID clearing is exercised.
-                s.execute("""
-                        INSERT INTO %s (id, latitude, longitude, status, approval_status, created_by, updated_by)
-                        VALUES (gen_random_uuid(), 20.5, 106.7, 'PUBLISHED', 'APPROVED_L2',
-                                'admin', '3f1a7c2e-9b4d-4e18-8a55-2c6f0d9e7b31')
-                        """.formatted(table));
-            }
-
-            // Beacon tables: V82 drops coordinates from these too.
-            for (String table : new String[]{"beacon_light", "buoy"}) {
-                s.execute("""
-                        CREATE TABLE %s (
-                            id         UUID PRIMARY KEY,
-                            latitude   DOUBLE PRECISION,
-                            longitude  DOUBLE PRECISION,
-                            created_by VARCHAR(100),
-                            updated_by VARCHAR(100)
-                        )""".formatted(table));
-            }
-
-            // Audit columns that must stay text — V90 has to leave these alone.
-            s.execute("""
-                    CREATE TABLE port_planning (
-                        id         UUID PRIMARY KEY,
-                        created_by VARCHAR(100),
-                        updated_by VARCHAR(100)
-                    )""");
-            s.execute("""
-                    CREATE TABLE adjustment_approvals (
-                        id          UUID PRIMARY KEY,
-                        approved_by VARCHAR(100)
-                    )""");
-            s.execute("INSERT INTO port_planning (id, created_by) VALUES (gen_random_uuid(), 'nguyenvana')");
-            s.execute("INSERT INTO adjustment_approvals (id, approved_by) VALUES (gen_random_uuid(), 'Tran Thi B')");
+            s.execute(sql);
         }
     }
 
@@ -182,7 +143,18 @@ class FlywayMigrationTest {
         assertThat(count("SELECT count(*) FROM coastal_station_vts WHERE updated_by IS NOT NULL"))
                 .as("a valid UUID must survive").isEqualTo(1);
 
-        // V90 exclusions: these stay text because the entities declare String.
+        // V86: the Vietnamese column names are gone. loai_bao_tri is called out because
+        // V86 shipped with "RENAME COLUMN loai_bao_tri TO loai_bao_tri" — a self-rename
+        // PostgreSQL rejects, which stopped the UAT deploy at version 85.
+        assertThat(columnType("maintenance_plans", "maintenance_type"))
+                .as("loai_bao_tri must end up as maintenance_type").isNotNull();
+        assertThat(columnType("maintenance_plans", "loai_bao_tri"))
+                .as("the Vietnamese name must be gone").isNull();
+        assertThat(count("SELECT count(*) FROM maintenance_plans WHERE maintenance_type = 'DINH_KY'"))
+                .as("the rename must carry the data across").isEqualTo(1);
+
+        // V90 exclusions: these stay text because the entities declare String. Their
+        // names arrive via V86 (nguoi_tao -> created_by, nguoi_duyet -> approved_by).
         assertThat(columnType("port_planning", "created_by")).isEqualTo("character varying");
         assertThat(columnType("port_planning", "updated_by")).isEqualTo("character varying");
         assertThat(columnType("adjustment_approvals", "approved_by")).isEqualTo("character varying");

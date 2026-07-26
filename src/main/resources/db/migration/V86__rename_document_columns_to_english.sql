@@ -78,7 +78,6 @@ BEGIN
         ALTER TABLE public.maintenance_plans RENAME COLUMN thiet_bi TO equipment;
     END IF;
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_plans' AND column_name = 'loai_bao_tri') THEN
-        ALTER TABLE public.maintenance_plans RENAME COLUMN loai_bao_tri TO loai_bao_tri; -- Wait, this is loai_bao_tri RENAME TO maintenance_type!
         ALTER TABLE public.maintenance_plans RENAME COLUMN loai_bao_tri TO maintenance_type;
     END IF;
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'maintenance_plans' AND column_name = 'ngay_bat_dau_du_kien') THEN
