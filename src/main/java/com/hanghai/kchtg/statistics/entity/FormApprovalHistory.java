@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.statistics.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -19,10 +21,10 @@ public class FormApprovalHistory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
     @Column(name = "form_id")
-    private Long formId;
+    private UUID formId;
 
     /** Action: SUBMIT, APPROVE, REJECT, DRAFT */
     @Column(name = "action")
@@ -30,7 +32,7 @@ public class FormApprovalHistory {
 
     /** User who performed the action */
     @Column(name = "actor")
-    private String actor;
+    private UUID actor;
 
     /** Optional comment on the action */
     @Column(name = "comments", length = 1000)
@@ -39,3 +41,4 @@ public class FormApprovalHistory {
     @CreationTimestamp
     private Instant createdAt;
 }
+

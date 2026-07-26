@@ -79,7 +79,7 @@ public class BuoyController {
 
     @PostMapping("/{id}/approve-l1")
     public ResponseEntity<ApiResponse<BuoyResponse>> approveL1(
-            @PathVariable UUID id, @RequestParam String approverId) {
+            @PathVariable UUID id, @RequestParam java.util.UUID approverId) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Phê duyệt L1 thành công",
                 buoyService.approveL1(id, approverId)));
@@ -87,7 +87,7 @@ public class BuoyController {
 
     @PostMapping("/{id}/approve-l2")
     public ResponseEntity<ApiResponse<BuoyResponse>> approveL2(
-            @PathVariable UUID id, @RequestParam String approverId) {
+            @PathVariable UUID id, @RequestParam java.util.UUID approverId) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Phê duyệt L2 thành công — Đã công bố",
                 buoyService.approveL2(id, approverId)));
@@ -97,7 +97,7 @@ public class BuoyController {
     public ResponseEntity<ApiResponse<BuoyResponse>> reject(
             @PathVariable UUID id,
             @RequestParam String rejectReason,
-            @RequestParam String approverId) {
+            @RequestParam java.util.UUID approverId) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Đã từ chối",
                 buoyService.reject(id, rejectReason, approverId)));

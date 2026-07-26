@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.search.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.search.entity.SearchQuery.QueryType;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -35,7 +37,7 @@ public class SearchRequest {
     private String layerTypes;
 
     private String statuses;
-    private java.util.UUID unitId;
+    private UUID unitId;
 
     @Builder.Default
     private Integer page = 0;

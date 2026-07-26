@@ -1,5 +1,11 @@
 package com.hanghai.kchtg.vtssystem.dto;
 
+import java.util.UUID;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -9,10 +15,10 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class HistoryEntry {
-    private Long id;
-    private Integer approvalLevel;
+    private UUID id;
+    private ApprovalLevel approvalLevel;
     private String status;
-    private String approvedBy;
+    private UUID approvedBy;
     private LocalDateTime approvedDate;
     private String reason;
 }

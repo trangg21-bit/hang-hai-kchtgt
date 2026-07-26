@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.datasharingaggregation.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.datasharingaggregation.dto.*;
 import com.hanghai.kchtg.datasharingaggregation.enums.SharingStatus;
 import com.hanghai.kchtg.datasharingaggregation.enums.SharingType;

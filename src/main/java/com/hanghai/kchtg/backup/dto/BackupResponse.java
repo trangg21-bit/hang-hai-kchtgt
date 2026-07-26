@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.backup.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.backup.entity.DatabaseBackup;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

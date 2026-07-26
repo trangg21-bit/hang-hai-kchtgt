@@ -5,6 +5,7 @@ import { ConfigProvider, App as AntApp, theme } from 'antd';
 import { metronicTheme } from './theme';
 import viVN from 'antd/locale/vi_VN';
 import { setStaticMessage } from './components/ToastNotification';
+import { useAuthStore } from './store/authStore';
 import AppLayout from './components/AppLayout';
 import UsersPage from './pages/UsersPage';
 import RolesPage from './pages/RolesPage';
@@ -32,6 +33,7 @@ import GroupList from './pages/groups/GroupList';
 import GroupForm from './pages/groups/GroupForm';
 import GroupMembers from './pages/groups/GroupMembers';
 import LogsPage from './pages/LogsPage';
+import SettingsPage from './pages/SettingsPage';
 import BeaconList from './pages/beacons/BeaconList';
 import BeaconForm from './pages/beacons/BeaconForm';
 import BuoyList from './pages/buoys/BuoyList';
@@ -75,13 +77,13 @@ import AssetIncreaseList from './pages/assetmovement/AssetIncreaseList';
 import AssetDecreaseList from './pages/assetmovement/AssetDecreaseList';
 import InventoryList from './pages/assetmovement/InventoryList';
 import AssetExploitationList from './pages/assetmovement/AssetExploitationList';
-import VanBanPhapLyList from './pages/vanban/VanBanPhapLyList';
-import SuCoList from './pages/vanban/SuCoList';
-import QuyHoachList from './pages/vanban/QuyHoachList';
+import LegalDocumentList from './pages/document/LegalDocumentList';
+import IncidentList from './pages/document/IncidentList';
+import PortPlanningList from './pages/document/PortPlanningList';
 
 // M-014 & M-015: Nhà trạm & Đài duyên hải
-import NhaTramDenList from './pages/nhatram/NhaTramDenList';
-import NhaTramPhaoList from './pages/nhatram/NhaTramPhaoList';
+import LighthouseStationList from './pages/station/LighthouseStationList';
+import BuoyStationList from './pages/station/BuoyStationList';
 import CoastalStationList from './pages/station/CoastalStationList';
 import SpecialStationList from './pages/station/SpecialStationList';
 
@@ -177,22 +179,22 @@ export default function App() {
                 <Route path="/history" element={<PermissionGuard permission="data:read"><BeaconHistoryList /></PermissionGuard>} />
 
                 {/* M-002: Tài sản KCHTGT - Cảng & Bến */}
-                <Route path="/Port" element={<PermissionGuard permission="Port:read"><PortList /></PermissionGuard>} />
-                <Route path="/Port/create" element={<PermissionGuard permission="Port:create"><PortCreatePage /></PermissionGuard>} />
-                <Route path="/Port/:id" element={<PermissionGuard permission="Port:read"><PortDetailPage /></PermissionGuard>} />
-                <Route path="/Port/:id/edit" element={<PermissionGuard permission="Port:update"><PortUpdatePage /></PermissionGuard>} />
-                <Route path="/Port/:id/approve" element={<PermissionGuard permission="Port:approve"><PortApprovePage /></PermissionGuard>} />
-                <Route path="/Port/:id/delete" element={<PermissionGuard permission="Port:delete"><PortDeleteConfirm /></PermissionGuard>} />
+                <Route path="/Port" element={<PermissionGuard permission="port:read"><PortList /></PermissionGuard>} />
+                <Route path="/Port/create" element={<PermissionGuard permission="port:create"><PortCreatePage /></PermissionGuard>} />
+                <Route path="/Port/:id" element={<PermissionGuard permission="port:read"><PortDetailPage /></PermissionGuard>} />
+                <Route path="/Port/:id/edit" element={<PermissionGuard permission="port:update"><PortUpdatePage /></PermissionGuard>} />
+                <Route path="/Port/:id/approve" element={<PermissionGuard permission="port:approve"><PortApprovePage /></PermissionGuard>} />
+                <Route path="/Port/:id/delete" element={<PermissionGuard permission="port:delete"><PortDeleteConfirm /></PermissionGuard>} />
 
-                <Route path="/Berth" element={<PermissionGuard permission="Berth:read"><BerthListPage /></PermissionGuard>} />
+                <Route path="/Berth" element={<PermissionGuard permission="berth:read"><BerthListPage /></PermissionGuard>} />
 
-                <Route path="/Pier" element={<PermissionGuard permission="Pier:read"><PierListPage /></PermissionGuard>} />
+                <Route path="/Pier" element={<PermissionGuard permission="pier:read"><PierListPage /></PermissionGuard>} />
 
-                <Route path="/DryPort" element={<PermissionGuard permission="DryPort:read"><DryPortListPage /></PermissionGuard>} />
+                <Route path="/DryPort" element={<PermissionGuard permission="dryport:read"><DryPortListPage /></PermissionGuard>} />
 
-                <Route path="/WaterZone" element={<PermissionGuard permission="WaterZone:read"><WaterZoneListPage /></PermissionGuard>} />
+                <Route path="/WaterZone" element={<PermissionGuard permission="waterzone:read"><WaterZoneListPage /></PermissionGuard>} />
 
-                <Route path="/document/upload/:entityType/:entityId" element={<PermissionGuard permission="cangben:read"><DocumentUploadPage /></PermissionGuard>} />
+                <Route path="/document/upload/:entityType/:entityId" element={<PermissionGuard permission="port:read"><DocumentUploadPage /></PermissionGuard>} />
 
                 {/* M-003: Khu nước & VTS — Quản lý tàu bè */}
 
@@ -222,33 +224,39 @@ export default function App() {
                 <Route path="/vts-system/:id" element={<PermissionGuard permission="vts:read"><VtsSystemForm /></PermissionGuard>} />
 
                 {/* M-005: Biến động tài sản */}
-                <Route path="/asset/increase" element={<PermissionGuard permission="asset:increase-request"><AssetIncreaseList /></PermissionGuard>} />
-                <Route path="/asset/decrease" element={<PermissionGuard permission="asset:decrease-request"><AssetDecreaseList /></PermissionGuard>} />
-                <Route path="/asset/inventory" element={<PermissionGuard permission="asset:inventory"><InventoryList /></PermissionGuard>} />
-                <Route path="/asset/exploitation" element={<PermissionGuard permission="asset:exploitation"><AssetExploitationList /></PermissionGuard>} />
+                <Route path="/asset/increase" element={<PermissionGuard permission="assetincrease:manage"><AssetIncreaseList /></PermissionGuard>} />
+                <Route path="/asset/decrease" element={<PermissionGuard permission="assetdecrease:manage"><AssetDecreaseList /></PermissionGuard>} />
+                <Route path="/asset/inventory" element={<PermissionGuard permission="inventoryasset:manage"><InventoryList /></PermissionGuard>} />
+                <Route path="/asset/exploitation" element={<PermissionGuard permission="assetexploitation:manage"><AssetExploitationList /></PermissionGuard>} />
 
                 {/* M-006: Văn bản pháp lý */}
-                <Route path="/vanban/phaply" element={<PermissionGuard permission="vanban:manage"><VanBanPhapLyList /></PermissionGuard>} />
-                <Route path="/vanban/suco" element={<PermissionGuard permission="vanban:manage"><SuCoList /></PermissionGuard>} />
-                <Route path="/vanban/quyhoach" element={<PermissionGuard permission="vanban:manage"><QuyHoachList /></PermissionGuard>} />
+                <Route path="/documents/legal" element={<PermissionGuard permission="document:read"><LegalDocumentList /></PermissionGuard>} />
+                <Route path="/documents/incidents" element={<PermissionGuard permission="document:read"><IncidentList /></PermissionGuard>} />
+                <Route path="/documents/port-planning" element={<PermissionGuard permission="document:read"><PortPlanningList /></PermissionGuard>} />
 
                 {/* M-014: Quản lý Nhà trạm */}
-                <Route path="/lighthouse-station" element={<PermissionGuard permission="lighthouse:read"><NhaTramDenList /></PermissionGuard>} />
-                <Route path="/buoy-station" element={<PermissionGuard permission="buoy:read"><NhaTramPhaoList /></PermissionGuard>} />
+                <Route path="/lighthouse-station" element={<PermissionGuard permission="data:read"><LighthouseStationList /></PermissionGuard>} />
+                <Route path="/buoy-station" element={<PermissionGuard permission="data:read"><BuoyStationList /></PermissionGuard>} />
 
                 {/* M-015: Đài duyên hải */}
-                <Route path="/station/coastal" element={<PermissionGuard permission="station:read"><CoastalStationList /></PermissionGuard>} />
-                <Route path="/station/special" element={<PermissionGuard permission="station:read"><SpecialStationList /></PermissionGuard>} />
+                <Route path="/station/coastal" element={<PermissionGuard permission="data:read"><CoastalStationList /></PermissionGuard>} />
+                <Route path="/station/special" element={<PermissionGuard permission="data:read"><SpecialStationList /></PermissionGuard>} />
 
                 {/* Symbols — Biểu tượng bản đồ */}
                 <Route path="/symbols" element={<PermissionGuard permission="data:read"><SymbolList /></PermissionGuard>} />
 
                 {/* Nhật ký & Backup */}
                 <Route path="/logs" element={<PermissionGuard permission="log:manage"><LogsPage /></PermissionGuard>} />
+
+                {/* Cấu hình hệ thống */}
+                <Route path="/settings" element={<PermissionGuard permission="admin:manage"><SettingsPage /></PermissionGuard>} />
               </Route>
 
-              {/* Catch-all: redirect unknown routes to login */}
-              <Route path="*" element={<Navigate to="/login" />} />
+              {/* Catch-all. Sending everyone to /login made any unknown path look
+                  like a session expiry — clicking a menu item whose route was
+                  missing appeared to log the user out. Only anonymous visitors
+                  belong at /login; a signed-in user goes back to the dashboard. */}
+              <Route path="*" element={<UnknownRouteRedirect />} />
             </Routes>
           </BrowserRouter>
           <RegisterAntdStatic />
@@ -256,6 +264,11 @@ export default function App() {
       </ConfigProvider>
     </QueryClientProvider>
   );
+}
+
+function UnknownRouteRedirect() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  return <Navigate to={isAuthenticated ? '/' : '/login'} replace />;
 }
 
 function RegisterAntdStatic() {

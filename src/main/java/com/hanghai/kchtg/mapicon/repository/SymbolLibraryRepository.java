@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.mapicon.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.mapicon.entity.SymbolLibrary;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

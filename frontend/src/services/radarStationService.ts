@@ -63,7 +63,7 @@ export const radarStationCRUD = {
   },
 
   async getByStatus(status: string): Promise<RadarStationResponse[]> {
-    const res = await api.get(`/v1/radar-station/status-phe-duyet/${status}`);
+    const res = await api.get(`/v1/radar-station/approval-status/${status}`);
     return toArray<RadarStationResponse>(res.data);
   },
 };

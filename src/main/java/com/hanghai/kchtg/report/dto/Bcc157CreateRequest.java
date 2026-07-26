@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.report.dto;
 
+import java.util.UUID;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,37 +26,37 @@ public class Bcc157CreateRequest {
 
     // --- Section 1: Nguyên giá ---
 
-    private String maSoNguyenGiaSoDuDauNam;
-    private BigDecimal taiSanNguyenGiaSoDuDauNam;
+    private String openingOriginalCostCode;
+    private BigDecimal assetOpeningOriginalCost;
 
-    private String maSoNguyenGiaTangTrongNam;
-    private BigDecimal taiSanNguyenGiaTangTrongNam;
+    private String originalCostIncreaseCode;
+    private BigDecimal assetOriginalCostIncrease;
 
-    private String maSoNguyenGiaGiamTrongNam;
-    private BigDecimal taiSanNguyenGiaGiamTrongNam;
+    private String originalCostDecreaseCode;
+    private BigDecimal assetOriginalCostDecrease;
 
-    private String maSoNguyenGiaSoDuCuoiNam;
-    private BigDecimal taiSanNguyenGiaSoDuCuoiNam;
+    private String closingOriginalCostCode;
+    private BigDecimal assetClosingOriginalCost;
 
     // --- Section 2: Giá trị hao mòn lũy kế ---
 
-    private String maSoGiaTriHaoMonSoDuDauNam;
-    private BigDecimal taiSanGiaTriHaoMonSoDuDauNam;
+    private String openingAccumulatedDepreciationCode;
+    private BigDecimal assetOpeningAccumulatedDepreciation;
 
-    private String maSoGiaTriHaoMonTangTrongNam;
-    private BigDecimal taiSanGiaTriHaoMonTangTrongNam;
+    private String depreciationIncreaseCode;
+    private BigDecimal assetDepreciationIncrease;
 
-    private String maSoGiaTriHaoMonGiamTrongNam;
-    private BigDecimal taiSanGiaTriHaoMonGiamTrongNam;
+    private String depreciationDecreaseCode;
+    private BigDecimal assetDepreciationDecrease;
 
-    private String maSoGiaTriHaoMonSoDuCuoiNam;
-    private BigDecimal taiSanGiaTriHaoMonSoDuCuoiNam;
+    private String closingDepreciationCode;
+    private BigDecimal assetClosingDepreciation;
 
     // --- Section 3: Giá trị còn lại ---
 
-    private String maSoGiaTriConLaiTuNgayDauNam;
-    private BigDecimal taiSanGiaTriConLaiTuNgayDauNam;
+    private String openingResidualValueCode;
+    private BigDecimal assetOpeningResidualValue;
 
-    private String maSoGiaTriConLaiTuNgayCuoiNam;
-    private BigDecimal taiSanGiaTriConLaiTuNgayCuoiNam;
+    private String closingResidualValueCode;
+    private BigDecimal assetClosingResidualValue;
 }

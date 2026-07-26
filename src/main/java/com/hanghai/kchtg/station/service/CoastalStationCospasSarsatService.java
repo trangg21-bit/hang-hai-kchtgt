@@ -1,7 +1,16 @@
 package com.hanghai.kchtg.station.service;
+
+import com.hanghai.kchtg.security.AdminAutoApproval;
+import java.util.UUID;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import lombok.*;
 
 import com.hanghai.kchtg.station.dto.cospas.*;
+import com.hanghai.kchtg.station.entity.StationStatus;
+import com.hanghai.kchtg.station.entity.StationApprovalStatus;
 import com.hanghai.kchtg.station.entity.*;
 import com.hanghai.kchtg.station.repository.CoastalStationCospasSarsatRepository;
 import lombok.RequiredArgsConstructor;
@@ -124,13 +133,18 @@ public class CoastalStationCospasSarsatService {
         }
 
         if (approved) {
-            Integer currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel() : 0;
-            if (currentLevel == 0) {
-                entity.setApprovalLevel(1);
+            ApprovalLevel currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel() : ApprovalLevel.LEVEL_0;
+            if (currentLevel == ApprovalLevel.LEVEL_0 && AdminAutoApproval.isAutoApprover()) {
+                // Administrators clear both levels in one step.
+                entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
+                entity.setApprovalStatus(StationApprovalStatus.APPROVED_L2);
+                entity.setStatus(StationStatus.APPROVED_L2);
+            } else if (currentLevel == ApprovalLevel.LEVEL_0) {
+                entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
                 entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
                 entity.setStatus(StationStatus.APPROVED_L1);
-            } else if (currentLevel == 1) {
-                entity.setApprovalLevel(2);
+            } else if (currentLevel == ApprovalLevel.LEVEL_1) {
+                entity.setApprovalLevel(ApprovalLevel.LEVEL_2);
                 entity.setApprovalStatus(StationApprovalStatus.APPROVED_L2);
                 entity.setStatus(StationStatus.APPROVED_L2);
             } else {
@@ -143,7 +157,7 @@ public class CoastalStationCospasSarsatService {
 
             historyService.recordHistory(
                     entity.getCode(),
-                    currentLevel == 0 ? StationHistoryActionType.APPROVE_L1 : StationHistoryActionType.APPROVE_L2,
+                    currentLevel == ApprovalLevel.LEVEL_0 ? StationHistoryActionType.APPROVE_L1 : StationHistoryActionType.APPROVE_L2,
                     "Pending approval",
                     "Approved at level " + entity.getApprovalLevel(),
                     String.valueOf(userId),
@@ -154,7 +168,7 @@ public class CoastalStationCospasSarsatService {
             entity.setStatus(StationStatus.PENDING_APPROVAL);
             entity.setApprovedBy(null);
             entity.setApprovedDate(null);
-            entity.setApprovalLevel(0);
+            entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
             historyService.recordHistory(
                     entity.getCode(),
                     StationHistoryActionType.UPDATE,
@@ -181,7 +195,7 @@ public class CoastalStationCospasSarsatService {
         entity.setRejectionReason(rejectionReason);
         entity.setApprovedBy(null);
         entity.setApprovedDate(null);
-        entity.setApprovalLevel(0);
+        entity.setApprovalLevel(ApprovalLevel.LEVEL_0);
 
         historyService.recordHistory(
                 entity.getCode(),
@@ -215,7 +229,7 @@ public class CoastalStationCospasSarsatService {
 
     // -- HELPERS --
 
-    private String resolveCreatedBy(BaseStation entity) {
+    private String resolveCreatedBy(CoastalStationCospasSarsat entity) {
         return entity.getApprovedBy();
     }
 
@@ -237,7 +251,7 @@ public class CoastalStationCospasSarsatService {
                 .status(entity.getStatus())
                 .approvalStatus(entity.getApprovalStatus())
                 .approvalLevel(entity.getApprovalLevel())
-                .approvedBy(entity.getApprovedBy())
+                .approvedBy(entity.getApprovedBy() != null ? java.util.UUID.fromString(entity.getApprovedBy()) : null)
                 .approvedDate(entity.getApprovedDate())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
@@ -245,3 +259,4 @@ public class CoastalStationCospasSarsatService {
                 .build();
     }
 }
+

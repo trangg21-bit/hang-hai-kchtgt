@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
+import java.util.UUID;
+
 import lombok.Builder;
 import lombok.Data;
 
@@ -18,10 +20,10 @@ public class MovementRequestResponse {
     private UUID assetId;
     private String movementType;
     private String assetName;
-    private int soLuong;
+    private int quantity;
     private String status;
     private String description;
-    private String createdBy;
+    private UUID createdBy;
     private String createdByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.lockout.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.lockout.entity.LoginAttempt;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

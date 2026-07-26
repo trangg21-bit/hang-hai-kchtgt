@@ -13,7 +13,7 @@ public class VTSIntegrationService {
     private SystemIntegrationService integrationService;
 
     public SystemIntegrationResponse integrateVTSData(SystemIntegrationRequest request) {
-        request.setIntegrationType(IntegrationType.HE_THONG_VTS);
+        request.setIntegrationType(IntegrationType.VTS_SYSTEM);
         return integrationService.createIntegration(request);
     }
 
@@ -23,7 +23,7 @@ public class VTSIntegrationService {
     }
 
     public SystemIntegrationResponse integrateRadarData(SystemIntegrationRequest request) {
-        request.setIntegrationType(IntegrationType.TRAM_RADAR);
+        request.setIntegrationType(IntegrationType.RADAR_STATION_LEGACY);
         return integrationService.createIntegration(request);
     }
 

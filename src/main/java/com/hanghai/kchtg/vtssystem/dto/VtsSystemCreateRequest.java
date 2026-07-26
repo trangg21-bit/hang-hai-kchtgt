@@ -1,7 +1,10 @@
 package com.hanghai.kchtg.vtssystem.dto;
 
+import java.util.UUID;
+
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 @Data
 @Builder
@@ -18,9 +21,9 @@ public class VtsSystemCreateRequest {
     private String responsibilityLevel;
     private String source;
     private String partner;
-    private java.util.UUID orgUnitId;
+    private UUID orgUnitId;
     private String scope;
 
-    private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
-    private String toaDo;
+    private GisGeometryType geometryType;
+    private String coordinates;
 }

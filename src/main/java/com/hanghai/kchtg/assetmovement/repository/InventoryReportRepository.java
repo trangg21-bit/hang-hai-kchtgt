@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.entity.InventoryReport;
 import com.hanghai.kchtg.assetmovement.entity.ReportStatus;
 import org.springframework.data.domain.Page;

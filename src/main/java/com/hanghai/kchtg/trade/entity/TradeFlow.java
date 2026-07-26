@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.trade.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,7 +25,7 @@ public class TradeFlow {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
     /** Cảng nguồn */
     @Column(name = "source_port", nullable = false, length = 100)

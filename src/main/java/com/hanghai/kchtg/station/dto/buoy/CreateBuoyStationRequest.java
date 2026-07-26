@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.station.dto.buoy;
 
+import java.util.UUID;
+
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 /**
  * Request DTO cho việc tạo mới nhà trạm phao tiêu (F-080).
@@ -31,13 +34,9 @@ public class CreateBuoyStationRequest {
     @NotNull(message = "Vĩ độ không được để trống")
     @DecimalMin(value = "-90.0", message = "Vĩ độ phải lớn hơn hoặc bằng -90.0")
     @DecimalMax(value = "90.0", message = "Vĩ độ phải nhỏ hơn hoặc bằng 90.0")
-    private Double latitude;
-
     @NotNull(message = "Kinh độ không được để trống")
     @DecimalMin(value = "-180.0", message = "Kinh độ phải lớn hơn hoặc bằng -180.0")
     @DecimalMax(value = "180.0", message = "Kinh độ phải nhỏ hơn hoặc bằng 180.0")
-    private Double longitude;
-
     @Size(max = 50, message = "Màu sắc không được vượt quá 50 ký tự")
     private String color;
 
@@ -55,7 +54,7 @@ public class CreateBuoyStationRequest {
     @Size(max = 1000, message = "Ghi chú không được vượt quá 1000 ký tự")
     private String description;
 
-    private java.util.UUID unitId;
+    private UUID unitId;
     private LocalDate lastInspectionDate;
     private LocalDate nextInspectionDate;
 
@@ -64,7 +63,12 @@ public class CreateBuoyStationRequest {
 
     @Builder.Default
     private String action = "draft";
-
-    private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
+    private Double latitude;
+    private Double longitude;
     private String toaDo;
+
+
+    private GisGeometryType geometryType;
+    private String coordinates;
 }
+

@@ -21,6 +21,6 @@ public class ReportStatusConverter implements AttributeConverter<ReportStatus, I
                 return e;
             }
         }
-        throw new IllegalArgumentException("GiÃ¡ trá»‹ database khÃ´ng há»£p lá»‡ cho ReportStatus: " + dbData);
+        throw new IllegalArgumentException("Giá trị database không hợp lệ cho ReportStatus: " + dbData);
     }
 }

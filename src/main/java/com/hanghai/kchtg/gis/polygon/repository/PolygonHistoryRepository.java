@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.polygon.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.polygon.entity.PolygonHistory;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonHistory.ActionType;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.statistics.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.statistics.entity.FormApprovalHistory;
 import com.hanghai.kchtg.statistics.entity.StatFormStatus;
 import com.hanghai.kchtg.statistics.entity.StatisticsForm;
@@ -11,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -31,11 +33,11 @@ public class FormApprovalService {
     // -- Actions --
 
     @Transactional
-    public StatisticsForm submitForm(Long formId, String actor, String comments) {
+    public StatisticsForm submitForm(UUID formId, java.util.UUID actor, String comments) {
         StatisticsForm form = formRepository.findById(formId)
                 .orElseThrow(() -> new EntityNotFoundException("Form not found: " + formId));
         form.setFormStatus(StatFormStatus.SUBMITTED);
-        form.setUpdatedAt(Instant.now());
+        form.setUpdatedAt(java.time.LocalDateTime.now());
         formRepository.save(form);
         saveHistory(formId, "SUBMIT", actor, comments);
         log.info("Form [{}] submitted by {}", formId, actor);
@@ -43,12 +45,12 @@ public class FormApprovalService {
     }
 
     @Transactional
-    public StatisticsForm approveForm(Long formId, String actor, String comments) {
+    public StatisticsForm approveForm(UUID formId, java.util.UUID actor, String comments) {
         StatisticsForm form = formRepository.findById(formId)
                 .orElseThrow(() -> new EntityNotFoundException("Form not found: " + formId));
         form.setFormStatus(StatFormStatus.APPROVED);
         form.setApprovedBy(actor);
-        form.setUpdatedAt(Instant.now());
+        form.setUpdatedAt(java.time.LocalDateTime.now());
         formRepository.save(form);
         saveHistory(formId, "APPROVE", actor, comments);
         log.info("Form [{}] approved by {}", formId, actor);
@@ -56,11 +58,11 @@ public class FormApprovalService {
     }
 
     @Transactional
-    public StatisticsForm rejectForm(Long formId, String actor, String comments) {
+    public StatisticsForm rejectForm(UUID formId, java.util.UUID actor, String comments) {
         StatisticsForm form = formRepository.findById(formId)
                 .orElseThrow(() -> new EntityNotFoundException("Form not found: " + formId));
         form.setFormStatus(StatFormStatus.REJECTED);
-        form.setUpdatedAt(Instant.now());
+        form.setUpdatedAt(java.time.LocalDateTime.now());
         formRepository.save(form);
         saveHistory(formId, "REJECT", actor, comments);
         log.info("Form [{}] rejected by {}", formId, actor);
@@ -70,13 +72,13 @@ public class FormApprovalService {
     // -- History --
 
     @Transactional(readOnly = true)
-    public List<FormApprovalHistory> getHistory(Long formId) {
+    public List<FormApprovalHistory> getHistory(UUID formId) {
         return historyRepository.findByFormIdOrderByCreatedAtDesc(formId);
     }
 
     // -- Internal --
 
-    private void saveHistory(Long formId, String action, String actor, String comments) {
+    private void saveHistory(UUID formId, String action, java.util.UUID actor, String comments) {
         historyRepository.save(FormApprovalHistory.builder()
                 .formId(formId)
                 .action(action)

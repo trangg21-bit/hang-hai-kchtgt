@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.group.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.group.entity.UserGroup;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

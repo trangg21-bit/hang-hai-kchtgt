@@ -1,6 +1,8 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
 import java.util.UUID;
+
+import java.util.UUID;
 import lombok.Data;
 
 /**
@@ -10,7 +12,7 @@ import lombok.Data;
 public class ApprovalRecordRequest {
 
     private UUID requestId;
-    private String loaiYeuCau;
+    private String requestType;
     private String result;
     private String approverName;
     private String notes;

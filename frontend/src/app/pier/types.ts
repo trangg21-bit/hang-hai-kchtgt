@@ -8,7 +8,7 @@ export interface Pier {
   length: number | null;
   taiTrong: number | null;
   loaiCau: string;
-  congNangKhaiThac?: string | null;
+  operationalCapacity?: string | null;
   operationalStatus: 'HIEN_HANH' | 'TAM_NGUNG';
   approvalStatus: 'CHO_PHE_DUYET' | 'DUOC_PHE_DUYET' | 'TU_CHOI';
   orgUnitId: string;
@@ -42,7 +42,7 @@ export interface CauCangCreateRequest {
   length?: number | null | '';
   taiTrong?: number | null | '';
   loaiCau?: string;
-  congNangKhaiThac?: string;
+  operationalCapacity?: string;
   operationalStatus?: 'HIEN_HANH' | 'TAM_NGUNG';
   loaiHinhHoc?: string;
   toaDo?: string;
@@ -56,7 +56,7 @@ export interface CauCangUpdateRequest {
   length?: number | null | '';
   taiTrong?: number | null | '';
   loaiCau?: string;
-  congNangKhaiThac?: string;
+  operationalCapacity?: string;
   operationalStatus?: 'HIEN_HANH' | 'TAM_NGUNG';
   loaiHinhHoc?: string;
   toaDo?: string;

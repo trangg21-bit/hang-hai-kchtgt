@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.spatial.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
@@ -13,6 +15,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
 public interface GisSpatialObjectRepository extends JpaRepository<GisSpatialObject, UUID> {
 
@@ -52,5 +55,5 @@ public interface GisSpatialObjectRepository extends JpaRepository<GisSpatialObje
 
     List<GisSpatialObject> findByRefIdIn(List<UUID> refIds);
 
-    List<GisSpatialObject> findByRefIdInAndRefType(List<UUID> refIds, com.hanghai.kchtg.gis.search.dto.KchtType refType);
+    List<GisSpatialObject> findByRefIdInAndRefType(List<UUID> refIds, InfrastructureType refType);
 }

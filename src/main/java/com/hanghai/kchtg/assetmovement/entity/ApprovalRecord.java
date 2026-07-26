@@ -1,5 +1,11 @@
 package com.hanghai.kchtg.assetmovement.entity;
 
+import java.util.UUID;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+
 import com.hanghai.kchtg.common.entity.BaseEntity;
 
 import jakarta.persistence.*;
@@ -25,7 +31,9 @@ public class ApprovalRecord extends BaseEntity {
 
     private UUID requestId;
 
-    private Integer approvalLevel;
+    @Enumerated(EnumType.ORDINAL)
+
+    private ApprovalLevel approvalLevel;
 
     private UUID approverName;
 

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.lockout.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -39,7 +41,7 @@ public class LockoutPolicy {
     private boolean enabled = true;
 
     @Column(name = "updated_by", length = 100)
-    private String updatedBy;
+    private UUID updatedBy;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;

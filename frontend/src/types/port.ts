@@ -35,7 +35,7 @@ export interface Port {
   operationalStatus: string;
   approvalStatus: string;
   orgUnitId: string;
-  nhomCangBien?: number;
+  portGroup?: number;
   bieuTuongId?: string;
   createdBy: string;
   updatedBy: string;
@@ -58,9 +58,9 @@ export interface Port {
   tongSoDeKe?: number;
   tongChieuDaiDeKe?: number;
   tongSoDenBienDangTieu?: number;
-  soLuongBenPhao?: number;
-  soLuongKhuNeoDau?: number;
-  soLuongKhuChuyenTai?: number;
+  quantityBenPhao?: number;
+  quantityKhuNeoDau?: number;
+  quantityKhuChuyenTai?: number;
   cacKhuNuocKhac?: string;
   remarks?: string;
 }
@@ -75,7 +75,7 @@ export interface CreateCangBienRequest {
   operationalStatus: string;
   approvalStatus: string;
   orgUnitId: string;
-  nhomCangBien?: number;
+  portGroup?: number;
   bieuTuongId?: string;
   // Extended fields (V53)
   diaDiemChiTiet?: string;
@@ -94,9 +94,9 @@ export interface CreateCangBienRequest {
   tongSoDeKe?: number;
   tongChieuDaiDeKe?: number;
   tongSoDenBienDangTieu?: number;
-  soLuongBenPhao?: number;
-  soLuongKhuNeoDau?: number;
-  soLuongKhuChuyenTai?: number;
+  quantityBenPhao?: number;
+  quantityKhuNeoDau?: number;
+  quantityKhuChuyenTai?: number;
   cacKhuNuocKhac?: string;
   remarks?: string;
 }
@@ -112,7 +112,7 @@ export interface UpdateCangBienRequest {
   operationalStatus?: string;
   approvalStatus?: string;
   orgUnitId?: string;
-  nhomCangBien?: number;
+  portGroup?: number;
   // Extended fields (V53)
   diaDiemChiTiet?: string;
   phanCap?: number;
@@ -130,16 +130,16 @@ export interface UpdateCangBienRequest {
   tongSoDeKe?: number;
   tongChieuDaiDeKe?: number;
   tongSoDenBienDangTieu?: number;
-  soLuongBenPhao?: number;
-  soLuongKhuNeoDau?: number;
-  soLuongKhuChuyenTai?: number;
+  quantityBenPhao?: number;
+  quantityKhuNeoDau?: number;
+  quantityKhuChuyenTai?: number;
   cacKhuNuocKhac?: string;
   remarks?: string;
 }
 
 // ── 2. Bến Cảng ──────────────────────────────────────────────────────
 // All field names match BE exactly (Berth.java, BenCangResponse.java).
-// loaiBen is free text (no enum). viDo/kinhDo are optional.
+// berthType is free text (no enum). latitude/longitude are optional.
 
 export interface Berth {
   id: string;
@@ -151,9 +151,9 @@ export interface Berth {
 
   length?: number;
   width?: number;
-  loaiBen?: string;
+  berthType?: string;
   doSauLuong?: number;
-  congNangKhaiThac?: string;
+  operationalCapacity?: string;
   operationalStatus?: string;
   approvalStatus: string;
   orgUnitId?: string;
@@ -163,7 +163,7 @@ export interface Berth {
   createdAt?: string;
   updatedAt?: string;
   // Extended fields
-  diaDiem?: string;
+  location?: string;
   diaDiemChiTiet?: string;
   heQuyChieu?: number;
   quyTacHienThi?: number;
@@ -177,7 +177,7 @@ export interface Berth {
   thoiDiemCongBoMo?: string;
   quyetDinhCongBo?: string;
   vanBanThoaThuanDauTu?: string;
-  loaiKetCau?: number;
+  structureType?: number;
 }
 
 export interface CreateBenCangRequest {
@@ -188,14 +188,14 @@ export interface CreateBenCangRequest {
 
   length?: number;
   width?: number;
-  loaiBen?: string;
+  berthType?: string;
   doSauLuong?: number;
-  congNangKhaiThac?: string;
+  operationalCapacity?: string;
   operationalStatus?: string;
   bieuTuongId?: string;
   // Extended fields
   orgUnitId?: string;
-  diaDiem?: string;
+  location?: string;
   diaDiemChiTiet?: string;
   heQuyChieu?: number;
   quyTacHienThi?: number;
@@ -209,7 +209,7 @@ export interface CreateBenCangRequest {
   thoiDiemCongBoMo?: string;
   quyetDinhCongBo?: string;
   vanBanThoaThuanDauTu?: string;
-  loaiKetCau?: number;
+  structureType?: number;
 }
 
 export interface UpdateBenCangRequest {
@@ -220,14 +220,14 @@ export interface UpdateBenCangRequest {
 
   length?: number;
   width?: number;
-  loaiBen?: string;
+  berthType?: string;
   doSauLuong?: number;
-  congNangKhaiThac?: string;
+  operationalCapacity?: string;
   operationalStatus?: string;
   bieuTuongId?: string | null;
   // Extended fields
   orgUnitId?: string;
-  diaDiem?: string;
+  location?: string;
   diaDiemChiTiet?: string;
   heQuyChieu?: number;
   quyTacHienThi?: number;
@@ -241,7 +241,7 @@ export interface UpdateBenCangRequest {
   thoiDiemCongBoMo?: string;
   quyetDinhCongBo?: string;
   vanBanThoaThuanDauTu?: string;
-  loaiKetCau?: number;
+  structureType?: number;
 }
 
 // ── 3. Cầu Cảng ──────────────────────────────────────────────────────
@@ -257,7 +257,7 @@ export interface Pier {
   loaiCau: string;
   operationalStatus: string;
   approvalStatus: string;
-  donViId: string;
+  orgUnitId: string;
   bieuTuongId?: string;
   khongGianId?: string;
   loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
@@ -356,7 +356,7 @@ export interface WaterZone {
   loaiVungNuoc: string;
   operationalStatus: string;
   approvalStatus: string;
-  donViId: string;
+  orgUnitId: string;
   bieuTuongId?: string;
   khongGianId?: string;
   loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';

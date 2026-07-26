@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.line.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.gis.line.dto.CreateLineObjectRequest;
 import com.hanghai.kchtg.gis.line.dto.LineObjectResponse;
@@ -85,7 +87,7 @@ public class LineObjectController {
     @PostMapping("/{id}/approve-l1")
     public ResponseEntity<ApiResponse<LineObjectResponse>> approveL1(
             @PathVariable UUID id,
-            @RequestParam String approverId) {
+            @RequestParam UUID approverId) {
         LineObjectResponse response = service.approveL1(id, approverId);
         return ResponseEntity.ok(ApiResponse.success("LineObject approved at Level 1", response));
     }
@@ -93,7 +95,7 @@ public class LineObjectController {
     @PostMapping("/{id}/approve-l2")
     public ResponseEntity<ApiResponse<LineObjectResponse>> approveL2(
             @PathVariable UUID id,
-            @RequestParam String approverId) {
+            @RequestParam UUID approverId) {
         LineObjectResponse response = service.approveL2(id, approverId);
         return ResponseEntity.ok(ApiResponse.success("LineObject approved at Level 2", response));
     }

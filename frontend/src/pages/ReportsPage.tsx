@@ -366,7 +366,7 @@ export default function ReportsPage() {
     try {
       const request: ReportRequest = {
         reportCode: selectedReportCode,
-        nhomCangBien: selectedNhom,
+        portGroup: selectedNhom,
       };
 
       if (activeTemplate?.requiresDates) {
@@ -397,7 +397,7 @@ export default function ReportsPage() {
       const request: ReportRequest = {
         reportCode: selectedReportCode,
         format,
-        nhomCangBien: selectedNhom,
+        portGroup: selectedNhom,
       };
 
       if (activeTemplate?.requiresDates) {
@@ -613,9 +613,9 @@ export default function ReportsPage() {
               bordered
               scroll={{ x: 'max-content' }}
               onRow={(record: any) => {
-                const stt = record['STT'];
-                if (stt === 'I' || stt === 'II') return { className: 'report-section-row' };
-                if (stt && stt !== '' && !isNaN(Number(stt))) return { className: 'report-port-row' };
+                const sequenceNo = record['STT'];
+                if (sequenceNo === 'I' || sequenceNo === 'II') return { className: 'report-section-row' };
+                if (sequenceNo && sequenceNo !== '' && !isNaN(Number(sequenceNo))) return { className: 'report-port-row' };
                 return {};
               }}
             />

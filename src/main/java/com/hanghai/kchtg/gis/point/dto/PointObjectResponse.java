@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.point.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.point.entity.PointObject.ApprovalStatus;
 import com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType;
 import com.hanghai.kchtg.gis.point.entity.PointObject.Status;
@@ -23,9 +25,7 @@ public class PointObjectResponse {
     private ObjectType objectType;
     private Long categoryId;
     private UUID iconId;
-    private Double longitude;
-    private Double latitude;
-    private String description;
+    private Double longitude;    private String description;
     private Status status;
     private UUID unitId;
     private UUID refId;
@@ -33,7 +33,7 @@ public class PointObjectResponse {
     private String purpose;
     private String restrictionLevel;
     private ApprovalStatus approvalStatus;
-    private String approvedBy;
+    private UUID approvedBy;
     private LocalDateTime approvedDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

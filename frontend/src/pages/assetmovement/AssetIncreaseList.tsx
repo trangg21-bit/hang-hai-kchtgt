@@ -110,9 +110,9 @@ export default function AssetIncreaseList() {
         assetId: values.assetId,
         reason: values.reason,
         assetName: '',
-        soLuong: 1,
-        donViTinh: 'Cái',
-        maSoTang: '',
+        quantity: 1,
+        unitOfMeasure: 'Cái',
+        increaseCode: '',
       };
 
       if (editingItem) {
@@ -179,8 +179,8 @@ export default function AssetIncreaseList() {
   const columns = [
     {
       title: 'Mã tài sản',
-      dataIndex: 'maSoTang',
-      key: 'maSoTang',
+      dataIndex: 'increaseCode',
+      key: 'increaseCode',
     },
     {
       title: 'Tên tài sản',
@@ -189,8 +189,8 @@ export default function AssetIncreaseList() {
     },
     {
       title: 'Đơn vị tính',
-      dataIndex: 'donViTinh',
-      key: 'donViTinh',
+      dataIndex: 'unitOfMeasure',
+      key: 'unitOfMeasure',
     },
     {
       title: 'Lý do tăng',

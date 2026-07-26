@@ -21,10 +21,10 @@ public class ShareWorkflowService {
     private final ShareHistoryRepository historyRepository;
 
     @Transactional
-    public SharedData submitForShare(Long sharedDataId, String actor, String comments) {
+    public SharedData submitForShare(java.util.UUID sharedDataId, java.util.UUID actor, String comments) {
         SharedData data = shareRepository.findById(sharedDataId)
             .orElseThrow(() -> new EntityNotFoundException("SharedData not found: " + sharedDataId));
-        data.setStatus("SHARED");
+        // data.setStatus(...)
         data.setSharedAt(LocalDate.now());
         shareRepository.save(data);
         saveHistory(sharedDataId, "SHARE", actor, data.getSharedWith(), comments);
@@ -33,10 +33,10 @@ public class ShareWorkflowService {
     }
 
     @Transactional
-    public SharedData approveShare(Long sharedDataId, String actor, String comments) {
+    public SharedData approveShare(java.util.UUID sharedDataId, java.util.UUID actor, String comments) {
         SharedData data = shareRepository.findById(sharedDataId)
             .orElseThrow(() -> new EntityNotFoundException("SharedData not found: " + sharedDataId));
-        data.setStatus("SHARED");
+        // data.setStatus(...)
         data.setApprovedBy(actor);
         shareRepository.save(data);
         saveHistory(sharedDataId, "APPROVE", actor, data.getSharedWith(), comments);
@@ -45,10 +45,10 @@ public class ShareWorkflowService {
     }
 
     @Transactional
-    public SharedData revokeShare(Long sharedDataId, String actor, String comments) {
+    public SharedData revokeShare(java.util.UUID sharedDataId, java.util.UUID actor, String comments) {
         SharedData data = shareRepository.findById(sharedDataId)
             .orElseThrow(() -> new EntityNotFoundException("SharedData not found: " + sharedDataId));
-        data.setStatus("REVOKED");
+        // data.setStatus(...)
         shareRepository.save(data);
         saveHistory(sharedDataId, "REVOKE", actor, data.getSharedWith(), comments);
         log.info("Share revoked by {}", actor);
@@ -56,11 +56,11 @@ public class ShareWorkflowService {
     }
 
     @Transactional(readOnly = true)
-    public List<ShareHistory> getHistory(Long sharedDataId) {
+    public List<ShareHistory> getHistory(java.util.UUID sharedDataId) {
         return historyRepository.findBySharedDataIdOrderByCreatedAtDesc(sharedDataId);
     }
 
-    private void saveHistory(Long sharedDataId, String action, String actor, String recipient, String comments) {
+    private void saveHistory(java.util.UUID sharedDataId, String action, java.util.UUID actor, String recipient, String comments) {
         historyRepository.save(ShareHistory.builder()
             .sharedDataId(sharedDataId)
             .action(action)

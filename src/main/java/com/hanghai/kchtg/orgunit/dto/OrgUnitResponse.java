@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.orgunit.dto;
 
+import java.util.UUID;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
@@ -46,7 +48,7 @@ public class OrgUnitResponse {
     private LocalDateTime updatedAt;
 
     /** User who last updated (username from auditing). null if never updated. */
-    private String updatedBy;
+    private UUID updatedBy;
 
     /** Child units — populated by tree-building logic. Omitted from flat list responses. */
     private List<OrgUnitResponse> children;

@@ -9,21 +9,21 @@ export interface PageResponse<T> {
 export interface AssetIncreaseRequest {
   assetId: string;
   assetName: string;
-  soLuong: number;
-  donViTinh: string;
+  quantity: number;
+  unitOfMeasure: string;
   reason: string;
-  maSoTang: string;
+  increaseCode: string;
 }
 
 export interface AssetIncreaseResponse {
   id: string;
   assetId: string;
   assetName: string;
-  soLuong: number;
-  donViTinh: string;
+  quantity: number;
+  unitOfMeasure: string;
   reason: string;
   status: string;
-  maSoTang: string;
+  increaseCode: string;
   createdBy: string;
   createdByName: string;
   createdAt: string;
@@ -33,8 +33,8 @@ export interface AssetIncreaseResponse {
 export interface AssetDecreaseRequest {
   assetId: string;
   assetName: string;
-  soLuong: number;
-  donViTinh: string;
+  quantity: number;
+  unitOfMeasure: string;
   reason: string;
   decreaseReason: string;
 }
@@ -43,8 +43,8 @@ export interface AssetDecreaseResponse {
   id: string;
   assetId: string;
   assetName: string;
-  soLuong: number;
-  donViTinh: string;
+  quantity: number;
+  unitOfMeasure: string;
   reason: string;
   status: string;
   decreaseReason: string;
@@ -77,9 +77,9 @@ export interface InventoryPlanResponse {
 
 export interface InventoryReportRequest {
   planId: string;
-  tenBaoCao: string;
-  tongSoLuong: number;
-  soLuongChenhLech: number;
+  reportName: string;
+  totalQuantity: number;
+  quantityVariance: number;
   result: string;
   description: string;
 }
@@ -87,9 +87,9 @@ export interface InventoryReportRequest {
 export interface InventoryReportResponse {
   id: string;
   planId: string;
-  tenBaoCao: string;
-  tongSoLuong: number;
-  soLuongChenhLech: number;
+  reportName: string;
+  totalQuantity: number;
+  quantityVariance: number;
   result: string;
   description: string;
   createdBy: string;
@@ -103,7 +103,7 @@ export interface AssetExploitationRequest {
   assetName: string;
   exploitationYear: number;
   doanhThu: number;
-  haoMon: number;
+  depreciation: number;
   description: string;
 }
 
@@ -113,7 +113,7 @@ export interface AssetExploitationResponse {
   assetName: string;
   exploitationYear: number;
   doanhThu: number;
-  haoMon: number;
+  depreciation: number;
   description: string;
   createdBy: string;
   createdByName: string;
@@ -136,7 +136,7 @@ export interface AssetProcessingRecordResponse {
   assetName: string;
   processingType: string;
   description: string;
-  trangThaiHoSo: string;
+  documentStatus: string;
   createdBy: string;
   createdByName: string;
   createdAt: string;

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.entity.InfraAssetType;
 import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
 import com.hanghai.kchtg.assetmovement.entity.InfraAsset;

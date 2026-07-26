@@ -21,6 +21,6 @@ public class ProcessingTypeConverter implements AttributeConverter<ProcessingTyp
                 return e;
             }
         }
-        throw new IllegalArgumentException("GiÃ¡ trá»‹ database khÃ´ng há»£p lá»‡ cho ProcessingType: " + dbData);
+        throw new IllegalArgumentException("Giá trị database không hợp lệ cho ProcessingType: " + dbData);
     }
 }

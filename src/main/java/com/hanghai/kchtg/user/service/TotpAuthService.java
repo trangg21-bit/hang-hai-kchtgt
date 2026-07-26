@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.user.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.security.TotpValidator;
 import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.user.dto.MfaChallengeResponse;

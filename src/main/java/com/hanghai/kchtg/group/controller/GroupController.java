@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.group.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.group.dto.AddGroupMemberRequest;
 import com.hanghai.kchtg.group.dto.CreateUserGroupRequest;
@@ -164,7 +166,7 @@ public class GroupController {
      * Role: Admin, Can bo
      */
     @PostMapping("/{id}/members")
-    @PreAuthorize("@auth.check(authentication, 'group:member:manage')")
+    @PreAuthorize("@auth.check(authentication, 'groupmember:manage')")
     public ResponseEntity<ApiResponse<GroupMemberResponse>> addMember(
             @PathVariable UUID id,
             @Valid @RequestBody AddGroupMemberRequest request,
@@ -188,7 +190,7 @@ public class GroupController {
      * Role: Admin, Can bo
      */
     @DeleteMapping("/{groupId}/members/{userId}")
-    @PreAuthorize("@auth.check(authentication, 'group:member:manage')")
+    @PreAuthorize("@auth.check(authentication, 'groupmember:manage')")
     public ResponseEntity<ApiResponse<Void>> removeMember(
             @PathVariable UUID groupId,
             @PathVariable UUID userId,

@@ -64,7 +64,7 @@ export const shipRepairFacilityCRUD = {
   },
 
   async getByStatus(status: string): Promise<ShipRepairFacilityResponse[]> {
-    const res = await api.get(`/v1/ship-repair-facility/status-phe-duyet/${status}`);
+    const res = await api.get(`/v1/ship-repair-facility/approval-status/${status}`);
     return toArray<ShipRepairFacilityResponse>(res.data);
   },
 };

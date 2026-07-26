@@ -352,7 +352,7 @@ export default function BuoyList() {
   );
 
   const columns = [
-    { key: 'stt', label: '#', width: 60, render: (_: unknown, __: Buoy, idx: number) => (page - 1) * pageSize + idx + 1 },
+    { key: 'sequenceNo', label: '#', width: 60, render: (_: unknown, __: Buoy, idx: number) => (page - 1) * pageSize + idx + 1 },
     {
       key: 'code',
       label: 'Mã',

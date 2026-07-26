@@ -71,6 +71,31 @@ export interface BackupRecord {
   createdAt: string;
 }
 
+/** GET/PUT /api/logs/retention — mirrors LogRetentionPolicy on the backend. */
+export interface LogRetentionPolicy {
+  id?: number;
+  retentionDays: number;
+  maxExportRows: number;
+  cleanupSchedule: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** GET /api/auth/password-policy — read-only, mirrors PasswordPolicyResponse. */
+export interface PasswordPolicy {
+  id?: string;
+  minLength: number;
+  requireUppercase: boolean;
+  requireLowercase: boolean;
+  requireDigit: boolean;
+  requireSpecialChar: boolean;
+  specialCharSet: string;
+  maxAgeDays: number;
+  historyDepth: number;
+  blockUsernameInPassword: boolean;
+}
+
 export interface SiemMetrics {
   totalEventsCount: number;
   eventsPerSecond: number;
@@ -148,7 +173,9 @@ export const logService = {
     if (params.page !== undefined) query.append('page', String(params.page));
     if (params.size !== undefined) query.append('size', String(params.size));
     
-    return `/api/logs/export/csv?${query.toString()}`;
+    // No /api prefix: this is handed to the shared axios instance, which already
+    // has baseURL '/api'. Keeping it here produced /api/api/logs/export/csv.
+    return `/logs/export/csv?${query.toString()}`;
   },
 
   /**
@@ -216,9 +243,34 @@ export const logService = {
   },
 
   /**
+   * Read the log retention policy (admin:manage).
+   */
+  async getRetentionPolicy(): Promise<LogRetentionPolicy> {
+    const resp = await api.get('/logs/retention');
+    return extractData<LogRetentionPolicy>(resp);
+  },
+
+  /**
+   * Update the log retention policy (admin:manage).
+   */
+  async updateRetentionPolicy(policy: LogRetentionPolicy): Promise<LogRetentionPolicy> {
+    const resp = await api.put('/logs/retention', policy);
+    return extractData<LogRetentionPolicy>(resp);
+  },
+
+  /**
+   * Read the password policy. Public endpoint — no permission required.
+   */
+  async getPasswordPolicy(): Promise<PasswordPolicy> {
+    const resp = await api.get('/auth/password-policy');
+    return extractData<PasswordPolicy>(resp);
+  },
+
+  /**
    * Get SIEM report export url
    */
   getSiemExportUrl(format: string): string {
-    return `/api/siem/reports/export?format=${format}`;
+    // No /api prefix — see exportAccessLogsUrl above.
+    return `/siem/reports/export?format=${format}`;
   }
 };

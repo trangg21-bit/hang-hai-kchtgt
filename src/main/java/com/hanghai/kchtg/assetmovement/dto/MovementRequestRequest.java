@@ -10,6 +10,6 @@ public class MovementRequestRequest {
 
     private String movementType;
     private String assetName;
-    private int soLuong;
+    private int quantity;
     private String description;
 }

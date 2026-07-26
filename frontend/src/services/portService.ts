@@ -130,7 +130,7 @@ export const berthCRUD = {
     berthCode?: string;
     berthName?: string;
     portId?: string;
-    loaiBen?: string;
+    berthType?: string;
     tuyenDuongThuy?: string;
     operationalStatus?: string;
     approvalStatus?: string;
@@ -142,7 +142,7 @@ export const berthCRUD = {
       berthCode: params?.berthCode,
       berthName: params?.berthName,
       portId: params?.portId,
-      loaiBen: params?.loaiBen,
+      berthType: params?.berthType,
       tuyenDuongThuy: params?.tuyenDuongThuy,
       operationalStatus: params?.operationalStatus,
       approvalStatus: params?.approvalStatus,

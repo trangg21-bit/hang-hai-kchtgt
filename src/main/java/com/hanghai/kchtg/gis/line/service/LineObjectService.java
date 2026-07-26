@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.line.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.line.dto.CreateLineObjectRequest;
 import com.hanghai.kchtg.gis.line.dto.LineObjectResponse;
 import com.hanghai.kchtg.gis.line.dto.UpdateLineObjectRequest;
@@ -140,7 +142,7 @@ public class LineObjectService {
     }
 
     @Transactional
-    public LineObjectResponse approveL1(UUID id, String approverId) {
+    public LineObjectResponse approveL1(UUID id, UUID approverId) {
         LineObject entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("LineObject not found with id: " + id));
 
@@ -168,7 +170,7 @@ public class LineObjectService {
     }
 
     @Transactional
-    public LineObjectResponse approveL2(UUID id, String approverId) {
+    public LineObjectResponse approveL2(UUID id, UUID approverId) {
         LineObject entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("LineObject not found with id: " + id));
 

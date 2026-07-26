@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.entity.AssetProcessingRecord;
 import com.hanghai.kchtg.assetmovement.entity.ProcessingType;
 import com.hanghai.kchtg.assetmovement.entity.ProcessingRecordStatus;

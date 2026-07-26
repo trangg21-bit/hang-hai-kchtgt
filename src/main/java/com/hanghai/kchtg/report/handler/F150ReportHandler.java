@@ -1,9 +1,11 @@
 package com.hanghai.kchtg.report.handler;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
-import com.hanghai.kchtg.cangben.entity.Pier;
-import com.hanghai.kchtg.cangben.repository.PierRepository;
+import com.hanghai.kchtg.port.entity.Pier;
+import com.hanghai.kchtg.port.repository.PierRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -32,32 +34,32 @@ public class F150ReportHandler extends BaseReportHandler {
                 .toList();
 
         double containerNam = 0;
-        double tongHopNam = 0;
-        double roiQuangNam = 0;
-        double xangDauNam = 0;
+        double generalPierCount = 0;
+        double bulkOrePierCount = 0;
+        double petroleumPierCount = 0;
         double khacNam = 0;
-        double hanhKhachNam = 0;
+        double passengerPierCount = 0;
 
-        double containerThayDoi = 0;
-        double tongHopThayDoi = 0;
-        double roiQuangThayDoi = 0;
-        double xangDauThayDoi = 0;
-        double khacThayDoi = 0;
-        double hanhKhachThayDoi = 0;
+        double containerPierCountChange = 0;
+        double generalPierCountChange = 0;
+        double bulkOrePierCountChange = 0;
+        double petroleumPierCountChange = 0;
+        double otherPierCountChange = 0;
+        double passengerPierCountChange = 0;
 
-        double containerDaiNam = 0;
-        double tongHopDaiNam = 0;
-        double roiQuangDaiNam = 0;
-        double xangDauDaiNam = 0;
-        double khacDaiNam = 0;
-        double hanhKhachDaiNam = 0;
+        double containerPierLength = 0;
+        double generalPierLength = 0;
+        double bulkOrePierLength = 0;
+        double petroleumPierLength = 0;
+        double otherPierLength = 0;
+        double passengerPierLength = 0;
 
-        double containerDaiThayDoi = 0;
-        double tongHopDaiThayDoi = 0;
-        double roiQuangDaiThayDoi = 0;
-        double xangDauDaiThayDoi = 0;
-        double khacDaiThayDoi = 0;
-        double hanhKhachDaiThayDoi = 0;
+        double containerPierLengthChange = 0;
+        double generalPierLengthChange = 0;
+        double bulkOrePierLengthChange = 0;
+        double petroleumPierLengthChange = 0;
+        double otherPierLengthChange = 0;
+        double passengerPierLengthChange = 0;
 
         for (Pier b : berths) {
             String type = classifyPier(b.getPierType(), b.getOperationalFunction());
@@ -67,50 +69,50 @@ public class F150ReportHandler extends BaseReportHandler {
             switch (type) {
                 case "CONTAINER":
                     containerNam += 1;
-                    containerDaiNam += len;
+                    containerPierLength += len;
                     if (isNewThisYear) {
-                        containerThayDoi += 1;
-                        containerDaiThayDoi += len;
+                        containerPierCountChange += 1;
+                        containerPierLengthChange += len;
                     }
                     break;
                 case "TONG_HOP":
-                    tongHopNam += 1;
-                    tongHopDaiNam += len;
+                    generalPierCount += 1;
+                    generalPierLength += len;
                     if (isNewThisYear) {
-                        tongHopThayDoi += 1;
-                        tongHopDaiThayDoi += len;
+                        generalPierCountChange += 1;
+                        generalPierLengthChange += len;
                     }
                     break;
                 case "CHUYEN_DUNG_HANG_ROI":
-                    roiQuangNam += 1;
-                    roiQuangDaiNam += len;
+                    bulkOrePierCount += 1;
+                    bulkOrePierLength += len;
                     if (isNewThisYear) {
-                        roiQuangThayDoi += 1;
-                        roiQuangDaiThayDoi += len;
+                        bulkOrePierCountChange += 1;
+                        bulkOrePierLengthChange += len;
                     }
                     break;
                 case "CHUYEN_DUNG_XANG_DAU":
-                    xangDauNam += 1;
-                    xangDauDaiNam += len;
+                    petroleumPierCount += 1;
+                    petroleumPierLength += len;
                     if (isNewThisYear) {
-                        xangDauThayDoi += 1;
-                        xangDauDaiThayDoi += len;
+                        petroleumPierCountChange += 1;
+                        petroleumPierLengthChange += len;
                     }
                     break;
                 case "CHUYEN_DUNG_KHAC":
                     khacNam += 1;
-                    khacDaiNam += len;
+                    otherPierLength += len;
                     if (isNewThisYear) {
-                        khacThayDoi += 1;
-                        khacDaiThayDoi += len;
+                        otherPierCountChange += 1;
+                        otherPierLengthChange += len;
                     }
                     break;
                 case "HANH_KHACH":
-                    hanhKhachNam += 1;
-                    hanhKhachDaiNam += len;
+                    passengerPierCount += 1;
+                    passengerPierLength += len;
                     if (isNewThisYear) {
-                        hanhKhachThayDoi += 1;
-                        hanhKhachDaiThayDoi += len;
+                        passengerPierCountChange += 1;
+                        passengerPierLengthChange += len;
                     }
                     break;
             }
@@ -135,47 +137,47 @@ public class F150ReportHandler extends BaseReportHandler {
                 "Chỉ tiêu", "Số lượng cầu cảng năm báo cáo",
                 "Đơn vị", "Cầu",
                 "Cầu cảng container", containerNam,
-                "Cầu cảng tổng hợp (bách hóa)", tongHopNam,
-                "Cầu cảng chuyên dụng hàng rời, quặng", roiQuangNam,
-                "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng", xangDauNam,
+                "Cầu cảng tổng hợp (bách hóa)", generalPierCount,
+                "Cầu cảng chuyên dụng hàng rời, quặng", bulkOrePierCount,
+                "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng", petroleumPierCount,
                 "Cầu cảng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu …)", khacNam,
-                "Cầu cảng hành khách", hanhKhachNam,
+                "Cầu cảng hành khách", passengerPierCount,
                 "Ghi chú", ""
         ));
         rows.add(Map.of(
                 "STT", 2,
                 "Chỉ tiêu", "Số lượng cầu cảng thay đổi",
                 "Đơn vị", "Cầu",
-                "Cầu cảng container", containerThayDoi,
-                "Cầu cảng tổng hợp (bách hóa)", tongHopThayDoi,
-                "Cầu cảng chuyên dụng hàng rời, quặng", roiQuangThayDoi,
-                "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng", xangDauThayDoi,
-                "Cầu cảng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu …)", khacThayDoi,
-                "Cầu cảng hành khách", hanhKhachThayDoi,
+                "Cầu cảng container", containerPierCountChange,
+                "Cầu cảng tổng hợp (bách hóa)", generalPierCountChange,
+                "Cầu cảng chuyên dụng hàng rời, quặng", bulkOrePierCountChange,
+                "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng", petroleumPierCountChange,
+                "Cầu cảng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu …)", otherPierCountChange,
+                "Cầu cảng hành khách", passengerPierCountChange,
                 "Ghi chú", ""
         ));
         rows.add(Map.of(
                 "STT", 3,
                 "Chỉ tiêu", "Chiều dài cầu cảng năm báo cáo",
                 "Đơn vị", "m",
-                "Cầu cảng container", containerDaiNam,
-                "Cầu cảng tổng hợp (bách hóa)", tongHopDaiNam,
-                "Cầu cảng chuyên dụng hàng rời, quặng", roiQuangDaiNam,
-                "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng", xangDauDaiNam,
-                "Cầu cảng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu …)", khacDaiNam,
-                "Cầu cảng hành khách", hanhKhachDaiNam,
+                "Cầu cảng container", containerPierLength,
+                "Cầu cảng tổng hợp (bách hóa)", generalPierLength,
+                "Cầu cảng chuyên dụng hàng rời, quặng", bulkOrePierLength,
+                "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng", petroleumPierLength,
+                "Cầu cảng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu …)", otherPierLength,
+                "Cầu cảng hành khách", passengerPierLength,
                 "Ghi chú", ""
         ));
         rows.add(Map.of(
                 "STT", 4,
                 "Chỉ tiêu", "Chiều dài cầu cảng thay đổi",
                 "Đơn vị", "m",
-                "Cầu cảng container", containerDaiThayDoi,
-                "Cầu cảng tổng hợp (bách hóa)", tongHopDaiThayDoi,
-                "Cầu cảng chuyên dụng hàng rời, quặng", roiQuangDaiThayDoi,
-                "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng", xangDauDaiThayDoi,
-                "Cầu cảng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu …)", khacDaiThayDoi,
-                "Cầu cảng hành khách", hanhKhachDaiThayDoi,
+                "Cầu cảng container", containerPierLengthChange,
+                "Cầu cảng tổng hợp (bách hóa)", generalPierLengthChange,
+                "Cầu cảng chuyên dụng hàng rời, quặng", bulkOrePierLengthChange,
+                "Cầu cảng chuyên dụng xăng dầu, khí hóa lỏng", petroleumPierLengthChange,
+                "Cầu cảng chuyên dụng khác (dịch vụ, đóng, sửa chữa tàu …)", otherPierLengthChange,
+                "Cầu cảng hành khách", passengerPierLengthChange,
                 "Ghi chú", ""
         ));
         rows.add(Map.of(
@@ -220,32 +222,32 @@ public class F150ReportHandler extends BaseReportHandler {
                 .toList();
 
         double containerNam = 0;
-        double tongHopNam = 0;
-        double roiQuangNam = 0;
-        double xangDauNam = 0;
+        double generalPierCount = 0;
+        double bulkOrePierCount = 0;
+        double petroleumPierCount = 0;
         double khacNam = 0;
-        double hanhKhachNam = 0;
+        double passengerPierCount = 0;
 
-        double containerThayDoi = 0;
-        double tongHopThayDoi = 0;
-        double roiQuangThayDoi = 0;
-        double xangDauThayDoi = 0;
-        double khacThayDoi = 0;
-        double hanhKhachThayDoi = 0;
+        double containerPierCountChange = 0;
+        double generalPierCountChange = 0;
+        double bulkOrePierCountChange = 0;
+        double petroleumPierCountChange = 0;
+        double otherPierCountChange = 0;
+        double passengerPierCountChange = 0;
 
-        double containerDaiNam = 0;
-        double tongHopDaiNam = 0;
-        double roiQuangDaiNam = 0;
-        double xangDauDaiNam = 0;
-        double khacDaiNam = 0;
-        double hanhKhachDaiNam = 0;
+        double containerPierLength = 0;
+        double generalPierLength = 0;
+        double bulkOrePierLength = 0;
+        double petroleumPierLength = 0;
+        double otherPierLength = 0;
+        double passengerPierLength = 0;
 
-        double containerDaiThayDoi = 0;
-        double tongHopDaiThayDoi = 0;
-        double roiQuangDaiThayDoi = 0;
-        double xangDauDaiThayDoi = 0;
-        double khacDaiThayDoi = 0;
-        double hanhKhachDaiThayDoi = 0;
+        double containerPierLengthChange = 0;
+        double generalPierLengthChange = 0;
+        double bulkOrePierLengthChange = 0;
+        double petroleumPierLengthChange = 0;
+        double otherPierLengthChange = 0;
+        double passengerPierLengthChange = 0;
 
         for (Pier b : berths) {
             String type = classifyPier(b.getPierType(), b.getOperationalFunction());
@@ -255,50 +257,50 @@ public class F150ReportHandler extends BaseReportHandler {
             switch (type) {
                 case "CONTAINER":
                     containerNam += 1;
-                    containerDaiNam += len;
+                    containerPierLength += len;
                     if (isNewThisYear) {
-                        containerThayDoi += 1;
-                        containerDaiThayDoi += len;
+                        containerPierCountChange += 1;
+                        containerPierLengthChange += len;
                     }
                     break;
                 case "TONG_HOP":
-                    tongHopNam += 1;
-                    tongHopDaiNam += len;
+                    generalPierCount += 1;
+                    generalPierLength += len;
                     if (isNewThisYear) {
-                        tongHopThayDoi += 1;
-                        tongHopDaiThayDoi += len;
+                        generalPierCountChange += 1;
+                        generalPierLengthChange += len;
                     }
                     break;
                 case "CHUYEN_DUNG_HANG_ROI":
-                    roiQuangNam += 1;
-                    roiQuangDaiNam += len;
+                    bulkOrePierCount += 1;
+                    bulkOrePierLength += len;
                     if (isNewThisYear) {
-                        roiQuangThayDoi += 1;
-                        roiQuangDaiThayDoi += len;
+                        bulkOrePierCountChange += 1;
+                        bulkOrePierLengthChange += len;
                     }
                     break;
                 case "CHUYEN_DUNG_XANG_DAU":
-                    xangDauNam += 1;
-                    xangDauDaiNam += len;
+                    petroleumPierCount += 1;
+                    petroleumPierLength += len;
                     if (isNewThisYear) {
-                        xangDauThayDoi += 1;
-                        xangDauDaiThayDoi += len;
+                        petroleumPierCountChange += 1;
+                        petroleumPierLengthChange += len;
                     }
                     break;
                 case "CHUYEN_DUNG_KHAC":
                     khacNam += 1;
-                    khacDaiNam += len;
+                    otherPierLength += len;
                     if (isNewThisYear) {
-                        khacThayDoi += 1;
-                        khacDaiThayDoi += len;
+                        otherPierCountChange += 1;
+                        otherPierLengthChange += len;
                     }
                     break;
                 case "HANH_KHACH":
-                    hanhKhachNam += 1;
-                    hanhKhachDaiNam += len;
+                    passengerPierCount += 1;
+                    passengerPierLength += len;
                     if (isNewThisYear) {
-                        hanhKhachThayDoi += 1;
-                        hanhKhachDaiThayDoi += len;
+                        passengerPierCountChange += 1;
+                        passengerPierLengthChange += len;
                     }
                     break;
             }
@@ -306,32 +308,32 @@ public class F150ReportHandler extends BaseReportHandler {
 
         Map<String, Object> item = new HashMap<>();
         item.put("soLuongPierContainerNamBaoCao", containerNam);
-        item.put("soLuongPierTongHopNamBaoCao", tongHopNam);
-        item.put("soLuongPierChuyenDungHangRoiQuangNamBaoCao", roiQuangNam);
-        item.put("soLuongPierChuyenDungXangDauKhiHoaLongNamBaoCao", xangDauNam);
+        item.put("soLuongPierTongHopNamBaoCao", generalPierCount);
+        item.put("soLuongPierChuyenDungHangRoiQuangNamBaoCao", bulkOrePierCount);
+        item.put("soLuongPierChuyenDungXangDauKhiHoaLongNamBaoCao", petroleumPierCount);
         item.put("soLuongPierChuyenDungKhacNamBaoCao", khacNam);
-        item.put("soLuongPierHanhKhachNamBaoCao", hanhKhachNam);
+        item.put("soLuongPierHanhKhachNamBaoCao", passengerPierCount);
 
-        item.put("soLuongPierContainerThayDoi", containerThayDoi);
-        item.put("soLuongPierTongHopThayDoi", tongHopThayDoi);
-        item.put("soLuongPierChuyenDungHangRoiQuangThayDoi", roiQuangThayDoi);
-        item.put("soLuongPierChuyenDungXangDauKhiHoaLongThayDoi", xangDauThayDoi);
-        item.put("soLuongPierChuyenDungKhacThayDoi", khacThayDoi);
-        item.put("soLuongPierHanhKhachThayDoi", hanhKhachThayDoi);
+        item.put("soLuongPierContainerThayDoi", containerPierCountChange);
+        item.put("soLuongPierTongHopThayDoi", generalPierCountChange);
+        item.put("soLuongPierChuyenDungHangRoiQuangThayDoi", bulkOrePierCountChange);
+        item.put("soLuongPierChuyenDungXangDauKhiHoaLongThayDoi", petroleumPierCountChange);
+        item.put("soLuongPierChuyenDungKhacThayDoi", otherPierCountChange);
+        item.put("soLuongPierHanhKhachThayDoi", passengerPierCountChange);
 
-        item.put("chieuDaiPierContainerNamBaoCao", containerDaiNam);
-        item.put("chieuDaiPierTongHopNamBaoCao", tongHopDaiNam);
-        item.put("chieuDaiPierChuyenDungHangRoiQuangNamBaoCao", roiQuangDaiNam);
-        item.put("chieuDaiPierChuyenDungXangDauKhiHoaLongNamBaoCao", xangDauDaiNam);
-        item.put("chieuDaiPierChuyenDungKhacNamBaoCao", khacDaiNam);
-        item.put("chieuDaiPierHanhKhachNamBaoCao", hanhKhachDaiNam);
+        item.put("chieuDaiPierContainerNamBaoCao", containerPierLength);
+        item.put("chieuDaiPierTongHopNamBaoCao", generalPierLength);
+        item.put("chieuDaiPierChuyenDungHangRoiQuangNamBaoCao", bulkOrePierLength);
+        item.put("chieuDaiPierChuyenDungXangDauKhiHoaLongNamBaoCao", petroleumPierLength);
+        item.put("chieuDaiPierChuyenDungKhacNamBaoCao", otherPierLength);
+        item.put("chieuDaiPierHanhKhachNamBaoCao", passengerPierLength);
 
-        item.put("chieuDaiPierContainerThayDoi", containerDaiThayDoi);
-        item.put("chieuDaiPierTongHopThayDoi", tongHopDaiThayDoi);
-        item.put("chieuDaiPierChuyenDungHangRoiQuangThayDoi", roiQuangDaiThayDoi);
-        item.put("chieuDaiPierChuyenDungXangDauKhiHoaLongThayDoi", xangDauDaiThayDoi);
-        item.put("chieuDaiPierChuyenDungKhacThayDoi", khacDaiThayDoi);
-        item.put("chieuDaiPierHanhKhachNamThayDoi", hanhKhachDaiThayDoi);
+        item.put("chieuDaiPierContainerThayDoi", containerPierLengthChange);
+        item.put("chieuDaiPierTongHopThayDoi", generalPierLengthChange);
+        item.put("chieuDaiPierChuyenDungHangRoiQuangThayDoi", bulkOrePierLengthChange);
+        item.put("chieuDaiPierChuyenDungXangDauKhiHoaLongThayDoi", petroleumPierLengthChange);
+        item.put("chieuDaiPierChuyenDungKhacThayDoi", otherPierLengthChange);
+        item.put("chieuDaiPierHanhKhachNamThayDoi", passengerPierLengthChange);
 
         item.put("nangLucContainerNamBaoCao", "-");
         item.put("nangLucTongHopNamBaoCao", "-");
@@ -354,7 +356,7 @@ public class F150ReportHandler extends BaseReportHandler {
         return list;
     }
 
-    private String classifyPier(com.hanghai.kchtg.cangben.entity.LoaiCau pierType, String operationalFunction) {
+    private String classifyPier(com.hanghai.kchtg.port.entity.PierType pierType, String operationalFunction) {
         if (pierType == null) return "KHAC";
         switch (pierType) {
             case CONTAINER:

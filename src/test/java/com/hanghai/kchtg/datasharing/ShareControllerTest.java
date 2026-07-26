@@ -92,9 +92,8 @@ class ShareControllerTest {
                 .build();
 
         SharedDataResponse response = SharedDataResponse.builder()
-                .id(1L)
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .code("SD-2026-0001")
-                .name("Ben Caang 1")
                 .dataType("PORT")
                 .shareStatus("DRAFT")
                 .sharedWith("KCHTGT-CN")
@@ -126,36 +125,35 @@ class ShareControllerTest {
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("F-018-C-02: findById_returns200 — GET /api/v1/datasharing/shares/1")
+    @DisplayName("F-018-C-02: findById_returns200 — GET /api/v1/datasharing/shares/00000000-0000-0000-0000-000000000001")
     void findById_returns200() throws Exception {
         SharedDataResponse response = SharedDataResponse.builder()
-                .id(1L)
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .code("SD-001")
-                .name("Ben Caang 1")
                 .dataType("PORT")
                 .shareStatus("SHARED")
                 .sharedWith("KCHTGT-CN")
                 .build();
 
-        when(shareService.findById(1L)).thenReturn(Optional.of(response));
+        when(shareService.findById(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))).thenReturn(Optional.of(response));
 
-        mockMvc.perform(get("/api/v1/datasharing/shares/1"))
+        mockMvc.perform(get("/api/v1/datasharing/shares/00000000-0000-0000-0000-000000000001"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.id").value(1))
+                .andExpect(jsonPath("$.data.id").value("00000000-0000-0000-0000-000000000001"))
                 .andExpect(jsonPath("$.data.code").value("SD-001"));
 
-        verify(shareService).findById(1L);
+        verify(shareService).findById(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
     }
 
     @Test
-    @DisplayName("F-018-C-03: findById_notFound_returns404 — GET /api/v1/datasharing/shares/999")
+    @DisplayName("F-018-C-03: findById_notFound_returns404 — GET /api/v1/datasharing/shares/00000000-0000-0000-0000-000000000999")
     void findById_notFound_returns404() throws Exception {
-        when(shareService.findById(999L)).thenReturn(Optional.empty());
+        when(shareService.findById(java.util.UUID.fromString("00000000-0000-0000-0000-000000000999"))).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/api/v1/datasharing/shares/999"))
+        mockMvc.perform(get("/api/v1/datasharing/shares/00000000-0000-0000-0000-000000000999"))
                 .andExpect(status().isNotFound());
 
-        verify(shareService).findById(999L);
+        verify(shareService).findById(java.util.UUID.fromString("00000000-0000-0000-0000-000000000999"));
     }
 
     // ------------------------------------------------------------------
@@ -166,9 +164,8 @@ class ShareControllerTest {
     @DisplayName("F-018-C-04: findByCode_returns200 — GET /api/v1/datasharing/shares/code/SD-001")
     void findByCode_returns200() throws Exception {
         SharedDataResponse response = SharedDataResponse.builder()
-                .id(3L)
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"))
                 .code("SD-001")
-                .name("He thong VTS")
                 .dataType("VTS_SYSTEM")
                 .shareStatus("SHARED")
                 .sharedWith("VTS-DNAI")
@@ -191,8 +188,8 @@ class ShareControllerTest {
     @Test
     @DisplayName("F-018-C-05: findAll_returns200 — GET /api/v1/datasharing/shares")
     void findAll_returns200() throws Exception {
-        SharedDataResponse r1 = SharedDataResponse.builder().id(1L).code("SD-001").build();
-        SharedDataResponse r2 = SharedDataResponse.builder().id(2L).code("SD-002").build();
+        SharedDataResponse r1 = SharedDataResponse.builder().id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).code("SD-001").build();
+        SharedDataResponse r2 = SharedDataResponse.builder().id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")).code("SD-002").build();
         Page<SharedDataResponse> page = new PageImpl<>(List.of(r1, r2), PageRequest.of(0, 20), 2L);
 
         when(shareService.findAll(any(ShareFilter.class))).thenReturn(page);
@@ -216,7 +213,7 @@ class ShareControllerTest {
     @DisplayName("F-018-C-06: findByDataType_returns200 — GET /api/v1/datasharing/shares/type/PORT")
     void findByDataType_returns200() throws Exception {
         SharedDataResponse r = SharedDataResponse.builder()
-                .id(1L).code("SD-001").dataType("PORT").sharedWith("KCHTGT-CN").build();
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).code("SD-001").dataType("PORT").sharedWith("KCHTGT-CN").build();
 
         when(shareService.findByDataType("PORT")).thenReturn(List.of(r));
 
@@ -233,15 +230,15 @@ class ShareControllerTest {
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("F-018-C-07: revoke_returns200 — PUT /api/v1/datasharing/shares/1/revoke")
+    @DisplayName("F-018-C-07: revoke_returns200 — PUT /api/v1/datasharing/shares/00000000-0000-0000-0000-000000000001/revoke")
     void revoke_returns200() throws Exception {
-        doNothing().when(shareService).revoke(1L);
+        doNothing().when(shareService).revoke(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
 
-        mockMvc.perform(put("/api/v1/datasharing/shares/1/revoke"))
+        mockMvc.perform(put("/api/v1/datasharing/shares/00000000-0000-0000-0000-000000000001/revoke"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(shareService).revoke(1L);
+        verify(shareService).revoke(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
     }
 
     // ------------------------------------------------------------------

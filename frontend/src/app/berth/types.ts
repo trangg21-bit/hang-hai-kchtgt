@@ -9,11 +9,11 @@ export interface BenCangEntity {
   portId: string;
   tenCangBien?: string;
   tuyenDuongThuy?: string;
-  viDo?: number;
-  kinhDo?: number;
+  latitude?: number;
+  longitude?: number;
   length?: number;
   width?: number;
-  loaiBen?: string;
+  berthType?: string;
   doSauLuong?: number;
   operationalStatus?: string;
   approvalStatus: string;
@@ -24,7 +24,7 @@ export interface BenCangEntity {
   createdAt?: string;
   updatedAt?: string;
   // Extended fields
-  diaDiem?: string;
+  location?: string;
   diaDiemChiTiet?: string;
   heQuyChieu?: number;
   quyTacHienThi?: number;
@@ -38,7 +38,7 @@ export interface BenCangEntity {
   thoiDiemCongBoMo?: string;
   quyetDinhCongBo?: string;
   vanBanThoaThuanDauTu?: string;
-  loaiKetCau?: number;
+  structureType?: number;
 }
 
 // Approval statuses — values returned by the BE (ASCII, no diacritics)

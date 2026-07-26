@@ -27,3 +27,12 @@ Python/
 
 # Local AI Customizations (Workspace Rules)
 .agents/
+
+# One-off refactor/codemod scripts kept at the repo root during the
+# Vietnamese -> English standardisation. Throwaway tooling, not part of the build.
+/fix*.js
+/fix*.ps1
+/refactor*.ps1
+/cleanup*.js
+/revert*.js
+/remove_fields.js

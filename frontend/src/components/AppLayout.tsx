@@ -47,11 +47,11 @@ const MENU_PERMISSION_MAP: Record<string, string> = {
   '/beacon-lights': 'data:read',
   '/buoys': 'data:read',
   '/history': 'data:read',
-  '/Port': 'Port:read',
-  '/Berth': 'Berth:read',
-  '/Pier': 'Pier:read',
-  '/DryPort': 'DryPort:read',
-  '/WaterZone': 'WaterZone:read',
+  '/Port': 'port:read',
+  '/Berth': 'berth:read',
+  '/Pier': 'pier:read',
+  '/DryPort': 'dryport:read',
+  '/WaterZone': 'waterzone:read',
   '/navigation-channel': 'navigationchannel:read',
   '/dike-revetment': 'dikerevetment:read',
   '/ship-repair-facility': 'shiprepair:read',
@@ -103,9 +103,9 @@ const pageTitles: Record<string, string> = {
   '/settings': 'Cấu hình hệ thống',
   '/logs': 'Nhật ký hệ thống',
   '/symbols': 'Biểu tượng bản đồ',
-  '/vanban/phaply': 'Văn bản pháp lý',
-  '/vanban/suco': 'Sự cố hàng hải',
-  '/vanban/quyhoach': 'Quy hoạch bến cảng',
+  '/documents/legal': 'Văn bản pháp lý',
+  '/documents/incidents': 'Sự cố hàng hải',
+  '/documents/port-planning': 'Quy hoạch bến cảng',
   '/station/coastal': 'Đài duyên hải VTS',
   '/station/special': 'Đài vệ tinh Inmarsat',
   '/asset/increase': 'Yêu cầu tăng tài sản',
@@ -144,7 +144,7 @@ export default function AppLayout() {
     // For GIS, select the deepest valid key: /gis/points, /gis/lines, etc.
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
-  } else if (pathSegments[0] === 'nhatram' || pathSegments[0] === 'lighthouse-station' || pathSegments[0] === 'buoy-station' || pathSegments[0] === 'vanban' || pathSegments[0] === 'station' || pathSegments[0] === 'asset') {
+  } else if (pathSegments[0] === 'lighthouse-station' || pathSegments[0] === 'buoy-station' || pathSegments[0] === 'documents' || pathSegments[0] === 'station' || pathSegments[0] === 'asset') {
     const deepKey = `/${pathSegments[0]}/${pathSegments[1]}`;
     selectedKey = deepKey;
   } else if (pathSegments[0] === 'Port' || pathSegments[0] === 'Berth' || pathSegments[0] === 'Pier' || pathSegments[0] === 'DryPort' || pathSegments[0] === 'WaterZone') {
@@ -159,7 +159,7 @@ export default function AppLayout() {
 
   useEffect(() => {
     if (selectedKey) {
-      if (selectedKey.startsWith('/nhatram') || selectedKey.startsWith('/lighthouse-station') || selectedKey.startsWith('/buoy-station') || selectedKey === '/beacon-lights' || selectedKey === '/buoys' || selectedKey === '/history') {
+      if (selectedKey.startsWith('/stations') || selectedKey.startsWith('/lighthouse-station') || selectedKey.startsWith('/buoy-station') || selectedKey === '/beacon-lights' || selectedKey === '/buoys' || selectedKey === '/history') {
         setOpenKeys(['beacon']);
       } else if (selectedKey.startsWith('/gis')) {
         setOpenKeys(['gis']);
@@ -167,8 +167,8 @@ export default function AppLayout() {
         setOpenKeys(['cangben']);
       } else if (selectedKey.startsWith('/asset')) {
         setOpenKeys(['asset-movement']);
-      } else if (selectedKey.startsWith('/vanban')) {
-        setOpenKeys(['vanban-suco']);
+      } else if (selectedKey.startsWith('/documents')) {
+        setOpenKeys(['documents-incidents']);
       } else if (['/navigation-channel', '/dike-revetment', '/ship-repair-facility', '/radar-station', '/vts-system'].includes(selectedKey)) {
         setOpenKeys(['khu-nuoc-vts']);
       } else if (selectedKey.startsWith('/station')) {
@@ -246,13 +246,13 @@ export default function AppLayout() {
       ].filter(Boolean),
     },
     {
-      key: 'vanban-suco',
+      key: 'documents-incidents',
       icon: <ContainerOutlined />,
       label: 'Văn bản & Sự cố',
       children: [
-        canAccessMenu('/vanban/phaply') ? { key: '/vanban/phaply', label: 'Văn bản pháp lý' } : null,
-        canAccessMenu('/vanban/suco') ? { key: '/vanban/suco', label: 'Sự cố hàng hải' } : null,
-        canAccessMenu('/vanban/quyhoach') ? { key: '/vanban/quyhoach', label: 'Quy hoạch bến cảng' } : null,
+        canAccessMenu('/documents/legal') ? { key: '/documents/legal', label: 'Văn bản pháp lý' } : null,
+        canAccessMenu('/documents/incidents') ? { key: '/documents/incidents', label: 'Sự cố hàng hải' } : null,
+        canAccessMenu('/documents/port-planning') ? { key: '/documents/port-planning', label: 'Quy hoạch bến cảng' } : null,
       ].filter(Boolean),
     },
     { type: 'divider' as const },

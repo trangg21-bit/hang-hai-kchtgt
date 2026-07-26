@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.datasharingaggregation.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.datasharingaggregation.enums.SharingStatus;
 import com.hanghai.kchtg.datasharingaggregation.enums.SharingType;
 import java.time.LocalDateTime;
@@ -15,7 +17,7 @@ public class DataSharingAggregationResponse {
     private String errorMessage;
     private LocalDateTime shareDate;
     private int retryCount;
-    private String createdBy;
+    private UUID createdBy;
     private LocalDateTime createdAt;
 
     public String getId() {
@@ -90,11 +92,11 @@ public class DataSharingAggregationResponse {
         this.retryCount = retryCount;
     }
 
-    public String getCreatedBy() {
+    public UUID getCreatedBy() {
         return createdBy;
     }
 
-    public void setCreatedBy(String createdBy) {
+    public void setCreatedBy(UUID createdBy) {
         this.createdBy = createdBy;
     }
 

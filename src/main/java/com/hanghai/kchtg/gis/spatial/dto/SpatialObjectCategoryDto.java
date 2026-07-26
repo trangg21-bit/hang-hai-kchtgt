@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.spatial.dto;
 
+import java.util.UUID;
+
 import lombok.Data;
 
 import java.util.UUID;
@@ -14,7 +16,7 @@ public class SpatialObjectCategoryDto {
     private String iconUrl;
     private Integer status;
     private java.time.LocalDateTime createdAt;
-    private String createdBy;
+    private UUID createdBy;
     private java.time.LocalDateTime updatedAt;
-    private String updatedBy;
+    private UUID updatedBy;
 }

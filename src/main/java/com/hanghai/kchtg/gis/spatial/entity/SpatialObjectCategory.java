@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.spatial.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

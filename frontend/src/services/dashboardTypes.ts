@@ -59,22 +59,29 @@ export interface AssetStatusDto {
   assetsByStatus: Record<string, number>;
 }
 
-/** Asset processing dossier — from HoSoXuLyTaiSan entity */
-export interface HoSoXuLyTaiSanResponse {
+/**
+ * Asset processing dossier — mirrors AssetProcessingRecordResponse.
+ * Field names and enum values follow what the backend actually serialises;
+ * the previous Vietnamese names never matched, so every lookup came back
+ * undefined and the approval widgets silently read as zero.
+ * assetName and createdByName are declared nullable because the backend
+ * currently hardcodes both to null in AssetProcessingRecordService.toResponse.
+ */
+export interface AssetProcessingRecordResponse {
   id: string;
-  taiSanId: string;
-  tenTaiSan: string;
-  loaiXuLy: LoaiXuLy;
-  moTa: string;
-  trangThaiHoSo: TrangThaiHoSo;
+  assetId: string;
+  assetName: string | null;
+  processingType: ProcessingType;
+  description: string;
+  documentStatus: DocumentStatus;
   createdBy: string;
-  createdByName: string;
+  createdByName: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-export type LoaiXuLy = 'DIEU_CHUYEN' | 'BAN_GIAO' | 'THANH_LY' | 'PHA_BO';
-export type TrangThaiHoSo = 'CHO_PHE_DUYET' | 'DA_PHE_DUYET' | 'TU_CHOI';
+export type ProcessingType = 'TRANSFER' | 'HANDOVER' | 'LIQUIDATION' | 'DEMOLITION';
+export type DocumentStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 /** Comprehensive system info — from E4 endpoint */
 export interface ComprehensiveInfoDto {

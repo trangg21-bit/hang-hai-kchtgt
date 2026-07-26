@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.siem.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -51,7 +53,7 @@ public class SiemReport {
 
     /** Name of the user who triggered this report. */
     @Column(length = 100)
-    private String createdBy;
+    private UUID createdBy;
 
     /** The timestamp when the report was generated. */
     @Column(name = "generated_at")

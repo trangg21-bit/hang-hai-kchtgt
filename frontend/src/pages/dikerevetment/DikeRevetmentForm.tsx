@@ -121,7 +121,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
             surfaceMaterial: data.surfaceMaterial,
             status: data.status,
             note: data.note,
-            donViId: data.donViId,
+            orgUnitId: data.orgUnitId,
             spatialData: {
               loaiHinhHoc: data.loaiHinhHoc,
               toaDo: data.toaDo,
@@ -171,7 +171,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
         height: values.height,
         surfaceMaterial: values.surfaceMaterial,
         status: values.status,
-        donViId: values.donViId,
+        orgUnitId: values.orgUnitId,
         loaiHinhHoc: spatialData?.loaiHinhHoc,
         toaDo: spatialData?.toaDo,
         bieuTuongId: spatialData?.bieuTuongId,
@@ -340,7 +340,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
                 {record.note ?? '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Đơn vị quản lý" span={2}>
-                {record.donViId ? organizations.find(o => o.id === record.donViId)?.name || record.donViId : '—'}
+                {record.orgUnitId ? organizations.find(o => o.id === record.orgUnitId)?.name || record.orgUnitId : '—'}
               </Descriptions.Item>
               <Descriptions.Item label="Trạng thái">
                 <ApprovalStatusBadge status={record.approvalStatus} />
@@ -545,7 +545,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
 
       <Form.Item
         label="Đơn vị quản lý"
-        name="donViId"
+        name="orgUnitId"
       >
         <Select
           placeholder="Chọn đơn vị quản lý"

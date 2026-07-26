@@ -73,8 +73,6 @@ class BuoyControllerTest {
                 .code("PHAO-001")
                 .name(name)
                 .type(type)
-                .latitude(10.5)
-                .longitude(106.5)
                 .color("Đỏ")
                 .shape("Hình trụ")
                 .lightCharacteristic("Chớp 3 giây")
@@ -83,7 +81,7 @@ class BuoyControllerTest {
                 .isActive(true)
                 .status(status)
                 .approvalStatus("PENDING")
-                .approvalLevel(0)
+                .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -346,17 +344,17 @@ class BuoyControllerTest {
     void testApproveL1() throws Exception {
         UUID id = UUID.randomUUID();
         BuoyResponse approved = makeResponse(id, "Đã duyệt L1", "CARDINAL", "APPROVED_L1");
-        approved.setApprovedBy("2");
-        when(buoyService.approveL1(eq(id), anyString())).thenReturn(approved);
+        approved.setApprovedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
+        when(buoyService.approveL1(eq(id), any(java.util.UUID.class))).thenReturn(approved);
 
         mockMvc.perform(post("/api/buoys/{id}/approve-l1", id)
-                        .param("approverId", "2"))
+                        .param("approverId", "00000000-0000-0000-0000-000000000002"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("APPROVED_L1"))
-                .andExpect(jsonPath("$.data.approvedBy").value(2));
+                .andExpect(jsonPath("$.data.approvedBy").value("00000000-0000-0000-0000-000000000002"));
 
-        verify(buoyService).approveL1(id, "2");
+        verify(buoyService).approveL1(eq(id), any(java.util.UUID.class));
     }
 
     // ── APPROVE L2 ───────────────────────────────────────────────
@@ -366,17 +364,17 @@ class BuoyControllerTest {
     void testApproveL2() throws Exception {
         UUID id = UUID.randomUUID();
         BuoyResponse published = makeResponse(id, "Đã duyệt L2", "CARDINAL", "PUBLISHED");
-        published.setApprovedBy("3");
-        when(buoyService.approveL2(eq(id), anyString())).thenReturn(published);
+        published.setApprovedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"));
+        when(buoyService.approveL2(eq(id), any(java.util.UUID.class))).thenReturn(published);
 
         mockMvc.perform(post("/api/buoys/{id}/approve-l2", id)
-                        .param("approverId", "3"))
+                        .param("approverId", "00000000-0000-0000-0000-000000000003"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("PUBLISHED"))
-                .andExpect(jsonPath("$.data.approvedBy").value(3));
+                .andExpect(jsonPath("$.data.approvedBy").value("00000000-0000-0000-0000-000000000003"));
 
-        verify(buoyService).approveL2(id, "3");
+        verify(buoyService).approveL2(eq(id), any(java.util.UUID.class));
     }
 
     // ── REJECT ───────────────────────────────────────────────────
@@ -388,28 +386,28 @@ class BuoyControllerTest {
         BuoyResponse rejected = makeResponse(id, "Bị từ chối", "CARDINAL", "DRAFT");
         rejected.setRejectionReason("Lý do từ chối hợp lệ");
         rejected.setApprovalStatus("REJECTED");
-        when(buoyService.reject(eq(id), anyString(), anyString())).thenReturn(rejected);
+        when(buoyService.reject(eq(id), anyString(), any(java.util.UUID.class))).thenReturn(rejected);
 
         mockMvc.perform(post("/api/buoys/{id}/reject", id)
                         .param("rejectReason", "Lý do từ chối hợp lệ")
-                        .param("approverId", "2"))
+                        .param("approverId", "00000000-0000-0000-0000-000000000002"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.approvalStatus").value("REJECTED"));
 
-        verify(buoyService).reject(id, "Lý do từ chối hợp lệ", "2");
+        verify(buoyService).reject(eq(id), eq("Lý do từ chối hợp lệ"), any(java.util.UUID.class));
     }
 
     @Test
     @DisplayName("POST /api/buoys/{id}/reject — returns 400 when reason too short")
     void testRejectShortReason() throws Exception {
         UUID id = UUID.randomUUID();
-        when(buoyService.reject(eq(id), anyString(), anyString()))
+        when(buoyService.reject(eq(id), anyString(), any(java.util.UUID.class)))
                 .thenThrow(new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự"));
 
         mockMvc.perform(post("/api/buoys/{id}/reject", id)
                         .param("rejectReason", "Ngắn")
-                        .param("approverId", "2"))
+                        .param("approverId", "00000000-0000-0000-0000-000000000002"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false));
     }

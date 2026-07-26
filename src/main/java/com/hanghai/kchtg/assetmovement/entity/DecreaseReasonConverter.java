@@ -21,6 +21,6 @@ public class DecreaseReasonConverter implements AttributeConverter<DecreaseReaso
                 return e;
             }
         }
-        throw new IllegalArgumentException("GiÃ¡ trá»‹ database khÃ´ng há»£p lá»‡ cho DecreaseReason: " + dbData);
+        throw new IllegalArgumentException("Giá trị database không hợp lệ cho DecreaseReason: " + dbData);
     }
 }

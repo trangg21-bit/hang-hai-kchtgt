@@ -36,18 +36,6 @@ public class BeaconLight extends BaseEntity {
     private String type;
 
     @NotNull
-    @DecimalMin("-90.0")
-    @DecimalMax("90.0")
-    @Column(name = "latitude", nullable = false)
-    private Double latitude;
-
-    @NotNull
-    @DecimalMin("-180.0")
-    @DecimalMax("180.0")
-    @Column(name = "longitude", nullable = false)
-    private Double longitude;
-
-    @NotNull
     @DecimalMin("0.01")
     @DecimalMax("60.0")
     @Column(name = "light_range", nullable = false)
@@ -95,7 +83,7 @@ public class BeaconLight extends BaseEntity {
     private Integer approvalLevel;
 
     @Column(name = "approved_by")
-    private String approvedBy;
+    private java.util.UUID approvedBy;
 
     @Column(name = "approved_date")
     private java.time.LocalDateTime approvedDate;
@@ -104,7 +92,7 @@ public class BeaconLight extends BaseEntity {
     private String rejectionReason;
 
     @Column(name = "spatial_id")
-    private java.util.UUID khongGianId;
+    private java.util.UUID spatialId;
 
     @Column(name = "shape", length = 255)
     private String shape;

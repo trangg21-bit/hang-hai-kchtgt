@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.integration.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.integration.entity.CargoAggregate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.trade.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.trade.entity.TradeFlow;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -8,7 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface TradeFlowRepository extends JpaRepository<TradeFlow, Long> {
+public interface TradeFlowRepository extends JpaRepository<TradeFlow, UUID> {
 
     /** Find all trade flows for a specific period */
     List<TradeFlow> findByPeriod(String period);

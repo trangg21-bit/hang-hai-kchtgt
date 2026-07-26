@@ -60,7 +60,7 @@ class DikeRevetmentServiceTest {
                 .isApprovedLevel1(false)
                 .isApprovedLevel2(false)
                 .isDeleted(false)
-                .createdBy("Admin")
+                .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .createdAt(LocalDateTime.of(2026, 6, 1, 10, 0))
                 .build();
         createReq = DikeRevetmentCreateRequest.builder()
@@ -76,7 +76,7 @@ class DikeRevetmentServiceTest {
 
     @Test void create_shouldSaveEntity() {
         when(repo.save(any())).thenReturn(testEntity);
-        DikeRevetmentResponse r = service.create(createReq, "testuser");
+        DikeRevetmentResponse r = service.create(createReq, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertThat(r).isNotNull();
         assertThat(r.getDikeRevetmentType()).isEqualTo(DikeRevetmentType.RIVER_DIKE);
         assertThat(r.getApprovalStatus()).isEqualTo(DikeRevetmentApprovalStatus.PROPOSED);
@@ -85,7 +85,7 @@ class DikeRevetmentServiceTest {
 
     @Test void create_shouldSetDefaultStatusToProposed() {
         when(repo.save(any())).thenReturn(testEntity);
-        assertThat(service.create(createReq, "testuser").getApprovalStatus())
+        assertThat(service.create(createReq, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).getApprovalStatus())
                 .isEqualTo(DikeRevetmentApprovalStatus.PROPOSED);
     }
 
@@ -123,33 +123,33 @@ class DikeRevetmentServiceTest {
 
     @Test void approveC1_shouldTransitionProposedToUnderReview() {
         when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
-        DikeRevetmentApprovalHistory hist = DikeRevetmentApprovalHistory.builder().id(1L).build();
+        DikeRevetmentApprovalHistory hist = DikeRevetmentApprovalHistory.builder().id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         when(approvalHistoryRepo.save(any())).thenReturn(hist);
         ApprovalResponse r = service.approveC1(TEST_ID, ApprovalRequest.builder()
                 .decision("APPROVED")
                 .reason("Phe cap 1")
-                .build(), "Truong Phong");
+                .build(), java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertThat(r.getStatus()).isEqualTo("UNDER_REVIEW");
-        assertThat(r.getApprovalLevel()).isEqualTo(1);
+        assertThat(r.getApprovalLevel()).isEqualTo(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
     }
 
     @Test void approveC2_shouldTransitionUnderReviewToApproved() {
         testEntity.setApprovalStatus(DikeRevetmentApprovalStatus.UNDER_REVIEW);
         when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
-        DikeRevetmentApprovalHistory hist = DikeRevetmentApprovalHistory.builder().id(1L).build();
+        DikeRevetmentApprovalHistory hist = DikeRevetmentApprovalHistory.builder().id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         when(approvalHistoryRepo.save(any())).thenReturn(hist);
         ApprovalResponse r = service.approveC2(TEST_ID, ApprovalRequest.builder()
                 .decision("APPROVED")
                 .reason("Phe cap 2")
-                .build(), "Giam Doc");
+                .build(), java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
         assertThat(r.getStatus()).isEqualTo("APPROVED");
-        assertThat(r.getApprovalLevel()).isEqualTo(2);
+        assertThat(r.getApprovalLevel()).isEqualTo(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_2);
     }
 
     @Test void getApprovalHistory_shouldReturnEntries() {
         when(repo.findById(TEST_ID)).thenReturn(Optional.of(testEntity));
         DikeRevetmentApprovalHistory hist = DikeRevetmentApprovalHistory.builder()
-                .id(1L).dikeRevetment(testEntity).approvalLevel(1)
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).dikeRevetment(testEntity).approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1)
                 .status("UNDER_REVIEW").approver("Truong")
                 .approvalDate(LocalDate.of(2026, 6, 1)).reason("Phe cap 1")
                 .build();

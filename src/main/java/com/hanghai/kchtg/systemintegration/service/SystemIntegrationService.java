@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.systemintegration.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.systemintegration.dto.*;
 import com.hanghai.kchtg.systemintegration.entity.SystemIntegrationRecord;
 import com.hanghai.kchtg.systemintegration.enums.IntegrationStatus;

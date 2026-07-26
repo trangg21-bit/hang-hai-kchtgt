@@ -1,5 +1,11 @@
 package com.hanghai.kchtg.shiprepairfacility.entity;
 
+import java.util.UUID;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -18,19 +24,20 @@ public class ApprovalHistory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
     @Column(name = "ship_repair_facility_id", nullable = true)
-    private java.util.UUID shipRepairFacilityId;
+    private UUID shipRepairFacilityId;
 
     @Column(name = "approval_level", nullable = false)
-    private Integer approvalLevel;
+    @Enumerated(EnumType.ORDINAL)
+    private ApprovalLevel approvalLevel;
 
     @Column(name = "status", nullable = false, length = 30)
     private String status;
 
     @Column(name = "approved_by", nullable = false, length = 100)
-    private String approvedBy;
+    private UUID approvedBy;
 
     @CreatedDate
     @Column(name = "approved_date", nullable = false, updatable = false)

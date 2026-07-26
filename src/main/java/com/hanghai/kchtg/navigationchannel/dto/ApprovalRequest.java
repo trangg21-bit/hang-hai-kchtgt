@@ -1,5 +1,9 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
@@ -12,7 +16,7 @@ import lombok.*;
 @Builder
 public class ApprovalRequest {
 
-    private Integer approvalLevel;
+    private ApprovalLevel approvalLevel;
 
     @NotBlank(message = "Trang thai khong duoc de trong")
     private String status;

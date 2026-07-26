@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetRequest;
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetResponse;
 import com.hanghai.kchtg.assetmovement.entity.AssetStatus;

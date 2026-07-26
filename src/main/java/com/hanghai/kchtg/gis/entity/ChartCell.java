@@ -48,13 +48,6 @@ public class ChartCell extends BaseEntity {
     @Column(name = "is_encrypted", nullable = false)
     @Builder.Default
     private Boolean isEncrypted = false;
-
-    @Column(name = "latitude")
-    private Double latitude;
-
-    @Column(name = "longitude")
-    private Double longitude;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.AssetDecreaseRequestRequest;
 import com.hanghai.kchtg.assetmovement.dto.AssetDecreaseRequestResponse;
 import com.hanghai.kchtg.assetmovement.entity.DecreaseReason;
@@ -28,7 +30,7 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class AssetDecreaseRequestService {
     private final AssetDecreaseRequestRepository repository;
-    private final InfraAssetRepository taiSanRepository;
+    private final InfraAssetRepository assetRepository;
     private final UserRepository userRepository;
 
     private UUID getCurrentUserId() {
@@ -50,8 +52,8 @@ public class AssetDecreaseRequestService {
                 .decreaseDate(Instant.now())
                 .description(request.getReason())
                 .status(RequestStatus.PENDING)
-                .createdBy(currentUserId != null ? currentUserId.toString() : null)
-                .updatedBy(currentUserId != null ? currentUserId.toString() : null)
+                .createdBy(currentUserId)
+                .updatedBy(currentUserId)
                 
                 .build();
         AssetDecreaseRequest saved = repository.save(entity);
@@ -60,7 +62,7 @@ public class AssetDecreaseRequestService {
 
     public AssetDecreaseRequestResponse getById(UUID id) {
         AssetDecreaseRequest entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yÃªu cáº§u giáº£m tÃ i sáº£n với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yêu cầu giảm tài sản với id: " + id));
         return toResponse(entity);
     }
 
@@ -76,36 +78,36 @@ public class AssetDecreaseRequestService {
     @Transactional
     public AssetDecreaseRequestResponse update(UUID id, AssetDecreaseRequestRequest request) {
         AssetDecreaseRequest entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yÃªu cáº§u giáº£m tÃ i sáº£n với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yêu cầu giảm tài sản với id: " + id));
         if (request.getAssetId() != null) entity.setAssetId(request.getAssetId());
         if (request.getReason() != null) entity.setDescription(request.getReason());
         if (request.getDecreaseReason() != null) entity.setDecreaseReason(parseDecreaseReason(request.getDecreaseReason()));
         UUID currentUserId = getCurrentUserId();
-        entity.setUpdatedBy(currentUserId != null ? currentUserId.toString() : null);
+        entity.setUpdatedBy(currentUserId);
         AssetDecreaseRequest saved = repository.save(entity);
         return toResponse(saved);
     }
 
     @Transactional
     public void delete(UUID id) {
-        if (!repository.existsById(id)) throw new EntityNotFoundException("Không tìm thấy yÃªu cáº§u giáº£m tÃ i sáº£n với id: " + id);
+        if (!repository.existsById(id)) throw new EntityNotFoundException("Không tìm thấy yêu cầu giảm tài sản với id: " + id);
         repository.deleteById(id);
     }
 
     @Transactional
     public AssetDecreaseRequestResponse approve(UUID id, String remarks) {
         AssetDecreaseRequest entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yÃªu cáº§u giáº£m tÃ i sáº£n với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yêu cầu giảm tài sản với id: " + id));
 
         UUID currentUserId = getCurrentUserId();
         entity.setStatus(RequestStatus.APPROVED);
         entity.setApprovedBy(currentUserId);
         entity.setApprovedAt(Instant.now());
         entity.setApprovedRemarks(remarks);
-        entity.setUpdatedBy((currentUserId != null ? currentUserId.toString() : null));
+        entity.setUpdatedBy((currentUserId));
 
         if (entity.getAssetId() != null) {
-            taiSanRepository.findById(entity.getAssetId()).ifPresent(taiSan -> {
+            assetRepository.findById(entity.getAssetId()).ifPresent(taiSan -> {
                 AssetStatus targetStatus = AssetStatus.CANCELED;
                 if (entity.getDecreaseReason() != null) {
                     switch (entity.getDecreaseReason()) {
@@ -118,7 +120,7 @@ public class AssetDecreaseRequestService {
                 taiSan.setStatus(targetStatus);
                 taiSan.setApprovedBy(currentUserId);
                 taiSan.setApprovedAt(Instant.now());
-                taiSanRepository.save(taiSan);
+                assetRepository.save(taiSan);
             });
         }
 
@@ -129,14 +131,14 @@ public class AssetDecreaseRequestService {
     @Transactional
     public AssetDecreaseRequestResponse reject(UUID id, String remarks) {
         AssetDecreaseRequest entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yÃªu cáº§u giáº£m tÃ i sáº£n với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yêu cầu giảm tài sản với id: " + id));
 
         UUID currentUserId = getCurrentUserId();
         entity.setStatus(RequestStatus.REJECTED);
         entity.setUnapprovedBy(currentUserId);
         entity.setUnapprovedAt(Instant.now());
         entity.setUnapprovedRemarks(remarks);
-        entity.setUpdatedBy((currentUserId != null ? currentUserId.toString() : null));
+        entity.setUpdatedBy((currentUserId));
 
         AssetDecreaseRequest saved = repository.save(entity);
         return toResponse(saved);
@@ -144,18 +146,18 @@ public class AssetDecreaseRequestService {
 
     private AssetDecreaseRequestResponse toResponse(AssetDecreaseRequest entity) {
         String assetName = null;
-        String donViTinh = "CÃ¡i";
+        String unitOfMeasure = "Cái";
 
         if (entity.getAssetId() != null) {
-            var taiSanOpt = taiSanRepository.findById(entity.getAssetId());
-            if (taiSanOpt.isPresent()) {
-                assetName = taiSanOpt.get().getAssetName();
+            var assetOpt = assetRepository.findById(entity.getAssetId());
+            if (assetOpt.isPresent()) {
+                assetName = assetOpt.get().getAssetName();
             }
         }
 
         String createdByName = null;
         if (entity.getCreatedBy() != null) {
-            var userOpt = userRepository.findById(java.util.UUID.fromString(entity.getCreatedBy()));
+            var userOpt = userRepository.findById(entity.getCreatedBy());
             if (userOpt.isPresent()) {
                 createdByName = userOpt.get().getFullName();
                 if (createdByName == null || createdByName.isEmpty()) {
@@ -168,8 +170,8 @@ public class AssetDecreaseRequestService {
                 .id(entity.getId())
                 .assetId(entity.getAssetId())
                 .assetName(assetName)
-                .soLuong(1)
-                .donViTinh(donViTinh)
+                .quantity(1)
+                .unitOfMeasure(unitOfMeasure)
                 .reason(entity.getDescription())
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
                 .decreaseReason(entity.getDecreaseReason() != null ? entity.getDecreaseReason().name() : null)

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.radarstation.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
@@ -18,12 +20,12 @@ import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 @AllArgsConstructor
 @Builder
 @SQLRestriction("is_deleted = false")
-public class RadarStation {
+public class RadarStation extends com.hanghai.kchtg.common.entity.BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
-    private java.util.UUID id;
+    private UUID id;
 
     @Column(name = "station_name", nullable = false, length = 255)
     private String stationName;
@@ -47,7 +49,7 @@ public class RadarStation {
     private String conditionStatus;
 
     @Column(name = "org_unit_id")
-    private java.util.UUID orgUnitId;
+    private UUID orgUnitId;
 
     @Column(name = "approval_status", nullable = false)
     @Convert(converter = RadarStationApprovalStatusConverter.class)
@@ -58,7 +60,7 @@ public class RadarStation {
     private Boolean approvedLevel1 = false;
 
     @Column(name = "approver_level1", length = 100)
-    private String approverLevel1;
+    private UUID approverLevel1;
 
     @Column(name = "approved_date_level1")
     private LocalDateTime approvedDateLevel1;
@@ -68,7 +70,7 @@ public class RadarStation {
     private Boolean approvedLevel2 = false;
 
     @Column(name = "approver_level2", length = 100)
-    private String approverLevel2;
+    private UUID approverLevel2;
 
     @Column(name = "approved_date_level2")
     private LocalDateTime approvedDateLevel2;
@@ -77,13 +79,13 @@ public class RadarStation {
     private String rejectionReason;
 
     @Column(name = "created_by", nullable = false, length = 100)
-    private String createdBy;
+    private UUID createdBy;
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
     @Column(name = "updated_by", length = 100)
-    private String updatedBy;
+    private UUID updatedBy;
 
     @Column(name = "updated_date")
     private LocalDateTime updatedDate;
@@ -92,11 +94,14 @@ public class RadarStation {
     @Builder.Default
     private Boolean isDeleted = false;
 
+    @Column(name = "deleted_by", length = 100)
+    private UUID deletedBy;
+
     @Column(name = "spatial_id")
-    private java.util.UUID khongGianId;
+    private UUID spatialId;
 
     @Column(name = "vts_system_id")
-    private java.util.UUID vtsSystemId;
+    private UUID vtsSystemId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vts_system_id", insertable = false, updatable = false)
@@ -115,14 +120,7 @@ public class RadarStation {
     @PrePersist
     protected void onCreate() {
         if (approvalStatus == null) approvalStatus = RadarStationApprovalStatus.PROPOSED;
-        if (createdDate == null) createdDate = LocalDateTime.now();
         if (approvedLevel1 == null) approvedLevel1 = false;
         if (approvedLevel2 == null) approvedLevel2 = false;
-        if (isDeleted == null) isDeleted = false;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedDate = LocalDateTime.now();
     }
 }

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.InventoryPlanRequest;
 import com.hanghai.kchtg.assetmovement.dto.InventoryPlanResponse;
 import com.hanghai.kchtg.assetmovement.entity.InventoryPlan;
@@ -45,7 +47,7 @@ public class InventoryPlanService {
             LocalDate startDate = LocalDate.ofInstant(request.getStartDate(), ZoneId.systemDefault());
             LocalDate endDate = LocalDate.ofInstant(request.getEndDate(), ZoneId.systemDefault());
             if (startDate.isAfter(endDate)) {
-                throw new IllegalArgumentException("NgÃ y báº¯t Ä‘áº§u khÃ´ng Ä‘Æ°á»£c lá»›n hÆ¡n ngÃ y káº¿t thÃºc");
+                throw new IllegalArgumentException("Ngày bắt đầu không được lớn hơn ngày kết thúc");
             }
         }
         UUID currentUserId = getCurrentUserId();
@@ -58,8 +60,8 @@ public class InventoryPlanService {
                 .inventoryLeader(request.getInventoryLeader())
                 .description(request.getDescription())
                 .status(PlanStatus.PENDING)
-                .createdBy(currentUserId != null ? currentUserId.toString() : null)
-                .updatedBy(currentUserId != null ? currentUserId.toString() : null)
+                .createdBy(currentUserId)
+                .updatedBy(currentUserId)
                 
                 .build();
         InventoryPlan saved = repository.save(entity);
@@ -68,7 +70,7 @@ public class InventoryPlanService {
 
     public InventoryPlanResponse getById(UUID id) {
         InventoryPlan entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy káº¿ hoáº¡ch kiá»ƒm kÃª với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy kế hoạch kiểm kê với id: " + id));
         return toResponse(entity);
     }
 
@@ -85,7 +87,7 @@ public class InventoryPlanService {
     @Transactional
     public InventoryPlanResponse update(UUID id, InventoryPlanRequest request) {
         InventoryPlan entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy káº¿ hoáº¡ch kiá»ƒm kÃª với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy kế hoạch kiểm kê với id: " + id));
         if (request.getScope() != null)
             entity.setScope(request.getScope());
         if (request.getDescription() != null)
@@ -99,7 +101,7 @@ public class InventoryPlanService {
     @Transactional
     public void delete(UUID id) {
         if (!repository.existsById(id))
-            throw new EntityNotFoundException("Không tìm thấy káº¿ hoáº¡ch kiá»ƒm kÃª với id: " + id);
+            throw new EntityNotFoundException("Không tìm thấy kế hoạch kiểm kê với id: " + id);
         repository.deleteById(id);
     }
 
@@ -110,7 +112,7 @@ public class InventoryPlanService {
     @Transactional
     public InventoryPlanResponse approve(UUID id, String remarks) {
         InventoryPlan entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy káº¿ hoáº¡ch kiá»ƒm kÃª với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy kế hoạch kiểm kê với id: " + id));
         entity.setStatus(PlanStatus.APPROVED);
         entity.setApprovedBy(getCurrentUserId());
         entity.setApprovedAt(Instant.now());
@@ -122,7 +124,7 @@ public class InventoryPlanService {
     @Transactional
     public InventoryPlanResponse reject(UUID id, String remarks) {
         InventoryPlan entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy káº¿ hoáº¡ch kiá»ƒm kÃª với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy kế hoạch kiểm kê với id: " + id));
         entity.setStatus(PlanStatus.REJECTED);
         entity.setUnapprovedBy(getCurrentUserId());
         entity.setUnapprovedAt(Instant.now());
@@ -134,7 +136,7 @@ public class InventoryPlanService {
     @Transactional
     public InventoryPlanResponse startExecution(UUID id) {
         InventoryPlan entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy káº¿ hoáº¡ch kiá»ƒm kÃª với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy kế hoạch kiểm kê với id: " + id));
         entity.setStatus(PlanStatus.IN_PROGRESS);
         InventoryPlan saved = repository.save(entity);
         return toResponse(saved);
@@ -143,7 +145,7 @@ public class InventoryPlanService {
     @Transactional
     public InventoryPlanResponse completeExecution(UUID id) {
         InventoryPlan entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy káº¿ hoáº¡ch kiá»ƒm kÃª với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy kế hoạch kiểm kê với id: " + id));
         entity.setStatus(PlanStatus.COMPLETED);
         InventoryPlan saved = repository.save(entity);
         return toResponse(saved);
@@ -152,7 +154,7 @@ public class InventoryPlanService {
     private InventoryPlanResponse toResponse(InventoryPlan entity) {
         String createdByName = null;
         if (entity.getCreatedBy() != null) {
-            java.util.Optional<User> userOpt = userRepository.findById(java.util.UUID.fromString(entity.getCreatedBy()));
+            java.util.Optional<User> userOpt = userRepository.findById(entity.getCreatedBy());
             if (userOpt.isPresent()) {
                 createdByName = userOpt.get().getFullName();
                 if (createdByName == null || createdByName.isEmpty()) {

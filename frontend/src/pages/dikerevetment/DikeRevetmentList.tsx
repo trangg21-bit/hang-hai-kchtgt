@@ -144,7 +144,7 @@ export default function DikeRevetmentList() {
   const columns: ColumnsType<DikeRevetmentResponse> = [
     {
       title: 'STT',
-      key: 'stt',
+      key: 'sequenceNo',
       width: 50,
       render: (_: unknown, __: unknown, index: number) => index + 1,
     } as any,
@@ -217,8 +217,8 @@ export default function DikeRevetmentList() {
     },
     {
       title: 'Đơn vị quản lý',
-      dataIndex: 'donViId',
-      key: 'donViId',
+      dataIndex: 'orgUnitId',
+      key: 'orgUnitId',
       width: 180,
       render: (val: string) => {
         return organizations.find((o) => o.id === val)?.name || val || '—';

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.line.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.line.entity.LineObject.ObjectType;
 import com.hanghai.kchtg.gis.line.entity.LineObject.Status;
 import jakarta.validation.constraints.NotBlank;
@@ -25,7 +27,7 @@ public class CreateLineObjectRequest {
     private ObjectType objectType;
 
     private Long categoryId;
-    private java.util.UUID lineSymbolId;
+    private UUID lineSymbolId;
 
     @NotBlank(message = "Tọa độ WKT/GeoJSON không được để trống")
     private String coordinates;
@@ -35,11 +37,11 @@ public class CreateLineObjectRequest {
     @Builder.Default
     private Status status = Status.DRAFT;
 
-    private java.util.UUID unitId;
+    private UUID unitId;
     private Double length;
     private String material;
     private Integer yearBuilt;
-    private java.util.UUID refId;
+    private UUID refId;
     private Integer refType;
     private String purpose;
     private String restrictionLevel;

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.vtssystem.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
@@ -17,12 +19,12 @@ import com.hanghai.kchtg.radarstation.entity.RadarStation;
 @AllArgsConstructor
 @Builder
 @SQLRestriction("is_deleted = false")
-public class VtsSystem {
+public class VtsSystem extends com.hanghai.kchtg.common.entity.BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
-    private java.util.UUID id;
+    private UUID id;
 
     @Column(name = "system_name", nullable = false, length = 255)
     private String systemName;
@@ -43,13 +45,13 @@ public class VtsSystem {
     private String partner;
 
     @Column(name = "org_unit_id")
-    private java.util.UUID orgUnitId;
+    private UUID orgUnitId;
 
     @Column(name = "scope", length = 2000)
     private String scope;
 
     @Column(name = "spatial_id")
-    private java.util.UUID khongGianId;
+    private UUID spatialId;
 
     @Column(name = "approval_status", nullable = false)
     private String approvalStatus;
@@ -59,7 +61,7 @@ public class VtsSystem {
     private Boolean approvedLevel1 = false;
 
     @Column(name = "approver_level1", length = 100)
-    private String approverLevel1;
+    private UUID approverLevel1;
 
     @Column(name = "approved_date_level1")
     private LocalDateTime approvedDateLevel1;
@@ -78,13 +80,13 @@ public class VtsSystem {
     private String rejectionReason;
 
     @Column(name = "created_by", nullable = false, length = 100)
-    private String createdBy;
+    private UUID createdBy;
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;
 
     @Column(name = "updated_by", length = 100)
-    private String updatedBy;
+    private UUID updatedBy;
 
     @Column(name = "updated_date")
     private LocalDateTime updatedDate;
@@ -92,6 +94,9 @@ public class VtsSystem {
     @Column(name = "is_deleted")
     @Builder.Default
     private Boolean isDeleted = false;
+
+    @Column(name = "deleted_by", length = 100)
+    private UUID deletedBy;
 
     @OneToMany(mappedBy = "vtsSystem", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
@@ -104,14 +109,7 @@ public class VtsSystem {
     @PrePersist
     protected void onCreate() {
         if (approvalStatus == null) approvalStatus = "PROPOSED";
-        if (createdDate == null) createdDate = LocalDateTime.now();
         if (approvedLevel1 == null) approvedLevel1 = false;
         if (approvedLevel2 == null) approvedLevel2 = false;
-        if (isDeleted == null) isDeleted = false;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedDate = LocalDateTime.now();
     }
 }

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.mapicon.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.mapicon.entity.MapSymbol;
 import com.hanghai.kchtg.mapicon.entity.MapSymbolStatus;
 import org.springframework.data.domain.Page;

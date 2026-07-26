@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.security.controller;
 
+import java.util.UUID;
+
 
 import com.hanghai.kchtg.security.dto.JwtRefreshRequest;
 import com.hanghai.kchtg.security.entity.JwtSessionEntity;
@@ -240,7 +242,7 @@ public class JwtSessionController {
      * Generate a new access token for a validated session.
      */
     private String generateNewAccessToken(JwtSessionEntity session) {
-        java.util.UUID userId = java.util.UUID.fromString(session.getUserId());
+        UUID userId = UUID.fromString(session.getUserId());
         com.hanghai.kchtg.user.entity.User user = userRepository.findByIdWithRelations(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng: " + userId));
         return tokenService.createAccessToken(user);

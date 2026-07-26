@@ -34,7 +34,7 @@ public class CargoTransaction extends BaseEntity {
     @Column(name = "transaction_type", nullable = false, length = 10)
     private TransactionType transactionType;
 
-    @Column(name = "quantity")
+    @Column(name = "soLuong")
     private Long quantity;
 
     @Column(name = "transaction_date", nullable = false)

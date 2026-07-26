@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.radarstation.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus;
 import org.springframework.data.domain.Page;
@@ -12,13 +14,13 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface RadarStationRepository extends JpaRepository<RadarStation, java.util.UUID> {
+public interface RadarStationRepository extends JpaRepository<RadarStation, UUID> {
 
     List<RadarStation> findByApprovalStatusAndIsDeletedFalse(RadarStationApprovalStatus approvalStatus);
 
-    List<RadarStation> findByVtsSystemId(java.util.UUID vtsSystemId);
+    List<RadarStation> findByVtsSystemId(UUID vtsSystemId);
 
-    long countByVtsSystemId(java.util.UUID vtsSystemId);
+    long countByVtsSystemId(UUID vtsSystemId);
 
     @Query("""
         SELECT t FROM RadarStation t
@@ -32,7 +34,7 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, java
         ORDER BY t.createdDate DESC
     """)
     Page<RadarStation> search(
-        @Param("orgUnitId") java.util.UUID orgUnitId,
+        @Param("orgUnitId") UUID orgUnitId,
         @Param("keyword") String keyword,
         @Param("conditionStatus") String conditionStatus,
         @Param("approvalStatus") RadarStationApprovalStatus approvalStatus,
@@ -44,6 +46,6 @@ public interface RadarStationRepository extends JpaRepository<RadarStation, java
            "(:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId) AND " +
            "(:search IS NULL OR LOWER(t.stationName) LIKE :search OR LOWER(t.location) LIKE :search)")
     List<RadarStation> searchFiltered(
-            @Param("orgUnitId") java.util.UUID orgUnitId,
+            @Param("orgUnitId") UUID orgUnitId,
             @Param("search") String search);
 }

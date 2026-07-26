@@ -14,10 +14,6 @@ import jakarta.validation.constraints.DecimalMin;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CoastalStationInmarsatRequest {
-
-    private String deviceCode;
-    private String stationName;
-
     @DecimalMin(value = "-90.0", message = "Vĩ độ phải từ -90 đến 90")
     @DecimalMax(value = "90.0", message = "Vĩ độ phải từ -90 đến 90")
     private Double latitude;
@@ -25,6 +21,13 @@ public class CoastalStationInmarsatRequest {
     @DecimalMin(value = "-180.0", message = "Kinh độ phải từ -180 đến 180")
     @DecimalMax(value = "180.0", message = "Kinh độ phải từ -180 đến 180")
     private Double longitude;
+
+    @jakarta.validation.constraints.NotBlank(message = "Mã thiết bị không được để trống")
+    private String deviceCode;
+
+    @jakarta.validation.constraints.NotBlank(message = "Tên trạm không được để trống")
+    private String stationName;
+
     private String modemType;
     private String frequency;
     private String coverageZone;
@@ -33,3 +36,4 @@ public class CoastalStationInmarsatRequest {
     private String contactPerson;
     private String contactPhone;
 }
+

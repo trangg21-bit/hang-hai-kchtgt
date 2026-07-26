@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.report.handler;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetment;
@@ -35,7 +37,7 @@ public class F160ReportHandler extends BaseReportHandler {
                 .findByApprovalStatusAndIsDeletedFalse(DikeRevetmentApprovalStatus.APPROVED)
                 .stream()
                 .sorted(Comparator.comparing(DikeRevetment::getId))
-                .filter(d -> skipFilter || targetUnitId.equals(d.getDonViId()))
+                .filter(d -> skipFilter || targetUnitId.equals(d.getOrgUnitId()))
                 .filter(d -> d.getUpdatedAt() == null || d.getUpdatedAt().getYear() <= reportYear)
                 .toList();
 
@@ -46,10 +48,10 @@ public class F160ReportHandler extends BaseReportHandler {
         );
 
         List<Map<String, Object>> rows = new ArrayList<>();
-        int stt = 1;
+        int sequenceNo = 1;
         for (DikeRevetment dr : items) {
             Map<String, Object> r = new LinkedHashMap<>();
-            r.put("STT", stt++);
+            r.put("STT", sequenceNo++);
             r.put("Tên công trình", dr.getDikeRevetmentName() != null ? dr.getDikeRevetmentName() : "");
             r.put("Loại công trình", dikeRevetmentTypeLabel(dr.getDikeRevetmentType()));
             r.put("Vị trí (địa danh)", dr.getLocation() != null ? dr.getLocation() : "");
@@ -62,8 +64,8 @@ public class F160ReportHandler extends BaseReportHandler {
             r.put("Cao trình đỉnh", formatCaoTrinhDinh(dr.getCrestElevation()));
             r.put("Hiện trạng của công trình", statusLabel(dr.getStatus()));
             String donVi = "";
-            if (dr.getDonViId() != null) {
-                donVi = orgUnitRepository.findById(dr.getDonViId())
+            if (dr.getOrgUnitId() != null) {
+                donVi = orgUnitRepository.findById(dr.getOrgUnitId())
                         .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
                         .orElse("");
             }
@@ -86,7 +88,7 @@ public class F160ReportHandler extends BaseReportHandler {
                 .findByApprovalStatusAndIsDeletedFalse(DikeRevetmentApprovalStatus.APPROVED)
                 .stream()
                 .sorted(Comparator.comparing(DikeRevetment::getId))
-                .filter(d -> skipFilter || targetUnitId.equals(d.getDonViId()))
+                .filter(d -> skipFilter || targetUnitId.equals(d.getOrgUnitId()))
                 .filter(d -> d.getUpdatedAt() == null || d.getUpdatedAt().getYear() <= reportYear)
                 .toList();
 
@@ -98,7 +100,7 @@ public class F160ReportHandler extends BaseReportHandler {
             item.put("code", "");
             item.put("name", dikeRev.getLocation() != null ? dikeRev.getLocation() : "");
             item.put("description", dikeRevetmentTypeLabel(dikeRev.getDikeRevetmentType()));
-            item.put("unitId", dikeRev.getDonViId() != null ? dikeRev.getDonViId().toString() : "");
+            item.put("unitId", dikeRev.getOrgUnitId() != null ? dikeRev.getOrgUnitId().toString() : "");
             item.put("status", dikeRev.getStatus() != null ? dikeRev.getStatus() : "");
             item.put("tenDeKe", dikeRev.getDikeRevetmentName() != null ? dikeRev.getDikeRevetmentName() : "");
             item.put("viTri", dikeRev.getLocation() != null ? dikeRev.getLocation() : "");
@@ -117,8 +119,8 @@ public class F160ReportHandler extends BaseReportHandler {
             item.put("caoTrinhDinh", formatCaoTrinhDinh(dikeRev.getCrestElevation()));
             item.put("hienTrang", statusLabel(dikeRev.getStatus()));
             String donVi = "";
-            if (dikeRev.getDonViId() != null) {
-                donVi = orgUnitRepository.findById(dikeRev.getDonViId())
+            if (dikeRev.getOrgUnitId() != null) {
+                donVi = orgUnitRepository.findById(dikeRev.getOrgUnitId())
                         .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)
                         .orElse("");
             }

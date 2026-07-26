@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.user.dto;
 
+import java.util.UUID;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,7 +40,7 @@ public class TwoFactorLoginResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class UserInfo {
-        private java.util.UUID id;
+        private UUID id;
         private String username;
         private String fullName;
         private String email;

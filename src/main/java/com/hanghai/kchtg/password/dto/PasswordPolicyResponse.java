@@ -2,6 +2,8 @@ package com.hanghai.kchtg.password.dto;
 
 import java.util.UUID;
 
+import java.util.UUID;
+
 /**
  * Response DTO for password-policy endpoint (F-276).
  */

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.shiprepairfacility.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -18,7 +20,7 @@ public class ShipRepairFacilityAttachment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ship_repair_facility_id", nullable = false)

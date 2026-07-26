@@ -27,6 +27,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class ShipRepairFacilityControllerTest {
 
+    private static final java.util.UUID TEST_USER_ID = java.util.UUID.fromString("00000000-0000-0000-0000-000000000001");
+
     private static final UUID TEST_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private static final UUID TEST_ID_2 = UUID.fromString("22222222-2222-2222-2222-222222222222");
 
@@ -45,7 +47,7 @@ class ShipRepairFacilityControllerTest {
                 .facilityName("Cơ sở ABC")
                 .address("Hà Nội")
                 .province("Hà Nội")
-                .facilityType(LoaiCoSo.CS_SUA_CHUA)
+                .facilityType(FacilityType.REPAIR)
                 .build();
 
         response = ShipRepairFacilityResponse.builder()
@@ -53,30 +55,31 @@ class ShipRepairFacilityControllerTest {
                 .facilityName("Cơ sở ABC")
                 .address("Hà Nội")
                 .province("Hà Nội")
-                .facilityType(LoaiCoSo.CS_SUA_CHUA)
+                .facilityType(FacilityType.REPAIR)
                 .approvalStatus(ShipRepairApprovalStatus.APPROVED)
                 .approvedLevel1(true)
                 .approvedLevel2(true)
                 .isDeleted(false)
-                .createdBy("user1")
+                .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .createdDate(LocalDateTime.now())
                 .build();
     }
 
     @Test
     void testCreate() {
-        when(service.create(any(ShipRepairFacilityCreateRequest.class), anyString())).thenReturn(response);
+        when(service.create(any(ShipRepairFacilityCreateRequest.class), any(java.util.UUID.class))).thenReturn(response);
 
         ResponseEntity<?> result = controller.create(createRequest, mockAuth());
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
-        verify(service, times(1)).create(any(ShipRepairFacilityCreateRequest.class), anyString());
+        verify(service, times(1)).create(any(ShipRepairFacilityCreateRequest.class), any(java.util.UUID.class));
     }
 
     @Test
     void testCreate_WithNullAuth() {
-        when(service.create(any(ShipRepairFacilityCreateRequest.class), eq("system"))).thenReturn(response);
+        // No authentication means the controller cannot resolve an actor id.
+        when(service.create(any(ShipRepairFacilityCreateRequest.class), isNull())).thenReturn(response);
 
         ResponseEntity<?> result = controller.create(createRequest, null);
 
@@ -86,7 +89,7 @@ class ShipRepairFacilityControllerTest {
 
     @Test
     void testCreate_WithException() {
-        when(service.create(any(), anyString())).thenThrow(new RuntimeException("Lỗi thử nghiệm"));
+        when(service.create(any(), any(java.util.UUID.class))).thenThrow(new RuntimeException("Lỗi thử nghiệm"));
 
         ResponseEntity<?> result = controller.create(createRequest, mockAuth());
 
@@ -151,17 +154,17 @@ class ShipRepairFacilityControllerTest {
     void testUpdate() {
         ShipRepairFacilityUpdateRequest updateReq = ShipRepairFacilityUpdateRequest.builder()
                 .facilityName("Cơ sở XYZ").build();
-        when(service.update(eq(TEST_ID), any(ShipRepairFacilityUpdateRequest.class), anyString())).thenReturn(response);
+        when(service.update(eq(TEST_ID), any(ShipRepairFacilityUpdateRequest.class), any(java.util.UUID.class))).thenReturn(response);
 
         ResponseEntity<?> result = controller.update(TEST_ID, updateReq, mockAuth());
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        verify(service, times(1)).update(eq(TEST_ID), any(ShipRepairFacilityUpdateRequest.class), anyString());
+        verify(service, times(1)).update(eq(TEST_ID), any(ShipRepairFacilityUpdateRequest.class), any(java.util.UUID.class));
     }
 
     @Test
     void testDelete() {
-        doNothing().when(service).delete(eq(TEST_ID), anyString());
+        doNothing().when(service).delete(eq(TEST_ID), any(java.util.UUID.class));
 
         ResponseEntity<?> result = controller.delete(TEST_ID, mockAuth());
 
@@ -170,12 +173,12 @@ class ShipRepairFacilityControllerTest {
         ApiResponse<Void> delResp = (ApiResponse<Void>) result.getBody();
         assertNotNull(delResp);
         assertTrue(delResp.isSuccess());
-        verify(service, times(1)).delete(eq(TEST_ID), anyString());
+        verify(service, times(1)).delete(eq(TEST_ID), any(java.util.UUID.class));
     }
 
     @Test
     void testDelete_Throws() {
-        doThrow(new RuntimeException("Chỉ có thể xóa các bản ghi đã được phê duyệt")).when(service).delete(eq(TEST_ID), anyString());
+        doThrow(new RuntimeException("Chỉ có thể xóa các bản ghi đã được phê duyệt")).when(service).delete(eq(TEST_ID), any(java.util.UUID.class));
 
         ResponseEntity<?> result = controller.delete(TEST_ID, mockAuth());
 
@@ -186,12 +189,12 @@ class ShipRepairFacilityControllerTest {
     @Test
     void testApproveC1_Approve() {
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
-        when(service.approveC1(eq(TEST_ID), eq(req), anyString())).thenReturn(response);
+        when(service.approveC1(eq(TEST_ID), eq(req), any(java.util.UUID.class))).thenReturn(response);
 
         ResponseEntity<?> result = controller.approveC1(TEST_ID, req, mockAuth());
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        verify(service, times(1)).approveC1(eq(TEST_ID), eq(req), anyString());
+        verify(service, times(1)).approveC1(eq(TEST_ID), eq(req), any(java.util.UUID.class));
     }
 
     @Test
@@ -202,7 +205,7 @@ class ShipRepairFacilityControllerTest {
                 .build();
         ShipRepairFacilityResponse rejectedResponse = ShipRepairFacilityResponse.builder()
                 .id(TEST_ID).approvalStatus(ShipRepairApprovalStatus.REJECTED).rejectionReason("Không đủ điều kiện").build();
-        when(service.approveC1(eq(TEST_ID), eq(req), anyString())).thenReturn(rejectedResponse);
+        when(service.approveC1(eq(TEST_ID), eq(req), any(java.util.UUID.class))).thenReturn(rejectedResponse);
 
         ResponseEntity<?> result = controller.approveC1(TEST_ID, req, mockAuth());
 
@@ -212,18 +215,18 @@ class ShipRepairFacilityControllerTest {
     @Test
     void testApproveC2_Approve() {
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
-        when(service.approveC2(eq(TEST_ID), eq(req), anyString())).thenReturn(response);
+        when(service.approveC2(eq(TEST_ID), eq(req), any(java.util.UUID.class))).thenReturn(response);
 
         ResponseEntity<?> result = controller.approveC2(TEST_ID, req, mockAuth());
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        verify(service, times(1)).approveC2(eq(TEST_ID), eq(req), anyString());
+        verify(service, times(1)).approveC2(eq(TEST_ID), eq(req), any(java.util.UUID.class));
     }
 
     @Test
     void testGetHistory() {
         HistoryEntry entry = HistoryEntry.builder()
-                .id(1L).approvalLevel(1).status("APPROVED").approvedBy("admin").build();
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1).status("APPROVED").approvedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         when(service.getHistory(TEST_ID)).thenReturn(Arrays.asList(entry));
 
         ResponseEntity<?> result = controller.getHistory(TEST_ID);
@@ -275,8 +278,13 @@ class ShipRepairFacilityControllerTest {
     }
 
     private Authentication mockAuth() {
+        // The controller resolves the actor from the principal, so it has to be a
+        // real User carrying the id the service stubs expect.
+        com.hanghai.kchtg.user.entity.User principal = new com.hanghai.kchtg.user.entity.User();
+        principal.setId(TEST_USER_ID);
+
         Authentication auth = mock(Authentication.class);
-        when(auth.getName()).thenReturn("testuser");
+        when(auth.getPrincipal()).thenReturn(principal);
         return auth;
     }
 }

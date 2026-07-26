@@ -6,14 +6,14 @@ export interface CangBienResponse {
   portCode: string;
   portName: string;
   province: string | null;
-  viDo: number | null;
-  kinhDo: number | null;
+  latitude: number | null;
+  longitude: number | null;
   area: number | null;
   khaNangTiepNhan: number | null;
   operationalStatus: string | null;
   approvalStatus: string | null;
   orgUnitId: string | null;
-  nhomCangBien: number | null;
+  portGroup: number | null;
   bieuTuongId: string | null;
   createdBy: string | null;
   updatedBy: string | null;
@@ -36,9 +36,9 @@ export interface CangBienResponse {
   tongSoDeKe: number | null;
   tongChieuDaiDeKe: number | null;
   tongSoDenBienDangTieu: number | null;
-  soLuongBenPhao: number | null;
-  soLuongKhuNeoDau: number | null;
-  soLuongKhuChuyenTai: number | null;
+  quantityBenPhao: number | null;
+  quantityKhuNeoDau: number | null;
+  quantityKhuChuyenTai: number | null;
   cacKhuNuocKhac: string | null;
   remarks: string | null;
   loaiHinhHoc?: string;
@@ -51,14 +51,14 @@ export interface CreateCangBienRequest {
   portCode: string;
   portName: string;
   province?: string | null;
-  viDo?: number | null;
-  kinhDo?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
   area: number;
   khaNangTiepNhan?: number | null;
   operationalStatus?: string | null;
   approvalStatus?: string | null;
   orgUnitId?: string | null;
-  nhomCangBien?: number | null;
+  portGroup?: number | null;
   bieuTuongId?: string | null;
   // Extended fields (V53)
   diaDiemChiTiet?: string | null;
@@ -77,9 +77,9 @@ export interface CreateCangBienRequest {
   tongSoDeKe?: number | null;
   tongChieuDaiDeKe?: number | null;
   tongSoDenBienDangTieu?: number | null;
-  soLuongBenPhao?: number | null;
-  soLuongKhuNeoDau?: number | null;
-  soLuongKhuChuyenTai?: number | null;
+  quantityBenPhao?: number | null;
+  quantityKhuNeoDau?: number | null;
+  quantityKhuChuyenTai?: number | null;
   cacKhuNuocKhac?: string | null;
   remarks?: string | null;
 }
@@ -90,13 +90,13 @@ export interface UpdateCangBienRequest {
   id: string;
   portName?: string | null;
   province?: string | null;
-  viDo?: number | null;
-  kinhDo?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
   area?: number | null;
   khaNangTiepNhan?: number | null;
   operationalStatus?: string | null;
   orgUnitId?: string | null;
-  nhomCangBien?: number | null;
+  portGroup?: number | null;
   bieuTuongId?: string | null;
   // Extended fields (V53)
   diaDiemChiTiet?: string | null;
@@ -115,9 +115,9 @@ export interface UpdateCangBienRequest {
   tongSoDeKe?: number | null;
   tongChieuDaiDeKe?: number | null;
   tongSoDenBienDangTieu?: number | null;
-  soLuongBenPhao?: number | null;
-  soLuongKhuNeoDau?: number | null;
-  soLuongKhuChuyenTai?: number | null;
+  quantityBenPhao?: number | null;
+  quantityKhuNeoDau?: number | null;
+  quantityKhuChuyenTai?: number | null;
   cacKhuNuocKhac?: string | null;
   remarks?: string | null;
 }

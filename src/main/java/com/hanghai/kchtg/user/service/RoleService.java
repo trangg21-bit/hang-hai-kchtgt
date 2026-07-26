@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.user.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.user.dto.CreateRoleRequest;
 import com.hanghai.kchtg.user.dto.UpdateRoleRequest;
 import com.hanghai.kchtg.user.entity.Permission;

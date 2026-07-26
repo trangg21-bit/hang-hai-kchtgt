@@ -66,8 +66,8 @@ public class InventoryReportServiceTest {
 
         testRequest = new InventoryReportRequest();
         testRequest.setPlanId(planId);
-        testRequest.setTongSoLuong(50);
-        testRequest.setSoLuongChenhLech(2);
+        testRequest.setTotalQuantity(50);
+        testRequest.setQuantityVariance(2);
         testRequest.setDescription("Báo cáo kiểm kê khớp số liệu");
     }
 

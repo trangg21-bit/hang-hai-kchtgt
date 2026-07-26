@@ -11,11 +11,16 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CoastalStationVTSRequest {
-
-    private String stationCode;
-    private String stationName;
     private Double latitude;
     private Double longitude;
+
+
+    @jakarta.validation.constraints.NotBlank(message = "Mã trạm không được để trống")
+    private String stationCode;
+
+    @jakarta.validation.constraints.NotBlank(message = "Tên trạm không được để trống")
+    private String stationName;
+
     private String frequencyBand;
     private Double transmitPower;
     private String equipmentType;
@@ -23,3 +28,4 @@ public class CoastalStationVTSRequest {
     private String contactPerson;
     private String contactPhone;
 }
+

@@ -1,25 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
 import {
-  Table,
-  Button,
-  Card,
-  Space,
-  Tag,
   Modal,
   Form,
   Input,
   InputNumber,
   message,
-  Popconfirm,
-  Tooltip,
+  Space
 } from 'antd';
 import {
-  PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  ReloadOutlined,
+  ExclamationCircleOutlined,
+  FileExcelOutlined
 } from '@ant-design/icons';
 import {
   fetchCoastalVTSList,
@@ -29,7 +23,14 @@ import {
 } from '../../services/station/api';
 import type { CoastalStationVTSResponse, CoastalStationVTSRequest } from '../../services/station/types';
 import { colors } from '../../theme';
-import { fontWeightBold, fontSizeLg } from '../../tokens';
+import { fontWeightBold, fontSizeMd, fontSizeLg, radiusPill, spaceFormField } from '../../tokens';
+import { ScreenHeader, FilterBar, DataTable, Pagination } from '../../components/list-view';
+import { usePermissionStore } from '../../store/permissionStore';
+import toast from '../../components/ToastNotification';
+
+const { confirm } = Modal;
+
+const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
 export default function CoastalStationList() {
   const [dataSource, setDataSource] = useState<CoastalStationVTSResponse[]>([]);
@@ -43,6 +44,7 @@ export default function CoastalStationList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CoastalStationVTSResponse | null>(null);
   const [isReadOnly, setIsReadOnly] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
   
   const [searchParams] = useSearchParams();
@@ -50,6 +52,8 @@ export default function CoastalStationList() {
 
   const action = searchParams.get('action');
   const id = searchParams.get('id');
+
+  const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   useEffect(() => {
     if (id && (action === 'detail' || action === 'edit')) {
@@ -98,7 +102,7 @@ export default function CoastalStationList() {
     loadData();
   }, [loadData, isIframeModal]);
 
-  const handleOpenModal = (record?: CoastalStationVTSResponse) => {
+  const handleOpenModal = useCallback((record?: CoastalStationVTSResponse) => {
     if (record) {
       setEditingItem(record);
       form.setFieldsValue({
@@ -118,19 +122,20 @@ export default function CoastalStationList() {
       form.resetFields();
     }
     setIsModalOpen(true);
-  };
+  }, [form]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setIsModalOpen(false);
     form.resetFields();
     if (window.self !== window.top) {
       window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
     }
-  };
+  }, [form]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields();
+      setSubmitting(true);
       const payload: CoastalStationVTSRequest = {
         status: editingItem?.status || 'ACTIVE',
         ...values,
@@ -141,147 +146,133 @@ export default function CoastalStationList() {
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[editingItem.id] = res;
         }
-        message.success('Cập nhật đài duyên hải thành công!');
+        toast.success('Cập nhật đài duyên hải thành công!');
       } else {
         await createCoastalVTS(payload);
-        message.success('Tạo mới đài duyên hải thành công!');
+        toast.success('Tạo mới đài duyên hải thành công!');
       }
 
       setIsModalOpen(false);
       form.resetFields();
       loadData();
     } catch (err: any) {
-      message.error(err.message || 'Lỗi khi lưu thông tin đài duyên hải');
+      if (err.errorFields) return;
+      toast.error(err.message || 'Lỗi khi lưu thông tin đài duyên hải');
+    } finally {
+      setSubmitting(false);
     }
-  };
+  }, [form, editingItem, loadData]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     try {
       await deleteCoastalVTS(id);
-      message.success('Xóa đài thành công!');
+      toast.success('Xóa đài thành công!');
       loadData();
     } catch (err: any) {
-      message.error(err.message || 'Lỗi khi xóa đài duyên hải');
+      toast.error(err.message || 'Lỗi khi xóa đài duyên hải');
     }
-  };
+  }, [loadData]);
 
-  const columns = [
-    {
-      title: 'Mã đài duyên hải',
-      dataIndex: 'stationCode',
-      key: 'stationCode',
-    },
-    {
-      title: 'Tên đài duyên hải / VTS',
-      dataIndex: 'stationName',
-      key: 'stationName',
-    },
-    {
-      title: 'Dải tần số (Frequency)',
-      dataIndex: 'frequencyBand',
-      key: 'frequencyBand',
-    },
-    {
-      title: 'Công suất phát (W)',
-      dataIndex: 'transmitPower',
-      key: 'transmitPower',
-    },
-    {
-      title: 'Địa chỉ lắp đặt',
-      dataIndex: 'locationAddress',
-      key: 'locationAddress',
-    },
-    {
-      title: 'Người liên hệ',
-      dataIndex: 'contactPerson',
-      key: 'contactPerson',
-    },
-    {
-      title: 'Số điện thoại',
-      dataIndex: 'contactPhone',
-      key: 'contactPhone',
-    },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => (
-        <Tag color={status === 'ACTIVE' ? 'success' : 'warning'}>
-          {status === 'ACTIVE' ? 'Hoạt động' : 'Tạm dừng'}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Thao tác',
-      key: 'action',
-      render: (_: any, record: CoastalStationVTSResponse) => (
-        <Space size="middle">
-          <Tooltip title="Chỉnh sửa">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => handleOpenModal(record)}
-            />
-          </Tooltip>
-          <Popconfirm
-            title="Bạn có chắc chắn muốn xóa đài duyên hải này?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Có"
-            cancelText="Không"
-          >
-            <Tooltip title="Xóa">
-              <Button type="text" danger icon={<DeleteOutlined />} />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
+  const confirmDelete = useCallback((record: CoastalStationVTSResponse) => {
+    confirm({
+      title: 'Xác nhận xóa đài duyên hải',
+      icon: <ExclamationCircleOutlined />,
+      content: `Bạn có chắc chắn muốn xóa đài "${record.stationName}"? Hành động này không thể hoàn tác.`,
+      okText: 'Xóa',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: () => handleDelete(record.id)
+    });
+  }, [handleDelete]);
+
+  const handleFilterSearch = useCallback((values: Record<string, any>) => {
+    setSearchText(values.search || '');
+    setPage(1);
+  }, []);
+
+  const handleFilterReset = useCallback(() => {
+    setSearchText('');
+    setPage(1);
+  }, []);
+
+  const handlePageChange = useCallback((p: number, ps: number) => {
+    setPage(p);
+    setPageSize(ps);
+  }, []);
+
+  const rowActions = useCallback((record: CoastalStationVTSResponse) => {
+    const actions: { key: string; label: string; icon?: ReactNode; onClick: () => void; danger?: boolean; }[] = [];
+    if (hasPerm('station:edit')) {
+      actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => handleOpenModal(record) });
+    }
+    if (hasPerm('station:delete')) {
+      actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => confirmDelete(record), danger: true });
+    }
+    return actions;
+  }, [hasPerm, handleOpenModal, confirmDelete]);
+
+  const columns = useMemo(() => [
+    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
+    { key: 'stationCode', label: 'Mã đài', dataIndex: 'stationCode' },
+    { key: 'stationName', label: 'Tên đài duyên hải / VTS', dataIndex: 'stationName' },
+    { key: 'frequencyBand', label: 'Dải tần số', dataIndex: 'frequencyBand' },
+    { key: 'transmitPower', label: 'Công suất (W)', dataIndex: 'transmitPower' },
+    { key: 'locationAddress', label: 'Địa chỉ lắp đặt', dataIndex: 'locationAddress' },
+    { key: 'contactPerson', label: 'Người liên hệ', dataIndex: 'contactPerson' },
+    { key: 'contactPhone', label: 'Số điện thoại', dataIndex: 'contactPhone' },
+    { key: 'status', label: 'Trạng thái', dataIndex: 'status', render: (status: string) => (
+      <span style={{ color: status === 'ACTIVE' ? 'green' : 'orange' }}>
+        {status === 'ACTIVE' ? 'Hoạt động' : 'Tạm dừng'}
+      </span>
+    )},
+  ], [page, pageSize]);
 
   return (
-    <Card
-      title="Danh sách đài duyên hải và hệ thống thông tin VTS"
-      extra={
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={loadData} />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => handleOpenModal()}
-          >
-            Thêm đài duyên hải
-          </Button>
-        </Space>
-      }
-    >
-      <div style={{ marginBottom: 16 }}>
-        <Input.Search
-          placeholder="Tìm kiếm theo mã đài, tên đài..."
-          allowClear
-          onSearch={(value) => {
-            setSearchText(value);
-            setPage(1);
-          }}
-          style={{ width: 300 }}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {!isIframeModal && (
+        <ScreenHeader
+          breadcrumb={[{ label: 'Quản lý nhà trạm' }, { label: 'Đài duyên hải VTS' }]}
+          actions={[
+            ...(hasPerm('station:create') ? [{
+              key: 'create',
+              label: 'Thêm đài duyên hải',
+              variant: 'primary' as const,
+              onClick: () => handleOpenModal()
+            }] : []),
+            {
+              key: 'export',
+              label: 'Xuất Excel',
+              variant: 'subtle' as const,
+              icon: <FileExcelOutlined />,
+              onClick: () => {}
+            }
+          ]}
         />
-      </div>
+      )}
 
-      <Table
-        dataSource={dataSource}
+      {!isIframeModal && (
+        <FilterBar
+          fields={[
+            { key: 'search', type: 'search', label: 'Tìm kiếm', placeholder: 'Mã đài, tên đài...' }
+          ]}
+          onSearch={handleFilterSearch}
+          onReset={handleFilterReset}
+        />
+      )}
+
+      <DataTable
         columns={columns}
+        data={dataSource}
         rowKey="id"
         loading={loading}
-        pagination={{
-          current: page,
-          pageSize: pageSize,
-          total: total,
-          onChange: (p, s) => {
-            setPage(p);
-            setPageSize(s);
-          },
-          showSizeChanger: true,
-          showTotal: (total) => `Tổng ${total} bản ghi`,
-        }}
+        actions={rowActions}
+      />
+
+      <Pagination
+        current={page}
+        pageSize={pageSize}
+        total={total}
+        onChange={handlePageChange}
       />
 
       <Modal
@@ -289,95 +280,59 @@ export default function CoastalStationList() {
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}
+        confirmLoading={submitting}
         okText="Lưu"
         cancelText="Hủy"
         width={700}
-        footer={isReadOnly ? [
-          <Button key="close" type="primary" onClick={handleCancel}>Đóng</Button>
-        ] : undefined}
+        okButtonProps={{ style: { borderRadius: radiusPill, height: 40, display: isReadOnly ? 'none' : 'inline-block' } }}
+        cancelButtonProps={{ style: { borderRadius: radiusPill, height: 40 } }}
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }} disabled={isReadOnly}>
           <Space size="large" style={{ display: 'flex', width: '100%' }}>
-            <Form.Item
-              name="stationCode"
-              label="Mã đài"
-              rules={[{ required: true, message: 'Vui lòng nhập mã đài' }]}
-              style={{ width: 300 }}
-            >
-              <Input placeholder="Ví dụ: DDH-HAIPHONG-01" />
+            <Form.Item name="stationCode" {...labelProps('Mã đài')} rules={[{ required: true, message: 'Vui lòng nhập mã đài' }]} style={{ width: 300, marginBottom: spaceFormField }}>
+              <Input placeholder="Ví dụ: DDH-HAIPHONG-01" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
-
-            <Form.Item
-              name="stationName"
-              label="Tên đài duyên hải / VTS"
-              rules={[{ required: true, message: 'Vui lòng nhập tên đài' }]}
-              style={{ width: 300 }}
-            >
-              <Input placeholder="Nhập tên đài..." />
+            <Form.Item name="stationName" {...labelProps('Tên đài duyên hải / VTS')} rules={[{ required: true, message: 'Vui lòng nhập tên đài' }]} style={{ width: 300, marginBottom: spaceFormField }}>
+              <Input placeholder="Nhập tên đài..." style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
           </Space>
 
           <Space size="large" style={{ display: 'flex', width: '100%' }}>
-            <Form.Item
-              name="latitude"
-              label="Vĩ độ (Lat)"
-              rules={[{ required: true, message: 'Vui lòng nhập vĩ độ' }]}
-              style={{ width: 300 }}
-            >
-              <InputNumber
-                min={-90}
-                max={90}
-                precision={6}
-                style={{ width: '100%' }}
-                placeholder="Ví dụ: 20.8415"
-              />
+            <Form.Item name="latitude" {...labelProps('Vĩ độ (Lat)')} rules={[{ required: true, message: 'Vui lòng nhập vĩ độ' }]} style={{ width: 300, marginBottom: spaceFormField }}>
+              <InputNumber min={-90} max={90} precision={6} style={{ width: '100%', borderRadius: radiusPill, height: 40, paddingTop: 4 }} placeholder="Ví dụ: 20.8415" />
             </Form.Item>
-
-            <Form.Item
-              name="longitude"
-              label="Kinh độ (Long)"
-              rules={[{ required: true, message: 'Vui lòng nhập kinh độ' }]}
-              style={{ width: 300 }}
-            >
-              <InputNumber
-                min={-180}
-                max={180}
-                precision={6}
-                style={{ width: '100%' }}
-                placeholder="Ví dụ: 106.6912"
-              />
+            <Form.Item name="longitude" {...labelProps('Kinh độ (Long)')} rules={[{ required: true, message: 'Vui lòng nhập kinh độ' }]} style={{ width: 300, marginBottom: spaceFormField }}>
+              <InputNumber min={-180} max={180} precision={6} style={{ width: '100%', borderRadius: radiusPill, height: 40, paddingTop: 4 }} placeholder="Ví dụ: 106.6912" />
             </Form.Item>
           </Space>
 
           <Space size="large" style={{ display: 'flex', width: '100%' }}>
-            <Form.Item name="frequencyBand" label="Dải tần hoạt động" style={{ width: 300 }}>
-              <Input placeholder="Ví dụ: MF, HF, VHF..." />
+            <Form.Item name="frequencyBand" {...labelProps('Dải tần hoạt động')} style={{ width: 300, marginBottom: spaceFormField }}>
+              <Input placeholder="Ví dụ: MF, HF, VHF..." style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
-
-            <Form.Item name="transmitPower" label="Công suất phát (W)" style={{ width: 300 }}>
-              <InputNumber style={{ width: '100%' }} min={0} />
+            <Form.Item name="transmitPower" {...labelProps('Công suất phát (W)')} style={{ width: 300, marginBottom: spaceFormField }}>
+              <InputNumber style={{ width: '100%', borderRadius: radiusPill, height: 40, paddingTop: 4 }} min={0} />
             </Form.Item>
           </Space>
 
-          <Form.Item name="equipmentType" label="Loại thiết bị lắp đặt">
-            <Input placeholder="Ví dụ: VHF Transceiver, HF Transmitter..." />
+          <Form.Item name="equipmentType" {...labelProps('Loại thiết bị lắp đặt')} style={{ marginBottom: spaceFormField }}>
+            <Input placeholder="Ví dụ: VHF Transceiver, HF Transmitter..." style={{ borderRadius: radiusPill, height: 40 }} />
           </Form.Item>
 
-          <Form.Item name="locationAddress" label="Địa chỉ lắp đặt đài">
-            <Input placeholder="Nhập địa chỉ vị trí đài..." />
+          <Form.Item name="locationAddress" {...labelProps('Địa chỉ lắp đặt đài')} style={{ marginBottom: spaceFormField }}>
+            <Input placeholder="Nhập địa chỉ vị trí đài..." style={{ borderRadius: radiusPill, height: 40 }} />
           </Form.Item>
 
           <Space size="large" style={{ display: 'flex', width: '100%' }}>
-            <Form.Item name="contactPerson" label="Người liên hệ trực đài" style={{ width: 300 }}>
-              <Input placeholder="Nhập họ tên người phụ trách..." />
+            <Form.Item name="contactPerson" {...labelProps('Người liên hệ trực đài')} style={{ width: 300, marginBottom: spaceFormField }}>
+              <Input placeholder="Nhập họ tên người phụ trách..." style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
-
-            <Form.Item name="contactPhone" label="Số điện thoại đài" style={{ width: 300 }}>
-              <Input placeholder="Nhập số điện thoại..." />
+            <Form.Item name="contactPhone" {...labelProps('Số điện thoại đài')} style={{ width: 300, marginBottom: spaceFormField }}>
+              <Input placeholder="Nhập số điện thoại..." style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
           </Space>
         </Form>
       </Modal>
-    </Card>
+    </div>
   );
 }

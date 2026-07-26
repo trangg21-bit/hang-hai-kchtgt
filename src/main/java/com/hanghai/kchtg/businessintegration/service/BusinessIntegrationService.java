@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.businessintegration.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.businessintegration.dto.*;
 import com.hanghai.kchtg.businessintegration.entity.BusinessDataIntegrationRecord;
 import com.hanghai.kchtg.businessintegration.enums.IntegrationStatus;

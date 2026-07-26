@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.InventoryReportRequest;
 import com.hanghai.kchtg.assetmovement.dto.InventoryReportResponse;
 import com.hanghai.kchtg.assetmovement.entity.InventoryReport;
@@ -42,13 +44,13 @@ public class InventoryReportService {
         UUID currentUserId = getCurrentUserId();
         InventoryReport entity = InventoryReport.builder()
                 .planId(request.getPlanId())
-                .totalAssets(request.getTongSoLuong())
-                .surplusCount(request.getSoLuongChenhLech() > 0 ? request.getSoLuongChenhLech() : 0)
-                .missingCount(request.getSoLuongChenhLech() < 0 ? -request.getSoLuongChenhLech() : 0)
+                .totalAssets(request.getTotalQuantity())
+                .surplusCount(request.getQuantityVariance() > 0 ? request.getQuantityVariance() : 0)
+                .missingCount(request.getQuantityVariance() < 0 ? -request.getQuantityVariance() : 0)
                 .description(request.getDescription())
                 .status(ReportStatus.PENDING)
-                .createdBy(currentUserId != null ? currentUserId.toString() : null)
-                .updatedBy(currentUserId != null ? currentUserId.toString() : null)
+                .createdBy(currentUserId)
+                .updatedBy(currentUserId)
                 
                 .build();
         InventoryReport saved = repository.save(entity);
@@ -57,7 +59,7 @@ public class InventoryReportService {
 
     public InventoryReportResponse getById(UUID id) {
         InventoryReport entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bÃ¡o cÃ¡o kiá»ƒm kÃª với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy báo cáo kiểm kê với id: " + id));
         return toResponse(entity);
     }
 
@@ -74,7 +76,7 @@ public class InventoryReportService {
     @Transactional
     public InventoryReportResponse update(UUID id, InventoryReportRequest request) {
         InventoryReport entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bÃ¡o cÃ¡o kiá»ƒm kÃª với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy báo cáo kiểm kê với id: " + id));
         if (request.getDescription() != null)
             entity.setDescription(request.getDescription());
         InventoryReport saved = repository.save(entity);
@@ -84,14 +86,14 @@ public class InventoryReportService {
     @Transactional
     public void delete(UUID id) {
         if (!repository.existsById(id))
-            throw new EntityNotFoundException("Không tìm thấy bÃ¡o cÃ¡o kiá»ƒm kÃª với id: " + id);
+            throw new EntityNotFoundException("Không tìm thấy báo cáo kiểm kê với id: " + id);
         repository.deleteById(id);
     }
 
     @Transactional
     public InventoryReportResponse approve(UUID id, String remarks) {
         InventoryReport entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bÃ¡o cÃ¡o kiá»ƒm kÃª với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy báo cáo kiểm kê với id: " + id));
         entity.setStatus(ReportStatus.APPROVED);
         entity.setApprovedBy(getCurrentUserId());
         entity.setApprovedAt(Instant.now());
@@ -103,7 +105,7 @@ public class InventoryReportService {
     @Transactional
     public InventoryReportResponse reject(UUID id, String remarks) {
         InventoryReport entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy bÃ¡o cÃ¡o kiá»ƒm kÃª với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy báo cáo kiểm kê với id: " + id));
         entity.setStatus(ReportStatus.REJECTED);
         entity.setUnapprovedBy(getCurrentUserId());
         entity.setUnapprovedAt(Instant.now());
@@ -115,7 +117,7 @@ public class InventoryReportService {
     private InventoryReportResponse toResponse(InventoryReport entity) {
         String createdByName = null;
         if (entity.getCreatedBy() != null) {
-            java.util.Optional<User> userOpt = userRepository.findById(java.util.UUID.fromString(entity.getCreatedBy()));
+            java.util.Optional<User> userOpt = userRepository.findById(entity.getCreatedBy());
             if (userOpt.isPresent()) {
                 createdByName = userOpt.get().getFullName();
                 if (createdByName == null || createdByName.isEmpty()) {
@@ -127,9 +129,9 @@ public class InventoryReportService {
         return InventoryReportResponse.builder()
                 .id(entity.getId())
                 .planId(entity.getPlanId())
-                .tenBaoCao(null)
-                .tongSoLuong(entity.getTotalAssets() != null ? entity.getTotalAssets() : 0)
-                .soLuongChenhLech(entity.getSurplusCount() != null ? entity.getSurplusCount() - entity.getMissingCount() : 0)
+                .reportName(null)
+                .totalQuantity(entity.getTotalAssets() != null ? entity.getTotalAssets() : 0)
+                .quantityVariance(entity.getSurplusCount() != null ? entity.getSurplusCount() - entity.getMissingCount() : 0)
                 .result(entity.getStatus() != null ? entity.getStatus().name() : null)
                 .description(entity.getDescription())
                 .createdBy(entity.getCreatedBy())

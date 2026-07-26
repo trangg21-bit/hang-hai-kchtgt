@@ -124,7 +124,7 @@ export default function RadarStationList() {
   const columns: ColumnsType<RadarStationResponse> = [
     {
       title: 'STT',
-      key: 'stt',
+      key: 'sequenceNo',
       width: 50,
       render: (_: unknown, __: unknown, index: number) => index + 1,
     } as any,
@@ -142,15 +142,15 @@ export default function RadarStationList() {
     },
     {
       title: 'Kinh độ',
-      dataIndex: 'kinhDo',
-      key: 'kinhDo',
+      dataIndex: 'longitude',
+      key: 'longitude',
       width: 100,
       render: (val: number) => (val !== undefined ? val.toFixed(6) : '—'),
     },
     {
       title: 'Vĩ độ',
-      dataIndex: 'viDo',
-      key: 'viDo',
+      dataIndex: 'latitude',
+      key: 'latitude',
       width: 100,
       render: (val: number) => (val !== undefined ? val.toFixed(6) : '—'),
     },

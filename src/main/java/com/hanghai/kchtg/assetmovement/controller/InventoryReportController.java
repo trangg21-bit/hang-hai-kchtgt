@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.InventoryReportRequest;
 import com.hanghai.kchtg.assetmovement.dto.InventoryReportResponse;
 import com.hanghai.kchtg.assetmovement.service.InventoryReportService;
@@ -29,7 +31,7 @@ public class InventoryReportController {
     private final InventoryReportService inventoryReportService;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-report')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryreport:manage')")
     public ResponseEntity<ApiResponse<InventoryReportResponse>> create(
             @Valid @RequestBody InventoryReportRequest request) {
         InventoryReportResponse response = inventoryReportService.create(request);
@@ -37,7 +39,7 @@ public class InventoryReportController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-report')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryreport:manage')")
     public ResponseEntity<ApiResponse<InventoryReportResponse>> getById(
             @PathVariable UUID id) {
         InventoryReportResponse response = inventoryReportService.getById(id);
@@ -45,7 +47,7 @@ public class InventoryReportController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-report')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryreport:manage')")
     public ResponseEntity<ApiResponse<Page<InventoryReportResponse>>> findAll(
             @RequestParam(required = false) UUID planId,
             @RequestParam(defaultValue = "0") int page,
@@ -62,7 +64,7 @@ public class InventoryReportController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-report')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryreport:manage')")
     public ResponseEntity<ApiResponse<InventoryReportResponse>> update(
             @PathVariable UUID id,
             @RequestBody InventoryReportRequest request) {
@@ -71,7 +73,7 @@ public class InventoryReportController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-report')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryreport:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         inventoryReportService.delete(id);
@@ -79,7 +81,7 @@ public class InventoryReportController {
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-report')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryreport:manage')")
     public ResponseEntity<ApiResponse<InventoryReportResponse>> approve(
             @PathVariable UUID id,
             @RequestBody(required = false) java.util.Map<String, String> body) {
@@ -89,7 +91,7 @@ public class InventoryReportController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-report')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryreport:manage')")
     public ResponseEntity<ApiResponse<InventoryReportResponse>> reject(
             @PathVariable UUID id,
             @RequestBody(required = false) java.util.Map<String, String> body) {

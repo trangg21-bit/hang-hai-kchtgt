@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.spatial.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
@@ -11,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 import java.util.UUID;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
 @Service
 @RequiredArgsConstructor
@@ -27,7 +30,7 @@ public class GisSpatialObjectService {
             GisSpatialObjectType objectType,
             String coordinates,
             UUID refId,
-            com.hanghai.kchtg.gis.search.dto.KchtType refType) {
+            InfrastructureType refType) {
         
         GisSpatialObject entity;
         if (id != null) {

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.InventoryAssetRequest;
 import com.hanghai.kchtg.assetmovement.dto.InventoryAssetResponse;
 import com.hanghai.kchtg.assetmovement.entity.InventoryStatus;
@@ -24,7 +26,7 @@ public class InventoryAssetController {
     private final InventoryAssetService inventoryAssetService;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-asset')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryasset:manage')")
     public ResponseEntity<ApiResponse<InventoryAssetResponse>> create(
             @RequestBody InventoryAssetRequest request) {
         InventoryAssetResponse response = inventoryAssetService.create(request);
@@ -32,7 +34,7 @@ public class InventoryAssetController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-asset')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryasset:manage')")
     public ResponseEntity<ApiResponse<InventoryAssetResponse>> getById(
             @PathVariable UUID id) {
         InventoryAssetResponse response = inventoryAssetService.getById(id);
@@ -40,7 +42,7 @@ public class InventoryAssetController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-asset')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryasset:manage')")
     public ResponseEntity<ApiResponse<Page<InventoryAssetResponse>>> findAll(
             @RequestParam(required = false) UUID planId,
             @RequestParam(required = false) InventoryStatus inventoryStatus,
@@ -50,7 +52,7 @@ public class InventoryAssetController {
                 Sort.by("createdAt").descending());
         Page<InventoryAssetResponse> result;
         if (planId != null && inventoryStatus != null) {
-            result = inventoryAssetService.findByPlanIdAndTrangThai(planId, inventoryStatus, pageable);
+            result = inventoryAssetService.findByPlanIdAndStatus(planId, inventoryStatus, pageable);
         } else if (inventoryStatus != null) {
             result = inventoryAssetService.findByStatus(inventoryStatus, pageable);
         } else if (planId != null) {
@@ -62,7 +64,7 @@ public class InventoryAssetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-asset')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryasset:manage')")
     public ResponseEntity<ApiResponse<InventoryAssetResponse>> update(
             @PathVariable UUID id,
             @RequestBody InventoryAssetRequest request) {
@@ -71,7 +73,7 @@ public class InventoryAssetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-asset')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryasset:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         inventoryAssetService.delete(id);

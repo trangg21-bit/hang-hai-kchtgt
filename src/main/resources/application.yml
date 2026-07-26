@@ -42,6 +42,11 @@ spring:
 
 # -- JWT Configuration ------------------------------------------------
 jwt:
+  # TODO(production): drop the fallback and require JWT_SECRET.
+  # Kept only while the system is in UAT. The checked-in value is public to anyone
+  # with repository access, so any deployment that does not set JWT_SECRET can have
+  # its tokens forged. JwtProperties.validate() already refuses to start on a blank
+  # secret — removing this default is all that is needed to make that guard real.
   secret: ${JWT_SECRET:aXRzLWEtc2VjcmV0LWtleS1mb3Itand0LXRva2VuLWdlbmVyYXRpb24taGFuZ2hhaS1rY2h0Zw==}
   expiration: 86400000
   access-token-expiration: 86400000
@@ -125,11 +130,28 @@ spring:
     url: ${SPRING_DATASOURCE_POSTGIS_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:kchtg_m001}}
     driver-class-name: org.postgresql.Driver
     username: ${SPRING_DATASOURCE_POSTGIS_USERNAME:${DB_USER:admin}}
+    # TODO(production): drop the fallback and require DB_PASS.
+    # Kept only while the system is in UAT — a checked-in production password is
+    # readable by anyone with repository access.
     password: ${SPRING_DATASOURCE_POSTGIS_PASSWORD:${DB_PASS:Etc@1234}}
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: update
+      # Flyway owns this schema. "update" let Hibernate alter tables on every boot —
+      # that is how the dead nha_tram_* / tai_* entities kept re-creating their tables
+      # after the migrations had renamed them away.
+      #
+      # Default is "validate": if an entity and the database disagree, startup fails
+      # immediately naming the offending table/column, instead of surfacing as a 500
+      # the first time a user opens that screen. That is what you want on a UAT boot
+      # after a large refactor.
+      #
+      # Override without rebuilding if a mismatch blocks the deploy:
+      #   JPA_DDL_AUTO=none    -> start anyway, fix the migration afterwards
+      #   JPA_DDL_AUTO=update  -> let Hibernate patch the schema (last resort: it
+      #                           re-adds columns under their old names and is how
+      #                           the drift started)
+      ddl-auto: ${JPA_DDL_AUTO:validate}
 
 server:
   port: ${SERVER_PORT:8080}

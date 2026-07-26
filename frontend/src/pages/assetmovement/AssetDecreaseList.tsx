@@ -112,8 +112,8 @@ export default function AssetDecreaseList() {
         reason: values.reason,
         decreaseReason: values.decreaseReason,
         assetName: '',
-        soLuong: 1,
-        donViTinh: 'Cái',
+        quantity: 1,
+        unitOfMeasure: 'Cái',
       };
 
       if (editingItem) {
@@ -195,8 +195,8 @@ export default function AssetDecreaseList() {
     },
     {
       title: 'Đơn vị tính',
-      dataIndex: 'donViTinh',
-      key: 'donViTinh',
+      dataIndex: 'unitOfMeasure',
+      key: 'unitOfMeasure',
     },
     {
       title: 'Lý do giảm',

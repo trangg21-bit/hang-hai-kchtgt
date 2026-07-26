@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.AssetDecreaseRequestRequest;
 import com.hanghai.kchtg.assetmovement.dto.AssetDecreaseRequestResponse;
 import com.hanghai.kchtg.assetmovement.service.AssetDecreaseRequestService;
@@ -23,7 +25,7 @@ public class AssetDecreaseRequestController {
     private final AssetDecreaseRequestService assetDecreaseRequestService;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:decrease-request')")
+    @PreAuthorize("@auth.check(authentication, 'assetdecrease:manage')")
     public ResponseEntity<ApiResponse<AssetDecreaseRequestResponse>> create(
             @RequestBody AssetDecreaseRequestRequest request) {
         AssetDecreaseRequestResponse response = assetDecreaseRequestService.create(request);
@@ -31,7 +33,7 @@ public class AssetDecreaseRequestController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:decrease-request')")
+    @PreAuthorize("@auth.check(authentication, 'assetdecrease:manage')")
     public ResponseEntity<ApiResponse<AssetDecreaseRequestResponse>> getById(
             @PathVariable UUID id) {
         AssetDecreaseRequestResponse response = assetDecreaseRequestService.getById(id);
@@ -39,7 +41,7 @@ public class AssetDecreaseRequestController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:decrease-request')")
+    @PreAuthorize("@auth.check(authentication, 'assetdecrease:manage')")
     public ResponseEntity<ApiResponse<Page<AssetDecreaseRequestResponse>>> findAll(
             @RequestParam(required = false) UUID assetId,
             @RequestParam(defaultValue = "0") int page,
@@ -56,7 +58,7 @@ public class AssetDecreaseRequestController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:decrease-request')")
+    @PreAuthorize("@auth.check(authentication, 'assetdecrease:manage')")
     public ResponseEntity<ApiResponse<AssetDecreaseRequestResponse>> update(
             @PathVariable UUID id,
             @RequestBody AssetDecreaseRequestRequest request) {
@@ -65,7 +67,7 @@ public class AssetDecreaseRequestController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:decrease-request')")
+    @PreAuthorize("@auth.check(authentication, 'assetdecrease:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         assetDecreaseRequestService.delete(id);
@@ -73,7 +75,7 @@ public class AssetDecreaseRequestController {
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("@auth.check(authentication, 'asset:decrease-request')")
+    @PreAuthorize("@auth.check(authentication, 'assetdecrease:manage')")
     public ResponseEntity<ApiResponse<AssetDecreaseRequestResponse>> approve(
             @PathVariable UUID id,
             @RequestBody(required = false) java.util.Map<String, String> body) {
@@ -83,7 +85,7 @@ public class AssetDecreaseRequestController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("@auth.check(authentication, 'asset:decrease-request')")
+    @PreAuthorize("@auth.check(authentication, 'assetdecrease:manage')")
     public ResponseEntity<ApiResponse<AssetDecreaseRequestResponse>> reject(
             @PathVariable UUID id,
             @RequestBody(required = false) java.util.Map<String, String> body) {

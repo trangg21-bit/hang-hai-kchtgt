@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.station.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.station.entity.CoastalStationVTS;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -9,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import com.hanghai.kchtg.station.entity.StationApprovalStatus;
 
 @Repository
 public interface CoastalStationVTSRepository extends JpaRepository<CoastalStationVTS, UUID> {
@@ -27,7 +30,7 @@ public interface CoastalStationVTSRepository extends JpaRepository<CoastalStatio
 
     @Query("SELECT c FROM CoastalStationVTS c WHERE " +
             "c.deletedAt IS NULL AND " +
-            "c.approvalStatus = com.hanghai.kchtg.station.entity.StationApprovalStatus.APPROVED_L2 AND " +
+            "c.approvalStatus = StationApprovalStatus.APPROVED_L2 AND " +
             "(:orgUnitId IS NULL OR c.unitId = :orgUnitId) AND " +
             "(:search IS NULL OR LOWER(c.name) LIKE :search OR LOWER(c.code) LIKE :search)")
     List<CoastalStationVTS> searchGis(

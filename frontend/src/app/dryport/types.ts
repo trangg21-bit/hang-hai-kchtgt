@@ -4,8 +4,8 @@ export interface DryPort {
   dryPortCode: string;
   dryPortName: string;
   province: string;
-  viDo: number | null;
-  kinhDo: number | null;
+  latitude: number | null;
+  longitude: number | null;
   area: number;
   congSuatTEU: number | null;
   operationalStatus: string; // 'HIEN_HANH' | 'TAM_NGUNG'
@@ -22,8 +22,8 @@ export interface CreateCangCanPayload {
   dryPortCode: string;
   dryPortName: string;
   province?: string;
-  viDo?: number | null;
-  kinhDo?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
   area: number;
   congSuatTEU?: number | null;
   operationalStatus?: string;
@@ -36,8 +36,8 @@ export interface UpdateCangCanPayload {
   dryPortCode?: string;
   dryPortName?: string;
   province?: string;
-  viDo?: number | null;
-  kinhDo?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
   area?: number;
   congSuatTEU?: number | null;
   operationalStatus?: string;

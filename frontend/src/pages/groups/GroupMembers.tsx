@@ -107,7 +107,7 @@ export default function GroupMembers() {
 
   // ---- Columns ----
   const columns = useMemo(() => [
-    { key: 'stt', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const,
+    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const,
       render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
     { key: 'fullName', label: 'Họ và tên', dataIndex: 'fullName', width: 200,
       render: (text: string) => <Space><UserOutlined /><Typography.Text strong>{text}</Typography.Text></Space> },

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.lockout.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.user.entity.User;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -33,13 +33,11 @@ public class PointObjectSyncService {
         point.setCode(entity.getCode());
         point.setName(entity.getName());
         point.setObjectType(PointObject.ObjectType.LIGHTHOUSE);
-        point.setLongitude(entity.getLongitude());
-        point.setLatitude(entity.getLatitude());
         point.setDescription(entity.getDescription());
         point.setStatus(PointObject.Status.PUBLISHED);
         point.setUnitId(entity.getUnitId());
         point.setApprovalStatus(PointObject.ApprovalStatus.APPROVED);
-        point.setApprovedBy(entity.getApprovedBy());
+        point.setApprovedBy(entity.getApprovedBy() != null ? java.util.UUID.fromString(entity.getApprovedBy()) : null);
         point.setApprovedDate(entity.getApprovedDate());
 
         pointRepo.save(point);
@@ -69,13 +67,11 @@ public class PointObjectSyncService {
         point.setCode(entity.getCode());
         point.setName(entity.getName());
         point.setObjectType(PointObject.ObjectType.BUOY);
-        point.setLongitude(entity.getLongitude());
-        point.setLatitude(entity.getLatitude());
         point.setDescription(entity.getDescription());
         point.setStatus(PointObject.Status.PUBLISHED);
         point.setUnitId(entity.getUnitId());
         point.setApprovalStatus(PointObject.ApprovalStatus.APPROVED);
-        point.setApprovedBy(entity.getApprovedBy());
+        point.setApprovedBy(entity.getApprovedBy() != null ? java.util.UUID.fromString(entity.getApprovedBy()) : null);
         point.setApprovedDate(entity.getApprovedDate());
 
         pointRepo.save(point);
@@ -93,3 +89,5 @@ public class PointObjectSyncService {
         });
     }
 }
+
+

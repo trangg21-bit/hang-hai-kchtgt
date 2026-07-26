@@ -1,4 +1,6 @@
 package com.hanghai.kchtg.station.repository;
+
+import java.util.UUID;
 import java.util.UUID;
 
 import com.hanghai.kchtg.station.entity.CoastalStationInmarsat;
@@ -9,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import com.hanghai.kchtg.station.entity.StationApprovalStatus;
 
 /**
  * Repository for CoastalStationInmarsat entity (F-099).
@@ -33,7 +36,7 @@ public interface CoastalStationInmarsatRepository extends JpaRepository<CoastalS
 
     @Query("SELECT c FROM CoastalStationInmarsat c WHERE " +
             "c.deletedAt IS NULL AND " +
-            "c.approvalStatus = com.hanghai.kchtg.station.entity.StationApprovalStatus.APPROVED_L2 AND " +
+            "c.approvalStatus = StationApprovalStatus.APPROVED_L2 AND " +
             "(:orgUnitId IS NULL OR c.unitId = :orgUnitId) AND " +
             "(:search IS NULL OR LOWER(c.name) LIKE :search OR LOWER(c.code) LIKE :search)")
     List<CoastalStationInmarsat> searchGis(

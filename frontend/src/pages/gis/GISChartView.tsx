@@ -37,7 +37,7 @@ import {
   waterZoneCRUD
 } from '../../services/portService';
 import { beaconLightCRUD, buoyCRUD } from '../../services/beaconService';
-import { fetchNhaTramDenById, fetchNhaTramPhaoById } from '../../services/nhatram/api';
+import { fetchLighthouseStationById, fetchBuoyStationById } from '../../services/station/beacon/api';
 import { dikeRevetmentCRUD } from '../../services/dikeRevetmentService';
 import { navigationChannelCRUD } from '../../services/navigationChannelService';
 import { radarStationCRUD } from '../../services/radarStationService';
@@ -411,8 +411,8 @@ const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[]
       { key: 'diaDiemChiTiet', label: 'Địa điểm chi tiết' },
       { key: 'portId', label: 'Thuộc cảng biển' },
       { key: 'navigationChannelId', label: 'Thuộc luồng hàng hải' },
-      { key: 'loaiKetCau', label: 'Loại kết cấu cầu cảng' },
-      { key: 'congNangKhaiThac', label: 'Công năng khai thác' },
+      { key: 'structureType', label: 'Loại kết cấu cầu cảng' },
+      { key: 'operationalCapacity', label: 'Công năng khai thác' },
       { key: 'operationalStatus', label: 'Trạng thái hoạt động' },
       { key: 'approvalStatus', label: 'Trạng thái phê duyệt' },
       { key: 'donViKhaiThac', label: 'Đơn vị khai thác' },
@@ -434,14 +434,14 @@ const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[]
       { key: 'pierCode', label: 'Mã cầu cảng' },
       { key: 'pierName', label: 'Tên cầu cảng' },
       { key: 'orgUnitId', label: 'Đơn vị quản lý' },
-      { key: 'diaDiem', label: 'Địa điểm (Tỉnh/ Thành phố)' },
+      { key: 'location', label: 'Địa điểm (Tỉnh/ Thành phố)' },
       { key: 'diaDiemChiTiet', label: 'Địa điểm chi tiết' },
       { key: 'ngayCapNhat', label: 'Ngày cập nhật' },
       { key: 'canBoCapNhat', label: 'Cán bộ cập nhật' },
       { key: 'portId', label: 'Thuộc cảng biển' },
       { key: 'navigationChannelId', label: 'Thuộc luồng hàng hải' },
-      { key: 'loaiKetCau', label: 'Loại kết cấu cầu cảng' },
-      { key: 'congNangKhaiThac', label: 'Công năng khai thác' },
+      { key: 'structureType', label: 'Loại kết cấu cầu cảng' },
+      { key: 'operationalCapacity', label: 'Công năng khai thác' },
       { key: 'operationalStatus', label: 'Tình trạng' },
       { key: 'approvalStatus', label: 'Trạng thái' },
       { key: 'thoiDiemCongBoMo', label: 'Thời điểm công bố mở, đưa vào sử dụng' },
@@ -454,9 +454,9 @@ const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[]
       { key: 'thoiDiemPheDuyetQuyTrinhBaoTriCongTrinh', label: 'Thời điểm phê duyệt quy trình bảo trì công trình' },
       { key: 'thoiDiemDuocChapThuanHoSoBaoCaoDanhGiaAnToanCongTrinh', label: 'Thời điểm được chấp thuận hồ sơ báo cáo đánh giá an toàn công trình (gần nhất)' },
       { key: 'thoiDiemKiemDinhGanNhat', label: 'Thời điểm kiểm định gần nhất' },
-      { key: 'soLuongCauCangDangKhaiThac', label: 'Số lượng cầu cảng đang khai thác' },
-      { key: 'soLuongCauCangDaCongBo', label: 'Số lượng cầu cảng đã công bố' },
-      { key: 'soLuongCauCangDangDuocThoaThuanDauTuXayDung', label: 'Số lượng cầu cảng đang được thỏa thuận đầu tư xây dựng' },
+      { key: 'quantityCauCangDangKhaiThac', label: 'Số lượng cầu cảng đang khai thác' },
+      { key: 'quantityCauCangDaCongBo', label: 'Số lượng cầu cảng đã công bố' },
+      { key: 'quantityCauCangDangDuocThoaThuanDauTuXayDung', label: 'Số lượng cầu cảng đang được thỏa thuận đầu tư xây dựng' },
       { key: 'sanLuongHangThongQua', label: 'Sản lượng hàng thông qua' },
       { key: 'tiepNhanTauCoTrongTaiLonHonThongSoTaiQuyetDinhCongBo', label: 'Tiếp nhận tàu có trọng tải lớn hơn thông số tại quyết định công bố' },
       { key: 'soVanBan', label: 'Số văn bản' },
@@ -606,7 +606,7 @@ const getOrderedKeysAndLabels = (type: string): { key: string; label: string }[]
       { key: 'coTau', label: 'Cỡ tàu' },
       { key: 'loaiHinhDoanhNghiep', label: 'Loại hình doanh nghiệp' },
       { key: 'hoatDong', label: 'Hoạt động' },
-      { key: 'soLuongTrienDa', label: 'Số lượng triền đà' }
+      { key: 'quantityTrienDa', label: 'Số lượng triền đà' }
     ];
   }
 
@@ -732,19 +732,19 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     // Common
     id: 'ID',
     code: 'Mã',
-    ma: 'Mã',
+    code: 'Mã',
     name: 'Tên',
-    ten: 'Tên',
+    name: 'Tên',
     orgName: 'Đơn vị quản lý',
     orgUnitName: 'Đơn vị quản lý',
     kchtTypeLabel: 'Loại KCHT',
-    diaDiem: 'Địa điểm',
+    location: 'Địa điểm',
     diaChiChiTiet: 'Địa chỉ chi tiết',
     diaDiemChiTiet: 'Địa điểm chi tiết',
     latitude: 'Vĩ độ',
     longitude: 'Kinh độ',
-    viDo: 'Vĩ độ',
-    kinhDo: 'Kinh độ',
+    latitude: 'Vĩ độ',
+    longitude: 'Kinh độ',
     createdAt: 'Ngày tạo',
     updatedAt: 'Ngày cập nhật',
     createdBy: 'Người tạo',
@@ -756,7 +756,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     province: 'Tỉnh / Thành phố',
     tinhThanh: 'Tỉnh / Thành phố',
     orgUnitId: 'Đơn vị quản lý',
-    donViId: 'Đơn vị quản lý',
+    orgUnitId: 'Đơn vị quản lý',
     unitId: 'Đơn vị quản lý',
     donViQuanLy: 'Đơn vị quản lý',
     portId: 'Thuộc cảng biển',
@@ -770,14 +770,14 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     pierCode: 'Mã cầu cảng',
     pierName: 'Tên cầu cảng',
     loaiCau: 'Loại cầu cảng',
-    congNangKhaiThac: 'Công năng khai thác',
+    operationalCapacity: 'Công năng khai thác',
     tenBenCang: 'Thuộc bến cảng',
     length: 'Chiều dài (m)',
 
     // Cảng biển
     portCode: 'Mã cảng biển',
     portName: 'Tên cảng biển',
-    nhomCangBien: 'Nhóm cảng biển',
+    portGroup: 'Nhóm cảng biển',
     area: 'Diện tích (ha)',
     khaNangTiepNhan: 'Khả năng tiếp nhận (tấn)',
 
@@ -786,7 +786,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     berthName: 'Tên bến cảng',
     tuyenDuongThuy: 'Tuyến đường thủy',
     width: 'Chiều rộng (m)',
-    loaiBen: 'Loại bến',
+    berthType: 'Loại bến',
     doSauLuong: 'Độ sâu luồng (m)',
     donViKhaiThac: 'Đơn vị khai thác',
     tongDienTich: 'Tổng diện tích (ha)',
@@ -798,7 +798,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     thoiDiemCongBoMo: 'Thời điểm công bố mở, đưa vào sử dụng',
     quyetDinhCongBo: 'Quyết định công bố/ Văn bản cho phép khai thác',
     vanBanThoaThuanDauTu: 'Văn bản thỏa thuận đầu tư xây dựng',
-    loaiKetCau: 'Loại kết cấu cầu cảng',
+    structureType: 'Loại kết cấu cầu cảng',
     province: 'Địa điểm (Tỉnh/ Thành phố)',
     diaDiemChiTiet: 'Địa điểm chi tiết',
     navigationChannelId: 'Thuộc luồng hàng hải',
@@ -877,9 +877,9 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     tongSoDeKe: 'Tổng số đê kè',
     tongChieuDaiDeKe: 'Tổng chiều dài đê kè',
     tongSoDenBienDangTieu: 'Tổng số đèn biển đăng tiêu',
-    soLuongBenPhao: 'Số lượng bến phao',
-    soLuongKhuNeoDau: 'Số lượng khu neo đậu',
-    soLuongKhuChuyenTai: 'Số lượng khu chuyển tải',
+    quantityBenPhao: 'Số lượng bến phao',
+    quantityKhuNeoDau: 'Số lượng khu neo đậu',
+    quantityKhuChuyenTai: 'Số lượng khu chuyển tải',
     cacKhuNuocKhac: 'Các khu nước khác',
     remarks: 'Ghi chú',
   };
@@ -909,13 +909,13 @@ const fetchAndFormatPopupDetails = async (record: any) => {
     } else if (type === 'Đèn biển') {
       data = await beaconLightCRUD.findById(id);
     } else if (type === 'Nhà trạm đèn biển') {
-      data = await fetchNhaTramDenById(id);
+      data = await fetchLighthouseStationById(id);
       displayType = 'Đèn biển';
     } else if (type === 'Phao tiêu' || type === 'Phao, tiêu') {
       data = await buoyCRUD.findById(id);
       displayType = 'Phao tiêu';
     } else if (type === 'Nhà trạm phao tiêu') {
-      data = await fetchNhaTramPhaoById(id);
+      data = await fetchBuoyStationById(id);
       displayType = 'Phao tiêu';
     } else if (type === 'Đê kè') {
       data = await dikeRevetmentCRUD.getById(id);
@@ -965,7 +965,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       let cangBienNameResolved = '';
       let benCangNameResolved = '';
       
-      const orgId = data.orgUnitId || data.donViId || data.unitId || data.donViQuanLy || data.unitId;
+      const orgId = data.orgUnitId || data.orgUnitId || data.unitId || data.donViQuanLy || data.unitId;
       if (orgId) {
         orgUnitNameResolved = data.donViQuanLy || data.orgName || data.orgUnitName || await resolveName(orgId, 'org');
       }
@@ -981,7 +981,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
           const valExists = data[k] !== undefined && data[k] !== null && data[k] !== '';
           let val = valExists ? data[k] : '';
           
-          if (['orgUnitId', 'donViId', 'unitId', 'donViQuanLy', 'unitId', 'unitName'].includes(k)) {
+          if (['orgUnitId', 'orgUnitId', 'unitId', 'donViQuanLy', 'unitId', 'unitName'].includes(k)) {
             val = orgUnitNameResolved || val;
           } else if (k === 'portId') {
             val = cangBienNameResolved || val;
@@ -1005,7 +1005,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
             }
             if (k === 'loaiVungNuoc') val = getLoaiVungNuocText(val);
             if (k === 'loaiHinhHoc' || k === 'geomType') val = getGeometryTypeText(val);
-            if (k === 'loaiBen') val = getLoaiBenText(val);
+            if (k === 'berthType') val = getLoaiBenText(val);
             if (k === 'loaiCau') val = getLoaiCauText(val);
             if (k === 'thoiDiemCongBoMo') val = formatDate(val);
             if (k === 'ngaySuaDoi' || k === 'updatedDate') val = formatDateTime(val);
@@ -1016,11 +1016,11 @@ const fetchAndFormatPopupDetails = async (record: any) => {
         });
       } else {
         const orderedKeys = [
-          'ma', 'portCode', 'berthCode', 'pierCode', 'waterZoneCode', 'maDeKe', 'maLuong', 'maTram', 'maHeThong', 'maCoSo', 'code', 'beaconCode', 'buoyCode',
-          'name', 'ten', 'portName', 'berthName', 'pierName', 'waterZoneName', 'tenDeKe', 'tenLuong', 'tenTram', 'systemName', 'facilityName', 'beaconName', 'buoyName',
-          'orgName', 'orgUnitName', 'donViQuanLy', 'orgUnitId', 'donViId', 'unitId',
+          'code', 'portCode', 'berthCode', 'pierCode', 'waterZoneCode', 'maDeKe', 'maLuong', 'maTram', 'maHeThong', 'maCoSo', 'code', 'beaconCode', 'buoyCode',
+          'name', 'name', 'portName', 'berthName', 'pierName', 'waterZoneName', 'tenDeKe', 'tenLuong', 'tenTram', 'systemName', 'facilityName', 'beaconName', 'buoyName',
+          'orgName', 'orgUnitName', 'donViQuanLy', 'orgUnitId', 'orgUnitId', 'unitId',
           'portId', 'tenCangBien', 'berthId', 'tenBenCang',
-          'province', 'diaDiem', 'diaChiChiTiet', 'diaDiemChiTiet',
+          'province', 'location', 'diaChiChiTiet', 'diaDiemChiTiet',
           'operationalStatus', 'status', 'tinhTrang',
           'approvalStatus',
           'loaiHinhHoc', 'geomType',
@@ -1032,7 +1032,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
             const label = KEY_LABELS[k] || k;
             let val = data[k];
             
-            if (['orgUnitId', 'donViId', 'unitId', 'donViQuanLy'].includes(k)) {
+            if (['orgUnitId', 'orgUnitId', 'unitId', 'donViQuanLy'].includes(k)) {
               val = orgUnitNameResolved || val;
             } else if (k === 'portId') {
               val = cangBienNameResolved || val;
@@ -1044,7 +1044,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
             if (k === 'approvalStatus' || k === 'trangThai' || k === 'status' || k === 'approvalStatus') val = getApprovalStatusText(val);
             if (k === 'loaiVungNuoc') val = getLoaiVungNuocText(val);
             if (k === 'loaiHinhHoc' || k === 'geomType') val = getGeometryTypeText(val);
-            if (k === 'loaiBen') val = getLoaiBenText(val);
+            if (k === 'berthType') val = getLoaiBenText(val);
             if (k === 'loaiCau') val = getLoaiCauText(val);
             if (k === 'thoiDiemCongBoMo') val = formatDate(val);
             
@@ -1075,7 +1075,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
         if (val !== undefined && val !== null && val !== '') {
           const label = KEY_LABELS[k] || k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
           let displayVal = val;
-          if (['orgUnitId', 'donViId', 'unitId', 'donViQuanLy'].includes(k)) {
+          if (['orgUnitId', 'orgUnitId', 'unitId', 'donViQuanLy'].includes(k)) {
             displayVal = orgUnitNameResolved || val;
           } else if (k === 'portId') {
             displayVal = cangBienNameResolved || val;
@@ -1093,7 +1093,7 @@ const fetchAndFormatPopupDetails = async (record: any) => {
           if (k === 'approvalStatus' || k === 'trangThai' || k === 'status' || k === 'approvalStatus') displayVal = getApprovalStatusText(val);
           if (k === 'loaiVungNuoc') displayVal = getLoaiVungNuocText(val);
           if (k === 'loaiHinhHoc' || k === 'geomType') displayVal = getGeometryTypeText(val);
-          if (k === 'loaiBen') displayVal = getLoaiBenText(val);
+          if (k === 'berthType') displayVal = getLoaiBenText(val);
           if (k === 'loaiCau') displayVal = getLoaiCauText(val);
 
           rowsHtml += `<tr><td style="${tdLabelStyle}">${label}:</td><td style="${tdValStyle}">${formatVal(displayVal)}</td></tr>`;
@@ -1116,10 +1116,10 @@ const fetchAndFormatPopupDetails = async (record: any) => {
       // Fallback
       rowsHtml += `
         <tr><td style="${tdLabelStyle}">Tên kết cấu:</td><td style="${tdValStyle}">${formatVal(record.name)}</td></tr>
-        <tr><td style="${tdLabelStyle}">Mã kết cấu:</td><td style="${tdValStyle}">${formatVal(record.ma)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Mã kết cấu:</td><td style="${tdValStyle}">${formatVal(record.code)}</td></tr>
         <tr><td style="${tdLabelStyle}">Loại KCHT:</td><td style="${tdValStyle}">${formatVal(record.kchtTypeLabel)}</td></tr>
         <tr><td style="${tdLabelStyle}">Đơn vị quản lý:</td><td style="${tdValStyle}">${formatVal(record.orgName)}</td></tr>
-        <tr><td style="${tdLabelStyle}">Địa điểm:</td><td style="${tdValStyle}">${formatVal(record.diaDiem)}</td></tr>
+        <tr><td style="${tdLabelStyle}">Địa điểm:</td><td style="${tdValStyle}">${formatVal(record.location)}</td></tr>
       `;
     }
     return headerHtml + rowsHtml + footerHtml;
@@ -1518,12 +1518,12 @@ export default function GISChartView() {
         ...x,
         id: x.id,
         name: x.name,
-        ma: x.ma,
+        code: x.code,
         orgName: x.orgName,
         kchtTypeLabel: x.kchtTypeLabel,
-        diaDiem: x.diaDiem,
-        viDo: x.latitude,
-        kinhDo: x.longitude,
+        location: x.location,
+        latitude: x.latitude,
+        longitude: x.longitude,
         bieuTuongId: x.bieuTuongId
       }));
 
@@ -1580,8 +1580,8 @@ export default function GISChartView() {
   }, [searchPanelVisible]);
 
   const handleRowClick = useCallback(async (record: any) => {
-    const rawLat = record.viDo ?? record.latitude;
-    const rawLon = record.kinhDo ?? record.longitude;
+    const rawLat = record.latitude ?? record.latitude;
+    const rawLon = record.longitude ?? record.longitude;
     
     if (rawLat !== undefined && rawLat !== null && rawLon !== undefined && rawLon !== null) {
       const lat = parseFloat(rawLat as any);
@@ -2538,7 +2538,7 @@ export default function GISChartView() {
             loaiKcht: getLoaiKchtValue(feature.categoryId),
             unitId: feature.unitId,
             Port: feature.refId,
-            diaDiem: feature.purpose,
+            location: feature.purpose,
             diaDiemChiTiet: feature.restrictionLevel,
             moTa: feature.description,
             status: feature.status || 'PUBLISHED',
@@ -2882,8 +2882,8 @@ export default function GISChartView() {
     const useCircle = selectedRecords.length > 300 && zoom < 13;
 
     selectedRecords.forEach((record) => {
-      const rawLat = record.viDo ?? record.latitude;
-      const rawLon = record.kinhDo ?? record.longitude;
+      const rawLat = record.latitude ?? record.latitude;
+      const rawLon = record.longitude ?? record.longitude;
       
       if (rawLat !== undefined && rawLat !== null && rawLon !== undefined && rawLon !== null) {
         const lat = parseFloat(rawLat as any);
@@ -3138,8 +3138,8 @@ export default function GISChartView() {
       const L = window.L;
       const pts: any[] = [];
       selectedRecords.forEach(record => {
-        const rawLat = record.viDo ?? record.latitude;
-        const rawLon = record.kinhDo ?? record.longitude;
+        const rawLat = record.latitude ?? record.latitude;
+        const rawLon = record.longitude ?? record.longitude;
         if (rawLat !== undefined && rawLat !== null && rawLon !== undefined && rawLon !== null) {
           const lat = parseFloat(rawLat);
           const lon = parseFloat(rawLon);
@@ -3151,8 +3151,8 @@ export default function GISChartView() {
       // Fallback if all selected records are outside Vietnam bounds
       if (pts.length === 0) {
         selectedRecords.forEach(record => {
-          const rawLat = record.viDo ?? record.latitude;
-          const rawLon = record.kinhDo ?? record.longitude;
+          const rawLat = record.latitude ?? record.latitude;
+          const rawLon = record.longitude ?? record.longitude;
           if (rawLat !== undefined && rawLat !== null && rawLon !== undefined && rawLon !== null) {
             pts.push([parseFloat(rawLat), parseFloat(rawLon)]);
           }

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.statistics.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.statistics.dto.StatisticsFilter;
 import com.hanghai.kchtg.statistics.dto.StatisticsFormRequest;
@@ -44,8 +46,7 @@ public class StatisticsController {
      * Find a statistics form by its database ID.
      */
     @GetMapping("/forms/{id}")
-    public ResponseEntity<ApiResponse<StatisticsFormResponse>> findById(
-            @PathVariable Long id) {
+    public ResponseEntity<ApiResponse<StatisticsFormResponse>> findById(@PathVariable java.util.UUID id) {
         log.info("Finding statistics form by id={}", id);
         return statisticsService.findById(id)
                 .map(response -> ResponseEntity.ok(
@@ -96,7 +97,7 @@ public class StatisticsController {
      */
     @PutMapping("/forms/{id}/status")
     public ResponseEntity<ApiResponse<Void>> updateStatus(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam String status) {
         log.info("Updating form [{}] status to {}", id, status);
         statisticsService.updateStatus(id, status);
@@ -127,3 +128,4 @@ public class StatisticsController {
                 ApiResponse.success("Lay tong ket thong ke thành công", summary));
     }
 }
+

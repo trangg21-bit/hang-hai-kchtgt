@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.polygon.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ObjectType;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.Status;
 import jakarta.validation.constraints.NotBlank;
@@ -25,7 +27,7 @@ public class CreatePolygonObjectRequest {
     private ObjectType objectType;
 
     private Long categoryId;
-    private java.util.UUID fillSymbolId;
+    private UUID fillSymbolId;
 
     @NotBlank(message = "Tọa độ WKT/GeoJSON không được để trống")
     private String coordinates;
@@ -35,10 +37,10 @@ public class CreatePolygonObjectRequest {
     @Builder.Default
     private Status status = Status.DRAFT;
 
-    private java.util.UUID unitId;
+    private UUID unitId;
     private Double area;
     private String purpose;
     private String restrictionLevel;
-    private java.util.UUID refId;
+    private UUID refId;
     private Integer refType;
 }

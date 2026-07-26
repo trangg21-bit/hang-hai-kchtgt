@@ -190,7 +190,7 @@ export const groupService = {
     try {
       const resp = await api.get(`/groups/${id}`);
       const item: any = extractData(resp);
-      if (!item) throw new Error("NhÃ³m khÃ´ng tá»“n táº¡i");
+      if (!item) throw new Error("Nhóm không tồn tại");
 
       return {
         id: item.id ?? "",

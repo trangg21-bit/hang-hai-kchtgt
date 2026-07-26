@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.datasharing.dto;
 
+import java.util.UUID;
+
 import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,5 +17,5 @@ import java.util.List;
 public class BulkShareRequest {
     @NotEmpty
     private List<SharedDataRequest> shares;
-    private String approvedBy;
+    private UUID approvedBy;
 }

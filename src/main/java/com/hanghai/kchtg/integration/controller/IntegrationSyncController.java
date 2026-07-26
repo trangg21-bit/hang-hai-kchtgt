@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.integration.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.dataconnection.entity.SyncLog;
 import com.hanghai.kchtg.integration.service.IntegrationSyncService;

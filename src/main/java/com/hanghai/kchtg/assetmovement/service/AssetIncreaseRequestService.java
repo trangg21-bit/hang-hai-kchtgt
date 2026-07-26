@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.AssetIncreaseRequestRequest;
 import com.hanghai.kchtg.assetmovement.dto.AssetIncreaseRequestResponse;
 import com.hanghai.kchtg.assetmovement.entity.InfraAssetType;
@@ -29,7 +31,7 @@ import java.util.UUID;
 public class AssetIncreaseRequestService {
 
     private final AssetIncreaseRequestRepository repository;
-    private final InfraAssetRepository taiSanRepository;
+    private final InfraAssetRepository assetRepository;
     private final UserRepository userRepository;
 
     private UUID getCurrentUserId() {
@@ -50,8 +52,8 @@ public class AssetIncreaseRequestService {
                 .assetType(null)
                 .description(request.getReason())
                 .status(RequestStatus.PENDING)
-                .createdBy(currentUserId != null ? currentUserId.toString() : null)
-                .updatedBy(currentUserId != null ? currentUserId.toString() : null)
+                .createdBy(currentUserId)
+                .updatedBy(currentUserId)
                 
                 .build();
 
@@ -61,7 +63,7 @@ public class AssetIncreaseRequestService {
 
     public AssetIncreaseRequestResponse getById(UUID id) {
         AssetIncreaseRequest entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yÃªu cáº§u tÄƒng tÃ i sáº£n với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yêu cầu tăng tài sản với id: " + id));
         return toResponse(entity);
     }
 
@@ -76,7 +78,7 @@ public class AssetIncreaseRequestService {
     @Transactional
     public AssetIncreaseRequestResponse update(UUID id, AssetIncreaseRequestRequest request) {
         AssetIncreaseRequest entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yÃªu cáº§u tÄƒng tÃ i sáº£n với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yêu cầu tăng tài sản với id: " + id));
 
         if (request.getAssetId() != null) {
             entity.setAssetId(request.getAssetId());
@@ -85,7 +87,7 @@ public class AssetIncreaseRequestService {
             entity.setDescription(request.getReason());
         }
         UUID currentUserId = getCurrentUserId();
-        entity.setUpdatedBy(currentUserId != null ? currentUserId.toString() : null);
+        entity.setUpdatedBy(currentUserId);
 
         AssetIncreaseRequest saved = repository.save(entity);
         return toResponse(saved);
@@ -94,7 +96,7 @@ public class AssetIncreaseRequestService {
     @Transactional
     public void delete(UUID id) {
         if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("Không tìm thấy yÃªu cáº§u tÄƒng tÃ i sáº£n với id: " + id);
+            throw new EntityNotFoundException("Không tìm thấy yêu cầu tăng tài sản với id: " + id);
         }
         repository.deleteById(id);
     }
@@ -102,21 +104,21 @@ public class AssetIncreaseRequestService {
     @Transactional
     public AssetIncreaseRequestResponse approve(UUID id, String remarks) {
         AssetIncreaseRequest entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yÃªu cáº§u tÄƒng tÃ i sáº£n với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yêu cầu tăng tài sản với id: " + id));
 
         UUID currentUserId = getCurrentUserId();
         entity.setStatus(RequestStatus.APPROVED);
         entity.setApprovedBy(currentUserId);
         entity.setApprovedAt(Instant.now());
         entity.setApprovedRemarks(remarks);
-        entity.setUpdatedBy((currentUserId != null ? currentUserId.toString() : null));
+        entity.setUpdatedBy((currentUserId));
 
         if (entity.getAssetId() != null) {
-            taiSanRepository.findById(entity.getAssetId()).ifPresent(taiSan -> {
+            assetRepository.findById(entity.getAssetId()).ifPresent(taiSan -> {
                 taiSan.setStatus(AssetStatus.MANAGED);
                 taiSan.setApprovedBy(currentUserId);
                 taiSan.setApprovedAt(Instant.now());
-                taiSanRepository.save(taiSan);
+                assetRepository.save(taiSan);
             });
         }
 
@@ -127,14 +129,14 @@ public class AssetIncreaseRequestService {
     @Transactional
     public AssetIncreaseRequestResponse reject(UUID id, String remarks) {
         AssetIncreaseRequest entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yÃªu cáº§u tÄƒng tÃ i sáº£n với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yêu cầu tăng tài sản với id: " + id));
 
         UUID currentUserId = getCurrentUserId();
         entity.setStatus(RequestStatus.REJECTED);
         entity.setUnapprovedBy(currentUserId);
         entity.setUnapprovedAt(Instant.now());
         entity.setUnapprovedRemarks(remarks);
-        entity.setUpdatedBy((currentUserId != null ? currentUserId.toString() : null));
+        entity.setUpdatedBy((currentUserId));
 
         AssetIncreaseRequest saved = repository.save(entity);
         return toResponse(saved);
@@ -147,20 +149,20 @@ public class AssetIncreaseRequestService {
 
     private AssetIncreaseRequestResponse toResponse(AssetIncreaseRequest entity) {
         String assetName = null;
-        String maSoTang = null;
-        String donViTinh = "CÃ¡i";
+        String increaseCode = null;
+        String unitOfMeasure = "Cái";
 
         if (entity.getAssetId() != null) {
-            var taiSanOpt = taiSanRepository.findById(entity.getAssetId());
-            if (taiSanOpt.isPresent()) {
-                assetName = taiSanOpt.get().getAssetName();
-                maSoTang = taiSanOpt.get().getAssetCode();
+            var assetOpt = assetRepository.findById(entity.getAssetId());
+            if (assetOpt.isPresent()) {
+                assetName = assetOpt.get().getAssetName();
+                increaseCode = assetOpt.get().getAssetCode();
             }
         }
 
         String createdByName = null;
         if (entity.getCreatedBy() != null) {
-            var userOpt = userRepository.findById(java.util.UUID.fromString(entity.getCreatedBy()));
+            var userOpt = userRepository.findById(entity.getCreatedBy());
             if (userOpt.isPresent()) {
                 createdByName = userOpt.get().getFullName();
                 if (createdByName == null || createdByName.isEmpty()) {
@@ -173,11 +175,11 @@ public class AssetIncreaseRequestService {
                 .id(entity.getId())
                 .assetId(entity.getAssetId())
                 .assetName(assetName)
-                .soLuong(1)
-                .donViTinh(donViTinh)
+                .quantity(1)
+                .unitOfMeasure(unitOfMeasure)
                 .reason(entity.getDescription())
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
-                .maSoTang(maSoTang)
+                .increaseCode(increaseCode)
                 .createdBy(entity.getCreatedBy())
                 .createdByName(createdByName)
                 .createdAt(entity.getCreatedAt())

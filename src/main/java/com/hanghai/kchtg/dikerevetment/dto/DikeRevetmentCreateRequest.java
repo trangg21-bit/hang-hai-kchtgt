@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.dikerevetment.dto;
 
+import java.util.UUID;
+
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
@@ -34,12 +36,12 @@ public class DikeRevetmentCreateRequest {
     private String surfaceMaterial;
     private String status;
     private String note;
-    private java.util.UUID donViId;
+    private UUID orgUnitId;
 
     private List<DikeRevetmentAttachmentCreate> attachments;
-    private GisGeometryType loaiHinhHoc;
-    private String toaDo;
-    private java.util.UUID bieuTuongId;
+    private GisGeometryType geometryType;
+    private String coordinates;
+    private UUID bieuTuongId;
 
     @Data
     @NoArgsConstructor
@@ -49,7 +51,7 @@ public class DikeRevetmentCreateRequest {
         private String fileName;
         private String filePath;
         private Long fileSize;
-        private String loaiTaiLieu;
-        private String nguoiTaiLen;
+        private String documentType;
+        private String uploadedBy;
     }
 }

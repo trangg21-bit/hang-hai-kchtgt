@@ -6,30 +6,30 @@ export interface Bcc157CreateRequest {
   nguonDuLieu?: string;
 
   // Section 1: Nguyên giá
-  maSoNguyenGiaSoDuDauNam?: string;
-  taiSanNguyenGiaSoDuDauNam?: number;
-  maSoNguyenGiaTangTrongNam?: string;
-  taiSanNguyenGiaTangTrongNam?: number;
-  maSoNguyenGiaGiamTrongNam?: string;
-  taiSanNguyenGiaGiamTrongNam?: number;
-  maSoNguyenGiaSoDuCuoiNam?: string;
-  taiSanNguyenGiaSoDuCuoiNam?: number;
+  openingOriginalCostCode?: string;
+  assetOpeningOriginalCost?: number;
+  originalCostIncreaseCode?: string;
+  assetOriginalCostIncrease?: number;
+  originalCostDecreaseCode?: string;
+  assetOriginalCostDecrease?: number;
+  closingOriginalCostCode?: string;
+  assetClosingOriginalCost?: number;
 
   // Section 2: Giá trị hao mòn lũy kế
-  maSoGiaTriHaoMonSoDuDauNam?: string;
-  taiSanGiaTriHaoMonSoDuDauNam?: number;
-  maSoGiaTriHaoMonTangTrongNam?: string;
-  taiSanGiaTriHaoMonTangTrongNam?: number;
-  maSoGiaTriHaoMonGiamTrongNam?: string;
-  taiSanGiaTriHaoMonGiamTrongNam?: number;
-  maSoGiaTriHaoMonSoDuCuoiNam?: string;
-  taiSanGiaTriHaoMonSoDuCuoiNam?: number;
+  openingAccumulatedDepreciationCode?: string;
+  assetOpeningAccumulatedDepreciation?: number;
+  depreciationIncreaseCode?: string;
+  assetDepreciationIncrease?: number;
+  depreciationDecreaseCode?: string;
+  assetDepreciationDecrease?: number;
+  closingDepreciationCode?: string;
+  assetClosingDepreciation?: number;
 
   // Section 3: Giá trị còn lại
-  maSoGiaTriConLaiTuNgayDauNam?: string;
-  taiSanGiaTriConLaiTuNgayDauNam?: number;
-  maSoGiaTriConLaiTuNgayCuoiNam?: string;
-  taiSanGiaTriConLaiTuNgayCuoiNam?: number;
+  openingResidualValueCode?: string;
+  assetOpeningResidualValue?: number;
+  closingResidualValueCode?: string;
+  assetClosingResidualValue?: number;
 }
 
 export interface Bcc157Response {
@@ -39,28 +39,28 @@ export interface Bcc157Response {
   nguonDuLieu: string;
   status: string;
 
-  maSoNguyenGiaSoDuDauNam?: string;
-  taiSanNguyenGiaSoDuDauNam?: number;
-  maSoNguyenGiaTangTrongNam?: string;
-  taiSanNguyenGiaTangTrongNam?: number;
-  maSoNguyenGiaGiamTrongNam?: string;
-  taiSanNguyenGiaGiamTrongNam?: number;
-  maSoNguyenGiaSoDuCuoiNam?: string;
-  taiSanNguyenGiaSoDuCuoiNam?: number;
+  openingOriginalCostCode?: string;
+  assetOpeningOriginalCost?: number;
+  originalCostIncreaseCode?: string;
+  assetOriginalCostIncrease?: number;
+  originalCostDecreaseCode?: string;
+  assetOriginalCostDecrease?: number;
+  closingOriginalCostCode?: string;
+  assetClosingOriginalCost?: number;
 
-  maSoGiaTriHaoMonSoDuDauNam?: string;
-  taiSanGiaTriHaoMonSoDuDauNam?: number;
-  maSoGiaTriHaoMonTangTrongNam?: string;
-  taiSanGiaTriHaoMonTangTrongNam?: number;
-  maSoGiaTriHaoMonGiamTrongNam?: string;
-  taiSanGiaTriHaoMonGiamTrongNam?: number;
-  maSoGiaTriHaoMonSoDuCuoiNam?: string;
-  taiSanGiaTriHaoMonSoDuCuoiNam?: number;
+  openingAccumulatedDepreciationCode?: string;
+  assetOpeningAccumulatedDepreciation?: number;
+  depreciationIncreaseCode?: string;
+  assetDepreciationIncrease?: number;
+  depreciationDecreaseCode?: string;
+  assetDepreciationDecrease?: number;
+  closingDepreciationCode?: string;
+  assetClosingDepreciation?: number;
 
-  maSoGiaTriConLaiTuNgayDauNam?: string;
-  taiSanGiaTriConLaiTuNgayDauNam?: number;
-  maSoGiaTriConLaiTuNgayCuoiNam?: string;
-  taiSanGiaTriConLaiTuNgayCuoiNam?: number;
+  openingResidualValueCode?: string;
+  assetOpeningResidualValue?: number;
+  closingResidualValueCode?: string;
+  assetClosingResidualValue?: number;
 
   createdAt?: string;
   updatedAt?: string;

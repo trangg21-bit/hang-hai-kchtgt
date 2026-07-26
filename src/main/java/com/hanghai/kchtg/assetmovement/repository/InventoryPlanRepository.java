@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.entity.InventoryPlan;
 import com.hanghai.kchtg.assetmovement.entity.InventoryType;
 import com.hanghai.kchtg.assetmovement.entity.PlanStatus;
@@ -11,7 +13,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface InventoryPlanRepository extends JpaRepository<InventoryPlan, java.util.UUID> {
+public interface InventoryPlanRepository extends JpaRepository<InventoryPlan, UUID> {
 
     List<InventoryPlan> findByStatus(PlanStatus status);
 

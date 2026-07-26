@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.report.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.report.dto.Bcc157CreateRequest;
 import com.hanghai.kchtg.report.dto.Bcc157Response;

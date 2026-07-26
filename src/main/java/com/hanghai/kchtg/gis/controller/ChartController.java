@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.gis.entity.ChartCell;
 import com.hanghai.kchtg.gis.entity.ChartFeature;

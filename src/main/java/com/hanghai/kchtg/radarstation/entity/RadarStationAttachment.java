@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.radarstation.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -15,10 +17,10 @@ public class RadarStationAttachment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
     @Column(name = "radar_station_id", nullable = false)
-    private java.util.UUID radarStationId;
+    private UUID radarStationId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "radar_station_id", insertable = false, updatable = false)

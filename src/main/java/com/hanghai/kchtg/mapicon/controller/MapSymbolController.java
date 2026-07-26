@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.mapicon.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.mapicon.dto.CreateMapSymbolRequest;
 import com.hanghai.kchtg.mapicon.dto.MapSymbolResponse;
@@ -48,8 +50,8 @@ public class MapSymbolController {
     public ResponseEntity<ApiResponse<MapSymbolResponse>> create(
             @Valid @RequestBody CreateMapSymbolRequest request,
             Authentication authentication) {
-        String username = authentication != null ? authentication.getName() : "system";
-        MapSymbolResponse response = service.create(request, username);
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        MapSymbolResponse response = service.create(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Ký hiệu bản đồ đã được tạo thành công", response));
     }

@@ -16,34 +16,34 @@ public class StationSharingController {
         this.service = service;
     }
 
-    @PostMapping("/dai-ttdh")
+    @PostMapping("/coastal-station")
     public ResponseEntity<DataSharingAggregationResponse> shareDaiTTDH(
             @RequestBody String dataPayload) {
         return ResponseEntity.ok(service.shareDaiTTDH(dataPayload));
     }
 
-    @PostMapping("/dai-inmarsat")
+    @PostMapping("/inmarsat-station")
     public ResponseEntity<DataSharingAggregationResponse> shareDaiInmarsat(
             @RequestBody String dataPayload) {
         return ResponseEntity.ok(service.shareDaiInmarsat(dataPayload));
     }
 
-    @PostMapping("/dai-cospas-sarsat")
+    @PostMapping("/cospas-sarsat-station")
     public ResponseEntity<DataSharingAggregationResponse> shareDaiCospasSarsat(
             @RequestBody String dataPayload) {
         return ResponseEntity.ok(service.shareDaiCospasSarsat(dataPayload));
     }
 
-    @PostMapping("/dai-lrit")
+    @PostMapping("/lrit-station")
     public ResponseEntity<DataSharingAggregationResponse> shareDaiLRIT(
             @RequestBody String dataPayload) {
         return ResponseEntity.ok(service.shareDaiLRIT(dataPayload));
     }
 
-    @PostMapping("/dai-hang-hai-hn")
-    public ResponseEntity<DataSharingAggregationResponse> shareDaiHangHaiHN(
+    @PostMapping("/maritime-station-hn")
+    public ResponseEntity<DataSharingAggregationResponse> shareMaritimeStationHN(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareDaiHangHaiHN(dataPayload));
+        return ResponseEntity.ok(service.shareMaritimeStationHN(dataPayload));
     }
 
     @GetMapping

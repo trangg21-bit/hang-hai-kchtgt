@@ -23,9 +23,9 @@ public class PointObjectSyncService {
         this.gisSpatialObjectService = gisSpatialObjectService;
     }
 
-    private double[] getCoordinates(java.util.UUID khongGianId) {
-        if (khongGianId != null) {
-            var spatialObjOpt = gisSpatialObjectService.findById(khongGianId);
+    private double[] getCoordinates(java.util.UUID spatialId) {
+        if (spatialId != null) {
+            var spatialObjOpt = gisSpatialObjectService.findById(spatialId);
             if (spatialObjOpt.isPresent()) {
                 String coordinates = spatialObjOpt.get().getCoordinates();
                 try {
@@ -54,9 +54,7 @@ public class PointObjectSyncService {
         point.setCode(entity.getCode());
         point.setName(entity.getName());
         point.setObjectType(PointObject.ObjectType.LIGHTHOUSE);
-        double[] coords = getCoordinates(entity.getKhongGianId());
-        point.setLongitude(coords[0]);
-        point.setLatitude(coords[1]);
+        double[] coords = getCoordinates(entity.getSpatialId());
         point.setDescription(entity.getLocation());
         point.setStatus(PointObject.Status.PUBLISHED);
         point.setUnitId(entity.getUnitId());
@@ -92,9 +90,7 @@ public class PointObjectSyncService {
         point.setCode(entity.getCode());
         point.setName(entity.getName());
         point.setObjectType(PointObject.ObjectType.BUOY);
-        double[] coords = getCoordinates(entity.getKhongGianId());
-        point.setLongitude(coords[0]);
-        point.setLatitude(coords[1]);
+        double[] coords = getCoordinates(entity.getSpatialId());
         point.setDescription(entity.getDescription());
         point.setStatus(PointObject.Status.PUBLISHED);
         point.setUnitId(entity.getUnitId());
@@ -118,3 +114,6 @@ public class PointObjectSyncService {
         });
     }
 }
+
+
+

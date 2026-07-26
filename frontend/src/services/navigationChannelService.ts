@@ -65,7 +65,7 @@ export const navigationChannelCRUD = {
   },
 
   async getByStatus(status: string): Promise<NavigationChannelResponse[]> {
-    const res = await api.get(`/v1/navigation-channel/status-phe-duyet/${status}`);
+    const res = await api.get(`/v1/navigation-channel/approval-status/${status}`);
     return toArray<NavigationChannelResponse>(res.data);
   },
 };

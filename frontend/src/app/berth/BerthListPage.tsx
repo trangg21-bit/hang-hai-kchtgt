@@ -92,17 +92,17 @@ export const translateFieldName = (fieldName: string): string => {
     portCode: 'Mã cảng biển',
     portName: 'Tên cảng biển',
     province: 'Tỉnh/Thành phố',
-    viDo: 'Vĩ độ',
-    kinhDo: 'Kinh độ',
+    latitude: 'Vĩ độ',
+    longitude: 'Kinh độ',
     area: 'Diện tích (ha)',
     khaNangTiepNhan: 'Khả năng tiếp nhận',
-    nhomCangBien: 'Nhóm cảng biển',
+    portGroup: 'Nhóm cảng biển',
     berthCode: 'Mã bến cảng',
     berthName: 'Tên bến cảng',
     portId: 'Cảng biển chủ',
     tuyenDuongThuy: 'Tuyến đường thủy',
     width: 'Chiều rộng (m)',
-    loaiBen: 'Loại bến',
+    berthType: 'Loại bến',
     doSauLuong: 'Độ sâu luồng (m)',
     pierCode: 'Mã cầu cảng',
     pierName: 'Tên cầu cảng',
@@ -125,14 +125,14 @@ export const translateFieldName = (fieldName: string): string => {
     operationalStatus: 'Trạng thái hoạt động',
     approvalStatus: 'Trạng thái phê duyệt',
     orgUnitId: 'Đơn vị quản lý',
-    congNangKhaiThac: 'Công năng khai thác',
+    operationalCapacity: 'Công năng khai thác',
     bieuTuongId: 'Biểu tượng bản đồ',
     iconId: 'Biểu tượng bản đồ',
     lineSymbolId: 'Ký hiệu đường',
     fillSymbolId: 'Ký hiệu vùng',
     khongGianId: 'Vị trí không gian',
     spatialId: 'Vị trí không gian',
-    diaDiem: 'Địa điểm',
+    location: 'Địa điểm',
     diaDiemChiTiet: 'Địa điểm chi tiết',
     heQuyChieu: 'Hệ quy chiếu',
     quyTacHienThi: 'Quy tắc hiển thị',
@@ -147,7 +147,7 @@ export const translateFieldName = (fieldName: string): string => {
     quyetDinhCongBo: 'Quyết định công bố',
     vanBanThoaThuanDauTu: 'Văn bản thỏa thuận đầu tư',
     orgUnitId: 'Đơn vị quản lý',
-    loaiKetCau: 'Loại kết cấu',
+    structureType: 'Loại kết cấu',
   };
   return map[fieldName] || fieldName;
 };
@@ -295,7 +295,7 @@ export default function BerthListPage() {
       };
       return statusMap[val.toUpperCase()] || val;
     }
-    if (fieldName === 'loaiBen') {
+    if (fieldName === 'berthType') {
       return LOAI_BEN_MAP[val] || val;
     }
     return val;
@@ -311,7 +311,7 @@ export default function BerthListPage() {
         search: search || undefined,
         berthCode: filterMaBen || undefined,
         berthName: filterTenBen || undefined,
-        loaiBen: filterLoaiBen || undefined,
+        berthType: filterLoaiBen || undefined,
         tuyenDuongThuy: filterTuyenDuongThuy || undefined,
         operationalStatus: filterStatus,
         approvalStatus: filterApprovalStatus,
@@ -351,13 +351,13 @@ export default function BerthListPage() {
             updateForm.setFieldsValue({
               berthCode: data.berthCode, berthName: data.berthName, portId: data.portId,
               orgUnitId: data.orgUnitId, tuyenDuongThuy: data.tuyenDuongThuy,
-              viDo: data.viDo, kinhDo: data.kinhDo, length: data.length,
-              width: data.width, loaiBen: data.loaiBen, doSauLuong: data.doSauLuong,
-              congNangKhaiThac: data.congNangKhaiThac ? data.congNangKhaiThac.split(',').map((s: string) => s.trim()) : [],
+              latitude: data.latitude, longitude: data.longitude, length: data.length,
+              width: data.width, berthType: data.berthType, doSauLuong: data.doSauLuong,
+              operationalCapacity: data.operationalCapacity ? data.operationalCapacity.split(',').map((s: string) => s.trim()) : [],
               operationalStatus: data.operationalStatus,
               loaiHinhHoc: data.loaiHinhHoc || 'POINT', bieuTuongId: data.bieuTuongId,
               gisLocation: { loaiHinhHoc: data.loaiHinhHoc || 'POINT', toaDo: data.toaDo || '', bieuTuongId: data.bieuTuongId },
-              diaDiem: data.diaDiem, diaDiemChiTiet: data.diaDiemChiTiet,
+              location: data.location, diaDiemChiTiet: data.diaDiemChiTiet,
               heQuyChieu: data.heQuyChieu, quyTacHienThi: data.quyTacHienThi,
               donViKhaiThac: data.donViKhaiThac, tongDienTich: data.tongDienTich,
               nangLucThongQuaThietKe: data.nangLucThongQuaThietKe, nangLucThongQuaHienTrang: data.nangLucThongQuaHienTrang,
@@ -365,7 +365,7 @@ export default function BerthListPage() {
               sanLuongHangHoaNamGanNhat: data.sanLuongHangHoaNamGanNhat,
               thoiDiemCongBoMo: data.thoiDiemCongBoMo ? dayjs(data.thoiDiemCongBoMo) : undefined,
               quyetDinhCongBo: data.quyetDinhCongBo, vanBanThoaThuanDauTu: data.vanBanThoaThuanDauTu,
-              loaiKetCau: data.loaiKetCau,
+              structureType: data.structureType,
             });
             setUpdateModalVisible(true);
           }
@@ -444,18 +444,18 @@ export default function BerthListPage() {
         portId: values.portId,
         orgUnitId: values.orgUnitId || undefined,
         tuyenDuongThuy: values.tuyenDuongThuy || undefined,
-        viDo: values.viDo ?? undefined,
-        kinhDo: values.kinhDo ?? undefined,
+        latitude: values.latitude ?? undefined,
+        longitude: values.longitude ?? undefined,
         length: values.length ?? undefined,
         width: values.width ?? undefined,
-        loaiBen: values.loaiBen || undefined,
+        berthType: values.berthType || undefined,
         doSauLuong: values.doSauLuong ?? undefined,
-        congNangKhaiThac: values.congNangKhaiThac ? values.congNangKhaiThac.join(', ') : undefined,
+        operationalCapacity: values.operationalCapacity ? values.operationalCapacity.join(', ') : undefined,
         operationalStatus: values.operationalStatus || 'HIEN_HANH',
         bieuTuongId: values.bieuTuongId || values.gisLocation?.bieuTuongId || undefined,
         loaiHinhHoc: values.loaiHinhHoc,
         toaDo: values.gisLocation?.toaDo,
-        diaDiem: values.diaDiem || undefined,
+        location: values.location || undefined,
         diaDiemChiTiet: values.diaDiemChiTiet || undefined,
         heQuyChieu: values.heQuyChieu ?? undefined,
         quyTacHienThi: values.quyTacHienThi ?? undefined,
@@ -469,7 +469,7 @@ export default function BerthListPage() {
         thoiDiemCongBoMo: values.thoiDiemCongBoMo ? dayjs(values.thoiDiemCongBoMo).toISOString() : undefined,
         quyetDinhCongBo: values.quyetDinhCongBo || undefined,
         vanBanThoaThuanDauTu: values.vanBanThoaThuanDauTu || undefined,
-        loaiKetCau: values.loaiKetCau ?? undefined,
+        structureType: values.structureType ?? undefined,
       });
 
       setSubmitting(true);
@@ -507,18 +507,18 @@ export default function BerthListPage() {
         portId: values.portId || undefined,
         orgUnitId: values.orgUnitId || undefined,
         tuyenDuongThuy: values.tuyenDuongThuy || undefined,
-        viDo: values.viDo,
-        kinhDo: values.kinhDo,
+        latitude: values.latitude,
+        longitude: values.longitude,
         length: values.length,
         width: values.width,
-        loaiBen: values.loaiBen || undefined,
+        berthType: values.berthType || undefined,
         doSauLuong: values.doSauLuong,
-        congNangKhaiThac: values.congNangKhaiThac ? values.congNangKhaiThac.join(', ') : undefined,
+        operationalCapacity: values.operationalCapacity ? values.operationalCapacity.join(', ') : undefined,
         operationalStatus: values.operationalStatus,
         bieuTuongId: values.bieuTuongId || values.gisLocation?.bieuTuongId || null,
         loaiHinhHoc: values.loaiHinhHoc,
         toaDo: values.gisLocation?.toaDo,
-        diaDiem: values.diaDiem || undefined,
+        location: values.location || undefined,
         diaDiemChiTiet: values.diaDiemChiTiet || undefined,
         heQuyChieu: values.heQuyChieu,
         quyTacHienThi: values.quyTacHienThi,
@@ -532,7 +532,7 @@ export default function BerthListPage() {
         thoiDiemCongBoMo: values.thoiDiemCongBoMo ? dayjs(values.thoiDiemCongBoMo).toISOString() : undefined,
         quyetDinhCongBo: values.quyetDinhCongBo || undefined,
         vanBanThoaThuanDauTu: values.vanBanThoaThuanDauTu || undefined,
-        loaiKetCau: values.loaiKetCau ?? undefined,
+        structureType: values.structureType ?? undefined,
       });
 
       setSubmitting(true);
@@ -592,7 +592,7 @@ export default function BerthListPage() {
     },
     {
       title: 'Địa điểm',
-      dataIndex: 'diaDiem',
+      dataIndex: 'location',
       width: 140,
       ellipsis: true,
       render: (v?: string) => v || '—',
@@ -606,21 +606,21 @@ export default function BerthListPage() {
     },
     {
       title: 'Loại bến',
-      dataIndex: 'loaiBen',
+      dataIndex: 'berthType',
       width: 140,
       ellipsis: true,
       render: (v?: string) => (v ? (LOAI_BEN_MAP[v] || v) : '—'),
     },
     {
       title: 'Loại kết cấu',
-      dataIndex: 'loaiKetCau',
+      dataIndex: 'structureType',
       width: 110,
       align: 'right' as const,
       render: (v?: number) => (v != null ? v.toString() : '—'),
     },
     {
       title: 'Công năng khai thác',
-      dataIndex: 'congNangKhaiThac',
+      dataIndex: 'operationalCapacity',
       width: 160,
       ellipsis: true,
       render: (v?: string) => v || '—',
@@ -734,13 +734,13 @@ export default function BerthListPage() {
                     portId: data.portId,
                     orgUnitId: data.orgUnitId,
                     tuyenDuongThuy: data.tuyenDuongThuy,
-                    viDo: data.viDo,
-                    kinhDo: data.kinhDo,
+                    latitude: data.latitude,
+                    longitude: data.longitude,
                     length: data.length,
                     width: data.width,
-                    loaiBen: data.loaiBen,
+                    berthType: data.berthType,
                     doSauLuong: data.doSauLuong,
-                    congNangKhaiThac: data.congNangKhaiThac ? data.congNangKhaiThac.split(',').map(s => s.trim()) : [],
+                    operationalCapacity: data.operationalCapacity ? data.operationalCapacity.split(',').map(s => s.trim()) : [],
                     operationalStatus: data.operationalStatus,
                     loaiHinhHoc: data.loaiHinhHoc || 'POINT',
                     bieuTuongId: data.bieuTuongId,
@@ -749,7 +749,7 @@ export default function BerthListPage() {
                       toaDo: data.toaDo || '',
                       bieuTuongId: data.bieuTuongId
                     },
-                    diaDiem: data.diaDiem,
+                    location: data.location,
                     diaDiemChiTiet: data.diaDiemChiTiet,
                     heQuyChieu: data.heQuyChieu,
                     quyTacHienThi: data.quyTacHienThi,
@@ -763,7 +763,7 @@ export default function BerthListPage() {
                     thoiDiemCongBoMo: data.thoiDiemCongBoMo ? dayjs(data.thoiDiemCongBoMo) : undefined,
                     quyetDinhCongBo: data.quyetDinhCongBo,
                     vanBanThoaThuanDauTu: data.vanBanThoaThuanDauTu,
-                    loaiKetCau: data.loaiKetCau,
+                    structureType: data.structureType,
                   });
                   setUpdateModalVisible(true);
                 } catch (err) {
@@ -1032,7 +1032,7 @@ export default function BerthListPage() {
             </Row>
             <Row gutter={24}>
               <Col span={12}>
-                <Form.Item label="Địa điểm (Tỉnh/Thành phố)" name="diaDiem">
+                <Form.Item label="Địa điểm (Tỉnh/Thành phố)" name="location">
                   <Input placeholder="VD: Khu vực cảng Hải Phòng" maxLength={100} />
                 </Form.Item>
               </Col>
@@ -1044,12 +1044,12 @@ export default function BerthListPage() {
             </Row>
             <Row gutter={24}>
               <Col span={12}>
-                <Form.Item label="Loại kết cấu bến cảng" name="loaiKetCau">
+                <Form.Item label="Loại kết cấu bến cảng" name="structureType">
                   <InputNumber min={0} step={1} precision={0} placeholder="VD: 1" style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item label="Công năng khai thác" name="congNangKhaiThac">
+                <Form.Item label="Công năng khai thác" name="operationalCapacity">
                   <Select
                     mode="multiple"
                     placeholder="Chọn công năng khai thác"
@@ -1108,7 +1108,7 @@ export default function BerthListPage() {
           <Card title="Thông tin kỹ thuật" size="small" style={{ marginBottom: 16 }}>
             <Row gutter={24}>
               <Col span={12}>
-                <Form.Item label="Loại bến" name="loaiBen" rules={[{ required: true, message: 'Vui lòng chọn loại bến' }]}>
+                <Form.Item label="Loại bến" name="berthType" rules={[{ required: true, message: 'Vui lòng chọn loại bến' }]}>
                   <Select placeholder="Chọn loại bến" options={LOAI_BEN_OPTIONS} />
                 </Form.Item>
               </Col>
@@ -1297,7 +1297,7 @@ export default function BerthListPage() {
             </Row>
             <Row gutter={24}>
               <Col span={12}>
-                <Form.Item label="Địa điểm (Tỉnh/Thành phố)" name="diaDiem">
+                <Form.Item label="Địa điểm (Tỉnh/Thành phố)" name="location">
                   <Input placeholder="VD: Khu vực cảng Hải Phòng" maxLength={100} />
                 </Form.Item>
               </Col>
@@ -1309,12 +1309,12 @@ export default function BerthListPage() {
             </Row>
             <Row gutter={24}>
               <Col span={12}>
-                <Form.Item label="Loại kết cấu bến cảng" name="loaiKetCau">
+                <Form.Item label="Loại kết cấu bến cảng" name="structureType">
                   <InputNumber min={0} step={1} precision={0} placeholder="VD: 1" style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
               <Col span={12}>
-                <Form.Item label="Công năng khai thác" name="congNangKhaiThac">
+                <Form.Item label="Công năng khai thác" name="operationalCapacity">
                   <Select
                     mode="multiple"
                     placeholder="Chọn công năng khai thác"
@@ -1373,7 +1373,7 @@ export default function BerthListPage() {
           <Card title="Thông tin kỹ thuật" size="small" style={{ marginBottom: 16 }}>
             <Row gutter={24}>
               <Col span={12}>
-                <Form.Item label="Loại bến" name="loaiBen" rules={[{ required: true, message: 'Vui lòng chọn loại bến' }]}>
+                <Form.Item label="Loại bến" name="berthType" rules={[{ required: true, message: 'Vui lòng chọn loại bến' }]}>
                   <Select placeholder="Chọn loại bến" options={LOAI_BEN_OPTIONS} />
                 </Form.Item>
               </Col>
@@ -1526,18 +1526,18 @@ export default function BerthListPage() {
                       {selectedRecord.berthName}
                     </Descriptions.Item>
                     <Descriptions.Item label="Địa điểm (Tỉnh/Thành phố)">
-                      {selectedRecord.diaDiem || '—'}
+                      {selectedRecord.location || '—'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Địa điểm chi tiết">
                       {selectedRecord.diaDiemChiTiet || '—'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Loại kết cấu bến cảng">
-                      {selectedRecord.loaiKetCau != null ? selectedRecord.loaiKetCau : '—'}
+                      {selectedRecord.structureType != null ? selectedRecord.structureType : '—'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Công năng khai thác">
-                      {selectedRecord.congNangKhaiThac ? (
+                      {selectedRecord.operationalCapacity ? (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                          {selectedRecord.congNangKhaiThac.split(',').map(s => s.trim()).filter(Boolean).map(c => (
+                          {selectedRecord.operationalCapacity.split(',').map(s => s.trim()).filter(Boolean).map(c => (
                             <Tag color="blue" key={c}>{c}</Tag>
                           ))}
                         </div>
@@ -1579,7 +1579,7 @@ export default function BerthListPage() {
                 <Card title="Thông tin kỹ thuật" size="small">
                   <Descriptions bordered column={2} size="small">
                     <Descriptions.Item label="Loại bến">
-                      {selectedRecord.loaiBen ? (LOAI_BEN_MAP[selectedRecord.loaiBen] || selectedRecord.loaiBen) : '—'}
+                      {selectedRecord.berthType ? (LOAI_BEN_MAP[selectedRecord.berthType] || selectedRecord.berthType) : '—'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Chiều dài (m)">
                       {selectedRecord.length != null ? `${selectedRecord.length.toFixed(2)}` : '—'}
@@ -1708,13 +1708,13 @@ export default function BerthListPage() {
                       portId: selectedRecord.portId,
                       orgUnitId: selectedRecord.orgUnitId,
                       tuyenDuongThuy: selectedRecord.tuyenDuongThuy,
-                      viDo: selectedRecord.viDo,
-                      kinhDo: selectedRecord.kinhDo,
+                      latitude: selectedRecord.latitude,
+                      longitude: selectedRecord.longitude,
                       length: selectedRecord.length,
                       width: selectedRecord.width,
-                      loaiBen: selectedRecord.loaiBen,
+                      berthType: selectedRecord.berthType,
                       doSauLuong: selectedRecord.doSauLuong,
-                      congNangKhaiThac: selectedRecord.congNangKhaiThac ? selectedRecord.congNangKhaiThac.split(',').map(s => s.trim()) : [],
+                      operationalCapacity: selectedRecord.operationalCapacity ? selectedRecord.operationalCapacity.split(',').map(s => s.trim()) : [],
                       operationalStatus: selectedRecord.operationalStatus,
                       loaiHinhHoc: selectedRecord.loaiHinhHoc || 'POINT',
                       bieuTuongId: selectedRecord.bieuTuongId,
@@ -1723,7 +1723,7 @@ export default function BerthListPage() {
                         toaDo: selectedRecord.toaDo || '',
                         bieuTuongId: selectedRecord.bieuTuongId
                       },
-                      diaDiem: selectedRecord.diaDiem,
+                      location: selectedRecord.location,
                       diaDiemChiTiet: selectedRecord.diaDiemChiTiet,
                       heQuyChieu: selectedRecord.heQuyChieu,
                       quyTacHienThi: selectedRecord.quyTacHienThi,
@@ -1737,7 +1737,7 @@ export default function BerthListPage() {
                       thoiDiemCongBoMo: selectedRecord.thoiDiemCongBoMo ? dayjs(selectedRecord.thoiDiemCongBoMo) : undefined,
                       quyetDinhCongBo: selectedRecord.quyetDinhCongBo,
                       vanBanThoaThuanDauTu: selectedRecord.vanBanThoaThuanDauTu,
-                      loaiKetCau: selectedRecord.loaiKetCau,
+                      structureType: selectedRecord.structureType,
                     });
                     setUpdateModalVisible(true);
                   }}

@@ -1,8 +1,8 @@
 package com.hanghai.kchtg.report;
 
-import com.hanghai.kchtg.navigationchannel.entity.ChiTietTuyenLuong;
+import com.hanghai.kchtg.navigationchannel.entity.ChannelRouteDetail;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
-import com.hanghai.kchtg.navigationchannel.repository.ChiTietTuyenLuongRepository;
+import com.hanghai.kchtg.navigationchannel.repository.ChannelRouteDetailRepository;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
@@ -35,7 +35,7 @@ class F151ReportHandlerTest {
     private NavigationChannelRepository navigationChannelRepository;
 
     @Mock
-    private ChiTietTuyenLuongRepository chiTietTuyenLuongRepository;
+    private ChannelRouteDetailRepository channelRouteDetailRepository;
 
     @Mock
     private OrgUnitRepository orgUnitRepository;
@@ -74,41 +74,41 @@ class F151ReportHandlerTest {
                 .isDeleted(false)
                 .build();
 
-        // Two ChiTietTuyenLuong children
-        ChiTietTuyenLuong child1 = ChiTietTuyenLuong.builder()
+        // Two ChannelRouteDetail children
+        ChannelRouteDetail child1 = ChannelRouteDetail.builder()
                 .id(UUID.randomUUID())
-                .ten("Tuyến 1")
-                .ma("TL.01")
-                .chieuDai(new BigDecimal("15.5"))
-                .rongLonNhat(new BigDecimal("100"))
-                .rongNhoNhat(new BigDecimal("80"))
-                .doSau(new BigDecimal("12"))
-                .maiDocThietKe("1:3")
-                .doSauHienTai("11.5m")
-                .khoiLuongNaoVet(new BigDecimal("5000"))
-                .congCong(true)
-                .chuyenDung(false)
+                .name("Tuyến 1")
+                .code("TL.01")
+                .length(new BigDecimal("15.5"))
+                .maxWidth(new BigDecimal("100"))
+                .minWidth(new BigDecimal("80"))
+                .depth(new BigDecimal("12"))
+                .designSlope("1:3")
+                .currentDepth("11.5m")
+                .dredgingVolume(new BigDecimal("5000"))
+                .publicAccess(true)
+                .dedicated(false)
                 .build();
 
-        ChiTietTuyenLuong child2 = ChiTietTuyenLuong.builder()
+        ChannelRouteDetail child2 = ChannelRouteDetail.builder()
                 .id(UUID.randomUUID())
-                .ten("Tuyến 2")
-                .ma("TL.02")
-                .chieuDai(new BigDecimal("8.3"))
-                .rongLonNhat(new BigDecimal("90"))
-                .rongNhoNhat(new BigDecimal("70"))
-                .doSau(new BigDecimal("10"))
-                .maiDocThietKe("1:4")
-                .doSauHienTai("9.8m")
-                .khoiLuongNaoVet(new BigDecimal("3000"))
-                .congCong(false)
-                .chuyenDung(true)
+                .name("Tuyến 2")
+                .code("TL.02")
+                .length(new BigDecimal("8.3"))
+                .maxWidth(new BigDecimal("90"))
+                .minWidth(new BigDecimal("70"))
+                .depth(new BigDecimal("10"))
+                .designSlope("1:4")
+                .currentDepth("9.8m")
+                .dredgingVolume(new BigDecimal("3000"))
+                .publicAccess(false)
+                .dedicated(true)
                 .build();
 
         // Mocks
         when(navigationChannelRepository.findByIsDeletedFalse(any(org.springframework.data.domain.Sort.class)))
                 .thenReturn(List.of(nc));
-        when(chiTietTuyenLuongRepository.findByNavigationChannelIdOrderBySttAsc(ncId))
+        when(channelRouteDetailRepository.findByNavigationChannelIdOrderBySequenceNoAsc(ncId))
                 .thenReturn(List.of(child1, child2));
         OrgUnit orgUnit = new OrgUnit();
         orgUnit.setId(orgUnitId);
@@ -140,9 +140,9 @@ class F151ReportHandlerTest {
         assertEquals("Luồng hàng hải A", p.get("Chỉ tiêu"));
         assertEquals("Trạm QL luồng số 1", p.get("Tên trạm QL luồng"));
         assertEquals("Cục Hàng hải", p.get("ĐVQL vận hành"));
-        // Sum of child chieuDai: 15.5 + 8.3 = 23.8
+        // Sum of child length: 15.5 + 8.3 = 23.8
         assertEquals(new BigDecimal("23.8"), p.get("Dài (km)"));
-        // Sum of child khoiLuongNaoVet: 5000 + 3000 = 8000
+        // Sum of child dredgingVolume: 5000 + 3000 = 8000
         assertEquals(new BigDecimal("8000"), p.get("KL nạo vét (m3)"));
 
         // ---- Child row 1 (index 1) ----
@@ -185,39 +185,39 @@ class F151ReportHandlerTest {
                 .isDeleted(false)
                 .build();
 
-        ChiTietTuyenLuong child1 = ChiTietTuyenLuong.builder()
+        ChannelRouteDetail child1 = ChannelRouteDetail.builder()
                 .id(UUID.randomUUID())
-                .ten("Tuyến 1")
-                .ma("TL.01")
-                .chieuDai(new BigDecimal("15.5"))
-                .rongLonNhat(new BigDecimal("100"))
-                .rongNhoNhat(new BigDecimal("80"))
-                .doSau(new BigDecimal("12"))
-                .maiDocThietKe("1:3")
-                .doSauHienTai("11.5m")
-                .khoiLuongNaoVet(new BigDecimal("5000"))
-                .congCong(true)
-                .chuyenDung(false)
+                .name("Tuyến 1")
+                .code("TL.01")
+                .length(new BigDecimal("15.5"))
+                .maxWidth(new BigDecimal("100"))
+                .minWidth(new BigDecimal("80"))
+                .depth(new BigDecimal("12"))
+                .designSlope("1:3")
+                .currentDepth("11.5m")
+                .dredgingVolume(new BigDecimal("5000"))
+                .publicAccess(true)
+                .dedicated(false)
                 .build();
 
-        ChiTietTuyenLuong child2 = ChiTietTuyenLuong.builder()
+        ChannelRouteDetail child2 = ChannelRouteDetail.builder()
                 .id(UUID.randomUUID())
-                .ten("Tuyến 2")
-                .ma("TL.02")
-                .chieuDai(new BigDecimal("8.3"))
-                .rongLonNhat(new BigDecimal("90"))
-                .rongNhoNhat(new BigDecimal("70"))
-                .doSau(new BigDecimal("10"))
-                .maiDocThietKe("1:4")
-                .doSauHienTai("9.8m")
-                .khoiLuongNaoVet(new BigDecimal("3000"))
-                .congCong(false)
-                .chuyenDung(true)
+                .name("Tuyến 2")
+                .code("TL.02")
+                .length(new BigDecimal("8.3"))
+                .maxWidth(new BigDecimal("90"))
+                .minWidth(new BigDecimal("70"))
+                .depth(new BigDecimal("10"))
+                .designSlope("1:4")
+                .currentDepth("9.8m")
+                .dredgingVolume(new BigDecimal("3000"))
+                .publicAccess(false)
+                .dedicated(true)
                 .build();
 
         when(navigationChannelRepository.findByIsDeletedFalse(any(org.springframework.data.domain.Sort.class)))
                 .thenReturn(List.of(nc));
-        when(chiTietTuyenLuongRepository.findByNavigationChannelIdOrderBySttAsc(ncId))
+        when(channelRouteDetailRepository.findByNavigationChannelIdOrderBySequenceNoAsc(ncId))
                 .thenReturn(List.of(child1, child2));
         OrgUnit orgUnit = new OrgUnit();
         orgUnit.setId(orgUnitId);
@@ -262,7 +262,7 @@ class F151ReportHandlerTest {
         assertTrue(r2.containsKey("daiLuong"),
                 "Child row must contain key 'daiLuong'");
         assertEquals("", r2.get("congCong"),
-                "Child with congCong=false should have empty string");
+                "Child with publicAccess=false should have empty string");
     }
 
     // ---------------------------------------------------------------
@@ -294,10 +294,10 @@ class F151ReportHandlerTest {
                 .thenReturn(List.of(matchingNc, nonMatchingNc));
 
         // Only the matching nc reaches the children query
-        when(chiTietTuyenLuongRepository.findByNavigationChannelIdOrderBySttAsc(ncId))
+        when(channelRouteDetailRepository.findByNavigationChannelIdOrderBySequenceNoAsc(ncId))
                 .thenReturn(List.of());
 
-        // isOrgUnitRoot(targetUnitId) + resolveDonViTen — same id, one stub covers both
+        // isOrgUnitRoot(targetUnitId) + resolveOrgUnitName — same id, one stub covers both
         OrgUnit filterUnit = new OrgUnit();
         filterUnit.setId(orgUnitId);
         filterUnit.setCode("CANG_VU");          // NOT "CUC_HHVT" → isOrgUnitRoot = false

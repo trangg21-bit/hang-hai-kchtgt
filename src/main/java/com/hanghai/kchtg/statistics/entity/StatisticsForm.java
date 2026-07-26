@@ -1,5 +1,9 @@
 package com.hanghai.kchtg.statistics.entity;
 
+import java.util.UUID;
+
+import com.hanghai.kchtg.common.entity.BaseEntity;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -76,7 +80,7 @@ public class StatisticsForm extends BaseEntity {
     private String fileUrl;
 
     @Column(name = "approved_by")
-    private String approvedBy;
+    private UUID approvedBy;
 
     @Column(name = "approved_at")
     private LocalDate approvedAt;

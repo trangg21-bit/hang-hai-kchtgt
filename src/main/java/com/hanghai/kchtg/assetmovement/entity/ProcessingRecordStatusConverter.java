@@ -21,6 +21,6 @@ public class ProcessingRecordStatusConverter implements AttributeConverter<Proce
                 return e;
             }
         }
-        throw new IllegalArgumentException("GiÃ¡ trá»‹ database khÃ´ng há»£p lá»‡ cho ProcessingRecordStatus: " + dbData);
+        throw new IllegalArgumentException("Giá trị database không hợp lệ cho ProcessingRecordStatus: " + dbData);
     }
 }

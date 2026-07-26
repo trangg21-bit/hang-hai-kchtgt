@@ -1,5 +1,12 @@
 package com.hanghai.kchtg.radarstation.service;
 
+import com.hanghai.kchtg.security.AdminAutoApproval;
+import java.util.UUID;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+
 import com.hanghai.kchtg.radarstation.dto.*;
 import com.hanghai.kchtg.radarstation.entity.*;
 import com.hanghai.kchtg.radarstation.repository.ApprovalHistoryRepository;
@@ -14,6 +21,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.math.BigDecimal;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
 @Service
 @RequiredArgsConstructor
@@ -25,7 +36,7 @@ public class RadarStationService {
     private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
     private final VtsSystemRepository vtsSystemRepository;
 
-    public RadarStationResponse create(RadarStationCreateRequest request, String createdBy) {
+    public RadarStationResponse create(RadarStationCreateRequest request, UUID createdBy) {
         RadarStation entity = RadarStation.builder()
                 .stationName(request.getStationName())
                 .location(request.getLocation())
@@ -47,32 +58,32 @@ public class RadarStationService {
 
         RadarStation saved = repository.save(entity);
 
-        String toaDo = request.getToaDo();
-        if ((toaDo == null || toaDo.trim().isEmpty()) && request.getKinhDo() != null && request.getViDo() != null) {
-            toaDo = "POINT(" + request.getKinhDo() + " " + request.getViDo() + ")";
+        String coordinates = request.getCoordinates();
+        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+            coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
-        if (toaDo != null && !toaDo.trim().isEmpty()) {
-            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_OTHER;
+        if (coordinates != null && !coordinates.trim().isEmpty()) {
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisSpatialObjectType objType = GisSpatialObjectType.POINT_OTHER;
             UUID refId = saved.getId();
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
                     saved.getStationName(),
                     "RADAR_" + saved.getId(),
                     geomType,
                     objType,
-                    toaDo,
+                    coordinates,
                     refId,
-                    com.hanghai.kchtg.gis.search.dto.KchtType.TRAM_RADAR
+                    InfrastructureType.RADAR_STATION_LEGACY
             );
-            saved.setKhongGianId(spatialObj.getId());
+            saved.setSpatialId(spatialObj.getId());
             saved = repository.save(saved);
         }
 
         historyRepository.save(ApprovalHistory.builder()
                 .radarStationId(saved.getId())
-                .approvalLevel(0)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
                 .status("CREATE")
                 .approvedBy(createdBy)
                 .reason("Tạo mới trạm radar")
@@ -90,13 +101,23 @@ public class RadarStationService {
         return toResponse(entity);
     }
 
+    /**
+     * List records sitting at a given approval status, mirroring the endpoint the
+     * other infrastructure modules expose.
+     */
+    public List<RadarStationResponse> findByApprovalStatus(RadarStationApprovalStatus approvalStatus) {
+        return repository.findByApprovalStatusAndIsDeletedFalse(approvalStatus).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     public List<RadarStationResponse> findAll(int page, int size) {
         return repository.findByApprovalStatusAndIsDeletedFalse(RadarStationApprovalStatus.APPROVED).stream()
                 .map(this::toResponse)
                 .toList();
     }
 
-    public RadarStationResponse update(UUID id, RadarStationUpdateRequest request, String updatedBy) {
+    public RadarStationResponse update(UUID id, RadarStationUpdateRequest request, UUID updatedBy) {
         RadarStation entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
@@ -122,32 +143,32 @@ public class RadarStationService {
 
         RadarStation saved = repository.save(entity);
 
-        String toaDo = request.getToaDo();
-        if ((toaDo == null || toaDo.trim().isEmpty()) && request.getKinhDo() != null && request.getViDo() != null) {
-            toaDo = "POINT(" + request.getKinhDo() + " " + request.getViDo() + ")";
+        String coordinates = request.getCoordinates();
+        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+            coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
-        if (toaDo != null && !toaDo.trim().isEmpty()) {
-            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_OTHER;
+        if (coordinates != null && !coordinates.trim().isEmpty()) {
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisSpatialObjectType objType = GisSpatialObjectType.POINT_OTHER;
             UUID refId = saved.getId();
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                    saved.getKhongGianId(),
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    saved.getSpatialId(),
                     saved.getStationName(),
                     "RADAR_" + saved.getId(),
                     geomType,
                     objType,
-                    toaDo,
+                    coordinates,
                     refId,
-                    com.hanghai.kchtg.gis.search.dto.KchtType.TRAM_RADAR
+                    InfrastructureType.RADAR_STATION_LEGACY
             );
-            saved.setKhongGianId(spatialObj.getId());
+            saved.setSpatialId(spatialObj.getId());
             saved = repository.save(saved);
         }
 
         historyRepository.save(ApprovalHistory.builder()
                 .radarStationId(saved.getId())
-                .approvalLevel(0)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
                 .status("UPDATE")
                 .approvedBy(updatedBy)
                 .reason("Cập nhật thông tin trạm radar")
@@ -156,7 +177,7 @@ public class RadarStationService {
         return toResponse(saved);
     }
 
-    public void delete(UUID id, String deletedBy) {
+    public void delete(UUID id, UUID deletedBy) {
         RadarStation entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
@@ -164,22 +185,27 @@ public class RadarStationService {
             throw new RuntimeException("Chỉ có thể xóa bản ghi đã được phê duyệt (APPROVED) với ID: " + id);
         }
 
+        // softDelete() only stamps deletedAt/deletedBy on BaseEntity; the isDeleted
+        // flag is this entity's own and is what the queries filter on, so it has to
+        // be set too or the record keeps showing up in listings.
         entity.setIsDeleted(true);
+        entity.softDelete(deletedBy);
         repository.save(entity);
-        if (entity.getKhongGianId() != null) {
-            gisSpatialObjectService.delete(entity.getKhongGianId());
+        if (entity.getSpatialId() != null) {
+            gisSpatialObjectService.delete(entity.getSpatialId());
         }
 
         historyRepository.save(ApprovalHistory.builder()
                 .radarStationId(entity.getId())
-                .approvalLevel(0)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
                 .status("DELETE")
                 .approvedBy(deletedBy)
                 .reason("Xóa trạm radar")
                 .build());
     }
 
-    public RadarStationResponse approveC1(UUID id, ApprovalRequest request, String approvedBy) {
+    public RadarStationResponse approveC1(UUID id, ApprovalRequest request, UUID approvedBy) {
+        boolean autoApproved = false;
         RadarStation entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
@@ -191,26 +217,46 @@ public class RadarStationService {
             entity.setApprovalStatus(RadarStationApprovalStatus.REJECTED);
             entity.setRejectionReason(request.getReason());
         } else {
-            entity.setApprovalStatus(RadarStationApprovalStatus.UNDER_REVIEW);
             entity.setApprovedLevel1(true);
             entity.setApproverLevel1(approvedBy);
             entity.setApprovedDateLevel1(LocalDateTime.now());
+
+            if (AdminAutoApproval.isAutoApprover()) {
+                // Administrators clear both levels in one step.
+                entity.setApprovedLevel2(true);
+                entity.setApproverLevel2(approvedBy);
+                entity.setApprovedDateLevel2(LocalDateTime.now());
+                entity.setApprovalStatus(RadarStationApprovalStatus.APPROVED);
+                autoApproved = true;
+            } else {
+                entity.setApprovalStatus(RadarStationApprovalStatus.UNDER_REVIEW);
+            }
         }
 
         RadarStation saved = repository.save(entity);
 
         historyRepository.save(ApprovalHistory.builder()
                 .radarStationId(saved.getId())
-                .approvalLevel(1)
+                .approvalLevel(ApprovalLevel.LEVEL_1)
                 .status(request.getQuyetDinh())
                 .approvedBy(approvedBy)
                 .reason(request.getReason())
                 .build());
 
+        if (autoApproved) {
+            historyRepository.save(ApprovalHistory.builder()
+                    .radarStationId(saved.getId())
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(request.getQuyetDinh())
+                    .approvedBy(approvedBy)
+                    .reason(request.getReason())
+                    .build());
+        }
+
         return toResponse(saved);
     }
 
-    public RadarStationResponse approveC2(UUID id, ApprovalRequest request, String approvedBy) {
+    public RadarStationResponse approveC2(UUID id, ApprovalRequest request, UUID approvedBy) {
         RadarStation entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy Trạm Radar với ID: " + id));
 
@@ -218,8 +264,8 @@ public class RadarStationService {
             throw new RuntimeException("Chỉ có thể phê duyệt bản ghi ở trạng thái Đang xem xét (UNDER_REVIEW) với ID: " + id);
         }
 
-        String c1Actor = entity.getApproverLevel1();
-        if (c1Actor != null && c1Actor.equals(approvedBy) && !"admin".equals(approvedBy)) {
+        UUID c1Actor = entity.getApproverLevel1();
+        if (c1Actor != null && c1Actor.equals(approvedBy)) {
             throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1 (Nguoi phe duyet C2 khong duoc trung)");
         }
 
@@ -237,7 +283,7 @@ public class RadarStationService {
 
         historyRepository.save(ApprovalHistory.builder()
                 .radarStationId(saved.getId())
-                .approvalLevel(2)
+                .approvalLevel(ApprovalLevel.LEVEL_2)
                 .status(request.getQuyetDinh())
                 .approvedBy(approvedBy)
                 .reason(request.getReason())
@@ -299,29 +345,29 @@ public class RadarStationService {
                 .approvedDateLevel2(entity.getApprovedDateLevel2())
                 .rejectionReason(entity.getRejectionReason())
                 .createdBy(entity.getCreatedBy())
-                .createdDate(entity.getCreatedDate())
+                .createdDate(entity.getCreatedAt())
                 .updatedBy(entity.getUpdatedBy())
-                .updatedDate(entity.getUpdatedDate())
+                .updatedDate(entity.getUpdatedAt())
                 .attachments(attachments)
                 .vtsSystemId(entity.getVtsSystemId())
                 .towerHeight(entity.getTowerHeight())
                 .radarRange(entity.getRadarRange())
-                .vtsSystemName(entity.getVtsSystemId() != null ? 
+                .vtsSystemName(entity.getVtsSystemId() != null ?
                     vtsSystemRepository.findById(entity.getVtsSystemId())
                         .map(VtsSystem::getSystemName)
                         .orElse("") : "");
 
-        if (entity.getKhongGianId() != null) {
-            builder.khongGianId(entity.getKhongGianId());
-            gisSpatialObjectService.findById(entity.getKhongGianId()).ifPresent(spatialObj -> {
-                builder.loaiHinhHoc(spatialObj.getGeometryType());
-                builder.toaDo(spatialObj.getCoordinates());
+        if (entity.getSpatialId() != null) {
+            builder.spatialId(entity.getSpatialId());
+            gisSpatialObjectService.findById(entity.getSpatialId()).ifPresent(spatialObj -> {
+                builder.geometryType(spatialObj.getGeometryType());
+                builder.coordinates(spatialObj.getCoordinates());
                 try {
                     String clean = spatialObj.getCoordinates().replace("POINT", "").replace("(", "").replace(")", "").trim();
                     String[] parts = clean.split("\\s+");
                     if (parts.length == 2) {
-                        builder.kinhDo(new BigDecimal(parts[0]));
-                        builder.viDo(new BigDecimal(parts[1]));
+                        builder.longitude(new BigDecimal(parts[0]));
+                        builder.latitude(new BigDecimal(parts[1]));
                     }
                 } catch (Exception ex) {
                     // ignore

@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -43,14 +43,14 @@ public class StatisticsService {
         entity.setFormStatus(StatFormStatus.DRAFT);
         StatisticsForm saved = repository.save(entity);
         log.info("Created statistics form [{}] type={} status=DRAFT",
-                saved.getCode(), saved.getFormType());
+                saved.getFormCode(), saved.getFormType());
         return toResponse(saved);
     }
 
     // -- Read --
 
     @Transactional(readOnly = true)
-    public Optional<StatisticsFormResponse> findById(Long id) {
+    public Optional<StatisticsFormResponse> findById(java.util.UUID id) {
         return repository.findById(id).map(this::toResponse);
     }
 
@@ -100,11 +100,11 @@ public class StatisticsService {
     // -- Update --
 
     @Transactional
-    public void updateStatus(Long id, String status) {
+    public void updateStatus(java.util.UUID id, String status) {
         StatisticsForm entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("StatisticsForm not found: " + id));
         entity.setFormStatus(StatFormStatus.valueOf(status));
-        entity.setUpdatedAt(Instant.now());
+        entity.setUpdatedAt(java.time.LocalDateTime.now());
         repository.save(entity);
         log.info("Updated form [{}] status -> {}", id, status);
     }
@@ -159,8 +159,6 @@ public class StatisticsService {
     private StatisticsFormResponse toResponse(StatisticsForm entity) {
         return StatisticsFormResponse.builder()
                 .id(entity.getId())
-                .code(entity.getCode())
-                .name(entity.getName())
                 .formCode(entity.getFormCode())
                 .formType(entity.getFormType().name())
                 .formStatus(entity.getFormStatus().name())
@@ -183,3 +181,5 @@ public class StatisticsService {
                 .build();
     }
 }
+
+

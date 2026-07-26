@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.line.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.line.entity.LineObject.ObjectType;
 import com.hanghai.kchtg.gis.line.entity.LineObject.Status;
 import lombok.AllArgsConstructor;
@@ -17,15 +19,15 @@ public class UpdateLineObjectRequest {
     private String code;
     private ObjectType objectType;
     private Long categoryId;
-    private java.util.UUID lineSymbolId;
+    private UUID lineSymbolId;
     private String coordinates;
     private String description;
     private Status status;
-    private java.util.UUID unitId;
+    private UUID unitId;
     private Double length;
     private String material;
     private Integer yearBuilt;
-    private java.util.UUID refId;
+    private UUID refId;
     private Integer refType;
     private String purpose;
     private String restrictionLevel;

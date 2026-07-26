@@ -21,6 +21,6 @@ public class ApprovalResultConverter implements AttributeConverter<ApprovalResul
                 return e;
             }
         }
-        throw new IllegalArgumentException("GiÃ¡ trá»‹ database khÃ´ng há»£p lá»‡ cho ApprovalResult: " + dbData);
+        throw new IllegalArgumentException("Giá trị database không hợp lệ cho ApprovalResult: " + dbData);
     }
 }

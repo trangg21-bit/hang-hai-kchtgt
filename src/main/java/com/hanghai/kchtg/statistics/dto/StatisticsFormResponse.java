@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.LocalDate;
 
 /**
@@ -19,7 +19,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class StatisticsFormResponse {
 
-    private Long id;
+    private java.util.UUID id;
 
     /** Auto-assigned unique identifier (BaseEntity.code). */
     private String code;
@@ -44,12 +44,15 @@ public class StatisticsFormResponse {
     private Integer vesselsCount;
 
     private String fileUrl;
-    private String approvedBy;
+    private java.util.UUID approvedBy;
     private LocalDate approvedAt;
     private String notes;
 
-    private String createdBy;
-    private String updatedBy;
-    private Instant createdAt;
-    private Instant updatedAt;
+    private java.util.UUID createdBy;
+    private java.util.UUID updatedBy;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }
+
+
+

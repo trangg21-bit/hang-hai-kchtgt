@@ -95,8 +95,8 @@ export interface CreateLighthouseStationRequest {
   nextMaintenanceDate: string;
   isActive: boolean;
   status: string;
-  loaiHinhHoc?: string;
-  toaDo?: string;
+  geometryType?: string;
+  coordinates?: string;
 }
 
 export interface LighthouseStationResponse {
@@ -121,9 +121,9 @@ export interface LighthouseStationResponse {
   createdByName: string;
   createdAt: string;
   updatedAt: string;
-  loaiHinhHoc?: string;
-  toaDo?: string;
-  khongGianId?: string;
+  geometryType?: string;
+  coordinates?: string;
+  spatialId?: string;
 }
 
 // ==========================================
@@ -145,8 +145,8 @@ export interface CreateBuoyStationRequest {
   nextInspectionDate: string;
   isActive: boolean;
   status: string;
-  loaiHinhHoc?: string;
-  toaDo?: string;
+  geometryType?: string;
+  coordinates?: string;
 }
 
 export interface BuoyStationResponse {
@@ -171,7 +171,7 @@ export interface BuoyStationResponse {
   createdByName: string;
   createdAt: string;
   updatedAt: string;
-  loaiHinhHoc?: string;
-  toaDo?: string;
-  khongGianId?: string;
+  geometryType?: string;
+  coordinates?: string;
+  spatialId?: string;
 }

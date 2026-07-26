@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.statistics.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.statistics.entity.FormApprovalHistory;
 import com.hanghai.kchtg.statistics.entity.StatisticsForm;
@@ -30,11 +32,11 @@ public class FormApprovalController {
      */
     @PostMapping("/{id}/submit")
     public ResponseEntity<ApiResponse<?>> submit(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam String actor,
             @RequestParam(required = false) String comments) {
         log.info("Submitting form [{}] by actor={}", id, actor);
-        StatisticsForm form = formApprovalService.submitForm(id, actor, comments);
+        StatisticsForm form = formApprovalService.submitForm(id, UUID.fromString(actor), comments);
         return ResponseEntity.ok(
                 ApiResponse.success("Da gui form phê duyệt", form));
     }
@@ -45,11 +47,11 @@ public class FormApprovalController {
      */
     @PostMapping("/{id}/approve")
     public ResponseEntity<ApiResponse<?>> approve(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam String actor,
             @RequestParam(required = false) String comments) {
         log.info("Approving form [{}] by actor={}", id, actor);
-        StatisticsForm form = formApprovalService.approveForm(id, actor, comments);
+        StatisticsForm form = formApprovalService.approveForm(id, UUID.fromString(actor), comments);
         return ResponseEntity.ok(
                 ApiResponse.success("Phê duyệt form thành công", form));
     }
@@ -60,11 +62,11 @@ public class FormApprovalController {
      */
     @PostMapping("/{id}/reject")
     public ResponseEntity<ApiResponse<?>> reject(
-            @PathVariable Long id,
+            @PathVariable UUID id,
             @RequestParam String actor,
             @RequestParam(required = false) String comments) {
         log.info("Rejecting form [{}] by actor={}", id, actor);
-        StatisticsForm form = formApprovalService.rejectForm(id, actor, comments);
+        StatisticsForm form = formApprovalService.rejectForm(id, UUID.fromString(actor), comments);
         return ResponseEntity.ok(
                 ApiResponse.success("Từ chối form", form));
     }
@@ -75,10 +77,11 @@ public class FormApprovalController {
      */
     @GetMapping("/{id}/history")
     public ResponseEntity<ApiResponse<List<FormApprovalHistory>>> getHistory(
-            @PathVariable Long id) {
+            @PathVariable UUID id) {
         log.info("Fetching approval history for form [{}]", id);
         List<FormApprovalHistory> history = formApprovalService.getHistory(id);
         return ResponseEntity.ok(
                 ApiResponse.success("Lay lich phê duyệt thành công", history));
     }
 }
+

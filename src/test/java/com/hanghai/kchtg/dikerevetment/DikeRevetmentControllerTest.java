@@ -50,7 +50,7 @@ class DikeRevetmentControllerTest {
                 .approvalStatus(DikeRevetmentApprovalStatus.PROPOSED)
                 .isApprovedLevel1(false)
                 .isApprovedLevel2(false)
-                .createdBy("Admin")
+                .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
 
         createReq = DikeRevetmentCreateRequest.builder()
@@ -65,12 +65,12 @@ class DikeRevetmentControllerTest {
     }
 
     @Test void create_shouldReturnSuccessResponse() {
-        when(service.create(any(), anyString())).thenReturn(testResp);
+        when(service.create(any(), nullable(java.util.UUID.class))).thenReturn(testResp);
         var resp = controller.create(createReq, authentication);
         assertThat(resp.getStatusCode().is2xxSuccessful()).isTrue();
         assertThat(resp.getBody().isSuccess()).isTrue();
         assertThat(resp.getBody().getMessage()).isEqualTo("Tạo đê kè thành công");
-        verify(service, times(1)).create(any(), anyString());
+        verify(service, times(1)).create(any(), nullable(java.util.UUID.class));
     }
 
     @Test void getById_shouldReturnResponse() {
@@ -93,11 +93,11 @@ class DikeRevetmentControllerTest {
         ApprovalResponse resp = ApprovalResponse.builder()
                 .id(TEST_ID.toString())
                 .dikeRevetmentId(TEST_ID)
-                .approvalLevel(1)
+                .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1)
                 .status("UNDER_REVIEW")
                 .approver("Truong Phong")
                 .build();
-        when(service.approveC1(eq(TEST_ID), any(), anyString())).thenReturn(resp);
+        when(service.approveC1(eq(TEST_ID), any(), nullable(java.util.UUID.class))).thenReturn(resp);
         var ctrlResp = controller.approveC1(TEST_ID, ApprovalRequest.builder()
                 .decision("APPROVED").reason("Phe cap 1").build(), null);
         assertThat(ctrlResp.getStatusCode().is2xxSuccessful()).isTrue();
@@ -108,11 +108,11 @@ class DikeRevetmentControllerTest {
         ApprovalResponse resp = ApprovalResponse.builder()
                 .id(TEST_ID.toString())
                 .dikeRevetmentId(TEST_ID)
-                .approvalLevel(2)
+                .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_2)
                 .status("APPROVED")
                 .approver("Giam Doc")
                 .build();
-        when(service.approveC2(eq(TEST_ID), any(), anyString())).thenReturn(resp);
+        when(service.approveC2(eq(TEST_ID), any(), nullable(java.util.UUID.class))).thenReturn(resp);
         var ctrlResp = controller.approveC2(TEST_ID, ApprovalRequest.builder()
                 .decision("APPROVED").reason("Phe cap 2").build(), null);
         assertThat(ctrlResp.getStatusCode().is2xxSuccessful()).isTrue();

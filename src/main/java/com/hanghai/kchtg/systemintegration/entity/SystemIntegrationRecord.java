@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.systemintegration.entity;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.systemintegration.enums.IntegrationType;
 import com.hanghai.kchtg.systemintegration.enums.IntegrationStatus;
 import jakarta.persistence.*;
@@ -40,13 +42,13 @@ public class SystemIntegrationRecord {
     private int retryCount;
 
     @Column(name = "created_by", length = 50)
-    private String createdBy;
+    private UUID createdBy;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_by", length = 50)
-    private String updatedBy;
+    private UUID updatedBy;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
@@ -70,12 +72,12 @@ public class SystemIntegrationRecord {
     public void setIntegrationDate(LocalDateTime integrationDate) { this.integrationDate = integrationDate; }
     public int getRetryCount() { return retryCount; }
     public void setRetryCount(int retryCount) { this.retryCount = retryCount; }
-    public String getCreatedBy() { return createdBy; }
-    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
+    public UUID getCreatedBy() { return createdBy; }
+    public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-    public String getUpdatedBy() { return updatedBy; }
-    public void setUpdatedBy(String updatedBy) { this.updatedBy = updatedBy; }
+    public UUID getUpdatedBy() { return updatedBy; }
+    public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

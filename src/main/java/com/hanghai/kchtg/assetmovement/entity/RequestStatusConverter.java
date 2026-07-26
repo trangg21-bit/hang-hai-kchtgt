@@ -21,6 +21,6 @@ public class RequestStatusConverter implements AttributeConverter<RequestStatus,
                 return e;
             }
         }
-        throw new IllegalArgumentException("GiÃ¡ trá»‹ database khÃ´ng há»£p lá»‡ cho RequestStatus: " + dbData);
+        throw new IllegalArgumentException("Giá trị database không hợp lệ cho RequestStatus: " + dbData);
     }
 }

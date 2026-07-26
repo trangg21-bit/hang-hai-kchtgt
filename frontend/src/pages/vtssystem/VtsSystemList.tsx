@@ -114,7 +114,7 @@ export default function VtsSystemList() {
   const columns: ColumnsType<VtsSystemResponse> = [
     {
       title: 'STT',
-      key: 'stt',
+      key: 'sequenceNo',
       width: 50,
       render: (_: unknown, __: unknown, index: number) => index + 1,
     } as any,

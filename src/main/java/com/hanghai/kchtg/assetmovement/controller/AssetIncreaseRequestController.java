@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.AssetIncreaseRequestRequest;
 import com.hanghai.kchtg.assetmovement.dto.AssetIncreaseRequestResponse;
 import com.hanghai.kchtg.assetmovement.service.AssetIncreaseRequestService;
@@ -23,7 +25,7 @@ public class AssetIncreaseRequestController {
     private final AssetIncreaseRequestService assetIncreaseRequestService;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:increase-request')")
+    @PreAuthorize("@auth.check(authentication, 'assetincrease:manage')")
     public ResponseEntity<ApiResponse<AssetIncreaseRequestResponse>> create(
             @RequestBody AssetIncreaseRequestRequest request) {
         AssetIncreaseRequestResponse response = assetIncreaseRequestService.create(request);
@@ -31,7 +33,7 @@ public class AssetIncreaseRequestController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:increase-request')")
+    @PreAuthorize("@auth.check(authentication, 'assetincrease:manage')")
     public ResponseEntity<ApiResponse<AssetIncreaseRequestResponse>> getById(
             @PathVariable UUID id) {
         AssetIncreaseRequestResponse response = assetIncreaseRequestService.getById(id);
@@ -39,7 +41,7 @@ public class AssetIncreaseRequestController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:increase-request')")
+    @PreAuthorize("@auth.check(authentication, 'assetincrease:manage')")
     public ResponseEntity<ApiResponse<Page<AssetIncreaseRequestResponse>>> findAll(
             @RequestParam(required = false) UUID assetId,
             @RequestParam(defaultValue = "0") int page,
@@ -56,7 +58,7 @@ public class AssetIncreaseRequestController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:increase-request')")
+    @PreAuthorize("@auth.check(authentication, 'assetincrease:manage')")
     public ResponseEntity<ApiResponse<AssetIncreaseRequestResponse>> update(
             @PathVariable UUID id,
             @RequestBody AssetIncreaseRequestRequest request) {
@@ -65,7 +67,7 @@ public class AssetIncreaseRequestController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:increase-request')")
+    @PreAuthorize("@auth.check(authentication, 'assetincrease:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         assetIncreaseRequestService.delete(id);
@@ -73,7 +75,7 @@ public class AssetIncreaseRequestController {
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("@auth.check(authentication, 'asset:increase-request')")
+    @PreAuthorize("@auth.check(authentication, 'assetincrease:manage')")
     public ResponseEntity<ApiResponse<AssetIncreaseRequestResponse>> approve(
             @PathVariable UUID id,
             @RequestBody(required = false) java.util.Map<String, String> body) {
@@ -83,7 +85,7 @@ public class AssetIncreaseRequestController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("@auth.check(authentication, 'asset:increase-request')")
+    @PreAuthorize("@auth.check(authentication, 'assetincrease:manage')")
     public ResponseEntity<ApiResponse<AssetIncreaseRequestResponse>> reject(
             @PathVariable UUID id,
             @RequestBody(required = false) java.util.Map<String, String> body) {

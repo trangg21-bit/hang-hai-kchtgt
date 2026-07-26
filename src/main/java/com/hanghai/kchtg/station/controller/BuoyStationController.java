@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.station.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.station.dto.buoy.BuoyStationResponse;
 import com.hanghai.kchtg.station.dto.buoy.CreateBuoyStationRequest;
@@ -79,7 +81,7 @@ public class BuoyStationController {
 
     @PostMapping("/{id}/approve-l1")
     public ResponseEntity<ApiResponse<BuoyStationResponse>> approveL1(
-            @PathVariable UUID id, @RequestParam String approverId) {
+            @PathVariable UUID id, @RequestParam UUID approverId) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Phê duyệt L1 thành công",
                 service.approveL1(id, approverId)));
@@ -87,7 +89,7 @@ public class BuoyStationController {
 
     @PostMapping("/{id}/approve-l2")
     public ResponseEntity<ApiResponse<BuoyStationResponse>> approveL2(
-            @PathVariable UUID id, @RequestParam String approverId) {
+            @PathVariable UUID id, @RequestParam UUID approverId) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Phê duyệt L2 thành công — Da cong bo",
                 service.approveL2(id, approverId)));
@@ -97,9 +99,10 @@ public class BuoyStationController {
     public ResponseEntity<ApiResponse<BuoyStationResponse>> reject(
             @PathVariable UUID id,
             @RequestParam String rejectReason,
-            @RequestParam String approverId) {
+            @RequestParam UUID approverId) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Da từ chối",
                 service.reject(id, rejectReason, approverId)));
     }
 }
+

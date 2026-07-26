@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.orgunit.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
 import jakarta.validation.constraints.*;

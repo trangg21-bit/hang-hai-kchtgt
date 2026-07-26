@@ -21,6 +21,6 @@ public class InfraAssetTypeConverter implements AttributeConverter<InfraAssetTyp
                 return e;
             }
         }
-        throw new IllegalArgumentException("GiÃ¡ trá»‹ database khÃ´ng há»£p lá»‡ cho InfraAssetType: " + dbData);
+        throw new IllegalArgumentException("Giá trị database không hợp lệ cho InfraAssetType: " + dbData);
     }
 }

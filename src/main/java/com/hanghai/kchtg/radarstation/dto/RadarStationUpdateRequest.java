@@ -1,7 +1,10 @@
 package com.hanghai.kchtg.radarstation.dto;
 
+import java.util.UUID;
+
 import lombok.*;
 import java.math.BigDecimal;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 @Data
 @Builder
@@ -10,17 +13,17 @@ import java.math.BigDecimal;
 public class RadarStationUpdateRequest {
     private String stationName;
     private String location;
-    private BigDecimal kinhDo;
-    private BigDecimal viDo;
+    private BigDecimal longitude;
+    private BigDecimal latitude;
     private String stationType;
     private String coverage;
     private BigDecimal emissionArea;
     private String source;
     private String conditionStatus;
-    private java.util.UUID orgUnitId;
+    private UUID orgUnitId;
     private BigDecimal towerHeight;
     private BigDecimal radarRange;
-    private java.util.UUID vtsSystemId;
-    private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
-    private String toaDo;
+    private UUID vtsSystemId;
+    private GisGeometryType geometryType;
+    private String coordinates;
 }

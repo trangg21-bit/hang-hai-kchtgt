@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.polygon.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ObjectType;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.Status;

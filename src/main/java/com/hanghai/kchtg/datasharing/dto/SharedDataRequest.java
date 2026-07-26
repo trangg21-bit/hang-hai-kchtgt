@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.datasharing.dto;
 
+import java.util.UUID;
+
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,6 +29,6 @@ public class SharedDataRequest {
 
     private Integer recordCount;
     private String description;
-    private String approvedBy;
+    private UUID approvedBy;
     private LocalDate approvedAt;
 }
