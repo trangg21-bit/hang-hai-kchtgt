@@ -153,6 +153,18 @@ class FlywayMigrationTest {
         assertThat(count("SELECT count(*) FROM maintenance_plans WHERE maintenance_type = 'DINH_KY'"))
                 .as("the rename must carry the data across").isEqualTo(1);
 
+        // V90 on a NOT NULL column: the username cannot become NULL without breaking
+        // the constraint, so it must land on the nil UUID and the real one survive.
+        assertThat(columnType("approval_history", "approved_by")).isEqualTo("uuid");
+        assertThat(count("""
+                SELECT count(*) FROM approval_history
+                 WHERE approved_by = '00000000-0000-0000-0000-000000000000'"""))
+                .as("'admin' must be replaced, not nulled").isEqualTo(1);
+        assertThat(count("""
+                SELECT count(*) FROM approval_history
+                 WHERE approved_by = '1dfc226c-d31b-4089-93ff-86c646b94129'"""))
+                .as("a valid UUID must survive untouched").isEqualTo(1);
+
         // V90 exclusions: these stay text because the entities declare String. Their
         // names arrive via V86 (nguoi_tao -> created_by, nguoi_duyet -> approved_by).
         assertThat(columnType("port_planning", "created_by")).isEqualTo("character varying");

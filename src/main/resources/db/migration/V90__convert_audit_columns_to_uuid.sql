@@ -41,7 +41,7 @@ DECLARE
     con_name text;
 BEGIN
     FOR r IN
-        SELECT c.table_name, c.column_name
+        SELECT c.table_name, c.column_name, c.is_nullable
           FROM information_schema.columns c
           JOIN information_schema.tables t
             ON t.table_schema = c.table_schema
@@ -58,14 +58,21 @@ BEGIN
             CONTINUE;
         END IF;
 
-        -- Clear anything that is not a UUID so the cast cannot abort the deploy.
+        -- Neutralise anything that is not a UUID so the cast cannot abort the deploy.
+        -- NULL is the natural placeholder, but some of these columns are NOT NULL
+        -- (approval_history.approved_by among them), so those get the nil UUID
+        -- instead — nulling them violates the constraint and kills the migration.
         EXECUTE format(
-            'UPDATE %I SET %I = NULL WHERE %I IS NOT NULL AND %I !~ %L',
-            r.table_name, r.column_name, r.column_name, r.column_name, uuid_re);
+            'UPDATE %I SET %I = %L WHERE %I IS NOT NULL AND %I !~ %L',
+            r.table_name,
+            r.column_name,
+            CASE WHEN r.is_nullable = 'NO' THEN '00000000-0000-0000-0000-000000000000' END,
+            r.column_name, r.column_name, uuid_re);
         GET DIAGNOSTICS bad_rows = ROW_COUNT;
         IF bad_rows > 0 THEN
-            RAISE NOTICE 'V90: %.% - cleared % non-UUID value(s) before conversion',
-                r.table_name, r.column_name, bad_rows;
+            RAISE NOTICE 'V90: %.% - neutralised % non-UUID value(s) (% placeholder)',
+                r.table_name, r.column_name, bad_rows,
+                CASE WHEN r.is_nullable = 'NO' THEN 'nil-UUID' ELSE 'NULL' END;
         END IF;
 
         -- Any CHECK constraint on the column is written against text values and

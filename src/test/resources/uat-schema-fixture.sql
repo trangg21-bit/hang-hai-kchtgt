@@ -342,3 +342,15 @@ CREATE TABLE search_suggestions (
 INSERT INTO port_planning (id, nguoi_tao) VALUES (gen_random_uuid(), 'nguyenvana');
 INSERT INTO adjustment_approvals (id, nguoi_duyet) VALUES (gen_random_uuid(), 'Tran Thi B');
 INSERT INTO maintenance_plans (id, loai_bao_tri) VALUES (gen_random_uuid(), 'DINH_KY');
+
+-- A NOT NULL audit column holding a username. V90 cannot null this one out — the
+-- constraint would reject it — so it has to fall back to the nil UUID. This is the
+-- shape that stopped the UAT deploy at version 89.
+CREATE TABLE approval_history (
+    id          BIGSERIAL PRIMARY KEY,
+    approved_by VARCHAR(100) NOT NULL,
+    result      VARCHAR(30)
+);
+INSERT INTO approval_history (approved_by, result) VALUES ('admin', 'APPROVED');
+INSERT INTO approval_history (approved_by, result)
+VALUES ('1dfc226c-d31b-4089-93ff-86c646b94129', 'APPROVED');
