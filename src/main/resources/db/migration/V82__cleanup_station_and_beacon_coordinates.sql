@@ -53,6 +53,7 @@ DECLARE
     t          text;
     col        text;
     col_type   text;
+    con_name   text;
 BEGIN
     -- 1. Drop the duplicated coordinate columns.
     FOREACH t IN ARRAY coord_tables LOOP
@@ -95,6 +96,26 @@ BEGIN
                 -- Already numeric; nothing to convert.
                 CONTINUE;
             END IF;
+
+            -- Hibernate emits a CHECK constraint enumerating the string values for
+            -- an @Enumerated(STRING) column (coastal_station_vts_status_check and
+            -- friends). PostgreSQL re-validates it after the type change, and it
+            -- fails against the new smallint values, so it has to go first.
+            FOR con_name IN
+                SELECT c.conname
+                  FROM pg_constraint c
+                  JOIN pg_class     r ON r.oid = c.conrelid
+                  JOIN pg_namespace n ON n.oid = r.relnamespace
+                  JOIN pg_attribute a ON a.attrelid = r.oid
+                                     AND a.attnum = ANY (c.conkey)
+                 WHERE c.contype   = 'c'
+                   AND n.nspname   = 'public'
+                   AND r.relname   = t
+                   AND a.attname   = col
+            LOOP
+                RAISE NOTICE 'V82: dropping check constraint % on %.%', con_name, t, col;
+                EXECUTE format('ALTER TABLE %I DROP CONSTRAINT %I', t, con_name);
+            END LOOP;
 
             IF col = 'status' THEN
                 EXECUTE format($fmt$

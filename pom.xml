@@ -177,6 +177,25 @@
             <version>5.2.0</version>
             <scope>test</scope>
         </dependency>
+        <!--
+            Runs a real PostgreSQL as a local process, no Docker required. The unit
+            tests use H2 with Flyway disabled, so nothing exercised the migrations
+            until they reached UAT — which is how V82 shipped with a table-name typo
+            and a check-constraint clash. See FlywayMigrationTest.
+        -->
+        <dependency>
+            <groupId>io.zonky.test</groupId>
+            <artifactId>embedded-postgres</artifactId>
+            <version>2.0.7</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Windows build machines need this binary explicitly; the default pull is linux-amd64. -->
+        <dependency>
+            <groupId>io.zonky.test.postgres</groupId>
+            <artifactId>embedded-postgres-binaries-windows-amd64</artifactId>
+            <version>16.2.0</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
