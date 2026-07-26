@@ -172,6 +172,22 @@ class FlywayMigrationTest {
         assertThat(columnType("adjustment_approvals", "approved_by")).isEqualTo("character varying");
         assertThat(count("SELECT count(*) FROM port_planning WHERE created_by = 'nguyenvana'"))
                 .as("excluded columns keep their data").isEqualTo(1);
+
+        // V91: the legacy document tables were created with BIGINT identity PKs, but
+        // their entities type id as UUID. Before V91 the mismatch aborted startup with
+        // a Hibernate schema-validation error. The fixture reproduces the BIGINT shape,
+        // so these assertions fail if V91 stops converting the primary/foreign keys.
+        assertThat(columnType("adjustment_approvals", "id"))
+                .as("adjustment_approvals.id must become uuid").isEqualTo("uuid");
+        assertThat(columnType("planning_adjustments", "id"))
+                .as("planning_adjustments.id must become uuid").isEqualTo("uuid");
+        assertThat(columnType("port_planning", "id"))
+                .as("port_planning.id must become uuid").isEqualTo("uuid");
+        // FK columns (renamed to English by V86) must be converted alongside the PKs.
+        assertThat(columnType("adjustment_approvals", "planning_adjustment_id"))
+                .as("adjustment_approvals.planning_adjustment_id must become uuid").isEqualTo("uuid");
+        assertThat(columnType("planning_adjustments", "port_planning_id"))
+                .as("planning_adjustments.port_planning_id must become uuid").isEqualTo("uuid");
     }
 
     @Test
