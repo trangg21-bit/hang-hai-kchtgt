@@ -123,8 +123,8 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           form.setFieldsValue({
             stationName: data.stationName,
             location: data.location,
-            kinhDo: data.kinhDo,
-            viDo: data.viDo,
+            longitude: data.longitude,
+            latitude: data.latitude,
             stationType: data.stationType,
             coverage: data.coverage,
             emissionArea: data.emissionArea,
@@ -182,8 +182,8 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
       const payload: CreateRadarStationRequest = {
         stationName: values.stationName,
         location: values.location,
-        kinhDo: values.kinhDo,
-        viDo: values.viDo,
+        longitude: values.longitude,
+        latitude: values.latitude,
         stationType: values.stationType,
         coverage: values.coverage,
         emissionArea: values.emissionArea,

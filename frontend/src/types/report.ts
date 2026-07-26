@@ -5,7 +5,7 @@ export interface ReportRequest {
   orgUnitId?: string;
   format?: 'PREVIEW' | 'EXCEL' | 'PDF';
   bcNoiDung?: string;
-  nhomCangBien?: number;
+  portGroup?: number;
 }
 
 export interface ReportResponse {

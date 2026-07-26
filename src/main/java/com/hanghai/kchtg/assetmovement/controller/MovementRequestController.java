@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.MovementRequestRequest;
 import com.hanghai.kchtg.assetmovement.dto.MovementRequestResponse;
 import com.hanghai.kchtg.assetmovement.entity.MovementType;
@@ -29,7 +31,7 @@ public class MovementRequestController {
     private final MovementRequestService movementRequestService;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:movement-request')")
+    @PreAuthorize("@auth.check(authentication, 'movementrequest:manage')")
     public ResponseEntity<ApiResponse<MovementRequestResponse>> create(
             @RequestBody MovementRequestRequest request) {
         MovementRequestResponse response = movementRequestService.create(request);
@@ -37,7 +39,7 @@ public class MovementRequestController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:movement-request')")
+    @PreAuthorize("@auth.check(authentication, 'movementrequest:manage')")
     public ResponseEntity<ApiResponse<MovementRequestResponse>> getById(
             @PathVariable UUID id) {
         MovementRequestResponse response = movementRequestService.getById(id);
@@ -45,7 +47,7 @@ public class MovementRequestController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:movement-request')")
+    @PreAuthorize("@auth.check(authentication, 'movementrequest:manage')")
     public ResponseEntity<ApiResponse<Page<MovementRequestResponse>>> findAll(
             @RequestParam(required = false) MovementType movementType,
             @RequestParam(required = false) RequestStatus status,
@@ -67,7 +69,7 @@ public class MovementRequestController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:movement-request')")
+    @PreAuthorize("@auth.check(authentication, 'movementrequest:manage')")
     public ResponseEntity<ApiResponse<MovementRequestResponse>> update(
             @PathVariable UUID id,
             @RequestBody MovementRequestRequest request) {
@@ -76,7 +78,7 @@ public class MovementRequestController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:movement-request')")
+    @PreAuthorize("@auth.check(authentication, 'movementrequest:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         movementRequestService.delete(id);

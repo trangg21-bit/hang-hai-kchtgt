@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.lockout.dto;
 
+import java.util.UUID;
+
 import java.time.LocalDateTime;
 
 /**
@@ -7,7 +9,7 @@ import java.time.LocalDateTime;
  */
 public class LogEntryDTO {
 
-    private java.util.UUID id;
+    private UUID id;
     private String username;
     private String result;
     private String failureReason;
@@ -15,8 +17,8 @@ public class LogEntryDTO {
     private String eventType;
     private LocalDateTime occurredAt;
 
-    public java.util.UUID getId() { return id; }
-    public void setId(java.util.UUID id) { this.id = id; }
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
     public String getResult() { return result; }

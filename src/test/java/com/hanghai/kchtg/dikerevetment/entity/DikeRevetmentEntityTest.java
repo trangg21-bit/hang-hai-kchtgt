@@ -71,11 +71,11 @@ class DikeRevetmentEntityTest {
         entity.setIsDeleted(false);
         assertFalse(entity.getIsDeleted());
 
-        entity.setCreatedBy("admin");
-        assertEquals("admin", entity.getCreatedBy());
+        entity.setCreatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entity.getCreatedBy());
 
-        entity.setUpdatedBy("user1");
-        assertEquals("user1", entity.getUpdatedBy());
+        entity.setUpdatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entity.getUpdatedBy());
     }
 
     @Test void builder_sets_all_fields() {
@@ -90,7 +90,7 @@ class DikeRevetmentEntityTest {
                 .approvalStatus(DikeRevetmentApprovalStatus.APPROVED)
                 .isApprovedLevel1(true)
                 .isApprovedLevel2(true)
-                .createdBy("system")
+                .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .build();
 
         assertEquals(DikeRevetmentType.SAND_DIKE, dr.getDikeRevetmentType());
@@ -99,7 +99,7 @@ class DikeRevetmentEntityTest {
         assertEquals(DikeRevetmentApprovalStatus.APPROVED, dr.getApprovalStatus());
         assertTrue(dr.getIsApprovedLevel1());
         assertTrue(dr.getIsApprovedLevel2());
-        assertEquals("system", dr.getCreatedBy());
+        assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), dr.getCreatedBy());
     }
 
     @Test void builder_collections_are_empty_lists_not_null() {

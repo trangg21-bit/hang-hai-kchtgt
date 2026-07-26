@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.station.dto.lighthouse;
 
+import java.util.UUID;
+
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -7,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 /**
  * Request DTO cho việc tạo mới nhà trạm đèn biển (F-086).
@@ -31,13 +34,9 @@ public class CreateLighthouseStationRequest {
     @NotNull(message = "Vĩ độ không được để trống")
     @DecimalMin(value = "-90.0", message = "Vĩ độ phải lớn hơn hoặc bằng -90.0")
     @DecimalMax(value = "90.0", message = "Vĩ độ phải nhỏ hơn hoặc bằng 90.0")
-    private Double latitude;
-
     @NotNull(message = "Kinh độ không được để trống")
     @DecimalMin(value = "-180.0", message = "Kinh độ phải lớn hơn hoặc bằng -180.0")
     @DecimalMax(value = "180.0", message = "Kinh độ phải nhỏ hơn hoặc bằng 180.0")
-    private Double longitude;
-
     @NotNull(message = "Tầm hiệu lực ánh sáng không được để trống")
     @DecimalMin(value = "0.01", message = "Tầm hiệu lực ánh sáng phải lớn hơn hoặc bằng 0.01 hải lý")
     @DecimalMax(value = "60.0", message = "Tầm hiệu lực ánh sáng phải nhỏ hơn hoặc bằng 60.0 hải lý")
@@ -56,7 +55,7 @@ public class CreateLighthouseStationRequest {
     @Size(max = 1000)
     private String description;
 
-    private java.util.UUID unitId;
+    private UUID unitId;
     private LocalDate lastMaintenanceDate;
     private LocalDate nextMaintenanceDate;
 
@@ -66,6 +65,10 @@ public class CreateLighthouseStationRequest {
     @Builder.Default
     private String action = "draft";
 
-    private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
-    private String toaDo;
+    private GisGeometryType geometryType;
+    private Double latitude;
+    private Double longitude;
+
+    private String coordinates;
 }
+

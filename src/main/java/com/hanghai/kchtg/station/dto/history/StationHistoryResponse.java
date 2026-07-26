@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.station.dto.history;
 
+import java.util.UUID;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,7 +20,7 @@ import java.util.UUID;
 public class StationHistoryResponse {
 
     private UUID id;
-    private String tramType;
+    private String stationType;
     private UUID entityId;
     private String actionType;
     private String changedField;

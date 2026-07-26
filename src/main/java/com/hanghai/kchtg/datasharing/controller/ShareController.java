@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.datasharing.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.datasharing.dto.ShareFilter;
 import com.hanghai.kchtg.datasharing.dto.ShareSummary;
@@ -60,7 +62,7 @@ public class ShareController {
      */
     @GetMapping("/shares/{id}")
     public ResponseEntity<ApiResponse<SharedDataResponse>> findById(
-            @PathVariable Long id) {
+            @PathVariable UUID id) {
         log.info("Finding shared data by id={}", id);
         return shareService.findById(id)
                 .map(response -> ResponseEntity.ok(
@@ -149,7 +151,7 @@ public class ShareController {
      */
     @PutMapping("/shares/{id}/revoke")
     public ResponseEntity<ApiResponse<Void>> revoke(
-            @PathVariable Long id) {
+            @PathVariable UUID id) {
         log.info("Revoking share [{}]", id);
         shareService.revoke(id);
         return ResponseEntity.ok(
@@ -214,7 +216,7 @@ public class ShareController {
      */
     @DeleteMapping("/shares/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(
-            @PathVariable Long id) {
+            @PathVariable UUID id) {
         log.info("Deleting share [{}]", id);
         if (!shareService.findById(id).isPresent()) {
             return ResponseEntity.notFound().build();

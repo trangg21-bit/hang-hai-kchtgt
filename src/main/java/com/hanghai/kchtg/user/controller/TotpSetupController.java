@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.user.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.entity.AuditLog;
 import com.hanghai.kchtg.common.entity.AuditLogRepository;
@@ -90,7 +92,7 @@ public class TotpSetupController {
             return ResponseEntity.badRequest().body(ApiResponse.error("userId is required"));
         }
 
-        Optional<User> userOpt = userRepository.findByIdWithRelations(java.util.UUID.fromString(userId));
+        Optional<User> userOpt = userRepository.findByIdWithRelations(UUID.fromString(userId));
         if (userOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(ApiResponse.error("Không tìm thấy người dùng"));
         }
@@ -168,7 +170,7 @@ public class TotpSetupController {
         }
 
         // Mark user with TOTP enabled
-        User user = userRepository.findByIdWithRelations(java.util.UUID.fromString(userId)).orElseThrow();
+        User user = userRepository.findByIdWithRelations(UUID.fromString(userId)).orElseThrow();
         user.setTotpSecretHash(hashedSecret);
         user.setTotpEnabled(true);
         user.setTotpVerifiedAt(LocalDateTime.now());

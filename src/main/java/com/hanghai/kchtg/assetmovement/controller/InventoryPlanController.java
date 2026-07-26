@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.InventoryPlanRequest;
 import com.hanghai.kchtg.assetmovement.dto.InventoryPlanResponse;
 import com.hanghai.kchtg.assetmovement.entity.PlanStatus;
@@ -26,7 +28,7 @@ public class InventoryPlanController {
     private final InventoryPlanService inventoryPlanService;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-plan')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryplan:manage')")
     public ResponseEntity<ApiResponse<InventoryPlanResponse>> create(
             @Valid @RequestBody InventoryPlanRequest request) {
         InventoryPlanResponse response = inventoryPlanService.create(request);
@@ -34,7 +36,7 @@ public class InventoryPlanController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-plan')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryplan:manage')")
     public ResponseEntity<ApiResponse<InventoryPlanResponse>> getById(
             @PathVariable UUID id) {
         InventoryPlanResponse response = inventoryPlanService.getById(id);
@@ -42,7 +44,7 @@ public class InventoryPlanController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-plan')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryplan:manage')")
     public ResponseEntity<ApiResponse<Page<InventoryPlanResponse>>> findAll(
             @RequestParam(required = false) PlanStatus status,
             @RequestParam(defaultValue = "0") int page,
@@ -59,7 +61,7 @@ public class InventoryPlanController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-plan')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryplan:manage')")
     public ResponseEntity<ApiResponse<InventoryPlanResponse>> update(
             @PathVariable UUID id,
             @RequestBody InventoryPlanRequest request) {
@@ -68,7 +70,7 @@ public class InventoryPlanController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-plan')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryplan:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         inventoryPlanService.delete(id);
@@ -76,7 +78,7 @@ public class InventoryPlanController {
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-plan')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryplan:manage')")
     public ResponseEntity<ApiResponse<InventoryPlanResponse>> approve(
             @PathVariable UUID id,
             @RequestBody(required = false) java.util.Map<String, String> body) {
@@ -86,7 +88,7 @@ public class InventoryPlanController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-plan')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryplan:manage')")
     public ResponseEntity<ApiResponse<InventoryPlanResponse>> reject(
             @PathVariable UUID id,
             @RequestBody(required = false) java.util.Map<String, String> body) {
@@ -96,7 +98,7 @@ public class InventoryPlanController {
     }
 
     @PostMapping("/{id}/start")
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-plan')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryplan:manage')")
     public ResponseEntity<ApiResponse<InventoryPlanResponse>> start(
             @PathVariable UUID id) {
         InventoryPlanResponse response = inventoryPlanService.startExecution(id);
@@ -104,7 +106,7 @@ public class InventoryPlanController {
     }
 
     @PostMapping("/{id}/complete")
-    @PreAuthorize("@auth.check(authentication, 'asset:inventory-plan')")
+    @PreAuthorize("@auth.check(authentication, 'inventoryplan:manage')")
     public ResponseEntity<ApiResponse<InventoryPlanResponse>> complete(
             @PathVariable UUID id) {
         InventoryPlanResponse response = inventoryPlanService.completeExecution(id);

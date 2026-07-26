@@ -21,6 +21,6 @@ public class PlanStatusConverter implements AttributeConverter<PlanStatus, Integ
                 return e;
             }
         }
-        throw new IllegalArgumentException("GiÃ¡ trá»‹ database khÃ´ng há»£p lá»‡ cho PlanStatus: " + dbData);
+        throw new IllegalArgumentException("Giá trị database không hợp lệ cho PlanStatus: " + dbData);
     }
 }

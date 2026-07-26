@@ -78,8 +78,6 @@ class CoastalStationInmarsatControllerTest {
         entity.setDeviceCode("INM-001");
         entity.setCode("INM-001");
         entity.setName("Inmarsat Station");
-        entity.setLatitude(10.0);
-        entity.setLongitude(106.0);
         entity.setModemType("Capsat");
         entity.setFrequency("1.6GHz");
         entity.setCoverageZone("Pacific");
@@ -90,7 +88,7 @@ class CoastalStationInmarsatControllerTest {
         entity.setIsActive(true);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
         entity.setApprovalStatus(StationApprovalStatus.PENDING);
-        entity.setApprovalLevel(0);
+        entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0);
         return entity;
     }
 
@@ -99,8 +97,6 @@ class CoastalStationInmarsatControllerTest {
                 .id(id)
                 .deviceCode("INM-001")
                 .stationName("Inmarsat Station")
-                .latitude(10.0)
-                .longitude(106.0)
                 .modemType("Capsat")
                 .frequency("1.6GHz")
                 .coverageZone("Pacific")
@@ -110,7 +106,7 @@ class CoastalStationInmarsatControllerTest {
                 .contactPhone("+84987654321")
                 .status(StationStatus.PENDING_APPROVAL)
                 .approvalStatus(StationApprovalStatus.PENDING)
-                .approvalLevel(0)
+                .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0)
                 .build();
     }
 
@@ -245,7 +241,7 @@ class CoastalStationInmarsatControllerTest {
     void testApprove() throws Exception {
         UUID id = UUID.randomUUID();
         CoastalStationInmarsat entity = makeEntity(id);
-        entity.setApprovalLevel(1);
+        entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
         entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
         entity.setStatus(StationStatus.APPROVED_L1);
         when(service.approveStation(eq(id), eq(true), anyLong())).thenReturn(entity);
@@ -326,8 +322,7 @@ class CoastalStationInmarsatControllerTest {
     void testCreateValidationError() throws Exception {
         String invalidJson = """
                 {
-                  "latitude": "not-a-number"
-                }
+                  }
                 """;
 
         mockMvc.perform(post(BASE)

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.spatial.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.spatial.entity.SpatialObjectCategory;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

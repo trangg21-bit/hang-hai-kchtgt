@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.siem.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.siem.dto.SiemMetricsResponse;
 import com.hanghai.kchtg.siem.dto.SiemReportRequest;

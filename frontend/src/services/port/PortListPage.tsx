@@ -98,17 +98,17 @@ export const translateFieldName = (fieldName: string): string => {
     portCode: 'Mã cảng biển',
     portName: 'Tên cảng biển',
     province: 'Tỉnh/Thành phố',
-    viDo: 'Vĩ độ',
-    kinhDo: 'Kinh độ',
+    latitude: 'Vĩ độ',
+    longitude: 'Kinh độ',
     area: 'Diện tích (ha)',
     khaNangTiepNhan: 'Khả năng tiếp nhận',
-    nhomCangBien: 'Nhóm cảng biển',
+    portGroup: 'Nhóm cảng biển',
     berthCode: 'Mã bến cảng',
     berthName: 'Tên bến cảng',
     portId: 'Cảng biển chủ',
     tuyenDuongThuy: 'Tuyến đường thủy',
     width: 'Chiều rộng (m)',
-    loaiBen: 'Loại bến',
+    berthType: 'Loại bến',
     doSauLuong: 'Độ sâu luồng (m)',
     pierCode: 'Mã cầu cảng',
     pierName: 'Tên cầu cảng',
@@ -131,7 +131,7 @@ export const translateFieldName = (fieldName: string): string => {
     operationalStatus: 'Trạng thái hoạt động',
     approvalStatus: 'Trạng thái phê duyệt',
     orgUnitId: 'Đơn vị quản lý',
-    congNangKhaiThac: 'Công năng khai thác',
+    operationalCapacity: 'Công năng khai thác',
     bieuTuongId: 'Biểu tượng bản đồ',
     iconId: 'Biểu tượng bản đồ',
     lineSymbolId: 'Ký hiệu đường',
@@ -222,7 +222,7 @@ export default function PortListPage() {
               province: data.province || undefined,
               khaNangTiepNhan: data.khaNangTiepNhan != null ? data.khaNangTiepNhan : undefined,
               orgUnitId: data.orgUnitId || undefined,
-              nhomCangBien: data.nhomCangBien != null ? data.nhomCangBien : undefined,
+              portGroup: data.portGroup != null ? data.portGroup : undefined,
               bieuTuongId: data.bieuTuongId || undefined,
               diaDiemChiTiet: data.diaDiemChiTiet || undefined,
               phanCap: data.phanCap != null ? data.phanCap : undefined,
@@ -239,9 +239,9 @@ export default function PortListPage() {
               tongSoDeKe: data.tongSoDeKe != null ? data.tongSoDeKe : undefined,
               tongChieuDaiDeKe: data.tongChieuDaiDeKe != null ? data.tongChieuDaiDeKe : undefined,
               tongSoDenBienDangTieu: data.tongSoDenBienDangTieu != null ? data.tongSoDenBienDangTieu : undefined,
-              soLuongBenPhao: data.soLuongBenPhao != null ? data.soLuongBenPhao : undefined,
-              soLuongKhuNeoDau: data.soLuongKhuNeoDau != null ? data.soLuongKhuNeoDau : undefined,
-              soLuongKhuChuyenTai: data.soLuongKhuChuyenTai != null ? data.soLuongKhuChuyenTai : undefined,
+              quantityBenPhao: data.quantityBenPhao != null ? data.quantityBenPhao : undefined,
+              quantityKhuNeoDau: data.quantityKhuNeoDau != null ? data.quantityKhuNeoDau : undefined,
+              quantityKhuChuyenTai: data.quantityKhuChuyenTai != null ? data.quantityKhuChuyenTai : undefined,
               cacKhuNuocKhac: data.cacKhuNuocKhac || undefined,
               remarks: data.remarks || undefined,
               gisLocation: {
@@ -362,7 +362,7 @@ export default function PortListPage() {
         operationalStatus: (values.operationalStatus as string) || undefined,
         approvalStatus: (values.approvalStatus as string) || 'CHO_PHE_DUYET',
         orgUnitId: (values.orgUnitId as string) || undefined,
-        nhomCangBien: values.nhomCangBien ? Number(values.nhomCangBien) : undefined,
+        portGroup: values.portGroup ? Number(values.portGroup) : undefined,
         bieuTuongId: (values.gisLocation as any)?.bieuTuongId || (values.bieuTuongId as string) || undefined,
         loaiHinhHoc: values.loaiHinhHoc as string,
         toaDo: (values.gisLocation as any)?.toaDo || undefined,
@@ -394,12 +394,12 @@ export default function PortListPage() {
           ? Number(values.tongChieuDaiDeKe) : undefined,
         tongSoDenBienDangTieu: values.tongSoDenBienDangTieu != null && !Number.isNaN(values.tongSoDenBienDangTieu as number)
           ? Number(values.tongSoDenBienDangTieu) : undefined,
-        soLuongBenPhao: values.soLuongBenPhao != null && !Number.isNaN(values.soLuongBenPhao as number)
-          ? Number(values.soLuongBenPhao) : undefined,
-        soLuongKhuNeoDau: values.soLuongKhuNeoDau != null && !Number.isNaN(values.soLuongKhuNeoDau as number)
-          ? Number(values.soLuongKhuNeoDau) : undefined,
-        soLuongKhuChuyenTai: values.soLuongKhuChuyenTai != null && !Number.isNaN(values.soLuongKhuChuyenTai as number)
-          ? Number(values.soLuongKhuChuyenTai) : undefined,
+        quantityBenPhao: values.quantityBenPhao != null && !Number.isNaN(values.quantityBenPhao as number)
+          ? Number(values.quantityBenPhao) : undefined,
+        quantityKhuNeoDau: values.quantityKhuNeoDau != null && !Number.isNaN(values.quantityKhuNeoDau as number)
+          ? Number(values.quantityKhuNeoDau) : undefined,
+        quantityKhuChuyenTai: values.quantityKhuChuyenTai != null && !Number.isNaN(values.quantityKhuChuyenTai as number)
+          ? Number(values.quantityKhuChuyenTai) : undefined,
         cacKhuNuocKhac: (values.cacKhuNuocKhac as string) || undefined,
         remarks: (values.remarks as string) || undefined,
       };
@@ -450,7 +450,7 @@ export default function PortListPage() {
         khaNangTiepNhan: values.khaNangTiepNhan as number | undefined,
         operationalStatus: (values.operationalStatus as string) || undefined,
         orgUnitId: (values.orgUnitId as string) || undefined,
-        nhomCangBien: values.nhomCangBien ? Number(values.nhomCangBien) : undefined,
+        portGroup: values.portGroup ? Number(values.portGroup) : undefined,
         bieuTuongId: (values.gisLocation as any)?.bieuTuongId || (values.bieuTuongId as string) || null,
         loaiHinhHoc: values.loaiHinhHoc as string,
         toaDo: (values.gisLocation as any)?.toaDo || undefined,
@@ -469,9 +469,9 @@ export default function PortListPage() {
         tongSoDeKe: n(values.tongSoDeKe),
         tongChieuDaiDeKe: n(values.tongChieuDaiDeKe),
         tongSoDenBienDangTieu: n(values.tongSoDenBienDangTieu),
-        soLuongBenPhao: n(values.soLuongBenPhao),
-        soLuongKhuNeoDau: n(values.soLuongKhuNeoDau),
-        soLuongKhuChuyenTai: n(values.soLuongKhuChuyenTai),
+        quantityBenPhao: n(values.quantityBenPhao),
+        quantityKhuNeoDau: n(values.quantityKhuNeoDau),
+        quantityKhuChuyenTai: n(values.quantityKhuChuyenTai),
         cacKhuNuocKhac: (values.cacKhuNuocKhac as string) || undefined,
         remarks: (values.remarks as string) || undefined,
       };
@@ -608,7 +608,7 @@ export default function PortListPage() {
     [orgUnits],
   );
 
-  const getNhomCangBienLabel = (val: number | null): string => {
+  const getPortGroupLabel = (val: number | null): string => {
     if (!val) return '—';
     return `Nhóm ${val}`;
   };
@@ -654,7 +654,7 @@ export default function PortListPage() {
                 province: data.province || undefined,
                   khaNangTiepNhan: data.khaNangTiepNhan != null ? data.khaNangTiepNhan : undefined,
                   orgUnitId: data.orgUnitId || undefined,
-                nhomCangBien: data.nhomCangBien != null ? data.nhomCangBien : undefined,
+                portGroup: data.portGroup != null ? data.portGroup : undefined,
                 bieuTuongId: data.bieuTuongId || undefined,
                 diaDiemChiTiet: data.diaDiemChiTiet || undefined,
                 phanCap: data.phanCap != null ? data.phanCap : undefined,
@@ -671,9 +671,9 @@ export default function PortListPage() {
                 tongSoDeKe: data.tongSoDeKe != null ? data.tongSoDeKe : undefined,
                 tongChieuDaiDeKe: data.tongChieuDaiDeKe != null ? data.tongChieuDaiDeKe : undefined,
                 tongSoDenBienDangTieu: data.tongSoDenBienDangTieu != null ? data.tongSoDenBienDangTieu : undefined,
-                soLuongBenPhao: data.soLuongBenPhao != null ? data.soLuongBenPhao : undefined,
-                soLuongKhuNeoDau: data.soLuongKhuNeoDau != null ? data.soLuongKhuNeoDau : undefined,
-                soLuongKhuChuyenTai: data.soLuongKhuChuyenTai != null ? data.soLuongKhuChuyenTai : undefined,
+                quantityBenPhao: data.quantityBenPhao != null ? data.quantityBenPhao : undefined,
+                quantityKhuNeoDau: data.quantityKhuNeoDau != null ? data.quantityKhuNeoDau : undefined,
+                quantityKhuChuyenTai: data.quantityKhuChuyenTai != null ? data.quantityKhuChuyenTai : undefined,
                 cacKhuNuocKhac: data.cacKhuNuocKhac || undefined,
                 remarks: data.remarks || undefined,
                 gisLocation: {
@@ -720,7 +720,7 @@ export default function PortListPage() {
   const columns = useMemo(
     () => [
       {
-        key: 'stt',
+        key: 'sequenceNo',
         label: 'STT',
         width: 60,
         type: 'mono' as const,
@@ -757,11 +757,11 @@ export default function PortListPage() {
         render: (v: string | null) => v || '—',
       },
       {
-        key: 'nhomCangBien',
+        key: 'portGroup',
         label: 'Nhóm cảng biển',
-        dataIndex: 'nhomCangBien',
+        dataIndex: 'portGroup',
         width: 100,
-        render: (v: number | null) => getNhomCangBienLabel(v),
+        render: (v: number | null) => getPortGroupLabel(v),
       },
       {
         key: 'approvalStatus',
@@ -793,7 +793,7 @@ export default function PortListPage() {
         },
       },
     ],
-    [page, pageSize, getOrgUnitName, getNhomCangBienLabel],
+    [page, pageSize, getOrgUnitName, getPortGroupLabel],
   );
 
   // ── Filter fields ────────────────────────────────────────────────
@@ -1202,7 +1202,7 @@ export default function PortListPage() {
                       <Row gutter={16}>
                         <Col span={6}>
                           <Form.Item
-                            name="soLuongBenPhao"
+                            name="quantityBenPhao"
                             {...labelProps('Số bến phao')}
                             style={{ marginBottom: spaceFormField }}
                           >
@@ -1211,7 +1211,7 @@ export default function PortListPage() {
                         </Col>
                         <Col span={6}>
                           <Form.Item
-                            name="soLuongKhuNeoDau"
+                            name="quantityKhuNeoDau"
                             {...labelProps('Số khu neo đậu')}
                             style={{ marginBottom: spaceFormField }}
                           >
@@ -1220,7 +1220,7 @@ export default function PortListPage() {
                         </Col>
                         <Col span={6}>
                           <Form.Item
-                            name="soLuongKhuChuyenTai"
+                            name="quantityKhuChuyenTai"
                             {...labelProps('Số khu chuyển tải')}
                             style={{ marginBottom: spaceFormField }}
                           >
@@ -1647,7 +1647,7 @@ export default function PortListPage() {
                       <Row gutter={16}>
                         <Col span={6}>
                           <Form.Item
-                            name="soLuongBenPhao"
+                            name="quantityBenPhao"
                             {...labelProps('Số bến phao')}
                             style={{ marginBottom: spaceFormField }}
                           >
@@ -1656,7 +1656,7 @@ export default function PortListPage() {
                         </Col>
                         <Col span={6}>
                           <Form.Item
-                            name="soLuongKhuNeoDau"
+                            name="quantityKhuNeoDau"
                             {...labelProps('Số khu neo đậu')}
                             style={{ marginBottom: spaceFormField }}
                           >
@@ -1665,7 +1665,7 @@ export default function PortListPage() {
                         </Col>
                         <Col span={6}>
                           <Form.Item
-                            name="soLuongKhuChuyenTai"
+                            name="quantityKhuChuyenTai"
                             {...labelProps('Số khu chuyển tải')}
                             style={{ marginBottom: spaceFormField }}
                           >
@@ -1902,8 +1902,8 @@ export default function PortListPage() {
                         <Typography.Text strong>Nhóm cảng biển:</Typography.Text>
                         <br />
                         <Typography.Text>
-                          {selectedRecord.nhomCangBien
-                            ? 'Nhóm ' + selectedRecord.nhomCangBien
+                          {selectedRecord.portGroup
+                            ? 'Nhóm ' + selectedRecord.portGroup
                             : '—'}
                         </Typography.Text>
                       </Col>
@@ -1996,17 +1996,17 @@ export default function PortListPage() {
                       <Col span={4}>
                         <Typography.Text strong>Bến phao:</Typography.Text>
                         <br />
-                        <Typography.Text>{selectedRecord.soLuongBenPhao ?? '—'}</Typography.Text>
+                        <Typography.Text>{selectedRecord.quantityBenPhao ?? '—'}</Typography.Text>
                       </Col>
                       <Col span={4}>
                         <Typography.Text strong>Khu neo đậu:</Typography.Text>
                         <br />
-                        <Typography.Text>{selectedRecord.soLuongKhuNeoDau ?? '—'}</Typography.Text>
+                        <Typography.Text>{selectedRecord.quantityKhuNeoDau ?? '—'}</Typography.Text>
                       </Col>
                       <Col span={4}>
                         <Typography.Text strong>Khu chuyển tải:</Typography.Text>
                         <br />
-                        <Typography.Text>{selectedRecord.soLuongKhuChuyenTai ?? '—'}</Typography.Text>
+                        <Typography.Text>{selectedRecord.quantityKhuChuyenTai ?? '—'}</Typography.Text>
                       </Col>
                       <Col span={8}>
                         <Typography.Text strong>Các khu nước khác:</Typography.Text>
@@ -2030,8 +2030,8 @@ export default function PortListPage() {
                         <Typography.Text strong>Vĩ độ:</Typography.Text>
                         <br />
                         <Typography.Text>
-                          {selectedRecord.viDo != null
-                            ? selectedRecord.viDo.toFixed(6)
+                          {selectedRecord.latitude != null
+                            ? selectedRecord.latitude.toFixed(6)
                             : '—'}
                         </Typography.Text>
                       </Col>
@@ -2039,8 +2039,8 @@ export default function PortListPage() {
                         <Typography.Text strong>Kinh độ:</Typography.Text>
                         <br />
                         <Typography.Text>
-                          {selectedRecord.kinhDo != null
-                            ? selectedRecord.kinhDo.toFixed(6)
+                          {selectedRecord.longitude != null
+                            ? selectedRecord.longitude.toFixed(6)
                             : '—'}
                         </Typography.Text>
                       </Col>

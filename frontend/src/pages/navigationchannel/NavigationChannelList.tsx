@@ -114,7 +114,7 @@ export default function NavigationChannelList() {
   const columns: ColumnsType<NavigationChannelResponse> = [
     {
       title: 'STT',
-      key: 'stt',
+      key: 'sequenceNo',
       width: 50,
       render: (_: unknown, __: unknown, index: number) => index + 1,
     } as any,

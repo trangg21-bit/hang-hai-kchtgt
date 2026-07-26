@@ -62,8 +62,8 @@ export default function PortDetailPage() {
   useEffect(() => { void loadData(); }, [loadData]);
 
   // ── Child entities ────────────────────────────────────────────────
-  const [benCangs, setBenCangs] = useState<Berth[]>([]);
-  const [vungNuocs, setVungNuocs] = useState<WaterZone[]>([]);
+  const [berths, setBerths] = useState<Berth[]>([]);
+  const [waterZones, setWaterZones] = useState<WaterZone[]>([]);
   const [totalBenCangs, setTotalBenCangs] = useState(0);
   const [totalVungNuocs, setTotalVungNuocs] = useState(0);
   const [childrenLoading, setChildrenLoading] = useState(false);
@@ -76,9 +76,9 @@ export default function PortDetailPage() {
         berthCRUD.search({ portId: id, pageSize: 5 }),
         waterZoneCRUD.findAll({ portId: id, size: 5 }),
       ]);
-      setBenCangs(bcRes.data || []);
+      setBerths(bcRes.data || []);
       setTotalBenCangs(bcRes.total);
-      setVungNuocs(vnRes.data || []);
+      setWaterZones(vnRes.data || []);
       setTotalVungNuocs(vnRes.total);
     } catch {
       // silent — children are supplementary
@@ -99,7 +99,7 @@ export default function PortDetailPage() {
     );
   }
 
-  const gpsPaired = data.viDo != null && data.kinhDo != null;
+  const gpsPaired = data.latitude != null && data.longitude != null;
 
   return (
     <>
@@ -260,12 +260,12 @@ export default function PortDetailPage() {
           >
             {childrenLoading ? (
               <div style={{ textAlign: 'center', padding: spaceMd * 2, color: textTertiary, fontSize: fontSizeSm }}>Đang tải...</div>
-            ) : benCangs.length === 0 ? (
+            ) : berths.length === 0 ? (
               <EmptyState description="Không có bến cảng trực thuộc" />
             ) : (
               <>
                 <Table<Berth>
-                  dataSource={benCangs}
+                  dataSource={berths}
                   rowKey="id"
                   pagination={false}
                   size="small"
@@ -273,7 +273,7 @@ export default function PortDetailPage() {
                   columns={[
                     { dataIndex: 'berthCode', width: 120, render: (v: string) => <span style={{ fontFamily: 'monospace', fontSize: fontSizeSm, color: textSecondary }}>{v}</span> },
                     { dataIndex: 'berthName', ellipsis: true, render: (v: string, r: Berth) => <Link to={`/Berth/${r.id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, textDecoration: 'none' }}>{v}</Link> },
-                    { dataIndex: 'loaiBen', width: 140, render: (v: string) => v ? <span style={{ fontSize: fontSizeSm, color: textSecondary, padding: `2px ${spaceSm}px`, borderRadius: radiusPill, background: 'rgba(11,46,79,0.04)' }}>{v}</span> : <span style={{ color: textTertiary, fontSize: fontSizeSm }}>—</span> },
+                    { dataIndex: 'berthType', width: 140, render: (v: string) => v ? <span style={{ fontSize: fontSizeSm, color: textSecondary, padding: `2px ${spaceSm}px`, borderRadius: radiusPill, background: 'rgba(11,46,79,0.04)' }}>{v}</span> : <span style={{ color: textTertiary, fontSize: fontSizeSm }}>—</span> },
                     { dataIndex: 'operationalStatus', width: 120, render: (v: string) => v === 'HIEN_HANH' ? <span style={{ fontSize: fontSizeSm, color: statusOperational, fontWeight: fontWeightMedium }}>● Hoạt động</span> : <span style={{ fontSize: fontSizeSm, color: statusAttention, fontWeight: fontWeightMedium }}>● Tạm ngừng</span> },
                   ]}
                 />
@@ -300,12 +300,12 @@ export default function PortDetailPage() {
           >
             {childrenLoading ? (
               <div style={{ textAlign: 'center', padding: spaceMd * 2, color: textTertiary, fontSize: fontSizeSm }}>Đang tải...</div>
-            ) : vungNuocs.length === 0 ? (
+            ) : waterZones.length === 0 ? (
               <EmptyState description="Không có vùng nước trực thuộc" />
             ) : (
               <>
                 <Table<WaterZone>
-                  dataSource={vungNuocs}
+                  dataSource={waterZones}
                   rowKey="id"
                   pagination={false}
                   size="small"

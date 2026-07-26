@@ -1,5 +1,8 @@
 package com.hanghai.kchtg.gis.point.controller;
 
+import java.util.UUID;
+import org.springframework.web.bind.annotation.RequestParam;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.gis.point.dto.CreatePointObjectRequest;
 import com.hanghai.kchtg.gis.point.dto.PointObjectResponse;
@@ -15,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/api/point-objects")
@@ -85,7 +89,7 @@ public class PointObjectController {
     @PostMapping("/{id}/approve-l1")
     public ResponseEntity<ApiResponse<PointObjectResponse>> approveL1(
             @PathVariable UUID id,
-            @RequestParam String approverId) {
+            @RequestParam java.util.UUID approverId) {
         PointObjectResponse response = service.approveL1(id, approverId);
         return ResponseEntity.ok(ApiResponse.success("PointObject approved at Level 1", response));
     }
@@ -93,7 +97,7 @@ public class PointObjectController {
     @PostMapping("/{id}/approve-l2")
     public ResponseEntity<ApiResponse<PointObjectResponse>> approveL2(
             @PathVariable UUID id,
-            @RequestParam String approverId) {
+            @RequestParam java.util.UUID approverId) {
         PointObjectResponse response = service.approveL2(id, approverId);
         return ResponseEntity.ok(ApiResponse.success("PointObject approved at Level 2", response));
     }

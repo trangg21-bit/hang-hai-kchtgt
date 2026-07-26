@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.MovementRequestRequest;
 import com.hanghai.kchtg.assetmovement.dto.MovementRequestResponse;
 import com.hanghai.kchtg.assetmovement.entity.MovementType;
@@ -51,7 +53,7 @@ public class MovementRequestService {
 
     public MovementRequestResponse getById(UUID id) {
         MovementRequest entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yÃªu cáº§u biáº¿n Ä‘á»™ng với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yêu cầu biến động với id: " + id));
         return toResponse(entity);
     }
 
@@ -74,7 +76,7 @@ public class MovementRequestService {
     @Transactional
     public MovementRequestResponse update(UUID id, MovementRequestRequest request) {
         MovementRequest entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yÃªu cáº§u biáº¿n Ä‘á»™ng với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy yêu cầu biến động với id: " + id));
 
         validateRequest(request);
 
@@ -99,17 +101,17 @@ public class MovementRequestService {
     @Transactional
     public void delete(UUID id) {
         if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("Không tìm thấy yÃªu cáº§u biáº¿n Ä‘á»™ng với id: " + id);
+            throw new EntityNotFoundException("Không tìm thấy yêu cầu biến động với id: " + id);
         }
         repository.deleteById(id);
     }
 
     private void validateRequest(MovementRequestRequest request) {
         if (request.getMovementType() == null) {
-            throw new IllegalArgumentException("movementType khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng");
+            throw new IllegalArgumentException("movementType không được để trống");
         }
         if (request.getAssetName() == null || request.getAssetName().isBlank()) {
-            throw new IllegalArgumentException("TÃªn tÃ i sáº£n (tiÃªu Ä‘á») khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng");
+            throw new IllegalArgumentException("Tên tài sản (tiêu đề) không được để trống");
         }
     }
 
@@ -124,7 +126,7 @@ public class MovementRequestService {
                 .assetId(null)
                 .movementType(entity.getMovementType() != null ? entity.getMovementType().name() : null)
                 .assetName(entity.getTitle())
-                .soLuong(0)
+                .quantity(0)
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
                 .description(entity.getDescription())
                 .createdBy(entity.getCreatedBy())

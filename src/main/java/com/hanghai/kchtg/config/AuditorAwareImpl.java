@@ -8,16 +8,17 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
-public class AuditorAwareImpl implements AuditorAware<String> {
+public class AuditorAwareImpl implements AuditorAware<UUID> {
 
     private final UserRepository userRepository;
     private static final ThreadLocal<Boolean> IS_LOOKING_UP = ThreadLocal.withInitial(() -> false);
 
     @Override
-    public Optional<String> getCurrentAuditor() {
+    public Optional<UUID> getCurrentAuditor() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getName())) {
             return Optional.empty();
@@ -25,7 +26,7 @@ public class AuditorAwareImpl implements AuditorAware<String> {
 
         Object principal = authentication.getPrincipal();
         if (principal instanceof com.hanghai.kchtg.user.entity.User) {
-            return Optional.of(((com.hanghai.kchtg.user.entity.User) principal).getId().toString());
+            return Optional.of(((com.hanghai.kchtg.user.entity.User) principal).getId());
         }
 
         // Prevent infinite recursion during Hibernate auto-flush
@@ -36,7 +37,7 @@ public class AuditorAwareImpl implements AuditorAware<String> {
         try {
             IS_LOOKING_UP.set(true);
             return userRepository.findByUsername(authentication.getName())
-                    .map(user -> user.getId().toString());
+                    .map(com.hanghai.kchtg.user.entity.User::getId);
         } finally {
             IS_LOOKING_UP.remove();
         }

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.station.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,7 +20,7 @@ public class StationHistory {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    private String tramType;
+    private String stationType;
 
     private UUID entityId;
 

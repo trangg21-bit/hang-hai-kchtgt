@@ -1,8 +1,11 @@
 package com.hanghai.kchtg.radarstation.dto;
 
+import java.util.UUID;
+
 import jakarta.validation.constraints.*;
 import lombok.*;
 import java.math.BigDecimal;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 @Data
 @Builder
@@ -17,11 +20,11 @@ public class RadarStationCreateRequest {
 
     @DecimalMin(value = "-180", message = "Kinh độ phải từ -180 đến 180")
     @DecimalMax(value = "180", message = "Kinh độ phải từ -180 đến 180")
-    private BigDecimal kinhDo;
+    private BigDecimal longitude;
 
     @DecimalMin(value = "-90", message = "Vĩ độ phải từ -90 đến 90")
     @DecimalMax(value = "90", message = "Vĩ độ phải từ -90 đến 90")
-    private BigDecimal viDo;
+    private BigDecimal latitude;
 
     private String stationType;
     private String coverage;
@@ -31,10 +34,10 @@ public class RadarStationCreateRequest {
 
     private String source;
     private String conditionStatus;
-    private java.util.UUID orgUnitId;
+    private UUID orgUnitId;
     private BigDecimal towerHeight;
     private BigDecimal radarRange;
-    private java.util.UUID vtsSystemId;
-    private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
-    private String toaDo;
+    private UUID vtsSystemId;
+    private GisGeometryType geometryType;
+    private String coordinates;
 }

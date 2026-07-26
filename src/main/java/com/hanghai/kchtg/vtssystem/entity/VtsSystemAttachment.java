@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.vtssystem.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -15,10 +17,10 @@ public class VtsSystemAttachment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
     @Column(name = "vts_system_id", nullable = false)
-    private java.util.UUID vtsSystemId;
+    private UUID vtsSystemId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vts_system_id", insertable = false, updatable = false)

@@ -39,11 +39,11 @@ export default function BerthForm() {
             berthName: data.berthName,
             portId: data.portId,
             tuyenDuongThuy: data.tuyenDuongThuy,
-            viDo: data.viDo,
-            kinhDo: data.kinhDo,
+            latitude: data.latitude,
+            longitude: data.longitude,
             length: data.length,
             width: data.width,
-            loaiBen: data.loaiBen,
+            berthType: data.berthType,
             doSauLuong: data.doSauLuong,
             operationalStatus: data.operationalStatus,
           });
@@ -60,8 +60,8 @@ export default function BerthForm() {
       const values = await form.validateFields();
 
       // GPS pair constraint: both or neither
-      const hasViDo = values.viDo !== undefined && values.viDo !== null && values.viDo !== '';
-      const hasKinhDo = values.kinhDo !== undefined && values.kinhDo !== null && values.kinhDo !== '';
+      const hasViDo = values.latitude !== undefined && values.latitude !== null && values.latitude !== '';
+      const hasKinhDo = values.longitude !== undefined && values.longitude !== null && values.longitude !== '';
       if (hasViDo !== hasKinhDo) {
         message.error('Vui lòng nhập cả Vĩ độ và Kinh độ hoặc bỏ qua cả hai');
         return;
@@ -82,11 +82,11 @@ export default function BerthForm() {
           berthName: values.berthName,
           portId: values.portId,
           tuyenDuongThuy: values.tuyenDuongThuy,
-          viDo: values.viDo,
-          kinhDo: values.kinhDo,
+          latitude: values.latitude,
+          longitude: values.longitude,
           length: values.length,
           width: values.width,
-          loaiBen: values.loaiBen,
+          berthType: values.berthType,
           doSauLuong: values.doSauLuong,
           operationalStatus: values.operationalStatus,
           approvalStatus: 'DRAFT',
@@ -241,7 +241,7 @@ export default function BerthForm() {
             <Col xs={24} md={12}>
               <FormField
                 type="text"
-                name="loaiBen"
+                name="berthType"
                 label="Loại bến"
                 placeholder="VD: Bến nước, Bến bờ..."
                 disabled={isEdit && (entityData?.status === 'APPROVED_L2' || entityData?.status === 'PUBLISHED')}
@@ -253,7 +253,7 @@ export default function BerthForm() {
             <Col xs={24} md={12}>
               <FormField
                 type="number"
-                name="viDo"
+                name="latitude"
                 label="Vĩ độ (Latitude)"
                 min={-90}
                 max={90}
@@ -265,7 +265,7 @@ export default function BerthForm() {
             <Col xs={24} md={12}>
               <FormField
                 type="number"
-                name="kinhDo"
+                name="longitude"
                 label="Kinh độ (Longitude)"
                 min={-180}
                 max={180}

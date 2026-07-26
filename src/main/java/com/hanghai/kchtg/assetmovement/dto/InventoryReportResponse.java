@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
+import java.util.UUID;
+
 import lombok.Builder;
 import lombok.Data;
 
@@ -16,12 +18,12 @@ public class InventoryReportResponse {
 
     private UUID id;
     private UUID planId;
-    private String tenBaoCao;
-    private int tongSoLuong;
-    private int soLuongChenhLech;
+    private String reportName;
+    private int totalQuantity;
+    private int quantityVariance;
     private String result;
     private String description;
-    private String createdBy;
+    private UUID createdBy;
     private String createdByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

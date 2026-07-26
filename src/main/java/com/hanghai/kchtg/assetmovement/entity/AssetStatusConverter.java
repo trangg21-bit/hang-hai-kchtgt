@@ -21,6 +21,6 @@ public class AssetStatusConverter implements AttributeConverter<AssetStatus, Int
                 return e;
             }
         }
-        throw new IllegalArgumentException("GiÃ¡ trá»‹ database khÃ´ng há»£p lá»‡ cho AssetStatus: " + dbData);
+        throw new IllegalArgumentException("Giá trị database không hợp lệ cho AssetStatus: " + dbData);
     }
 }

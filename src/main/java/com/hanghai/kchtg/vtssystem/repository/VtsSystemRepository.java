@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.vtssystem.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,7 +13,7 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface VtsSystemRepository extends JpaRepository<VtsSystem, java.util.UUID> {
+public interface VtsSystemRepository extends JpaRepository<VtsSystem, UUID> {
 
     List<VtsSystem> findByApprovalStatusAndIsDeletedFalse(String approvalStatus);
 
@@ -26,7 +28,7 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, java.util.
         ORDER BY t.createdDate DESC
     """)
     Page<VtsSystem> search(
-        @Param("orgUnitId") java.util.UUID orgUnitId,
+        @Param("orgUnitId") UUID orgUnitId,
         @Param("keyword") String keyword,
         @Param("conditionStatus") String conditionStatus,
         @Param("approvalStatus") String approvalStatus,
@@ -37,6 +39,6 @@ public interface VtsSystemRepository extends JpaRepository<VtsSystem, java.util.
            "(:orgUnitId IS NULL OR t.orgUnitId = :orgUnitId) AND " +
            "(:search IS NULL OR LOWER(t.systemName) LIKE :search OR LOWER(t.location) LIKE :search)")
     List<VtsSystem> searchFiltered(
-            @Param("orgUnitId") java.util.UUID orgUnitId,
+            @Param("orgUnitId") UUID orgUnitId,
             @Param("search") String search);
 }

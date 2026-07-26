@@ -30,7 +30,7 @@ public enum ApprovalStatus {
             }
             return ApprovalStatus.valueOf(name.toUpperCase().trim());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Tráº¡ng thÃ¡i phÃª duyá»‡t khÃ´ng há»£p lá»‡: " + name);
+            throw new IllegalArgumentException("Trạng thái phê duyệt không hợp lệ: " + name);
         }
     }
 

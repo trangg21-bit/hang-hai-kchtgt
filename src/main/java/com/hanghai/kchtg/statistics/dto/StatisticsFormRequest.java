@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.statistics.dto;
 
+import java.util.UUID;
+
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -41,7 +43,7 @@ public class StatisticsFormRequest {
     /** JSON-serialized type-specific parameters. */
     private String parameters;
 
-    private String approvedBy;
+    private UUID approvedBy;
     private LocalDate approvedAt;
     private String notes;
 }

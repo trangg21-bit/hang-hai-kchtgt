@@ -25,6 +25,13 @@ import java.util.UUID;
 @EqualsAndHashCode(callSuper = true)
 @Accessors(chain = true)
 public abstract class BaseReport extends BaseEntity {
+    @Column(name = "code", length = 50)
+    private String code;
+
+    @Column(name = "name", length = 200)
+    private String name;
+
+
 
     @Enumerated(EnumType.ORDINAL)
     @Column(name = "report_type", nullable = false)
@@ -57,3 +64,4 @@ public abstract class BaseReport extends BaseEntity {
     @Column(columnDefinition = "json")
     private String parameters;
 }
+

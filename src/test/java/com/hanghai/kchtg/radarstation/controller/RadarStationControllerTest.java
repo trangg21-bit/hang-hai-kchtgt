@@ -25,6 +25,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class RadarStationControllerTest {
 
+    private static final java.util.UUID TEST_USER_ID = java.util.UUID.fromString("00000000-0000-0000-0000-000000000001");
+
     private static final UUID TEST_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     @Mock
@@ -53,7 +55,7 @@ class RadarStationControllerTest {
 
     @Test
     void testCreate() {
-        when(service.create(any(), anyString())).thenReturn(response);
+        when(service.create(any(), any(java.util.UUID.class))).thenReturn(response);
         ResponseEntity<?> result = controller.create(createRequest, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
@@ -81,14 +83,14 @@ class RadarStationControllerTest {
     void testUpdate() {
         RadarStationUpdateRequest updateReq = RadarStationUpdateRequest.builder()
                 .stationName("Tram XYZ").build();
-        when(service.update(eq(TEST_ID), any(), anyString())).thenReturn(response);
+        when(service.update(eq(TEST_ID), any(), any(java.util.UUID.class))).thenReturn(response);
         ResponseEntity<?> result = controller.update(TEST_ID, updateReq, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
     @Test
     void testDelete() {
-        doNothing().when(service).delete(eq(TEST_ID), anyString());
+        doNothing().when(service).delete(eq(TEST_ID), any(java.util.UUID.class));
         ResponseEntity<?> result = controller.delete(TEST_ID, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
@@ -96,7 +98,7 @@ class RadarStationControllerTest {
     @Test
     void testApproveC1() {
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
-        when(service.approveC1(eq(TEST_ID), any(), anyString())).thenReturn(response);
+        when(service.approveC1(eq(TEST_ID), any(), any(java.util.UUID.class))).thenReturn(response);
         ResponseEntity<?> result = controller.approveC1(TEST_ID, req, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
@@ -104,7 +106,7 @@ class RadarStationControllerTest {
     @Test
     void testApproveC2() {
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
-        when(service.approveC2(eq(TEST_ID), any(), anyString())).thenReturn(response);
+        when(service.approveC2(eq(TEST_ID), any(), any(java.util.UUID.class))).thenReturn(response);
         ResponseEntity<?> result = controller.approveC2(TEST_ID, req, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
@@ -125,14 +127,19 @@ class RadarStationControllerTest {
 
     @Test
     void testCreate_WithException() {
-        when(service.create(any(), anyString())).thenThrow(new RuntimeException("Lỗi thử nghiệm"));
+        when(service.create(any(), any(java.util.UUID.class))).thenThrow(new RuntimeException("Lỗi thử nghiệm"));
         ResponseEntity<?> result = controller.create(createRequest, mockAuth());
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
     }
 
     private Authentication mockAuth() {
+        // The controller resolves the actor from the principal, so it has to be a
+        // real User carrying the id the service stubs expect.
+        com.hanghai.kchtg.user.entity.User principal = new com.hanghai.kchtg.user.entity.User();
+        principal.setId(TEST_USER_ID);
+
         Authentication auth = mock(Authentication.class);
-        when(auth.getName()).thenReturn("testuser");
+        when(auth.getPrincipal()).thenReturn(principal);
         return auth;
     }
 }

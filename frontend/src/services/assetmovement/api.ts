@@ -180,10 +180,10 @@ export async function createHoSoXuLy(payload: AssetProcessingRecordRequest): Pro
 }
 
 // ==========================================
-// 7. Lưu phê duyệt (Note: UTF-8 encoded Vietnamese characters in URL)
+// 7. Lưu phê duyệt
 // ==========================================
 export async function fetchApprovalRecordHistory(id: string): Promise<any> {
-  const res = await api.get(`/v1/asset/luu-phe-duy%E1%BB%87t/${id}`);
+  const res = await api.get(`/v1/asset/approval-records/${id}`);
   return res.data.data;
 }
 

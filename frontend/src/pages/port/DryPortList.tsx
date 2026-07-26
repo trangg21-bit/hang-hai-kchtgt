@@ -177,12 +177,12 @@ export default function DryPortList() {
   ], [navigate]);
 
   const columns = useMemo(() => [
-    { key: 'stt', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: DryPort, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
+    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: DryPort, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
     { key: 'dryPortCode', label: 'Mã', dataIndex: 'dryPortCode', width: 140, render: (dryPortCode: string) => <Tag color="cyan">{dryPortCode}</Tag> },
     { key: 'dryPortName', label: 'Tên', dataIndex: 'dryPortName', ellipsis: true },
     { key: 'province', label: 'Tỉnh/thành phố', dataIndex: 'province', width: 180 },
-    { key: 'viDo', label: 'Vĩ độ', dataIndex: 'viDo', width: 100, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(4) || '—'}</span> },
-    { key: 'kinhDo', label: 'Kinh độ', dataIndex: 'kinhDo', width: 100, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(4) || '—'}</span> },
+    { key: 'latitude', label: 'Vĩ độ', dataIndex: 'latitude', width: 100, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(4) || '—'}</span> },
+    { key: 'longitude', label: 'Kinh độ', dataIndex: 'longitude', width: 100, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(4) || '—'}</span> },
     { key: 'area', label: 'Diện tích', dataIndex: 'area', width: 120, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(1) || '—'}</span> },
     { key: 'congSuatTEU', label: 'Công suất TEU', dataIndex: 'congSuatTEU', width: 120, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(0) || '—'}</span> },
     {

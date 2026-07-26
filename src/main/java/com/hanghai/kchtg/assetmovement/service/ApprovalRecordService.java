@@ -1,5 +1,11 @@
 package com.hanghai.kchtg.assetmovement.service;
 
+import java.util.UUID;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+
 import com.hanghai.kchtg.assetmovement.dto.ApprovalRecordRequest;
 import com.hanghai.kchtg.assetmovement.dto.ApprovalRecordResponse;
 import com.hanghai.kchtg.assetmovement.entity.ApprovalResult;
@@ -37,7 +43,7 @@ public class ApprovalRecordService {
 
         ApprovalRecord entity = ApprovalRecord.builder()
                 .requestId(request.getRequestId())
-                .approvalLevel(1)
+                .approvalLevel(ApprovalLevel.LEVEL_1)
                 .approverName(null)
                 .result(result)
                 .reason(request.getNotes())
@@ -124,7 +130,7 @@ public class ApprovalRecordService {
         return ApprovalRecordResponse.builder()
                 .id(entity.getId())
                 .requestId(entity.getRequestId())
-                .loaiYeuCau(null)
+                .requestType(null)
                 .result(entity.getResult() != null ? entity.getResult().name() : null)
                 .approverName(entity.getApproverName() != null ? entity.getApproverName().toString() : null)
                 .notes(entity.getDescription())

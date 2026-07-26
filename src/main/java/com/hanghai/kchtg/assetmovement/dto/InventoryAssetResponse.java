@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
+import java.util.UUID;
+
 import lombok.Builder;
 import lombok.Data;
 
@@ -19,10 +21,10 @@ public class InventoryAssetResponse {
     private UUID assetId;
     private String assetName;
     private String inventoryStatus;
-    private int soLuongKyHienTai;
-    private int soLuongKyThucTe;
+    private int currentPeriodQuantity;
+    private int actualPeriodQuantity;
     private String description;
-    private String createdBy;
+    private UUID createdBy;
     private String createdByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

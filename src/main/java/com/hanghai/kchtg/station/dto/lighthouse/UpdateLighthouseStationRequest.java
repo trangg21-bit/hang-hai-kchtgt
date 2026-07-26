@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.station.dto.lighthouse;
 
+import java.util.UUID;
+
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
@@ -9,6 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 /**
  * Request DTO cho việc cập nhật nhà trạm đèn biển (F-087).
@@ -26,12 +29,8 @@ public class UpdateLighthouseStationRequest {
 
     @DecimalMin(value = "-180.0", message = "Kinh độ phải lớn hơn hoặc bằng -180.0")
     @DecimalMax(value = "180.0", message = "Kinh độ phải nhỏ hơn hoặc bằng 180.0")
-    private Double longitude;
-
     @DecimalMin(value = "-90.0", message = "Vĩ độ phải lớn hơn hoặc bằng -90.0")
     @DecimalMax(value = "90.0", message = "Vĩ độ phải nhỏ hơn hoặc bằng 90.0")
-    private Double latitude;
-
     @Size(max = 50, message = "Màu ánh sáng không được vượt quá 50 ký tự")
     private String lightColor;
 
@@ -49,11 +48,15 @@ public class UpdateLighthouseStationRequest {
     @Size(max = 1000)
     private String description;
 
-    private java.util.UUID unitId;
+    private UUID unitId;
     private LocalDate lastMaintenanceDate;
     private LocalDate nextMaintenanceDate;
     private Boolean isActive;
 
-    private com.hanghai.kchtg.gis.spatial.entity.GisGeometryType loaiHinhHoc;
-    private String toaDo;
+    private GisGeometryType geometryType;
+    private Double latitude;
+    private Double longitude;
+
+    private String coordinates;
 }
+

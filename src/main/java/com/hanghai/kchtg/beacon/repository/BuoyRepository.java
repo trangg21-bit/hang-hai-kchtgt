@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.beacon.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.beacon.entity.Buoy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

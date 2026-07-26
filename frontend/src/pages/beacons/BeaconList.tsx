@@ -445,7 +445,7 @@ export default function BeaconList() {
   );
 
   const columns = [
-    { key: 'stt', label: '#', width: 60, render: (_: unknown, __: BeaconLight, idx: number) => (page - 1) * pageSize + idx + 1 },
+    { key: 'sequenceNo', label: '#', width: 60, render: (_: unknown, __: BeaconLight, idx: number) => (page - 1) * pageSize + idx + 1 },
     {
       key: 'code',
       label: 'Mã đèn biển',

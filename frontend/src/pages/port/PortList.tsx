@@ -178,12 +178,12 @@ export default function PortList() {
   ], [navigate]);
 
   const columns = useMemo(() => [
-    { key: 'stt', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: Port, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
+    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: Port, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
     { key: 'portCode', label: 'Mã', dataIndex: 'portCode', width: 140, render: (portCode: string) => <Tag color="cyan">{portCode}</Tag> },
     { key: 'portName', label: 'Tên', dataIndex: 'portName', ellipsis: true },
     { key: 'province', label: 'Tỉnh/thành phố', dataIndex: 'province', ellipsis: true },
-    { key: 'viDo', label: 'Vĩ độ', dataIndex: 'viDo', width: 100, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(4) || '—'}</span> },
-    { key: 'kinhDo', label: 'Kinh độ', dataIndex: 'kinhDo', width: 100, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(4) || '—'}</span> },
+    { key: 'latitude', label: 'Vĩ độ', dataIndex: 'latitude', width: 100, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(4) || '—'}</span> },
+    { key: 'longitude', label: 'Kinh độ', dataIndex: 'longitude', width: 100, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(4) || '—'}</span> },
     { key: 'area', label: 'Diện tích', dataIndex: 'area', width: 110, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(2) || '—'}</span> },
     {
       key: 'operationalStatus', label: 'Trạng thái hoạt động', dataIndex: 'operationalStatus', width: 160, align: 'center' as const,

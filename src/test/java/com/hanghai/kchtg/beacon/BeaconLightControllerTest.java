@@ -73,8 +73,6 @@ class BeaconLightControllerTest {
                 .code("DEN-001")
                 .name(name)
                 .type(type)
-                .latitude(10.5)
-                .longitude(106.5)
                 .lightRange(15.0)
                 .towerColor("Trắng")
                 .primaryLightModel("Chớp 3 giây")
@@ -83,7 +81,7 @@ class BeaconLightControllerTest {
                 .isActive(true)
                 .status(status)
                 .approvalStatus("PENDING")
-                .approvalLevel(0)
+                .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
@@ -351,28 +349,28 @@ class BeaconLightControllerTest {
     void testApproveL1() throws Exception {
         UUID id = UUID.randomUUID();
         BeaconLightResponse approved = makeResponse(id, "Đã duyệt L1", "LIGHTHOUSE", "APPROVED_L1");
-        approved.setApprovedBy("2");
-        when(beaconLightService.approveL1(eq(id), anyString())).thenReturn(approved);
+        approved.setApprovedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
+        when(beaconLightService.approveL1(eq(id), any(java.util.UUID.class))).thenReturn(approved);
 
         mockMvc.perform(post("/api/beacon-lights/{id}/approve-l1", id)
-                        .param("approverId", "2"))
+                        .param("approverId", "00000000-0000-0000-0000-000000000002"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("APPROVED_L1"))
-                .andExpect(jsonPath("$.data.approvedBy").value(2));
+                .andExpect(jsonPath("$.data.approvedBy").value("00000000-0000-0000-0000-000000000002"));
 
-        verify(beaconLightService).approveL1(id, "2");
+        verify(beaconLightService).approveL1(eq(id), any(java.util.UUID.class));
     }
 
     @Test
     @DisplayName("POST /api/beacon-lights/{id}/approve-l1 — returns 400 when not PENDING_APPROVAL")
     void testApproveL1WrongStatus() throws Exception {
         UUID id = UUID.randomUUID();
-        when(beaconLightService.approveL1(eq(id), anyString()))
+        when(beaconLightService.approveL1(eq(id), any(java.util.UUID.class)))
                 .thenThrow(new IllegalStateException("Không ở trạng thái chờ phê duyệt L1"));
 
         mockMvc.perform(post("/api/beacon-lights/{id}/approve-l1", id)
-                        .param("approverId", "2"))
+                        .param("approverId", "00000000-0000-0000-0000-000000000002"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -383,17 +381,17 @@ class BeaconLightControllerTest {
     void testApproveL2() throws Exception {
         UUID id = UUID.randomUUID();
         BeaconLightResponse published = makeResponse(id, "Đã duyệt L2", "LIGHTHOUSE", "PUBLISHED");
-        published.setApprovedBy("3");
-        when(beaconLightService.approveL2(eq(id), anyString())).thenReturn(published);
+        published.setApprovedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"));
+        when(beaconLightService.approveL2(eq(id), any(java.util.UUID.class))).thenReturn(published);
 
         mockMvc.perform(post("/api/beacon-lights/{id}/approve-l2", id)
-                        .param("approverId", "3"))
+                        .param("approverId", "00000000-0000-0000-0000-000000000003"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("PUBLISHED"))
-                .andExpect(jsonPath("$.data.approvedBy").value(3));
+                .andExpect(jsonPath("$.data.approvedBy").value("00000000-0000-0000-0000-000000000003"));
 
-        verify(beaconLightService).approveL2(id, "3");
+        verify(beaconLightService).approveL2(eq(id), any(java.util.UUID.class));
     }
 
     // ── REJECT ───────────────────────────────────────────────────
@@ -405,28 +403,28 @@ class BeaconLightControllerTest {
         BeaconLightResponse rejected = makeResponse(id, "Bị từ chối", "LIGHTHOUSE", "DRAFT");
         rejected.setRejectionReason("Lý do từ chối hợp lệ");
         rejected.setApprovalStatus("REJECTED");
-        when(beaconLightService.reject(eq(id), anyString(), anyString())).thenReturn(rejected);
+        when(beaconLightService.reject(eq(id), anyString(), any(java.util.UUID.class))).thenReturn(rejected);
 
         mockMvc.perform(post("/api/beacon-lights/{id}/reject", id)
                         .param("rejectReason", "Lý do từ chối hợp lệ")
-                        .param("approverId", "2"))
+                        .param("approverId", "00000000-0000-0000-0000-000000000002"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.approvalStatus").value("REJECTED"));
 
-        verify(beaconLightService).reject(id, "Lý do từ chối hợp lệ", "2");
+        verify(beaconLightService).reject(eq(id), eq("Lý do từ chối hợp lệ"), any(java.util.UUID.class));
     }
 
     @Test
     @DisplayName("POST /api/beacon-lights/{id}/reject — returns 400 when reason too short")
     void testRejectShortReason() throws Exception {
         UUID id = UUID.randomUUID();
-        when(beaconLightService.reject(eq(id), anyString(), anyString()))
+        when(beaconLightService.reject(eq(id), anyString(), any(java.util.UUID.class)))
                 .thenThrow(new IllegalArgumentException("Lý do từ chối phải có ít nhất 10 ký tự"));
 
         mockMvc.perform(post("/api/beacon-lights/{id}/reject", id)
                         .param("rejectReason", "Ngắn")
-                        .param("approverId", "2"))
+                        .param("approverId", "00000000-0000-0000-0000-000000000002"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false));
     }

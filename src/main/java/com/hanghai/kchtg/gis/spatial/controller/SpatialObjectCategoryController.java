@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.spatial.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.gis.spatial.dto.SpatialObjectCategoryDto;
 import com.hanghai.kchtg.gis.spatial.service.SpatialObjectCategoryService;
@@ -27,7 +29,7 @@ public class SpatialObjectCategoryController {
     private final SpatialObjectCategoryService service;
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'gis.point.view') or hasAnyRole('SUPER_ADMIN', 'SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'gispoint:read') or hasAnyRole('SUPER_ADMIN', 'SYSTEM_ADMIN')")
     public ApiResponse<Page<SpatialObjectCategoryDto>> getAll(
             @RequestParam(required = false) Integer geometryType,
             @RequestParam(required = false) Integer status,
@@ -38,25 +40,25 @@ public class SpatialObjectCategoryController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'gis.point.view') or hasAnyRole('SUPER_ADMIN', 'SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'gispoint:read') or hasAnyRole('SUPER_ADMIN', 'SYSTEM_ADMIN')")
     public ApiResponse<SpatialObjectCategoryDto> getById(@PathVariable UUID id) {
         return ApiResponse.success(service.findById(id));
     }
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'gis.point.create') or hasAnyRole('SUPER_ADMIN', 'SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'gispoint:create') or hasAnyRole('SUPER_ADMIN', 'SYSTEM_ADMIN')")
     public ApiResponse<SpatialObjectCategoryDto> create(@RequestBody SpatialObjectCategoryDto request) {
         return ApiResponse.success(service.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'gis.point.edit') or hasAnyRole('SUPER_ADMIN', 'SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'gispoint:update') or hasAnyRole('SUPER_ADMIN', 'SYSTEM_ADMIN')")
     public ApiResponse<SpatialObjectCategoryDto> update(@PathVariable UUID id, @RequestBody SpatialObjectCategoryDto request) {
         return ApiResponse.success(service.update(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'gis.point.delete') or hasAnyRole('SUPER_ADMIN', 'SYSTEM_ADMIN')")
+    @PreAuthorize("@auth.check(authentication, 'gispoint:delete') or hasAnyRole('SUPER_ADMIN', 'SYSTEM_ADMIN')")
     public ApiResponse<Void> delete(@PathVariable UUID id) {
         service.delete(id);
         return ApiResponse.success(null);

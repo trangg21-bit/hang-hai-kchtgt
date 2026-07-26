@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.station.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.station.entity.LighthouseStation;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

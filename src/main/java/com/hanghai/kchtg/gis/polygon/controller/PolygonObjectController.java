@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.polygon.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.gis.polygon.dto.CreatePolygonObjectRequest;
 import com.hanghai.kchtg.gis.polygon.dto.PolygonObjectResponse;
@@ -85,7 +87,7 @@ public class PolygonObjectController {
     @PostMapping("/{id}/approve-l1")
     public ResponseEntity<ApiResponse<PolygonObjectResponse>> approveL1(
             @PathVariable UUID id,
-            @RequestParam String approverId) {
+            @RequestParam UUID approverId) {
         PolygonObjectResponse response = service.approveL1(id, approverId);
         return ResponseEntity.ok(ApiResponse.success("PolygonObject approved at Level 1", response));
     }
@@ -93,7 +95,7 @@ public class PolygonObjectController {
     @PostMapping("/{id}/approve-l2")
     public ResponseEntity<ApiResponse<PolygonObjectResponse>> approveL2(
             @PathVariable UUID id,
-            @RequestParam String approverId) {
+            @RequestParam UUID approverId) {
         PolygonObjectResponse response = service.approveL2(id, approverId);
         return ResponseEntity.ok(ApiResponse.success("PolygonObject approved at Level 2", response));
     }

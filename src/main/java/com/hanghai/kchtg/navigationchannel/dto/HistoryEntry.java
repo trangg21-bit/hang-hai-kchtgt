@@ -1,5 +1,11 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
+import java.util.UUID;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+
 import lombok.*;
 
 import java.time.LocalDate;
@@ -13,11 +19,11 @@ import java.time.LocalDate;
 @Builder
 public class HistoryEntry {
 
-    private Long id;
-    private java.util.UUID navigationChannelId;
-    private Integer approvalLevel;
+    private UUID id;
+    private UUID navigationChannelId;
+    private ApprovalLevel approvalLevel;
     private String status;
-    private String approvedBy;
+    private UUID approvedBy;
     private LocalDate approvedDate;
     private String reason;
 }

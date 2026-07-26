@@ -21,6 +21,6 @@ public class MovementTypeConverter implements AttributeConverter<MovementType, I
                 return e;
             }
         }
-        throw new IllegalArgumentException("GiÃ¡ trá»‹ database khÃ´ng há»£p lá»‡ cho MovementType: " + dbData);
+        throw new IllegalArgumentException("Giá trị database không hợp lệ cho MovementType: " + dbData);
     }
 }

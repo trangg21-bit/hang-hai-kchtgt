@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.dikerevetment.dto;
 
+import java.util.UUID;
+
 import lombok.*;
 
 import java.time.LocalDate;
@@ -26,8 +28,8 @@ public class DikeRevetmentUpdateRequest {
     private String surfaceMaterial;
     private String status;
     private String note;
-    private java.util.UUID donViId;
-    private GisGeometryType loaiHinhHoc;
-    private String toaDo;
-    private java.util.UUID bieuTuongId;
+    private UUID orgUnitId;
+    private GisGeometryType geometryType;
+    private String coordinates;
+    private UUID bieuTuongId;
 }

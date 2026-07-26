@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.report.handler;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.beacon.entity.BeaconLight;
@@ -79,10 +81,10 @@ public class F155ReportHandler extends BaseReportHandler {
             rows.add(headerRow);
 
             // Data rows
-            int stt = 1;
+            int sequenceNo = 1;
             for (BeaconLight b : entry.getValue()) {
                 Map<String, Object> r = new LinkedHashMap<>();
-                r.put("STT", stt++);
+                r.put("STT", sequenceNo++);
                 r.put("Tên đèn biển", b.getName() != null ? b.getName() : "");
                 r.put("Địa điểm đặt trạm đèn", b.getLocation() != null ? b.getLocation() : "");
                 r.put("Hình dáng", b.getShape() != null ? b.getShape() : "");
@@ -150,7 +152,7 @@ public class F155ReportHandler extends BaseReportHandler {
             headerItem.put("description", null);
             headerItem.put("unitId", null);
             headerItem.put("status", null);
-            headerItem.put("location", null);
+            headerItem.put("diaDiem", null);
             headerItem.put("shape", null);
             headerItem.put("structure", null);
             headerItem.put("area", null);
@@ -164,7 +166,7 @@ public class F155ReportHandler extends BaseReportHandler {
             headerItem.put("powerSupply", null);
             headerItem.put("lastRepairDate", null);
             headerItem.put("staffCount", null);
-            headerItem.put("stationArea", null);
+            headerItem.put("dienTichTram", null);
             headerItem.put("donViQuanLy", null);
             headerItem.put("key", capLabel);
             arrResult.add(headerItem);
@@ -178,7 +180,7 @@ public class F155ReportHandler extends BaseReportHandler {
                 item.put("description", b.getLocation() != null ? b.getLocation() : "");
                 item.put("unitId", b.getUnitId() != null ? b.getUnitId().toString() : "");
                 item.put("status", b.getStatus() != null ? b.getStatus() : "");
-                item.put("location", b.getLocation() != null ? b.getLocation() : "");
+                item.put("diaDiem", b.getLocation() != null ? b.getLocation() : "");
                 item.put("shape", b.getShape() != null ? b.getShape() : "");
                 item.put("structure", b.getStructure() != null ? b.getStructure() : "");
                 item.put("area", b.getArea() != null ? b.getArea() : 0.0);
@@ -192,7 +194,7 @@ public class F155ReportHandler extends BaseReportHandler {
                 item.put("powerSupply", b.getPowerSupply() != null ? b.getPowerSupply() : "");
                 item.put("lastRepairDate", b.getLastRepairDate() != null ? b.getLastRepairDate().toString() : "");
                 item.put("staffCount", b.getStaffCount() != null ? b.getStaffCount() : 0);
-                item.put("stationArea", b.getStationArea() != null ? b.getStationArea() : 0.0);
+                item.put("dienTichTram", b.getStationArea() != null ? b.getStationArea() : 0.0);
                 String donVi = "";
                 if (b.getUnitId() != null) {
                     donVi = orgUnitRepository.findById(b.getUnitId())

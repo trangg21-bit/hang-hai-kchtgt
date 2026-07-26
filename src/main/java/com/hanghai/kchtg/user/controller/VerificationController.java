@@ -89,7 +89,7 @@ public class VerificationController {
             log.info("Account verified: email={}, userId={}", email, user.getId());
 
             // Send success notification
-            notificationService.sendRegistrationSuccess(user.getEmail(), user.getFullName());
+            notificationService.sendRegistrationSuccess(user.getEmail(), user.getId());
             rateLimiterService.reset("verify:" + ipAddress);
 
             return ResponseEntity.ok(ApiResponse.success(response));
@@ -128,7 +128,7 @@ public class VerificationController {
             String plainToken = verificationTokenService.generateToken(user.getId(), user.getEmail(), user.getFullName());
 
             // Send email
-            notificationService.sendVerificationEmail(user.getEmail(), plainToken, user.getFullName());
+            notificationService.sendVerificationEmail(user.getEmail(), plainToken, user.getId());
 
             VerifyResponse response = new VerifyResponse();
             response.setVerified(false);
@@ -182,3 +182,4 @@ public class VerificationController {
         return request.getRemoteAddr();
     }
 }
+

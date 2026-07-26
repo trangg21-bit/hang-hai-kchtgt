@@ -5,6 +5,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.hanghai.kchtg.beacon.dto.buoy.BuoyResponse;
 import com.hanghai.kchtg.beacon.dto.buoy.CreateBuoyRequest;
 import com.hanghai.kchtg.beacon.dto.buoy.UpdateBuoyRequest;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.beacon.entity.*;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
@@ -122,8 +123,6 @@ class BuoyServiceTest {
                 .code("PHAO-002")
                 .name("Phao tiêu mới")
                 .type("SAFE_WATER")
-                .latitude(10.5)
-                .longitude(106.5)
                 .range(15.0)
                 .color("Xanh")
                 .shape("Hình cầu")
@@ -278,24 +277,7 @@ class BuoyServiceTest {
             BuoyResponse result = service.create(request);
 
             assertThat(result.getStatus()).isEqualTo("PENDING_APPROVAL");
-            assertThat(result.getApprovalLevel()).isEqualTo(1);
-        }
-
-        @Test
-        @DisplayName("create with null coordinates — throws IllegalArgumentException")
-        void createNullCoordinates() {
-            CreateBuoyRequest request = makeCreateRequest();
-            request.setLatitude(null);
-            request.setLongitude(null);
-
-            when(buoyRepo.existsByCode("PHAO-002")).thenReturn(false);
-            when(beaconLightRepo.existsByCode("PHAO-002")).thenReturn(false);
-
-            assertThatThrownBy(() -> service.create(request))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Tọa độ không được để trống");
-
-            verify(buoyRepo, never()).save(any());
+            assertThat(result.getApprovalLevel()).isEqualTo(ApprovalLevel.LEVEL_1);
         }
 
         @Test
@@ -402,7 +384,7 @@ class BuoyServiceTest {
 
             assertThat(result.getStatus()).isEqualTo("DRAFT");
             assertThat(result.getApprovalStatus()).isEqualTo("PENDING");
-            assertThat(result.getApprovalLevel()).isEqualTo(1);
+            assertThat(result.getApprovalLevel()).isEqualTo(ApprovalLevel.LEVEL_1);
         }
 
         @Test
@@ -434,7 +416,7 @@ class BuoyServiceTest {
         void deleteSuccess() {
             UUID id = UUID.randomUUID();
             Buoy entity = makeEntity(id, "DRAFT");
-            entity.setKhongGianId(UUID.randomUUID());
+            entity.setSpatialId(UUID.randomUUID());
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -445,7 +427,7 @@ class BuoyServiceTest {
             assertThat(saved.getStatus()).isEqualTo("DELETED");
             assertThat(saved.getDeletedAt()).isNotNull();
             verify(historyRepo).save(any());
-            verify(gisSpatialObjectService).delete(entity.getKhongGianId());
+            verify(gisSpatialObjectService).delete(entity.getSpatialId());
         }
 
         @Test
@@ -532,13 +514,13 @@ class BuoyServiceTest {
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-            BuoyResponse result = service.approveL1(id, "2");
+            BuoyResponse result = service.approveL1(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
 
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("APPROVED_L1");
             assertThat(saved.getApprovalStatus()).isEqualTo("APPROVED");
-            assertThat(saved.getApprovedBy()).isEqualTo("2");
+            assertThat(saved.getApprovedBy()).isEqualTo(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
             assertThat(saved.getApprovedDate()).isNotNull();
             assertThat(result.getStatus()).isEqualTo("APPROVED_L1");
             verify(historyRepo).save(any());
@@ -553,7 +535,7 @@ class BuoyServiceTest {
             entity.setApprovedBy(null);
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.approveL1(id, "2"))
+            assertThatThrownBy(() -> service.approveL1(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Không ở trạng thái chờ phê duyệt L1");
         }
@@ -563,17 +545,17 @@ class BuoyServiceTest {
         void approveL2() {
             UUID id = UUID.randomUUID();
             Buoy entity = makeEntity(id, "APPROVED_L1");
-            entity.setApprovedBy("2");
+            entity.setApprovedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-            BuoyResponse result = service.approveL2(id, "3");
+            BuoyResponse result = service.approveL2(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"));
 
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("PUBLISHED");
             assertThat(saved.getApprovalStatus()).isEqualTo("APPROVED");
-            assertThat(saved.getApprovedBy()).isEqualTo("3");
+            assertThat(saved.getApprovedBy()).isEqualTo(java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"));
             assertThat(result.getStatus()).isEqualTo("PUBLISHED");
             verify(historyRepo).save(any());
         }
@@ -585,7 +567,7 @@ class BuoyServiceTest {
             Buoy entity = makeEntity(id, "PENDING_APPROVAL");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.approveL2(id, "3"))
+            assertThatThrownBy(() -> service.approveL2(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000003")))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Không ở trạng thái chờ phê duyệt L2");
         }
@@ -599,7 +581,7 @@ class BuoyServiceTest {
             when(buoyRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
             BuoyResponse result = service.reject(id,
-                    "Lý do từ chối hợp lệ (đủ 10 ký tự)", "2");
+                    "Lý do từ chối hợp lệ (đủ 10 ký tự)", java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
 
             verify(buoyRepo).save(buoyCaptor.capture());
             Buoy saved = buoyCaptor.getValue();
@@ -619,7 +601,7 @@ class BuoyServiceTest {
             Buoy entity = makeEntity(id, "PENDING_APPROVAL");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.reject(id, "Ngắn", "2"))
+            assertThatThrownBy(() -> service.reject(id, "Ngắn", java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("ít nhất 10 ký tự");
         }
@@ -631,7 +613,7 @@ class BuoyServiceTest {
             Buoy entity = makeEntity(id, "PENDING_APPROVAL");
             when(buoyRepo.findById(id)).thenReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.reject(id, null, "2"))
+            assertThatThrownBy(() -> service.reject(id, null, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("ít nhất 10 ký tự");
         }

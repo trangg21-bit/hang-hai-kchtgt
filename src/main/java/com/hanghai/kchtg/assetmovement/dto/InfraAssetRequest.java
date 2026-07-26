@@ -2,6 +2,8 @@ package com.hanghai.kchtg.assetmovement.dto;
 
 import java.util.UUID;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.entity.InfraAssetType;
 import lombok.Data;
 
@@ -15,10 +17,10 @@ public class InfraAssetRequest {
 
     private String assetCode;
     private InfraAssetType assetType;
-    private UUID loaiTaiSanId;
+    private UUID assetTypeId;
     private String assetName;
     private String description;
-    private BigDecimal giaTri;
+    private BigDecimal value;
     private String status;
     private String location;
     private String technicalSpecs;

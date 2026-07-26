@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
+import java.util.UUID;
+
 import lombok.Builder;
 import lombok.Data;
 
@@ -17,12 +19,12 @@ public class AssetDecreaseRequestResponse {
     private UUID id;
     private UUID assetId;
     private String assetName;
-    private int soLuong;
-    private String donViTinh;
+    private int quantity;
+    private String unitOfMeasure;
     private String reason;
     private String status;
     private String decreaseReason;
-    private String createdBy;
+    private UUID createdBy;
     private String createdByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

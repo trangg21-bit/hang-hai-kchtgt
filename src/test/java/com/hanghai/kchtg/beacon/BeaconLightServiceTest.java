@@ -5,6 +5,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.hanghai.kchtg.beacon.dto.beacon_light.BeaconLightResponse;
 import com.hanghai.kchtg.beacon.dto.beacon_light.CreateBeaconLightRequest;
 import com.hanghai.kchtg.beacon.dto.beacon_light.UpdateBeaconLightRequest;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.beacon.entity.*;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
@@ -121,8 +122,6 @@ class BeaconLightServiceTest {
                 .code("DEN-002")
                 .name("Đèn biển mới")
                 .type("BEACON_LIGHT")
-                .latitude(10.5)
-                .longitude(106.5)
                 .lightRange(15.0)
                 .towerColor("Đỏ")
                 .primaryLightModel("Chớp 5 giây")
@@ -263,24 +262,7 @@ class BeaconLightServiceTest {
             BeaconLightResponse result = service.create(request);
 
             assertThat(result.getStatus()).isEqualTo("PENDING_APPROVAL");
-            assertThat(result.getApprovalLevel()).isEqualTo(1);
-        }
-
-        @Test
-        @DisplayName("create with null coordinates — throws IllegalArgumentException")
-        void createNullCoordinates() {
-            CreateBeaconLightRequest request = makeCreateRequest();
-            request.setLatitude(null);
-            request.setLongitude(null);
-
-            when(beaconLightRepo.existsByCode("DEN-002")).thenReturn(false);
-            when(buoyRepo.existsByCode("DEN-002")).thenReturn(false);
-
-            assertThatThrownBy(() -> service.create(request))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Tọa độ không được để trống");
-
-            verify(beaconLightRepo, never()).save(any());
+            assertThat(result.getApprovalLevel()).isEqualTo(ApprovalLevel.LEVEL_1);
         }
 
         @Test
@@ -385,7 +367,7 @@ class BeaconLightServiceTest {
 
             assertThat(result.getStatus()).isEqualTo("DRAFT");
             assertThat(result.getApprovalStatus()).isEqualTo("PENDING");
-            assertThat(result.getApprovalLevel()).isEqualTo(1);
+            assertThat(result.getApprovalLevel()).isEqualTo(ApprovalLevel.LEVEL_1);
         }
 
         @Test
@@ -419,7 +401,7 @@ class BeaconLightServiceTest {
         void deleteSuccess() {
             UUID id = UUID.randomUUID();
             BeaconLight entity = makeEntity(id, "DRAFT");
-            entity.setKhongGianId(UUID.randomUUID());
+            entity.setSpatialId(UUID.randomUUID());
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconLightRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -430,7 +412,7 @@ class BeaconLightServiceTest {
             assertThat(saved.getStatus()).isEqualTo("DELETED");
             assertThat(saved.getDeletedAt()).isNotNull();
             verify(historyRepo).save(any());
-            verify(gisSpatialObjectService).delete(entity.getKhongGianId());
+            verify(gisSpatialObjectService).delete(entity.getSpatialId());
         }
 
         @Test
@@ -517,13 +499,13 @@ class BeaconLightServiceTest {
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconLightRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-            BeaconLightResponse result = service.approveL1(id, "2");
+            BeaconLightResponse result = service.approveL1(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
 
             verify(beaconLightRepo).save(beaconLightCaptor.capture());
             BeaconLight saved = beaconLightCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("APPROVED_L1");
             assertThat(saved.getApprovalStatus()).isEqualTo("APPROVED");
-            assertThat(saved.getApprovedBy()).isEqualTo("2");
+            assertThat(saved.getApprovedBy()).isEqualTo(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
             assertThat(saved.getApprovedDate()).isNotNull();
             assertThat(result.getStatus()).isEqualTo("APPROVED_L1");
             verify(historyRepo).save(any());
@@ -538,7 +520,7 @@ class BeaconLightServiceTest {
             entity.setApprovedBy(null);
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.approveL1(id, "2"))
+            assertThatThrownBy(() -> service.approveL1(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Không ở trạng thái chờ phê duyệt L1");
         }
@@ -548,17 +530,17 @@ class BeaconLightServiceTest {
         void approveL2() {
             UUID id = UUID.randomUUID();
             BeaconLight entity = makeEntity(id, "APPROVED_L1");
-            entity.setApprovedBy("2");
+            entity.setApprovedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
             when(beaconLightRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-            BeaconLightResponse result = service.approveL2(id, "3");
+            BeaconLightResponse result = service.approveL2(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"));
 
             verify(beaconLightRepo).save(beaconLightCaptor.capture());
             BeaconLight saved = beaconLightCaptor.getValue();
             assertThat(saved.getStatus()).isEqualTo("PUBLISHED");
             assertThat(saved.getApprovalStatus()).isEqualTo("APPROVED");
-            assertThat(saved.getApprovedBy()).isEqualTo("3");
+            assertThat(saved.getApprovedBy()).isEqualTo(java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"));
             assertThat(result.getStatus()).isEqualTo("PUBLISHED");
             verify(historyRepo).save(any());
         }
@@ -570,7 +552,7 @@ class BeaconLightServiceTest {
             BeaconLight entity = makeEntity(id, "PENDING_APPROVAL");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.approveL2(id, "3"))
+            assertThatThrownBy(() -> service.approveL2(id, java.util.UUID.fromString("00000000-0000-0000-0000-000000000003")))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("Không ở trạng thái chờ phê duyệt L2");
         }
@@ -584,7 +566,7 @@ class BeaconLightServiceTest {
             when(beaconLightRepo.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
             BeaconLightResponse result = service.reject(id,
-                    "Lý do từ chối hợp lệ (đủ 10 ký tự)", "2");
+                    "Lý do từ chối hợp lệ (đủ 10 ký tự)", java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
 
             verify(beaconLightRepo).save(beaconLightCaptor.capture());
             BeaconLight saved = beaconLightCaptor.getValue();
@@ -604,7 +586,7 @@ class BeaconLightServiceTest {
             BeaconLight entity = makeEntity(id, "PENDING_APPROVAL");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.reject(id, "Ngắn", "2"))
+            assertThatThrownBy(() -> service.reject(id, "Ngắn", java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("ít nhất 10 ký tự");
         }
@@ -616,7 +598,7 @@ class BeaconLightServiceTest {
             BeaconLight entity = makeEntity(id, "PENDING_APPROVAL");
             when(beaconLightRepo.findById(id)).thenReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.reject(id, null, "2"))
+            assertThatThrownBy(() -> service.reject(id, null, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("ít nhất 10 ký tự");
         }

@@ -6,6 +6,13 @@ import com.hanghai.kchtg.station.dto.buoy.BuoyStationResponse;
 import com.hanghai.kchtg.station.dto.buoy.CreateBuoyStationRequest;
 import com.hanghai.kchtg.station.dto.buoy.UpdateBuoyStationRequest;
 import com.hanghai.kchtg.station.entity.BuoyStation;
+import com.hanghai.kchtg.station.entity.StationStatus;
+import com.hanghai.kchtg.station.entity.StationApprovalStatus;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.station.entity.StationHistory;
 import com.hanghai.kchtg.station.repository.BuoyStationRepository;
 import com.hanghai.kchtg.station.repository.LighthouseStationRepository;
@@ -72,8 +79,6 @@ public class BuoyStationService {
                 .code(request.getCode())
                 .name(request.getName())
                 .type(request.getType())
-                .latitude(request.getLatitude())
-                .longitude(request.getLongitude())
                 .color(request.getColor())
                 .shape(request.getShape())
                 .lightCharacteristic(request.getLightCharacteristic())
@@ -83,8 +88,8 @@ public class BuoyStationService {
                 .lastInspectionDate(request.getLastInspectionDate())
                 .nextInspectionDate(request.getNextInspectionDate())
                 .isActive(request.getIsActive())
-                .status("DRAFT")
-                .approvalStatus("PENDING")
+                .status(StationStatus.DRAFT)
+                .approvalStatus(StationApprovalStatus.PENDING)
                 .build();
 
         if (entity.getUnitId() == null) {
@@ -92,39 +97,37 @@ public class BuoyStationService {
         }
 
         if ("submit".equals(request.getAction())) {
-            entity.setStatus("PENDING_APPROVAL");
-            entity.setApprovalLevel(1);
+            entity.setStatus(com.hanghai.kchtg.station.entity.StationStatus.PENDING_APPROVAL);
+            entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
         }
 
         entity = phaoRepo.save(entity);
 
-        String toaDo = request.getToaDo();
-        if ((toaDo == null || toaDo.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
-            toaDo = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
+        String coordinates = request.getToaDo();
+        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+            coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
-        if (toaDo != null && !toaDo.trim().isEmpty()) {
-            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_BUOY;
+        if (coordinates != null && !coordinates.trim().isEmpty()) {
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisSpatialObjectType objType = GisSpatialObjectType.POINT_BUOY;
             UUID refId = entity.getId();
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
                     entity.getName(),
                     "PHAOTIEU_" + entity.getCode(),
                     geomType,
                     objType,
-                    toaDo,
+                    coordinates,
                     refId,
-                    com.hanghai.kchtg.gis.search.dto.KchtType.PHAOTIEU
+                    InfrastructureType.BUOY
             );
-            entity.setKhongGianId(spatialObj.getId());
-            if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT) {
+            entity.setSpatialId(spatialObj.getId());
+            if (geomType == GisGeometryType.POINT) {
                 try {
-                    String clean = toaDo.replace("POINT", "").replace("(", "").replace(")", "").trim();
+                    String clean = coordinates.replace("POINT", "").replace("(", "").replace(")", "").trim();
                     String[] parts = clean.split("\\s+");
                     if (parts.length == 2) {
-                        entity.setLongitude(Double.parseDouble(parts[0]));
-                        entity.setLatitude(Double.parseDouble(parts[1]));
                     }
                 } catch (Exception e) {
                     // ignore
@@ -147,31 +150,20 @@ public class BuoyStationService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
 
-        if ("DELETED".equals(entity.getStatus())) {
+        if (StationStatus.DELETED.equals(entity.getStatus())) {
             throw new EntityNotFoundException("Nhà trạm phao đã bị xóa");
         }
 
         String oldJson = toJson(entity);
 
-        // Apply mutable fields only
         if (request.getName() != null) entity.setName(request.getName());
 
-        // Handle type field update conditionally
         if (request.getType() != null && !request.getType().equals(entity.getType())) {
             if (isApprovedStatus(entity.getStatus())) {
                 throw new IllegalArgumentException(
                         "Loại nhà trạm phao không thể thay đổi khi đã được phê duyệt.");
             }
             entity.setType(request.getType());
-        }
-
-        // Handle latitude/longitude updates
-        if (request.getLongitude() != null || request.getLatitude() != null) {
-            Double finalLon = request.getLongitude() != null ? request.getLongitude() : entity.getLongitude();
-            Double finalLat = request.getLatitude() != null ? request.getLatitude() : entity.getLatitude();
-            validateCoordinates(finalLon, finalLat);
-            entity.setLongitude(finalLon);
-            entity.setLatitude(finalLat);
         }
 
         if (request.getColor() != null) entity.setColor(request.getColor());
@@ -190,65 +182,40 @@ public class BuoyStationService {
         }
         if (request.getIsActive() != null) entity.setIsActive(request.getIsActive());
 
-        // Status revert logic for approved states
+        if (request.getLongitude() != null && request.getLatitude() != null) {
+            validateCoordinates(request.getLongitude(), request.getLatitude());
+        }
+
         if (isApprovedStatus(entity.getStatus())) {
-            entity.setStatus("DRAFT");
-            entity.setApprovalStatus("PENDING");
-            entity.setApprovalLevel(1);
+            entity.setStatus(StationStatus.DRAFT);
+            entity.setApprovalStatus(StationApprovalStatus.PENDING);
+            entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
         }
 
         phaoRepo.save(entity);
 
-        // Sync to GisSpatialObject
-        String toaDo = request.getToaDo();
-        if ((toaDo == null || toaDo.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
-            toaDo = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
+        String coordinates = request.getCoordinates();
+        if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
+            coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
 
-        if (toaDo != null && !toaDo.trim().isEmpty()) {
-            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_BUOY;
+        if (coordinates != null && !coordinates.trim().isEmpty()) {
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisSpatialObjectType objType = GisSpatialObjectType.POINT_BUOY;
             UUID refId = entity.getId();
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                    entity.getKhongGianId(),
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                    entity.getSpatialId(),
                     entity.getName(),
                     "PHAOTIEU_" + entity.getCode(),
                     geomType,
                     objType,
-                    toaDo,
+                    coordinates,
                     refId,
-                    com.hanghai.kchtg.gis.search.dto.KchtType.PHAOTIEU
+                    InfrastructureType.BUOY
             );
-            entity.setKhongGianId(spatialObj.getId());
-            if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT) {
-                try {
-                    String clean = toaDo.replace("POINT", "").replace("(", "").replace(")", "").trim();
-                    String[] parts = clean.split("\\s+");
-                    if (parts.length == 2) {
-                        entity.setLongitude(Double.parseDouble(parts[0]));
-                        entity.setLatitude(Double.parseDouble(parts[1]));
-                    }
-                } catch (Exception e) {
-                    // ignore
-                }
-            }
-            phaoRepo.save(entity);
-        } else if (entity.getKhongGianId() != null) {
-            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_BUOY;
-            gisSpatialObjectService.createOrUpdate(
-                    entity.getKhongGianId(),
-                    entity.getName(),
-                    "PHAOTIEU_" + entity.getCode(),
-                    geomType,
-                    objType,
-                    "POINT(" + entity.getLongitude() + " " + entity.getLatitude() + ")",
-                    entity.getId(),
-                    com.hanghai.kchtg.gis.search.dto.KchtType.PHAOTIEU
-            );
+            entity.setSpatialId(spatialObj.getId());
         }
 
-        // Compare JSON for actual changes
         String newJson = toJson(entity);
         if (!compareJsonNodes(oldJson, newJson)) {
             logHistory(entity, "UPDATE",
@@ -274,11 +241,11 @@ public class BuoyStationService {
                     "Không thể xóa nhà trạm phao đang chờ phê duyệt");
         }
 
-        entity.setStatus("DELETED");
+        entity.setStatus(StationStatus.DELETED);
         entity.softDelete();
         phaoRepo.save(entity);
-        if (entity.getKhongGianId() != null) {
-            gisSpatialObjectService.delete(entity.getKhongGianId());
+        if (entity.getSpatialId() != null) {
+            gisSpatialObjectService.delete(entity.getSpatialId());
         }
 
         logHistory(entity, "SOFT_DELETE", null, null, toJson(entity));
@@ -294,39 +261,39 @@ public class BuoyStationService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
 
-        if (!"DRAFT".equals(entity.getStatus())) {
+        if (!StationStatus.DRAFT.equals(entity.getStatus())) {
             throw new IllegalStateException(
                     "Chỉ có thể gửi phê duyệt khi status = DRAFT");
         }
 
-        entity.setStatus("PENDING_APPROVAL");
-        entity.setApprovalStatus("PENDING");
-        entity.setApprovalLevel(1);
+        entity.setStatus(com.hanghai.kchtg.station.entity.StationStatus.PENDING_APPROVAL);
+        entity.setApprovalStatus(com.hanghai.kchtg.station.entity.StationApprovalStatus.PENDING);
+        entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
         phaoRepo.save(entity);
 
         notificationService.sendApprovalNotificationPhao(entity);
     }
 
     @Transactional
-    public BuoyStationResponse approveL1(UUID id, String approverId) {
+    public BuoyStationResponse approveL1(UUID id, java.util.UUID approverId) {
         BuoyStation entity = phaoRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
 
-        if (!"PENDING_APPROVAL".equals(entity.getStatus())) {
+        if (entity.getStatus() != com.hanghai.kchtg.station.entity.StationStatus.PENDING_APPROVAL) {
             throw new IllegalStateException(
                     "Không ở trạng thái chờ phê duyệt L1");
         }
 
         String creatorId = resolveCreatedBy(entity);
-        if (creatorId != null && creatorId.equals(approverId)) {
+        if (creatorId != null && creatorId.equals(approverId != null ? approverId.toString() : null)) {
             throw new IllegalStateException(
                     "Bạn không thể phê duyệt bản do chính mình gửi");
         }
 
-        entity.setStatus("APPROVED_L1");
-        entity.setApprovalStatus("APPROVED");
-        entity.setApprovedBy(approverId);
+        entity.setStatus(com.hanghai.kchtg.station.entity.StationStatus.APPROVED_L1);
+        entity.setApprovalStatus(com.hanghai.kchtg.station.entity.StationApprovalStatus.APPROVED_L1);
+        entity.setApprovedBy(approverId != null ? approverId.toString() : null);
         entity.setApprovedDate(LocalDateTime.now());
         phaoRepo.save(entity);
 
@@ -337,19 +304,19 @@ public class BuoyStationService {
     }
 
     @Transactional
-    public BuoyStationResponse approveL2(UUID id, String approverId) {
+    public BuoyStationResponse approveL2(UUID id, java.util.UUID approverId) {
         BuoyStation entity = phaoRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
 
-        if (!"APPROVED_L1".equals(entity.getStatus())) {
+        if (entity.getStatus() != com.hanghai.kchtg.station.entity.StationStatus.APPROVED_L1) {
             throw new IllegalStateException(
                     "Không ở trạng thái chờ phê duyệt L2");
         }
 
-        entity.setStatus("PUBLISHED");
-        entity.setApprovalStatus("APPROVED");
-        entity.setApprovedBy(approverId);
+        entity.setStatus(com.hanghai.kchtg.station.entity.StationStatus.PUBLISHED);
+        entity.setApprovalStatus(com.hanghai.kchtg.station.entity.StationApprovalStatus.APPROVED_L1);
+        entity.setApprovedBy(approverId != null ? approverId.toString() : null);
         entity.setApprovedDate(LocalDateTime.now());
         phaoRepo.save(entity);
 
@@ -361,7 +328,7 @@ public class BuoyStationService {
     }
 
     @Transactional
-    public BuoyStationResponse reject(UUID id, String rejectReason, String approverId) {
+    public BuoyStationResponse reject(UUID id, String rejectReason, java.util.UUID approverId) {
         BuoyStation entity = phaoRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
@@ -371,8 +338,8 @@ public class BuoyStationService {
                     "Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
-        entity.setStatus("DRAFT");
-        entity.setApprovalStatus("REJECTED");
+        entity.setStatus(com.hanghai.kchtg.station.entity.StationStatus.DRAFT);
+        entity.setApprovalStatus(com.hanghai.kchtg.station.entity.StationApprovalStatus.REJECTED);
         entity.setRejectionReason(rejectReason);
         phaoRepo.save(entity);
 
@@ -412,7 +379,7 @@ public class BuoyStationService {
     private void logHistory(BuoyStation entity,
                             String action, String fields, String previousJson, String newJson) {
         StationHistory entry = StationHistory.builder()
-                .tramType("PHAO")
+                .stationType("PHAO")
                 .entityId(entity.getId())
                 .actionType(action)
                 .changedField(fields)
@@ -431,8 +398,6 @@ public class BuoyStationService {
                 .code(entity.getCode())
                 .name(entity.getName())
                 .type(entity.getType())
-                .latitude(entity.getLatitude())
-                .longitude(entity.getLongitude())
                 .color(entity.getColor())
                 .shape(entity.getShape())
                 .lightCharacteristic(entity.getLightCharacteristic())
@@ -442,35 +407,47 @@ public class BuoyStationService {
                 .lastInspectionDate(entity.getLastInspectionDate())
                 .nextInspectionDate(entity.getNextInspectionDate())
                 .isActive(entity.getIsActive())
-                .status(entity.getStatus())
-                .approvalStatus(entity.getApprovalStatus())
+                .status(entity.getStatus() != null ? entity.getStatus().name() : null)
+                .approvalStatus(entity.getApprovalStatus() != null ? entity.getApprovalStatus().name() : null)
                 .approvalLevel(entity.getApprovalLevel())
-                .approvedBy(entity.getApprovedBy())
+                .approvedBy(entity.getApprovedBy() != null ? java.util.UUID.fromString(entity.getApprovedBy()) : null)
                 .approvedDate(entity.getApprovedDate())
                 .rejectionReason(entity.getRejectionReason())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt());
 
-        if (entity.getKhongGianId() != null) {
-            builder.khongGianId(entity.getKhongGianId());
-            gisSpatialObjectService.findById(entity.getKhongGianId()).ifPresent(spatialObj -> {
-                builder.loaiHinhHoc(spatialObj.getGeometryType());
-                builder.toaDo(spatialObj.getCoordinates());
+        if (entity.getSpatialId() != null) {
+            builder.spatialId(entity.getSpatialId());
+            gisSpatialObjectService.findById(entity.getSpatialId()).ifPresent(spatialObj -> {
+                builder.geometryType(spatialObj.getGeometryType());
+                builder.coordinates(spatialObj.getCoordinates());
+                
+                String coords = spatialObj.getCoordinates();
+                if (coords != null && coords.startsWith("POINT(")) {
+                    try {
+                        String clean = coords.replace("POINT", "").replace("(", "").replace(")", "").trim();
+                        String[] parts = clean.split("\\s+");
+                        if (parts.length == 2) {
+                            builder.longitude(Double.parseDouble(parts[0]));
+                            builder.latitude(Double.parseDouble(parts[1]));
+                        }
+                    } catch (Exception ignored) {}
+                }
             });
         }
         return builder.build();
     }
 
-    private boolean isApprovedStatus(String status) {
-        return "APPROVED_L1".equals(status)
-                || "APPROVED_L2".equals(status)
-                || "PUBLISHED".equals(status);
+        private boolean isApprovedStatus(Object status) {
+        if (status == null) return false;
+        String name = status instanceof Enum ? ((Enum<?>) status).name() : status.toString();
+        return "APPROVED_L1".equals(name) || "PUBLISHED".equals(name);
     }
 
-    private boolean isInApprovalProcess(String status) {
-        return "PENDING_APPROVAL".equals(status)
-                || "APPROVED_L1".equals(status)
-                || "APPROVED_L2".equals(status);
+        private boolean isInApprovalProcess(Object status) {
+        if (status == null) return false;
+        String name = status instanceof Enum ? ((Enum<?>) status).name() : status.toString();
+        return "PENDING_APPROVAL".equals(name);
     }
 
     private java.util.UUID getCurrentUserUnitId() {
@@ -524,3 +501,7 @@ public class BuoyStationService {
         }
     }
 }
+
+
+
+

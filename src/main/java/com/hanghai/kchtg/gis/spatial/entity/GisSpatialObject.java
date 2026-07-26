@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.spatial.entity;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -10,6 +12,7 @@ import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
 @Entity
 @Table(name = "gis_spatial_objects")
@@ -61,14 +64,14 @@ public class GisSpatialObject extends BaseEntity {
     private UUID unitId;
 
     @Column(name = "approved_by")
-    private String approvedBy;
+    private UUID approvedBy;
 
     @Column(name = "approved_date")
     private LocalDateTime approvedDate;
 
     // Specific fields for points
     @Column(name = "cong_nang_khai_thac", length = 255)
-    private String congNangKhaiThac;
+    private String operationalCapacity;
 
     // Specific fields for lines
     @Column(name = "length")
@@ -95,5 +98,5 @@ public class GisSpatialObject extends BaseEntity {
     private UUID refId;
 
     @Column(name = "ref_type")
-    private com.hanghai.kchtg.gis.search.dto.KchtType refType;
+    private InfrastructureType refType;
 }

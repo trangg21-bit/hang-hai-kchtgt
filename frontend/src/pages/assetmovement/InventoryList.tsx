@@ -321,19 +321,19 @@ export default function InventoryList() {
   const reportColumns = [
     {
       title: 'Tên báo cáo',
-      dataIndex: 'tenBaoCao',
-      key: 'tenBaoCao',
+      dataIndex: 'reportName',
+      key: 'reportName',
       render: (val: string, record: InventoryReportResponse) => val || `Báo cáo kiểm kê - ${record.id.substring(0, 8)}`,
     },
     {
       title: 'Tổng số lượng kiểm',
-      dataIndex: 'tongSoLuong',
-      key: 'tongSoLuong',
+      dataIndex: 'totalQuantity',
+      key: 'totalQuantity',
     },
     {
       title: 'Số lượng chênh lệch',
-      dataIndex: 'soLuongChenhLech',
-      key: 'soLuongChenhLech',
+      dataIndex: 'quantityVariance',
+      key: 'quantityVariance',
       render: (val: number) => (
         <span style={{ color: val !== 0 ? 'red' : 'inherit', fontWeight: val !== 0 ? 'bold' : 'normal' }}>
           {val}
@@ -577,7 +577,7 @@ export default function InventoryList() {
           </Form.Item>
 
           <Form.Item
-            name="tenBaoCao"
+            name="reportName"
             label="Tên báo cáo kết quả"
             rules={[{ required: true, message: 'Vui lòng nhập tên báo cáo' }]}
           >
@@ -585,7 +585,7 @@ export default function InventoryList() {
           </Form.Item>
 
           <Form.Item
-            name="tongSoLuong"
+            name="totalQuantity"
             label="Tổng số lượng tài sản kiểm đếm"
             rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}
           >
@@ -593,7 +593,7 @@ export default function InventoryList() {
           </Form.Item>
 
           <Form.Item
-            name="soLuongChenhLech"
+            name="quantityVariance"
             label="Số lượng chênh lệch (Thừa/Thiếu)"
             rules={[{ required: true, message: 'Vui lòng nhập chênh lệch' }]}
           >

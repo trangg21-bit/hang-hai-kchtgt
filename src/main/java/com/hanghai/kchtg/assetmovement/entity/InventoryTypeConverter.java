@@ -21,6 +21,6 @@ public class InventoryTypeConverter implements AttributeConverter<InventoryType,
                 return e;
             }
         }
-        throw new IllegalArgumentException("GiÃ¡ trá»‹ database khÃ´ng há»£p lá»‡ cho InventoryType: " + dbData);
+        throw new IllegalArgumentException("Giá trị database không hợp lệ cho InventoryType: " + dbData);
     }
 }

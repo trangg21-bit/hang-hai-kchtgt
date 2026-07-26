@@ -12,7 +12,7 @@ class VtsSystemEntityTest {
     void testBuilderCreation() {
         VtsSystem entity = VtsSystem.builder()
                 .systemName("VTS ABC").location("Hà Nội")
-                .createdBy("test").build();
+                .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         assertNotNull(entity);
         assertEquals("VTS ABC", entity.getSystemName());
     }
@@ -20,7 +20,7 @@ class VtsSystemEntityTest {
     @Test
     void testDefaultValues() {
         VtsSystem entity = VtsSystem.builder()
-                .systemName("ABC").location("Hà Nội").createdBy("test").build();
+                .systemName("ABC").location("Hà Nội").createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         assertFalse(entity.getApprovedLevel1());
         assertFalse(entity.getApprovedLevel2());
         assertFalse(entity.getIsDeleted());
@@ -34,7 +34,7 @@ class VtsSystemEntityTest {
         entity.setSystemName("VTS ABC");
         entity.setLocation("Hà Nội");
         entity.setApprovalStatus("APPROVED");
-        entity.setUpdatedBy("admin");
+        entity.setUpdatedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         entity.setUpdatedDate(LocalDateTime.now());
 
         assertEquals(uuid, entity.getId());
@@ -46,14 +46,14 @@ class VtsSystemEntityTest {
     @Test
     void testPrePersist_ApprovalStatusDefault() {
         VtsSystem entity = VtsSystem.builder()
-                .systemName("ABC").location("Hà Nội").createdBy("test").build();
+                .systemName("ABC").location("Hà Nội").createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         assertNull(entity.getApprovalStatus());  // null before persist
     }
 
     @Test
     void testAttachmentsInit() {
         VtsSystem entity = VtsSystem.builder()
-                .systemName("ABC").location("Hà Nội").createdBy("test").build();
+                .systemName("ABC").location("Hà Nội").createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         assertNotNull(entity.getAttachments());
         assertTrue(entity.getAttachments().isEmpty());
     }
@@ -61,7 +61,7 @@ class VtsSystemEntityTest {
     @Test
     void testFullLifecycle() {
         VtsSystem entity = VtsSystem.builder()
-                .systemName("VTS ABC").location("Hà Nội").createdBy("user1").build();
+                .systemName("VTS ABC").location("Hà Nội").createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).build();
         assertNull(entity.getApprovalStatus());  // null before persist
         assertFalse(entity.getApprovedLevel1());
 

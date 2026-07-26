@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.InventoryAssetRequest;
 import com.hanghai.kchtg.assetmovement.dto.InventoryAssetResponse;
 import com.hanghai.kchtg.assetmovement.entity.InventoryAsset;
@@ -61,7 +63,7 @@ public class InventoryAssetService {
         return repository.findByInventoryStatus(status, pageable).map(this::toResponse);
     }
 
-    public Page<InventoryAssetResponse> findByPlanIdAndTrangThai(UUID planId, InventoryStatus status, Pageable pageable) {
+    public Page<InventoryAssetResponse> findByPlanIdAndStatus(UUID planId, InventoryStatus status, Pageable pageable) {
         return repository.findByPlanIdAndInventoryStatus(planId, status, pageable).map(this::toResponse);
     }
 
@@ -88,8 +90,8 @@ public class InventoryAssetService {
                 .assetId(entity.getAssetId())
                 .assetName(null)
                 .inventoryStatus(entity.getInventoryStatus() != null ? entity.getInventoryStatus().name() : null)
-                .soLuongKyHienTai(entity.getBookValue() != null ? entity.getBookValue().intValue() : 0)
-                .soLuongKyThucTe(entity.getActualValue() != null ? entity.getActualValue().intValue() : 0)
+                .currentPeriodQuantity(entity.getBookValue() != null ? entity.getBookValue().intValue() : 0)
+                .actualPeriodQuantity(entity.getActualValue() != null ? entity.getActualValue().intValue() : 0)
                 .description(entity.getNotes())
                 .createdBy(entity.getCreatedBy())
                 .createdByName(null)

@@ -78,7 +78,7 @@ class StatisticsControllerTest {
     @Test
     void createForm_returns200() throws Exception {
         StatisticsFormResponse response = StatisticsFormResponse.builder()
-                .id(1L)
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .code("S-001")
                 .formCode("F01N-2026-06")
                 .formType("PORT_THROUGHPUT")
@@ -97,7 +97,7 @@ class StatisticsControllerTest {
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.id").value(1L))
+                .andExpect(jsonPath("$.data.id").value("00000000-0000-0000-0000-000000000001"))
                 .andExpect(jsonPath("$.data.formCode").value("F01N-2026-06"))
                 .andExpect(jsonPath("$.data.formStatus").value("DRAFT"));
 
@@ -107,38 +107,38 @@ class StatisticsControllerTest {
     @Test
     void findById_returns200() throws Exception {
         StatisticsFormResponse response = StatisticsFormResponse.builder()
-                .id(1L)
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .code("S-001")
                 .formCode("F01N-2026-06")
                 .formType("PORT_THROUGHPUT")
                 .formStatus("APPROVED")
                 .build();
 
-        when(statisticsService.findById(1L)).thenReturn(Optional.of(response));
+        when(statisticsService.findById(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))).thenReturn(Optional.of(response));
 
-        mockMvc.perform(get("/api/v1/statistics/forms/1"))
+        mockMvc.perform(get("/api/v1/statistics/forms/00000000-0000-0000-0000-000000000001"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.id").value(1L))
+                .andExpect(jsonPath("$.data.id").value("00000000-0000-0000-0000-000000000001"))
                 .andExpect(jsonPath("$.data.formCode").value("F01N-2026-06"))
                 .andExpect(jsonPath("$.data.formStatus").value("APPROVED"));
 
-        verify(statisticsService, times(1)).findById(1L);
+        verify(statisticsService, times(1)).findById(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
     }
 
     @Test
     void findById_notFound_returns404() throws Exception {
-        when(statisticsService.findById(999L)).thenReturn(Optional.empty());
+        when(statisticsService.findById(java.util.UUID.fromString("00000000-0000-0000-0000-000000000999"))).thenReturn(Optional.empty());
 
-        mockMvc.perform(get("/api/v1/statistics/forms/999"))
+        mockMvc.perform(get("/api/v1/statistics/forms/00000000-0000-0000-0000-000000000999"))
                 .andExpect(status().isNotFound());
 
-        verify(statisticsService, times(1)).findById(999L);
+        verify(statisticsService, times(1)).findById(java.util.UUID.fromString("00000000-0000-0000-0000-000000000999"));
     }
 
     @Test
     void findByCode_returns200() throws Exception {
         StatisticsFormResponse response = StatisticsFormResponse.builder()
-                .id(1L)
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .code("S-001")
                 .formCode("F01N-2026-06")
                 .formType("PORT_THROUGHPUT")
@@ -157,11 +157,11 @@ class StatisticsControllerTest {
     @Test
     void findAll_returns200() throws Exception {
         StatisticsFormResponse response1 = StatisticsFormResponse.builder()
-                .id(1L)
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .formCode("F01N-2026-06")
                 .build();
         StatisticsFormResponse response2 = StatisticsFormResponse.builder()
-                .id(2L)
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"))
                 .formCode("F02N-2026-06")
                 .build();
 
@@ -182,13 +182,13 @@ class StatisticsControllerTest {
 
     @Test
     void updateStatus_returns200() throws Exception {
-        doNothing().when(statisticsService).updateStatus(1L, "APPROVED");
+        doNothing().when(statisticsService).updateStatus(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), "APPROVED");
 
-        mockMvc.perform(put("/api/v1/statistics/forms/1/status")
+        mockMvc.perform(put("/api/v1/statistics/forms/00000000-0000-0000-0000-000000000001/status")
                         .param("status", "APPROVED"))
                 .andExpect(status().isOk());
 
-        verify(statisticsService, times(1)).updateStatus(1L, "APPROVED");
+        verify(statisticsService, times(1)).updateStatus(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), "APPROVED");
     }
 
     @Test
@@ -225,7 +225,7 @@ class StatisticsControllerTest {
     @Test
     void findByFormType_returns200() throws Exception {
         StatisticsFormResponse response = StatisticsFormResponse.builder()
-                .id(1L)
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .formCode("F01N-2026-06")
                 .formType("PORT_THROUGHPUT")
                 .build();

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.mapicon.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.mapicon.dto.CreateMapSymbolRequest;
 import com.hanghai.kchtg.mapicon.dto.MapSymbolResponse;
 import com.hanghai.kchtg.mapicon.dto.UpdateMapSymbolRequest;
@@ -12,7 +14,7 @@ import java.util.UUID;
 public interface MapSymbolService {
     Page<MapSymbolResponse> search(String search, MapSymbolStatus status, Pageable pageable);
     MapSymbolResponse findById(UUID id);
-    MapSymbolResponse create(CreateMapSymbolRequest request, String username);
+    MapSymbolResponse create(CreateMapSymbolRequest request, java.util.UUID createdBy);
     MapSymbolResponse update(UUID id, UpdateMapSymbolRequest request);
     void delete(UUID id);
 }

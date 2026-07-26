@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.user.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.user.entity.PasswordResetToken;
 import com.hanghai.kchtg.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;

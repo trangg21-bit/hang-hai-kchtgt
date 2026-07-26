@@ -1,5 +1,11 @@
 package com.hanghai.kchtg.assetmovement.repository;
 
+import java.util.UUID;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+
 import com.hanghai.kchtg.assetmovement.entity.ApprovalResult;
 import com.hanghai.kchtg.assetmovement.entity.ApprovalRecord;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -24,5 +30,5 @@ public interface ApprovalRecordRepository extends JpaRepository<ApprovalRecord, 
 
     Page<ApprovalRecord> findByRequestIdAndResult(UUID requestId, ApprovalResult result, Pageable pageable);
 
-    List<ApprovalRecord> findByApprovalLevel(Integer approvalLevel);
+    List<ApprovalRecord> findByApprovalLevel(ApprovalLevel approvalLevel);
 }

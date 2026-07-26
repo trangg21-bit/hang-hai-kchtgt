@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.polygon.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ApprovalStatus;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ObjectType;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.Status;
@@ -33,7 +35,7 @@ public class PolygonObjectResponse {
     private UUID refId;
     private Integer refType;
     private ApprovalStatus approvalStatus;
-    private String approvedBy;
+    private UUID approvedBy;
     private LocalDateTime approvedDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

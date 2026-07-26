@@ -1,6 +1,8 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
 import java.util.UUID;
+
+import java.util.UUID;
 import lombok.Data;
 
 /**
@@ -11,8 +13,8 @@ public class AssetIncreaseRequestRequest {
 
     private UUID assetId;
     private String assetName;
-    private int soLuong;
-    private String donViTinh;
+    private int quantity;
+    private String unitOfMeasure;
     private String reason;
-    private String maSoTang;
+    private String increaseCode;
 }

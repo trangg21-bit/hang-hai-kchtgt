@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.vtssystem.dto;
 
+import java.util.UUID;
+
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -9,7 +11,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class VtsSystemAttachmentResponse {
-    private Long id;
+    private UUID id;
     private String fileName;
     private String filePath;
     private Long fileSize;

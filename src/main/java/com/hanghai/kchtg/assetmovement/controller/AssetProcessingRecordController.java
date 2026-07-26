@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.AssetProcessingRecordRequest;
 import com.hanghai.kchtg.assetmovement.dto.AssetProcessingRecordResponse;
 import com.hanghai.kchtg.assetmovement.entity.ProcessingType;
@@ -28,7 +30,7 @@ public class AssetProcessingRecordController {
     private final AssetProcessingRecordService assetProcessingRecordService;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:processing-record')")
+    @PreAuthorize("@auth.check(authentication, 'processingrecord:manage')")
     public ResponseEntity<ApiResponse<AssetProcessingRecordResponse>> create(
             @RequestBody AssetProcessingRecordRequest request) {
         AssetProcessingRecordResponse response = assetProcessingRecordService.create(request);
@@ -36,7 +38,7 @@ public class AssetProcessingRecordController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:processing-record')")
+    @PreAuthorize("@auth.check(authentication, 'processingrecord:manage')")
     public ResponseEntity<ApiResponse<AssetProcessingRecordResponse>> getById(
             @PathVariable UUID id) {
         AssetProcessingRecordResponse response = assetProcessingRecordService.getById(id);
@@ -44,7 +46,7 @@ public class AssetProcessingRecordController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:processing-record')")
+    @PreAuthorize("@auth.check(authentication, 'processingrecord:manage')")
     public ResponseEntity<ApiResponse<Page<AssetProcessingRecordResponse>>> findAll(
             @RequestParam(required = false) UUID assetId,
             @RequestParam(required = false) ProcessingType processingType,
@@ -66,7 +68,7 @@ public class AssetProcessingRecordController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:processing-record')")
+    @PreAuthorize("@auth.check(authentication, 'processingrecord:manage')")
     public ResponseEntity<ApiResponse<AssetProcessingRecordResponse>> update(
             @PathVariable UUID id,
             @RequestBody AssetProcessingRecordRequest request) {
@@ -75,7 +77,7 @@ public class AssetProcessingRecordController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:processing-record')")
+    @PreAuthorize("@auth.check(authentication, 'processingrecord:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         assetProcessingRecordService.delete(id);

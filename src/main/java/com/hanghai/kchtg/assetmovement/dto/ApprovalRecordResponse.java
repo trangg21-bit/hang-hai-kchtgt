@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
+import java.util.UUID;
+
 import lombok.Builder;
 import lombok.Data;
 
@@ -16,11 +18,11 @@ public class ApprovalRecordResponse {
 
     private UUID id;
     private UUID requestId;
-    private String loaiYeuCau;
+    private String requestType;
     private String result;
     private String approverName;
     private String notes;
-    private String createdBy;
+    private UUID createdBy;
     private String createdByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

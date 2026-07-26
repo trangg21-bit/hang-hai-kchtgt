@@ -1,5 +1,11 @@
 package com.hanghai.kchtg.beacon.dto.beacon_light;
 
+import java.util.UUID;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,10 +27,7 @@ public class BeaconLightResponse {
     private UUID id;
     private String code;
     private String name;
-    private String type;
-    private Double latitude;
-    private Double longitude;
-    private Double lightRange;
+    private String type;    private Double lightRange;
     private String towerColor;
     private String primaryLightModel;
     private Double area;
@@ -36,8 +39,8 @@ public class BeaconLightResponse {
     private Boolean isActive;
     private String status;
     private String approvalStatus;
-    private Integer approvalLevel;
-    private String approvedBy;
+    private ApprovalLevel approvalLevel;
+    private UUID approvedBy;
     private LocalDateTime approvedDate;
     private String rejectionReason;
     private LocalDateTime createdAt;

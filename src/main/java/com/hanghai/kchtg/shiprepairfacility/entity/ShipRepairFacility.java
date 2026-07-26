@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.shiprepairfacility.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -15,12 +17,12 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ShipRepairFacility {
+public class ShipRepairFacility extends com.hanghai.kchtg.common.entity.BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
-    private java.util.UUID id;
+    private UUID id;
 
     @Column(name = "facility_name", nullable = false, length = 255)
     private String facilityName;
@@ -38,7 +40,7 @@ public class ShipRepairFacility {
     private String email;
 
     @Column(name = "facility_type", nullable = false)
-    private LoaiCoSo facilityType;
+    private FacilityType facilityType;
 
     @Column(name = "capacity", length = 255)
     private String capacity;
@@ -47,10 +49,10 @@ public class ShipRepairFacility {
     private String authority;
 
     @Column(name = "org_unit_id")
-    private java.util.UUID orgUnitId;
+    private UUID orgUnitId;
 
     @Column(name = "spatial_id")
-    private java.util.UUID spatialId;
+    private UUID spatialId;
 
     @Column(name = "approval_status", nullable = false)
     @Convert(converter = ShipRepairApprovalStatusConverter.class)
@@ -80,7 +82,7 @@ public class ShipRepairFacility {
     private String rejectionReason;
 
     @Column(name = "created_by", nullable = false, length = 100)
-    private String createdBy;
+    private UUID createdBy;
 
     @CreatedDate
     @Column(name = "created_date", nullable = false, updatable = false)
@@ -91,11 +93,14 @@ public class ShipRepairFacility {
     private LocalDateTime updatedDate;
 
     @Column(name = "updated_by", length = 100)
-    private String updatedBy;
+    private UUID updatedBy;
 
     @Column(name = "is_deleted", nullable = false)
     @Builder.Default
     private Boolean isDeleted = false;
+
+    @Column(name = "deleted_by", length = 100)
+    private UUID deletedBy;
 
     @OneToMany(mappedBy = "shipRepairFacility", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

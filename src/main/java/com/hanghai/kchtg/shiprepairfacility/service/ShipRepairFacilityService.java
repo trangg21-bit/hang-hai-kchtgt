@@ -1,5 +1,12 @@
 package com.hanghai.kchtg.shiprepairfacility.service;
 
+import com.hanghai.kchtg.security.AdminAutoApproval;
+import java.util.UUID;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+
 import com.hanghai.kchtg.shiprepairfacility.dto.*;
 import com.hanghai.kchtg.shiprepairfacility.entity.*;
 import com.hanghai.kchtg.shiprepairfacility.repository.*;
@@ -10,6 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
 @Service
 @RequiredArgsConstructor
@@ -21,7 +32,7 @@ public class ShipRepairFacilityService {
     private final ApprovalHistoryRepository historyRepository;
     private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
 
-    public ShipRepairFacilityResponse create(ShipRepairFacilityCreateRequest request, String createdBy) {
+    public ShipRepairFacilityResponse create(ShipRepairFacilityCreateRequest request, UUID createdBy) {
         ShipRepairFacility entity = ShipRepairFacility.builder()
                 .facilityName(request.getFacilityName())
                 .address(request.getAddress())
@@ -41,19 +52,19 @@ public class ShipRepairFacilityService {
 
         ShipRepairFacility saved = repository.save(entity);
 
-        if (request.getToaDo() != null && !request.getToaDo().trim().isEmpty()) {
-            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = getSpatialObjectType(geomType);
+        if (request.getCoordinates() != null && !request.getCoordinates().trim().isEmpty()) {
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisSpatialObjectType objType = getSpatialObjectType(geomType);
             UUID refId = saved.getId();
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
                     "Cơ sở sửa chữa tại " + request.getAddress(),
                     "COSO_" + saved.getId(),
                     geomType,
                     objType,
-                    request.getToaDo(),
+                    request.getCoordinates(),
                     refId,
-                    com.hanghai.kchtg.gis.search.dto.KchtType.COSO_SUACHUA
+                    InfrastructureType.SHIP_REPAIR_FACILITY
             );
             saved.setSpatialId(spatialObj.getId());
             saved = repository.save(saved);
@@ -61,7 +72,7 @@ public class ShipRepairFacilityService {
 
         historyRepository.save(ApprovalHistory.builder()
                 .shipRepairFacilityId(saved.getId())
-                .approvalLevel(0)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
                 .status("CREATE")
                 .approvedBy(createdBy)
                 .approvedDate(LocalDateTime.now())
@@ -80,11 +91,21 @@ public class ShipRepairFacilityService {
         return toResponse(entity);
     }
 
+    /**
+     * List records sitting at a given approval status, mirroring the endpoint the
+     * other infrastructure modules expose.
+     */
+    public List<ShipRepairFacilityResponse> findByApprovalStatus(ShipRepairApprovalStatus approvalStatus) {
+        return repository.findByApprovalStatusAndIsDeletedFalse(approvalStatus).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     public List<ShipRepairFacilityResponse> findAll(int page, int size) {
         return repository.findByApprovalStatusAndIsDeletedFalse(ShipRepairApprovalStatus.APPROVED).stream().map(this::toResponse).toList();
     }
 
-    public ShipRepairFacilityResponse update(UUID id, ShipRepairFacilityUpdateRequest request, String updatedBy) {
+    public ShipRepairFacilityResponse update(UUID id, ShipRepairFacilityUpdateRequest request, UUID updatedBy) {
         ShipRepairFacility entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
@@ -106,25 +127,25 @@ public class ShipRepairFacilityService {
         if (request.getAuthority() != null) entity.setAuthority(request.getAuthority());
         if (request.getOrgUnitId() != null) entity.setOrgUnitId(request.getOrgUnitId());
 
-        if (request.getToaDo() != null) {
-            if (request.getToaDo().trim().isEmpty()) {
+        if (request.getCoordinates() != null) {
+            if (request.getCoordinates().trim().isEmpty()) {
                 if (entity.getSpatialId() != null) {
                     gisSpatialObjectService.delete(entity.getSpatialId());
                     entity.setSpatialId(null);
                 }
             } else {
-                com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getLoaiHinhHoc() != null ? request.getLoaiHinhHoc() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
-                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = getSpatialObjectType(geomType);
+                GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+                GisSpatialObjectType objType = getSpatialObjectType(geomType);
                 UUID refId = entity.getId();
-                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+                GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                         entity.getSpatialId(),
                         "Cơ sở sửa chữa tại " + (request.getAddress() != null ? request.getAddress() : entity.getAddress()),
                         "COSO_" + entity.getId(),
                         geomType,
                         objType,
-                        request.getToaDo(),
+                        request.getCoordinates(),
                         refId,
-                        com.hanghai.kchtg.gis.search.dto.KchtType.COSO_SUACHUA
+                        InfrastructureType.SHIP_REPAIR_FACILITY
                 );
                 entity.setSpatialId(spatialObj.getId());
             }
@@ -139,7 +160,7 @@ public class ShipRepairFacilityService {
                         spatialObj.getObjectType(),
                         spatialObj.getCoordinates(),
                         refId,
-                        com.hanghai.kchtg.gis.search.dto.KchtType.COSO_SUACHUA
+                        InfrastructureType.SHIP_REPAIR_FACILITY
                 );
             });
         }
@@ -148,7 +169,7 @@ public class ShipRepairFacilityService {
 
         historyRepository.save(ApprovalHistory.builder()
                 .shipRepairFacilityId(saved.getId())
-                .approvalLevel(0)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
                 .status("UPDATE")
                 .approvedBy(updatedBy)
                 .approvedDate(LocalDateTime.now())
@@ -158,7 +179,7 @@ public class ShipRepairFacilityService {
         return toResponse(saved);
     }
 
-    public void delete(UUID id, String deletedBy) {
+    public void delete(UUID id, java.util.UUID deletedBy) {
         ShipRepairFacility entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
@@ -166,12 +187,12 @@ public class ShipRepairFacilityService {
             throw new RuntimeException("Chỉ có thể xóa bản ghi đã được phê duyệt (APPROVED) với ID: " + id);
         }
 
-        entity.setIsDeleted(true);
+        entity.setDeletedBy(deletedBy); entity.setIsDeleted(true);
         repository.save(entity);
 
         historyRepository.save(ApprovalHistory.builder()
                 .shipRepairFacilityId(entity.getId())
-                .approvalLevel(0)
+                .approvalLevel(ApprovalLevel.LEVEL_0)
                 .status("DELETE")
                 .approvedBy(deletedBy)
                 .approvedDate(LocalDateTime.now())
@@ -181,7 +202,8 @@ public class ShipRepairFacilityService {
         attachmentRepository.deleteByShipRepairFacilityId(id);
     }
 
-    public ShipRepairFacilityResponse approveC1(UUID id, ApprovalRequest request, String approvedBy) {
+    public ShipRepairFacilityResponse approveC1(UUID id, ApprovalRequest request, java.util.UUID approvedBy) {
+        boolean autoApproved = false;
         ShipRepairFacility entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
@@ -193,27 +215,48 @@ public class ShipRepairFacilityService {
             entity.setApprovalStatus(ShipRepairApprovalStatus.REJECTED);
             entity.setRejectionReason(request.getReason());
         } else {
-            entity.setApprovalStatus(ShipRepairApprovalStatus.UNDER_REVIEW);
             entity.setApprovedLevel1(true);
-            entity.setApproverLevel1(approvedBy);
+            entity.setApproverLevel1(approvedBy != null ? approvedBy.toString() : null);
             entity.setApprovedDateLevel1(LocalDateTime.now());
+
+            if (AdminAutoApproval.isAutoApprover()) {
+                // Administrators clear both levels in one step.
+                entity.setApprovedLevel2(true);
+                entity.setApproverLevel2(approvedBy != null ? approvedBy.toString() : null);
+                entity.setApprovedDateLevel2(LocalDateTime.now());
+                entity.setApprovalStatus(ShipRepairApprovalStatus.APPROVED);
+                autoApproved = true;
+            } else {
+                entity.setApprovalStatus(ShipRepairApprovalStatus.UNDER_REVIEW);
+            }
         }
 
         ShipRepairFacility saved = repository.save(entity);
 
         historyRepository.save(ApprovalHistory.builder()
                 .shipRepairFacilityId(saved.getId())
-                .approvalLevel(1)
+                .approvalLevel(ApprovalLevel.LEVEL_1)
                 .status(request.getQuyetDinh())
                 .approvedBy(approvedBy)
                 .approvedDate(LocalDateTime.now())
                 .reason(request.getReason())
                 .build());
 
+        if (autoApproved) {
+            historyRepository.save(ApprovalHistory.builder()
+                    .shipRepairFacilityId(saved.getId())
+                    .approvalLevel(ApprovalLevel.LEVEL_2)
+                    .status(request.getQuyetDinh())
+                    .approvedBy(approvedBy)
+                    .approvedDate(LocalDateTime.now())
+                    .reason(request.getReason())
+                    .build());
+        }
+
         return toResponse(saved);
     }
 
-    public ShipRepairFacilityResponse approveC2(UUID id, ApprovalRequest request, String approvedBy) {
+    public ShipRepairFacilityResponse approveC2(UUID id, ApprovalRequest request, java.util.UUID approvedBy) {
         ShipRepairFacility entity = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy cơ sở sửa chữa, đóng tàu với ID: " + id));
 
@@ -222,7 +265,7 @@ public class ShipRepairFacilityService {
         }
 
         String c1Actor = entity.getApproverLevel1();
-        if (c1Actor != null && c1Actor.equals(approvedBy) && !"admin".equals(approvedBy)) {
+        if (c1Actor != null && c1Actor.equals(approvedBy != null ? approvedBy.toString() : null) && !"admin".equals(approvedBy)) {
             throw new IllegalStateException("Người phê duyệt C2 không được trùng với người phê duyệt C1 (Nguoi phe duyet C2 khong duoc trung)");
         }
 
@@ -232,7 +275,7 @@ public class ShipRepairFacilityService {
         } else {
             entity.setApprovalStatus(ShipRepairApprovalStatus.APPROVED);
             entity.setApprovedLevel2(true);
-            entity.setApproverLevel2(approvedBy);
+            entity.setApproverLevel2(approvedBy != null ? approvedBy.toString() : null);
             entity.setApprovedDateLevel2(LocalDateTime.now());
         }
 
@@ -240,7 +283,7 @@ public class ShipRepairFacilityService {
 
         historyRepository.save(ApprovalHistory.builder()
                 .shipRepairFacilityId(saved.getId())
-                .approvalLevel(2)
+                .approvalLevel(ApprovalLevel.LEVEL_2)
                 .status(request.getQuyetDinh())
                 .approvedBy(approvedBy)
                 .approvedDate(LocalDateTime.now())
@@ -262,12 +305,12 @@ public class ShipRepairFacilityService {
                         .build()).toList();
     }
 
-    public List<ShipRepairFacilityResponse> search(UUID orgUnitId, String keyword, String province, String approvalStatus, String approvalStatusPheDuyet) {
+    public List<ShipRepairFacilityResponse> search(UUID orgUnitId, String keyword, String province, String approvalStatus, String reviewStatus) {
         String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
         String provinceLike = (province != null && !province.trim().isEmpty()) ? "%" + province.trim().toLowerCase() + "%" : null;
         ShipRepairApprovalStatus statusEnum = (approvalStatus != null && !approvalStatus.trim().isEmpty()) ? ShipRepairApprovalStatus.fromString(approvalStatus) : null;
-        ShipRepairApprovalStatus statusPheDuyetEnum = (approvalStatusPheDuyet != null && !approvalStatusPheDuyet.trim().isEmpty()) ? ShipRepairApprovalStatus.fromString(approvalStatusPheDuyet) : null;
-        return repository.search(orgUnitId, keywordLike, provinceLike, statusEnum, statusPheDuyetEnum).stream().map(this::toResponse).toList();
+        ShipRepairApprovalStatus reviewStatusEnum = (reviewStatus != null && !reviewStatus.trim().isEmpty()) ? ShipRepairApprovalStatus.fromString(reviewStatus) : null;
+        return repository.search(orgUnitId, keywordLike, provinceLike, statusEnum, reviewStatusEnum).stream().map(this::toResponse).toList();
     }
 
     private ShipRepairFacilityResponse toResponse(ShipRepairFacility entity) {
@@ -283,13 +326,13 @@ public class ShipRepairFacilityService {
                         .uploadedDate(a.getUploadedDate())
                         .build()).toList();
 
-        com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = null;
+        GisGeometryType geomType = null;
         String coords = null;
         UUID symbolId = null;
         if (entity.getSpatialId() != null) {
-            java.util.Optional<com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
+            java.util.Optional<GisSpatialObject> spatialOpt = gisSpatialObjectService.findById(entity.getSpatialId());
             if (spatialOpt.isPresent()) {
-                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatial = spatialOpt.get();
+                GisSpatialObject spatial = spatialOpt.get();
                 geomType = spatial.getGeometryType();
                 coords = spatial.getCoordinates();
             }
@@ -315,20 +358,22 @@ public class ShipRepairFacilityService {
                 .approvedDateLevel2(entity.getApprovedDateLevel2())
                 .rejectionReason(entity.getRejectionReason())
                 .createdBy(entity.getCreatedBy())
-                .createdDate(entity.getCreatedDate())
+                .createdDate(entity.getCreatedAt())
                 .updatedBy(entity.getUpdatedBy())
-                .updatedDate(entity.getUpdatedDate())
+                .updatedDate(entity.getUpdatedAt())
                 .isDeleted(entity.getIsDeleted())
                 .attachments(attachments)
                 .spatialId(entity.getSpatialId())
-                .loaiHinhHoc(geomType)
-                .toaDo(coords)
+                .geometryType(geomType)
+                .coordinates(coords)
                 .build();
     }
 
-    private com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType getSpatialObjectType(com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType) {
-        if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT) return com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_OTHER;
-        if (geomType == com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POLYGON) return com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POLYGON_OTHER;
-        return com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.LINE_OTHER;
+    private GisSpatialObjectType getSpatialObjectType(GisGeometryType geomType) {
+        if (geomType == GisGeometryType.POINT) return GisSpatialObjectType.POINT_OTHER;
+        if (geomType == GisGeometryType.POLYGON) return GisSpatialObjectType.POLYGON_OTHER;
+        return GisSpatialObjectType.LINE_OTHER;
     }
 }
+
+

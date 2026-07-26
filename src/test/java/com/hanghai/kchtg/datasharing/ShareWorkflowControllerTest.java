@@ -77,25 +77,23 @@ class ShareWorkflowControllerTest {
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("F-018-WC-01: submit_returns200 — POST /api/v1/datasharing/shares/1/submit")
+    @DisplayName("F-018-WC-01: submit_returns200 — POST /api/v1/datasharing/shares/00000000-0000-0000-0000-000000000001/submit")
     void submit_returns200() throws Exception {
         SharedData data = SharedData.builder()
-                .id(1L)
-                .code("SD-2026-0001")
-                .name("Ben Caang 1")
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .sharedWith("KCHTGT-CN")
                 .sharedCreated(Instant.now())
                 .build();
 
-        when(shareWorkflowService.submitForShare(1L, "ADMIN-01", "Gửi chia sẻ")).thenReturn(data);
+        when(shareWorkflowService.submitForShare(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), "Gửi chia sẻ")).thenReturn(data);
 
-        mockMvc.perform(post("/api/v1/datasharing/shares/1/submit")
-                        .param("actor", "ADMIN-01")
+        mockMvc.perform(post("/api/v1/datasharing/shares/00000000-0000-0000-0000-000000000001/submit")
+                        .param("actor", "00000000-0000-0000-0000-000000000001")
                         .param("comments", "Gửi chia sẻ"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(shareWorkflowService).submitForShare(1L, "ADMIN-01", "Gửi chia sẻ");
+        verify(shareWorkflowService).submitForShare(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), "Gửi chia sẻ");
     }
 
     // ------------------------------------------------------------------
@@ -103,26 +101,24 @@ class ShareWorkflowControllerTest {
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("F-018-WC-02: approve_returns200 — POST /api/v1/datasharing/shares/2/approve")
+    @DisplayName("F-018-WC-02: approve_returns200 — POST /api/v1/datasharing/shares/00000000-0000-0000-0000-000000000002/approve")
     void approve_returns200() throws Exception {
         SharedData data = SharedData.builder()
-                .id(2L)
-                .code("SD-2026-0002")
-                .name("Den Bien 1")
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"))
                 .sharedWith("VTS-DNAI")
-                .approvedBy("MANAGER-01")
+                .approvedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"))
                 .sharedCreated(Instant.now())
                 .build();
 
-        when(shareWorkflowService.approveShare(2L, "MANAGER-01", "Phê duyệt")).thenReturn(data);
+        when(shareWorkflowService.approveShare(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), "Phê duyệt")).thenReturn(data);
 
-        mockMvc.perform(post("/api/v1/datasharing/shares/2/approve")
-                        .param("actor", "MANAGER-01")
+        mockMvc.perform(post("/api/v1/datasharing/shares/00000000-0000-0000-0000-000000000002/approve")
+                        .param("actor", "00000000-0000-0000-0000-000000000002")
                         .param("comments", "Phê duyệt"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(shareWorkflowService).approveShare(2L, "MANAGER-01", "Phê duyệt");
+        verify(shareWorkflowService).approveShare(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"), "Phê duyệt");
     }
 
     // ------------------------------------------------------------------
@@ -130,25 +126,23 @@ class ShareWorkflowControllerTest {
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("F-018-WC-03: revoke_returns200 — POST /api/v1/datasharing/shares/3/revoke")
+    @DisplayName("F-018-WC-03: revoke_returns200 — POST /api/v1/datasharing/shares/00000000-0000-0000-0000-000000000003/revoke")
     void revoke_returns200() throws Exception {
         SharedData data = SharedData.builder()
-                .id(3L)
-                .code("SD-2026-0003")
-                .name("Cau Caang 1")
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"))
                 .sharedWith("KCHTGT-TH")
                 .sharedCreated(Instant.now())
                 .build();
 
-        when(shareWorkflowService.revokeShare(3L, "ADMIN-01", "Thu hồi")).thenReturn(data);
+        when(shareWorkflowService.revokeShare(java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"), java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), "Thu hồi")).thenReturn(data);
 
-        mockMvc.perform(post("/api/v1/datasharing/shares/3/revoke")
-                        .param("actor", "ADMIN-01")
+        mockMvc.perform(post("/api/v1/datasharing/shares/00000000-0000-0000-0000-000000000003/revoke")
+                        .param("actor", "00000000-0000-0000-0000-000000000001")
                         .param("comments", "Thu hồi"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
 
-        verify(shareWorkflowService).revokeShare(3L, "ADMIN-01", "Thu hồi");
+        verify(shareWorkflowService).revokeShare(java.util.UUID.fromString("00000000-0000-0000-0000-000000000003"), java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), "Thu hồi");
     }
 
     // ------------------------------------------------------------------
@@ -156,23 +150,23 @@ class ShareWorkflowControllerTest {
     // ------------------------------------------------------------------
 
     @Test
-    @DisplayName("F-018-WC-04: history_returns200 — GET /api/v1/datasharing/shares/4/history")
+    @DisplayName("F-018-WC-04: history_returns200 — GET /api/v1/datasharing/shares/00000000-0000-0000-0000-000000000004/history")
     void history_returns200() throws Exception {
         ShareHistory h1 = ShareHistory.builder()
-                .id(1L).sharedDataId(4L).action("SHARE").actor("ADMIN-01")
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).sharedDataId(java.util.UUID.fromString("00000000-0000-0000-0000-000000000004")).action("SHARE").actor(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .createdAt(Instant.now().minusSeconds(200)).build();
         ShareHistory h2 = ShareHistory.builder()
-                .id(2L).sharedDataId(4L).action("APPROVE").actor("MANAGER-01")
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002")).sharedDataId(java.util.UUID.fromString("00000000-0000-0000-0000-000000000004")).action("APPROVE").actor(java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"))
                 .createdAt(Instant.now().minusSeconds(100)).build();
 
-        when(shareWorkflowService.getHistory(4L)).thenReturn(List.of(h1, h2));
+        when(shareWorkflowService.getHistory(java.util.UUID.fromString("00000000-0000-0000-0000-000000000004"))).thenReturn(List.of(h1, h2));
 
-        mockMvc.perform(get("/api/v1/datasharing/shares/4/history"))
+        mockMvc.perform(get("/api/v1/datasharing/shares/00000000-0000-0000-0000-000000000004/history"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[0].action").value("SHARE"))
                 .andExpect(jsonPath("$.data[1].action").value("APPROVE"));
 
-        verify(shareWorkflowService).getHistory(4L);
+        verify(shareWorkflowService).getHistory(java.util.UUID.fromString("00000000-0000-0000-0000-000000000004"));
     }
 }

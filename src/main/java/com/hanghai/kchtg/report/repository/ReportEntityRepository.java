@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.report.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.report.entity.ReportEntity;
 import com.hanghai.kchtg.report.entity.ReportStatus;
 import com.hanghai.kchtg.report.entity.ReportType;

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.entity;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;

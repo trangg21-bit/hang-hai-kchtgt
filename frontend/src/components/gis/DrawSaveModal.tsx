@@ -35,7 +35,7 @@ interface DrawSaveModalProps {
     loaiKcht: string;
     unitId?: string;
     Port?: string;
-    diaDiem?: string;
+    location?: string;
     diaDiemChiTiet?: string;
     moTa?: string;
     status: string;
@@ -258,12 +258,12 @@ export default function DrawSaveModal({
     if (open) {
       if (editRecord) {
         form.setFieldsValue({
-          ten: editRecord.name,
-          ma: editRecord.code,
+          name: editRecord.name,
+          code: editRecord.code,
           loaiKcht: editRecord.loaiKcht,
           donViQuanLy: editRecord.unitId,
           Port: editRecord.Port,
-          diaDiem: editRecord.diaDiem,
+          location: editRecord.location,
           diaDiemChiTiet: editRecord.diaDiemChiTiet,
           moTa: editRecord.moTa,
           trangThai: editRecord.status,
@@ -355,8 +355,8 @@ export default function DrawSaveModal({
 
       if (isPoint) {
         const payload = {
-          name: values.ten,
-          code: values.ma,
+          name: values.name,
+          code: values.code,
           objectType: mapToPointObjectType(values.loaiKcht),
           categoryId: mapToCategoryId(values.loaiKcht),
           longitude: lng ?? (drawResult?.geojson?.geometry?.coordinates?.[0] || editRecord?.coordinates?.[0]),
@@ -366,7 +366,7 @@ export default function DrawSaveModal({
           status: values.trangThai,
           refId: values.Port || null,
           refType: values.Port ? 0 : null,
-          purpose: values.diaDiem || null,
+          purpose: values.location || null,
           restrictionLevel: values.diaDiemChiTiet || null,
         };
         if (editRecord) {
@@ -376,8 +376,8 @@ export default function DrawSaveModal({
         }
       } else if (isLine) {
         const payload = {
-          name: values.ten,
-          code: values.ma,
+          name: values.name,
+          code: values.code,
           objectType: mapToLineObjectType(values.loaiKcht),
           categoryId: mapToCategoryId(values.loaiKcht),
           coordinates: wkt || (editRecord?.coordinates ? (typeof editRecord.coordinates === 'string' ? editRecord.coordinates : undefined) : undefined),
@@ -386,7 +386,7 @@ export default function DrawSaveModal({
           status: values.trangThai,
           refId: values.Port || null,
           refType: values.Port ? 0 : null,
-          purpose: values.diaDiem || null,
+          purpose: values.location || null,
           restrictionLevel: values.diaDiemChiTiet || null,
         };
         if (editRecord) {
@@ -396,8 +396,8 @@ export default function DrawSaveModal({
         }
       } else if (isPolygon) {
         const payload = {
-          name: values.ten,
-          code: values.ma,
+          name: values.name,
+          code: values.code,
           objectType: mapToPolygonObjectType(values.loaiKcht),
           categoryId: mapToCategoryId(values.loaiKcht),
           coordinates: wkt || (editRecord?.coordinates ? (typeof editRecord.coordinates === 'string' ? editRecord.coordinates : undefined) : undefined),
@@ -406,7 +406,7 @@ export default function DrawSaveModal({
           status: values.trangThai,
           refId: values.Port || null,
           refType: values.Port ? 0 : null,
-          purpose: values.diaDiem || null,
+          purpose: values.location || null,
           restrictionLevel: values.diaDiemChiTiet || null,
         };
         if (editRecord) {
@@ -416,7 +416,7 @@ export default function DrawSaveModal({
         }
       }
 
-      toast.success(editRecord ? `Đã cập nhật thành công đối tượng KCHT "${values.ten}"` : `Đã lưu thành công đối tượng KCHT "${values.ten}"`);
+      toast.success(editRecord ? `Đã cập nhật thành công đối tượng KCHT "${values.name}"` : `Đã lưu thành công đối tượng KCHT "${values.name}"`);
       form.resetFields();
       onClose();
       if (onSaved) onSaved();
@@ -544,7 +544,7 @@ export default function DrawSaveModal({
           <Col span={12}>
             <Form.Item
               label="Mã đối tượng"
-              name="ma"
+              name="code"
               style={{ marginBottom: spaceFormField }}
               rules={[
                 { required: true, message: 'Vui lòng nhập mã đối tượng' },
@@ -557,7 +557,7 @@ export default function DrawSaveModal({
           <Col span={12}>
             <Form.Item
               label="Tên đối tượng"
-              name="ten"
+              name="name"
               style={{ marginBottom: spaceFormField }}
               rules={[{ required: true, message: 'Vui lòng nhập tên đối tượng' }]}
             >
@@ -619,7 +619,7 @@ export default function DrawSaveModal({
 
         <Form.Item
           label="Tỉnh/Thành phố"
-          name="diaDiem"
+          name="location"
           style={{ marginBottom: spaceFormField }}
         >
           <Select

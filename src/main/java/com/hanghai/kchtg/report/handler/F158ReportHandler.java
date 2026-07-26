@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.report.handler;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
@@ -46,7 +48,7 @@ public class F158ReportHandler extends BaseReportHandler {
         );
 
         List<Map<String, Object>> rows = new ArrayList<>();
-        int stt = 1;
+        int sequenceNo = 1;
         Set<UUID> seenVtsIds = new HashSet<>();
         for (RadarStation station : stationList) {
             UUID vtsId = station.getVtsSystemId();
@@ -64,7 +66,7 @@ public class F158ReportHandler extends BaseReportHandler {
             String donVi = resolveOrgName(vts.getOrgUnitId());
 
             Map<String, Object> r = new LinkedHashMap<>();
-            r.put("STT", stt++);
+            r.put("STT", sequenceNo++);
             r.put("Tên hệ thống", vts.getSystemName() != null ? vts.getSystemName() : "");
             r.put("Đơn vị quản lý, khai thác", donVi.isEmpty() ? "" : donVi + " - " + donVi);
             r.put("Phạm vi vùng phủ sóng", isFirst ? (vts.getScope() != null ? vts.getScope() : "") : "");

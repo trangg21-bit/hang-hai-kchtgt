@@ -23,18 +23,18 @@ public class NotificationService {
      * @param verificationToken plain token (not hashed) to embed in link
      * @param username display name
      */
-    public void sendVerificationEmail(String email, String verificationToken, String username) {
+    public void sendVerificationEmail(String email, String verificationToken, java.util.UUID userId) {
         // Placeholder: in production, integrate with SMTP / email provider
         String verificationLink = "/api/verify?token=" + verificationToken;
-        log.info("NOTIFICATION [VERIFY_EMAIL]: email={}, user={}, link={}", email, username, verificationLink);
+        log.info("NOTIFICATION [VERIFY_EMAIL]: email={}, user={}, link={}", email, userId, verificationLink);
         // TODO: Replace with actual email sending logic (e.g. JavaMailSender, third-party API)
     }
 
     /**
      * Sends a registration success notification.
      */
-    public void sendRegistrationSuccess(String email, String username) {
-        log.info("NOTIFICATION [REGISTER_SUCCESS]: email={}, user={}", email, username);
+    public void sendRegistrationSuccess(String email, java.util.UUID userId) {
+        log.info("NOTIFICATION [REGISTER_SUCCESS]: email={}, user={}", email, userId);
         // TODO: Replace with actual email sending logic
     }
 
@@ -70,3 +70,4 @@ public class NotificationService {
         return "****" + phone.substring(phone.length() - 4);
     }
 }
+

@@ -67,7 +67,7 @@ export const vtsSystemCRUD = {
   },
 
   async getByStatus(status: string): Promise<VtsSystemResponse[]> {
-    const res = await api.get(`/v1/vts-system/status-phe-duyet/${status}`);
+    const res = await api.get(`/v1/vts-system/approval-status/${status}`);
     return toArray<VtsSystemResponse>(res.data);
   },
 };

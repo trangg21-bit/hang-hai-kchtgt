@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.beacon.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.beacon.dto.history.BeaconHistoryResponse;
 import com.hanghai.kchtg.beacon.entity.BeaconHistoryActionType;
 import com.hanghai.kchtg.beacon.entity.BeaconType;
@@ -40,10 +42,10 @@ public class BeaconHistoryController {
             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime to,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        java.util.UUID uuid = null;
+        UUID uuid = null;
         if (entityId != null && !entityId.trim().isEmpty()) {
             try {
-                uuid = java.util.UUID.fromString(entityId.trim());
+                uuid = UUID.fromString(entityId.trim());
             } catch (IllegalArgumentException e) {
                 return ResponseEntity.ok(ApiResponse.success(org.springframework.data.domain.Page.empty()));
             }

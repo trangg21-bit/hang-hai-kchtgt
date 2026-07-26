@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
+import java.util.UUID;
+
 import lombok.Builder;
 import lombok.Data;
 
@@ -19,8 +21,8 @@ public class AssetProcessingRecordResponse {
     private String assetName;
     private String processingType;
     private String description;
-    private String trangThaiHoSo;
-    private String createdBy;
+    private String documentStatus;
+    private UUID createdBy;
     private String createdByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

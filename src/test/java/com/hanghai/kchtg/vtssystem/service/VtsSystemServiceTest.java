@@ -51,7 +51,7 @@ class VtsSystemServiceTest {
                 .approvedLevel1(false)
                 .approvedLevel2(false)
                 .isDeleted(false)
-                .createdBy("test")
+                .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .createdDate(LocalDateTime.now())
                 .attachments(new java.util.ArrayList<>())
                 .build();
@@ -67,12 +67,12 @@ class VtsSystemServiceTest {
         VtsSystem saved = VtsSystem.builder()
                 .id(TEST_ID).systemName("VTS ABC").location("Hà Nội").approvalStatus("PROPOSED")
                 .approvedLevel1(false).approvedLevel2(false).isDeleted(false)
-                .createdBy("user1").attachments(new java.util.ArrayList<>()).build();
+                .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).attachments(new java.util.ArrayList<>()).build();
 
         when(repository.save(any())).thenReturn(saved);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
-        VtsSystemResponse response = service.create(createRequest, "user1");
+        VtsSystemResponse response = service.create(createRequest, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertNotNull(response);
         assertEquals("PROPOSED", response.getApprovalStatus());
         verify(repository, times(1)).save(any());
@@ -100,7 +100,7 @@ class VtsSystemServiceTest {
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
-        VtsSystemResponse response = service.update(TEST_ID, updateReq, "user1");
+        VtsSystemResponse response = service.update(TEST_ID, updateReq, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertNotNull(response);
         verify(repository, times(1)).save(any());
     }
@@ -110,20 +110,20 @@ class VtsSystemServiceTest {
         VtsSystem approvedEntity = VtsSystem.builder()
                 .id(TEST_ID).systemName("ABC").location("Hà Nội").approvalStatus("APPROVED")
                 .approvedLevel1(false).approvedLevel2(false).isDeleted(false)
-                .createdBy("test").attachments(new java.util.ArrayList<>()).build();
+                .createdBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).attachments(new java.util.ArrayList<>()).build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(approvedEntity));
         when(repository.save(any())).thenReturn(approvedEntity);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
-        service.delete(TEST_ID, "user1");
+        service.delete(TEST_ID, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertTrue(approvedEntity.getIsDeleted());
     }
 
     @Test
     void testDelete_NotApprovedEntity_Throws() {
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
-        assertThrows(RuntimeException.class, () -> service.delete(TEST_ID, "user1"));
+        assertThrows(RuntimeException.class, () -> service.delete(TEST_ID, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")));
     }
 
     @Test
@@ -133,7 +133,7 @@ class VtsSystemServiceTest {
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
-        VtsSystemResponse response = service.approveC1(TEST_ID, req, "admin");
+        VtsSystemResponse response = service.approveC1(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertEquals("UNDER_REVIEW", entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel1());
     }
@@ -146,7 +146,7 @@ class VtsSystemServiceTest {
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
-        VtsSystemResponse response = service.approveC2(TEST_ID, req, "director");
+        VtsSystemResponse response = service.approveC2(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000002"));
         assertEquals("APPROVED", entity.getApprovalStatus());
         assertTrue(entity.getApprovedLevel2());
     }
@@ -155,13 +155,13 @@ class VtsSystemServiceTest {
     void testApproveC2_sameActorAsC1_throwsException() {
         entity.setApprovalStatus("UNDER_REVIEW");
         entity.setApprovedLevel1(true);
-        entity.setApproverLevel1("user1");
+        entity.setApproverLevel1(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
 
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> service.approveC2(TEST_ID, req, "user1"));
+                () -> service.approveC2(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")));
         assertTrue(ex.getMessage().contains("Nguoi phe duyet C2 khong duoc trung"));
     }
 
@@ -172,7 +172,7 @@ class VtsSystemServiceTest {
         when(repository.save(any())).thenReturn(entity);
         when(historyRepository.save(any())).thenReturn(mock(ApprovalHistory.class));
 
-        VtsSystemResponse response = service.approveC1(TEST_ID, req, "admin");
+        VtsSystemResponse response = service.approveC1(TEST_ID, req, java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"));
         assertEquals("REJECTED", entity.getApprovalStatus());
         assertEquals("Không đủ điều kiện", entity.getRejectionReason());
     }
@@ -180,8 +180,8 @@ class VtsSystemServiceTest {
     @Test
     void testGetHistory() {
         ApprovalHistory history = ApprovalHistory.builder()
-                .id(1L).vtsSystemId(TEST_ID).approvalLevel(1)
-                .status("APPROVED").approvedBy("admin")
+                .id(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001")).vtsSystemId(TEST_ID).approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1)
+                .status("APPROVED").approvedBy(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
                 .approvedDate(LocalDateTime.now()).reason("Duyệt").build();
         when(historyRepository.findByVtsSystemIdOrderByApprovedDateDesc(TEST_ID)).thenReturn(Arrays.asList(history));
         when(repository.findById(TEST_ID)).thenReturn(Optional.of(entity));
@@ -189,7 +189,7 @@ class VtsSystemServiceTest {
         List<HistoryEntry> entries = service.getHistory(TEST_ID);
         assertNotNull(entries);
         assertEquals(1, entries.size());
-        assertEquals("admin", entries.get(0).getApprovedBy());
+        assertEquals(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"), entries.get(0).getApprovedBy());
     }
 
     @Test

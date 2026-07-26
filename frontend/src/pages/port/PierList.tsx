@@ -178,7 +178,7 @@ export default function PierList() {
   ], [navigate]);
 
   const columns = useMemo(() => [
-    { key: 'stt', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: Pier, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
+    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: Pier, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
     { key: 'pierCode', label: 'Mã', dataIndex: 'pierCode', width: 140, render: (pierCode: string) => <Tag color="cyan">{pierCode}</Tag> },
     { key: 'pierName', label: 'Tên', dataIndex: 'pierName', ellipsis: true },
     { key: 'tenBenCang', label: 'Bến cảng', dataIndex: 'tenBenCang', width: 180, render: (v: string) => v || '—' },

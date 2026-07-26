@@ -6,7 +6,7 @@ package com.hanghai.kchtg.statistics.entity;
 public enum StatFormStatus {
 
     DRAFT("Nháp"),
-    SUBMITTED("ĐÃ nộp"),
+    SUBMITTED("Đã nộp"),
     APPROVED("Đã duyệt"),
     REJECTED("Từ chối");
 

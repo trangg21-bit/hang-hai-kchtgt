@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.entity.ChartCell;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

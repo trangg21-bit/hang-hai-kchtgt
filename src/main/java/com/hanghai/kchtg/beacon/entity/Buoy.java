@@ -79,7 +79,7 @@ public class Buoy extends BaseEntity {
     private Integer approvalLevel;
 
     @Column(name = "approved_by")
-    private String approvedBy;
+    private java.util.UUID approvedBy;
 
     @Column(name = "approved_date")
     private java.time.LocalDateTime approvedDate;
@@ -88,5 +88,5 @@ public class Buoy extends BaseEntity {
     private String rejectionReason;
 
     @Column(name = "spatial_id")
-    private java.util.UUID khongGianId;
+    private java.util.UUID spatialId;
 }

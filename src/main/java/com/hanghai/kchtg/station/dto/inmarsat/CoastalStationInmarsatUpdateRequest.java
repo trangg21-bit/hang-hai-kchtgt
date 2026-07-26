@@ -14,10 +14,6 @@ import jakarta.validation.constraints.DecimalMin;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CoastalStationInmarsatUpdateRequest {
-
-    private String deviceCode;
-    private String stationName;
-
     @DecimalMin(value = "-90.0", message = "Vĩ độ phải từ -90 đến 90")
     @DecimalMax(value = "90.0", message = "Vĩ độ phải từ -90 đến 90")
     private Double latitude;
@@ -25,6 +21,10 @@ public class CoastalStationInmarsatUpdateRequest {
     @DecimalMin(value = "-180.0", message = "Kinh độ phải từ -180 đến 180")
     @DecimalMax(value = "180.0", message = "Kinh độ phải từ -180 đến 180")
     private Double longitude;
+
+    private String deviceCode;
+    private String stationName;
+
     private String modemType;
     private String frequency;
     private String coverageZone;
@@ -33,3 +33,4 @@ public class CoastalStationInmarsatUpdateRequest {
     private String contactPerson;
     private String contactPhone;
 }
+

@@ -81,15 +81,12 @@ public class BeaconLightService {
             throw new IllegalArgumentException("Mã đã tồn tại: " + request.getCode());
         }
 
-        validateCoordinates(request.getLongitude(), request.getLatitude());
         validateMaintenanceDates(request.getLastRepairDate(), request.getCommissionedDate());
 
         BeaconLight entity = BeaconLight.builder()
                 .code(request.getCode())
                 .name(request.getName())
                 .type(request.getType())
-                .latitude(request.getLatitude())
-                .longitude(request.getLongitude())
                 .lightRange(request.getLightRange())
                 .towerColor(request.getTowerColor())
                 .primaryLightModel(request.getPrimaryLightModel())
@@ -124,19 +121,10 @@ public class BeaconLightService {
 
         entity = beaconLightRepo.save(entity);
 
-        // Sync GIS spatial object
-        String wkt = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
-        com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                null,
-                entity.getName(),
-                "DENBIEN_" + entity.getCode(),
-                com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT,
-                com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_LIGHTHOUSE,
-                wkt, entity.getId(),
-                com.hanghai.kchtg.gis.search.dto.KchtType.DENBIEN
-        );
-        entity.setKhongGianId(spatialObj.getId());
-        entity = beaconLightRepo.save(entity);
+        // No GIS sync on create: coordinates no longer travel on the create request
+        // (they were moved out to the spatial object). They arrive via update, which
+        // creates the spatial object once a real position is known. Writing one here
+        // would persist a meaningless "POINT(null null)".
 
         logHistory(entity, BeaconHistoryActionType.CREATE, null, null, toJson(entity));
         notificationService.sendApprovalNotification(entity);
@@ -172,8 +160,8 @@ public class BeaconLightService {
         // Handle latitude/longitude updates
         Double currentLon = null;
         Double currentLat = null;
-        if (entity.getKhongGianId() != null) {
-            Optional<com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getKhongGianId());
+        if (entity.getSpatialId() != null) {
+            Optional<com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getSpatialId());
             if (spatialObjOpt.isPresent()) {
                 String coordsStr = spatialObjOpt.get().getCoordinates();
                 try {
@@ -188,12 +176,11 @@ public class BeaconLightService {
                 }
             }
         }
-        Double finalLon = request.getLongitude() != null ? request.getLongitude() : currentLon;
-        Double finalLat = request.getLatitude() != null ? request.getLatitude() : currentLat;
+        // The update request no longer carries coordinates, so the existing spatial
+        // position is the only source; keep it as-is.
         String wkt = null;
-        if (finalLon != null && finalLat != null) {
-            validateCoordinates(finalLon, finalLat);
-            wkt = "POINT(" + finalLon + " " + finalLat + ")";
+        if (currentLon != null && currentLat != null) {
+            wkt = "POINT(" + currentLon + " " + currentLat + ")";
         }
 
         if (request.getTowerColor() != null) entity.setTowerColor(request.getTowerColor());
@@ -235,16 +222,16 @@ public class BeaconLightService {
         // Sync GIS spatial object
         if (wkt != null) {
             com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
-                    entity.getKhongGianId(),
+                    entity.getSpatialId(),
                     entity.getName(),
                     "DENBIEN_" + entity.getCode(),
                     com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT,
                     com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_LIGHTHOUSE,
                     wkt, entity.getId(),
-                    com.hanghai.kchtg.gis.search.dto.KchtType.DENBIEN
+                    com.hanghai.kchtg.gis.search.dto.InfrastructureType.LIGHTHOUSE
             );
-            if (entity.getKhongGianId() == null) {
-                entity.setKhongGianId(spatialObj.getId());
+            if (entity.getSpatialId() == null) {
+                entity.setSpatialId(spatialObj.getId());
                 beaconLightRepo.save(entity);
             }
         }
@@ -282,8 +269,8 @@ public class BeaconLightService {
 
         logHistory(entity, BeaconHistoryActionType.SOFT_DELETE, null, null, toJson(entity));
 
-        if (entity.getKhongGianId() != null) {
-            gisSpatialObjectService.delete(entity.getKhongGianId());
+        if (entity.getSpatialId() != null) {
+            gisSpatialObjectService.delete(entity.getSpatialId());
         }
     }
 
@@ -309,7 +296,7 @@ public class BeaconLightService {
     }
 
     @Transactional
-    public BeaconLightResponse approveL1(UUID id, String approverId) {
+    public BeaconLightResponse approveL1(UUID id, java.util.UUID approverId) {
         BeaconLight entity = beaconLightRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Đèn biển không tìm thấy: " + id));
@@ -319,7 +306,7 @@ public class BeaconLightService {
                     "Không ở trạng thái chờ phê duyệt L1");
         }
 
-        String creatorId = resolveCreatedBy(entity);
+        java.util.UUID creatorId = resolveCreatedBy(entity);
         if (creatorId != null && creatorId.equals(approverId)) {
             throw new IllegalStateException(
                     "Bạn không thể phê duyệt bản do chính mình gửi");
@@ -338,7 +325,7 @@ public class BeaconLightService {
     }
 
     @Transactional
-    public BeaconLightResponse approveL2(UUID id, String approverId) {
+    public BeaconLightResponse approveL2(UUID id, java.util.UUID approverId) {
         BeaconLight entity = beaconLightRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Đèn biển không tìm thấy: " + id));
@@ -360,7 +347,7 @@ public class BeaconLightService {
     }
 
     @Transactional
-    public BeaconLightResponse reject(UUID id, String rejectReason, String approverId) {
+    public BeaconLightResponse reject(UUID id, String rejectReason, java.util.UUID approverId) {
         BeaconLight entity = beaconLightRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Đèn biển không tìm thấy: " + id));
@@ -430,8 +417,8 @@ public class BeaconLightService {
 
         Double latitude = null;
         Double longitude = null;
-        if (entity.getKhongGianId() != null) {
-            Optional<com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getKhongGianId());
+        if (entity.getSpatialId() != null) {
+            Optional<com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getSpatialId());
             if (spatialObjOpt.isPresent()) {
                 String coordsStr = spatialObjOpt.get().getCoordinates();
                 try {
@@ -452,8 +439,6 @@ public class BeaconLightService {
                 .code(entity.getCode())
                 .name(entity.getName())
                 .type(entity.getType())
-                .latitude(latitude)
-                .longitude(longitude)
                 .lightRange(entity.getLightRange())
                 .towerColor(entity.getTowerColor())
                 .primaryLightModel(entity.getPrimaryLightModel())
@@ -466,7 +451,7 @@ public class BeaconLightService {
                 .isActive(entity.getIsActive())
                 .status(entity.getStatus())
                 .approvalStatus(entity.getApprovalStatus())
-                .approvalLevel(entity.getApprovalLevel())
+                .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.fromInt(entity.getApprovalLevel()))
                 .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())
                 .rejectionReason(entity.getRejectionReason())
@@ -504,7 +489,7 @@ public class BeaconLightService {
         return 1L;
     }
 
-    private String resolveCreatedBy(BeaconLight entity) {
+    private java.util.UUID resolveCreatedBy(BeaconLight entity) {
         return entity.getCreatedBy();
     }
 

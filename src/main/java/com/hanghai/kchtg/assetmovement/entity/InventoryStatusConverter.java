@@ -21,6 +21,6 @@ public class InventoryStatusConverter implements AttributeConverter<InventorySta
                 return e;
             }
         }
-        throw new IllegalArgumentException("GiÃ¡ trá»‹ database khÃ´ng há»£p lá»‡ cho InventoryStatus: " + dbData);
+        throw new IllegalArgumentException("Giá trị database không hợp lệ cho InventoryStatus: " + dbData);
     }
 }

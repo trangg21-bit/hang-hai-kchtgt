@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.point.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.point.entity.PointHistory;
 import com.hanghai.kchtg.gis.point.entity.PointHistory.ActionType;
 import org.springframework.data.jpa.repository.JpaRepository;

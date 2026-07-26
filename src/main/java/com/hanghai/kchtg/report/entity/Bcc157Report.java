@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.report.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -45,68 +47,68 @@ public class Bcc157Report {
     // --- Section 1: Nguyên giá ---
 
     @Column(name = "ma_so_nguyen_gia_so_du_dau_nam", length = 20)
-    private String maSoNguyenGiaSoDuDauNam;
+    private String openingOriginalCostCode;
 
     @Column(name = "tai_san_nguyen_gia_so_du_dau_nam", precision = 20, scale = 4)
-    private BigDecimal taiSanNguyenGiaSoDuDauNam;
+    private BigDecimal assetOpeningOriginalCost;
 
     @Column(name = "ma_so_nguyen_gia_tang_trong_nam", length = 20)
-    private String maSoNguyenGiaTangTrongNam;
+    private String originalCostIncreaseCode;
 
     @Column(name = "tai_san_nguyen_gia_tang_trong_nam", precision = 20, scale = 4)
-    private BigDecimal taiSanNguyenGiaTangTrongNam;
+    private BigDecimal assetOriginalCostIncrease;
 
     @Column(name = "ma_so_nguyen_gia_giam_trong_nam", length = 20)
-    private String maSoNguyenGiaGiamTrongNam;
+    private String originalCostDecreaseCode;
 
     @Column(name = "tai_san_nguyen_gia_giam_trong_nam", precision = 20, scale = 4)
-    private BigDecimal taiSanNguyenGiaGiamTrongNam;
+    private BigDecimal assetOriginalCostDecrease;
 
     @Column(name = "ma_so_nguyen_gia_so_du_cuoi_nam", length = 20)
-    private String maSoNguyenGiaSoDuCuoiNam;
+    private String closingOriginalCostCode;
 
     @Column(name = "tai_san_nguyen_gia_so_du_cuoi_nam", precision = 20, scale = 4)
-    private BigDecimal taiSanNguyenGiaSoDuCuoiNam;
+    private BigDecimal assetClosingOriginalCost;
 
     // --- Section 2: Giá trị hao mòn lũy kế ---
 
     @Column(name = "ma_so_gia_tri_hao_mon_so_du_dau_nam", length = 20)
-    private String maSoGiaTriHaoMonSoDuDauNam;
+    private String openingAccumulatedDepreciationCode;
 
     @Column(name = "tai_san_gia_tri_hao_mon_so_du_dau_nam", precision = 20, scale = 4)
-    private BigDecimal taiSanGiaTriHaoMonSoDuDauNam;
+    private BigDecimal assetOpeningAccumulatedDepreciation;
 
     @Column(name = "ma_so_gia_tri_hao_mon_tang_trong_nam", length = 20)
-    private String maSoGiaTriHaoMonTangTrongNam;
+    private String depreciationIncreaseCode;
 
     @Column(name = "tai_san_gia_tri_hao_mon_tang_trong_nam", precision = 20, scale = 4)
-    private BigDecimal taiSanGiaTriHaoMonTangTrongNam;
+    private BigDecimal assetDepreciationIncrease;
 
     @Column(name = "ma_so_gia_tri_hao_mon_giam_trong_nam", length = 20)
-    private String maSoGiaTriHaoMonGiamTrongNam;
+    private String depreciationDecreaseCode;
 
     @Column(name = "tai_san_gia_tri_hao_mon_giam_trong_nam", precision = 20, scale = 4)
-    private BigDecimal taiSanGiaTriHaoMonGiamTrongNam;
+    private BigDecimal assetDepreciationDecrease;
 
     @Column(name = "ma_so_gia_tri_hao_mon_so_du_cuoi_nam", length = 20)
-    private String maSoGiaTriHaoMonSoDuCuoiNam;
+    private String closingDepreciationCode;
 
     @Column(name = "tai_san_gia_tri_hao_mon_so_du_cuoi_nam", precision = 20, scale = 4)
-    private BigDecimal taiSanGiaTriHaoMonSoDuCuoiNam;
+    private BigDecimal assetClosingDepreciation;
 
     // --- Section 3: Giá trị còn lại ---
 
     @Column(name = "ma_so_gia_tri_con_lai_tu_ngay_dau_nam", length = 20)
-    private String maSoGiaTriConLaiTuNgayDauNam;
+    private String openingResidualValueCode;
 
     @Column(name = "tai_san_gia_tri_con_lai_tu_ngay_dau_nam", precision = 20, scale = 4)
-    private BigDecimal taiSanGiaTriConLaiTuNgayDauNam;
+    private BigDecimal assetOpeningResidualValue;
 
     @Column(name = "ma_so_gia_tri_con_lai_tu_ngay_cuoi_nam", length = 20)
-    private String maSoGiaTriConLaiTuNgayCuoiNam;
+    private String closingResidualValueCode;
 
     @Column(name = "tai_san_gia_tri_con_lai_tu_ngay_cuoi_nam", precision = 20, scale = 4)
-    private BigDecimal taiSanGiaTriConLaiTuNgayCuoiNam;
+    private BigDecimal assetClosingResidualValue;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

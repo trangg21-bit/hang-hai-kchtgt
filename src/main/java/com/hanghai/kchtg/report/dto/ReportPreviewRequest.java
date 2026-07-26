@@ -18,5 +18,5 @@ public class ReportPreviewRequest {
     private String orgUnitId;
     private String format;
     private String bcNoiDung;
-    private Integer nhomCangBien;
+    private Integer portGroup;
 }

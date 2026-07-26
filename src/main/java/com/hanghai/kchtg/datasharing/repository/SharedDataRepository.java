@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.datasharing.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.datasharing.entity.ShareDataType;
 import com.hanghai.kchtg.datasharing.entity.ShareStatus;
 import com.hanghai.kchtg.datasharing.entity.SharedData;
@@ -13,7 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface SharedDataRepository extends JpaRepository<SharedData, Long> {
+public interface SharedDataRepository extends JpaRepository<SharedData, UUID> {
 
     Optional<SharedData> findByCode(String code);
 

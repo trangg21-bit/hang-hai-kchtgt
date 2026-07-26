@@ -1,25 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../../services/api';
 import {
-  Table,
-  Button,
-  Card,
-  Space,
-  Tag,
   Modal,
   Form,
   Input,
   InputNumber,
   message,
-  Popconfirm,
-  Tooltip,
+  Space
 } from 'antd';
 import {
-  PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  ReloadOutlined,
+  ExclamationCircleOutlined,
+  FileExcelOutlined
 } from '@ant-design/icons';
 import {
   fetchInmarsatList,
@@ -29,7 +23,14 @@ import {
 } from '../../services/station/api';
 import type { CoastalStationInmarsatResponse, CoastalStationInmarsatRequest } from '../../services/station/types';
 import { colors } from '../../theme';
-import { fontWeightBold, fontSizeLg } from '../../tokens';
+import { fontWeightBold, fontSizeMd, fontSizeLg, radiusPill, spaceFormField } from '../../tokens';
+import { ScreenHeader, FilterBar, DataTable, Pagination } from '../../components/list-view';
+import { usePermissionStore } from '../../store/permissionStore';
+import toast from '../../components/ToastNotification';
+
+const { confirm } = Modal;
+
+const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
 export default function SpecialStationList() {
   const [dataSource, setDataSource] = useState<CoastalStationInmarsatResponse[]>([]);
@@ -43,6 +44,7 @@ export default function SpecialStationList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CoastalStationInmarsatResponse | null>(null);
   const [isReadOnly, setIsReadOnly] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm();
   
   const [searchParams] = useSearchParams();
@@ -50,6 +52,8 @@ export default function SpecialStationList() {
 
   const action = searchParams.get('action');
   const id = searchParams.get('id');
+
+  const hasPerm = usePermissionStore((s) => s.hasPermission);
 
   useEffect(() => {
     if (id && (action === 'detail' || action === 'edit')) {
@@ -98,7 +102,7 @@ export default function SpecialStationList() {
     loadData();
   }, [loadData, isIframeModal]);
 
-  const handleOpenModal = (record?: CoastalStationInmarsatResponse) => {
+  const handleOpenModal = useCallback((record?: CoastalStationInmarsatResponse) => {
     if (record) {
       setEditingItem(record);
       form.setFieldsValue({
@@ -106,10 +110,8 @@ export default function SpecialStationList() {
         stationName: record.stationName,
         latitude: record.latitude,
         longitude: record.longitude,
-        modemType: record.modemType,
-        frequency: record.frequency,
-        coverageZone: record.coverageZone,
-        sarCode: record.sarCode,
+        satelliteSystem: record.satelliteSystem,
+        coverageArea: record.coverageArea,
         locationAddress: record.locationAddress,
         contactPerson: record.contactPerson,
         contactPhone: record.contactPhone,
@@ -119,19 +121,20 @@ export default function SpecialStationList() {
       form.resetFields();
     }
     setIsModalOpen(true);
-  };
+  }, [form]);
 
-  const handleCancel = () => {
+  const handleCancel = useCallback(() => {
     setIsModalOpen(false);
     form.resetFields();
     if (window.self !== window.top) {
       window.parent.postMessage({ type: 'CLOSE_KCHT_MODAL' }, '*');
     }
-  };
+  }, [form]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields();
+      setSubmitting(true);
       const payload: CoastalStationInmarsatRequest = {
         status: editingItem?.status || 'ACTIVE',
         ...values,
@@ -142,285 +145,189 @@ export default function SpecialStationList() {
         if (window.parent && (window.parent as any).kchtDetailCache) {
           (window.parent as any).kchtDetailCache[editingItem.id] = res;
         }
-        message.success('Cập nhật đài Inmarsat thành công!');
+        toast.success('Cập nhật đài vệ tinh thành công!');
       } else {
         await createInmarsat(payload);
-        message.success('Tạo mới đài Inmarsat thành công!');
+        toast.success('Tạo mới đài vệ tinh thành công!');
       }
 
       setIsModalOpen(false);
       form.resetFields();
       loadData();
     } catch (err: any) {
-      message.error(err.message || 'Lỗi khi lưu thông tin đài vệ tinh');
+      if (err.errorFields) return;
+      toast.error(err.message || 'Lỗi khi lưu thông tin đài vệ tinh');
+    } finally {
+      setSubmitting(false);
     }
-  };
+  }, [form, editingItem, loadData]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     try {
       await deleteInmarsat(id);
-      message.success('Xóa đài vệ tinh thành công!');
+      toast.success('Xóa đài thành công!');
       loadData();
     } catch (err: any) {
-      message.error(err.message || 'Lỗi khi xóa đài');
+      toast.error(err.message || 'Lỗi khi xóa đài vệ tinh');
     }
-  };
+  }, [loadData]);
 
-  const columns = [
-    {
-      title: 'Mã thiết bị',
-      dataIndex: 'deviceCode',
-      key: 'deviceCode',
-    },
-    {
-      title: 'Tên đài Inmarsat',
-      dataIndex: 'stationName',
-      key: 'stationName',
-    },
-    {
-      title: 'Vĩ độ',
-      dataIndex: 'latitude',
-      key: 'latitude',
-    },
-    {
-      title: 'Kinh độ',
-      dataIndex: 'longitude',
-      key: 'longitude',
-    },
-    {
-      title: 'Loại Modem',
-      dataIndex: 'modemType',
-      key: 'modemType',
-    },
-    {
-      title: 'Tần số',
-      dataIndex: 'frequency',
-      key: 'frequency',
-    },
-    {
-      title: 'Vùng phủ sóng',
-      dataIndex: 'coverageZone',
-      key: 'coverageZone',
-    },
-    {
-      title: 'Mã nhận dạng SAR',
-      dataIndex: 'sarCode',
-      key: 'sarCode',
-    },
-    {
-      title: 'Địa chỉ lắp đặt',
-      dataIndex: 'locationAddress',
-      key: 'locationAddress',
-    },
-    {
-      title: 'Người phụ trách',
-      dataIndex: 'contactPerson',
-      key: 'contactPerson',
-    },
-    {
-      title: 'Số điện thoại',
-      dataIndex: 'contactPhone',
-      key: 'contactPhone',
-    },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => (
-        <Tag color={status === 'ACTIVE' ? 'success' : 'warning'}>
-          {status === 'ACTIVE' ? 'Hoạt động' : 'Tạm dừng'}
-        </Tag>
-      ),
-    },
-    {
-      title: 'Thao tác',
-      key: 'action',
-      render: (_: any, record: CoastalStationInmarsatResponse) => (
-        <Space size="middle">
-          <Tooltip title="Chỉnh sửa">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => handleOpenModal(record)}
-            />
-          </Tooltip>
-          <Popconfirm
-            title="Bạn có chắc chắn muốn xóa đài Inmarsat này?"
-            onConfirm={() => handleDelete(record.id)}
-            okText="Có"
-            cancelText="Không"
-          >
-            <Tooltip title="Xóa">
-              <Button type="text" danger icon={<DeleteOutlined />} />
-            </Tooltip>
-          </Popconfirm>
-        </Space>
-      ),
-    },
-  ];
+  const confirmDelete = useCallback((record: CoastalStationInmarsatResponse) => {
+    confirm({
+      title: 'Xác nhận xóa đài vệ tinh',
+      icon: <ExclamationCircleOutlined />,
+      content: `Bạn có chắc chắn muốn xóa đài "${record.stationName}"? Hành động này không thể hoàn tác.`,
+      okText: 'Xóa',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: () => handleDelete(record.id)
+    });
+  }, [handleDelete]);
+
+  const handleFilterSearch = useCallback((values: Record<string, any>) => {
+    setSearchText(values.search || '');
+    setPage(1);
+  }, []);
+
+  const handleFilterReset = useCallback(() => {
+    setSearchText('');
+    setPage(1);
+  }, []);
+
+  const handlePageChange = useCallback((p: number, ps: number) => {
+    setPage(p);
+    setPageSize(ps);
+  }, []);
+
+  const rowActions = useCallback((record: CoastalStationInmarsatResponse) => {
+    const actions: { key: string; label: string; icon?: ReactNode; onClick: () => void; danger?: boolean; }[] = [];
+    if (hasPerm('station:edit')) {
+      actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => handleOpenModal(record) });
+    }
+    if (hasPerm('station:delete')) {
+      actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => confirmDelete(record), danger: true });
+    }
+    return actions;
+  }, [hasPerm, handleOpenModal, confirmDelete]);
+
+  const columns = useMemo(() => [
+    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
+    { key: 'deviceCode', label: 'Mã đài/Thiết bị', dataIndex: 'deviceCode' },
+    { key: 'stationName', label: 'Tên đài Inmarsat', dataIndex: 'stationName' },
+    { key: 'satelliteSystem', label: 'Hệ thống vệ tinh', dataIndex: 'satelliteSystem' },
+    { key: 'coverageArea', label: 'Vùng phủ sóng', dataIndex: 'coverageArea' },
+    { key: 'locationAddress', label: 'Địa chỉ lắp đặt', dataIndex: 'locationAddress' },
+    { key: 'contactPerson', label: 'Người liên hệ', dataIndex: 'contactPerson' },
+    { key: 'contactPhone', label: 'Số điện thoại', dataIndex: 'contactPhone' },
+    { key: 'status', label: 'Trạng thái', dataIndex: 'status', render: (status: string) => (
+      <span style={{ color: status === 'ACTIVE' ? 'green' : 'orange' }}>
+        {status === 'ACTIVE' ? 'Hoạt động' : 'Tạm dừng'}
+      </span>
+    )},
+  ], [page, pageSize]);
 
   return (
-    <Card
-      title="Quản lý trạm thông tin vệ tinh Inmarsat"
-      extra={
-        <Space>
-          <Button icon={<ReloadOutlined />} onClick={loadData} />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => handleOpenModal()}
-          >
-            Thêm đài Inmarsat
-          </Button>
-        </Space>
-      }
-    >
-      <div style={{ marginBottom: 16 }}>
-        <Input.Search
-          placeholder="Tìm kiếm theo mã đài, tên đài..."
-          allowClear
-          onSearch={(value) => {
-            setSearchText(value);
-            setPage(1);
-          }}
-          style={{ width: 300 }}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {!isIframeModal && (
+        <ScreenHeader
+          breadcrumb={[{ label: 'Quản lý nhà trạm' }, { label: 'Đài vệ tinh Inmarsat' }]}
+          actions={[
+            ...(hasPerm('station:create') ? [{
+              key: 'create',
+              label: 'Thêm đài vệ tinh',
+              variant: 'primary' as const,
+              onClick: () => handleOpenModal()
+            }] : []),
+            {
+              key: 'export',
+              label: 'Xuất Excel',
+              variant: 'subtle' as const,
+              icon: <FileExcelOutlined />,
+              onClick: () => {}
+            }
+          ]}
         />
-      </div>
+      )}
 
-      <Table
-        dataSource={dataSource}
+      {!isIframeModal && (
+        <FilterBar
+          fields={[
+            { key: 'search', type: 'search', label: 'Tìm kiếm', placeholder: 'Mã đài, tên đài...' }
+          ]}
+          onSearch={handleFilterSearch}
+          onReset={handleFilterReset}
+        />
+      )}
+
+      <DataTable
         columns={columns}
+        data={dataSource}
         rowKey="id"
         loading={loading}
-        pagination={{
-          current: page,
-          pageSize: pageSize,
-          total: total,
-          onChange: (p, s) => {
-            setPage(p);
-            setPageSize(s);
-          },
-          showSizeChanger: true,
-          showTotal: (total) => `Tổng ${total} bản ghi`,
-        }}
+        actions={rowActions}
+      />
+
+      <Pagination
+        current={page}
+        pageSize={pageSize}
+        total={total}
+        onChange={handlePageChange}
       />
 
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isReadOnly ? 'Chi tiết đài vệ tinh' : (editingItem ? 'Chỉnh sửa đài vệ tinh' : 'Thêm mới đài vệ tinh Inmarsat')}</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isReadOnly ? 'Chi tiết đài vệ tinh' : (editingItem ? 'Chỉnh sửa đài vệ tinh' : 'Thêm mới đài vệ tinh')}</span>}
         open={isModalOpen}
         onOk={handleSubmit}
         onCancel={handleCancel}
+        confirmLoading={submitting}
         okText="Lưu"
         cancelText="Hủy"
         width={700}
-        footer={isReadOnly ? [
-          <Button key="close" type="primary" onClick={handleCancel}>Đóng</Button>
-        ] : undefined}
+        okButtonProps={{ style: { borderRadius: radiusPill, height: 40, display: isReadOnly ? 'none' : 'inline-block' } }}
+        cancelButtonProps={{ style: { borderRadius: radiusPill, height: 40 } }}
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }} disabled={isReadOnly}>
           <Space size="large" style={{ display: 'flex', width: '100%' }}>
-            <Form.Item
-              name="deviceCode"
-              label="Mã thiết bị"
-              rules={[{ required: true, message: 'Vui lòng nhập mã thiết bị' }]}
-              style={{ width: 300 }}
-            >
-              <Input placeholder="Ví dụ: IM-HAIPHONG-01" />
+            <Form.Item name="deviceCode" {...labelProps('Mã đài')} rules={[{ required: true, message: 'Vui lòng nhập mã đài' }]} style={{ width: 300, marginBottom: spaceFormField }}>
+              <Input placeholder="Ví dụ: INMARSAT-01" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
-
-            <Form.Item
-              name="stationName"
-              label="Tên đài Inmarsat"
-              rules={[{ required: true, message: 'Vui lòng nhập tên đài' }]}
-              style={{ width: 300 }}
-            >
-              <Input placeholder="Nhập tên đài vệ tinh..." />
+            <Form.Item name="stationName" {...labelProps('Tên đài Inmarsat')} rules={[{ required: true, message: 'Vui lòng nhập tên đài' }]} style={{ width: 300, marginBottom: spaceFormField }}>
+              <Input placeholder="Nhập tên đài..." style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
           </Space>
 
           <Space size="large" style={{ display: 'flex', width: '100%' }}>
-            <Form.Item
-              name="latitude"
-              label="Vĩ độ (Lat)"
-              rules={[{ required: true, message: 'Vui lòng nhập vĩ độ' }]}
-              style={{ width: 300 }}
-            >
-              <InputNumber
-                min={-90}
-                max={90}
-                precision={6}
-                style={{ width: '100%' }}
-                placeholder="Ví dụ: 20.8415"
-              />
+            <Form.Item name="latitude" {...labelProps('Vĩ độ (Lat)')} rules={[{ required: true, message: 'Vui lòng nhập vĩ độ' }]} style={{ width: 300, marginBottom: spaceFormField }}>
+              <InputNumber min={-90} max={90} precision={6} style={{ width: '100%', borderRadius: radiusPill, height: 40, paddingTop: 4 }} placeholder="Ví dụ: 20.8415" />
             </Form.Item>
-
-            <Form.Item
-              name="longitude"
-              label="Kinh độ (Long)"
-              rules={[{ required: true, message: 'Vui lòng nhập kinh độ' }]}
-              style={{ width: 300 }}
-            >
-              <InputNumber
-                min={-180}
-                max={180}
-                precision={6}
-                style={{ width: '100%' }}
-                placeholder="Ví dụ: 106.6912"
-              />
+            <Form.Item name="longitude" {...labelProps('Kinh độ (Long)')} rules={[{ required: true, message: 'Vui lòng nhập kinh độ' }]} style={{ width: 300, marginBottom: spaceFormField }}>
+              <InputNumber min={-180} max={180} precision={6} style={{ width: '100%', borderRadius: radiusPill, height: 40, paddingTop: 4 }} placeholder="Ví dụ: 106.6912" />
             </Form.Item>
           </Space>
 
           <Space size="large" style={{ display: 'flex', width: '100%' }}>
-            <Form.Item
-              name="modemType"
-              label="Loại Modem Inmarsat"
-              style={{ width: 300 }}
-            >
-              <Input placeholder="Ví dụ: Inmarsat-C, FleetBroadband..." />
+            <Form.Item name="satelliteSystem" {...labelProps('Hệ thống vệ tinh kết nối')} style={{ width: 300, marginBottom: spaceFormField }}>
+              <Input placeholder="Ví dụ: Inmarsat-C, Inmarsat-F77..." style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
-
-            <Form.Item
-              name="frequency"
-              label="Tần số liên lạc"
-              style={{ width: 300 }}
-            >
-              <Input placeholder="Ví dụ: 1.6 GHz, 1.5 GHz..." />
+            <Form.Item name="coverageArea" {...labelProps('Vùng phủ sóng (Sea area)')} style={{ width: 300, marginBottom: spaceFormField }}>
+              <Input placeholder="Ví dụ: A3, A4..." style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
           </Space>
 
-          <Space size="large" style={{ display: 'flex', width: '100%' }}>
-            <Form.Item
-              name="coverageZone"
-              label="Vùng phủ sóng"
-              style={{ width: 300 }}
-            >
-              <Input placeholder="Ví dụ: AOR-E, IOR, POR..." />
-            </Form.Item>
-
-            <Form.Item
-              name="sarCode"
-              label="Mã nhận dạng cứu nạn (SAR Code)"
-              style={{ width: 300 }}
-            >
-              <Input placeholder="Ví dụ: 445701110..." />
-            </Form.Item>
-          </Space>
-
-          <Form.Item name="locationAddress" label="Địa chỉ lắp đặt đài">
-            <Input placeholder="Nhập địa chỉ vị trí đài..." />
+          <Form.Item name="locationAddress" {...labelProps('Địa chỉ lắp đặt đài')} style={{ marginBottom: spaceFormField }}>
+            <Input placeholder="Nhập địa chỉ vị trí đài..." style={{ borderRadius: radiusPill, height: 40 }} />
           </Form.Item>
 
           <Space size="large" style={{ display: 'flex', width: '100%' }}>
-            <Form.Item name="contactPerson" label="Người phụ trách trạm" style={{ width: 300 }}>
-              <Input placeholder="Nhập họ tên..." />
+            <Form.Item name="contactPerson" {...labelProps('Người liên hệ trực đài')} style={{ width: 300, marginBottom: spaceFormField }}>
+              <Input placeholder="Nhập họ tên người phụ trách..." style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
-
-            <Form.Item name="contactPhone" label="Số điện thoại liên hệ" style={{ width: 300 }}>
-              <Input placeholder="Nhập số điện thoại..." />
+            <Form.Item name="contactPhone" {...labelProps('Số điện thoại đài')} style={{ width: 300, marginBottom: spaceFormField }}>
+              <Input placeholder="Nhập số điện thoại..." style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
           </Space>
         </Form>
       </Modal>
-    </Card>
+    </div>
   );
 }

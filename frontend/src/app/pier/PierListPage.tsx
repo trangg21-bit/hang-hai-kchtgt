@@ -63,17 +63,17 @@ export const translateFieldName = (fieldName: string): string => {
     portCode: 'Mã cảng biển',
     portName: 'Tên cảng biển',
     province: 'Tỉnh/Thành phố',
-    viDo: 'Vĩ độ',
-    kinhDo: 'Kinh độ',
+    latitude: 'Vĩ độ',
+    longitude: 'Kinh độ',
     area: 'Diện tích (ha)',
     khaNangTiepNhan: 'Khả năng tiếp nhận',
-    nhomCangBien: 'Nhóm cảng biển',
+    portGroup: 'Nhóm cảng biển',
     berthCode: 'Mã bến cảng',
     berthName: 'Tên bến cảng',
     portId: 'Cảng biển chủ',
     tuyenDuongThuy: 'Tuyến đường thủy',
     width: 'Chiều rộng (m)',
-    loaiBen: 'Loại bến',
+    berthType: 'Loại bến',
     doSauLuong: 'Độ sâu luồng (m)',
     pierCode: 'Mã cầu cảng',
     pierName: 'Tên cầu cảng',
@@ -96,7 +96,7 @@ export const translateFieldName = (fieldName: string): string => {
     operationalStatus: 'Trạng thái hoạt động',
     approvalStatus: 'Trạng thái phê duyệt',
     orgUnitId: 'Đơn vị quản lý',
-    congNangKhaiThac: 'Công năng khai thác',
+    operationalCapacity: 'Công năng khai thác',
     bieuTuongId: 'Biểu tượng bản đồ',
     iconId: 'Biểu tượng bản đồ',
     lineSymbolId: 'Ký hiệu đường',
@@ -293,7 +293,7 @@ export default function PierListPage() {
               length: data.length,
               taiTrong: data.taiTrong,
               loaiCau: data.loaiCau,
-              congNangKhaiThac: data.congNangKhaiThac ? data.congNangKhaiThac.split(',').map((s: string) => s.trim()) : [],
+              operationalCapacity: data.operationalCapacity ? data.operationalCapacity.split(',').map((s: string) => s.trim()) : [],
               operationalStatus: data.operationalStatus,
               bieuTuongId: data.bieuTuongId,
               loaiHinhHoc: data.loaiHinhHoc || 'LINE',
@@ -319,9 +319,9 @@ export default function PierListPage() {
       const exists = benCangOptions.some(o => o.id === selectedRecord.berthId);
       if (!exists) {
         fetchBenCangById(selectedRecord.berthId)
-          .then((parentBen) => {
-            if (parentBen) {
-              setBenCangOptions(prev => [...prev, parentBen]);
+          .then((parentBerth) => {
+            if (parentBerth) {
+              setBenCangOptions(prev => [...prev, parentBerth]);
             }
           })
           .catch((err) => console.error("Error pre-fetching parent Berth:", err));
@@ -396,7 +396,7 @@ export default function PierListPage() {
         length: values.length || undefined,
         taiTrong: values.taiTrong || undefined,
         loaiCau: values.loaiCau || undefined,
-        congNangKhaiThac: values.congNangKhaiThac ? values.congNangKhaiThac.join(', ') : undefined,
+        operationalCapacity: values.operationalCapacity ? values.operationalCapacity.join(', ') : undefined,
         operationalStatus: values.operationalStatus || 'HIEN_HANH',
         bieuTuongId: values.gisLocation?.bieuTuongId || values.bieuTuongId || undefined,
         loaiHinhHoc: values.loaiHinhHoc,
@@ -439,7 +439,7 @@ export default function PierListPage() {
         length: values.length,
         taiTrong: values.taiTrong,
         loaiCau: values.loaiCau || undefined,
-        congNangKhaiThac: values.congNangKhaiThac ? values.congNangKhaiThac.join(', ') : undefined,
+        operationalCapacity: values.operationalCapacity ? values.operationalCapacity.join(', ') : undefined,
         operationalStatus: values.operationalStatus,
         bieuTuongId: values.gisLocation?.bieuTuongId || values.bieuTuongId || null,
         loaiHinhHoc: values.loaiHinhHoc,
@@ -584,7 +584,7 @@ export default function PierListPage() {
                       length: data.length,
                       taiTrong: data.taiTrong,
                       loaiCau: data.loaiCau,
-                      congNangKhaiThac: data.congNangKhaiThac ? data.congNangKhaiThac.split(',').map(s => s.trim()) : [],
+                      operationalCapacity: data.operationalCapacity ? data.operationalCapacity.split(',').map(s => s.trim()) : [],
                       operationalStatus: data.operationalStatus,
                       bieuTuongId: data.bieuTuongId,
                       loaiHinhHoc: data.loaiHinhHoc || 'LINE',
@@ -844,7 +844,7 @@ export default function PierListPage() {
           </Row>
           <Row gutter={24}>
             <Col span={24}>
-              <Form.Item label="Công năng khai thác" name="congNangKhaiThac">
+              <Form.Item label="Công năng khai thác" name="operationalCapacity">
                 <Select
                   mode="multiple"
                   placeholder="Chọn công năng khai thác"
@@ -999,7 +999,7 @@ export default function PierListPage() {
           </Row>
           <Row gutter={24}>
             <Col span={24}>
-              <Form.Item label="Công năng khai thác" name="congNangKhaiThac">
+              <Form.Item label="Công năng khai thác" name="operationalCapacity">
                 <Select
                   mode="multiple"
                   placeholder="Chọn công năng khai thác"
@@ -1180,9 +1180,9 @@ export default function PierListPage() {
               </Col>
               <Col span={24}>
                 <Card title="Công năng khai thác" size="small">
-                  {selectedRecord.congNangKhaiThac ? (
+                  {selectedRecord.operationalCapacity ? (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {selectedRecord.congNangKhaiThac.split(',').map(s => s.trim()).filter(Boolean).map(c => (
+                      {selectedRecord.operationalCapacity.split(',').map(s => s.trim()).filter(Boolean).map(c => (
                         <Tag color="blue" key={c}>{c}</Tag>
                       ))}
                     </div>
@@ -1265,7 +1265,7 @@ export default function PierListPage() {
                       length: selectedRecord.length,
                       taiTrong: selectedRecord.taiTrong,
                       loaiCau: selectedRecord.loaiCau,
-                      congNangKhaiThac: selectedRecord.congNangKhaiThac ? selectedRecord.congNangKhaiThac.split(',').map(s => s.trim()) : [],
+                      operationalCapacity: selectedRecord.operationalCapacity ? selectedRecord.operationalCapacity.split(',').map(s => s.trim()) : [],
                       operationalStatus: selectedRecord.operationalStatus,
                       bieuTuongId: selectedRecord.bieuTuongId,
                       loaiHinhHoc: selectedRecord.loaiHinhHoc || 'LINE',

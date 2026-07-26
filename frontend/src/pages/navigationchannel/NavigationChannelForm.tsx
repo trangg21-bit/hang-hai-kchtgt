@@ -165,16 +165,16 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     setChiTietList((prev) => [
       ...prev,
       {
-        ten: '',
-        phanLoai: '',
-        loaiTuyenLuong: undefined,
-        chieuDai: undefined,
-        rongLonNhat: undefined,
-        rongNhoNhat: undefined,
-        doSau: undefined,
-        doSauHienTai: '',
-        maiDocThietKe: '',
-        khoiLuongNaoVet: undefined,
+        name: '',
+        classification: '',
+        channelRouteType: undefined,
+        length: undefined,
+        maxWidth: undefined,
+        minWidth: undefined,
+        depth: undefined,
+        currentDepth: '',
+        designSlope: '',
+        dredgingVolume: undefined,
       },
     ]);
   };
@@ -191,12 +191,12 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     },
     {
       title: 'Tên tuyến luồng',
-      dataIndex: 'ten',
+      dataIndex: 'name',
       width: 150,
       render: (text: string, _: any, index: number) => (
         <Input
           value={text}
-          onChange={(e) => updateChiTietField(index, 'ten', e.target.value)}
+          onChange={(e) => updateChiTietField(index, 'name', e.target.value)}
           placeholder="Nhập tên"
           size="small"
         />
@@ -204,12 +204,12 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     },
     {
       title: 'Phân loại',
-      dataIndex: 'phanLoai',
+      dataIndex: 'classification',
       width: 120,
       render: (text: string, _: any, index: number) => (
         <Input
           value={text}
-          onChange={(e) => updateChiTietField(index, 'phanLoai', e.target.value)}
+          onChange={(e) => updateChiTietField(index, 'classification', e.target.value)}
           placeholder="Nhập phân loại"
           size="small"
         />
@@ -217,12 +217,12 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     },
     {
       title: 'Loại tuyến luồng',
-      dataIndex: 'loaiTuyenLuong',
+      dataIndex: 'channelRouteType',
       width: 150,
       render: (value: number, _: any, index: number) => (
         <Select
           value={value}
-          onChange={(v) => updateChiTietField(index, 'loaiTuyenLuong', v)}
+          onChange={(v) => updateChiTietField(index, 'channelRouteType', v)}
           placeholder="Chọn loại"
           size="small"
           style={{ width: '100%' }}
@@ -234,12 +234,12 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     },
     {
       title: 'Chiều dài (km)',
-      dataIndex: 'chieuDai',
+      dataIndex: 'length',
       width: 120,
       render: (value: number, _: any, index: number) => (
         <InputNumber
           value={value}
-          onChange={(v) => updateChiTietField(index, 'chieuDai', v)}
+          onChange={(v) => updateChiTietField(index, 'length', v)}
           placeholder="Chiều dài"
           size="small"
           style={{ width: '100%' }}
@@ -249,12 +249,12 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     },
     {
       title: 'Rộng LN (m)',
-      dataIndex: 'rongLonNhat',
+      dataIndex: 'maxWidth',
       width: 110,
       render: (value: number, _: any, index: number) => (
         <InputNumber
           value={value}
-          onChange={(v) => updateChiTietField(index, 'rongLonNhat', v)}
+          onChange={(v) => updateChiTietField(index, 'maxWidth', v)}
           placeholder="Rộng LN"
           size="small"
           style={{ width: '100%' }}
@@ -264,12 +264,12 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     },
     {
       title: 'Rộng NN (m)',
-      dataIndex: 'rongNhoNhat',
+      dataIndex: 'minWidth',
       width: 110,
       render: (value: number, _: any, index: number) => (
         <InputNumber
           value={value}
-          onChange={(v) => updateChiTietField(index, 'rongNhoNhat', v)}
+          onChange={(v) => updateChiTietField(index, 'minWidth', v)}
           placeholder="Rộng NN"
           size="small"
           style={{ width: '100%' }}
@@ -279,12 +279,12 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     },
     {
       title: 'Độ sâu TK (m)',
-      dataIndex: 'doSau',
+      dataIndex: 'depth',
       width: 110,
       render: (value: number, _: any, index: number) => (
         <InputNumber
           value={value}
-          onChange={(v) => updateChiTietField(index, 'doSau', v)}
+          onChange={(v) => updateChiTietField(index, 'depth', v)}
           placeholder="Độ sâu TK"
           size="small"
           style={{ width: '100%' }}
@@ -294,12 +294,12 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     },
     {
       title: 'Độ sâu HT',
-      dataIndex: 'doSauHienTai',
+      dataIndex: 'currentDepth',
       width: 110,
       render: (text: string, _: any, index: number) => (
         <Input
           value={text}
-          onChange={(e) => updateChiTietField(index, 'doSauHienTai', e.target.value)}
+          onChange={(e) => updateChiTietField(index, 'currentDepth', e.target.value)}
           placeholder="Độ sâu HT"
           size="small"
         />
@@ -307,12 +307,12 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     },
     {
       title: 'Mái dốc TK',
-      dataIndex: 'maiDocThietKe',
+      dataIndex: 'designSlope',
       width: 110,
       render: (text: string, _: any, index: number) => (
         <Input
           value={text}
-          onChange={(e) => updateChiTietField(index, 'maiDocThietKe', e.target.value)}
+          onChange={(e) => updateChiTietField(index, 'designSlope', e.target.value)}
           placeholder="Mái dốc TK"
           size="small"
         />
@@ -320,12 +320,12 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     },
     {
       title: 'KL nạo vét (m³)',
-      dataIndex: 'khoiLuongNaoVet',
+      dataIndex: 'dredgingVolume',
       width: 120,
       render: (value: number, _: any, index: number) => (
         <InputNumber
           value={value}
-          onChange={(v) => updateChiTietField(index, 'khoiLuongNaoVet', v)}
+          onChange={(v) => updateChiTietField(index, 'dredgingVolume', v)}
           placeholder="KL nạo vét"
           size="small"
           style={{ width: '100%' }}
@@ -547,26 +547,26 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
               scroll={{ x: 'max-content' }}
               columns={[
                 { title: 'STT', width: 50, render: (_: any, __: any, index: number) => index + 1 },
-                { title: 'Tên tuyến luồng', dataIndex: 'ten', width: 200, ellipsis: true },
-                { title: 'Phân loại', dataIndex: 'phanLoai', width: 100 },
+                { title: 'Tên tuyến luồng', dataIndex: 'name', width: 200, ellipsis: true },
+                { title: 'Phân loại', dataIndex: 'classification', width: 100 },
                 {
                   title: 'Loại tuyến', width: 130,
-                  render: (_: any, record: any) => record.loaiTuyenLuong === 1 ? 'Công cộng' : record.loaiTuyenLuong === 2 ? 'Chuyên dùng' : '—'
+                  render: (_: any, record: any) => record.channelRouteType === 1 ? 'Công cộng' : record.channelRouteType === 2 ? 'Chuyên dùng' : '—'
                 },
-                { title: 'Dài (km)', dataIndex: 'chieuDai', width: 100 },
-                { title: 'Rộng LN (m)', dataIndex: 'rongLonNhat', width: 110 },
-                { title: 'Rộng NN (m)', dataIndex: 'rongNhoNhat', width: 110 },
-                { title: 'Độ sâu (m)', dataIndex: 'doSau', width: 100 },
-                { title: 'Mái dốc', dataIndex: 'maiDocThietKe', width: 100 },
-                { title: 'Độ sâu HT (m)', dataIndex: 'doSauHienTai', width: 110 },
-                { title: 'KL nạo vét (m³)', dataIndex: 'khoiLuongNaoVet', width: 130 },
+                { title: 'Dài (km)', dataIndex: 'length', width: 100 },
+                { title: 'Rộng LN (m)', dataIndex: 'maxWidth', width: 110 },
+                { title: 'Rộng NN (m)', dataIndex: 'minWidth', width: 110 },
+                { title: 'Độ sâu (m)', dataIndex: 'depth', width: 100 },
+                { title: 'Mái dốc', dataIndex: 'designSlope', width: 100 },
+                { title: 'Độ sâu HT (m)', dataIndex: 'currentDepth', width: 110 },
+                { title: 'KL nạo vét (m³)', dataIndex: 'dredgingVolume', width: 130 },
                 {
                   title: 'Công cộng', width: 90,
-                  render: (_: any, record: any) => record.congCong ? '✓' : ''
+                  render: (_: any, record: any) => record.publicAccess ? '✓' : ''
                 },
                 {
                   title: 'Chuyên dùng', width: 90,
-                  render: (_: any, record: any) => record.chuyenDung ? '✓' : ''
+                  render: (_: any, record: any) => record.dedicated ? '✓' : ''
                 },
               ]}
             />

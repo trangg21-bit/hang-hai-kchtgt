@@ -1,4 +1,5 @@
 package com.hanghai.kchtg.station.service;
+import com.hanghai.kchtg.security.AdminAutoApproval;
 import lombok.*;
 
 import com.hanghai.kchtg.station.dto.coastal.*;
@@ -30,8 +31,6 @@ public class CoastalStationVTSService {
         CoastalStationVTS entity = new CoastalStationVTS();
         entity.setCode(request.getStationCode());
         entity.setName(request.getStationName());
-        entity.setLatitude(request.getLatitude());
-        entity.setLongitude(request.getLongitude());
         entity.setFrequencyBand(request.getFrequencyBand());
         entity.setTransmitPower(request.getTransmitPower());
         entity.setEquipmentType(request.getEquipmentType());
@@ -61,8 +60,6 @@ public class CoastalStationVTSService {
         validateCoordinates(request.getLongitude(), request.getLatitude());
 
         if (request.getStationName() != null) entity.setName(request.getStationName());
-        if (request.getLatitude() != null) entity.setLatitude(request.getLatitude());
-        if (request.getLongitude() != null) entity.setLongitude(request.getLongitude());
         if (request.getFrequencyBand() != null) entity.setFrequencyBand(request.getFrequencyBand());
         if (request.getTransmitPower() != null) entity.setTransmitPower(request.getTransmitPower());
         if (request.getEquipmentType() != null) entity.setEquipmentType(request.getEquipmentType());
@@ -128,13 +125,18 @@ public class CoastalStationVTSService {
         }
 
         if (approved) {
-            Integer currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel() : 0;
-            if (currentLevel == 0) {
-                entity.setApprovalLevel(1);
+            int currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel().ordinal() : 0;
+            if (currentLevel == 0 && AdminAutoApproval.isAutoApprover()) {
+                // Administrators clear both levels in one step.
+                entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_2);
+                entity.setApprovalStatus(StationApprovalStatus.APPROVED_L2);
+                entity.setStatus(StationStatus.APPROVED_L2);
+            } else if (currentLevel == 0) {
+                entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
                 entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
                 entity.setStatus(StationStatus.APPROVED_L1);
             } else if (currentLevel == 1) {
-                entity.setApprovalLevel(2);
+                entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_2);
                 entity.setApprovalStatus(StationApprovalStatus.APPROVED_L2);
                 entity.setStatus(StationStatus.APPROVED_L2);
             } else {
@@ -158,7 +160,7 @@ public class CoastalStationVTSService {
             entity.setStatus(StationStatus.PENDING_APPROVAL);
             entity.setApprovedBy(null);
             entity.setApprovedDate(null);
-            entity.setApprovalLevel(0);
+            entity.setApprovalLevel(null);
             entity.setRejectionReason(null);
 
             historyService.recordHistory(
@@ -187,7 +189,7 @@ public class CoastalStationVTSService {
         entity.setRejectionReason(rejectionReason);
         entity.setApprovedBy(null);
         entity.setApprovedDate(null);
-        entity.setApprovalLevel(0);
+        entity.setApprovalLevel(null);
 
         historyService.recordHistory(
                 entity.getCode(),
@@ -221,7 +223,7 @@ public class CoastalStationVTSService {
         }
     }
 
-    private String resolveCreatedBy(BaseStation entity) {
+    private String resolveCreatedBy(com.hanghai.kchtg.station.entity.CoastalStationVTS entity) {
         return entity.getApprovedBy();
     }
 
@@ -230,8 +232,6 @@ public class CoastalStationVTSService {
                 .id(entity.getId())
                 .stationCode(entity.getCode())
                 .stationName(entity.getName())
-                .latitude(entity.getLatitude())
-                .longitude(entity.getLongitude())
                 .frequencyBand(entity.getFrequencyBand())
                 .transmitPower(entity.getTransmitPower())
                 .equipmentType(entity.getEquipmentType())
@@ -241,7 +241,7 @@ public class CoastalStationVTSService {
                 .status(entity.getStatus())
                 .approvalStatus(entity.getApprovalStatus())
                 .approvalLevel(entity.getApprovalLevel())
-                .approvedBy(entity.getApprovedBy())
+                .approvedBy(entity.getApprovedBy() != null ? java.util.UUID.fromString(entity.getApprovedBy()) : null)
                 .approvedDate(entity.getApprovedDate())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
@@ -249,3 +249,6 @@ public class CoastalStationVTSService {
                 .build();
     }
 }
+
+
+

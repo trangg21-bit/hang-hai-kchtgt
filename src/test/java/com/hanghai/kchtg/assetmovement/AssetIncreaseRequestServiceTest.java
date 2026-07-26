@@ -70,9 +70,9 @@ public class AssetIncreaseRequestServiceTest {
 
         testRequest.setAssetName("GPS Receiver");
         testRequest.setReason("Mua mới thiết bị định vị GPS");
-        testRequest.setSoLuong(2);
-        testRequest.setDonViTinh("Bộ");
-        testRequest.setMaSoTang("INCREASE-001");
+        testRequest.setQuantity(2);
+        testRequest.setUnitOfMeasure("Bộ");
+        testRequest.setIncreaseCode("INCREASE-001");
     }
 
     @Test

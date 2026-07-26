@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
+import java.util.UUID;
+
 import lombok.Builder;
 import lombok.Data;
 
@@ -15,11 +17,11 @@ public class InfraAssetResponse {
 
     private UUID id;
     private String assetCode;
-    private UUID loaiTaiSanId;
+    private UUID assetTypeId;
     private String assetType;
     private String assetName;
     private String description;
-    private BigDecimal giaTri;
+    private BigDecimal value;
     private String status;
     private String location;
     private String technicalSpecs;
@@ -27,7 +29,7 @@ public class InfraAssetResponse {
     private BigDecimal originalValue;
     private BigDecimal accumulatedDepreciation;
     private BigDecimal remainingValue;
-    private String createdBy;
+    private UUID createdBy;
     private String createdByName;
     private java.time.LocalDateTime createdAt;
     private java.time.LocalDateTime updatedAt;

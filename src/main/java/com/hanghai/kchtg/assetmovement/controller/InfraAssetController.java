@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetRequest;
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetResponse;
 import com.hanghai.kchtg.assetmovement.service.InfraAssetService;
@@ -23,7 +25,7 @@ public class InfraAssetController {
     private final InfraAssetService infraAssetService;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:infra-asset')")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
     public ResponseEntity<ApiResponse<InfraAssetResponse>> create(
             @RequestBody InfraAssetRequest request) {
         InfraAssetResponse response = infraAssetService.create(request);
@@ -31,7 +33,7 @@ public class InfraAssetController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:infra-asset')")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
     public ResponseEntity<ApiResponse<InfraAssetResponse>> getById(
             @PathVariable UUID id) {
         InfraAssetResponse response = infraAssetService.getById(id);
@@ -39,10 +41,10 @@ public class InfraAssetController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:infra-asset')")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
     public ResponseEntity<ApiResponse<Page<InfraAssetResponse>>> findAll(
             @RequestParam(required = false) String assetCode,
-            @RequestParam(required = false) UUID loaiTaiSanId,
+            @RequestParam(required = false) UUID assetTypeId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -53,7 +55,7 @@ public class InfraAssetController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:infra-asset')")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
     public ResponseEntity<ApiResponse<InfraAssetResponse>> update(
             @PathVariable UUID id,
             @RequestBody InfraAssetRequest request) {
@@ -62,7 +64,7 @@ public class InfraAssetController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:infra-asset')")
+    @PreAuthorize("@auth.check(authentication, 'infraasset:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         infraAssetService.delete(id);

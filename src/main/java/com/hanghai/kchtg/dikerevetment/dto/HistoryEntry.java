@@ -1,5 +1,11 @@
 package com.hanghai.kchtg.dikerevetment.dto;
 
+import java.util.UUID;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+
 import lombok.*;
 
 import java.time.LocalDate;
@@ -13,9 +19,9 @@ import java.time.LocalDate;
 @Builder
 public class HistoryEntry {
 
-    private Long id;
-    private java.util.UUID dikeRevetmentId;
-    private Integer approvalLevel;
+    private UUID id;
+    private UUID dikeRevetmentId;
+    private ApprovalLevel approvalLevel;
     private String status;
     private String approver;
     private LocalDate approvalDate;

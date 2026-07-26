@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.group.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.group.entity.GroupStatus;
 import com.hanghai.kchtg.group.entity.UserGroup;
 import lombok.Value;

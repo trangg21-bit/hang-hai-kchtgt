@@ -1,11 +1,11 @@
 package com.hanghai.kchtg.dashboard;
 
 import com.hanghai.kchtg.assetmovement.repository.MovementRequestRepository;
-import com.hanghai.kchtg.cangben.repository.BerthRepository;
-import com.hanghai.kchtg.cangben.repository.PortRepository;
-import com.hanghai.kchtg.cangben.repository.DryPortRepository;
-import com.hanghai.kchtg.cangben.repository.PierRepository;
-import com.hanghai.kchtg.cangben.repository.WaterZoneRepository;
+import com.hanghai.kchtg.port.repository.BerthRepository;
+import com.hanghai.kchtg.port.repository.PortRepository;
+import com.hanghai.kchtg.port.repository.DryPortRepository;
+import com.hanghai.kchtg.port.repository.PierRepository;
+import com.hanghai.kchtg.port.repository.WaterZoneRepository;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * Dashboard aggregation controller â€” cung cáº¥p sá»‘ liá»‡u tá»•ng há»£p cho trang chá»§.
+ * Dashboard aggregation controller — cung cấp số liệu tổng hợp cho trang chủ.
  */
 @RestController
 @RequestMapping("/api/v1/dashboard")
@@ -33,7 +33,7 @@ public class DashboardController {
 
     /**
      * GET /api/v1/dashboard/approval-kcht
-     * Tráº£ vá» breakdown ÄÃ£ duyá»‡t / Chá» duyá»‡t / Tá»« chá»‘i cho KCHT.
+     * Trả về breakdown Đã duyệt / Chờ duyệt / Từ chối cho KCHT.
      */
     @GetMapping("/approval-kcht")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getKchtApprovalStats() {
@@ -67,7 +67,7 @@ public class DashboardController {
 
     /**
      * GET /api/v1/dashboard/approval-asset
-     * Tráº£ vá» breakdown ÄÃ£ duyá»‡t / Chá» duyá»‡t / Tá»« chá»‘i cho yÃªu cáº§u biáº¿n Ä‘á»™ng tÃ i sáº£n.
+     * Trả về breakdown Đã duyệt / Chờ duyệt / Từ chối cho yêu cầu biến động tài sản.
      */
     @GetMapping("/approval-asset")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getAssetApprovalStats() {

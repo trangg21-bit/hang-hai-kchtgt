@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.navigationchannel.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.navigationchannel.dto.*;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelApprovalStatus;
@@ -29,13 +31,13 @@ public class NavigationChannelController {
     public ResponseEntity<ApiResponse<NavigationChannelResponse>> create(
             @RequestBody @Valid NavigationChannelCreateRequest req,
             Authentication authentication) {
-        String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("Táº¡o luá»“ng hÃ ng háº£i thÃ nh cÃ´ng", service.create(req, username)));
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        return ResponseEntity.ok(ApiResponse.success("Tạo luồng hàng hải thành công", service.create(req, userId)));
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:read')")
-    public ResponseEntity<ApiResponse<NavigationChannelResponse>> getById(@PathVariable java.util.UUID id) {
+    public ResponseEntity<ApiResponse<NavigationChannelResponse>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.getById(id)));
     }
 
@@ -50,56 +52,56 @@ public class NavigationChannelController {
     @PutMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:update')")
     public ResponseEntity<ApiResponse<NavigationChannelResponse>> update(
-            @PathVariable java.util.UUID id,
+            @PathVariable UUID id,
             @RequestBody @Valid NavigationChannelUpdateRequest req,
             Authentication authentication) {
-        String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("Cáº­p nháº­t luá»“ng hÃ ng háº£i thÃ nh cÃ´ng", service.update(id, req, username)));
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật luồng hàng hải thành công", service.update(id, req, userId)));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:delete')")
-    public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable java.util.UUID id) {
+    public ResponseEntity<ApiResponse<Void>> softDelete(@PathVariable UUID id) {
         service.softDelete(id);
-        return ResponseEntity.ok(ApiResponse.success("XÃ³a má»m luá»“ng hÃ ng háº£i thÃ nh cÃ´ng", null));
+        return ResponseEntity.ok(ApiResponse.success("Xóa mềm luồng hàng hải thành công", null));
     }
 
     @PostMapping("/{id}/approve/c1")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:approvec1')")
     public ResponseEntity<ApiResponse<ApprovalResponse>> approveC1(
-            @PathVariable java.util.UUID id,
+            @PathVariable UUID id,
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
-        String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("PhÃª duyá»‡t C1 thÃ nh cÃ´ng", service.approveC1(id, req, username)));
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt C1 thành công", service.approveC1(id, req, userId)));
     }
 
     @PostMapping("/{id}/approve/c2")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:approvec2')")
     public ResponseEntity<ApiResponse<ApprovalResponse>> approveC2(
-            @PathVariable java.util.UUID id,
+            @PathVariable UUID id,
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
-        String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("PhÃª duyá»‡t C2 thÃ nh cÃ´ng", service.approveC2(id, req, username)));
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt C2 thành công", service.approveC2(id, req, userId)));
     }
 
     @GetMapping("/{id}/history")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:read')")
-    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getApprovalHistory(@PathVariable java.util.UUID id) {
+    public ResponseEntity<ApiResponse<List<HistoryEntry>>> getApprovalHistory(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(service.getApprovalHistory(id)));
     }
 
-    @GetMapping("/status-phe-duyet/{trangThai}")
+    @GetMapping("/approval-status/{status}")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:read')")
-    public ResponseEntity<ApiResponse<List<NavigationChannelResponse>>> filterByStatus(@PathVariable String trangThai) {
-        return ResponseEntity.ok(ApiResponse.success(service.findByApprovalStatus(NavigationChannelApprovalStatus.valueOf(trangThai))));
+    public ResponseEntity<ApiResponse<List<NavigationChannelResponse>>> filterByStatus(@PathVariable String status) {
+        return ResponseEntity.ok(ApiResponse.success(service.findByApprovalStatus(NavigationChannelApprovalStatus.valueOf(status))));
     }
 
     @GetMapping("/search")
     @PreAuthorize("@auth.check(authentication, 'navigationchannel:read')")
-    public ResponseEntity<ApiResponse<KetQuaTimKiemResponse>> search(
-            @RequestParam(name = "orgUnitId", required = false) java.util.UUID orgUnitId,
+    public ResponseEntity<ApiResponse<SearchResultResponse>> search(
+            @RequestParam(name = "orgUnitId", required = false) UUID orgUnitId,
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "ApprovalStatus", required = false) String ApprovalStatus,
             @RequestParam(name = "page", required = false, defaultValue = "0") int page,

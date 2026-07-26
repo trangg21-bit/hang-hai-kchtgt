@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.mapicon.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.mapicon.dto.CreateMapSymbolRequest;
 import com.hanghai.kchtg.mapicon.dto.MapSymbolResponse;
 import com.hanghai.kchtg.mapicon.dto.UpdateMapSymbolRequest;
@@ -40,7 +42,7 @@ public class MapSymbolServiceImpl implements MapSymbolService {
 
     @Override
     @Transactional
-    public MapSymbolResponse create(CreateMapSymbolRequest request, String username) {
+    public MapSymbolResponse create(CreateMapSymbolRequest request, java.util.UUID createdBy) {
         if (repository.findByCode(request.getCode()).isPresent()) {
             throw new IllegalArgumentException("Mã ký hiệu đã tồn tại: " + request.getCode());
         }
@@ -50,7 +52,7 @@ public class MapSymbolServiceImpl implements MapSymbolService {
                 .description(request.getDescription())
                 .image(request.getImage())
                 .status(request.getStatus())
-                .createdBy(username)
+                .createdBy(createdBy)
                 .build();
         return MapSymbolResponse.from(repository.save(symbol));
     }

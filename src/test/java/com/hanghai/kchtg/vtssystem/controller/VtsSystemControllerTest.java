@@ -55,7 +55,7 @@ class VtsSystemControllerTest {
 
     @Test
     void testCreate() {
-        when(service.create(any(), anyString())).thenReturn(response);
+        when(service.create(any(), any(java.util.UUID.class))).thenReturn(response);
         ResponseEntity<?> result = controller.create(createRequest, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertNotNull(result.getBody());
@@ -82,14 +82,14 @@ class VtsSystemControllerTest {
     void testUpdate() {
         VtsSystemUpdateRequest updateReq = VtsSystemUpdateRequest.builder()
                 .systemName("VTS XYZ").build();
-        when(service.update(eq(TEST_ID), any(), anyString())).thenReturn(response);
+        when(service.update(eq(TEST_ID), any(), any(java.util.UUID.class))).thenReturn(response);
         ResponseEntity<?> result = controller.update(TEST_ID, updateReq, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
 
     @Test
     void testDelete() {
-        doNothing().when(service).delete(eq(TEST_ID), anyString());
+        doNothing().when(service).delete(eq(TEST_ID), any(java.util.UUID.class));
         ResponseEntity<?> result = controller.delete(TEST_ID, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
@@ -97,7 +97,7 @@ class VtsSystemControllerTest {
     @Test
     void testApproveC1() {
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
-        when(service.approveC1(eq(TEST_ID), any(), anyString())).thenReturn(response);
+        when(service.approveC1(eq(TEST_ID), any(), any(java.util.UUID.class))).thenReturn(response);
         ResponseEntity<?> result = controller.approveC1(TEST_ID, req, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
@@ -105,7 +105,7 @@ class VtsSystemControllerTest {
     @Test
     void testApproveC2() {
         ApprovalRequest req = ApprovalRequest.builder().quyetDinh("APPROVED").build();
-        when(service.approveC2(eq(TEST_ID), any(), anyString())).thenReturn(response);
+        when(service.approveC2(eq(TEST_ID), any(), any(java.util.UUID.class))).thenReturn(response);
         ResponseEntity<?> result = controller.approveC2(TEST_ID, req, mockAuth());
         assertEquals(HttpStatus.OK, result.getStatusCode());
     }
@@ -126,14 +126,14 @@ class VtsSystemControllerTest {
 
     @Test
     void testCreate_WithException() {
-        when(service.create(any(), anyString())).thenThrow(new RuntimeException("Test error"));
+        when(service.create(any(), any(java.util.UUID.class))).thenThrow(new RuntimeException("Test error"));
         ResponseEntity<?> result = controller.create(createRequest, mockAuth());
         assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
     }
 
     private Authentication mockAuth() {
         Authentication auth = mock(Authentication.class);
-        when(auth.getName()).thenReturn("testuser");
+        when(auth.getName()).thenReturn("00000000-0000-0000-0000-000000000001");
         return auth;
     }
 }

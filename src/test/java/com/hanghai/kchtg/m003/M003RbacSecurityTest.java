@@ -3,7 +3,7 @@ package com.hanghai.kchtg.m003;
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
 import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
-import com.hanghai.kchtg.cangben.MethodSecurityTestConfig;
+import com.hanghai.kchtg.port.MethodSecurityTestConfig;
 import com.hanghai.kchtg.shiprepairfacility.controller.ShipRepairFacilityController;
 import com.hanghai.kchtg.shiprepairfacility.service.ShipRepairFacilityService;
 import com.hanghai.kchtg.dikerevetment.controller.DikeRevetmentController;

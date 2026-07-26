@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.ApprovalRecordRequest;
 import com.hanghai.kchtg.assetmovement.dto.ApprovalRecordResponse;
 import com.hanghai.kchtg.assetmovement.entity.ApprovalResult;
@@ -21,14 +23,14 @@ import java.util.UUID;
  * Pattern tu TaiHistoryController (M-015).
  */
 @RestController
-@RequestMapping("/api/v1/asset/luu-phe-duyệt")
+@RequestMapping("/api/v1/asset/approval-records")
 @RequiredArgsConstructor
 public class ApprovalRecordController {
 
     private final ApprovalRecordService approvalRecordService;
 
     @PostMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:approval-record')")
+    @PreAuthorize("@auth.check(authentication, 'approvalrecord:manage')")
     public ResponseEntity<ApiResponse<ApprovalRecordResponse>> create(
             @RequestBody ApprovalRecordRequest request) {
         ApprovalRecordResponse response = approvalRecordService.create(request);
@@ -36,7 +38,7 @@ public class ApprovalRecordController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:approval-record')")
+    @PreAuthorize("@auth.check(authentication, 'approvalrecord:manage')")
     public ResponseEntity<ApiResponse<ApprovalRecordResponse>> getById(
             @PathVariable UUID id) {
         ApprovalRecordResponse response = approvalRecordService.getById(id);
@@ -44,7 +46,7 @@ public class ApprovalRecordController {
     }
 
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'asset:approval-record')")
+    @PreAuthorize("@auth.check(authentication, 'approvalrecord:manage')")
     public ResponseEntity<ApiResponse<Page<ApprovalRecordResponse>>> findAll(
             @RequestParam(required = false) UUID requestId,
             @RequestParam(required = false) ApprovalResult result,
@@ -66,7 +68,7 @@ public class ApprovalRecordController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:approval-record')")
+    @PreAuthorize("@auth.check(authentication, 'approvalrecord:manage')")
     public ResponseEntity<ApiResponse<ApprovalRecordResponse>> update(
             @PathVariable UUID id,
             @RequestBody ApprovalRecordRequest request) {
@@ -75,7 +77,7 @@ public class ApprovalRecordController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'asset:approval-record')")
+    @PreAuthorize("@auth.check(authentication, 'approvalrecord:manage')")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id) {
         approvalRecordService.delete(id);

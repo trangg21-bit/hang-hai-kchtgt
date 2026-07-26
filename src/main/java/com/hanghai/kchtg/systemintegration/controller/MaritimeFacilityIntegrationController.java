@@ -14,40 +14,40 @@ public class MaritimeFacilityIntegrationController {
     @Autowired
     private MaritimeFacilityIntegrationService facilityService;
 
-    @PostMapping("/ben-cang")
-    public ResponseEntity<SystemIntegrationResponse> integrateBenCang(
+    @PostMapping("/berth")
+    public ResponseEntity<SystemIntegrationResponse> integrateBerth(
             @RequestBody SystemIntegrationRequest request) {
-        return ResponseEntity.ok(facilityService.integrateBenCang(request));
+        return ResponseEntity.ok(facilityService.integrateBerth(request));
     }
 
-    @PostMapping("/cau-cang")
-    public ResponseEntity<SystemIntegrationResponse> integrateCauCang(
+    @PostMapping("/pier")
+    public ResponseEntity<SystemIntegrationResponse> integratePier(
             @RequestBody SystemIntegrationRequest request) {
-        return ResponseEntity.ok(facilityService.integrateCauCang(request));
+        return ResponseEntity.ok(facilityService.integratePier(request));
     }
 
-    @PostMapping("/ben-phao")
-    public ResponseEntity<SystemIntegrationResponse> integrateBenPhao(
+    @PostMapping("/buoy-berth")
+    public ResponseEntity<SystemIntegrationResponse> integrateBuoyBerth(
             @RequestBody SystemIntegrationRequest request) {
-        return ResponseEntity.ok(facilityService.integrateBenPhao(request));
+        return ResponseEntity.ok(facilityService.integrateBuoyBerth(request));
     }
 
-    @PostMapping("/khu-tram-tich-boi")
-    public ResponseEntity<SystemIntegrationResponse> integrateKhuTramTichBoi(
+    @PostMapping("/siltation-area")
+    public ResponseEntity<SystemIntegrationResponse> integrateSiltationArea(
             @RequestBody SystemIntegrationRequest request) {
-        return ResponseEntity.ok(facilityService.integrateKhuTramTichBoi(request));
+        return ResponseEntity.ok(facilityService.integrateSiltationArea(request));
     }
 
-    @PostMapping("/khu-chuyen-tai")
-    public ResponseEntity<SystemIntegrationResponse> integrateKhuChuyenTai(
+    @PostMapping("/transshipment-area")
+    public ResponseEntity<SystemIntegrationResponse> integrateTransshipmentArea(
             @RequestBody SystemIntegrationRequest request) {
-        return ResponseEntity.ok(facilityService.integrateKhuChuyenTai(request));
+        return ResponseEntity.ok(facilityService.integrateTransshipmentArea(request));
     }
 
-    @PostMapping("/khu-neo-dau")
-    public ResponseEntity<SystemIntegrationResponse> integrateKhuNeoDau(
+    @PostMapping("/anchorage-area")
+    public ResponseEntity<SystemIntegrationResponse> integrateAnchorageArea(
             @RequestBody SystemIntegrationRequest request) {
-        return ResponseEntity.ok(facilityService.integrateKhuNeoDau(request));
+        return ResponseEntity.ok(facilityService.integrateAnchorageArea(request));
     }
 
     @PostMapping("/ship-repair-facility")
@@ -68,10 +68,10 @@ public class MaritimeFacilityIntegrationController {
         return ResponseEntity.ok(facilityService.integrateNavigationChannel(request));
     }
 
-    @PostMapping("/cang-can")
-    public ResponseEntity<SystemIntegrationResponse> integrateCangCan(
+    @PostMapping("/dry-port")
+    public ResponseEntity<SystemIntegrationResponse> integrateDryPort(
             @RequestBody SystemIntegrationRequest request) {
-        return ResponseEntity.ok(facilityService.integrateCangCan(request));
+        return ResponseEntity.ok(facilityService.integrateDryPort(request));
     }
 
     @PostMapping("/maritime-chart")

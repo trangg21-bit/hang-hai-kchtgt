@@ -1,10 +1,12 @@
 package com.hanghai.kchtg.report.handler;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
-import com.hanghai.kchtg.navigationchannel.entity.ChiTietTuyenLuong;
+import com.hanghai.kchtg.navigationchannel.entity.ChannelRouteDetail;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannel;
-import com.hanghai.kchtg.navigationchannel.repository.ChiTietTuyenLuongRepository;
+import com.hanghai.kchtg.navigationchannel.repository.ChannelRouteDetailRepository;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelApprovalStatus;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +23,7 @@ public class F151ReportHandler extends BaseReportHandler {
     private NavigationChannelRepository navigationChannelRepository;
 
     @Autowired
-    private ChiTietTuyenLuongRepository chiTietTuyenLuongRepository;
+    private ChannelRouteDetailRepository channelRouteDetailRepository;
 
     @Override
     public boolean supports(String reportCode) {
@@ -54,39 +56,39 @@ public class F151ReportHandler extends BaseReportHandler {
         );
 
         List<Map<String, Object>> rows = new ArrayList<>();
-        int stt = 0;
+        int sequenceNo = 0;
         for (NavigationChannel nc : ncList) {
-            stt++;
+            sequenceNo++;
 
             // Load children
-            List<ChiTietTuyenLuong> children = chiTietTuyenLuongRepository
-                    .findByNavigationChannelIdOrderBySttAsc(nc.getId());
+            List<ChannelRouteDetail> children = channelRouteDetailRepository
+                    .findByNavigationChannelIdOrderBySequenceNoAsc(nc.getId());
 
             // Sum child lengths
-            BigDecimal sumChieuDai = BigDecimal.ZERO;
-            BigDecimal sumKhoiLuongNaoVet = BigDecimal.ZERO;
-            for (ChiTietTuyenLuong child : children) {
-                if (child.getChieuDai() != null) {
-                    sumChieuDai = sumChieuDai.add(child.getChieuDai());
+            BigDecimal sumLength = BigDecimal.ZERO;
+            BigDecimal sumDredgingVolume = BigDecimal.ZERO;
+            for (ChannelRouteDetail child : children) {
+                if (child.getLength() != null) {
+                    sumLength = sumLength.add(child.getLength());
                 }
-                if (child.getKhoiLuongNaoVet() != null) {
-                    sumKhoiLuongNaoVet = sumKhoiLuongNaoVet.add(child.getKhoiLuongNaoVet());
+                if (child.getDredgingVolume() != null) {
+                    sumDredgingVolume = sumDredgingVolume.add(child.getDredgingVolume());
                 }
             }
 
-            String donVi = resolveDonViTen(nc.getOrgUnitId());
+            String donVi = resolveOrgUnitName(nc.getOrgUnitId());
 
             // Parent row
             Map<String, Object> parentRow = new LinkedHashMap<>();
-            parentRow.put("STT", stt);
+            parentRow.put("STT", sequenceNo);
             parentRow.put("Chỉ tiêu", nc.getChannelName() != null ? nc.getChannelName() : "");
-            parentRow.put("Dài (km)", sumChieuDai);
+            parentRow.put("Dài (km)", sumLength);
             parentRow.put("Rộng LN (m)", "");
             parentRow.put("Rộng NN (m)", "");
             parentRow.put("Độ sâu (m)", "");
             parentRow.put("Mái dốc", "");
             parentRow.put("Độ sâu hiện tại", "");
-            parentRow.put("KL nạo vét (m3)", sumKhoiLuongNaoVet);
+            parentRow.put("KL nạo vét (m3)", sumDredgingVolume);
             parentRow.put("Công cộng", "");
             parentRow.put("Chuyên dùng", "");
             parentRow.put("Tên trạm QL luồng", nc.getChannelManagementStation() != null ? nc.getChannelManagementStation() : "");
@@ -101,19 +103,19 @@ public class F151ReportHandler extends BaseReportHandler {
             rows.add(parentRow);
 
             // Child rows
-            for (ChiTietTuyenLuong child : children) {
+            for (ChannelRouteDetail child : children) {
                 Map<String, Object> childRow = new LinkedHashMap<>();
                 childRow.put("STT", "");
-                childRow.put("Chỉ tiêu", child.getTen() != null ? child.getTen() : "");
-                childRow.put("Dài (km)", child.getChieuDai() != null ? child.getChieuDai() : "");
-                childRow.put("Rộng LN (m)", child.getRongLonNhat() != null ? child.getRongLonNhat() : "");
-                childRow.put("Rộng NN (m)", child.getRongNhoNhat() != null ? child.getRongNhoNhat() : "");
-                childRow.put("Độ sâu (m)", child.getDoSau() != null ? child.getDoSau() : "");
-                childRow.put("Mái dốc", child.getMaiDocThietKe() != null ? child.getMaiDocThietKe() : "");
-                childRow.put("Độ sâu hiện tại", child.getDoSauHienTai() != null ? child.getDoSauHienTai() : "");
-                childRow.put("KL nạo vét (m3)", child.getKhoiLuongNaoVet() != null ? child.getKhoiLuongNaoVet() : "");
-                childRow.put("Công cộng", Boolean.TRUE.equals(child.getCongCong()) ? "X" : "");
-                childRow.put("Chuyên dùng", Boolean.TRUE.equals(child.getChuyenDung()) ? "X" : "");
+                childRow.put("Chỉ tiêu", child.getName() != null ? child.getName() : "");
+                childRow.put("Dài (km)", child.getLength() != null ? child.getLength() : "");
+                childRow.put("Rộng LN (m)", child.getMaxWidth() != null ? child.getMaxWidth() : "");
+                childRow.put("Rộng NN (m)", child.getMinWidth() != null ? child.getMinWidth() : "");
+                childRow.put("Độ sâu (m)", child.getDepth() != null ? child.getDepth() : "");
+                childRow.put("Mái dốc", child.getDesignSlope() != null ? child.getDesignSlope() : "");
+                childRow.put("Độ sâu hiện tại", child.getCurrentDepth() != null ? child.getCurrentDepth() : "");
+                childRow.put("KL nạo vét (m3)", child.getDredgingVolume() != null ? child.getDredgingVolume() : "");
+                childRow.put("Công cộng", Boolean.TRUE.equals(child.getPublicAccess()) ? "X" : "");
+                childRow.put("Chuyên dùng", Boolean.TRUE.equals(child.getDedicated()) ? "X" : "");
                 childRow.put("Tên trạm QL luồng", "");
                 childRow.put("Số lượng trạm", "");
                 childRow.put("Diện tích (m2)", "");
@@ -149,29 +151,29 @@ public class F151ReportHandler extends BaseReportHandler {
                 .toList();
 
         List<Map<String, Object>> arrResult = new ArrayList<>();
-        int stt = 0;
+        int sequenceNo = 0;
         for (NavigationChannel nc : ncList) {
-            stt++;
+            sequenceNo++;
 
-            List<ChiTietTuyenLuong> children = chiTietTuyenLuongRepository
-                    .findByNavigationChannelIdOrderBySttAsc(nc.getId());
+            List<ChannelRouteDetail> children = channelRouteDetailRepository
+                    .findByNavigationChannelIdOrderBySequenceNoAsc(nc.getId());
 
-            BigDecimal sumChieuDai = BigDecimal.ZERO;
-            BigDecimal sumKhoiLuongNaoVet = BigDecimal.ZERO;
-            for (ChiTietTuyenLuong child : children) {
-                if (child.getChieuDai() != null) {
-                    sumChieuDai = sumChieuDai.add(child.getChieuDai());
+            BigDecimal sumLength = BigDecimal.ZERO;
+            BigDecimal sumDredgingVolume = BigDecimal.ZERO;
+            for (ChannelRouteDetail child : children) {
+                if (child.getLength() != null) {
+                    sumLength = sumLength.add(child.getLength());
                 }
-                if (child.getKhoiLuongNaoVet() != null) {
-                    sumKhoiLuongNaoVet = sumKhoiLuongNaoVet.add(child.getKhoiLuongNaoVet());
+                if (child.getDredgingVolume() != null) {
+                    sumDredgingVolume = sumDredgingVolume.add(child.getDredgingVolume());
                 }
             }
 
-            String donVi = resolveDonViTen(nc.getOrgUnitId());
+            String donVi = resolveOrgUnitName(nc.getOrgUnitId());
 
             // Parent row
             Map<String, Object> parentItem = new HashMap<>();
-            parentItem.put("stt", stt);
+            parentItem.put("sequenceNo", sequenceNo);
             parentItem.put("ten", nc.getChannelName() != null ? nc.getChannelName() : "");
             parentItem.put("tenTramQuanLyLuong", nc.getChannelManagementStation() != null ? nc.getChannelManagementStation() : "");
             parentItem.put("soLuongTram", nc.getStationAmountt() != null ? nc.getStationAmountt().doubleValue() : 0.0);
@@ -183,7 +185,7 @@ public class F151ReportHandler extends BaseReportHandler {
 
             parentItem.put("donViQuanLyVanHanh", donVi);
             parentItem.put("chieuCaoTinhKhong", nc.getClearanceHeight() != null ? nc.getClearanceHeight() : "");
-            parentItem.put("daiLuong", sumChieuDai);
+            parentItem.put("daiLuong", sumLength);
             // Child fields empty for parent row
             parentItem.put("maTuyenLuong", "");
             parentItem.put("rongLonNhat", 0.0);
@@ -200,10 +202,10 @@ public class F151ReportHandler extends BaseReportHandler {
             arrResult.add(parentItem);
 
             // Child rows
-            for (ChiTietTuyenLuong child : children) {
+            for (ChannelRouteDetail child : children) {
                 Map<String, Object> childItem = new HashMap<>();
-                childItem.put("stt", "");
-                childItem.put("ten", child.getTen() != null ? child.getTen() : "");
+                childItem.put("sequenceNo", "");
+                childItem.put("ten", child.getName() != null ? child.getName() : "");
                 childItem.put("tenTramQuanLyLuong", "");
                 childItem.put("soLuongTram", 0.0);
                 childItem.put("dienTichTram", 0.0);
@@ -211,17 +213,17 @@ public class F151ReportHandler extends BaseReportHandler {
                 childItem.put("nhanSuBoTriTaiTramQlLuong", nc.getStationStaffAmount() != null ? nc.getStationStaffAmount().doubleValue() : 0.0);
                 childItem.put("chieuCaoTinhKhong", nc.getClearanceHeight() != null ? nc.getClearanceHeight() : "");
                 childItem.put("donViQuanLyVanHanh", "");
-                childItem.put("daiLuong", child.getChieuDai() != null ? child.getChieuDai().doubleValue() : 0.0);
-                childItem.put("maTuyenLuong", child.getMa() != null ? child.getMa() : "");
-                childItem.put("rongLonNhat", child.getRongLonNhat() != null ? child.getRongLonNhat().doubleValue() : 0.0);
-                childItem.put("rongNhoNhat", child.getRongNhoNhat() != null ? child.getRongNhoNhat().doubleValue() : 0.0);
-                childItem.put("doSau", child.getDoSau() != null ? child.getDoSau().doubleValue() : 0.0);
-                childItem.put("maiDoc", child.getMaiDocThietKe() != null ? child.getMaiDocThietKe() : "");
-                childItem.put("doSauHienTai", child.getDoSauHienTai() != null ? child.getDoSauHienTai() : "");
-                childItem.put("khoiLuongNaoVetDuyTu", child.getKhoiLuongNaoVet() != null
-                        ? child.getKhoiLuongNaoVet().doubleValue() : 0.0);
-                childItem.put("congCong", Boolean.TRUE.equals(child.getCongCong()) ? "X" : "");
-                childItem.put("chuyenDung", Boolean.TRUE.equals(child.getChuyenDung()) ? "X" : "");
+                childItem.put("daiLuong", child.getLength() != null ? child.getLength().doubleValue() : 0.0);
+                childItem.put("maTuyenLuong", child.getCode() != null ? child.getCode() : "");
+                childItem.put("rongLonNhat", child.getMaxWidth() != null ? child.getMaxWidth().doubleValue() : 0.0);
+                childItem.put("rongNhoNhat", child.getMinWidth() != null ? child.getMinWidth().doubleValue() : 0.0);
+                childItem.put("doSau", child.getDepth() != null ? child.getDepth().doubleValue() : 0.0);
+                childItem.put("maiDoc", child.getDesignSlope() != null ? child.getDesignSlope() : "");
+                childItem.put("doSauHienTai", child.getCurrentDepth() != null ? child.getCurrentDepth() : "");
+                childItem.put("khoiLuongNaoVetDuyTu", child.getDredgingVolume() != null
+                        ? child.getDredgingVolume().doubleValue() : 0.0);
+                childItem.put("congCong", Boolean.TRUE.equals(child.getPublicAccess()) ? "X" : "");
+                childItem.put("chuyenDung", Boolean.TRUE.equals(child.getDedicated()) ? "X" : "");
                 // Parent context for template back-reference
                 childItem.put("tenTram", nc.getChannelManagementStation() != null ? nc.getChannelManagementStation() : "");
                 childItem.put("soLuongTramParent", nc.getStationAmountt() != null ? nc.getStationAmountt().doubleValue() : 0.0);
@@ -229,7 +231,7 @@ public class F151ReportHandler extends BaseReportHandler {
                 childItem.put("thoiDiemSuaChuaParent", nc.getLatestStationRepairDate() != null ? nc.getLatestStationRepairDate().toString() : "");
                 childItem.put("donViQLVH", donVi);
                 // Generic backward-compatible keys
-                childItem.put("name", child.getTen() != null ? child.getTen() : "");
+                childItem.put("name", child.getName() != null ? child.getName() : "");
                 childItem.put("unitId", "");
                 arrResult.add(childItem);
             }
@@ -237,7 +239,7 @@ public class F151ReportHandler extends BaseReportHandler {
         return arrResult;
     }
 
-    private String resolveDonViTen(java.util.UUID orgUnitId) {
+    private String resolveOrgUnitName(UUID orgUnitId) {
         if (orgUnitId == null) return "";
         return orgUnitRepository.findById(orgUnitId)
                 .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)

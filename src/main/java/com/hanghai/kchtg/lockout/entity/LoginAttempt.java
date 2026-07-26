@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.lockout.entity;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,7 +23,7 @@ import lombok.Setter;
 public class LoginAttempt extends BaseEntity {
 
     @Column(name = "user_id")
-    private java.util.UUID userId;
+    private UUID userId;
 
     @Column(name = "username", nullable = false, length = 100)
     private String username;

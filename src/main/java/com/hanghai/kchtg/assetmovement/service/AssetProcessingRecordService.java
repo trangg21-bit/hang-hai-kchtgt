@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.assetmovement.dto.AssetProcessingRecordRequest;
 import com.hanghai.kchtg.assetmovement.dto.AssetProcessingRecordResponse;
 import com.hanghai.kchtg.assetmovement.entity.AssetProcessingRecord;
@@ -39,7 +41,7 @@ public class AssetProcessingRecordService {
 
     public AssetProcessingRecordResponse getById(UUID id) {
         AssetProcessingRecord entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy há»“ sÆ¡ xá»­ lÃ½ tÃ i sáº£n với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hồ sơ xử lý tài sản với id: " + id));
         return toResponse(entity);
     }
 
@@ -64,7 +66,7 @@ public class AssetProcessingRecordService {
     @Transactional
     public AssetProcessingRecordResponse update(UUID id, AssetProcessingRecordRequest request) {
         AssetProcessingRecord entity = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy há»“ sÆ¡ xá»­ lÃ½ tÃ i sáº£n với id: " + id));
+                .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy hồ sơ xử lý tài sản với id: " + id));
         if (request.getProcessingType() != null) entity.setProcessingType(parseProcessingType(request.getProcessingType()));
         if (request.getDescription() != null) entity.setDescription(request.getDescription());
         AssetProcessingRecord saved = repository.save(entity);
@@ -73,7 +75,7 @@ public class AssetProcessingRecordService {
 
     @Transactional
     public void delete(UUID id) {
-        if (!repository.existsById(id)) throw new EntityNotFoundException("Không tìm thấy há»“ sÆ¡ xá»­ lÃ½ tÃ i sáº£n với id: " + id);
+        if (!repository.existsById(id)) throw new EntityNotFoundException("Không tìm thấy hồ sơ xử lý tài sản với id: " + id);
         repository.deleteById(id);
     }
 
@@ -84,8 +86,8 @@ public class AssetProcessingRecordService {
                 .assetName(null)
                 .processingType(entity.getProcessingType() != null ? entity.getProcessingType().name() : null)
                 .description(entity.getDescription())
-                .trangThaiHoSo(entity.getStatus() != null ? entity.getStatus().name() : null)
-                .createdBy(entity.getCreatedBy() != null ? entity.getCreatedBy().toString() : null)
+                .documentStatus(entity.getStatus() != null ? entity.getStatus().name() : null)
+                .createdBy(entity.getCreatedBy())
                 .createdByName(null)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())

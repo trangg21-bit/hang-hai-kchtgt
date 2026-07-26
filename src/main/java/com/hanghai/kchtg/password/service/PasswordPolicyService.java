@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.password.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.password.dto.PasswordPolicyResponse;
 import com.hanghai.kchtg.password.entity.PasswordPolicy;
 import com.hanghai.kchtg.password.repository.PasswordPolicyRepository;

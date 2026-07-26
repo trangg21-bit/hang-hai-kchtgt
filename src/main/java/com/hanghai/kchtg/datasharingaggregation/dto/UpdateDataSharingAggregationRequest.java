@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.datasharingaggregation.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.datasharingaggregation.enums.SharingStatus;
 
 public class UpdateDataSharingAggregationRequest {
@@ -14,7 +16,7 @@ public class UpdateDataSharingAggregationRequest {
 
     private String errorMessage;
 
-    private String updatedBy;
+    private UUID updatedBy;
 
     public String getTargetSystem() {
         return targetSystem;
@@ -56,11 +58,11 @@ public class UpdateDataSharingAggregationRequest {
         this.errorMessage = errorMessage;
     }
 
-    public String getUpdatedBy() {
+    public UUID getUpdatedBy() {
         return updatedBy;
     }
 
-    public void setUpdatedBy(String updatedBy) {
+    public void setUpdatedBy(UUID updatedBy) {
         this.updatedBy = updatedBy;
     }
 }

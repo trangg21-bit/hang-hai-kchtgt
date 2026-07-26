@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.dikerevetment.dto;
 
+import java.util.UUID;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,11 +18,11 @@ import java.time.LocalDate;
 @Builder
 public class DikeRevetmentAttachmentResponse {
 
-    private Long id;
+    private UUID id;
     private String fileName;
     private String filePath;
     private Long fileSize;
-    private String loaiTaiLieu;
-    private String nguoiTaiLen;
+    private String documentType;
+    private String uploadedBy;
     private LocalDate uploadDate;
 }

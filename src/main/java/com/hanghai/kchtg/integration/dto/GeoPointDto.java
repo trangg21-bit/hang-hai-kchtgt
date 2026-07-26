@@ -10,13 +10,13 @@ import lombok.Data;
 @Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class GeoPointDto {
+    private Double latitude;
+    private Double longitude;
+
 
     private String code;
     private String name;
-    private String objectType;
-    private Double latitude;
-    private Double longitude;
-    private String description;
+    private String objectType;    private String description;
     private PointObject.Status status;
 
     public void copyFrom(PointObject p) {

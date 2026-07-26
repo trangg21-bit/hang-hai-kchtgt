@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.user.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.user.entity.LoginAttemptResult;
 import com.hanghai.kchtg.user.entity.LoginAttemptType;
 import com.hanghai.kchtg.user.entity.LoginAuditLog;

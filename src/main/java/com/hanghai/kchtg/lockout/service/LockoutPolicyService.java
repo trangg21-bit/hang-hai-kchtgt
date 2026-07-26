@@ -56,7 +56,7 @@ public class LockoutPolicyService implements CommandLineRunner {
      */
     public LockoutPolicyResponse toResponse(LockoutPolicy policy) {
         LockoutPolicyResponse r = new LockoutPolicyResponse();
-        r.setId(policy.getId());
+        r.setId(policy.getId() != null ? java.util.UUID.fromString("00000000-0000-0000-0000-" + String.format("%012d", policy.getId())) : null);
         r.setMaxFailedAttempts(policy.getMaxFailedAttempts());
         r.setLockoutDurationMinutes(policy.getLockoutDurationMinutes());
         r.setWindowMinutes(policy.getWindowMinutes());

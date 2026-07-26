@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.datasharing.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.datasharing.entity.ShareHistory;
 import com.hanghai.kchtg.datasharing.entity.SharedData;
@@ -35,8 +37,8 @@ public class ShareWorkflowController {
      */
     @PostMapping("/{id}/submit")
     public ResponseEntity<ApiResponse<?>> submit(
-            @PathVariable Long id,
-            @RequestParam String actor,
+            @PathVariable UUID id,
+            @RequestParam java.util.UUID actor,
             @RequestParam(required = false) String comments) {
         log.info("Submitting share [{}] by actor={}", id, actor);
         SharedData data = shareWorkflowService.submitForShare(id, actor, comments);
@@ -55,8 +57,8 @@ public class ShareWorkflowController {
      */
     @PostMapping("/{id}/approve")
     public ResponseEntity<ApiResponse<?>> approve(
-            @PathVariable Long id,
-            @RequestParam String actor,
+            @PathVariable UUID id,
+            @RequestParam java.util.UUID actor,
             @RequestParam(required = false) String comments) {
         log.info("Approving share [{}] by actor={}", id, actor);
         SharedData data = shareWorkflowService.approveShare(id, actor, comments);
@@ -75,8 +77,8 @@ public class ShareWorkflowController {
      */
     @PostMapping("/{id}/revoke")
     public ResponseEntity<ApiResponse<?>> revoke(
-            @PathVariable Long id,
-            @RequestParam String actor,
+            @PathVariable UUID id,
+            @RequestParam java.util.UUID actor,
             @RequestParam(required = false) String comments) {
         log.info("Revoking share [{}] by actor={}", id, actor);
         SharedData data = shareWorkflowService.revokeShare(id, actor, comments);
@@ -93,7 +95,7 @@ public class ShareWorkflowController {
      */
     @GetMapping("/{id}/history")
     public ResponseEntity<ApiResponse<List<ShareHistory>>> getHistory(
-            @PathVariable Long id) {
+            @PathVariable UUID id) {
         log.info("Fetching share history for share [{}]", id);
         List<ShareHistory> history = shareWorkflowService.getHistory(id);
         return ResponseEntity.ok(

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.radarstation.dto;
 
+import java.util.UUID;
+
 import lombok.*;
 import java.time.LocalDateTime;
 
@@ -8,7 +10,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class RadarStationAttachmentResponse {
-    private Long id;
+    private UUID id;
     private String fileName;
     private String filePath;
     private Long fileSize;
