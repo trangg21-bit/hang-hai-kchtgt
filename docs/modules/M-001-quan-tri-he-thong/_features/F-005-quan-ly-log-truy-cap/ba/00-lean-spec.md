@@ -2,7 +2,7 @@
 feature-id: F-005
 document: lean-spec
 output-mode: lean
-last-updated: 2026-06-28T00:00:00Z
+last-updated: 2026-07-27T00:00:00Z
 ---
 
 # Feature F-005: Quản lý log truy cập — Lean Business Analysis Spec
@@ -17,12 +17,12 @@ last-updated: 2026-06-28T00:00:00Z
 | Module | M-001 (Quản trị hệ thống) |
 | Classification | local |
 | Priority | medium |
-| Complexity | Medium (8 business rules, 6 actors) |
+| Complexity | Medium (12 business rules, 7 actors) |
 | Tech Stack | Spring Boot + Spring Security + JWT + ReactJS + MSSQL 2022 |
 
 **Business Intent:** Quản trị hệ thống và bảo mật cần khả năng giám sát, tra cứu và phân tích toàn bộ hoạt động hệ thống thông qua log truy cập — phục vụ nghiệp vụ kiểm toán, phát hiện bất thường, xử lý sự cố và tuân thủ các quy định bảo mật về lưu trữ và truy xuất nhật ký hoạt động.
 
-**Scope:** Tra cứu 5 nhóm log (truy cập, đăng nhập, lỗi, tài khoản, cấu hình) với lọc nâng cao, xuất CSV, xem chi tiết, và tự động cleanup theo retention policy.
+**Scope:** Tra cứu 5 nhóm log (Thao tác, Đăng nhập, Lỗi hệ thống, Tài khoản, Cấu hình) với lọc theo thời gian, đơn vị, email, từ khóa; xem chi tiết từng dòng log; và tự động cleanup theo retention policy.
 
 ---
 
@@ -32,16 +32,15 @@ last-updated: 2026-06-28T00:00:00Z
 
 | # | Capability | Description |
 |---|---|---|
-| 1 | Xem danh sách log | Hiển thị danh sách log phân trang với 5 nhóm (access, login, error, account, configuration) |
+| 1 | Xem danh sách log | Hiển thị danh sách log phân trang với 5 nhóm (Thao tác, Đăng nhập, Lỗi hệ thống, Tài khoản, Cấu hình) |
 | 2 | Lọc theo thời gian | Lọc log theo khoảng ngày bắt đầu — ngày kết thúc |
-| 3 | Lọc theo người dùng | Lọc theo user ID hoặc username |
-| 4 | Lọc theo loại & mức độ | Lọc theo type (5 nhóm) và severity (info, warning, error, critical) |
-| 5 | Tìm kiếm keyword | Tìm kiếm theo từ khóa trong trường message |
-| 6 | Xem chi tiết log | Hiển thị toàn bộ thông tin log entry (userAgent, requestPath, responseCode, duration, metadata) |
-| 7 | Xuất CSV | Export log ra file CSV (giới hạn 10.000 rows/lần, chỉ system-admin) |
-| 8 | Thống kê aggregate | Báo cáo tổng truy cập, unique users, success rate, avgDuration theo ngày/tháng |
-| 9 | Retention policy | Tự động xóa log cũ sau 90 ngày bởi cron job |
-| 10 | Phân trang | Phân trang danh sách log với điều hướng trang |
+| 3 | Lọc theo đơn vị | Lọc theo đơn vị/phòng ban của người dùng |
+| 4 | Lọc theo email | Tìm kiếm và lọc theo email người dùng |
+| 5 | Tìm kiếm keyword | Tìm kiếm theo từ khóa trong nội dung log |
+| 6 | Xem chi tiết log | Popup "Chi tiết log truy cập" hiển thị toàn bộ thông tin log entry (userAgent, requestPath, responseCode, duration, metadata, sessionId) |
+| 7 | Thống kê aggregate | Báo cáo tổng truy cập, unique users, success rate, avgDuration theo ngày/tháng |
+| 8 | Retention policy | Tự động xóa log cũ sau 90 ngày bởi cron job |
+| 9 | Phân trang | Phân trang danh sách log với điều hướng trang |
 
 ### Out of Scope
 
@@ -54,6 +53,7 @@ last-updated: 2026-06-28T00:00:00Z
 | 5 | Chỉnh sửa/xóa log thủ công | Log là immutable (BR-005-02) |
 | 6 | Gửi notification/alert bất thường | Không thuộc phạm vi |
 | 7 | Tích hợp SIEM bên ngoài | Không thuộc phạm vi |
+| 8 | Xuất CSV | Đã loại bỏ khỏi phạm vi F-005 |
 
 ---
 
@@ -61,9 +61,9 @@ last-updated: 2026-06-28T00:00:00Z
 
 | Role | Level | Access |
 |---|---|---|
-| system-admin (Super Admin) | Full access | Xem tất cả 5 nhóm log, xuất CSV, cấu hình retention policy |
-| admin (Security Admin) | View + Export | Xem tất cả log, xuất CSV, không xóa |
-| admin-operation | View (filter theo đơn vị) | Truy cập log trong phân hệ/đơn vị của mình; không xuất CSV |
+| system-admin (Super Admin) | Full access | Xem tất cả 5 nhóm log, cấu hình retention policy |
+| admin (Security Admin) | View | Xem tất cả log, không xóa |
+| admin-operation | View (filter theo đơn vị) | Truy cập log trong phân hệ/đơn vị của mình; chỉ xem nhóm Thao tác + Đăng nhập |
 | admin (standard) | View (self only) | Chỉ xem log của chính mình |
 | Lanh dao | Aggregated view | Chỉ xem báo cáo thống kê aggregate, không xem chi tiết |
 | Can bo | Self only | Chỉ xem log của chính mình |
@@ -75,11 +75,10 @@ last-updated: 2026-06-28T00:00:00Z
 
 | ID | Story | Priority | Actor |
 |---|---|---|---|
-| US-005-01 | **As** system-admin, **I want to** view all 5 log groups (access, login, error, account, configuration) **so that** I can monitor system activity for audit and security purposes | Must | system-admin |
-| US-005-02 | **As** system-admin, **I want to** filter logs by date range, user, type, and severity **so that** I can quickly find specific log entries | Must | system-admin |
-| US-005-03 | **As** system-admin, **I want to** search logs by keyword in the message field **so that** I can find logs containing specific terms | Must | system-admin |
-| US-005-04 | **As** system-admin, **I want to** view detailed information for each log entry (userAgent, requestPath, responseCode, duration, metadata) **so that** I can diagnose issues | Should | system-admin |
-| US-005-05 | **As** system-admin, **I want to** export logs to CSV (max 10,000 rows) **so that** I can generate reports for external review | Must | system-admin |
+| US-005-01 | **As** system-admin, **I want to** view all 5 log groups **so that** I can monitor system activity for audit and security purposes | Must | system-admin |
+| US-005-02 | **As** system-admin, **I want to** filter logs by date range, unit, email, and keyword **so that** I can quickly find specific log entries | Must | system-admin |
+| US-005-03 | **As** system-admin, **I want to** search logs by keyword **so that** I can find logs containing specific terms | Must | system-admin |
+| US-005-04 | **As** system-admin, **I want to** view detailed information for each log entry (userAgent, requestPath, responseCode, duration, metadata, sessionId) **so that** I can diagnose issues | Should | system-admin |
 | US-005-06 | **As** admin, **I want to** view logs within my unit/department **so that** I can monitor activity in my scope | Should | admin |
 | US-005-07 | **As** admin-operation, **I want to** view only access and login logs **so that** I can monitor user activity without seeing sensitive error/account logs | Must | admin-operation |
 | US-005-08 | **As** user, **I want to** view only my own logs **so that** I can see my own activity history | Should | user |
@@ -93,12 +92,11 @@ last-updated: 2026-06-28T00:00:00Z
 
 | ID | Acceptance Criterion | Linked BR | Negative Path |
 |---|---|---|---|
-| AC-005-01 | Hệ thống hiển thị đầy đủ 5 nhóm log (access, login, error, account, configuration) với 5 trường chính: userId, action, targetResource, responseCode, createdAt | BR-005-01 | Nếu database trống → hiển thị empty state với hướng dẫn filter |
+| AC-005-01 | Hệ thống hiển thị đầy đủ 5 nhóm log với 8 cột: STT, Đơn vị, Chức năng, Địa chỉ IP, Trình duyệt, Phiên đăng nhập, Ngày truy cập, Thao tác | BR-005-01 | Nếu database trống → hiển thị empty state với hướng dẫn filter |
 | AC-005-02 | Người dùng có thể lọc log theo khoảng thời gian (ngày bắt đầu — ngày kết thúc) với kết quả phân trang chính xác | BR-005-01 | Nếu ngày bắt đầu > ngày kết thúc → hiển thị lỗi validation "Ngày bắt đầu phải nhỏ hơn ngày kết thúc" |
-| AC-005-03 | Người dùng có thể lọc log theo người dùng (user ID hoặc username) và theo loại log (type) và mức độ (severity) | BR-005-01 | Nếu không có kết quả phù hợp → hiển thị empty state "Không có log nào phù hợp với bộ lọc" |
-| AC-005-04 | Tìm kiếm theo keyword trong trường message trả về kết quả chính xác, không phân biệt hoa/thường | BR-005-01 | Nếu keyword rỗng → trả về toàn bộ kết quả (theo filter khác) |
-| AC-005-05 | Xem chi tiết log entry hiển thị đầy đủ: timestamp, type, severity, userId, username, IP, userAgent, action, endpoint, method, message, metadata (JSON view) | BR-005-01 | Nếu metadata null → hiển thị "N/A" thay vì lỗi |
-| AC-005-06 | Export CSV chỉ khả dụng cho system-admin; file CSV đúng định dạng, giới hạn tối đa 10.000 rows/lần, dữ liệu không mất mát | BR-005-08, BR-027 | Nếu >10.000 rows → chỉ xuất 10.000 rows đầu tiên + cảnh báo "Đã giới hạn 10.000 rows" |
+| AC-005-03 | Người dùng có thể lọc log theo đơn vị, email và từ khóa | BR-005-01 | Nếu không có kết quả phù hợp → hiển thị empty state "Không có log nào phù hợp với bộ lọc" |
+| AC-005-04 | Tìm kiếm theo keyword trả về kết quả chính xác, không phân biệt hoa/thường | BR-005-01 | Nếu keyword rỗng → trả về toàn bộ kết quả (theo filter khác) |
+| AC-005-05 | Popup "Chi tiết log truy cập" hiển thị đầy đủ: timestamp, type, severity, userId, username, donVi, IP, userAgent, sessionId, action, endpoint, method, message, metadata (JSON view) | BR-005-01 | Nếu metadata null → hiển thị "N/A" thay vì lỗi |
 | AC-005-07 | Log là immutable: không cho phép UPDATE/DELETE trên AccessLog (trừ retention cleanup) — attempt trả về 403 Forbidden | BR-005-02 | Nếu attempt UPDATE/DELETE → HTTP 403 + message "Log không thể sửa đổi" |
 | AC-005-08 | Retention policy tự động xóa log sau 90 ngày bởi cron job (schedule mặc định: 0 0 2 * * ?) | BR-005-03 | Nếu cron job fail → ghi log lỗi vào system log, không xóa log |
 | AC-005-09 | Login failure log ghi lại cả thành công và thất bại; log lỗi đăng nhập phải có IP và lý do | BR-005-04 | Nếu login success → severity = info; nếu login failure → severity = warning |
@@ -128,7 +126,6 @@ last-updated: 2026-06-28T00:00:00Z
 | BR-024 | Chỉ Admin/Security Admin mới được xem toàn bộ log | Access Control | UC-020 | Không có |
 | BR-025 | Log không được sửa đổi sau khi ghi (immutable) | Data Integrity | UC-020 | Retention cleanup |
 | BR-026 | Tự động xóa log sau retentionDays ngày | Cleanup | UC-022 | Không có |
-| BR-027 | Xuất CSV giới hạn 10.000 rows/lần | Export | UC-021 | Không có |
 | BR-028 | Log failure login phải được cảnh báo (≥5 lần trong 1 giờ) | Alert | UC-020 | Không có |
 
 ---
@@ -137,9 +134,11 @@ last-updated: 2026-06-28T00:00:00Z
 
 | Entity | Fields | Constraints | Notes |
 |---|---|---|---|
-| **AccessLog** | id (BIGINT PK), userId (BIGINT FK→UserAccount NULL), username (VARCHAR 50), action (VARCHAR 30 NOT NULL), targetResource (VARCHAR 100), ipAddress (VARCHAR 45), userAgent (TEXT), requestPath (VARCHAR 500 NULL), responseCode (INT), duration_ms (INT), status (VARCHAR 20 NOT NULL), type (ENUM: access, login, error, account, configuration), severity (ENUM: info, warning, error, critical), message (TEXT), metadata (JSON), createdAt (TIMESTAMP) | INDEX(userId, createdAt), INDEX(action, createdAt), INSERT-only (no UPDATE/DELETE) | Bảng log chính, immutable |
-| **LogRetentionPolicy** | id (BIGINT PK), retentionDays (INT DEFAULT 90), maxExportRows (INT DEFAULT 10000), cleanupSchedule (VARCHAR 50 DEFAULT '0 0 2 * * ?'), isActive (BOOLEAN DEFAULT true), createdAt (TIMESTAMP), updatedAt (TIMESTAMP) | retentionDays > 0 | Cấu hình retention policy |
+| **AccessLog** | id (BIGINT PK), userId (BIGINT FK→UserAccount NULL), username (VARCHAR 50), email (VARCHAR 100), donVi (VARCHAR 100), action (VARCHAR 30 NOT NULL), targetResource (VARCHAR 100), ipAddress (VARCHAR 45), userAgent (TEXT), sessionId (VARCHAR 50), requestPath (VARCHAR 500 NULL), responseCode (INT), duration_ms (INT), status (VARCHAR 20 NOT NULL), type (ENUM: access, login, error, account, configuration), severity (ENUM: info, warning, error, critical), message (TEXT), metadata (JSON), createdAt (TIMESTAMP) | INDEX(userId, createdAt), INDEX(action, createdAt), INDEX(donVi, createdAt), INDEX(sessionId, createdAt), INSERT-only (no UPDATE/DELETE) | Bảng log chính, immutable. ⚠️ email, donVi, sessionId chưa có trong code hiện tại — cần bổ sung. |
+| **LogRetentionPolicy** | id (BIGINT PK), retentionDays (INT DEFAULT 90), cleanupSchedule (VARCHAR 50 DEFAULT '0 0 2 * * ?'), isActive (BOOLEAN DEFAULT true), createdAt (TIMESTAMP), updatedAt (TIMESTAMP) | retentionDays > 0 | Cấu hình retention policy |
 | **LogAggregate** | id (BIGINT PK), date (DATE UNIQUE), totalAccesses (INT DEFAULT 0), uniqueUsers (INT DEFAULT 0), successRate (DECIMAL 5,2), avgDuration (INT), createdAt (TIMESTAMP) | date UNIQUE | Thống kê aggregate hàng ngày |
+
+> **⚠️ Khoảng trống so với code hiện tại:** Entity `AccessLog` trong code hiện chưa có 3 trường `email`, `donVi`, và `sessionId`. Đây là các trường cần bổ sung để đáp ứng đặc tả BA: cột "Đơn vị" và "Phiên đăng nhập" trên bảng danh sách, và khả năng lọc theo email. Các trường này nên được lưu trực tiếp (denormalized) vào bảng AccessLog tại thời điểm ghi log để tránh join khi truy vấn.
 
 ---
 
@@ -147,9 +146,8 @@ last-updated: 2026-06-28T00:00:00Z
 
 | Method | Endpoint | Description | Auth | Role |
 |---|---|---|---|---|
-| GET | /api/v1/logs | Danh sách log (phân trang, filter by date/user/type/severity/keyword) | JWT | Admin, Security |
+| GET | /api/v1/logs | Danh sách log (phân trang, filter by date/donVi/email/keyword) | JWT | Admin, Security |
 | GET | /api/v1/logs/{id} | Chi tiết log entry | JWT | Admin, Security |
-| GET | /api/v1/logs/export | Xuất log CSV (max 10.000 rows) | JWT | Admin, Security |
 | POST | /api/v1/logs/aggregate | Tính toán thống kê log | JWT | Security Admin |
 | GET | /api/v1/logs/aggregate | Báo cáo thống kê aggregate | JWT | Security Admin, Lanh dao |
 | GET | /api/v1/logs/retention | Xem cấu hình retention policy | JWT | system-admin |
@@ -161,13 +159,13 @@ last-updated: 2026-06-28T00:00:00Z
 
 ## 9. Log Types Detail
 
-| Type | Description | Severity Mapping | Key Fields |
-|---|---|---|---|
-| **access** | Truy cập tài nguyên hệ thống (trang, API) | info | action, targetResource, requestPath, responseCode, duration_ms |
-| **login** | Đăng nhập thành công/thất bại | success=info, failure=warning | username, ipAddress, userAgent, status, message |
-| **error** | Lỗi hệ thống, ngoại lệ | error | message, stackTrace (metadata), requestPath |
-| **account** | Thay đổi tài khoản (tạo, sửa, khóa/mở khóa, reset password) | info | action, username, metadata (before/after values) |
-| **configuration** | Thay đổi cấu hình hệ thống | info | action, username, metadata (config key, before/after values) |
+| Type | Hiển thị | Description | Severity Mapping | Key Fields |
+|---|---|---|---|---|
+| **access** | Thao tác | Hành động tác động đến dữ liệu nghiệp vụ: xem, thêm, sửa, xóa, phê duyệt | info (mặc định), warning/error nếu thất bại | action, targetResource, requestPath, responseCode, duration_ms |
+| **login** | Đăng nhập | Đăng nhập/đăng xuất thành công hoặc thất bại | success=info, failure=warning | username, ipAddress, userAgent, status, message |
+| **error** | Lỗi hệ thống | Lỗi hệ thống, ngoại lệ | error | message, stackTrace (metadata), requestPath |
+| **account** | Tài khoản | Thay đổi tài khoản (tạo, sửa, khóa/mở khóa, reset password) | info | action, username, metadata (before/after values) |
+| **configuration** | Cấu hình | Thay đổi cấu hình hệ thống | info | action, username, metadata (config key, before/after values) |
 
 ---
 
@@ -176,11 +174,11 @@ last-updated: 2026-06-28T00:00:00Z
 | Area | Requirement | Target |
 |---|---|---|
 | **Performance** | Query log danh sách < 2 giây với dataset < 100.000 entries; pagination hỗ trợ 1000+ entries mượt mà | Response time < 2s |
-| **Scalability** | Hỗ trợ batch insert 500-1000 records/batch cho auto-instrumentation; streaming CSV writer không load toàn bộ vào memory | Batch insert, streaming export |
-| **Security** | RBAC enforcement trên tất cả endpoints; immutability (INSERT-only) trên AccessLog; log injection prevention trong message field; export CSV không tiết lộ sensitive data | 403 on unauthorized access |
-| **Reliability** | Cron retention cleanup retry logic; async log appender (log4j2/Logback) không block main thread; MDC tracking request context | 99.9% uptime logging |
-| **Usability** | Responsive UI (mobile < 768px collapse sidebar); loading skeleton/spinner; empty state với hướng dẫn; toast notification cho action feedback | WCAG 2.1 AA compliance |
-| **Compliance** | Tuân thủ yêu cầu lưu trữ log kiểm toán theo quy định ATTT Việt Nam — log phải được giữ tối thiểu 90 ngày, không cho phép sửa/xóa log đã ghi, export CSV phục vụ thanh tra/kiểm toán | [CẦN BỔ SUNG: trích dẫn nghị định / thông tư cụ thể về lưu trữ log kiểm toán] |
+| **Scalability** | Hỗ trợ batch insert 500-1000 records/batch cho auto-instrumentation | Batch insert |
+| **Security** | RBAC enforcement trên tất cả endpoints; immutability (INSERT-only) trên AccessLog; log injection prevention trong message field | 403 on unauthorized access |
+| **Reliability** | Cron retention cleanup retry logic; async log appender không block main thread; MDC tracking request context | 99.9% uptime logging |
+| **Usability** | Responsive UI (mobile < 768px collapse sidebar); loading skeleton/spinner; empty state với hướng dẫn | WCAG 2.1 AA compliance |
+| **Compliance** | Tuân thủ yêu cầu lưu trữ log kiểm toán theo quy định ATTT Việt Nam — log phải được giữ tối thiểu 90 ngày, không cho phép sửa/xóa log đã ghi | [CẦN BỔ SUNG: trích dẫn nghị định / thông tư cụ thể] |
 
 ---
 
@@ -192,8 +190,7 @@ last-updated: 2026-06-28T00:00:00Z
 |---|---|---|---|
 | [CẦN BỔ SUNG: Nghị định về ATTT mạng] | Lưu trữ log truy cập tối thiểu 90 ngày | Retention policy default 90 ngày (BR-005-03, BR-026) | [CẦN BỔ SUNG] |
 | [CẦN BỔ SUNG: Nghị định về bảo vệ thông tin phân cấp] | Log không được sửa đổi sau khi ghi (immutability) | BR-005-02, BR-025 — INSERT-only table, 403 on UPDATE/DELETE | Covered |
-| [CẦN BỔ SUNG: Thông tư kỹ thuật ATTT] | Log phải chứa đủ thông tin: userId, IP, timestamp, action, result | AccessLog entity fields: userId, username, ipAddress, action, responseCode, createdAt | Covered |
-| [CẦN BỔ SUNG: Quy định thanh tra/kiểm toán] | Khả năng export log phục vụ thanh tra, kiểm toán | Export CSV endpoint (BR-027, AC-005-06) | Covered |
+| [CẦN BỔ SUNG: Thông tư kỹ thuật ATTT] | Log phải chứa đủ thông tin: userId, IP, timestamp, action, result | AccessLog entity fields: userId, username, ipAddress, action, responseCode, createdAt, donVi, sessionId | Covered |
 | [CẦN BỔ SUNG: Quy định cảnh báo an ninh] | Cảnh báo khi phát hiện bất thường (≥5 login failures/hour) | BR-028, AC-005-17 — alert trigger mechanism | [CẦN BỔ SUNG: xác định channel gửi alert] |
 
 **Compliance Gaps:**
@@ -203,16 +200,144 @@ last-updated: 2026-06-28T00:00:00Z
 
 ---
 
-## 11. Test Scenarios
+## 11. UI/UX Requirements — Theme Token Compliance
+
+> **Toàn bộ token tham chiếu trong phần này được định nghĩa tại 2 file:**
+> - `frontend/src/theme.ts` — layout dimensions, colors, radius, spacing, font size, shadow
+> - `frontend/src/tokens.ts` — semantic tokens (vai trò của màu, thang số, content-type conventions)
+>
+> **TUYỆT ĐỐI KHÔNG hardcode màu hex, spacing, font-size trong component.** Mọi giá trị phải import từ 2 file trên.
+
+### 11.1 Shared Layout — dùng `AppLayout.tsx`
+
+Module F-005 dùng chung layout toàn hệ thống từ `frontend/src/components/AppLayout.tsx`:
+
+| Thành phần | Token | Giá trị |
+|---|---|---|
+| Sidebar rộng | `layout.sidebarWidth` | `272px` |
+| Sidebar thu gọn | `layout.sidebarCollapsedWidth` | `80px` |
+| Màu nền sidebar | `colors.sidebarBg` | `#12468C` |
+| Màu active pill | `colors.sidebarActiveBg` | `#1B84FF` |
+| Header cao | `layout.headerHeight` | `64px` |
+| Nền nội dung chính | `surfacePage` (từ tokens.ts) | `#eaf0f6` |
+| Responsive breakpoint | `< 768px` | Sidebar → hamburger menu |
+
+### 11.2 Semantic Tokens — ánh xạ vai trò màu
+
+| Vai trò | Token | Giá trị | Dùng cho |
+|---|---|---|---|
+| Chữ chính | `textPrimary` | `#0c2438` | Tiêu đề trang, số liệu quan trọng |
+| Chữ phụ | `textSecondary` | `#566a7c` | Nhãn field, mô tả |
+| Chữ metadata | `textTertiary` | `#93a3b3` | Thời gian, trạng thái phụ |
+| Nền card | `surfaceCard` | `#FFFFFF` | Card, modal, bảng |
+| Nền trang | `surfacePage` | `#eaf0f6` | Nền nội dung chính |
+| Viền | `borderDefault` | `rgba(11,46,79,0.09)` | Viền card, divider |
+| Màu nhấn | `actionPrimary` | `#0E6FD6` | Nút chính, link — tối đa 2 lần/màn |
+
+### 11.3 Thang số cố định — cấm giá trị ngoài thang
+
+| Loại | Token | Giá trị | Ghi chú |
+|---|---|---|---|
+| **Khoảng cách** | `spaceXs` | `4px` | Padding siêu nhỏ |
+| | `spaceSm` | `8px` | Padding icon, gap nhỏ |
+| | `spaceFormField` | `12px` | Form.Item marginBottom |
+| | `spaceMd` | `16px` | Card padding mặc định |
+| | `spaceLg` | `24px` | Khoảng cách section |
+| | `spaceXl` | `32px` | Margin page |
+| **Bo góc** | `radiusSm` | `4px` | TextArea |
+| | `radiusMd` | `8px` | |
+| | `radiusLg` | `12px` | Card |
+| | `radiusPill` | `999px` | Input, Select, Button |
+| **Cỡ chữ** | `fontSizeSm` | `10px` | Metadata, caption |
+| | `fontSizeMd` | `13px` | Label, body text |
+| | `fontSizeLg` | `15px` | Card title, section header |
+| | `fontSizeXl` | `18px` | Page title |
+| **Font weight** | `fontWeightNormal` | `400` | Body text |
+| | `fontWeightMedium` | `500` | Label, button text |
+| | `fontWeightBold` | `600` | Số KPI, tiêu đề |
+| **Font family** | `fontSans` | `'Inter', -apple-system, ...` | Toàn bộ text |
+
+> Cấm dùng: spacing 6, 10, 14, 18; radius 6, 7, 10; font-size 12, 14, 16, 24.
+
+### 11.4 Content-Type Conventions — dùng style có sẵn
+
+| Convention | Token | Áp dụng |
+|---|---|---|
+| Metadata style | `metaStyle` | Thời gian, số dòng, caption |
+| Card container | `cardStyle` | Mọi card nội dung |
+| Badge trạng thái | `badgeBaseStyle` | Tag trạng thái (SUCCESS/FAILED) |
+| Action button | `actionStyle` | Link, nút text |
+| Divider | `dividerStyle` | Đường kẻ ngăn cách |
+
+### 11.5 Accent Budget — tối đa 2 lần/màn
+
+`actionPrimary` (`#0E6FD6`) chỉ xuất hiện tối đa **2 lần** trên toàn bộ màn hình F-005:
+
+| Lần | Vị trí | Mục đích |
+|---|---|---|
+| 1 | Nút "Tìm kiếm" trên FilterBar | Hành động chính |
+| 2 | Icon "Xem chi tiết" trong bảng | Điều hướng |
+
+Màu trạng thái (`statusOperational`, `statusAttention`, `statusCritical`) và màu chữ (`textPrimary`, v.v.) KHÔNG tính vào budget.
+
+### 11.6 List Screen — dùng shared components
+
+Màn danh sách log PHẢI dùng 5 component share từ `frontend/src/components/list-view/`:
+
+| Component | Vai trò trong F-005 |
+|---|---|
+| `ScreenHeader` | Breadcrumb "Quản trị hệ thống > Quản lý log truy cập" |
+| `FilterBar` | DateRangePicker, dropdown chọn đơn vị, ô tìm kiếm email, ô tìm kiếm từ khóa + nút Tìm kiếm/Reload |
+| `StatusTabs` | 5 tab: Thao tác, Đăng nhập, Lỗi hệ thống, Tài khoản, Cấu hình — mỗi tab kèm số lượng |
+| `DataTable` | Sticky header, hover row, 8 cột: STT, Đơn vị, Chức năng, Địa chỉ IP, Trình duyệt, Phiên đăng nhập, Ngày truy cập, Thao tác (icon xem chi tiết). **Không có cột Sửa/Xóa.** |
+| `Pagination` | Điều hướng trang, hiển thị tổng số record |
+
+### 11.7 Form/Modal — tuân thủ Form & List UI Convention
+
+Popup "Chi tiết log truy cập" hiển thị trong Modal (không dùng Drawer):
+
+- Form.Item `marginBottom = spaceFormField` (`12px`) — KHÔNG hardcode
+- Input/Select `borderRadius = radiusPill` (`999px`), `height = 40`
+- KHÔNG có nút Sửa/Xóa (log là read-only)
+- Metadata JSON: hiển thị trong `<pre>` với `fontMono`
+- Footer: nút "Đóng" (outlined, pill radius)
+
+### 11.8 Trạng thái giao diện
+
+| Trạng thái | Cách hiển thị | Token liên quan |
+|---|---|---|
+| **Loading** | `<Spin>` của AntD hoặc Skeleton | Không cần token riêng |
+| **Empty** | Icon + text "Không có log nào phù hợp với bộ lọc. Thử thay đổi tiêu chí tìm kiếm." | `textSecondary`, `fontSizeMd` |
+| **Error** | `<Alert type="error">` + nút "Thử lại" | `actionPrimary` cho nút retry |
+
+### 11.9 Phân quyền giao diện
+
+| Vai trò | Tab hiển thị | Xem chi tiết | Sửa/Xóa |
+|---|---|---|---|
+| system-admin | 5 tab (tất cả) | ✅ | ❌ (không ai có) |
+| admin | 5 tab (filter theo đơn vị) | ✅ | ❌ |
+| admin-operation | 2 tab (Thao tác + Đăng nhập) | ✅ | ❌ |
+| user | Log của chính mình | ✅ | ❌ |
+
+### 11.10 Responsive (mobile < 768px)
+
+| Desktop | Mobile |
+|---|---|
+| Sidebar mở rộng `272px` | Sidebar collapse hamburger `80px` |
+| Bảng dữ liệu dạng table | Log hiển thị dạng card (timestamp + type + message preview) |
+| Filter bar ngang | Filter chuyển thành collapsible panel |
+| Modal full | Modal `width: 90vw` |
+
+---
+
+## 12. Test Scenarios
 
 | ID | Scenario | Type | Expected Result |
 |---|---|---|---|
 | TS-005-01 | Truy vấn 5 nhóm log với filter date range | E2E | Hiển thị đúng log trong khoảng thời gian, phân trang chính xác |
-| TS-005-02 | Lọc theo user + type + severity | E2E | Kết quả đúng theo 3 filter đồng thời |
-| TS-005-03 | Tìm kiếm keyword trong message | E2E | Kết quả chứa keyword (không phân biệt hoa/thường) |
-| TS-005-04 | Xem chi tiết log entry | E2E | Hiển thị đầy đủ metadata (JSON view), userAgent, requestPath |
-| TS-005-05 | Export CSV (system-admin) | E2E | File CSV đúng định dạng, ≤10.000 rows, dữ liệu không mất |
-| TS-005-06 | Export CSV (non-admin) | Security | Button ẩn, attempt API → 403 Forbidden |
+| TS-005-02 | Lọc theo đơn vị + email | E2E | Kết quả đúng theo filter |
+| TS-005-03 | Tìm kiếm keyword | E2E | Kết quả chứa keyword (không phân biệt hoa/thường) |
+| TS-005-04 | Xem chi tiết log entry | E2E | Popup hiển thị đầy đủ metadata (JSON view), userAgent, requestPath, sessionId |
 | TS-005-07 | Attempt UPDATE log entry | Security | HTTP 403 + message "Log không thể sửa đổi" |
 | TS-005-08 | Attempt DELETE log entry | Security | HTTP 403 + message "Log không thể xóa" |
 | TS-005-09 | Retention cleanup cron job | Unit | Log >90 ngày bị xóa, log ≤90 ngày được giữ |
@@ -224,29 +349,29 @@ last-updated: 2026-06-28T00:00:00Z
 | TS-005-15 | Empty state (không có log phù hợp) | UI | Hiển thị thông điệp "Không có log nào phù hợp với bộ lọc" |
 | TS-005-16 | Aggregate statistics | Unit | Tổng truy cập, unique users, success rate, avgDuration chính xác |
 | TS-005-17 | User chỉ xem log của chính mình | Security | Admin standard chỉ thấy log của mình, không thấy log người khác |
-| TS-005-18 | admin-operation chỉ xem access + login | Security | Không thấy nhóm error, account, configuration |
+| TS-005-18 | admin-operation chỉ xem Thao tác + Đăng nhập | Security | Không thấy nhóm error, account, configuration |
 | TS-005-19 | Lanh dao chỉ xem aggregate | Security | Không thấy chi tiết log, chỉ thấy báo cáo thống kê |
 | TS-005-20 | Date validation (start > end) | UI | Hiển thị lỗi "Ngày bắt đầu phải nhỏ hơn ngày kết thúc" |
 
 ---
 
-## 12. Pipeline Triage
+## 13. Pipeline Triage
 
 | Question | Answer | Rationale |
 |---|---|---|
 | **Q1: Creates new domain elements?** | **Yes** | Introduces 3 new domain entities: AccessLog, LogRetentionPolicy, LogAggregate. AccessLog is a new bounded context (audit logging) with immutable semantics. |
-| **Q2: Affects system architecture?** | **Yes** | Requires new repository pattern for AccessLog, batch insert mechanism (@Async + BatchPreparedStatementSetter), scheduled cleanup job (@Scheduled), streaming CSV export, and aggregate computation. Changes to Spring Security filter chain for log auto-instrumentation. |
+| **Q2: Affects system architecture?** | **Yes** | Requires new repository pattern for AccessLog, batch insert mechanism (@Async + BatchPreparedStatementSetter), scheduled cleanup job (@Scheduled), and aggregate computation. Changes to Spring Security filter chain for log auto-instrumentation. |
 | **Q3: Approach clear from existing architecture?** | **No** | New domain entities and audit logging pattern require system architect to define bounded context boundaries, aggregate roots, domain events, and context map integration with existing UserAccount, Role, Group domains. |
 
 **Triage Verdict:** Route to **engineering-system-architect** (Q1=Yes + Q3=No).
 
 ---
 
-## 13. Ambiguities
+## 14. Ambiguities
 
 | ID | Description | Impact | Question | Options |
 |---|---|---|---|---|
 | [AMBIGUITY-001] | Phân biệt giữa "admin" (Security Admin) và "admin" (standard) trong permission matrix — cùng tên nhưng khác quyền | Cao | Cần làm rõ role naming convention | Gộp thành "Security Admin" và "Admin" (như root feature-brief.md) |
 | [AMBIGUITY-002] | Metadata format cho mỗi log type chưa được định nghĩa chi tiết | Trung | Cần spec metadata schema cho 5 log types | Định nghĩa JSON schema cho từng type trong domain model |
 | [AMBIGUITY-003] | Alert mechanism cho BR-028 (≥5 login failures/hour) chưa rõ hình thức | Trung | Alert gửi qua đâu? (email, toast, system notification?) | Xác định channel gửi alert trong BA stage tiếp theo |
-| [AMBIGUITY-004] | LogRetentionPolicy có thể cấu hình bởi ai? | Thấp | Chỉ system-admin hay admin cũng được? | Giới hạn ở system-admin (consistent với export CSV) |
+| [AMBIGUITY-004] | LogRetentionPolicy có thể cấu hình bởi ai? | Thấp | Chỉ system-admin hay admin cũng được? | Giới hạn ở system-admin |
