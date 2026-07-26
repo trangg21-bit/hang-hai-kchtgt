@@ -1,22 +1,27 @@
--- V85__convert_audit_fields_to_uuid.sql
--- Converts all created_by, updated_by, deleted_by, and approved_by text columns to UUID natively.
--- Uses `USING NULLIF(column, '')::uuid` to ensure that empty strings become null instead of failing on cast.
+-- V85: intentionally a no-op. The audit-column conversion moved to V90.
+--
+-- This migration used to cast every created_by / updated_by / deleted_by /
+-- approved_by / nguoi_* column in the public schema to UUID. That was wrong in
+-- three separate ways, all of which would have failed the UAT deploy:
+--
+--  1. Ordering. V85 runs BEFORE V84/V86 finish renaming the Vietnamese tables and
+--     columns, so at this point port_planning.created_by is still nguoi_tao and
+--     legal_documents' audit columns have not been renamed yet. Half the work
+--     targeted names that did not exist yet, and the other half targeted names
+--     that were about to change.
+--
+--  2. Columns that must stay text. Seven audit columns are NOT UUID in the entity
+--     model — adjustment_approvals.approved_by maps to `private String approver`,
+--     port_planning/incidents/planning_adjustments/processing_progress keep String
+--     audit fields, and pending_approvals.approved_by is a foreign key to
+--     app_users. Casting those to UUID makes Hibernate schema validation fail in
+--     the opposite direction.
+--
+--  3. Data. `NULLIF(col, '')::uuid` aborts the whole migration the moment one row
+--     holds a username instead of a UUID, which is exactly what the older code
+--     wrote into these columns.
+--
+-- V90 does the same job after every rename has settled, with an explicit exclusion
+-- list and non-UUID values cleared rather than crashing the deploy.
 
-DO $$
-DECLARE
-    row record;
-BEGIN
-    FOR row IN
-        SELECT table_name, column_name
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND column_name IN ('created_by', 'updated_by', 'deleted_by', 'approved_by', 'nguoi_tao', 'nguoi_sua_doi', 'nguoi_ky', 'nguoi_phe_duyet', 'nguoi_dang_ky')
-          AND data_type IN ('character varying', 'text', 'varchar')
-    LOOP
-        EXECUTE format(
-            'ALTER TABLE %I ALTER COLUMN %I TYPE UUID USING NULLIF(%I, '''')::uuid;',
-            row.table_name, row.column_name, row.column_name
-        );
-    END LOOP;
-END;
-$$;
+SELECT 1;
