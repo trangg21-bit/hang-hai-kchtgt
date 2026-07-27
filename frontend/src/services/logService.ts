@@ -5,7 +5,6 @@ export interface AccessLogEntry {
   userId: number;
   username: string;
   email?: string;
-  organization?: string;
   orgUnit?: string;
   action: string;
   targetResource?: string;

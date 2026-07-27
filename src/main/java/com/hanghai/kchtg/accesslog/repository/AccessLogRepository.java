@@ -11,7 +11,6 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Data access for {@link AccessLog} entities.
@@ -20,7 +19,7 @@ import java.util.UUID;
  * (type, severity, keyword) plus the original dimension queries.
  * </p>
  */
-public interface AccessLogRepository extends JpaRepository<AccessLog, UUID>,
+public interface AccessLogRepository extends JpaRepository<AccessLog, Long>,
         JpaSpecificationExecutor<AccessLog> {
 
     // ── Original queries (unchanged) ──────────────────────────────────

@@ -29,7 +29,6 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.UUID;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
@@ -73,8 +72,10 @@ public class LogService {
         this.exportDir = exportDir;
     }
 
+    // ── Query delegation ─────────────────────────────────────────────
+
     /** Find one log entry by ID. */
-    public AccessLogResponse findById(UUID id) {
+    public AccessLogResponse findById(Long id) {
         return accessLogService.findById(id);
     }
 

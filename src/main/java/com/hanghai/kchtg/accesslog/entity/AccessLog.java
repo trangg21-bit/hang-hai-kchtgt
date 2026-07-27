@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * Records every user-facing access to the system for audit and traceability.
@@ -33,28 +32,23 @@ import java.util.UUID;
 @NoArgsConstructor
 public class AccessLog {
 
-    /** Primary key — UUID. */
+    /** Primary key — BIGINT auto-increment (replaces legacy UUID PK). */
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", updatable = false, nullable = false)
-    private UUID id;
+    private Long id;
 
     /** ID of the user who performed the action. */
     @Column(name = "userId", nullable = false)
     private Long userId;
 
-    /**
-     * Login name at the time of the action (denormalised for query convenience).
-     */
+    /** Login name at the time of the action (denormalised for query convenience). */
     @NotBlank(message = "Tên đăng nhập không được để trống")
     @Size(max = 50, message = "Tên đăng nhập tối đa 50 ký tự")
     @Column(nullable = false, length = 50)
     private String username;
 
-    /**
-     * Short description of the action (e.g. "LOGIN", "VIEW_REPORT",
-     * "CREATE_ORDER").
-     */
+    /** Short description of the action (e.g. "LOGIN", "VIEW_REPORT", "CREATE_ORDER"). */
     @NotBlank(message = "Hành động không được để trống")
     @Size(max = 30, message = "Hành động tối đa 30 ký tự")
     @Column(nullable = false, length = 30)
@@ -72,9 +66,7 @@ public class AccessLog {
     @Column(name = "ip_address", nullable = false, length = 45)
     private String ipAddress;
 
-    /**
-     * Client <code>User-Agent</code> header (may be empty for non-HTTP producers).
-     */
+    /** Client <code>User-Agent</code> header (may be empty for non-HTTP producers). */
     @Column(name = "user_agent", length = 500)
     private String userAgent;
 
@@ -95,9 +87,7 @@ public class AccessLog {
     @Column(nullable = false, length = 10)
     private AccessLogStatus status;
 
-    /**
-     * Free-text detail - stack-trace, request body excerpt, or business context.
-     */
+    /** Free-text detail - stack-trace, request body excerpt, or business context. */
     @Column(columnDefinition = "TEXT")
     private String detail;
 
