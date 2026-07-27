@@ -70,6 +70,18 @@ public class AccessLog {
     @Column(name = "user_agent", length = 500)
     private String userAgent;
 
+    /** Email of the user (denormalised for fast filtering). */
+    @Column(name = "email", length = 100)
+    private String email;
+
+    /** Organisational unit of the user (denormalised for fast filtering). */
+    @Column(name = "don_vi", length = 100)
+    private String donVi;
+
+    /** Login session identifier. All actions in one session share this ID. */
+    @Column(name = "session_id", length = 50)
+    private String sessionId;
+
     /** Whether the action completed successfully or failed. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)

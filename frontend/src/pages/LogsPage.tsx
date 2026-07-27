@@ -1,658 +1,827 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Table,
-  Button,
-  Card,
-  Row,
-  Col,
-  Statistic,
-  Tabs,
-  Space,
-  Input,
-  DatePicker,
-  Tag,
-  Popconfirm,
-  message,
-  Typography,
-  Tooltip,
-  Badge,
-  Spin,
-  Alert,
-} from 'antd';
-import {
-  DownloadOutlined,
-  DatabaseOutlined,
-  SafetyCertificateOutlined,
-  HistoryOutlined,
-  SearchOutlined,
-  ReloadOutlined,
-  FileWordOutlined,
-  FileExcelOutlined,
-  FilePdfOutlined,
-  FileTextOutlined,
-  CodeOutlined,
-  WarningOutlined,
-} from '@ant-design/icons';
+import { Typography, Modal, Form, Input, Tag, Button, Spin, Alert, message, Tooltip, Row, Col, Grid, Statistic } from 'antd';
+import { EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import type { ColumnsType } from 'antd/es/table';
-import { logService, type AccessLogEntry, type BackupRecord, type SiemMetrics } from '../services/logService';
-import api from '../services/api';
+import { ScreenHeader, FilterBar, StatusTabs, DataTable, Pagination } from '../components/list-view';
+import type { DataTableColumn } from '../components/list-view/DataTable';
+import {
+  textPrimary, textSecondary, textTertiary, surfaceCard, actionPrimary,
+  statusOperational, statusAttention, statusCritical,
+  spaceFormField, spaceMd, spaceSm, radiusPill, radiusSm,
+  fontSizeSm, fontSizeMd, fontSizeLg, fontSizeXl,
+  fontWeightMedium, fontWeightBold,
+  badgeBaseStyle, metaStyle, fontMono, borderDefault,
+} from '../tokens';
+import { colors } from '../theme';
+import { logService, type AccessLogEntry } from '../services/logService';
+import { organizationService } from '../services/organizationService';
+import { useAuthStore } from '../store/authStore';
 
-const { Title, Text } = Typography;
-const { RangePicker } = DatePicker;
+const { Text } = Typography;
+
+const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
+
+// ── Constants ──────────────────────────────────────────────────────────────────
+
+const TAB_KEYS = ['access', 'login', 'error', 'account', 'configuration'] as const;
+
+const LOG_TYPE_LABEL: Record<string, string> = {
+  access: 'Thao tác',
+  login: 'Đăng nhập',
+  error: 'Lỗi hệ thống',
+  account: 'Tài khoản',
+  configuration: 'Cấu hình',
+};
+
+const TAB_LABELS: Record<string, string> = {
+  access: 'Thao tác',
+  login: 'Đăng nhập',
+  error: 'Lỗi hệ thống',
+  account: 'Tài khoản',
+  configuration: 'Cấu hình',
+};
+
+const TAB_COLORS: Record<string, string> = {
+  access: actionPrimary,
+  login: '#2A78D6',
+  error: statusCritical,
+  account: statusAttention,
+  configuration: '#E87BA4',
+};
+
+const SEVERITY_CONFIG: Record<string, { color: string; label: string }> = {
+  info: { color: statusOperational, label: 'Thông tin' },
+  warning: { color: statusAttention, label: 'Cảnh báo' },
+  error: { color: statusCritical, label: 'Lỗi' },
+  critical: { color: statusCritical, label: 'Nghiêm trọng' },
+};
+
+// ── Action translation: English code → Vietnamese display ─────────────────────
+
+const ACTION_MAP: Record<string, string> = {
+  LOGIN: 'Đăng nhập',
+  LOGOUT: 'Đăng xuất',
+  LOGIN_TOTP: 'Đăng nhập (2 lớp)',
+  CREATE_USER: 'Tạo người dùng',
+  UPDATE_USER: 'Sửa người dùng',
+  DELETE_USER: 'Xóa người dùng',
+  LOCK_USER: 'Khóa người dùng',
+  UNLOCK_USER: 'Mở khóa người dùng',
+  CHANGE_USER_STATUS: 'Đổi trạng thái người dùng',
+  RESET_USER_PASSWORD: 'Đặt lại mật khẩu',
+  CREATE_CONNECTION: 'Tạo kết nối',
+  UPDATE_CONNECTION: 'Sửa kết nối',
+  DELETE_CONNECTION: 'Xóa kết nối',
+  RUN_HEALTH_CHECK: 'Kiểm tra kết nối',
+  TEST_CONNECTION: 'Kiểm thử kết nối',
+  CREATE_BACKUP: 'Tạo sao lưu',
+  RESTORE_BACKUP: 'Khôi phục sao lưu',
+};
+
+const VERB_MAP: Record<string, string> = {
+  VIEW: 'Xem',
+  CREATE: 'Tạo',
+  UPDATE: 'Sửa',
+  DELETE: 'Xóa',
+};
+
+const RESOURCE_MAP: Record<string, string> = {
+  USERS: 'người dùng',
+  GROUPS: 'nhóm',
+  ROLES: 'phân quyền',
+  ORG_UNITS: 'đơn vị',
+  PORTS: 'cảng biển',
+  BERTHS: 'bến cảng',
+  PIERS: 'cầu cảng',
+  DRYPORTS: 'cảng cạn',
+  WATERZONES: 'vùng nước',
+  ACCESS_LOGS: 'log truy cập',
+  LOGS: 'log',
+  CONNECTIONS: 'kết nối',
+  REPORTS: 'báo cáo',
+  SETTINGS: 'cấu hình',
+  AUTH: 'đăng nhập',
+  GIS: 'bản đồ',
+  BEACONS: 'đèn biển',
+  BEACON_LIGHTS: 'đèn biển',
+  BUOYS: 'phao tiêu',
+  SYMBOLS: 'biểu tượng',
+  MAP_ICONS: 'biểu tượng bản đồ',
+  NAVIGATION_CHANNEL: 'luồng hàng hải',
+  DIKE_REVETMENT: 'đê kè',
+  SHIP_REPAIR_FACILITY: 'sửa chữa tàu',
+  RADAR_STATION: 'trạm radar',
+  VTS_SYSTEM: 'hệ thống VTS',
+  STATIONS: 'nhà trạm',
+  LIGHTHOUSE_STATION: 'nhà trạm đèn biển',
+  BUOY_STATION: 'nhà trạm phao tiêu',
+  COASTAL_STATION: 'đài duyên hải',
+  SPECIAL_STATION: 'đài vệ tinh',
+  BACKUPS: 'sao lưu',
+  DOCUMENTS: 'văn bản',
+  ASSET: 'tài sản',
+  ASSETS: 'tài sản',
+  ADMIN: 'quản trị',
+  SYSTEM: 'hệ thống',
+  SIEM: 'giám sát',
+  USER: 'người dùng',
+  PORT: 'cảng biển',
+  BEACON: 'đèn biển',
+  HISTORY: 'lịch sử',
+  BEACON_HISTORY: 'lịch sử đèn biển',
+  CONNECTION: 'kết nối',
+  MAP: 'bản đồ',
+  REPORT: 'báo cáo',
+  ROLE: 'phân quyền',
+  GROUP: 'nhóm',
+  DASHBOARD: 'trang chủ',
+  ORGANIZATION: 'đơn vị',
+};
+
+function translateAction(action: string): string {
+  if (!action) return '—';
+  // Direct match
+  if (ACTION_MAP[action]) return ACTION_MAP[action];
+  // Parse VERB_RESOURCE or VERB_RESOURCE_LIST pattern
+  const parts = action.split('_');
+  if (parts.length >= 2) {
+    const verb = parts[0];
+    const listIdx = parts.indexOf('LIST');
+    const resourceParts = listIdx > 0 ? parts.slice(1, listIdx) : parts.slice(1);
+    const resourceKey = resourceParts.join('_');
+    const verbVN = VERB_MAP[verb] || verb;
+    const resourceVN = RESOURCE_MAP[resourceKey] || resourceKey.toLowerCase().replace(/_/g, ' ');
+    const isList = action.endsWith('_LIST');
+    return isList ? `${verbVN} danh sách ${resourceVN}` : `${verbVN} ${resourceVN}`;
+  }
+  return action;
+}
+
+// ── Helper ──────────────────────────────────────────────────────────────────────
+
+function formatMetadata(metadata: unknown): string {
+  if (!metadata) return '';
+  try {
+    const parsed = typeof metadata === 'string' ? JSON.parse(metadata) : metadata;
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return String(metadata);
+  }
+}
+
+// ── Component ──────────────────────────────────────────────────────────────────
 
 export default function LogsPage() {
-  const [activeTab, setActiveTab] = useState('1');
+  // ---- Data state ----
+  const [data, setData] = useState<AccessLogEntry[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Access Logs State
-  const [accessLogs, setAccessLogs] = useState<AccessLogEntry[]>([]);
-  const [totalAccessLogs, setTotalAccessLogs] = useState(0);
-  const [logsLoading, setLogsLoading] = useState(false);
-  const [logPage, setLogPage] = useState(1);
-  const [logPageSize, setLogPageSize] = useState(20);
-  const [searchUsername, setSearchUsername] = useState('');
-  const [searchModule, setSearchModule] = useState('');
-  const [searchAction, setSearchAction] = useState('');
-  const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
+  // ---- UI state ----
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [activeTab, setActiveTab] = useState('access');
+  const [tabCounts, setTabCounts] = useState<Record<string, number>>({});
+  const [orgOptions, setOrgOptions] = useState<{ value: string; label: string }[]>([]);
+  const [filters, setFilters] = useState<Record<string, any>>({});
 
-  // Backups State
-  const [backups, setBackups] = useState<BackupRecord[]>([]);
-  const [backupsLoading, setBackupsLoading] = useState(false);
-  const [backupSubmitting, setBackupSubmitting] = useState(false);
-  const [restoreSubmitting, setRestoreSubmitting] = useState(false);
+  // ---- Auth ----
+  const user = useAuthStore((s) => s.user);
+  const role = user?.role || '';
+  const username = user?.username || '';
+  const isAdminOp = role === 'ROLE_SECURITY_MONITOR';
+  const isLeader = role === 'ROLE_LEADER';
+  const isSelfOnly = role && role !== 'ROLE_SYSTEM_ADMIN' && role !== 'ROLE_ADMIN' && !isAdminOp;
 
-  // SIEM State
-  const [siemMetrics, setSiemMetrics] = useState<SiemMetrics | null>(null);
-  const [siemLoading, setSiemLoading] = useState(false);
-  const [exportingReport, setExportingReport] = useState<string | null>(null);
+  // ---- Role-based tab visibility ----
+  const visibleTabKeys = isAdminOp ? (['access', 'login'] as const) : TAB_KEYS;
 
-  // Global Auth download helper
-  const handleDownload = async (url: string, filename: string) => {
-    try {
-      const response = await api.get(url, { responseType: 'blob' });
-      const blob = new Blob([response.data], { type: response.headers['content-type'] });
-      const link = document.createElement('a');
-      link.href = window.URL.createObjectURL(blob);
-      link.download = filename;
-      link.click();
-      window.URL.revokeObjectURL(link.href);
-      message.success(`Tải file ${filename} thành công`);
-    } catch (error) {
-      console.error(error);
-      message.error('Tải file thất bại');
-    }
-  };
+  // ---- Aggregate statistics ----
+  const [aggregate, setAggregate] = useState<{ totalAccesses: number; uniqueUsers: number; successRate: number; avgDuration: number } | null>(null);
 
-  // 1. Fetch Access Logs
-  const fetchAccessLogs = async () => {
-    setLogsLoading(true);
-    try {
-      const fromStr = dateRange?.[0] ? dateRange[0].startOf('day').toISOString() : undefined;
-      const toStr = dateRange?.[1] ? dateRange[1].endOf('day').toISOString() : undefined;
+  // ---- Detail modal state ----
+  const [selectedLog, setSelectedLog] = useState<AccessLogEntry | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
 
-      const data = await logService.listAccessLogs({
-        page: logPage - 1,
-        size: logPageSize,
-        userId: undefined, // Filter by username string instead
-        module: searchModule || undefined,
-        action: searchAction || undefined,
-        from: fromStr,
-        to: toStr,
-      });
+  const { useBreakpoint } = Grid;
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
 
-      // Filter username client-side if query isn't fully supported
-      let content = data.content;
-      if (searchUsername) {
-        content = content.filter((l) =>
-          l.username?.toLowerCase().includes(searchUsername.toLowerCase())
-        );
-      }
-
-      setAccessLogs(content);
-      setTotalAccessLogs(searchUsername ? content.length : data.totalElements);
-    } catch (e) {
-      message.error('Không thể tải nhật ký truy cập');
-    } finally {
-      setLogsLoading(false);
-    }
-  };
-
-  // 2. Fetch Backups
-  const fetchBackups = async () => {
-    setBackupsLoading(true);
-    try {
-      const data = await logService.listBackups();
-      setBackups(data);
-    } catch (e) {
-      message.error('Không thể tải danh sách bản sao lưu');
-    } finally {
-      setBackupsLoading(false);
-    }
-  };
-
-  // 3. Fetch SIEM Metrics
-  const fetchSiemMetrics = async () => {
-    setSiemLoading(true);
-    try {
-      const data = await logService.getSiemMetrics();
-      setSiemMetrics(data);
-    } catch (e) {
-      message.error('Không thể tải chỉ số an ninh SIEM');
-    } finally {
-      setSiemLoading(false);
-    }
-  };
-
-  // Load appropriate data on tab change
-  useEffect(() => {
-    if (activeTab === '1') {
-      fetchAccessLogs();
-    } else if (activeTab === '2') {
-      fetchBackups();
-    } else if (activeTab === '3') {
-      fetchSiemMetrics();
-    }
-  }, [activeTab, logPage, logPageSize]);
-
-  // Create Backup Action
-  const handleCreateBackup = async () => {
-    setBackupSubmitting(true);
-    try {
-      const res = await logService.createBackup();
-      if (res.success) {
-        message.success(res.message || 'Tạo bản sao lưu thành công');
-        fetchBackups();
-      } else {
-        message.error(res.message || 'Tạo bản sao lưu thất bại');
-      }
-    } catch (e: any) {
-      message.error(e.response?.data?.message || 'Có lỗi xảy ra khi tạo sao lưu');
-    } finally {
-      setBackupSubmitting(false);
-    }
-  };
-
-  // Restore Backup Action
-  const handleRestoreBackup = async (id: string) => {
-    setRestoreSubmitting(true);
-    try {
-      const res = await logService.restoreBackup(id);
-      if (res.success) {
-        message.success(res.message || 'Khôi phục dữ liệu thành công');
-        // Force reload page to ensure clean context state
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } else {
-        message.error(res.message || 'Khôi phục thất bại');
-      }
-    } catch (e: any) {
-      message.error(e.response?.data?.message || 'Có lỗi xảy ra khi khôi phục');
-    } finally {
-      setRestoreSubmitting(false);
-    }
-  };
-
-  // Export Access Logs CSV
-  const handleExportCsv = () => {
-    const fromStr = dateRange?.[0] ? dateRange[0].startOf('day').toISOString() : undefined;
-    const toStr = dateRange?.[1] ? dateRange[1].endOf('day').toISOString() : undefined;
-
-    const url = logService.exportAccessLogsUrl({
-      module: searchModule || undefined,
-      action: searchAction || undefined,
-      from: fromStr,
-      to: toStr,
-      page: 0,
-      size: 1000,
+  // ---- Load org options ----
+  const loadOrgOptions = () => {
+    organizationService.list({ pageSize: 1000 }).then((res) => {
+      setOrgOptions(
+        res.data.map((o) => ({ value: o.id, label: o.name })),
+      );
     });
-    handleDownload(url, `access_logs_${dayjs().format('YYYYMMDD')}.csv`);
   };
 
-  // Export SIEM Report Action
-  const handleExportSiem = async (format: string) => {
-    setExportingReport(format);
+  useEffect(() => {
+    loadOrgOptions();
+  }, []);
+
+  // ---- Build API params from filters ----
+  const buildApiParams = (fv: Record<string, any>) => {
+    const params: Record<string, any> = {};
+    if (fv.dateRange?.[0]) {
+      params.from = dayjs(fv.dateRange[0]).startOf('day').format('YYYY-MM-DDTHH:mm:ss');
+    }
+    if (fv.dateRange?.[1]) {
+      params.to = dayjs(fv.dateRange[1]).endOf('day').format('YYYY-MM-DDTHH:mm:ss');
+    }
+    if (fv.donVi) params.donVi = fv.donVi;
+    if (fv.email) params.email = fv.email;
+    if (fv.keyword) params.keyword = fv.keyword;
+    if (isSelfOnly && username) {
+      params.username = username;
+    }
+    return params;
+  };
+
+  // ---- Fetch main data ----
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const url = logService.getSiemExportUrl(format);
-      const extension = format === 'word' ? 'docx' : format === 'excel' ? 'xlsx' : format;
-      await handleDownload(url, `siem_report.${extension}`);
+      const params: Record<string, any> = {
+        page: page - 1,
+        size: pageSize,
+        type: activeTab,
+        ...buildApiParams(filters),
+      };
+      const res = await logService.listAccessLogs(params);
+      setData(res.content);
+      setTotal(res.totalElements);
+    } catch (e: any) {
+      setError(e?.message || 'Có lỗi xảy ra khi tải dữ liệu');
     } finally {
-      setExportingReport(null);
+      setLoading(false);
     }
   };
 
-  // Access Logs Columns
-  const logColumns: ColumnsType<AccessLogEntry> = [
-    {
-      title: 'Thời gian',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 180,
-      render: (val) => dayjs(val).format('DD/MM/YYYY HH:mm:ss'),
-    },
-    {
-      title: 'Tài khoản',
-      dataIndex: 'username',
-      key: 'username',
-      width: 150,
-      render: (val) => <Text bold>{val}</Text>,
-    },
-    {
-      title: 'Hành động',
-      dataIndex: 'action',
-      key: 'action',
-      width: 160,
-      render: (val) => <Tag color="blue">{val}</Tag>,
-    },
-    {
-      title: 'Phân hệ',
-      dataIndex: 'module',
-      key: 'module',
-      width: 140,
-    },
-    {
-      title: 'Địa chỉ IP',
-      dataIndex: 'ipAddress',
-      key: 'ipAddress',
-      width: 140,
-    },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      width: 120,
-      render: (val) => {
-        const isSuccess = val === 'SUCCESS';
-        return <Tag color={isSuccess ? 'green' : 'red'}>{isSuccess ? 'Thành công' : 'Thất bại'}</Tag>;
-      },
-    },
-    {
-      title: 'Chi tiết',
-      dataIndex: 'detail',
-      key: 'detail',
-      ellipsis: true,
-      render: (val) =>
-        val ? (
-          <Tooltip title={val}>
-            <Text type="secondary" style={{ cursor: 'pointer' }}>
-              {val}
-            </Text>
-          </Tooltip>
-        ) : (
-          '-'
-        ),
-    },
-  ];
+  // ---- Fetch tab counts ----
+  const fetchTabCounts = async () => {
+    const baseParams = buildApiParams(filters);
+    const counts: Record<string, number> = {};
+    await Promise.all(
+      visibleTabKeys.map(async (key) => {
+        try {
+          const res = await logService.listAccessLogs({
+            ...baseParams,
+            type: key,
+            size: 1,
+          });
+          counts[key] = res.totalElements;
+        } catch {
+          counts[key] = 0;
+        }
+      }),
+    );
+    setTabCounts(counts);
+  };
 
-  // Backups Columns
-  const backupColumns: ColumnsType<BackupRecord> = [
+  // ---- Effects ----
+  useEffect(() => {
+    fetchData();
+  }, [filters, page, pageSize, activeTab]);
+
+  useEffect(() => {
+    fetchTabCounts();
+  }, [filters]);
+
+  // Auto-refresh when navigating back to this page (React Router v6 remounts components)
+  useEffect(() => {
+    fetchData();
+    fetchTabCounts();
+    fetchAggregate();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---- Event handlers ----
+  const handleSearch = (values: Record<string, any>) => {
+    // Validate date range
+    if (
+      values.dateRange?.[0] &&
+      values.dateRange?.[1] &&
+      dayjs(values.dateRange[0]).isAfter(dayjs(values.dateRange[1]))
+    ) {
+      message.error('Ngày bắt đầu phải nhỏ hơn ngày kết thúc');
+      return;
+    }
+    loadOrgOptions();
+    setFilters(values);
+    setPage(1);
+  };
+
+  const handleReset = () => {
+    setFilters({});
+    setPage(1);
+  };
+
+  const handlePageChange = (newPage: number, newPageSize: number) => {
+    setPage(newPage);
+    if (newPageSize !== pageSize) {
+      setPageSize(newPageSize);
+    }
+  };
+
+  const handleTabChange = (key: string) => {
+    setActiveTab(key);
+    setPage(1);
+  };
+
+  const openDetail = async (record: AccessLogEntry) => {
+    setDetailLoading(true);
+    try {
+      const full = await logService.getAccessLogById(record.id);
+      setSelectedLog(full);
+      setModalVisible(true);
+    } catch (e: any) {
+      message.error('Không thể tải chi tiết log');
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const closeDetail = () => {
+    setModalVisible(false);
+    setSelectedLog(null);
+  };
+
+  // ---- Fetch aggregate stats ----
+  const fetchAggregate = async () => {
+    try {
+      const data = await logService.getLogAggregate();
+      if (data && data.length > 0) {
+        setAggregate(data[data.length - 1]); // latest aggregate
+      }
+    } catch { /* silent */ }
+  };
+
+  // ---- Render aggregate stats ----
+  const renderAggregateStats = () => {
+    if (!aggregate) return null;
+    return (
+      <Row gutter={[spaceMd, spaceMd]} style={{ marginBottom: spaceMd }}>
+        <Col xs={12} sm={12} md={6}>
+          <div style={{ background: surfaceCard, borderRadius: radiusSm, padding: spaceMd, textAlign: 'center' }}>
+            <Statistic
+              title={<span style={{ color: textSecondary, fontSize: fontSizeSm }}>Tổng lượt truy cập</span>}
+              value={aggregate.totalAccesses}
+              valueStyle={{ color: textPrimary, fontSize: fontSizeXl }}
+            />
+          </div>
+        </Col>
+        <Col xs={12} sm={12} md={6}>
+          <div style={{ background: surfaceCard, borderRadius: radiusSm, padding: spaceMd, textAlign: 'center' }}>
+            <Statistic
+              title={<span style={{ color: textSecondary, fontSize: fontSizeSm }}>Người dùng duy nhất</span>}
+              value={aggregate.uniqueUsers}
+              valueStyle={{ color: textPrimary, fontSize: fontSizeXl }}
+            />
+          </div>
+        </Col>
+        <Col xs={12} sm={12} md={6}>
+          <div style={{ background: surfaceCard, borderRadius: radiusSm, padding: spaceMd, textAlign: 'center' }}>
+            <Statistic
+              title={<span style={{ color: textSecondary, fontSize: fontSizeSm }}>Tỷ lệ thành công</span>}
+              value={aggregate.successRate}
+              suffix="%"
+              valueStyle={{ color: textPrimary, fontSize: fontSizeXl }}
+            />
+          </div>
+        </Col>
+        <Col xs={12} sm={12} md={6}>
+          <div style={{ background: surfaceCard, borderRadius: radiusSm, padding: spaceMd, textAlign: 'center' }}>
+            <Statistic
+              title={<span style={{ color: textSecondary, fontSize: fontSizeSm }}>Thời gian phản hồi TB</span>}
+              value={aggregate.avgDuration}
+              suffix="ms"
+              valueStyle={{ color: textPrimary, fontSize: fontSizeXl }}
+            />
+          </div>
+        </Col>
+      </Row>
+    );
+  };
+
+  // ---- Status tabs ----
+  const statusTabs = visibleTabKeys.map((key) => ({
+    key,
+    label: TAB_LABELS[key],
+    count: tabCounts[key] ?? 0,
+    color: TAB_COLORS[key],
+    active: activeTab === key,
+  }));
+
+  // ---- DataTable columns ----
+  const tableData = data.map((item, idx) => ({
+    ...item,
+    _rowIndex: (page - 1) * pageSize + idx + 1,
+  }));
+
+  const columns: DataTableColumn[] = [
     {
-      title: 'Tên file',
-      dataIndex: 'filename',
-      key: 'filename',
-      render: (val) => (
-        <Space>
-          <DatabaseOutlined style={{ color: '#1677ff' }} />
-          <Text bold>{val}</Text>
-        </Space>
+      key: '_rowIndex',
+      label: 'STT',
+      dataIndex: '_rowIndex',
+      width: 60,
+      align: 'center',
+      render: (val: any) => (
+        <span style={{ fontSize: fontSizeMd }}>{val}</span>
       ),
     },
     {
-      title: 'Dung lượng',
-      dataIndex: 'fileSize',
-      key: 'fileSize',
-      width: 140,
-      render: (val) => {
-        if (!val) return '0 B';
-        if (val < 1024) return `${val} B`;
-        if (val < 1024 * 1024) return `${(val / 1024).toFixed(2)} KB`;
-        return `${(val / (1024 * 1024)).toFixed(2)} MB`;
-      },
+      key: 'donVi',
+      label: 'Đơn vị',
+      dataIndex: 'donVi',
+      render: (val: any) =>
+        val ? (
+          <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{val}</span>
+        ) : (
+          <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>
+        ),
     },
     {
-      title: 'Loại sao lưu',
-      dataIndex: 'backupType',
-      key: 'backupType',
-      width: 140,
-      render: (val) => (
-        <Tag color={val === 'MANUAL' ? 'cyan' : 'purple'}>
-          {val === 'MANUAL' ? 'Thủ công' : 'Tự động'}
+      key: 'action',
+      label: 'Chức năng',
+      dataIndex: 'action',
+      render: (val: any) => (
+        <Tag
+          color="blue"
+          title={val}
+          style={{
+            borderRadius: radiusSm,
+            fontSize: fontSizeSm,
+            fontWeight: fontWeightMedium,
+          }}
+        >
+          {translateAction(val)}
         </Tag>
       ),
     },
     {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      width: 140,
-      render: (val, record) => {
-        const isSuccess = val === 'SUCCESS';
+      key: 'ipAddress',
+      label: 'Địa chỉ IP',
+      dataIndex: 'ipAddress',
+      render: (val: any) => (
+        <span style={{ fontFamily: fontMono, color: textSecondary, fontSize: fontSizeMd }}>
+          {val}
+        </span>
+      ),
+    },
+    {
+      key: 'userAgent',
+      label: 'Trình duyệt',
+      dataIndex: 'userAgent',
+      render: (val: any) => {
+        if (!val) {
+          return <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
+        }
+        const display = val.length > 40 ? `${val.substring(0, 40)}...` : val;
         return (
-          <Tooltip title={record.errorDetail}>
-            <Badge
-              status={isSuccess ? 'success' : 'error'}
-              text={isSuccess ? 'Thành công' : 'Thất bại'}
-            />
+          <Tooltip title={val}>
+            <span style={{ color: textSecondary, fontSize: fontSizeMd }}>{display}</span>
           </Tooltip>
         );
       },
     },
     {
-      title: 'Ngày tạo',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      width: 180,
-      render: (val) => dayjs(val).format('DD/MM/YYYY HH:mm:ss'),
-    },
-    {
-      title: 'Thao tác',
-      key: 'actions',
-      width: 150,
-      render: (_, record) => {
-        if (record.status !== 'SUCCESS') return null;
+      key: 'sessionId',
+      label: 'Phiên đăng nhập',
+      dataIndex: 'sessionId',
+      render: (val: any) => {
+        if (!val) {
+          return <span style={{ color: textTertiary, fontSize: fontSizeMd }}>—</span>;
+        }
+        const display = val.length > 12 ? `${val.substring(0, 12)}...` : val;
         return (
-          <Popconfirm
-            title="Khôi phục CSDL"
-            description={
-              <div>
-                Bạn có chắc chắn muốn khôi phục CSDL từ bản sao lưu này?
-                <br />
-                <Text type="danger" bold>
-                  Cảnh báo: Toàn bộ dữ liệu hiện tại sẽ bị ghi đè!
-                </Text>
-              </div>
-            }
-            onConfirm={() => handleRestoreBackup(record.id)}
-            okText="Đồng ý khôi phục"
-            cancelText="Hủy"
-            okButtonProps={{ danger: true, loading: restoreSubmitting }}
-          >
-            <Button type="primary" danger size="small" icon={<HistoryOutlined />}>
-              Khôi phục
-            </Button>
-          </Popconfirm>
+          <Tooltip title={val}>
+            <span style={{ fontFamily: fontMono, color: textSecondary, fontSize: fontSizeMd }}>
+              {display}
+            </span>
+          </Tooltip>
         );
       },
     },
+    {
+      key: 'createdAt',
+      label: 'Ngày truy cập',
+      dataIndex: 'createdAt',
+      render: (val: any) => (
+        <span style={{ ...metaStyle, fontSize: fontSizeMd }}>
+          {val ? dayjs(val).format('DD/MM/YYYY HH:mm') : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Thao tác',
+      width: 80,
+      align: 'center',
+      render: (_val: any, record: any) => (
+        <Button
+          type="text"
+          icon={<EyeOutlined />}
+          style={{ color: actionPrimary }}
+          onClick={() => openDetail(record as AccessLogEntry)}
+        />
+      ),
+    },
   ];
 
-  return (
-    <div style={{ padding: '24px' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <Title level={2}>Nhật ký hệ thống & Sao lưu</Title>
-        <Text type="secondary">
-          Quản lý nhật ký truy cập, sao lưu cơ sở dữ liệu định kỳ, khôi phục trạng thái và giám sát an ninh hệ thống.
-        </Text>
+  // ---- Empty state ----
+  const emptyState = (
+    <div style={{ textAlign: 'center', padding: '40px 0' }}>
+      <Text style={{ color: textSecondary, fontSize: fontSizeMd }}>
+        Không có log nào phù hợp với bộ lọc. Thử thay đổi tiêu chí tìm kiếm.
+      </Text>
+    </div>
+  );
+
+  // ---- Detail modal fields ----
+  const r = selectedLog;
+  const severityEntry = r && r.severity ? SEVERITY_CONFIG[r.severity.toLowerCase()] : null;
+
+  // ---- Leader view ----
+  if (isLeader) {
+    return (
+      <div style={{ padding: spaceMd }}>
+        <ScreenHeader
+          breadcrumb={[
+            { label: 'Quản trị hệ thống' },
+            { label: 'Quản lý log truy cập' },
+          ]}
+        />
+        {renderAggregateStats()}
       </div>
+    );
+  }
 
-      <Tabs
-        activeKey={activeTab}
-        onChange={(key) => setActiveTab(key)}
-        type="card"
-        items={[
-          {
-            key: '1',
-            label: (
-              <span>
-                <HistoryOutlined />
-                Nhật ký truy cập
-              </span>
-            ),
-            children: (
-              <Card>
-                <div style={{ marginBottom: '16px' }}>
-                  <Row gutter={[16, 16]} align="middle">
-                    <Col xs={24} sm={8} md={4}>
-                      <Input
-                        placeholder="Tài khoản"
-                        prefix={<SearchOutlined />}
-                        value={searchUsername}
-                        onChange={(e) => setSearchUsername(e.target.value)}
-                      />
-                    </Col>
-                    <Col xs={24} sm={8} md={4}>
-                      <Input
-                        placeholder="Phân hệ"
-                        value={searchModule}
-                        onChange={(e) => setSearchModule(e.target.value)}
-                      />
-                    </Col>
-                    <Col xs={24} sm={8} md={4}>
-                      <Input
-                        placeholder="Hành động"
-                        value={searchAction}
-                        onChange={(e) => setSearchAction(e.target.value)}
-                      />
-                    </Col>
-                    <Col xs={24} sm={16} md={6}>
-                      <RangePicker
-                        style={{ width: '100%' }}
-                        value={dateRange}
-                        onChange={(val) => setDateRange(val as any)}
-                        placeholder={['Từ ngày', 'Đến ngày']}
-                      />
-                    </Col>
-                    <Col xs={24} sm={8} md={6}>
-                      <Space>
-                        <Button type="primary" onClick={fetchAccessLogs} icon={<SearchOutlined />}>
-                          Tìm kiếm
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            setSearchUsername('');
-                            setSearchModule('');
-                            setSearchAction('');
-                            setDateRange(null);
-                          }}
-                          icon={<ReloadOutlined />}
-                        >
-                          Làm mới
-                        </Button>
-                        <Button type="dashed" onClick={handleExportCsv} icon={<DownloadOutlined />}>
-                          Xuất CSV
-                        </Button>
-                      </Space>
-                    </Col>
-                  </Row>
-                </div>
-
-                <Table
-                  dataSource={accessLogs}
-                  columns={logColumns}
-                  rowKey="id"
-                  loading={logsLoading}
-                  pagination={{
-                    current: logPage,
-                    pageSize: logPageSize,
-                    total: totalAccessLogs,
-                    onChange: (p, ps) => {
-                      setLogPage(p);
-                      setLogPageSize(ps);
-                    },
-                    showSizeChanger: true,
-                    pageSizeOptions: ['10', '20', '50'],
-                  }}
-                />
-              </Card>
-            ),
-          },
-          {
-            key: '2',
-            label: (
-              <span>
-                <DatabaseOutlined />
-                Sao lưu & Phục hồi
-              </span>
-            ),
-            children: (
-              <Card
-                title="Quản lý sao lưu dữ liệu (H2 / PostgreSQL)"
-                extra={
-                  <Button
-                    type="primary"
-                    icon={<DatabaseOutlined />}
-                    loading={backupSubmitting}
-                    onClick={handleCreateBackup}
-                  >
-                    Tạo bản sao lưu mới
-                  </Button>
-                }
-              >
-                <Alert
-                  message="Lưu ý quan trọng về bảo mật & phục hồi"
-                  description="Các bản sao lưu tự động được thực hiện vào lúc 00:00 ngày Chủ nhật hàng tuần. Khi thực hiện phục hồi (Restore), toàn bộ các phiên làm việc hiện tại sẽ bị hủy và hệ thống sẽ tự động khôi phục về trạng thái được lưu. Hãy đảm bảo không có người dùng nào đang thay đổi dữ liệu quan trọng."
-                  type="warning"
-                  showIcon
-                  icon={<WarningOutlined />}
-                  style={{ marginBottom: '20px' }}
-                />
-
-                <Table
-                  dataSource={backups}
-                  columns={backupColumns}
-                  rowKey="id"
-                  loading={backupsLoading || restoreSubmitting}
-                  pagination={{ pageSize: 20 }}
-                />
-              </Card>
-            ),
-          },
-          {
-            key: '3',
-            label: (
-              <span>
-                <SafetyCertificateOutlined />
-                Giám sát SIEM
-              </span>
-            ),
-            children: (
-              <Spin spinning={siemLoading}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  {/* SIEM Metrics Cards */}
-                  <Row gutter={[16, 16]}>
-                    <Col xs={24} sm={12} md={6}>
-                      <Card variant="borderless" style={{ background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)' }}>
-                        <Statistic
-                          title="Tốc độ sự kiện (EPS)"
-                          value={siemMetrics?.eventsPerSecond ?? 0}
-                          precision={2}
-                          valueStyle={{ color: '#0369a1', fontWeight: 'bold' }}
-                          suffix="events/s"
-                        />
-                      </Card>
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                      <Card variant="borderless" style={{ background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)' }}>
-                        <Statistic
-                          title="Tỷ lệ truy cập lỗi"
-                          value={siemMetrics?.failureRate ?? 0}
-                          precision={2}
-                          valueStyle={{ color: '#b91c1c', fontWeight: 'bold' }}
-                          suffix="%"
-                        />
-                      </Card>
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                      <Card variant="borderless" style={{ background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' }}>
-                        <Statistic
-                          title="Tài khoản đang bị khóa"
-                          value={siemMetrics?.activeAlertsCount ?? 0}
-                          valueStyle={{ color: '#b45309', fontWeight: 'bold' }}
-                          suffix="accounts"
-                        />
-                      </Card>
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
-                      <Card variant="borderless" style={{ background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)' }}>
-                        <Statistic
-                          title="Cảnh báo an ninh (24h)"
-                          value={siemMetrics?.securityAlertsCount ?? 0}
-                          valueStyle={{ color: '#15803d', fontWeight: 'bold' }}
-                          suffix="failures"
-                        />
-                      </Card>
-                    </Col>
-                  </Row>
-
-                  {/* Summary Card */}
-                  <Row gutter={[16, 16]}>
-                    <Col xs={24} md={12}>
-                      <Card title="Trạng thái phân tích SIEM" extra={<ReloadOutlined onClick={fetchSiemMetrics} style={{ cursor: 'pointer' }} />}>
-                        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                          <div>
-                            <Text type="secondary">Tổng số sự kiện an ninh ghi nhận:</Text>
-                            <Title level={4} style={{ marginTop: '4px', marginBottom: 0 }}>
-                              {siemMetrics?.totalEventsCount?.toLocaleString() ?? 0}
-                            </Title>
-                          </div>
-                          <Row gutter={16}>
-                            <Col span={12}>
-                              <Statistic title="Nhật ký truy cập" value={siemMetrics?.accessLogsCount ?? 0} />
-                            </Col>
-                            <Col span={12}>
-                              <Statistic title="Nhật ký đăng nhập" value={siemMetrics?.loginAttemptsCount ?? 0} />
-                            </Col>
-                          </Row>
-                        </Space>
-                      </Card>
-                    </Col>
-
-                    <Col xs={24} md={12}>
-                      <Card title="Xuất báo cáo SIEM đa định dạng">
-                        <Text type="secondary" style={{ display: 'block', marginBottom: '16px' }}>
-                          Tải báo cáo phân tích an ninh hệ thống theo các định dạng tiêu chuẩn để báo cáo cấp trên.
-                        </Text>
-                        <Space wrap size="middle">
-                          <Button
-                            type="primary"
-                            icon={<FileWordOutlined />}
-                            onClick={() => handleExportSiem('word')}
-                            loading={exportingReport === 'word'}
-                          >
-                            Word (.docx)
-                          </Button>
-                          <Button
-                            type="primary"
-                            style={{ backgroundColor: '#1d6f42', borderColor: '#1d6f42' }}
-                            icon={<FileExcelOutlined />}
-                            onClick={() => handleExportSiem('excel')}
-                            loading={exportingReport === 'excel'}
-                          >
-                            Excel (.xlsx)
-                          </Button>
-                          <Button
-                            type="primary"
-                            danger
-                            icon={<FilePdfOutlined />}
-                            onClick={() => handleExportSiem('pdf')}
-                            loading={exportingReport === 'pdf'}
-                          >
-                            PDF
-                          </Button>
-                          <Button
-                            icon={<FileTextOutlined />}
-                            onClick={() => handleExportSiem('html')}
-                            loading={exportingReport === 'html'}
-                          >
-                            HTML
-                          </Button>
-                          <Button
-                            icon={<CodeOutlined />}
-                            onClick={() => handleExportSiem('xml')}
-                            loading={exportingReport === 'xml'}
-                          >
-                            XML
-                          </Button>
-                        </Space>
-                      </Card>
-                    </Col>
-                  </Row>
-                </div>
-              </Spin>
-            ),
-          },
+  // ---- Render ----
+  return (
+    <div style={{ padding: spaceMd }}>
+      {/* 1. ScreenHeader */}
+      <ScreenHeader
+        breadcrumb={[
+          { label: 'Quản trị hệ thống' },
+          { label: 'Quản lý log truy cập' },
         ]}
       />
+
+      {/* 2. Aggregate stats */}
+      {renderAggregateStats()}
+
+      {/* 3. FilterBar */}
+      <FilterBar
+        fields={[
+          {
+            key: 'dateRange',
+            type: 'dateRange',
+            label: 'Khoảng thời gian',
+            placeholder: 'Từ ngày - Đến ngày',
+          } as any,
+          {
+            key: 'donVi',
+            type: 'select',
+            label: 'Đơn vị',
+            placeholder: 'Chọn đơn vị',
+            options: orgOptions,
+          },
+          {
+            key: 'email',
+            type: 'search',
+            label: 'Email',
+            placeholder: 'Tìm theo email...',
+          },
+          {
+            key: 'keyword',
+            type: 'search',
+            label: 'Từ khóa',
+            placeholder: 'Tìm kiếm...',
+          },
+        ]}
+        onSearch={handleSearch}
+        onReset={handleReset}
+      />
+
+      {/* 4. StatusTabs */}
+      <div style={{ marginBottom: spaceMd }}>
+        <StatusTabs tabs={statusTabs} onChange={handleTabChange} />
+      </div>
+
+      {/* Error state */}
+      {error && (
+        <Alert
+          type="error"
+          message="Lỗi tải dữ liệu"
+          description={error}
+          showIcon
+          style={{ marginBottom: spaceMd }}
+          action={
+            <Button
+              size="small"
+              style={{ color: actionPrimary }}
+              onClick={fetchData}
+            >
+              Thử lại
+            </Button>
+          }
+        />
+      )}
+
+      {/* 5. DataTable */}
+      <DataTable
+        columns={columns}
+        dataSource={tableData}
+        rowKey="id"
+        loading={loading}
+        emptyState={emptyState}
+      />
+
+      {/* 6. Pagination */}
+      <Pagination
+        total={total}
+        current={page}
+        pageSize={pageSize}
+        pageSizeOptions={[10, 20, 50]}
+        onChange={handlePageChange}
+      />
+
+      {/* 7. Detail Modal */}
+      <Modal
+        open={modalVisible}
+        onCancel={closeDetail}
+        footer={
+          <Button
+            style={{
+              borderRadius: radiusPill,
+              height: 40,
+              fontSize: fontSizeMd,
+              borderColor: borderDefault,
+              color: textSecondary,
+            }}
+            onClick={closeDetail}
+          >
+            Đóng
+          </Button>
+        }
+        title={
+          <span
+            style={{
+              color: colors.sidebarBg,
+              fontWeight: fontWeightBold,
+              fontSize: fontSizeLg,
+            }}
+          >
+            Chi tiết log truy cập
+          </span>
+        }
+        width={isMobile ? '90vw' : 800}
+        destroyOnClose
+      >
+        <div style={{ borderTop: `1px solid ${borderDefault}`, marginBottom: spaceMd }} />
+        <Spin spinning={detailLoading}>
+          <div style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: spaceSm }}>
+            {r && (
+            <Form layout="vertical">
+              {/* Row 1 */}
+              <Row gutter={spaceMd}>
+                <Col span={12}>
+                  <Form.Item {...labelProps('Thời gian')} style={{ marginBottom: spaceFormField }}>
+                    <Input readOnly value={dayjs(r.createdAt).format('DD/MM/YYYY HH:mm:ss')} style={{ borderRadius: radiusPill, height: 40 }} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item {...labelProps('Loại log')} style={{ marginBottom: spaceFormField }}>
+                    <Input readOnly value={LOG_TYPE_LABEL[r.type?.toLowerCase()] || r.type || 'N/A'} style={{ borderRadius: radiusPill, height: 40 }} />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              {/* Row 2 */}
+              <Row gutter={spaceMd}>
+                <Col span={12}>
+                  <Form.Item {...labelProps('Mức độ')} style={{ marginBottom: spaceFormField }}>
+                    {severityEntry ? (
+                      <span style={{ ...badgeBaseStyle, background: `${severityEntry.color}15`, color: severityEntry.color }}>
+                        {severityEntry.label}
+                      </span>
+                    ) : (
+                      <span style={{ ...badgeBaseStyle, background: `${textTertiary}15`, color: textTertiary }}>{r.severity || 'N/A'}</span>
+                    )}
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item {...labelProps('Người dùng')} style={{ marginBottom: spaceFormField }}>
+                    <Input readOnly value={r.username} style={{ borderRadius: radiusPill, height: 40 }} />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              {/* Row 3 */}
+              <Row gutter={spaceMd}>
+                <Col span={12}>
+                  <Form.Item {...labelProps('Email')} style={{ marginBottom: spaceFormField }}>
+                    <Input readOnly value={r.email || 'N/A'} style={{ borderRadius: radiusPill, height: 40 }} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item {...labelProps('Đơn vị')} style={{ marginBottom: spaceFormField }}>
+                    <Input readOnly value={r.donVi || 'N/A'} style={{ borderRadius: radiusPill, height: 40 }} />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              {/* Row 4 */}
+              <Row gutter={spaceMd}>
+                <Col span={12}>
+                  <Form.Item {...labelProps('Địa chỉ IP')} style={{ marginBottom: spaceFormField }}>
+                    <Input readOnly value={r.ipAddress} style={{ borderRadius: radiusPill, height: 40, fontFamily: fontMono }} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item {...labelProps('Trình duyệt')} style={{ marginBottom: spaceFormField }}>
+                    <Input readOnly value={r.userAgent || 'N/A'} style={{ borderRadius: radiusPill, height: 40 }} />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              {/* Row 5 */}
+              <Row gutter={spaceMd}>
+                <Col span={12}>
+                  <Form.Item {...labelProps('Phiên đăng nhập')} style={{ marginBottom: spaceFormField }}>
+                    <Input readOnly value={r.sessionId || 'N/A'} style={{ borderRadius: radiusPill, height: 40, fontFamily: fontMono }} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item {...labelProps('Hành động')} style={{ marginBottom: spaceFormField }}>
+                    <Input readOnly value={translateAction(r.action)} style={{ borderRadius: radiusPill, height: 40 }} />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              {/* Row 6 */}
+              <Row gutter={spaceMd}>
+                <Col span={12}>
+                  <Form.Item {...labelProps('Đường dẫn')} style={{ marginBottom: spaceFormField }}>
+                    <Input readOnly value={r.requestPath || 'N/A'} style={{ borderRadius: radiusPill, height: 40, fontFamily: fontMono }} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item {...labelProps('Mã phản hồi')} style={{ marginBottom: spaceFormField }}>
+                    <Input readOnly value={r.responseCode != null ? String(r.responseCode) : 'N/A'} style={{ borderRadius: radiusPill, height: 40, fontFamily: fontMono }} />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              {/* Row 7 */}
+              <Row gutter={spaceMd}>
+                <Col span={12}>
+                  <Form.Item {...labelProps('Thời gian xử lý')} style={{ marginBottom: spaceFormField }}>
+                    <Input readOnly value={r.durationMs != null ? `${r.durationMs}ms` : 'N/A'} style={{ borderRadius: radiusPill, height: 40 }} />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item {...labelProps('Nội dung')} style={{ marginBottom: spaceFormField }}>
+                    <Input readOnly value={r.message || 'N/A'} style={{ borderRadius: radiusPill, height: 40 }} />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+
+              {/* Metadata */}
+              <Form.Item {...labelProps('Metadata')} style={{ marginBottom: 0 }}>
+                {r.metadata ? (
+                  <pre
+                    style={{
+                      fontFamily: fontMono,
+                      fontSize: fontSizeSm,
+                      maxHeight: 200,
+                      overflow: 'auto',
+                      background: surfaceCard,
+                      padding: spaceSm,
+                      borderRadius: radiusSm,
+                      border: `0.5px solid ${borderDefault}`,
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      margin: 0,
+                    }}
+                  >
+                    {formatMetadata(r.metadata)}
+                  </pre>
+                ) : (
+                  <Text style={{ color: textTertiary, fontSize: fontSizeMd }}>
+                    N/A
+                  </Text>
+                )}
+              </Form.Item>
+            </Form>
+          )}
+        </div>
+      </Spin>
+      </Modal>
     </div>
   );
 }

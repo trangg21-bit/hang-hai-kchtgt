@@ -28,6 +28,17 @@ public class AccessLogFilterRequest {
     /** Case-insensitive keyword search on detail/message field. */
     private String keyword;
 
+    // ── F-005 v2 filters (email, donVi, sessionId) ───────────────────
+
+    /** Filter by user email (denormalised on AccessLog). */
+    private String email;
+
+    /** Filter by organisational unit (denormalised on AccessLog). */
+    private String donVi;
+
+    /** Filter by session identifier. */
+    private String sessionId;
+
     // ── Accessors ─────────────────────────────────────────────────────
 
     public Long getUserId() { return userId; }
@@ -49,4 +60,13 @@ public class AccessLogFilterRequest {
     public void setSeverity(String severity) { this.severity = severity; }
     public String getKeyword() { return keyword; }
     public void setKeyword(String keyword) { this.keyword = keyword; }
+
+    // ── F-005 v2 accessors ───────────────────────────────────────────
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getDonVi() { return donVi; }
+    public void setDonVi(String donVi) { this.donVi = donVi; }
+    public String getSessionId() { return sessionId; }
+    public void setSessionId(String sessionId) { this.sessionId = sessionId; }
 }

@@ -101,6 +101,21 @@ public class AccessLogService {
                 predicates.add(cb.like(cb.lower(root.get("detail")), keywordPattern));
             }
 
+            // Email filter
+            if (filter.getEmail() != null && !filter.getEmail().isBlank()) {
+                predicates.add(cb.equal(root.get("email"), filter.getEmail().trim()));
+            }
+
+            // donVi filter
+            if (filter.getDonVi() != null && !filter.getDonVi().isBlank()) {
+                predicates.add(cb.equal(root.get("donVi"), filter.getDonVi().trim()));
+            }
+
+            // sessionId filter
+            if (filter.getSessionId() != null && !filter.getSessionId().isBlank()) {
+                predicates.add(cb.equal(root.get("sessionId"), filter.getSessionId().trim()));
+            }
+
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }

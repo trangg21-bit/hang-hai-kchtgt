@@ -23,6 +23,9 @@ public class AccessLogResponse {
     private final String module;
     private final String ipAddress;
     private final String userAgent;
+    private final String email;
+    private final String donVi;
+    private final String sessionId;
     private final AccessLogStatus status;
     private final String detail;
     private final LocalDateTime createdAt;
@@ -46,6 +49,9 @@ public class AccessLogResponse {
         this.module = entity.getModule();
         this.ipAddress = entity.getIpAddress();
         this.userAgent = entity.getUserAgent();
+        this.email = entity.getEmail();
+        this.donVi = entity.getDonVi();
+        this.sessionId = entity.getSessionId();
         this.status = entity.getStatus();
         this.detail = entity.getDetail();
         this.createdAt = entity.getCreatedAt();
@@ -68,6 +74,9 @@ public class AccessLogResponse {
     public String getModule() { return module; }
     public String getIpAddress() { return ipAddress; }
     public String getUserAgent() { return userAgent; }
+    public String getEmail() { return email; }
+    public String getDonVi() { return donVi; }
+    public String getSessionId() { return sessionId; }
     public AccessLogStatus getStatus() { return status; }
     public String getDetail() { return detail; }
     public LocalDateTime getCreatedAt() { return createdAt; }

@@ -21,12 +21,17 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * Interceptor to automatically capture request details and log them as audit events
- * if the controller handler method is annotated with {@link AuditLog}.
+ * Interceptor to automatically capture ALL API requests and log them as audit events.
+ * <p>
+ * When the controller handler method is annotated with {@link AuditLog}, the annotation
+ * values override auto-detected action/module/type. Otherwise the interceptor
+ * auto-detects these from the HTTP method and request path.
+ * </p>
  * <p>
  * F-005 changes: writes are now queued to {@link AsyncLogAppender} instead of
  * being saved synchronously. Interceptor also populates new fields:
- * type, severity, targetResource, requestPath, responseCode, durationMs, metadata.
+ * type, severity, targetResource, requestPath, responseCode, durationMs, metadata,
+ * email, donVi, sessionId.
  * </p>
  */
 @Component
@@ -37,6 +42,16 @@ public class AccessLogInterceptor implements HandlerInterceptor {
     private final AsyncLogAppender asyncLogAppender;
     private final UserRepository userRepository;
     private final AdminAuditLogRepository adminAuditLogRepository;
+
+    /**
+     * Simple in-memory cache to prevent duplicate log entries from the same user
+     * to the same endpoint within a short time window.
+     * Key: "userId:method:path", Value: timestamp of last log entry.
+     */
+    private final java.util.concurrent.ConcurrentHashMap<String, Long> recentLogCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static final long DEDUP_WINDOW_MS = 3000; // 3 seconds
 
     public AccessLogInterceptor(AsyncLogAppender asyncLogAppender, UserRepository userRepository,
                                 AdminAuditLogRepository adminAuditLogRepository) {
@@ -61,17 +76,30 @@ public class AccessLogInterceptor implements HandlerInterceptor {
             return;
         }
 
+        // ── Skip OPTIONS preflight ──────────────────────────────────────
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return;
+        }
+
         AuditLog auditLog = handlerMethod.getMethodAnnotation(AuditLog.class);
-        if (auditLog == null) {
+
+        // ── Skip sub-resource calls (tree, search, counts) unless @AuditLog annotated ──
+        if (auditLog == null && !isPrimaryRequest(request)) {
             return;
         }
 
         AccessLog logEntry = new AccessLog();
-        logEntry.setAction(auditLog.action());
-        logEntry.setModule(auditLog.module());
 
-        // ── Type mapping: @AuditLog.module() → LogType ─────────────────
-        logEntry.setType(mapModuleToType(auditLog.module()));
+        // ── Action / Module / Type: annotation overrides, else auto-detect ─
+        if (auditLog != null) {
+            logEntry.setAction(auditLog.action());
+            logEntry.setModule(auditLog.module());
+            logEntry.setType(mapModuleToType(auditLog.module()));
+        } else {
+            logEntry.setAction(detectAction(request));
+            logEntry.setModule(detectModule(request));
+            logEntry.setType(detectLogType(logEntry.getModule(), request.getMethod()));
+        }
 
         // ── Request path ────────────────────────────────────────────────
         logEntry.setRequestPath(request.getRequestURI());
@@ -83,7 +111,6 @@ public class AccessLogInterceptor implements HandlerInterceptor {
 
         // ── User-Agent ──────────────────────────────────────────────────
         String userAgent = request.getHeader("User-Agent");
-        // Sanitize: strip control characters
         logEntry.setUserAgent(sanitize(userAgent));
 
         // ── User authentication context ─────────────────────────────────
@@ -106,7 +133,11 @@ public class AccessLogInterceptor implements HandlerInterceptor {
         }
         logEntry.setUsername(username);
 
-        // Resolve userId from username
+        // ── Email, donVi, sessionId (F-005) ─────────────────────────────
+        logEntry.setEmail(resolveEmail(username));
+        logEntry.setDonVi(resolveDonVi(username));
+        logEntry.setSessionId(resolveSessionId(request));
+
         // Resolve userId from username
         String userIdStr = resolveUserId(username);
         if (userIdStr != null) {
@@ -126,18 +157,19 @@ public class AccessLogInterceptor implements HandlerInterceptor {
 
         // ── Status, severity, response code, duration ───────────────────
         int statusCode = response.getStatus();
-        long startTime = (Long) request.getAttribute("requestStartTime");
-        long endTime = System.currentTimeMillis();
-        logEntry.setDurationMs((int) (endTime - startTime));
+        Long startTimeObj = (Long) request.getAttribute("requestStartTime");
+        if (startTimeObj != null) {
+            logEntry.setDurationMs((int) (System.currentTimeMillis() - startTimeObj));
+        }
         logEntry.setResponseCode(statusCode);
+
+        String moduleForSeverity = (auditLog != null) ? auditLog.module() : logEntry.getModule();
 
         if (ex != null || statusCode >= 400) {
             logEntry.setStatus(AccessLogStatus.FAILED);
             String detailMsg = ex != null ? ex.getMessage() : "HTTP error status: " + statusCode;
             logEntry.setDetail(sanitize(detailMsg));
-
-            // Auto-assign severity based on context
-            logEntry.setSeverity(autoAssignSeverity(auditLog.module(), statusCode, ex));
+            logEntry.setSeverity(autoAssignSeverity(moduleForSeverity, statusCode, ex));
         } else {
             logEntry.setStatus(AccessLogStatus.SUCCESS);
             logEntry.setDetail("HTTP " + statusCode);
@@ -152,10 +184,16 @@ public class AccessLogInterceptor implements HandlerInterceptor {
         logEntry.setCreatedAt(now);
         logEntry.setUpdatedAt(now);
 
+        // ── Deduplication: skip if same user+method+path within 3 seconds ─
+        if (isDuplicateRequest(logEntry.getUserId(), request.getMethod(), logEntry.getRequestPath())) {
+            return;
+        }
+
         // ── Async batch queue (replaces sync repository.save()) ─────────
         asyncLogAppender.queue(logEntry);
 
         // Also save to AdminAuditLog if the user has admin authority
+        String actionForAdminLog = (auditLog != null) ? auditLog.action() : logEntry.getAction();
         User user = null;
 
         if (auth != null && auth.isAuthenticated()
@@ -184,11 +222,11 @@ public class AccessLogInterceptor implements HandlerInterceptor {
         if (user != null) {
             try {
                 log.info("Saving AdminAuditLog for admin: {}, action: {}, target: {}",
-                        user.getUsername(), auditLog.action(), logEntry.getTargetResource());
+                        user.getUsername(), actionForAdminLog, logEntry.getTargetResource());
                 AdminAuditLog adminLog = AdminAuditLog.create(
                     user.getId(),
                     user.getUsername(),
-                    auditLog.action(),
+                    actionForAdminLog,
                     logEntry.getTargetResource(),
                     logEntry.getDetail(),
                     logEntry.getIpAddress(),
@@ -200,6 +238,138 @@ public class AccessLogInterceptor implements HandlerInterceptor {
             }
         }
     }
+
+    // ── Deduplication helpers ─────────────────────────────────────────
+
+    /**
+     * Check if this request was already logged recently (same user, method, path within 3 seconds).
+     * If yes, skip. If no, record the timestamp and return false.
+     */
+    private boolean isDuplicateRequest(Long userId, String method, String path) {
+        String key = userId + ":" + method + ":" + path;
+        long now = System.currentTimeMillis();
+        Long lastTime = recentLogCache.put(key, now);
+
+        // Periodically clean old entries (every ~100 requests)
+        if (recentLogCache.size() > 500) {
+            recentLogCache.entrySet().removeIf(e -> (now - e.getValue()) > DEDUP_WINDOW_MS * 2);
+        }
+
+        if (lastTime != null && (now - lastTime) < DEDUP_WINDOW_MS) {
+            return true;
+        }
+        return false;
+    }
+
+    // ── Auto-detect helpers (F-005) ────────────────────────────────────
+
+    /**
+     * Auto-detect the action string from HTTP method and request path.
+     * Pattern: VERB_RESOURCE (e.g. GET /api/ports → VIEW_PORT_LIST)
+     */
+    private String detectAction(HttpServletRequest request) {
+        String method = request.getMethod().toUpperCase();
+        String path = request.getRequestURI();
+        String resource = getModuleName(path);
+        String verb = switch (method) {
+            case "GET" -> "VIEW";
+            case "POST" -> "CREATE";
+            case "PUT", "PATCH" -> "UPDATE";
+            case "DELETE" -> "DELETE";
+            default -> method;
+        };
+        boolean isSingle = path.matches(".*/\\d+$");
+        return verb + "_" + resource + (isSingle && "GET".equals(method) ? "" : method.equals("GET") ? "_LIST" : "");
+    }
+
+    /**
+     * Extract the real module name from path, skipping version prefixes like v1/v2.
+     * /api/v1/dashboard/... → "DASHBOARD"
+     * /api/users → "USERS"
+     */
+    private String getModuleName(String path) {
+        if (path.startsWith("/api/")) {
+            String[] parts = path.substring(5).split("/");
+            int startIdx = 0;
+            // Skip version prefix like v1, v2
+            if (parts.length > 0 && parts[0].matches("v\\d+")) {
+                startIdx = 1;
+            }
+            if (parts.length > startIdx && !parts[startIdx].isEmpty()) {
+                return parts[startIdx].toUpperCase().replace("-", "_");
+            }
+        }
+        return "SYSTEM";
+    }
+
+    /**
+     * Auto-detect the module name from the request URI's first path segment.
+     */
+    private String detectModule(HttpServletRequest request) {
+        return getModuleName(request.getRequestURI());
+    }
+
+    /**
+     * Infer LogType from detected module and HTTP method.
+     */
+    private LogType detectLogType(String module, String httpMethod) {
+        return switch (module.toUpperCase()) {
+            case "AUTH", "LOGIN", "LOGOUT" -> LogType.LOGIN;
+            case "USER" -> (httpMethod.equals("GET") ? LogType.ACCESS : LogType.ACCOUNT);
+            case "ADMIN", "SETTINGS", "CONFIG" -> LogType.CONFIGURATION;
+            default -> LogType.ACCESS;
+        };
+    }
+
+    /**
+     * Resolve the email of the user from their username via UserRepository.
+     * Returns null for anonymous users or lookup failures.
+     */
+    private String resolveEmail(String username) {
+        if (username == null || "anonymousUser".equals(username)) return null;
+        try {
+            var user = userRepository.findByUsername(username).orElse(null);
+            return user != null ? user.getEmail() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Resolve the organisational unit name of the user via
+     * {@link UserRepository#findByUsernameWithRelations(String)} to avoid
+     * LazyInitializationException on the OrgUnit relationship.
+     */
+    private String resolveDonVi(String username) {
+        if (username == null || "anonymousUser".equals(username)) return null;
+        try {
+            var user = userRepository.findByUsernameWithRelations(username).orElse(null);
+            return user != null && user.getOrgUnit() != null ? user.getOrgUnit().getName() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Resolve a stable session identifier from the Bearer JWT token or
+     * the HTTP session, truncated to 50 characters to fit the column.
+     */
+    private String resolveSessionId(HttpServletRequest request) {
+        try {
+            String h = request.getHeader("Authorization");
+            if (h != null && h.startsWith("Bearer ")) {
+                String t = h.substring(7);
+                return t.length() > 50 ? t.substring(0, 50) : t;
+            }
+            var s = request.getSession(true);
+            if (s != null) return s.getId();
+            return java.util.UUID.randomUUID().toString().substring(0, 50);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // ── End auto-detect helpers ─────────────────────────────────────────
 
     /**
      * Map @AuditLog.module() value to a LogType enum.
@@ -252,6 +422,54 @@ public class AccessLogInterceptor implements HandlerInterceptor {
             path = path.substring(0, queryIndex);
         }
         return path;
+    }
+
+    /**
+     * Only log primary resource requests. Sub-resource calls (tree, search, counts, summary)
+     * that are internal to a page load are skipped to avoid duplicate entries.
+     * Supports both /api/ and /v1/ prefixes used by backend controllers.
+     */
+    private boolean isPrimaryRequest(HttpServletRequest request) {
+        String path = request.getRequestURI();
+
+        // Skip static resources and non-API paths
+        if (path.contains(".")) return false; // static files like .js, .css, .png
+
+        // Accept /api/*, /v1/*, and common direct API paths
+        String relativePath;
+        if (path.startsWith("/api/")) {
+            relativePath = path.substring(5);
+        } else if (path.startsWith("/v1/")) {
+            relativePath = path.substring(4);
+        } else if (path.startsWith("/api")) {
+            relativePath = path.substring(5);
+        } else {
+            // Unknown prefix — skip
+            return false;
+        }
+
+        String[] segments = relativePath.split("/");
+        if (segments.length == 0 || segments[0].isEmpty()) return false;
+
+        // Single segment list endpoint → always primary
+        if (segments.length == 1) return true;
+
+        // Check last segment
+        String last = segments[segments.length - 1].toLowerCase();
+        if (last.matches("\\d+")) return true;
+        return !isSubResourceKeyword(last);
+    }
+
+    /**
+     * Known sub-resource keywords that indicate a supporting API call, not a primary user action.
+     */
+    private boolean isSubResourceKeyword(String segment) {
+        return switch (segment) {
+            // Supporting/internal calls that should not be logged as primary actions
+            case "tree", "search", "search-paged", "count", "counts", "summary",
+                 "sync", "health", "status" -> true;
+            default -> false;
+        };
     }
 
     /** Extract client IP from headers or remote address. */

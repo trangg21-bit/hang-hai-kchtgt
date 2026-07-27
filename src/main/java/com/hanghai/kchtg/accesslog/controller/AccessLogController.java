@@ -44,7 +44,7 @@ public class AccessLogController {
      * </p>
      */
     @GetMapping
-    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
+    @PreAuthorize("@auth.check(authentication, 'admin:view')")
     public ResponseEntity<ApiResponse<Page<AccessLogResponse>>> list(
             AccessLogFilterRequest filter,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC)
@@ -70,7 +70,7 @@ public class AccessLogController {
      * </p>
      */
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
+    @PreAuthorize("@auth.check(authentication, 'admin:view')")
     public ResponseEntity<ApiResponse<AccessLogResponse>> getById(@PathVariable Long id) {
         log.debug("Fetching access-log entry: id={}", id);
         AccessLogResponse response = service.findById(id);

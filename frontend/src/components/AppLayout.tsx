@@ -101,7 +101,7 @@ const pageTitles: Record<string, string> = {
   '/connections': 'Liên thông dữ liệu',
   '/reports': 'Báo cáo & Thống kê',
   '/settings': 'Cấu hình hệ thống',
-  '/logs': 'Nhật ký hệ thống',
+  '/logs': 'Quản lý log truy cập',
   '/symbols': 'Biểu tượng bản đồ',
   '/documents/legal': 'Văn bản pháp lý',
   '/documents/incidents': 'Sự cố hàng hải',
@@ -175,7 +175,7 @@ export default function AppLayout() {
         setOpenKeys(['stations']);
       } else if (selectedKey.startsWith('/reports')) {
         setOpenKeys(['reports-parent', 'reports-chung', 'reports-kcht']);
-      } else if (['/users', '/organizations', '/groups', '/roles'].includes(selectedKey)) {
+      } else if (['/users', '/organizations', '/groups', '/roles', '/logs'].includes(selectedKey)) {
         setOpenKeys(['system-admin']);
       }
     }
@@ -193,6 +193,7 @@ export default function AppLayout() {
         canAccessMenu('/organizations') ? { key: '/organizations', label: 'Quản lý đơn vị' } : null,
         canAccessMenu('/groups') ? { key: '/groups', label: 'Quản lý nhóm' } : null,
         canAccessMenu('/roles') ? { key: '/roles', label: 'Phân quyền' } : null,
+        canAccessMenu('/logs') ? { key: '/logs', label: 'Quản lý log truy cập' } : null,
       ].filter(Boolean),
     },
     { type: 'divider' as const },
@@ -392,8 +393,7 @@ export default function AppLayout() {
     { type: 'divider' as const },
     canAccessMenu('/symbols') ? { key: '/symbols', icon: <CompassOutlined />, label: 'Biểu tượng bản đồ' } : null,
     canAccessMenu('/settings') ? { key: '/settings', icon: <SettingOutlined />, label: 'Cấu hình hệ thống' } : null,
-    canAccessMenu('/logs') ? { key: '/logs', icon: <DashboardOutlined />, label: 'Nhật ký hệ thống' } : null,
-  ].filter(Boolean) as MenuProps['items'];
+    ].filter(Boolean) as MenuProps['items'];
 
   const isMobile = !screens.md;
 

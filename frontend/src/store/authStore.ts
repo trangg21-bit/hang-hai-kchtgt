@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import api from '../services/api';
 
 interface JwtPayload {
   sub?: string;
@@ -24,7 +25,7 @@ interface AuthState {
   isAuthenticated: boolean;
   token: string | null;
   login: (username: string, _password: string, token: string) => void;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const base64urlDecode = (str: string): string => {
@@ -81,7 +82,10 @@ export const useAuthStore = create<AuthState>((set) => {
       localStorage.setItem('auth_token', token);
     },
 
-    logout: () => {
+    logout: async () => {
+      try {
+        await api.post('/auth/logout');
+      } catch { /* silent — still clear state even if API fails */ }
       set({ user: null, isAuthenticated: false, token: null });
       localStorage.removeItem('auth_token');
     },

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * Authentication controller - handles login via JWT with 2-phase MFA (TOTP).
@@ -131,5 +132,17 @@ public class AuthController {
             log.warn("2FA login failed: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
+    }
+
+    /**
+     * Logout - invalidates the current session.  The frontend clears its token;
+     * this endpoint exists so the audit interceptor can record the logout event.
+     *
+     * @return success confirmation
+     */
+    @PostMapping("/logout")
+    @AuditLog(module = "AUTH", action = "LOGOUT")
+    public ResponseEntity<?> logout() {
+        return ResponseEntity.ok(Map.of("success", true, "message", "Đăng xuất thành công"));
     }
 }
