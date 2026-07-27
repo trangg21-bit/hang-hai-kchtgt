@@ -6,28 +6,27 @@ import type { PaginatedResponse } from '../types/common';
 // ============================================================
 export interface Symbol {
   id: string;
-  code: string;
   name: string;
   description?: string;
   image: string;
-  status: 'active' | 'inactive' | 'deprecated';
+  status: 'active' | 'inactive';
   createdBy: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateSymbolPayload {
-  code: string;
   name: string;
   description?: string;
   image: string;
+  status?: string;
 }
 
 export interface UpdateSymbolPayload {
   name?: string;
   description?: string;
   image?: string;
-  status?: 'active' | 'inactive' | 'deprecated';
+  status?: 'active' | 'inactive';
 }
 
 export interface SymbolFilters {
@@ -45,7 +44,6 @@ function extractData<T>(response: any): T {
 function mapSymbol(item: any): Symbol {
   return {
     id: item.id ?? '',
-    code: item.code ?? '',
     name: item.name ?? '',
     description: item.description ?? '',
     image: item.image ?? '',
@@ -89,24 +87,12 @@ export const symbolService = {
     return mapSymbol(extractData(resp));
   },
 
-  async getByCode(code: string): Promise<Symbol> {
-    const resp = await api.get('/symbols', { params: { search: code } });
-    const rawData: any = extractData(resp);
-    const items: any[] = Array.isArray(rawData)
-      ? rawData
-      : (rawData && Array.isArray(rawData.content) ? rawData.content : []);
-    const found = items.find((s: any) => s.code === code);
-    if (!found) throw new Error(`Biểu tượng ${code} không tồn tại`);
-    return mapSymbol(found);
-  },
-
   async create(payload: CreateSymbolPayload): Promise<Symbol> {
     const resp = await api.post('/symbols', {
-      code: payload.code,
       name: payload.name,
       description: payload.description,
       image: payload.image,
-      status: 'ACTIVE'
+      status: payload.status ? payload.status.toUpperCase() : 'ACTIVE'
     });
     return mapSymbol(extractData(resp));
   },

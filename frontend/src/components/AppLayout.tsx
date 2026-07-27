@@ -102,7 +102,7 @@ const pageTitles: Record<string, string> = {
   '/reports': 'Báo cáo & Thống kê',
   '/settings': 'Cấu hình hệ thống',
   '/logs': 'Quản lý log truy cập',
-  '/symbols': 'Biểu tượng bản đồ',
+  '/symbols': 'Quản lý biểu tượng trên bản đồ',
   '/documents/legal': 'Văn bản pháp lý',
   '/documents/incidents': 'Sự cố hàng hải',
   '/documents/port-planning': 'Quy hoạch bến cảng',
@@ -391,7 +391,7 @@ export default function AppLayout() {
     { type: 'divider' as const },
     canAccessMenu('/connections') ? { key: '/connections', icon: <ApiOutlined />, label: 'Liên thông dữ liệu' } : null,
     { type: 'divider' as const },
-    canAccessMenu('/symbols') ? { key: '/symbols', icon: <CompassOutlined />, label: 'Biểu tượng bản đồ' } : null,
+    canAccessMenu('/symbols') ? { key: '/symbols', icon: <CompassOutlined />, label: 'Quản lý biểu tượng trên bản đồ' } : null,
     canAccessMenu('/settings') ? { key: '/settings', icon: <SettingOutlined />, label: 'Cấu hình hệ thống' } : null,
     ].filter(Boolean) as MenuProps['items'];
 

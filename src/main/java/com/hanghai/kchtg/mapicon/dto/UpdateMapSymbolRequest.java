@@ -7,10 +7,11 @@ import lombok.Data;
 
 @Data
 public class UpdateMapSymbolRequest {
-    @NotBlank(message = "Tên ký hiệu không được để trống")
-    @Size(max = 100, message = "Tên ký hiệu tối đa 100 ký tự")
+    @NotBlank(message = "Tên biểu tượng không được để trống")
+    @Size(max = 255, message = "Tên biểu tượng tối đa 255 ký tự")
     private String name;
 
+    @Size(max = 500)
     private String description;
 
     @NotBlank(message = "Hình ảnh không được để trống")
