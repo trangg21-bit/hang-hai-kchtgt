@@ -3,7 +3,7 @@ id: F-068
 name: Danh sách Cảng biển
 slug: ui-ql-cb-danh-sach
 module-id: M-002
-status: proposed
+status: consolidated
 classification: local
 priority: medium
 created: 2026-07-01T04:08:08Z
@@ -89,3 +89,7 @@ Người dùng điều hướng đến trang danh sách Cảng biển từ menu 
 ## Testing Strategy
 
 Giao diện danh sách Cảng biển được kiểm thử tự động bằng React Testing Library cho các unit test: phân trang hiển thị đúng số bản ghi, tìm kiếm lọc chính xác kết quả theo maCang/tenCang/tinhThanhPho, bộ lọc trạng thái hoạt động áp dụng đúng, hành động Phê duyệt chỉ hiển thị với Leadership. Cypress được sử dụng cho end-to-end test: điều hướng từ menu → danh sách → tìm kiếm + lọc → click hành động xem chi tiết → xác nhận giao diện hiển thị đúng 5 cột và phân trang 20. Negative test: nhập từ khóa tìm kiếm rỗng hiển thị toàn bộ, tìm kiếm không có kết quả hiển thị thông báo "Không tìm thấy". Test bàn phím: Tab di chuyển qua các ô, Enter kích hoạt tìm kiếm và hành động.
+
+## Consolidation Note
+
+Consolidated into F-012 (Xem chi tiết Cảng biển) — 2026-07-27

@@ -17,12 +17,20 @@ last-updated: 2026-07-27T00:00:00Z
 | Module | M-001 (Quản trị hệ thống) |
 | Classification | local |
 | Priority | medium |
+<<<<<<< HEAD
+| Complexity | Simple (3 business rules, 1 actor) |
+=======
 | Complexity | Medium (12 business rules, 7 actors) |
+>>>>>>> b49df0ae43bc70fca972d07fec6f3525fa07df69
 | Tech Stack | Spring Boot + Spring Security + JWT + ReactJS + MSSQL 2022 |
 
-**Business Intent:** Quản trị hệ thống và bảo mật cần khả năng giám sát, tra cứu và phân tích toàn bộ hoạt động hệ thống thông qua log truy cập — phục vụ nghiệp vụ kiểm toán, phát hiện bất thường, xử lý sự cố và tuân thủ các quy định bảo mật về lưu trữ và truy xuất nhật ký hoạt động.
+**Business Intent:** Quản trị hệ thống cần khả năng tra cứu, xem và xuất lịch sử hoạt động truy cập hệ thống, bao gồm 3 hành động: Đăng nhập, Đăng xuất, Truy cập chức năng. Hỗ trợ lọc theo ngày truy cập, đơn vị và email.
 
+<<<<<<< HEAD
+**Scope:** Tra cứu log với 3 hành động, lọc theo ngày truy cập + đơn vị + email, xuất CSV, xem chi tiết.
+=======
 **Scope:** Tra cứu 5 nhóm log (Thao tác, Đăng nhập, Lỗi hệ thống, Tài khoản, Cấu hình) với lọc theo thời gian, đơn vị, email, từ khóa; xem chi tiết từng dòng log; và tự động cleanup theo retention policy.
+>>>>>>> b49df0ae43bc70fca972d07fec6f3525fa07df69
 
 ---
 
@@ -32,6 +40,15 @@ last-updated: 2026-07-27T00:00:00Z
 
 | # | Capability | Description |
 |---|---|---|
+<<<<<<< HEAD
+| 1 | Xem danh sách log | Hiển thị danh sách log phân trang với 3 hành động (Đăng nhập, Đăng xuất, Truy cập chức năng) |
+| 2 | Lọc theo ngày truy cập | Lọc log theo khoảng ngày (Từ ngày — Đến ngày) |
+| 3 | Lọc theo đơn vị | Lọc log theo đơn vị trực thuộc của người dùng |
+| 4 | Lọc theo email | Lọc log theo email người dùng |
+| 5 | Xem chi tiết log | Hiển thị toàn bộ thông tin log: thời gian, hành động, email, đơn vị, chức năng, IP, trình duyệt, phiên đăng nhập |
+| 6 | Xuất CSV | Export log ra file CSV (chỉ khi có quyền xuất) |
+| 7 | Phân trang | Phân trang danh sách log với điều hướng trang |
+=======
 | 1 | Xem danh sách log | Hiển thị danh sách log phân trang với 5 nhóm (Thao tác, Đăng nhập, Lỗi hệ thống, Tài khoản, Cấu hình) |
 | 2 | Lọc theo thời gian | Lọc log theo khoảng ngày bắt đầu — ngày kết thúc |
 | 3 | Lọc theo đơn vị | Lọc theo đơn vị/phòng ban của người dùng |
@@ -41,17 +58,18 @@ last-updated: 2026-07-27T00:00:00Z
 | 7 | Thống kê aggregate | Báo cáo tổng truy cập, unique users, success rate, avgDuration theo ngày/tháng |
 | 8 | Retention policy | Tự động xóa log cũ sau 90 ngày bởi cron job |
 | 9 | Phân trang | Phân trang danh sách log với điều hướng trang |
+>>>>>>> b49df0ae43bc70fca972d07fec6f3525fa07df69
 
 ### Out of Scope
 
 | # | Capability | Reason |
 |---|---|---|
-| 1 | Real-time log monitoring | Tích hợp SIEM ở F-012 |
-| 2 | Custom log format | Mặc định dùng standard format |
-| 3 | Log replication đến remote server | Chỉ lưu trong DB |
-| 4 | Log analytics / anomaly detection | Không thuộc phạm vi BA stage này |
-| 5 | Chỉnh sửa/xóa log thủ công | Log là immutable (BR-005-02) |
-| 6 | Gửi notification/alert bất thường | Không thuộc phạm vi |
+| 1 | Quản lý log lỗi, tài khoản, cấu hình | Chỉ tập trung vào log truy cập/đăng nhập |
+| 2 | Chỉnh sửa/xóa log thủ công | Log là immutable |
+| 3 | Tạo log thủ công | Chỉ hệ thống tự tạo log |
+| 4 | Thống kê aggregate | Không thuộc phạm vi |
+| 5 | Retention policy tự động xóa | Không thuộc phạm vi |
+| 6 | Cảnh báo bất thường | Không thuộc phạm vi |
 | 7 | Tích hợp SIEM bên ngoài | Không thuộc phạm vi |
 | 8 | Xuất CSV | Đã loại bỏ khỏi phạm vi F-005 |
 
@@ -59,6 +77,13 @@ last-updated: 2026-07-27T00:00:00Z
 
 ## 3. Actors & Permissions
 
+<<<<<<< HEAD
+| Role | Access |
+|---|---|
+| Người dùng được phân quyền | Xem danh sách log, xem chi tiết, xuất CSV (nếu được cấp quyền xuất) |
+
+Quyền hạn cụ thể (xem, xuất CSV) theo phân quyền hệ thống.
+=======
 | Role | Level | Access |
 |---|---|---|
 | system-admin (Super Admin) | Full access | Xem tất cả 5 nhóm log, cấu hình retention policy |
@@ -68,11 +93,20 @@ last-updated: 2026-07-27T00:00:00Z
 | Lanh dao | Aggregated view | Chỉ xem báo cáo thống kê aggregate, không xem chi tiết |
 | Can bo | Self only | Chỉ xem log của chính mình |
 | Ca nhan | No access | Không xem được log hệ thống |
+>>>>>>> b49df0ae43bc70fca972d07fec6f3525fa07df69
 
 ---
 
 ## 4. User Stories (MoSCoW)
 
+<<<<<<< HEAD
+| ID | Story | Priority |
+|---|---|---|
+| US-005-01 | Là người dùng được phân quyền, tôi muốn xem danh sách log truy cập hệ thống (Đăng nhập, Đăng xuất, Truy cập chức năng) để theo dõi hoạt động | Must |
+| US-005-02 | Là người dùng được phân quyền, tôi muốn lọc log theo ngày truy cập, đơn vị và email để tìm kiếm nhanh các bản ghi | Must |
+| US-005-03 | Là người dùng được phân quyền, tôi muốn xem chi tiết từng bản ghi log (thời gian, hành động, email, đơn vị, chức năng, IP, trình duyệt, phiên) để có đầy đủ thông tin | Should |
+| US-005-04 | Là người dùng có quyền xuất CSV, tôi muốn xuất danh sách log ra file CSV để phục vụ báo cáo | Should |
+=======
 | ID | Story | Priority | Actor |
 |---|---|---|---|
 | US-005-01 | **As** system-admin, **I want to** view all 5 log groups **so that** I can monitor system activity for audit and security purposes | Must | system-admin |
@@ -85,11 +119,23 @@ last-updated: 2026-07-27T00:00:00Z
 | US-005-09 | **As** Lanh dao, **I want to** view aggregate statistics (total accesses, unique users, success rate, avg duration) **so that** I can get a high-level overview of system usage | Could | Lanh dao |
 | US-005-10 | **As** system-admin, **I want to** configure retention policy (default 90 days) **so that** old logs are automatically cleaned up | Should | system-admin |
 | US-005-11 | **As** system-admin, **I want to** receive alerts when ≥5 login failures occur within 1 hour **so that** I can detect potential security breaches | Could | system-admin |
+>>>>>>> b49df0ae43bc70fca972d07fec6f3525fa07df69
 
 ---
 
 ## 5. Acceptance Criteria
 
+<<<<<<< HEAD
+| ID | Acceptance Criterion | Negative Path |
+|---|---|---|
+| AC-005-01 | Hệ thống hiển thị danh sách log với 3 hành động (Đăng nhập, Đăng xuất, Truy cập chức năng) và đầy đủ các cột: thời gian, email, đơn vị, hành động, chức năng, IP, trình duyệt, phiên | Nếu không có dữ liệu → hiển thị empty state |
+| AC-005-02 | Người dùng có thể lọc log theo ngày truy cập (Từ ngày — Đến ngày), đơn vị và email với kết quả phân trang chính xác | Nếu ngày bắt đầu > ngày kết thúc → hiển thị lỗi validation |
+| AC-005-03 | Không có kết quả phù hợp với bộ lọc → hiển thị thông báo "Không có log nào phù hợp với bộ lọc" | — |
+| AC-005-04 | Xem chi tiết log hiển thị đầy đủ: thời gian, hành động, email, đơn vị, chức năng, IP, trình duyệt, phiên đăng nhập | Với Đăng nhập/Đăng xuất: trường Chức năng hiển thị "—" |
+| AC-005-05 | Nút Xuất CSV chỉ hiển thị khi người dùng có quyền xuất; file CSV đúng định dạng | Nếu không có quyền → nút bị ẩn |
+| AC-005-06 | Log là immutable: không có nút Sửa/Xóa trên giao diện; không cho phép API UPDATE/DELETE | Attempt UPDATE/DELETE → HTTP 403 |
+| AC-005-07 | Phân trang hiển thị đúng số lượng bản ghi và điều hướng trang chính xác | Mặc định 20 dòng/trang |
+=======
 | ID | Acceptance Criterion | Linked BR | Negative Path |
 |---|---|---|---|
 | AC-005-01 | Hệ thống hiển thị đầy đủ 5 nhóm log với 8 cột: STT, Đơn vị, Chức năng, Địa chỉ IP, Trình duyệt, Phiên đăng nhập, Ngày truy cập, Thao tác | BR-005-01 | Nếu database trống → hiển thị empty state với hướng dẫn filter |
@@ -108,11 +154,19 @@ last-updated: 2026-07-27T00:00:00Z
 | AC-005-15 | UI responsive: mobile hiển thị log dạng card với thông tin thu gọn (timestamp + type + message preview) | BR-005-01 | Nếu viewport < 768px → sidebar collapse thành hamburger menu |
 | AC-005-16 | Thống kê aggregate hiển thị: tổng truy cập, số người dùng unique, tỷ lệ thành công, thời gian phản hồi trung bình theo ngày/tháng | BR-005-01 | Nếu không có dữ liệu trong khoảng thời gian → hiển thị 0 cho tất cả metrics |
 | AC-005-17 | Cảnh báo tự động khi ≥5 lần đăng nhập thất bại trong 1 giờ | BR-028 | Nếu <5 lần fail trong 1 giờ → không trigger alert |
+>>>>>>> b49df0ae43bc70fca972d07fec6f3525fa07df69
 
 ---
 
 ## 6. Business Rules
 
+<<<<<<< HEAD
+| ID | Rule | Applies-to | Source |
+|---|---|---|---|
+| BR-005-01 | Log ghi nhận 3 hành động: Đăng nhập, Đăng xuất, Truy cập chức năng | Tất cả log | Nghiệp vụ |
+| BR-005-02 | Log là immutable — không cho phép sửa hoặc xóa thủ công | Data Integrity | Audit requirement |
+| BR-005-03 | Chỉ hệ thống tự tạo log khi người dùng thực hiện hành động; không thể tạo log thủ công | Tạo log | Integrity constraint |
+=======
 | ID | Rule | Applies-to | Source | Exception |
 |---|---|---|---|---|
 | BR-005-01 | Log thuộc 5 nhóm: access, login, error, account, configuration — mỗi nhóm có cấu trúc metadata riêng | Tất cả log | Thiết kế dữ liệu | Không có |
@@ -127,16 +181,23 @@ last-updated: 2026-07-27T00:00:00Z
 | BR-025 | Log không được sửa đổi sau khi ghi (immutable) | Data Integrity | UC-020 | Retention cleanup |
 | BR-026 | Tự động xóa log sau retentionDays ngày | Cleanup | UC-022 | Không có |
 | BR-028 | Log failure login phải được cảnh báo (≥5 lần trong 1 giờ) | Alert | UC-020 | Không có |
+>>>>>>> b49df0ae43bc70fca972d07fec6f3525fa07df69
 
 ---
 
 ## 7. Entities
 
+<<<<<<< HEAD
+| Entity | Key Fields | Notes |
+|---|---|---|
+| **AccessLog** | id, thoi_gian_truy_cap, email, don_vi, hanh_dong (Đăng nhập/Đăng xuất/Truy cập chức năng), chuc_nang, dia_chi_ip, thong_tin_trinh_duyet, phien_dang_nhap | Bảng log chính, immutable |
+=======
 | Entity | Fields | Constraints | Notes |
 |---|---|---|---|
 | **AccessLog** | id (BIGINT PK), userId (BIGINT FK→UserAccount NULL), username (VARCHAR 50), email (VARCHAR 100), donVi (VARCHAR 100), action (VARCHAR 30 NOT NULL), targetResource (VARCHAR 100), ipAddress (VARCHAR 45), userAgent (TEXT), sessionId (VARCHAR 50), requestPath (VARCHAR 500 NULL), responseCode (INT), duration_ms (INT), status (VARCHAR 20 NOT NULL), type (ENUM: access, login, error, account, configuration), severity (ENUM: info, warning, error, critical), message (TEXT), metadata (JSON), createdAt (TIMESTAMP) | INDEX(userId, createdAt), INDEX(action, createdAt), INDEX(donVi, createdAt), INDEX(sessionId, createdAt), INSERT-only (no UPDATE/DELETE) | Bảng log chính, immutable. ⚠️ email, donVi, sessionId chưa có trong code hiện tại — cần bổ sung. |
 | **LogRetentionPolicy** | id (BIGINT PK), retentionDays (INT DEFAULT 90), cleanupSchedule (VARCHAR 50 DEFAULT '0 0 2 * * ?'), isActive (BOOLEAN DEFAULT true), createdAt (TIMESTAMP), updatedAt (TIMESTAMP) | retentionDays > 0 | Cấu hình retention policy |
 | **LogAggregate** | id (BIGINT PK), date (DATE UNIQUE), totalAccesses (INT DEFAULT 0), uniqueUsers (INT DEFAULT 0), successRate (DECIMAL 5,2), avgDuration (INT), createdAt (TIMESTAMP) | date UNIQUE | Thống kê aggregate hàng ngày |
+>>>>>>> b49df0ae43bc70fca972d07fec6f3525fa07df69
 
 > **⚠️ Khoảng trống so với code hiện tại:** Entity `AccessLog` trong code hiện chưa có 3 trường `email`, `donVi`, và `sessionId`. Đây là các trường cần bổ sung để đáp ứng đặc tả BA: cột "Đơn vị" và "Phiên đăng nhập" trên bảng danh sách, và khả năng lọc theo email. Các trường này nên được lưu trực tiếp (denormalized) vào bảng AccessLog tại thời điểm ghi log để tránh join khi truy vấn.
 
@@ -144,6 +205,13 @@ last-updated: 2026-07-27T00:00:00Z
 
 ## 8. API Endpoints
 
+<<<<<<< HEAD
+| Method | Endpoint | Description | Auth |
+|---|---|---|---|
+| GET | /api/v1/logs | Danh sách log (phân trang, filter by date/unit/email) | JWT |
+| GET | /api/v1/logs/{id} | Chi tiết log | JWT |
+| GET | /api/v1/logs/export | Xuất log CSV | JWT (cần quyền export) |
+=======
 | Method | Endpoint | Description | Auth | Role |
 |---|---|---|---|---|
 | GET | /api/v1/logs | Danh sách log (phân trang, filter by date/donVi/email/keyword) | JWT | Admin, Security |
@@ -166,13 +234,48 @@ last-updated: 2026-07-27T00:00:00Z
 | **error** | Lỗi hệ thống | Lỗi hệ thống, ngoại lệ | error | message, stackTrace (metadata), requestPath |
 | **account** | Tài khoản | Thay đổi tài khoản (tạo, sửa, khóa/mở khóa, reset password) | info | action, username, metadata (before/after values) |
 | **configuration** | Cấu hình | Thay đổi cấu hình hệ thống | info | action, username, metadata (config key, before/after values) |
+>>>>>>> b49df0ae43bc70fca972d07fec6f3525fa07df69
 
 ---
 
-## 10. Non-Functional Requirements (NFRs)
+## 9. Log Actions Detail
 
-| Area | Requirement | Target |
+| Hành động | Mô tả | Badge màu |
 |---|---|---|
+<<<<<<< HEAD
+| Đăng nhập | Người dùng đăng nhập vào hệ thống | Xanh lá |
+| Đăng xuất | Người dùng đăng xuất khỏi hệ thống | Xám |
+| Truy cập chức năng | Người dùng truy cập vào một chức năng cụ thể | Xanh dương |
+
+---
+
+## 10. Test Scenarios
+
+| ID | Scenario | Type | Expected Result |
+|---|---|---|---|
+| TS-005-01 | Xem danh sách log với filter ngày truy cập | E2E | Hiển thị đúng log trong khoảng thời gian, phân trang chính xác |
+| TS-005-02 | Lọc theo đơn vị | E2E | Kết quả chỉ hiển thị log của đơn vị được chọn |
+| TS-005-03 | Lọc theo email | E2E | Kết quả chỉ hiển thị log của email được nhập |
+| TS-005-04 | Xem chi tiết log | E2E | Hiển thị đầy đủ 8 trường thông tin |
+| TS-005-05 | Xuất CSV (có quyền) | E2E | File CSV đúng định dạng |
+| TS-005-06 | Xuất CSV (không có quyền) | Security | Nút Xuất CSV bị ẩn |
+| TS-005-07 | Không có nút Sửa/Xóa | UI | Giao diện chỉ có nút Xem chi tiết |
+| TS-005-08 | Phân trang | E2E | Phân trang hoạt động chính xác |
+| TS-005-09 | Empty state | UI | Hiển thị "Không có log nào phù hợp với bộ lọc" |
+| TS-005-10 | Đăng nhập/Đăng xuất → Chức năng hiển thị "—" | UI | Cột Chức năng hiển thị "—" cho 2 hành động này |
+
+---
+
+## 11. Pipeline Triage
+
+| Question | Answer | Rationale |
+|---|---|---|
+| Q1: Creates new domain elements? | Yes | AccessLog là entity mới với immutable semantics |
+| Q2: Affects system architecture? | No | Sử dụng stack hiện có, không thay đổi kiến trúc |
+| Q3: Approach clear from existing architecture? | Yes | Pattern đơn giản: Repository + Controller + read-only UI |
+
+**Triage Verdict:** Route to engineering-system-architect (Q1=Yes).
+=======
 | **Performance** | Query log danh sách < 2 giây với dataset < 100.000 entries; pagination hỗ trợ 1000+ entries mượt mà | Response time < 2s |
 | **Scalability** | Hỗ trợ batch insert 500-1000 records/batch cho auto-instrumentation | Batch insert |
 | **Security** | RBAC enforcement trên tất cả endpoints; immutability (INSERT-only) trên AccessLog; log injection prevention trong message field | 403 on unauthorized access |
@@ -375,3 +478,4 @@ Popup "Chi tiết log truy cập" hiển thị trong Modal (không dùng Drawer)
 | [AMBIGUITY-002] | Metadata format cho mỗi log type chưa được định nghĩa chi tiết | Trung | Cần spec metadata schema cho 5 log types | Định nghĩa JSON schema cho từng type trong domain model |
 | [AMBIGUITY-003] | Alert mechanism cho BR-028 (≥5 login failures/hour) chưa rõ hình thức | Trung | Alert gửi qua đâu? (email, toast, system notification?) | Xác định channel gửi alert trong BA stage tiếp theo |
 | [AMBIGUITY-004] | LogRetentionPolicy có thể cấu hình bởi ai? | Thấp | Chỉ system-admin hay admin cũng được? | Giới hạn ở system-admin |
+>>>>>>> b49df0ae43bc70fca972d07fec6f3525fa07df69

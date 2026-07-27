@@ -3,7 +3,7 @@ id: F-094
 name: "Lịch sử Cảng biển"
 slug: ui-ql-cb-lich-su
 module-id: M-002
-status: proposed
+status: cancelled
 classification: local
 priority: medium
 created: "2026-07-01T04:09:06Z"
@@ -83,3 +83,7 @@ Người dùng điều hướng đến trang lịch sử từ danh sách (F-068)
 ## Testing Strategy
 
 Giao diện lịch sử Cảng biển được kiểm thử bằng React Testing Library cho việc render đúng bảng với 5 cột, sắp xếp changedAt DESC, indicator "TẠO_MỚI"/"CẬP_NHẬT" trên mỗi hàng, và lọc theo field name. Cypress thực hiện end-to-end test: điều hướng đến lịch sử từ trang chi tiết → xác minh bảng hiển thị đúng các bản ghi LichSuThayDoi → xác minh sắp xếp (mới nhất đầu tiên) → nhập từ khóa lọc field (ví dụ: "tenCang") → xác minh chỉ hiển thị các bản ghi field = "tenCang" → click "Quay lại" → xác minh điều hướng đúng. Negative test: xác minh thông báo "Chưa có thay đổi" khi không có bản ghi lịch sử. Accessibility test: Tab qua bảng, keyboard navigation, tooltip hiển thị đúng giá trị cũ/mới khi hover.
+
+## Cancellation Note
+
+Cancelled per URD audit 2026-07-27: F-013 (Lịch sử Cảng biển) cancelled — URD III.4.30 does not require "xem lịch sử" for cảng biển.

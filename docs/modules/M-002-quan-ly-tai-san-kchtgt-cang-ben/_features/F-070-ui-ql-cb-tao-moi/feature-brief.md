@@ -3,7 +3,7 @@ id: F-070
 name: "Tạo mới Cảng biển"
 slug: ui-ql-cb-tao-moi
 module-id: M-002
-status: proposed
+status: consolidated
 classification: local
 priority: medium
 created: "2026-07-01T04:08:11Z"
@@ -83,3 +83,7 @@ Người dùng điều hướng đến trang "Tạo mới Cảng biển" từ da
 ## Testing Strategy
 
 Giao diện tạo mới Cảng biển được kiểm thử bằng React Testing Library cho việc render form 7 trường, validation inline (required fields, regex maCang VN-36, range GPS, max dienTich, GPS paired constraint), và xử lý lỗi 409 khi maCang trùng. Cypress thực hiện end-to-end test: điều hướng đến trang tạo mới → điền form hợp lệ → submit → xác nhận toast "Tạo mới thành công — chờ phê duyệt" → xác nhận điều hướng về danh sách với bản ghi mới. Negative test: điền maCang trùng → 409 → toast lỗi → form giữ nguyên dữ liệu; điền viDo = 100 → lỗi range; điền dienTich = 6000 → lỗi max. Accessibility test: Tab qua tất cả trường, Enter submit form.
+
+## Consolidation Note
+
+Consolidated into F-008 (Tạo mới Cảng biển) — 2026-07-27

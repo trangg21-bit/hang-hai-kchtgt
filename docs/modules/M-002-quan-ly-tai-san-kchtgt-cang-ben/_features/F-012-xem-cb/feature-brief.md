@@ -7,7 +7,7 @@ status: done
 classification: local
 priority: critical
 created: 2026-06-16T04:40:19Z
-last-updated: 2026-06-29T11:09:59Z
+last-updated: 2026-07-27
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -69,6 +69,12 @@ Người dùng đăng nhập vào hệ thống, truy cập vào mục quản lý
 2. Chỉ Cảng biển có trạng thái "Hiện hành" hoặc "Tạm ngừng" được hiển thị trong kết quả tìm kiếm mặc định; Cảng "Chờ phê duyệt" và "Đã xóa" chỉ hiển thị khi người dùng bật tùy chọn xem tất cả.
 3. Phân quyền hiển thị: Nhân viên vận hành chỉ xem được các trường cơ bản (mã, tên, tỉnh, trạng thái); các trường kỹ thuật mở rộng chỉ hiển thị cho vai trò Quản lý cảng trở lên.
 4. Kết quả tìm kiếm được cập nhật thời gian thực (live search) với độ trễ không quá 500ms.
+
+## UI Scope
+
+- **MH Danh sách:** Bảng danh sách Cảng biển với phân trang 20 bản ghi/trang, tìm kiếm theo mã/tên/tỉnh, lọc theo trạng thái hoạt động (HIỆN_HÀNH/TẠM_NGƯNG). Các cột: maCang, tenCang, tinhThanhPho, trạng thái phê duyệt (badge), updatedAt. Hành động: Xem chi tiết, Chỉnh sửa, Xóa, Lịch sử.
+- **MH Chi tiết:** Trang chi tiết Cảng biển hiển thị đầy đủ các trường, tích hợp bản đồ GPS, hiển thị thông tin người tạo/cập nhật. Phân quyền hiển thị trường theo vai trò (Nhân viên vận hành chỉ thấy cơ bản).
+- **MH Tìm kiếm:** Thanh tìm kiếm live search với debounce, lọc theo mã cảng/tên cảng/tỉnh/thành/trạng thái.
 
 ## Testing Strategy
 
