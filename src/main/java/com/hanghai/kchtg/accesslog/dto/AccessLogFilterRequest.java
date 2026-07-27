@@ -2,6 +2,9 @@ package com.hanghai.kchtg.accesslog.dto;
 
 import java.time.LocalDateTime;
 
+import lombok.Getter;
+import lombok.Setter;
+
 /**
  * Request DTO for filtering access-log entries in the list endpoint.
  * <p>
@@ -9,6 +12,7 @@ import java.time.LocalDateTime;
  * F-005 adds {@code type}, {@code severity}, and {@code keyword} filters.
  * </p>
  */
+@Getter @Setter
 public class AccessLogFilterRequest {
 
     private Long userId;
@@ -28,25 +32,16 @@ public class AccessLogFilterRequest {
     /** Case-insensitive keyword search on detail/message field. */
     private String keyword;
 
-    // ── Accessors ─────────────────────────────────────────────────────
+    // ── F-005 v2 filters (email, orgUnit, sessionId) ───────────────────
 
-    public Long getUserId() { return userId; }
-    public void setUserId(Long userId) { this.userId = userId; }
-    public String getModule() { return module; }
-    public void setModule(String module) { this.module = module; }
-    public String getAction() { return action; }
-    public void setAction(String action) { this.action = action; }
-    public LocalDateTime getFrom() { return from; }
-    public void setFrom(LocalDateTime from) { this.from = from; }
-    public LocalDateTime getTo() { return to; }
-    public void setTo(LocalDateTime to) { this.to = to; }
+    /** Filter by user email (denormalised on AccessLog). */
+    private String email;
 
-    // ── F-005 accessors ──────────────────────────────────────────────
+    /** Filter by organisational unit (denormalised on AccessLog). */
+    private String orgUnit;
 
-    public String getType() { return type; }
-    public void setType(String type) { this.type = type; }
-    public String getSeverity() { return severity; }
-    public void setSeverity(String severity) { this.severity = severity; }
-    public String getKeyword() { return keyword; }
-    public void setKeyword(String keyword) { this.keyword = keyword; }
+    /** Filter by session identifier. */
+    private String sessionId;
+
+
 }
