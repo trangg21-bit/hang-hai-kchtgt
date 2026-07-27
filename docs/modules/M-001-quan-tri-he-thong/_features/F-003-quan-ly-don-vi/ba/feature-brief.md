@@ -1,159 +1,99 @@
 ---
 id: F-003
-name: Quản lý đơn vị
+name: Quan ly don vi
 slug: quan-ly-don-vi
 module-id: M-001
 status: done
 classification: local
 priority: high
 created: 2026-06-16T04:40:53Z
-last-updated: 2026-06-28T00:00:00Z
+last-updated: 2026-07-27T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quản lý đơn vị
+# QUẢN TRỊ HỆ THỐNG
 
-## Description
+## Quản lý đơn vị
 
-Quan ly don vi Cuc, Chi cuc, Cang vu, TCT theo he thung cap phat
+### Mô tả chung
 
-## Business Intent
+| Nội dung | Mô tả |
+| --- | --- |
+| Mục đích | Cho phép người dùng quản lý cấu trúc tổ chức đơn vị hành chính theo hệ thống phân cấp 3 cấp, bao gồm tạo mới, chỉnh sửa, xóa, phê duyệt đơn vị và tra cứu thông tin đơn vị. |
+| Tác nhân | Người dùng được phân quyền chức năng Quản lý đơn vị. Quyền hạn cụ thể (xem, tạo, sửa, xóa, phê duyệt) theo phân quyền hệ thống. |
+| Luồng chính | Người dùng truy cập màn hình Quản lý đơn vị. Hệ thống hiển thị cấu trúc cây đơn vị (org tree) với khả năng mở rộng/thu gọn từng nhánh (trừ đơn vị cấp nhỏ nhất — không có chức năng collapse/expand) và khu vực tìm kiếm, bộ lọc. Người dùng có thể tìm kiếm theo tên hoặc mã đơn vị, lọc theo trạng thái. Trên mỗi dòng của cây có các nút thao tác: Xem, Sửa, Xóa, Phê duyệt (theo phân quyền và trạng thái). Người dùng nhấn Xem để mở màn hình chi tiết đơn vị, hiển thị đầy đủ thông tin và các nút thao tác (Sửa, Xóa, Phê duyệt). Người dùng nhấn Thêm đơn vị để mở form tạo mới, nhập các thông tin và nhấn Lưu. Hệ thống kiểm tra mã đơn vị unique, kiểm tra không tạo vòng lặp phân cấp, tự động tính cấp bậc (level) theo độ sâu trong cây, tạo đơn vị thành công. Người dùng có thể sửa thông tin đơn vị hoặc xóa đơn vị (chỉ khi không có đơn vị con và không có người dùng trực thuộc). |
+| Điều kiện trước | − Người dùng đã đăng nhập hệ thống. − Người dùng có quyền truy cập chức năng Quản lý đơn vị. − Đơn vị gốc (root) đã được khởi tạo trong hệ thống. |
+| Điều kiện sau | − Đơn vị được tạo/sửa/xóa thành công, cây cấu trúc được cập nhật và hiển thị toast thông báo. − Khi tạo đơn vị mới không chọn đơn vị cha: đơn vị được tạo ở cấp cao nhất. − Cấp bậc (level) được tính tự động dựa trên đơn vị cha (tối đa 3 cấp). |
+| Quy tắc nghiệp vụ | − Mã đơn vị (code) phải là duy nhất trong toàn hệ thống. − Không cho phép tạo vòng lặp phân cấp (circular reference). − Đơn vị gốc (root) không có đơn vị cha; trường hợp không chọn đơn vị cha khi tạo mới, đơn vị đó là đơn vị cấp cao nhất. − Hệ thống phân cấp giới hạn tối đa 3 cấp. − Không cho phép xóa đơn vị còn đơn vị con hoặc có người dùng trực thuộc. − Cấp bậc (level) được tính tự động theo độ sâu trong cây. − Tên đơn vị không được để trống, tối đa 200 ký tự. − Trên cây đơn vị, đơn vị cấp nhỏ nhất (cấp 3) không có chức năng collapse/expand. |
 
-Quan tri he thong - Quan ly don vi Cuc, Chi cuc, Cang vu, TCT
+### Mô tả màn hình
 
-## Flow Summary
+#### Cấu trúc cây đơn vị
 
-Quan tri he thong - Quan ly don vi Cuc, Chi cuc, Cang vu, TCT
+| STT | Tên trường / Điều khiển | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Mô tả |
+| --- | --- | --- | --- | --- | --- | --- |
+|  | TÌM KIẾM VÀ LỌC |  |  |  |  |  |
+| 1 | Ô Tìm kiếm | Textbox | Có | Không | Trống | Cho phép nhập từ khóa để tìm kiếm đơn vị theo tên hoặc mã đơn vị. Giới hạn tối đa 200 ký tự. Tìm kiếm tương đối (contains). |
+| 2 | Bộ lọc Trạng thái | Dropdown | Có | Không | Tất cả | Cho phép lọc danh sách theo trạng thái đơn vị. Giá trị: Tất cả, Sử dụng, Không sử dụng, Chờ phê duyệt. |
+| 3 | Nút Tìm kiếm | Button | Không | Không | — | Thực hiện tìm kiếm với các điều kiện đã nhập. |
+| 4 | Nút Làm mới | Button | Không | Không | — | Đưa toàn bộ điều kiện tìm kiếm và bộ lọc về mặc định. |
+| 5 | Nút Thêm đơn vị | Button | Không | Không | — | Mở modal tạo đơn vị mới. Chỉ hiển thị khi người dùng có quyền. |
+|  | CÂY CẤU TRÚC |  |  |  |  |  |
+| 1 | Cây đơn vị (Org Tree) | Tree | Có | Không | Mở rộng đến cấp 1 | Hiển thị cấu trúc phân cấp đơn vị dạng cây (tối đa 3 cấp). Mỗi nút hiển thị tên đơn vị. Hỗ trợ mở rộng/thu gọn từng nhánh. Đơn vị cấp nhỏ nhất (cấp 3) không có chức năng collapse/expand. Nút có đơn vị con hiển thị số lượng đơn vị con trong ngoặc. |
+| 2 | Nút Mở rộng tất cả | Button | Không | Không | — | Mở rộng toàn bộ các nhánh trong cây. |
+| 3 | Nút Thu gọn tất cả | Button | Không | Không | — | Thu gọn toàn bộ các nhánh, chỉ hiển thị đơn vị gốc. |
+|  | THAO TÁC TRÊN DÒNG |  |  |  |  |  |
+| 1 | Nút Xem | Button (icon) | Có | Không | — | Mở màn hình Xem chi tiết đơn vị. Luôn hiển thị. |
+| 2 | Nút Sửa | Button (icon) | Có | Không | — | Mở modal Tạo mới / Chỉnh sửa đơn vị. Hiển thị theo phân quyền. |
+| 3 | Nút Xóa | Button (icon) | Có | Không | — | Mở modal Xác nhận xóa. Disabled kèm tooltip nếu đơn vị còn đơn vị con hoặc có người dùng trực thuộc. Hiển thị theo phân quyền. |
+| 4 | Nút Phê duyệt | Button | Có | Không | — | Chỉ hiển thị khi đơn vị đang ở trạng thái Chờ phê duyệt và người dùng có quyền phê duyệt. Chuyển trạng thái đơn vị thành Sử dụng. |
 
-## Acceptance Criteria
+#### Xem chi tiết đơn vị
 
-- Quan ly thong tin don vi
-- Phan cap quyen don vi
+| STT | Tên trường / Điều khiển | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Mô tả |
+| --- | --- | --- | --- | --- | --- | --- |
+|  | THÔNG TIN ĐƠN VỊ |  |  |  |  |  |
+| 1 | Tên đơn vị | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị tên đơn vị. |
+| 2 | Mã đơn vị | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị mã đơn vị. |
+| 3 | Đơn vị cha | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị tên đơn vị cha. Đơn vị gốc hiển thị "—". |
+| 4 | Địa điểm (Tỉnh/Thành phố) | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị tỉnh/thành phố nơi đơn vị đặt trụ sở. |
+| 5 | Địa điểm chi tiết | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị địa chỉ chi tiết. Trống hiển thị "—". |
+| 6 | Số điện thoại | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị số điện thoại liên hệ. Trống hiển thị "—". |
+| 7 | Trạng thái | Label (Badge) | Không | Không | Theo dữ liệu hệ thống | Hiển thị trạng thái dạng badge: Sử dụng (xanh lá), Không sử dụng (xám), Chờ phê duyệt (vàng). |
+|  | THANH THAO TÁC |  |  |  |  |  |
+| 1 | Nút Sửa | Button | Có | Không | — | Mở modal Tạo mới / Chỉnh sửa. Hiển thị theo phân quyền. |
+| 2 | Nút Xóa | Button | Có | Không | — | Mở modal Xác nhận xóa. Disabled nếu có đơn vị con hoặc người dùng trực thuộc. |
+| 3 | Nút Phê duyệt | Button | Có | Không | — | Chỉ hiển thị khi trạng thái là Chờ phê duyệt và có quyền. |
+| 4 | Nút Quay lại | Button | Không | Không | — | Quay về màn hình cây đơn vị. |
 
-## In Scope
+#### Tạo mới / Chỉnh sửa đơn vị
 
-- Tạo mới đơn vị tổ chức (Cục, Chi cục, Cục vụ, TCT)
-- Cập nhật thông tin đơn vị (tên, mã đơn vị, mô tả, cấp bậc)
-- Xóa đơn vị tổ chức
-- Phân cấp hierarchical (cha-con) giữa các đơn vị
-- Hiển thị cây cấu trúc đơn vị (org tree)
-- Quản lý hệ thống mã đơn vị (code) duy nhất
-- Phân quyền/delegation ở cấp đơn vị
-- Tìm kiếm và lọc đơn vị theo tên, mã, cấp bậc
-- Di chuyển đơn vị sang cấp bậc hoặc đơn vị cha khác
+| STT | Tên trường / Điều khiển | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Mô tả |
+| --- | --- | --- | --- | --- | --- | --- |
+|  | FORM NHẬP LIỆU |  |  |  |  |  |
+| 1 | Trường Tên đơn vị | Textbox | Có | Có | Trống | Cho phép nhập tên đơn vị. Giới hạn 2-200 ký tự. Khi chỉnh sửa: hiển thị giá trị hiện tại. |
+| 2 | Trường Mã đơn vị | Textbox | Có (tạo mới) / Không (chỉnh sửa) | Có | Trống | Cho phép nhập mã viết tắt của đơn vị. Giới hạn 2-30 ký tự, chỉ chữ hoa, số và dấu gạch dưới. Phải duy nhất trong toàn hệ thống. Không cho phép chỉnh sửa sau khi đã tạo. |
+| 3 | Trường Đơn vị cha | Tree Selector | Có | Không | Trống | Cho phép chọn đơn vị cha từ cây cấu trúc. Không bắt buộc: nếu để trống, đơn vị được tạo là đơn vị cấp cao nhất. Hệ thống tự động kiểm tra không tạo vòng lặp phân cấp và giới hạn tối đa 3 cấp. |
+| 4 | Trường Địa điểm (Tỉnh/Thành phố) | Dropdown | Có | Có | (Chưa chọn) | Cho phép chọn tỉnh/thành phố nơi đơn vị đặt trụ sở. Danh sách lấy từ danh mục hành chính. |
+| 5 | Trường Địa điểm chi tiết | Textbox | Có | Không | Trống | Cho phép nhập địa chỉ chi tiết của đơn vị. Giới hạn tối đa 500 ký tự. |
+| 6 | Trường Số điện thoại | Textbox | Có | Không | Trống | Cho phép nhập số điện thoại liên hệ của đơn vị. Giới hạn 10-11 chữ số. |
+| 7 | Trường Trạng thái | Dropdown | Có | Có | Khi tạo mới: Sử dụng. Khi chỉnh sửa: hiển thị trạng thái hiện tại của đơn vị. | Cho phép chọn trạng thái đơn vị. Giá trị: Sử dụng, Không sử dụng. (Trạng thái Chờ phê duyệt không được chọn thủ công — do hệ thống tự gán hoặc do người có quyền phê duyệt thay đổi qua nút Phê duyệt.) |
+| 8 | Nút Hủy | Button | Không | Không | — | Đóng modal, không lưu thay đổi. |
+| 9 | Nút Lưu | Button | Không | Không | — | Nút luôn ở trạng thái enable. Khi nhấn, hệ thống kiểm tra validation các trường dữ liệu. Nếu có lỗi: hiển thị thông báo lỗi dưới các trường tương ứng và không thực hiện lưu. Nếu hợp lệ: thực hiện lưu, tự động tính cấp bậc (level), hiển thị loading và toast thông báo khi hoàn tất. |
 
-## Out of Scope
+#### Xác nhận xóa đơn vị
 
-- Quản lý nhân sự trực thuộc đơn vị — thuộc F-001 (User Management)
-- Tự động gán quyền dựa trên đơn vị — quyền vẫn do admin hệ thống quản lý
-- Tích hợp với hệ thống danh mục tổ chức của Bộ/Cơ quan cấp trên
-- Xuất báo cáo cấu trúc tổ chức (org chart) dạng đồ họa
-- Lịch sử thay đổi cơ cấu tổ chức theo thời gian
-- Phân cấp đơn vị sâu hơn 3 cấp (ví dụ: phòng, tổ trong Chi cục)
-
-## Roles + Permissions
-
-| Role | Level | Notes |
-|---|---|---|
-| system-admin | Full CRUD + Quản lý cấu trúc | Toàn quyền tạo/sửa/xóa đơn vị, di chuyển đơn vị, phân cấp; không thể xóa đơn vị hệ thống gốc |
-| admin | CRUD + Phân cấp (trong phạm vi) | Quản lý đơn vị trong phân hệ được giao; không được xóa đơn vị cấp cao hơn mình |
-| user | Read-only | Chỉ có thể xem cây cấu trúc đơn vị và thông tin chi tiết; không có quyền chỉnh sửa |
-
-## Entities
-
-- **Organization**: Bảng chính quản lý đơn vị tổ chức (id, name, code, type, parentId, level, description, createdBy, createdDate, updatedDate, status)
-- **OrgHierarchy**: Bảng hỗ trợ duy trì quan hệ phân cấp và path cho việc traverse cây (id, orgId, parentId, level, fullPath, sortOrder, effectiveDate, expiryDate)
-
-## Business Rules
-
-| ID | Rule | Applies-to | Source |
-|---|---|---|---|
-| BR-003-01 | Mã đơn vị (code) phải là duy nhất trong toàn hệ thống; không được phép trùng mã | Tạo/Sửa đơn vị | Dữ liệu master |
-| BR-003-02 | Không cho phép tạo vòng lặp phân cấp (circular reference): đơn vị A không thể là con của chính nó hoặc của đơn vị con mình | Phân cấp hierarchical | Integrity constraint |
-| BR-003-03 | Đơn vị gốc (root) không có parentId; tất cả đơn vị phải có tối thiểu một đường dẫn (path) về root | Cấu trúc cây | Thiết kế dữ liệu |
-| BR-003-04 | Loại đơn vị được giới hạn trong các loại: Cục, Chi cục, Cục vụ, TCT; không cho phép thêm loại mới | Tạo/Sửa đơn vị | Nghiệp vụ hành chính |
-| BR-003-05 | Khi di chuyển đơn vị con sang đơn vị cha mới, toàn bộ cây con của đơn vị đó cũng được di chuyển theo | Di chuyển đơn vị | Nghiệp vụ |
-| BR-003-06 | Không cho phép xóa đơn vị còn có đơn vị con hoặc có người dùng thuộc quyền | Xóa đơn vị | Integrity constraint |
-| BR-003-07 | Cấp bậc đơn vị (level) được tính tự động theo độ sâu trong cây phân cấp | Tính toán level | Business logic |
-| BR-003-08 | Tên đơn vị không được để trống và có tối đa 200 ký tự | Validation | UI/UX |
-
-## Testing Strategy
-
-- **Unit Testing (Backend)**:
-  - Kiểm tra circular reference detection khi phân cấp (BR-003-02)
-  - Kiểm tra unique constraint trên code đơn vị (BR-003-01)
-  - Kiểm tra tự động tính level (BR-003-07)
-  - Kiểm tra cascade di chuyển đơn vị (BR-003-05)
-  - Authorization check cho các endpoint theo role
-
-- **Integration Testing (Backend)**:
-  - Test flow: tạo root → tạo children → tree traversal → move child
-  - Test DB constraints: duplicate code, delete with children, circular ref
-  - Test OrgHierarchy table consistency after move/create/delete operations
-  - Test DB constraint for valid org types (BR-003-04)
-
-- **E2E Testing (Frontend + Backend)**:
-  - Test đầy đủ CRUD flow trên giao diện ReactJS
-  - Test hiển thị cây phân cấp (org tree) với expand/collapse
-  - Test search/filter đơn vị theo tên, mã, cấp bậc
-  - Test di chuyển đơn vị sang cấp cha khác với validation
-  - Test permission UI: user thường không thấy nút "Thêm/Sửa/Xóa"
-  - Test form tạo đơn vị với validation realtime
-
-- **Security Testing**:
-  - Kiểm tra RBAC enforcement cho phân cấp: admin đơn vị thấp không quản lý được đơn vị cao hơn
-  - Kiểm tra cascade delete protection (BR-003-06)
-
-- **UI/UX Testing**:
-  - Responsive sidebar trên mobile (collapse hamburger)
-  - Data table sticky header, hover row, action column positioned last
-  - Loading skeleton/spinner, empty state, error state với retry
-  - Form validation realtime với error message dưới mỗi trường
-  - Toast notification cho action thành công/thất bại
-
-## UI/UX Requirements
-
-### Layout & Navigation
-- Bố cục cố định: Sidebar trái cố định (menu điều hướng), Header trên cùng (tên admin, avatar, nút logout), Khu vực nội dung chính phía dưới
-- Sidebar hiển thị menu: "Quản lý người dùng", "Quản lý nhóm", "Quản lý đơn vị", "Tài khoản Admin", "Log truy cập", "Biểu tượng bản đồ", "Kết nối liên thông"
-- Sidebar thu gọn thành icon/hamburger menu trên thiết bị di động (breakpoint < 768px)
-
-### Design Style
-- Giao diện dashboard admin hiện đại, tối giản
-- Bảng màu trung tính (xám/xanh dương), màu nhấn cho các hành động chính
-- Typography: font sans-serif (Inter hoặc Roboto), kích thước chữ rõ ràng
-- Card-based layout cho form và thông tin chi tiết
-
-### Data Tables
-- Sticky header, hover effect cho từng hàng
-- Cột hành động (Sửa/Xóa) luôn nằm cuối bảng
-- Phân trang (pagination) hiển thị số lượng record và điều hướng trang
-- Nút "Thêm đơn vị" nổi bật ở góc trên bên phải bảng
-- Toolbar tìm kiếm và lọc phía trên bảng
-
-### States & Feedback
-- **Loading**: Skeleton screen hoặc spinner khi đang tải dữ liệu
-- **Empty State**: Thông điệp thân thiện + nút hành động (ví dụ: "Chưa có đơn vị nào. Nhấn 'Thêm đơn vị' để bắt đầu.")
-- **Error State**: Hiển thị thông báo lỗi rõ ràng + nút "Thử lại"
-- **Action Feedback**: Toast notification ("Đã lưu thành công", "Đã xóa thành công") cho thao tác thành công; xác nhận modal cho xóa đơn vị
-- **Form**: Validation realtime, lỗi hiển thị dưới mỗi trường, nút Submit disabled khi có lỗi + loading indicator khi gửi
-
-### Permission UI
-- Ẩn/hiện nút hành động dựa trên vai trò của người dùng hiện tại
-- Ví dụ: User thường chỉ thấy nút "Xem chi tiết", admin thấy "Thêm/Sửa/Xóa/Di chuyển"
-- Điều khiển quyền ở mức giao diện (interface-level permission control)
-- Nút bị disabled với tooltip giải thích lý do khi user không có quyền
-
-### Specific Features
-- **Cấu trúc cây đơn vị (Org Tree)**: Hiển thị dạng cây phân cấp với expand/collapse; icon phân biệt loại đơn vị (Cục/Chi cục/Cục vụ/TCT); breadcrumb path cho mỗi đơn vị
-- **Danh sách đơn vị**: Bảng phân trang với search theo tên/mã, filter theo loại và cấp bậc; cột hiển thị mã, tên, loại, cấp bậc, số lượng đơn vị con
-- **Form tạo/sửa đơn vị**: Validation realtime cho mã đơn vị (duy nhất), tên (bắt buộc + tối đa 200 ký tự), chọn loại đơn vị (dropdown), chọn đơn vị cha (tree selector)
-- **Di chuyển đơn vị**: Modal chọn đơn vị cha mới với validation circular reference; auto-rebuild org tree sau khi di chuyển
-- **Responsive**: Mobile hiển thị org tree dạng list với indentation thay vì tree đồ họa
+| STT | Tên trường / Điều khiển | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Mô tả |
+| --- | --- | --- | --- | --- | --- | --- |
+|  | XÁC NHẬN XÓA |  |  |  |  |  |
+| 1 | Nội dung xác nhận | Label | Không | Không | — | Hiển thị thông báo: "Bạn có chắc chắn muốn xóa đơn vị \"{tên đơn vị}\"? Hành động này không thể hoàn tác." |
+| 2 | Cảnh báo còn đơn vị con | Label | Không | Không | — | Nếu đơn vị còn đơn vị con trực thuộc: hiển thị lỗi "Không thể xóa đơn vị còn X đơn vị con. Vui lòng di chuyển hoặc xóa đơn vị con trước." và không cho phép xóa. |
+| 3 | Cảnh báo có người dùng trực thuộc | Label | Không | Không | — | Nếu đơn vị có người dùng trực thuộc: hiển thị lỗi "Không thể xóa đơn vị đang có người dùng trực thuộc." và không cho phép xóa. |
+| 4 | Nút Hủy | Button | Không | Không | — | Đóng modal, không thực hiện xóa. |
+| 5 | Nút Xóa | Button | Không | Không | — | Thực hiện xóa đơn vị. Chỉ hiển thị khi không có ràng buộc. Màu đỏ (danger). |
 
 ## Context
 
-### Tech Stack
 - Backend: Spring Boot + Spring Security + JWT
 - Frontend: ReactJS
 - Database: MSSQL 2022

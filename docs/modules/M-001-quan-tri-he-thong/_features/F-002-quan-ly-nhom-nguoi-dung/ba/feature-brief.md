@@ -7,7 +7,7 @@ status: done
 classification: local
 priority: high
 created: 2026-06-16T04:40:32Z
-last-updated: 2026-07-24T00:00:00Z
+last-updated: 2026-07-27T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -21,10 +21,10 @@ consumed_by_modules: []
 | --- | --- |
 | Mục đích | Cho phép người dùng quản lý tập trung các nhóm người dùng trong hệ thống, bao gồm tạo mới, chỉnh sửa, xóa nhóm theo loại (phòng ban, dự án, tùy chỉnh), quản lý thành viên nhóm (thêm, xóa), phân quyền cho nhóm (gán vai trò cho nhóm để thành viên thừa hưởng quyền) và tra cứu lịch sử thay đổi. |
 | Tác nhân | Người dùng được phân quyền chức năng Quản lý nhóm người dùng. Quyền hạn cụ thể (xem, tạo, sửa, xóa, thêm/xóa thành viên, phân quyền nhóm, xem lịch sử) theo phân quyền hệ thống. |
-| Luồng chính | Người dùng truy cập màn hình Quản lý nhóm người dùng. Hệ thống hiển thị danh sách nhóm với khu vực tìm kiếm và bộ lọc. Người dùng có thể tìm kiếm theo tên nhóm, lọc theo loại nhóm hoặc trạng thái. Người dùng nhấn Tìm kiếm, hệ thống hiển thị danh sách kết quả phù hợp. Người dùng nhấn Thêm nhóm để mở form tạo mới, nhập tên, mã, loại nhóm, mô tả và nhấn Lưu. Hệ thống kiểm tra tên và mã nhóm unique, tạo nhóm thành công. Sau khi tạo, người dùng có thể mở modal Quản lý thành viên để thêm người dùng vào nhóm. Người dùng có thể mở modal Phân quyền cho nhóm, chọn một hoặc nhiều vai trò từ danh sách để gán cho nhóm; toàn bộ thành viên hiện tại và tương lai của nhóm sẽ thừa hưởng quyền từ các vai trò được gán. Người dùng có thể sửa thông tin nhóm hoặc xóa nhóm (chỉ khi nhóm không còn thành viên). Người dùng có thể nhấn vào tên nhóm để xem chi tiết với 3 tab: Thông tin nhóm, Danh sách thành viên, Lịch sử thay đổi. Cá nhân chỉ xem được danh sách nhóm mình tham gia qua chế độ lọc myGroups. |
+| Luồng chính | Người dùng truy cập màn hình Quản lý nhóm người dùng. Hệ thống hiển thị danh sách nhóm với khu vực tìm kiếm và bộ lọc. Người dùng có thể tìm kiếm theo tên nhóm, lọc theo loại nhóm hoặc trạng thái. Người dùng nhấn Tìm kiếm, hệ thống hiển thị danh sách kết quả phù hợp. Người dùng nhấn Thêm nhóm để mở form tạo mới, nhập tên, mã, loại nhóm, mô tả, trạng thái và nhấn Lưu. Hệ thống kiểm tra tên và mã nhóm unique, tạo nhóm thành công. Sau khi tạo, người dùng có thể mở modal Quản lý thành viên để thêm người dùng vào nhóm. Người dùng có thể mở modal Phân quyền cho nhóm, chọn một hoặc nhiều vai trò từ danh sách để gán cho nhóm; toàn bộ thành viên hiện tại và tương lai của nhóm sẽ thừa hưởng quyền từ các vai trò được gán. Người dùng có thể sửa thông tin nhóm hoặc xóa nhóm (chỉ khi nhóm không còn thành viên). Người dùng có thể nhấn vào tên nhóm để xem chi tiết với 3 tab: Thông tin nhóm, Danh sách thành viên, Lịch sử thay đổi. Cá nhân chỉ xem được danh sách nhóm mình tham gia qua chế độ lọc myGroups. |
 | Điều kiện trước | − Người dùng đã đăng nhập hệ thống. − Người dùng có quyền truy cập chức năng Quản lý nhóm người dùng. − Danh sách người dùng và vai trò đã có sẵn từ F-001. |
 | Điều kiện sau | − Nhóm được tạo/sửa/xóa thành công, hiển thị toast thông báo và ghi nhận vào GroupHistory. − Thành viên được thêm/xóa khỏi nhóm, cập nhật danh sách thành viên và ghi GroupHistory. − Khi gán vai trò cho nhóm, toàn bộ thành viên hiện tại được thừa hưởng quyền từ các vai trò đó. − Khi thêm thành viên mới vào nhóm, tự động kế thừa quyền từ các vai trò đã gán cho nhóm. − Khi xóa thành viên khỏi nhóm, quyền thừa hưởng từ nhóm bị thu hồi (không ảnh hưởng đến quyền gán trực tiếp cho user từ F-001). |
-| Quy tắc nghiệp vụ | − Tên nhóm phải là duy nhất trong toàn hệ thống; không cho phép trùng tên khi tạo mới hoặc sửa. − Mã nhóm (code) phải là duy nhất trong toàn hệ thống. − Nhóm chỉ được xóa khi không còn thành viên; chỉ Admin có quyền xóa nhóm. − Một người dùng có thể thuộc nhiều nhóm khác nhau cùng lúc. − Không được thêm cùng một người dùng vào cùng một nhóm hai lần. − Người dùng bị khóa vẫn được giữ trong nhóm nhưng không có hiệu lực thực thi. − Khi xóa người dùng khỏi hệ thống, tự động xóa record tương ứng trong GroupMember. − Tên nhóm không được để trống, tối đa 200 ký tự. − GroupType chỉ cho phép 3 giá trị: department (phòng ban), project (dự án), custom (tùy chỉnh). − Mọi thay đổi trên nhóm (tạo, sửa, xóa, thêm/xóa thành viên) phải được ghi nhận vào GroupHistory. − Admin có thể gán một hoặc nhiều vai trò (Role) cho nhóm; toàn bộ thành viên trong nhóm được thừa hưởng quyền từ các vai trò được gán. − Khi thành viên rời khỏi nhóm, quyền thừa hưởng từ nhóm bị thu hồi (không ảnh hưởng đến quyền gán trực tiếp cho user từ F-001). − Khi thêm thành viên mới vào nhóm, thành viên tự động có quyền từ các vai trò đã gán cho nhóm. |
+| Quy tắc nghiệp vụ | − Tên nhóm phải là duy nhất trong toàn hệ thống; không cho phép trùng tên khi tạo mới hoặc sửa. − Mã nhóm (code) phải là duy nhất trong toàn hệ thống. − Nhóm chỉ được xóa khi không còn thành viên; chỉ Admin có quyền xóa nhóm. − Một người dùng có thể thuộc nhiều nhóm khác nhau cùng lúc. − Không được thêm cùng một người dùng vào cùng một nhóm hai lần. − Người dùng bị khóa vẫn được giữ trong nhóm nhưng không có hiệu lực thực thi. − Khi xóa người dùng khỏi hệ thống, tự động xóa record tương ứng trong GroupMember. − Tên nhóm không được để trống, tối đa 200 ký tự. − GroupType chỉ cho phép 3 giá trị: department (phòng ban), project (dự án), custom (tùy chỉnh). − Mọi thay đổi trên nhóm (tạo, sửa, xóa, thêm/xóa thành viên) phải được ghi nhận vào GroupHistory. − Admin có thể gán một hoặc nhiều vai trò (Role) cho nhóm; toàn bộ thành viên trong nhóm được thừa hưởng quyền từ các vai trò được gán. − Khi thành viên rời khỏi nhóm, quyền thừa hưởng từ nhóm bị thu hồi (không ảnh hưởng đến quyền gán trực tiếp cho user từ F-001). − Khi thêm thành viên mới vào nhóm, thành viên tự động có quyền từ các vai trò đã gán cho nhóm. − Trạng thái nhóm: Sử dụng hoặc Không sử dụng; mặc định Sử dụng khi tạo mới. |
 
 ### Mô tả màn hình
 
@@ -35,7 +35,7 @@ consumed_by_modules: []
 |  | TÌM KIẾM |  |  |  |  |  |
 | 1 | Ô Tìm kiếm | Textbox | Có | Không | Trống | Cho phép nhập từ khóa để tìm kiếm nhóm theo tên. Giới hạn tối đa 200 ký tự. Tìm kiếm tương đối (contains). |
 | 2 | Bộ lọc Loại nhóm | Dropdown | Có | Không | Tất cả | Cho phép lọc danh sách theo loại nhóm. Giá trị: Tất cả, Phòng ban (department), Dự án (project), Tùy chỉnh (custom). |
-| 3 | Bộ lọc Trạng thái | Dropdown | Có | Không | Tất cả | Cho phép lọc danh sách theo trạng thái nhóm. Giá trị: Tất cả, Hoạt động (active), Không hoạt động (inactive). |
+| 3 | Bộ lọc Trạng thái | Dropdown | Có | Không | Tất cả | Cho phép lọc danh sách theo trạng thái nhóm. Giá trị: Tất cả, Sử dụng, Không sử dụng. |
 | 4 | Nút Tìm kiếm | Button | Không | Không | — | Thực hiện tìm kiếm với các điều kiện đã nhập. |
 | 5 | Nút Làm mới | Button | Không | Không | — | Đưa toàn bộ điều kiện tìm kiếm và bộ lọc về mặc định. |
 |  | DANH SÁCH |  |  |  |  |  |
@@ -45,8 +45,8 @@ consumed_by_modules: []
 | 4 | Cột Loại nhóm | Label (Badge) | Không | Không | Theo dữ liệu hệ thống | Hiển thị loại nhóm dạng badge màu: Phòng ban (xanh dương), Dự án (tím), Tùy chỉnh (xám). Dữ liệu lấy từ USER_GROUPS.GROUP_TYPE. |
 | 5 | Cột Mô tả | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị mô tả nhóm. Dữ liệu lấy từ USER_GROUPS.DESCRIPTION. Hiển thị tối đa 100 ký tự, phần còn lại hiển thị "...". |
 | 6 | Cột Số thành viên | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị số lượng thành viên đang hoạt động trong nhóm. Dữ liệu được tính từ GROUP_MEMBERS với STATUS = 'ACTIVE'. |
-| 7 | Cột Ngày tạo | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị ngày tạo nhóm. Dữ liệu lấy từ USER_GROUPS.CREATED_AT. Định dạng hiển thị DD/MM/YYYY HH:mm. |
-| 8 | Cột Trạng thái | Label (Badge) | Không | Không | Theo dữ liệu hệ thống | Hiển thị trạng thái nhóm dạng badge: Hoạt động (active, xanh lá), Không hoạt động (inactive, xám). Dữ liệu lấy từ USER_GROUPS.STATUS. |
+| 7 | Cột Trạng thái | Label (Badge) | Không | Không | Theo dữ liệu hệ thống | Hiển thị trạng thái nhóm: Sử dụng (xanh lá), Không sử dụng (xám). Dữ liệu lấy từ USER_GROUPS.STATUS. |
+| 8 | Cột Ngày tạo | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị ngày tạo nhóm. Dữ liệu lấy từ USER_GROUPS.CREATED_AT. Định dạng hiển thị DD/MM/YYYY HH:mm. |
 | 9 | Cột Thao tác | Dropdown | Có | Không | — | Hiển thị danh sách hành động khả dụng theo quyền người dùng: Sửa, Quản lý thành viên, Phân quyền, Xóa. Các hành động bị ẩn nếu người dùng không có quyền tương ứng. Nút Xóa bị disabled kèm tooltip nếu nhóm còn thành viên. |
 | 10 | Điều khiển phân trang | Pagination | Có | Không | 20 dòng/trang | Cho phép điều hướng giữa các trang và thay đổi số dòng hiển thị mỗi trang. Mặc định 20 dòng/trang, tối đa 100 dòng/trang. |
 
@@ -59,8 +59,9 @@ consumed_by_modules: []
 | 2 | Trường Mã nhóm | Textbox | Có (tạo mới) / Không (chỉnh sửa) | Có | Trống | Cho phép nhập mã viết tắt của nhóm. Giới hạn 2-30 ký tự, chỉ cho phép chữ hoa, số và dấu gạch dưới. Phải duy nhất trong toàn hệ thống. Không cho phép chỉnh sửa sau khi đã tạo. |
 | 3 | Trường Loại nhóm | Dropdown | Có | Có | (Chưa chọn) | Cho phép chọn loại nhóm. Giá trị: Phòng ban (department), Dự án (project), Tùy chỉnh (custom). Không cho phép giá trị khác. |
 | 4 | Trường Mô tả | TextArea | Có | Không | Trống | Cho phép nhập mô tả mục đích, phạm vi của nhóm. Giới hạn tối đa 1000 ký tự. |
-| 5 | Nút Hủy | Button | Không | Không | — | Đóng modal, không lưu thay đổi. |
-| 6 | Nút Lưu | Button | Không | Không | — | Lưu thông tin nhóm. Nút bị disabled khi form có lỗi validation. Hiển thị loading khi đang xử lý. Hiển thị toast thông báo thành công hoặc lỗi sau khi hoàn tất. |
+| 5 | Trường Trạng thái | Dropdown | Có | Có | Khi tạo mới: Sử dụng. Khi chỉnh sửa: hiển thị trạng thái hiện tại của nhóm. | Cho phép chọn trạng thái nhóm. Giá trị: Sử dụng, Không sử dụng. |
+| 6 | Nút Hủy | Button | Không | Không | — | Đóng modal, không lưu thay đổi. |
+| 7 | Nút Lưu | Button | Không | Không | — | Lưu thông tin nhóm. Nút bị disabled khi form có lỗi validation. Hiển thị loading khi đang xử lý. Hiển thị toast thông báo thành công hoặc lỗi sau khi hoàn tất. |
 
 #### Xóa nhóm
 
