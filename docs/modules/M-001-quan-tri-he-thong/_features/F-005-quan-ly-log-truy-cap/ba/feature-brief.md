@@ -7,158 +7,68 @@ status: done
 classification: local
 priority: medium
 created: 2026-06-16T04:40:57Z
-last-updated: 2026-06-17T01:35:44Z
+last-updated: 2026-07-27T00:00:00Z
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Quan ly log truy cap
+# QUẢN TRỊ HỆ THỐNG
 
-## Description
+## Quản lý log truy cập
 
-Tra cuu 5 nhom log: truy cap, dang nhap, loi, tai khoan, cau hinh
+### Mô tả chung
 
-## Business Intent
+| Nội dung | Mô tả |
+| --- | --- |
+| Mục đích | Cho phép người dùng tra cứu, xem và xuất lịch sử hoạt động truy cập hệ thống, bao gồm 3 hành động: Đăng nhập, Đăng xuất, Truy cập chức năng; hỗ trợ lọc theo ngày truy cập, đơn vị và email. |
+| Tác nhân | Người dùng được phân quyền chức năng Quản lý log truy cập. Quyền hạn cụ thể (xem, xuất CSV) theo phân quyền hệ thống. |
+| Luồng chính | Người dùng truy cập màn hình Quản lý log truy cập. Hệ thống hiển thị danh sách log với khu vực tìm kiếm và bộ lọc. Người dùng có thể lọc theo ngày truy cập (Từ ngày — Đến ngày), đơn vị, và email. Người dùng nhấn Tìm kiếm, hệ thống hiển thị danh sách kết quả phù hợp với phân trang. Mỗi dòng log hiển thị: thời gian truy cập, email, đơn vị, chức năng, địa chỉ IP, thông tin trình duyệt, phiên đăng nhập, hành động. Người dùng có thể nhấn vào một dòng log để xem chi tiết đầy đủ thông tin. Người dùng có quyền xuất CSV có thể nhấn Xuất CSV để tải file. Log là dữ liệu chỉ đọc — không có chức năng sửa hoặc xóa thủ công. |
+| Điều kiện trước | − Người dùng đã đăng nhập hệ thống. − Người dùng có quyền truy cập chức năng Quản lý log truy cập. |
+| Điều kiện sau | − Danh sách log được cập nhật theo điều kiện tìm kiếm. − File CSV được tải về với dữ liệu đúng định dạng. |
+| Quy tắc nghiệp vụ | − Log ghi nhận 3 hành động: Đăng nhập, Đăng xuất, Truy cập chức năng. − Log là immutable — không cho phép sửa hoặc xóa thủ công. − Chỉ hệ thống tự tạo log khi người dùng thực hiện hành động; không thể tạo log thủ công. |
 
-Quan tri he thong - Tra cuu 5 nhom log (truy cap, dang nhap, loi, tai khoan, cau hinh)
+### Mô tả màn hình
 
-## Flow Summary
+#### Danh sách log
 
-Quan tri he thong - Tra cuu 5 nhom log (truy cap, dang nhap, loi, tai khoan, cau hinh)
+| STT | Tên trường / Điều khiển | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Mô tả |
+| --- | --- | --- | --- | --- | --- | --- |
+|  | TÌM KIẾM VÀ LỌC |  |  |  |  |  |
+| 1 | Trường Ngày truy cập (Từ ngày — Đến ngày) | Date Range Picker | Có | Không | Trống | Cho phép chọn khoảng thời gian để lọc log. Định dạng DD/MM/YYYY. |
+| 2 | Bộ lọc Đơn vị | Dropdown | Có | Không | Tất cả | Cho phép lọc theo đơn vị của người dùng. Danh sách lấy từ danh mục đơn vị. |
+| 3 | Trường Email | Textbox | Có | Không | Trống | Cho phép nhập email để lọc log theo người dùng. |
+| 4 | Nút Tìm kiếm | Button | Không | Không | — | Thực hiện tìm kiếm với các điều kiện đã nhập. |
+| 5 | Nút Làm mới | Button | Không | Không | — | Đưa toàn bộ điều kiện tìm kiếm và bộ lọc về mặc định. |
+| 6 | Nút Xuất CSV | Button | Không | Không | — | Xuất danh sách log ra file CSV. Chỉ hiển thị khi người dùng có quyền xuất. |
+|  | DANH SÁCH |  |  |  |  |  |
+| 1 | Cột STT | Label | Không | Không | Tự tăng | Hiển thị số thứ tự bản ghi, tính theo trang. |
+| 2 | Cột Thời gian truy cập | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị thời gian thực hiện hành động. Định dạng DD/MM/YYYY HH:mm:ss. |
+| 3 | Cột Email | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị email người dùng. |
+| 4 | Cột Đơn vị | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị đơn vị trực thuộc của người dùng. |
+| 5 | Cột Hành động | Label (Badge) | Không | Không | Theo dữ liệu hệ thống | Hiển thị hành động dạng badge: Đăng nhập (xanh), Đăng xuất (xám), Truy cập chức năng (xanh dương). |
+| 6 | Cột Chức năng | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị tên chức năng được truy cập. Với hành động Đăng nhập/Đăng xuất: hiển thị "—". |
+| 7 | Cột Địa chỉ IP | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị địa chỉ IP của người dùng. |
+| 8 | Cột Trình duyệt | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị tên trình duyệt rút gọn (Chrome, Firefox, Edge...). |
+| 9 | Cột Phiên đăng nhập | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị mã phiên đăng nhập. |
+| 10 | Cột Thao tác | Button | Có | Không | — | Nút Xem chi tiết. Log là read-only — không có nút Sửa/Xóa. |
+| 11 | Điều khiển phân trang | Pagination | Có | Không | 20 dòng/trang | Điều hướng trang và thay đổi số dòng/trang. |
 
-## Acceptance Criteria
+#### Xem chi tiết log
 
-- Tra cuu duoc 5 nhom log
-- Hien thi du 5 truong log
-
-## In Scope
-
-- Truy vấn và hiển thị 5 nhóm log: truy cập (access), đăng nhập (login), lỗi (error), tài khoản (account), cấu hình (configuration)
-- Lọc log theo khoảng thời gian (ngày bắt đầu — ngày kết thúc)
-- Lọc log theo người dùng (user ID hoặc username)
-- Lọc log theo loại log (type) và mức độ nghiêm trọng (severity)
-- Tìm kiếm log theo từ khóa (keyword search trong message)
-- Hiển thị thông tin chi tiết của từng log entry
-- Xuất log ra file CSV (chỉ system-admin)
-- Tự động xóa log cũ theo chính sách lưu trữ (retention policy) —后台 cron job
-- Không cho phép xóa hoặc sửa log (read-only)
-
-## Out of Scope
-
-- Tạo log mới qua API — log được tạo tự động bởi hệ thống (auto-instrumentation)
-- Lưu trữ log ra file system hoặc external log server (Splunk, ELK) — chỉ lưu trong DB
-- Phân tích log nâng cao (log analytics, anomaly detection, ML-based alerting)
-- Chỉnh sửa nội dung log — log là immutable (không thay đổi được)
-- Gửi notification/alert khi phát hiện log bất thường
-- Tích hợp với hệ thống SIEM bên ngoài
-
-## Roles + Permissions
-
-| Role | Level | Notes |
-|---|---|---|
-| system-admin | Read + Export CSV | Truy cập tất cả 5 nhóm log, xuất file CSV, cấu hình retention policy |
-| admin | Read (filter theo đơn vị) | Truy cập log trong phân hệ/đơn vị của mình; không được xuất CSV |
-| admin-operation | Read (chỉ nhóm login + access) | Chỉ truy cập nhóm log access và login; không xem được nhóm error, account, configuration |
-| user | Read-only (log của chính mình) | Chỉ có thể xem log của chính mình; không thấy log của người khác |
-
-## Entities
-
-- **AccessLog**: Bảng log chung với 5 nhóm (id, type, userId, username, ipAddress, userAgent, action, endpoint, method, severity, message, metadata, createdAt, createdAt)
-  - `type` enum: `access`, `login`, `error`, `account`, `configuration`
-  - `severity` enum: `info`, `warning`, `error`, `critical`
-
-## Business Rules
-
-| ID | Rule | Applies-to | Source |
-|---|---|---|---|
-| BR-005-01 | Log thuộc 5 nhóm: access, login, error, account, configuration — mỗi nhóm có cấu trúc metadata riêng | Tất cả log | Thiết kế dữ liệu |
-| BR-005-02 | Log là immutable: không cho phép sửa, xóa hoặc ghi đè log sau khi đã tạo | Xóa/Sửa log | Audit requirement |
-| BR-005-03 | Chính sách lưu trữ: log được giữ trong 90 ngày; sau 90 ngày tự động xóa bởi cron job | Retention policy | Chính sách lưu trữ |
-| BR-005-04 | Log đăng nhập (login) ghi lại cả thành công và thất bại; log lỗi đăng nhập phải có IP và lý do | Login log | Security requirement |
-| BR-005-05 | Log tài khoản (account) ghi lại mọi thay đổi: tạo, sửa, khóa/mở khóa, reset password | Account log | Audit requirement |
-| BR-005-06 | Log cấu hình (configuration) ghi lại thay đổi config hệ thống, bao gồm user thay đổi và giá trị trước/sau | Configuration log | Audit requirement |
-| BR-005-07 | Severity được tự động gán: login failure = warning, system error = error, security breach = critical | Severity assignment | Business logic |
-| BR-005-08 | Chỉ hệ thống tự tạo log; không cho phép người dùng hoặc admin tạo log thủ công | Tạo log | Integrity constraint |
-
-## Testing Strategy
-
-- **Unit Testing (Backend)**:
-  - Kiểm tra validation cho 5 log types (BR-005-01)
-  - Kiểm tra immutability: không cho phép UPDATE/DELETE trên AccessLog (BR-005-02)
-  - Kiểm tra retention policy auto-delete cron (BR-005-03)
-  - Kiểm tra severity auto-assignment logic (BR-005-07)
-  - Kiểm tra auto-instrumentation không cho phép manual log creation (BR-005-08)
-  - Authorization check cho các endpoint xem log theo role
-
-- **Integration Testing (Backend)**:
-  - Test auto-logging: trigger login → verify login log created; trigger action → verify access log created
-  - Test DB write operations: INSERT-only constraint trên AccessLog
-  - Test retention cron: simulate time advancement → verify old logs deleted
-  - Test query performance: large dataset filtering by date/user/type/severity
-
-- **E2E Testing (Frontend + Backend)**:
-  - Test search/filter log theo ngày, user, type, severity trên giao diện ReactJS
-  - Test keyword search trong log message
-  - Test chi tiết log entry view
-  - Test export CSV (chỉ system-admin mới thấy nút)
-  - Test permission UI: user thường chỉ thấy log của chính mình
-  - Test pagination với dataset lớn (1000+ log entries)
-
-- **Security Testing**:
-  - Kiểm tra RBAC: admin không xem được log của đơn vị khác
-  - Kiểm tra immutability: attempt UPDATE/DELETE → returns 403
-  - Kiểm tra log injection prevention trong message field
-  - Kiểm tra export CSV không tiết lộ sensitive data
-
-- **UI/UX Testing**:
-  - Responsive sidebar trên mobile (collapse hamburger)
-  - Data table sticky header, hover row, action column positioned last
-  - Loading skeleton/spinner, empty state, error state với retry
-  - Filter form với date range picker, dropdown type/severity, text search
-  - Toast notification cho action thành công/thất bại
-
-## UI/UX Requirements
-
-### Layout & Navigation
-- Bố cục cố định: Sidebar trái cố định (menu điều hướng), Header trên cùng (tên admin, avatar, nút logout), Khu vực nội dung chính phía dưới
-- Sidebar hiển thị menu: "Quản lý người dùng", "Quản lý nhóm", "Quản lý đơn vị", "Tài khoản Admin", "Log truy cập", "Biểu tượng bản đồ", "Kết nối liên thông"
-- Sidebar thu gọn thành icon/hamburger menu trên thiết bị di động (breakpoint < 768px)
-
-### Design Style
-- Giao diện dashboard admin hiện đại, tối giản
-- Bảng màu trung tính (xám/xanh dương), màu nhấn cho các hành động chính
-- Typography: font sans-serif (Inter hoặc Roboto), kích thước chữ rõ ràng
-- Card-based layout cho form và thông tin chi tiết
-
-### Data Tables
-- Sticky header, hover effect cho từng hàng
-- Cột hành động (Sửa/Xóa) luôn nằm cuối bảng — **không hiển thị** vì log là read-only
-- Phân trang (pagination) hiển thị số lượng record và điều hướng trang
-- Nút "Xuất CSV" (chỉ system-admin) ở góc trên bên phải
-- Toolbar tìm kiếm, lọc theo type/severity/date range phía trên bảng
-
-### States & Feedback
-- **Loading**: Skeleton screen hoặc spinner khi đang tải dữ liệu
-- **Empty State**: Thông điệp thân thiện + hướng dẫn filter (ví dụ: "Không có log nào phù hợp với bộ lọc. Thử thay đổi tiêu chí tìm kiếm.")
-- **Error State**: Hiển thị thông báo lỗi rõ ràng + nút "Thử lại"
-- **Action Feedback**: Toast notification ("Đã xuất CSV thành công") cho thao tác xuất file; không có nút xóa/sửa
-- **Form**: Filter form với date range picker, dropdown, text search — không có nút submit (filter realtime)
-
-### Permission UI
-- Ẩn/hiện nút hành động dựa trên vai trò của người dùng hiện tại
-- Ví dụ: system-admin thấy "Xuất CSV", admin chỉ thấy "Xem chi tiết", user chỉ thấy log của chính mình
-- Điều khiển quyền ở mức giao diện (interface-level permission control)
-- Không có nút Sửa/Xóa cho bất kỳ role nào (log là read-only)
-
-### Specific Features
-- **Danh sách log**: Bảng phân trang với 5 tab filter (Access, Login, Error, Account, Configuration); columns: timestamp, type, severity, user, action, IP, message
-- **Chi tiết log**: Modal/Drawer hiển thị toàn bộ thông tin: timestamp, type, severity, userId, username, IP, userAgent, action, endpoint, method, message, metadata (JSON view)
-- **Filter form**: Date range picker, dropdown type (5 groups), dropdown severity (4 levels), text search input, filter button
-- **Responsive**: Mobile hiển thị log dạng card với thông tin thu gọn (timestamp + type + message preview)
-- **Export CSV**: Button chỉ visible cho system-admin; loading state khi xuất file lớn
+| STT | Tên trường / Điều khiển | Loại điều khiển | Cho phép chỉnh sửa | Bắt buộc | Giá trị mặc định | Mô tả |
+| --- | --- | --- | --- | --- | --- | --- |
+|  | THÔNG TIN LOG |  |  |  |  |  |
+| 1 | Thời gian truy cập | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị thời gian thực hiện hành động. Định dạng DD/MM/YYYY HH:mm:ss. |
+| 2 | Hành động | Label (Badge) | Không | Không | Theo dữ liệu hệ thống | Hiển thị hành động: Đăng nhập, Đăng xuất, Truy cập chức năng. |
+| 3 | Email | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị email người dùng. |
+| 4 | Đơn vị | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị đơn vị trực thuộc. |
+| 5 | Chức năng | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị tên chức năng được truy cập. Với Đăng nhập/Đăng xuất: hiển thị "—". |
+| 6 | Địa chỉ IP | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị địa chỉ IP. |
+| 7 | Thông tin trình duyệt | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị đầy đủ thông tin User-Agent của trình duyệt. |
+| 8 | Phiên đăng nhập | Label | Không | Không | Theo dữ liệu hệ thống | Hiển thị mã phiên đăng nhập. |
+| 9 | Nút Đóng | Button | Không | Không | — | Đóng modal, quay về danh sách. |
 
 ## Context
 
-### Tech Stack
 - Backend: Spring Boot + Spring Security + JWT
 - Frontend: ReactJS
 - Database: MSSQL 2022
