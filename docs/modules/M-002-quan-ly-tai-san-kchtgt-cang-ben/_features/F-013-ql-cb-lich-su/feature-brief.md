@@ -3,7 +3,7 @@ id: F-013
 name: Quản lý Cảng biển - Lịch sử
 slug: ql-cb-lich-su
 module-id: M-002
-status: done
+status: cancelled
 classification: local
 priority: high
 created: 2026-06-16T04:40:42Z
@@ -71,3 +71,8 @@ Người dùng đăng nhập, truy cập vào danh sách Cảng biển và chọ
 ## Testing Strategy
 
 Kiểm thử đơn vị cho các hàm tạo và truy vấn lịch sử thay đổi; kiểm thử tích hợp cho luồng ghi nhận lịch sử tự động khi tạo, cập nhật, xóa và phê duyệt Cảng biển; kiểm thử giao diện cho trang hiển thị lịch sử với các bộ lọc; kiểm thử tích hợp chéo giữa các tính năng F-008, F-009, F-010, F-011 và F-013 để xác nhận lịch sử được ghi đầy đủ.
+
+## Cancellation Note
+
+**Date:** 2026-07-27
+**Reason:** Cancelled per URD audit. URD III.4.30 "Quản lý cảng biển" does not require "xem lịch sử" for cảng biển. The TKCT mentions generic "Xem lịch sử KCHT" but that refers to operational lifecycle history (hình thành → vận hành → bảo trì → sự cố), not CRUD audit trail as F-013 was designed.

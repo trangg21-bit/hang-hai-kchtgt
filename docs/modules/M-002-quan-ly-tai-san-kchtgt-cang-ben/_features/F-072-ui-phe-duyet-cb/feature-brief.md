@@ -3,7 +3,7 @@ id: F-072
 name: "Phê duyệt Cảng biển"
 slug: ui-phe-duyet-cb
 module-id: M-002
-status: proposed
+status: consolidated
 classification: local
 priority: medium
 created: "2026-07-01T04:08:13Z"
@@ -82,3 +82,7 @@ Người dùng (Lãnh đạo) điều hướng đến trang "Phê duyệt" từ 
 ## Testing Strategy
 
 Giao diện phê duyệt Cảng biển được kiểm thử bằng React Testing Library cho việc filter danh sách hiển thị đúng các bản ghi CHỜ_PHÊ_DUYỆT, validation lý do từ chối ≥ 10 ký tự, và xử lý response API (approve/reject). Cypress thực hiện end-to-end test: đăng nhập với tài khoản Leadership → điều hướng đến trang "Phê duyệt" → xác minh danh sách chỉ hiển thị bản ghi pending → click "Phê duyệt" trên một bản ghi → xác nhận confirmation dialog → xác nhận → toast "Đã phê duyệt thành công" → xác nhận bản ghi chuyển sang ĐƯỢC_PHÊ_DUYỆT. Negative test: click "Từ chối" → nhập lý do < 10 ký tự → lỗi validation → toast lỗi "Lý do từ chối phải có ít nhất 10 ký tự". Test PheDuyetLog: click "Lịch sử" → xác nhận log phê duyệt được tạo và hiển thị đúng thông tin người phê duyệt và thời gian.
+
+## Consolidation Note
+
+Consolidated into F-011 (Phê duyệt Cảng biển) — 2026-07-27

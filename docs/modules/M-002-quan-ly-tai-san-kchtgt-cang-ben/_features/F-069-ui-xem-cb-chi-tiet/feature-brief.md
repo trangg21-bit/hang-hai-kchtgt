@@ -3,7 +3,7 @@ id: F-069
 name: "Chi tiết Cảng biển"
 slug: ui-xem-cb-chi-tiet
 module-id: M-002
-status: proposed
+status: consolidated
 classification: local
 priority: medium
 created: "2026-07-01T04:08:09Z"
@@ -82,3 +82,7 @@ Người dùng nhấp vào "Xem chi tiết" trên hàng tương ứng trong danh
 ## Testing Strategy
 
 Giao diện chi tiết Cảng biển được kiểm thử bằng React Testing Library cho việc render đúng tất cả 15 trường của entity, định dạng GPS ±XX.XXXXXX, badge màu trạng thái (vàng, xanh, đỏ), danh sách đính kèm với nút Download/Print. Cypress thực hiện end-to-end test: điều hướng từ danh sách → chi tiết → xác minh breadcrumb → click hành động "Chỉnh sửa" → xác nhận điều hướng đến F-071 → click "Xóa" → xác nhận dialog F-093 → click "Lịch sử" → xác nhận F-094. Negative test: xác minh hành động Phê duyệt/Từ chối không hiển thị cho người dùng không phải Leadership. Test responsive: viewport desktop (1440px), tablet (768px), mobile (375px) — layout chuyển đúng.
+
+## Consolidation Note
+
+Consolidated into F-012 (Xem chi tiết Cảng biển) — 2026-07-27

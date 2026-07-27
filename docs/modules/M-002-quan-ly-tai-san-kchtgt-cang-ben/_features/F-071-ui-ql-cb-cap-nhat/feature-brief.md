@@ -3,7 +3,7 @@ id: F-071
 name: "Cập nhật Cảng biển"
 slug: ui-ql-cb-cap-nhat
 module-id: M-002
-status: proposed
+status: consolidated
 classification: local
 priority: medium
 created: "2026-07-01T04:08:12Z"
@@ -83,3 +83,7 @@ Người dùng nhấp "Chỉnh sửa" từ danh sách (F-068) hoặc trang chi t
 ## Testing Strategy
 
 Giao diện cập nhật Cảng biển được kiểm thử bằng React Testing Library cho việc pre-fill form từ API response, validation inline (maCang readonly, range GPS, max dienTich), và xử lý lỗi 409. Cypress thực hiện end-to-end test: điều hướng đến trang chi tiết → click "Chỉnh sửa" → pre-fill xác minh dữ liệu hiện tại → thay đổi các trường (tenCang, tinhThanhPho, dienTich) → submit → xác nhận toast "Cập nhật thành công — chờ phê duyệt lại" → xác nhận điều hướng về danh sách → click "Lịch sử" → xác nhận LichSuThayDoi record được tạo. Negative test: maCang không thể sửa (readonly field disabled); điền viDo = -100 → lỗi range; điền dienTich = 6000 → lỗi max.
+
+## Consolidation Note
+
+Consolidated into F-009 (Cập nhật Cảng biển) — 2026-07-27

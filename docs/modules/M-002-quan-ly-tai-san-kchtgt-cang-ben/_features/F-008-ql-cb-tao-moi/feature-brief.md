@@ -7,7 +7,7 @@ status: done
 classification: local
 priority: critical
 created: 2026-06-16T04:40:19Z
-last-updated: 2026-06-29T11:09:57Z
+last-updated: 2026-07-27
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -23,18 +23,22 @@ Hoạt động cảng biển là nền tảng hạ tầng then chốt cho chuỗ
 
 ## Flow Summary
 
-Người dùng đăng nhập vào hệ thống, chọn chức năng "Tạo mới Cảng biển" từ menu quản lý tài sản. Hệ thống hiển thị biểu mẫu với các trường bắt buộc: mã cảng (tuân thủ mã VN-36), tên cảng, tỉnh/thành phố, tọa độ GPS, diện tích, khả năng tiếp nhận tàu, và trạng thái hoạt động. Người dùng điền đầy đủ thông tin, hệ thống tự động kiểm tra tính hợp lệ của mã cảng và phát hiện trùng lặp. Sau khi nộp, Cảng biển được lưu vào cơ sở dữ liệu với trạng thái "Chờ phê duyệt" và thông báo thành công được gửi đến người dùng.
+Người dùng đăng nhập vào hệ thống, chọn chức năng "Tạo mới Cảng biển" từ menu quản lý tài sản. Hệ thống hiển thị biểu mẫu với các trường bắt buộc: mã cảng (tuân thủ mã VN-36), tên cảng, tỉnh/thành phố, tọa độ GPS, diện tích, khả năng tiếp nhận tàu, và trạng thái hoạt động. Người dùng điền đầy đủ thông tin, hệ thống tự động kiểm tra tính hợp lệ của mã cảng và phát hiện trùng lặp. Người dùng có thể chọn một trong hai thao tác lưu: "Lưu tạm" — lưu Cảng biển với trạng thái nháp (nhap), cho phép tiếp tục chỉnh sửa trước khi gửi duyệt chính thức; hoặc "Gửi phê duyệt" — lưu Cảng biển với trạng thái "Chờ phê duyệt" và gửi vào queue phê duyệt của Lãnh đạo. Sau khi lưu, thông báo thành công được gửi đến người dùng.
 
 ## Acceptance Criteria
 
 1. Người dùng có vai trò "Admin" hoặc "Quản lý cảng" có thể truy cập được chức năng tạo mới Cảng biển từ giao diện quản lý tài sản.
 2. Hệ thống yêu cầu điền đầy đủ các trường bắt buộc: mã cảng (duy nhất, định dạng VN-36), tên cảng, tỉnh/thành phố, tọa độ GPS (vĩ độ và kinh độ), diện tích (km²), trạng thái hoạt động trước khi cho phép lưu.
 3. Hệ thống từ chối tạo mới nếu mã cảng đã tồn tại trong cơ sở dữ liệu, hiển thị thông báo lỗi rõ ràng cho người dùng.
-4. Cảng biển được tạo thành công sẽ được lưu vào cơ sở dữ liệu với trạng thái mặc định "Chờ phê duyệt" và ghi nhận thời gian tạo tự động.
+4. Người dùng có thể chọn "Lưu tạm" để lưu Cảng biển với trạng thái nháp. Hệ thống yêu cầu tối thiểu mã cảng và tên cảng cho thao tác lưu tạm.
+5. Cảng biển ở trạng thái nháp có thể được mở lại để chỉnh sửa và gửi phê duyệt. Khi gửi phê duyệt, trạng thái chuyển từ nhap sang cho_phe_duyet và cảng xuất hiện trong queue phê duyệt của Lãnh đạo.
+6. Cảng biển được tạo thành công qua "Gửi phê duyệt" sẽ được lưu vào cơ sở dữ liệu với trạng thái mặc định "Chờ phê duyệt" và ghi nhận thời gian tạo tự động.
 
 ## In Scope
 
 - Biểu mẫu tạo mới Cảng biển với các trường thông tin cơ bản và mở rộng
+- Lưu tạm với trạng thái nháp (nhap) cho phép chỉnh sửa nhiều lần
+- Gửi phê duyệt từ trạng thái nháp (nhap → cho_phe_duyet)
 - Kiểm tra tính hợp lệ của mã cảng theo chuẩn VN-36
 - Kiểm tra trùng lặp mã cảng trong cơ sở dữ liệu
 - Lưu Cảng biển với trạng thái "Chờ phê duyệt"
@@ -60,14 +64,24 @@ Người dùng đăng nhập vào hệ thống, chọn chức năng "Tạo mới
 
 ## Entities
 
-- **CangBien**: id (UUID), maCang (string, unique), tenCang (string), tinhThanh (string), toDo (JSON: {lat, lng}), dienTich (decimal), khaNangTiepNhanTau (string), trangThai (enum: cho_phe_duyet, hien_hanh, tam_ngung, da_xoa), ghiChu (text), createdAt (timestamp), updatedAt (timestamp)
+- **CangBien**: id (UUID), maCang (string, unique), tenCang (string), tinhThanh (string), toDo (JSON: {lat, lng}), dienTich (decimal), khaNangTiepNhanTau (string), trangThai (enum: nhap, cho_phe_duyet, hien_hanh, tam_ngung, da_xoa), ghiChu (text), createdAt (timestamp), updatedAt (timestamp)
 
 ## Business Rules
 
 1. Mã cảng phải tuân thủ chuẩn mã hóa VN-36, độ dài từ 6 đến 10 ký tự, không được trùng lặp trong toàn hệ thống.
 2. Tọa độ GPS (vĩ độ và kinh độ) phải nằm trong khoảng chấp nhận được: vĩ độ -90 đến 90, kinh độ -180 đến 180.
 3. Diện tích cảng phải là giá trị dương, đơn vị km², không vượt quá 5000 km².
-4. Trạng thái mặc định của Cảng biển sau khi tạo mới luôn là "Chờ phê duyệt" trước khi được kích hoạt hoạt động.
+4. Trạng thái mặc định của Cảng biển phụ thuộc vào nút người dùng chọn: "Lưu tạm" → nhap, "Gửi phê duyệt" → cho_phe_duyet. Người dùng không thể tự thiết lập trạng thái "Hiện hành".
+5. Cảng biển ở trạng thái nhap có thể được chỉnh sửa nhiều lần và gửi phê duyệt sau. Khi gửi phê duyệt, trạng thái chuyển từ nhap → cho_phe_duyet và cảng xuất hiện trong queue phê duyệt.
+
+## UI Scope
+
+- **MH Thêm mới:** Form tạo mới Cảng biển với 2 nút hành động:
+  - "Lưu tạm" — lưu trạng thái nháp (nhap), cho phép chỉnh sửa tiếp
+  - "Gửi phê duyệt" — lưu và gửi vào queue phê duyệt của Lãnh đạo (cho_phe_duyet)
+- Validation inline từng trường (mã cảng VN-36, tọa độ GPS, diện tích)
+- Xem trước vị trí trên bản đồ trước khi lưu
+- **MH Danh sách nháp:** Filter trạng thái "nhap" để xem các bản ghi chưa gửi duyệt
 
 ## Testing Strategy
 

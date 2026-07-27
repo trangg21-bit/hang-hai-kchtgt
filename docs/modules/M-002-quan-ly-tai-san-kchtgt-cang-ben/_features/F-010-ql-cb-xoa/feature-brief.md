@@ -7,7 +7,7 @@ status: done
 classification: local
 priority: high
 created: 2026-06-16T04:40:19Z
-last-updated: 2026-06-29T11:09:58Z
+last-updated: 2026-07-27
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -68,6 +68,11 @@ Người dùng đăng nhập vào hệ thống, tìm kiếm và chọn Cảng bi
 2. Không cho phép xóa Cảng biển đang có dữ liệu liên quan chưa được xử lý hoặc đang trong quá trình phê duyệt thay đổi.
 3. Cảng biển bị xóa có thể được khôi phục trong vòng 90 ngày kể từ ngày xóa; sau thời hạn này dữ liệu chỉ được xử lý theo quy định lưu trữ.
 4. Nhật ký xóa phải ghi nhận đầy đủ: ai xóa, khi nào xóa, lý do xóa (nếu có).
+
+## UI Scope
+
+- **MH Xóa:** Hộp thoại xác nhận xóa — yêu cầu nhập chính xác tên cảng để xác nhận. Hiển thị cảnh báo nếu cảng có tài sản con (Bến cảng, Cầu cảng) đang hoạt động. Kiểm tra trạng thái phê duyệt trước khi cho phép xóa.
+- **MH Khôi phục:** Giao diện Admin khôi phục cảng đã xóa trong 90 ngày.
 
 ## Testing Strategy
 

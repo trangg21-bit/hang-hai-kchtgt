@@ -3,7 +3,7 @@ id: F-093
 name: "Xóa Cảng biển"
 slug: ui-ql-cb-xoa
 module-id: M-002
-status: proposed
+status: consolidated
 classification: local
 priority: medium
 created: "2026-07-01T04:09:05Z"
@@ -81,3 +81,7 @@ Người dùng (Leadership) điều hướng đến trang chi tiết (F-069) ho�
 ## Testing Strategy
 
 Giao diện xóa Cảng biển được kiểm thử bằng React Testing Library cho việc hiển thị đúng confirmation dialog, validation xác nhận (chỉ cho phép xóa khi đúng tên/mã cảng hoặc nhập "XÓA"), và xử lý response 409 khi tồn tại bản ghi con. Cypress thực hiện end-to-end test: đăng nhập Leadership → điều hướng đến chi tiết một cảng → click "Xóa" → xác minh confirmation dialog hiển thị → nhập tên chính xác → xác nhận → toast "Đã xóa thành công" → xác nhận điều hướng về danh sách với cảng không còn trong danh sách. Negative test: click "Xóa" trên cảng có BenCang/VungNuoc con → 409 → toast lỗi "Cảng này có X BenCang và Y VungNuoc liên kết, không thể xóa"; nhập sai tên trong dialog → không xóa. Test nhân viên vận hành: xác minh không thấy nút xóa.
+
+## Consolidation Note
+
+Consolidated into F-010 (Xóa Cảng biển) — 2026-07-27

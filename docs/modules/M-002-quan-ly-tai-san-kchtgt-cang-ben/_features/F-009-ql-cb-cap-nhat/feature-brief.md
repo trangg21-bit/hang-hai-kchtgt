@@ -7,7 +7,7 @@ status: done
 classification: local
 priority: critical
 created: 2026-06-16T04:40:19Z
-last-updated: 2026-06-29T11:09:58Z
+last-updated: 2026-07-27
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -69,6 +69,11 @@ Người dùng đăng nhập vào hệ thống, tìm kiếm và chọn Cảng bi
 2. Tọa độ GPS phải nằm trong khoảng chấp nhận được: vĩ độ -90 đến 90, kinh độ -180 đến 180.
 3. Diện tích cảng phải là giá trị dương, đơn vị km², không vượt quá 5000 km².
 4. Nhật ký thay đổi phải được ghi nhận tự động cho mọi lần cập nhật, không cho phép xóa hoặc sửa nhật ký.
+
+## UI Scope
+
+- **MH Cập nhật:** Form cập nhật Cảng biển với dữ liệu hiện tại được điền sẵn. Mã cảng readonly (bất biến). Các trường có thể sửa: tên cảng, tỉnh/thành, tọa độ GPS, diện tích, khả năng tiếp nhận tàu, ghi chú. Validation inline (GPS range, diện tích >0). Cảnh báo khi cảng đang ở trạng thái "Chờ phê duyệt" hoặc "Đã xóa".
+- **Điều hướng:** Từ danh sách (F-012) hoặc trang chi tiết → nút "Chỉnh sửa".
 
 ## Testing Strategy
 
