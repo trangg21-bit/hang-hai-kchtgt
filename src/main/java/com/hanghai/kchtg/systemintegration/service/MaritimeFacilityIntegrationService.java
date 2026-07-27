@@ -12,37 +12,37 @@ public class MaritimeFacilityIntegrationService {
     @Autowired
     private SystemIntegrationService integrationService;
 
-    public SystemIntegrationResponse integrateBenCang(SystemIntegrationRequest request) {
+    public SystemIntegrationResponse integrateBerth(SystemIntegrationRequest request) {
         request.setIntegrationType(IntegrationType.BEN_CANG);
         return integrationService.createIntegration(request);
     }
 
-    public SystemIntegrationResponse integrateCauCang(SystemIntegrationRequest request) {
+    public SystemIntegrationResponse integratePier(SystemIntegrationRequest request) {
         request.setIntegrationType(IntegrationType.CAU_CANG);
         return integrationService.createIntegration(request);
     }
 
-    public SystemIntegrationResponse integrateBenPhao(SystemIntegrationRequest request) {
+    public SystemIntegrationResponse integrateBuoyBerth(SystemIntegrationRequest request) {
         request.setIntegrationType(IntegrationType.BEN_PHAO);
         return integrationService.createIntegration(request);
     }
 
-    public SystemIntegrationResponse integrateKhuTramTichBoi(SystemIntegrationRequest request) {
+    public SystemIntegrationResponse integrateSiltationArea(SystemIntegrationRequest request) {
         request.setIntegrationType(IntegrationType.KHU_TRAM_TICH_BOI);
         return integrationService.createIntegration(request);
     }
 
-    public SystemIntegrationResponse integrateKhuChuyenTai(SystemIntegrationRequest request) {
+    public SystemIntegrationResponse integrateTransshipmentArea(SystemIntegrationRequest request) {
         request.setIntegrationType(IntegrationType.KHU_CHUYEN_TAI);
         return integrationService.createIntegration(request);
     }
 
-    public SystemIntegrationResponse integrateKhuNeoDau(SystemIntegrationRequest request) {
+    public SystemIntegrationResponse integrateAnchorageArea(SystemIntegrationRequest request) {
         request.setIntegrationType(IntegrationType.KHU_NEO_DAU);
         return integrationService.createIntegration(request);
     }
 
-    public SystemIntegrationResponse integrateCoSoSuaChua(SystemIntegrationRequest request) {
+    public SystemIntegrationResponse integrateShipRepairFacility(SystemIntegrationRequest request) {
         request.setIntegrationType(IntegrationType.CO_SO_SUA_CHUA);
         return integrationService.createIntegration(request);
     }
@@ -57,7 +57,7 @@ public class MaritimeFacilityIntegrationService {
         return integrationService.createIntegration(request);
     }
 
-    public SystemIntegrationResponse integrateCangCan(SystemIntegrationRequest request) {
+    public SystemIntegrationResponse integrateDryPort(SystemIntegrationRequest request) {
         request.setIntegrationType(IntegrationType.CANG_CAN);
         return integrationService.createIntegration(request);
     }

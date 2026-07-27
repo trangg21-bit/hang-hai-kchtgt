@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.orgunit.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.orgunit.dto.CreateOrgUnitRequest;
 import com.hanghai.kchtg.orgunit.dto.OrgUnitResponse;
 import com.hanghai.kchtg.orgunit.dto.UpdateOrgUnitRequest;

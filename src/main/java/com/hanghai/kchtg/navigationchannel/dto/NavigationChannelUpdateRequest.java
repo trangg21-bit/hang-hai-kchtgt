@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
+import java.util.UUID;
+
 import lombok.*;
 
 import java.time.LocalDate;
@@ -27,9 +29,9 @@ public class NavigationChannelUpdateRequest {
 
     private String channelCode;
 
-    private java.util.UUID seaportId;
+    private UUID seaportId;
 
-    private java.util.UUID operatingUnitId;
+    private UUID operatingUnitId;
 
     private String location;
 
@@ -49,8 +51,8 @@ public class NavigationChannelUpdateRequest {
 
     @Builder.Default private Integer status = 1;
 
-    private java.util.UUID orgUnitId;
-    private GisGeometryType loaiHinhHoc;
-    private String toaDo;
-    private java.util.UUID bieuTuongId;
+    private UUID orgUnitId;
+    private GisGeometryType geometryType;
+    private String coordinates;
+    private UUID bieuTuongId;
 }

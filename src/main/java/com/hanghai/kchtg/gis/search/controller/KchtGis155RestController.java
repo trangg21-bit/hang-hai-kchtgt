@@ -1,8 +1,10 @@
 package com.hanghai.kchtg.gis.search.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.gis.search.dto.KchtGisSearchResult;
-import com.hanghai.kchtg.gis.search.dto.KchtType;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.search.dto.TinhThanhPho;
 import com.hanghai.kchtg.gis.search.dto.GisObjectType;
 import com.hanghai.kchtg.gis.search.service.KchtGis155Service;
@@ -28,14 +30,14 @@ public class KchtGis155RestController {
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<List<KchtGisSearchResult>>> search(
             @RequestParam(required = false) UUID orgUnitId,
-            @RequestParam(required = false) List<KchtType> kchtType,
+            @RequestParam(required = false) List<InfrastructureType> infrastructureType,
             @RequestParam(required = false) String tinhThanhPho,
             @RequestParam(required = false) String search,
             @RequestParam(required = false) GisObjectType objectType) {
 
         TinhThanhPho mappedEnum = TinhThanhPho.fromString(tinhThanhPho);
         List<KchtGisSearchResult> result = kchtGis155Service.search(
-                orgUnitId, kchtType, mappedEnum, search, objectType);
+                orgUnitId, infrastructureType, mappedEnum, search, objectType);
 
         return ResponseEntity.ok(ApiResponse.success("Tìm kiếm kết cấu hạ tầng thành công", result));
     }

@@ -1,19 +1,23 @@
 package com.hanghai.kchtg.navigationchannel.service;
 
+import com.hanghai.kchtg.security.AdminAutoApproval;
+import java.util.UUID;
+
 import com.hanghai.kchtg.navigationchannel.dto.*;
 import com.hanghai.kchtg.navigationchannel.entity.*;
 import com.hanghai.kchtg.navigationchannel.repository.NavigationChannelRepository;
-import com.hanghai.kchtg.navigationchannel.repository.PheDuyetLichSuRepository;
+import com.hanghai.kchtg.navigationchannel.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
-import com.hanghai.kchtg.gis.search.dto.KchtType;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -29,12 +33,12 @@ import java.util.stream.Collectors;
 public class NavigationChannelService {
 
     private final NavigationChannelRepository repo;
-    private final PheDuyetLichSuRepository pheDuyetLichSuRepo;
+    private final ApprovalHistoryRepository approvalHistoryRepo;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final OrgUnitRepository orgUnitRepository;
 
     @Transactional
-    public NavigationChannelResponse create(NavigationChannelCreateRequest req, String username) {
+    public NavigationChannelResponse create(NavigationChannelCreateRequest req, java.util.UUID userId) {
         String channelCode = req.getChannelCode();
         if (channelCode == null || channelCode.trim().isEmpty()) {
             String orgCode = orgUnitRepository.findById(req.getOrgUnitId())
@@ -67,13 +71,13 @@ public class NavigationChannelService {
                 .isApprovedLevel1(false)
                 .isApprovedLevel2(false)
                 .isDeleted(false)
-                .createdBy(username)
+                .createdBy(null)
                 .build();
 
         nc = repo.save(nc);
 
-        if (req.getToaDo() != null && !req.getToaDo().trim().isEmpty()) {
-            GisGeometryType geomType = req.getLoaiHinhHoc() != null ? req.getLoaiHinhHoc() : GisGeometryType.LINE;
+        if (req.getCoordinates() != null && !req.getCoordinates().trim().isEmpty()) {
+            GisGeometryType geomType = req.getGeometryType() != null ? req.getGeometryType() : GisGeometryType.LINE;
             GisSpatialObjectType objType = getSpatialObjectType(geomType);
             UUID refId = nc.getId();
             GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
@@ -82,9 +86,9 @@ public class NavigationChannelService {
                     "NC_" + nc.getId(),
                     geomType,
                     objType,
-                    req.getToaDo(),
+                    req.getCoordinates(),
                     refId,
-                    KchtType.NAVIGATION_CHANNEL
+                    InfrastructureType.NAVIGATION_CHANNEL
             );
             nc.setSpatialId(spatialObj.getId());
             nc = repo.save(nc);
@@ -117,7 +121,7 @@ public class NavigationChannelService {
         Page<NavigationChannel> results;
         NavigationChannelApprovalStatus approvalStatus = null;
         if (approvalStatusStr != null && !approvalStatusStr.isEmpty()) {
-            try { approvalStatus = NavigationChannelApprovalStatus.valueOf(approvalStatusStr); } catch (Exception ignored) {}
+            try { approvalStatus = NavigationChannelApprovalStatus.valueOf(approvalStatusStr); } catch (IllegalArgumentException e) { log.debug("Bỏ qua bộ lọc trạng thái không hợp lệ: {}", approvalStatusStr); }
         }
         if (orgUnitId != null || (keyword != null && !keyword.isEmpty()) || approvalStatus != null) {
             results = repo.searchDocuments(orgUnitId, keyword, approvalStatus,
@@ -129,7 +133,7 @@ public class NavigationChannelService {
     }
 
     @Transactional
-    public NavigationChannelResponse update(UUID id, NavigationChannelUpdateRequest req, String username) {
+    public NavigationChannelResponse update(UUID id, NavigationChannelUpdateRequest req, UUID updatedBy) {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -151,16 +155,16 @@ public class NavigationChannelService {
         if (req.getBeaconAmount() != null) nc.setBeaconAmount(req.getBeaconAmount());
         if (req.getStatus() != null) nc.setStatus(req.getStatus());
         if (req.getOrgUnitId() != null) nc.setOrgUnitId(req.getOrgUnitId());
-        nc.setUpdatedBy(username);
+        nc.setUpdatedBy(updatedBy);
 
-        if (req.getToaDo() != null) {
-            if (req.getToaDo().trim().isEmpty()) {
+        if (req.getCoordinates() != null) {
+            if (req.getCoordinates().trim().isEmpty()) {
                 if (nc.getSpatialId() != null) {
                     gisSpatialObjectService.delete(nc.getSpatialId());
                     nc.setSpatialId(null);
                 }
             } else {
-                GisGeometryType geomType = req.getLoaiHinhHoc() != null ? req.getLoaiHinhHoc() : GisGeometryType.LINE;
+                GisGeometryType geomType = req.getGeometryType() != null ? req.getGeometryType() : GisGeometryType.LINE;
                 GisSpatialObjectType objType = getSpatialObjectType(geomType);
                 UUID refId = nc.getId();
                 GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
@@ -169,9 +173,9 @@ public class NavigationChannelService {
                         "NC_" + nc.getId(),
                         geomType,
                         objType,
-                        req.getToaDo(),
+                        req.getCoordinates(),
                         refId,
-                        KchtType.NAVIGATION_CHANNEL
+                        InfrastructureType.NAVIGATION_CHANNEL
                 );
                 nc.setSpatialId(spatialObj.getId());
             }
@@ -186,7 +190,7 @@ public class NavigationChannelService {
                         spatialObj.getObjectType(),
                         spatialObj.getCoordinates(),
                         refId,
-                        KchtType.NAVIGATION_CHANNEL
+                        InfrastructureType.NAVIGATION_CHANNEL
                 );
             });
         }
@@ -214,7 +218,7 @@ public class NavigationChannelService {
     }
 
     @Transactional
-    public PheDuyetResponse approveC1(UUID id, PheDuyetRequest req, String approvedBy) {
+    public ApprovalResponse approveC1(UUID id, ApprovalRequest req, java.util.UUID approvedBy) {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -224,22 +228,37 @@ public class NavigationChannelService {
         }
 
         nc.setIsApprovedLevel1(true);
-        nc.setApproverLevel1(approvedBy);
+        nc.setApproverLevel1(approvedBy != null ? approvedBy.toString() : null);
         nc.setApprovedDateLevel1(LocalDate.now());
 
-        if ("APPROVED".equalsIgnoreCase(req.getTrangThai())) {
-            nc.setApprovalStatus(NavigationChannelApprovalStatus.UNDER_REVIEW);
+        String actor = approvedBy != null ? approvedBy.toString() : null;
+        boolean autoApproved = false;
+
+        if ("APPROVED".equalsIgnoreCase(req.getStatus())) {
+            if (AdminAutoApproval.isAutoApprover()) {
+                // Administrators clear both levels in one step.
+                nc.setIsApprovedLevel2(true);
+                nc.setApproverLevel2(actor);
+                nc.setApprovedDateLevel2(LocalDate.now());
+                nc.setApprovalStatus(NavigationChannelApprovalStatus.APPROVED);
+                autoApproved = true;
+            } else {
+                nc.setApprovalStatus(NavigationChannelApprovalStatus.UNDER_REVIEW);
+            }
         } else {
             nc.setApprovalStatus(NavigationChannelApprovalStatus.REJECTED);
-            nc.setRejectionReason(req.getLyDo());
+            nc.setRejectionReason(req.getReason());
         }
 
-        saveApprovalHistory(nc, 1, req.getTrangThai(), approvedBy, req.getLyDo());
-        return buildPheDuyetResponse(nc, 1);
+        saveApprovalHistory(nc, 1, req.getStatus(), actor, req.getReason());
+        if (autoApproved) {
+            saveApprovalHistory(nc, 2, req.getStatus(), actor, req.getReason());
+        }
+        return buildApprovalResponse(nc, autoApproved ? 2 : 1);
     }
 
     @Transactional
-    public PheDuyetResponse approveC2(UUID id, PheDuyetRequest req, String approvedBy) {
+    public ApprovalResponse approveC2(UUID id, ApprovalRequest req, java.util.UUID approvedBy) {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
@@ -248,60 +267,60 @@ public class NavigationChannelService {
         }
 
         String c1Actor = nc.getApproverLevel1();
-        if (c1Actor != null && c1Actor.equals(approvedBy)) {
+        if (c1Actor != null && approvedBy != null && c1Actor.equals(approvedBy.toString())) {
             throw new IllegalStateException("Nguoi phe duyet C2 khong duoc trung voi nguoi phe duyet C1");
         }
 
         nc.setIsApprovedLevel2(true);
-        nc.setApproverLevel2(approvedBy);
+        nc.setApproverLevel2(approvedBy != null ? approvedBy.toString() : null);
         nc.setApprovedDateLevel2(LocalDate.now());
 
-        if ("APPROVED".equalsIgnoreCase(req.getTrangThai())) {
+        if ("APPROVED".equalsIgnoreCase(req.getStatus())) {
             nc.setApprovalStatus(NavigationChannelApprovalStatus.APPROVED);
         } else {
             nc.setApprovalStatus(NavigationChannelApprovalStatus.REJECTED);
-            nc.setRejectionReason(req.getLyDo());
+            nc.setRejectionReason(req.getReason());
         }
 
-        saveApprovalHistory(nc, 2, req.getTrangThai(), approvedBy, req.getLyDo());
-        return buildPheDuyetResponse(nc, 2);
+        saveApprovalHistory(nc, 2, req.getStatus(), approvedBy != null ? approvedBy.toString() : null, req.getReason());
+        return buildApprovalResponse(nc, 2);
     }
 
     @Transactional
-    public PheDuyetResponse reject(UUID id, PheDuyetRequest req, String approvedBy) {
+    public ApprovalResponse reject(UUID id, ApprovalRequest req, java.util.UUID approvedBy) {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
         nc.setApprovalStatus(NavigationChannelApprovalStatus.REJECTED);
-        nc.setRejectionReason(req.getLyDo());
+        nc.setRejectionReason(req.getReason());
 
-        Integer cap = req.getCapPheDuyet() != null ? req.getCapPheDuyet() : 1;
-        saveApprovalHistory(nc, cap, "REJECTED", approvedBy, req.getLyDo());
-        return buildPheDuyetResponse(nc, cap);
+        Integer cap = req.getApprovalLevel() != null ? req.getApprovalLevel().getValue() : 1;
+        saveApprovalHistory(nc, cap, "REJECTED", approvedBy != null ? approvedBy.toString() : null, req.getReason());
+        return buildApprovalResponse(nc, cap);
     }
 
     private void saveApprovalHistory(NavigationChannel nc, Integer cap, String status, String user, String reason) {
-        PheDuyetLichSu hist = PheDuyetLichSu.builder()
+        ApprovalHistory hist = ApprovalHistory.builder()
                 .navigationChannel(nc)
-                .capPheDuyet(cap)
-                .trangThai(status)
-                .nguoiPheDuyet(user)
-                .ngayPheDuyet(LocalDate.now())
-                .lyDo(reason)
+                .approvalLevel(ApprovalLevel.fromInt(cap))
+                .status(status)
+                .approvedBy(user != null ? java.util.UUID.fromString(user) : null)
+                .approvedDate(LocalDate.now())
+                .reason(reason)
                 .build();
-        pheDuyetLichSuRepo.save(hist);
+        approvalHistoryRepo.save(hist);
         nc.getApprovalHistory().add(hist);
     }
 
-    private PheDuyetResponse buildPheDuyetResponse(NavigationChannel nc, Integer cap) {
-        return PheDuyetResponse.builder()
+    private ApprovalResponse buildApprovalResponse(NavigationChannel nc, Integer cap) {
+        return ApprovalResponse.builder()
                 .id(String.valueOf(nc.getId()))
                 .navigationChannelId(nc.getId())
-                .capPheDuyet(cap)
-                .trangThai(nc.getApprovalStatus().name())
-                .nguoiPheDuyet(cap == 1 ? nc.getApproverLevel1() : nc.getApproverLevel2())
-                .ngayPheDuyet(cap == 1 ? nc.getApprovedDateLevel1() : nc.getApprovedDateLevel2())
-                .lyDo(nc.getRejectionReason())
+                .approvalLevel(ApprovalLevel.fromInt(cap))
+                .status(nc.getApprovalStatus().name())
+                .approvedBy(cap == 1 ? (nc.getApproverLevel1() != null ? java.util.UUID.fromString(nc.getApproverLevel1()) : null) : (nc.getApproverLevel2() != null ? java.util.UUID.fromString(nc.getApproverLevel2()) : null))
+                .approvedDate(cap == 1 ? nc.getApprovedDateLevel1() : nc.getApprovedDateLevel2())
+                .reason(nc.getRejectionReason())
                 .build();
     }
 
@@ -310,15 +329,15 @@ public class NavigationChannelService {
         NavigationChannel nc = repo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Khong tim thay luong hang hai voi id: " + id));
 
-        List<PheDuyetLichSu> history = pheDuyetLichSuRepo.findByNavigationChannelIdOrderByNgayPheDuyetDesc(id);
+        List<ApprovalHistory> history = approvalHistoryRepo.findByNavigationChannelIdOrderByApprovedDateDesc(id);
         return history.stream().map(h -> HistoryEntry.builder()
                 .id(h.getId())
                 .navigationChannelId(h.getNavigationChannel().getId())
-                .capPheDuyet(h.getCapPheDuyet())
-                .trangThai(h.getTrangThai())
-                .nguoiPheDuyet(h.getNguoiPheDuyet())
-                .ngayPheDuyet(h.getNgayPheDuyet())
-                .lyDo(h.getLyDo())
+                .approvalLevel(h.getApprovalLevel())
+                .status(h.getStatus())
+                .approvedBy(h.getApprovedBy())
+                .approvedDate(h.getApprovedDate())
+                .reason(h.getReason())
                 .build()).collect(Collectors.toList());
     }
 
@@ -335,14 +354,18 @@ public class NavigationChannelService {
     }
 
     @Transactional(readOnly = true)
-    public KetQuaTimKiemResponse searchDocuments(UUID orgUnitId, String kw, String trangThaiStr, int page, int size) {
-        NavigationChannelApprovalStatus trangThai = null;
-        if (trangThaiStr != null && !trangThaiStr.trim().isEmpty()) {
-            try { trangThai = NavigationChannelApprovalStatus.valueOf(trangThaiStr.trim()); } catch (Exception ignored) {}
+    public SearchResultResponse searchDocuments(UUID orgUnitId, String kw, String statusStr, int page, int size) {
+        NavigationChannelApprovalStatus status = null;
+        if (statusStr != null && !statusStr.trim().isEmpty()) {
+            try {
+                status = NavigationChannelApprovalStatus.valueOf(statusStr.trim());
+            } catch (IllegalArgumentException e) {
+                log.debug("Bỏ qua bộ lọc trạng thái không hợp lệ: {}", statusStr);
+            }
         }
         String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
-        Page<NavigationChannel> r = repo.searchDocuments(orgUnitId, keywordLike, trangThai, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
-        return KetQuaTimKiemResponse.builder()
+        Page<NavigationChannel> r = repo.searchDocuments(orgUnitId, keywordLike, status, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        return SearchResultResponse.builder()
                 .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())
                 .totalPages(r.getTotalPages())
@@ -364,16 +387,16 @@ public class NavigationChannelService {
                         .collect(Collectors.toList())
                 : new ArrayList<>();
 
-        List<PheDuyetResponse> hist = nc.getApprovalHistory() != null
+        List<ApprovalResponse> hist = nc.getApprovalHistory() != null
                 ? nc.getApprovalHistory().stream()
-                        .map(h -> PheDuyetResponse.builder()
+                        .map(h -> ApprovalResponse.builder()
                                 .id(String.valueOf(h.getId()))
                                 .navigationChannelId(h.getNavigationChannel().getId())
-                                .capPheDuyet(h.getCapPheDuyet())
-                                .trangThai(h.getTrangThai())
-                                .nguoiPheDuyet(h.getNguoiPheDuyet())
-                                .ngayPheDuyet(h.getNgayPheDuyet())
-                                .lyDo(h.getLyDo())
+                                .approvalLevel(h.getApprovalLevel())
+                                .status(h.getStatus())
+                                .approvedBy(h.getApprovedBy())
+                                .approvedDate(h.getApprovedDate())
+                                .reason(h.getReason())
                                 .build())
                         .collect(Collectors.toList())
                 : new ArrayList<>();
@@ -389,29 +412,29 @@ public class NavigationChannelService {
             }
         }
 
-        List<ChiTietTuyenLuongResponse> chiTietList = nc.getChiTietTuyenLuongList() != null
-                ? nc.getChiTietTuyenLuongList().stream()
-                        .map(ct -> ChiTietTuyenLuongResponse.builder()
+        List<ChannelRouteDetailResponse> chiTietList = nc.getChannelRouteDetailList() != null
+                ? nc.getChannelRouteDetailList().stream()
+                        .map(ct -> ChannelRouteDetailResponse.builder()
                                 .id(ct.getId())
-                                .stt(ct.getStt())
-                                .phanLoai(ct.getPhanLoai())
-                                .ma(ct.getMa())
-                                .ten(ct.getTen())
-                                .loaiTuyenLuong(ct.getLoaiTuyenLuong())
-                                .doSauHienTai(ct.getDoSauHienTai())
-                                .maiDocThietKe(ct.getMaiDocThietKe())
-                                .chieuDai(ct.getChieuDai())
-                                .rongLonNhat(ct.getRongLonNhat())
-                                .rongNhoNhat(ct.getRongNhoNhat())
-                                .doSau(ct.getDoSau())
-                                .khoiLuongNaoVet(ct.getKhoiLuongNaoVet())
-                                .congCong(ct.getCongCong())
-                                .chuyenDung(ct.getChuyenDung())
-                                .clearanceHeight(ct.getChieuCaoTinhKhong())
-                                .viTriVungQuayTau(ct.getViTriVungQuayTau())
-                                .banKinhVungQuayTau(ct.getBanKinhVungQuayTau())
-                                .banKinhCongNhoNhat(ct.getBanKinhCongNhoNhat())
-                                .phamViBaoVeLuong(ct.getPhamViBaoVeLuong())
+                                .sequenceNo(ct.getSequenceNo())
+                                .classification(ct.getClassification())
+                                .code(ct.getCode())
+                                .name(ct.getName())
+                                .channelRouteType(ct.getChannelRouteType())
+                                .currentDepth(ct.getCurrentDepth())
+                                .designSlope(ct.getDesignSlope())
+                                .length(ct.getLength())
+                                .maxWidth(ct.getMaxWidth())
+                                .minWidth(ct.getMinWidth())
+                                .depth(ct.getDepth())
+                                .dredgingVolume(ct.getDredgingVolume())
+                                .publicAccess(ct.getPublicAccess())
+                                .dedicated(ct.getDedicated())
+                                .clearanceHeight(ct.getClearanceHeight())
+                                .turningBasinLocation(ct.getTurningBasinLocation())
+                                .turningBasinRadius(ct.getTurningBasinRadius())
+                                .minCurveRadius(ct.getMinCurveRadius())
+                                .channelProtectionScope(ct.getChannelProtectionScope())
                                 .build())
                         .collect(Collectors.toList())
                 : new ArrayList<>();
@@ -455,14 +478,14 @@ public class NavigationChannelService {
                 .attachments(atts)
                 .approvalHistory(hist)
                 .clearanceHeight(nc.getClearanceHeight())
-                .chiTietTuyenLuongList(chiTietList)
+                .channelRouteDetailList(chiTietList)
                 .spatialId(nc.getSpatialId())
-                .loaiHinhHoc(geomType)
-                .toaDo(coords)
+                .geometryType(geomType)
+                .coordinates(coords)
                 .build();
     }
 
-    private String resolveOrgUnitName(java.util.UUID orgUnitId) {
+    private String resolveOrgUnitName(UUID orgUnitId) {
         if (orgUnitId == null) return null;
         return orgUnitRepository.findById(orgUnitId)
                 .map(com.hanghai.kchtg.orgunit.entity.OrgUnit::getName)

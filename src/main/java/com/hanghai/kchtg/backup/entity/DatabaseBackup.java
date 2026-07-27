@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.backup.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

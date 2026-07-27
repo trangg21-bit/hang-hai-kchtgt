@@ -22,20 +22,20 @@ import {
   CloseOutlined,
 } from '@ant-design/icons';
 import {
-  fetchYeuCauGiamList,
-  createYeuCauGiam,
-  updateYeuCauGiam,
-  deleteYeuCauGiam,
-  fetchTaiSanKCHTList,
-  approveYeuCauGiam,
-  rejectYeuCauGiam,
+  fetchAssetDecreaseList,
+  createAssetDecrease,
+  updateAssetDecrease,
+  deleteAssetDecrease,
+  fetchInfraAssetList,
+  approveAssetDecrease,
+  rejectAssetDecrease,
 } from '../../services/assetmovement/api';
-import type { YeuCauGiamTaiSanResponse, YeuCauGiamTaiSanRequest } from '../../services/assetmovement/types';
+import type { AssetDecreaseResponse, AssetDecreaseRequest } from '../../services/assetmovement/types';
 import { colors } from '../../theme';
 import { fontWeightBold, fontSizeLg } from '../../tokens';
 
 export default function AssetDecreaseList() {
-  const [dataSource, setDataSource] = useState<YeuCauGiamTaiSanResponse[]>([]);
+  const [dataSource, setDataSource] = useState<AssetDecreaseResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -43,11 +43,11 @@ export default function AssetDecreaseList() {
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<YeuCauGiamTaiSanResponse | null>(null);
+  const [editingItem, setEditingItem] = useState<AssetDecreaseResponse | null>(null);
   const [form] = Form.useForm();
 
   // Danh sách tài sản KCHT
-  const [taiSanList, setTaiSanList] = useState<any[]>([]);
+  const [assetList, setTaiSanList] = useState<any[]>([]);
 
   // States phê duyệt/từ chối
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
@@ -57,7 +57,7 @@ export default function AssetDecreaseList() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchYeuCauGiamList({
+      const res = await fetchAssetDecreaseList({
         page: page - 1,
         size: pageSize,
       });
@@ -70,9 +70,9 @@ export default function AssetDecreaseList() {
     }
   }, [page, pageSize]);
 
-  const loadTaiSanList = async () => {
+  const loadAssetList = async () => {
     try {
-      const res = await fetchTaiSanKCHTList({ page: 0, size: 200 });
+      const res = await fetchInfraAssetList({ page: 0, size: 200 });
       setTaiSanList(res.content || []);
     } catch (err: any) {
       console.error('Không thể tải danh sách tài sản', err);
@@ -81,16 +81,16 @@ export default function AssetDecreaseList() {
 
   useEffect(() => {
     loadData();
-    loadTaiSanList();
+    loadAssetList();
   }, [loadData]);
 
-  const handleOpenModal = (record?: YeuCauGiamTaiSanResponse) => {
+  const handleOpenModal = (record?: AssetDecreaseResponse) => {
     if (record) {
       setEditingItem(record);
       form.setFieldsValue({
-        taiSanId: record.taiSanId,
-        lyDo: record.lyDo,
-        nguyenNhanGiam: record.nguyenNhanGiam,
+        assetId: record.assetId,
+        reason: record.reason,
+        decreaseReason: record.decreaseReason,
       });
     } else {
       setEditingItem(null);
@@ -107,20 +107,20 @@ export default function AssetDecreaseList() {
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      const payload: YeuCauGiamTaiSanRequest = {
-        taiSanId: values.taiSanId,
-        lyDo: values.lyDo,
-        nguyenNhanGiam: values.nguyenNhanGiam,
-        tenTaiSan: '',
-        soLuong: 1,
-        donViTinh: 'Cái',
+      const payload: AssetDecreaseRequest = {
+        assetId: values.assetId,
+        reason: values.reason,
+        decreaseReason: values.decreaseReason,
+        assetName: '',
+        quantity: 1,
+        unitOfMeasure: 'Cái',
       };
 
       if (editingItem) {
-        await updateYeuCauGiam(editingItem.id, payload);
+        await updateAssetDecrease(editingItem.id, payload);
         message.success('Cập nhật yêu cầu giảm tài sản thành công!');
       } else {
-        await createYeuCauGiam(payload);
+        await createAssetDecrease(payload);
         message.success('Tạo mới yêu cầu giảm tài sản thành công!');
       }
 
@@ -134,7 +134,7 @@ export default function AssetDecreaseList() {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteYeuCauGiam(id);
+      await deleteAssetDecrease(id);
       message.success('Xóa yêu cầu thành công!');
       loadData();
     } catch (err: any) {
@@ -144,7 +144,7 @@ export default function AssetDecreaseList() {
 
   const handleApprove = async (id: string) => {
     try {
-      await approveYeuCauGiam(id);
+      await approveAssetDecrease(id);
       message.success('Đã phê duyệt yêu cầu giảm tài sản!');
       loadData();
     } catch (err: any) {
@@ -161,7 +161,7 @@ export default function AssetDecreaseList() {
   const handleRejectConfirm = async () => {
     if (!rejectingId) return;
     try {
-      await rejectYeuCauGiam(rejectingId, rejectRemarks);
+      await rejectAssetDecrease(rejectingId, rejectRemarks);
       message.success('Đã từ chối yêu cầu giảm tài sản!');
       setIsRejectModalOpen(false);
       loadData();
@@ -190,29 +190,29 @@ export default function AssetDecreaseList() {
   const columns = [
     {
       title: 'Tên tài sản',
-      dataIndex: 'tenTaiSan',
-      key: 'tenTaiSan',
+      dataIndex: 'assetName',
+      key: 'assetName',
     },
     {
       title: 'Đơn vị tính',
-      dataIndex: 'donViTinh',
-      key: 'donViTinh',
+      dataIndex: 'unitOfMeasure',
+      key: 'unitOfMeasure',
     },
     {
       title: 'Lý do giảm',
-      dataIndex: 'lyDo',
-      key: 'lyDo',
+      dataIndex: 'reason',
+      key: 'reason',
     },
     {
       title: 'Nguyên nhân giảm',
-      dataIndex: 'nguyenNhanGiam',
-      key: 'nguyenNhanGiam',
+      dataIndex: 'decreaseReason',
+      key: 'decreaseReason',
       render: (val: string) => getNguyenNhanLabel(val),
     },
     {
       title: 'Trạng thái',
-      dataIndex: 'trangThai',
-      key: 'trangThai',
+      dataIndex: 'status',
+      key: 'status',
       render: (status: string) => getStatusTag(status),
     },
     {
@@ -223,8 +223,8 @@ export default function AssetDecreaseList() {
     {
       title: 'Thao tác',
       key: 'action',
-      render: (_: any, record: YeuCauGiamTaiSanResponse) => {
-        const isPending = !record.trangThai || record.trangThai === 'CHO_PHE_DUYET' || record.trangThai === 'PENDING';
+      render: (_: any, record: AssetDecreaseResponse) => {
+        const isPending = !record.status || record.status === 'CHO_PHE_DUYET' || record.status === 'PENDING';
         return (
           <Space size="middle">
             {isPending && (
@@ -321,7 +321,7 @@ export default function AssetDecreaseList() {
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
-            name="taiSanId"
+            name="assetId"
             label="Chọn tài sản KCHT cần giảm"
             rules={[{ required: true, message: 'Vui lòng chọn tài sản KCHT' }]}
           >
@@ -330,16 +330,16 @@ export default function AssetDecreaseList() {
               showSearch
               optionFilterProp="children"
             >
-              {taiSanList.map(ts => (
+              {assetList.map(ts => (
                 <Select.Option key={ts.id} value={ts.id}>
-                  [{ts.maTaiSan}] {ts.tenTaiSan}
+                  [{ts.assetCode}] {ts.assetName}
                 </Select.Option>
               ))}
             </Select>
           </Form.Item>
 
           <Form.Item
-            name="nguyenNhanGiam"
+            name="decreaseReason"
             label="Nguyên nhân giảm"
             rules={[{ required: true, message: 'Vui lòng chọn nguyên nhân giảm' }]}
           >
@@ -352,7 +352,7 @@ export default function AssetDecreaseList() {
           </Form.Item>
 
           <Form.Item
-            name="lyDo"
+            name="reason"
             label="Lý do chi tiết"
             rules={[{ required: true, message: 'Vui lòng nhập lý do' }]}
           >

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.report.handler;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.report.entity.ReportStatus;

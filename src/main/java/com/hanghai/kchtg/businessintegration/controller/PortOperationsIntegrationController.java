@@ -32,15 +32,15 @@ public class PortOperationsIntegrationController {
         return ResponseEntity.ok(portService.integrateShipbuildingRepair(request));
     }
 
+    @PostMapping("/berth-throughput")
+    public ResponseEntity<BusinessDataIntegrationResponse> integrateBerthThroughputCapacity(
+            @RequestBody BusinessDataIntegrationRequest request) {
+        return ResponseEntity.ok(portService.integrateBerthThroughputCapacity(request));
+    }
+
     @PostMapping("/port-throughput")
     public ResponseEntity<BusinessDataIntegrationResponse> integratePortThroughputCapacity(
             @RequestBody BusinessDataIntegrationRequest request) {
         return ResponseEntity.ok(portService.integratePortThroughputCapacity(request));
-    }
-
-    @PostMapping("/cang-throughput")
-    public ResponseEntity<BusinessDataIntegrationResponse> integrateCangThroughputCapacity(
-            @RequestBody BusinessDataIntegrationRequest request) {
-        return ResponseEntity.ok(portService.integrateCangThroughputCapacity(request));
     }
 }

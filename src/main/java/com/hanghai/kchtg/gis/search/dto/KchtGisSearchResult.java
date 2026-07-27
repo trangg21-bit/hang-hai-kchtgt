@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.search.dto;
 
+import java.util.UUID;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,13 +16,10 @@ import java.util.UUID;
 public class KchtGisSearchResult {
     private String id;
     private String name;
-    private String ma;
+    private String code;
     private String orgName;
     private String kchtTypeLabel;
-    private String diaDiem;
-    private String diaChiChiTiet;
-    private Double latitude;
-    private Double longitude;
-    private String loaiHinhHoc;
-    private String toaDo;
+    private String location;
+    private String diaChiChiTiet;    private String geometryType;
+    private String coordinates;
 }

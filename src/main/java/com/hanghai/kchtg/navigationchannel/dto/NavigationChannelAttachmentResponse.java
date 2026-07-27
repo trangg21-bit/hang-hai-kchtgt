@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
+import java.util.UUID;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,7 +18,7 @@ import java.time.LocalDate;
 @Builder
 public class NavigationChannelAttachmentResponse {
 
-    private Long id;
+    private UUID id;
     private String fileName;
     private String filePath;
     private Long fileSize;

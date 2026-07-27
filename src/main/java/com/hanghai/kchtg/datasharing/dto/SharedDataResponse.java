@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.datasharing.dto;
 
+import java.util.UUID;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,7 +14,7 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SharedDataResponse {
-    private Long id;
+    private UUID id;
     private String code;
     private String name;
     private String dataType;
@@ -24,8 +26,8 @@ public class SharedDataResponse {
     private String fileFormat;
     private Integer recordCount;
     private String description;
-    private String approvedBy;
+    private UUID approvedBy;
     private LocalDate approvedAt;
-    private String createdBy;
-    private String updatedBy;
+    private UUID createdBy;
+    private UUID updatedBy;
 }

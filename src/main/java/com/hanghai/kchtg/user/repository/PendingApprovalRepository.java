@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.user.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.user.entity.PendingApproval;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,7 +15,7 @@ import java.util.Optional;
 /**
  * Repository cho entity {@link PendingApproval}.
  */
-public interface PendingApprovalRepository extends JpaRepository<PendingApproval, java.util.UUID> {
+public interface PendingApprovalRepository extends JpaRepository<PendingApproval, UUID> {
 
     /**
      * Tìm yêu cầu pending theo username.

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.mapicon.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.mapicon.dto.CreateMapIconRequest;
 import com.hanghai.kchtg.mapicon.dto.MapIconResponse;
 import com.hanghai.kchtg.mapicon.dto.UpdateMapIconRequest;

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.point.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.point.entity.PointObject;
 import com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType;
 import com.hanghai.kchtg.gis.point.entity.PointObject.Status;

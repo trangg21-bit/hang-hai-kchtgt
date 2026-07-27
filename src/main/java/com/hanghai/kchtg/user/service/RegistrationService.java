@@ -101,7 +101,7 @@ public class RegistrationService {
             String plainToken = verificationTokenService.generateToken(user.getId(), user.getEmail(), user.getFullName());
 
             // 9. Send verification email
-            notificationService.sendVerificationEmail(user.getEmail(), plainToken, user.getFullName());
+            notificationService.sendVerificationEmail(user.getEmail(), plainToken, user.getId());
 
             // 10. Audit log
             long duration = System.currentTimeMillis() - startTime;
@@ -213,3 +213,4 @@ public class RegistrationService {
         return response;
     }
 }
+

@@ -7,7 +7,7 @@ import { useState } from 'react';
 interface Attachment {
   id: string;
   fileName: string;
-  fileUrl: string;
+  filePath: string;
 }
 
 interface AttachmentListProps {
@@ -100,7 +100,7 @@ export default function AttachmentList({
             icon={<DownloadOutlined />}
             onClick={() => {
               const link = document.createElement('a');
-              link.href = record.fileUrl;
+              link.href = record.filePath;
               link.download = record.fileName;
               link.click();
             }}

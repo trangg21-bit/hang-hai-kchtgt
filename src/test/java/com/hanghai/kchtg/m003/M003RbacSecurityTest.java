@@ -3,9 +3,9 @@ package com.hanghai.kchtg.m003;
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
 import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
-import com.hanghai.kchtg.cangben.MethodSecurityTestConfig;
-import com.hanghai.kchtg.cosuachua.controller.CoSuaChuaDongTauController;
-import com.hanghai.kchtg.cosuachua.service.CoSuaChuaDongTauService;
+import com.hanghai.kchtg.port.MethodSecurityTestConfig;
+import com.hanghai.kchtg.shiprepairfacility.controller.ShipRepairFacilityController;
+import com.hanghai.kchtg.shiprepairfacility.service.ShipRepairFacilityService;
 import com.hanghai.kchtg.dikerevetment.controller.DikeRevetmentController;
 import com.hanghai.kchtg.dikerevetment.service.DikeRevetmentService;
 import com.hanghai.kchtg.navigationchannel.controller.NavigationChannelController;
@@ -15,11 +15,11 @@ import com.hanghai.kchtg.security.PermissionAuthorizationManager;
 import com.hanghai.kchtg.security.service.JwtSessionService;
 import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.security.service.TokenValidationService;
-import com.hanghai.kchtg.tramradar.controller.TramRadarController;
-import com.hanghai.kchtg.tramradar.service.TramRadarService;
+import com.hanghai.kchtg.radarstation.controller.RadarStationController;
+import com.hanghai.kchtg.radarstation.service.RadarStationService;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.vts.controller.HeThongVTSController;
-import com.hanghai.kchtg.vts.service.HeThongVTSDataService;
+import com.hanghai.kchtg.vtssystem.controller.VtsSystemController;
+import com.hanghai.kchtg.vtssystem.service.VtsSystemService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,14 +49,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * RBAC deny/allow path tests for all 5 M-003 domains:
- *   navigationchannel, dikerevetment, cosuachua, tramradar, vts.
+ *   navigationchannel, dikerevetment, shiprepairfacility, radarstation, vts.
  */
 @WebMvcTest(controllers = {
         NavigationChannelController.class,
         DikeRevetmentController.class,
-        CoSuaChuaDongTauController.class,
-        TramRadarController.class,
-        HeThongVTSController.class
+        ShipRepairFacilityController.class,
+        RadarStationController.class,
+        VtsSystemController.class
 })
 @AutoConfigureMockMvc(addFilters = false)
 @Import(MethodSecurityTestConfig.class)
@@ -71,9 +71,9 @@ class M003RbacSecurityTest {
     // ── Service mocks ───────────────────────────────────────────────────────
     @MockBean private NavigationChannelService navigationChannelService;
     @MockBean private DikeRevetmentService dikeRevetmentService;
-    @MockBean private CoSuaChuaDongTauService coSuaChuaDongTauService;
-    @MockBean private TramRadarService tramRadarService;
-    @MockBean private HeThongVTSDataService heThongVTSDataService;
+    @MockBean private ShipRepairFacilityService shipRepairFacilityService;
+    @MockBean private RadarStationService radarStationService;
+    @MockBean private VtsSystemService vtsSystemService;
 
     // ── Security bean ───────────────────────────────────────────────────────
     @MockBean(name = "auth")
@@ -99,9 +99,9 @@ class M003RbacSecurityTest {
 
     // Valid JSON bodies that satisfy @NotBlank constraints on each domain's PheDuyetRequest
     private static final String NC_APPROVE_BODY =
-            "{\"nguoiPheDuyet\":\"Admin\",\"trangThai\":\"APPROVED\"}";
+            "{\"nguoiPheDuyet\":\"Admin\",\"status\":\"APPROVED\"}";
     private static final String DIKEREVETMENT_APPROVE_BODY =
-            "{\"nguoiPheDuyet\":\"Admin\",\"quyetDinh\":\"APPROVED\"}";
+            "{\"nguoiPheDuyet\":\"Admin\",\"decision\":\"APPROVED\"}";
     private static final String GENERIC_APPROVE_BODY =
             "{\"quyetDinh\":\"APPROVED\"}";
 

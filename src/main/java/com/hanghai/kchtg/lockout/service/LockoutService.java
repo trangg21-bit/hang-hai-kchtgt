@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.lockout.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.lockout.dto.enums.LockoutStatus;
 import com.hanghai.kchtg.lockout.entity.LockoutPolicy;
 import com.hanghai.kchtg.lockout.repository.LockoutPolicyRepository;

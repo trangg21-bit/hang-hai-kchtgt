@@ -211,7 +211,7 @@ export default function MapLayerList() {
 
   // ── List-view columns ──
   const columns = useMemo(() => [
-    { key: 'stt', label: '#', width: 60, align: 'center' as const, type: 'mono' as const,
+    { key: 'sequenceNo', label: '#', width: 60, align: 'center' as const, type: 'mono' as const,
       render: (_: unknown, __: MapLayer, idx: number) =>
         <span style={{ color: textTertiary }}>{(page - 1) * pageSize + idx + 1}</span> },
     { key: 'code', label: 'Mã', dataIndex: 'code', width: 180,

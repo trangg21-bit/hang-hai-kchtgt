@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.password.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

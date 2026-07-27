@@ -1,10 +1,12 @@
 package com.hanghai.kchtg.report.handler;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
-import com.hanghai.kchtg.cangben.entity.WaterZone;
-import com.hanghai.kchtg.cangben.entity.LoaiVungNuoc;
-import com.hanghai.kchtg.cangben.repository.WaterZoneRepository;
+import com.hanghai.kchtg.port.entity.WaterZone;
+import com.hanghai.kchtg.port.entity.WaterZoneType;
+import com.hanghai.kchtg.port.repository.WaterZoneRepository;
 import com.hanghai.kchtg.gis.line.entity.LineObject;
 import com.hanghai.kchtg.gis.line.repository.LineObjectRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,19 +31,19 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
                 || "F-154".equalsIgnoreCase(reportCode);
     }
 
-    private Set<LoaiVungNuoc> getLoaiVungNuocFilter(String reportCode) {
-        Set<LoaiVungNuoc> filterSet = new HashSet<>();
+    private Set<WaterZoneType> getWaterZoneTypeFilter(String reportCode) {
+        Set<WaterZoneType> filterSet = new HashSet<>();
         if ("F-152".equalsIgnoreCase(reportCode)) {
-            filterSet.add(LoaiVungNuoc.DON_TRA_HOA_TIEU);
-            filterSet.add(LoaiVungNuoc.QUAY_TRO_TAU);
-            filterSet.add(LoaiVungNuoc.NEO_DAU);
-            filterSet.add(LoaiVungNuoc.TRANH_BAO);
+            filterSet.add(WaterZoneType.DON_TRA_HOA_TIEU);
+            filterSet.add(WaterZoneType.QUAY_TRO_TAU);
+            filterSet.add(WaterZoneType.NEO_DAU);
+            filterSet.add(WaterZoneType.TRANH_BAO);
         } else if ("F-153".equalsIgnoreCase(reportCode)) {
-            filterSet.add(LoaiVungNuoc.CHUYEN_TAI);
-            filterSet.add(LoaiVungNuoc.NEO_DAU);
+            filterSet.add(WaterZoneType.CHUYEN_TAI);
+            filterSet.add(WaterZoneType.NEO_DAU);
         } else if ("F-154".equalsIgnoreCase(reportCode)) {
-            filterSet.add(LoaiVungNuoc.BEN_PHAO);
-            filterSet.add(LoaiVungNuoc.NEO_DAU);
+            filterSet.add(WaterZoneType.BEN_PHAO);
+            filterSet.add(WaterZoneType.NEO_DAU);
         }
         return filterSet;
     }
@@ -52,7 +54,7 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
         int reportYear = getReportYear(request);
 
-        Set<LoaiVungNuoc> filterSet = getLoaiVungNuocFilter(request.getReportCode());
+        Set<WaterZoneType> filterSet = getWaterZoneTypeFilter(request.getReportCode());
 
         List<WaterZone> waterZones = waterZoneRepository.findAll(Sort.unsorted()).stream()
                 .filter(v -> filterSet.contains(v.getWaterZoneType()))
@@ -68,10 +70,10 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
         );
 
         List<Map<String, Object>> rows = new ArrayList<>();
-        int stt = 1;
+        int sequenceNo = 1;
         for (WaterZone v : waterZones) {
             Map<String, Object> r = new LinkedHashMap<>();
-            r.put("STT", stt++);
+            r.put("STT", sequenceNo++);
             r.put("Chỉ tiêu", v.getWaterZoneName() != null ? v.getWaterZoneName() : "");
 
             // JOIN spatialId → LineObject.coordinates
@@ -113,7 +115,7 @@ public class F152ToF154ReportHandler extends BaseReportHandler {
         UUID targetUnitId = resolveOrgUnitId(request.getOrgUnitId());
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
 
-        Set<LoaiVungNuoc> filterSet = getLoaiVungNuocFilter(request.getReportCode());
+        Set<WaterZoneType> filterSet = getWaterZoneTypeFilter(request.getReportCode());
 
         List<WaterZone> waterZones = waterZoneRepository.findAll(Sort.unsorted()).stream()
                 .filter(v -> filterSet.contains(v.getWaterZoneType()))

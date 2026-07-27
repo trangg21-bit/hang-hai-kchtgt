@@ -1,4 +1,10 @@
 package com.hanghai.kchtg.station.dto.haiphong;
+
+import java.util.UUID;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import lombok.*;
 
 import com.hanghai.kchtg.station.entity.StationApprovalStatus;
@@ -39,8 +45,8 @@ public class CoastalStationHaiphongResponse {
     private String contactPhone;
     private StationStatus status;
     private StationApprovalStatus approvalStatus;
-    private Integer approvalLevel;
-    private String approvedBy;
+    private ApprovalLevel approvalLevel;
+    private UUID approvedBy;
     private LocalDateTime approvedDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

@@ -66,7 +66,7 @@ export const dikeRevetmentCRUD = {
   },
 
   async getByStatus(status: string): Promise<DikeRevetmentResponse[]> {
-    const res = await api.get(`/v1/dike-revetment/status-phe-duyet/${status}`);
+    const res = await api.get(`/v1/dike-revetment/approval-status/${status}`);
     return toArray<DikeRevetmentResponse>(res.data);
   },
 };

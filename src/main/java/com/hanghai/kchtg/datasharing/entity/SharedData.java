@@ -1,5 +1,9 @@
 package com.hanghai.kchtg.datasharing.entity;
 
+import java.util.UUID;
+
+import com.hanghai.kchtg.common.entity.BaseEntity;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -24,6 +28,15 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @SuperBuilder
 public class SharedData extends BaseEntity {
+
+    @Column(name = "code")
+    private String code;
+
+    @Column(name = "name")
+    private String name;
+
+    @Column(name = "status")
+    private String status;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "data_type")
@@ -55,7 +68,7 @@ public class SharedData extends BaseEntity {
     private String description;
 
     @Column(name = "approved_by")
-    private String approvedBy;
+    private UUID approvedBy;
 
     @Column(name = "approved_at")
     private LocalDate approvedAt;

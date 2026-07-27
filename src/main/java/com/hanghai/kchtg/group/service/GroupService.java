@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.group.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.group.dto.CreateGroupRequest;
 import com.hanghai.kchtg.group.dto.GroupResponse;
 import com.hanghai.kchtg.group.dto.UpdateGroupRequest;

@@ -1,4 +1,10 @@
 package com.hanghai.kchtg.station.dto.inmarsat;
+
+import java.util.UUID;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import lombok.*;
 
 import com.hanghai.kchtg.station.entity.StationApprovalStatus;
@@ -21,10 +27,7 @@ public class CoastalStationInmarsatResponse {
 
     private UUID id;
     private String deviceCode;
-    private String stationName;
-    private Double latitude;
-    private Double longitude;
-    private String modemType;
+    private String stationName;    private String modemType;
     private String frequency;
     private String coverageZone;
     private String sarCode;
@@ -33,8 +36,8 @@ public class CoastalStationInmarsatResponse {
     private String contactPhone;
     private StationStatus status;
     private StationApprovalStatus approvalStatus;
-    private Integer approvalLevel;
-    private String approvedBy;
+    private ApprovalLevel approvalLevel;
+    private UUID approvedBy;
     private LocalDateTime approvedDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

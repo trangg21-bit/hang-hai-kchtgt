@@ -29,8 +29,8 @@ export default function DryPortForm() {
             dryPortCode: data.dryPortCode,
             dryPortName: data.dryPortName,
             province: data.province,
-            viDo: data.viDo,
-            kinhDo: data.kinhDo,
+            latitude: data.latitude,
+            longitude: data.longitude,
             area: data.area,
             congSuatTEU: data.congSuatTEU,
             operationalStatus: data.operationalStatus,
@@ -48,17 +48,17 @@ export default function DryPortForm() {
       const values = await form.validateFields();
 
       // GPS pair constraint: both or neither
-      const hasViDo = values.viDo !== undefined && values.viDo !== null && values.viDo !== '';
-      const hasKinhDo = values.kinhDo !== undefined && values.kinhDo !== null && values.kinhDo !== '';
+      const hasViDo = values.latitude !== undefined && values.latitude !== null && values.latitude !== '';
+      const hasKinhDo = values.longitude !== undefined && values.longitude !== null && values.longitude !== '';
       if (hasViDo !== hasKinhDo) {
         message.error('Vui lòng nhập cả Vĩ độ và Kinh độ hoặc bỏ qua cả hai');
         return;
       }
-      if (hasViDo && (values.viDo < -90 || values.viDo > 90)) {
+      if (hasViDo && (values.latitude < -90 || values.latitude > 90)) {
         message.error('Vĩ độ phải từ -90 đến 90');
         return;
       }
-      if (hasKinhDo && (values.kinhDo < -180 || values.kinhDo > 180)) {
+      if (hasKinhDo && (values.longitude < -180 || values.longitude > 180)) {
         message.error('Kinh độ phải từ -180 đến 180');
         return;
       }
@@ -77,8 +77,8 @@ export default function DryPortForm() {
           dryPortCode: values.dryPortCode,
           dryPortName: values.dryPortName,
           province: values.province,
-          viDo: values.viDo,
-          kinhDo: values.kinhDo,
+          latitude: values.latitude,
+          longitude: values.longitude,
           area: values.area,
           congSuatTEU: values.congSuatTEU,
           operationalStatus: values.operationalStatus,
@@ -225,7 +225,7 @@ export default function DryPortForm() {
             <Col xs={24} md={12}>
               <FormField
                 type="number"
-                name="viDo"
+                name="latitude"
                 label="Vĩ độ (Latitude)"
                 min={-90}
                 max={90}
@@ -237,7 +237,7 @@ export default function DryPortForm() {
             <Col xs={24} md={12}>
               <FormField
                 type="number"
-                name="kinhDo"
+                name="longitude"
                 label="Kinh độ (Longitude)"
                 min={-180}
                 max={180}

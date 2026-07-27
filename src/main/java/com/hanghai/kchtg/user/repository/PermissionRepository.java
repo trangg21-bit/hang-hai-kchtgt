@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.user.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.user.entity.Permission;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

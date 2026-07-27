@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.dataconnection.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.dataconnection.dto.ConnectionResponse;
 import com.hanghai.kchtg.dataconnection.dto.CreateConnectionRequest;
 import com.hanghai.kchtg.dataconnection.dto.TestConnectionResponse;

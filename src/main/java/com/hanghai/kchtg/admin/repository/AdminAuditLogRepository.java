@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.admin.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.admin.entity.AdminAuditLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.group.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.group.entity.GroupMember;
 import com.hanghai.kchtg.group.entity.GroupMemberStatus;
 import com.hanghai.kchtg.group.entity.GroupStatus;

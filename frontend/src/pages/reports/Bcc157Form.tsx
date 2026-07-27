@@ -43,33 +43,33 @@ const { Text } = Typography;
  * Field name constants matching the backend Bcc157CreateRequest field names.
  */
 const F = {
-  maSoNguyenGiaSoDuDauNam: 'maSoNguyenGiaSoDuDauNam',
-  taiSanNguyenGiaSoDuDauNam: 'taiSanNguyenGiaSoDuDauNam',
-  maSoNguyenGiaTangTrongNam: 'maSoNguyenGiaTangTrongNam',
-  taiSanNguyenGiaTangTrongNam: 'taiSanNguyenGiaTangTrongNam',
-  maSoNguyenGiaGiamTrongNam: 'maSoNguyenGiaGiamTrongNam',
-  taiSanNguyenGiaGiamTrongNam: 'taiSanNguyenGiaGiamTrongNam',
-  maSoNguyenGiaSoDuCuoiNam: 'maSoNguyenGiaSoDuCuoiNam',
-  taiSanNguyenGiaSoDuCuoiNam: 'taiSanNguyenGiaSoDuCuoiNam',
+  openingOriginalCostCode: 'openingOriginalCostCode',
+  assetOpeningOriginalCost: 'assetOpeningOriginalCost',
+  originalCostIncreaseCode: 'originalCostIncreaseCode',
+  assetOriginalCostIncrease: 'assetOriginalCostIncrease',
+  originalCostDecreaseCode: 'originalCostDecreaseCode',
+  assetOriginalCostDecrease: 'assetOriginalCostDecrease',
+  closingOriginalCostCode: 'closingOriginalCostCode',
+  assetClosingOriginalCost: 'assetClosingOriginalCost',
 
-  maSoGiaTriHaoMonSoDuDauNam: 'maSoGiaTriHaoMonSoDuDauNam',
-  taiSanGiaTriHaoMonSoDuDauNam: 'taiSanGiaTriHaoMonSoDuDauNam',
-  maSoGiaTriHaoMonTangTrongNam: 'maSoGiaTriHaoMonTangTrongNam',
-  taiSanGiaTriHaoMonTangTrongNam: 'taiSanGiaTriHaoMonTangTrongNam',
-  maSoGiaTriHaoMonGiamTrongNam: 'maSoGiaTriHaoMonGiamTrongNam',
-  taiSanGiaTriHaoMonGiamTrongNam: 'taiSanGiaTriHaoMonGiamTrongNam',
-  maSoGiaTriHaoMonSoDuCuoiNam: 'maSoGiaTriHaoMonSoDuCuoiNam',
-  taiSanGiaTriHaoMonSoDuCuoiNam: 'taiSanGiaTriHaoMonSoDuCuoiNam',
+  openingAccumulatedDepreciationCode: 'openingAccumulatedDepreciationCode',
+  assetOpeningAccumulatedDepreciation: 'assetOpeningAccumulatedDepreciation',
+  depreciationIncreaseCode: 'depreciationIncreaseCode',
+  assetDepreciationIncrease: 'assetDepreciationIncrease',
+  depreciationDecreaseCode: 'depreciationDecreaseCode',
+  assetDepreciationDecrease: 'assetDepreciationDecrease',
+  closingDepreciationCode: 'closingDepreciationCode',
+  assetClosingDepreciation: 'assetClosingDepreciation',
 
-  maSoGiaTriConLaiTuNgayDauNam: 'maSoGiaTriConLaiTuNgayDauNam',
-  taiSanGiaTriConLaiTuNgayDauNam: 'taiSanGiaTriConLaiTuNgayDauNam',
-  maSoGiaTriConLaiTuNgayCuoiNam: 'maSoGiaTriConLaiTuNgayCuoiNam',
-  taiSanGiaTriConLaiTuNgayCuoiNam: 'taiSanGiaTriConLaiTuNgayCuoiNam',
+  openingResidualValueCode: 'openingResidualValueCode',
+  assetOpeningResidualValue: 'assetOpeningResidualValue',
+  closingResidualValueCode: 'closingResidualValueCode',
+  assetClosingResidualValue: 'assetClosingResidualValue',
 };
 
 interface TableRow {
   key: string;
-  stt: string;
+  sequenceNo: string;
   chiTieu: string;
   maSoField?: string;
   taiSanField?: string;
@@ -82,23 +82,23 @@ interface TableRow {
 
 const TABLE_ROWS: TableRow[] = [
   // Section 1: Nguyên giá
-  { key: 'ng1', stt: '1', chiTieu: 'Nguyên giá', isBold: true, isSectionHeader: true, isCalcField: false, isReadOnly: true },
-  { key: 'ng2', stt: '', chiTieu: 'Số dư đầu năm', maSoField: F.maSoNguyenGiaSoDuDauNam, taiSanField: F.taiSanNguyenGiaSoDuDauNam, tongCongField: F.taiSanNguyenGiaSoDuDauNam, isBold: false, isSectionHeader: false, isCalcField: false, isReadOnly: false },
-  { key: 'ng3', stt: '', chiTieu: 'Tăng trong năm', maSoField: F.maSoNguyenGiaTangTrongNam, taiSanField: F.taiSanNguyenGiaTangTrongNam, tongCongField: F.taiSanNguyenGiaTangTrongNam, isBold: false, isSectionHeader: false, isCalcField: false, isReadOnly: false },
-  { key: 'ng4', stt: '', chiTieu: 'Giảm trong năm', maSoField: F.maSoNguyenGiaGiamTrongNam, taiSanField: F.taiSanNguyenGiaGiamTrongNam, tongCongField: F.taiSanNguyenGiaGiamTrongNam, isBold: false, isSectionHeader: false, isCalcField: false, isReadOnly: false },
-  { key: 'ng5', stt: '', chiTieu: 'Số dư cuối năm', maSoField: F.maSoNguyenGiaSoDuCuoiNam, taiSanField: F.taiSanNguyenGiaSoDuCuoiNam, tongCongField: F.taiSanNguyenGiaSoDuCuoiNam, isBold: false, isSectionHeader: false, isCalcField: true, isReadOnly: true },
+  { key: 'ng1', sequenceNo: '1', chiTieu: 'Nguyên giá', isBold: true, isSectionHeader: true, isCalcField: false, isReadOnly: true },
+  { key: 'ng2', sequenceNo: '', chiTieu: 'Số dư đầu năm', maSoField: F.openingOriginalCostCode, taiSanField: F.assetOpeningOriginalCost, tongCongField: F.assetOpeningOriginalCost, isBold: false, isSectionHeader: false, isCalcField: false, isReadOnly: false },
+  { key: 'ng3', sequenceNo: '', chiTieu: 'Tăng trong năm', maSoField: F.originalCostIncreaseCode, taiSanField: F.assetOriginalCostIncrease, tongCongField: F.assetOriginalCostIncrease, isBold: false, isSectionHeader: false, isCalcField: false, isReadOnly: false },
+  { key: 'ng4', sequenceNo: '', chiTieu: 'Giảm trong năm', maSoField: F.originalCostDecreaseCode, taiSanField: F.assetOriginalCostDecrease, tongCongField: F.assetOriginalCostDecrease, isBold: false, isSectionHeader: false, isCalcField: false, isReadOnly: false },
+  { key: 'ng5', sequenceNo: '', chiTieu: 'Số dư cuối năm', maSoField: F.closingOriginalCostCode, taiSanField: F.assetClosingOriginalCost, tongCongField: F.assetClosingOriginalCost, isBold: false, isSectionHeader: false, isCalcField: true, isReadOnly: true },
 
   // Section 2: Giá trị hao mòn lũy kế
-  { key: 'hm1', stt: '2', chiTieu: 'Giá trị hao mòn lũy kế', isBold: true, isSectionHeader: true, isCalcField: false, isReadOnly: true },
-  { key: 'hm2', stt: '', chiTieu: 'Số dư đầu năm', maSoField: F.maSoGiaTriHaoMonSoDuDauNam, taiSanField: F.taiSanGiaTriHaoMonSoDuDauNam, tongCongField: F.taiSanGiaTriHaoMonSoDuDauNam, isBold: false, isSectionHeader: false, isCalcField: false, isReadOnly: false },
-  { key: 'hm3', stt: '', chiTieu: 'Tăng trong năm', maSoField: F.maSoGiaTriHaoMonTangTrongNam, taiSanField: F.taiSanGiaTriHaoMonTangTrongNam, tongCongField: F.taiSanGiaTriHaoMonTangTrongNam, isBold: false, isSectionHeader: false, isCalcField: false, isReadOnly: false },
-  { key: 'hm4', stt: '', chiTieu: 'Giảm trong năm', maSoField: F.maSoGiaTriHaoMonGiamTrongNam, taiSanField: F.taiSanGiaTriHaoMonGiamTrongNam, tongCongField: F.taiSanGiaTriHaoMonGiamTrongNam, isBold: false, isSectionHeader: false, isCalcField: false, isReadOnly: false },
-  { key: 'hm5', stt: '', chiTieu: 'Số dư cuối năm', maSoField: F.maSoGiaTriHaoMonSoDuCuoiNam, taiSanField: F.taiSanGiaTriHaoMonSoDuCuoiNam, tongCongField: F.taiSanGiaTriHaoMonSoDuCuoiNam, isBold: false, isSectionHeader: false, isCalcField: true, isReadOnly: true },
+  { key: 'hm1', sequenceNo: '2', chiTieu: 'Giá trị hao mòn lũy kế', isBold: true, isSectionHeader: true, isCalcField: false, isReadOnly: true },
+  { key: 'hm2', sequenceNo: '', chiTieu: 'Số dư đầu năm', maSoField: F.openingAccumulatedDepreciationCode, taiSanField: F.assetOpeningAccumulatedDepreciation, tongCongField: F.assetOpeningAccumulatedDepreciation, isBold: false, isSectionHeader: false, isCalcField: false, isReadOnly: false },
+  { key: 'hm3', sequenceNo: '', chiTieu: 'Tăng trong năm', maSoField: F.depreciationIncreaseCode, taiSanField: F.assetDepreciationIncrease, tongCongField: F.assetDepreciationIncrease, isBold: false, isSectionHeader: false, isCalcField: false, isReadOnly: false },
+  { key: 'hm4', sequenceNo: '', chiTieu: 'Giảm trong năm', maSoField: F.depreciationDecreaseCode, taiSanField: F.assetDepreciationDecrease, tongCongField: F.assetDepreciationDecrease, isBold: false, isSectionHeader: false, isCalcField: false, isReadOnly: false },
+  { key: 'hm5', sequenceNo: '', chiTieu: 'Số dư cuối năm', maSoField: F.closingDepreciationCode, taiSanField: F.assetClosingDepreciation, tongCongField: F.assetClosingDepreciation, isBold: false, isSectionHeader: false, isCalcField: true, isReadOnly: true },
 
   // Section 3: Giá trị còn lại
-  { key: 'cl1', stt: '3', chiTieu: 'Giá trị còn lại', isBold: true, isSectionHeader: true, isCalcField: false, isReadOnly: true },
-  { key: 'cl2', stt: '', chiTieu: 'Tại ngày đầu năm', maSoField: F.maSoGiaTriConLaiTuNgayDauNam, taiSanField: F.taiSanGiaTriConLaiTuNgayDauNam, tongCongField: F.taiSanGiaTriConLaiTuNgayDauNam, isBold: false, isSectionHeader: false, isCalcField: true, isReadOnly: true },
-  { key: 'cl3', stt: '', chiTieu: 'Tại ngày cuối năm', maSoField: F.maSoGiaTriConLaiTuNgayCuoiNam, taiSanField: F.taiSanGiaTriConLaiTuNgayCuoiNam, tongCongField: F.taiSanGiaTriConLaiTuNgayCuoiNam, isBold: false, isSectionHeader: false, isCalcField: true, isReadOnly: true },
+  { key: 'cl1', sequenceNo: '3', chiTieu: 'Giá trị còn lại', isBold: true, isSectionHeader: true, isCalcField: false, isReadOnly: true },
+  { key: 'cl2', sequenceNo: '', chiTieu: 'Tại ngày đầu năm', maSoField: F.openingResidualValueCode, taiSanField: F.assetOpeningResidualValue, tongCongField: F.assetOpeningResidualValue, isBold: false, isSectionHeader: false, isCalcField: true, isReadOnly: true },
+  { key: 'cl3', sequenceNo: '', chiTieu: 'Tại ngày cuối năm', maSoField: F.closingResidualValueCode, taiSanField: F.assetClosingResidualValue, tongCongField: F.assetClosingResidualValue, isBold: false, isSectionHeader: false, isCalcField: true, isReadOnly: true },
 ];
 
 export default function Bcc157Form() {
@@ -144,13 +144,13 @@ export default function Bcc157Form() {
     };
 
     // Read input values
-    const ngDauNam = toNum(values[F.taiSanNguyenGiaSoDuDauNam]);
-    const ngTang = toNum(values[F.taiSanNguyenGiaTangTrongNam]);
-    const ngGiam = toNum(values[F.taiSanNguyenGiaGiamTrongNam]);
+    const ngDauNam = toNum(values[F.assetOpeningOriginalCost]);
+    const ngTang = toNum(values[F.assetOriginalCostIncrease]);
+    const ngGiam = toNum(values[F.assetOriginalCostDecrease]);
 
-    const hmDauNam = toNum(values[F.taiSanGiaTriHaoMonSoDuDauNam]);
-    const hmTang = toNum(values[F.taiSanGiaTriHaoMonTangTrongNam]);
-    const hmGiam = toNum(values[F.taiSanGiaTriHaoMonGiamTrongNam]);
+    const hmDauNam = toNum(values[F.assetOpeningAccumulatedDepreciation]);
+    const hmTang = toNum(values[F.assetDepreciationIncrease]);
+    const hmGiam = toNum(values[F.assetDepreciationDecrease]);
 
     // Calculate
     const ngCuoiNam = ngDauNam + ngTang - ngGiam;
@@ -160,10 +160,10 @@ export default function Bcc157Form() {
 
     // Set calculated values
     form.setFieldsValue({
-      [F.taiSanNguyenGiaSoDuCuoiNam]: ngCuoiNam,
-      [F.taiSanGiaTriHaoMonSoDuCuoiNam]: hmCuoiNam,
-      [F.taiSanGiaTriConLaiTuNgayDauNam]: clDauNam,
-      [F.taiSanGiaTriConLaiTuNgayCuoiNam]: clCuoiNam,
+      [F.assetClosingOriginalCost]: ngCuoiNam,
+      [F.assetClosingDepreciation]: hmCuoiNam,
+      [F.assetOpeningResidualValue]: clDauNam,
+      [F.assetClosingResidualValue]: clCuoiNam,
     });
   }, [form]);
 
@@ -216,8 +216,8 @@ export default function Bcc157Form() {
   const columns = [
     {
       title: 'STT',
-      dataIndex: 'stt',
-      key: 'stt',
+      dataIndex: 'sequenceNo',
+      key: 'sequenceNo',
       width: 60,
       align: 'center' as const,
       onCell: (record: TableRow) => ({

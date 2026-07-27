@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.dikerevetment.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,7 +20,7 @@ public class DikeRevetmentAttachment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dike_revetment_id", nullable = false)
@@ -34,10 +36,10 @@ public class DikeRevetmentAttachment {
     private Long fileSize;
 
     @Column(name = "loai_tai_lieu", length = 100)
-    private String loaiTaiLieu;
+    private String documentType;
 
     @Column(name = "nguoi_tai_len", length = 100)
-    private String nguoiTaiLen;
+    private String uploadedBy;
 
     @Column(name = "upload_date")
     private LocalDate uploadDate;

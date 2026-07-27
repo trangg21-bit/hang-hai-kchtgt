@@ -1,4 +1,6 @@
 package com.hanghai.kchtg.station.dto.cospas;
+
+import java.util.UUID;
 import lombok.*;
 
 import com.hanghai.kchtg.station.entity.StationHistoryActionType;

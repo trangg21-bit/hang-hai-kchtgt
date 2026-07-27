@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.mapicon.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.mapicon.entity.MapSymbol;
 import com.hanghai.kchtg.mapicon.entity.MapSymbolStatus;
 import lombok.Builder;
@@ -17,7 +19,7 @@ public class MapSymbolResponse {
     private String description;
     private String image;
     private MapSymbolStatus status;
-    private String createdBy;
+    private UUID createdBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 

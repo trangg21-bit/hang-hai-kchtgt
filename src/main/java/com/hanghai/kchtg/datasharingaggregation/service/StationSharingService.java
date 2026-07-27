@@ -18,37 +18,37 @@ public class StationSharingService {
 
     public DataSharingAggregationResponse shareDaiTTDH(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
-        req.setSharingType(SharingType.DAI_TTDH);
+        req.setSharingType(SharingType.COASTAL_RADIO_STATION);
         req.setDataPayload(dataPayload);
-        req.setTargetSystem("DAI_TTDH");
+        req.setTargetSystem("COASTAL_RADIO_STATION");
         return mainService.create(req);
     }
 
     public DataSharingAggregationResponse shareDaiInmarsat(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
-        req.setSharingType(SharingType.DAI_INMARSAT);
+        req.setSharingType(SharingType.INMARSAT_STATION);
         req.setDataPayload(dataPayload);
-        req.setTargetSystem("DAI_INMARSAT");
+        req.setTargetSystem("INMARSAT_STATION");
         return mainService.create(req);
     }
 
     public DataSharingAggregationResponse shareDaiCospasSarsat(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
-        req.setSharingType(SharingType.DAI_COSPAS_SARSAT);
+        req.setSharingType(SharingType.COSPAS_SARSAT_STATION);
         req.setDataPayload(dataPayload);
-        req.setTargetSystem("DAI_COSPAS_SARSAT");
+        req.setTargetSystem("COSPAS_SARSAT_STATION");
         return mainService.create(req);
     }
 
     public DataSharingAggregationResponse shareDaiLRIT(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
-        req.setSharingType(SharingType.DAI_LRIT);
+        req.setSharingType(SharingType.LRIT_STATION);
         req.setDataPayload(dataPayload);
-        req.setTargetSystem("DAI_LRIT");
+        req.setTargetSystem("LRIT_STATION");
         return mainService.create(req);
     }
 
-    public DataSharingAggregationResponse shareDaiHangHaiHN(String dataPayload) {
+    public DataSharingAggregationResponse shareMaritimeStationHN(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
         req.setSharingType(SharingType.DAI_HANG_HAI_HN);
         req.setDataPayload(dataPayload);

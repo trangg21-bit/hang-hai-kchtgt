@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.beacon.dto.beacon_light;
 
-import com.hanghai.kchtg.beacon.entity.BeaconLightType;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
@@ -25,21 +24,15 @@ public class UpdateBeaconLightRequest {
     @Size(max = 200)
     private String name;
 
-    private BeaconLightType type;
+    private String type;
 
-    @DecimalMin("-180.0")
-    @DecimalMax("180.0")
-    private Double longitude;
 
-    @DecimalMin("-90.0")
-    @DecimalMax("90.0")
-    private Double latitude;
 
     @Size(max = 50)
-    private String lightColor;
+    private String towerColor;
 
     @Size(max = 100)
-    private String lightCharacteristic;
+    private String primaryLightModel;
 
     // BUG FIX #2: Added lightRange (was missing from UPDATE DTO)
     @DecimalMin("0.01")
@@ -48,23 +41,23 @@ public class UpdateBeaconLightRequest {
 
     @DecimalMin("0.01")
     @DecimalMax("100.0")
-    private Double range;
+    private Double area;
 
     @Size(max = 1000)
-    private String description;
+    private String location;
 
     private java.util.UUID unitId;
-    private LocalDate lastMaintenanceDate;
-    private LocalDate nextMaintenanceDate;
+    private LocalDate lastRepairDate;
+    private LocalDate commissionedDate;
     private Boolean isActive;
 
-    private String hinhDang;
-    private String ketCau;
-    private Double chieuCaoThapDen;
-    private Double chieuCaoTamSang;
-    private String tamHieuLucDiaLy;
-    private String chungLoaiDenDuPhong;
-    private String nguonCungCapNangLuongChoDen;
-    private Integer soLuongNhanSuBoTri;
-    private Double dienTichSuDungTram;
+    private String shape;
+    private String structure;
+    private Double towerHeight;
+    private Double lightHeight;
+    private String geographicRange;
+    private String backupLightModel;
+    private String powerSupply;
+    private Integer staffCount;
+    private Double stationArea;
 }

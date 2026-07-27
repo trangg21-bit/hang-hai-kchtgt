@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelApprovalStatus;
 import lombok.*;
 import java.time.*;
@@ -9,15 +11,15 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class NavigationChannelResponse {
-    private java.util.UUID id;
+    private UUID id;
     private String channelName;
     private Integer stationAmountt;
     private LocalDate latestStationRepairDate;
     private java.math.BigDecimal stationArea;
     private String note;
     private String channelCode;
-    private java.util.UUID seaportId;
-    private java.util.UUID operatingUnitId;
+    private UUID seaportId;
+    private UUID operatingUnitId;
     private String location;
     private String detailedLocation;
     private String channelManagementStation;
@@ -27,7 +29,7 @@ public class NavigationChannelResponse {
     private Integer buoyAmount;
     private Integer beaconAmount;
     private Integer status;
-    private java.util.UUID orgUnitId;
+    private UUID orgUnitId;
     private String orgUnitName;
     private NavigationChannelApprovalStatus approvalStatus;
     private Boolean isApprovedLevel1;
@@ -40,17 +42,17 @@ public class NavigationChannelResponse {
     private Boolean isDeleted;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private String createdBy;
-    private String updatedBy;
+    private UUID createdBy;
+    private UUID updatedBy;
     private List<NavigationChannelAttachmentResponse> attachments;
-    private List<PheDuyetResponse> approvalHistory;
+    private List<ApprovalResponse> approvalHistory;
     private List<HistoryEntry> history;
     private String clearanceHeight;
-    private List<ChiTietTuyenLuongResponse> chiTietTuyenLuongList;
-    private java.util.UUID spatialId;
-    private GisGeometryType loaiHinhHoc;
-    private String toaDo;
-    private java.util.UUID bieuTuongId;
+    private List<ChannelRouteDetailResponse> channelRouteDetailList;
+    private UUID spatialId;
+    private GisGeometryType geometryType;
+    private String coordinates;
+    private UUID bieuTuongId;
 
     // New fields
     private String registeredArea;
@@ -59,5 +61,5 @@ public class NavigationChannelResponse {
     private Integer quantity;
     private String loadCapacity;
     private LocalDateTime deletedAt;
-    private String deletedBy;
+    private UUID deletedBy;
 }

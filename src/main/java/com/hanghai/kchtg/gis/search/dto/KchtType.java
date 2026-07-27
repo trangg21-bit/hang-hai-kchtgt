@@ -13,6 +13,7 @@ public enum KchtType {
     PHAOTIEU,
     HE_THONG_VTS,
     TRAM_RADAR,
+    RADAR_STATION,
     BENPHAO,
     KHUNEO_DAU,
     KHUCHUYEN_TAI,

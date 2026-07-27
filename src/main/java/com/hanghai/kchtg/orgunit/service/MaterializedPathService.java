@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.orgunit.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import jakarta.persistence.EntityManager;

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.mapicon.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.mapicon.entity.MapIcon;
 import com.hanghai.kchtg.mapicon.entity.SymbolLibrary;
 import com.hanghai.kchtg.mapicon.entity.SymbolUsage;

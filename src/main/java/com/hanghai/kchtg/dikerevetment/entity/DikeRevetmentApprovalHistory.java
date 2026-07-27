@@ -1,5 +1,11 @@
 package com.hanghai.kchtg.dikerevetment.entity;
 
+import java.util.UUID;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,14 +24,15 @@ public class DikeRevetmentApprovalHistory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dike_revetment_id", nullable = false)
     private DikeRevetment dikeRevetment;
 
     @Column(name = "approval_level")
-    private Integer approvalLevel;
+    @Enumerated(EnumType.ORDINAL)
+    private ApprovalLevel approvalLevel;
 
     @Column(name = "status", nullable = false, length = 30)
     private String status;

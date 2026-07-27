@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.search.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.search.entity.SearchQuery;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

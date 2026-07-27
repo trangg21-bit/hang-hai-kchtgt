@@ -1,4 +1,10 @@
 package com.hanghai.kchtg.station.dto.coastal;
+
+import java.util.UUID;
+
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import lombok.*;
 
 import com.hanghai.kchtg.station.entity.StationApprovalStatus;
@@ -21,10 +27,7 @@ public class CoastalStationVTSResponse {
 
     private UUID id;
     private String stationCode;
-    private String stationName;
-    private Double latitude;
-    private Double longitude;
-    private String frequencyBand;
+    private String stationName;    private String frequencyBand;
     private Double transmitPower;
     private String equipmentType;
     private String locationAddress;
@@ -32,8 +35,8 @@ public class CoastalStationVTSResponse {
     private String contactPhone;
     private StationStatus status;
     private StationApprovalStatus approvalStatus;
-    private Integer approvalLevel;
-    private String approvedBy;
+    private ApprovalLevel approvalLevel;
+    private UUID approvedBy;
     private LocalDateTime approvedDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

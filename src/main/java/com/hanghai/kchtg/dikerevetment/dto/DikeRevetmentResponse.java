@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.dikerevetment.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import lombok.*;
@@ -18,7 +20,7 @@ import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 @AllArgsConstructor
 @Builder
 public class DikeRevetmentResponse {
-    private java.util.UUID id;
+    private UUID id;
     private DikeRevetmentType dikeRevetmentType;
     private String location;
     private String dikeRevetmentName;
@@ -29,7 +31,7 @@ public class DikeRevetmentResponse {
     private String surfaceMaterial;
     private String status;
     private String note;
-    private java.util.UUID donViId;
+    private UUID orgUnitId;
     private DikeRevetmentApprovalStatus approvalStatus;
     private Boolean isApprovedLevel1;
     private String approverLevel1;
@@ -41,15 +43,15 @@ public class DikeRevetmentResponse {
     private Boolean isDeleted;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private String createdBy;
-    private String updatedBy;
+    private UUID createdBy;
+    private UUID updatedBy;
     private LocalDateTime deletedAt;
-    private String deletedBy;
+    private UUID deletedBy;
     private List<DikeRevetmentAttachmentResponse> attachments;
     private List<ApprovalResponse> approvalHistory;
     private List<HistoryEntry> history;
-    private java.util.UUID khongGianId;
-    private GisGeometryType loaiHinhHoc;
-    private String toaDo;
-    private java.util.UUID bieuTuongId;
+    private UUID spatialId;
+    private GisGeometryType geometryType;
+    private String coordinates;
+    private UUID bieuTuongId;
 }

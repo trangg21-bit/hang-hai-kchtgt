@@ -36,7 +36,7 @@ test.describe.serial('M-004 NhaTramDen API CRUD', () => {
 
   test('READ detail via API', async ({ request }) => {
     expect(id).toBeTruthy();
-    const res = await request.get(`${BE}/api/v1/nhatram/den/${id}`, {
+    const res = await request.get(`${BE}/api/v1/lighthouse-station/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     expect(res.ok()).toBeTruthy();
@@ -48,7 +48,7 @@ test.describe.serial('M-004 NhaTramDen API CRUD', () => {
 
   test('UPDATE via API', async ({ request }) => {
     expect(id).toBeTruthy();
-    const res = await request.put(`${BE}/api/v1/nhatram/den/${id}`, {
+    const res = await request.put(`${BE}/api/v1/lighthouse-station/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
       data: {
         code,
@@ -70,7 +70,7 @@ test.describe.serial('M-004 NhaTramDen API CRUD', () => {
     });
     expect(res.ok(), `update failed: ${res.status()} ${await res.text()}`).toBeTruthy();
     // Verify
-    const get = await request.get(`${BE}/api/v1/nhatram/den/${id}`, {
+    const get = await request.get(`${BE}/api/v1/lighthouse-station/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const body = await get.json();
@@ -80,12 +80,12 @@ test.describe.serial('M-004 NhaTramDen API CRUD', () => {
 
   test('DELETE via API', async ({ request }) => {
     expect(id).toBeTruthy();
-    const del = await request.delete(`${BE}/api/v1/nhatram/den/${id}`, {
+    const del = await request.delete(`${BE}/api/v1/lighthouse-station/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     expect(del.ok(), `delete failed: ${del.status()} ${await del.text()}`).toBeTruthy();
     // Verify gone
-    const get = await request.get(`${BE}/api/v1/nhatram/den/${id}`, {
+    const get = await request.get(`${BE}/api/v1/lighthouse-station/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     expect(get.status()).toBe(404);
@@ -93,7 +93,7 @@ test.describe.serial('M-004 NhaTramDen API CRUD', () => {
   });
 
   test.afterAll(async ({ request }) => {
-    if (id) await apiDelete(request, token, '/api/v1/nhatram/den', id);
+    if (id) await apiDelete(request, token, '/api/v1/lighthouse-station', id);
   });
 });
 
@@ -118,7 +118,7 @@ test.describe.serial('M-004 NhaTramPhao API CRUD', () => {
 
   test('READ detail via API', async ({ request }) => {
     expect(id).toBeTruthy();
-    const res = await request.get(`${BE}/api/v1/nhatram/phao/${id}`, {
+    const res = await request.get(`${BE}/api/v1/buoy-station/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     expect(res.ok()).toBeTruthy();
@@ -130,7 +130,7 @@ test.describe.serial('M-004 NhaTramPhao API CRUD', () => {
 
   test('UPDATE via API', async ({ request }) => {
     expect(id).toBeTruthy();
-    const res = await request.put(`${BE}/api/v1/nhatram/phao/${id}`, {
+    const res = await request.put(`${BE}/api/v1/buoy-station/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
       data: {
         code,
@@ -152,7 +152,7 @@ test.describe.serial('M-004 NhaTramPhao API CRUD', () => {
     });
     expect(res.ok(), `update failed: ${res.status()} ${await res.text()}`).toBeTruthy();
     // Verify
-    const get = await request.get(`${BE}/api/v1/nhatram/phao/${id}`, {
+    const get = await request.get(`${BE}/api/v1/buoy-station/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const body = await get.json();
@@ -162,12 +162,12 @@ test.describe.serial('M-004 NhaTramPhao API CRUD', () => {
 
   test('DELETE via API', async ({ request }) => {
     expect(id).toBeTruthy();
-    const del = await request.delete(`${BE}/api/v1/nhatram/phao/${id}`, {
+    const del = await request.delete(`${BE}/api/v1/buoy-station/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     expect(del.ok(), `delete failed: ${del.status()} ${await del.text()}`).toBeTruthy();
     // Verify gone
-    const get = await request.get(`${BE}/api/v1/nhatram/phao/${id}`, {
+    const get = await request.get(`${BE}/api/v1/buoy-station/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     expect(get.status()).toBe(404);
@@ -175,7 +175,7 @@ test.describe.serial('M-004 NhaTramPhao API CRUD', () => {
   });
 
   test.afterAll(async ({ request }) => {
-    if (id) await apiDelete(request, token, '/api/v1/nhatram/phao', id);
+    if (id) await apiDelete(request, token, '/api/v1/buoy-station', id);
   });
 });
 
@@ -187,14 +187,14 @@ test.describe('M-004 NhaTram UI smoke', () => {
     await loginAdmin(page);
   });
 
-  test('/nhatram/den route accessible (no permission wall)', async ({ page }) => {
-    await page.goto('/nhatram/den');
+  test('/lighthouse-station route accessible (no permission wall)', async ({ page }) => {
+    await page.goto('/lighthouse-station');
     await expect(page.getByText('Không có quyền truy cập')).toHaveCount(0);
     await expect(page.getByText('Danh sách nhà trạm đèn biển')).toBeVisible({ timeout: 15_000 });
   });
 
-  test('/nhatram/phao route accessible (no permission wall)', async ({ page }) => {
-    await page.goto('/nhatram/phao');
+  test('/buoy-station route accessible (no permission wall)', async ({ page }) => {
+    await page.goto('/buoy-station');
     await expect(page.getByText('Không có quyền truy cập')).toHaveCount(0);
     await expect(page.getByText('Danh sách nhà trạm phao tiêu hàng hải')).toBeVisible({ timeout: 15_000 });
   });

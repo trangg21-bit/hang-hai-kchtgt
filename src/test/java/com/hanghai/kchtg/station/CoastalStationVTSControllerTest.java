@@ -77,8 +77,6 @@ class CoastalStationVTSControllerTest {
         entity.setId(id);
         entity.setCode("VTS-001");
         entity.setName("VTS Station");
-        entity.setLatitude(10.0);
-        entity.setLongitude(106.0);
         entity.setFrequencyBand("VHF");
         entity.setTransmitPower(25.0);
         entity.setEquipmentType("Transceiver");
@@ -88,7 +86,7 @@ class CoastalStationVTSControllerTest {
         entity.setIsActive(true);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
         entity.setApprovalStatus(StationApprovalStatus.PENDING);
-        entity.setApprovalLevel(0);
+        entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0);
         return entity;
     }
 
@@ -97,8 +95,6 @@ class CoastalStationVTSControllerTest {
                 .id(id)
                 .stationCode("VTS-001")
                 .stationName("VTS Station")
-                .latitude(10.0)
-                .longitude(106.0)
                 .frequencyBand("VHF")
                 .transmitPower(25.0)
                 .equipmentType("Transceiver")
@@ -107,7 +103,7 @@ class CoastalStationVTSControllerTest {
                 .contactPhone("+84123456789")
                 .status(StationStatus.PENDING_APPROVAL)
                 .approvalStatus(StationApprovalStatus.PENDING)
-                .approvalLevel(0)
+                .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0)
                 .build();
     }
 
@@ -240,7 +236,7 @@ class CoastalStationVTSControllerTest {
     void testApprove() throws Exception {
         UUID id = UUID.randomUUID();
         CoastalStationVTS entity = makeEntity(id);
-        entity.setApprovalLevel(1);
+        entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
         entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
         entity.setStatus(StationStatus.APPROVED_L1);
         when(service.approveStation(eq(id), eq(true), anyLong())).thenReturn(entity);
@@ -321,8 +317,7 @@ class CoastalStationVTSControllerTest {
     void testCreateValidationError() throws Exception {
         String invalidJson = """
                 {
-                  "latitude": "not-a-number"
-                }
+                  }
                 """;
 
         mockMvc.perform(post(BASE)

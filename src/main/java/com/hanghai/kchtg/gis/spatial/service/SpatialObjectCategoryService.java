@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.spatial.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.spatial.dto.SpatialObjectCategoryDto;
 import com.hanghai.kchtg.gis.spatial.entity.SpatialObjectCategory;
 import com.hanghai.kchtg.gis.spatial.repository.SpatialObjectCategoryRepository;

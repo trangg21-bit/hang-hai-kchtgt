@@ -79,7 +79,7 @@ export default function BerthList() {
         pageSize,
         search: search || undefined,
         portId: filterCangBienId,
-        loaiBen: filterLoaiBen || undefined,
+        berthType: filterLoaiBen || undefined,
         approvalStatus: filterStatus,
       });
       setDataSource(res.data);
@@ -97,7 +97,7 @@ export default function BerthList() {
   const handleFilterSearch = useCallback((values: Record<string, any>) => {
     setSearch(values.search || '');
     setFilterCangBienId(values.portId || undefined);
-    setFilterLoaiBen(values.loaiBen || '');
+    setFilterLoaiBen(values.berthType || '');
     setFilterStatus(values.approvalStatus || undefined);
     setPage(1);
   }, []);
@@ -188,12 +188,12 @@ export default function BerthList() {
   ], [navigate]);
 
   const columns = useMemo(() => [
-    { key: 'stt', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: Berth, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
+    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: Berth, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
     { key: 'berthCode', label: 'Mã', dataIndex: 'berthCode', width: 140, render: (berthCode: string) => <Tag color="cyan">{berthCode}</Tag> },
     { key: 'berthName', label: 'Tên', dataIndex: 'berthName', ellipsis: true },
     { key: 'tenCangBien', label: 'Cảng biển', dataIndex: 'tenCangBien', width: 180, render: (v: string) => v || '—' },
     { key: 'tuyenDuongThuy', label: 'Tuyến đường thủy', dataIndex: 'tuyenDuongThuy', ellipsis: true },
-    { key: 'loaiBen', label: 'Loại bến', dataIndex: 'loaiBen', width: 120 },
+    { key: 'berthType', label: 'Loại bến', dataIndex: 'berthType', width: 120 },
     { key: 'length', label: 'Chiều dài', dataIndex: 'length', width: 110, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(2) || '—'}</span> },
     { key: 'width', label: 'Chiều rộng', dataIndex: 'width', width: 110, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(2) || '—'}</span> },
     { key: 'doSauLuong', label: 'Độ sâu luồng', dataIndex: 'doSauLuong', width: 110, render: (v: number) => <span style={{ color: textSecondary }}>{v?.toFixed(2) || '—'}</span> },

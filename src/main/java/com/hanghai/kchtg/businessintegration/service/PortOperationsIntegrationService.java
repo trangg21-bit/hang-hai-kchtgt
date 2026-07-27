@@ -27,12 +27,12 @@ public class PortOperationsIntegrationService {
         return integrationService.createIntegration(request);
     }
 
-    public BusinessDataIntegrationResponse integratePortThroughputCapacity(BusinessDataIntegrationRequest request) {
+    public BusinessDataIntegrationResponse integrateBerthThroughputCapacity(BusinessDataIntegrationRequest request) {
         request.setIntegrationType(IntegrationType.NANG_LUC_THONG_QUA_BEN_CANG);
         return integrationService.createIntegration(request);
     }
 
-    public BusinessDataIntegrationResponse integrateCangThroughputCapacity(BusinessDataIntegrationRequest request) {
+    public BusinessDataIntegrationResponse integratePortThroughputCapacity(BusinessDataIntegrationRequest request) {
         request.setIntegrationType(IntegrationType.NANG_LUC_THONG_QUA_CANG);
         return integrationService.createIntegration(request);
     }

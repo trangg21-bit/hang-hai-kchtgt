@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.line.entity;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -80,7 +82,7 @@ public class LineObject extends BaseEntity {
 
     @Column(name = "category_id")
     private Long categoryId;
-private java.util.UUID lineSymbolId;
+private UUID lineSymbolId;
 
     @Column(name = "coordinates", nullable = false, columnDefinition = "TEXT")
     private String coordinates;
@@ -93,10 +95,10 @@ private java.util.UUID lineSymbolId;
     private Status status = Status.DRAFT;
 
     @Column(name = "unit_id")
-    private java.util.UUID unitId;
+    private UUID unitId;
 
     @Column(name = "ref_id")
-    private java.util.UUID refId;
+    private UUID refId;
 
     @Column(name = "ref_type")
     private Integer refType;
@@ -121,7 +123,7 @@ private java.util.UUID lineSymbolId;
     private ApprovalStatus approvalStatus = ApprovalStatus.PENDING;
 
     @Column(name = "approved_by")
-    private String approvedBy;
+    private UUID approvedBy;
 
     @Column(name = "approved_date")
     private java.time.LocalDateTime approvedDate;

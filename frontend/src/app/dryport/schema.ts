@@ -7,8 +7,8 @@ export const createCangCanSchema = z
     dryPortCode: z.string().min(1, 'Mã cảng cạn không được để trống').max(50, 'Mã cảng cạn tối đa 50 ký tự'),
     dryPortName: z.string().min(1, 'Tên cảng cạn không được để trống').max(255, 'Tên cảng cạn tối đa 255 ký tự'),
     province: z.string().max(100, 'Tỉnh/thành phố tối đa 100 ký tự').optional().or(z.literal('')),
-    viDo: z.coerce.number().min(-90, 'Vĩ độ phải từ -90 đến 90').max(90, 'Vĩ độ phải từ -90 đến 90').optional(),
-    kinhDo: z.coerce.number().min(-180, 'Kinh độ phải từ -180 đến 180').max(180, 'Kinh độ phải từ -180 đến 180').optional(),
+    latitude: z.coerce.number().min(-90, 'Vĩ độ phải từ -90 đến 90').max(90, 'Vĩ độ phải từ -90 đến 90').optional(),
+    longitude: z.coerce.number().min(-180, 'Kinh độ phải từ -180 đến 180').max(180, 'Kinh độ phải từ -180 đến 180').optional(),
     area: z.coerce.number().positive('Diện tích phải lớn hơn 0'),
     congSuatTEU: z.coerce.number().optional(),
     operationalStatus: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
@@ -18,10 +18,10 @@ export const createCangCanSchema = z
     toaDo: z.string().optional(),
   })
   .refine(
-    (data) => (data.viDo === undefined) === (data.kinhDo === undefined),
+    (data) => (data.latitude === undefined) === (data.longitude === undefined),
     {
       message: 'Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau',
-      path: ['kinhDo'],
+      path: ['longitude'],
     },
   );
 
@@ -33,8 +33,8 @@ export const updateCangCanSchema = z
     dryPortCode: z.string().max(50).optional(),
     dryPortName: z.string().max(255, 'Tên cảng cạn tối đa 255 ký tự').optional(),
     province: z.string().max(100, 'Tỉnh/thành phố tối đa 100 ký tự').optional(),
-    viDo: z.coerce.number().min(-90, 'Vĩ độ phải từ -90 đến 90').max(90, 'Vĩ độ phải từ -90 đến 90').optional(),
-    kinhDo: z.coerce.number().min(-180, 'Kinh độ phải từ -180 đến 180').max(180, 'Kinh độ phải từ -180 đến 180').optional(),
+    latitude: z.coerce.number().min(-90, 'Vĩ độ phải từ -90 đến 90').max(90, 'Vĩ độ phải từ -90 đến 90').optional(),
+    longitude: z.coerce.number().min(-180, 'Kinh độ phải từ -180 đến 180').max(180, 'Kinh độ phải từ -180 đến 180').optional(),
     area: z.coerce.number().positive('Diện tích phải lớn hơn 0').optional(),
     congSuatTEU: z.coerce.number().optional(),
     operationalStatus: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
@@ -43,10 +43,10 @@ export const updateCangCanSchema = z
     toaDo: z.string().optional(),
   })
   .refine(
-    (data: any) => (data.viDo === undefined || data.viDo === null) === (data.kinhDo === undefined || data.kinhDo === null),
+    (data: any) => (data.latitude === undefined || data.latitude === null) === (data.longitude === undefined || data.longitude === null),
     {
       message: 'Vĩ độ và kinh độ phải được cung cấp cùng nhau hoặc để trống cùng nhau',
-      path: ['kinhDo'],
+      path: ['longitude'],
     },
   );
 

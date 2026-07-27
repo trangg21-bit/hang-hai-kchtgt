@@ -43,7 +43,7 @@ export interface NavigationChannelResponse {
   createdBy?: string;
   updatedBy?: string;
   attachments?: NavigationChannelAttachment[];
-  approvalHistory?: PheDuyetResponse[];
+  approvalHistory?: ApprovalResponse[];
   history?: HistoryEntry[];
   spatialId?: string;
   loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
@@ -89,29 +89,30 @@ export interface UpdateNavigationChannelRequest extends CreateNavigationChannelR
   id: string;
 }
 
-export interface PheDuyetRequest {
-  capPheDuyet?: number;
-  nguoiPheDuyet: string;
-  trangThai: string; // 'APPROVED' | 'REJECTED'
-  lyDo?: string;
+export interface ApprovalRequest {
+  approvalLevel?: number;
+  status: string; // 'APPROVED' | 'REJECTED'
+  reason?: string;
 }
 
-export interface PheDuyetResponse {
+export interface ApprovalResponse {
   id: string;
-  capPheDuyet?: number;
-  trangThai: string;
-  nguoiPheDuyet: string;
-  ngayPheDuyet: string;
-  lyDo?: string;
+  navigationChannelId?: string;
+  approvalLevel?: number;
+  status: string;
+  approvedBy: string;
+  approvedDate: string;
+  reason?: string;
 }
 
 export interface HistoryEntry {
   id: number;
-  capPheDuyet?: number;
-  trangThai: string;
-  nguoiPheDuyet: string;
-  ngayPheDuyet: string;
-  lyDo?: string;
+  navigationChannelId?: string;
+  approvalLevel?: number;
+  status: string;
+  approvedBy: string;
+  approvedDate: string;
+  reason?: string;
 }
 
 export interface ListParams {

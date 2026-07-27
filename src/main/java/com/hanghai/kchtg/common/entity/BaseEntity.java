@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.common.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -63,21 +65,21 @@ public abstract class BaseEntity {
      * User ID who soft-deleted the entity (null = not deleted).
      */
     @Column(name = "deleted_by", length = 36)
-    private String deletedBy;
+    private UUID deletedBy;
 
     /**
      * User ID who created the entity.
      */
     @org.springframework.data.annotation.CreatedBy
     @Column(name = "created_by", length = 36)
-    private String createdBy;
+    private UUID createdBy;
 
     /**
      * User ID who last updated the entity.
      */
     @org.springframework.data.annotation.LastModifiedBy
     @Column(name = "updated_by", length = 36)
-    private String updatedBy;
+    private UUID updatedBy;
 
     /**
      * Mark this entity as soft-deleted (no tracking of who deleted it).
@@ -91,7 +93,7 @@ public abstract class BaseEntity {
      *
      * @param deletedBy User ID of the deleter
      */
-    public void softDelete(String deletedBy) {
+    public void softDelete(UUID deletedBy) {
         this.deletedAt = LocalDateTime.now();
         this.deletedBy = deletedBy;
     }

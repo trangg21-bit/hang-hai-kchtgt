@@ -90,7 +90,7 @@ class CoastalStationCospasSarsatControllerTest {
         entity.setIsActive(true);
         entity.setStatus(StationStatus.PENDING_APPROVAL);
         entity.setApprovalStatus(StationApprovalStatus.PENDING);
-        entity.setApprovalLevel(0);
+        entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0);
         return entity;
     }
 
@@ -111,7 +111,7 @@ class CoastalStationCospasSarsatControllerTest {
                 .operatingMode("Automatic")
                 .status(StationStatus.PENDING_APPROVAL)
                 .approvalStatus(StationApprovalStatus.PENDING)
-                .approvalLevel(0)
+                .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_0)
                 .build();
     }
 
@@ -248,7 +248,7 @@ class CoastalStationCospasSarsatControllerTest {
     void testApprove() throws Exception {
         UUID id = UUID.randomUUID();
         CoastalStationCospasSarsat entity = makeEntity(id);
-        entity.setApprovalLevel(1);
+        entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
         entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
         entity.setStatus(StationStatus.APPROVED_L1);
         when(service.approveStation(eq(id), eq(true), anyLong())).thenReturn(entity);

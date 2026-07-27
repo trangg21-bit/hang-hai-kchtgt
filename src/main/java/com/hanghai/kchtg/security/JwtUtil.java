@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.security;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.security.service.TokenClaimsBuilder;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.RoleRepository;
@@ -121,7 +123,7 @@ public class JwtUtil {
 
         Map<String, Object> claims = TokenClaimsBuilder.builder()
                 .subject(user.getUsername())
-                .jti(java.util.UUID.randomUUID().toString())
+                .jti(UUID.randomUUID().toString())
                 .userId(user.getId().toString())
                 .roles(List.of(role))
                 .permissions(permissions)
@@ -151,7 +153,7 @@ public class JwtUtil {
 
         return Jwts.builder()
                 .subject(user.getUsername())
-                .id(java.util.UUID.randomUUID().toString())
+                .id(UUID.randomUUID().toString())
                 .claim("user_id", user.getId().toString())
                 .claim("type", "refresh")
                 .issuedAt(now)

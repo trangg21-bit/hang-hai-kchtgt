@@ -1,11 +1,10 @@
 package com.hanghai.kchtg.report.handler;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
 import com.hanghai.kchtg.beacon.entity.BeaconLight;
-import com.hanghai.kchtg.beacon.entity.BeaconApprovalStatus;
-import com.hanghai.kchtg.beacon.entity.BeaconStatus;
-import com.hanghai.kchtg.beacon.entity.BeaconLightType;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -30,14 +29,14 @@ public class F155ReportHandler extends BaseReportHandler {
         int reportYear = getReportYear(request);
 
         List<BeaconLight> beacons = beaconLightRepository.findAll().stream()
-                .filter(b -> b.getStatus() == BeaconStatus.APPROVED_L2)
+                .filter(b -> "APPROVED_L2".equals(b.getStatus()))
                 .filter(b -> b.getIsActive() != null && b.getIsActive())
                 .filter(b -> skipFilter || targetUnitId.equals(b.getUnitId()))
                 .filter(b -> b.getUpdatedAt() == null || b.getUpdatedAt().getYear() <= reportYear)
                 .toList();
 
         // Group by type
-        Map<BeaconLightType, List<BeaconLight>> grouped = new LinkedHashMap<>();
+        Map<String, List<BeaconLight>> grouped = new LinkedHashMap<>();
         for (BeaconLight b : beacons) {
             grouped.computeIfAbsent(b.getType(), k -> new ArrayList<>()).add(b);
         }
@@ -52,12 +51,12 @@ public class F155ReportHandler extends BaseReportHandler {
         );
 
         List<Map<String, Object>> rows = new ArrayList<>();
-        for (Map.Entry<BeaconLightType, List<BeaconLight>> entry : grouped.entrySet()) {
+        for (Map.Entry<String, List<BeaconLight>> entry : grouped.entrySet()) {
             String capLabel;
-            if (entry.getKey() == BeaconLightType.LIGHTHOUSE) capLabel = "Cấp I";
-            else if (entry.getKey() == BeaconLightType.BEACON_LIGHT) capLabel = "Cấp II";
-            else if (entry.getKey() == BeaconLightType.BEACON_MARK) capLabel = "Cấp III";
-            else capLabel = entry.getKey().name();
+            if ("LIGHTHOUSE".equals(entry.getKey())) capLabel = "Cấp I";
+            else if ("BEACON_LIGHT".equals(entry.getKey())) capLabel = "Cấp II";
+            else if ("BEACON_MARK".equals(entry.getKey())) capLabel = "Cấp III";
+            else capLabel = entry.getKey();
 
             // Section header row
             Map<String, Object> headerRow = new LinkedHashMap<>();
@@ -82,26 +81,26 @@ public class F155ReportHandler extends BaseReportHandler {
             rows.add(headerRow);
 
             // Data rows
-            int stt = 1;
+            int sequenceNo = 1;
             for (BeaconLight b : entry.getValue()) {
                 Map<String, Object> r = new LinkedHashMap<>();
-                r.put("STT", stt++);
+                r.put("STT", sequenceNo++);
                 r.put("Tên đèn biển", b.getName() != null ? b.getName() : "");
-                r.put("Địa điểm đặt trạm đèn", b.getDescription() != null ? b.getDescription() : "");
-                r.put("Hình dáng", b.getHinhDang() != null ? b.getHinhDang() : "");
-                r.put("Kết cấu", b.getKetCau() != null ? b.getKetCau() : "");
-                r.put("Diện tích (m2)", b.getRange() != null ? b.getRange() : "");
-                r.put("Chiều cao tháp đèn (m)", b.getChieuCaoThapDen() != null ? b.getChieuCaoThapDen() : "");
-                r.put("Chiều cao tâm sáng (m)", b.getChieuCaoTamSang() != null ? b.getChieuCaoTamSang() : "");
-                r.put("Tầm hiệu lực địa lý (Hải lý)", b.getTamHieuLucDiaLy() != null ? b.getTamHieuLucDiaLy() : "");
+                r.put("Địa điểm đặt trạm đèn", b.getLocation() != null ? b.getLocation() : "");
+                r.put("Hình dáng", b.getShape() != null ? b.getShape() : "");
+                r.put("Kết cấu", b.getStructure() != null ? b.getStructure() : "");
+                r.put("Diện tích (m2)", b.getArea() != null ? b.getArea() : "");
+                r.put("Chiều cao tháp đèn (m)", b.getTowerHeight() != null ? b.getTowerHeight() : "");
+                r.put("Chiều cao tâm sáng (m)", b.getLightHeight() != null ? b.getLightHeight() : "");
+                r.put("Tầm hiệu lực địa lý (Hải lý)", b.getGeographicRange() != null ? b.getGeographicRange() : "");
                 r.put("Tầm hiệu lực ánh sáng (Hải lý)", b.getLightRange() != null ? b.getLightRange() : "");
-                r.put("Đèn chính", b.getLightCharacteristic() != null ? b.getLightCharacteristic() : "");
-                r.put("Đèn dự phòng", b.getChungLoaiDenDuPhong() != null ? b.getChungLoaiDenDuPhong() : "");
-                r.put("Màu sắc bên ngoài của tháp đèn", b.getLightColor() != null ? b.getLightColor() : "");
-                r.put("Nguồn cung cấp năng lượng", b.getNguonCungCapNangLuongChoDen() != null ? b.getNguonCungCapNangLuongChoDen() : "");
-                r.put("Thời điểm sửa chữa gần nhất", b.getLastMaintenanceDate() != null ? b.getLastMaintenanceDate().toString() : "");
-                r.put("Nhân sự bố trí (người)", b.getSoLuongNhanSuBoTri() != null ? b.getSoLuongNhanSuBoTri() : "");
-                r.put("Diện tích sử dụng trạm (m2)", b.getDienTichSuDungTram() != null ? b.getDienTichSuDungTram() : "");
+                r.put("Đèn chính", b.getPrimaryLightModel() != null ? b.getPrimaryLightModel() : "");
+                r.put("Đèn dự phòng", b.getBackupLightModel() != null ? b.getBackupLightModel() : "");
+                r.put("Màu sắc bên ngoài của tháp đèn", b.getTowerColor() != null ? b.getTowerColor() : "");
+                r.put("Nguồn cung cấp năng lượng", b.getPowerSupply() != null ? b.getPowerSupply() : "");
+                r.put("Thời điểm sửa chữa gần nhất", b.getLastRepairDate() != null ? b.getLastRepairDate().toString() : "");
+                r.put("Nhân sự bố trí (người)", b.getStaffCount() != null ? b.getStaffCount() : "");
+                r.put("Diện tích sử dụng trạm (m2)", b.getStationArea() != null ? b.getStationArea() : "");
                 String donVi = "";
                 if (b.getUnitId() != null) {
                     donVi = orgUnitRepository.findById(b.getUnitId())
@@ -125,26 +124,26 @@ public class F155ReportHandler extends BaseReportHandler {
         boolean skipFilter = targetUnitId == null || isOrgUnitRoot(targetUnitId);
 
         List<BeaconLight> beacons = beaconLightRepository.findAll().stream()
-                .filter(b -> b.getStatus() == BeaconStatus.APPROVED_L2)
+                .filter(b -> "APPROVED_L2".equals(b.getStatus()))
                 .filter(b -> b.getIsActive() != null && b.getIsActive())
                 .filter(b -> skipFilter || targetUnitId.equals(b.getUnitId()))
                 .filter(b -> b.getUpdatedAt() == null || b.getUpdatedAt().getYear() <= reportYear)
                 .toList();
 
-        // Group by type for section headers
-        Map<BeaconLightType, List<BeaconLight>> grouped = new LinkedHashMap<>();
+        // Group by type
+        Map<String, List<BeaconLight>> grouped = new LinkedHashMap<>();
         for (BeaconLight b : beacons) {
             grouped.computeIfAbsent(b.getType(), k -> new ArrayList<>()).add(b);
         }
 
         List<Map<String, Object>> arrResult = new ArrayList<>();
-        for (Map.Entry<BeaconLightType, List<BeaconLight>> entry : grouped.entrySet()) {
+        for (Map.Entry<String, List<BeaconLight>> entry : grouped.entrySet()) {
             // Section header as a regular data item
             String capLabel;
-            if (entry.getKey() == BeaconLightType.LIGHTHOUSE) capLabel = "Cấp I";
-            else if (entry.getKey() == BeaconLightType.BEACON_LIGHT) capLabel = "Cấp II";
-            else if (entry.getKey() == BeaconLightType.BEACON_MARK) capLabel = "Cấp III";
-            else capLabel = entry.getKey().name();
+            if ("LIGHTHOUSE".equals(entry.getKey())) capLabel = "Cấp I";
+            else if ("BEACON_LIGHT".equals(entry.getKey())) capLabel = "Cấp II";
+            else if ("BEACON_MARK".equals(entry.getKey())) capLabel = "Cấp III";
+            else capLabel = entry.getKey();
 
             Map<String, Object> headerItem = new HashMap<>();
             headerItem.put("ten", capLabel);
@@ -153,21 +152,21 @@ public class F155ReportHandler extends BaseReportHandler {
             headerItem.put("description", null);
             headerItem.put("unitId", null);
             headerItem.put("status", null);
-            headerItem.put("diaDiemDatTramDen", null);
-            headerItem.put("hinhDang", null);
-            headerItem.put("ketCau", null);
-            headerItem.put("dienTich", null);
-            headerItem.put("chieuCaoThapDen", null);
-            headerItem.put("chieuCaoTamSang", null);
-            headerItem.put("tamHieuLucDiaLy", null);
-            headerItem.put("tamHieuLucAnhSang", null);
-            headerItem.put("chungLoaiDenChinh", null);
-            headerItem.put("chungLoaiDenDuPhong", null);
-            headerItem.put("mauSacBenNgoaiCuaThapDen", null);
-            headerItem.put("nguonCungCapNangLuongChoDen", null);
-            headerItem.put("ngaySuaChua", null);
-            headerItem.put("soLuongNhanSuBoTri", null);
-            headerItem.put("dienTichSuDungTram", null);
+            headerItem.put("diaDiem", null);
+            headerItem.put("shape", null);
+            headerItem.put("structure", null);
+            headerItem.put("area", null);
+            headerItem.put("towerHeight", null);
+            headerItem.put("lightHeight", null);
+            headerItem.put("geographicRange", null);
+            headerItem.put("lightRange", null);
+            headerItem.put("primaryLightModel", null);
+            headerItem.put("backupLightModel", null);
+            headerItem.put("towerColor", null);
+            headerItem.put("powerSupply", null);
+            headerItem.put("lastRepairDate", null);
+            headerItem.put("staffCount", null);
+            headerItem.put("dienTichTram", null);
             headerItem.put("donViQuanLy", null);
             headerItem.put("key", capLabel);
             arrResult.add(headerItem);
@@ -178,24 +177,24 @@ public class F155ReportHandler extends BaseReportHandler {
                 item.put("ten", b.getName() != null ? b.getName() : "");
                 item.put("code", b.getCode() != null ? b.getCode() : "");
                 item.put("name", b.getName() != null ? b.getName() : "");
-                item.put("description", b.getDescription() != null ? b.getDescription() : "");
+                item.put("description", b.getLocation() != null ? b.getLocation() : "");
                 item.put("unitId", b.getUnitId() != null ? b.getUnitId().toString() : "");
-                item.put("status", b.getStatus() != null ? b.getStatus().name() : "");
-                item.put("diaDiemDatTramDen", b.getDescription() != null ? b.getDescription() : "");
-                item.put("hinhDang", b.getHinhDang() != null ? b.getHinhDang() : "");
-                item.put("ketCau", b.getKetCau() != null ? b.getKetCau() : "");
-                item.put("dienTich", b.getRange() != null ? b.getRange() : 0.0);
-                item.put("chieuCaoThapDen", b.getChieuCaoThapDen() != null ? b.getChieuCaoThapDen() : 0.0);
-                item.put("chieuCaoTamSang", b.getChieuCaoTamSang() != null ? b.getChieuCaoTamSang() : 0.0);
-                item.put("tamHieuLucDiaLy", b.getTamHieuLucDiaLy() != null ? b.getTamHieuLucDiaLy() : "");
-                item.put("tamHieuLucAnhSang", b.getLightRange() != null ? b.getLightRange() : 0.0);
-                item.put("chungLoaiDenChinh", b.getLightCharacteristic() != null ? b.getLightCharacteristic() : "");
-                item.put("chungLoaiDenDuPhong", b.getChungLoaiDenDuPhong() != null ? b.getChungLoaiDenDuPhong() : "");
-                item.put("mauSacBenNgoaiCuaThapDen", b.getLightColor() != null ? b.getLightColor() : "");
-                item.put("nguonCungCapNangLuongChoDen", b.getNguonCungCapNangLuongChoDen() != null ? b.getNguonCungCapNangLuongChoDen() : "");
-                item.put("ngaySuaChua", b.getLastMaintenanceDate() != null ? b.getLastMaintenanceDate().toString() : "");
-                item.put("soLuongNhanSuBoTri", b.getSoLuongNhanSuBoTri() != null ? b.getSoLuongNhanSuBoTri() : 0);
-                item.put("dienTichSuDungTram", b.getDienTichSuDungTram() != null ? b.getDienTichSuDungTram() : 0.0);
+                item.put("status", b.getStatus() != null ? b.getStatus() : "");
+                item.put("diaDiem", b.getLocation() != null ? b.getLocation() : "");
+                item.put("shape", b.getShape() != null ? b.getShape() : "");
+                item.put("structure", b.getStructure() != null ? b.getStructure() : "");
+                item.put("area", b.getArea() != null ? b.getArea() : 0.0);
+                item.put("towerHeight", b.getTowerHeight() != null ? b.getTowerHeight() : 0.0);
+                item.put("lightHeight", b.getLightHeight() != null ? b.getLightHeight() : 0.0);
+                item.put("geographicRange", b.getGeographicRange() != null ? b.getGeographicRange() : "");
+                item.put("lightRange", b.getLightRange() != null ? b.getLightRange() : 0.0);
+                item.put("primaryLightModel", b.getPrimaryLightModel() != null ? b.getPrimaryLightModel() : "");
+                item.put("backupLightModel", b.getBackupLightModel() != null ? b.getBackupLightModel() : "");
+                item.put("towerColor", b.getTowerColor() != null ? b.getTowerColor() : "");
+                item.put("powerSupply", b.getPowerSupply() != null ? b.getPowerSupply() : "");
+                item.put("lastRepairDate", b.getLastRepairDate() != null ? b.getLastRepairDate().toString() : "");
+                item.put("staffCount", b.getStaffCount() != null ? b.getStaffCount() : 0);
+                item.put("dienTichTram", b.getStationArea() != null ? b.getStationArea() : 0.0);
                 String donVi = "";
                 if (b.getUnitId() != null) {
                     donVi = orgUnitRepository.findById(b.getUnitId())

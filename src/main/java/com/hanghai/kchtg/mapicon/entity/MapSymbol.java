@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.mapicon.entity;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -39,5 +41,5 @@ public class MapSymbol extends BaseEntity {
     private MapSymbolStatus status;
 
     @Column(name = "created_by", length = 50)
-    private String createdBy;
+    private UUID createdBy;
 }

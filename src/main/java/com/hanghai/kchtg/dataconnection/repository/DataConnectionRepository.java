@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.dataconnection.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.dataconnection.entity.DataConnection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;

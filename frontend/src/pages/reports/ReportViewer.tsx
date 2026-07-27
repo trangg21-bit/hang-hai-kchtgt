@@ -73,7 +73,7 @@ export default function ReportViewer() {
   const [selectedYear, setSelectedYear] = useState<dayjs.Dayjs | null>(dayjs());
   const [nguonDuLieu, setNguonDuLieu] = useState<string>('1');
   const [selectedBcNoiDung, setSelectedBcNoiDung] = useState<string | undefined>('1');
-  const [selectedNhomCangBien, setSelectedNhomCangBien] = useState<string | undefined>(undefined);
+  const [selectedPortGroup, setSelectedPortGroup] = useState<string | undefined>(undefined);
 
   const isYearReport = useMemo(() => {
     if (reportCode === 'F-142') return true;
@@ -144,7 +144,7 @@ export default function ReportViewer() {
       const request: ReportRequest = {
         reportCode,
         orgUnitId: selectedOrgId,
-        nhomCangBien: selectedNhomCangBien,
+        portGroup: selectedPortGroup,
       };
 
       if (isYearReport) {
@@ -183,16 +183,16 @@ export default function ReportViewer() {
               reportCode,
               headers: ['STT', 'Chỉ tiêu', 'Mã số', 'TSHT hàng hải', 'Tổng cộng'],
               rows: [
-                { 'STT': '1', 'Chỉ tiêu': 'Nguyên giá - Số dư đầu năm', 'Mã số': report.maSoNguyenGiaSoDuDauNam || '1.1', 'TSHT hàng hải': report.taiSanNguyenGiaSoDuDauNam ?? 0, 'Tổng cộng': report.taiSanNguyenGiaSoDuDauNam ?? 0 },
-                { 'STT': '', 'Chỉ tiêu': 'Nguyên giá - Tăng trong năm', 'Mã số': report.maSoNguyenGiaTangTrongNam || '1.2', 'TSHT hàng hải': report.taiSanNguyenGiaTangTrongNam ?? 0, 'Tổng cộng': report.taiSanNguyenGiaTangTrongNam ?? 0 },
-                { 'STT': '', 'Chỉ tiêu': 'Nguyên giá - Giảm trong năm', 'Mã số': report.maSoNguyenGiaGiamTrongNam || '1.3', 'TSHT hàng hải': report.taiSanNguyenGiaGiamTrongNam ?? 0, 'Tổng cộng': report.taiSanNguyenGiaGiamTrongNam ?? 0 },
-                { 'STT': '', 'Chỉ tiêu': 'Nguyên giá - Số dư cuối năm', 'Mã số': report.maSoNguyenGiaSoDuCuoiNam || '1.4', 'TSHT hàng hải': report.taiSanNguyenGiaSoDuCuoiNam ?? 0, 'Tổng cộng': report.taiSanNguyenGiaSoDuCuoiNam ?? 0 },
-                { 'STT': '2', 'Chỉ tiêu': 'Giá trị hao mòn lũy kế - Số dư đầu năm', 'Mã số': report.maSoGiaTriHaoMonSoDuDauNam || '2.1', 'TSHT hàng hải': report.taiSanGiaTriHaoMonSoDuDauNam ?? 0, 'Tổng cộng': report.taiSanGiaTriHaoMonSoDuDauNam ?? 0 },
-                { 'STT': '', 'Chỉ tiêu': 'Giá trị hao mòn lũy kế - Tăng trong năm', 'Mã số': report.maSoGiaTriHaoMonTangTrongNam || '2.2', 'TSHT hàng hải': report.taiSanGiaTriHaoMonTangTrongNam ?? 0, 'Tổng cộng': report.taiSanGiaTriHaoMonTangTrongNam ?? 0 },
-                { 'STT': '', 'Chỉ tiêu': 'Giá trị hao mòn lũy kế - Giảm trong năm', 'Mã số': report.maSoGiaTriHaoMonGiamTrongNam || '2.3', 'TSHT hàng hải': report.taiSanGiaTriHaoMonGiamTrongNam ?? 0, 'Tổng cộng': report.taiSanGiaTriHaoMonGiamTrongNam ?? 0 },
-                { 'STT': '', 'Chỉ tiêu': 'Giá trị hao mòn lũy kế - Số dư cuối năm', 'Mã số': report.maSoGiaTriHaoMonSoDuCuoiNam || '2.4', 'TSHT hàng hải': report.taiSanGiaTriHaoMonSoDuCuoiNam ?? 0, 'Tổng cộng': report.taiSanGiaTriHaoMonSoDuCuoiNam ?? 0 },
-                { 'STT': '3', 'Chỉ tiêu': 'Giá trị còn lại - Đầu năm', 'Mã số': report.maSoGiaTriConLaiTuNgayDauNam || '3.1', 'TSHT hàng hải': report.taiSanGiaTriConLaiTuNgayDauNam ?? 0, 'Tổng cộng': report.taiSanGiaTriConLaiTuNgayDauNam ?? 0 },
-                { 'STT': '', 'Chỉ tiêu': 'Giá trị còn lại - Cuối năm', 'Mã số': report.maSoGiaTriConLaiTuNgayCuoiNam || '3.2', 'TSHT hàng hải': report.taiSanGiaTriConLaiTuNgayCuoiNam ?? 0, 'Tổng cộng': report.taiSanGiaTriConLaiTuNgayCuoiNam ?? 0 },
+                { 'STT': '1', 'Chỉ tiêu': 'Nguyên giá - Số dư đầu năm', 'Mã số': report.openingOriginalCostCode || '1.1', 'TSHT hàng hải': report.assetOpeningOriginalCost ?? 0, 'Tổng cộng': report.assetOpeningOriginalCost ?? 0 },
+                { 'STT': '', 'Chỉ tiêu': 'Nguyên giá - Tăng trong năm', 'Mã số': report.originalCostIncreaseCode || '1.2', 'TSHT hàng hải': report.assetOriginalCostIncrease ?? 0, 'Tổng cộng': report.assetOriginalCostIncrease ?? 0 },
+                { 'STT': '', 'Chỉ tiêu': 'Nguyên giá - Giảm trong năm', 'Mã số': report.originalCostDecreaseCode || '1.3', 'TSHT hàng hải': report.assetOriginalCostDecrease ?? 0, 'Tổng cộng': report.assetOriginalCostDecrease ?? 0 },
+                { 'STT': '', 'Chỉ tiêu': 'Nguyên giá - Số dư cuối năm', 'Mã số': report.closingOriginalCostCode || '1.4', 'TSHT hàng hải': report.assetClosingOriginalCost ?? 0, 'Tổng cộng': report.assetClosingOriginalCost ?? 0 },
+                { 'STT': '2', 'Chỉ tiêu': 'Giá trị hao mòn lũy kế - Số dư đầu năm', 'Mã số': report.openingAccumulatedDepreciationCode || '2.1', 'TSHT hàng hải': report.assetOpeningAccumulatedDepreciation ?? 0, 'Tổng cộng': report.assetOpeningAccumulatedDepreciation ?? 0 },
+                { 'STT': '', 'Chỉ tiêu': 'Giá trị hao mòn lũy kế - Tăng trong năm', 'Mã số': report.depreciationIncreaseCode || '2.2', 'TSHT hàng hải': report.assetDepreciationIncrease ?? 0, 'Tổng cộng': report.assetDepreciationIncrease ?? 0 },
+                { 'STT': '', 'Chỉ tiêu': 'Giá trị hao mòn lũy kế - Giảm trong năm', 'Mã số': report.depreciationDecreaseCode || '2.3', 'TSHT hàng hải': report.assetDepreciationDecrease ?? 0, 'Tổng cộng': report.assetDepreciationDecrease ?? 0 },
+                { 'STT': '', 'Chỉ tiêu': 'Giá trị hao mòn lũy kế - Số dư cuối năm', 'Mã số': report.closingDepreciationCode || '2.4', 'TSHT hàng hải': report.assetClosingDepreciation ?? 0, 'Tổng cộng': report.assetClosingDepreciation ?? 0 },
+                { 'STT': '3', 'Chỉ tiêu': 'Giá trị còn lại - Đầu năm', 'Mã số': report.openingResidualValueCode || '3.1', 'TSHT hàng hải': report.assetOpeningResidualValue ?? 0, 'Tổng cộng': report.assetOpeningResidualValue ?? 0 },
+                { 'STT': '', 'Chỉ tiêu': 'Giá trị còn lại - Cuối năm', 'Mã số': report.closingResidualValueCode || '3.2', 'TSHT hàng hải': report.assetClosingResidualValue ?? 0, 'Tổng cộng': report.assetClosingResidualValue ?? 0 },
               ],
               summary: {},
             };
@@ -242,7 +242,7 @@ export default function ReportViewer() {
     } else {
       setReportData(null);
     }
-  }, [reportCode, selectedOrgId, selectedBcNoiDung, selectedYear, nguonDuLieu, dateRange, selectedNhomCangBien]);
+  }, [reportCode, selectedOrgId, selectedBcNoiDung, selectedYear, nguonDuLieu, dateRange, selectedPortGroup]);
 
   // Inject CSS for report section header rows
   useEffect(() => {
@@ -268,7 +268,7 @@ export default function ReportViewer() {
         reportCode,
         format,
         orgUnitId: selectedOrgId,
-        nhomCangBien: selectedNhomCangBien,
+        portGroup: selectedPortGroup,
       };
 
       if (isYearReport) {
@@ -306,7 +306,7 @@ export default function ReportViewer() {
     setDateRange([dayjs().subtract(1, 'month'), dayjs()]);
     setSelectedYear(dayjs());
     setNguonDuLieu('1');
-    setSelectedNhomCangBien(undefined);
+    setSelectedPortGroup(undefined);
     setReportData(null);
   };
 
@@ -421,8 +421,8 @@ export default function ReportViewer() {
                   <Select
                     placeholder="Nhóm cảng biển"
                     style={{ width: '100%', borderRadius: radiusPill, height: 40 }}
-                    value={selectedNhomCangBien}
-                    onChange={(val) => setSelectedNhomCangBien(val)}
+                    value={selectedPortGroup}
+                    onChange={(val) => setSelectedPortGroup(val)}
                     options={[
                       { value: '1', label: 'Nhóm 1' },
                       { value: '2', label: 'Nhóm 2' },
@@ -560,7 +560,7 @@ export default function ReportViewer() {
                     ) : reportCode === 'F-155' ? (
                       <div>
                         <p>Hệ thống hiện tại chưa cấu hình đầy đủ các bảng thuộc tính hạ tầng kỹ thuật chi tiết của đèn biển như dự án gốc <strong>hh.csdl</strong> (ví dụ: các trường hình dáng, kết cấu, chiều cao tháp đèn, chiều cao tâm sáng, chủng loại thiết bị đèn chính/phụ,...).</p>
-                        <p>Toàn bộ dữ liệu đèn biển hiện tại được lấy từ bảng thực thể <strong>Nhà trạm đèn biển</strong> (<code>nha_tram_den</code>) tại màn hình <strong>Nhà trạm đèn biển</strong> (<code>/nhatram/den</code>).</p>
+                        <p>Toàn bộ dữ liệu đèn biển hiện tại được lấy từ bảng thực thể <strong>Nhà trạm đèn biển</strong> (<code>lighthouse_station</code>) tại màn hình <strong>Nhà trạm đèn biển</strong> (<code>/lighthouse-station</code>).</p>
                         <p>Do cấu trúc dữ liệu hiện tại chỉ lưu trữ các trường cơ bản (tên, mã, tầm hiệu lực ánh sáng, màu sắc ánh sáng, ngày bảo trì) nên các thông số kỹ thuật chi tiết khác sẽ hiển thị trống trên báo cáo.</p>
                       </div>
                     ) : ['F-156', 'F-157', 'F-159'].includes(reportCode) ? (
@@ -596,9 +596,9 @@ export default function ReportViewer() {
                     className="list-view-table"
                     scroll={{ x: 'max-content' }}
                     onRow={(record: any) => {
-                      const stt = record['STT'];
-                      if (stt === 'I' || stt === 'II') return { className: 'report-section-row' };
-                      if (stt && stt !== '' && !isNaN(Number(stt))) return { className: 'report-port-row' };
+                      const sequenceNo = record['STT'];
+                      if (sequenceNo === 'I' || sequenceNo === 'II') return { className: 'report-section-row' };
+                      if (sequenceNo && sequenceNo !== '' && !isNaN(Number(sequenceNo))) return { className: 'report-port-row' };
                       return {};
                     }}
                   />

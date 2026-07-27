@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.common.entity;
 
+import java.util.UUID;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import java.time.LocalDateTime;

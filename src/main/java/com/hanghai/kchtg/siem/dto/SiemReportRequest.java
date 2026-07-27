@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.siem.dto;
 
+import java.util.UUID;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -20,5 +22,5 @@ public class SiemReportRequest {
     private String cronExpression;
 
     /** Optional: user who triggered the report. Defaults to "system". */
-    private String createdBy;
+    private UUID createdBy;
 }

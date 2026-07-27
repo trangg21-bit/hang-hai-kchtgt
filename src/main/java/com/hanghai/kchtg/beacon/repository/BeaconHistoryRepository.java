@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.beacon.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.beacon.entity.BeaconHistory;
 import com.hanghai.kchtg.beacon.entity.BeaconHistoryActionType;
 import com.hanghai.kchtg.beacon.entity.BeaconType;

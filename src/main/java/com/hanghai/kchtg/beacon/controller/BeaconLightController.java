@@ -3,8 +3,6 @@ package com.hanghai.kchtg.beacon.controller;
 import com.hanghai.kchtg.beacon.dto.beacon_light.BeaconLightResponse;
 import com.hanghai.kchtg.beacon.dto.beacon_light.CreateBeaconLightRequest;
 import com.hanghai.kchtg.beacon.dto.beacon_light.UpdateBeaconLightRequest;
-import com.hanghai.kchtg.beacon.entity.BeaconLightType;
-import com.hanghai.kchtg.beacon.entity.BeaconStatus;
 import com.hanghai.kchtg.beacon.service.BeaconLightService;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import jakarta.validation.Valid;
@@ -41,8 +39,8 @@ public class BeaconLightController {
     public ResponseEntity<ApiResponse<List<BeaconLightResponse>>> search(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String code,
-            @RequestParam(required = false) BeaconLightType type,
-            @RequestParam(required = false) BeaconStatus status) {
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status) {
         return ResponseEntity.ok(ApiResponse.success(
                 beaconLightService.search(name, code, type, status)));
     }
@@ -51,8 +49,8 @@ public class BeaconLightController {
     public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<BeaconLightResponse>>> searchPaged(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String code,
-            @RequestParam(required = false) BeaconLightType type,
-            @RequestParam(required = false) BeaconStatus status,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
@@ -94,7 +92,7 @@ public class BeaconLightController {
 
     @PostMapping("/{id}/approve-l1")
     public ResponseEntity<ApiResponse<BeaconLightResponse>> approveL1(
-            @PathVariable UUID id, @RequestParam String approverId) {
+            @PathVariable UUID id, @RequestParam java.util.UUID approverId) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Phê duyệt L1 thành công",
                 beaconLightService.approveL1(id, approverId)));
@@ -102,7 +100,7 @@ public class BeaconLightController {
 
     @PostMapping("/{id}/approve-l2")
     public ResponseEntity<ApiResponse<BeaconLightResponse>> approveL2(
-            @PathVariable UUID id, @RequestParam String approverId) {
+            @PathVariable UUID id, @RequestParam java.util.UUID approverId) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Phê duyệt L2 thành công — Đã công bố",
                 beaconLightService.approveL2(id, approverId)));
@@ -112,7 +110,7 @@ public class BeaconLightController {
     public ResponseEntity<ApiResponse<BeaconLightResponse>> reject(
             @PathVariable UUID id,
             @RequestParam String rejectReason,
-            @RequestParam String approverId) {
+            @RequestParam java.util.UUID approverId) {
         return ResponseEntity.ok(ApiResponse.success(
                 "Đã từ chối",
                 beaconLightService.reject(id, rejectReason, approverId)));

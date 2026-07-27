@@ -16,70 +16,70 @@ public class PortAndAssetSharingController {
         this.service = service;
     }
 
-    @PostMapping("/cang-can")
-    public ResponseEntity<DataSharingAggregationResponse> shareCangCan(
+    @PostMapping("/dry-port")
+    public ResponseEntity<DataSharingAggregationResponse> shareDryPort(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareCangCan(dataPayload));
+        return ResponseEntity.ok(service.shareDryPort(dataPayload));
     }
 
-    @PostMapping("/trang-thai-hoat-dong")
-    public ResponseEntity<DataSharingAggregationResponse> shareTrangThaiHoatDongKCHTGT(
+    @PostMapping("/operational-status")
+    public ResponseEntity<DataSharingAggregationResponse> shareOperationalStatusKCHTGT(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareTrangThaiHoatDongKCHTGT(dataPayload));
+        return ResponseEntity.ok(service.shareOperationalStatusKCHTGT(dataPayload));
     }
 
-    @PostMapping("/thong-tin-tai-san")
-    public ResponseEntity<DataSharingAggregationResponse> shareThongTinTaiSanKCHTGT(
+    @PostMapping("/asset-info")
+    public ResponseEntity<DataSharingAggregationResponse> shareAssetInfoKCHTGT(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareThongTinTaiSanKCHTGT(dataPayload));
+        return ResponseEntity.ok(service.shareAssetInfoKCHTGT(dataPayload));
     }
 
-    @PostMapping("/thong-tin-tong-hop")
-    public ResponseEntity<DataSharingAggregationResponse> shareThongTinTongHopKCHTGT(
+    @PostMapping("/aggregated-info")
+    public ResponseEntity<DataSharingAggregationResponse> shareAggregatedInfoKCHTGT(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareThongTinTongHopKCHTGT(dataPayload));
+        return ResponseEntity.ok(service.shareAggregatedInfoKCHTGT(dataPayload));
     }
 
-    @PostMapping("/thong-tin-bao-tri")
-    public ResponseEntity<DataSharingAggregationResponse> shareThongTinBaoTriKCHTGT(
+    @PostMapping("/maintenance-info")
+    public ResponseEntity<DataSharingAggregationResponse> shareMaintenanceInfoKCHTGT(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareThongTinBaoTriKCHTGT(dataPayload));
+        return ResponseEntity.ok(service.shareMaintenanceInfoKCHTGT(dataPayload));
     }
 
-    @PostMapping("/tong-hop-cang-bien")
-    public ResponseEntity<DataSharingAggregationResponse> shareTongHopKCHTGT_CangBien(
+    @PostMapping("/aggregated-port")
+    public ResponseEntity<DataSharingAggregationResponse> shareAggregatedPort(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareTongHopKCHTGT_CangBien(dataPayload));
+        return ResponseEntity.ok(service.shareAggregatedPort(dataPayload));
     }
 
-    @PostMapping("/tong-hop-ben-cang")
-    public ResponseEntity<DataSharingAggregationResponse> shareTongHopKCHTGT_BenCangCauCang(
+    @PostMapping("/aggregated-berth")
+    public ResponseEntity<DataSharingAggregationResponse> shareAggregatedBerthAndPier(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareTongHopKCHTGT_BenCangCauCang(dataPayload));
+        return ResponseEntity.ok(service.shareAggregatedBerthAndPier(dataPayload));
     }
 
-    @PostMapping("/tong-hop-navigation-channel")
-    public ResponseEntity<DataSharingAggregationResponse> shareTongHopKCHTGT_NavigationChannel(
+    @PostMapping("/aggregated-navigation-channel")
+    public ResponseEntity<DataSharingAggregationResponse> shareAggregatedNavigationChannel(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareTongHopKCHTGT_NavigationChannel(dataPayload));
+        return ResponseEntity.ok(service.shareAggregatedNavigationChannel(dataPayload));
     }
 
-    @PostMapping("/tong-hop-khu-chuyen-tai")
-    public ResponseEntity<DataSharingAggregationResponse> shareTongHopKCHTGT_KhuChuyenTaiNeuDau(
+    @PostMapping("/aggregated-transshipment")
+    public ResponseEntity<DataSharingAggregationResponse> shareAggregatedTransshipmentAndAnchorage(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareTongHopKCHTGT_KhuChuyenTaiNeuDau(dataPayload));
+        return ResponseEntity.ok(service.shareAggregatedTransshipmentAndAnchorage(dataPayload));
     }
 
-    @PostMapping("/tong-hop-phao-tieu")
-    public ResponseEntity<DataSharingAggregationResponse> shareTongHopKCHTGT_PhaoTieu(
+    @PostMapping("/aggregated-buoy")
+    public ResponseEntity<DataSharingAggregationResponse> shareAggregatedBuoy(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareTongHopKCHTGT_PhaoTieu(dataPayload));
+        return ResponseEntity.ok(service.shareAggregatedBuoy(dataPayload));
     }
 
-    @PostMapping("/tong-hop-den-bien")
-    public ResponseEntity<DataSharingAggregationResponse> shareTongHopKCHTGT_HeThongDenBien(
+    @PostMapping("/lighthouse-summary")
+    public ResponseEntity<DataSharingAggregationResponse> lighthouseSummary(
             @RequestBody String dataPayload) {
-        return ResponseEntity.ok(service.shareTongHopKCHTGT_HeThongDenBien(dataPayload));
+        return ResponseEntity.ok(service.shareAggregatedBeaconSystem(dataPayload));
     }
 
     @GetMapping

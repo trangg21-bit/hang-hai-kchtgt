@@ -1,4 +1,5 @@
 package com.hanghai.kchtg.station.service;
+import com.hanghai.kchtg.security.AdminAutoApproval;
 import lombok.*;
 
 import com.hanghai.kchtg.station.dto.inmarsat.*;
@@ -30,8 +31,6 @@ public class CoastalStationInmarsatService {
         entity.setDeviceCode(request.getDeviceCode());
         entity.setCode(request.getDeviceCode());
         entity.setName(request.getStationName());
-        entity.setLatitude(request.getLatitude());
-        entity.setLongitude(request.getLongitude());
         entity.setModemType(request.getModemType());
         entity.setFrequency(request.getFrequency());
         entity.setCoverageZone(request.getCoverageZone());
@@ -60,8 +59,6 @@ public class CoastalStationInmarsatService {
         validateCoordinates(request.getLongitude(), request.getLatitude());
 
         if (request.getStationName() != null) entity.setName(request.getStationName());
-        if (request.getLatitude() != null) entity.setLatitude(request.getLatitude());
-        if (request.getLongitude() != null) entity.setLongitude(request.getLongitude());
         if (request.getModemType() != null) entity.setModemType(request.getModemType());
         if (request.getFrequency() != null) entity.setFrequency(request.getFrequency());
         if (request.getCoverageZone() != null) entity.setCoverageZone(request.getCoverageZone());
@@ -127,13 +124,18 @@ public class CoastalStationInmarsatService {
         }
 
         if (approved) {
-            Integer currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel() : 0;
-            if (currentLevel == 0) {
-                entity.setApprovalLevel(1);
+            int currentLevel = entity.getApprovalLevel() != null ? entity.getApprovalLevel().ordinal() : 0;
+            if (currentLevel == 0 && AdminAutoApproval.isAutoApprover()) {
+                // Administrators clear both levels in one step.
+                entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_2);
+                entity.setApprovalStatus(StationApprovalStatus.APPROVED_L2);
+                entity.setStatus(StationStatus.APPROVED_L2);
+            } else if (currentLevel == 0) {
+                entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
                 entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
                 entity.setStatus(StationStatus.APPROVED_L1);
             } else if (currentLevel == 1) {
-                entity.setApprovalLevel(2);
+                entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_2);
                 entity.setApprovalStatus(StationApprovalStatus.APPROVED_L2);
                 entity.setStatus(StationStatus.APPROVED_L2);
             } else {
@@ -157,7 +159,7 @@ public class CoastalStationInmarsatService {
             entity.setStatus(StationStatus.PENDING_APPROVAL);
             entity.setApprovedBy(null);
             entity.setApprovedDate(null);
-            entity.setApprovalLevel(0);
+            entity.setApprovalLevel(null);
             historyService.recordHistory(
                     entity.getDeviceCode(),
                     StationHistoryActionType.UPDATE,
@@ -184,7 +186,7 @@ public class CoastalStationInmarsatService {
         entity.setRejectionReason(rejectionReason);
         entity.setApprovedBy(null);
         entity.setApprovedDate(null);
-        entity.setApprovalLevel(0);
+        entity.setApprovalLevel(null);
 
         historyService.recordHistory(
                 entity.getDeviceCode(),
@@ -230,7 +232,7 @@ public class CoastalStationInmarsatService {
         }
     }
 
-    private String resolveCreatedBy(BaseStation entity) {
+    private String resolveCreatedBy(com.hanghai.kchtg.station.entity.CoastalStationInmarsat entity) {
         return entity.getApprovedBy();
     }
 
@@ -239,8 +241,6 @@ public class CoastalStationInmarsatService {
                 .id(entity.getId())
                 .deviceCode(entity.getDeviceCode())
                 .stationName(entity.getName())
-                .latitude(entity.getLatitude())
-                .longitude(entity.getLongitude())
                 .modemType(entity.getModemType())
                 .frequency(entity.getFrequency())
                 .coverageZone(entity.getCoverageZone())
@@ -251,7 +251,7 @@ public class CoastalStationInmarsatService {
                 .status(entity.getStatus())
                 .approvalStatus(entity.getApprovalStatus())
                 .approvalLevel(entity.getApprovalLevel())
-                .approvedBy(entity.getApprovedBy())
+                .approvedBy(entity.getApprovedBy() != null ? java.util.UUID.fromString(entity.getApprovedBy()) : null)
                 .approvedDate(entity.getApprovedDate())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
@@ -259,3 +259,6 @@ public class CoastalStationInmarsatService {
                 .build();
     }
 }
+
+
+

@@ -13,6 +13,7 @@ import {
   message,
   Tabs,
   Tooltip,
+  Typography,
 } from 'antd';
 import {
   PlusOutlined,
@@ -23,28 +24,29 @@ import {
   CheckCircleOutlined,
 } from '@ant-design/icons';
 import {
-  fetchKeHoachKiemKeList,
-  createKeHoachKiemKe,
-  fetchBaoCaoKiemKeList,
-  createBaoCaoKiemKe,
-  approveKeHoachKiemKe,
-  rejectKeHoachKiemKe,
-  startKeHoachKiemKe,
-  completeKeHoachKiemKe,
-  approveBaoCaoKiemKe,
-  rejectBaoCaoKiemKe,
+  fetchInventoryPlanList,
+  createInventoryPlan,
+  fetchInventoryReportList,
+  createInventoryReport,
+  approveInventoryPlan,
+  rejectInventoryPlan,
+  startInventoryPlan,
+  completeInventoryPlan,
+  approveInventoryReport,
+  rejectInventoryReport,
 } from '../../services/assetmovement/api';
-import type { KeHoachKiemKeResponse, KeHoachKiemKeRequest, BaoCaoKiemKeResponse, BaoCaoKiemKeRequest } from '../../services/assetmovement/types';
+import type { InventoryPlanResponse, InventoryPlanRequest, InventoryReportResponse, InventoryReportRequest } from '../../services/assetmovement/types';
 import dayjs from 'dayjs';
 import { colors } from '../../theme';
 import { fontWeightBold, fontSizeLg } from '../../tokens';
 
-const { TabPane } = Tabs;
+const { Title } = Typography;
+const { Option } = Select;
 
 export default function InventoryList() {
   const [activeTab, setActiveTab] = useState('1');
-  const [plans, setPlans] = useState<KeHoachKiemKeResponse[]>([]);
-  const [reports, setReports] = useState<BaoCaoKiemKeResponse[]>([]);
+  const [plans, setPlans] = useState<InventoryPlanResponse[]>([]);
+  const [reports, setReports] = useState<InventoryReportResponse[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Pagination states for Plans
@@ -75,7 +77,7 @@ export default function InventoryList() {
 
   const handleApprovePlan = async (id: string) => {
     try {
-      await approveKeHoachKiemKe(id);
+      await approveInventoryPlan(id);
       message.success('Đã phê duyệt kế hoạch kiểm kê!');
       loadPlans();
     } catch (err: any) {
@@ -92,7 +94,7 @@ export default function InventoryList() {
   const handleRejectPlanConfirm = async () => {
     if (!rejectingPlanId) return;
     try {
-      await rejectKeHoachKiemKe(rejectingPlanId, rejectPlanRemarks);
+      await rejectInventoryPlan(rejectingPlanId, rejectPlanRemarks);
       message.success('Đã từ chối kế hoạch kiểm kê!');
       setIsRejectPlanModalOpen(false);
       loadPlans();
@@ -103,7 +105,7 @@ export default function InventoryList() {
 
   const handleStartPlan = async (id: string) => {
     try {
-      await startKeHoachKiemKe(id);
+      await startInventoryPlan(id);
       message.success('Kế hoạch kiểm kê đã bắt đầu thực hiện!');
       loadPlans();
     } catch (err: any) {
@@ -113,7 +115,7 @@ export default function InventoryList() {
 
   const handleCompletePlan = async (id: string) => {
     try {
-      await completeKeHoachKiemKe(id);
+      await completeInventoryPlan(id);
       message.success('Kế hoạch kiểm kê đã hoàn thành!');
       loadPlans();
     } catch (err: any) {
@@ -123,7 +125,7 @@ export default function InventoryList() {
 
   const handleApproveReport = async (id: string) => {
     try {
-      await approveBaoCaoKiemKe(id);
+      await approveInventoryReport(id);
       message.success('Đã phê duyệt báo cáo kiểm kê!');
       loadReports();
     } catch (err: any) {
@@ -140,7 +142,7 @@ export default function InventoryList() {
   const handleRejectReportConfirm = async () => {
     if (!rejectingReportId) return;
     try {
-      await rejectBaoCaoKiemKe(rejectingReportId, rejectReportRemarks);
+      await rejectInventoryReport(rejectingReportId, rejectReportRemarks);
       message.success('Đã từ chối báo cáo kiểm kê!');
       setIsRejectReportModalOpen(false);
       loadReports();
@@ -152,7 +154,7 @@ export default function InventoryList() {
   const loadPlans = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchKeHoachKiemKeList({
+      const res = await fetchInventoryPlanList({
         page: planPage - 1,
         size: planPageSize,
       });
@@ -168,7 +170,7 @@ export default function InventoryList() {
   const loadReports = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchBaoCaoKiemKeList({
+      const res = await fetchInventoryReportList({
         page: reportPage - 1,
         size: reportPageSize,
       });
@@ -192,12 +194,12 @@ export default function InventoryList() {
   const handleCreatePlan = async () => {
     try {
       const values = await planForm.validateFields();
-      const payload: KeHoachKiemKeRequest = {
+      const payload: InventoryPlanRequest = {
         ...values,
-        ngayBatDau: values.ngayBatDau ? values.ngayBatDau.toISOString() : dayjs().toISOString(),
-        ngayKetThuc: values.ngayKetThuc ? values.ngayKetThuc.toISOString() : dayjs().toISOString(),
+        startDate: values.startDate ? values.startDate.toISOString() : dayjs().toISOString(),
+        endDate: values.endDate ? values.endDate.toISOString() : dayjs().toISOString(),
       };
-      await createKeHoachKiemKe(payload);
+      await createInventoryPlan(payload);
       message.success('Tạo kế hoạch kiểm kê thành công!');
       setIsPlanModalOpen(false);
       planForm.resetFields();
@@ -210,10 +212,10 @@ export default function InventoryList() {
   const handleCreateReport = async () => {
     try {
       const values = await reportForm.validateFields();
-      const payload: BaoCaoKiemKeRequest = {
+      const payload: InventoryReportRequest = {
         ...values,
       };
-      await createBaoCaoKiemKe(payload);
+      await createInventoryReport(payload);
       message.success('Tạo báo cáo kiểm kê thành công!');
       setIsReportModalOpen(false);
       reportForm.resetFields();
@@ -244,18 +246,18 @@ export default function InventoryList() {
   const planColumns = [
     {
       title: 'Tên kế hoạch',
-      dataIndex: 'tenKeHoach',
-      key: 'tenKeHoach',
+      dataIndex: 'planName',
+      key: 'planName',
     },
     {
       title: 'Mô tả',
-      dataIndex: 'moTa',
-      key: 'moTa',
+      dataIndex: 'description',
+      key: 'description',
     },
     {
       title: 'Trạng thái',
-      dataIndex: 'trangThai',
-      key: 'trangThai',
+      dataIndex: 'status',
+      key: 'status',
       render: (status: string) => getPlanStatusTag(status),
     },
     {
@@ -266,8 +268,8 @@ export default function InventoryList() {
     {
       title: 'Thao tác',
       key: 'action',
-      render: (_: any, record: KeHoachKiemKeResponse) => {
-        const s = record.trangThai ? record.trangThai.toUpperCase() : 'CHO_PHE_DUYET';
+      render: (_: any, record: InventoryPlanResponse) => {
+        const s = record.status ? record.status.toUpperCase() : 'CHO_PHE_DUYET';
         return (
           <Space size="middle">
             {s === 'CHO_PHE_DUYET' && (
@@ -319,19 +321,19 @@ export default function InventoryList() {
   const reportColumns = [
     {
       title: 'Tên báo cáo',
-      dataIndex: 'tenBaoCao',
-      key: 'tenBaoCao',
-      render: (val: string, record: BaoCaoKiemKeResponse) => val || `Báo cáo kiểm kê - ${record.id.substring(0, 8)}`,
+      dataIndex: 'reportName',
+      key: 'reportName',
+      render: (val: string, record: InventoryReportResponse) => val || `Báo cáo kiểm kê - ${record.id.substring(0, 8)}`,
     },
     {
       title: 'Tổng số lượng kiểm',
-      dataIndex: 'tongSoLuong',
-      key: 'tongSoLuong',
+      dataIndex: 'totalQuantity',
+      key: 'totalQuantity',
     },
     {
       title: 'Số lượng chênh lệch',
-      dataIndex: 'soLuongChenhLech',
-      key: 'soLuongChenhLech',
+      dataIndex: 'quantityVariance',
+      key: 'quantityVariance',
       render: (val: number) => (
         <span style={{ color: val !== 0 ? 'red' : 'inherit', fontWeight: val !== 0 ? 'bold' : 'normal' }}>
           {val}
@@ -340,14 +342,14 @@ export default function InventoryList() {
     },
     {
       title: 'Kết quả kiểm kê',
-      dataIndex: 'ketQua',
-      key: 'ketQua',
+      dataIndex: 'result',
+      key: 'result',
       render: (status: string) => getReportStatusTag(status),
     },
     {
       title: 'Mô tả chi tiết',
-      dataIndex: 'moTa',
-      key: 'moTa',
+      dataIndex: 'description',
+      key: 'description',
     },
     {
       title: 'Người lập báo cáo',
@@ -357,8 +359,8 @@ export default function InventoryList() {
     {
       title: 'Thao tác',
       key: 'action',
-      render: (_: any, record: BaoCaoKiemKeResponse) => {
-        const s = record.ketQua ? record.ketQua.toUpperCase() : 'CHO_PHE_DUYET';
+      render: (_: any, record: InventoryReportResponse) => {
+        const s = record.result ? record.result.toUpperCase() : 'CHO_PHE_DUYET';
         return (
           <Space size="middle">
             {s === 'CHO_PHE_DUYET' && (
@@ -416,48 +418,60 @@ export default function InventoryList() {
         </Space>
       }
     >
-      <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key)}>
-        <TabPane tab="Kế hoạch kiểm kê" key="1">
-          <Table
-            dataSource={plans}
-            columns={planColumns}
-            rowKey="id"
-            loading={loading}
-            pagination={{
-              current: planPage,
-              pageSize: planPageSize,
-              total: planTotal,
-              onChange: (p, s) => {
-                setPlanPage(p);
-                setPlanPageSize(s);
-              },
-              showSizeChanger: true,
-              showTotal: (totalCount) => `Tổng ${totalCount} kế hoạch`,
-              locale: { items_per_page: '/ trang' },
-            }}
-          />
-        </TabPane>
-        <TabPane tab="Báo cáo kiểm kê" key="2">
-          <Table
-            dataSource={reports}
-            columns={reportColumns}
-            rowKey="id"
-            loading={loading}
-            pagination={{
-              current: reportPage,
-              pageSize: reportPageSize,
-              total: reportTotal,
-              onChange: (p, s) => {
-                setReportPage(p);
-                setReportPageSize(s);
-              },
-              showSizeChanger: true,
-              showTotal: (totalCount) => `Tổng ${totalCount} báo cáo`,
-              locale: { items_per_page: '/ trang' },
-            }}
-          />
-        </TabPane>
-      </Tabs>
+      <Tabs 
+        activeKey={activeTab} 
+        onChange={(key) => setActiveTab(key)}
+        items={[
+          {
+            key: '1',
+            label: 'Kế hoạch kiểm kê',
+            children: (
+              <Table
+                dataSource={plans}
+                columns={planColumns}
+                rowKey="id"
+                loading={loading}
+                pagination={{
+                  current: planPage,
+                  pageSize: planPageSize,
+                  total: planTotal,
+                  onChange: (p, s) => {
+                    setPlanPage(p);
+                    setPlanPageSize(s);
+                  },
+                  showSizeChanger: true,
+                  showTotal: (totalCount) => `Tổng ${totalCount} kế hoạch`,
+                  locale: { items_per_page: '/ trang' },
+                }}
+              />
+            ),
+          },
+          {
+            key: '2',
+            label: 'Báo cáo kiểm kê',
+            children: (
+              <Table
+                dataSource={reports}
+                columns={reportColumns}
+                rowKey="id"
+                loading={loading}
+                pagination={{
+                  current: reportPage,
+                  pageSize: reportPageSize,
+                  total: reportTotal,
+                  onChange: (p, s) => {
+                    setReportPage(p);
+                    setReportPageSize(s);
+                  },
+                  showSizeChanger: true,
+                  showTotal: (totalCount) => `Tổng ${totalCount} báo cáo`,
+                  locale: { items_per_page: '/ trang' },
+                }}
+              />
+            ),
+          },
+        ]}
+      />
 
       {/* Plan Modal */}
       <Modal
@@ -470,7 +484,7 @@ export default function InventoryList() {
       >
         <Form form={planForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
-            name="tenKeHoach"
+            name="planName"
             label="Tên kế hoạch"
             rules={[{ required: true, message: 'Vui lòng nhập tên kế hoạch' }]}
           >
@@ -478,7 +492,7 @@ export default function InventoryList() {
           </Form.Item>
 
           <Form.Item
-            name="phamVi"
+            name="scope"
             label="Phạm vi kiểm kê"
             rules={[{ required: true, message: 'Vui lòng nhập phạm vi' }]}
           >
@@ -486,7 +500,7 @@ export default function InventoryList() {
           </Form.Item>
 
           <Form.Item
-            name="loaiKiemKe"
+            name="inventoryType"
             label="Loại kiểm kê"
             initialValue="DINH_KY"
             rules={[{ required: true }]}
@@ -498,7 +512,7 @@ export default function InventoryList() {
           </Form.Item>
 
           <Form.Item
-            name="ngayBatDau"
+            name="startDate"
             label="Ngày bắt đầu"
             rules={[{ required: true, message: 'Vui lòng chọn ngày bắt đầu' }]}
           >
@@ -506,14 +520,14 @@ export default function InventoryList() {
           </Form.Item>
 
           <Form.Item
-            name="ngayKetThuc"
+            name="endDate"
             label="Ngày kết thúc"
-            dependencies={['ngayBatDau']}
+            dependencies={['startDate']}
             rules={[
               { required: true, message: 'Vui lòng chọn ngày kết thúc' },
               ({ getFieldValue }) => ({
                 validator(_, value) {
-                  if (!value || !getFieldValue('ngayBatDau') || value.isAfter(getFieldValue('ngayBatDau')) || value.isSame(getFieldValue('ngayBatDau'), 'day')) {
+                  if (!value || !getFieldValue('startDate') || value.isAfter(getFieldValue('startDate')) || value.isSame(getFieldValue('startDate'), 'day')) {
                     return Promise.resolve();
                   }
                   return Promise.reject(new Error('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu'));
@@ -525,14 +539,14 @@ export default function InventoryList() {
           </Form.Item>
 
           <Form.Item
-            name="toTruongKiemKe"
+            name="inventoryLeader"
             label="Tổ trưởng kiểm kê"
             rules={[{ required: true, message: 'Vui lòng nhập người phụ trách' }]}
           >
             <Input placeholder="Nhập tên người chỉ đạo..." />
           </Form.Item>
 
-          <Form.Item name="moTa" label="Mô tả chi tiết">
+          <Form.Item name="description" label="Mô tả chi tiết">
             <Input.TextArea placeholder="Nhập mô tả thêm..." rows={3} />
           </Form.Item>
         </Form>
@@ -549,21 +563,21 @@ export default function InventoryList() {
       >
         <Form form={reportForm} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item
-            name="keHoachId"
+            name="planId"
             label="Kế hoạch kiểm kê liên quan"
             rules={[{ required: true, message: 'Vui lòng chọn kế hoạch' }]}
           >
             <Select placeholder="Chọn kế hoạch đã lập...">
               {plans.map((p) => (
                 <Select.Option key={p.id} value={p.id}>
-                  {p.tenKeHoach}
+                  {p.planName}
                 </Select.Option>
               ))}
             </Select>
           </Form.Item>
 
           <Form.Item
-            name="tenBaoCao"
+            name="reportName"
             label="Tên báo cáo kết quả"
             rules={[{ required: true, message: 'Vui lòng nhập tên báo cáo' }]}
           >
@@ -571,7 +585,7 @@ export default function InventoryList() {
           </Form.Item>
 
           <Form.Item
-            name="tongSoLuong"
+            name="totalQuantity"
             label="Tổng số lượng tài sản kiểm đếm"
             rules={[{ required: true, message: 'Vui lòng nhập số lượng' }]}
           >
@@ -579,7 +593,7 @@ export default function InventoryList() {
           </Form.Item>
 
           <Form.Item
-            name="soLuongChenhLech"
+            name="quantityVariance"
             label="Số lượng chênh lệch (Thừa/Thiếu)"
             rules={[{ required: true, message: 'Vui lòng nhập chênh lệch' }]}
           >
@@ -587,14 +601,14 @@ export default function InventoryList() {
           </Form.Item>
 
           <Form.Item
-            name="ketQua"
+            name="result"
             label="Nhận xét / Kết luận kiểm kê"
             rules={[{ required: true, message: 'Vui lòng nhập kết quả' }]}
           >
             <Input placeholder="Ví dụ: Khớp số liệu, hoặc Có sai lệch cần làm rõ..." />
           </Form.Item>
 
-          <Form.Item name="moTa" label="Mô tả/Ý kiến đề xuất">
+          <Form.Item name="description" label="Mô tả/Ý kiến đề xuất">
             <Input.TextArea placeholder="Nhập các đề xuất khắc phục..." rows={3} />
           </Form.Item>
         </Form>

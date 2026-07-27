@@ -30,7 +30,7 @@ public class SiemReportResponse {
                 report.getStatus().name(),
                 report.getVersion(),
                 report.getFileSizeBytes(),
-                report.getCreatedBy(),
+                report.getCreatedBy() != null ? report.getCreatedBy().toString() : null,
                 report.getGeneratedAt(),
                 report.isScheduled(),
                 report.getContentType()
@@ -51,3 +51,4 @@ public class SiemReportResponse {
         this.contentType = contentType;
     }
 }
+

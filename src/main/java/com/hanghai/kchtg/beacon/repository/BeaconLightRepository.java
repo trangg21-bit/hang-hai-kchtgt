@@ -1,8 +1,8 @@
 package com.hanghai.kchtg.beacon.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.beacon.entity.BeaconLight;
-import com.hanghai.kchtg.beacon.entity.BeaconLightType;
-import com.hanghai.kchtg.beacon.entity.BeaconStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,15 +13,15 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.hanghai.kchtg.beacon.entity.BeaconApprovalStatus;
+
 
 public interface BeaconLightRepository extends JpaRepository<BeaconLight, UUID> {
 
     Optional<BeaconLight> findByCode(String code);
     boolean existsByCode(String code);
 
-    Page<BeaconLight> findByStatus(BeaconStatus status, Pageable pageable);
-    Page<BeaconLight> findByType(BeaconLightType type, Pageable pageable);
+    Page<BeaconLight> findByStatus(String status, Pageable pageable);
+    Page<BeaconLight> findByType(String type, Pageable pageable);
     List<BeaconLight> findByNameContainingIgnoreCase(String name);
     List<BeaconLight> findByCodeContainingIgnoreCase(String code);
 
@@ -33,8 +33,8 @@ public interface BeaconLightRepository extends JpaRepository<BeaconLight, UUID> 
     List<BeaconLight> searchFiltered(
         @Param("name") String name,
         @Param("code") String code,
-        @Param("type") BeaconLightType type,
-        @Param("status") BeaconStatus status
+        @Param("type") String type,
+        @Param("status") String status
     );
 
     @Query("SELECT b FROM BeaconLight b WHERE " +
@@ -45,16 +45,16 @@ public interface BeaconLightRepository extends JpaRepository<BeaconLight, UUID> 
     Page<BeaconLight> searchFilteredPaged(
         @Param("name") String name,
         @Param("code") String code,
-        @Param("type") BeaconLightType type,
-        @Param("status") BeaconStatus status,
+        @Param("type") String type,
+        @Param("status") String status,
         Pageable pageable
     );
 
-    long countByStatus(BeaconStatus status);
+    long countByStatus(String status);
 
     @Query("SELECT b FROM BeaconLight b WHERE " +
             "b.deletedAt IS NULL AND " +
-            "b.approvalStatus = com.hanghai.kchtg.beacon.entity.BeaconApprovalStatus.APPROVED AND " +
+            "b.approvalStatus = 'APPROVED' AND " +
             "(:orgUnitId IS NULL OR b.unitId = :orgUnitId) AND " +
             "(:search IS NULL OR LOWER(b.name) LIKE :search OR LOWER(b.code) LIKE :search)")
     List<BeaconLight> searchGis(

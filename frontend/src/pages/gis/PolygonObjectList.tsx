@@ -172,7 +172,7 @@ export default function PolygonObjectList() {
   );
 
   const columns = useMemo(() => [
-    { key: 'stt', label: 'STT', width: 60, align: 'center' as const, type: 'mono' as const,
+    { key: 'sequenceNo', label: 'STT', width: 60, align: 'center' as const, type: 'mono' as const,
       render: (_: unknown, __: SpatialObjectCategory, idx: number) =>
         <span style={{ color: textTertiary }}>{(page - 1) * pageSize + idx + 1}</span> },
     { key: 'name', label: 'Tên đối tượng vùng', dataIndex: 'name',

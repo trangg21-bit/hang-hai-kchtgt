@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.password.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.password.repository.PasswordHistoryRepository;
 import org.springframework.stereotype.Component;
 

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.line.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.line.entity.LineObject.ApprovalStatus;
 import com.hanghai.kchtg.gis.line.entity.LineObject.ObjectType;
 import com.hanghai.kchtg.gis.line.entity.LineObject.Status;
@@ -35,7 +37,7 @@ public class LineObjectResponse {
     private String purpose;
     private String restrictionLevel;
     private ApprovalStatus approvalStatus;
-    private String approvedBy;
+    private UUID approvedBy;
     private LocalDateTime approvedDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

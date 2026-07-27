@@ -16,7 +16,7 @@ public class PortAndAssetSharingService {
         this.mainService = mainService;
     }
 
-    public DataSharingAggregationResponse shareCangCan(String dataPayload) {
+    public DataSharingAggregationResponse shareDryPort(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
         req.setSharingType(SharingType.CANG_CAN);
         req.setDataPayload(dataPayload);
@@ -24,7 +24,7 @@ public class PortAndAssetSharingService {
         return mainService.create(req);
     }
 
-    public DataSharingAggregationResponse shareTrangThaiHoatDongKCHTGT(String dataPayload) {
+    public DataSharingAggregationResponse shareOperationalStatusKCHTGT(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
         req.setSharingType(SharingType.TRANG_THAI_HOAT_DONG_KCHTGT);
         req.setDataPayload(dataPayload);
@@ -32,7 +32,7 @@ public class PortAndAssetSharingService {
         return mainService.create(req);
     }
 
-    public DataSharingAggregationResponse shareThongTinTaiSanKCHTGT(String dataPayload) {
+    public DataSharingAggregationResponse shareAssetInfoKCHTGT(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
         req.setSharingType(SharingType.THONG_TIN_TAI_SAN_KCHTGT);
         req.setDataPayload(dataPayload);
@@ -40,7 +40,7 @@ public class PortAndAssetSharingService {
         return mainService.create(req);
     }
 
-    public DataSharingAggregationResponse shareThongTinTongHopKCHTGT(String dataPayload) {
+    public DataSharingAggregationResponse shareAggregatedInfoKCHTGT(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
         req.setSharingType(SharingType.THONG_TIN_TONG_HOP_KCHTGT);
         req.setDataPayload(dataPayload);
@@ -48,7 +48,7 @@ public class PortAndAssetSharingService {
         return mainService.create(req);
     }
 
-    public DataSharingAggregationResponse shareThongTinBaoTriKCHTGT(String dataPayload) {
+    public DataSharingAggregationResponse shareMaintenanceInfoKCHTGT(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
         req.setSharingType(SharingType.THONG_TIN_BAO_TRI_KCHTGT);
         req.setDataPayload(dataPayload);
@@ -56,7 +56,7 @@ public class PortAndAssetSharingService {
         return mainService.create(req);
     }
 
-    public DataSharingAggregationResponse shareTongHopKCHTGT_CangBien(String dataPayload) {
+    public DataSharingAggregationResponse shareAggregatedPort(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
         req.setSharingType(SharingType.TONG_HOP_KCHTGT_CANG_BIEN);
         req.setDataPayload(dataPayload);
@@ -64,7 +64,7 @@ public class PortAndAssetSharingService {
         return mainService.create(req);
     }
 
-    public DataSharingAggregationResponse shareTongHopKCHTGT_BenCangCauCang(String dataPayload) {
+    public DataSharingAggregationResponse shareAggregatedBerthAndPier(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
         req.setSharingType(SharingType.TONG_HOP_KCHTGT_BEN_CANG_CAU_CANG);
         req.setDataPayload(dataPayload);
@@ -72,7 +72,7 @@ public class PortAndAssetSharingService {
         return mainService.create(req);
     }
 
-    public DataSharingAggregationResponse shareTongHopKCHTGT_NavigationChannel(String dataPayload) {
+    public DataSharingAggregationResponse shareAggregatedNavigationChannel(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
         req.setSharingType(SharingType.TONG_HOP_KCHTGT_NAVIGATION_CHANNEL);
         req.setDataPayload(dataPayload);
@@ -80,7 +80,7 @@ public class PortAndAssetSharingService {
         return mainService.create(req);
     }
 
-    public DataSharingAggregationResponse shareTongHopKCHTGT_KhuChuyenTaiNeuDau(String dataPayload) {
+    public DataSharingAggregationResponse shareAggregatedTransshipmentAndAnchorage(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
         req.setSharingType(SharingType.TONG_HOP_KCHTGT_KHU_CHUYEN_TAI_NEU_DAU);
         req.setDataPayload(dataPayload);
@@ -88,7 +88,7 @@ public class PortAndAssetSharingService {
         return mainService.create(req);
     }
 
-    public DataSharingAggregationResponse shareTongHopKCHTGT_PhaoTieu(String dataPayload) {
+    public DataSharingAggregationResponse shareAggregatedBuoy(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
         req.setSharingType(SharingType.TONG_HOP_KCHTGT_PHAO_TIEU);
         req.setDataPayload(dataPayload);
@@ -96,7 +96,7 @@ public class PortAndAssetSharingService {
         return mainService.create(req);
     }
 
-    public DataSharingAggregationResponse shareTongHopKCHTGT_HeThongDenBien(String dataPayload) {
+    public DataSharingAggregationResponse shareAggregatedBeaconSystem(String dataPayload) {
         CreateDataSharingAggregationRequest req = new CreateDataSharingAggregationRequest();
         req.setSharingType(SharingType.TONG_HOP_KCHTGT_HE_THONG_DEN_BIEN);
         req.setDataPayload(dataPayload);

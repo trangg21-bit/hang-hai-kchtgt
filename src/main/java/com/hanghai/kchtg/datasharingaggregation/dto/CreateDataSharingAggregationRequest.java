@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.datasharingaggregation.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.datasharingaggregation.enums.SharingType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -19,7 +21,7 @@ public class CreateDataSharingAggregationRequest {
 
     private LocalDateTime shareDate;
 
-    private String createdBy;
+    private UUID createdBy;
 
     public SharingType getSharingType() {
         return sharingType;
@@ -61,11 +63,11 @@ public class CreateDataSharingAggregationRequest {
         this.shareDate = shareDate;
     }
 
-    public String getCreatedBy() {
+    public UUID getCreatedBy() {
         return createdBy;
     }
 
-    public void setCreatedBy(String createdBy) {
+    public void setCreatedBy(UUID createdBy) {
         this.createdBy = createdBy;
     }
 }

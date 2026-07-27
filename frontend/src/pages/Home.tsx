@@ -102,7 +102,7 @@ const CARGO_SERIES = [
 // Infrastructure table data (10 rows)
 // ============================================================
 interface InfraRow {
-  stt: number;
+  sequenceNo: number;
   loai: string;
   tongSL: number;
   chuaKhaiThac: number;
@@ -111,16 +111,16 @@ interface InfraRow {
 }
 
 const INFRA_DATA: InfraRow[] = [
-  { stt: 1, loai: 'Bến cảng', tongSL: 42, chuaKhaiThac: 5, dangKhaiThac: 34, dungKhaiThac: 3 },
-  { stt: 2, loai: 'Bến phao', tongSL: 18, chuaKhaiThac: 2, dangKhaiThac: 15, dungKhaiThac: 1 },
-  { stt: 3, loai: 'Cầu cảng', tongSL: 56, chuaKhaiThac: 8, dangKhaiThac: 45, dungKhaiThac: 3 },
-  { stt: 4, loai: 'Khu neo đậu', tongSL: 24, chuaKhaiThac: 4, dangKhaiThac: 19, dungKhaiThac: 1 },
-  { stt: 5, loai: 'Khu chuyển tải', tongSL: 12, chuaKhaiThac: 2, dangKhaiThac: 9, dungKhaiThac: 1 },
-  { stt: 6, loai: 'Luồng hàng hải', tongSL: 38, chuaKhaiThac: 5, dangKhaiThac: 33, dungKhaiThac: 0 },
-  { stt: 7, loai: 'Đèn biển', tongSL: 215, chuaKhaiThac: 12, dangKhaiThac: 198, dungKhaiThac: 5 },
-  { stt: 8, loai: 'Phao tiêu', tongSL: 183, chuaKhaiThac: 9, dangKhaiThac: 170, dungKhaiThac: 4 },
-  { stt: 9, loai: 'Đê chắn sóng', tongSL: 8, chuaKhaiThac: 1, dangKhaiThac: 7, dungKhaiThac: 0 },
-  { stt: 10, loai: 'Kè bảo vệ bờ', tongSL: 15, chuaKhaiThac: 2, dangKhaiThac: 12, dungKhaiThac: 1 },
+  { sequenceNo: 1, loai: 'Bến cảng', tongSL: 42, chuaKhaiThac: 5, dangKhaiThac: 34, dungKhaiThac: 3 },
+  { sequenceNo: 2, loai: 'Bến phao', tongSL: 18, chuaKhaiThac: 2, dangKhaiThac: 15, dungKhaiThac: 1 },
+  { sequenceNo: 3, loai: 'Cầu cảng', tongSL: 56, chuaKhaiThac: 8, dangKhaiThac: 45, dungKhaiThac: 3 },
+  { sequenceNo: 4, loai: 'Khu neo đậu', tongSL: 24, chuaKhaiThac: 4, dangKhaiThac: 19, dungKhaiThac: 1 },
+  { sequenceNo: 5, loai: 'Khu chuyển tải', tongSL: 12, chuaKhaiThac: 2, dangKhaiThac: 9, dungKhaiThac: 1 },
+  { sequenceNo: 6, loai: 'Luồng hàng hải', tongSL: 38, chuaKhaiThac: 5, dangKhaiThac: 33, dungKhaiThac: 0 },
+  { sequenceNo: 7, loai: 'Đèn biển', tongSL: 215, chuaKhaiThac: 12, dangKhaiThac: 198, dungKhaiThac: 5 },
+  { sequenceNo: 8, loai: 'Phao tiêu', tongSL: 183, chuaKhaiThac: 9, dangKhaiThac: 170, dungKhaiThac: 4 },
+  { sequenceNo: 9, loai: 'Đê chắn sóng', tongSL: 8, chuaKhaiThac: 1, dangKhaiThac: 7, dungKhaiThac: 0 },
+  { sequenceNo: 10, loai: 'Kè bảo vệ bờ', tongSL: 15, chuaKhaiThac: 2, dangKhaiThac: 12, dungKhaiThac: 1 },
 ];
 
 // ============================================================
@@ -869,7 +869,7 @@ function HomeDashboard() {
             <Table
               columns={infraColumns}
               dataSource={INFRA_DATA}
-              rowKey="stt"
+              rowKey="sequenceNo"
               pagination={false}
               size="small"
               scroll={{ x: 620, y: 340 }}

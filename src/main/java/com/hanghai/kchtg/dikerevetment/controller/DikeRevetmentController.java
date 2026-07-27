@@ -30,7 +30,8 @@ public class DikeRevetmentController {
     public ResponseEntity<ApiResponse<DikeRevetmentResponse>> create(
             @RequestBody @Valid DikeRevetmentCreateRequest req,
             Authentication authentication) {
-        return ResponseEntity.ok(ApiResponse.success("Tạo đê kè thành công", service.create(req, authentication.getName())));
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        return ResponseEntity.ok(ApiResponse.success("Tạo đê kè thành công", service.create(req, userId)));
     }
 
     @GetMapping("/{id}")
@@ -53,7 +54,8 @@ public class DikeRevetmentController {
             @PathVariable java.util.UUID id,
             @RequestBody @Valid DikeRevetmentUpdateRequest req,
             Authentication authentication) {
-        return ResponseEntity.ok(ApiResponse.success("Cập nhật đê kè thành công", service.update(id, req, authentication.getName())));
+        java.util.UUID userId2 = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật đê kè thành công", service.update(id, req, userId2)));
     }
 
     @DeleteMapping("/{id}")
@@ -69,8 +71,8 @@ public class DikeRevetmentController {
             @PathVariable java.util.UUID id,
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
-        String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt C1 thành công", service.approveC1(id, req, username)));
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt C1 thành công", service.approveC1(id, req, userId)));
     }
 
     @PostMapping("/{id}/approve/c2")
@@ -79,8 +81,8 @@ public class DikeRevetmentController {
             @PathVariable java.util.UUID id,
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
-        String username = authentication != null ? authentication.getName() : "system";
-        return ResponseEntity.ok(ApiResponse.success("Phê duyệt C2 thành công", service.approveC2(id, req, username)));
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        return ResponseEntity.ok(ApiResponse.success("Phê duyệt C2 thành công", service.approveC2(id, req, userId)));
     }
 
     @GetMapping("/{id}/history")
@@ -89,15 +91,15 @@ public class DikeRevetmentController {
         return ResponseEntity.ok(ApiResponse.success(service.getApprovalHistory(id)));
     }
 
-    @GetMapping("/status-phe-duyet/{trangThai}")
+    @GetMapping("/approval-status/{status}")
     @PreAuthorize("@auth.check(authentication, 'dikerevetment:read')")
-    public ResponseEntity<ApiResponse<List<DikeRevetmentResponse>>> filterByStatus(@PathVariable String trangThai) {
-        return ResponseEntity.ok(ApiResponse.success(service.findByApprovalStatus(DikeRevetmentApprovalStatus.valueOf(trangThai))));
+    public ResponseEntity<ApiResponse<List<DikeRevetmentResponse>>> filterByStatus(@PathVariable String status) {
+        return ResponseEntity.ok(ApiResponse.success(service.findByApprovalStatus(DikeRevetmentApprovalStatus.valueOf(status))));
     }
 
     @GetMapping("/search")
     @PreAuthorize("@auth.check(authentication, 'dikerevetment:read')")
-    public ResponseEntity<ApiResponse<KetQuaTimKiemResponse>> search(
+    public ResponseEntity<ApiResponse<SearchResultResponse>> search(
             @RequestParam(name = "orgUnitId", required = false) java.util.UUID orgUnitId,
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "dikeRevetmentType", required = false) DikeRevetmentType dikeRevetmentType,

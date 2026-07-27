@@ -12,7 +12,7 @@ import type {
   CargoAggregate,
   PeriodType,
   AssetStatusDto,
-  HoSoXuLyTaiSanResponse,
+  AssetProcessingRecordResponse,
   DashboardData,
   KpiWithSparkline,
   KpiCardData,
@@ -34,6 +34,14 @@ import { MOCK_DATA } from './dashboardMockData';
 // ============================================================
 const INTEGRATION_BASE = '/v1/integration/share';
 const ASSET_BASE = '/v1/asset';
+
+/** Fallback H-Bar category when the backend leaves assetName null. */
+const PROCESSING_TYPE_LABEL: Record<string, string> = {
+  TRANSFER: 'Điều chuyển',
+  HANDOVER: 'Bàn giao',
+  LIQUIDATION: 'Thanh lý',
+  DEMOLITION: 'Phá bỏ',
+};
 
 // ============================================================
 // 8 Fetch Functions
@@ -130,15 +138,15 @@ async function fetchAssetStatus(): Promise<AssetStatusDto> {
 }
 
 /**
- * Fetch approval dossiers (E6: asset/ho-so-xu-ly)
- * Returns: Page<HoSoXuLyTaiSanResponse>
+ * Fetch approval dossiers (E6: asset/asset-processing-records)
+ * Returns: Page<AssetProcessingRecordResponse>
  */
 async function fetchApprovals(
   page: number = 0,
   size: number = 200
-): Promise<HoSoXuLyTaiSanResponse[]> {
-  const res = await api.get<ApiResponse<Page<HoSoXuLyTaiSanResponse>>>(
-    `${ASSET_BASE}/ho-so-xu-ly?page=${page}&size=${size}`
+): Promise<AssetProcessingRecordResponse[]> {
+  const res = await api.get<ApiResponse<Page<AssetProcessingRecordResponse>>>(
+    `${ASSET_BASE}/asset-processing-records?page=${page}&size=${size}`
   );
   if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
   const data = res.data.data;
@@ -364,26 +372,28 @@ function transformVesselComposition(
 
 /**
  * Transform approval dossiers to H-Bar and Donut data
- * Group by tenTaiSan category + trangThaiHoSo
+ * Group by tenTaiSan category + documentStatus
  * (G-009: No pre-aggregated endpoint — client-side grouping)
  */
 function transformApprovalData(
-  dossiers: HoSoXuLyTaiSanResponse[]
+  dossiers: AssetProcessingRecordResponse[]
 ): { hBar: ApprovalByCategory[]; donut: DonutSegment[] } {
   const categoryMap = new Map<string, Map<string, number>>();
   dossiers.forEach((d) => {
-    const cat = d.tenTaiSan || 'Khác';
+    // assetName is always null today (see AssetProcessingRecordResponse), so
+    // group by processing type instead — otherwise every row lands in "Khác".
+    const cat = d.assetName || PROCESSING_TYPE_LABEL[d.processingType] || 'Khác';
     if (!categoryMap.has(cat)) categoryMap.set(cat, new Map());
     const statusCount = categoryMap.get(cat)!;
-    statusCount.set(d.trangThaiHoSo, (statusCount.get(d.trangThaiHoSo) || 0) + 1);
+    statusCount.set(d.documentStatus, (statusCount.get(d.documentStatus) || 0) + 1);
   });
 
   const hBar: ApprovalByCategory[] = Array.from(categoryMap.entries())
     .map(([cat, statusMap]) => ({
       category: cat,
-      approved: statusMap.get('DA_PHE_DUYET') || 0,
-      pending: statusMap.get('CHO_PHE_DUYET') || 0,
-      rejected: statusMap.get('TU_CHOI') || 0,
+      approved: statusMap.get('APPROVED') || 0,
+      pending: statusMap.get('PENDING') || 0,
+      rejected: statusMap.get('REJECTED') || 0,
     }))
     .sort((a, b) => b.approved + b.pending + b.rejected - (a.approved + a.pending + a.rejected))
     .slice(0, 5);
@@ -392,26 +402,26 @@ function transformApprovalData(
     return { hBar: MOCK_DATA.hBarApproval, donut: MOCK_DATA.donutPheDuyet };
   }
 
-  const statusCounts = { DA_PHE_DUYET: 0, CHO_PHE_DUYET: 0, TU_CHOI: 0 };
+  const statusCounts = { APPROVED: 0, PENDING: 0, REJECTED: 0 };
   dossiers.forEach((d) => {
-    if (statusCounts.hasOwnProperty(d.trangThaiHoSo)) {
-      statusCounts[d.trangThaiHoSo as keyof typeof statusCounts]++;
+    if (statusCounts.hasOwnProperty(d.documentStatus)) {
+      statusCounts[d.documentStatus as keyof typeof statusCounts]++;
     }
   });
 
   const donut: DonutSegment[] = [
     {
-      value: statusCounts.DA_PHE_DUYET || MOCK_DATA.donutPheDuyet[0].value,
+      value: statusCounts.APPROVED || MOCK_DATA.donutPheDuyet[0].value,
       name: 'Đã duyệt',
       color: MOCK_DATA.donutPheDuyet[0].color,
     },
     {
-      value: statusCounts.CHO_PHE_DUYET || MOCK_DATA.donutPheDuyet[1].value,
+      value: statusCounts.PENDING || MOCK_DATA.donutPheDuyet[1].value,
       name: 'Chờ duyệt',
       color: MOCK_DATA.donutPheDuyet[1].color,
     },
     {
-      value: statusCounts.TU_CHOI || MOCK_DATA.donutPheDuyet[2].value,
+      value: statusCounts.REJECTED || MOCK_DATA.donutPheDuyet[2].value,
       name: 'Từ chối',
       color: MOCK_DATA.donutPheDuyet[2].color,
     },
@@ -588,7 +598,7 @@ async function fetchAll(
   // Alert Card
   const alertCount =
     approvals.status === 'fulfilled'
-      ? approvals.value.filter((d) => d.trangThaiHoSo === 'CHO_PHE_DUYET').length
+      ? approvals.value.filter((d) => d.documentStatus === 'PENDING').length
       : 0;
 
   data.alertCard = {

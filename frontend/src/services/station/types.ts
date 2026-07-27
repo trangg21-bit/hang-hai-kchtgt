@@ -75,3 +75,103 @@ export interface CoastalStationInmarsatResponse {
   createdAt?: string;
   updatedAt?: string;
 }
+
+// ==========================================
+// 3. Lighthouse Station (Nhà trạm đèn biển)
+// ==========================================
+export interface CreateLighthouseStationRequest {
+  code: string;
+  name: string;
+  type: string;
+  latitude: number;
+  longitude: number;
+  lightRange: number;
+  lightColor: string;
+  lightCharacteristic: string;
+  range: number;
+  description: string;
+  unitId: string;
+  lastMaintenanceDate: string;
+  nextMaintenanceDate: string;
+  isActive: boolean;
+  status: string;
+  geometryType?: string;
+  coordinates?: string;
+}
+
+export interface LighthouseStationResponse {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  latitude: number;
+  longitude: number;
+  lightRange: number;
+  lightColor: string;
+  lightCharacteristic: string;
+  range: number;
+  description: string;
+  unitId: string;
+  lastMaintenanceDate: string;
+  nextMaintenanceDate: string;
+  isActive: boolean;
+  status: string;
+  approvalStatus: string;
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+  geometryType?: string;
+  coordinates?: string;
+  spatialId?: string;
+}
+
+// ==========================================
+// 4. Buoy Station (Nhà trạm phao tiêu)
+// ==========================================
+export interface CreateBuoyStationRequest {
+  code: string;
+  name: string;
+  type: string;
+  latitude: number;
+  longitude: number;
+  color: string;
+  shape: string;
+  lightCharacteristic: string;
+  range: number;
+  description: string;
+  unitId: string;
+  lastInspectionDate: string;
+  nextInspectionDate: string;
+  isActive: boolean;
+  status: string;
+  geometryType?: string;
+  coordinates?: string;
+}
+
+export interface BuoyStationResponse {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  latitude: number;
+  longitude: number;
+  color: string;
+  shape: string;
+  lightCharacteristic: string;
+  range: number;
+  description: string;
+  unitId: string;
+  lastInspectionDate: string;
+  nextInspectionDate: string;
+  isActive: boolean;
+  status: string;
+  approvalStatus: string;
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+  geometryType?: string;
+  coordinates?: string;
+  spatialId?: string;
+}

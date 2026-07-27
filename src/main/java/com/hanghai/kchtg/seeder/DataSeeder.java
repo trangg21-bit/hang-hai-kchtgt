@@ -33,10 +33,7 @@ import com.hanghai.kchtg.mapicon.repository.MapSymbolRepository;
 import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import com.hanghai.kchtg.beacon.entity.BeaconLight;
-import com.hanghai.kchtg.beacon.entity.BeaconLightType;
-import com.hanghai.kchtg.beacon.entity.BeaconStatus;
 import com.hanghai.kchtg.beacon.entity.Buoy;
-import com.hanghai.kchtg.beacon.entity.BuoyType;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
 import lombok.RequiredArgsConstructor;
@@ -474,20 +471,20 @@ public class DataSeeder implements CommandLineRunner {
             "LH-LACHGIANG-013", "LH-LETHUY-014", "LH-HONKHOAI-015"
         };
 
-        BeaconLightType[] types = {
-            BeaconLightType.LIGHTHOUSE, BeaconLightType.LIGHTHOUSE, BeaconLightType.LIGHTHOUSE,
-            BeaconLightType.BEACON_LIGHT, BeaconLightType.LIGHTHOUSE, BeaconLightType.BEACON_LIGHT,
-            BeaconLightType.BEACON_MARK, BeaconLightType.LIGHTHOUSE, BeaconLightType.LIGHTHOUSE,
-            BeaconLightType.BEACON_LIGHT, BeaconLightType.LIGHTHOUSE, BeaconLightType.BEACON_LIGHT,
-            BeaconLightType.BEACON_MARK, BeaconLightType.BEACON_LIGHT, BeaconLightType.LIGHTHOUSE
+        String[] types = {
+            "LIGHTHOUSE", "LIGHTHOUSE", "LIGHTHOUSE",
+            "BEACON_LIGHT", "LIGHTHOUSE", "BEACON_LIGHT",
+            "BEACON_MARK", "LIGHTHOUSE", "LIGHTHOUSE",
+            "BEACON_LIGHT", "LIGHTHOUSE", "BEACON_LIGHT",
+            "BEACON_MARK", "BEACON_LIGHT", "LIGHTHOUSE"
         };
 
-        BeaconStatus[] statuses = {
-            BeaconStatus.DRAFT, BeaconStatus.PENDING_APPROVAL, BeaconStatus.APPROVED_L1,
-            BeaconStatus.APPROVED_L2, BeaconStatus.PUBLISHED, BeaconStatus.REJECTED,
-            BeaconStatus.DRAFT, BeaconStatus.PENDING_APPROVAL, BeaconStatus.APPROVED_L1,
-            BeaconStatus.APPROVED_L2, BeaconStatus.PUBLISHED, BeaconStatus.REJECTED,
-            BeaconStatus.DRAFT, BeaconStatus.PENDING_APPROVAL, BeaconStatus.PUBLISHED
+        String[] statuses = {
+            "DRAFT", "PENDING_APPROVAL", "APPROVED_L1",
+            "APPROVED_L2", "PUBLISHED", "REJECTED",
+            "DRAFT", "PENDING_APPROVAL", "APPROVED_L1",
+            "APPROVED_L2", "PUBLISHED", "REJECTED",
+            "DRAFT", "PENDING_APPROVAL", "PUBLISHED"
         };
 
         double[] lats = { 20.666, 20.985, 20.622, 20.301, 16.121, 13.782, 11.481, 10.697, 10.329, 10.428, 20.133, 18.788, 20.021, 17.155, 8.431 };
@@ -499,9 +496,9 @@ public class DataSeeder implements CommandLineRunner {
             b.setName(names[i]);
             b.setType(types[i]);
             b.setLightRange(12.5 + i % 5);
-            b.setLightColor(i % 3 == 0 ? "Trắng chớp nhoáng" : (i % 3 == 1 ? "Đỏ chớp chu kỳ" : "Xanh lục"));
+            b.setTowerColor(i % 3 == 0 ? "Trắng chớp nhoáng" : (i % 3 == 1 ? "Đỏ chớp chu kỳ" : "Xanh lục"));
             b.setStatus(statuses[i]);
-            b.setIsActive(statuses[i] == BeaconStatus.PUBLISHED);
+            b.setIsActive("PUBLISHED".equals(statuses[i]));
             beaconLightRepo.save(b);
         }
         log.info("✅ Seeded 15 BeaconLights");
@@ -530,20 +527,20 @@ public class DataSeeder implements CommandLineRunner {
             "BY-PHUQUOC-010", "BY-CONDAO-011", "BY-THOCHU-012"
         };
 
-        BuoyType[] types = {
-            BuoyType.SAFE_WATER, BuoyType.CARDINAL, BuoyType.CARDINAL,
-            BuoyType.SECTOR, BuoyType.SPECIAL, BuoyType.CARDINAL,
-            BuoyType.SAFE_WATER, BuoyType.SPECIAL, BuoyType.SECTOR,
-            BuoyType.SAFE_WATER, BuoyType.CARDINAL, BuoyType.SPECIAL,
-            BuoyType.SAFE_WATER, BuoyType.SECTOR, BuoyType.ISOLATED_DANGER
+        String[] types = {
+            "SAFE_WATER", "CARDINAL", "CARDINAL",
+            "SECTOR", "SPECIAL", "CARDINAL",
+            "SAFE_WATER", "SPECIAL", "SECTOR",
+            "SAFE_WATER", "CARDINAL", "SPECIAL",
+            "SAFE_WATER", "SECTOR", "ISOLATED_DANGER"
         };
 
-        BeaconStatus[] statuses = {
-            BeaconStatus.DRAFT, BeaconStatus.PENDING_APPROVAL, BeaconStatus.APPROVED_L1,
-            BeaconStatus.APPROVED_L2, BeaconStatus.PUBLISHED, BeaconStatus.REJECTED,
-            BeaconStatus.DRAFT, BeaconStatus.PENDING_APPROVAL, BeaconStatus.APPROVED_L1,
-            BeaconStatus.APPROVED_L2, BeaconStatus.PUBLISHED, BeaconStatus.REJECTED,
-            BeaconStatus.DRAFT, BeaconStatus.PENDING_APPROVAL, BeaconStatus.PUBLISHED
+        String[] statuses = {
+            "DRAFT", "PENDING_APPROVAL", "APPROVED_L1",
+            "APPROVED_L2", "PUBLISHED", "REJECTED",
+            "DRAFT", "PENDING_APPROVAL", "APPROVED_L1",
+            "APPROVED_L2", "PUBLISHED", "REJECTED",
+            "DRAFT", "PENDING_APPROVAL", "PUBLISHED"
         };
 
         double[] lats = { 20.601, 20.722, 20.733, 20.911, 18.812, 16.133, 16.101, 13.711, 12.215, 10.222, 10.311, 10.601, 10.111, 8.655, 9.301 };
@@ -557,7 +554,7 @@ public class DataSeeder implements CommandLineRunner {
             b.setRange(5.0 + i % 3);
             b.setColor(i % 2 == 0 ? "Đỏ" : "Xanh lục");
             b.setStatus(statuses[i]);
-            b.setIsActive(statuses[i] == BeaconStatus.PUBLISHED);
+            b.setIsActive("PUBLISHED".equals(statuses[i]));
             buoyRepo.save(b);
         }
         log.info("✅ Seeded 15 Buoys");
@@ -573,21 +570,21 @@ public class DataSeeder implements CommandLineRunner {
 
         String defaultImg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMCIgaGVpZ2h0PSIzMCI+PGNpcmNsZSBjeD0iMTUiIGN5PSIxNSIgcj0iMTAiIGZpbGw9IiMxNjc3ZmYiLz48L3N2Zz4=";
         List<MapSymbol> symbols = List.of(
-            MapSymbol.builder().code("SYM-HD").name("Hướng đi").description("Ký hiệu hướng đi của tàu thuyền").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-DC").name("Đường chính").description("Ký hiệu luồng hàng hải chính").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-TT").name("Tọa độ").description("Ký hiệu điểm mốc tọa độ hải văn").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-CC").name("Chia cắt").description("Ký hiệu phân làn giao thông hàng hải").image(defaultImg).status(MapSymbolStatus.INACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-CT").name("Cửa tầng").description("Ký hiệu cửa thu nước cảng biển").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-BN").name("Bến ngầm").description("Ký hiệu bến đậu ngầm của tàu ngầm").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-OD").name("Địa điểm").description("Ký hiệu địa điểm cảng vụ").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-PTA").name("Phao loại A").description("Ký hiệu phao tiêu chỉ giới loại A").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-PTB").name("Phao loại B").description("Ký hiệu phao tiêu chỉ giới loại B").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-DB1").name("Đèn biển chính").description("Hải đăng cấp 1 khu vực ven bờ").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-DB2").name("Đèn biển phụ").description("Đèn báo hiệu phụ lối vào luồng").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-VTC").name("Vùng cấm").description("Ký hiệu vùng cấm neo đậu hàng hải").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-VQD").name("Vùng quay đầu").description("Ký hiệu vùng dành cho tàu quay đầu").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-NBD").name("Neo bão").description("Ký hiệu khu vực trú bão của tàu").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build(),
-            MapSymbol.builder().code("SYM-QY").name("Quét lôi").description("Ký hiệu khu vực đang rà quét chướng ngại vật").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy("admin").build()
+            MapSymbol.builder().code("SYM-HD").name("Hướng đi").description("Ký hiệu hướng đi của tàu thuyền").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("SYM-DC").name("Đường chính").description("Ký hiệu luồng hàng hải chính").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("SYM-TT").name("Tọa độ").description("Ký hiệu điểm mốc tọa độ hải văn").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("SYM-CC").name("Chia cắt").description("Ký hiệu phân làn giao thông hàng hải").image(defaultImg).status(MapSymbolStatus.INACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("SYM-CT").name("Cửa tầng").description("Ký hiệu cửa thu nước cảng biển").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("SYM-BN").name("Bến ngầm").description("Ký hiệu bến đậu ngầm của tàu ngầm").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("SYM-OD").name("Địa điểm").description("Ký hiệu địa điểm cảng vụ").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("SYM-PTA").name("Phao loại A").description("Ký hiệu phao tiêu chỉ giới loại A").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("SYM-PTB").name("Phao loại B").description("Ký hiệu phao tiêu chỉ giới loại B").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("SYM-DB1").name("Đèn biển chính").description("Hải đăng cấp 1 khu vực ven bờ").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("SYM-DB2").name("Đèn biển phụ").description("Đèn báo hiệu phụ lối vào luồng").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("SYM-VTC").name("Vùng cấm").description("Ký hiệu vùng cấm neo đậu hàng hải").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("SYM-VQD").name("Vùng quay đầu").description("Ký hiệu vùng dành cho tàu quay đầu").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("SYM-NBD").name("Neo bão").description("Ký hiệu khu vực trú bão của tàu").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().code("SYM-QY").name("Quét lôi").description("Ký hiệu khu vực đang rà quét chướng ngại vật").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build()
         );
 
         mapSymbolRepo.saveAll(symbols);

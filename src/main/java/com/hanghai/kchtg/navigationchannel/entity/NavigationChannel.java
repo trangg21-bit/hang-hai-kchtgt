@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.navigationchannel.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.*;
@@ -11,7 +13,7 @@ import java.util.*;
 public class NavigationChannel {
     @Id @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
-    private java.util.UUID id;
+    private UUID id;
     @Column(name = "channel_name", nullable = false, length = 100) private String channelName;
     @Column(name = "station_amountt") private Integer stationAmountt;
     @Column(name = "latest_station_repair_date") private LocalDate latestStationRepairDate;
@@ -44,8 +46,8 @@ public class NavigationChannel {
     @Column(name = "is_deleted", nullable = false) @Builder.Default private Boolean isDeleted = false;
     @Column(name = "created_at", updatable = false) private LocalDateTime createdAt;
     @Column(name = "updated_at") private LocalDateTime updatedAt;
-    @Column(name = "created_by", length = 100) private String createdBy;
-    @Column(name = "updated_by", length = 100) private String updatedBy;
+    @Column(name = "created_by", length = 100) private UUID createdBy;
+    @Column(name = "updated_by", length = 100) private UUID updatedBy;
     @Column(name = "spatial_id") private UUID spatialId;
     @Column(name = "registered_area", length = 100) private String registeredArea;
     @Column(name = "operating_hours", length = 50) private String operatingHours;
@@ -53,10 +55,10 @@ public class NavigationChannel {
     @Column(name = "quantity") private Integer quantity;
     @Column(name = "load_capacity", length = 100) private String loadCapacity;
     @Column(name = "deleted_at") private LocalDateTime deletedAt;
-    @Column(name = "deleted_by", length = 100) private String deletedBy;
+    @Column(name = "deleted_by", length = 100) private UUID deletedBy;
     @OneToMany(mappedBy = "navigationChannel", cascade = CascadeType.ALL, orphanRemoval = true) @Builder.Default private List<NavigationChannelAttachment> attachments = new ArrayList<>();
-    @OneToMany(mappedBy = "navigationChannel", cascade = CascadeType.ALL, orphanRemoval = true) @Builder.Default private List<PheDuyetLichSu> approvalHistory = new ArrayList<>();
-    @OneToMany(mappedBy = "navigationChannel", cascade = CascadeType.ALL, orphanRemoval = true) @Builder.Default private List<ChiTietTuyenLuong> chiTietTuyenLuongList = new ArrayList<>();
+    @OneToMany(mappedBy = "navigationChannel", cascade = CascadeType.ALL, orphanRemoval = true) @Builder.Default private List<ApprovalHistory> approvalHistory = new ArrayList<>();
+    @OneToMany(mappedBy = "navigationChannel", cascade = CascadeType.ALL, orphanRemoval = true) @Builder.Default private List<ChannelRouteDetail> channelRouteDetailList = new ArrayList<>();
     @PrePersist protected void onCreate() { this.createdAt = LocalDateTime.now(); }
     @PreUpdate protected void onUpdate() { this.updatedAt = LocalDateTime.now(); }
 }

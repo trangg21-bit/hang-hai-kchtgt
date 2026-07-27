@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.dikerevetment.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.*;
@@ -12,7 +14,7 @@ public class DikeRevetment {
 
     @Id @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
-    private java.util.UUID id;
+    private UUID id;
 
     @Column(name = "dike_revetment_type")
     @Convert(converter = DikeRevetmentTypeConverter.class)
@@ -46,7 +48,7 @@ public class DikeRevetment {
     private String note;
 
     @Column(name = "org_unit_id")
-    private UUID donViId;
+    private UUID orgUnitId;
 
     @Column(name = "approval_status", nullable = false)
     @Convert(converter = DikeRevetmentApprovalStatusConverter.class)
@@ -86,19 +88,19 @@ public class DikeRevetment {
     private LocalDateTime updatedAt;
 
     @Column(name = "created_by", length = 100)
-    private String createdBy;
+    private UUID createdBy;
 
     @Column(name = "updated_by", length = 100)
-    private String updatedBy;
+    private UUID updatedBy;
 
     @Column(name = "spatial_id")
-    private UUID khongGianId;
+    private UUID spatialId;
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
     @Column(name = "deleted_by", length = 100)
-    private String deletedBy;
+    private UUID deletedBy;
 
     @OneToMany(mappedBy = "dikeRevetment", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

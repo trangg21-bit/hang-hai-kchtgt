@@ -130,7 +130,7 @@ export default function GroupList() {
   }, [hasPerm, navigate, openEditModal, handleDelete]);
 
   const columns = useMemo(() => [
-    { key: 'stt', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const,
+    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const,
       render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
     { key: 'name', label: 'Tên nhóm', dataIndex: 'name', width: 250,
       render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },

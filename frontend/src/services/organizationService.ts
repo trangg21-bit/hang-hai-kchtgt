@@ -322,7 +322,7 @@ export const organizationService = {
     try {
       const resp = await api.get(`/org-units/${id}`);
       const item: any = extractData(resp);
-      if (!item) throw new Error("ÄÆ¡n vá»‹ khÃ´ng tá»“n táº¡i");
+      if (!item) throw new Error("Đơn vị không tồn tại");
 
       return {
         id: item.id ?? "",

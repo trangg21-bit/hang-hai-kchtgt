@@ -147,7 +147,7 @@ export default function UsersPage() {
   }, [hasPerm, openEditModal, handleToggleLock, handleResetPassword, handleDelete]);
 
   const columns = useMemo(() => [
-    { key: 'stt', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
+    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
     { key: 'fullName', label: 'Họ và tên', dataIndex: 'fullName', width: 200, sortable: true, sorter: true, align: 'left' as const, sortOrder: sortField === 'fullName' ? sortOrder : null, render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },
     { key: 'username', label: 'Tên đăng nhập', dataIndex: 'username', width: 150, sortable: true, align: 'left' as const, sortOrder: sortField === 'username' ? sortOrder : null },
     { key: 'email', label: 'Email', dataIndex: 'email', width: 200, sortable: true, align: 'left' as const, sortOrder: sortField === 'email' ? sortOrder : null },

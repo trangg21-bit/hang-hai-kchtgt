@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.polygon.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ObjectType;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.Status;
 import lombok.AllArgsConstructor;
@@ -17,14 +19,14 @@ public class UpdatePolygonObjectRequest {
     private String code;
     private ObjectType objectType;
     private Long categoryId;
-    private java.util.UUID fillSymbolId;
+    private UUID fillSymbolId;
     private String coordinates;
     private String description;
     private Status status;
-    private java.util.UUID unitId;
+    private UUID unitId;
     private Double area;
     private String purpose;
     private String restrictionLevel;
-    private java.util.UUID refId;
+    private UUID refId;
     private Integer refType;
 }

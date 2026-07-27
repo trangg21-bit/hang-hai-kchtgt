@@ -28,8 +28,6 @@ public abstract class BaseStation {
 
     protected String code;
     protected String name;
-    protected Double latitude;
-    protected Double longitude;
 
     @Column(length = 1000)
     protected String description;
@@ -70,3 +68,4 @@ public abstract class BaseStation {
         this.deletedAt = LocalDateTime.now();
     }
 }
+

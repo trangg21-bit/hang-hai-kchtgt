@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.mapicon.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.mapicon.entity.MapIcon.Category;
 import com.hanghai.kchtg.mapicon.entity.MapIcon.Status;
 import lombok.AllArgsConstructor;

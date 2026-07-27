@@ -1,6 +1,5 @@
 package com.hanghai.kchtg.beacon.dto.buoy;
 
-import com.hanghai.kchtg.beacon.entity.BuoyType;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,17 +27,9 @@ public class CreateBuoyRequest {
     private String name;
 
     @NotNull(message = "Loại phao không được để trống")
-    private BuoyType type;
+    private String type;
 
-    @NotNull
-    @DecimalMin("-90.0")
-    @DecimalMax("90.0")
-    private Double latitude;
 
-    @NotNull
-    @DecimalMin("-180.0")
-    @DecimalMax("180.0")
-    private Double longitude;
 
     @Size(max = 50)
     private String color;

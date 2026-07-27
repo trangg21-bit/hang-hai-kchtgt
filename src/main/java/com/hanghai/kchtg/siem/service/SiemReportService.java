@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.siem.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.siem.dto.SiemReportRequest;
 import com.hanghai.kchtg.siem.dto.SiemReportResponse;
 import com.hanghai.kchtg.siem.entity.SiemReport;
@@ -40,7 +42,7 @@ public class SiemReportService {
     @Transactional
     public SiemReportResponse generateReport(SiemReportRequest request) {
         String format = normalizeFormat(request.getFormat());
-        String createdBy = request.getCreatedBy() != null ? request.getCreatedBy() : "system";
+        String createdBy = request.getCreatedBy() != null ? request.getCreatedBy().toString() : "system";
         boolean isScheduled = request.isScheduled();
         String cronExpression = request.getCronExpression();
 
@@ -50,7 +52,7 @@ public class SiemReportService {
         report.setStatus(SiemReportStatus.PENDING);
         report.setScheduled(isScheduled);
         report.setCronExpression(cronExpression);
-        report.setCreatedBy(createdBy);
+        try { report.setCreatedBy(createdBy != null ? java.util.UUID.fromString(createdBy) : null); } catch (Exception ex) { report.setCreatedBy(null); }
         report.setGeneratedAt(LocalDateTime.now());
 
         // Calculate version: next version for this format/status combination
@@ -202,3 +204,5 @@ public class SiemReportService {
         return "siem_report_" + timestamp + "." + format.toLowerCase();
     }
 }
+
+

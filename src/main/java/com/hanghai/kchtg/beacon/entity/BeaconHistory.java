@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.beacon.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -38,7 +40,7 @@ public class BeaconHistory {
     @Column(name = "action_type", nullable = false, length = 20)
     private BeaconHistoryActionType actionType;
 
-    @Column(name = "changed_field", length = 100)
+    @Column(name = "changed_field", length = 255)
     private String changedField;
 
     @Column(name = "previous_value", columnDefinition = "TEXT")

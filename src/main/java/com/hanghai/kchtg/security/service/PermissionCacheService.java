@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.security.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -31,7 +33,7 @@ public class PermissionCacheService {
      * @param userId ID của user (UUID)
      * @param permissions Tập hợp các permission codes
      */
-    public void cachePermissions(java.util.UUID userId, Set<String> permissions) {
+    public void cachePermissions(UUID userId, Set<String> permissions) {
         String key = CACHE_KEY_PREFIX + userId;
         redisTemplate.opsForSet().add(key, permissions.toArray(new String[0]));
         redisTemplate.expire(key, CACHE_TTL_MINUTES, TimeUnit.MINUTES);
@@ -42,7 +44,7 @@ public class PermissionCacheService {
      * @param userId ID của user (UUID)
      * @return Tập hợp các permission codes, hoặc null nếu không có trong cache.
      */
-    public Set<String> getPermissionsFromCache(java.util.UUID userId) {
+    public Set<String> getPermissionsFromCache(UUID userId) {
         String key = CACHE_KEY_PREFIX + userId;
         return redisTemplate.opsForSet().members(key);
     }
@@ -51,7 +53,7 @@ public class PermissionCacheService {
      * Xóa (invalidate) cache permissions của user khi có thay đổi quyền.
      * @param userId ID của user (UUID)
      */
-    public void invalidateCache(java.util.UUID userId) {
+    public void invalidateCache(UUID userId) {
         String key = CACHE_KEY_PREFIX + userId;
         redisTemplate.delete(key);
     }
@@ -60,7 +62,7 @@ public class PermissionCacheService {
      * Tăng permission_version của user và invalidate cache.
      * @param userId ID của user (UUID)
      */
-    public void invalidateAndIncrementVersion(java.util.UUID userId) {
+    public void invalidateAndIncrementVersion(UUID userId) {
         userRepository.findById(userId).ifPresent(user -> {
             user.incrementPermissionVersion();
             userRepository.save(user);

@@ -6,137 +6,137 @@ export interface PageResponse<T> {
   number: number;
 }
 
-export interface YeuCauTangTaiSanRequest {
-  taiSanId: string;
-  tenTaiSan: string;
-  soLuong: number;
-  donViTinh: string;
-  lyDo: string;
-  maSoTang: string;
+export interface AssetIncreaseRequest {
+  assetId: string;
+  assetName: string;
+  quantity: number;
+  unitOfMeasure: string;
+  reason: string;
+  increaseCode: string;
 }
 
-export interface YeuCauTangTaiSanResponse {
+export interface AssetIncreaseResponse {
   id: string;
-  taiSanId: string;
-  tenTaiSan: string;
-  soLuong: number;
-  donViTinh: string;
-  lyDo: string;
-  trangThai: string;
-  maSoTang: string;
+  assetId: string;
+  assetName: string;
+  quantity: number;
+  unitOfMeasure: string;
+  reason: string;
+  status: string;
+  increaseCode: string;
   createdBy: string;
   createdByName: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface YeuCauGiamTaiSanRequest {
-  taiSanId: string;
-  tenTaiSan: string;
-  soLuong: number;
-  donViTinh: string;
-  lyDo: string;
-  nguyenNhanGiam: string;
+export interface AssetDecreaseRequest {
+  assetId: string;
+  assetName: string;
+  quantity: number;
+  unitOfMeasure: string;
+  reason: string;
+  decreaseReason: string;
 }
 
-export interface YeuCauGiamTaiSanResponse {
+export interface AssetDecreaseResponse {
   id: string;
-  taiSanId: string;
-  tenTaiSan: string;
-  soLuong: number;
-  donViTinh: string;
-  lyDo: string;
-  trangThai: string;
-  nguyenNhanGiam: string;
+  assetId: string;
+  assetName: string;
+  quantity: number;
+  unitOfMeasure: string;
+  reason: string;
+  status: string;
+  decreaseReason: string;
   createdBy: string;
   createdByName: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface KeHoachKiemKeRequest {
-  tenKeHoach: string;
-  phamVi: string;
-  loaiKiemKe: 'DINH_KY' | 'DOT_XUAT';
-  ngayBatDau: string;
-  ngayKetThuc: string;
-  toTruongKiemKe: string;
-  moTa: string;
+export interface InventoryPlanRequest {
+  planName: string;
+  scope: string;
+  inventoryType: 'DINH_KY' | 'DOT_XUAT';
+  startDate: string;
+  endDate: string;
+  inventoryLeader: string;
+  description: string;
 }
 
-export interface KeHoachKiemKeResponse {
+export interface InventoryPlanResponse {
   id: string;
-  tenKeHoach: string;
-  moTa: string;
-  trangThai: string;
+  planName: string;
+  description: string;
+  status: string;
   createdBy: string;
   createdByName: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface BaoCaoKiemKeRequest {
-  keHoachId: string;
-  tenBaoCao: string;
-  tongSoLuong: number;
-  soLuongChenhLech: number;
-  ketQua: string;
-  moTa: string;
+export interface InventoryReportRequest {
+  planId: string;
+  reportName: string;
+  totalQuantity: number;
+  quantityVariance: number;
+  result: string;
+  description: string;
 }
 
-export interface BaoCaoKiemKeResponse {
+export interface InventoryReportResponse {
   id: string;
-  keHoachId: string;
-  tenBaoCao: string;
-  tongSoLuong: number;
-  soLuongChenhLech: number;
-  ketQua: string;
-  moTa: string;
+  planId: string;
+  reportName: string;
+  totalQuantity: number;
+  quantityVariance: number;
+  result: string;
+  description: string;
   createdBy: string;
   createdByName: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface KhaiThacTaiSanRequest {
-  taiSanId: string;
-  tenTaiSan: string;
-  namKhaiThac: number;
+export interface AssetExploitationRequest {
+  assetId: string;
+  assetName: string;
+  exploitationYear: number;
   doanhThu: number;
-  haoMon: number;
-  moTa: string;
+  depreciation: number;
+  description: string;
 }
 
-export interface KhaiThacTaiSanResponse {
+export interface AssetExploitationResponse {
   id: string;
-  taiSanId: string;
-  tenTaiSan: string;
-  namKhaiThac: number;
+  assetId: string;
+  assetName: string;
+  exploitationYear: number;
   doanhThu: number;
-  haoMon: number;
-  moTa: string;
+  depreciation: number;
+  description: string;
   createdBy: string;
   createdByName: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface HoSoXuLyTaiSanRequest {
-  taiSanId: string;
-  tenTaiSan: string;
-  loaiXuLy: string;
-  benNhan: string;
-  lyDoXuLy: string;
-  moTa: string;
+export interface AssetProcessingRecordRequest {
+  assetId: string;
+  assetName: string;
+  processingType: string;
+  recipient: string;
+  processingReason: string;
+  description: string;
 }
 
-export interface HoSoXuLyTaiSanResponse {
+export interface AssetProcessingRecordResponse {
   id: string;
-  taiSanId: string;
-  tenTaiSan: string;
-  loaiXuLy: string;
-  moTa: string;
-  trangThaiHoSo: string;
+  assetId: string;
+  assetName: string;
+  processingType: string;
+  description: string;
+  documentStatus: string;
   createdBy: string;
   createdByName: string;
   createdAt: string;

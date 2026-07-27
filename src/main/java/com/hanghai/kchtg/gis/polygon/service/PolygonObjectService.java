@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.polygon.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.polygon.dto.CreatePolygonObjectRequest;
 import com.hanghai.kchtg.gis.polygon.dto.PolygonObjectResponse;
 import com.hanghai.kchtg.gis.polygon.dto.UpdatePolygonObjectRequest;
@@ -136,7 +138,7 @@ public class PolygonObjectService {
     }
 
     @Transactional
-    public PolygonObjectResponse approveL1(UUID id, String approverId) {
+    public PolygonObjectResponse approveL1(UUID id, UUID approverId) {
         PolygonObject entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("PolygonObject not found with id: " + id));
 
@@ -164,7 +166,7 @@ public class PolygonObjectService {
     }
 
     @Transactional
-    public PolygonObjectResponse approveL2(UUID id, String approverId) {
+    public PolygonObjectResponse approveL2(UUID id, UUID approverId) {
         PolygonObject entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("PolygonObject not found with id: " + id));
 

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.user.controller;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.user.dto.ApprovalDecisionRequest;
 import com.hanghai.kchtg.user.dto.PendingApprovalResponse;

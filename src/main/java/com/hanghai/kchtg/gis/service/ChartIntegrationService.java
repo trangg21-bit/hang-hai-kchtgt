@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.service;
 
+import java.util.UUID;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.gis.entity.ChartCell;
 import com.hanghai.kchtg.gis.entity.ChartFeature;
@@ -69,8 +71,8 @@ public class ChartIntegrationService {
 
         // Resolve and save coordinates
         double[] coords = calculateCenterCoordinate(parsedData.cellName);
-        cell.setLatitude(coords[0]);
-        cell.setLongitude(coords[1]);
+        
+        
 
         ChartCell savedCell = cellRepository.save(cell);
 
@@ -113,8 +115,8 @@ public class ChartIntegrationService {
         cell.setIsEncrypted(false);
         cell.setStatus(ChartCell.Status.ACTIVE);
 
-        cell.setLatitude(((Number) data.get("latitude")).doubleValue());
-        cell.setLongitude(((Number) data.get("longitude")).doubleValue());
+        
+        
 
         ChartCell savedCell = cellRepository.save(cell);
 
@@ -173,8 +175,8 @@ public class ChartIntegrationService {
 
         // Resolve and save coordinates
         double[] coords = calculateCenterCoordinate(parsedData.cellName);
-        cell.setLatitude(coords[0]);
-        cell.setLongitude(coords[1]);
+        
+        
 
         ChartCell savedCell = cellRepository.save(cell);
 

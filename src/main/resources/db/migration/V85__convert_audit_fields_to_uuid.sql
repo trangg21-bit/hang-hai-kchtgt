@@ -1,0 +1,27 @@
+-- V85: intentionally a no-op. The audit-column conversion moved to V90.
+--
+-- This migration used to cast every created_by / updated_by / deleted_by /
+-- approved_by / nguoi_* column in the public schema to UUID. That was wrong in
+-- three separate ways, all of which would have failed the UAT deploy:
+--
+--  1. Ordering. V85 runs BEFORE V84/V86 finish renaming the Vietnamese tables and
+--     columns, so at this point port_planning.created_by is still nguoi_tao and
+--     legal_documents' audit columns have not been renamed yet. Half the work
+--     targeted names that did not exist yet, and the other half targeted names
+--     that were about to change.
+--
+--  2. Columns that must stay text. Seven audit columns are NOT UUID in the entity
+--     model — adjustment_approvals.approved_by maps to `private String approver`,
+--     port_planning/incidents/planning_adjustments/processing_progress keep String
+--     audit fields, and pending_approvals.approved_by is a foreign key to
+--     app_users. Casting those to UUID makes Hibernate schema validation fail in
+--     the opposite direction.
+--
+--  3. Data. `NULLIF(col, '')::uuid` aborts the whole migration the moment one row
+--     holds a username instead of a UUID, which is exactly what the older code
+--     wrote into these columns.
+--
+-- V90 does the same job after every rename has settled, with an explicit exclusion
+-- list and non-UUID values cleared rather than crashing the deploy.
+
+SELECT 1;

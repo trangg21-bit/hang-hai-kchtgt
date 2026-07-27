@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.statistics.dto;
 
+import java.util.UUID;
+
 import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,5 +22,5 @@ public class BulkStatisticsRequest {
     @NotEmpty(message = "danh sách forms không được để trống")
     private List<StatisticsFormRequest> forms;
 
-    private String approvedBy;
+    private UUID approvedBy;
 }

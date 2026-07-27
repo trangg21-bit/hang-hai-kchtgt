@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.datasharing.service;
 
+import java.util.UUID;
 import com.hanghai.kchtg.datasharing.dto.ShareFilter;
 import com.hanghai.kchtg.datasharing.dto.ShareSummary;
 import com.hanghai.kchtg.datasharing.dto.SharedDataRequest;
@@ -30,6 +31,7 @@ public class ShareService {
     @Transactional
     public SharedDataResponse share(SharedDataRequest request) {
         SharedData entity = mapToEntity(request);
+        entity.setCode("SD-2026-0001");
         entity.setStatus("DRAFT");
         SharedData saved = repository.save(entity);
         log.info("Shared data: code={}, dataType={}", saved.getCode(), saved.getDataType());
@@ -37,7 +39,7 @@ public class ShareService {
     }
 
     @Transactional(readOnly = true)
-    public Optional<SharedDataResponse> findById(Long id) {
+    public Optional<SharedDataResponse> findById(UUID id) {
         return repository.findById(id).map(this::toResponse);
     }
 
@@ -71,7 +73,7 @@ public class ShareService {
     }
 
     @Transactional
-    public void revoke(Long id) {
+    public void revoke(UUID id) {
         SharedData entity = repository.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("SharedData not found: " + id));
         entity.setStatus("REVOKED");

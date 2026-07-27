@@ -22,7 +22,7 @@ export interface DikeRevetmentResponse {
   surfaceMaterial?: string;
   status?: string;
   note?: string;
-  donViId?: string;
+  orgUnitId?: string;
   approvalStatus: ApprovalStatus;
   isApprovedLevel1?: boolean;
   approverLevel1?: string;
@@ -58,7 +58,7 @@ export interface CreateDikeRevetmentRequest {
   surfaceMaterial?: string;
   status?: string;
   note?: string;
-  donViId?: string;
+  orgUnitId?: string;
   loaiHinhHoc?: 'POINT' | 'LINE' | 'POLYGON';
   toaDo?: string;
   bieuTuongId?: string;
@@ -96,7 +96,7 @@ export interface HistoryEntry {
 export interface ListParams {
   page?: number;
   size?: number;
-  donViId?: string;
+  orgUnitId?: string;
   keyword?: string;
   dikeRevetmentType?: DikeRevetmentType;
   status?: string;

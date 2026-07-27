@@ -4,7 +4,7 @@ import type {
   NavigationChannelResponse,
   CreateNavigationChannelRequest,
   UpdateNavigationChannelRequest,
-  PheDuyetRequest,
+  ApprovalRequest,
   HistoryEntry,
   ListParams,
   SearchResponse,
@@ -65,18 +65,18 @@ export const navigationChannelCRUD = {
   },
 
   async getByStatus(status: string): Promise<NavigationChannelResponse[]> {
-    const res = await api.get(`/v1/navigation-channel/status-phe-duyet/${status}`);
+    const res = await api.get(`/v1/navigation-channel/approval-status/${status}`);
     return toArray<NavigationChannelResponse>(res.data);
   },
 };
 
 export const navigationChannelApproval = {
-  async approveC1(id: string, data: PheDuyetRequest): Promise<NavigationChannelResponse> {
+  async approveC1(id: string, data: ApprovalRequest): Promise<NavigationChannelResponse> {
     const res = await api.post(`/v1/navigation-channel/${id}/approve/c1`, data);
     return toSingle<NavigationChannelResponse>(res.data) || {} as NavigationChannelResponse;
   },
 
-  async approveC2(id: string, data: PheDuyetRequest): Promise<NavigationChannelResponse> {
+  async approveC2(id: string, data: ApprovalRequest): Promise<NavigationChannelResponse> {
     const res = await api.post(`/v1/navigation-channel/${id}/approve/c2`, data);
     return toSingle<NavigationChannelResponse>(res.data) || {} as NavigationChannelResponse;
   },

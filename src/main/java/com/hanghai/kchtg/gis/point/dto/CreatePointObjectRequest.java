@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.point.dto;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.gis.point.entity.PointObject.ObjectType;
 import com.hanghai.kchtg.gis.point.entity.PointObject.Status;
 import jakarta.validation.constraints.DecimalMax;
@@ -27,26 +29,22 @@ public class CreatePointObjectRequest {
     private ObjectType objectType;
 
     private Long categoryId;
-    private java.util.UUID iconId;
+    private UUID iconId;
 
     @NotNull(message = "Kinh độ không được để trống")
     @DecimalMin(value = "-180.0", message = "Kinh độ phải trong khoảng -180~180")
     @DecimalMax(value = "180.0", message = "Kinh độ phải trong khoảng -180~180")
-    private Double longitude;
-
     @NotNull(message = "Vĩ độ không được để trống")
     @DecimalMin(value = "-90.0", message = "Vĩ độ phải trong khoảng -90~90")
     @DecimalMax(value = "90.0", message = "Vĩ độ phải trong khoảng -90~90")
-    private Double latitude;
-
     private String description;
 
     @Builder.Default
     private Status status = Status.DRAFT;
 
-    private java.util.UUID unitId;
+    private UUID unitId;
 
-    private java.util.UUID refId;
+    private UUID refId;
     private Integer refType;
     private String purpose;
     private String restrictionLevel;

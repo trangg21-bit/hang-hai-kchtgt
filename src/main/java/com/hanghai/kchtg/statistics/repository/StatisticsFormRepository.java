@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.statistics.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.statistics.entity.StatFormStatus;
 import com.hanghai.kchtg.statistics.entity.StatFormType;
 import com.hanghai.kchtg.statistics.entity.StatisticsForm;
@@ -13,7 +15,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface StatisticsFormRepository extends JpaRepository<StatisticsForm, Long> {
+public interface StatisticsFormRepository extends JpaRepository<StatisticsForm, UUID> {
 
     Optional<StatisticsForm> findByFormCode(String formCode);
 

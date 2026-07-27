@@ -192,7 +192,7 @@ export default function RolesPage() {
 
   // ---- Columns ----
   const columns = useMemo(() => [
-    { key: 'stt', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
+    { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
     { key: 'name', label: 'Tên vai trò', dataIndex: 'name', width: 220, align: 'left' as const, render: (text: string, record: Role) => (
       <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <Typography.Text strong>{text}</Typography.Text>

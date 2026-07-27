@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.dataconnection.service;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.dataconnection.dto.*;
 import com.hanghai.kchtg.dataconnection.entity.DataConnection;
 import com.hanghai.kchtg.dataconnection.enums.ConnectionStatus;

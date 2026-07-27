@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.group.repository;
 
+import java.util.UUID;
+
 import com.hanghai.kchtg.group.entity.GroupMember;
 import com.hanghai.kchtg.group.entity.GroupMemberStatus;
 import org.springframework.data.domain.Page;

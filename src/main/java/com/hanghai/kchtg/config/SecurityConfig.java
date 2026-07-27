@@ -5,6 +5,7 @@ import com.hanghai.kchtg.security.JwtProperties;
 import com.hanghai.kchtg.security.PermissionAuthorizationManager;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import org.springframework.http.HttpMethod;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -69,11 +70,24 @@ public class SecurityConfig {
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/auth/password-policy").permitAll()
-                        .requestMatchers("/api/point-objects/**").permitAll()
-                        .requestMatchers("/api/line-objects/**").permitAll()
-                        .requestMatchers("/api/polygon-objects/**").permitAll()
-                        .requestMatchers("/api/map-layers/**").permitAll()
-                        .requestMatchers("/api/search/**").permitAll()
+                        // Map data stays readable without a login so the public map keeps
+                        // working, but only for reads. These controllers carry no
+                        // @PreAuthorize of their own, so a blanket permitAll left create,
+                        // update, delete — and even the L1/L2 approval endpoints — open to
+                        // anonymous callers.
+                        .requestMatchers(HttpMethod.GET, "/api/point-objects/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/line-objects/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/polygon-objects/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/map-layers/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/search/**").permitAll()
+                        // Searching itself is a POST with a body, so it stays public;
+                        // clearing the history is not.
+                        .requestMatchers(HttpMethod.POST, "/api/search").permitAll()
+                        .requestMatchers("/api/point-objects/**").authenticated()
+                        .requestMatchers("/api/line-objects/**").authenticated()
+                        .requestMatchers("/api/polygon-objects/**").authenticated()
+                        .requestMatchers("/api/map-layers/**").authenticated()
+                        .requestMatchers("/api/search/**").authenticated()
                         .requestMatchers("/api/v1/integration/share/**").permitAll()
                         // Registration and TOTP setup must be public so new users can register and first-time users can setup MFA
                         .requestMatchers("/api/register").permitAll()
