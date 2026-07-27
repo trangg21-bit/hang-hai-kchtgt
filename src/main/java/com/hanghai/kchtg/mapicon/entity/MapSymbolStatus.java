@@ -5,8 +5,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum MapSymbolStatus {
     INACTIVE(0),
-    ACTIVE(1),
-    DEPRECATED(2);
+    ACTIVE(1);
 
     private final int value;
 
@@ -30,7 +29,7 @@ public enum MapSymbolStatus {
             }
             return MapSymbolStatus.valueOf(name.toUpperCase().trim());
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Trạng thái ký hiệu không hợp lệ: " + name);
+            throw new IllegalArgumentException("Trạng thái biểu tượng không hợp lệ: " + name);
         }
     }
 

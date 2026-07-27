@@ -14,17 +14,18 @@ import java.time.LocalDateTime;
  * responseCode, durationMs, and metadata fields.
  * </p>
  */
-import java.util.UUID;
-
 public class AccessLogResponse {
 
-    private final UUID id;
+    private final Long id;
     private final Long userId;
     private final String username;
     private final String action;
     private final String module;
     private final String ipAddress;
     private final String userAgent;
+    private final String email;
+    private final String orgUnit;
+    private final String sessionId;
     private final AccessLogStatus status;
     private final String detail;
     private final LocalDateTime createdAt;
@@ -39,9 +40,6 @@ public class AccessLogResponse {
     private final Integer responseCode;
     private final Integer durationMs;
     private final String metadata;
-    private final String email;
-    private final String organization;
-    private final String sessionId;
 
     public AccessLogResponse(AccessLog entity) {
         this.id = entity.getId();
@@ -51,6 +49,9 @@ public class AccessLogResponse {
         this.module = entity.getModule();
         this.ipAddress = entity.getIpAddress();
         this.userAgent = entity.getUserAgent();
+        this.email = entity.getEmail();
+        this.orgUnit = entity.getOrgUnit();
+        this.sessionId = entity.getSessionId();
         this.status = entity.getStatus();
         this.detail = entity.getDetail();
         this.createdAt = entity.getCreatedAt();
@@ -62,20 +63,20 @@ public class AccessLogResponse {
         this.responseCode = entity.getResponseCode();
         this.durationMs = entity.getDurationMs();
         this.metadata = entity.getMetadata();
-        this.email = entity.getEmail();
-        this.organization = entity.getOrganization();
-        this.sessionId = entity.getSessionId();
     }
 
     // ── Original accessors ───────────────────────────────────────────
 
-    public UUID getId() { return id; }
+    public Long getId() { return id; }
     public Long getUserId() { return userId; }
     public String getUsername() { return username; }
     public String getAction() { return action; }
     public String getModule() { return module; }
     public String getIpAddress() { return ipAddress; }
     public String getUserAgent() { return userAgent; }
+    public String getEmail() { return email; }
+    public String getOrgUnit() { return orgUnit; }
+    public String getSessionId() { return sessionId; }
     public AccessLogStatus getStatus() { return status; }
     public String getDetail() { return detail; }
     public LocalDateTime getCreatedAt() { return createdAt; }
@@ -90,7 +91,4 @@ public class AccessLogResponse {
     public Integer getResponseCode() { return responseCode; }
     public Integer getDurationMs() { return durationMs; }
     public String getMetadata() { return metadata; }
-    public String getEmail() { return email; }
-    public String getOrganization() { return organization; }
-    public String getSessionId() { return sessionId; }
 }

@@ -78,6 +78,18 @@ public class AccessLog {
     @Column(name = "user_agent", length = 500)
     private String userAgent;
 
+    /** Email of the user (denormalised for fast filtering). */
+    @Column(name = "email", length = 100)
+    private String email;
+
+    /** Organisational unit of the user (denormalised for fast filtering). */
+    @Column(name = "org_unit", length = 100)
+    private String orgUnit;
+
+    /** Login session identifier. All actions in one session share this ID. */
+    @Column(name = "session_id", length = 50)
+    private String sessionId;
+
     /** Whether the action completed successfully or failed. */
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
@@ -90,18 +102,6 @@ public class AccessLog {
     private String detail;
 
     // ── F-005 new fields ─────────────────────────────────────────────
-
-    /** User's email at the time of the action. */
-    @Column(name = "email", length = 100)
-    private String email;
-
-    /** User's unit/department at the time of the action. */
-    @Column(name = "organization", length = 200)
-    private String organization;
-
-    /** Session ID of the user. */
-    @Column(name = "session_id", length = 100)
-    private String sessionId;
 
     /** Log type categorization: access, login, error, account, configuration. */
     @Enumerated(EnumType.STRING)

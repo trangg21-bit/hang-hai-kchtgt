@@ -8,13 +8,11 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Data
 @Builder
 public class MapSymbolResponse {
     private UUID id;
-    private String code;
     private String name;
     private String description;
     private String image;
@@ -27,7 +25,6 @@ public class MapSymbolResponse {
         if (symbol == null) return null;
         return MapSymbolResponse.builder()
                 .id(symbol.getId())
-                .code(symbol.getCode())
                 .name(symbol.getName())
                 .description(symbol.getDescription())
                 .image(symbol.getImage())
