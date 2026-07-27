@@ -75,8 +75,8 @@ public class AccessLog {
     private String email;
 
     /** Organisational unit of the user (denormalised for fast filtering). */
-    @Column(name = "don_vi", length = 100)
-    private String donVi;
+    @Column(name = "org_unit", length = 100)
+    private String orgUnit;
 
     /** Login session identifier. All actions in one session share this ID. */
     @Column(name = "session_id", length = 50)

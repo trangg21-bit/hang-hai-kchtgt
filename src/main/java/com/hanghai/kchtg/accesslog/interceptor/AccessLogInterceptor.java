@@ -31,7 +31,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
  * F-005 changes: writes are now queued to {@link AsyncLogAppender} instead of
  * being saved synchronously. Interceptor also populates new fields:
  * type, severity, targetResource, requestPath, responseCode, durationMs, metadata,
- * email, donVi, sessionId.
+ * email, orgUnit, sessionId.
  * </p>
  */
 @Component
@@ -133,9 +133,9 @@ public class AccessLogInterceptor implements HandlerInterceptor {
         }
         logEntry.setUsername(username);
 
-        // ── Email, donVi, sessionId (F-005) ─────────────────────────────
+        // ── Email, orgUnit, sessionId (F-005) ─────────────────────────────
         logEntry.setEmail(resolveEmail(username));
-        logEntry.setDonVi(resolveDonVi(username));
+        logEntry.setOrgUnit(resolveOrgUnit(username));
         logEntry.setSessionId(resolveSessionId(request));
 
         // Resolve userId from username
@@ -340,7 +340,7 @@ public class AccessLogInterceptor implements HandlerInterceptor {
      * {@link UserRepository#findByUsernameWithRelations(String)} to avoid
      * LazyInitializationException on the OrgUnit relationship.
      */
-    private String resolveDonVi(String username) {
+    private String resolveOrgUnit(String username) {
         if (username == null || "anonymousUser".equals(username)) return null;
         try {
             var user = userRepository.findByUsernameWithRelations(username).orElse(null);

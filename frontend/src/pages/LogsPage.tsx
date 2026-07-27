@@ -231,7 +231,7 @@ export default function LogsPage() {
     if (fv.dateRange?.[1]) {
       params.to = dayjs(fv.dateRange[1]).endOf('day').format('YYYY-MM-DDTHH:mm:ss');
     }
-    if (fv.donVi) params.donVi = fv.donVi;
+    if (fv.orgUnit) params.orgUnit = fv.orgUnit;
     if (fv.email) params.email = fv.email;
     if (fv.keyword) params.keyword = fv.keyword;
     if (isSelfOnly && username) {
@@ -433,9 +433,9 @@ export default function LogsPage() {
       ),
     },
     {
-      key: 'donVi',
+      key: 'orgUnit',
       label: 'Đơn vị',
-      dataIndex: 'donVi',
+      dataIndex: 'orgUnit',
       render: (val: any) =>
         val ? (
           <span style={{ color: textPrimary, fontSize: fontSizeMd }}>{val}</span>
@@ -583,7 +583,7 @@ export default function LogsPage() {
             placeholder: 'Từ ngày - Đến ngày',
           } as any,
           {
-            key: 'donVi',
+            key: 'orgUnit',
             type: 'select',
             label: 'Đơn vị',
             placeholder: 'Chọn đơn vị',
@@ -729,7 +729,7 @@ export default function LogsPage() {
                 </Col>
                 <Col span={12}>
                   <Form.Item {...labelProps('Đơn vị')} style={{ marginBottom: spaceFormField }}>
-                    <Input readOnly value={r.donVi || 'N/A'} style={{ borderRadius: radiusPill, height: 40 }} />
+                    <Input readOnly value={r.orgUnit || 'N/A'} style={{ borderRadius: radiusPill, height: 40 }} />
                   </Form.Item>
                 </Col>
               </Row>

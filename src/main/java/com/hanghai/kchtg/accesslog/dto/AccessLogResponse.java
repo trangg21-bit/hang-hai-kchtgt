@@ -24,7 +24,7 @@ public class AccessLogResponse {
     private final String ipAddress;
     private final String userAgent;
     private final String email;
-    private final String donVi;
+    private final String orgUnit;
     private final String sessionId;
     private final AccessLogStatus status;
     private final String detail;
@@ -50,7 +50,7 @@ public class AccessLogResponse {
         this.ipAddress = entity.getIpAddress();
         this.userAgent = entity.getUserAgent();
         this.email = entity.getEmail();
-        this.donVi = entity.getDonVi();
+        this.orgUnit = entity.getOrgUnit();
         this.sessionId = entity.getSessionId();
         this.status = entity.getStatus();
         this.detail = entity.getDetail();
@@ -75,7 +75,7 @@ public class AccessLogResponse {
     public String getIpAddress() { return ipAddress; }
     public String getUserAgent() { return userAgent; }
     public String getEmail() { return email; }
-    public String getDonVi() { return donVi; }
+    public String getOrgUnit() { return orgUnit; }
     public String getSessionId() { return sessionId; }
     public AccessLogStatus getStatus() { return status; }
     public String getDetail() { return detail; }

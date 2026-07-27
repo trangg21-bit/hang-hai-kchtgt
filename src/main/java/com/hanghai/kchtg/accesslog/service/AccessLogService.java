@@ -106,9 +106,9 @@ public class AccessLogService {
                 predicates.add(cb.equal(root.get("email"), filter.getEmail().trim()));
             }
 
-            // donVi filter
-            if (filter.getDonVi() != null && !filter.getDonVi().isBlank()) {
-                predicates.add(cb.equal(root.get("donVi"), filter.getDonVi().trim()));
+            // orgUnit filter
+            if (filter.getOrgUnit() != null && !filter.getOrgUnit().isBlank()) {
+                predicates.add(cb.equal(root.get("orgUnit"), filter.getOrgUnit().trim()));
             }
 
             // sessionId filter
