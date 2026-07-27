@@ -370,7 +370,7 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
           footer={null}
           width={900}
           destroyOnClose
-          maskClosable={false}
+          mask={{ closable: false }}
         >
           {detailContent}
         </Modal>
@@ -393,7 +393,7 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
         onCancel={onCancel}
         footer={null}
         destroyOnClose
-        maskClosable={false}
+        mask={{ closable: false }}
       >
         <Spin spinning={isLoading}>
           <Form
@@ -645,3 +645,4 @@ export default function ShipRepairFacilityForm({ open, editId, mode, onCancel, o
     </div>
   );
 }
+

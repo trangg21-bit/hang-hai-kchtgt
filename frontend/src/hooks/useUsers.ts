@@ -82,6 +82,18 @@ export function useToggleLockUser() {
   });
 }
 
+export function useChangeStatusUser() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) => userService.changeStatus(id, status),
+    onSuccess: () => {
+      message.success('Đã cập nhật trạng thái');
+      qc.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+
 export function useResetPassword() {
   return useMutation({
     mutationFn: (id: string) => userService.resetPassword(id),

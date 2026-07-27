@@ -238,7 +238,7 @@ public class LighthouseStationService {
         }
 
         entity.setStatus(StationStatus.DELETED);
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         lighthouseRepo.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());

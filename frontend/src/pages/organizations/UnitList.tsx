@@ -348,7 +348,7 @@ export default function UnitList() {
 
       <Modal
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingOrg ? 'Sửa thông tin đơn vị' : 'Thêm mới đơn vị'}</span>}
-        open={modalOpen} onCancel={() => setModalOpen(false)} destroyOnHidden confirmLoading={submitting} width={640} maskClosable={false}
+        open={modalOpen} onCancel={() => setModalOpen(false)} destroyOnHidden confirmLoading={submitting} width={640} mask={{ closable: false }}
         footer={[
           <Button key="cancel" onClick={() => setModalOpen(false)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
           <Button key="ok" type="primary" onClick={handleSubmit} loading={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>{editingOrg ? 'Cập nhật' : 'Tạo mới'}</Button>,
@@ -399,3 +399,4 @@ export default function UnitList() {
     </div>
   );
 }
+

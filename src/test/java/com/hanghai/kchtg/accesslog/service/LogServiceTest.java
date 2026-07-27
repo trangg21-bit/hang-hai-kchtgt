@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -52,7 +53,7 @@ class LogServiceTest {
 
     private LogService logService;
 
-    private Long logId;
+    private UUID logId;
     private Long userId;
 
     @BeforeEach
@@ -60,7 +61,7 @@ class LogServiceTest {
         logService = new LogService(accessLogService, repository, retentionPolicyRepository, aggregateRepository, "", "./logs");
         ReflectionTestUtils.setField(logService, "accessLogService", accessLogService);
 
-        logId = 1L;
+        logId = UUID.randomUUID();
         userId = 42L;
     }
 

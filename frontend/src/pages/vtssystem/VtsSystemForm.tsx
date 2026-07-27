@@ -385,7 +385,7 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
           footer={null}
           width={900}
           destroyOnClose
-          maskClosable={false}
+          mask={{ closable: false }}
         >
           <Spin spinning={isLoading}>
             {detailContent}
@@ -606,3 +606,4 @@ export default function VtsSystemForm({ open, editId, mode, onCancel, onSuccess 
     </div>
   );
 }
+

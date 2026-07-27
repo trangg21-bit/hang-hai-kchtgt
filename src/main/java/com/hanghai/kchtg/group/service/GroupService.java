@@ -136,7 +136,7 @@ public class GroupService {
         UserGroup entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy nhóm với id=" + id));
 
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         repository.save(entity);
         log.info("Soft-deleted group: id={}", id);
     }

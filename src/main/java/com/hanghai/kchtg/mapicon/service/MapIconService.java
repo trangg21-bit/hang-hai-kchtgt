@@ -80,7 +80,7 @@ public class MapIconService {
     public void delete(UUID id) {
         MapIcon entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("MapIcon not found with id: " + id));
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         repository.save(entity);
     }
 

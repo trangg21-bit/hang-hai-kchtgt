@@ -22,6 +22,7 @@ import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -38,12 +39,12 @@ class AccessLogServiceTest {
     private AccessLogService service;
 
     private AccessLog sampleLog;
-    private Long logId;
+    private UUID logId;
     private Long userId;
 
     @BeforeEach
     void setUp() {
-        logId = 1L;
+        logId = UUID.randomUUID();
         userId = 42L;
 
         sampleLog = new AccessLog();

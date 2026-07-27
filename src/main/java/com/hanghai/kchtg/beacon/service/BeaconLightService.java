@@ -264,7 +264,7 @@ public class BeaconLightService {
         }
 
         entity.setStatus("DELETED");
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         beaconLightRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.SOFT_DELETE, null, null, toJson(entity));

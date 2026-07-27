@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Read-only service for access-log queries.
@@ -41,7 +42,7 @@ public class AccessLogService {
     /**
      * Retrieve a single access-log entry by its primary key.
      */
-    public AccessLogResponse findById(Long id) {
+    public AccessLogResponse findById(UUID id) {
         AccessLog entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("AccessLog not found: " + id));
         return new AccessLogResponse(entity);

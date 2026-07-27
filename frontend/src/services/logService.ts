@@ -51,6 +51,9 @@ export interface AccessLogEntry {
   id: string;
   userId: string;
   username: string;
+  email?: string;
+  organization?: string;
+  sessionId?: string;
   action: string;
   module: string;
   ipAddress: string;

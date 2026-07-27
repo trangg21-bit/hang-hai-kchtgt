@@ -80,7 +80,7 @@ public class DataSeeder implements CommandLineRunner {
         seedPolygonCategories();
         seedMapIcons();
         seedOrgUnits();
-        seedUserGroups();
+        // seedUserGroups(); // Disabled as per user rule to not seed data via Java
         seedUsers();
         // seedBeaconLights();
         // seedBuoys();
@@ -306,7 +306,7 @@ public class DataSeeder implements CommandLineRunner {
                 g.setName(names[i]);
                 g.setCode(codes[i]);
                 g.setDescription("Mô tả nhóm " + names[i]);
-                g.setGroupType(groupTypes[i]);
+                g.setGroupType(com.hanghai.kchtg.group.entity.GroupType.fromValue(groupTypes[i]));
                 g.setStatus(GroupStatus.ACTIVE);
                 g.setPermissions(List.of("users:read", "users:create", "users:update", "roles:read"));
                 groupRepo.save(g);
@@ -397,7 +397,7 @@ public class DataSeeder implements CommandLineRunner {
                         GroupMember member = new GroupMember();
                         member.setUser(u);
                         member.setUserGroup(group);
-                        member.setRole(offset == 0 ? "admin" : "member");
+                        member.setRole(offset == 0 ? com.hanghai.kchtg.group.entity.GroupMemberRole.ADMIN : com.hanghai.kchtg.group.entity.GroupMemberRole.MEMBER);
                         member.setStatus(GroupMemberStatus.ACTIVE);
                         member.setJoinedAt(java.time.LocalDateTime.now());
                         groupMemberRepo.save(member);

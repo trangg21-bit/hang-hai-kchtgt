@@ -121,7 +121,7 @@ public class ConnectionService {
             throw new EntityNotFoundException("Không tìm thấy kết nối dữ liệu: id=" + id);
         }
         DataConnection entity = repo.findById(id).orElseThrow();
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         repo.save(entity);
         log.info("Soft-deleted data connection: id={}", id);
     }

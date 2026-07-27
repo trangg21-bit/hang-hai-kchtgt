@@ -319,7 +319,7 @@ public class OrganizationService {
         }
 
         String details = String.format("Xóa đơn vị '%s' (code: %s)", unit.getName(), unit.getCode());
-        unit.softDelete();
+        unit.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         orgUnitRepo.save(unit);
 
         log.info("Soft-deleted org unit: {} ({})", unit.getCode(), unit.getId());

@@ -45,7 +45,7 @@ public class M001DataSeeder implements CommandLineRunner {
     public void run(String... args) {
         log.info("M-001 seeding...");
         seedOrgUnits();
-        seedUserGroups();
+        // seedUserGroups(); // Disabled per user rule
         seedUsers();
         seedGroupMemberships();
         log.info("M-001 seeding done.");
@@ -181,7 +181,7 @@ public class M001DataSeeder implements CommandLineRunner {
                 g.setName(names[i]);
                 g.setCode(codes[i]);
                 g.setDescription("Mô tả nhóm " + names[i]);
-                g.setGroupType(groupTypes[i]);
+                g.setGroupType(com.hanghai.kchtg.group.entity.GroupType.fromValue(groupTypes[i]));
                 g.setStatus(GroupStatus.ACTIVE);
                 g.setPermissions(List.of("users:read", "users:create", "users:update", "roles:read"));
                 groupRepo.save(g);
@@ -272,7 +272,7 @@ public class M001DataSeeder implements CommandLineRunner {
                         GroupMember member = new GroupMember();
                         member.setUser(u);
                         member.setUserGroup(group);
-                        member.setRole(offset == 0 ? "admin" : "member");
+                        member.setRole(offset == 0 ? com.hanghai.kchtg.group.entity.GroupMemberRole.ADMIN : com.hanghai.kchtg.group.entity.GroupMemberRole.MEMBER);
                         member.setStatus(GroupMemberStatus.ACTIVE);
                         member.setJoinedAt(java.time.LocalDateTime.now());
                         groupMemberRepo.save(member);
@@ -308,17 +308,17 @@ public class M001DataSeeder implements CommandLineRunner {
         for (int i = 0; i < allUsers.size(); i++) {
             User user = allUsers.get(i);
             UserGroup targetGroup;
-            String role;
+            com.hanghai.kchtg.group.entity.GroupMemberRole role;
 
             if (i < 3) {
                 targetGroup = grpAdmins;
-                role = "admin";
+                role = com.hanghai.kchtg.group.entity.GroupMemberRole.ADMIN;
             } else if (i < 8) {
                 targetGroup = grpSpecialists;
-                role = "member";
+                role = com.hanghai.kchtg.group.entity.GroupMemberRole.MEMBER;
             } else {
                 targetGroup = grpLeaders;
-                role = "member";
+                role = com.hanghai.kchtg.group.entity.GroupMemberRole.MEMBER;
             }
 
             if (targetGroup == null) continue;

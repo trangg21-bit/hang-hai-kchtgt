@@ -34,8 +34,8 @@ function mapUser(item: any): User {
     'locked': 'locked',
     'inactive': 'inactive',
     'deleted': 'inactive',
-    'pending_verification': 'inactive',
-    'pending_approval': 'inactive'
+    'pending_verification': 'PENDING_VERIFICATION',
+    'pending_approval': 'PENDING_APPROVAL'
   };
 
   const statusKey = (item.status || 'ACTIVE').toLowerCase();
@@ -162,6 +162,12 @@ export const userService = {
 
     const endpoint = isCurrentlyLocked ? `/users/${id}/unlock` : `/users/${id}/lock`;
     const resp = await api.post(endpoint);
+    const u = mapUser(extractData(resp));
+    return { success: true, data: u };
+  },
+
+  async changeStatus(id: string, status: string): Promise<ApiResponse<User>> {
+    const resp = await api.patch(`/users/${id}/status`, { status });
     const u = mapUser(extractData(resp));
     return { success: true, data: u };
   },

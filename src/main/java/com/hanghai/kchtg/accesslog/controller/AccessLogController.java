@@ -70,8 +70,8 @@ public class AccessLogController {
      * </p>
      */
     @GetMapping("/{id}")
-    @PreAuthorize("@auth.check(authentication, 'admin:manage')")
-    public ResponseEntity<ApiResponse<AccessLogResponse>> getById(@PathVariable Long id) {
+    @PreAuthorize("hasAuthority('log.view')")
+    public ResponseEntity<ApiResponse<AccessLogResponse>> getById(@PathVariable java.util.UUID id) {
         log.debug("Fetching access-log entry: id={}", id);
         AccessLogResponse response = service.findById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -95,7 +95,8 @@ public class AccessLogController {
      * BR-005-02: Logs are immutable.
      */
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> updateLog(@PathVariable Long id) {
+    @PreAuthorize("hasAuthority('log.edit')")
+    public ResponseEntity<ApiResponse<Void>> updateLog(@PathVariable java.util.UUID id) {
         log.warn("Attempted to UPDATE access-log id={} — rejected", id);
         return ResponseEntity.status(403)
                 .body(ApiResponse.error("Log không thể sửa đổi"));
@@ -106,7 +107,8 @@ public class AccessLogController {
      * BR-005-02: Logs are immutable.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteLog(@PathVariable Long id) {
+    @PreAuthorize("hasAuthority('log.delete')")
+    public ResponseEntity<ApiResponse<Void>> deleteLog(@PathVariable java.util.UUID id) {
         log.warn("Attempted to DELETE access-log id={} — rejected", id);
         return ResponseEntity.status(403)
                 .body(ApiResponse.error("Log không thể xóa"));

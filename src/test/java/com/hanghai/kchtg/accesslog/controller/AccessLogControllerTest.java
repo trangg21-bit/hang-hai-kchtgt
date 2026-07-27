@@ -22,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,11 +41,11 @@ class AccessLogControllerTest {
     private AccessLogController controller;
 
     private AccessLogResponse sampleResponse;
-    private Long logId;
+    private UUID logId;
 
     @BeforeEach
     void setUp() {
-        logId = 1L;
+        logId = UUID.randomUUID();
 
         AccessLog logEntity = new AccessLog();
         logEntity.setId(logId);

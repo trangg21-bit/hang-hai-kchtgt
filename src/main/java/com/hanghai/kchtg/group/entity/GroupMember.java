@@ -35,14 +35,12 @@ public class GroupMember extends BaseEntity {
     private UserGroup userGroup;
 
     /** Vai trò trong nhom (ví du: "owner", "admin", "member", "viewer"). */
-    @NotBlank(message = "Vai trò trong nhóm không được để trống")
-    @Size(max = 50, message = "Vai trò nhóm tối đa 50 ký tự")
-    @Column(nullable = false, length = 30)
-    private String role = "member";
+    @Column(nullable = false, columnDefinition = "SMALLINT DEFAULT 2")
+    private GroupMemberRole role = GroupMemberRole.MEMBER;
 
     /** Trang tai thanh vien (active hoăc removed). */
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Enumerated(EnumType.ORDINAL)
+    @Column(nullable = false)
     private GroupMemberStatus status = GroupMemberStatus.ACTIVE;
 
     /** Thoi diem nguoi dung duoc thêm vào nhom. */
@@ -54,11 +52,11 @@ public class GroupMember extends BaseEntity {
     private UUID addedBy;
 
     /** Tao moi GroupMember voi thoi gian join tu dong. */
-    public static GroupMember create(com.hanghai.kchtg.user.entity.User user, UserGroup userGroup, String role, UUID addedBy) {
+    public static GroupMember create(com.hanghai.kchtg.user.entity.User user, UserGroup userGroup, GroupMemberRole role, UUID addedBy) {
         GroupMember member = new GroupMember();
         member.setUser(user);
         member.setUserGroup(userGroup);
-        member.setRole(role != null ? role : "member");
+        member.setRole(role != null ? role : GroupMemberRole.MEMBER);
         member.setAddedBy(addedBy);
         member.setJoinedAt(java.time.LocalDateTime.now());
         member.setStatus(GroupMemberStatus.ACTIVE);

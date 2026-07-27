@@ -10,6 +10,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.hanghai.kchtg.group.entity.GroupType;
+
 /**
  * DTO trả về khi truy vấn thông tin nhóm người dùng.
  * <p>
@@ -24,6 +26,7 @@ public class GroupResponse {
     String code;
     String description;
     List<String> permissions;
+    GroupType groupType;
     GroupStatus status;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
@@ -39,6 +42,7 @@ public class GroupResponse {
                 entity.getCode(),
                 entity.getDescription(),
                 entity.getPermissions(),
+                entity.getGroupType(),
                 entity.getStatus(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt(),

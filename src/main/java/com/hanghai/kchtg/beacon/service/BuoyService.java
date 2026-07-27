@@ -236,7 +236,7 @@ public class BuoyService {
         }
 
         entity.setStatus("DELETED");
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         buoyRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.SOFT_DELETE, null, null, toJson(entity));

@@ -22,9 +22,16 @@ public interface RoleRepository extends JpaRepository<Role, UUID> {
     Optional<Role> findByCode(String code);
 
     /**
-     * Kiểm tra tồn tại theo code.
+     * Tìm role theo mã code duy nhất (bao gồm cả role đã bị xóa mềm).
      */
-    boolean existsByCode(String code);
+    @Query(value = "SELECT * FROM app_roles WHERE code = :code", nativeQuery = true)
+    Optional<Role> findByCodeIncludeDeleted(@Param("code") String code);
+
+    /**
+     * Kiểm tra tồn tại theo code (bao gồm cả role đã bị xóa mềm).
+     */
+    @Query(value = "SELECT count(1) > 0 FROM app_roles WHERE code = :code", nativeQuery = true)
+    boolean existsByCode(@Param("code") String code);
 
     /**
      * Tìm tất cả role đang hoạt động.

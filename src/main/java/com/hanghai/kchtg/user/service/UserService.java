@@ -290,7 +290,7 @@ public class UserService {
         // We also check here to provide a user-friendly error message.
         checkBusinessDataReferences(user);
 
-        user.softDelete();
+        user.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         user.setStatus(UserStatus.DELETED);
         userRepository.save(user);
         log.info("Soft-deleted user: {} ({})", user.getUsername(), id);

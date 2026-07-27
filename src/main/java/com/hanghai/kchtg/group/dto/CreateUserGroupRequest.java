@@ -2,15 +2,23 @@ package com.hanghai.kchtg.group.dto;
 
 import java.util.UUID;
 
+import com.hanghai.kchtg.group.entity.GroupStatus;
+import com.hanghai.kchtg.group.entity.GroupType;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.util.UUID;
 
+import lombok.Getter;
+import lombok.Setter;
+
 /**
  * Request body cho việc tạo mới UserGroup (BR-012: groupType).
  */
+@Getter
+@Setter
 public class CreateUserGroupRequest {
 
     @NotBlank(message = "Tên nhóm không được để trống")
@@ -25,19 +33,9 @@ public class CreateUserGroupRequest {
     private String description;
 
     /** Loai nhom: department, project, custom (BR-012). */
-    @NotBlank(message = "Loại nhóm không được để trống")
-    @Size(max = 30, message = "Loại nhóm tối đa 30 ký tự")
-    private String groupType;
+    @NotNull(message = "Loại nhóm không được để trống")
+    private GroupType groupType;
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
-
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-
-    public String getGroupType() { return groupType; }
-    public void setGroupType(String groupType) { this.groupType = groupType; }
+    /** Trang thai: ACTIVE hoac INACTIVE. */
+    private GroupStatus status;
 }

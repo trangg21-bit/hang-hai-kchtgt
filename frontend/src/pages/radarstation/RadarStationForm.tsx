@@ -439,7 +439,7 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
           footer={null}
           width={900}
           destroyOnClose
-          maskClosable={false}
+          mask={{ closable: false }}
         >
           <Spin spinning={isLoading}>
             {detailContent}
@@ -757,3 +757,4 @@ export default function RadarStationForm({ open, editId, mode, onCancel, onSucce
     </div>
   );
 }
+

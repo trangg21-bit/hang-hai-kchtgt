@@ -14,9 +14,11 @@ import java.time.LocalDateTime;
  * responseCode, durationMs, and metadata fields.
  * </p>
  */
+import java.util.UUID;
+
 public class AccessLogResponse {
 
-    private final Long id;
+    private final UUID id;
     private final Long userId;
     private final String username;
     private final String action;
@@ -37,6 +39,9 @@ public class AccessLogResponse {
     private final Integer responseCode;
     private final Integer durationMs;
     private final String metadata;
+    private final String email;
+    private final String organization;
+    private final String sessionId;
 
     public AccessLogResponse(AccessLog entity) {
         this.id = entity.getId();
@@ -57,11 +62,14 @@ public class AccessLogResponse {
         this.responseCode = entity.getResponseCode();
         this.durationMs = entity.getDurationMs();
         this.metadata = entity.getMetadata();
+        this.email = entity.getEmail();
+        this.organization = entity.getOrganization();
+        this.sessionId = entity.getSessionId();
     }
 
     // ── Original accessors ───────────────────────────────────────────
 
-    public Long getId() { return id; }
+    public UUID getId() { return id; }
     public Long getUserId() { return userId; }
     public String getUsername() { return username; }
     public String getAction() { return action; }
@@ -82,4 +90,7 @@ public class AccessLogResponse {
     public Integer getResponseCode() { return responseCode; }
     public Integer getDurationMs() { return durationMs; }
     public String getMetadata() { return metadata; }
+    public String getEmail() { return email; }
+    public String getOrganization() { return organization; }
+    public String getSessionId() { return sessionId; }
 }

@@ -209,3 +209,17 @@ Mỗi lần thực hiện rà soát, sửa đổi báo cáo hoặc logic nghiệ
 
 4. **Nguyên tắc "Bảo tồn Code & Không Revert File"**:
    - Trợ lý AI tuyệt đối không được tự ý xóa các đoạn mã nguồn đang hoạt động, xóa tính năng đã phát triển hoặc tự ý revert/reset file về trạng thái cũ trừ khi có yêu cầu chỉ định trực tiếp và rõ ràng từ người dùng.
+
+5. **Nguyên tắc "Naming Convention Đa Ngôn Ngữ"**:
+   - Tên cột, tên bảng trong CSDL (Database), tên biến Java (Backend) và tên biến ở Frontend (TypeScript/JavaScript) **BẮT BUỘC** phải được đặt bằng **tiếng Anh** chuẩn.
+   - Ngược lại, các message hiển thị thông báo lỗi, xử lý ngoại lệ (Exception handle) trả về cho người dùng và toàn bộ nội dung text hiển thị trên giao diện Frontend (Label, Button, Toast...) **BẮT BUỘC** phải là **tiếng Việt có dấu** rõ nghĩa.
+
+6. **Đối chiếu Logic Nghiệp vụ với BA Spec**:
+   - Trước khi lập trình các logic nghiệp vụ (đặc biệt là các dữ liệu/trạng thái ngầm định), AI bắt buộc phải đọc và đối chiếu với tài liệu phân tích nghiệp vụ (BA Spec - ví dụ: các file `00-lean-spec.md` trong thư mục `docs/`).
+   - Nếu phát hiện có logic đang code không có trong tài liệu (hoặc ngược lại), AI phải cảnh báo và hỏi ý kiến người dùng thay vì tự ý giả định.
+
+7. **Xử lý Dữ liệu Đầu vào (Input Processing)**:
+   - Tất cả các trường nhập liệu văn bản (đặc biệt là ô tìm kiếm, form nhập liệu) bắt buộc phải được xử lý loại bỏ khoảng trắng thừa (`.trim()`) ở đầu và cuối chuỗi trước khi gửi API hoặc đưa vào hàm lọc dữ liệu, tránh trường hợp tìm kiếm không ra kết quả do lỗi gõ phím của người dùng.
+
+8. **Ghi nhận Dữ liệu Kiểm toán (Audit Logs)**:
+   - Khi thực hiện các thao tác thay đổi dữ liệu (đặc biệt là Xóa mềm - Soft Delete, Thêm mới, Cập nhật), AI bắt buộc phải đảm bảo truyền đầy đủ các thông tin kiểm toán (như `operatorId`, `deletedBy`, `updatedBy`...) vào các hàm xử lý tương ứng của Entity (ví dụ: `softDelete(operatorId)`) để lưu lại lịch sử thay đổi chính xác trong cơ sở dữ liệu.

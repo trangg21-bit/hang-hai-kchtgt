@@ -18,7 +18,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 /**
  * Tài khoản người dùng hệ thống.
  * <p>
@@ -28,6 +27,7 @@ import java.util.stream.Collectors;
  */
 @Entity
 @Table(name = "app_users")
+@org.hibernate.annotations.SQLRestriction("deleted_at IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -39,7 +39,7 @@ public class User extends BaseEntity implements java.security.Principal {
      */
     @NotBlank(message = "Tên đăng nhập không được để trống")
     @Size(min = 3, max = 100, message = "Tên đăng nhập từ 3 đến 100 ký tự")
-    @Column(nullable = false, unique = true, length = 100)
+    @Column(nullable = false, length = 100)
     private String username;
 
     /**
@@ -55,7 +55,7 @@ public class User extends BaseEntity implements java.security.Principal {
      */
     @NotBlank(message = "Email không được để trống")
     @Email(message = "Email không hợp lệ")
-    @Column(nullable = false, unique = true, length = 150)
+    @Column(nullable = false, length = 150)
     private String email;
 
     /**
@@ -151,8 +151,8 @@ public class User extends BaseEntity implements java.security.Principal {
     /**
      * Trạng thái tài khoản.
      */
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "status", nullable = false)
     private UserStatus status = UserStatus.ACTIVE;
 
     /**

@@ -128,7 +128,7 @@ public class LineObjectService {
         LineObject entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("LineObject not found with id: " + id));
         entity.setStatus(Status.DELETED);
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         repository.save(entity);
     }
 
