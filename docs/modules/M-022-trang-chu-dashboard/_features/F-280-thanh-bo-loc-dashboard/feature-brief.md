@@ -16,29 +16,41 @@ stage: closed
 
 ## Description
 
-Thanh bộ lọc ngang nằm ở đầu trang Dashboard, gồm 3 dropdown (Năm, Tỉnh/TP, Loại KCHT) và timestamp "Cập nhật lúc HH:mm". State filter đồng bộ với URL query params qua FilterContext + useSearchParams. Province và InfraType là cosmetic-only trong v1 (deferred sang v2 pending backend G-007/G-008). Toàn bộ màu sắc dùng token từ tokens-dashboard.ts.
+Thanh bộ lọc full-width đặt ở đầu trang Dashboard: 3 dropdown Ant Design (Năm 2020–2026 mặc định 2026, Tỉnh/TP 6 maritime provinces + "Tất cả", Loại KCHT 7 types + "Tất cả") + timestamp "Cập nhật lúc HH:mm" bên phải. State đồng bộ hai chiều với URL query params qua FilterContext + useSearchParams (replace:true). Khi Năm thay đổi → trigger `dashboardApi.fetchWithFallback()` gọi 9 API endpoints song song qua `Promise.allSettled`, mỗi block fallback về MOCK_DATA độc lập nếu API lỗi. Province và InfraType là cosmetic-only trong v1 (deferred sang v2 pending G-007/G-008). Toàn bộ màu sắc/spacing/font từ `tokens-dashboard.ts` — cấm hardcode hex.
 
 ## Business Intent
 
-Cung cấp một điểm điều khiển tập trung cho toàn bộ dashboard, loại bỏ các dropdown lọc rải rác ở từng khối như bản cũ. Người dùng có thể xem dữ liệu theo năm, địa điểm, loại hạ tầng mong muốn một cách nhất quán.
+Người dùng thao tác một điểm điều khiển duy nhất để lọc dữ liệu toàn trang Dashboard thay vì lọc rải rác từng khối. URL có thể chia sẻ: người khác mở đúng link là thấy cùng bộ lọc. Timestamp cho biết dữ liệu được cập nhật khi nào.
 
 ## Acceptance Criteria
 
-1. Thanh lọc hiển thị ngay dưới header, full width, nền surfacePage, radiusSm, border borderDefault
-2. Dropdown Năm mặc định 2026, danh sách các năm [2020..2026]
-3. Dropdown Tỉnh/TP cho phép "Tất cả" (sets province=null), 6 tỉnh maritime
-4. Dropdown Loại KCHT cho phép "Tất cả" (sets infraType=null), 7 loại
-5. Timestamp "Cập nhật lúc {time}" hiển thị góc phải
-6. State filter sync với URL query params (?year=&province=&type=)
-7. Province và InfraType là cosmetic-only trong v1 — không trigger refetch dữ liệu
-8. Responsive: flexWrap trên màn nhỏ
-9. Zero hardcoded hex — toàn bộ token từ tokens-dashboard.ts
+1. FilterBar hiển thị 3 dropdown + timestamp, nền surfacePage, border-radius radiusSm, border borderDefault, full width, flexWrap responsive
+2. Dropdown Năm mặc định 2026, chọn giá trị khác → URL cập nhật `?year=`, timestamp làm mới, dữ liệu dashboard fetch lại từ backend (hoặc fallback MOCK_DATA)
+3. Dropdown Tỉnh/TP mặc định "Tất cả", chọn tỉnh → URL cập nhật `?province=`, không trigger refetch (cosmetic-only)
+4. Dropdown Loại KCHT mặc định "Tất cả", chọn loại → URL cập nhật `?type=`, không trigger refetch (cosmetic-only)
+5. Timestamp hiển thị thời điểm thay đổi filter cuối cùng, định dạng HH:mm 24h, nằm ở góc phải (marginLeft: auto)
+6. URL sync hai chiều: truy cập `/?year=2025&province=Đà+Nẵng` → FilterBar khởi tạo đúng giá trị
+7. Responsive: flexWrap wrap cho phép dropdown xuống dòng trên màn hình hẹp
+8. API lỗi từng block → fallback MOCK_DATA độc lập cho block đó, tag "Dữ liệu mẫu" hiển thị
+9. Toàn bộ style dùng token từ tokens-dashboard.ts — zero hardcoded hex/spacing/font
 
-## Entities
+## Business Rules
 
-- Không có entity riêng — sử dụng dữ liệu từ các module khác (danh sách tỉnh, loại KCHT)
+1. Dropdown Năm mặc định 2026, danh sách cố định [2020..2026] — không thêm/xóa năm động
+2. Dropdown Tỉnh/TP và Loại KCHT có tùy chọn "Tất cả" → giá trị state là `null`
+3. Khi Năm thay đổi → trigger `dashboardApi.fetchWithFallback()` fetch lại toàn bộ dữ liệu dashboard
+4. Province và InfraType là cosmetic-only trong v1 — thay đổi chỉ cập nhật UI, không trigger refetch (deferred sang v2 pending G-007/G-008)
+5. URL sync dùng `setSearchParams(params, { replace: true })` — không tạo history entry mới, nút Back không quay lại filter cũ
+6. Param `year` chỉ được set trên URL khi `year !== 2026` (mặc định bị bỏ qua để URL sạch)
+7. Param `province` chỉ set khi `province !== null`, param `type` chỉ set khi `infraType !== null`
+8. Timestamp `lastUpdated` cập nhật mỗi khi người dùng thay đổi bất kỳ dropdown nào
+9. Toàn bộ màu sắc, spacing, font-size phải import từ `tokens-dashboard.ts` — cấm hardcode giá trị hex
 
 ## Dependencies
 
-- tokens-dashboard.ts: design token system
-- react-router-dom: URL query param sync
+- tokens-dashboard.ts + tokens.ts: design token system
+- react-router-dom (useSearchParams): URL sync
+- antd (Select): dropdown components
+- @ant-design/icons (FilterOutlined, ClockCircleOutlined): icon bộ lọc và timestamp
+- dashboardApi.ts (fetchWithFallback): data fetch layer
+- dashboardTypes.ts + dashboardMockData.ts: type definitions và fallback data
