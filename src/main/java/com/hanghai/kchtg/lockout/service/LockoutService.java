@@ -86,6 +86,8 @@ public class LockoutService implements CommandLineRunner {
         if (user.getFailedLoginCount() >= policy.getMaxFailedAttempts()) {
             LocalDateTime lockedUntil = LocalDateTime.now().plusMinutes(policy.getLockoutDurationMinutes());
             user.setAccountLockedUntil(lockedUntil);
+            // BR-013: invalidate all active JWT sessions by bumping password hash version
+            user.setPasswordHashVersion(user.getPasswordHashVersion() != null ? user.getPasswordHashVersion() + 1 : 1);
             userRepo.save(user);
 
             log.warn("Tài khoản bị khóa due to failed attempts: user={}, count={}",
@@ -132,6 +134,8 @@ public class LockoutService implements CommandLineRunner {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng"));
         user.setFailedLoginCount(0);
         user.setAccountLockedUntil(null);
+        // BR-013: bump password hash version to allow new login after unlock
+        user.setPasswordHashVersion(user.getPasswordHashVersion() != null ? user.getPasswordHashVersion() + 1 : 1);
         userRepo.save(user);
 
         log.info("Account unlocked by admin {}: user={}", adminUser, user.getUsername());

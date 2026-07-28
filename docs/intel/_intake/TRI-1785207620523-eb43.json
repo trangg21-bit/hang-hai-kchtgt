@@ -1,0 +1,74 @@
+{
+  "triage_id": "TRI-1785207620523-eb43",
+  "created_at": 1785207620523,
+  "request_summary": "Fix 181 test errors: add @Builder to DTOs missing it, add @SpringBootTest to tests missing configuration, create missing test fixture",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/document/dto/PlanningAdjustmentResponse.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/dto/OrgUnitResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/pier/PierResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/waterzone/WaterZoneResponse.java",
+      "src/main/java/com/hanghai/kchtg/radarstation/dto/RadarStationCreateRequest.java",
+      "src/main/java/com/hanghai/kchtg/report/dto/ReportPreviewRequest.java",
+      "src/main/java/com/hanghai/kchtg/shiprepairfacility/dto/ShipRepairFacilityCreateRequest.java",
+      "src/main/java/com/hanghai/kchtg/vtssystem/dto/VtsSystemCreateRequest.java",
+      "src/test/resources/uat-schema-fixture.sql"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/document/dto/PlanningAdjustmentResponse.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/dto/OrgUnitResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/pier/PierResponse.java",
+      "src/main/java/com/hanghai/kchtg/port/dto/waterzone/WaterZoneResponse.java",
+      "src/main/java/com/hanghai/kchtg/radarstation/dto/RadarStationCreateRequest.java",
+      "src/main/java/com/hanghai/kchtg/report/dto/ReportPreviewRequest.java",
+      "src/main/java/com/hanghai/kchtg/shiprepairfacility/dto/ShipRepairFacilityCreateRequest.java",
+      "src/main/java/com/hanghai/kchtg/vtssystem/dto/VtsSystemCreateRequest.java",
+      "src/test/resources/uat-schema-fixture.sql"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/test/resources/uat-schema-fixture.sql"
+      }
+    ]
+  },
+  "rationale": "C3: one-way door: schema:src/test/resources/uat-schema-fixture.sql — floors at C3 regardless of size (9 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "mvn clean test — all test suites",
+  "blast_radius": 9,
+  "done_oracle": "mvn clean test passes with 0 errors",
+  "change_type": "hotfix",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/orgunit/dto/OrgUnitResponse.java",
+      "line": 24,
+      "quote": "@Getter\n@Setter",
+      "source_hash": "6cf3df58bc5c877c9008a51d420436296fe31530ccf9d723dc3bbd762b842fd1",
+      "quote_hash": "41b620058ac0a8f2ec5c32159229d10119ee5379b42964327eb5dc827b9875df",
+      "note": "Missing @Builder — test uses OrgUnitResponse.builder() but class has no @Builder"
+    },
+    {
+      "file": "pom.xml",
+      "line": 135,
+      "quote": "            <artifactId>lombok</artifactId>",
+      "source_hash": "0e750e7c2bc3909a2a10566bac96e89849bab4c2891ac7ddf8d02ff0cc5f3889",
+      "quote_hash": "1fc3111b652e28f501f4ac029afca61588b6b6ae4e42e2886d8f1be184b5f1d8",
+      "note": "Lombok version 1.18.38 already set — issue is missing @Builder on DTOs, not Lombok version"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "d93cdd4d851888bedd0b742cd660fc06a4521b92",
+    "dirty": true,
+    "captured_at": 1785207620645
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

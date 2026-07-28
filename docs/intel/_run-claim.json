@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-06-27T18:29:15.473Z",
-  "last_modified_at": "2026-07-21T08:29:40.952Z",
+  "last_modified_at": "2026-07-28T02:33:06.420Z",
   "modules": {
     "M-001": {
       "depends_on": [],
@@ -159,18 +159,20 @@
     "M-010": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "queued",
-      "claimed_by": null,
-      "claimed_at": null,
-      "heartbeat_at": null,
+      "status": "in_progress",
+      "claimed_by": "tab-5bcc6caa184b70f3",
+      "claimed_at": "2026-07-28T02:33:06.420Z",
+      "heartbeat_at": "2026-07-28T02:33:06.420Z",
       "current_stage": null,
-      "started_at": null,
+      "started_at": "2026-07-28T02:33:06.420Z",
       "completed_at": null,
       "auto_pass_count": 0,
-      "attempt": 0,
+      "attempt": 1,
       "name": "xac-thuc-phan-quyen",
       "slug": "xac-thuc-phan-quyen",
-      "risk_path": "M"
+      "risk_path": "M",
+      "claimed_pid": 23848,
+      "claimed_host": "PTPM-SONPN-PC"
     },
     "M-011": {
       "depends_on": [],
@@ -436,6 +438,16 @@
       "completed_modules": [
         "M-006"
       ],
+      "failed_modules": [],
+      "skipped_modules": []
+    },
+    "tab-5bcc6caa184b70f3": {
+      "started_at": "2026-07-28T02:33:06.420Z",
+      "last_seen": "2026-07-28T02:33:06.420Z",
+      "claimed_modules": [
+        "M-010"
+      ],
+      "completed_modules": [],
       "failed_modules": [],
       "skipped_modules": []
     }

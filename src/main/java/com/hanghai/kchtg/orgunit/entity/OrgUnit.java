@@ -65,6 +65,10 @@ public class OrgUnit extends BaseEntity {
     @Column(length = 1000)
     private String description;
 
+    /** Province/city where unit is located (BA spec: tinh_thanh_pho). */
+    @Column(name = "province", length = 100)
+    private String province;
+
     /** Physical or mailing address (max 500 chars, optional). */
     @Column(length = 500)
     private String address;

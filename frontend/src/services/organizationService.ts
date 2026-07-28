@@ -15,7 +15,7 @@ export interface Organization {
   parentId?: string;
   parentOrgName?: string;
   level?: number;
-  type?: "CUC" | "TCT" | "CHI_CUC" | "CANG_VU";
+  type?: "DEPARTMENT" | "GENERAL_DEPARTMENT" | "SUB_DEPARTMENT" | "PORT_AUTHORITY";
   description?: string;
   address?: string;
   detailAddress?: string;
@@ -33,7 +33,7 @@ export interface CreateOrganizationPayload {
   name: string;
   code?: string;
   parentId?: string;
-  type?: "CUC" | "TCT" | "CHI_CUC" | "CANG_VU";
+  type?: "DEPARTMENT" | "GENERAL_DEPARTMENT" | "SUB_DEPARTMENT" | "PORT_AUTHORITY";
   description?: string;
   address?: string;
   detailAddress?: string;
@@ -47,7 +47,7 @@ export interface UpdateOrganizationPayload {
   name?: string;
   code?: string;
   parentId?: string;
-  type?: "CUC" | "TCT" | "CHI_CUC" | "CANG_VU";
+  type?: "DEPARTMENT" | "GENERAL_DEPARTMENT" | "SUB_DEPARTMENT" | "PORT_AUTHORITY";
   description?: string;
   address?: string;
   detailAddress?: string;

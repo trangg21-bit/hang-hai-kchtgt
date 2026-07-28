@@ -21,7 +21,7 @@ import java.util.UUID;
  * Entity lưu phê duyệt trong quy trình biến động (F-127).
  */
 @Entity
-@Table(name = "luu_phe_duyệt")
+@Table(name = "approval_records")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

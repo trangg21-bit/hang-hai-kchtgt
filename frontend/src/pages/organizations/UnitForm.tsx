@@ -77,7 +77,7 @@ export default function UnitForm() {
       const values = await form.validateFields();
       setSubmitting(true);
 
-      const targetParentId = (values.type && values.type !== 'CUC') ? values.parentId : undefined;
+      const targetParentId = (values.type && values.type !== 'DEPARTMENT') ? values.parentId : undefined;
 
       if (isEdit) {
         const payload: UpdateOrganizationPayload = {
@@ -149,7 +149,7 @@ export default function UnitForm() {
             placeholder="VD: PHONG_CNTT"
           />
 
-          {selectedType !== 'TCT' && (
+          {selectedType !== 'GENERAL_DEPARTMENT' && (
             <FormField
               type="select"
               name="parentId"
@@ -165,10 +165,10 @@ export default function UnitForm() {
             label="Loại đơn vị"
             required
             options={[
-              { value: 'TCT', label: 'Tổng cục' },
-              { value: 'CUC', label: 'Cục' },
-              { value: 'CHI_CUC', label: 'Chi cục' },
-              { value: 'CANG_VU', label: 'Cảng vụ' },
+              { value: 'GENERAL_DEPARTMENT', label: 'Tổng cục' },
+              { value: 'DEPARTMENT', label: 'Cục' },
+              { value: 'SUB_DEPARTMENT', label: 'Chi cục' },
+              { value: 'PORT_AUTHORITY', label: 'Cảng vụ' },
             ]}
           />
 

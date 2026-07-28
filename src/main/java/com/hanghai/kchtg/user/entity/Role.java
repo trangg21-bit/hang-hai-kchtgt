@@ -37,6 +37,21 @@ public class Role extends BaseEntity {
     @Column(length = 500)
     private String description;
 
+    /** Cấp bậc của vai trò (0 = Super Admin, 1 = Admin, 3 = Manager/User/Viewer). */
+    @Column(nullable = false)
+    @org.hibernate.annotations.ColumnDefault("99")
+    private Integer level = 99;
+
+    /** Đánh dấu vai trò hệ thống (không thể xóa). */
+    @Column(name = "is_system", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("false")
+    private Boolean isSystem = false;
+
+    /** Độ sâu phân cấp trong tổ chức (0 = toàn hệ thống). */
+    @Column(name = "hierarchy_depth", nullable = false)
+    @org.hibernate.annotations.ColumnDefault("0")
+    private Integer hierarchyDepth = 0;
+
     /** Danh sách các permission mà vai trò này sở hữu (M-to-N via role_permissions join table). */
     @ManyToMany(fetch = FetchType.EAGER, cascade = CascadeType.PERSIST)
     @JoinTable(name = "role_permissions",

@@ -17,7 +17,7 @@ const { confirm } = Modal;
 
 const STATUS_COLORS: Record<string, string> = { draft: statusDraft, pending: statusAttention, approved: statusOperational, rejected: statusCritical };
 const STATUS_LABELS: Record<string, string> = { draft: 'Bản nháp', pending: 'Chờ duyệt', approved: 'Đã phê duyệt', rejected: 'Bị từ chối' };
-const TYPE_LABELS: Record<string, string> = { CUC: 'Cục', TCT: 'Tổng cục', CHI_CUC: 'Chi cục', CANG_VU: 'Cảng vụ' };
+const TYPE_LABELS: Record<string, string> = { DEPARTMENT: 'Cục', GENERAL_DEPARTMENT: 'Tổng cục', SUB_DEPARTMENT: 'Chi cục', PORT_AUTHORITY: 'Cảng vụ' };
 const getTypeLabel = (type: string) => TYPE_LABELS[type] || type;
 
 const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
@@ -96,7 +96,7 @@ export default function UnitList() {
   const handleSubmit = useCallback(async () => {
     try {
       const values = await form.validateFields(); setSubmitting(true);
-      const parentId = (selectedType && selectedType !== 'CUC') ? values.parentId : undefined;
+      const parentId = (selectedType && selectedType !== 'DEPARTMENT') ? values.parentId : undefined;
       if (editingOrg) {
         await organizationService.update(editingOrg.id, {
           name: values.name, code: values.code, type: values.type,
@@ -363,9 +363,9 @@ export default function UnitList() {
               <Input placeholder="Nhập tên đơn vị" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
             <Form.Item name="type" {...labelProps('Cấp đơn vị')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn cấp đơn vị' }]}>
-              <Select placeholder="Chọn cấp đơn vị" style={{ borderRadius: radiusPill, height: 40 }} options={[{ value: 'CUC', label: 'Cục' }, { value: 'CANG_VU', label: 'Cảng vụ' }, { value: 'CHI_CUC', label: 'Chi cục' }, { value: 'TCT', label: 'Tổng cục' }]} />
+              <Select placeholder="Chọn cấp đơn vị" style={{ borderRadius: radiusPill, height: 40 }} options={[{ value: 'DEPARTMENT', label: 'Cục' }, { value: 'PORT_AUTHORITY', label: 'Cảng vụ' }, { value: 'SUB_DEPARTMENT', label: 'Chi cục' }, { value: 'GENERAL_DEPARTMENT', label: 'Tổng cục' }]} />
             </Form.Item>
-            {selectedType && selectedType !== 'CUC' && (
+            {selectedType && selectedType !== 'DEPARTMENT' && (
               <Form.Item name="parentId" {...labelProps('Đơn vị cha')} style={{ marginBottom: spaceFormField }}>
                 <Select placeholder="Chọn đơn vị cha" allowClear style={{ borderRadius: radiusPill, height: 40 }} options={allOrgs.filter((o) => !editingOrg || o.id !== editingOrg.id).map((o) => ({ value: o.id, label: o.name }))} />
               </Form.Item>

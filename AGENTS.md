@@ -223,3 +223,36 @@ Mỗi lần thực hiện rà soát, sửa đổi báo cáo hoặc logic nghiệ
 
 8. **Ghi nhận Dữ liệu Kiểm toán (Audit Logs)**:
    - Khi thực hiện các thao tác thay đổi dữ liệu (đặc biệt là Xóa mềm - Soft Delete, Thêm mới, Cập nhật), AI bắt buộc phải đảm bảo truyền đầy đủ các thông tin kiểm toán (như `operatorId`, `deletedBy`, `updatedBy`...) vào các hàm xử lý tương ứng của Entity (ví dụ: `softDelete(operatorId)`) để lưu lại lịch sử thay đổi chính xác trong cơ sở dữ liệu.
+
+# Local Agent Customization Rules (Workspace-Scoped)
+
+> [!IMPORTANT]
+> Đây là file cấu hình hướng dẫn và nguyên tắc hoạt động cho tất cả các AI Coding Assistant (Antigravity, Claude, v.v.) khi làm việc trong Workspace này. 
+> Mọi AI bắt buộc phải đọc và tuân thủ các chỉ thị trong file này trước khi thực hiện bất kỳ chỉnh sửa nào.
+
+## 📌 Hướng dẫn & Ràng buộc nghiệp vụ (User Custom Rules)
+
+*Ghi lại các lưu ý, quy trình hoặc yêu cầu đặc biệt của bạn ở đây để AI luôn tuân theo mỗi khi pair-programming.*
+
+1. **Nguyên tắc chung**:
+   - Luôn kiểm tra cấu trúc dữ liệu thực tế và các màn hình quản lý CRUD trước khi đề xuất chỉnh sửa logic báo cáo hoặc nghiệp vụ.
+   - Không tự động gán dữ liệu giả lập (placeholder/hardcoded) cho các cột khi database thực tế không hỗ trợ trường tương ứng.
+   - **TẠO SCRIPT SQL CHO THAY ĐỔI DB**: Khi thao tác liên quan đến thay đổi cấu trúc DB (schema, index, migrations...), bắt buộc phải tạo script SQL Flyway tương ứng (đặt trong thư mục `src/main/resources/db/migration/`) để khi đưa lên môi trường khác (UAT, Production) cấu trúc DB sẽ khớp 100%.
+   - **BẮT BUỘC RÀ SOÁT TÀI LIỆU & HH.CSDL**: Khi thực hiện sửa đổi, thêm mới, hoặc tìm kiếm/tra cứu bất kỳ chức năng nào, AI bắt buộc phải đối chiếu chi tiết cấu trúc dữ liệu và logic nghiệp vụ với tài liệu đặc tả dự án gốc (`hh.csdl`) trước khi đưa ra phương án thực thi.
+   - **KHÔNG TỰ ĐỘNG THỰC HIỆN CÁC THAO TÁC GIT (ADD, COMMIT, PUSH)**: Trợ lý AI tuyệt đối không được tự ý chạy các lệnh `git add`, `git commit` hay `git push` lên kho lưu trữ sau khi sửa đổi mã nguồn. Mọi thay đổi phải được giữ ở trạng thái local (unstaged) để người dùng tự kiểm thử, kiểm tra độ chính xác và trực tiếp quyết định thực hiện commit/push.
+   - **KHÔNG TỰ Ý CHẠY BACKEND (BE)**: Trợ lý AI tuyệt đối không được tự ý chạy/khởi động server Backend (Spring Boot). Khi có thay đổi code Backend, AI chỉ cần chạy lệnh `mvn clean compile` hoặc `mvn clean install` để xác nhận dự án biên dịch thành công.
+   - **TÍNH ĐỒNG BỘ GIỮA CÁC MÀN HÌNH CÙNG MENU**: Đa phần cấu trúc các màn hình trong cùng một cụm menu sẽ có tính chất và chức năng tương tự nhau. Khi phát hiện và sửa bất kỳ lỗi nào ở một màn hình, AI bắt buộc phải rà soát và kiểm tra xem lỗi đó có xuất hiện trên tất cả các màn hình còn lại trong cùng cụm menu đó hay không để thực hiện sửa đổi đồng bộ.
+   - **TỰ ĐỘNG CHÈN DỮ LIỆU MẪU**: Đối với mỗi màn hình/chức năng chưa có dữ liệu (hoặc bảng trống trong CSDL), AI cần tự động kết nối trực tiếp vào cơ sở dữ liệu (sử dụng thông tin kết nối từ các file cấu hình như `.env`) và thực hiện insert dữ liệu mẫu để người dùng có thể kiểm thử ngay lập tức. **KHÔNG** sử dụng Java Data Seeder (tránh việc yêu cầu khởi động lại ứng dụng và tránh xung đột dữ liệu).
+   - **MỞ POPUP CHO THAO TÁC CHI TIẾT/CRUD**: Hầu hết các màn hình chức năng (đặc biệt là quản lý KCHT) chỉ có trang Danh sách (List) là một trang định tuyến độc lập (routed page). Tất cả các thao tác khác như thêm mới (Create), sửa (Edit), xem chi tiết/xem trước (Preview/Detail) đều bắt buộc phải hiển thị và thực hiện dưới dạng mở Popup/Modal (hộp thoại) ngay trên trang Danh sách, tránh chuyển hướng sang trang mới.
+   - **VIỆT HÓA THÔNG BÁO LỖI**: Khi rà soát mã nguồn (cả Frontend và Backend), nếu phát hiện các thông điệp thông báo lỗi (error messages), thông báo thành công hoặc các câu text thông báo đang ở dạng tiếng Anh hoặc tiếng Việt không dấu, AI cần chủ động sửa đổi lại thành tiếng Việt chuẩn, có dấu rõ nghĩa.
+   - **KHÔNG TỰ Ý XÓA CODE HOẶC REVERT FILE**: Trợ lý AI tuyệt đối không được tự ý xóa các đoạn code đang chạy, các tính năng đã có hoặc tự ý revert/reset file mã nguồn về trạng thái cũ trừ khi nhận được yêu cầu chỉ định trực tiếp và rõ ràng từ người dùng.
+
+2. **Cách viết code & Framework**:
+   - Tuân thủ cấu trúc của Spring Boot (Backend) và React + Ant Design (Frontend) hiện tại của dự án.
+   - **Tối ưu hóa hiệu năng & DB**: Luôn chú ý thiết kế cấu trúc DB chuẩn hóa, tận dụng Index phù hợp trên các trường tìm kiếm/lọc thường xuyên, và tối ưu hóa hiệu năng truy vấn SQL/JPQL (tránh lỗi N+1, hạn chế quét toàn bảng, tránh lạm dụng LIKE không tối ưu). Kiểm tra biên dịch bằng Maven / Typescript kỹ lưỡng trước khi hoàn thành công việc.
+   - **QUY TẮC IMPORT & LOMBOK CHO DTO/ENTITY**: KHÔNG viết đường dẫn class đầy đủ (fully qualified name, ví dụ `com.hanghai.kchtg...`) vào trực tiếp trong code, bắt buộc phải dùng lệnh `import` ở đầu file và sử dụng tên class ngắn gọn. Các class DTO bắt buộc phải sử dụng các annotation của Lombok: `@Getter`, `@Setter`. Nếu cần constructor không tham số thì dùng `@NoArgsConstructor`, nếu cần constructor đầy đủ tham số thì dùng `@AllArgsConstructor`. Tránh việc code tay (hard-code) getter/setter/constructor.
+
+3. **Lưu ý nghiệp vụ dự án**:
+   - **ĐỒNG BỘ 100% VỚI DỰ ÁN GỐC**: Khi phát triển hoặc sửa đổi bất kỳ thực thể/giao diện nào (ví dụ: quản lý biểu tượng bản đồ), bắt buộc phải đối chiếu và kiểm tra kỹ dự án gốc `hh.csdl` (cấu trúc bảng cơ sở dữ liệu, các DTOs API và mã nguồn React UI) để lập trình các trường dữ liệu, tính năng (như uploader/base64) và bố cục giao diện khớp 100% với dự án gốc, tránh tự thiết kế khác biệt.
+   - **ĐỒNG BỘ HIỂN THỊ KCHT LÊN BẢN ĐỒ**: Tất cả các đối tượng hàng hải như Cảng biển, Đèn biển, Bến cảng, Phao tiêu, Đê kè, Luồng hàng hải... gọi chung là **KCHT (Kết cấu hạ tầng hàng hải)**. Tất cả các đối tượng này bắt buộc phải được hiển thị lên bản đồ theo cơ chế đồng bộ và nhất quán giống nhau.
+   - **ÁNH XẠ ENUM XUỐNG DATABASE**: Đối với những trường có giá trị cố định (ví dụ: trạng thái, loại đối tượng), bắt buộc phải lưu ở Database dưới dạng số nguyên (INT/SMALLINT/TINYINT) và map trên Java thành Enum sử dụng `@Enumerated(EnumType.ORDINAL)`. Tuyệt đối không lưu giá trị chuỗi (VARCHAR) xuống Database cho các trường Enum để tối ưu hiệu năng và dung lượng.

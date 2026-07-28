@@ -25,13 +25,13 @@ VALUES
   ('5d6b49e1-2cbe-4b45-8f6a-115f21469bff', 'tranvanb', '$2a$10$eOMdO1.kRTS150bCD7dh2.JegLn8.srSS9.fqT2KvtD4vqC/gM1za', 'tranvanb@hh.gov.vn', 'Trần Văn Bình', '0912345697', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0, 0);
 
 -- 2. App Roles
-INSERT INTO app_roles (id, name, code, description, status, user_count, created_at, updated_at)
+INSERT INTO app_roles (id, name, code, description, status, user_count, level, is_system, hierarchy_depth, created_at, updated_at)
 VALUES
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8031', 'Quản trị viên (Super Admin)', 'SYSTEM_ADMIN',  'Admin cao nhất hệ thống',                    'ACTIVE', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8032', 'Quản trị viên (Admin)',      'ADMIN',         'Quản trị viên Cục/Cảng vụ/Chi cục',          'ACTIVE', 2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8033', 'Quản lý người dùng',         'MANAGER',       'Chuyên viên quản lý dữ liệu',                'ACTIVE', 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8034', 'Người dùng',                 'USER',          'Người dùng cơ bản (doanh nghiệp)',           'ACTIVE', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
-  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8035', 'Người xem (Viewer)',         'VIEWER',        'Chỉ xem, không sửa',                         'ACTIVE', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8031', 'Quản trị viên (Super Admin)', 'SYSTEM_ADMIN',  'Admin cao nhất hệ thống',                    'ACTIVE', 1, 0, true,  0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8032', 'Quản trị viên (Admin)',      'ADMIN',         'Quản trị viên Cục/Cảng vụ/Chi cục',          'ACTIVE', 2, 1, false, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8033', 'Quản lý người dùng',         'MANAGER',       'Chuyên viên quản lý dữ liệu',                'ACTIVE', 0, 3, false, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8034', 'Người dùng',                 'USER',          'Người dùng cơ bản (doanh nghiệp)',           'ACTIVE', 1, 3, false, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+  ('9f8f4a13-43f1-4dfb-9efc-fcd4ef9d8035', 'Người xem (Viewer)',         'VIEWER',        'Chỉ xem, không sửa',                         'ACTIVE', 1, 3, false, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 
 -- 3. Map Users to Roles
 INSERT INTO user_roles (user_id, role_id) VALUES

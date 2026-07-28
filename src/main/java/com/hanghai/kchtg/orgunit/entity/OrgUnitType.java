@@ -7,8 +7,8 @@ package com.hanghai.kchtg.orgunit.entity;
  * Fixed set per BR-003-04: Cục, Chi cục, Cảng vụ, TCT.
  */
 public enum OrgUnitType {
-    CUC,
-    CHI_CUC,
-    CANG_VU,
-    TCT
+    DEPARTMENT,
+    SUB_DEPARTMENT,
+    PORT_AUTHORITY,
+    GENERAL_DEPARTMENT
 }

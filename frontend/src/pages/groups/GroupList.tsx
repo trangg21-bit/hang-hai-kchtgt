@@ -16,7 +16,7 @@ import { colors } from '../../theme';
 import toast from '../../components/ToastNotification';
 const { confirm } = Modal;
 
-const STATUS_LABELS: Record<string, string> = { active: 'Hoạt động', inactive: 'Không hoạt động' };
+const STATUS_LABELS: Record<string, string> = { active: 'Sử dụng', inactive: 'Không sử dụng' };
 
 const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
@@ -166,7 +166,7 @@ export default function GroupList() {
     { key: 'groupType', type: 'select' as const, label: 'Loại nhóm', placeholder: 'Chọn loại',
       options: [{ value: 'department', label: 'Phòng ban' }, { value: 'project', label: 'Dự án' }, { value: 'custom', label: 'Tùy chỉnh' }] },
     { key: 'status', type: 'select' as const, label: 'Trạng thái', placeholder: 'Chọn trạng thái',
-      options: [{ value: 'active', label: 'Hoạt động' }, { value: 'inactive', label: 'Không hoạt động' }] },
+      options: [{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }] },
   ], []);
 
   const headerActions = useMemo(() => {
@@ -183,8 +183,8 @@ export default function GroupList() {
         <StatusTabs
           tabs={[
             { key: 'all', label: 'Tất cả', count: totalAll, color: textSecondary, active: !filterStatus },
-            { key: 'active', label: 'Hoạt động', count: countActive, color: statusOperational, active: filterStatus === 'active' },
-            { key: 'inactive', label: 'Không hoạt động', count: countInactive, color: statusDraft, active: filterStatus === 'inactive' },
+{ key: 'active', label: 'Sử dụng', count: countActive, color: statusOperational, active: filterStatus === 'active' },
+            { key: 'inactive', label: 'Không sử dụng', count: countInactive, color: statusDraft, active: filterStatus === 'inactive' },
           ]}
           onChange={handleTabChange}
         />
@@ -213,7 +213,7 @@ export default function GroupList() {
               <Select placeholder="Chọn loại nhóm" options={[{ value: 'department', label: 'Phòng ban' }, { value: 'project', label: 'Dự án' }, { value: 'custom', label: 'Tùy chỉnh' }]} style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
             <Form.Item name="status" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}>
-              <Select placeholder="Chọn trạng thái" options={[{ value: 'active', label: 'Hoạt động' }, { value: 'inactive', label: 'Không hoạt động' }]} style={{ borderRadius: radiusPill, height: 40 }} />
+              <Select placeholder="Chọn trạng thái" options={[{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }]} style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
             <Form.Item name="description" {...labelProps('Mô tả')} style={{ marginBottom: spaceFormField }}>
               <Input.TextArea rows={3} placeholder="Mô tả nhóm (tùy chọn)" />
