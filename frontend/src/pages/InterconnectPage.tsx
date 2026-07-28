@@ -69,7 +69,7 @@ function renderStatusTag(status: string) {
 // Page Component
 // ============================================================
 export default function InterconnectPage() {
-  const [activeTab, setActiveTab] = useState('tich-hop');
+  const [activeTab, setActiveTab] = useState('integration');
 
   // --------------------------------------------------
   // Integration tab state
@@ -1120,12 +1120,12 @@ export default function InterconnectPage() {
         onChange={setActiveTab}
         items={[
           {
-            key: 'tich-hop',
+            key: 'integration',
             label: 'Tích hợp dữ liệu',
             children: renderIntegrationTab(),
           },
           {
-            key: 'chia-se',
+            key: 'sharing',
             label: 'Chia sẻ dữ liệu',
             children: renderSharingTab(),
           },

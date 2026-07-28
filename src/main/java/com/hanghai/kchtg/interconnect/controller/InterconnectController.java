@@ -21,7 +21,7 @@ import java.util.UUID;
 
 @Slf4j
 @RestController
-@RequestMapping("/api/lien-thong")
+@RequestMapping("/api/interconnect")
 @RequiredArgsConstructor
 @Validated
 public class InterconnectController {
@@ -29,7 +29,7 @@ public class InterconnectController {
     private final InterconnectService interconnectService;
 
     /**
-     * GET /api/lien-thong/tich-hop
+     * GET /api/interconnect/integration
      * List integration connections with optional filters.
      *
      * @param connectionName filter by connection name (optional)
@@ -38,7 +38,7 @@ public class InterconnectController {
      * @return list of integration connections
      */
     @PreAuthorize("@auth.check(authentication, 'connection:read')")
-    @GetMapping("/tich-hop")
+    @GetMapping("/integration")
     public ResponseEntity<ApiResponse<List<IntegrationConnectionResponse>>> listIntegrations(
             @RequestParam(required = false) String connectionName,
             @RequestParam(required = false) String senderSystem,
@@ -52,7 +52,7 @@ public class InterconnectController {
     }
 
     /**
-     * GET /api/lien-thong/tich-hop/{id}/lich-su
+     * GET /api/interconnect/integration/{id}/history
      * Get transaction history for a connection with advanced filters.
      *
      * @param id               connection UUID
@@ -66,7 +66,7 @@ public class InterconnectController {
      * @return list of transaction history records
      */
     @PreAuthorize("@auth.check(authentication, 'connection:read')")
-    @GetMapping("/tich-hop/{id}/lich-su")
+    @GetMapping("/integration/{id}/history")
     public ResponseEntity<ApiResponse<List<IntegrationTransactionResponse>>> getTransactionHistory(
             @PathVariable UUID id,
             @RequestParam(required = false) String type,
@@ -85,14 +85,14 @@ public class InterconnectController {
     }
 
     /**
-     * GET /api/lien-thong/tich-hop/lich-su/{id}/noi-dung-gui
+     * GET /api/interconnect/integration/history/{id}/sent-content
      * Get the sent content of a transaction.
      *
      * @param id transaction UUID
      * @return sent content string
      */
     @PreAuthorize("@auth.check(authentication, 'connection:read')")
-    @GetMapping("/tich-hop/lich-su/{id}/noi-dung-gui")
+    @GetMapping("/integration/history/{id}/sent-content")
     public ResponseEntity<ApiResponse<String>> getSentContent(
             @PathVariable UUID id) {
         log.info("Getting sent content for transaction id={}", id);
@@ -102,14 +102,14 @@ public class InterconnectController {
     }
 
     /**
-     * GET /api/lien-thong/tich-hop/lich-su/{id}/noi-dung-nhan
+     * GET /api/interconnect/integration/history/{id}/received-content
      * Get the received content of a transaction.
      *
      * @param id transaction UUID
      * @return received content string
      */
     @PreAuthorize("@auth.check(authentication, 'connection:read')")
-    @GetMapping("/tich-hop/lich-su/{id}/noi-dung-nhan")
+    @GetMapping("/integration/history/{id}/received-content")
     public ResponseEntity<ApiResponse<String>> getReceivedContent(
             @PathVariable UUID id) {
         log.info("Getting received content for transaction id={}", id);
@@ -119,7 +119,7 @@ public class InterconnectController {
     }
 
     /**
-     * PUT /api/lien-thong/tich-hop/{id}
+     * PUT /api/interconnect/integration/{id}
      * Update an integration connection.
      *
      * @param id  connection UUID
@@ -127,7 +127,7 @@ public class InterconnectController {
      * @return updated connection
      */
     @PreAuthorize("@auth.check(authentication, 'connection:read')")
-    @PutMapping("/tich-hop/{id}")
+    @PutMapping("/integration/{id}")
     public ResponseEntity<ApiResponse<IntegrationConnectionResponse>> updateConnection(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateConnectionRequest req) {
@@ -138,13 +138,13 @@ public class InterconnectController {
     }
 
     /**
-     * GET /api/lien-thong/chia-se
+     * GET /api/interconnect/sharing
      * List all data sharing logs.
      *
      * @return list of sharing logs
      */
     @PreAuthorize("@auth.check(authentication, 'connection:read')")
-    @GetMapping("/chia-se")
+    @GetMapping("/sharing")
     public ResponseEntity<ApiResponse<List<DataSharingLogResponse>>> listSharingLogs() {
         log.info("Listing data sharing logs");
         List<DataSharingLogResponse> result = interconnectService.listSharingLogs();
@@ -153,14 +153,14 @@ public class InterconnectController {
     }
 
     /**
-     * GET /api/lien-thong/chia-se/{id}
+     * GET /api/interconnect/sharing/{id}
      * Get a data sharing log detail.
      *
      * @param id log UUID
      * @return sharing log detail
      */
     @PreAuthorize("@auth.check(authentication, 'connection:read')")
-    @GetMapping("/chia-se/{id}")
+    @GetMapping("/sharing/{id}")
     public ResponseEntity<ApiResponse<DataSharingLogResponse>> getSharingLogDetail(
             @PathVariable UUID id) {
         log.info("Getting sharing log detail id={}", id);

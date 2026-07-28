@@ -166,7 +166,7 @@ export default function App() {
                 <Route path="/connections/:id/health" element={<PermissionGuard permission="connection:read"><ConnectionHealth /></PermissionGuard>} />
 
                 {/* F-004: Quản lý kết nối liên thông chia sẻ dữ liệu */}
-                <Route path="/lien-thong" element={<PermissionGuard permission="connection:read"><InterconnectPage /></PermissionGuard>} />
+                <Route path="/interconnect" element={<PermissionGuard permission="connection:read"><InterconnectPage /></PermissionGuard>} />
 
                 {/* Reports & Statistics */}
                 <Route path="/reports" element={<PermissionGuard permission="report:read"><ReportList /></PermissionGuard>} />

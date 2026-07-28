@@ -54,7 +54,7 @@ function extractData<T>(response: any): T {
 // ============================================================
 export const interconnectService = {
   /**
-   * GET /api/lien-thong/tich-hop
+   * GET /api/interconnect/integration
    * Danh sách kết nối tích hợp
    */
   async listIntegrations(params?: {
@@ -62,12 +62,12 @@ export const interconnectService = {
     senderSystem?: string;
     status?: string;
   }): Promise<IntegrationConnection[]> {
-    const resp = await api.get('/lien-thong/tich-hop', { params });
+    const resp = await api.get('/interconnect/integration', { params });
     return extractData<IntegrationConnection[]>(resp) || [];
   },
 
   /**
-   * GET /api/lien-thong/tich-hop/{id}/lich-su
+   * GET /api/interconnect/integration/{id}/history
    * Lịch sử giao dịch của một kết nối
    */
   async getTransactionHistory(
@@ -82,57 +82,57 @@ export const interconnectService = {
       purpose?: string;
     },
   ): Promise<IntegrationTransaction[]> {
-    const resp = await api.get(`/lien-thong/tich-hop/${id}/lich-su`, { params });
+    const resp = await api.get(`/interconnect/integration/${id}/history`, { params });
     return extractData<IntegrationTransaction[]>(resp) || [];
   },
 
   /**
-   * GET /api/lien-thong/tich-hop/lich-su/{id}/noi-dung-gui
+   * GET /api/interconnect/integration/history/{id}/sent-content
    * Nội dung gửi của một giao dịch
    */
   async getSentContent(id: string): Promise<string> {
-    const resp = await api.get(`/lien-thong/tich-hop/lich-su/${id}/noi-dung-gui`);
+    const resp = await api.get(`/interconnect/integration/history/${id}/sent-content`);
     const data = extractData<string>(resp);
     return data ?? '';
   },
 
   /**
-   * GET /api/lien-thong/tich-hop/lich-su/{id}/noi-dung-nhan
+   * GET /api/interconnect/integration/history/{id}/received-content
    * Nội dung nhận của một giao dịch
    */
   async getReceivedContent(id: string): Promise<string> {
-    const resp = await api.get(`/lien-thong/tich-hop/lich-su/${id}/noi-dung-nhan`);
+    const resp = await api.get(`/interconnect/integration/history/${id}/received-content`);
     const data = extractData<string>(resp);
     return data ?? '';
   },
 
   /**
-   * PUT /api/lien-thong/tich-hop/{id}
+   * PUT /api/interconnect/integration/{id}
    * Cập nhật thông tin kết nối
    */
   async updateConnection(
     id: string,
     payload: { connectionName?: string; password?: string; status?: string },
   ): Promise<IntegrationConnection> {
-    const resp = await api.put(`/lien-thong/tich-hop/${id}`, payload);
+    const resp = await api.put(`/interconnect/integration/${id}`, payload);
     return extractData<IntegrationConnection>(resp);
   },
 
   /**
-   * GET /api/lien-thong/chia-se
+   * GET /api/interconnect/sharing
    * Danh sách nhật ký chia sẻ dữ liệu
    */
   async listSharingLogs(): Promise<DataSharingLog[]> {
-    const resp = await api.get('/lien-thong/chia-se');
+    const resp = await api.get('/interconnect/sharing');
     return extractData<DataSharingLog[]>(resp) || [];
   },
 
   /**
-   * GET /api/lien-thong/chia-se/{id}
+   * GET /api/interconnect/sharing/{id}
    * Chi tiết nhật ký chia sẻ dữ liệu
    */
   async getSharingLogDetail(id: string): Promise<DataSharingLog> {
-    const resp = await api.get(`/lien-thong/chia-se/${id}`);
+    const resp = await api.get(`/interconnect/sharing/${id}`);
     return extractData<DataSharingLog>(resp);
   },
 };

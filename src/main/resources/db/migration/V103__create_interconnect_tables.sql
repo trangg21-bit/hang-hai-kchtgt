@@ -1,7 +1,7 @@
 -- ====================================================================
--- Migration V103: Create liên thông (F-004) tables
+-- Migration V103: Create interconnect (F-004) tables
 --
--- F-004: Liên thông, chia sẻ dữ liệu với các hệ thống bên ngoài
+-- F-004: Interconnect and data sharing with external systems
 --
 -- Creates 3 tables:
 --   1. integration_connections        - Kết nối tích hợp với hệ thống ngoài
