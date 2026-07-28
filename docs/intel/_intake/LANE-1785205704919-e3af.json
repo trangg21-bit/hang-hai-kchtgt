@@ -1,0 +1,16 @@
+{
+  "route_id": "LANE-1785205704919-e3af",
+  "created_at": 1785205704919,
+  "lane": "sdlc-studio",
+  "owner": "studio:sdlc",
+  "dispatch_target": "pmo-software-project-manager",
+  "routing_mode": "dispatch",
+  "request_summary": "Merge 70 M-002 features (30 BE + 40 UI) into ~35 unified BE+FE features, fixing the incorrect BE/FE split from original scaffold",
+  "reason": "SDLC pipeline restructuring on module M-002 — merge separate BE and UI feature-briefs into unified features per the BA convention \"1 chức năng = 1 feature (gộp BE+FE)\"",
+  "signals": [
+    "module M-002 feature-brief.md files",
+    "_state.md",
+    "module-brief.md",
+    "workspace convention: 1 chức năng = 1 feature gộp BE+FE"
+  ]
+}

@@ -7,7 +7,7 @@ status: done
 classification: local
 priority: high
 created: 2026-06-16T04:40:19Z
-last-updated: 2026-07-27
+last-updated: 2026-07-28
 locked-fields: []
 consumed_by_modules: []
 ---
@@ -15,31 +15,40 @@ consumed_by_modules: []
 
 ## Description
 
-Tính năng cho phép người dùng có thẩm quyền xóa một Cảng biển khỏi hệ thống quản lý tài sản KCHTGT cảng-bến, áp dụng cơ chế xóa mềm (soft delete) để bảo tồn dữ liệu lịch sử và tuân thủ quy định lưu trữ hồ sơ hạ tầng giao thông, đồng thời đảm bảo các điều kiện ràng buộc liên quan được kiểm tra trước khi thực hiện xóa.
+Tính năng cho phép người dùng có thẩm quyền xóa một Cảng biển khỏi hệ thống, áp dụng cơ chế xóa mềm (soft delete) để bảo tồn dữ liệu lịch sử. Giao diện CangBienDeleteConfirm cung cấp confirmation dialog với child guard check — kiểm tra số lượng BenCang/VungNuoc liên kết trước khi cho phép xóa, yêu cầu nhập chính xác tên cảng hoặc "XÓA" để xác nhận có chủ đích.
 
 ## Business Intent
 
-Việc xóa Cảng biển khỏi hệ thống chỉ được thực hiện khi cảng chấm dứt hoạt động vĩnh viễn hoặc được tái cấu trúc thành đơn vị khác; cơ chế xóa mềm giúp duy trì tính toàn vẹn của dữ liệu lịch sử, phục vụ công tác kiểm toán và báo cáo thống kê, đồng thời cho phép khôi phục nếu có sai sót trong quá trình xóa.
+Việc xóa Cảng biển khỏi hệ thống chỉ được thực hiện khi cảng chấm dứt hoạt động vĩnh viễn; cơ chế xóa mềm giúp duy trì tính toàn vẹn của dữ liệu lịch sử, phục vụ công tác kiểm toán và báo cáo thống kê, đồng thời cho phép khôi phục nếu có sai sót.
 
 ## Flow Summary
 
-Người dùng đăng nhập vào hệ thống, tìm kiếm và chọn Cảng biển cần xóa từ danh sách hoặc trang chi tiết. Hệ thống hiển thị thông tin Cảng biển kèm cảnh báo về hậu quả của việc xóa. Người dùng xác nhận hành động xóa bằng cách nhập tên Cảng biển để xác nhận. Hệ thống kiểm tra điều kiện xóa: Cảng biển không được có dữ liệu liên quan chưa được xử lý (nếu có), không nằm trong quá trình phê duyệt. Nếu vượt qua kiểm tra, hệ thống đánh dấu Cảng biển là "đã xóa" (soft delete), ghi nhật ký xóa, và cập nhật trạng thái hiển thị trong danh sách.
+### BE Flow
+Người dùng chọn Cảng biển cần xóa, hệ thống hiển thị thông tin kèm cảnh báo. Người dùng xác nhận bằng cách nhập tên Cảng biển. Hệ thống kiểm tra điều kiện: không có dữ liệu liên quan chưa xử lý, không nằm trong quá trình phê duyệt. Nếu vượt qua, đánh dấu "đã xóa" (soft delete), ghi nhật ký.
+
+### UI Flow
+Người dùng (Leadership) click "Xóa" từ danh sách (F-068) hoặc chi tiết (F-069). Hệ thống gọi GET /api/v1/cang-bien/:id/children — nếu BenCang/VungNuoc > 0, trả HTTP 409 "Cảng này có X BenCang và Y VungNuoc liên kết, không thể xóa". Nếu không có con, hiển thị confirmation dialog với thông tin cảng, yêu cầu nhập "XÓA" hoặc tên cảng. Xác nhận đúng → DELETE /api/v1/cang-bien/:id → server set deletedAt = now() → toast "Đã xóa thành công" → về danh sách.
 
 ## Acceptance Criteria
 
-1. Chỉ người dùng có vai trò "Admin" hoặc "Quản lý cảng" mới có thể thực hiện thao tác xóa Cảng biển.
-2. Hệ thống yêu cầu xác nhận xóa bằng cách nhập tên Cảng biển vào hộp thoại xác nhận trước khi thực hiện xóa.
-3. Hệ thống kiểm tra điều kiện ràng buộc trước khi xóa: nếu Cảng biển đang có dữ liệu liên quan (tàu, lịch sử vận hành) chưa được xử lý, hệ thống hiển thị cảnh báo và ngăn xóa.
-4. Sau khi xóa thành công, Cảng biển không còn hiển thị trong danh sách mặc định nhưng vẫn được lưu trữ với trạng thái "đã xóa" và có thể khôi phục trong thời hạn quy định.
+1. Chỉ Admin và Lãnh đạo mới có thể thực hiện thao tác xóa.
+2. Hệ thống yêu cầu xác nhận bằng cách nhập tên Cảng biển hoặc "XÓA" trước khi xóa.
+3. Hệ thống kiểm tra điều kiện ràng buộc: nếu có BenCang/VungNuoc liên kết, ngăn xóa và hiển thị cảnh báo.
+4. Sau khi xóa, Cảng biển không hiển thị trong danh sách mặc định nhưng vẫn được lưu trữ với trạng thái "đã xóa".
+5. [UI] Child guard check trước xóa → HTTP 409 nếu có con.
+6. [UI] Confirmation dialog yêu cầu nhập "XÓA" hoặc tên cảng.
+7. [UI] Soft delete: DELETE → set deletedAt = now() → toast "Đã xóa thành công" → về danh sách.
 
 ## In Scope
 
 - Giao diện chọn và xác nhận xóa Cảng biển
 - Kiểm tra điều kiện ràng buộc (dữ liệu liên quan, trạng thái)
-- Xác nhận xóa bằng cách nhập tên Cảng biển
+- Xác nhận xóa bằng cách nhập tên Cảng biển hoặc "XÓA"
 - Xóa mềm (soft delete) với ghi nhật ký
-- Khôi phục Cảng biển đã xóa trong thời hạn cho phép
-- Cập nhật trạng thái hiển thị trong danh sách
+- Khôi phục Cảng biển đã xóa trong thời hạn 90 ngày
+- Child guard check (BenCang/VungNuoc)
+- Confirmation dialog
+- Toast thông báo
 
 ## Out of Scope
 
@@ -47,33 +56,51 @@ Người dùng đăng nhập vào hệ thống, tìm kiếm và chọn Cảng bi
 - Xóa hàng loạt nhiều Cảng biển cùng lúc
 - Xóa Cảng biển kèm dữ liệu liên quan (cascade delete)
 - Phê duyệt xóa bởi cấp quản lý cao hơn (thuộc F-011)
-- Xuất báo cáo lịch sử xóa
 
 ## Roles + Permissions
 
 | Role | Permissions |
 |------|-------------|
-| Quản trị viên | Xóa, Xem, Khôi phục |
-| Quản lý cảng | Xóa, Xem, Khôi phục |
+| Admin | Xóa, Xem, Khôi phục |
+| Lãnh đạo | Xóa, Xem, Khôi phục |
+| Chuyên viên Cục | Không có quyền xóa |
+| Chuyên viên Cảng vụ | Không có quyền xóa |
+| Doanh nghiệp cảng | Không có quyền xóa |
 | Nhân viên vận hành | Xem (không xóa) |
-| KháchExternal | Không có quyền truy cập |
 
 ## Entities
 
-- **CangBien**: id (UUID), maCang (string, unique), tenCang (string), tinhThanh (string), toDo (JSON: {lat, lng}), dienTich (decimal), khaNangTiepNhanTau (string), trangThai (enum: cho_phe_duyet, hien_hanh, tam_ngung, da_xoa), ghiChu (text), createdAt (timestamp), updatedAt (timestamp), deletedAt (timestamp, nullable), deletedBy (UUID, nullable)
+- **CangBien**: id (UUID), maCang (string, unique), tenCang (string), tinhThanhPho (string), viDo (BigDecimal), kinhDo (BigDecimal), dienTich (BigDecimal), khaNangTiepNhan (BigDecimal), trangThaiHoatDong (string), trangThaiPheDuyet (string: CHỜ_PHÊ_DUYỆT/ĐƯỢC_PHÊ_DUYỆT/TỪ_CHỐI), orgUnitId (UUID), deletedAt (timestamp, nullable), deletedBy (UUID, nullable)
+- **BenCang**: id (UUID), cangBienId (UUID) — foreign key
+- **VungNuoc**: id (UUID), cangBienId (UUID) — foreign key
 
 ## Business Rules
 
-1. Xóa Cảng biển áp dụng cơ chế xóa mềm (soft delete) — trạng thái chuyển thành "da_xoa", trường deletedAt và deletedBy được tự động điền.
-2. Không cho phép xóa Cảng biển đang có dữ liệu liên quan chưa được xử lý hoặc đang trong quá trình phê duyệt thay đổi.
-3. Cảng biển bị xóa có thể được khôi phục trong vòng 90 ngày kể từ ngày xóa; sau thời hạn này dữ liệu chỉ được xử lý theo quy định lưu trữ.
-4. Nhật ký xóa phải ghi nhận đầy đủ: ai xóa, khi nào xóa, lý do xóa (nếu có).
+| ID | Rule | Applies-to | Source |
+|---|---|---|---|
+| BR-001 | Xóa mềm (soft delete) — trạng thái "da_xoa", deletedAt và deletedBy tự động điền | Xóa | Entity spec |
+| BR-002 | Không cho phép xóa nếu có dữ liệu liên quan chưa xử lý hoặc đang phê duyệt | Child guard | F-010, F-093 |
+| BR-003 | Có thể khôi phục trong 90 ngày kể từ ngày xóa | Khôi phục | Entity spec |
+| BR-004 | Chỉ Admin và Lãnh đạo mới có quyền xóa mềm | RBAC | F-010, F-093 |
 
 ## UI Scope
 
-- **MH Xóa:** Hộp thoại xác nhận xóa — yêu cầu nhập chính xác tên cảng để xác nhận. Hiển thị cảnh báo nếu cảng có tài sản con (Bến cảng, Cầu cảng) đang hoạt động. Kiểm tra trạng thái phê duyệt trước khi cho phép xóa.
-- **MH Khôi phục:** Giao diện Admin khôi phục cảng đã xóa trong 90 ngày.
+- **Component:** `CangBienDeleteConfirm` — confirmation dialog + child guard check
+- **API endpoints:** `GET /api/v1/cang-bien/:id/children` (kiểm tra con), `DELETE /api/v1/cang-bien/:id` (soft delete)
+- **Child guard:** Trước khi xóa, kiểm tra BenCang và VungNuoc. Nếu tồn tại ≥1 bản ghi con, API trả HTTP 409 "Cảng này có X BenCang và Y VungNuoc liên kết, không thể xóa"
+- **Confirmation dialog:** Yêu cầu nhập chính xác tên cảng hoặc gõ "XÓA" để xác nhận có chủ đích
+- **Soft delete:** DELETE → server set `deletedAt = now()` (không xóa bản ghi, chỉ đánh dấu)
+- **Post-delete flow:** Toast "Đã xóa thành công" → điều hướng về danh sách (F-068)
+- **RBAC:** Chỉ Admin và Lãnh đạo mới thấy nút "Xóa"
 
 ## Testing Strategy
 
-Kiểm thử đơn vị cho quy tắc xóa mềm và kiểm tra điều kiện ràng buộc; kiểm thử tích hợp cho luồng xóa Cảng biển với các trường hợp: xóa thành công, xóa bị chặn do dữ liệu liên quan, và xóa khi không có quyền; kiểm thử giao diện cho hộp thoại xác nhận xóa; kiểm thử khôi phục Cảng biển đã xóa trong thời hạn cho phép.
+### BE Testing
+Kiểm thử đơn vị cho quy tắc xóa mềm và kiểm tra điều kiện ràng buộc; kiểm thử tích hợp cho luồng xóa với các trường hợp: xóa thành công, xóa bị chặn do dữ liệu liên quan, xóa khi không có quyền.
+
+### UI Testing
+React Testing Library: confirmation dialog, validation xác nhận, xử lý 409. Cypress E2E: đăng nhập Leadership → chi tiết cảng → click Xóa → confirmation dialog → nhập tên chính xác → xác nhận → toast "Đã xóa thành công" → về danh sách. Negative: cảng có con → 409 → toast lỗi; nhập sai tên → không xóa; nhân viên vận hành không thấy nút xóa.
+
+## Consolidation Note
+
+Merged with UI feature F-093 (ui-ql-cb-xoa) — 2026-07-28

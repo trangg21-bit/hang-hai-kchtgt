@@ -1,0 +1,17 @@
+{
+  "route_id": "LANE-1785232690947-33ec",
+  "created_at": 1785232690947,
+  "lane": "general-work",
+  "owner": "build",
+  "dispatch_target": "build",
+  "routing_mode": "inline",
+  "request_summary": "BA Team Lead yêu cầu update feature-brief F-008 (Quản lý Cảng biển - Tạo mới) theo 10-section template với dữ liệu nghiệp vụ thực tế mới cung cấp. File đích: docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-008-ql-cb-tao-moi/ba/feature-brief.md",
+  "reason": "Đây là tác vụ cập nhật tài liệu BA — BA Team Lead (người dùng hiện tại) cung cấp thông tin nghiệp vụ chi tiết, yêu cầu build seat viết lại feature-brief. Không phải code change, không qua SDLC pipeline stage.",
+  "signals": [
+    "user is BA Team Lead",
+    "directly provided business requirements",
+    "explicitly asked to update feature-brief.md",
+    "detailed entity fields provided",
+    "not a code change"
+  ]
+}

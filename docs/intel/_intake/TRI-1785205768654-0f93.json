@@ -1,0 +1,47 @@
+{
+  "triage_id": "TRI-1785205768654-0f93",
+  "created_at": 1785205768654,
+  "request_summary": "Merge 70 M-002 features (30 BE + 40 UI) into ~30 unified BE+FE features — SDLC documentation restructuring, no code changes",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-008-ql-cb-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-068-ui-ql-cb-danh-sach/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_state.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md"
+    ],
+    "impact_files": [
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-008-ql-cb-tao-moi/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-068-ui-ql-cb-danh-sach/feature-brief.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_state.md",
+      "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "SDLC Studio board — module M-002 feature list restructuring",
+  "blast_radius": 4,
+  "done_oracle": "module-brief.md lists ~30 unified features; all UI-only feature directories deleted; cancelled history features removed; ai-kit verify passes",
+  "change_type": "scope_shrink",
+  "declared_write_scope": [
+    "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-008-ql-cb-tao-moi/feature-brief.md",
+    "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_features/F-068-ui-ql-cb-danh-sach/feature-brief.md",
+    "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/_state.md",
+    "docs/modules/M-002-quan-ly-tai-san-kchtgt-cang-ben/module-brief.md"
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "965fecef8340bd84bb1d4f3dfd3b7b31f7da089b",
+    "dirty": true,
+    "captured_at": 1785205768884
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

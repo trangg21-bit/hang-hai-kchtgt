@@ -187,6 +187,65 @@ PMO Lead
 
 **⚠️ PMO LEAD: workers KHÔNG đọc AGENTS.md. Bạn PHẢI copy quy tắc trên vào brief và luôn gửi kèm link `docs/conventions/form-and-list-patterns.md`.**
 
+## Feature Brief Template Convention (MANDATORY — mọi BA agent làm feature-brief PHẢI đọc)
+
+### Single source of truth
+
+Toàn bộ cấu trúc tài liệu đặc tả nghiệp vụ (feature-brief.md) được định nghĩa tại **1 file duy nhất**:
+
+| File                                      | Vai trò                                          | Agent nào phải đọc        |
+| ----------------------------------------- | ------------------------------------------------ | ------------------------- |
+| `docs/feature-brief-template.md`          | Template 10-section cho mọi feature-brief.md     | **BA** (business analyst) |
+
+### Cấu trúc 10 section bắt buộc
+
+Mọi file `feature-brief.md` **PHẢI** tuân thủ đúng cấu trúc 10 section, đúng thứ tự, đúng tiêu đề:
+
+| #   | Section                              | Nội dung                                                                 |
+| --- | ------------------------------------ | ------------------------------------------------------------------------ |
+| 1   | Tổng quan                            | 1.1 Tính năng này làm gì / 1.2 Tại sao cần / 1.3 Luồng hoạt động chính  |
+| 2   | Ai dùng? Dùng như thế nào?           | Bảng phân quyền RBAC 7 role + logic Admin Cục đặc biệt                   |
+| 3   | User Stories                         | Must / Should / Could, định dạng US-{XXX}-XX                             |
+| 4   | Yêu cầu chức năng (Acceptance Criteria) | AC-{XXX}-XX, mỗi AC kèm xử lý khi lỗi                                |
+| 5   | Quy tắc nghiệp vụ (Business Rules)   | BR-{XXX}-XX, định dạng bảng: ID / Rule / Applies-to / Source             |
+| 6   | Mô hình dữ liệu                      | Bảng DB, 🔴 đỏ = trường mới, ~~gạch ngang~~ = trường cần loại bỏ         |
+| 7   | API Endpoints                        | Bảng Method / Endpoint / Mô tả / Phân quyền                              |
+| 8   | Chi tiết nghiệp vụ từng phần         | Triển khai chi tiết từng phần (bỏ nếu không áp dụng)                     |
+| 9   | Yêu cầu phi chức năng                | Hiệu năng / Mở rộng / Bảo mật / Độ tin cậy / UX / Pháp lý               |
+| 10  | Yêu cầu giao diện người dùng         | Token theme + bảng cột chi tiết (STT/Tên trường/Loại ĐK/Edit/Bắt buộc/Default/Mô tả) |
+
+### Quy tắc bắt buộc
+
+1. **KHÔNG đảo thứ tự** 10 section — thứ tự cố định như trên
+2. **KHÔNG bỏ section** — nếu section không áp dụng, ghi rõ "Không áp dụng" kèm lý do
+3. **KHÔNG thay đổi tiêu đề section** — tiêu đề cố định như template
+4. **KHÔNG tự bịa định dạng ID** — AC/BR/US luôn theo format `{PREFIX}-{XXX}-{XX}`
+5. **KHÔNG bỏ logic Admin Cục** (section 2.2) — mọi feature phải khai báo phân quyền đặc biệt này
+6. **KHÔNG hardcode màu/spacing/font-size** trong section 10 — dùng token từ `theme.ts` và `tokens.ts`
+7. **Trước khi viết bất kỳ feature-brief.md nào**, BA PHẢI đọc `docs/feature-brief-template.md` để nắm cấu trúc chuẩn
+
+### BỎ khỏi template
+
+- **Kịch bản kiểm thử** — thuộc về QA, không nằm trong feature-brief
+- **Môi trường kỹ thuật** — thuộc về SA/Dev, không nằm trong feature-brief
+
+### Agent workflow
+
+```
+PMO Lead
+  ├── Đọc AGENTS.md (file này)
+  └── Dispatch BA → PHẢI chép các constraints sau vào prompt:
+        "Trước khi viết feature-brief.md, đọc docs/feature-brief-template.md làm template chuẩn.
+         Tuân thủ đúng 10 section, đúng thứ tự, đúng tiêu đề.
+         Format AC: AC-{XXX}-XX, BR: BR-{XXX}-XX, US: US-{XXX}-XX.
+         KHÔNG bỏ section 2.2 (logic Admin Cục).
+         Section 6: dùng 🔴 đỏ cho trường mới, ~~gạch ngang~~ cho trường cần loại bỏ.
+         Section 10: dùng token từ theme.ts + tokens.ts, không hardcode giá trị.
+         BỎ: Kịch bản kiểm thử, Môi trường kỹ thuật."
+```
+
+**⚠️ PMO LEAD: workers KHÔNG đọc AGENTS.md. Bạn PHẢI copy các quy tắc trên vào từng brief BA. Nếu không, BA sẽ tự bịa cấu trúc feature-brief không đúng template.**
+
 ## SDLC convention
 
 All SDLC scaffolding goes through `ai-kit` CLI (ADR-005).
