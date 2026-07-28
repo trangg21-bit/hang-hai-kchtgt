@@ -32,6 +32,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Service cho việc query, xuat CSV (streaming), don gan, canh bao, thong ke aggregate,
@@ -75,7 +76,7 @@ public class LogService {
     // ── Query delegation ─────────────────────────────────────────────
 
     /** Find one log entry by ID. */
-    public AccessLogResponse findById(Long id) {
+    public AccessLogResponse findById(UUID id) {
         return accessLogService.findById(id);
     }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Typography, Modal, Form, Input, Tag, Button, Spin, Alert, message, Tooltip, Row, Col, Grid, Statistic } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -198,7 +198,7 @@ export default function LogsPage() {
   const visibleTabKeys = isAdminOp ? (['access', 'login'] as const) : TAB_KEYS;
 
   // ---- Aggregate statistics ----
-  const [aggregate, setAggregate] = useState<{ totalAccesses: number; uniqueUsers: number; successRate: number; avgDuration: number } | null>(null);
+  const [aggregate, setAggregate] = useState<{ totalAccesses: number; uniqueUsers: number;   successRate: string; avgDuration: number } | null>(null);
 
   // ---- Detail modal state ----
   const [selectedLog, setSelectedLog] = useState<AccessLogEntry | null>(null);
@@ -785,7 +785,7 @@ export default function LogsPage() {
                 </Col>
                 <Col span={12}>
                   <Form.Item {...labelProps('Nội dung')} style={{ marginBottom: spaceFormField }}>
-                    <Input readOnly value={r.message || 'N/A'} style={{ borderRadius: radiusPill, height: 40 }} />
+                    <Input readOnly value={r.detail || 'N/A'} style={{ borderRadius: radiusPill, height: 40 }} />
                   </Form.Item>
                 </Col>
               </Row>
