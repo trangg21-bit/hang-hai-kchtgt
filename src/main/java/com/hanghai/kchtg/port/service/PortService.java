@@ -1,5 +1,6 @@
 package com.hanghai.kchtg.port.service;
 
+import com.hanghai.kchtg.dashboard.service.KchtAssetCountService;
 import com.hanghai.kchtg.port.dto.port.PortResponse;
 import com.hanghai.kchtg.port.dto.port.CreatePortRequest;
 import com.hanghai.kchtg.port.dto.port.UpdatePortRequest;
@@ -42,6 +43,7 @@ public class PortService {
 
     private final PortRepository portRepository;
     private final BerthRepository berthRepository;
+    private final KchtAssetCountService kchtCountService;
     private final WaterZoneRepository waterZoneRepository;
     private final PierRepository pierRepository;
     private final ChangeTrackingService changeTrackingService;

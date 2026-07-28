@@ -1,6 +1,7 @@
 import { Select } from 'antd';
 import { FilterOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useFilter } from '../context/FilterContext';
+import { VIETNAM_PROVINCES } from '../types/common';
 import {
   surfacePage,
   textSecondary,
@@ -14,12 +15,17 @@ import {
 
 const YEAR_OPTIONS = [2020, 2021, 2022, 2023, 2024, 2025, 2026];
 
-const PROVINCE_OPTIONS = [
-  'Tất cả', 'Hải Phòng', 'TP.HCM', 'Đà Nẵng', 'Quảng Ninh', 'Bà Rịa - Vũng Tàu', 'Khánh Hòa',
-];
+const PROVINCE_OPTIONS = ['Tất cả', ...VIETNAM_PROVINCES];
 
 const INFRA_TYPE_OPTIONS = [
-  'Tất cả', 'Cảng biển', 'Bến cảng', 'Cầu cảng', 'Luồng hàng hải', 'Đèn biển', 'Phao tiêu', 'Đê/Kè',
+  'Tất cả',
+  'Bến cảng', 'Bến phao', 'Cảng biển', 'Cảng cạn', 'Cầu cảng',
+  'Cơ sở sửa chữa, đóng tàu', 'Đài Thông tin Duyên hải', 'Đài Thông tin vệ tinh Inmarsat',
+  'Đài Thông tin vệ tinh Cospas-Sarsat', 'Đài TTXL thông tin hàng hải Hà Nội',
+  'Đài Nhận dạng và truy theo tầm xa (LRIT)', 'Đèn biển', 'Đê chắn sóng, đê chắn cát',
+  'Hệ thống VTS', 'Kè hướng dòng, kè bảo vệ bờ', 'Khu chuyển tải',
+  'Khu neo đậu', 'Khu tránh trú bão', 'Luồng hàng hải',
+  'Nhà trạm quản lý vận hành phao tiêu', 'Phao tiêu', 'Trạm Radar',
 ];
 
 export default function FilterBar() {

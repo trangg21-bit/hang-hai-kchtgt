@@ -244,16 +244,22 @@ function transformCargoTotals(
 
   return {
     heroKpi: {
-      ...MOCK_DATA.heroKpi,
-      value: totalTons || MOCK_DATA.heroKpi.value,
+      label: 'Sản lượng chủ đạo',
+      value: totalTons,
+      unit: 'nghìn tấn',
+      year,
+      deltaPercent: 0,
+      deltaDirection: 'up' as const,
+      previousYearValue: 0,
+      sparklineData: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     },
     kpiCard1: {
       label: 'Lượt tàu qua cảng',
-      value: vesselCount ? vesselCount.toLocaleString('vi-VN') : MOCK_DATA.kpiCards[0].value,
-      deltaPercent: 8.9, // mock — needs previous year data for accurate YoY
-      deltaDirection: 'up',
-      sparklineData: MOCK_DATA.kpiCards[0].sparklineData,
-      sparklineType: 'line',
+      value: vesselCount.toLocaleString('vi-VN'),
+      deltaPercent: 0,
+      deltaDirection: 'up' as const,
+      sparklineData: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      sparklineType: 'line' as const,
     },
   };
 }
@@ -274,17 +280,21 @@ function transformMonthlyCargo(
     monthlyMap.get(month)!.push(c);
   });
 
-  const mockRatios = { noiDia: 0.58, xuatKhau: 0.27, nhapKhau: 0.15, chuyenTai: 0.1 };
-  const months = MOCK_DATA.stackedBar.months;
-
-  const series = MOCK_DATA.stackedBar.series.map((orig, idx) => {
+  const months = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
+  const refColors = [MOCK_DATA.stackedBar.series[0]?.color || '#123a63', MOCK_DATA.stackedBar.series[1]?.color || '#2769b3', MOCK_DATA.stackedBar.series[2]?.color || '#4f9bd8', MOCK_DATA.stackedBar.series[3]?.color || '#9ecdf0'];
+  const series = [
+    { name: 'Nội địa', color: refColors[0] },
+    { name: 'Xuất khẩu', color: refColors[1] },
+    { name: 'Nhập khẩu', color: refColors[2] },
+    { name: 'Chuyển tải', color: refColors[3] },
+  ].map((orig, idx) => {
     const ratios = [0.58, 0.27, 0.15, 0.1];
     const data = months.map((_, mIdx) => {
       const monthData = monthlyMap.get(mIdx + 1);
       const monthTotal = monthData
         ? monthData.reduce((sum, c) => sum + c.totalTons, 0)
         : 0;
-      return monthTotal > 0 ? Math.round(monthTotal * ratios[idx]) : orig.data[mIdx];
+      return monthTotal > 0 ? Math.round(monthTotal * ratios[idx]) : 0;
     });
     return { ...orig, data };
   });
@@ -307,13 +317,13 @@ function transformPassengerData(
     monthlyMap.get(month)!.push(c);
   });
 
-  const months = MOCK_DATA.linePassenger.months;
+  const months = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
   const arrival = months.map((_, mIdx) => {
     const monthData = monthlyMap.get(mIdx + 1);
     const totalVessels = monthData
       ? monthData.reduce((sum, c) => sum + c.vesselCount, 0)
       : 0;
-    return totalVessels > 0 ? Math.round(totalVessels * 0.53) : MOCK_DATA.linePassenger.arrival[mIdx];
+    return totalVessels > 0 ? Math.round(totalVessels * 0.53) : 0;
   });
 
   const departure = months.map((_, mIdx) => {
@@ -321,7 +331,7 @@ function transformPassengerData(
     const totalVessels = monthData
       ? monthData.reduce((sum, c) => sum + c.vesselCount, 0)
       : 0;
-    return totalVessels > 0 ? Math.round(totalVessels * 0.47) : MOCK_DATA.linePassenger.departure[mIdx];
+    return totalVessels > 0 ? Math.round(totalVessels * 0.47) : 0;
   });
 
   const peakMonthIdx = arrival.indexOf(Math.max(...arrival));
@@ -342,11 +352,7 @@ function transformKchtRing(dto: AssetStatusDto): RingKchtData {
   const totalCount = dto.totalAssets || 215;
   const percentage = totalCount > 0 ? Math.round((operatingCount / totalCount) * 100) : 0;
 
-  return {
-    operatingCount: operatingCount || MOCK_DATA.ringKcht.operatingCount,
-    totalCount: totalCount || MOCK_DATA.ringKcht.totalCount,
-    percentage: percentage || MOCK_DATA.ringKcht.percentage,
-  };
+  return { operatingCount, totalCount, percentage };
 }
 
 /**
@@ -364,10 +370,13 @@ function transformVesselComposition(
   const domesticVessels = domestic.reduce((sum, c) => sum + c.vesselCount, 0);
   const managedAreaVessels = managedArea.reduce((sum, c) => sum + c.vesselCount, 0);
 
-  return MOCK_DATA.donutPhuongTien.map((seg, idx) => ({
-    ...seg,
-    value: [annualVessels, passengerVessels, domesticVessels, managedAreaVessels][idx] || seg.value,
-  }));
+  const refColors = [MOCK_DATA.donutPhuongTien[0]?.color || '#123a63', MOCK_DATA.donutPhuongTien[1]?.color || '#2769b3', MOCK_DATA.donutPhuongTien[2]?.color || '#4f9bd8', MOCK_DATA.donutPhuongTien[3]?.color || '#9ecdf0'];
+  return [
+    { value: annualVessels, name: 'Tàu biển (cỡ lớn)', color: refColors[0] },
+    { value: passengerVessels, name: 'Tàu biển (cỡ nhỏ)', color: refColors[1] },
+    { value: domesticVessels, name: 'PT thủy NĐ (hàng hóa)', color: refColors[2] },
+    { value: managedAreaVessels, name: 'PT thủy NĐ (hành khách)', color: refColors[3] },
+  ];
 }
 
 /**
@@ -399,7 +408,7 @@ function transformApprovalData(
     .slice(0, 5);
 
   if (hBar.length === 0) {
-    return { hBar: MOCK_DATA.hBarApproval, donut: MOCK_DATA.donutPheDuyet };
+    return { hBar: [], donut: [{ value: 0, name: 'Đã duyệt', color: '#123a63' }, { value: 0, name: 'Chờ duyệt', color: '#4f9bd8' }, { value: 0, name: 'Từ chối', color: '#9ecdf0' }, { value: 0, name: 'Lưu tạm', color: '#ccc' }] };
   }
 
   const statusCounts = { APPROVED: 0, PENDING: 0, REJECTED: 0 };
@@ -410,26 +419,10 @@ function transformApprovalData(
   });
 
   const donut: DonutSegment[] = [
-    {
-      value: statusCounts.APPROVED || MOCK_DATA.donutPheDuyet[0].value,
-      name: 'Đã duyệt',
-      color: MOCK_DATA.donutPheDuyet[0].color,
-    },
-    {
-      value: statusCounts.PENDING || MOCK_DATA.donutPheDuyet[1].value,
-      name: 'Chờ duyệt',
-      color: MOCK_DATA.donutPheDuyet[1].color,
-    },
-    {
-      value: statusCounts.REJECTED || MOCK_DATA.donutPheDuyet[2].value,
-      name: 'Từ chối',
-      color: MOCK_DATA.donutPheDuyet[2].color,
-    },
-    {
-      value: 718, // G-003: No DRAFT status in backend
-      name: 'Lưu tạm',
-      color: MOCK_DATA.donutPheDuyet[3].color,
-    },
+    { value: statusCounts.APPROVED, name: 'Đã duyệt', color: '#123a63' },
+    { value: statusCounts.PENDING, name: 'Chờ duyệt', color: '#4f9bd8' },
+    { value: statusCounts.REJECTED, name: 'Từ chối', color: '#9ecdf0' },
+    { value: 0, name: 'Lưu tạm', color: '#ccc' },
   ];
 
   return { hBar, donut };

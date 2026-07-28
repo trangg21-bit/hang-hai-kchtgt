@@ -18,7 +18,9 @@ import com.hanghai.kchtg.integration.dto.MaintenanceInfoDto;
 import com.hanghai.kchtg.integration.entity.CargoAggregate;
 import com.hanghai.kchtg.integration.entity.PortStatus;
 import com.hanghai.kchtg.integration.repository.CargoAggregateRepository;
+import com.hanghai.kchtg.dashboard.service.KchtAssetCountService;
 import com.hanghai.kchtg.integration.repository.PortStatusRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +41,7 @@ import java.util.stream.Stream;
  * Controller for sharing port status and cargo aggregation statistics.
  * Request header token check is applied via IntegrationTokenAdvice.
  */
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/v1/integration/share")
 public class PortCargoShareController {
@@ -50,22 +53,7 @@ public class PortCargoShareController {
     private final CargoAggregateRepository cargoAggregateRepository;
     private final DataConnectionRepository connectionRepository;
     private final SyncLogRepository syncLogRepository;
-
-    public PortCargoShareController(PointObjectRepository pointRepository,
-                                    LineObjectRepository lineRepository,
-                                    PolygonObjectRepository polygonRepository,
-                                    PortStatusRepository portStatusRepository,
-                                    CargoAggregateRepository cargoAggregateRepository,
-                                    DataConnectionRepository connectionRepository,
-                                    SyncLogRepository syncLogRepository) {
-        this.pointRepository = pointRepository;
-        this.lineRepository = lineRepository;
-        this.polygonRepository = polygonRepository;
-        this.portStatusRepository = portStatusRepository;
-        this.cargoAggregateRepository = cargoAggregateRepository;
-        this.connectionRepository = connectionRepository;
-        this.syncLogRepository = syncLogRepository;
-    }
+    private final KchtAssetCountService kchtAssetCountService;
 
     /**
      * GET /ports/status (F-215) -> Returns paginated port operational statuses.
@@ -78,18 +66,18 @@ public class PortCargoShareController {
     }
 
     /**
-     * GET /assets/status (F-216) -> Returns summary counts of Points, Lines, Polygons.
+     * GET /assets/status (F-216) -> Returns summary counts from KCHT entity tables.
      */
     @GetMapping("/assets/status")
     public ResponseEntity<ApiResponse<AssetStatusDto>> getAssetStatus() {
+        // KCHT counts from entity tables (cached, count 19 tables)
+        long kchtTotal = kchtAssetCountService.countTotal();
+        long kchtOperating = kchtAssetCountService.countOperating();
+
+        // GIS breakdown for points/lines/polygons by type (for radar chart)
         List<PointObject> points = pointRepository.findAll();
         List<LineObject> lines = lineRepository.findAll();
         List<PolygonObject> polygons = polygonRepository.findAll();
-
-        long totalPoints = points.size();
-        long totalLines = lines.size();
-        long totalPolygons = polygons.size();
-        long totalAssets = totalPoints + totalLines + totalPolygons;
 
         Map<String, Long> pointsByType = points.stream()
                 .collect(Collectors.groupingBy(p -> p.getObjectType().name(), Collectors.counting()));
@@ -98,23 +86,23 @@ public class PortCargoShareController {
         Map<String, Long> polygonsByType = polygons.stream()
                 .collect(Collectors.groupingBy(p -> p.getObjectType().name(), Collectors.counting()));
 
-        // Group status counts from all assets
-        Map<String, Long> assetsByStatus = Stream.of(
-                points.stream().map(p -> p.getStatus().name()),
-                lines.stream().map(l -> l.getStatus().name()),
-                polygons.stream().map(p -> p.getStatus().name())
-        ).flatMap(s -> s)
-         .collect(Collectors.groupingBy(s -> s, Collectors.counting()));
+        // All assets = KCHT entities + GIS objects without entity records (approx)
+        long totalAssets = kchtTotal + points.size() + lines.size() + polygons.size();
+
+        Map<String, Long> assetsByStatus = new LinkedHashMap<>();
+        assetsByStatus.put("PUBLISHED", kchtOperating);
+        assetsByStatus.put("TOTAL", kchtTotal);
 
         AssetStatusDto dto = AssetStatusDto.builder()
-                .totalPoints(totalPoints)
-                .totalLines(totalLines)
-                .totalPolygons(totalPolygons)
+                .totalPoints(points.size())
+                .totalLines(lines.size())
+                .totalPolygons(polygons.size())
                 .totalAssets(totalAssets)
                 .pointsByType(pointsByType)
                 .linesByType(linesByType)
                 .polygonsByType(polygonsByType)
                 .assetsByStatus(assetsByStatus)
+                .breakdown(kchtAssetCountService.getInfraTableData())
                 .build();
 
         return ResponseEntity.ok(ApiResponse.success(dto));

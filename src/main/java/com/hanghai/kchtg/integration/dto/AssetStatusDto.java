@@ -3,6 +3,7 @@ package com.hanghai.kchtg.integration.dto;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,4 +23,7 @@ public class AssetStatusDto {
     private Map<String, Long> polygonsByType;
 
     private Map<String, Long> assetsByStatus;
+
+    /** Per-entity 4-column breakdown (type, total, pending, operating, suspended). */
+    private List<Map<String, Object>> breakdown;
 }
