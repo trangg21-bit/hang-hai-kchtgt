@@ -2,11 +2,6 @@
 
 DO $$
 BEGIN
-    -- Skip entirely if the table does not exist (e.g. fresh H2 DB or empty test fixture)
-    IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'org_units') THEN
-        RAISE NOTICE 'V101: org_units does not exist — skipping';
-        RETURN;
-    END IF;
 
     -- Drop text-based check constraints if they exist
     ALTER TABLE public.org_units DROP CONSTRAINT IF EXISTS org_units_status_check;
