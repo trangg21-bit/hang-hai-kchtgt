@@ -57,6 +57,14 @@ export interface AssetStatusDto {
   linesByType: Record<string, number>;
   polygonsByType: Record<string, number>;
   assetsByStatus: Record<string, number>;
+  breakdown?: Array<{
+    sequenceNo: number;
+    type: string;
+    total: number;
+    pending: number;
+    operating: number;
+    suspended: number;
+  }>;
 }
 
 /**
