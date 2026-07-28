@@ -55,7 +55,7 @@ public class GisSpatialObjectService {
     public void delete(UUID id) {
         if (id == null) return;
         repository.findById(id).ifPresent(entity -> {
-            entity.softDelete();
+            entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
             repository.save(entity);
         });
     }

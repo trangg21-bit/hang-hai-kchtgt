@@ -20,7 +20,7 @@ public interface UserPasswordRepository extends JpaRepository<User, UUID> {
      */
     @Query("SELECT u FROM User u WHERE u.expiresAt IS NOT NULL " +
            "AND u.expiresAt BETWEEN :now AND :sevenDaysLater " +
-           "AND u.status = 'ACTIVE'")
+           "AND u.status = com.hanghai.kchtg.user.entity.UserStatus.ACTIVE")
     List<User> findExpiringSoon(@Param("now") LocalDateTime now, @Param("sevenDaysLater") LocalDateTime sevenDaysLater);
 
     /**
@@ -28,7 +28,7 @@ public interface UserPasswordRepository extends JpaRepository<User, UUID> {
      */
     @Query("SELECT u FROM User u WHERE u.expiresAt IS NOT NULL " +
            "AND u.expiresAt < :now " +
-           "AND u.status = 'ACTIVE'")
+           "AND u.status = com.hanghai.kchtg.user.entity.UserStatus.ACTIVE")
     List<User> findExpired(@Param("now") LocalDateTime now);
 
     /**
@@ -36,6 +36,6 @@ public interface UserPasswordRepository extends JpaRepository<User, UUID> {
      */
     @Query("SELECT u FROM User u WHERE u.expiresAt IS NOT NULL " +
            "AND u.expiresAt BETWEEN :now AND :until " +
-           "AND u.status = 'ACTIVE'")
+           "AND u.status = com.hanghai.kchtg.user.entity.UserStatus.ACTIVE")
     List<User> findExpiringBefore(@Param("now") LocalDateTime now, @Param("until") LocalDateTime until);
 }

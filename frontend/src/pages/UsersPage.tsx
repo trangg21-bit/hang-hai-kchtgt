@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { Typography, Tooltip, Modal, Form, Input, Select, Row, Col, Spin, Button } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined, UnlockOutlined, KeyOutlined, ExclamationCircleOutlined, FileExcelOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined, UnlockOutlined, KeyOutlined, ExclamationCircleOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword } from '../hooks/useUsers';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useToggleLockUser, useResetPassword, useChangeStatusUser } from '../hooks/useUsers';
 import { useRoles } from '../hooks/useRoles';
 import { usePermissionStore } from '../store/permissionStore';
 import LoadingSkeleton from '../components/LoadingSkeleton';
@@ -21,6 +21,7 @@ const STATUS_MAP: Record<string, { color: string; label: string }> = {
   active: { color: 'green', label: 'Hoạt động' },
   locked: { color: 'red', label: 'Đã khóa' },
   inactive: { color: 'default', label: 'Không hoạt động' },
+  PENDING_APPROVAL: { color: 'orange', label: 'Chờ phê duyệt' },
 };
 
 function getRoleTagClass(roleId: string): string {
@@ -69,16 +70,19 @@ export default function UsersPage() {
   const { data: dataActive } = useUsers({ page: 1, pageSize: 1, status: 'active' });
   const { data: dataLocked } = useUsers({ page: 1, pageSize: 1, status: 'locked' });
   const { data: dataInactive } = useUsers({ page: 1, pageSize: 1, status: 'inactive' });
-  const totalAll = (dataActive?.total || 0) + (dataLocked?.total || 0) + (dataInactive?.total || 0);
+  const { data: dataPending } = useUsers({ page: 1, pageSize: 1, status: 'PENDING_APPROVAL' });
+  const totalAll = (dataActive?.total || 0) + (dataLocked?.total || 0) + (dataInactive?.total || 0) + (dataPending?.total || 0);
   const countActive = dataActive?.total || 0;
   const countLocked = dataLocked?.total || 0;
   const countInactive = dataInactive?.total || 0;
+  const countPending = dataPending?.total || 0;
 
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
   const toggleLock = useToggleLockUser();
   const resetPassword = useResetPassword();
+  const changeStatusUser = useChangeStatusUser();
 
   const openCreateModal = useCallback(() => { setEditingUser(null); form.resetFields(); setModalOpen(true); }, [form]);
 
@@ -134,17 +138,31 @@ export default function UsersPage() {
 
   const handlePageChange = useCallback((p: number, ps: number) => { setPage(p); setPageSize(ps); }, []);
 
+  const handleApprove = useCallback((user: User) => {
+    confirm({ title: 'Phê duyệt tài khoản', icon: <ExclamationCircleOutlined />, content: `Bạn có chắc chắn muốn phê duyệt tài khoản "${user.fullName}"?`, okText: 'Phê duyệt', cancelText: 'Hủy', onOk: () => changeStatusUser.mutateAsync({ id: user.id, status: 'ACTIVE' }) });
+  }, [changeStatusUser]);
+
+  const handleReject = useCallback((user: User) => {
+    confirm({ title: 'Từ chối tài khoản', icon: <ExclamationCircleOutlined />, content: `Bạn có chắc chắn muốn từ chối tài khoản "${user.fullName}"?`, okText: 'Từ chối', okType: 'danger', cancelText: 'Hủy', onOk: () => changeStatusUser.mutateAsync({ id: user.id, status: 'INACTIVE' }) });
+  }, [changeStatusUser]);
+
   const rowActions = useCallback((record: User) => {
     const actions: {
       key: string; label: string; icon?: ReactNode;
       onClick: () => void; danger?: boolean;
     }[] = [];
-    if (hasPerm('user.edit')) actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
-    if (hasPerm('user.lock')) actions.push({ key: 'lock', label: record.status === 'locked' ? 'Mở khóa' : 'Khóa', icon: record.status === 'locked' ? <UnlockOutlined /> : <LockOutlined />, onClick: () => handleToggleLock(record) });
-    if (hasPerm('user.reset_password')) actions.push({ key: 'reset-password', label: 'Reset mật khẩu', icon: <KeyOutlined />, onClick: () => handleResetPassword(record) });
-    if (hasPerm('user.delete')) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
+    
+    if (record.status === 'PENDING_APPROVAL') {
+      if (hasPerm('user.approve')) actions.push({ key: 'approve', label: 'Phê duyệt', icon: <CheckOutlined />, onClick: () => handleApprove(record) });
+      if (hasPerm('user.approve')) actions.push({ key: 'reject', label: 'Từ chối', icon: <CloseOutlined />, onClick: () => handleReject(record), danger: true });
+    } else {
+      if (hasPerm('user.edit')) actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
+      if (hasPerm('user.lock')) actions.push({ key: 'lock', label: record.status === 'locked' ? 'Mở khóa' : 'Khóa', icon: record.status === 'locked' ? <UnlockOutlined /> : <LockOutlined />, onClick: () => handleToggleLock(record) });
+      if (hasPerm('user.reset_password')) actions.push({ key: 'reset-password', label: 'Reset mật khẩu', icon: <KeyOutlined />, onClick: () => handleResetPassword(record) });
+      if (hasPerm('user.delete')) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
+    }
     return actions;
-  }, [hasPerm, openEditModal, handleToggleLock, handleResetPassword, handleDelete]);
+  }, [hasPerm, openEditModal, handleToggleLock, handleResetPassword, handleDelete, handleApprove, handleReject]);
 
   const columns = useMemo(() => [
     { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const, render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
@@ -184,15 +202,14 @@ export default function UsersPage() {
   const filterFields = useMemo(() => [
     { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên, email, username...' },
     { key: 'roleId', type: 'select' as const, label: 'Vai trò', placeholder: 'Chọn vai trò', options: rolesData?.map((r: any) => ({ value: r.code, label: r.name })) || [] },
-    { key: 'status', type: 'select' as const, label: 'Trạng thái', placeholder: 'Chọn trạng thái', options: [{ value: 'active', label: 'Hoạt động' }, { value: 'locked', label: 'Đã khóa' }, { value: 'inactive', label: 'Không hoạt động' }] },
+    { key: 'status', type: 'select' as const, label: 'Trạng thái', placeholder: 'Chọn trạng thái', options: [{ value: 'active', label: 'Hoạt động' }, { value: 'PENDING_APPROVAL', label: 'Chờ phê duyệt' }, { value: 'locked', label: 'Đã khóa' }, { value: 'inactive', label: 'Không hoạt động' }] },
   ], [rolesData]);
 
   const headerActions = useMemo(() => {
     const actions: any[] = [];
     if (hasPerm('user.create')) actions.push({ key: 'create', label: 'Thêm mới', variant: 'primary' as const, icon: <PlusOutlined />, onClick: openCreateModal });
-    actions.push({ key: 'export', label: '', variant: 'subtle' as const, icon: <FileExcelOutlined style={{ color: statusOperational }} />, borderColor: `${statusOperational}80`, color: statusOperational, onClick: () => {} });
     return actions;
-  }, [hasPerm, openCreateModal, statusOperational]);
+  }, [hasPerm, openCreateModal]);
 
   return (
     <div style={{ minHeight: '100%', marginTop: -8 }}>
@@ -203,6 +220,7 @@ export default function UsersPage() {
           tabs={[
             { key: 'all', label: 'Tất cả', count: totalAll, color: textSecondary, active: !filterStatus },
             { key: 'active', label: 'Hoạt động', count: countActive, color: actionPrimary, active: filterStatus === 'active' },
+            { key: 'PENDING_APPROVAL', label: 'Chờ phê duyệt', count: countPending, color: '#faad14', active: filterStatus === 'PENDING_APPROVAL' },
             { key: 'locked', label: 'Đã khóa', count: countLocked, color: statusCritical, active: filterStatus === 'locked' },
             { key: 'inactive', label: 'Không hoạt động', count: countInactive, color: statusDraft, active: filterStatus === 'inactive' },
           ]}
@@ -213,7 +231,7 @@ export default function UsersPage() {
         {renderContent()}
       </div>
 
-      <Modal title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingUser ? 'Sửa người dùng' : 'Thêm mới người dùng'}</span>} open={modalOpen} onOk={handleSubmit} onCancel={() => setModalOpen(false)} destroyOnHidden confirmLoading={submitting} width={600} maskClosable={false}
+      <Modal title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingUser ? 'Sửa người dùng' : 'Thêm mới người dùng'}</span>} open={modalOpen} onOk={handleSubmit} onCancel={() => setModalOpen(false)} forceRender confirmLoading={submitting} width={600} mask={{ closable: false }}
         footer={[
           <Button key="cancel" onClick={() => setModalOpen(false)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
           <Button key="ok" type="primary" onClick={handleSubmit} loading={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>{editingUser ? 'Cập nhật' : 'Tạo mới'}</Button>,
@@ -224,12 +242,12 @@ export default function UsersPage() {
             labelCol={{ style: { padding: 0, marginBottom: 4 } }}
           >
             {!editingUser && (<>
-              <Form.Item name="username" {...labelProps('Tên đăng nhập')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập' }, { min: 4, message: 'Tối thiểu 4 ký tự' }, { pattern: /^[a-z0-9_]+$/, message: 'Chỉ chứa chữ thường, số và dấu gạch dưới' }]}><Input placeholder="vd: nguyenvana" autoComplete="off" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
-              <Form.Item name="password" {...labelProps('Mật khẩu')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }, { min: 8, message: 'Tối thiểu 8 ký tự' }, { pattern: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).+$/, message: 'Phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 số' }]}><Input.Password placeholder="Ít nhất 8 ký tự" autoComplete="new-password" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
+              <Form.Item name="username" {...labelProps('Tên đăng nhập')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập tên đăng nhập' }, { min: 3, message: 'Tối thiểu 3 ký tự' }, { max: 100, message: 'Tối đa 100 ký tự' }, { pattern: /^[a-z0-9_]+$/, message: 'Chỉ chứa chữ thường, số và dấu gạch dưới' }]}><Input placeholder="vd: nguyenvana" autoComplete="username" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
+              <Form.Item name="password" {...labelProps('Mật khẩu')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mật khẩu' }, { min: 8, message: 'Tối thiểu 8 ký tự' }, { max: 255, message: 'Tối đa 255 ký tự' }, { pattern: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&#^_\-]).+$/, message: 'Phải có chữ hoa, chữ thường, số và ký tự đặc biệt' }]}><Input.Password placeholder="Ít nhất 8 ký tự" autoComplete="new-password" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
             </>)}
-            <Form.Item name="fullName" {...labelProps('Họ và tên')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập họ tên' }]}><Input placeholder="Nguyễn Văn A" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
+            <Form.Item name="fullName" {...labelProps('Họ và tên')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập họ tên' }, { max: 200, message: 'Tối đa 200 ký tự' }]}><Input placeholder="Nguyễn Văn A" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
             <Row gutter={16}>
-              <Col xs={24} md={12}><Form.Item name="email" {...labelProps('Email')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập email' }, { type: 'email', message: 'Email không hợp lệ' }]}><Input placeholder="email@example.com" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
+              <Col xs={24} md={12}><Form.Item name="email" {...labelProps('Email')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập email' }, { type: 'email', message: 'Email không hợp lệ' }, { max: 150, message: 'Tối đa 150 ký tự' }]}><Input placeholder="email@example.com" autoComplete="email" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
               <Col xs={24} md={12}><Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: spaceFormField }} rules={[{ pattern: /^0\d{9,10}$/, message: 'Số điện thoại không hợp lệ (10-11 số)' }]}><Input placeholder="0901234567" style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item></Col>
             </Row>
             <Form.Item name="roleId" {...labelProps('Vai trò')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn vai trò' }]}><Select placeholder="Chọn vai trò" options={rolesData?.map((r: any) => ({ value: r.code, label: r.name }))} style={{ borderRadius: radiusPill, height: 40 }} /></Form.Item>
@@ -240,3 +258,4 @@ export default function UsersPage() {
     </div>
   );
 }
+

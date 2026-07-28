@@ -52,7 +52,7 @@ public class OrgUnitDataFixer implements ApplicationRunner {
         OrgUnit root = OrgUnit.builder()
                 .name("Cục Hàng hải và Đường thủy Việt Nam")
                 .code("CUC_HHVT")
-                .type(OrgUnitType.CUC)
+                .type(OrgUnitType.DEPARTMENT)
                 .description("Đơn vị gốc - Cục Hàng hải và Đường thủy Việt Nam")
                 .status(OrgUnitStatus.APPROVED)
                 .parentId(null)
@@ -63,15 +63,15 @@ public class OrgUnitDataFixer implements ApplicationRunner {
         root = repo.save(root);
 
         // 2. Cảng vụ (level 2 under root)
-        OrgUnit cvHp = child(root, "Cảng vụ Hàng hải Hải Phòng", "CV_HH_HP", OrgUnitType.CANG_VU, 1);
-        OrgUnit cvQn = child(root, "Cảng vụ Hàng hải Quảng Ninh", "CV_HH_QN", OrgUnitType.CANG_VU, 2);
-        child(root, "Cảng vụ Hàng hải TP. Hồ Chí Minh", "CV_HH_HCM", OrgUnitType.CANG_VU, 3);
+        OrgUnit cvHp = child(root, "Cảng vụ Hàng hải Hải Phòng", "CV_HH_HP", OrgUnitType.PORT_AUTHORITY, 1);
+        OrgUnit cvQn = child(root, "Cảng vụ Hàng hải Quảng Ninh", "CV_HH_QN", OrgUnitType.PORT_AUTHORITY, 2);
+        child(root, "Cảng vụ Hàng hải TP. Hồ Chí Minh", "CV_HH_HCM", OrgUnitType.PORT_AUTHORITY, 3);
 
         // 3. Đại diện (level 3 under Cảng vụ)
-        child(cvHp, "Đại diện Cảng vụ Hải Phòng tại Đình Vũ", "DD_CVHP_DV", OrgUnitType.CANG_VU, 1);
-        child(cvHp, "Đại diện Cảng vụ Hải Phòng tại Bạch Đằng", "DD_CVHP_BD", OrgUnitType.CANG_VU, 2);
-        child(cvQn, "Đại diện Cảng vụ Quảng Ninh tại Móng Cái", "DD_CVQN_MC", OrgUnitType.CANG_VU, 1);
-        child(cvQn, "Đại diện Cảng vụ Quảng Ninh tại Vân Đồn", "DD_CVQN_VD", OrgUnitType.CANG_VU, 2);
+        child(cvHp, "Đại diện Cảng vụ Hải Phòng tại Đình Vũ", "DD_CVHP_DV", OrgUnitType.PORT_AUTHORITY, 1);
+        child(cvHp, "Đại diện Cảng vụ Hải Phòng tại Bạch Đằng", "DD_CVHP_BD", OrgUnitType.PORT_AUTHORITY, 2);
+        child(cvQn, "Đại diện Cảng vụ Quảng Ninh tại Móng Cái", "DD_CVQN_MC", OrgUnitType.PORT_AUTHORITY, 1);
+        child(cvQn, "Đại diện Cảng vụ Quảng Ninh tại Vân Đồn", "DD_CVQN_VD", OrgUnitType.PORT_AUTHORITY, 2);
 
         log.info("OrgUnitDataFixer: seeded Cục HHVT + 3 Cảng vụ + 4 Đại diện");
     }
@@ -94,7 +94,7 @@ public class OrgUnitDataFixer implements ApplicationRunner {
     private void fixOrphans() {
         // Find root CUC
         List<OrgUnit> roots = repo.findByParentIdIsNull().stream()
-                .filter(u -> u.getType() == OrgUnitType.CUC)
+                .filter(u -> u.getType() == OrgUnitType.DEPARTMENT)
                 .toList();
 
         if (roots.isEmpty()) {
@@ -106,7 +106,7 @@ public class OrgUnitDataFixer implements ApplicationRunner {
 
         // Find orphan CANG_VU / CHI_CUC
         List<OrgUnit> orphans = repo.findByParentIdIsNull().stream()
-                .filter(u -> u.getType() == OrgUnitType.CANG_VU || u.getType() == OrgUnitType.CHI_CUC)
+                .filter(u -> u.getType() == OrgUnitType.PORT_AUTHORITY || u.getType() == OrgUnitType.SUB_DEPARTMENT)
                 .filter(u -> !u.getId().equals(root.getId()))
                 .toList();
 

@@ -145,7 +145,7 @@ public class DocumentService {
 
         log.info("[DocumentService.delete] MinIO delete (STUB): key={}", entity.getStorageKey());
 
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         entity.setUpdatedBy(UUID.fromString(userId));
         documentRepository.save(entity);
 

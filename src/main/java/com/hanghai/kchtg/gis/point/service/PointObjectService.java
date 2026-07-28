@@ -116,7 +116,7 @@ public class PointObjectService {
         PointObject entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("PointObject not found with id: " + id));
         entity.setStatus(Status.DELETED);
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         repository.save(entity);
     }
 

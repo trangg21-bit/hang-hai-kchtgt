@@ -7,7 +7,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -64,29 +66,27 @@ public abstract class BaseEntity {
     /**
      * User ID who soft-deleted the entity (null = not deleted).
      */
-    @Column(name = "deleted_by", length = 36)
+    @JdbcTypeCode(SqlTypes.UUID)
+    @Column(name = "deleted_by")
     private UUID deletedBy;
 
     /**
      * User ID who created the entity.
      */
     @org.springframework.data.annotation.CreatedBy
-    @Column(name = "created_by", length = 36)
+    @JdbcTypeCode(SqlTypes.UUID)
+    @Column(name = "created_by")
     private UUID createdBy;
 
     /**
      * User ID who last updated the entity.
      */
     @org.springframework.data.annotation.LastModifiedBy
-    @Column(name = "updated_by", length = 36)
+    @JdbcTypeCode(SqlTypes.UUID)
+    @Column(name = "updated_by")
     private UUID updatedBy;
 
-    /**
-     * Mark this entity as soft-deleted (no tracking of who deleted it).
-     */
-    public void softDelete() {
-        this.deletedAt = LocalDateTime.now();
-    }
+
 
     /**
      * Mark this entity as soft-deleted, recording who performed the deletion.

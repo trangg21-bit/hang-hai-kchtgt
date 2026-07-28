@@ -103,7 +103,7 @@ public class MapLayerService {
     public void delete(UUID id) {
         MapLayer entity = mapLayerRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("MapLayer not found with id: " + id));
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         mapLayerRepository.save(entity);
     }
 
@@ -167,7 +167,7 @@ public class MapLayerService {
     public void deleteMapView(UUID id) {
         MapView entity = mapViewRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("MapView not found with id: " + id));
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         mapViewRepository.save(entity);
     }
 
@@ -236,7 +236,7 @@ public class MapLayerService {
     public void deleteOverlay(UUID id) {
         MapOverlay entity = mapOverlayRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("MapOverlay not found with id: " + id));
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         mapOverlayRepository.save(entity);
     }
 
@@ -301,7 +301,7 @@ public class MapLayerService {
     public void deleteStyle(UUID id) {
         MapStyle entity = mapStyleRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("MapStyle not found with id: " + id));
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         mapStyleRepository.save(entity);
     }
 

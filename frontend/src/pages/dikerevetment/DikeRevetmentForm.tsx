@@ -403,7 +403,7 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
           footer={null}
           width={900}
           destroyOnClose
-          maskClosable={false}
+          mask={{ closable: false }}
         >
           <Spin spinning={isLoading}>
             {detailContent}
@@ -624,3 +624,4 @@ export default function DikeRevetmentForm({ open, editId, mode, onCancel, onSucc
     </div>
   );
 }
+

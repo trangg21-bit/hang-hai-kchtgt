@@ -15,11 +15,11 @@ public class KchtgApplication {
     public static void main(String[] args) {
         SpringApplication.run(KchtgApplication.class, args);
     }
-    @Bean @Profile({"local", "local-h2"})
+    @Bean @Profile({"local", "local-h2", "test"})
     public RedisConnectionFactory redisConnectionFactory() {
         return new NoOpRedisConnectionFactory();
     }
-    @Bean @Profile({"local", "local-h2"})
+    @Bean @Profile({"local", "local-h2", "test"})
     public StringRedisTemplate stringRedisTemplate(RedisConnectionFactory redisConnectionFactory) {
         return new StringRedisTemplate(redisConnectionFactory);
     }

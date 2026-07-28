@@ -113,8 +113,25 @@ public class RoleService {
      * @throws IllegalArgumentException nếu code đã tồn tại
      */
     public Role create(CreateRoleRequest request) {
-        if (roleRepository.existsByCode(request.getCode())) {
-            throw new IllegalArgumentException("Mã vai trò đã tồn tại: " + request.getCode());
+        java.util.Optional<Role> existingOpt = roleRepository.findByCodeIncludeDeleted(request.getCode());
+        if (existingOpt.isPresent()) {
+            Role existingRole = existingOpt.get();
+            if (existingRole.getDeletedAt() != null || existingRole.getStatus() == RoleStatus.DELETED) {
+                // Restore the soft-deleted role
+                existingRole.setName(request.getName());
+                existingRole.setDescription(request.getDescription());
+                existingRole.setPermissions(resolvePermissions(request.getPermissions()));
+                existingRole.setStatus(RoleStatus.ACTIVE);
+                existingRole.setDeletedAt(null);
+                existingRole.setDeletedBy(null);
+                existingRole.setUserCount(0);
+                
+                Role saved = roleRepository.save(existingRole);
+                log.info("Restored and updated role: {} ({})", saved.getCode(), saved.getId());
+                return saved;
+            } else {
+                throw new IllegalArgumentException("Mã vai trò đã tồn tại: " + request.getCode());
+            }
         }
 
         Role role = new Role();
@@ -174,14 +191,14 @@ public class RoleService {
     }
 
     /**
-     * Xóa vai trò (soft delete - dùng BaseEntity.softDelete()).
+     * Xóa vai trò (soft delete - dùng BaseEntity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId())).
      *
      * @throws EntityNotFoundException nếu không tìm thấy role
      */
     public Role delete(UUID id) {
         Role role = findById(id);
         role.setStatus(RoleStatus.DELETED);
-        role.softDelete();
+        role.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         Role saved = roleRepository.save(role);
         log.info("Soft-deleted role: {} ({})", saved.getCode(), saved.getId());
         return saved;

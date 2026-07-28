@@ -1,0 +1,82 @@
+{
+  "triage_id": "TRI-1785205856642-daf0",
+  "created_at": 1785205856642,
+  "request_summary": "Fix F-275 Phân quyền 3 mức: add 3 fields to Role entity, create PermissionRoleService, PermissionMiddleware, UserRole entity, DataScope aspect, and PermissionsPage frontend. Bring implementation from ~40% to ~90% of BA spec.",
+  "change_class": "C3",
+  "handling": "full_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/PermissionsPage.tsx",
+      "src/main/java/com/hanghai/kchtg/security/DataScopeAspect.java",
+      "src/main/java/com/hanghai/kchtg/security/PermissionMiddleware.java",
+      "src/main/java/com/hanghai/kchtg/user/entity/Role.java",
+      "src/main/java/com/hanghai/kchtg/user/entity/UserRole.java",
+      "src/main/java/com/hanghai/kchtg/user/repository/UserRoleRepository.java",
+      "src/main/java/com/hanghai/kchtg/user/service/PermissionRoleService.java",
+      "src/main/resources/db/migration/V22__add_role_level_fields.sql"
+    ],
+    "impact_files": [
+      "frontend/src/pages/PermissionsPage.tsx",
+      "src/main/java/com/hanghai/kchtg/security/DataScopeAspect.java",
+      "src/main/java/com/hanghai/kchtg/security/PermissionMiddleware.java",
+      "src/main/java/com/hanghai/kchtg/user/entity/Role.java",
+      "src/main/java/com/hanghai/kchtg/user/entity/UserRole.java",
+      "src/main/java/com/hanghai/kchtg/user/repository/UserRoleRepository.java",
+      "src/main/java/com/hanghai/kchtg/user/service/PermissionRoleService.java",
+      "src/main/resources/db/migration/V22__add_role_level_fields.sql"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": [
+      {
+        "group": "schema",
+        "path": "src/main/resources/db/migration/V22__add_role_level_fields.sql"
+      }
+    ]
+  },
+  "rationale": "C3: one-way door: schema:src/main/resources/db/migration/V22__add_role_level_fields.sql — floors at C3 regardless of size (8 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "System administration - Role management and Permission management screens (M-010)",
+  "blast_radius": 8,
+  "done_oracle": "Role entity has level/isSystem/hierarchyDepth. PermissionRoleService exists with checkPermission and Super Admin bypass. PermissionMiddleware filter exists. UserRole entity exists. DataScope aspect exists. PermissionsPage frontend exists. mvn compile passes with 0 errors.",
+  "change_type": "scope_expansion",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/user/entity/Role.java",
+      "line": 27,
+      "quote": "public class Role extends BaseEntity {",
+      "source_hash": "2ee084a98e467a4328a845d266ba05ba3139e31c04d75d3a5ca48c045453b63f",
+      "quote_hash": "de9de5bc1c89a82df1bf971db009ef24a1ecc10c03868adaf6013f3863d4cec3",
+      "note": "Add level, isSystem, hierarchyDepth fields here"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/user/entity/User.java",
+      "line": 93,
+      "quote": "    private Set<Role> roles = new HashSet<>();",
+      "source_hash": "e2bf85947b91f62b98652ca89fd36482d17ed1c8d03651dc18444843e48f2eed",
+      "quote_hash": "f1a19a619d93f0eabfc4f67b10bc4bb05f93d2b290a6e84e470eaa93d2259983",
+      "note": "User currently has M-to-N roles via Set — UserRole entity will complement this for direct grants"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/security/PermissionAuthorizationManager.java",
+      "line": 1,
+      "quote": "package com.hanghai.kchtg.security;",
+      "source_hash": "74bf706f61bf54a91dcead37a82aa2f2046a5ca6d80bd93c28c764f92a71b997",
+      "quote_hash": "33de3f816f53e9df5c08b00b6c266b3f7d2e1f0ef3802c98693fd771b7c894fb",
+      "note": "Existing auth manager — PermissionMiddleware will be an additional filter before this"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "d93cdd4d851888bedd0b742cd660fc06a4521b92",
+    "dirty": true,
+    "captured_at": 1785205856781
+  },
+  "budget": {
+    "wall_clock_ms": 14400000,
+    "turns": 900
+  }
+}

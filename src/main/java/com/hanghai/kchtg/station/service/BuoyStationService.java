@@ -242,7 +242,7 @@ public class BuoyStationService {
         }
 
         entity.setStatus(StationStatus.DELETED);
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         phaoRepo.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());

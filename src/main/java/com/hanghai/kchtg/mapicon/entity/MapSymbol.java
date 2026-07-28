@@ -20,16 +20,12 @@ import lombok.*;
 @Builder
 public class MapSymbol extends BaseEntity {
 
-    @NotBlank(message = "Mã ký hiệu không được để trống")
-    @Size(max = 50, message = "Mã ký hiệu tối đa 50 ký tự")
-    @Column(nullable = false, unique = true, length = 50)
-    private String code;
-
-    @NotBlank(message = "Tên ký hiệu không được để trống")
-    @Size(max = 100, message = "Tên ký hiệu tối đa 100 ký tự")
-    @Column(nullable = false, length = 100)
+    @NotBlank(message = "Tên biểu tượng không được để trống")
+    @Size(max = 255, message = "Tên biểu tượng tối đa 255 ký tự")
+    @Column(nullable = false, length = 255)
     private String name;
 
+    @Size(max = 500)
     @Column(columnDefinition = "TEXT")
     private String description;
 

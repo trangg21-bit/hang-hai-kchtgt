@@ -1,0 +1,16 @@
+{
+  "route_id": "LANE-1785207285471-9c62",
+  "created_at": 1785207285471,
+  "lane": "general-work",
+  "owner": "build",
+  "dispatch_target": "build",
+  "routing_mode": "inline",
+  "request_summary": "Update implementations.yaml and dev summaries for F-001, F-002, F-003, F-275 — docs only, code already complete",
+  "reason": "Documentation-only updates to implementations.yaml and dev summaries — no source code changes",
+  "signals": [
+    "documentation-only",
+    "no-source-code-change",
+    "implementations.yaml",
+    "dev-summaries"
+  ]
+}

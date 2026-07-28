@@ -84,7 +84,7 @@ public class CoastalStationInmarsatService {
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Inmarsat station not found with id: " + id));
 
         String deviceCode = entity.getDeviceCode();
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         repository.save(entity);
 
         historyService.recordHistory(

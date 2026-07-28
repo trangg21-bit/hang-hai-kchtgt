@@ -18,4 +18,6 @@ public class ChangeStatusRequest {
 
     @NotNull(message = "Trạng thái không được để trống")
     private UserStatus status;
+
+    private String reason;
 }

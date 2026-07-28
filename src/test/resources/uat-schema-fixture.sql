@@ -359,3 +359,45 @@ CREATE TABLE approval_history (
 INSERT INTO approval_history (approved_by, result) VALUES ('admin', 'APPROVED');
 INSERT INTO approval_history (approved_by, result)
 VALUES ('1dfc226c-d31b-4089-93ff-86c646b94129', 'APPROVED');
+
+-- Added for V99 and V100 tests
+CREATE TABLE user_groups (
+    id UUID PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    code VARCHAR(50) NOT NULL,
+    description VARCHAR(500),
+    group_type VARCHAR(30) NOT NULL DEFAULT 'custom',
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+
+CREATE TABLE group_members (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL,
+    user_group_id UUID NOT NULL,
+    role VARCHAR(30) NOT NULL DEFAULT 'member',
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    joined_at TIMESTAMP,
+    added_by UUID,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+
+CREATE TABLE app_users (
+    id UUID PRIMARY KEY,
+    username VARCHAR(100),
+    email VARCHAR(150),
+    status VARCHAR(50),
+    deleted_at TIMESTAMP
+);
+
+CREATE TABLE public.org_units (
+    id UUID PRIMARY KEY,
+    status VARCHAR(50),
+    unit_type VARCHAR(50),
+    type VARCHAR(50)
+);
+

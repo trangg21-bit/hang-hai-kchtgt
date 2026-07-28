@@ -3,6 +3,7 @@ package com.hanghai.kchtg.group.entity;
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,11 +19,7 @@ import java.util.List;
  * </p>
  */
 @Entity
-@Table(name = "user_groups",
-       uniqueConstraints = {
-           @UniqueConstraint(name = "uk_groups_name", columnNames = "name"),
-           @UniqueConstraint(name = "uk_groups_code", columnNames = "code")
-       })
+@Table(name = "user_groups")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -45,37 +42,20 @@ public class UserGroup extends BaseEntity {
     private String description;
 
     /** Loai nhom: department / project / custom (BR-012). */
-    @NotBlank(message = "Loại nhóm không được để trống")
-    @Column(name = "group_type", nullable = false, length = 30)
-    private String groupType = GroupType.CUSTOM.toValue();
+    @NotNull(message = "Loại nhóm không được để trống")
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "group_type", nullable = false)
+    private GroupType groupType = GroupType.CUSTOM;
 
     /** Danh sach ma quyen (permission keys) ma nhom nay so huu. */
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(
-            name = "user_group_permissions",
-            joinColumns = @JoinColumn(name = "user_group_id")
-    )
+    @CollectionTable(name = "user_group_permissions", joinColumns = @JoinColumn(name = "user_group_id"))
     @Column(name = "permission", nullable = false)
     private List<String> permissions = new ArrayList<>();
 
     /** Trang tai: ACTIVE (hoat dong) hoăc INACTIVE (vo hieu). */
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Enumerated(EnumType.ORDINAL)
+    @Column(nullable = false)
     private GroupStatus status = GroupStatus.ACTIVE;
 
-    /**
-     * Validate groupType is one of the allowed values (BR-012).
-     *
-     * @throws IllegalArgumentException if groupType is invalid
-     */
-    public void validateGroupType() {
-        GroupType.fromValue(this.groupType);
-    }
-
-    /**
-     * Get group type as enum.
-     */
-    public GroupType getGroupTypeEnum() {
-        return GroupType.fromValue(this.groupType);
-    }
 }

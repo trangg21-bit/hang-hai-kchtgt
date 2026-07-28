@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Typography, Modal, Form, Input, Spin, Button } from 'antd';
+import { Typography, Modal, Form, Input, Spin, Button, Select } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { usePermissionStore } from '../../store/permissionStore';
@@ -16,7 +16,7 @@ import { colors } from '../../theme';
 import toast from '../../components/ToastNotification';
 const { confirm } = Modal;
 
-const STATUS_LABELS: Record<string, string> = { active: 'Hoạt động', locked: 'Đã khóa', inactive: 'Không hoạt động' };
+const STATUS_LABELS: Record<string, string> = { active: 'Sử dụng', inactive: 'Không sử dụng' };
 
 const labelProps = (text: string) => ({ label: <span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeMd }}>{text}</span> });
 
@@ -26,6 +26,7 @@ export default function GroupList() {
 
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
+  const [filterGroupType, setFilterGroupType] = useState<string | undefined>();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<Group[]>([]);
@@ -35,7 +36,6 @@ export default function GroupList() {
   const [error, setError] = useState<Error | null>(null);
 
   const [countActive, setCountActive] = useState(0);
-  const [countLocked, setCountLocked] = useState(0);
   const [countInactive, setCountInactive] = useState(0);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -46,34 +46,26 @@ export default function GroupList() {
   const fetchGroups = useCallback(async () => {
     setIsLoading(true); setIsError(false);
     try {
-      const res = await groupService.list({ page, pageSize, search: search || undefined, status: filterStatus });
+      const res = await groupService.list({ page, pageSize, search: search || undefined, status: filterStatus, groupType: filterGroupType });
       setDataSource(res.data); setTotal(res.total);
+      
+      // Update counts based on backend stats
+      setCountActive(res.activeCount);
+      setCountInactive(res.inactiveCount);
     } catch (err: unknown) { setIsError(true); setError(err instanceof Error ? err : new Error('Không thể tải danh sách nhóm')); }
     finally { setIsLoading(false); }
-  }, [page, pageSize, search, filterStatus]);
+  }, [page, pageSize, search, filterStatus, filterGroupType]);
 
   useEffect(() => { fetchGroups(); }, [fetchGroups]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [active, locked, inactive] = await Promise.all([
-          groupService.list({ page: 1, pageSize: 1, status: 'active' }),
-          groupService.list({ page: 1, pageSize: 1, status: 'locked' }),
-          groupService.list({ page: 1, pageSize: 1, status: 'inactive' }),
-        ]);
-        setCountActive(active.total); setCountLocked(locked.total); setCountInactive(inactive.total);
-      } catch { /* ignore */ }
-    })();
-  }, []);
 
-  const totalAll = countActive + countLocked + countInactive;
+  const totalAll = countActive + countInactive;
 
-  const openCreateModal = useCallback(() => { setEditingGroup(null); form.resetFields(); setModalOpen(true); }, [form]);
+  const openCreateModal = useCallback(() => { setEditingGroup(null); form.resetFields(); form.setFieldsValue({ status: 'active' }); setModalOpen(true); }, [form]);
 
   const openEditModal = useCallback((group: Group) => {
     setEditingGroup(group);
-    form.setFieldsValue({ name: group.name, code: group.code, description: group.description });
+    form.setFieldsValue({ name: group.name, code: group.code, groupType: group.groupType, description: group.description, status: group.status });
     setModalOpen(true);
   }, [form]);
 
@@ -81,11 +73,11 @@ export default function GroupList() {
     try {
       const values = await form.validateFields(); setSubmitting(true);
       if (editingGroup) {
-        const payload: UpdateGroupPayload = { name: values.name, code: values.code, description: values.description };
+        const payload: UpdateGroupPayload = { name: values.name, code: values.code, groupType: values.groupType, description: values.description, status: values.status };
         await groupService.update(editingGroup.id, payload);
         toast.success('Đã cập nhật nhóm');
       } else {
-        const payload: CreateGroupPayload = { name: values.name, code: values.code, description: values.description };
+        const payload: CreateGroupPayload = { name: values.name, code: values.code, groupType: values.groupType, description: values.description, status: values.status };
         await groupService.create(payload);
         toast.success('Đã tạo nhóm mới');
       }
@@ -109,11 +101,13 @@ export default function GroupList() {
     });
   }, [fetchGroups]);
 
+
+
   const handleFilterSearch = useCallback((values: Record<string, any>) => {
-    setSearch(values.search || ''); setFilterStatus(values.status || undefined); setPage(1);
+    setSearch(typeof values.search === 'string' ? values.search.trim() : values.search || ''); setFilterStatus(values.status || undefined); setFilterGroupType(values.groupType || undefined); setPage(1);
   }, []);
 
-  const handleFilterReset = useCallback(() => { setSearch(''); setFilterStatus(undefined); setPage(1); }, []);
+  const handleFilterReset = useCallback(() => { setSearch(''); setFilterStatus(undefined); setFilterGroupType(undefined); setPage(1); }, []);
 
   const handleTabChange = useCallback((key: string) => {
     setFilterStatus(key === 'all' ? undefined : key); setPage(1);
@@ -124,7 +118,10 @@ export default function GroupList() {
   const rowActions = useCallback((record: Group) => {
     const actions: { key: string; label: string; icon?: ReactNode; onClick: () => void; danger?: boolean }[] = [];
     actions.push({ key: 'members', label: 'Thành viên', icon: <UserOutlined />, onClick: () => navigate(`/groups/${record.id}/members`) });
-    if (hasPerm('group.edit')) actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
+    if (hasPerm('group.edit')) {
+      actions.push({ key: 'permissions', label: 'Phân quyền', icon: <EditOutlined />, onClick: () => toast.info('Tính năng phân quyền nhóm đang được phát triển') });
+      actions.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
+    }
     if (hasPerm('group.delete')) actions.push({ key: 'delete', label: 'Xóa', icon: <DeleteOutlined />, onClick: () => handleDelete(record), danger: true });
     return actions;
   }, [hasPerm, navigate, openEditModal, handleDelete]);
@@ -132,15 +129,21 @@ export default function GroupList() {
   const columns = useMemo(() => [
     { key: 'sequenceNo', label: 'STT', width: 60, type: 'mono' as const, align: 'center' as const,
       render: (_: unknown, __: unknown, idx: number) => <span style={{ fontSize: fontSizeMd }}>{(page - 1) * pageSize + idx + 1}</span> },
-    { key: 'name', label: 'Tên nhóm', dataIndex: 'name', width: 250,
+    { key: 'name', label: 'Tên nhóm', dataIndex: 'name', width: 200,
       render: (text: string) => <Typography.Text strong>{text}</Typography.Text> },
-    { key: 'description', label: 'Mô tả', dataIndex: 'description', width: 300,
+    { key: 'code', label: 'Mã nhóm', dataIndex: 'code', width: 120 },
+    { key: 'groupType', label: 'Loại nhóm', dataIndex: 'groupType', width: 140, align: 'center' as const,
+      render: (text: string) => {
+        const typeLabels: Record<string, string> = { department: 'Phòng ban', project: 'Dự án', custom: 'Tùy chỉnh' };
+        return <span>{typeLabels[text] || text}</span>;
+      } },
+    { key: 'description', label: 'Mô tả', dataIndex: 'description', width: 200,
       render: (text?: string) => text || <Typography.Text type="secondary">—</Typography.Text> },
     { key: 'memberCount', label: 'Thành viên', dataIndex: 'memberCount', width: 120, align: 'center' as const,
       render: (count: number) => <span>{count}</span> },
     { key: 'status', label: 'Trạng thái', dataIndex: 'status', width: 140, align: 'center' as const,
       render: (status: string) => {
-        const color = status === 'active' ? statusOperational : status === 'locked' ? statusCritical : statusDraft;
+        const color = status === 'active' ? statusOperational : statusDraft;
         const label = STATUS_LABELS[status] || status;
         return <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${color}15`, color }}>{label}</span>;
       } },
@@ -160,8 +163,10 @@ export default function GroupList() {
 
   const filterFields = useMemo(() => [
     { key: 'search', type: 'search' as const, label: 'Tìm kiếm', placeholder: 'Tìm theo tên, mô tả...' },
+    { key: 'groupType', type: 'select' as const, label: 'Loại nhóm', placeholder: 'Chọn loại',
+      options: [{ value: 'department', label: 'Phòng ban' }, { value: 'project', label: 'Dự án' }, { value: 'custom', label: 'Tùy chỉnh' }] },
     { key: 'status', type: 'select' as const, label: 'Trạng thái', placeholder: 'Chọn trạng thái',
-      options: [{ value: 'active', label: 'Hoạt động' }, { value: 'locked', label: 'Đã khóa' }, { value: 'inactive', label: 'Không hoạt động' }] },
+      options: [{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }] },
   ], []);
 
   const headerActions = useMemo(() => {
@@ -178,9 +183,8 @@ export default function GroupList() {
         <StatusTabs
           tabs={[
             { key: 'all', label: 'Tất cả', count: totalAll, color: textSecondary, active: !filterStatus },
-            { key: 'active', label: 'Hoạt động', count: countActive, color: statusOperational, active: filterStatus === 'active' },
-            { key: 'locked', label: 'Đã khóa', count: countLocked, color: statusCritical, active: filterStatus === 'locked' },
-            { key: 'inactive', label: 'Không hoạt động', count: countInactive, color: statusDraft, active: filterStatus === 'inactive' },
+{ key: 'active', label: 'Sử dụng', count: countActive, color: statusOperational, active: filterStatus === 'active' },
+            { key: 'inactive', label: 'Không sử dụng', count: countInactive, color: statusDraft, active: filterStatus === 'inactive' },
           ]}
           onChange={handleTabChange}
         />
@@ -191,7 +195,7 @@ export default function GroupList() {
 
       <Modal
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingGroup ? 'Sửa nhóm' : 'Thêm nhóm mới'}</span>}
-        open={modalOpen} onCancel={() => setModalOpen(false)} destroyOnHidden confirmLoading={submitting} width={600} maskClosable={false}
+        open={modalOpen} onCancel={() => setModalOpen(false)} destroyOnHidden confirmLoading={submitting} width={600} mask={{ closable: false }}
         footer={[
           <Button key="cancel" onClick={() => setModalOpen(false)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
           <Button key="ok" type="primary" onClick={handleSubmit} loading={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>{editingGroup ? 'Cập nhật' : 'Tạo mới'}</Button>,
@@ -205,6 +209,12 @@ export default function GroupList() {
             <Form.Item name="code" {...labelProps('Mã nhóm')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng nhập mã nhóm' }]}>
               <Input placeholder="vd: QL01" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
+            <Form.Item name="groupType" {...labelProps('Loại nhóm')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn loại nhóm' }]}>
+              <Select placeholder="Chọn loại nhóm" options={[{ value: 'department', label: 'Phòng ban' }, { value: 'project', label: 'Dự án' }, { value: 'custom', label: 'Tùy chỉnh' }]} style={{ borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
+            <Form.Item name="status" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}>
+              <Select placeholder="Chọn trạng thái" options={[{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }]} style={{ borderRadius: radiusPill, height: 40 }} />
+            </Form.Item>
             <Form.Item name="description" {...labelProps('Mô tả')} style={{ marginBottom: spaceFormField }}>
               <Input.TextArea rows={3} placeholder="Mô tả nhóm (tùy chọn)" />
             </Form.Item>
@@ -214,3 +224,4 @@ export default function GroupList() {
     </div>
   );
 }
+

@@ -78,7 +78,7 @@ public class TotpAuthService {
      * @return MfaChallengeResponse
      * @throws IllegalArgumentException nếu sai tài khoản/mật khẩu, tài khoản bị khóa, ...
      */
-    @Transactional
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public MfaChallengeResponse authenticateCredentials(String username, String password,
                                                         HttpServletRequest request) {
 
@@ -161,7 +161,7 @@ public class TotpAuthService {
      * @return TwoFactorLoginResponse với access_token + refresh_token
      * @throws IllegalArgumentException nếu sai TOTP, tài khoản bị khóa, ...
      */
-    @Transactional
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public TwoFactorLoginResponse verifyTotp(TotpLoginRequest request,
                                               HttpServletRequest requestHttp) {
 

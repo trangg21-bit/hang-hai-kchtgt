@@ -627,7 +627,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
           footer={null}
           width={900}
           destroyOnClose
-          maskClosable={false}
+          mask={{ closable: false }}
         >
           {detailContent}
         </Modal>
@@ -650,7 +650,7 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
         onCancel={onCancel}
         footer={null}
         destroyOnClose
-        maskClosable={false}
+        mask={{ closable: false }}
         width={1000}
       >
         <Spin spinning={isLoading}>
@@ -1072,3 +1072,4 @@ export default function NavigationChannelForm({ open, editId, mode, onCancel, on
     </div>
   );
 }
+

@@ -115,7 +115,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserResponse>> changeStatus(
             @PathVariable UUID id,
             @Valid @RequestBody ChangeStatusRequest request) {
-        UserResponse user = UserResponse.from(userService.changeStatus(id, request.getStatus()));
+        UserResponse user = UserResponse.from(userService.changeStatus(id, request.getStatus(), request.getReason()));
         return ResponseEntity.ok(ApiResponse.success("Thay doi trang thai thành công", user));
     }
 
@@ -125,8 +125,11 @@ public class UserController {
     @PostMapping("/{id}/lock")
     @AuditLog(module = "USER", action = "LOCK_USER")
     @PreAuthorize("@auth.check(authentication, 'admin:manage')")
-    public ResponseEntity<ApiResponse<UserResponse>> lockUser(@PathVariable UUID id) {
-        UserResponse user = UserResponse.from(userService.changeStatus(id, UserStatus.LOCKED));
+    public ResponseEntity<ApiResponse<UserResponse>> lockUser(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body) {
+        String reason = body != null ? body.get("reason") : null;
+        UserResponse user = UserResponse.from(userService.changeStatus(id, UserStatus.LOCKED, reason));
         return ResponseEntity.ok(ApiResponse.success("Khóa tài khoản thành công", user));
     }
 
@@ -136,8 +139,11 @@ public class UserController {
     @PostMapping("/{id}/unlock")
     @AuditLog(module = "USER", action = "UNLOCK_USER")
     @PreAuthorize("@auth.check(authentication, 'admin:manage')")
-    public ResponseEntity<ApiResponse<UserResponse>> unlockUser(@PathVariable UUID id) {
-        UserResponse user = UserResponse.from(userService.changeStatus(id, UserStatus.ACTIVE));
+    public ResponseEntity<ApiResponse<UserResponse>> unlockUser(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body) {
+        String reason = body != null ? body.get("reason") : null;
+        UserResponse user = UserResponse.from(userService.changeStatus(id, UserStatus.ACTIVE, reason));
         return ResponseEntity.ok(ApiResponse.success("Mo khóa tài khoản thành công", user));
     }
 

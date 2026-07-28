@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Modal, Form, Button, Spin, Space, Typography } from 'antd';
+import { Modal, Form, Button, Spin, Space, Typography, Select } from 'antd';
 import { ArrowLeftOutlined, PlusOutlined, DeleteOutlined, UserOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { groupService } from '../../services/groupService';
@@ -40,29 +40,40 @@ export default function GroupMembers() {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [userOptions, setUserOptions] = useState<{ value: string; label: string }[]>([]);
 
-  useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const res = await userService.list({ pageSize: 100 });
-        setUserOptions(res.data.map((u) => ({ value: u.id, label: `${u.fullName} (${u.username})` })));
-      } catch (err) { console.error('Failed to load users for dropdown:', err); }
-    };
-    void loadUsers();
+  const [isSearchingUser, setIsSearchingUser] = useState(false);
+  const searchTimerRef = useRef<NodeJS.Timeout>();
+
+  const fetchUserOptions = useCallback(async (searchTxt: string) => {
+    setIsSearchingUser(true);
+    try {
+      const res = await userService.list({ search: searchTxt, pageSize: 50 });
+      setUserOptions(res.data.map((u) => ({ value: u.id, label: `${u.fullName} (${u.username})` })));
+    } catch (err) {
+      console.error('Failed to load users for dropdown:', err);
+    } finally {
+      setIsSearchingUser(false);
+    }
   }, []);
+
+  useEffect(() => {
+    if (addModalOpen) {
+      void fetchUserOptions('');
+    }
+  }, [addModalOpen, fetchUserOptions]);
+
+  const handleUserSearch = useCallback((value: string) => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      void fetchUserOptions(value);
+    }, 500);
+  }, [fetchUserOptions]);
 
   const fetchMembers = useCallback(async () => {
     setIsLoading(true); setIsError(false);
     try {
-      const members = await groupService.getMembers(id!);
-      let filtered = [...members];
-      if (search) {
-        const q = search.toLowerCase();
-        filtered = filtered.filter((m) => m.fullName.toLowerCase().includes(q) || m.username.toLowerCase().includes(q) || m.email.toLowerCase().includes(q));
-      }
-      if (filterRole) { filtered = filtered.filter((m) => m.role === filterRole); }
-      const start = (page - 1) * pageSize;
-      setDataSource(filtered.slice(start, start + pageSize));
-      setTotal(filtered.length);
+      const resp = await groupService.getMembers(id!, { page, pageSize, search, role: filterRole });
+      setDataSource(resp.data);
+      setTotal(resp.total);
     } catch (err: unknown) { setIsError(true); setError(err instanceof Error ? err : new Error('Không thể tải danh sách thành viên')); }
     finally { setIsLoading(false); }
   }, [id, page, pageSize, search, filterRole]);
@@ -88,12 +99,18 @@ export default function GroupMembers() {
       await groupService.addMember(id!, { userId: values.userId, role: values.role });
       toast.success('Đã thêm thành viên vào nhóm');
       setAddModalOpen(false); form.resetFields(); fetchMembers();
-    } catch { /* validation error */ }
+    } catch (err: any) {
+      if (err?.errorFields) {
+        // Form validation error, ignore as antd handles UI display
+        return;
+      }
+      toast.error(err instanceof Error ? err.message : 'Lỗi khi thêm thành viên');
+    }
   }, [id, form, fetchMembers]);
 
   // ---- Filter handlers ----
   const handleFilterSearch = useCallback((values: Record<string, any>) => {
-    setSearch(values.search || ''); setFilterRole(values.role || undefined); setPage(1);
+    setSearch(typeof values.search === 'string' ? values.search.trim() : values.search || ''); setFilterRole(values.role || undefined); setPage(1);
   }, []);
 
   const handleFilterReset = useCallback(() => { setSearch(''); setFilterRole(undefined); setPage(1); }, []);
@@ -156,7 +173,7 @@ export default function GroupMembers() {
 
       <Modal
         title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>Thêm thành viên vào nhóm</span>}
-        open={addModalOpen} onCancel={() => { setAddModalOpen(false); form.resetFields(); }} destroyOnHidden width={500} maskClosable={false}
+        open={addModalOpen} onCancel={() => { setAddModalOpen(false); form.resetFields(); }} destroyOnHidden width={500} mask={{ closable: false }}
         footer={[
           <Button key="cancel" onClick={() => { setAddModalOpen(false); form.resetFields(); }} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
           <Button key="ok" type="primary" onClick={handleAddMember} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>Thêm</Button>,
@@ -164,7 +181,16 @@ export default function GroupMembers() {
       >
         <Spin spinning={false}>
           <Form form={form} layout="vertical" style={{ marginTop: spaceMd }}>
-            <FormField type="select" name="userId" label="Chọn người dùng" required placeholder="Tìm và chọn người dùng..." options={userOptions} />
+            <Form.Item name="userId" label={<span>Chọn người dùng<span style={{ color: '#ff4d4f', marginLeft: 4 }}>*</span></span>} rules={[{ required: true, message: 'Vui lòng chọn người dùng' }]}>
+              <Select
+                showSearch
+                placeholder="Tìm và chọn người dùng..."
+                options={userOptions}
+                filterOption={false}
+                onSearch={handleUserSearch}
+                loading={isSearchingUser}
+              />
+            </Form.Item>
             <FormField type="select" name="role" label="Vai trò" required options={[{ value: 'admin', label: 'Quản lý' }, { value: 'member', label: 'Thành viên' }, { value: 'viewer', label: 'Xem' }]} />
           </Form>
         </Spin>
@@ -172,3 +198,4 @@ export default function GroupMembers() {
     </div>
   );
 }
+

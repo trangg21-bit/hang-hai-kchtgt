@@ -38,7 +38,18 @@ public class NoOpRedisConnectionFactory implements RedisConnectionFactory {
         return (RedisConnection) Proxy.newProxyInstance(
             getClass().getClassLoader(),
             new Class[]{RedisConnection.class},
-            (p, m, a) -> null
+            (p, m, a) -> {
+                if (m.getReturnType().equals(boolean.class)) {
+                    return false;
+                }
+                if (m.getReturnType().equals(int.class)) {
+                    return 0;
+                }
+                if (m.getReturnType().equals(long.class)) {
+                    return 0L;
+                }
+                return null;
+            }
         );
     }
 }

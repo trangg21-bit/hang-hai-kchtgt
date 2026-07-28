@@ -1,0 +1,87 @@
+{
+  "triage_id": "TRI-1785206588404-495d",
+  "created_at": 1785206588404,
+  "request_summary": "Rename OrgUnitType enum values from Vietnamese to English",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/organizations/UnitForm.tsx",
+      "frontend/src/pages/organizations/UnitList.tsx",
+      "frontend/src/services/mockData.ts",
+      "frontend/src/services/organizationService.ts",
+      "src/main/java/com/hanghai/kchtg/orgunit/config/OrgUnitDataFixer.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnitType.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnitTypeConverter.java",
+      "src/main/java/com/hanghai/kchtg/seeder/DataSeeder.java",
+      "src/main/java/com/hanghai/kchtg/seeder/M001DataSeeder.java"
+    ],
+    "impact_files": [
+      "frontend/src/pages/organizations/UnitForm.tsx",
+      "frontend/src/pages/organizations/UnitList.tsx",
+      "frontend/src/services/mockData.ts",
+      "frontend/src/services/organizationService.ts",
+      "src/main/java/com/hanghai/kchtg/orgunit/config/OrgUnitDataFixer.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnitType.java",
+      "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnitTypeConverter.java",
+      "src/main/java/com/hanghai/kchtg/seeder/DataSeeder.java",
+      "src/main/java/com/hanghai/kchtg/seeder/M001DataSeeder.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 9 edit-target files exceed the inline gate (9 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "Organization unit management screen (F-003)",
+  "blast_radius": 9,
+  "done_oracle": "mvn compile passes with 0 errors",
+  "change_type": "implementation",
+  "seam_claims": [
+    {
+      "file": "src/main/java/com/hanghai/kchtg/orgunit/entity/OrgUnitType.java",
+      "line": 10,
+      "quote": "public enum OrgUnitType {",
+      "source_hash": "b089aebf93851d76b65fe114e165ffb123351d6830e1516137adf73b4f8df88b",
+      "quote_hash": "df9c2d31e2a70604d6a89e23894ef29368f6a1d1c7630e39666fc9968a357b2a",
+      "note": "OrgUnitType enum definition - values CUC,CHI_CUC,CANG_VU,TCT need rename to English"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/orgunit/config/OrgUnitDataFixer.java",
+      "line": 55,
+      "quote": "                .type(OrgUnitType.CUC)",
+      "source_hash": "7f148dbc00f4f37a0076804578796933c7cf3bdf5f6500a9dce025d48d5b0f16",
+      "quote_hash": "1522949b479de3922dd9ee1b8cb3a553baa50f789d5a6551185c0d2b68911a82",
+      "note": "Root org unit references CUC type"
+    },
+    {
+      "file": "frontend/src/pages/organizations/UnitList.tsx",
+      "line": 20,
+      "quote": "const TYPE_LABELS: Record<string, string> = { CUC: 'Cục', TCT: 'Tổng cục', CHI_CUC: 'Chi cục', CANG_VU: 'Cảng vụ' };",
+      "source_hash": "1bafd2e471a59fe4265dcd182d1291e146bfb13d883ab8f082074e979320d483",
+      "quote_hash": "64bf503e0e8593271ef93fb9bee54184a89d34457719a74fddda2377de2a1065",
+      "note": "Frontend labels use Vietnamese enum values"
+    },
+    {
+      "file": "frontend/src/services/organizationService.ts",
+      "line": 18,
+      "quote": "  type?: \"CUC\" | \"TCT\" | \"CHI_CUC\" | \"CANG_VU\";",
+      "source_hash": "bca2569dd83c5333eff666cbffd3f01b362368de6076952131bf9616b35ba489",
+      "quote_hash": "4a01e46351b856f9a4643c626eb961babe57acd965cb822e241ea99c27dd81d1",
+      "note": "TypeScript type definitions reference Vietnamese enum values"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "d93cdd4d851888bedd0b742cd660fc06a4521b92",
+    "dirty": true,
+    "captured_at": 1785206588533
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

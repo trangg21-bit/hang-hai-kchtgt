@@ -252,7 +252,7 @@ export default function RolesPage() {
         destroyOnHidden
         confirmLoading={submitting}
         width={700}
-        maskClosable={false}
+        mask={{ closable: false }}
         footer={[
           <Button key="cancel" onClick={() => setModalOpen(false)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
           <Button key="ok" type="primary" onClick={handleSubmit} loading={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>{editingRole ? 'Cập nhật' : 'Tạo mới'}</Button>,
@@ -307,3 +307,4 @@ export default function RolesPage() {
     </div>
   );
 }
+

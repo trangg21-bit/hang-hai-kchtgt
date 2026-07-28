@@ -93,7 +93,7 @@ public class CoastalStationCospasSarsatService {
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Cospas-Sarsat station not found with id: " + id));
 
         String stationCode = entity.getCode();
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         repository.save(entity);
 
         historyService.recordHistory(

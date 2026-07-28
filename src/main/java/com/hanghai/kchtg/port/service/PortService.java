@@ -320,7 +320,7 @@ public class PortService {
             throw new IllegalArgumentException(msg.toString());
         }
 
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         portRepository.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());

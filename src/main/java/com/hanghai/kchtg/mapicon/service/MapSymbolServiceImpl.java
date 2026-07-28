@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -43,11 +42,7 @@ public class MapSymbolServiceImpl implements MapSymbolService {
     @Override
     @Transactional
     public MapSymbolResponse create(CreateMapSymbolRequest request, java.util.UUID createdBy) {
-        if (repository.findByCode(request.getCode()).isPresent()) {
-            throw new IllegalArgumentException("Mã ký hiệu đã tồn tại: " + request.getCode());
-        }
         MapSymbol symbol = MapSymbol.builder()
-                .code(request.getCode())
                 .name(request.getName())
                 .description(request.getDescription())
                 .image(request.getImage())

@@ -58,13 +58,16 @@ public class OrgUnit extends BaseEntity {
     private UUID parentId;
 
     /** Organisational unit type (CUC, CHI_CUC, CANG_VU, TCT). BR-003-04 */
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, columnDefinition = "SMALLINT")
     private OrgUnitType type;
 
     /** Optional description of the unit */
     @Column(length = 1000)
     private String description;
+
+    /** Province/city where unit is located (BA spec: tinh_thanh_pho). */
+    @Column(name = "province", length = 100)
+    private String province;
 
     /** Physical or mailing address (max 500 chars, optional). */
     @Column(length = 500)
@@ -84,8 +87,7 @@ public class OrgUnit extends BaseEntity {
     private String contactPerson;
 
     /** Approval status. Defaults to DRAFT at creation time. */
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
+    @Column(nullable = false, columnDefinition = "SMALLINT")
     private OrgUnitStatus status;
 
     // ── Materialized Path fields ─────────────────────────────────────

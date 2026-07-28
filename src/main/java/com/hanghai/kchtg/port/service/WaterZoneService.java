@@ -259,7 +259,7 @@ public class WaterZoneService {
     public void softDelete(UUID id) {
         WaterZone entity = waterZoneRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy vùng nước với id: " + id));
-        entity.softDelete();
+        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }

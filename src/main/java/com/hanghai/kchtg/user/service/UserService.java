@@ -7,15 +7,21 @@ import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
 import com.hanghai.kchtg.security.service.PermissionCacheService;
+import com.hanghai.kchtg.password.entity.PasswordHistory;
+import com.hanghai.kchtg.password.repository.PasswordHistoryRepository;
 import com.hanghai.kchtg.user.dto.CreateUserRequest;
 import com.hanghai.kchtg.user.dto.UpdateUserRequest;
 import com.hanghai.kchtg.user.dto.UserResponse;
 import com.hanghai.kchtg.user.entity.Role;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
+import com.hanghai.kchtg.user.entity.UserStatusLog;
 import com.hanghai.kchtg.user.exception.ValidationException;
 import com.hanghai.kchtg.user.repository.RoleRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import com.hanghai.kchtg.user.repository.UserStatusLogRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +65,9 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicyValidator passwordPolicyValidator;
     private final PermissionCacheService permissionCacheService;
+    private final PasswordHistoryRepository passwordHistoryRepository;
+    private final UserStatusLogRepository userStatusLogRepository;
+    private final EntityManager entityManager;
 
     public UserService(UserRepository userRepository,
             RoleRepository roleRepository,
@@ -66,7 +75,10 @@ public class UserService {
             GroupRepository groupRepository,
             PasswordEncoder passwordEncoder,
             PasswordPolicyValidator passwordPolicyValidator,
-            PermissionCacheService permissionCacheService) {
+            PermissionCacheService permissionCacheService,
+            PasswordHistoryRepository passwordHistoryRepository,
+            UserStatusLogRepository userStatusLogRepository,
+            EntityManager entityManager) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.orgUnitRepository = orgUnitRepository;
@@ -74,6 +86,9 @@ public class UserService {
         this.passwordEncoder = passwordEncoder;
         this.passwordPolicyValidator = passwordPolicyValidator;
         this.permissionCacheService = permissionCacheService;
+        this.passwordHistoryRepository = passwordHistoryRepository;
+        this.userStatusLogRepository = userStatusLogRepository;
+        this.entityManager = entityManager;
     }
 
     // =========================================================================
@@ -201,6 +216,7 @@ public class UserService {
         }
 
         User saved = userRepository.save(user);
+        savePasswordHistory(saved.getId(), saved.getPassword());
         log.info("Created user: {} ({})", saved.getUsername(), saved.getId());
         return saved;
     }
@@ -226,6 +242,8 @@ public class UserService {
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             // Validate password policy on update
             passwordPolicyValidator.validate(request.getPassword());
+            // BR-014: check password history (last 3 passwords)
+            checkPasswordHistory(user.getId(), request.getPassword());
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
@@ -266,6 +284,10 @@ public class UserService {
         }
 
         User saved = userRepository.save(user);
+        // BR-014: save to password history if password was changed
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            savePasswordHistory(saved.getId(), saved.getPassword());
+        }
         if (roleChanged || permissionsChanged) {
             permissionCacheService.invalidateCache(saved.getId());
         }
@@ -290,7 +312,7 @@ public class UserService {
         // We also check here to provide a user-friendly error message.
         checkBusinessDataReferences(user);
 
-        user.softDelete();
+        user.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
         user.setStatus(UserStatus.DELETED);
         userRepository.save(user);
         log.info("Soft-deleted user: {} ({})", user.getUsername(), id);
@@ -298,29 +320,102 @@ public class UserService {
 
     /**
      * T-002: Kiem tra du lieu nghiep vu lien quan den nguoi dung (BR-003).
-     * Quat phanhen va bao cao bang UUID de linh hoat voi thiet ke CSDL.
+     * Queries information_schema for all FK tables referencing app_users,
+     * plus any table with audit columns (created_by / updated_by / deleted_by / etc.)
+     * pointing to this user. Blocks delete if any references exist.
      */
     private void checkBusinessDataReferences(User user) {
-        // Check phanhen references by user ID — replace with actual repository when
-        // BR-003 FKs are confirmed
-        // Since we don't know the exact phanhen/bao cao repository/package, we use a
-        // placeholder
-        // that the dev can wire up once FK relationships are confirmed.
-        // For now, we skip the FK check and rely on DB-level constraints.
-        log.info("BR-003: No FK-dependent business data references detected for user {} — soft delete allowed",
-                user.getUsername());
+        // 1. Check password_history references
+        long historyCount = passwordHistoryRepository.countByUserId(user.getId());
+        if (historyCount > 0) {
+            throw new IllegalStateException("Không thể xóa — tài khoản còn dữ liệu nghiệp vụ liên quan");
+        }
+        // 2. Query information_schema for all FK tables referencing app_users
+        @SuppressWarnings("unchecked")
+        List<String> fkTables = entityManager.createNativeQuery(
+            "SELECT DISTINCT kcu.table_name FROM information_schema.key_column_usage kcu " +
+            "JOIN information_schema.table_constraints tc " +
+            "ON kcu.constraint_name = tc.constraint_name " +
+            "AND kcu.table_schema = tc.table_schema " +
+            "WHERE tc.constraint_type = 'FOREIGN KEY' " +
+            "AND kcu.referenced_table_name = 'app_users' " +
+            "AND kcu.table_schema = 'public'"
+        ).getResultList();
+        // 3. Check each dependent table for references to this user
+        for (String table : fkTables) {
+            if ("password_history".equals(table) || "user_status_log".equals(table)) continue;
+            Number count = (Number) entityManager.createNativeQuery(
+                "SELECT COUNT(*) FROM " + table + " WHERE user_id = :userId"
+            ).setParameter("userId", user.getId()).getSingleResult();
+            if (count.longValue() > 0) {
+                throw new IllegalStateException("Không thể xóa — tài khoản còn dữ liệu nghiệp vụ liên quan");
+            }
+        }
+        // 4. Check any table with audit columns referencing this user
+        @SuppressWarnings("unchecked")
+        List<Object[]> refColumns = entityManager.createNativeQuery(
+            "SELECT DISTINCT c.table_name, c.column_name FROM information_schema.columns c " +
+            "WHERE c.table_schema = 'public' " +
+            "AND c.column_name IN ('created_by','updated_by','deleted_by','approved_by','assigned_by','changed_by','operator_id') " +
+            "AND c.table_name NOT IN ('app_users','password_history','user_status_log') " +
+            "ORDER BY c.table_name"
+        ).getResultList();
+        for (Object[] row : refColumns) {
+            String tbl = (String) row[0];
+            String col = (String) row[1];
+            Number count = (Number) entityManager.createNativeQuery(
+                "SELECT COUNT(*) FROM " + tbl + " WHERE " + col + " = :userId"
+            ).setParameter("userId", user.getId()).getSingleResult();
+            if (count.longValue() > 0) {
+                throw new IllegalStateException("Không thể xóa — tài khoản còn dữ liệu nghiệp vụ liên quan");
+            }
+        }
+        log.info("BR-003: No business data references found for user {} — soft delete allowed", user.getUsername());
+    }
+
+    // =========================================================================
+    // BR-014: Password history helpers
+    // =========================================================================
+
+    private void checkPasswordHistory(UUID userId, String newRawPassword) {
+        List<PasswordHistory> recentPasswords = passwordHistoryRepository.findTopNByUserIdOrderByCreatedAtDesc(userId, 3);
+        for (PasswordHistory ph : recentPasswords) {
+            if (passwordEncoder.matches(newRawPassword, ph.getPasswordHash())) {
+                throw new IllegalArgumentException("Mật khẩu mới không được trùng với 3 mật khẩu gần nhất");
+            }
+        }
+    }
+
+    private void savePasswordHistory(UUID userId, String encodedPassword) {
+        PasswordHistory ph = new PasswordHistory();
+        ph.setUserId(userId);
+        ph.setPasswordHash(encodedPassword);
+        passwordHistoryRepository.save(ph);
     }
 
     /**
-     * Thay doi trang thai tai khoan nguoi dung.
+     * Thay doi trang thai tai khoan nguoi dung (BR-001-07 / BR-015).
+     * Logs status change to UserStatusLog with reason.
      *
      * @throws EntityNotFoundException neu khong tim thay nguoi dung
      */
-    public User changeStatus(UUID id, UserStatus status) {
+    public User changeStatus(UUID id, UserStatus status, String reason) {
         User user = findById(id);
+        UserStatus oldStatus = user.getStatus();
         user.setStatus(status);
         User saved = userRepository.save(user);
-        log.info("Changed status of user {} to {}", saved.getUsername(), status);
+
+        // BR-001-07 / BR-015: log status change
+        UserStatusLog logEntry = new UserStatusLog();
+        logEntry.setUserId(saved.getId());
+        logEntry.setOldStatus(oldStatus);
+        logEntry.setNewStatus(status);
+        logEntry.setReason(reason);
+        logEntry.setOperatorId(SecurityUtils.getCurrentUserId());
+        userStatusLogRepository.save(logEntry);
+
+        log.info("Changed status of user {} from {} to {} (reason: {})",
+                saved.getUsername(), oldStatus, status, reason);
         return saved;
     }
 
@@ -366,6 +461,8 @@ public class UserService {
         // Validate password if provided
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             passwordPolicyValidator.validate(request.getPassword());
+            // BR-014: check password history (last 3 passwords)
+            checkPasswordHistory(user.getId(), request.getPassword());
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
@@ -410,6 +507,10 @@ public class UserService {
         }
 
         User saved = userRepository.save(user);
+        // BR-014: save to password history if password was changed
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            savePasswordHistory(saved.getId(), saved.getPassword());
+        }
         log.info("Updated self profile: {}", saved.getUsername());
         return UserResponse.from(saved);
     }
@@ -425,12 +526,16 @@ public class UserService {
         // Relaxed policy for admin reset: >= 8 chars, contains letter + digit, no
         // special char required
         validateResetPassword(newPassword, true);
+        // BR-014: check password history (last 3 passwords)
+        checkPasswordHistory(user.getId(), newPassword);
         user.setPassword(passwordEncoder.encode(newPassword));
         // Reset lockout counter on password reset
         user.setFailedLoginCount(0);
         user.setAccountLockedUntil(null);
         user.setPasswordHashVersion((user.getPasswordHashVersion() != null ? user.getPasswordHashVersion() + 1 : 1));
         User saved = userRepository.save(user);
+        // BR-014: save to password history
+        savePasswordHistory(saved.getId(), saved.getPassword());
         log.info("Admin reset password for user: {}", saved.getUsername());
         return saved;
     }

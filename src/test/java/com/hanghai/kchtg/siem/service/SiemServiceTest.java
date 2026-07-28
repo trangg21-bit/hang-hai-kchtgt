@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -88,7 +89,7 @@ public class SiemServiceTest {
     void exportExcelReport_shouldProduceNonEmptyByteArray() throws IOException {
         List<AccessLog> logs = new ArrayList<>();
         AccessLog log = new AccessLog();
-        log.setId(2L);
+        log.setId(1L);
         log.setUsername("testadmin");
         log.setAction("LOGIN");
         log.setModule("AUTH");
@@ -108,7 +109,7 @@ public class SiemServiceTest {
     void exportPdfReport_shouldProduceNonEmptyByteArray() throws IOException {
         List<AccessLog> logs = new ArrayList<>();
         AccessLog log = new AccessLog();
-        log.setId(3L);
+        log.setId(1L);
         log.setUsername("testadmin");
         log.setAction("LOGIN");
         log.setModule("AUTH");
@@ -128,7 +129,7 @@ public class SiemServiceTest {
     void exportHtmlReport_shouldProduceNonEmptyByteArray() {
         List<AccessLog> logs = new ArrayList<>();
         AccessLog log = new AccessLog();
-        log.setId(4L);
+        log.setId(1L);
         log.setUsername("testadmin");
         log.setAction("LOGIN");
         log.setModule("AUTH");
@@ -148,7 +149,7 @@ public class SiemServiceTest {
     void exportXmlReport_shouldProduceNonEmptyByteArray() {
         List<AccessLog> logs = new ArrayList<>();
         AccessLog log = new AccessLog();
-        log.setId(5L);
+        log.setId(1L);
         log.setUsername("testadmin");
         log.setAction("LOGIN");
         log.setModule("AUTH");

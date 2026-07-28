@@ -141,7 +141,7 @@ class DataConnectionRepositoryTest {
 
     @Test
     void softDelete_shouldSetDeletedAt() {
-        sampleEntity.softDelete();
+        sampleEntity.softDelete(java.util.UUID.randomUUID());
         repository.save(sampleEntity);
         entityManager.flush();
         entityManager.clear();

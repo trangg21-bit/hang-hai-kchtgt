@@ -39,9 +39,10 @@ export interface Group {
   name: string;
   code?: string;
   description?: string;
+  groupType?: string;
   permissions?: string[];
   memberCount?: number;
-  status: "active" | "locked" | "inactive";
+  status: "active" | "inactive";
   createdAt: string;
   updatedAt: string;
 }
@@ -64,8 +65,9 @@ export interface CreateGroupPayload {
   name: string;
   code?: string;
   description?: string;
+  groupType?: string;
   permissions?: string[];
-  status?: "active" | "locked" | "inactive";
+  status?: "active" | "inactive";
   memberIds?: string[];
 }
 
@@ -73,8 +75,9 @@ export interface UpdateGroupPayload {
   name?: string;
   code?: string;
   description?: string;
+  groupType?: string;
   permissions?: string[];
-  status?: "active" | "locked" | "inactive";
+  status?: "active" | "inactive";
 }
 
 export interface AddMemberPayload {
@@ -105,45 +108,30 @@ export const groupService = {
    * Frontend applies pagination client-side.
    */
   async list(
-    params?: { page?: number; pageSize?: number; search?: string; status?: string }
-  ): Promise<PaginatedResponse<Group>> {
+    params?: { page?: number; pageSize?: number; search?: string; status?: string; groupType?: string }
+  ): Promise<PaginatedResponse<Group> & { activeCount: number; inactiveCount: number }> {
     try {
-      const resp = await api.get("/groups");
+      // Build query string
+      const qParams = new URLSearchParams();
+      if (params?.page) qParams.append("page", String(params.page - 1)); // Frontend is 1-indexed, backend is 0-indexed
+      if (params?.pageSize) qParams.append("size", String(params.pageSize));
+      if (params?.search) qParams.append("search", params.search);
+      if (params?.status) qParams.append("status", params.status);
+      if (params?.groupType) qParams.append("groupType", params.groupType);
+
+      const resp = await api.get(`/groups?${qParams.toString()}`);
       const rawData: any = extractData(resp);
-      const items: any[] = Array.isArray(rawData)
-        ? rawData
-        : (rawData && Array.isArray(rawData.items)
-          ? rawData.items
-          : (rawData && Array.isArray(rawData.content) ? rawData.content : []));
-
-      let filtered: any[] = [...items];
-
-      if (params?.search) {
-        const q = params.search.toLowerCase();
-        filtered = filtered.filter(
-          (g) =>
-            g.name.toLowerCase().includes(q) ||
-            (g.description || "").toLowerCase().includes(q)
-        );
-      }
-      if (params?.status) {
-        filtered = filtered.filter(
-          (g) => g.status?.toLowerCase() === params.status?.toLowerCase()
-        );
-      }
-
-      const page = params?.page || 1;
-      const pageSize = params?.pageSize || 10;
-      const start = (page - 1) * pageSize;
+      const items: any[] = Array.isArray(rawData) ? rawData : (rawData?.items || rawData?.content || []);
+      const totalElements = rawData?.total ?? items.length;
 
       // Map backend DTO -> frontend Group interface
-      const data: Group[] = filtered
-        .slice(start, start + pageSize)
+      const data: Group[] = items
         .map((item) => ({
           id: item.id ?? "",
           name: item.name ?? "",
           code: item.code,
           description: item.description,
+          groupType: item.groupType?.toLowerCase(),
           permissions: item.permissions,
           memberCount: item.memberCount ?? 0,
           status: (item.status?.toLowerCase() as Group["status"]) ?? "active",
@@ -157,29 +145,14 @@ export const groupService = {
 
       return {
         data,
-        total: filtered.length,
-        page,
-        pageSize,
+        total: totalElements,
+        page: params?.page || 1,
+        pageSize: params?.pageSize || 20,
+        activeCount: rawData?.activeCount ?? 0,
+        inactiveCount: rawData?.inactiveCount ?? 0,
       };
-    } catch {
-      await delay();
-      let filtered = [...groups];
-      if (params?.search) {
-        const s = params.search.toLowerCase();
-        filtered = filtered.filter(g => g.name.toLowerCase().includes(s) || (g.code || '').toLowerCase().includes(s));
-      }
-      if (params?.status) {
-        filtered = filtered.filter(g => g.status === params.status);
-      }
-      const page = params?.page || 1;
-      const pageSize = params?.pageSize || 10;
-      const start = (page - 1) * pageSize;
-      return {
-        data: filtered.slice(start, start + pageSize),
-        total: filtered.length,
-        page,
-        pageSize,
-      };
+    } catch (error) {
+      throw error;
     }
   },
 
@@ -197,6 +170,7 @@ export const groupService = {
         name: item.name ?? "",
         code: item.code,
         description: item.description,
+        groupType: item.groupType?.toLowerCase(),
         permissions: item.permissions,
         memberCount: undefined,
         status: (item.status?.toLowerCase() as Group["status"]) ?? "active",
@@ -207,11 +181,8 @@ export const groupService = {
           ? new Date(item.updatedAt).toISOString()
           : "",
       };
-    } catch {
-      await delay();
-      const found = groups.find(g => g.id === id);
-      if (!found) throw new Error("Nhóm không tồn tại");
-      return { ...found };
+    } catch (error) {
+      throw error;
     }
   },
 
@@ -224,6 +195,7 @@ export const groupService = {
         name: payload.name,
         code: payload.code ?? payload.name.substring(0, 10).replace(/\\s+/g, "_").toLowerCase(),
         description: payload.description,
+        groupType: payload.groupType,
         permissions: payload.permissions,
         status: (payload.status ?? "active").toUpperCase(),
       });
@@ -234,27 +206,15 @@ export const groupService = {
         name: item.name ?? payload.name,
         code: item.code,
         description: item.description,
+        groupType: item.groupType?.toLowerCase() ?? payload.groupType,
         permissions: item.permissions,
         memberCount: 0,
         status: "active",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-    } catch {
-      await delay();
-      const newGroup: Group = {
-        id: `grp-${Date.now()}`,
-        name: payload.name,
-        code: payload.code ?? payload.name.substring(0, 10).replace(/\s+/g, "_").toLowerCase(),
-        description: payload.description,
-        permissions: payload.permissions,
-        memberCount: 0,
-        status: payload.status ?? 'active',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      groups.push(newGroup);
-      return { ...newGroup };
+    } catch (error) {
+      throw error;
     }
   },
 
@@ -267,6 +227,7 @@ export const groupService = {
         name: payload.name,
         code: payload.code,
         description: payload.description,
+        groupType: payload.groupType,
         permissions: payload.permissions,
         status: payload.status?.toUpperCase(),
       });
@@ -277,6 +238,7 @@ export const groupService = {
         name: item.name ?? payload.name ?? "",
         code: item.code,
         description: item.description ?? payload.description,
+        groupType: item.groupType?.toLowerCase() ?? payload.groupType,
         permissions: item.permissions ?? payload.permissions,
         memberCount: undefined,
         status:
@@ -289,16 +251,8 @@ export const groupService = {
           ? new Date(item.updatedAt).toISOString()
           : "",
       };
-    } catch {
-      await delay();
-      const idx = groups.findIndex(g => g.id === id);
-      if (idx === -1) throw new Error("Nhóm không tồn tại");
-      groups[idx] = {
-        ...groups[idx],
-        ...payload,
-        updatedAt: new Date().toISOString(),
-      };
-      return { ...groups[idx] };
+    } catch (error) {
+      throw error;
     }
   },
 
@@ -308,12 +262,8 @@ export const groupService = {
   async delete(id: string): Promise<void> {
     try {
       await api.delete(`/groups/${id}`);
-    } catch {
-      await delay();
-      const idx = groups.findIndex(g => g.id === id);
-      if (idx === -1) throw new Error("Nhóm không tồn tại");
-      groups.splice(idx, 1);
-      delete memberMap[id];
+    } catch (error) {
+      throw error;
     }
   },
 
@@ -321,16 +271,23 @@ export const groupService = {
   /**
    * GET /api/groups/:id/members
    */
-  async getMembers(groupId: string): Promise<GroupMember[]> {
+  async getMembers(groupId: string, params?: { page?: number; pageSize?: number; search?: string; role?: string }): Promise<PaginatedResponse<GroupMember>> {
     try {
-      const resp = await api.get(`/groups/${groupId}/members`);
+      const qParams = new URLSearchParams();
+      if (params?.page) qParams.append("page", String(params.page - 1));
+      if (params?.pageSize) qParams.append("size", String(params.pageSize));
+      if (params?.search) qParams.append("search", params.search);
+      if (params?.role) qParams.append("role", params.role);
+
+      const resp = await api.get(`/groups/${groupId}/members?${qParams.toString()}`);
       const rawData: any = extractData(resp);
       const items: any[] = Array.isArray(rawData)
         ? rawData
         : (rawData && Array.isArray(rawData.items)
           ? rawData.items
           : (rawData && Array.isArray(rawData.content) ? rawData.content : []));
-      return items.map((item) => ({
+      
+      const data = items.map((item) => ({
         id: item.id ?? "",
         userId: item.userId ?? "",
         fullName: item.fullName ?? "",
@@ -347,11 +304,15 @@ export const groupService = {
           ? new Date(item.createdAt).toISOString()
           : "",
       }));
-    } catch {
-      await delay();
-      const group = groups.find(g => g.id === groupId);
-      const count = group?.memberCount ?? 5;
-      return generateMembers(groupId, count);
+
+      return {
+        data,
+        total: rawData?.total ?? rawData?.totalElements ?? items.length,
+        page: params?.page || 1,
+        pageSize: params?.pageSize || 20
+      };
+    } catch (error) {
+      throw error;
     }
   },
 
@@ -367,13 +328,8 @@ export const groupService = {
         userId: payload.userId,
         roleInGroup: payload.role,
       });
-    } catch {
-      await delay();
-      const group = groups.find(g => g.id === groupId);
-      if (!group) throw new Error("Nhóm không tồn tại");
-      group.memberCount = (group.memberCount || 0) + 1;
-      // Clear cached members so generateMembers recreates them
-      delete memberMap[groupId];
+    } catch (error) {
+      throw error;
     }
   },
 
@@ -383,15 +339,8 @@ export const groupService = {
   async removeMember(groupId: string, userId: string): Promise<void> {
     try {
       await api.delete(`/groups/${groupId}/members/${userId}`);
-    } catch {
-      await delay();
-      const group = groups.find(g => g.id === groupId);
-      if (!group) throw new Error("Nhóm không tồn tại");
-      group.memberCount = Math.max(0, (group.memberCount || 1) - 1);
-      // Remove from cached members if present
-      if (memberMap[groupId]) {
-        memberMap[groupId] = memberMap[groupId].filter(m => m.userId !== userId);
-      }
+    } catch (error) {
+      throw error;
     }
   },
 };

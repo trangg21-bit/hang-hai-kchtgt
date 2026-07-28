@@ -1,5 +1,8 @@
 package com.hanghai.kchtg.group.entity;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
+
 /**
  * Loai nhom nguoi dung (Group Type).
  */
@@ -22,6 +25,7 @@ public enum GroupType {
      * @return GroupType enum
      * @throws IllegalArgumentException if value is not a valid group type
      */
+    @JsonCreator
     public static GroupType fromValue(String value) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException("Group type cannot be null or empty");
@@ -37,6 +41,7 @@ public enum GroupType {
     /**
      * Convert to lowercase string (for JSON serialization).
      */
+    @JsonValue
     public String toValue() {
         return name().toLowerCase();
     }

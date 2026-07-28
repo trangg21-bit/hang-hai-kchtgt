@@ -113,7 +113,7 @@ public class GroupController {
         UserGroup created = service.create(request, operatorId, operatorName);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Tao nhom thành công", UserGroupResponse.from(created, 0L)));
+                .body(ApiResponse.success("Tạo nhóm thành công", UserGroupResponse.from(created, 0L)));
     }
 
     /**
@@ -135,7 +135,7 @@ public class GroupController {
         }
 
         UserGroup updated = service.update(id, request, operatorId, operatorName);
-        return ResponseEntity.ok(ApiResponse.success("Cap nhat nhom thành công", UserGroupResponse.from(updated, 0L)));
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật nhóm thành công", UserGroupResponse.from(updated, 0L)));
     }
 
     /**
@@ -156,7 +156,7 @@ public class GroupController {
         }
 
         service.delete(id, operatorId, operatorName);
-        return ResponseEntity.ok(ApiResponse.success("Xoa nhom thành công", null));
+        return ResponseEntity.ok(ApiResponse.success("Xóa nhóm thành công", null));
     }
 
     // ── Member Management ───────────────────────────────────────────
@@ -182,7 +182,7 @@ public class GroupController {
         GroupMember member = service.addMember(id, request, operatorId, operatorName);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Da them thanh vien", GroupMemberResponse.from(member)));
+                .body(ApiResponse.success("Đã thêm thành viên", GroupMemberResponse.from(member)));
     }
 
     /**
@@ -204,7 +204,7 @@ public class GroupController {
         }
 
         service.removeMember(groupId, userId, operatorId, operatorName);
-        return ResponseEntity.ok(ApiResponse.success("Da xoa thanh vien khoi nhom", null));
+        return ResponseEntity.ok(ApiResponse.success("Đã xóa thành viên khỏi nhóm", null));
     }
 
     /**
@@ -214,9 +214,11 @@ public class GroupController {
     @GetMapping("/{id}/members")
     public ResponseEntity<ApiResponse<PaginatedGroupMemberResponse>> listMembers(
             @PathVariable UUID id,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String role,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<GroupMember> pageResult = service.findMembers(id, page, size);
+        Page<GroupMember> pageResult = service.findMembers(id, search, role, page, size);
 
         List<GroupMemberResponse> items = pageResult.getContent().stream()
                 .map(GroupMemberResponse::from)
@@ -250,7 +252,7 @@ public class GroupController {
                 0L); // will be populated with actual count by client or separate call
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Sao cop thành công", response));
+                .body(ApiResponse.success("Sao chép thành công", response));
     }
 
     // ── History (BR-015) ───────────────────────────────────────────
@@ -285,8 +287,12 @@ public class GroupController {
                 })
                 .toList();
 
-        PaginatedGroupResponse result = new PaginatedGroupResponse(items, pageResult.getTotalElements(),
-                pageResult.getNumber(), pageResult.getSize());
+        PaginatedGroupResponse result = new PaginatedGroupResponse();
+        result.setItems(items);
+        result.setTotal(pageResult.getTotalElements());
+        result.setPage(pageResult.getNumber());
+        result.setPageSize(pageResult.getSize());
+        result.setTotalPages(pageResult.getTotalPages());
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 

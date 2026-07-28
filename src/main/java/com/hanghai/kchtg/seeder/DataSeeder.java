@@ -80,7 +80,7 @@ public class DataSeeder implements CommandLineRunner {
         seedPolygonCategories();
         seedMapIcons();
         seedOrgUnits();
-        seedUserGroups();
+        // seedUserGroups(); // Disabled as per user rule to not seed data via Java
         seedUsers();
         // seedBeaconLights();
         // seedBuoys();
@@ -211,7 +211,7 @@ public class DataSeeder implements CommandLineRunner {
         OrgUnit root = OrgUnit.builder()
                 .name(names[0])
                 .code(codes[0])
-                .type(OrgUnitType.CUC)
+                .type(OrgUnitType.DEPARTMENT)
                 .address(cities[0])
                 .phone("024" + 1234567)
                 .status(OrgUnitStatus.APPROVED)
@@ -226,7 +226,7 @@ public class DataSeeder implements CommandLineRunner {
             OrgUnit u = OrgUnit.builder()
                     .name(names[i])
                     .code(codes[i])
-                    .type(OrgUnitType.CANG_VU)
+                    .type(OrgUnitType.PORT_AUTHORITY)
                     .parentId(root.getId())
                     .address(cities[i])
                     .phone("024" + (1234567 + i))
@@ -264,7 +264,7 @@ public class DataSeeder implements CommandLineRunner {
         OrgUnit child = OrgUnit.builder()
                 .name(name)
                 .code(code)
-                .type(OrgUnitType.CANG_VU)
+                .type(OrgUnitType.PORT_AUTHORITY)
                 .parentId(parent.getId())
                 .address(parent.getAddress())
                 .phone(parent.getPhone())
@@ -306,7 +306,7 @@ public class DataSeeder implements CommandLineRunner {
                 g.setName(names[i]);
                 g.setCode(codes[i]);
                 g.setDescription("Mô tả nhóm " + names[i]);
-                g.setGroupType(groupTypes[i]);
+                g.setGroupType(com.hanghai.kchtg.group.entity.GroupType.fromValue(groupTypes[i]));
                 g.setStatus(GroupStatus.ACTIVE);
                 g.setPermissions(List.of("users:read", "users:create", "users:update", "roles:read"));
                 groupRepo.save(g);
@@ -397,7 +397,7 @@ public class DataSeeder implements CommandLineRunner {
                         GroupMember member = new GroupMember();
                         member.setUser(u);
                         member.setUserGroup(group);
-                        member.setRole(offset == 0 ? "admin" : "member");
+                        member.setRole(offset == 0 ? com.hanghai.kchtg.group.entity.GroupMemberRole.ADMIN : com.hanghai.kchtg.group.entity.GroupMemberRole.MEMBER);
                         member.setStatus(GroupMemberStatus.ACTIVE);
                         member.setJoinedAt(java.time.LocalDateTime.now());
                         groupMemberRepo.save(member);
@@ -570,21 +570,21 @@ public class DataSeeder implements CommandLineRunner {
 
         String defaultImg = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMCIgaGVpZ2h0PSIzMCI+PGNpcmNsZSBjeD0iMTUiIGN5PSIxNSIgcj0iMTAiIGZpbGw9IiMxNjc3ZmYiLz48L3N2Zz4=";
         List<MapSymbol> symbols = List.of(
-            MapSymbol.builder().code("SYM-HD").name("Hướng đi").description("Ký hiệu hướng đi của tàu thuyền").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().code("SYM-DC").name("Đường chính").description("Ký hiệu luồng hàng hải chính").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().code("SYM-TT").name("Tọa độ").description("Ký hiệu điểm mốc tọa độ hải văn").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().code("SYM-CC").name("Chia cắt").description("Ký hiệu phân làn giao thông hàng hải").image(defaultImg).status(MapSymbolStatus.INACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().code("SYM-CT").name("Cửa tầng").description("Ký hiệu cửa thu nước cảng biển").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().code("SYM-BN").name("Bến ngầm").description("Ký hiệu bến đậu ngầm của tàu ngầm").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().code("SYM-OD").name("Địa điểm").description("Ký hiệu địa điểm cảng vụ").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().code("SYM-PTA").name("Phao loại A").description("Ký hiệu phao tiêu chỉ giới loại A").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().code("SYM-PTB").name("Phao loại B").description("Ký hiệu phao tiêu chỉ giới loại B").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().code("SYM-DB1").name("Đèn biển chính").description("Hải đăng cấp 1 khu vực ven bờ").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().code("SYM-DB2").name("Đèn biển phụ").description("Đèn báo hiệu phụ lối vào luồng").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().code("SYM-VTC").name("Vùng cấm").description("Ký hiệu vùng cấm neo đậu hàng hải").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().code("SYM-VQD").name("Vùng quay đầu").description("Ký hiệu vùng dành cho tàu quay đầu").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().code("SYM-NBD").name("Neo bão").description("Ký hiệu khu vực trú bão của tàu").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
-            MapSymbol.builder().code("SYM-QY").name("Quét lôi").description("Ký hiệu khu vực đang rà quét chướng ngại vật").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build()
+            MapSymbol.builder().name("Hướng đi").description("Ký hiệu hướng đi của tàu thuyền").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().name("Đường chính").description("Ký hiệu luồng hàng hải chính").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().name("Tọa độ").description("Ký hiệu điểm mốc tọa độ hải văn").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().name("Chia cắt").description("Ký hiệu phân làn giao thông hàng hải").image(defaultImg).status(MapSymbolStatus.INACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().name("Cửa tầng").description("Ký hiệu cửa thu nước cảng biển").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().name("Bến ngầm").description("Ký hiệu bến đậu ngầm của tàu ngầm").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().name("Địa điểm").description("Ký hiệu địa điểm cảng vụ").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().name("Phao loại A").description("Ký hiệu phao tiêu chỉ giới loại A").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().name("Phao loại B").description("Ký hiệu phao tiêu chỉ giới loại B").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().name("Đèn biển chính").description("Hải đăng cấp 1 khu vực ven bờ").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().name("Đèn biển phụ").description("Đèn báo hiệu phụ lối vào luồng").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().name("Vùng cấm").description("Ký hiệu vùng cấm neo đậu hàng hải").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().name("Vùng quay đầu").description("Ký hiệu vùng dành cho tàu quay đầu").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().name("Neo bão").description("Ký hiệu khu vực trú bão của tàu").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build(),
+            MapSymbol.builder().name("Quét lôi").description("Ký hiệu khu vực đang rà quét chướng ngại vật").image(defaultImg).status(MapSymbolStatus.ACTIVE).createdBy(java.util.UUID.randomUUID()).build()
         );
 
         mapSymbolRepo.saveAll(symbols);

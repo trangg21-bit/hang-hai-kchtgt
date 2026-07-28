@@ -3,8 +3,8 @@ package com.hanghai.kchtg.group.dto;
 import java.util.UUID;
 
 import com.hanghai.kchtg.group.entity.GroupMember;
-import com.hanghai.kchtg.group.entity.GroupMemberStatus;
 import com.hanghai.kchtg.group.entity.GroupStatus;
+import com.hanghai.kchtg.group.entity.GroupType;
 import com.hanghai.kchtg.group.entity.UserGroup;
 import lombok.Value;
 
@@ -25,7 +25,7 @@ public class UserGroupResponse {
     String name;
     String code;
     String description;
-    String groupType;
+    GroupType groupType;
     GroupStatus status;
     long memberCount;
     LocalDateTime createdAt;
