@@ -43,5 +43,7 @@ public class AccessLogFilterRequest {
     /** Filter by session identifier. */
     private String sessionId;
 
+    /** Filter by username. */
+    private String username;
 
 }

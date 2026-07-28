@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Records every user-facing access to the system for audit and traceability.
@@ -32,11 +33,11 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class AccessLog {
 
-    /** Primary key — BIGINT auto-increment (replaces legacy UUID PK). */
+    /** Primary key — UUID. */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "id", updatable = false, nullable = false)
-    private Long id;
+    private UUID id;
 
     /** ID of the user who performed the action. */
     @Column(name = "userId", nullable = false)
