@@ -40,6 +40,7 @@ Người dùng đăng nhập vào hệ thống, thực hiện đăng ký văn b�
 - Người dùng có thể xem chi tiết, sửa đổi và theo dõi lịch sử thay đổi của từng văn bản
 - Hệ thống tự động gửi cảnh báo khi văn bản sắp hết hiệu lực (trước 30 ngày)
 - Chỉ người có quyền Admin mới được phép xóa hoặc vô hiệu hóa văn bản trong hệ thống
+- Người dùng có quyền Analyst trở lên có thể upload tài liệu đính kèm (PDF, Word, ảnh) vào văn bản, mỗi file tối đa 10MB, hiển thị tên file và ngày tải lên trong danh sách đính kèm
 
 ## In Scope
 
