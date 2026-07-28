@@ -394,3 +394,10 @@ CREATE TABLE app_users (
     deleted_at TIMESTAMP
 );
 
+CREATE TABLE public.org_units (
+    id UUID PRIMARY KEY,
+    status VARCHAR(50),
+    unit_type VARCHAR(50),
+    type VARCHAR(50)
+);
+
