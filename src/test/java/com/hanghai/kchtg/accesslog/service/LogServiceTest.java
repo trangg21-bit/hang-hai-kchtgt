@@ -53,7 +53,7 @@ class LogServiceTest {
 
     private LogService logService;
 
-    private UUID logId;
+    private Long logId;
     private Long userId;
 
     @BeforeEach
@@ -61,7 +61,7 @@ class LogServiceTest {
         logService = new LogService(accessLogService, repository, retentionPolicyRepository, aggregateRepository, "", "./logs");
         ReflectionTestUtils.setField(logService, "accessLogService", accessLogService);
 
-        logId = UUID.randomUUID();
+        logId = 1L;
         userId = 42L;
     }
 
