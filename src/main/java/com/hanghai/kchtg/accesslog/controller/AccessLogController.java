@@ -5,6 +5,8 @@ import com.hanghai.kchtg.accesslog.dto.AccessLogResponse;
 import com.hanghai.kchtg.accesslog.service.AccessLogService;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import org.slf4j.Logger;
+
+import java.util.UUID;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -71,7 +73,7 @@ public class AccessLogController {
      */
     @GetMapping("/{id}")
     @PreAuthorize("@auth.check(authentication, 'admin:view')")
-    public ResponseEntity<ApiResponse<AccessLogResponse>> getById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<AccessLogResponse>> getById(@PathVariable UUID id) {
         log.debug("Fetching access-log entry: id={}", id);
         AccessLogResponse response = service.findById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
