@@ -60,7 +60,7 @@ export const portCRUD = {
     portCode?: string;
     portName?: string;
     province?: string;
-    operationalStatus?: string;
+    portStatus?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<Port>> {
@@ -68,7 +68,7 @@ export const portCRUD = {
       portCode: params?.portCode,
       portName: params?.portName,
       province: params?.province,
-      operationalStatus: params?.operationalStatus,
+      portStatus: params?.portStatus,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
@@ -94,6 +94,29 @@ export const portCRUD = {
 
   async delete(id: string): Promise<void> {
     await api.delete(`/v1/ports/${id}`);
+  },
+
+  async generateCode(): Promise<string> {
+    const res = await api.get('/v1/ports/generate-code');
+    return res.data.data?.code || '';
+  },
+
+  async getChildren(id: string): Promise<{ berths: number; waterZones: number }> {
+    const res = await api.get(`/v1/ports/${id}/children`);
+    return res.data.data;
+  },
+
+  async uploadAttachment(id: string, file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post(`/v1/ports/${id}/attachments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+
+  async deleteAttachment(id: string, attId: string): Promise<void> {
+    await api.delete(`/v1/ports/${id}/attachments/${attId}`);
   },
 };
 
@@ -125,6 +148,16 @@ export const berthCRUD = {
     return res.data.data;
   },
 
+  async generateCode(): Promise<string> {
+    const res = await api.get('/v1/berths/generate-code');
+    return res.data.data?.code || res.data.data || '';
+  },
+
+  async getChildren(id: string): Promise<{ piers: number }> {
+    const res = await api.get(`/v1/berths/${id}/children`);
+    return res.data.data || { piers: 0 };
+  },
+
   async search(params?: {
     search?: string;
     berthCode?: string;
@@ -132,6 +165,7 @@ export const berthCRUD = {
     portId?: string;
     berthType?: string;
     tuyenDuongThuy?: string;
+    portStatus?: string;
     operationalStatus?: string;
     approvalStatus?: string;
     page?: number;
@@ -144,6 +178,7 @@ export const berthCRUD = {
       portId: params?.portId,
       berthType: params?.berthType,
       tuyenDuongThuy: params?.tuyenDuongThuy,
+      portStatus: params?.portStatus,
       operationalStatus: params?.operationalStatus,
       approvalStatus: params?.approvalStatus,
       page: params?.page !== undefined ? params.page - 1 : undefined,

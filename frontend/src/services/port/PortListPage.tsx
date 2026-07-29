@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   Button,
   Space,
@@ -8,7 +8,6 @@ import {
   Col,
   Input,
   Select,
-  Tooltip,
   Spin,
   Modal,
   Form,
@@ -16,27 +15,30 @@ import {
   Typography,
   Descriptions,
   Tabs,
+  Upload,
 } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
   CheckCircleOutlined,
+  CloseCircleOutlined,
   EyeOutlined,
   HistoryOutlined,
   UploadOutlined,
   DownloadOutlined,
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import {
   fetchCangBienList,
   deleteCangBien,
   approveCangBien,
   rejectCangBien,
   fetchCangBienById,
+  fetchPortStatusCounts,
 } from './api';
-import { trangThaiHoatDongBadge, trangThaiPheDuyetBadge, TRANG_THAI_HOAT_DONG_OPTIONS } from './schema';
+import { trangThaiPheDuyetBadge } from './schema';
 import type { CangBienResponse } from './types';
 import toast from '../../components/ToastNotification';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
@@ -48,19 +50,19 @@ import GisLocationSelector from '../../components/gis/GisLocationSelector';
 import { symbolService } from '../symbolService';
 import type { Symbol } from '../symbolService';
 import { VIETNAM_PROVINCES } from '../../types/common';
+import { PORT_STATUS_MAP } from '../../types/port';
+import type { PortStatusValue } from '../../types/port';
 import { ScreenHeader, FilterBar, StatusTabs, DataTable } from '../../components/list-view';
 import Pagination from '../../components/list-view/Pagination';
 import {
   statusOperational,
+  statusDraft,
   statusCritical,
   statusAttention,
   actionPrimary,
   textSecondary,
   textTertiary,
   borderDefault,
-  spaceMd,
-  spaceSm,
-  fontSizeSm,
   fontSizeMd,
   fontWeightMedium,
   fontWeightBold,
@@ -89,6 +91,23 @@ function formatDate(dateStr: string | null): string {
   } catch {
     return dateStr;
   }
+}
+
+// ── PortStatus badge renderer ────────────────────────────────────────
+
+function renderPortStatusBadge(status: string | null | undefined): React.ReactNode {
+  if (!status) return <span style={{ color: textTertiary }}>—</span>;
+  const s = PORT_STATUS_MAP[status as PortStatusValue];
+  if (!s) return <Tag>{status}</Tag>;
+  return (
+    <span style={{
+      display: 'inline-flex', padding: '2px 10px', borderRadius: 999,
+      fontSize: fontSizeMd, fontWeight: fontWeightMedium,
+      background: `${s.color}15`, color: s.color,
+    }}>
+      {s.label}
+    </span>
+  );
 }
 
 // ── List Page ───────────────────────────────────────────────────────
@@ -147,7 +166,6 @@ const labelProps = (text: string) => ({
 });
 
 export default function PortListPage() {
-  const navigate = useNavigate();
 
   // ── Permission ──────────────────────────────────────────────────
   const hasPerm = usePermissionStore((s) => s.hasPermission);
@@ -156,7 +174,6 @@ export default function PortListPage() {
   const [search, setSearch] = useState('');
   const [filterTinh, setFilterTinh] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
-  const [filterApprovalStatus, setFilterApprovalStatus] = useState<string | undefined>();
   const [activeStatusTab, setActiveStatusTab] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -164,6 +181,7 @@ export default function PortListPage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
 
   // Modals visibility
   const [createModalVisible, setCreateModalVisible] = useState(false);
@@ -181,6 +199,25 @@ export default function PortListPage() {
   const [submitting, setSubmitting] = useState(false);
   const [orgUnits, setOrgUnits] = useState<any[]>([]);
   const [symbols, setSymbols] = useState<Symbol[]>([]);
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectTarget, setRejectTarget] = useState<CangBienResponse | null>(null);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<CangBienResponse | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [coords, setCoords] = useState<Array<{ latitude: number | null; longitude: number | null }>>([]);
+  const [infras, setInfras] = useState<Array<{ stt: number | null; name: string; qty: number | null }>>([]);
+  const [fileList, setFileList] = useState<any[]>([]);
+  const addCoord = () => setCoords([...coords, { latitude: null, longitude: null }]);
+  const removeCoord = (idx: number) => setCoords(coords.filter((_, i) => i !== idx));
+  const updateCoord = (idx: number, field: 'latitude' | 'longitude', value: number | null) => {
+    const updated = [...coords]; updated[idx] = { ...updated[idx], [field]: value }; setCoords(updated);
+  };
+  const addInfra = () => setInfras([...infras, { stt: null, name: '', qty: null }]);
+  const removeInfra = (idx: number) => setInfras(infras.filter((_, i) => i !== idx));
+  const updateInfra = (idx: number, field: 'stt' | 'name' | 'qty', value: any) => {
+    const updated = [...infras]; updated[idx] = { ...updated[idx], [field]: value }; setInfras(updated);
+  };
 
   const closeUpdateModal = useCallback(() => {
     setUpdateModalVisible(false);
@@ -270,6 +307,19 @@ export default function PortListPage() {
     }
   }, []);
 
+  const fetchStatusCounts = useCallback(async () => {
+    try {
+      const counts = await fetchPortStatusCounts();
+      setStatusCounts(counts);
+    } catch (err) {
+      console.error('Failed to load status counts', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchStatusCounts();
+  }, [fetchStatusCounts]);
+
   useEffect(() => {
     const parentOrgUnits = (window.parent as any)?.kchtOrgUnits;
     const parentSymbols = (window.parent as any)?.kchtSymbols;
@@ -305,8 +355,8 @@ export default function PortListPage() {
         return '(trống)';
       }
       if (['bieuTuongId', 'iconId', 'lineSymbolId', 'fillSymbolId'].includes(fieldName)) {
-        const sym = symbols.find((s) => s.id === val);
-        return sym ? `${sym.name} (${sym.code})` : val;
+          const sym = symbols.find((s) => s.id === val);
+          return sym ? `${sym.name} (${(sym as any).code || ''})` : val;
       }
       if (['khongGianId', 'spatialId'].includes(fieldName)) {
         return 'Có tọa độ bản đồ';
@@ -314,7 +364,7 @@ export default function PortListPage() {
       if (fieldName === 'approvalStatus') {
         const approvalMap: Record<string, string> = {
           CHO_PHE_DUYET: 'Chờ phê duyệt',
-          DUOC_PHE_DUYET: 'Được phê duyệt',
+          DA_PHE_DUYET: 'Đã phê duyệt',
           TU_CHOI: 'Từ chối',
         };
         return approvalMap[val.toUpperCase()] || val;
@@ -340,13 +390,15 @@ export default function PortListPage() {
   const handleCreateFinish = async (values: Record<string, unknown>) => {
     const portCode = String(values.portCode).trim();
     const portName = String(values.portName).trim();
-    if (!portCode) { toast.error('Mã cảng không được để trống'); return; }
+    const isDraft = (values.action as string) === 'draft';
+
+    if (!isDraft && (!portCode || portCode === '')) { toast.error('Mã cảng không được để trống'); return; }
     if (portCode.length > 50) { toast.error('Mã cảng tối đa 50 ký tự'); return; }
     if (!portName) { toast.error('Tên cảng không được để trống'); return; }
     if (portName.length > 255) { toast.error('Tên cảng tối đa 255 ký tự'); return; }
 
     const area = values.area as number;
-    if (area === undefined || area === null || area <= 0) {
+    if (!isDraft && (area === undefined || area === null || area <= 0)) {
       toast.error('Diện tích phải lớn hơn 0');
       return;
     }
@@ -354,7 +406,7 @@ export default function PortListPage() {
     setSubmitting(true);
     try {
       const payload = {
-        portCode,
+        action: (values.action as string) || 'submit',
         portName,
         province: (values.province as string) || undefined,
         area,
@@ -367,7 +419,7 @@ export default function PortListPage() {
         loaiHinhHoc: values.loaiHinhHoc as string,
         toaDo: (values.gisLocation as any)?.toaDo || undefined,
         diaDiemChiTiet: (values.diaDiemChiTiet as string) || undefined,
-        phanCap: values.phanCap != null && !Number.isNaN(values.phanCap as number)
+        portClass: values.phanCap != null && !Number.isNaN(values.phanCap as number)
           ? Number(values.phanCap) : undefined,
         heQuyChieu: values.heQuyChieu != null && !Number.isNaN(values.heQuyChieu as number)
           ? Number(values.heQuyChieu) : undefined,
@@ -402,9 +454,31 @@ export default function PortListPage() {
           ? Number(values.quantityKhuChuyenTai) : undefined,
         cacKhuNuocKhac: (values.cacKhuNuocKhac as string) || undefined,
         remarks: (values.remarks as string) || undefined,
+        waterAreaScope: (values.waterAreaScope as string) || undefined,
+        coordinateSystem: values.coordinateSystem != null ? Number(values.coordinateSystem) : undefined,
+        displayRule: values.displayRule != null && !Number.isNaN(values.displayRule as number)
+          ? Number(values.displayRule) : undefined,
+        portCoordinates: coords.filter(c => c.latitude != null && c.longitude != null).map((c, i) => ({
+          latitude: c.latitude!, longitude: c.longitude!, sortOrder: i
+        })),
+        portInfrastructures: infras.filter(i => i.name && i.qty).map(i => ({
+          sequenceNumber: i.stt || 0, infrastructureName: i.name, quantity: i.qty!
+        })),
       };
-      await import('./api').then((m) => m.createCangBien(payload));
-      toast.success('Tạo mới thành công — chờ phê duyệt');
+      const result = await import('./api').then((m) => m.createCangBien(payload as any));
+      const code = (result as any)?.portCode || '';
+      toast.success(isDraft ? `Đã lưu tạm ${code}` : `Tạo mới thành công ${code} — chờ phê duyệt`);
+      // Upload files after successful creation
+      if (fileList.length > 0 && (result as any)?.id) {
+        const portId = (result as any).id;
+        const { uploadAttachment } = await import('./api');
+        for (const file of fileList) {
+          try { await uploadAttachment(portId, file); } catch { /* ignore */ }
+        }
+      }
+      setCoords([]);
+      setInfras([]);
+      setFileList([]);
       setCreateModalVisible(false);
       fetchData();
     } catch (err: unknown) {
@@ -422,6 +496,11 @@ export default function PortListPage() {
       setSubmitting(false);
     }
   };
+
+  const handleCreateDraft = useCallback(() => {
+    createForm.setFieldsValue({ action: 'draft' });
+    createForm.submit();
+  }, [createForm]);
 
   const handleFormFailed = (errorInfo: any) => {
     errorInfo.errorFields.forEach((field: any) => {
@@ -455,7 +534,7 @@ export default function PortListPage() {
         loaiHinhHoc: values.loaiHinhHoc as string,
         toaDo: (values.gisLocation as any)?.toaDo || undefined,
         diaDiemChiTiet: (values.diaDiemChiTiet as string) || undefined,
-        phanCap: n(values.phanCap),
+        portClass: n(values.phanCap),
         heQuyChieu: n(values.heQuyChieu),
         quyTacHienThi: n(values.quyTacHienThi),
         phamViVungNuoc: (values.phamViVungNuoc as string) || undefined,
@@ -500,8 +579,7 @@ export default function PortListPage() {
         size: pageSize,
         search: search || undefined,
         province: filterTinh || undefined,
-        operationalStatus: filterStatus,
-        approvalStatus: filterApprovalStatus,
+        portStatus: filterStatus,
         sortBy: 'updatedAt',
         sortOrder: 'desc',
       });
@@ -514,33 +592,32 @@ export default function PortListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, pageSize, search, filterTinh, filterStatus, filterApprovalStatus]);
+  }, [page, pageSize, search, filterTinh, filterStatus]);
 
   useEffect(() => { if (!isIframeModal) void fetchData(); }, [fetchData, isIframeModal]);
 
-  const handleDelete = useCallback(
-    async (record: CangBienResponse) => {
-      confirm({
-        title: 'Xác nhận xóa',
-        icon: <ExclamationCircleOutlined />,
-        content: `Bạn có chắc muốn xóa cảng biển "${record.portName}"?`,
-        okText: 'Xóa',
-        okType: 'danger',
-        cancelText: 'Hủy',
-        onOk: async () => {
-          try {
-            await deleteCangBien(record.id);
-            toast.success('Xóa thành công');
-            fetchData();
-          } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Xóa thất bại';
-            toast.error(msg);
-          }
-        },
-      });
-    },
-    [fetchData],
-  );
+  const handleDelete = useCallback((record: CangBienResponse) => {
+    setDeleteTarget(record);
+    setDeleteConfirmText('');
+    setDeleteModalVisible(true);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget) return;
+    if (deleteConfirmText !== deleteTarget.portName) {
+      toast.error('Tên cảng biển không khớp, vui lòng thử lại');
+      return;
+    }
+    try {
+      await deleteCangBien(deleteTarget.id);
+      toast.success('Xóa thành công');
+      setDeleteModalVisible(false);
+      setDeleteTarget(null);
+      fetchData();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
+    }
+  }, [deleteTarget, deleteConfirmText, fetchData]);
 
   const handleApprove = useCallback(
     (record: CangBienResponse) => {
@@ -555,6 +632,7 @@ export default function PortListPage() {
             await approveCangBien(record.id);
             toast.success('Phê duyệt thành công');
             fetchData();
+            fetchStatusCounts();
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Phê duyệt thất bại';
             toast.error(msg);
@@ -562,27 +640,27 @@ export default function PortListPage() {
         },
       });
     },
-    [fetchData],
+    [fetchData, fetchStatusCounts],
   );
 
-  const handleReject = useCallback(
-    async (record: CangBienResponse) => {
-      const reason = window.prompt('Lý do từ chối (tối thiểu 10 ký tự):', '');
-      if (reason === null || reason.length < 10) {
-        if (reason != null) toast.error('Lý do từ chối tối thiểu 10 ký tự');
-        return;
-      }
-      try {
-        await rejectCangBien(record.id, reason);
-        toast.success('Từ chối thành công');
-        fetchData();
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Từ chối thất bại';
-        toast.error(msg);
-      }
-    },
-    [fetchData],
-  );
+  const handleReject = useCallback(async () => {
+    if (!rejectTarget) return;
+    if (rejectReason.trim().length < 10) {
+      toast.warning('Lý do từ chối tối thiểu 10 ký tự');
+      return;
+    }
+    try {
+      await rejectCangBien(rejectTarget.id, rejectReason.trim());
+      toast.success('Từ chối thành công');
+      setRejectModalVisible(false);
+      setRejectReason('');
+      setRejectTarget(null);
+      fetchData();
+      fetchStatusCounts();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
+    }
+  }, [rejectTarget, rejectReason, fetchData, fetchStatusCounts]);
 
   const historyHandler = useCallback(async (record: CangBienResponse) => {
     try {
@@ -598,20 +676,6 @@ export default function PortListPage() {
       setLoadingHistory(false);
     }
   }, []);
-
-  const getOrgUnitName = useCallback(
-    (orgUnitId: string | null): string => {
-      if (!orgUnitId) return '—';
-      const unit = orgUnits.find((o) => o.id === orgUnitId);
-      return unit ? unit.name : orgUnitId.substring(0, 8) + '…';
-    },
-    [orgUnits],
-  );
-
-  const getPortGroupLabel = (val: number | null): string => {
-    if (!val) return '—';
-    return `Nhóm ${val}`;
-  };
 
   // ── rowActions callback ──────────────────────────────────────────
   const rowActions = useCallback(
@@ -690,13 +754,21 @@ export default function PortListPage() {
             }
           },
         });
-      if (hasPerm?.('Port:approve'))
+      if (hasPerm?.('Port:approve') && record.portStatus === 'CHO_PHE_DUYET') {
         actions.push({
           key: 'approve',
           label: 'Phê duyệt',
           icon: <CheckCircleOutlined />,
           onClick: () => handleApprove(record),
         });
+        actions.push({
+          key: 'reject',
+          label: 'Từ chối',
+          icon: <CloseCircleOutlined />,
+          danger: true,
+          onClick: () => { setRejectTarget(record); setRejectReason(''); setRejectModalVisible(true); },
+        });
+      }
       if (hasPerm?.('Port:delete'))
         actions.push({
           key: 'delete',
@@ -713,11 +785,11 @@ export default function PortListPage() {
       });
       return actions;
     },
-    [hasPerm, updateForm, handleApprove, handleDelete, historyHandler],
+    [hasPerm, updateForm, handleApprove, handleDelete, historyHandler, setRejectTarget, setRejectReason, setRejectModalVisible],
   );
 
   // ── Columns (DataTable format) ───────────────────────────────────
-  const columns = useMemo(
+  const columns: any = useMemo(
     () => [
       {
         key: 'sequenceNo',
@@ -741,59 +813,31 @@ export default function PortListPage() {
         label: 'Tên cảng',
         dataIndex: 'portName',
         width: 250,
-      },
-      {
-        key: 'orgUnitId',
-        label: 'Đơn vị quản lý',
-        dataIndex: 'orgUnitId',
-        width: 180,
-        render: (v: string | null) => getOrgUnitName(v),
+        ellipsis: true,
       },
       {
         key: 'province',
-        label: 'Tỉnh/Thành phố',
+        label: 'Tỉnh/TP',
         dataIndex: 'province',
         width: 150,
         render: (v: string | null) => v || '—',
       },
       {
-        key: 'portGroup',
-        label: 'Nhóm cảng biển',
-        dataIndex: 'portGroup',
-        width: 100,
-        render: (v: number | null) => getPortGroupLabel(v),
+        key: 'portStatus',
+        label: 'Trạng thái',
+        dataIndex: 'portStatus',
+        width: 160,
+        render: (v: string | null) => renderPortStatusBadge(v),
       },
       {
-        key: 'approvalStatus',
-        label: 'Phê duyệt',
-        dataIndex: 'approvalStatus',
-        width: 140,
-        render: (v: string) => {
-          if (!v) return '—';
-          const badge = trangThaiPheDuyetBadge(v);
-          let color = textTertiary;
-          if (badge.color === 'green') color = statusOperational;
-          else if (badge.color === 'red') color = statusCritical;
-          else if (badge.color === 'orange') color = statusAttention;
-          return (
-            <span
-              style={{
-                display: 'inline-flex',
-                padding: '2px 10px',
-                borderRadius: 999,
-                fontSize: fontSizeMd,
-                fontWeight: fontWeightMedium,
-                background: `${color}15`,
-                color,
-              }}
-            >
-              {badge.label}
-            </span>
-          );
-        },
+        key: 'updatedAt',
+        label: 'Ngày cập nhật',
+        dataIndex: 'updatedAt',
+        width: 180,
+        render: (v: string | null) => formatDate(v),
       },
     ],
-    [page, pageSize, getOrgUnitName, getPortGroupLabel],
+    [page, pageSize],
   );
 
   // ── Filter fields ────────────────────────────────────────────────
@@ -849,17 +893,14 @@ export default function PortListPage() {
                       if (createForm.resetFields) createForm.resetFields();
                       createForm.setFieldsValue({ approvalStatus: 'CHO_PHE_DUYET' });
                       setCreateModalVisible(true);
+                      setCoords([]);
+                      setInfras([]);
+                      setFileList([]);
+                      // Backend sẽ tự động sinh mã cảng
                     },
                   }
                 : null,
-              {
-                key: 'export',
-                label: 'Xuất Excel',
-                icon: <DownloadOutlined />,
-                variant: 'subtle' as const,
-                onClick: () => {},
-              },
-            ].filter(Boolean)}
+            ].filter(Boolean) as any}
           />
 
           <FilterBar
@@ -868,7 +909,7 @@ export default function PortListPage() {
               setSearch(values.search || '');
               setFilterTinh(values.province || '');
               setFilterStatus(values.operationalStatus || undefined);
-              setActiveStatusTab(values.operationalStatus || '');
+              setActiveStatusTab(values.portStatus || '');
               setPage(1);
             }}
             onReset={() => {
@@ -892,27 +933,12 @@ export default function PortListPage() {
           >
             <StatusTabs
               tabs={[
-                {
-                  key: 'all',
-                  label: 'Tất cả',
-                  count: total || 0,
-                  color: actionPrimary,
-                  active: !activeStatusTab,
-                },
-                {
-                  key: 'HIEN_HANH',
-                  label: 'Hiện hành',
-                  count: 0,
-                  color: statusOperational,
-                  active: activeStatusTab === 'HIEN_HANH',
-                },
-                {
-                  key: 'TAM_NGUNG',
-                  label: 'Tạm ngừng',
-                  count: 0,
-                  color: statusCritical,
-                  active: activeStatusTab === 'TAM_NGUNG',
-                },
+                { key: 'all', label: 'Tất cả', count: total || 0, color: actionPrimary, active: !activeStatusTab },
+                { key: 'NHAP', label: 'Nháp', count: statusCounts.NHAP || 0, color: statusDraft, active: activeStatusTab === 'NHAP' },
+                { key: 'CHO_PHE_DUYET', label: 'Chờ duyệt', count: statusCounts.CHO_PHE_DUYET || 0, color: statusAttention, active: activeStatusTab === 'CHO_PHE_DUYET' },
+                { key: 'DA_PHE_DUYET', label: 'Đã duyệt', count: statusCounts.DA_PHE_DUYET || 0, color: statusOperational, active: activeStatusTab === 'DA_PHE_DUYET' },
+                { key: 'TU_CHOI', label: 'Từ chối', count: statusCounts.TU_CHOI || 0, color: statusCritical, active: activeStatusTab === 'TU_CHOI' },
+                { key: 'TAM_NGUNG', label: 'Tạm ngừng', count: statusCounts.TAM_NGUNG || 0, color: statusAttention, active: activeStatusTab === 'TAM_NGUNG' },
               ]}
               onChange={(key) => {
                 setActiveStatusTab(key === 'all' ? '' : key);
@@ -972,7 +998,7 @@ export default function PortListPage() {
             </span>
           }
           open={createModalVisible}
-          onCancel={() => setCreateModalVisible(false)}
+          onCancel={() => { setCreateModalVisible(false); setCoords([]); setInfras([]); setFileList([]); }}
           footer={null}
           width={900}
           forceRender
@@ -984,6 +1010,7 @@ export default function PortListPage() {
             onFinishFailed={handleFormFailed}
             initialValues={{ approvalStatus: 'CHO_PHE_DUYET' }}
           >
+            <Form.Item name="action" hidden><Input /></Form.Item>
             <Tabs
               defaultActiveKey="general"
               items={[
@@ -1012,14 +1039,27 @@ export default function PortListPage() {
                         <Col span={12}>
                           <Form.Item
                             name="portCode"
-                            {...labelProps('Mã cảng *')}
+                            {...labelProps('Mã cảng')}
                             style={{ marginBottom: spaceFormField }}
                             rules={[
-                              { required: true, message: 'Mã cảng không được để trống' },
-                              { max: 50, message: 'Mã cảng tối đa 50 ký tự' },
+                              { max: 20, message: 'Mã cảng tối đa 20 ký tự' },
                             ]}
                           >
-                            <Input placeholder="VD: CB-HAIPHONG-001" maxLength={50} style={inputStyle} />
+                            <Input
+                              placeholder="Nhập mã hoặc để trống để tự sinh"
+                              maxLength={20}
+                              style={inputStyle}
+                              onBlur={async (e) => {
+                                const code = e.target.value.trim();
+                                if (!code) return;
+                                try {
+                                  const res = await fetchCangBienList({ portCode: code, size: 1 });
+                                  if (res.content?.length > 0) {
+                                    toast.warning(`Mã cảng "${code}" đã tồn tại`);
+                                  }
+                                } catch {}
+                              }}
+                            />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1058,6 +1098,26 @@ export default function PortListPage() {
                       <Row gutter={16}>
                         <Col span={12}>
                           <Form.Item
+                            name="area"
+                            {...labelProps('Diện tích (km²)')}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 23.50" style={numberInputStyle} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            name="portGroup"
+                            {...labelProps('Nhóm cảng biển')}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <InputNumber min={1} step={1} precision={0} placeholder="VD: 1" style={numberInputStyle} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <Form.Item
                             name="diaDiemChiTiet"
                             {...labelProps('Địa điểm chi tiết')}
                             style={{ marginBottom: spaceFormField }}
@@ -1075,7 +1135,7 @@ export default function PortListPage() {
                           </Form.Item>
                         </Col>
                       </Row>
-<Row gutter={16}>
+                      <Row gutter={16}>
                         <Col span={24}>
                           <Form.Item
                             name="remarks"
@@ -1083,6 +1143,13 @@ export default function PortListPage() {
                             style={{ marginBottom: spaceFormField }}
                           >
                             <Input.TextArea rows={2} placeholder="Ghi chú" maxLength={2000} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                      <Row gutter={16}>
+                        <Col span={24}>
+                          <Form.Item name="waterAreaScope" {...labelProps('Phạm vi vùng nước')} style={{ marginBottom: spaceFormField }}>
+                            <Input.TextArea rows={2} placeholder="Mô tả phạm vi vùng nước" maxLength={2000} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1242,6 +1309,28 @@ export default function PortListPage() {
                 },
                 {
                   key: 'gis',
+                  label: 'GIS',
+                  children: (
+                    <>
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <Form.Item name="coordinateSystem" {...labelProps('Hệ quy chiếu')} style={{ marginBottom: spaceFormField }}>
+                            <Select placeholder="WGS-84" options={[
+                              { value: 1, label: 'WGS-84' }, { value: 2, label: 'VN-2000' }, { value: 3, label: 'Khác' }
+                            ]} style={selectStyle} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item name="displayRule" {...labelProps('Quy tắc hiển thị')} style={{ marginBottom: spaceFormField }}>
+                            <InputNumber min={0} step={1} placeholder="VD: 1" style={numberInputStyle} />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </>
+                  ),
+                },
+                {
+                  key: 'location',
                   label: 'Vị trí',
                   children: (
                     <>
@@ -1278,7 +1367,7 @@ export default function PortListPage() {
                               style={selectStyle}
                             >
                               {symbols.map((sym) => (
-                                <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
+                                  <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${(sym as any).code || ''})`}>
                                   <Space>
                                     {sym.image && (
                                       <img
@@ -1292,7 +1381,7 @@ export default function PortListPage() {
                                       />
                                     )}
                                     <span>
-                                      {sym.name} ({sym.code})
+                                      {sym.name} ({(sym as any).code || ''})
                                     </span>
                                   </Space>
                                 </Select.Option>
@@ -1346,10 +1435,88 @@ export default function PortListPage() {
                         </Col>
                       </Row>
                     </>
+                   ),
+                 },
+                {
+                  key: 'gps',
+                  label: 'Tọa độ GPS',
+                  children: (
+                    <>
+                      {coords.map((coord, idx) => (
+                        <Row key={idx} gutter={8} style={{ marginBottom: 8 }}>
+                          <Col span={10}>
+                            <InputNumber placeholder="Vĩ độ" value={coord.latitude} min={-90} max={90} step={0.000001}
+                              onChange={(v) => updateCoord(idx, 'latitude', v)} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                          </Col>
+                          <Col span={10}>
+                            <InputNumber placeholder="Kinh độ" value={coord.longitude} min={-180} max={180} step={0.000001}
+                              onChange={(v) => updateCoord(idx, 'longitude', v)} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} />
+                          </Col>
+                          <Col span={4}>
+                            <Button danger icon={<DeleteOutlined />} onClick={() => removeCoord(idx)}
+                              style={{ borderRadius: radiusPill, height: 40 }} />
+                          </Col>
+                        </Row>
+                      ))}
+                      <Button type="dashed" icon={<PlusOutlined />} onClick={addCoord} block
+                        style={{ borderRadius: radiusPill, height: 40 }}>
+                        Thêm tọa độ
+                      </Button>
+                    </>
+                  ),
+                },
+                {
+                  key: 'infra',
+                  label: 'Công trình KCHT',
+                  children: (
+                    <>
+                      {infras.map((infra, idx) => (
+                        <Row key={idx} gutter={8} style={{ marginBottom: 8 }}>
+                          <Col span={4}><InputNumber placeholder="STT" value={infra.stt} min={1}
+                            onChange={(v) => updateInfra(idx, 'stt', v)} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Col>
+                          <Col span={10}><Input placeholder="Tên công trình" value={infra.name}
+                            onChange={(e) => updateInfra(idx, 'name', e.target.value)} style={{ borderRadius: radiusPill, height: 40 }} /></Col>
+                          <Col span={6}><InputNumber placeholder="Số lượng" value={infra.qty} min={1}
+                            onChange={(v) => updateInfra(idx, 'qty', v)} style={{ width: '100%', borderRadius: radiusPill, height: 40 }} /></Col>
+                          <Col span={4}><Button danger icon={<DeleteOutlined />} onClick={() => removeInfra(idx)}
+                            style={{ borderRadius: radiusPill, height: 40 }} /></Col>
+                        </Row>
+                      ))}
+                      <Button type="dashed" icon={<PlusOutlined />} onClick={addInfra} block
+                        style={{ borderRadius: radiusPill, height: 40 }}>
+                        Thêm công trình
+                      </Button>
+                    </>
+                  ),
+                },
+                {
+                  key: 'attachments',
+                  label: 'File đính kèm',
+                  children: (
+                    <>
+                      <Upload
+                        multiple
+                        showUploadList={{ showDownloadIcon: true, showRemoveIcon: true }}
+                        beforeUpload={(file) => {
+                          const isValidType = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/jpeg', 'image/png', 'image/tiff'].includes(file.type);
+                          if (!isValidType) { toast.error('Định dạng không hỗ trợ: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TIFF'); return Upload.LIST_IGNORE; }
+                          if (file.size > 20 * 1024 * 1024) { toast.error('File tối đa 20MB'); return Upload.LIST_IGNORE; }
+                          if (fileList.length >= 10) { toast.error('Tối đa 10 file'); return Upload.LIST_IGNORE; }
+                          setFileList([...fileList, file]);
+                          return false; // prevent auto-upload
+                        }}
+                        onRemove={(file) => { setFileList(fileList.filter(f => f.uid !== file.uid)); }}
+                        fileList={fileList}
+                      >
+                        <Button icon={<UploadOutlined />} style={{ borderRadius: radiusPill, height: 40 }}>
+                          Chọn file (PDF, DOC, XLS, JPG, PNG, TIFF, &le;20MB, &le;10 files)
+                        </Button>
+                      </Upload>
+                    </>
                   ),
                 },
               ]}
-            />
+             />
 
             <Form.Item style={{ marginTop: 24, marginBottom: 0, textAlign: 'right' }}>
               <Space>
@@ -1365,10 +1532,14 @@ export default function PortListPage() {
                 >
                   Hủy
                 </Button>
+                <Button onClick={() => handleCreateDraft()} style={{ borderRadius: radiusPill, height: 40 }}>
+                  Lưu tạm
+                </Button>
                 <Button
                   type="primary"
                   htmlType="submit"
                   loading={submitting}
+                  onClick={() => { createForm.setFieldsValue({ action: 'submit' }); }}
                   style={{
                     borderRadius: radiusPill,
                     height: 40,
@@ -1480,6 +1651,26 @@ export default function PortListPage() {
                               options={VIETNAM_PROVINCES.map((p) => ({ value: p, label: p }))}
                               style={selectStyle}
                             />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <Form.Item
+                            name="area"
+                            {...labelProps('Diện tích (km²)')}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <InputNumber min={0} step={0.01} precision={2} placeholder="VD: 23.50" style={numberInputStyle} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            name="portGroup"
+                            {...labelProps('Nhóm cảng biển')}
+                            style={{ marginBottom: spaceFormField }}
+                          >
+                            <InputNumber min={1} step={1} precision={0} placeholder="VD: 1" style={numberInputStyle} />
                           </Form.Item>
                         </Col>
                       </Row>
@@ -1723,7 +1914,7 @@ export default function PortListPage() {
                               style={selectStyle}
                             >
                               {symbols.map((sym) => (
-                                <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${sym.code})`}>
+                                  <Select.Option key={sym.id} value={sym.id} label={`${sym.name} (${(sym as any).code || ''})`}>
                                   <Space>
                                     {sym.image && (
                                       <img
@@ -1737,7 +1928,7 @@ export default function PortListPage() {
                                       />
                                     )}
                                     <span>
-                                      {sym.name} ({sym.code})
+                                      {sym.name} ({(sym as any).code || ''})
                                     </span>
                                   </Space>
                                 </Select.Option>
@@ -2326,6 +2517,54 @@ export default function PortListPage() {
               })}
           </div>
         )}
+      </Modal>
+
+      {/* ── Reject Modal ── */}
+      <Modal
+        title={rejectTarget ? `Từ chối cảng biển: ${rejectTarget.portCode} — ${rejectTarget.portName}` : 'Từ chối'}
+        open={rejectModalVisible}
+        onCancel={() => { setRejectModalVisible(false); setRejectReason(''); setRejectTarget(null); }}
+        onOk={handleReject}
+        okText="Xác nhận từ chối"
+        cancelText="Hủy"
+        okButtonProps={{ danger: true, disabled: rejectReason.trim().length < 10 }}
+      >
+        <div style={{ marginBottom: 12 }}>
+          <Typography.Text>Lý do từ chối (tối thiểu 10 ký tự):</Typography.Text>
+        </div>
+        <Input.TextArea
+          rows={4}
+          value={rejectReason}
+          onChange={(e) => setRejectReason(e.target.value)}
+          placeholder="Nhập lý do từ chối..."
+          maxLength={500}
+          showCount
+        />
+        {rejectReason.trim().length > 0 && rejectReason.trim().length < 10 && (
+          <Typography.Text type="danger" style={{ fontSize: 13 }}>
+            Lý do từ chối tối thiểu 10 ký tự
+          </Typography.Text>
+        )}
+      </Modal>
+
+      {/* ── Delete Confirmation Modal ── */}
+      <Modal
+        title="Xác nhận xóa"
+        open={deleteModalVisible}
+        onCancel={() => { setDeleteModalVisible(false); setDeleteTarget(null); setDeleteConfirmText(''); }}
+        onOk={handleDeleteConfirm}
+        okText="Xóa"
+        okType="danger"
+        cancelText="Hủy"
+        okButtonProps={{ disabled: deleteConfirmText !== deleteTarget?.portName }}
+      >
+        <p>Vui lòng nhập <strong>{deleteTarget?.portName}</strong> để xác nhận xóa cảng biển này.</p>
+        <Input
+          placeholder="Nhập tên cảng biển"
+          value={deleteConfirmText}
+          onChange={(e) => setDeleteConfirmText(e.target.value)}
+          style={{ marginTop: 8 }}
+        />
       </Modal>
 
       {selectedRecord && (

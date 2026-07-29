@@ -5,11 +5,19 @@ import type {
   UpdateCangBienRequest,
   PageResponse,
   ApprovalResult,
+  PortChildrenSummary,
 } from './types';
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
 const BASE = '/v1/ports';
+
+// ── Code generation ─────────────────────────────────────────────────
+
+export async function generatePortCode(): Promise<string> {
+  const res = await api.get(`${BASE}/generate-code`);
+  return res.data.data?.code || '';
+}
 
 // ── CRUD ────────────────────────────────────────────────────────────
 
@@ -21,8 +29,7 @@ export async function fetchCangBienList(params: {
   portCode?: string;
   portName?: string;
   province?: string;
-  operationalStatus?: string;
-  approvalStatus?: string;
+  portStatus?: string;         // NEW: filter by unified status
   sortBy?: string;
   sortOrder?: string;
 }): Promise<PageResponse<CangBienResponse>> {
@@ -34,8 +41,7 @@ export async function fetchCangBienList(params: {
   if (params.portCode) sp.set('portCode', params.portCode);
   if (params.portName) sp.set('portName', params.portName);
   if (params.province) sp.set('province', params.province);
-  if (params.operationalStatus) sp.set('operationalStatus', params.operationalStatus);
-  if (params.approvalStatus) sp.set('approvalStatus', params.approvalStatus);
+  if (params.portStatus) sp.set('portStatus', params.portStatus);
   if (params.sortBy) sp.set('sort', `${params.sortBy},${params.sortOrder ?? 'desc'}`);
 
   const res = await api.get(`${BASE}?${sp}`);
@@ -61,6 +67,13 @@ export async function deleteCangBien(id: string): Promise<void> {
   await api.delete(`${BASE}/${id}`);
 }
 
+// ── Children check (before delete) ──────────────────────────────────
+
+export async function fetchPortChildren(id: string): Promise<PortChildrenSummary> {
+  const res = await api.get(`${BASE}/${id}/children`);
+  return res.data.data;
+}
+
 // ── Approval ────────────────────────────────────────────────────────
 
 export async function approveCangBien(id: string): Promise<ApprovalResult> {
@@ -71,6 +84,28 @@ export async function approveCangBien(id: string): Promise<ApprovalResult> {
 export async function rejectCangBien(id: string, reason: string): Promise<ApprovalResult> {
   const res = await api.post(`${BASE}/${id}/reject`, null, { params: { reason } });
   return res.data;
+}
+
+// ── Attachments ─────────────────────────────────────────────────────
+
+export async function uploadAttachment(id: string, file: File): Promise<any> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await api.post(`${BASE}/${id}/attachments`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data;
+}
+
+export async function deleteAttachment(id: string, attId: string): Promise<void> {
+  await api.delete(`${BASE}/${id}/attachments/${attId}`);
+}
+
+// ── Status counts ──────────────────────────────────────────────────
+
+export async function fetchPortStatusCounts(): Promise<Record<string, number>> {
+  const res = await api.get(`${BASE}/status-counts`);
+  return res.data.data ?? {};
 }
 
 // ── History ─────────────────────────────────────────────────────────

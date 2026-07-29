@@ -12,6 +12,10 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
+/**
+ * Request DTO for updating an existing Berth.
+ * Berth code is immutable after creation.
+ */
 @Data
 public class UpdateBerthRequest {
 
@@ -29,7 +33,6 @@ public class UpdateBerthRequest {
     private com.hanghai.kchtg.port.entity.BerthType berthType;
     private BigDecimal channelDepth;
     private String operationalFunction;
-    private com.hanghai.kchtg.common.entity.OperationalStatus operationalStatus;
     private UUID mapSymbolId;
     private GisGeometryType geometryType;
     private String coordinates;

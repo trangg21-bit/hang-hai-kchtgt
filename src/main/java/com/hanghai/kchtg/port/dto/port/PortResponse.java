@@ -2,11 +2,13 @@ package com.hanghai.kchtg.port.dto.port;
 
 import java.util.UUID;
 
+import com.hanghai.kchtg.port.entity.PortStatus;
 import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
@@ -25,9 +27,10 @@ public class PortResponse {
     private BigDecimal longitude;
     private BigDecimal area;
     private BigDecimal maxVesselCapacity;
-    private com.hanghai.kchtg.common.entity.OperationalStatus operationalStatus;
-    private com.hanghai.kchtg.common.entity.ApprovalStatus approvalStatus;
+    private PortStatus portStatus;
     private UUID orgUnitId;
+    private UUID managingUnitId;
+    private String notes;
     private Integer portGroup;
     private UUID createdBy;
     private UUID updatedBy;
@@ -63,4 +66,10 @@ public class PortResponse {
     private Integer transshipmentCount;
     private String otherWaterAreas;
     private String remarks;
+
+    // ── Composite sub-entities ───────────────────────────────────────
+
+    private List<CoordinateResponse> portCoordinates;
+    private List<InfrastructureResponse> portInfrastructures;
+    private List<AttachmentResponse> attachments;
 }

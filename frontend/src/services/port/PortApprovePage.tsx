@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react';
-import { Card, Button, Space, Typography, Tag, Row, Col, Form, Checkbox, Input } from 'antd';
-import { useNavigate, useParams } from 'react-router-dom';
-import { borderDefault } from '../../tokens';
-import { fetchCangBienById, approveCangBien, rejectCangBien } from './api';
-import { trangThaiPheDuyetBadge } from './schema';
+import { useEffect, useState, useCallback } from 'react';
+import { Card, Button, Typography, Tag, Row, Col, Input, Modal, Spin } from 'antd';
+import { borderDefault, actionPrimary, textTertiary, textPrimary, fontSizeMd, fontSizeSm, fontWeightMedium, radiusPill, cardStyle } from '../../tokens';
+import { fetchCangBienList, approveCangBien, rejectCangBien } from './api';
 import type { CangBienResponse } from './types';
 import toast from '../../components/ToastNotification';
-
-type TabType = 'approve' | 'reject';
+import { ScreenHeader } from '../../components/list-view';
+import { PORT_STATUS_MAP } from '../../types/port';
+import type { PortStatusValue } from '../../types/port';
+import EmptyState from '../../components/EmptyState';
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '—';
@@ -19,199 +19,190 @@ function formatDate(dateStr: string | null): string {
   } catch { return dateStr; }
 }
 
+function renderPortStatusBadge(status: string | null | undefined): React.ReactNode {
+  if (!status) return <span style={{ color: textTertiary }}>—</span>;
+  const s = PORT_STATUS_MAP[status as PortStatusValue];
+  if (!s) return <Tag>{status}</Tag>;
+  return (
+    <span style={{
+      display: 'inline-flex', padding: '2px 10px', borderRadius: 999,
+      fontSize: fontSizeMd, fontWeight: fontWeightMedium,
+      background: `${s.color}15`, color: s.color,
+    }}>
+      {s.label}
+    </span>
+  );
+}
+
 export default function PortApprovePage() {
-  const navigate = useNavigate();
-  const { id } = useParams<{ id: string }>();
-  const [data, setData] = useState<CangBienResponse | null>(null);
+  const [dataSource, setDataSource] = useState<CangBienResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [tab, setTab] = useState<TabType>('approve');
-  const [submitting, setSubmitting] = useState(false);
-  const [confirmChecked, setConfirmChecked] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
-  const [reasonError, setReasonError] = useState('');
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!id) return;
-    (async () => {
-      setIsLoading(true);
-      try {
-        const res = await fetchCangBienById(id);
-        setData(res);
-      } catch (err) {
-        console.error('Failed to fetch Port:', err);
-        toast.error('Không thể tải thông tin cảng biển');
-        navigate('/Port');
-      } finally {
-        setIsLoading(false);
-      }
-    })();
-  }, [id, navigate]);
-
-  if (isLoading || !data) {
-    return <div style={{ padding: 40, textAlign: 'center' }}>Đang tải...</div>;
-  }
-
-  const validateReason = (): boolean => {
-    if (tab !== 'reject') return true;
-    if (!rejectReason || rejectReason.length < 10) {
-      setReasonError('Lý do từ chối tối thiểu 10 ký tự');
-      return false;
-    }
-    if (rejectReason.length > 500) {
-      setReasonError('Lý do từ chối tối đa 500 ký tự');
-      return false;
-    }
-    setReasonError('');
-    return true;
-  };
-
-  const handleConfirm = async () => {
-    if (!confirmChecked) {
-      toast.error('Bạn cần xác nhận hành động này');
-      return;
-    }
-    if (tab === 'reject' && !validateReason()) return;
-
-    setSubmitting(true);
+  // ── Load pending ports ────────────────────────────────────────────
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
     try {
-      if (tab === 'approve') {
-        await approveCangBien(data.id);
-        toast.success('Phê duyệt thành công');
-      } else {
-        await rejectCangBien(data.id, rejectReason);
-        toast.success('Từ chối thành công');
-      }
-      navigate(`/Port/${data.id}`);
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : tab === 'approve' ? 'Phê duyệt thất bại' : 'Từ chối thất bại');
+      const res = await fetchCangBienList({
+        page: 0,
+        size: 200,
+        portStatus: 'CHO_PHE_DUYET',
+        sortBy: 'updatedAt',
+        sortOrder: 'desc',
+      });
+      setDataSource(res.content || []);
+    } catch {
+      toast.error('Không thể tải danh sách chờ phê duyệt');
     } finally {
-      setSubmitting(false);
+      setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => { void fetchData(); }, [fetchData]);
+
+  // ── Approve handler ───────────────────────────────────────────────
+  const handleApprove = useCallback(async (record: CangBienResponse) => {
+    Modal.confirm({
+      title: 'Xác nhận phê duyệt',
+      content: `Phê duyệt cảng biển "${record.portName}" (${record.portCode})?`,
+      okText: 'Phê duyệt',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        setSubmittingId(record.id);
+        try {
+          await approveCangBien(record.id);
+          toast.success('Phê duyệt thành công');
+          fetchData();
+        } catch (err: unknown) {
+          toast.error(err instanceof Error ? err.message : 'Phê duyệt thất bại');
+        } finally {
+          setSubmittingId(null);
+        }
+      },
+    });
+  }, [fetchData]);
+
+  // ── Reject handler ────────────────────────────────────────────────
+  const handleReject = useCallback(async (record: CangBienResponse) => {
+    let reason = '';
+    Modal.confirm({
+      title: 'Từ chối cảng biển',
+      icon: null,
+      content: (
+        <div style={{ marginTop: 8 }}>
+          <p>Lý do từ chối cho <strong>{record.portName}</strong>:</p>
+          <Input.TextArea
+            rows={4}
+            placeholder="Nhập lý do từ chối (tối thiểu 10 ký tự)"
+            onChange={(e) => { reason = e.target.value; }}
+            maxLength={500}
+            showCount
+          />
+        </div>
+      ),
+      okText: 'Từ chối',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk: async () => {
+        if (!reason || reason.length < 10) {
+          toast.error('Lý do từ chối tối thiểu 10 ký tự');
+          return Promise.reject();
+        }
+        setSubmittingId(record.id);
+        try {
+          await rejectCangBien(record.id, reason);
+          toast.success('Từ chối thành công');
+          fetchData();
+        } catch (err: unknown) {
+          toast.error(err instanceof Error ? err.message : 'Từ chối thất bại');
+        } finally {
+          setSubmittingId(null);
+        }
+      },
+    });
+  }, [fetchData]);
 
   return (
     <>
-      <Card style={{ marginBottom: 16 }}>
-        <Space>
-          <Button onClick={() => navigate(`/Port/${data.id}`)}>Quay lại</Button>
-          <Typography.Title level={5} style={{ margin: 0 }}>
-            Phê duyệt — {data.portCode} — {data.portName}
-          </Typography.Title>
-        </Space>
-      </Card>
+      <ScreenHeader
+        breadcrumb={[{ label: 'Quản lý cảng biển' }, { label: 'Phê duyệt' }]}
+        actions={[]}
+      />
 
-      <Card style={{ maxWidth: 700, margin: '0 auto' }}>
-        {/* Summary */}
-        <Card size="small" title="Thông tin cảng biển" style={{ marginBottom: 16 }}>
-          <Row gutter={[16, 8]}>
-            <Col span={12}>
-              <Typography.Text strong>Mã cảng:</Typography.Text>
-              <br />
-              <Tag color="cyan">{data.portCode}</Tag>
-            </Col>
-            <Col span={12}>
-              <Typography.Text strong>Tên cảng:</Typography.Text>
-              <br />
-              <Typography.Text>{data.portName}</Typography.Text>
-            </Col>
-            <Col span={12}>
-              <Typography.Text strong>Tỉnh/thành phố:</Typography.Text>
-              <br />
-              <Typography.Text>{data.province || '—'}</Typography.Text>
-            </Col>
-
-            <Col span={12}>
-              <Typography.Text strong>Diện tích (m²):</Typography.Text>
-              <br />
-              <Typography.Text>{data.area != null ? data.area.toFixed(2) : '—'}</Typography.Text>
-            </Col>
-            <Col span={12}>
-              <Typography.Text strong>Khả năng tiếp nhận:</Typography.Text>
-              <br />
-              <Typography.Text>{data.khaNangTiepNhan != null ? data.khaNangTiepNhan.toFixed(2) : '—'}</Typography.Text>
-            </Col>
-            <Col span={12}>
-              <Typography.Text strong>Trạng thái phê duyệt:</Typography.Text>
-              <br />
-              <Tag color={trangThaiPheDuyetBadge(data.approvalStatus || '').color}>
-                {trangThaiPheDuyetBadge(data.approvalStatus || '').label}
-              </Tag>
-            </Col>
-            <Col span={12}>
-              <Typography.Text strong>Tạo bởi:</Typography.Text>
-              <br />
-              <Typography.Text>{data.createdBy || '—'}</Typography.Text>
-            </Col>
-            <Col span={12}>
-              <Typography.Text strong>Ngày tạo:</Typography.Text>
-              <br />
-              <Typography.Text>{formatDate(data.createdAt)}</Typography.Text>
-            </Col>
-          </Row>
-        </Card>
-
-        {/* Tab Switcher */}
-        <Space.Compact style={{ width: '100%', marginBottom: 16 }}>
-          <Button type={tab === 'approve' ? 'primary' : 'default'} onClick={() => { setTab('approve'); setConfirmChecked(false); }} style={{ flex: 1 }}>
-            ✅ Phê duyệt
-          </Button>
-          <Button type={tab === 'reject' ? 'primary' : 'default'} danger={tab === 'reject'} onClick={() => { setTab('reject'); setConfirmChecked(false); }} style={{ flex: 1 }}>
-            ❌ Từ chối
-          </Button>
-        </Space.Compact>
-
-        {/* Approval Form */}
-        {tab === 'approve' ? (
-          <Form layout="vertical">
-            <Form.Item label="Xác nhận">
-              <Space>
-                <Checkbox checked={confirmChecked} onChange={(e) => setConfirmChecked(e.target.checked)}>
-                  Tôi xác nhận hành động này
-                </Checkbox>
-              </Space>
-            </Form.Item>
-          </Form>
+      <div style={{ ...cardStyle, padding: 16 }}>
+        {isLoading ? (
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <Spin size="large" />
+            <p style={{ color: textTertiary, marginTop: 16 }}>Đang tải danh sách...</p>
+          </div>
+        ) : dataSource.length === 0 ? (
+          <EmptyState description="Không có cảng biển nào chờ phê duyệt" />
         ) : (
-          <Form layout="vertical">
-            <Form.Item
-              label="Lý do từ chối *"
-              validateStatus={reasonError ? 'error' : ''}
-              help={reasonError}
-            >
-              <Input.TextArea
-                rows={4}
-                value={rejectReason}
-                onChange={(e) => { setRejectReason(e.target.value); setReasonError(''); }}
-                placeholder="Nhập lý do từ chối (tối thiểu 10 ký tự)"
-                aria-label="Lý do từ chối"
-              />
-            </Form.Item>
-            <Form.Item label="Xác nhận">
-              <Space>
-                <Checkbox checked={confirmChecked} onChange={(e) => setConfirmChecked(e.target.checked)}>
-                  Tôi xác nhận hành động này
-                </Checkbox>
-              </Space>
-            </Form.Item>
-          </Form>
-        )}
+          <div>
+            <Typography.Text strong style={{ display: 'block', marginBottom: 16, color: textPrimary, fontSize: fontSizeMd }}>
+              Danh sách cảng biển chờ phê duyệt ({dataSource.length})
+            </Typography.Text>
 
-        {/* Footer */}
-        <div style={{ borderTop: `1px solid ${borderDefault}`, paddingTop: 16, marginTop: 8 }}>
-          <Space>
-            <Button onClick={() => navigate(`/Port/${data.id}`)}>Hủy</Button>
-            <Button
-              type="primary"
-              danger={tab === 'reject'}
-              onClick={handleConfirm}
-              loading={submitting}
-              disabled={!confirmChecked}
-            >
-              {tab === 'approve' ? 'Phê duyệt' : 'Từ chối'}
-            </Button>
-          </Space>
-        </div>
-      </Card>
+            {dataSource.map((record) => (
+              <Card
+                key={record.id}
+                size="small"
+                style={{ marginBottom: 12, border: `1px solid ${borderDefault}` }}
+                actions={[
+                  <Button
+                    key="approve"
+                    type="primary"
+                    size="small"
+                    loading={submittingId === record.id}
+                    onClick={() => handleApprove(record)}
+                    style={{ borderRadius: radiusPill, height: 32, fontSize: fontSizeMd, background: actionPrimary }}
+                  >
+                    Phê duyệt
+                  </Button>,
+                  <Button
+                    key="reject"
+                    danger
+                    size="small"
+                    loading={submittingId === record.id}
+                    onClick={() => handleReject(record)}
+                    style={{ borderRadius: radiusPill, height: 32, fontSize: fontSizeMd }}
+                  >
+                    Từ chối
+                  </Button>,
+                ]}
+              >
+                <Row gutter={[16, 8]}>
+                  <Col xs={24} sm={6}>
+                    <Typography.Text style={{ color: textTertiary, fontSize: fontSizeSm }}>Mã cảng</Typography.Text>
+                    <br />
+                    <Tag color="cyan" style={{ fontSize: fontSizeMd }}>{record.portCode}</Tag>
+                  </Col>
+                  <Col xs={24} sm={8}>
+                    <Typography.Text style={{ color: textTertiary, fontSize: fontSizeSm }}>Tên cảng</Typography.Text>
+                    <br />
+                    <Typography.Text style={{ fontSize: fontSizeMd, fontWeight: fontWeightMedium }}>{record.portName}</Typography.Text>
+                  </Col>
+                  <Col xs={24} sm={5}>
+                    <Typography.Text style={{ color: textTertiary, fontSize: fontSizeSm }}>Tỉnh/TP</Typography.Text>
+                    <br />
+                    <Typography.Text style={{ fontSize: fontSizeMd }}>{record.province || '—'}</Typography.Text>
+                  </Col>
+                  <Col xs={12} sm={3}>
+                    <Typography.Text style={{ color: textTertiary, fontSize: fontSizeSm }}>Trạng thái</Typography.Text>
+                    <br />
+                    {renderPortStatusBadge(record.portStatus)}
+                  </Col>
+                  <Col xs={12} sm={2}>
+                    <Typography.Text style={{ color: textTertiary, fontSize: fontSizeSm }}>Ngày tạo</Typography.Text>
+                    <br />
+                    <Typography.Text style={{ fontSize: fontSizeSm }}>{formatDate(record.createdAt)}</Typography.Text>
+                  </Col>
+                </Row>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </>
   );
 }

@@ -6,6 +6,7 @@ import com.hanghai.kchtg.port.dto.pier.*;
 import com.hanghai.kchtg.port.entity.Berth;
 import com.hanghai.kchtg.port.entity.Pier;
 import com.hanghai.kchtg.port.entity.PierType;
+import com.hanghai.kchtg.port.entity.PortStatus;
 import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.port.repository.BerthRepository;
@@ -51,9 +52,9 @@ public class PierService {
         Berth parent = berthRepository.findById(request.getBerthId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Bến cảng không tồn tại: " + request.getBerthId()));
-        if (parent.getOperationalStatus() != OperationalStatus.HIEN_HANH) {
+        if (parent.getPortStatus() != PortStatus.DA_PHE_DUYET) {
             throw new IllegalArgumentException(
-                    "Không thể tạo cầu cảng: bến cảng cha phải ở trạng thái hoạt động (HIEN_HANH)");
+                    "Không thể tạo cầu cảng: bến cảng cha phải ở trạng thái đã phê duyệt (DA_PHE_DUYET)");
         }
 
         UUID pierId = UUID.randomUUID();
