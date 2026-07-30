@@ -2,282 +2,92 @@
 feature-id: F-009
 document: lean-spec
 output-mode: lean
-last-updated: 2026-07-30
-source-brief: feature-brief.md
-consolidation: Merged with F-071
+last-updated: 2026-06-27
 ---
+# Quản lý Cảng biển - Cập nhật
 
-# F-009 — Quản lý Cảng biển - Cập nhật (Lean BA Spec)
+## Summary
 
-> **Nguồn dữ liệu:** Đặc tả này được đồng bộ với `ba/feature-brief.md` (cập nhật 2026-07-28 bởi BA Team Lead).
-> `feature-brief.md` là tài liệu gốc (source of truth) — nếu có mâu thuẫn, feature-brief.md được ưu tiên.
->
-> **Consolidation note:** Feature này đã được merged với F-071 (trước đây tách riêng). Toàn bộ logic cập nhật Cảng biển tập trung tại đây.
+Hệ thống cần cho phép người dùng có thẩm quyền cập nhật thông tin của Cảng biển đã tồn tại nhằm đảm bảo cơ sở dữ liệu luôn phản ánh đúng tình trạng thực tế của hạ tầng cảng. Giải pháp cung cấp biểu mẫu cập nhật có validation chặt chẽ, khóa mã cảng, cảnh báo khi cảng đang trong trạng thái đặc biệt, và ghi nhật ký thay đổi tự động sau mỗi lần lưu thành công. Thành công được đo bằng độ chính xác của dữ liệu cảng trong CSDL và tính đầy đủ của nhật ký thay đổi phục vụ kiểm toán.
 
-## 1. Summary
-
-| Field | Value |
-|---|---|
-| Feature ID | F-009 |
-| Name | Quản lý Cảng biển - Cập nhật |
-| Module | M-002 (Quản lý tài sản KCHTGT - Cảng & Bến) |
-| Complexity | Medium (7 fields, React Hook Form + Zod validation, auto change_log) |
-| Priority | High |
-
-**Business intent:** Cho phép người dùng có thẩm quyền cập nhật thông tin Cảng biển đã tồn tại thông qua form pre-fill. Mã cảng (port_code) là trường bất biến (read-only). Sau khi cập nhật thành công, hệ thống tự động reset `approval_status` về `CHỜ_PHÊ_DUYỆT` và ghi nhật ký thay đổi (`change_log`). Toast thông báo: **"Cập nhật thành công — chờ phê duyệt lại"**.
-
-## 2. Scope
+## Scope
 
 | | Items |
 |---|---|
-| **In scope** | Form pre-fill từ GET /api/v1/ports/:id; React Hook Form + Zod validation (6 trường có thể sửa: port_name, province_city, latitude, longitude, area, max_vessel_capacity); port_code readonly; Tự động reset approval_status = CHỜ_PHÊ_DUYỆT sau cập nhật; Tự động tạo change_log record; Kiểm tra HTTP 409 nếu port_code trùng; Toast "Cập nhật thành công — chờ phê duyệt lại" |
-| **Out of scope** | Sửa mã cảng (không cho phép — BR-001); Phê duyệt Cảng biển (F-011); Xóa Cảng biển (F-010); Xem lịch sử thay đổi (F-013); Bulk update |
-| **Assumptions** | Người dùng đã đăng nhập và có quyền cập nhật trong phạm vi đơn vị quản lý; Cảng biển đã tồn tại (được tạo qua F-008); port_code là khóa bất biến sau khi tạo |
+| In scope | Giao diện tra cứu và chọn Cảng biển cần cập nhật; Biểu mẫu cập nhật với dữ liệu hiện tại được điền sẵn; Validation các trường có thể thay đổi; Kiểm tra xung đột dữ liệu trước khi lưu; Ghi nhật ký thay đổi tự động (LichSuThayDoi); Thông báo kết quả cập nhật cho người dùng; Cảnh báo khi cảng đang trong trạng thái cho_phe_duyet hoặc da_xoa |
+| Out of scope | Thay đổi mã cảng sau khi tạo (không cho phép); Quy trình phê duyệt thay đổi lớn (F-011); Xóa Cảng biển (F-010); Xem lịch sử tất cả phiên bản (F-013); Xuất báo cáo lịch sử cập nhật |
+| Assumptions | Người dùng đã đăng nhập và có vai trò Admin hoặc Quản lý cảng; Cảng biển đã tồn tại trong hệ thống (được tạo qua F-008); Mã cảng là khóa bất biến sau khi tạo |
 
-## 3. Domain Model
+## User Stories
 
-### 3.1. Core Entity — `Port`
-
-F-009 tái sử dụng entity `Port` đã được định nghĩa tại F-008. Dưới đây là các trường liên quan đến luồng cập nhật:
-
-| Trường | Kiểu | Ràng buộc khi cập nhật |
-|---|---|---|
-| `id` | UUID (PK) | Không đổi — dùng để định danh bản ghi cần cập nhật |
-| `port_code` | String (bất biến) | **Read-only** — không thể sửa (BR-001). Frontend disabled, backend từ chối nếu payload có thay đổi |
-| `port_name` | String | Có thể sửa |
-| `province_city` | String | Có thể sửa |
-| `latitude` | Double | Có thể sửa; ∈ [-90, 90] (BR-002) |
-| `longitude` | Double | Có thể sửa; ∈ [-180, 180] (BR-002) |
-| `area` | Double | Có thể sửa; ∈ [0, 5000] km² (BR-002) |
-| `max_vessel_capacity` | String | Có thể sửa |
-| `operational_status` | Enum | Có thể sửa |
-| `approval_status` | Enum | **Tự động reset = `CHỜ_PHÊ_DUYỆT`** sau mọi cập nhật (BR-003). Server-side ghi đè, bất kể payload |
-| `managing_unit` | UUID (FK) | Không đổi — đơn vị quản lý xác định phạm vi RBAC |
-| `created_by` / `created_at` | — | Dữ liệu lịch sử, không thay đổi |
-| `updated_by` / `updated_at` | — | Tự động cập nhật bởi hệ thống sau mỗi lần lưu |
-| `deleted_at` | Timestamp (nullable) | Nếu ≠ null → cảng đã bị xóa mềm (F-010), không cho phép cập nhật |
-
-### 3.2. Audit Entity — `change_log`
-
-Tự động tạo record sau mỗi lần cập nhật thành công (BR-004). Mỗi trường thay đổi tạo một record riêng:
-
-| Trường | Mô tả |
-|---|---|
-| `id` | UUID (PK) |
-| `port_id` | FK → port.id |
-| `changed_field` | Tên trường bị thay đổi (VD: "port_name", "latitude") |
-| `old_value` | Giá trị cũ trước khi cập nhật |
-| `new_value` | Giá trị mới sau khi cập nhật |
-| `changed_by` | User ID của người thực hiện |
-| `changed_at` | Timestamp |
-| `note` | (Tuỳ chọn) Ghi chú kèm |
-
-> **Immutability:** Record change_log không cho phép UPDATE hoặc DELETE bởi bất kỳ actor nào (kể cả Admin).
-
-### 3.3. Lifecycle State Transitions (liên quan đến F-009)
-
-```mermaid
-stateDiagram-v2
-    nhap --> cho_phe_duyet : Cập nhật (F-009) — auto reset
-    da_phe_duyet --> cho_phe_duyet : Cập nhật (F-009) — auto reset
-    tam_ngung --> cho_phe_duyet : Cập nhật (F-009) — auto reset
-    cho_phe_duyet --> cho_phe_duyet : Cập nhật (F-009) — giữ nguyên
-    da_xoa --> da_xoa : Không thể cập nhật (HTTP 422)
-```
-
-### 3.4. Invariants
-
-| # | Invariant | Cơ chế bảo vệ |
-|---|---|---|
-| I-001 | `port_code` bất biến — không API nào được phép sửa | Frontend: disabled input; Backend: bỏ qua/từ chối nếu payload chứa port_code khác (HTTP 409) |
-| I-002 | `approval_status` tự động reset = `CHỜ_PHÊ_DUYỆT` sau cập nhật | Server-side ghi đè, bất kể payload người dùng gửi lên |
-| I-003 | `updated_at` và `updated_by` tự động cập nhật bởi hệ thống | Không cho phép người dùng set giá trị |
-| I-004 | Toàn bộ thao tác (cập nhật port + ghi change_log) trong 1 transaction | `@Transactional`; rollback nếu bất kỳ phần nào thất bại |
-| I-005 | Cập nhật Cảng biển đã xóa mềm (deleted_at ≠ null) bị từ chối | Backend kiểm tra deleted_at trước khi cho phép |
-
-## 4. Actors & Permissions
-
-| Actor | Quyền | Phạm vi | Ghi chú |
-|---|---|---|---|
-| Admin (Quản trị hệ thống) | Cập nhật | Toàn bộ hệ thống | |
-| Lãnh đạo | Cập nhật | Toàn bộ hệ thống | |
-| Chuyên viên Cục | Cập nhật | Trong phạm vi đơn vị quản lý | |
-| Chuyên viên Cảng vụ | Cập nhật | Trong phạm vi đơn vị quản lý | |
-| Doanh nghiệp cảng | Cập nhật | Trong phạm vi đơn vị quản lý | |
-| Nhân viên vận hành | **Chỉ xem** | — | Không thấy nút/chức năng cập nhật; API trả về HTTP 403 |
-
-> **Cơ chế:** Permission kiểm tra server-side (không chỉ UI). Phạm vi đơn vị quản lý dựa trên `managing_unit` của người dùng và Cảng biển.
-
-## 5. User Stories & Acceptance Criteria
-
-> Chi tiết đầy đủ tại `feature-brief.md` Section 3 & 4. Dưới đây là bản tóm tắt.
-
-### User Stories (tóm tắt)
-
-| US-ID | Actor | Goal | Priority |
-|---|---|---|---|
-| US-009-01 | Người dùng có quyền | Mở form cập nhật với dữ liệu pre-fill từ GET /api/v1/ports/:id | Must |
-| US-009-02 | Người dùng có quyền | Sửa thông tin cảng (trừ port_code) và lưu thành công | Must |
-| US-009-03 | Hệ thống (tự động) | Reset approval_status = CHỜ_PHÊ_DUYỆT sau cập nhật | Must |
-| US-009-04 | Hệ thống (tự động) | Ghi change_log cho mỗi trường thay đổi | Must |
-| US-009-05 | Người dùng có quyền | Nhận thông báo toast "Cập nhật thành công — chờ phê duyệt lại" | Must |
-| US-009-06 | Nhân viên vận hành | Không thấy chức năng cập nhật | Must |
-
-### Acceptance Criteria (tóm tắt)
-
-| AC-ID | Nội dung | Loại |
-|---|---|---|
-| AC-009-01 | Mở form → port_code disabled, các trường khác pre-fill đúng dữ liệu hiện tại | Happy path |
-| AC-009-02 | Thay đổi port_name → lưu thành công → toast hiển thị | Happy path |
-| AC-009-03 | Nhập latitude = 95 → lỗi validation | Negative |
-| AC-009-04 | Nhập area = 6000 → lỗi validation | Negative |
-| AC-009-05 | Sau lưu → approval_status tự động = CHỜ_PHÊ_DUYỆT | Business rule |
-| AC-009-06 | Sau lưu → change_log có đúng bản ghi per trường thay đổi | Audit |
-| AC-009-07 | Nhân viên vận hành gọi PUT API → HTTP 403 | Security |
-| AC-009-08 | Cập nhật cảng bị xóa mềm → HTTP 422 | Negative |
-| AC-009-09 | Gửi payload có port_code khác → HTTP 409 | Security |
-| AC-009-10 | Toast message: "Cập nhật thành công — chờ phê duyệt lại" | UX |
-
-## 6. Business Rules (tóm tắt)
-
-> Chi tiết đầy đủ tại `feature-brief.md` Section 5.
-
-| BR-ID | Rule | Critical? |
-|---|---|---|
-| BR-001 | port_code **readonly**, không thể sửa — frontend disabled, backend từ chối | ✅ |
-| BR-002 | GPS ∈ [-90,90]/[-180,180]; area ∈ [0,5000] km² | ✅ |
-| BR-003 | **TỰ ĐỘNG RESET** `approval_status = CHỜ_PHÊ_DUYỆT` sau mọi cập nhật (server-side ghi đè) | ✅ |
-| BR-004 | Tự động tạo change_log record per trường thay đổi; immutable (không xóa/sửa) | ✅ |
-| BR-005 | Phân quyền server-side: Admin, Lãnh đạo, Chuyên viên Cục, Chuyên viên Cảng vụ, Doanh nghiệp cảng được cập nhật; Nhân viên vận hành chỉ xem | ✅ |
-| BR-006 | Cập nhật + ghi change_log trong 1 transaction; rollback nếu bất kỳ phần nào thất bại | ✅ |
-| BR-007 | Cảng biển đã xóa mềm (deleted_at ≠ null) không thể cập nhật — HTTP 422 | ✅ |
-| BR-008 | HTTP 409 nếu phát hiện xung đột dữ liệu (port_code trùng) | — |
-
-## 7. API Endpoints
-
-| Method | Endpoint | Mô tả | Permission | Request Body | Response |
-|---|---|---|---|---|---|
-| GET | `/api/v1/ports/:id` | Lấy chi tiết Cảng biển (pre-fill form) | PORT_VIEW (hoặc tương đương) | — | PortDTO (đầy đủ) |
-| PUT | `/api/v1/ports/:id` | Cập nhật Cảng biển | PORT_UPDATE | { port_name, province_city, latitude, longitude, area, max_vessel_capacity, operational_status } | PortDTO + toast message |
-
-**Chi tiết PUT /api/v1/ports/:id:**
-- Server-side ghi đè `approval_status = CHỜ_PHÊ_DUYỆT` bất kể payload
-- Server-side bỏ qua / từ chối `port_code` nếu có trong payload (HTTP 409 nếu khác)
-- Tự động ghi `updated_by`, `updated_at`
-- Sau lưu thành công: tạo change_log record(s) trong cùng transaction
-- Response trả về thông báo: `"Cập nhật thành công — chờ phê duyệt lại"`
-
-**HTTP Status Codes:**
-| Code | Ý nghĩa |
-|---|---|
-| 200 | Cập nhật thành công |
-| 400 | Validation lỗi (GPS range, area range, ...) |
-| 403 | Không có quyền (Nhân viên vận hành, ...) |
-| 404 | Không tìm thấy Cảng biển với id đã cho |
-| 409 | Xung đột dữ liệu (port_code trùng) |
-| 422 | Cảng biển đã bị xóa mềm (deleted), không thể cập nhật |
-
-## 8. UI Specification
-
-### 8.1. Screen: PortEditPage
-
-| Yếu tố | Giá trị |
-|---|---|
-| Route | `/ports/:id/edit` |
-| Layout | Popup/Modal trên trang danh sách (theo convention: mọi thao tác CRUD đều là popup, không phải routed page riêng) |
-| Form library | React Hook Form + Zod validation |
-| Pre-fill | GET `/api/v1/ports/:id` → populate form |
-| Submit | PUT `/api/v1/ports/:id` |
-
-### 8.2. Form fields
-
-| Trường | Type | Readonly | Validation | Ghi chú |
+| US-ID | Actor | Goal | Value | Priority |
 |---|---|---|---|---|
-| port_code | Text | **Có** (disabled) | — | Không thể sửa |
-| port_name | Text | Không | Bắt buộc, trim() | |
-| province_city | Select/Dropdown | Không | Bắt buộc | Danh sách từ danh mục |
-| latitude | Number (double) | Không | ∈ [-90, 90] | |
-| longitude | Number (double) | Không | ∈ [-180, 180] | |
-| area | Number (double) | Không | ∈ [0, 5000] km² | |
-| max_vessel_capacity | Text | Không | — | |
-| operational_status | Select (Enum) | Không | Bắt buộc | |
+| US-001 | Quản trị viên / Quản lý cảng | Truy cập biểu mẫu cập nhật Cảng biển từ danh sách hoặc trang chi tiết | Không cần điều hướng phức tạp, tiết kiệm thời gian tác nghiệp | Must Have |
+| US-002 | Quản trị viên / Quản lý cảng | Chỉnh sửa thông tin cảng (tên, tọa độ, diện tích, khả năng tiếp nhận tàu, ghi chú) với dữ liệu cũ được điền sẵn | Giảm lỗi nhập liệu, đảm bảo thay đổi có chủ ý | Must Have |
+| US-003 | Quản trị viên / Quản lý cảng | Nhận cảnh báo khi cảng đang trong trạng thái cho_phe_duyet hoặc da_xoa trước khi thực hiện cập nhật | Tránh tạo xung đột với quy trình phê duyệt đang chạy | Must Have |
+| US-004 | Hệ thống (tự động) | Ghi nhật ký thay đổi đầy đủ sau mỗi lần cập nhật thành công | Đảm bảo truy vết kiểm toán, không cho phép giả mạo lịch sử | Must Have |
+| US-005 | Quản trị viên / Quản lý cảng | Nhận thông báo lỗi rõ ràng khi nhập liệu vi phạm validation rules | Người dùng tự sửa lỗi mà không cần hỗ trợ kỹ thuật | Must Have |
 
-### 8.3. Theme tokens
+## Acceptance Criteria
 
-Áp dụng convention từ `theme.ts` và `tokens.ts`:
-- `spaceFormField` (12px) cho margin-bottom Form.Item
-- `radiusPill` (999px) cho Input, Select, Button
-- `height: 40` cho Input, Select
-- `labelProps()` helper cho label
-- Modal footer: Cancel (outlined) + Save (primary), cả hai pill radius
+| AC-ID | US-ref | Scenario | Given / When / Then | Constraints |
+|---|---|---|---|---|
+| AC-001 | US-001 | Truy cập cập nhật từ danh sách | Given người dùng có role Admin hoặc Quan_ly_cang đang ở trang danh sách Cảng biển; When nhấn nút "Cập nhật" trên một hàng; Then hệ thống điều hướng đến biểu mẫu cập nhật với đầy đủ thông tin hiện tại được điền sẵn | Chỉ Admin và Quan_ly_cang thấy nút cập nhật |
+| AC-002 | US-001 | Truy cập cập nhật từ trang chi tiết | Given người dùng có quyền đang ở trang chi tiết Cảng biển; When nhấn nút "Chỉnh sửa"; Then biểu mẫu cập nhật hiển thị với dữ liệu hiện tại | Người dùng không có quyền không thấy nút chỉnh sửa |
+| AC-003 | US-001 | Từ chối truy cập với role không đủ quyền | Given người dùng có role Nhan_vien_van_hanh hoặc khách; When cố truy cập URL cập nhật trực tiếp; Then hệ thống trả về HTTP 403 và không hiển thị biểu mẫu | Kiểm tra phân quyền server-side, không chỉ UI |
+| AC-004 | US-002 | Mã cảng không thể thay đổi | Given biểu mẫu cập nhật đang hiển thị; When người dùng cố gắng sửa trường mã cảng; Then trường mã cảng ở trạng thái read-only, không nhận input | Áp dụng cả ở frontend lẫn backend validation |
+| AC-005 | US-002 | Cập nhật hợp lệ lưu thành công | Given người dùng nhập tenCang mới hợp lệ và tọa độ GPS hợp lệ; When nhấn "Lưu"; Then hệ thống lưu dữ liệu, cập nhật updatedAt, hiển thị thông báo thành công | updatedAt được hệ thống tự gán, không phải người dùng |
+| AC-006 | US-002 | Validation tọa độ GPS | Given người dùng nhập vĩ độ ngoài khoảng [-90, 90] hoặc kinh độ ngoài [-180, 180]; When nhấn "Lưu"; Then hệ thống hiển thị lỗi validation tương ứng, không lưu dữ liệu | |
+| AC-007 | US-002 | Validation diện tích | Given người dùng nhập diện tích ≤ 0 hoặc > 5000 km²; When nhấn "Lưu"; Then hệ thống hiển thị lỗi "Diện tích phải là số dương không vượt quá 5000 km²", không lưu | |
+| AC-008 | US-003 | Cảnh báo khi cảng đang chờ phê duyệt | Given Cảng biển có trangThai = cho_phe_duyet; When người dùng mở biểu mẫu cập nhật; Then hệ thống hiển thị cảnh báo "Cảng biển đang trong quá trình phê duyệt" nhưng vẫn cho phép tiếp tục nếu người dùng xác nhận | Cảnh báo, không chặn hoàn toàn |
+| AC-009 | US-003 | Chặn cập nhật Cảng biển đã xóa mềm | Given Cảng biển có trangThai = da_xoa; When người dùng cố truy cập biểu mẫu cập nhật; Then hệ thống hiển thị thông báo lỗi "Cảng biển đã bị xóa, không thể cập nhật" và không hiển thị biểu mẫu | |
+| AC-010 | US-004 | Ghi nhật ký sau cập nhật thành công | Given người dùng vừa lưu thành công một thay đổi; When kiểm tra bảng LichSuThayDoi; Then tồn tại bản ghi chứa: cangBienId, truongDuocCapNhat, giaTriCu, giaTriMoi, nguoiCapNhat (user ID), thoiGianCapNhat | Mỗi trường thay đổi tạo một bản ghi riêng |
+| AC-011 | US-004 | Nhật ký không thể xóa hoặc sửa | Given bản ghi nhật ký đã được ghi; When bất kỳ actor nào cố gắng DELETE hoặc UPDATE bản ghi trong LichSuThayDoi qua API; Then hệ thống từ chối với HTTP 405 hoặc 403 | Áp dụng cả với role Admin |
+| AC-012 | US-005 | Thông báo lỗi rõ ràng khi validation thất bại | Given người dùng nhập dữ liệu không hợp lệ; When nhấn "Lưu"; Then hệ thống highlight trường lỗi và hiển thị thông điệp lỗi tiếng Việt cụ thể theo từng loại vi phạm | |
 
-### 8.4. Toast message
+## Business Rules
 
-```
-"Cập nhật thành công — chờ phê duyệt lại"
-```
+| BR-ID | Rule | Applies to | Exception |
+|---|---|---|---|
+| BR-001 | Mã cảng (maCang) là bất biến sau khi Cảng biển được tạo; không có API nào được phép cập nhật trường này; thay đổi mã cảng yêu cầu hủy bỏ và tạo mới | AC-004, AC-005 | Không có ngoại lệ |
+| BR-002 | Tọa độ GPS: vĩ độ phải trong [-90, 90], kinh độ phải trong [-180, 180]; giá trị phải là số thực hợp lệ | AC-006 | Không áp dụng nếu tọa độ không được cung cấp (optional field) |
+| BR-003 | Diện tích cảng phải là số dương (> 0), đơn vị km², không vượt quá 5000 km² | AC-007 | Không áp dụng nếu diện tích không được cung cấp (optional field) |
+| BR-004 | Nhật ký thay đổi (LichSuThayDoi) được ghi tự động sau mỗi lần cập nhật thành công; một bản ghi per trường bị thay đổi; không cho phép xóa hoặc sửa nhật ký bởi bất kỳ actor nào | AC-010, AC-011 | Không có ngoại lệ |
+| BR-005 | Cảng biển có trangThai = da_xoa không được phép cập nhật; Cảng biển có trangThai = cho_phe_duyet hiển thị cảnh báo nhưng không chặn | AC-008, AC-009 | Không có ngoại lệ với da_xoa |
+| BR-006 | Chỉ người dùng có role Admin hoặc Quan_ly_cang mới được phép thực hiện cập nhật; kiểm tra phải được thực thi ở tầng API, không chỉ UI | AC-001, AC-002, AC-003 | Không có ngoại lệ |
+| BR-007 | Trường updatedAt được hệ thống tự động cập nhật timestamp hiện tại sau mỗi lần lưu thành công; người dùng không thể tự đặt giá trị này | AC-005 | Không có ngoại lệ |
 
-## 9. Non-Functional Requirements
+## Non-Functional Requirements
 
 | Area | Requirement | Target |
 |---|---|---|
-| Performance | PUT /api/v1/ports/:id (bao gồm validation + ghi change_log) | ≤ 2 giây (p95) |
-| Security | RBAC server-side; port_code được bảo vệ ở tầng API; change_log immutable | HTTP 403 khi không có quyền; HTTP 409 nếu port_code thay đổi |
-| Reliability | Cập nhật port + ghi change_log trong 1 transaction | 100% consistency; rollback nếu bất kỳ phần nào thất bại |
-| Audit | Mỗi lần cập nhật ghi đầy đủ: port_id, changed_field, old_value, new_value, changed_by, changed_at | 100% coverage cho mọi trường thay đổi |
-| UX | Thông báo lỗi validation rõ ràng bằng tiếng Việt; toast thành công; port_code disabled rõ ràng | WCAG 2.1 AA |
+| Performance | API cập nhật (bao gồm validation + ghi nhật ký) phải hoàn thành trong thời gian chấp nhận được | ≤ 2 giây (p95) |
+| Security | Phân quyền server-side bắt buộc; trường maCang được bảo vệ ở tầng API; nhật ký thay đổi không thể bị giả mạo | HTTP 403 khi không có quyền; audit log immutable |
+| Reliability | Ghi nhật ký thay đổi và cập nhật bản ghi CangBien phải nằm trong một transaction; nếu một phần thất bại, toàn bộ rollback | 100% consistency giữa CangBien và LichSuThayDoi |
+| Audit/Logging | Mỗi lần cập nhật thành công ghi đầy đủ: cangBienId, truong, giaTriCu, giaTriMoi, nguoiCapNhat, thoiGianCapNhat | 100% coverage cho mọi trường bị thay đổi |
+| Operability | Thông báo lỗi validation rõ ràng bằng tiếng Việt, tương ứng từng trường; không để lộ stack trace cho người dùng | N/A |
 
-## 10. API Contract (chi tiết)
+## Test Scenarios
 
-### PUT /api/v1/ports/:id
+| TS-ID | AC-ref | Scenario | Type |
+|---|---|---|---|
+| TS-001 | AC-001 | Happy path: Admin truy cập cập nhật từ danh sách, biểu mẫu load đúng dữ liệu hiện tại | Integration |
+| TS-002 | AC-003 | Negative: Role Nhan_vien_van_hanh gọi PUT /api/cang-bien/{id} → HTTP 403 | Security / Integration |
+| TS-003 | AC-004 | Negative: Gửi payload có trường maCang khác → backend bỏ qua / từ chối thay đổi | Unit / Integration |
+| TS-004 | AC-005 | Happy path: Cập nhật tenCang và ghiChu hợp lệ → 200 OK, updatedAt được cập nhật | Integration |
+| TS-005 | AC-006 | Negative: Tọa độ vĩ độ = 95 → lỗi validation rõ ràng, HTTP 400 | Unit |
+| TS-006 | AC-007 | Negative: Diện tích = -10 và diện tích = 6000 → lỗi validation tương ứng | Unit |
+| TS-007 | AC-008 | Edge: Cập nhật cảng trangThai = cho_phe_duyet → cảnh báo hiển thị, người dùng xác nhận → lưu thành công | Integration / UI |
+| TS-008 | AC-009 | Negative: Cảng trangThai = da_xoa → HTTP 422 với thông báo lỗi phù hợp | Integration |
+| TS-009 | AC-010 | Audit: Sau cập nhật thành công, LichSuThayDoi có đúng số bản ghi bằng số trường thay đổi | Integration |
+| TS-010 | AC-011 | Security: Gọi DELETE /api/lich-su/{id} với role Admin → HTTP 403 hoặc 405 | Security |
+| TS-011 | AC-010 | Transaction: Nếu ghi nhật ký thất bại → cập nhật CangBien rollback, không có dữ liệu không nhất quán | Integration |
 
-**Request:**
-```json
-{
-  "port_name": "Cảng biển Hải Phòng (đã cập nhật)",
-  "province_city": "Hải Phòng",
-  "latitude": 20.8694,
-  "longitude": 106.6875,
-  "area": 150.5,
-  "max_vessel_capacity": "Tàu 50.000 DWT",
-  "operational_status": "DANG_HOAT_DONG"
-}
-```
-
-**Response (200):**
-```json
-{
-  "id": "uuid-...",
-  "port_code": "CB-000001",
-  "port_name": "Cảng biển Hải Phòng (đã cập nhật)",
-  "province_city": "Hải Phòng",
-  "latitude": 20.8694,
-  "longitude": 106.6875,
-  "area": 150.5,
-  "max_vessel_capacity": "Tàu 50.000 DWT",
-  "operational_status": "DANG_HOAT_DONG",
-  "approval_status": "CHO_PHE_DUYET",
-  "managing_unit": "uuid-...",
-  "updated_by": "uuid-nguoi-dung",
-  "updated_at": "2026-07-30T10:30:00Z",
-  "message": "Cập nhật thành công — chờ phê duyệt lại"
-}
-```
-
-## 11. Pipeline Triage
+## Pipeline Triage
 
 | Question | Answer | Rationale |
 |---|---|---|
-| Domain model affected? | **No — existing** | Sử dụng entity Port và change_log đã được định nghĩa tại F-008; không tạo aggregate root, bounded context, hoặc domain event mới |
-| Architecture affected? | **No** | CRUD cập nhật trên entity hiện có; pattern PUT API + transactional audit log là kiến trúc đã được thiết lập |
-| Implementation clear? | **Yes** | React Hook Form + Zod validation + PUT endpoint là pattern đã có. Logic reset approval_status và ghi change_log rõ ràng |
-| **Verdict** | `Ready for Technical Lead planning` | Thay đổi chỉ mở rộng entity hiện có (F-008 đã định nghĩa Port + change_log), không có quyết định kiến trúc mới, implementation approach rõ ràng |
-
-## 12. Consolidation Note
-
-Feature F-009 này đã được merged với F-071 (trước đây là feature cập nhật Cảng biển tách riêng). Toàn bộ logic cập nhật Cảng biển — bao gồm form pre-fill, validation, reset trạng thái duyệt, ghi change_log — được tập trung tại đây. Không còn F-071 như một feature độc lập.
-
----
-
-> **Phiên bản trước (2026-06-27):** Chứa dữ liệu cũ: role Quan_ly_cang, trạng thái `cho_phe_duyet`/`da_xoa` (tên enum cũ), cảnh báo khi cảng đang chờ duyệt, chặn cập nhật cảng đã xóa, validation diện tích > 0.
-> **Phiên bản này (2026-07-30):** Đồng bộ 100% với `feature-brief.md` từ BA Team Lead (cập nhật 2026-07-28) — source of truth. Điều chỉnh: (1) RBAC mở rộng — thêm Chuyên viên Cục, Chuyên viên Cảng vụ, Doanh nghiệp cảng; loại bỏ Quan_ly_cang; (2) Trạng thái tiếng Việt: CHỜ_PHÊ_DUYỆT; (3) Không chặn cập nhật cảng có operational_status bất kỳ — chỉ chặn deleted_at ≠ null; (4) Validation area ∈ [0, 5000] (thay vì > 0); (5) Mở popup (không routed page); (6) Merged với F-071.
+| Domain model affected? | No - existing | Sử dụng entity CangBien và LichSuThayDoi đã được định nghĩa tại F-008; không tạo aggregate root, bounded context, hoặc domain event mới |
+| Architecture affected? | No | CRUD cập nhật trên entity hiện có; cùng pattern với F-008 (tạo mới); ghi nhật ký trong transaction là pattern đã có |
+| Implementation clear? | Yes | Pattern PUT API + transactional audit log là kiến trúc đã được thiết lập; không cần quyết định kiến trúc mới |
+| **Verdict** | `Ready for Technical Lead planning` | Thay đổi chỉ mở rộng entity hiện có (F-008 đã định nghĩa CangBien + LichSuThayDoi), không có quyết định kiến trúc mới, implementation approach rõ ràng từ pattern F-008 |

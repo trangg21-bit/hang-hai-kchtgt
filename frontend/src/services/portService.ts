@@ -57,30 +57,18 @@ export const portCRUD = {
   },
 
   async search(params?: {
+    portCode?: string;
     portName?: string;
     province?: string;
-    portGroup?: number;
-    portClassification?: number;
-    managingUnitId?: string;
-    status?: string;
-    approvalStatus?: string;
     operationalStatus?: string;
-    updatedFrom?: string;
-    updatedTo?: string;
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResponse<Port>> {
     const sp = buildSearchParams({
+      portCode: params?.portCode,
       portName: params?.portName,
       province: params?.province,
-      portGroup: params?.portGroup,
-      portClassification: params?.portClassification,
-      managingUnitId: params?.managingUnitId,
-      status: params?.status,
-      approvalStatus: params?.approvalStatus,
       operationalStatus: params?.operationalStatus,
-      updatedFrom: params?.updatedFrom,
-      updatedTo: params?.updatedTo,
       page: params?.page !== undefined ? params.page - 1 : undefined,
       size: params?.pageSize,
     });
