@@ -1,12 +1,15 @@
 package com.hanghai.kchtg.orgunit.entity;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.entity.BaseEntity;
-import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.*;
-import org.hibernate.annotations.Where;
 
 import java.util.UUID;
 
@@ -90,6 +93,12 @@ public class OrgUnit extends BaseEntity {
     @Column(nullable = false, columnDefinition = "SMALLINT")
     private OrgUnitStatus status;
 
+    /** Whether the unit is available for use, independent from approval status. */
+    @Enumerated(EnumType.ORDINAL)
+    @Column(name = "operational_status", nullable = false, columnDefinition = "SMALLINT")
+    @Builder.Default
+    private OrgUnitOperationalStatus operationalStatus = OrgUnitOperationalStatus.ACTIVE;
+
     // ── Materialized Path fields ─────────────────────────────────────
 
     /**
@@ -128,6 +137,7 @@ public class OrgUnit extends BaseEntity {
         unit.setAddress(address);
         unit.setPhone(phone);
         unit.setStatus(OrgUnitStatus.DRAFT);
+        unit.setOperationalStatus(OrgUnitOperationalStatus.ACTIVE);
         unit.setPath("");   // set later by MaterializedPathService
         unit.setLevel(0);
         unit.setSortOrder(0);

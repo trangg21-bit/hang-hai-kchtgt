@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Typography, Modal, Form, Input, Select, Spin, Button, Space, Dropdown, Row, Col } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, FileExcelOutlined, SendOutlined, CheckOutlined, CloseOutlined, MoreOutlined, CaretRightOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, FileExcelOutlined, SendOutlined, CheckOutlined, CloseOutlined, MoreOutlined, CaretRightOutlined, EyeOutlined } from '@ant-design/icons';
 import { organizationService } from '../../services/organizationService';
 
 import type { Organization, CreateOrganizationPayload, UpdateOrganizationPayload } from '../../services/organizationService';
@@ -50,6 +50,7 @@ export default function UnitList() {
   const [error, setError] = useState<Error | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
+  const [isViewing, setIsViewing] = useState(false);
   const [form] = Form.useForm();
   const selectedType = Form.useWatch('type', form);
   const [submitting, setSubmitting] = useState(false);
@@ -81,8 +82,15 @@ export default function UnitList() {
   }, []);
   useEffect(() => { fetchOrgs(); }, [fetchOrgs]);
 
-  const openCreateModal = useCallback(() => { setEditingOrg(null); form.resetFields(); setModalOpen(true); }, [form]);
+  const openCreateModal = useCallback(() => {
+    setIsViewing(false);
+    setEditingOrg(null);
+    form.resetFields();
+    form.setFieldsValue({ operationalStatus: 'active' });
+    setModalOpen(true);
+  }, [form]);
   const openEditModal = useCallback((org: Organization) => {
+    setIsViewing(false);
     setEditingOrg(org);
     form.setFieldsValue({
       code: org.code, name: org.name, type: org.type,
@@ -90,6 +98,21 @@ export default function UnitList() {
       address: org.address, detailAddress: (org as any).detailAddress ?? '',
       phone: org.phone, description: org.description,
       status: org.status,
+      operationalStatus: org.operationalStatus,
+    });
+    setModalOpen(true);
+  }, [form]);
+
+  const openViewModal = useCallback((org: Organization) => {
+    setIsViewing(true);
+    setEditingOrg(org);
+    form.setFieldsValue({
+      code: org.code, name: org.name, type: org.type,
+      parentId: org.parentId,
+      address: org.address, detailAddress: (org as any).detailAddress ?? '',
+      phone: org.phone, description: org.description,
+      status: org.status,
+      operationalStatus: org.operationalStatus,
     });
     setModalOpen(true);
   }, [form]);
@@ -103,7 +126,7 @@ export default function UnitList() {
           parentId,
           address: values.address, detailAddress: values.detailAddress,
           phone: values.phone, description: values.description,
-          status: values.status,
+          operationalStatus: values.operationalStatus,
         });
         toast.success('Đã cập nhật');
       } else {
@@ -112,6 +135,7 @@ export default function UnitList() {
           parentId,
           address: values.address, detailAddress: values.detailAddress,
           phone: values.phone, description: values.description,
+          operationalStatus: values.operationalStatus,
         });
         toast.success('Đã tạo mới');
       }
@@ -154,6 +178,7 @@ export default function UnitList() {
 
   const getActions = (record: Organization) => {
     const items: any[] = [];
+    items.push({ key: 'view', label: 'Xem', icon: <EyeOutlined />, onClick: () => openViewModal(record) });
     if (hasPerm('org.edit')) items.push({ key: 'edit', label: 'Sửa', icon: <EditOutlined />, onClick: () => openEditModal(record) });
     if (hasPerm('org.edit') && (record.status === 'draft' || record.status === 'rejected')) items.push({ key: 'submit', label: 'Trình duyệt', icon: <SendOutlined />, onClick: () => handleSubmitApproval(record) });
     if (hasPerm('org.approve') && record.status === 'pending') { items.push({ key: 'approve', label: 'Phê duyệt', icon: <CheckOutlined />, onClick: () => handleApprove(record) }); items.push({ key: 'reject', label: 'Từ chối', icon: <CloseOutlined />, onClick: () => handleReject(record), danger: true }); }
@@ -347,15 +372,17 @@ export default function UnitList() {
       </div>
 
       <Modal
-        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{editingOrg ? 'Sửa thông tin đơn vị' : 'Thêm mới đơn vị'}</span>}
+        title={<span style={{ color: colors.sidebarBg, fontWeight: fontWeightBold, fontSize: fontSizeLg }}>{isViewing ? 'Chi tiết đơn vị' : (editingOrg ? 'Sửa thông tin đơn vị' : 'Thêm mới đơn vị')}</span>}
         open={modalOpen} onCancel={() => setModalOpen(false)} destroyOnHidden confirmLoading={submitting} width={640} mask={{ closable: false }}
-        footer={[
+        footer={isViewing ? [
+          <Button key="close" onClick={() => setModalOpen(false)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Đóng</Button>
+        ] : [
           <Button key="cancel" onClick={() => setModalOpen(false)} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, borderColor: borderDefault, color: textSecondary }}>Hủy</Button>,
           <Button key="ok" type="primary" onClick={handleSubmit} loading={submitting} style={{ borderRadius: radiusPill, height: 40, fontSize: fontSizeMd, background: actionPrimary, borderColor: actionPrimary }}>{editingOrg ? 'Cập nhật' : 'Tạo mới'}</Button>,
         ]}
       >
         <Spin spinning={submitting}>
-          <Form form={form} layout="vertical" style={{ marginTop: 16 }} labelCol={{ style: { padding: 0, marginBottom: 4 } }}>
+          <Form form={form} layout="vertical" style={{ marginTop: 16 }} labelCol={{ style: { padding: 0, marginBottom: 4 } }} disabled={isViewing}>
             <Form.Item name="code" {...labelProps('Mã đơn vị')} style={{ marginBottom: spaceFormField }}>
               <Input disabled placeholder={editingOrg ? undefined : 'Tự động sinh khi tạo mới'} style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
@@ -385,11 +412,9 @@ export default function UnitList() {
             <Form.Item name="phone" {...labelProps('Số điện thoại')} style={{ marginBottom: spaceFormField }} rules={[{ pattern: /^0\d{9,10}$/, message: 'SĐT không hợp lệ' }]}>
               <Input placeholder="0901234567" style={{ borderRadius: radiusPill, height: 40 }} />
             </Form.Item>
-            {editingOrg && (
-              <Form.Item name="status" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }}>
-                <Select style={{ borderRadius: radiusPill, height: 40 }} options={[{ value: 'draft', label: 'Bản nháp' }, { value: 'pending', label: 'Chờ duyệt' }, { value: 'approved', label: 'Đã phê duyệt' }, { value: 'rejected', label: 'Bị từ chối' }]} />
-              </Form.Item>
-            )}
+            <Form.Item name="operationalStatus" {...labelProps('Trạng thái')} style={{ marginBottom: spaceFormField }} rules={[{ required: true, message: 'Vui lòng chọn trạng thái' }]}>
+              <Select style={{ borderRadius: radiusPill, height: 40 }} options={[{ value: 'active', label: 'Sử dụng' }, { value: 'inactive', label: 'Không sử dụng' }]} />
+            </Form.Item>
             <Form.Item name="description" {...labelProps('Ghi chú')} style={{ marginBottom: spaceFormField }}>
               <Input.TextArea rows={2} placeholder="Ghi chú thêm..." />
             </Form.Item>

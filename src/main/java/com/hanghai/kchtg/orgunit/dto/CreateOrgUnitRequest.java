@@ -1,11 +1,12 @@
 package com.hanghai.kchtg.orgunit.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.orgunit.entity.OrgUnitStatus;
+import com.hanghai.kchtg.orgunit.entity.OrgUnitOperationalStatus;
 import com.hanghai.kchtg.orgunit.entity.OrgUnitType;
-import jakarta.validation.constraints.*;
-import lombok.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
 
 import java.util.UUID;
 
@@ -52,4 +53,7 @@ public class CreateOrgUnitRequest {
 
     /** Status — defaults to DRAFT on the service layer if not provided. */
     private OrgUnitStatus status;
+
+    /** Operational availability. Defaults to ACTIVE when omitted. */
+    private OrgUnitOperationalStatus operationalStatus;
 }
