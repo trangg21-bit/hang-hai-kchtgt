@@ -1,0 +1,16 @@
+{
+  "route_id": "LANE-1785148859990-28b9",
+  "created_at": 1785148859990,
+  "lane": "sdlc-studio",
+  "owner": "studio:sdlc",
+  "dispatch_target": "pmo-software-project-manager",
+  "routing_mode": "dispatch",
+  "request_summary": "Move 3 non-SDLC orphan M-001 directories (M-001-gis, M-001-menu, M-001-user-management) to _trash/ — they have no _state.md, no pipeline, only orphaned dev artifacts",
+  "reason": "These directories live under docs/modules/ which is SDLC-protected; they must be moved by the SDLC pipeline owner",
+  "signals": [
+    "3 directories under docs/modules/ with no _state.md",
+    "M-001-gis: 1 blocked dev artifact",
+    "M-001-menu: 3 dev artifacts",
+    "M-001-user-management: 2 dev artifacts"
+  ]
+}

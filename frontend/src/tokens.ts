@@ -68,6 +68,9 @@ export const spaceLg = 24;
 export const spaceXl = 32;
 export const spaceXxl = 48;
 
+// Page size: default rows per page for all list views
+export const pageSize = 20;
+
 // Font size: 7 values — stronger hierarchy
 export const fontSizeSm = 10;   // metadata, captions — clearly subordinate
 export const fontSizeMd = 13;   // labels, body

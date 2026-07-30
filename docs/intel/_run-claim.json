@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "started_at": "2026-06-27T18:29:15.473Z",
-  "last_modified_at": "2026-07-28T02:33:06.420Z",
+  "last_modified_at": "2026-07-28T02:59:18.767Z",
   "modules": {
     "M-001": {
       "depends_on": [],
@@ -22,15 +22,15 @@
     "M-002": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "skipped",
-      "claimed_by": "tab-9c7d364a52faceaf",
-      "claimed_at": "2026-07-21T04:35:29.956Z",
-      "heartbeat_at": "2026-07-21T04:43:17.384Z",
+      "status": "failed",
+      "claimed_by": "tab-2506df7c067a758a",
+      "claimed_at": "2026-07-28T02:46:25.516Z",
+      "heartbeat_at": "2026-07-28T02:59:18.767Z",
       "current_stage": null,
       "started_at": "2026-06-27T22:47:04.985Z",
-      "completed_at": "2026-07-21T04:43:17.384Z",
+      "completed_at": "2026-07-28T02:59:18.767Z",
       "auto_pass_count": 0,
-      "attempt": 5,
+      "attempt": 7,
       "name": "Quản lý tài sản KCHTGT - Cảng & Bến",
       "slug": "quan-ly-tai-san-kchtgt-cang-ben",
       "risk_path": "M",
@@ -159,20 +159,18 @@
     "M-010": {
       "depends_on": [],
       "topo_level": 0,
-      "status": "in_progress",
-      "claimed_by": "tab-5bcc6caa184b70f3",
-      "claimed_at": "2026-07-28T02:33:06.420Z",
-      "heartbeat_at": "2026-07-28T02:33:06.420Z",
+      "status": "queued",
+      "claimed_by": null,
+      "claimed_at": null,
+      "heartbeat_at": null,
       "current_stage": null,
-      "started_at": "2026-07-28T02:33:06.420Z",
+      "started_at": null,
       "completed_at": null,
       "auto_pass_count": 0,
-      "attempt": 1,
+      "attempt": 0,
       "name": "xac-thuc-phan-quyen",
       "slug": "xac-thuc-phan-quyen",
-      "risk_path": "M",
-      "claimed_pid": 23848,
-      "claimed_host": "PTPM-SONPN-PC"
+      "risk_path": "M"
     },
     "M-011": {
       "depends_on": [],
@@ -367,6 +365,22 @@
       "name": "Test",
       "slug": "test-write",
       "risk_path": "M"
+    },
+    "M-022": {
+      "depends_on": [],
+      "topo_level": 0,
+      "status": "done",
+      "claimed_by": null,
+      "claimed_at": null,
+      "heartbeat_at": null,
+      "current_stage": null,
+      "started_at": null,
+      "completed_at": "2026-07-28T02:52:41.548Z",
+      "auto_pass_count": 0,
+      "attempt": 0,
+      "name": "Trang chủ Dashboard",
+      "slug": "trang-chu-dashboard",
+      "risk_path": "M"
     }
   },
   "tabs": {
@@ -441,14 +455,24 @@
       "failed_modules": [],
       "skipped_modules": []
     },
-    "tab-5bcc6caa184b70f3": {
-      "started_at": "2026-07-28T02:33:06.420Z",
-      "last_seen": "2026-07-28T02:33:06.420Z",
-      "claimed_modules": [
-        "M-010"
-      ],
+    "tab-be8eec1d138ead8d": {
+      "started_at": "2026-07-28T02:31:48.296Z",
+      "last_seen": "2026-07-28T02:37:02.452Z",
+      "claimed_modules": [],
       "completed_modules": [],
-      "failed_modules": [],
+      "failed_modules": [
+        "M-002"
+      ],
+      "skipped_modules": []
+    },
+    "tab-2506df7c067a758a": {
+      "started_at": "2026-07-28T02:46:25.516Z",
+      "last_seen": "2026-07-28T02:59:18.767Z",
+      "claimed_modules": [],
+      "completed_modules": [],
+      "failed_modules": [
+        "M-002"
+      ],
       "skipped_modules": []
     }
   }
