@@ -1,76 +1,108 @@
 ---
 id: F-018
-name: Xem chi tiết Bến cảng
+name: Xem danh sách & Chi tiết Bến cảng
 slug: xem-bc
 module-id: M-002
 status: done
 classification: local
 priority: critical
 created: 2026-06-16T04:40:42Z
-last-updated: 2026-06-29T11:10:02Z
+last-updated: 2026-07-30
 locked-fields: []
 consumed_by_modules: []
 ---
-# Feature: Xem chi tiết Bến cảng
+# Feature: Xem danh sách & Chi tiết Bến cảng
 
 ## Description
 
-Tính năng cho phép người dùng xem thông tin chi tiết của một Bến cảng bao gồm các trường dữ liệu kỹ thuật chuyên biệt (kích thước, loại bến, độ sâu luồng), vị trí trên bản đồ, trạng thái hiện tại, thông tin người tạo và người cập nhật cuối, hỗ trợ tìm kiếm và lọc theo mã bến, tên bến, cảng mẹ và loại bến.
+Tính năng cho phép người dùng xem danh sách và thông tin chi tiết của Bến cảng. Danh sách hiển thị dạng bảng với tìm kiếm, lọc, phân trang. Trang chi tiết hiển thị đầy đủ các trường dữ liệu kỹ thuật, vị trí GPS, trạng thái, badge màu phê duyệt, và hỗ trợ các hành động: chỉnh sửa, xóa, phê duyệt (Leader only), lịch sử.
 
 ## Business Intent
 
-Việc cung cấp thông tin chi tiết về Bến cảng giúp các bên liên quan — từ cán bộ quản lý cảng đến nhà điều hành tàu — có thể tra cứu nhanh chóng, chính xác các thông tin kỹ thuật phục vụ công tác phân bổ lượt tàu, lập kế hoạch tiếp cận bến và đánh giá năng lực phục vụ của từng bến cảng trong hệ thống hạ tầng giao thông đường thủy.
+Việc cung cấp thông tin chi tiết về Bến cảng giúp các bên liên quan có thể tra cứu nhanh chóng, chính xác các thông tin kỹ thuật phục vụ công tác phân bổ lượt tàu, lập kế hoạch tiếp cận bến và đánh giá năng lực phục vụ của từng bến cảng.
 
 ## Flow Summary
 
-Người dùng đăng nhập vào hệ thống, truy cập vào mục quản lý Bến cảng và sử dụng thanh tìm kiếm để tra cứu theo mã bến, tên bến, cảng mẹ hoặc loại bến. Hệ thống hiển thị danh sách kết quả tra cứu kèm thông tin tóm tắt (mã bến, tên, cảng mẹ, loại bến, trạng thái). Người dùng click vào một Bến cảng trong danh sách để xem trang chi tiết. Trang chi tiết hiển thị đầy đủ các trường thông tin kỹ thuật: mã bến, tên, cảng mẹ (với link đến trang chi tiết cảng), kích thước chiều dài/rộng, loại bến, độ sâu luồng trước bến, tọa độ GPS trên bản đồ, trạng thái, người tạo và người cập nhật cuối cùng.
+**Danh sách:** Người dùng truy cập "Quản lý Bến cảng" → bảng danh sách phân trang 20/100 dòng, sắp xếp updatedAt giảm dần. Tìm kiếm theo maBen/tenBen, lọc theo trạng thái hoạt động. Mỗi hàng có badge trạng thái và các nút hành động: Xem chi tiết, Chỉnh sửa, Xóa, Phê duyệt (Leader), Lịch sử.
+
+**Chi tiết:** Người dùng click "Xem chi tiết" → breadcrumb "Danh sách Bến cảng > Chi tiết: [maBen]" → hiển thị tất cả trường BenCang + badge trạng thái + metadata (createdBy, updatedBy, createdAt, updatedAt). Nếu có quyền Leader: nút Phê duyệt/Từ chối.
 
 ## Acceptance Criteria
 
-1. Người dùng có quyền "Xem" có thể tra cứu Bến cảng theo mã bến, tên bến, cảng mẹ hoặc loại bến với kết quả trả về trong vòng 3 giây.
-2. Trang chi tiết hiển thị đầy đủ tất cả các trường thông tin kỹ thuật của Bến cảng, bao gồm tọa độ GPS được hiển thị trên bản đồ tích hợp.
-3. Các trường thông tin nhạy cảm hoặc không liên quan đến vai trò người dùng được ẩn theo cơ chế phân quyền.
-4. Danh sách tra cứu hiển thị tối đa 50 kết quả mỗi trang, có phân trang và sắp xếp theo tên hoặc thời gian tạo.
+1. Danh sách hiển thị các cột: maBen, tenBen, cangBienId (tên cảng cha), viDo, kinhDo, badge trạng thái hoạt động, badge trạng thái phê duyệt, updatedAt.
+2. Badge trạng thái phê duyệt: vàng (CHO_PHE_DUYET), xanh lá (DUOC_PHE_DUYET), đỏ (TU_CHO).
+3. Badge trạng thái hoạt động: xanh dương (HIEN_HANH), cam (TAM_NGUNG).
+4. Tìm kiếm theo maBen/tenBen, lọc theo trạng thái hoạt động, phân trang 20/100.
+5. Trang chi tiết hiển thị đầy đủ tất cả trường + tọa độ GPS ±XX.XXXXXX + metadata datetime dd/MM/yyyy HH:mm:ss.
+6. Nút Phê duyệt/Từ chối chỉ hiển thị cho role có `bencang:approve`.
+7. Nút Chỉnh sửa, Xóa, Lịch sử hiển thị theo RBAC.
 
 ## In Scope
 
-- Thanh tìm kiếm với bộ lọc theo mã bến, tên bến, cảng mẹ, loại bến, trạng thái
-- Bảng danh sách kết quả với phân trang và sắp xếp
-- Trang chi tiết Bến cảng hiển thị đầy đủ thông tin kỹ thuật
-- Tích hợp bản đồ hiển thị tọa độ GPS
-- Hiển thị thông tin người tạo và người cập nhật cuối
-- Link đến trang chi tiết Cảng mẹ (liên kết chéo)
-- Điều hướng đến các chức năng cập nhật/xóa (nếu có quyền)
+- Bảng danh sách với phân trang, sắp xếp, tìm kiếm, lọc
+- Badge trạng thái với mã màu chuẩn
+- Trang chi tiết đầy đủ trường + GPS + metadata
+- Breadcrumb điều hướng
+- Nút hành động theo RBAC (Xem, Sửa, Xóa, Phê duyệt, Lịch sử)
+- Loading state và error handling
 
 ## Out of Scope
 
 - Tạo mới Bến cảng (thuộc F-014)
 - Cập nhật Bến cảng (thuộc F-015)
 - Xóa Bến cảng (thuộc F-016)
-- Xuất dữ liệu Bến cảng ra file Excel/PDF
-- Lịch sử thay đổi chi tiết của Bến cảng (thuộc F-019)
 - Phê duyệt Bến cảng (thuộc F-017)
+- Lịch sử thay đổi (thuộc F-019)
+- Xuất dữ liệu ra Excel/PDF
 
 ## Roles + Permissions
 
 | Role | Permissions |
 |------|-------------|
-| Quản trị viên | Xem đầy đủ |
-| Quản lý cảng | Xem đầy đủ |
+| Quản trị viên | Xem đầy đủ, mọi hành động |
+| Quản lý cảng | Xem đầy đủ, Sửa, Phê duyệt |
 | Nhân viên vận hành | Xem (một số trường kỹ thuật bị ẩn) |
 | KháchExternal | Không có quyền truy cập |
 
 ## Entities
 
-- **BenCang**: id (UUID), maBen (string, unique), tenBen (string), cangMeId (UUID, FK → CangBien), tuyensDuongThuy (string), toDo (JSON: {lat, lng}), chieuDaiBen (decimal, m), chieuRongBen (decimal, m), loaiBen (enum: hang_containers, hang_kho, dau_khi, dich_vu), doSauLuongTruocBen (decimal, m), trangThai (enum: cho_phe_duyet, hien_hanh, tam_ngung, da_xoa), ghiChu (text), createdAt (timestamp), updatedAt (timestamp), createdBy (UUID), updatedBy (UUID, nullable)
+- **BenCang**: id (UUID), maBen (string, unique), tenBen (string), cangMeId (UUID, FK → CangBien), tuyensDuongThuy (string), toDo (JSON: {lat, lng}), chieuDaiBen (decimal, m), chieuRongBen (decimal, m), loaiBen (enum), doSauLuongTruocBen (decimal, m), trangThai (enum), ghiChu (text), createdAt (timestamp), updatedAt (timestamp), createdBy (UUID), updatedBy (UUID, nullable), deletedAt (nullable)
+- **CangBien**: id (UUID), ten (string) — join qua cangMeId để hiển thị tên và link
 
 ## Business Rules
 
-1. Tọa độ GPS của Bến cảng được hiển thị trên bản đồ tích hợp với mức zoom phù hợp để xác định vị trí chính xác trong phạm vi Cảng mẹ.
-2. Chỉ Bến cảng có trạng thái "Hi hiện hành" hoặc "Tạm ngừng" được hiển thị trong kết quả tìm kiếm mặc định; Bến "Chờ phê duyệt" và "Đã xóa" chỉ hiển thị khi người dùng bật tùy chọn xem tất cả.
-3. Phân quyền hiển thị: Nhân viên vận hành chỉ xem được các trường cơ bản (mã, tên, cảng mẹ, loại bến, trạng thái); các trường kỹ thuật chi tiết (kích thước, độ sâu) chỉ hiển thị cho vai trò Quản lý cảng trở lên.
-4. Kết quả tìm kiếm được cập nhật thời gian thực với độ trễ không quá 500ms.
+1. Chỉ Bến cảng có deletedAt = NULL mới hiển thị trong danh sách hoạt động.
+2. Badge màu trạng thái theo chuẩn: vàng/xanh lá/đỏ/xanh dương/cam.
+3. GPS hiển thị định dạng ±XX.XXXXXX (5 chữ số thập phân).
+4. Metadata datetime hiển thị dd/MM/yyyy HH:mm:ss.
+
+## UI Scope
+
+### Danh sách (F-073 merged)
+- **Component:** `BenCangListPage` — bảng với ScreenHeader + FilterBar + StatusTabs + DataTable + Pagination
+- **API endpoint:** `GET /api/v1/ben-cang?page=&pageSize=&sortBy=updatedAt&sortOrder=DESC&search=&status=`
+- **Columns:** maBen, tenBen, cangBienId (tên cảng cha), viDo, kinhDo, trangThaiHoatDong (badge), trangThaiPheDuyet (badge), updatedAt
+- **Actions:** Xem chi tiết (F-018 detail), Chỉnh sửa (F-015), Xóa (F-016), Phê duyệt (F-017, Leader only), Lịch sử (F-019)
+- **Search/Filter:** Tìm theo maBen/tenBen, lọc trạng thái HIEN_HANH/TAM_NGUNG
+- **Pagination:** 20/100 mục mỗi trang
+- **RBAC:** Nút "Phê duyệt" chỉ hiển thị cho `bencang:approve`, "Xóa" cho `bencang:delete`, "Chỉnh sửa" cho `bencang:update`
+
+### Chi tiết (F-074 merged)
+- **Component:** `BenCangDetailPage` — hiển thị toàn bộ trường + breadcrumb
+- **API endpoint:** `GET /api/v1/ben-cang/:id`
+- **Breadcrumb:** "Danh sách Bến cảng" (link F-073) → "Chi tiết: [maBen]"
+- **Fields hiển thị:** maBen (readonly), tenBen, cangBienId (link đến CangBien detail), tuyenDuongThuy, viDo (±XX.XXXXXX), kinhDo (±XX.XXXXXX), chieuDai, chieuRong, loaiBen, doSauLuong, trangThaiHoatDong (badge), trangThaiPheDuyet (badge), orgUnitId, createdBy, updatedBy, createdAt, updatedAt
+- **Approval actions (Leader only):** Nút "Phê duyệt" và "Từ chối" → hộp thoại xác nhận → POST /:id/approve hoặc POST /:id/reject
+- **RBAC:** Nút Phê duyệt/Từ chối chỉ hiển thị cho `bencang:approve`
 
 ## Testing Strategy
 
-Kiểm thử đơn vị cho các hàm tra cứu và lọc; kiểm thử tích hợp cho API trả về danh sách và chi tiết Bến cảng; kiểm thử giao diện cho thanh tìm kiếm, bảng phân trang, trang chi tiết và bản đồ tích hợp; kiểm thử phân quyền cho các vai trò khác nhau để xác nhận trường nào được hiển thị; kiểm thử hiệu năng với 1000 Bến cảng để đảm bảo thời gian tra cứu dưới 3 giây; kiểm thử liên kết chéo đến trang chi tiết Cảng mẹ.
+### BE Testing
+Kiểm thử đơn vị cho các hàm tra cứu và lọc; kiểm thử tích hợp cho API trả về danh sách và chi tiết Bến cảng; kiểm thử phân quyền cho các vai trò khác nhau.
+
+### UI Testing
+React Testing Library: danh sách hiển thị đúng cột, phân trang, tìm kiếm, lọc. E2E: danh sách → click tên → chi tiết hiển thị đủ trường → breadcrumb đúng; badge màu đúng; nút Phê duyệt chỉ hiển thị cho Leader.
+
+## Consolidation Note
+
+Merged with UI features F-073 (ui-ql-bc-danh-sach) and F-074 (ui-xem-bc-chi-tiet) — 2026-07-30
