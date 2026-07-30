@@ -6,6 +6,8 @@ import type {
   CauCangUpdateRequest,
   pierHistoryRecord,
   BenCangOption,
+  PortOption,
+  NavigationChannelOption,
 } from './types';
 
 const BASE = '/v1/piers';
@@ -19,6 +21,7 @@ export async function fetchCauCangList(query: CauCangListQuery) {
   if (query.berthId) params.set('berthId', query.berthId);
   if (query.orgUnitId) params.set('orgUnitId', query.orgUnitId);
   if (query.loaiCau) params.set('loaiCau', query.loaiCau);
+  if (query.province) params.set('province', query.province);
   if (query.sortBy) params.set('sortBy', query.sortBy);
   if (query.sortOrder) params.set('sortOrder', query.sortOrder);
   params.set('page', String(query.page));
@@ -47,8 +50,10 @@ export async function fetchCauCangByCode(pierCode: string) {
 }
 
 // ── Create ─────────────────────────────────────────────────────────────────
-export async function createCauCang(payload: CauCangCreateRequest) {
-  const { data } = await api.post(BASE, payload);
+export async function createCauCang(payload: CauCangCreateRequest, action?: string) {
+  const { data } = await api.post(BASE, payload, {
+    params: action ? { action } : undefined,
+  });
   return data.data as Pier;
 }
 
@@ -84,14 +89,15 @@ export async function fetchpierHistory(id: string) {
 }
 
 // ── Berth options (for select dropdown) ──────────────────────────────────
-export async function fetchBenCangOptions(params?: { search?: string; size?: number }) {
+export async function fetchBenCangOptions(params?: { search?: string; size?: number; portId?: string }) {
   const { data } = await api.get('/v1/berths', {
     params: {
       size: params?.size ?? 100,
       search: params?.search,
+      portId: params?.portId,
       sortBy: 'berthName',
       sortOrder: 'asc',
-      operationalStatus: 'HIEN_HANH'
+      operationalStatus: 'OPERATIONAL'
     },
   });
   return data.data as { content: BenCangOption[] };
@@ -100,4 +106,26 @@ export async function fetchBenCangOptions(params?: { search?: string; size?: num
 export async function fetchBenCangById(id: string) {
   const { data } = await api.get(`/v1/berths/${id}`);
   return data.data as { id: string; berthName: string };
+}
+
+// ── Port options (for select dropdown) ───────────────────────────────────
+export async function fetchCangBienOptions(params?: { search?: string; size?: number }) {
+  const { data } = await api.get('/v1/ports', {
+    params: {
+      size: params?.size ?? 100,
+      portName: params?.search || undefined,
+      operationalStatus: 'OPERATIONAL',
+      approvalStatus: 'APPROVED',
+    },
+  });
+  const pageData = data.data;
+  return { content: (pageData.content || []) as PortOption[] };
+}
+
+// ── Navigation Channel options (for select dropdown) ─────────────────────
+export async function fetchNavigationChannelOptions(params?: { search?: string; size?: number; portId?: string }) {
+  const { data } = await api.get('/v1/navigation-channel', {
+    params: { size: params?.size ?? 100 }
+  });
+  return { content: (data.data || []) as NavigationChannelOption[] };
 }

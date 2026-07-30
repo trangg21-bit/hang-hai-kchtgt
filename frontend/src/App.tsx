@@ -54,6 +54,7 @@ import PortDeleteConfirm from './services/port/PortDeleteConfirm';
 import BerthListPage from './app/berth/BerthListPage';
 
 import PierListPage from './app/pier/PierListPage';
+import PierDetailPage from './pages/PierDetailPage';
 
 import DryPortListPage from './app/dryport/DryPortListPage';
 
@@ -193,6 +194,7 @@ export default function App() {
                 <Route path="/berth" element={<PermissionGuard permission="berth:read"><BerthListPage /></PermissionGuard>} />
 
                 <Route path="/pier" element={<PermissionGuard permission="pier:read"><PierListPage /></PermissionGuard>} />
+                <Route path="/pier/:id" element={<PermissionGuard permission="pier:read"><PierDetailPage /></PermissionGuard>} />
 
                 <Route path="/dry-port" element={<PermissionGuard permission="dryport:read"><DryPortListPage /></PermissionGuard>} />
 

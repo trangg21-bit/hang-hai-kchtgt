@@ -31,12 +31,12 @@ public interface CargoAggregateRepository extends JpaRepository<CargoAggregate, 
               AND cargo.portCode IN (
                   SELECT port.portCode
                   FROM Port port
-                  WHERE port.provinceId = :provinceId
+                  WHERE port.province = :province
               )
             """)
     Page<CargoAggregate> findByPeriodTypeAndProvinceId(
             @Param("periodType") String periodType,
-            @Param("provinceId") Integer provinceId,
+            @Param("province") String province,
             Pageable pageable
     );
 
@@ -46,11 +46,11 @@ public interface CargoAggregateRepository extends JpaRepository<CargoAggregate, 
             WHERE cargo.portCode IN (
                 SELECT port.portCode
                 FROM Port port
-                WHERE port.provinceId = :provinceId
+                WHERE port.province = :province
             )
             """)
     Page<CargoAggregate> findByProvinceId(
-            @Param("provinceId") Integer provinceId,
+            @Param("province") String province,
             Pageable pageable
     );
 }

@@ -6,7 +6,8 @@ import com.fasterxml.jackson.annotation.JsonValue;
 public enum ApprovalStatus {
     PENDING(0),
     APPROVED(1),
-    REJECTED(2);
+    REJECTED(2),
+    DRAFT(3);
 
     private final int value;
 

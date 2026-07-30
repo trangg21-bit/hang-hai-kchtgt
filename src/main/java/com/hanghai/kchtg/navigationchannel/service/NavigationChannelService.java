@@ -394,19 +394,25 @@ public class NavigationChannelService {
                         .collect(Collectors.toList())
                 : new ArrayList<>();
 
-        List<ApprovalResponse> hist = nc.getApprovalHistory() != null
-                ? nc.getApprovalHistory().stream()
-                        .map(h -> ApprovalResponse.builder()
-                                .id(String.valueOf(h.getId()))
-                                .navigationChannelId(h.getNavigationChannel().getId())
-                                .approvalLevel(h.getApprovalLevel())
-                                .status(h.getStatus())
-                                .approvedBy(h.getApprovedBy())
-                                .approvedDate(h.getApprovedDate())
-                                .reason(h.getReason())
-                                .build())
-                        .collect(Collectors.toList())
-                : new ArrayList<>();
+        List<ApprovalResponse> hist;
+        try {
+            hist = nc.getApprovalHistory() != null
+                    ? nc.getApprovalHistory().stream()
+                            .map(h -> ApprovalResponse.builder()
+                                    .id(String.valueOf(h.getId()))
+                                    .navigationChannelId(h.getNavigationChannel().getId())
+                                    .approvalLevel(h.getApprovalLevel())
+                                    .status(h.getStatus())
+                                    .approvedBy(h.getApprovedBy())
+                                    .approvedDate(h.getApprovedDate())
+                                    .reason(h.getReason())
+                                    .build())
+                            .collect(Collectors.toList())
+                    : new ArrayList<>();
+        } catch (Exception e) {
+            log.warn("Could not load approvalHistory for navigation channel {}: {}", nc.getId(), e.getMessage());
+            hist = new ArrayList<>();
+        }
 
         GisGeometryType geomType = null;
         String coords = null;

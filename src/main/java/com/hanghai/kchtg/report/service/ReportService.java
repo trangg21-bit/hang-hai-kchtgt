@@ -1142,7 +1142,7 @@ public class ReportService {
         portRow.put("STT", String.valueOf(sequenceNo++));
         portRow.put("Danh mục bến cảng, cầu cảng, cảng bến thủy nội địa", port.getPortName());
         portRow.put("Đơn vị quản lý khai thác cảng", donViPort);
-        portRow.put("Địa điểm, vị trí cảng", port.getProvinceId() != null ? String.valueOf(port.getProvinceId()) : "");
+        portRow.put("Địa điểm, vị trí cảng", port.getProvince() != null ? String.valueOf(port.getProvince()) : "");
         portRow.put("Thời điểm công bố mở", f148FormatThoiDiem(port.getCreatedAt()));
         portRow.put("Công năng khai thác", "");
         portRow.put("Năng lực năm trước", "");
@@ -1168,7 +1168,7 @@ public class ReportService {
             }
 
             String berthLocation = berth.getProvinceId() != null ? String.valueOf(berth.getProvinceId())
-                    : (port.getProvinceId() != null ? String.valueOf(port.getProvinceId()) : "");
+                    : (port.getProvince() != null ? String.valueOf(port.getProvince()) : "");
 
             String thoiDiemBerth = f148FormatThoiDiem(berth.getOpeningAnnouncementDate());
             if (thoiDiemBerth.isEmpty()) {
@@ -1304,7 +1304,7 @@ public class ReportService {
                 Map<String, Object> itemRow = new LinkedHashMap<>();
                 itemRow.put("STT", String.valueOf(idx++));
                 itemRow.put("Danh mục cảng", cb.getPortName());
-                itemRow.put("Địa điểm (Tỉnh/TP)", cb.getProvinceId() != null ? String.valueOf(cb.getProvinceId()) : "");
+                itemRow.put("Địa điểm (Tỉnh/TP)", cb.getProvince() != null ? String.valueOf(cb.getProvince()) : "");
                 itemRow.put("Năng lực năm trước (tấn/năm)", capNamTruoc);
                 itemRow.put("Năng lực năm báo cáo (tấn/năm)", reportYearCapacity);
                 itemRow.put("Năng lực tăng thêm", reportYearCapacity - capNamTruoc);
@@ -3595,7 +3595,7 @@ public class ReportService {
                         Map<String, Object> item = new HashMap<>();
 
                         item.put("tenPort", cb.getPortName());
-                        item.put("diaDiemText", cb.getProvinceId() != null ? String.valueOf(cb.getProvinceId()) : "");
+                        item.put("diaDiemText", cb.getProvince() != null ? String.valueOf(cb.getProvince()) : "");
 
                         // Sum nangLuc from all BenCang children (BCKCHT_164 approach)
                         List<Berth> children = berthRepository.findByPortIdAndDeletedAtIsNull(cb.getId());
@@ -5662,7 +5662,7 @@ if (expr != null && (expr.contains("table.")
                 } else if (c == 2) {
                     destCell.setCellValue(donViPort);
                 } else if (c == 3) {
-                    destCell.setCellValue(port.getProvinceId() != null ? String.valueOf(port.getProvinceId()) : "");
+                    destCell.setCellValue(port.getProvince() != null ? String.valueOf(port.getProvince()) : "");
                 } else if (c == 4) {
                     destCell.setCellValue(f148FormatThoiDiem(port.getCreatedAt()));
                 } else if (c == 5) {
@@ -5703,7 +5703,7 @@ if (expr != null && (expr.contains("table.")
             }
 
             String berthLocation = berth.getProvinceId() != null ? String.valueOf(berth.getProvinceId())
-                    : (port.getProvinceId() != null ? String.valueOf(port.getProvinceId()) : "");
+                    : (port.getProvince() != null ? String.valueOf(port.getProvince()) : "");
 
             String thoiDiemBerth = f148FormatThoiDiem(berth.getOpeningAnnouncementDate());
             if (thoiDiemBerth.isEmpty()) {
