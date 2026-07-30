@@ -40,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -56,6 +57,13 @@ import java.util.UUID;
 @Service
 @Transactional
 public class UserService {
+
+    private static String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email không được để trống");
+        }
+        return email.trim().toLowerCase(Locale.ROOT);
+    }
 
     private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
@@ -183,8 +191,9 @@ public class UserService {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new IllegalArgumentException("Tên đăng nhập đã tồn tại: " + request.getUsername());
         }
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
+        String email = normalizeEmail(request.getEmail());
+        if (userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull(email)) {
+            throw new IllegalArgumentException("Email đã tồn tại: " + email);
         }
 
         // BR-002: Validate password policy
@@ -193,7 +202,7 @@ public class UserService {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setEmail(request.getEmail());
+        user.setEmail(email);
         user.setFullName(request.getFullName());
         user.setPhone(request.getPhone());
         String roleCode = request.getRole() != null ? request.getRole() : "ROLE_USER";
@@ -244,11 +253,16 @@ public class UserService {
     public User update(UUID id, UpdateUserRequest request) {
         User user = findById(id);
 
-        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
-            if (userRepository.existsByEmail(request.getEmail())) {
-                throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
+        if (request.getStatus() != null && request.getStatus() != user.getStatus()) {
+            user = changeStatus(id, request.getStatus(), "Cập nhật trạng thái từ biểu mẫu chỉnh sửa");
+        }
+
+        if (request.getEmail() != null) {
+            String email = normalizeEmail(request.getEmail());
+            if (userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNullAndIdNot(email, user.getId())) {
+                throw new IllegalArgumentException("Email đã tồn tại: " + email);
             }
-            user.setEmail(request.getEmail());
+            user.setEmail(email);
         }
 
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
@@ -491,11 +505,12 @@ public class UserService {
         if (!isAdmin && request.getEmail() != null) {
             throw new AccessDeniedException("Chỉ quản trị viên mới được thay đổi email");
         }
-        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
-            if (userRepository.existsByEmail(request.getEmail())) {
-                throw new IllegalArgumentException("Email đã tồn tại: " + request.getEmail());
+        if (request.getEmail() != null) {
+            String email = normalizeEmail(request.getEmail());
+            if (userRepository.existsByEmailIgnoreCaseAndDeletedAtIsNullAndIdNot(email, user.getId())) {
+                throw new IllegalArgumentException("Email đã tồn tại: " + email);
             }
-            user.setEmail(request.getEmail());
+            user.setEmail(email);
         }
 
         // Self can update fullName and phone

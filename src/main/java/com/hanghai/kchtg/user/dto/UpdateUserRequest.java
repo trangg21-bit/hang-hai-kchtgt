@@ -2,6 +2,7 @@ package com.hanghai.kchtg.user.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
+import com.hanghai.kchtg.user.entity.UserStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -38,5 +39,5 @@ public class UpdateUserRequest {
 
     private List<UUID> groupIds;
 
-    private String status;
+    private UserStatus status;
 }
