@@ -4,6 +4,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, 
 import { organizationService } from '../../services/organizationService';
 
 import type { Organization, CreateOrganizationPayload, UpdateOrganizationPayload } from '../../services/organizationService';
+import { useAuthStore } from '../../store/authStore';
 import { usePermissionStore } from '../../store/permissionStore';
 import { ScreenHeader, FilterBar } from '../../components/list-view';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
@@ -42,6 +43,8 @@ function fmtDate(iso?: string) {
 
 export default function UnitList() {
   const hasPerm = usePermissionStore((s) => s.hasPermission);
+  const currentUser = useAuthStore((s) => s.user);
+  const canViewUpdateMetadata = currentUser?.email?.trim().toLowerCase() === 'cuc@vimawa.gov.vn' || currentUser?.username?.trim().toLowerCase() === 'cuc@vimawa.gov.vn';
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [allOrgs, setAllOrgs] = useState<Organization[]>([]);
@@ -264,8 +267,8 @@ export default function UnitList() {
         <div style={{ display: 'flex', alignItems: 'center', gap: COL_GAP, padding: '8px 0', borderBottom: `1px solid ${borderDefault}`, marginBottom: 4 }}>
           <div style={{ width: COL_NAME, minWidth: COL_NAME, fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, textTransform: 'uppercase', paddingLeft: 24, whiteSpace: 'nowrap' }}>Tên đơn vị</div>
           <div style={{ width: COL_TYPE, minWidth: COL_TYPE, fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Loại</div>
-          <div style={{ width: COL_UPDATED_BY, minWidth: COL_UPDATED_BY, fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Cán bộ cập nhật</div>
-          <div style={{ width: COL_UPDATED_AT, minWidth: COL_UPDATED_AT, fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Ngày cập nhật</div>
+          <div style={{ display: canViewUpdateMetadata ? undefined : 'none', width: COL_UPDATED_BY, minWidth: COL_UPDATED_BY, fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Cán bộ cập nhật</div>
+          <div style={{ display: canViewUpdateMetadata ? undefined : 'none', width: COL_UPDATED_AT, minWidth: COL_UPDATED_AT, fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Ngày cập nhật</div>
           <div style={{ width: COL_STATUS, minWidth: COL_STATUS, fontWeight: fontWeightBold, fontSize: fontSizeMd, color: colors.sidebarBg, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Trạng thái</div>
           <div style={{ width: COL_ACTION, minWidth: COL_ACTION }} />
         </div>
@@ -294,10 +297,10 @@ export default function UnitList() {
                         <div style={{ width: COL_TYPE, minWidth: COL_TYPE }}>
                           <span style={{ display: 'inline-flex', padding: '2px 10px', borderRadius: 8, fontSize: fontSizeMd, fontWeight: fontWeightMedium, background: `${textSecondary}10`, color: textSecondary }}>{getTypeLabel(org.type)}</span>
                         </div>
-                        <div style={{ width: COL_UPDATED_BY, minWidth: COL_UPDATED_BY, fontSize: fontSizeMd, color: textSecondary }}>
+                        <div style={{ display: canViewUpdateMetadata ? undefined : 'none', width: COL_UPDATED_BY, minWidth: COL_UPDATED_BY, fontSize: fontSizeMd, color: textSecondary }}>
                           {fmtUser(org.updatedBy)}
                         </div>
-                        <div style={{ width: COL_UPDATED_AT, minWidth: COL_UPDATED_AT, fontSize: fontSizeMd, color: textTertiary }}>
+                        <div style={{ display: canViewUpdateMetadata ? undefined : 'none', width: COL_UPDATED_AT, minWidth: COL_UPDATED_AT, fontSize: fontSizeMd, color: textTertiary }}>
                           {fmtDate(org.updatedAt)}
                         </div>
                         <div style={{ width: COL_STATUS, minWidth: COL_STATUS }}>
@@ -341,11 +344,11 @@ export default function UnitList() {
                         </span>
                       </div>
                       {/* Column 3: Cán bộ cập nhật */}
-                      <div style={{ width: COL_UPDATED_BY, minWidth: COL_UPDATED_BY, flexShrink: 0, fontSize: fontSizeMd, color: textSecondary }}>
+                      <div style={{ display: canViewUpdateMetadata ? undefined : 'none', width: COL_UPDATED_BY, minWidth: COL_UPDATED_BY, flexShrink: 0, fontSize: fontSizeMd, color: textSecondary }}>
                         {fmtUser(org.updatedBy)}
                       </div>
                       {/* Column 4: Ngày cập nhật */}
-                      <div style={{ width: COL_UPDATED_AT, minWidth: COL_UPDATED_AT, flexShrink: 0, fontSize: fontSizeMd, color: textTertiary }}>
+                      <div style={{ display: canViewUpdateMetadata ? undefined : 'none', width: COL_UPDATED_AT, minWidth: COL_UPDATED_AT, flexShrink: 0, fontSize: fontSizeMd, color: textTertiary }}>
                         {fmtDate(org.updatedAt)}
                       </div>
                       {/* Column 5: Status — fixed position */}

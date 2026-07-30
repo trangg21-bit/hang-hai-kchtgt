@@ -27,6 +27,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -105,12 +107,12 @@ public class UserService {
             actualSize = MAX_PAGE_SIZE;
         }
         
-        org.springframework.data.domain.Sort sort = pageable.getSort();
+        Sort sort = pageable.getSort();
         if (sort == null || sort.isUnsorted()) {
-            sort = org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt");
+            sort = Sort.by(Sort.Direction.DESC, "createdAt");
         }
         
-        Pageable cappedPageable = org.springframework.data.domain.PageRequest.of(
+        Pageable cappedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 actualSize,
                 sort
@@ -193,6 +195,14 @@ public class UserService {
         user.setFullName(request.getFullName());
         user.setPhone(request.getPhone());
         String roleCode = request.getRole() != null ? request.getRole() : "ROLE_USER";
+
+        if ("ROLE_SYSTEM_ADMIN".equals(roleCode)) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN"))) {
+                throw new AccessDeniedException("Chỉ có System Admin mới có quyền tạo System Admin");
+            }
+        }
+
         Role role = roleRepository.findByCode(roleCode)
                 .orElseThrow(() -> new IllegalArgumentException("Vai trò không tồn tại: " + roleCode));
         user.getRoles().add(role);
@@ -307,6 +317,14 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy người dùng với id: " + id));
 
+        if (user.getRoles().stream().anyMatch(r -> "ROLE_SYSTEM_ADMIN".equals(r.getCode()))) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || auth.getAuthorities().stream().noneMatch(a -> a.getAuthority().equals("ROLE_SYSTEM_ADMIN"))) {
+                throw new AccessDeniedException("Chỉ có System Admin mới có quyền xóa System Admin");
+            }
+        }
+
+
         // BR-003: Data-dependency check — query phanhen/bao cao FK references
         // If FK constraints exist in the DB, this will fail at constraint level.
         // We also check here to provide a user-friendly error message.
@@ -333,13 +351,14 @@ public class UserService {
         // 2. Query information_schema for all FK tables referencing app_users
         @SuppressWarnings("unchecked")
         List<String> fkTables = entityManager.createNativeQuery(
-            "SELECT DISTINCT kcu.table_name FROM information_schema.key_column_usage kcu " +
-            "JOIN information_schema.table_constraints tc " +
-            "ON kcu.constraint_name = tc.constraint_name " +
-            "AND kcu.table_schema = tc.table_schema " +
+            "SELECT DISTINCT tc.table_name FROM information_schema.table_constraints AS tc " +
+            "JOIN information_schema.key_column_usage AS kcu " +
+            "ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema " +
+            "JOIN information_schema.constraint_column_usage AS ccu " +
+            "ON ccu.constraint_name = tc.constraint_name AND ccu.table_schema = tc.table_schema " +
             "WHERE tc.constraint_type = 'FOREIGN KEY' " +
-            "AND kcu.referenced_table_name = 'app_users' " +
-            "AND kcu.table_schema = 'public'"
+            "AND ccu.table_name = 'app_users' " +
+            "AND tc.table_schema = 'public'"
         ).getResultList();
         // 3. Check each dependent table for references to this user
         for (String table : fkTables) {
