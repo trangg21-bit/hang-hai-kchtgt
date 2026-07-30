@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.group.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.group.dto.*;
 import com.hanghai.kchtg.group.entity.*;
 import com.hanghai.kchtg.group.repository.GroupHistoryRepository;
@@ -170,7 +172,7 @@ public class UserGroupService {
     public PaginatedGroupResponse list(String search, String groupTypeStr, String statusStr,
             int page, int size) {
         Pageable pageable = PageRequest.of(page, size > 0 ? size : DEFAULT_PAGE_SIZE,
-                Sort.by(Sort.Direction.DESC, "createdAt"));
+                Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
 
         String searchParam = (search != null && !search.isBlank()) ? "%" + search + "%" : null;
         Integer groupTypeInt = (groupTypeStr != null && !groupTypeStr.isBlank())
@@ -211,7 +213,7 @@ public class UserGroupService {
     public PaginatedGroupResponse findMyGroups(UUID userId, String search, String groupTypeStr,
             int page, int size) {
         Pageable pageable = PageRequest.of(page, size > 0 ? size : DEFAULT_PAGE_SIZE,
-                Sort.by(Sort.Direction.DESC, "createdAt"));
+                Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
 
         String searchParam = (search != null && !search.isBlank()) ? "%" + search + "%" : null;
         Integer groupTypeInt = (groupTypeStr != null && !groupTypeStr.isBlank())

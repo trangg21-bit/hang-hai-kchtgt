@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.gis.search.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.gis.line.entity.LineObject;
@@ -428,7 +430,7 @@ public class SearchService {
         PageRequest pageable = PageRequest.of(
                 0,
                 limit,
-                Sort.by(Sort.Direction.ASC, "createdAt")
+                Sort.by(Sort.Direction.ASC, EntityFields.CREATED_AT)
         );
 
         List<SearchQuery> queries = searchQueryRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);

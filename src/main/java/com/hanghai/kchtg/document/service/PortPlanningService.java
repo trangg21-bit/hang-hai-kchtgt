@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.document.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.document.dto.*;
 import com.hanghai.kchtg.document.entity.LookupLog;
 import com.hanghai.kchtg.document.entity.PlanningFile;
@@ -68,13 +70,13 @@ public class PortPlanningService {
 
     @Transactional(readOnly = true)
     public List<PortPlanningResponse> findAll() {
-        return portPlanningRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
+        return portPlanningRepository.findAll(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT))
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Page<PortPlanningResponse> findAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return portPlanningRepository.findAll(pageable).map(this::toResponse);
     }
 
@@ -119,7 +121,7 @@ public class PortPlanningService {
 
     @Transactional(readOnly = true)
     public Page<PortPlanningResponse> searchByProjectNameContaining(String keyword, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return portPlanningRepository.findByProjectNameContaining(keyword, pageable).map(this::toResponse);
     }
 
@@ -135,7 +137,7 @@ public class PortPlanningService {
     @Transactional(readOnly = true)
     public LookupResultResponse traCuu(String keyword, String status, LocalDate yearStart,
                                         LocalDate yearEnd, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
 
         PlanningStatus statusEnum = (status != null && !status.isEmpty())
                 ? PlanningStatus.valueOf(status) : null;

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.user.controller;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.user.dto.CreateRoleRequest;
 import com.hanghai.kchtg.user.dto.RoleResponse;
@@ -40,7 +42,7 @@ public class RoleController {
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size) {
         if (page != null && size != null) {
-            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
             Page<RoleResponse> rolesPage = roleService.findAll(pageable).map(RoleResponse::from);
             return ResponseEntity.ok(ApiResponse.success(rolesPage));
         } else {

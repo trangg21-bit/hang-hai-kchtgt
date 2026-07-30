@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetRequest;
 import com.hanghai.kchtg.assetmovement.dto.InfraAssetResponse;
 import com.hanghai.kchtg.assetmovement.service.InfraAssetService;
@@ -47,7 +49,7 @@ public class InfraAssetController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size,
-                Sort.by("createdAt").descending());
+                Sort.by(EntityFields.CREATED_AT).descending());
         Page<InfraAssetResponse> result = infraAssetService.findAll(pageable);
         return ResponseEntity.ok(ApiResponse.success(result));
     }

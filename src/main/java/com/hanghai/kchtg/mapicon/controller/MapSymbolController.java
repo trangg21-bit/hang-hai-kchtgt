@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.mapicon.controller;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.mapicon.dto.CreateMapSymbolRequest;
 import com.hanghai.kchtg.mapicon.dto.MapSymbolResponse;
@@ -33,7 +35,7 @@ public class MapSymbolController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         MapSymbolStatus symbolStatus = (status != null && !status.trim().isEmpty())
                 ? MapSymbolStatus.fromString(status)
                 : null;

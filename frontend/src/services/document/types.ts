@@ -6,33 +6,37 @@ export interface PageResponse<T> {
   number: number;
 }
 
-export interface VanBanPhapLyCreateRequest {
-  soHieu: string;
-  tenVanBan: string;
-  loaiVanBan: string;
-  nguoiKy: string;
-  ngayBanHanh: string;
-  ngayCoHieuLuc: string;
-  coQuanBanHanh: string;
-  trangThai: string;
-  moTa: string;
+export interface LegalDocumentCreateRequest {
+  documentName: string;
+  documentNumber: string;
+  issuingAuthority: string;
+  issueDate: string;
+  effectiveDate: string;
+  expirationDate?: string;
+  documentType?: string;
+  applicationArea?: string;
+  signer?: string;
+  validityStatus?: string;
+  description?: string;
 }
 
-export interface VanBanPhapLyResponse {
+export interface LegalDocumentResponse {
   id: string;
-  soHieu: string;
-  tenVanBan: string;
-  loaiVanBan: string;
-  nguoiKy: string;
-  ngayBanHanh: string;
-  ngayCoHieuLuc: string;
-  coQuanBanHanh: string;
-  trangThai: string;
-  moTa: string;
-  createdBy: string;
-  createdByName: string;
-  createdAt: string;
-  updatedAt: string;
+  documentName: string;
+  documentNumber: string;
+  issuingAuthority: string;
+  issueDate: string;
+  effectiveDate: string;
+  expirationDate?: string;
+  documentType?: string;
+  applicationArea?: string;
+  validityStatus?: string;
+  signer?: string;
+  description?: string;
+  attachedDocuments?: Array<{
+    id: string; documentName: string; filePath: string; fileSize?: number; uploadedAt: string;
+  }>;
+  createdBy?: string; createdByName?: string; createdAt: string; updatedAt: string;
 }
 
 export interface SuCoCreateRequest {

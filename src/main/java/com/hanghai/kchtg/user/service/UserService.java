@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.user.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import java.util.UUID;
 
 import com.hanghai.kchtg.group.entity.UserGroup;
@@ -109,7 +111,7 @@ public class UserService {
         
         Sort sort = pageable.getSort();
         if (sort == null || sort.isUnsorted()) {
-            sort = Sort.by(Sort.Direction.DESC, "createdAt");
+            sort = Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT);
         }
         
         Pageable cappedPageable = PageRequest.of(

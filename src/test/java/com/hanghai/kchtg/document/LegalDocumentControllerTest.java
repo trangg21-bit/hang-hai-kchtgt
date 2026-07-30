@@ -69,6 +69,7 @@ class LegalDocumentControllerTest {
                                 .documentNumber("01/2026/NĐ")
                                 .issuingAuthority("Chính phủ")
                                 .issueDate(LocalDate.of(2026, 1, 1))
+                                .effectiveDate(LocalDate.of(2026, 1, 1))
                                 .documentType(DocumentType.DECREE)
                                 .validityStatus(ValidityStatus.EFFECTIVE)
                                 .createdBy(testUserId)
@@ -148,7 +149,7 @@ class LegalDocumentControllerTest {
                                 .build();
 
                 when(legalDocumentService.searchDocuments(
-                                eq("Luật"), eq("Quốc hội"), any(), any(), any(), any(), eq(0), eq(20)))
+                                eq("Luật"), eq("Quốc hội"), any(), any(), any(), any(), any(), eq(0), eq(20)))
                                 .thenReturn(searchResult);
 
                 mockMvc.perform(get("/api/v1/legal-documents/search")

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.assetmovement.dto.InventoryAssetRequest;
 import com.hanghai.kchtg.assetmovement.dto.InventoryAssetResponse;
 import com.hanghai.kchtg.assetmovement.entity.InventoryStatus;
@@ -47,7 +49,7 @@ public class InventoryAssetController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size,
-                Sort.by("createdAt").descending());
+                Sort.by(EntityFields.CREATED_AT).descending());
         Page<InventoryAssetResponse> result;
         if (planId != null && inventoryStatus != null) {
             result = inventoryAssetService.findByPlanIdAndStatus(planId, inventoryStatus, pageable);

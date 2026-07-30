@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.interconnect.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.interconnect.dto.DataSharingLogResponse;
 import com.hanghai.kchtg.interconnect.dto.IntegrationConnectionResponse;
 import com.hanghai.kchtg.interconnect.dto.IntegrationTransactionResponse;
@@ -52,7 +54,7 @@ public class InterconnectService {
     Specification<IntegrationConnection> spec = buildConnectionFilter(connectionName, senderSystem, status);
 
     List<IntegrationConnection> entities;
-    entities = connectionRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "createdAt"));
+    entities = connectionRepository.findAll(spec, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
 
     return entities.stream()
       .map(IntegrationConnectionResponse::new)
@@ -172,7 +174,7 @@ public class InterconnectService {
   @Transactional(readOnly = true)
   public List<DataSharingLogResponse> listSharingLogs() {
     List<DataSharingLog> entities = sharingLogRepository.findAll(
-      Sort.by(Sort.Direction.DESC, "createdAt"));
+      Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
     return entities.stream()
       .map(DataSharingLogResponse::new)
       .collect(Collectors.toList());

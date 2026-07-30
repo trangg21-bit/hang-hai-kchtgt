@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.user.controller;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.accesslog.annotation.AuditLog;
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.user.dto.ChangeStatusRequest;
@@ -54,7 +56,7 @@ public class UserController {
             @RequestParam(defaultValue = "20") int size) {
         // Enforce max page size
         int actualSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
-        Pageable pageable = PageRequest.of(page, actualSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, actualSize, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         Page<UserResponse> result = userService.findAll(search, roleCode, status, pageable);
         return ResponseEntity.ok(ApiResponse.success(result));
     }

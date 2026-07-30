@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.datasharing.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.datasharing.dto.ShareFilter;
 import com.hanghai.kchtg.datasharing.dto.ShareSummary;
 import com.hanghai.kchtg.datasharing.dto.SharedDataRequest;
@@ -53,7 +55,7 @@ public class ShareService {
         Pageable pageable = PageRequest.of(
             filter.getPage() != null ? filter.getPage() : 0,
             filter.getSize() != null ? filter.getSize() : 20,
-            Sort.by("createdAt").descending()
+            Sort.by(EntityFields.CREATED_AT).descending()
         );
         ShareStatus status = filter.getShareStatus() != null
             ? ShareStatus.valueOf(filter.getShareStatus()) : ShareStatus.DRAFT;

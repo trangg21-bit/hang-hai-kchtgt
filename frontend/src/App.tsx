@@ -122,11 +122,11 @@ export default function App() {
               {/* Protected routes — inside layout */}
               <Route element={<AppLayout />}>
                 <Route path="/" element={<HomePage />} />
-                <Route path="/users" element={<PermissionGuard permission="user:manage"><UsersPage /></PermissionGuard>} />
+                <Route path="/users" element={<PermissionGuard permission="admin:manage"><UsersPage /></PermissionGuard>} />
                 <Route path="/roles" element={<PermissionGuard permission="role:manage"><RolesPage /></PermissionGuard>} />
 
                 {/* Organization — Đơn vị */}
-                <Route path="/organizations" element={<PermissionGuard permission="orgunit:manage"><UnitList /></PermissionGuard>} />
+                <Route path="/organizations" element={<PermissionGuard permission="orgunit:read"><UnitList /></PermissionGuard>} />
                 <Route path="/organizations/create" element={<PermissionGuard permission="orgunit:manage"><UnitForm /></PermissionGuard>} />
                 <Route path="/organizations/:id/edit" element={<PermissionGuard permission="orgunit:manage"><UnitForm /></PermissionGuard>} />
                 <Route path="/organizations/tree/:id" element={<PermissionGuard permission="orgunit:manage"><UnitTree /></PermissionGuard>} />
@@ -250,7 +250,7 @@ export default function App() {
                 <Route path="/symbols" element={<PermissionGuard permission="data:read"><SymbolList /></PermissionGuard>} />
 
                 {/* Nhật ký & Backup */}
-                <Route path="/logs" element={<PermissionGuard permission="log:manage"><LogsPage /></PermissionGuard>} />
+                <Route path="/logs" element={<PermissionGuard permission="admin:view"><LogsPage /></PermissionGuard>} />
 
                 {/* Cấu hình hệ thống */}
                 <Route path="/settings" element={<PermissionGuard permission="admin:manage"><SettingsPage /></PermissionGuard>} />

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.vtssystem.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
@@ -105,7 +107,7 @@ public class VtsSystemService {
     }
 
     public Page<VtsSystemResponse> findAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdDate"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return repository.findAll(pageable).map(this::toResponse);
     }
 
@@ -113,7 +115,7 @@ public class VtsSystemService {
         String keywordLike = (keyword != null && !keyword.trim().isEmpty()) ? "%" + keyword.trim().toLowerCase() + "%" : null;
         String trimmedConditionStatus = (conditionStatus != null && !conditionStatus.trim().isEmpty()) ? conditionStatus.trim() : null;
         String trimmedApprovalStatus = (approvalStatus != null && !approvalStatus.trim().isEmpty()) ? approvalStatus.trim() : null;
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdDate"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return repository.search(orgUnitId, keywordLike, trimmedConditionStatus, trimmedApprovalStatus, pageable).map(this::toResponse);
     }
 

@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.dikerevetment.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import com.hanghai.kchtg.dikerevetment.dto.*;
 import com.hanghai.kchtg.dikerevetment.entity.*;
@@ -107,13 +109,13 @@ public class DikeRevetmentService {
 
     @Transactional(readOnly = true)
     public List<DikeRevetmentResponse> findAll() {
-        return repo.findByIsDeletedFalse(Sort.by(Sort.Direction.DESC, "createdAt"))
+        return repo.findByIsDeletedFalse(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT))
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Page<DikeRevetmentResponse> findAll(int page, int size) {
-        return repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")))
+        return repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)))
                 .map(this::toResponse);
     }
 
@@ -127,9 +129,9 @@ public class DikeRevetmentService {
         }
         if (orgUnitId != null || (keyword != null && !keyword.isEmpty()) || dikeRevetmentType != null || status != null || approvalStatus != null) {
             results = repo.searchDocuments(orgUnitId, keyword, dikeRevetmentType, status, approvalStatus,
-                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+                    PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         } else {
-            results = repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+            results = repo.findByIsDeletedFalse(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         }
         return results.map(this::toResponse);
     }
@@ -359,7 +361,7 @@ public class DikeRevetmentService {
         }
         String keywordLike = (kw != null && !kw.trim().isEmpty()) ? "%" + kw.trim().toLowerCase() + "%" : null;
         String statusVal = (status != null && !status.trim().isEmpty()) ? status.trim() : null;
-        Page<DikeRevetment> r = repo.searchDocuments(orgUnitId, keywordLike, dikeRevetmentType, statusVal, approvalStatus, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        Page<DikeRevetment> r = repo.searchDocuments(orgUnitId, keywordLike, dikeRevetmentType, statusVal, approvalStatus, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT)));
         return SearchResultResponse.builder()
                 .results(r.getContent().stream().map(this::toResponse).collect(Collectors.toList()))
                 .totalElements(r.getTotalElements())

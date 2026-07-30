@@ -1,0 +1,66 @@
+{
+  "triage_id": "TRI-1785400179905-f5cb",
+  "created_at": 1785400179905,
+  "request_summary": "F-128: Fix FE-BE DTO mismatch (VN→EN field names), add validation, file upload, soft delete, permission UI",
+  "change_class": "C2",
+  "handling": "reduced_pipeline",
+  "evidence": {
+    "edit_target_files": [
+      "frontend/src/pages/document/LegalDocumentList.tsx",
+      "frontend/src/services/document/api.ts",
+      "frontend/src/services/document/types.ts",
+      "src/main/java/com/hanghai/kchtg/document/controller/LegalDocumentController.java",
+      "src/main/java/com/hanghai/kchtg/document/dto/LegalDocumentCreateRequest.java",
+      "src/main/java/com/hanghai/kchtg/document/entity/LegalDocument.java",
+      "src/main/java/com/hanghai/kchtg/document/service/LegalDocumentService.java"
+    ],
+    "impact_files": [
+      "frontend/src/pages/document/LegalDocumentList.tsx",
+      "frontend/src/services/document/api.ts",
+      "frontend/src/services/document/types.ts",
+      "src/main/java/com/hanghai/kchtg/document/controller/LegalDocumentController.java",
+      "src/main/java/com/hanghai/kchtg/document/dto/LegalDocumentCreateRequest.java",
+      "src/main/java/com/hanghai/kchtg/document/entity/LegalDocument.java",
+      "src/main/java/com/hanghai/kchtg/document/service/LegalDocumentService.java"
+    ],
+    "packages": [
+      "frontend"
+    ],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C2: 7 edit-target files exceed the inline gate (7 edit-target files / 1 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "/documents/legal page",
+  "blast_radius": 7,
+  "done_oracle": "mvn compile -q && npx tsc --noEmit both pass, form creates/edits documents successfully",
+  "seam_claims": [
+    {
+      "file": "frontend/src/services/document/types.ts",
+      "line": 8,
+      "quote": "export interface VanBanPhapLyCreateRequest {",
+      "source_hash": "c5a9c91e16be021797a79bf4d73eb6ba32e5ebc9e1df665f246ccbfca947ad1c",
+      "quote_hash": "60edf4a736fca56580dc0e35a73b9ea9088e72515cc25e64762c8003e48eb1bb",
+      "note": "Frontend still uses Vietnamese type names"
+    },
+    {
+      "file": "src/main/java/com/hanghai/kchtg/document/dto/LegalDocumentCreateRequest.java",
+      "line": 22,
+      "quote": "    @NotBlank(message = \"Tên văn bản không được để trống\")",
+      "source_hash": "a200b295db5e39c44f045b67e792f9a038753a5ca7daa5fafcac4e814c675671",
+      "quote_hash": "bb5d670f6ee65b4bfa683ffc45c03ea2c7ee586130fc615c8b00a24fb5d91bb3",
+      "note": "Backend expects English field names"
+    }
+  ],
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "56d2b3a693afaf86ae93bc0d0c64ac53f3327b46",
+    "dirty": false,
+    "captured_at": 1785400180014
+  },
+  "budget": {
+    "wall_clock_ms": 5400000,
+    "turns": 320
+  }
+}

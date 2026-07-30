@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.document.service;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.document.dto.*;
 import com.hanghai.kchtg.document.entity.*;
 import com.hanghai.kchtg.document.repository.IncidentRecordRepository;
@@ -66,13 +68,13 @@ public class IncidentService {
 
     @Transactional(readOnly = true)
     public List<IncidentResponse> findAll() {
-        return incidentRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"))
+        return incidentRepository.findAll(Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT))
                 .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public Page<IncidentResponse> findAll(int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return incidentRepository.findAll(pageable).map(this::toResponse);
     }
 
@@ -124,13 +126,13 @@ public class IncidentService {
 
     @Transactional(readOnly = true)
     public Page<IncidentResponse> searchByViTriContaining(String location, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return incidentRepository.findByLocationContainingIgnoreCase(location, pageable).map(this::toResponse);
     }
 
     @Transactional(readOnly = true)
     public Page<IncidentResponse> searchByMoTaContaining(String description, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, EntityFields.CREATED_AT));
         return incidentRepository.findByDescriptionContainingIgnoreCase(description, pageable).map(this::toResponse);
     }
 

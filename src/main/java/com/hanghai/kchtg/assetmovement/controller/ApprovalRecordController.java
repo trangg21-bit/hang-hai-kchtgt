@@ -1,5 +1,7 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
+import com.hanghai.kchtg.common.entity.EntityFields;
+
 import com.hanghai.kchtg.assetmovement.dto.ApprovalRecordRequest;
 import com.hanghai.kchtg.assetmovement.dto.ApprovalRecordResponse;
 import com.hanghai.kchtg.assetmovement.entity.ApprovalResult;
@@ -51,7 +53,7 @@ public class ApprovalRecordController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, size,
-                Sort.by("createdAt").descending());
+                Sort.by(EntityFields.CREATED_AT).descending());
         Page<ApprovalRecordResponse> pageResult;
         if (requestId != null && result != null) {
             pageResult = approvalRecordService.findByRequestIdAndResult(requestId, result, pageable);
