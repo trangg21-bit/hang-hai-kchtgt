@@ -2,6 +2,7 @@ package com.hanghai.kchtg.statistics;
 
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
+import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import com.hanghai.kchtg.security.JwtUtil;
 import com.hanghai.kchtg.security.service.JwtSessionService;
 import com.hanghai.kchtg.security.service.TokenService;
@@ -13,7 +14,6 @@ import com.hanghai.kchtg.statistics.dto.StatisticsFormResponse;
 import com.hanghai.kchtg.statistics.dto.StatisticsSummary;
 import com.hanghai.kchtg.statistics.service.StatisticsService;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -39,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(StatisticsController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @WithMockUser(roles = "SYSTEM_ADMIN")
+@MockBean(JpaMetamodelMappingContext.class)
 class StatisticsControllerTest {
 
     @Autowired

@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.document.dto;
 
-import java.util.UUID;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,6 +8,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder
@@ -23,6 +22,6 @@ public class OperationReportResponse {
     private LocalDate periodEnd;
     private BigDecimal totalCost;
     private String filePath;
-    private java.util.UUID createdBy;
+    private UUID createdBy;
     private LocalDateTime createdAt;
 }

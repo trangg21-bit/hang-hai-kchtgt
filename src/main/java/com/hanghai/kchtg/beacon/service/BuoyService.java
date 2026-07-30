@@ -5,16 +5,25 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.beacon.dto.buoy.BuoyResponse;
 import com.hanghai.kchtg.beacon.dto.buoy.CreateBuoyRequest;
 import com.hanghai.kchtg.beacon.dto.buoy.UpdateBuoyRequest;
-import com.hanghai.kchtg.beacon.entity.*;
+import com.hanghai.kchtg.beacon.entity.BeaconHistory;
+import com.hanghai.kchtg.beacon.entity.BeaconHistoryActionType;
+import com.hanghai.kchtg.beacon.entity.BeaconType;
+import com.hanghai.kchtg.beacon.entity.Buoy;
 import com.hanghai.kchtg.beacon.repository.BeaconHistoryRepository;
 import com.hanghai.kchtg.beacon.repository.BeaconLightRepository;
 import com.hanghai.kchtg.beacon.repository.BuoyRepository;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.orgunit.repository.OrgUnitRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -144,7 +153,7 @@ public class BuoyService {
         Double currentLon = null;
         Double currentLat = null;
         if (entity.getSpatialId() != null) {
-            Optional<com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getSpatialId());
+            Optional<GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getSpatialId());
             if (spatialObjOpt.isPresent()) {
                 String coordsStr = spatialObjOpt.get().getCoordinates();
                 try {
@@ -193,14 +202,14 @@ public class BuoyService {
 
         // Sync GIS spatial object
         if (wkt != null) {
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     entity.getSpatialId(),
                     entity.getName(),
                     "PHAOTIEU_" + entity.getCode(),
-                    com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT,
-                    com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_BUOY,
+                    GisGeometryType.POINT,
+                    GisSpatialObjectType.POINT_BUOY,
                     wkt, entity.getId(),
-                    com.hanghai.kchtg.gis.search.dto.InfrastructureType.BUOY
+                    InfrastructureType.BUOY
             );
             if (entity.getSpatialId() == null) {
                 entity.setSpatialId(spatialObj.getId());
@@ -236,7 +245,7 @@ public class BuoyService {
         }
 
         entity.setStatus("DELETED");
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         buoyRepo.save(entity);
 
         logHistory(entity, BeaconHistoryActionType.SOFT_DELETE, null, null, toJson(entity));
@@ -394,7 +403,7 @@ public class BuoyService {
         Double latitude = null;
         Double longitude = null;
         if (entity.getSpatialId() != null) {
-            Optional<com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getSpatialId());
+            Optional<GisSpatialObject> spatialObjOpt = gisSpatialObjectService.findById(entity.getSpatialId());
             if (spatialObjOpt.isPresent()) {
                 String coordsStr = spatialObjOpt.get().getCoordinates();
                 try {
@@ -427,7 +436,7 @@ public class BuoyService {
                 .isActive(entity.getIsActive())
                 .status(entity.getStatus())
                 .approvalStatus(entity.getApprovalStatus())
-                .approvalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.fromInt(entity.getApprovalLevel()))
+                .approvalLevel(ApprovalLevel.fromInt(entity.getApprovalLevel()))
                 .approvedBy(entity.getApprovedBy())
                 .approvedDate(entity.getApprovedDate())
                 .rejectionReason(entity.getRejectionReason())

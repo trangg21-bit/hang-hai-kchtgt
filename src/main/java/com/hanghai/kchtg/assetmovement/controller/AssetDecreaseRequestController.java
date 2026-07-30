@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.assetmovement.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.assetmovement.dto.AssetDecreaseRequestRequest;
 import com.hanghai.kchtg.assetmovement.dto.AssetDecreaseRequestResponse;
 import com.hanghai.kchtg.assetmovement.service.AssetDecreaseRequestService;

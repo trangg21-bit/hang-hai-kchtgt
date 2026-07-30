@@ -1,12 +1,8 @@
 package com.hanghai.kchtg.group.entity;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import com.hanghai.kchtg.user.entity.User;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

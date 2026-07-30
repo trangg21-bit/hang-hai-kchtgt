@@ -2,7 +2,6 @@ package com.hanghai.kchtg.port.service.shared;
 
 import com.hanghai.kchtg.port.entity.ChangeLog;
 import com.hanghai.kchtg.port.repository.ChangeLogRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

@@ -6,8 +6,8 @@ import type { Symbol } from '../../services/symbolService';
 import { colors } from '../../theme';
 
 interface GisLocationSelectorValue {
-  loaiHinhHoc: string;
-  toaDo: string;
+  geometryType: string;
+  coordinates: string;
 }
 
 interface GisLocationSelectorProps {
@@ -156,7 +156,7 @@ function DmsInput({ value, onChange, placeholderPrefix }: DmsInputProps) {
 }
 
 export default function GisLocationSelector({
-  value = { loaiHinhHoc: undefined, toaDo: '' },
+  value = { geometryType: undefined, coordinates: '' },
   onChange,
   defaultGeometryType,
   height = 550,
@@ -196,9 +196,9 @@ export default function GisLocationSelector({
 
   // Sync internal state with incoming props value
   useEffect(() => {
-    const geometryType = defaultGeometryType || value.loaiHinhHoc;
-    const toaDo = value.toaDo || '';
-    const bieuTuongId = value.bieuTuongId;
+    const geometryType = defaultGeometryType || value.geometryType;
+    const toaDo = value.coordinates || '';
+    const bieuTuongId = value.symbolId;
 
     setInternalGeom(geometryType || '');
     setInternalToaDo(toaDo);
@@ -211,7 +211,7 @@ export default function GisLocationSelector({
     } else {
       setVertices([]);
     }
-  }, [value.loaiHinhHoc, value.toaDo, value.bieuTuongId, defaultGeometryType]);
+  }, [value.geometryType, value.coordinates, value.symbolId, defaultGeometryType]);
 
   // Load symbols list
   useEffect(() => {
@@ -323,8 +323,8 @@ export default function GisLocationSelector({
     (newGeom: string, newWkt: string, newSym?: string) => {
       if (onChange) {
         onChange({
-          loaiHinhHoc: newGeom,
-          toaDo: newWkt,
+          geometryType: newGeom,
+          coordinates: newWkt,
         });
       }
     },

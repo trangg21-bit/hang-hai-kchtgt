@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.radarstation.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.radarstation.entity.RadarStation;
 import com.hanghai.kchtg.radarstation.entity.RadarStationApprovalStatus;
 import org.springframework.data.domain.Page;
@@ -12,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 public interface RadarStationRepository extends JpaRepository<RadarStation, UUID> {

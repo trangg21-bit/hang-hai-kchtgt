@@ -1,14 +1,17 @@
 package com.hanghai.kchtg.shiprepairfacility.entity;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "ship_repair_facility")
@@ -17,7 +20,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ShipRepairFacility extends com.hanghai.kchtg.common.entity.BaseEntity {
+public class ShipRepairFacility extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -30,8 +33,8 @@ public class ShipRepairFacility extends com.hanghai.kchtg.common.entity.BaseEnti
     @Column(name = "address", nullable = false, length = 500)
     private String address;
 
-    @Column(name = "province", nullable = false, length = 100)
-    private String province;
+    @Column(name = "province_id")
+    private Integer provinceId;
 
     @Column(name = "phone", length = 20)
     private String phone;

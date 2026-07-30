@@ -16,7 +16,6 @@ import type {
   DashboardData,
   KpiWithSparkline,
   KpiCardData,
-  AlertCardData,
   MonthlyCargoSeries,
   PassengerMonthlySeries,
   DonutSegment,
@@ -51,9 +50,10 @@ const PROCESSING_TYPE_LABEL: Record<string, string> = {
  * Fetch annual cargo totals (E1: ports/cargo-total)
  * Returns: Page<CargoAggregate> with periodType=ANNUAL
  */
-async function fetchCargoTotal(year: number): Promise<CargoAggregate[]> {
+async function fetchCargoTotal(year: number, province?: string | null): Promise<CargoAggregate[]> {
   const res = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${INTEGRATION_BASE}/ports/cargo-total?page=0&size=50`
+    `${INTEGRATION_BASE}/ports/cargo-total`,
+    { params: { page: 0, size: 50, ...(province ? { province: province.trim() } : {}) } },
   );
   if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
   const data = res.data.data;
@@ -64,9 +64,10 @@ async function fetchCargoTotal(year: number): Promise<CargoAggregate[]> {
  * Fetch monthly cargo aggregates (E2: cargo/summary?periodType=MONTHLY)
  * Returns: Page<CargoAggregate> with periodType=MONTHLY
  */
-async function fetchCargoMonthly(year: number): Promise<CargoAggregate[]> {
+async function fetchCargoMonthly(year: number, province?: string | null): Promise<CargoAggregate[]> {
   const res = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${INTEGRATION_BASE}/cargo/summary?periodType=MONTHLY&page=0&size=50`
+    `${INTEGRATION_BASE}/cargo/summary`,
+    { params: { periodType: 'MONTHLY', page: 0, size: 50, ...(province ? { province: province.trim() } : {}) } },
   );
   if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
   const data = res.data.data;
@@ -77,9 +78,10 @@ async function fetchCargoMonthly(year: number): Promise<CargoAggregate[]> {
  * Fetch annual cargo aggregates (E2: cargo/summary?periodType=ANNUAL)
  * Returns: Page<CargoAggregate> with periodType=ANNUAL
  */
-async function fetchCargoAnnual(year: number): Promise<CargoAggregate[]> {
+async function fetchCargoAnnual(year: number, province?: string | null): Promise<CargoAggregate[]> {
   const res = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${INTEGRATION_BASE}/cargo/summary?periodType=ANNUAL&page=0&size=200`
+    `${INTEGRATION_BASE}/cargo/summary`,
+    { params: { periodType: 'ANNUAL', page: 0, size: 200, ...(province ? { province: province.trim() } : {}) } },
   );
   if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
   const data = res.data.data;
@@ -90,9 +92,10 @@ async function fetchCargoAnnual(year: number): Promise<CargoAggregate[]> {
  * Fetch passenger cargo aggregates (E2: cargo/summary?periodType=CARGO_PASSENGER)
  * Returns: Page<CargoAggregate> with periodType=CARGO_PASSENGER
  */
-async function fetchCargoPassenger(year: number): Promise<CargoAggregate[]> {
+async function fetchCargoPassenger(year: number, province?: string | null): Promise<CargoAggregate[]> {
   const res = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${INTEGRATION_BASE}/cargo/summary?periodType=CARGO_PASSENGER&page=0&size=200`
+    `${INTEGRATION_BASE}/cargo/summary`,
+    { params: { periodType: 'CARGO_PASSENGER', page: 0, size: 200, ...(province ? { province: province.trim() } : {}) } },
   );
   if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
   const data = res.data.data;
@@ -103,9 +106,10 @@ async function fetchCargoPassenger(year: number): Promise<CargoAggregate[]> {
  * Fetch domestic cargo aggregates (E2: cargo/summary?periodType=DOMESTIC)
  * Returns: Page<CargoAggregate> with periodType=DOMESTIC
  */
-async function fetchCargoDomestic(year: number): Promise<CargoAggregate[]> {
+async function fetchCargoDomestic(year: number, province?: string | null): Promise<CargoAggregate[]> {
   const res = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${INTEGRATION_BASE}/cargo/summary?periodType=DOMESTIC&page=0&size=200`
+    `${INTEGRATION_BASE}/cargo/summary`,
+    { params: { periodType: 'DOMESTIC', page: 0, size: 200, ...(province ? { province: province.trim() } : {}) } },
   );
   if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
   const data = res.data.data;
@@ -116,9 +120,10 @@ async function fetchCargoDomestic(year: number): Promise<CargoAggregate[]> {
  * Fetch managed area cargo aggregates (E2: cargo/summary?periodType=MANAGED_AREA)
  * Returns: Page<CargoAggregate> with periodType=MANAGED_AREA
  */
-async function fetchCargoManagedArea(year: number): Promise<CargoAggregate[]> {
+async function fetchCargoManagedArea(year: number, province?: string | null): Promise<CargoAggregate[]> {
   const res = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${INTEGRATION_BASE}/cargo/summary?periodType=MANAGED_AREA&page=0&size=200`
+    `${INTEGRATION_BASE}/cargo/summary`,
+    { params: { periodType: 'MANAGED_AREA', page: 0, size: 200, ...(province ? { province: province.trim() } : {}) } },
   );
   if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
   const data = res.data.data;
@@ -129,9 +134,19 @@ async function fetchCargoManagedArea(year: number): Promise<CargoAggregate[]> {
  * Fetch asset status summary (E3: assets/status)
  * Returns: AssetStatusDto
  */
-async function fetchAssetStatus(): Promise<AssetStatusDto> {
+async function fetchAssetStatus(
+  year?: number,
+  province?: string | null,
+  infraType?: string | null,
+): Promise<AssetStatusDto> {
+  // Endpoint trạng thái tài sản đồng thời trả số liệu phê duyệt KCHT.
+  const params: Record<string, number | string> = {};
+  if (year !== undefined) params.year = year;
+  if (province) params.province = province.trim();
+  if (infraType) params.infraType = infraType.trim();
   const res = await api.get<ApiResponse<AssetStatusDto>>(
-    `${INTEGRATION_BASE}/assets/status`
+    `${INTEGRATION_BASE}/assets/status`,
+    { params: Object.keys(params).length > 0 ? params : undefined }
   );
   if (!res.data.success) throw new Error(res.data.message || 'API returned unsuccessful response');
   return res.data.data;
@@ -165,23 +180,37 @@ interface ApprovalStats {
   rejected: number;
 }
 
+let assetApprovalStatsInFlight: Promise<ApprovalStats> | null = null;
+
 /**
  * Fetch asset approval breakdown (Đã duyệt / Chờ duyệt / Từ chối)
  */
 async function fetchAssetApprovalStats(): Promise<ApprovalStats> {
+  if (assetApprovalStatsInFlight) return assetApprovalStatsInFlight;
+
+  assetApprovalStatsInFlight = (async () => {
+    try {
+      const res = await api.get('/v1/dashboard/approval-asset');
+      return res.data?.data || { total: 0, approved: 0, pending: 0, rejected: 0 };
+    } catch {
+      return { total: 0, approved: 0, pending: 0, rejected: 0 };
+    }
+  })();
+
   try {
-    const res = await api.get('/v1/dashboard/approval-asset');
-    return res.data?.data || { total: 0, approved: 0, pending: 0, rejected: 0 };
-  } catch { return { total: 0, approved: 0, pending: 0, rejected: 0 }; }
+    return await assetApprovalStatsInFlight;
+  } finally {
+    assetApprovalStatsInFlight = null;
+  }
 }
 
 /**
  * Fetch KCHT approval breakdown (Đã duyệt / Chờ duyệt / Từ chối)
  */
-async function fetchKchtApprovalStats(): Promise<ApprovalStats> {
+async function fetchKchtApprovalStats(year?: number): Promise<ApprovalStats> {
   try {
-    const res = await api.get('/v1/dashboard/approval-kcht');
-    return res.data?.data || { total: 0, approved: 0, pending: 0, rejected: 0 };
+    const dto = await fetchAssetStatus(year);
+    return dto.approvalStats || { total: 0, approved: 0, pending: 0, rejected: 0 };
   } catch { return { total: 0, approved: 0, pending: 0, rejected: 0 }; }
 }
 
@@ -191,17 +220,20 @@ async function fetchKchtApprovalStats(): Promise<ApprovalStats> {
  */
 async function fetchYearOverYear(
   year: number,
-  periodType: PeriodType
+  periodType: PeriodType,
+  province?: string | null,
 ): Promise<YearOverYearDelta> {
   const currentRes = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${INTEGRATION_BASE}/cargo/summary?periodType=${periodType}&page=0&size=200`
+    `${INTEGRATION_BASE}/cargo/summary`,
+    { params: { periodType, page: 0, size: 200, ...(province ? { province: province.trim() } : {}) } },
   );
   if (!currentRes.data.success) throw new Error(currentRes.data.message || 'API returned unsuccessful response');
   const currentData = currentRes.data.data.content.filter((c) =>
     c.periodStart.startsWith(String(year))
   );
   const previousRes = await api.get<ApiResponse<Page<CargoAggregate>>>(
-    `${INTEGRATION_BASE}/cargo/summary?periodType=${periodType}&page=0&size=200`
+    `${INTEGRATION_BASE}/cargo/summary`,
+    { params: { periodType, page: 0, size: 200, ...(province ? { province: province.trim() } : {}) } },
   );
   if (!previousRes.data.success) throw new Error(previousRes.data.message || 'API returned unsuccessful response');
   const previousData = previousRes.data.data.content.filter((c) =>
@@ -271,7 +303,7 @@ function transformCargoTotals(
  */
 function transformMonthlyCargo(
   aggregates: CargoAggregate[],
-  year: number
+  _year: number
 ): MonthlyCargoSeries {
   const monthlyMap = new Map<number, CargoAggregate[]>();
   aggregates.forEach((c) => {
@@ -308,7 +340,7 @@ function transformMonthlyCargo(
  */
 function transformPassengerData(
   aggregates: CargoAggregate[],
-  year: number
+  _year: number
 ): PassengerMonthlySeries {
   const monthlyMap = new Map<number, CargoAggregate[]>();
   aggregates.forEach((c) => {
@@ -348,11 +380,25 @@ function transformPassengerData(
  * operating = assetsByStatus['PUBLISHED'], total = totalAssets
  */
 function transformKchtRing(dto: AssetStatusDto): RingKchtData {
-  const operatingCount = dto.assetsByStatus['PUBLISHED'] || 0;
-  const totalCount = dto.totalAssets || 215;
+  const operatingCount = dto.assetsByStatus?.PUBLISHED || 0;
+  const totalCount = dto.totalAssets || 0;
   const percentage = totalCount > 0 ? Math.round((operatingCount / totalCount) * 100) : 0;
 
   return { operatingCount, totalCount, percentage };
+}
+
+/**
+ * Chuyển toàn bộ breakdown KCHT thành tỷ lệ vận hành theo từng loại.
+ * Không sử dụng chỉ tiêu giả định: value chỉ được tính từ operating / total.
+ */
+function transformKchtOperatingByType(dto: AssetStatusDto): RadarIndicator[] {
+  return [...(dto.breakdown || [])]
+    .sort((left, right) => left.sequenceNo - right.sequenceNo)
+    .map((item) => ({
+      name: item.type,
+      value: item.total > 0 ? Number(((item.operating / item.total) * 100).toFixed(1)) : 0,
+      max: 100,
+    }));
 }
 
 /**
@@ -438,8 +484,12 @@ function transformApprovalData(
  */
 async function fetchAll(
   filters: { year: number; province: string | null; infraType: string | null }
-): Promise<{ data: DashboardData; states: Record<string, BlockState> }> {
-  const { year } = filters;
+): Promise<{
+  data: DashboardData;
+  states: Record<string, BlockState>;
+  assetStatus?: AssetStatusDto;
+}> {
+  const { year, province, infraType } = filters;
   const states: Record<string, BlockState> = {};
 
   const [
@@ -453,15 +503,15 @@ async function fetchAll(
     approvals,
     yearOverYear,
   ] = await Promise.allSettled([
-    fetchCargoTotal(year),
-    fetchCargoMonthly(year),
-    fetchCargoAnnual(year),
-    fetchCargoPassenger(year),
-    fetchCargoDomestic(year),
-    fetchCargoManagedArea(year),
-    fetchAssetStatus(),
+    fetchCargoTotal(year, province),
+    fetchCargoMonthly(year, province),
+    fetchCargoAnnual(year, province),
+    fetchCargoPassenger(year, province),
+    fetchCargoDomestic(year, province),
+    fetchCargoManagedArea(year, province),
+    fetchAssetStatus(year, province, infraType),
     fetchApprovals(0, 500),
-    fetchYearOverYear(year, 'ANNUAL'),
+    fetchYearOverYear(year, 'ANNUAL', province),
   ]);
 
   const data: Partial<DashboardData> = {};
@@ -679,13 +729,21 @@ async function fetchAll(
     );
   }
 
-  // Radar Coverage (stays mock — G-004)
-  data.radarCoverage = MOCK_DATA.radarCoverage;
-  states.radarCoverage = {
-    state: 'data',
-    isMockFallback: true,
-    lastError: 'G-004: No coverage endpoint',
-  };
+  // Tỷ lệ vận hành theo toàn bộ loại KCHT — dùng chung payload assets/status.
+  if (assetStatus.status === 'fulfilled') {
+    data.radarCoverage = transformKchtOperatingByType(assetStatus.value);
+    states.radarCoverage = {
+      state: data.radarCoverage.length > 0 ? 'data' : 'empty',
+      isMockFallback: false,
+    };
+  } else {
+    data.radarCoverage = [];
+    states.radarCoverage = {
+      state: 'error',
+      isMockFallback: false,
+      lastError: assetStatus.reason?.message || 'API unavailable',
+    };
+  }
 
   // H-Bar Approval + Donut Phe Duyet
   if (approvals.status === 'fulfilled') {
@@ -712,7 +770,11 @@ async function fetchAll(
     );
   }
 
-  return { data: data as DashboardData, states };
+  return {
+    data: data as DashboardData,
+    states,
+    assetStatus: assetStatus.status === 'fulfilled' ? assetStatus.value : undefined,
+  };
 }
 
 // ============================================================
@@ -725,7 +787,11 @@ async function fetchAll(
 async function fetchWithFallback(
   filters: { year: number; province: string | null; infraType: string | null },
   mockData: DashboardData
-): Promise<{ data: DashboardData; states: Record<string, BlockState> }> {
+): Promise<{
+  data: DashboardData;
+  states: Record<string, BlockState>;
+  assetStatus?: AssetStatusDto;
+}> {
   try {
     return await fetchAll(filters);
   } catch (error) {
@@ -764,6 +830,7 @@ export const dashboardApi = {
   transformMonthlyCargo,
   transformPassengerData,
   transformKchtRing,
+  transformKchtOperatingByType,
   transformVesselComposition,
   transformApprovalData,
 };

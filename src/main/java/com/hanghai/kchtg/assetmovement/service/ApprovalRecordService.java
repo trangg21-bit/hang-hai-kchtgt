@@ -1,16 +1,11 @@
 package com.hanghai.kchtg.assetmovement.service;
 
-import java.util.UUID;
-
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
-
 import com.hanghai.kchtg.assetmovement.dto.ApprovalRecordRequest;
 import com.hanghai.kchtg.assetmovement.dto.ApprovalRecordResponse;
-import com.hanghai.kchtg.assetmovement.entity.ApprovalResult;
 import com.hanghai.kchtg.assetmovement.entity.ApprovalRecord;
+import com.hanghai.kchtg.assetmovement.entity.ApprovalResult;
 import com.hanghai.kchtg.assetmovement.repository.ApprovalRecordRepository;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -49,7 +44,7 @@ public class ApprovalRecordService {
                 .reason(request.getNotes())
                 .approvalDate(Instant.now())
                 .description(request.getNotes())
-                
+
                 .build();
 
         ApprovalRecord saved = repository.save(entity);

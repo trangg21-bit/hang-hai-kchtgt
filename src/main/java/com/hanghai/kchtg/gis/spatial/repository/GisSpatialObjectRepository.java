@@ -1,9 +1,8 @@
 package com.hanghai.kchtg.gis.spatial.repository;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
 import com.hanghai.kchtg.gis.spatial.entity.GisSpatialStatus;
 import org.springframework.data.domain.Page;
@@ -15,7 +14,6 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
 public interface GisSpatialObjectRepository extends JpaRepository<GisSpatialObject, UUID> {
 

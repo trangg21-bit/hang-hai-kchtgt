@@ -1,19 +1,25 @@
 package com.hanghai.kchtg.port.service;
 
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.dashboard.service.KchtAssetCountService;
-import com.hanghai.kchtg.port.dto.port.PortResponse;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
 import com.hanghai.kchtg.port.dto.port.CreatePortRequest;
+import com.hanghai.kchtg.port.dto.port.PortResponse;
 import com.hanghai.kchtg.port.dto.port.UpdatePortRequest;
 import com.hanghai.kchtg.port.entity.Port;
-import java.math.BigDecimal;
 import com.hanghai.kchtg.port.repository.BerthRepository;
-import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.PierRepository;
+import com.hanghai.kchtg.port.repository.PortRepository;
 import com.hanghai.kchtg.port.repository.WaterZoneRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeTrackingService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +30,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 /**
@@ -48,8 +55,8 @@ public class PortService {
     private final PierRepository pierRepository;
     private final ChangeTrackingService changeTrackingService;
     private final UserResolverService userResolverService;
-    private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
-    private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+    private final UserRepository userRepository;
+    private final GisSpatialObjectService gisSpatialObjectService;
 
     // ── CREATE ──────────────────────────────────────────────────
 
@@ -62,7 +69,7 @@ public class PortService {
         Port entity = Port.builder()
                 .portCode(request.getPortCode())
                 .portName(request.getPortName())
-                .province(request.getProvince())
+                .provinceId(request.getProvinceId())
                 .area(request.getArea())
                 .maxVesselCapacity(request.getMaxVesselCapacity())
                 .operationalStatus(request.getOperationalStatus())
@@ -102,10 +109,10 @@ public class PortService {
         }
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_PORT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisSpatialObjectType objType = GisSpatialObjectType.POINT_PORT;
             UUID refId = saved.getId();
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     null,
                     saved.getPortName(),
                     "PORT_" + saved.getPortCode(),
@@ -113,7 +120,7 @@ public class PortService {
                     objType,
                     coordinates,
                     refId,
-                    com.hanghai.kchtg.gis.search.dto.InfrastructureType.SEAPORT
+                    InfrastructureType.SEAPORT
             );
             saved.setSpatialId(spatialObj.getId());
             saved = portRepository.save(saved);
@@ -139,7 +146,7 @@ public class PortService {
 
     @Transactional(readOnly = true)
     public Page<PortResponse> findAll(int page, int size, UUID orgUnitId,
-                                          String portCode, String portName, String province,
+                                          String portCode, String portName, Integer provinceId,
                                           String operationalStatus, String approvalStatus,
                                           String search) {
         int pageSize = Math.min(Math.max(size, 1), 5000);
@@ -148,7 +155,7 @@ public class PortService {
         OperationalStatus statusEnum = operationalStatus != null ? OperationalStatus.fromString(operationalStatus) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         Page<Port> results = portRepository.searchPorts(
-                orgUnitId, portCode, portName, province, statusEnum, approvalEnum, search, pageable);
+                orgUnitId, portCode, portName, provinceId, statusEnum, approvalEnum, search, pageable);
 
         java.util.Set<UUID> userUuids = new java.util.HashSet<>();
         results.getContent().forEach(e -> {
@@ -190,7 +197,7 @@ public class PortService {
                 .id(entity.getId())
                 .portCode(entity.getPortCode())
                 .portName(entity.getPortName())
-                .province(entity.getProvince())
+                .provinceId(entity.getProvinceId())
 
                 .area(entity.getArea())
                 .maxVesselCapacity(entity.getMaxVesselCapacity())
@@ -225,7 +232,7 @@ public class PortService {
 
         // Update mutable fields — code (portCode) is immutable
         if (request.getPortName() != null) entity.setPortName(request.getPortName());
-        if (request.getProvince() != null) entity.setProvince(request.getProvince());
+        if (request.getProvinceId() != null) entity.setProvinceId(request.getProvinceId());
 
         if (request.getArea() != null) entity.setArea(request.getArea());
         if (request.getMaxVesselCapacity() != null) entity.setMaxVesselCapacity(request.getMaxVesselCapacity());
@@ -279,10 +286,10 @@ public class PortService {
         Port saved = portRepository.save(entity);
 
         if (coordinates != null && !coordinates.trim().isEmpty()) {
-            com.hanghai.kchtg.gis.spatial.entity.GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : com.hanghai.kchtg.gis.spatial.entity.GisGeometryType.POINT;
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType objType = com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType.POINT_PORT;
+            GisGeometryType geomType = request.getGeometryType() != null ? request.getGeometryType() : GisGeometryType.POINT;
+            GisSpatialObjectType objType = GisSpatialObjectType.POINT_PORT;
             UUID refId = saved.getId();
-            com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
+            GisSpatialObject spatialObj = gisSpatialObjectService.createOrUpdate(
                     saved.getSpatialId(),
                     saved.getPortName(),
                     "PORT_" + saved.getPortCode(),
@@ -290,7 +297,7 @@ public class PortService {
                     objType,
                     coordinates,
                     refId,
-                    com.hanghai.kchtg.gis.search.dto.InfrastructureType.SEAPORT
+                    InfrastructureType.SEAPORT
             );
             saved.setSpatialId(spatialObj.getId());
             saved = portRepository.save(saved);
@@ -322,7 +329,7 @@ public class PortService {
             throw new IllegalArgumentException(msg.toString());
         }
 
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         portRepository.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
@@ -354,7 +361,7 @@ public class PortService {
                 .id(entity.getId())
                 .portCode(entity.getPortCode())
                 .portName(entity.getPortName())
-                .province(entity.getProvince())
+                .provinceId(entity.getProvinceId())
 
                 .area(entity.getArea())
                 .maxVesselCapacity(entity.getMaxVesselCapacity())

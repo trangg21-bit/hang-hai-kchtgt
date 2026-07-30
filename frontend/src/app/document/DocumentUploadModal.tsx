@@ -10,8 +10,8 @@ import {
   FileOutlined,
 } from '@ant-design/icons';
 import { documentApi } from './api';
-import type { GiayTo, GiayToEntityType } from './types';
-import { GIAYTO_ENTITY_TYPES } from './types';
+import type { Document, DocumentEntityType } from './types';
+import { DOCUMENT_ENTITY_TYPES } from './types';
 import { MAX_FILE_SIZE } from './schema';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
 import EmptyState from '../../components/EmptyState';
@@ -21,7 +21,7 @@ import toast from '../../components/ToastNotification';
 const { Dragger } = Upload;
 
 interface DocumentUploadModalProps {
-  entityType: GiayToEntityType;
+  entityType: DocumentEntityType;
   entityId: string;
   open: boolean;
   onCancel: () => void;
@@ -33,7 +33,7 @@ export default function DocumentUploadModal({
   open,
   onCancel,
 }: DocumentUploadModalProps) {
-  const [files, setFiles] = useState<GiayTo[]>([]);
+  const [files, setFiles] = useState<Document[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -45,7 +45,7 @@ export default function DocumentUploadModal({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const entityLabel = (() => {
-    const found = GIAYTO_ENTITY_TYPES.find((t) => t.value === entityType);
+    const found = DOCUMENT_ENTITY_TYPES.find((t) => t.value === entityType);
     return found ? found.label : 'Unknown';
   })();
 
@@ -283,7 +283,7 @@ export default function DocumentUploadModal({
                   title: 'Hành động',
                   key: 'actions',
                   width: 100,
-                  render: (_: unknown, record: GiayTo) => (
+                  render: (_: unknown, record: Document) => (
                     <Space size="small">
                       <Button
                         type="text"

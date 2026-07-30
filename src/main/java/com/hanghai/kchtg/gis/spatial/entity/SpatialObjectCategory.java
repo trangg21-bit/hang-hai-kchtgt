@@ -1,14 +1,11 @@
 package com.hanghai.kchtg.gis.spatial.entity;
 
-import java.util.UUID;
-
-import jakarta.persistence.*;
+import com.hanghai.kchtg.common.entity.BaseEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
-import com.hanghai.kchtg.common.entity.BaseEntity;
 
 import java.util.UUID;
 

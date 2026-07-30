@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Row, Col, Table, Tag, Select, Input, Button, Badge } from 'antd';
-import { EnvironmentOutlined, EyeOutlined, SearchOutlined, AlertOutlined } from '@ant-design/icons';
+import { Row, Col, Table, Tag, Select, Input, Button, Tooltip } from 'antd';
+import type { TableProps } from 'antd';
+import { EyeOutlined, SearchOutlined, AlertOutlined } from '@ant-design/icons';
 import { FilterProvider, useFilter } from '../context/FilterContext';
 import { VIETNAM_PROVINCES } from '../types/common';
 import FilterBar from '../components/FilterBar';
@@ -25,7 +26,6 @@ import {
   pendingActiveBg, pendingActiveColor,
   pendingZeroBg, pendingZeroColor,
   actionPrimary,
-  statusDraft,
 } from '../tokens-dashboard';
 import { dashboardApi } from '../services/dashboardApi';
 import { MOCK_DATA } from '../services/dashboardMockData';
@@ -40,8 +40,6 @@ const rCard = radiusXl;
 const rSm = radiusSm;
 const rPill = radiusPill;
 const sea0 = dataSea0;
-const sea1 = dataSea1;
-const sea2 = dataSea2;
 const sea3 = dataSea3;
 const navy = dataNavy;
 
@@ -79,20 +77,25 @@ const CARGO_SERIES = [
 // Infrastructure table data
 // ============================================================
 interface InfraRow {
-  sequenceNo: number; loai: string; tongSL: number;
-  chuaKhaiThac: number; dangKhaiThac: number; dungKhaiThac: number;
+  sequenceNo: number;
+  code?: string;
+  type: string;
+  total: number;
+  pending: number;
+  operating: number;
+  suspended: number;
 }
-const INFRA_DATA: InfraRow[] = [
-  { sequenceNo: 1, loai: 'Bến cảng', tongSL: 42, chuaKhaiThac: 5, dangKhaiThac: 34, dungKhaiThac: 3 },
-  { sequenceNo: 2, loai: 'Bến phao', tongSL: 18, chuaKhaiThac: 2, dangKhaiThac: 15, dungKhaiThac: 1 },
-  { sequenceNo: 3, loai: 'Cầu cảng', tongSL: 56, chuaKhaiThac: 8, dangKhaiThac: 45, dungKhaiThac: 3 },
-  { sequenceNo: 4, loai: 'Khu neo đậu', tongSL: 24, chuaKhaiThac: 4, dangKhaiThac: 19, dungKhaiThac: 1 },
-  { sequenceNo: 5, loai: 'Khu chuyển tải', tongSL: 12, chuaKhaiThac: 2, dangKhaiThac: 9, dungKhaiThac: 1 },
-  { sequenceNo: 6, loai: 'Luồng hàng hải', tongSL: 38, chuaKhaiThac: 5, dangKhaiThac: 33, dungKhaiThac: 0 },
-  { sequenceNo: 7, loai: 'Đèn biển', tongSL: 215, chuaKhaiThac: 12, dangKhaiThac: 198, dungKhaiThac: 5 },
-  { sequenceNo: 8, loai: 'Phao tiêu', tongSL: 183, chuaKhaiThac: 9, dangKhaiThac: 170, dungKhaiThac: 4 },
-  { sequenceNo: 9, loai: 'Đê chắn sóng', tongSL: 8, chuaKhaiThac: 1, dangKhaiThac: 7, dungKhaiThac: 0 },
-  { sequenceNo: 10, loai: 'Kè bảo vệ bờ', tongSL: 15, chuaKhaiThac: 2, dangKhaiThac: 12, dungKhaiThac: 1 },
+export const INFRA_DATA: InfraRow[] = [
+  { sequenceNo: 1, type: 'Bến cảng', total: 42, pending: 5, operating: 34, suspended: 3 },
+  { sequenceNo: 2, type: 'Bến phao', total: 18, pending: 2, operating: 15, suspended: 1 },
+  { sequenceNo: 3, type: 'Cầu cảng', total: 56, pending: 8, operating: 45, suspended: 3 },
+  { sequenceNo: 4, type: 'Khu neo đậu', total: 24, pending: 4, operating: 19, suspended: 1 },
+  { sequenceNo: 5, type: 'Khu chuyển tải', total: 12, pending: 2, operating: 9, suspended: 1 },
+  { sequenceNo: 6, type: 'Luồng hàng hải', total: 38, pending: 5, operating: 33, suspended: 0 },
+  { sequenceNo: 7, type: 'Đèn biển', total: 215, pending: 12, operating: 198, suspended: 5 },
+  { sequenceNo: 8, type: 'Phao tiêu', total: 183, pending: 9, operating: 170, suspended: 4 },
+  { sequenceNo: 9, type: 'Đê chắn sóng', total: 8, pending: 1, operating: 7, suspended: 0 },
+  { sequenceNo: 10, type: 'Kè bảo vệ bờ', total: 15, pending: 2, operating: 12, suspended: 1 },
 ];
 
 // ============================================================
@@ -112,7 +115,7 @@ function MockBadge({ show }: { show?: boolean }) {
   return <Tag color="orange" style={{ marginLeft: 8, fontSize: fontSizeMd }}>Dữ liệu mẫu</Tag>;
 }
 
-const infraColumns = [
+const infraColumns: NonNullable<TableProps<InfraRow>['columns']> = [
   { title: '', dataIndex: 'type', key: 'type', width: 150 },
   { title: 'Tổng số lượng', dataIndex: 'total', key: 'total', width: 90, align: 'center' as const,
     render: (v: number) => <span style={{ fontWeight: 600, fontFamily: fontMono, color: ink }}>{v}</span> },
@@ -122,9 +125,36 @@ const infraColumns = [
     render: (v: number) => pillBadge(v, surface, sea0, surface) },
   { title: <span>Dừng khai thác/<br/>vận hành</span>, dataIndex: 'suspended', key: 'suspended', width: 110, align: 'center' as const,
     render: (v: number) => pillBadge(v, sea0, sea3, surface) },
-  { title: '', key: 'action', width: 40, align: 'center' as const,
-    render: () => <EyeOutlined style={{ color: ink2, cursor: 'pointer' }} /> },
 ];
+
+const KCHT_LABEL_ROUTES: Record<string, string> = {
+  'Cảng biển': '/port',
+  'Bến cảng': '/berth',
+  'Bến phao': '/water-zone?type=MOORING_BUOY',
+  'Cầu cảng': '/pier',
+  'Khu neo đậu': '/water-zone?type=ANCHORAGE',
+  'Khu chuyển tải': '/water-zone?type=TRANSSHIPMENT',
+  'Khu kiểm dịch': '/water-zone?type=QUARANTINE',
+  'Khu đón trả hoa tiêu': '/water-zone?type=PILOT_BOARDING',
+  'Khu quay trở tàu': '/water-zone?type=TURNING_BASIN',
+  'Luồng hàng hải': '/navigation-channel',
+  'Đèn biển': '/beacon-lights',
+  'Phao tiêu': '/buoys',
+  'Đê chắn sóng': '/dike-revetment',
+  'Kè bảo vệ bờ': '/dike-revetment',
+  'Cảng cạn': '/dry-port',
+  'Cơ sở sửa chữa tàu': '/ship-repair-facility',
+  'Trạm hải đăng': '/lighthouse-station',
+  'Trạm phao': '/buoy-station',
+  'Đài VTS': '/station/coastal',
+  'Đài LRIT': '/station/coastal',
+  'Đài Inmarsat': '/station/special',
+  'Đài Hải Phòng': '/station/coastal',
+  'Đài Cospas-Sarsat': '/station/special',
+  'Trạm Radar': '/radar-station',
+  'Hệ thống VTS': '/vts-system',
+  'Đê kè': '/dike-revetment',
+};
 
 // ============================================================
 // Component: HeroCard
@@ -238,6 +268,8 @@ function AlertCard({ alert, navigateTo }: { alert: any; navigateTo: string }) {
 // Component: ApprovalCard
 // ============================================================
 interface ApprovalStats { total: number; approved: number; pending: number; rejected: number; }
+const EMPTY_APPROVAL_STATS: ApprovalStats = { total: 0, approved: 0, pending: 0, rejected: 0 };
+
 function ApprovalCard({ label, stats }: { label: string; stats: ApprovalStats }) {
   const approvedPct = stats.total > 0 ? (stats.approved / stats.total) * 100 : 0;
   const pendingPct = stats.total > 0 ? (stats.pending / stats.total) * 100 : 0;
@@ -272,13 +304,13 @@ function ApprovalCard({ label, stats }: { label: string; stats: ApprovalStats })
 // HomeDashboard
 // ============================================================
 function HomeDashboard() {
-  const { year } = useFilter();
+  const { year, province, infraType } = useFilter();
   const navigate = useNavigate();
 
   const [dashboardData, setDashboardData] = useState<DashboardData>(MOCK_DATA);
   const [blockStates, setBlockStates] = useState<Record<string, BlockState>>({});
-  const [assetStats, setAssetStats] = useState<ApprovalStats>({ total: 0, approved: 0, pending: 0, rejected: 0 });
-  const [kchtStats, setKchtStats] = useState<ApprovalStats>({ total: 0, approved: 0, pending: 0, rejected: 0 });
+  const [assetStats, setAssetStats] = useState<ApprovalStats>(EMPTY_APPROVAL_STATS);
+  const [kchtStats, setKchtStats] = useState<ApprovalStats>(EMPTY_APPROVAL_STATS);
 
   const [selectedProvince, setSelectedProvince] = useState<string | undefined>();
   const [selectedKchtType, setSelectedKchtType] = useState<string[]>([]);
@@ -293,16 +325,57 @@ function HomeDashboard() {
     navigate(`/gis/map?${params.toString()}`);
   };
 
-  // Fetch dashboard data on mount & year change — parallel API calls
+  // Fetch dashboard data whenever one of the global dashboard filters changes.
   useEffect(() => {
+    let isCurrentRequest = true;
+
+    // Một payload dùng chung cho vận hành, phê duyệt và bảng chi tiết KCHT.
     dashboardApi
-      .fetchWithFallback({ year, province: null, infraType: null }, MOCK_DATA)
-      .then(({ data, states }) => { setDashboardData(data); setBlockStates(states || {}); })
-      .catch(() => setDashboardData(MOCK_DATA));
-    dashboardApi.fetchAssetApprovalStats().then(setAssetStats);
-    dashboardApi.fetchKchtApprovalStats().then(setKchtStats);
-    dashboardApi.fetchAssetStatus().then((dto) => { if (dto?.breakdown) setInfraData(dto.breakdown); });
-  }, [year]);
+      .fetchWithFallback({ year, province, infraType }, MOCK_DATA)
+      .then(({ data, states, assetStatus }) => {
+        if (!isCurrentRequest) return;
+        setDashboardData(data);
+        setBlockStates(states || {});
+        setKchtStats(assetStatus?.approvalStats || EMPTY_APPROVAL_STATS);
+        setInfraData(assetStatus?.breakdown || []);
+      })
+      .catch(() => {
+        if (!isCurrentRequest) return;
+        setDashboardData(MOCK_DATA);
+        setKchtStats(EMPTY_APPROVAL_STATS);
+        setInfraData([]);
+      });
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [year, province, infraType]);
+
+  // Phê duyệt tài sản là thống kê yêu cầu biến động tài sản, không phụ thuộc bộ lọc KCHT.
+  useEffect(() => {
+    let isMounted = true;
+    dashboardApi.fetchAssetApprovalStats().then((stats) => {
+      if (isMounted) setAssetStats(stats);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Memoized infra columns with eye icon navigation
+  const memoInfraColumns = useMemo<NonNullable<TableProps<InfraRow>['columns']>>(() => [
+    ...infraColumns,
+    { title: '', key: 'action', width: 40, align: 'center' as const,
+      render: (_: unknown, record: InfraRow) => (
+        <Tooltip title={`Xem ${record.type || ''}`}>
+          <EyeOutlined
+            style={{ color: ink2, cursor: 'pointer' }}
+            onClick={() => navigate(KCHT_LABEL_ROUTES[record.type || ''] || '/')}
+          />
+        </Tooltip>
+      ),
+    },
+  ], [navigate]);
 
   const kpiCards = dashboardData.kpiCards || [];
 
@@ -391,7 +464,7 @@ function HomeDashboard() {
     }],
   }), [ringData]);
 
-  // Radar — Mức độ bao phủ KCHT
+  // Radar — Tỷ lệ vận hành theo toàn bộ loại KCHT
   const radarData = dashboardData.radarCoverage || [];
   const radarOption: EChartsOption = useMemo(() => ({
     tooltip: { ...chartTooltip },
@@ -400,14 +473,17 @@ function HomeDashboard() {
       center: ['50%', '45%'],
       radius: '65%',
       indicator: radarData.map((d) => ({ name: d.name, max: d.max })),
-      axisName: { ...chartTextStyle },
+      axisName: {
+        ...chartTextStyle,
+        formatter: (name: string) => name.replace(/(.{14})\s+/g, '$1\n'),
+      },
       splitArea: { areaStyle: { color: ['rgba(11,46,79,0.02)', 'rgba(11,46,79,0.04)'] } },
       splitLine: { lineStyle: { color: line } },
       axisLine: { lineStyle: { color: line } },
     },
     series: [{
       type: 'radar',
-      data: [{ value: radarData.map((d) => d.value), name: 'Độ bao phủ (%)',
+      data: [{ value: radarData.map((d) => d.value), name: 'Tỷ lệ vận hành (%)',
         areaStyle: { color: `${dataSea1}33` },
         lineStyle: { color: dataSea1, width: 2 },
         itemStyle: { color: dataSea1 },
@@ -504,8 +580,8 @@ function HomeDashboard() {
         </Col>
         <Col xs={24} md={8}>
           <div style={{ ...CARD_BASE, height: '100%' }}>
-            <h4 style={CHART_TITLE_STYLE}>Mức độ bao phủ KCHT<MockBadge show={blockStates.radarCoverage?.isMockFallback} /></h4>
-            <ReactECharts option={radarOption} style={{ height: 320 }} notMerge />
+            <h4 style={CHART_TITLE_STYLE}>Tỷ lệ vận hành KCHT theo loại<MockBadge show={blockStates.radarCoverage?.isMockFallback} /></h4>
+            <ReactECharts option={radarOption} style={{ height: 380 }} notMerge />
           </div>
         </Col>
       </Row>
@@ -569,7 +645,7 @@ function HomeDashboard() {
         <Col xs={24} md={12}>
           <div style={{ ...CARD_BASE, height: '100%' }}>
             <h4 style={CHART_TITLE_STYLE}>Bảng chi tiết thông số kỹ thuật Kết cấu hạ tầng<MockBadge show={blockStates.infraTable?.isMockFallback} /></h4>
-            <Table columns={infraColumns} dataSource={infraData.length > 0 ? infraData : []} rowKey="sequenceNo" pagination={false} size="small" scroll={{ x: 620, y: 340 }} />
+            <Table<InfraRow> columns={memoInfraColumns} dataSource={infraData} rowKey="sequenceNo" pagination={false} size="small" scroll={{ x: 620, y: 340 }} />
           </div>
         </Col>
       </Row>

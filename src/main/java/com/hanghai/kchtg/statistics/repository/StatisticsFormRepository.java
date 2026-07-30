@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.statistics.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.statistics.entity.StatFormStatus;
 import com.hanghai.kchtg.statistics.entity.StatFormType;
 import com.hanghai.kchtg.statistics.entity.StatisticsForm;
@@ -11,8 +9,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Repository
 public interface StatisticsFormRepository extends JpaRepository<StatisticsForm, UUID> {

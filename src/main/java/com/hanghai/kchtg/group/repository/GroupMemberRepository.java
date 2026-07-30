@@ -1,10 +1,7 @@
 package com.hanghai.kchtg.group.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.group.entity.GroupMember;
 import com.hanghai.kchtg.group.entity.GroupMemberStatus;
-import com.hanghai.kchtg.group.entity.GroupMemberRole;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

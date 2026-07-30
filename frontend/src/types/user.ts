@@ -23,7 +23,7 @@ export interface CreateUserPayload {
   email: string;
   phone: string;
   password: string;
-  roleId: string;
+  role: string;
   orgUnitId?: string;
 }
 
@@ -31,7 +31,7 @@ export interface UpdateUserPayload {
   fullName?: string;
   email?: string;
   phone?: string;
-  roleId?: string;
+  role?: string;
   orgUnitId?: string;
   status?: Status;
 }

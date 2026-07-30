@@ -1,9 +1,10 @@
 package com.hanghai.kchtg.document.service;
 
-import java.util.UUID;
 import com.hanghai.kchtg.document.dto.*;
 import com.hanghai.kchtg.document.entity.*;
-import com.hanghai.kchtg.document.repository.*;
+import com.hanghai.kchtg.document.repository.IncidentRecordRepository;
+import com.hanghai.kchtg.document.repository.IncidentRepository;
+import com.hanghai.kchtg.document.repository.ProcessingProgressRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -93,7 +95,7 @@ public class IncidentService {
         if (request.getSeverityLevel() != null) sc.setSeverityLevel(request.getSeverityLevel());
         if (request.getProcessingStatus() != null) sc.setProcessingStatus(request.getProcessingStatus());
         if (request.getReporter() != null) sc.setReporter(request.getReporter());
- 
+
         return toResponse(Objects.requireNonNull(incidentRepository.save(sc)));
     }
 

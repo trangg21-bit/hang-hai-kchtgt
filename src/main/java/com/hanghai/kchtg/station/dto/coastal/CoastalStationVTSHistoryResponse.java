@@ -1,10 +1,6 @@
 package com.hanghai.kchtg.station.dto.coastal;
 
-import java.util.UUID;
-import lombok.*;
-
 import com.hanghai.kchtg.station.entity.StationHistoryActionType;
-
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

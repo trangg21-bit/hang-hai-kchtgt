@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Result, Button } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import { usePermissionStore } from '../store/permissionStore';
+import { useAuthStore } from '../store/authStore';
 
 interface Props {
   permission: string;
@@ -12,8 +13,10 @@ interface Props {
 
 export default function PermissionGuard({ permission, children, fallback, disableOnly }: Props) {
   const hasPermission = usePermissionStore((s) => s.hasPermission);
+  const userPermissions = useAuthStore((s) => s.user?.permissions);
+  const isAllowed = userPermissions !== undefined && hasPermission(permission);
 
-  if (!hasPermission(permission)) {
+  if (!isAllowed) {
     if (disableOnly) {
       // The parent should handle disabling; we just render children
       return <>{children}</>;

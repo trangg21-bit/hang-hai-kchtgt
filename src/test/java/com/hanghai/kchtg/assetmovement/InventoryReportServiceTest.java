@@ -15,12 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 
-import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -59,7 +54,7 @@ public class InventoryReportServiceTest {
                 .missingCount(0)
                 .description("Báo cáo kiểm kê khớp số liệu")
                 .status(ReportStatus.PENDING)
-                
+
                 .build();
         testEntity.setCreatedAt(java.time.LocalDateTime.now());
         testEntity.setUpdatedAt(java.time.LocalDateTime.now());

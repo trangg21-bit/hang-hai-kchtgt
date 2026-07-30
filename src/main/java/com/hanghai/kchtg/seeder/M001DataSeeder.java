@@ -1,9 +1,6 @@
 package com.hanghai.kchtg.seeder;
 
-import com.hanghai.kchtg.group.entity.GroupMember;
-import com.hanghai.kchtg.group.entity.GroupMemberStatus;
-import com.hanghai.kchtg.group.entity.GroupStatus;
-import com.hanghai.kchtg.group.entity.UserGroup;
+import com.hanghai.kchtg.group.entity.*;
 import com.hanghai.kchtg.group.repository.GroupMemberRepository;
 import com.hanghai.kchtg.group.repository.GroupRepository;
 import com.hanghai.kchtg.orgunit.entity.OrgUnit;
@@ -161,7 +158,7 @@ public class M001DataSeeder implements CommandLineRunner {
         };
 
         String[] names = {
-            "Nhóm Quản Trị Viên", "Nhóm Chuyên Viên Cảng Vụ", "Nhóm Lãnh Đạo Cảng Vụ", 
+            "Nhóm Quản Trị Viên", "Nhóm Chuyên Viên Cảng Vụ", "Nhóm Lãnh Đạo Cảng Vụ",
             "Nhóm Chuyên Viên Tổng Cục", "Nhóm Lãnh Đạo Tổng Cục", "Nhóm Kỹ Thuật Viên Bảo Trì",
             "Nhóm Giám Sát Phao Tiêu", "Nhóm Vận Hành Nhà Trạm", "Nhóm Báo Cáo Thống Kê",
             "Nhóm Tiếp Nhận Hồ Sơ", "Nhóm Phê Duyệt Hồ Sơ", "Nhóm Đối Tác Khai Thác",
@@ -181,7 +178,7 @@ public class M001DataSeeder implements CommandLineRunner {
                 g.setName(names[i]);
                 g.setCode(codes[i]);
                 g.setDescription("Mô tả nhóm " + names[i]);
-                g.setGroupType(com.hanghai.kchtg.group.entity.GroupType.fromValue(groupTypes[i]));
+                g.setGroupType(GroupType.fromValue(groupTypes[i]));
                 g.setStatus(GroupStatus.ACTIVE);
                 g.setPermissions(List.of("users:read", "users:create", "users:update", "roles:read"));
                 groupRepo.save(g);
@@ -210,7 +207,7 @@ public class M001DataSeeder implements CommandLineRunner {
                 .orElseThrow(() -> new IllegalStateException("Role not found: ROLE_SPECIALIST"));
         Role adminModuleRole = roleRepo.findByCode("ROLE_ADMIN")
                 .orElseThrow(() -> new IllegalStateException("Role not found: ROLE_ADMIN"));
-                
+
         // Fetch seeded OrgUnits & UserGroups
         List<OrgUnit> units = orgUnitRepo.findAll();
         List<UserGroup> groups = groupRepo.findAll();
@@ -241,7 +238,7 @@ public class M001DataSeeder implements CommandLineRunner {
             u.setFullName(fullNames[i]);
             u.setPhone("09123456" + (78 + i));
             u.setStatus(UserStatus.ACTIVE);
-            
+
             // Assign role
             if (i == 0) {
                 u.getRoles().add(adminRole);
@@ -272,7 +269,7 @@ public class M001DataSeeder implements CommandLineRunner {
                         GroupMember member = new GroupMember();
                         member.setUser(u);
                         member.setUserGroup(group);
-                        member.setRole(offset == 0 ? com.hanghai.kchtg.group.entity.GroupMemberRole.ADMIN : com.hanghai.kchtg.group.entity.GroupMemberRole.MEMBER);
+                        member.setRole(offset == 0 ? GroupMemberRole.ADMIN : GroupMemberRole.MEMBER);
                         member.setStatus(GroupMemberStatus.ACTIVE);
                         member.setJoinedAt(java.time.LocalDateTime.now());
                         groupMemberRepo.save(member);
@@ -308,17 +305,17 @@ public class M001DataSeeder implements CommandLineRunner {
         for (int i = 0; i < allUsers.size(); i++) {
             User user = allUsers.get(i);
             UserGroup targetGroup;
-            com.hanghai.kchtg.group.entity.GroupMemberRole role;
+            GroupMemberRole role;
 
             if (i < 3) {
                 targetGroup = grpAdmins;
-                role = com.hanghai.kchtg.group.entity.GroupMemberRole.ADMIN;
+                role = GroupMemberRole.ADMIN;
             } else if (i < 8) {
                 targetGroup = grpSpecialists;
-                role = com.hanghai.kchtg.group.entity.GroupMemberRole.MEMBER;
+                role = GroupMemberRole.MEMBER;
             } else {
                 targetGroup = grpLeaders;
-                role = com.hanghai.kchtg.group.entity.GroupMemberRole.MEMBER;
+                role = GroupMemberRole.MEMBER;
             }
 
             if (targetGroup == null) continue;

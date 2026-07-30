@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.security.totp.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.security.totp.dto.TotpEnrollSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

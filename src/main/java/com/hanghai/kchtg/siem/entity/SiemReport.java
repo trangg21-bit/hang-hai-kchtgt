@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.siem.entity;
 
-import java.util.UUID;
-
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

@@ -1,11 +1,6 @@
 package com.hanghai.kchtg.beacon.dto.buoy;
 
-import java.util.UUID;
-
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,7 +22,8 @@ public class BuoyResponse {
     private UUID id;
     private String code;
     private String name;
-    private String type;    private String color;
+    private String type;
+    private String color;
     private String shape;
     private String lightCharacteristic;
     private Double range;

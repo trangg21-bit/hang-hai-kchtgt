@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Request DTO for recording MaintenanceResult.
@@ -19,7 +20,7 @@ import java.time.LocalDateTime;
 public class MaintenanceResultRequest {
 
     @NotNull(message = "maintenancePlanId không được để trống")
-    private java.util.UUID maintenancePlanId;
+    private UUID maintenancePlanId;
 
     private LocalDateTime actualStartDate;
     private LocalDateTime actualEndDate;

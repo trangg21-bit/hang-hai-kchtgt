@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.port.service.shared;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

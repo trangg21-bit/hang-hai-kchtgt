@@ -1,14 +1,13 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
-import java.util.UUID;
-
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 /**
  * History entry for approval timeline (F-043).

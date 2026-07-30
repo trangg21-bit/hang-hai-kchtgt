@@ -1,18 +1,19 @@
 package com.hanghai.kchtg.station.entity;
 
-import java.util.UUID;
-
-import jakarta.persistence.*;
-import lombok.*;
+import com.hanghai.kchtg.common.entity.BaseEntity;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.UUID;
-
-import org.hibernate.annotations.SQLRestriction;
-import com.hanghai.kchtg.station.entity.StationStatus;
-import com.hanghai.kchtg.station.entity.StationApprovalStatus;
 
 @Entity
 @Table(name = "lighthouse_station")
@@ -21,20 +22,23 @@ import com.hanghai.kchtg.station.entity.StationApprovalStatus;
 @AllArgsConstructor
 @SuperBuilder
 @SQLRestriction("deleted_at IS NULL")
-public class LighthouseStation extends com.hanghai.kchtg.common.entity.BaseEntity {
+public class LighthouseStation extends BaseEntity {
+    @Column(name = "province_id")
+    private Integer provinceId;
+
 
     @Column(length = 50)
     protected String code;
-    
+
     @Column(length = 255)
     protected String name;
 
     @Column(length = 1000)
     protected String description;
 
-    
 
-    
+
+
 
     @Column(name = "unit_id")
     protected UUID unitId;
@@ -54,11 +58,11 @@ public class LighthouseStation extends com.hanghai.kchtg.common.entity.BaseEntit
     protected StationApprovalStatus approvalStatus;
 
     @Enumerated(jakarta.persistence.EnumType.ORDINAL)
-    protected com.hanghai.kchtg.common.enums.ApprovalLevel approvalLevel;
-    
+    protected ApprovalLevel approvalLevel;
+
     @Column(name = "approved_by")
     protected String approvedBy;
-    
+
     @Column(name = "approved_date")
     protected java.time.LocalDateTime approvedDate;
 
@@ -71,8 +75,8 @@ public class LighthouseStation extends com.hanghai.kchtg.common.entity.BaseEntit
     private Double lightRange;
     private String lightColor;
     private String lightCharacteristic;
-    
-    
+
+
 
     private Double range;
     private LocalDate lastMaintenanceDate;

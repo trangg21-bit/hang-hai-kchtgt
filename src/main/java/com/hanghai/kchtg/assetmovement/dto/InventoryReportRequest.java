@@ -1,10 +1,9 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
-import java.util.UUID;
-
-import java.util.UUID;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+
+import java.util.UUID;
 
 /**
  * Request DTO cho Bao Cao Kiem Ke (create/update).

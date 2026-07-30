@@ -1,15 +1,11 @@
 package com.hanghai.kchtg.user.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 /**
  * DTO returned by GET /api/auth/register/config - contains registration settings and RSA public key.
  */
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class RegisterConfigResponse {

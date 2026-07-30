@@ -1,8 +1,11 @@
 package com.hanghai.kchtg.systemintegration.dto;
 
+import lombok.Data;
+
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
+@Data
 public class IntegrationFilter implements Serializable {
     private String integrationType;
     private String status;

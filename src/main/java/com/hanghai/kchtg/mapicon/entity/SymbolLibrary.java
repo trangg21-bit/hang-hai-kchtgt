@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.mapicon.entity;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;

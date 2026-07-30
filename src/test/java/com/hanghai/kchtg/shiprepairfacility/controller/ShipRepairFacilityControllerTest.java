@@ -2,7 +2,8 @@ package com.hanghai.kchtg.shiprepairfacility.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.shiprepairfacility.dto.*;
-import com.hanghai.kchtg.shiprepairfacility.entity.*;
+import com.hanghai.kchtg.shiprepairfacility.entity.FacilityType;
+import com.hanghai.kchtg.shiprepairfacility.entity.ShipRepairApprovalStatus;
 import com.hanghai.kchtg.shiprepairfacility.service.ShipRepairFacilityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,7 +47,7 @@ class ShipRepairFacilityControllerTest {
         createRequest = ShipRepairFacilityCreateRequest.builder()
                 .facilityName("Cơ sở ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .build();
 
@@ -54,7 +55,7 @@ class ShipRepairFacilityControllerTest {
                 .id(TEST_ID)
                 .facilityName("Cơ sở ABC")
                 .address("Hà Nội")
-                .province("Hà Nội")
+                .provinceId(1)
                 .facilityType(FacilityType.REPAIR)
                 .approvalStatus(ShipRepairApprovalStatus.APPROVED)
                 .approvedLevel1(true)
@@ -260,12 +261,12 @@ class ShipRepairFacilityControllerTest {
 
     @Test
     void testSearch_WithAllParams() {
-        when(service.search(null, "ABC", "Hà Nội", "APPROVED", null)).thenReturn(Collections.emptyList());
+        when(service.search(null, "ABC", 1, "APPROVED", null)).thenReturn(Collections.emptyList());
 
-        ResponseEntity<?> result = controller.search(null, "ABC", "Hà Nội", "APPROVED", null);
+        ResponseEntity<?> result = controller.search(null, "ABC", 1, "APPROVED", null);
 
         assertEquals(HttpStatus.OK, result.getStatusCode());
-        verify(service, times(1)).search(null, "ABC", "Hà Nội", "APPROVED", null);
+        verify(service, times(1)).search(null, "ABC", 1, "APPROVED", null);
     }
 
     @Test

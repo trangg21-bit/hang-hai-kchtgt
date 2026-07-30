@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.user.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.user.entity.AccountRegistrationAudit;
 import com.hanghai.kchtg.user.repository.AccountRegistrationAuditRepository;
 import org.slf4j.Logger;

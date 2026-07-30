@@ -1,0 +1,50 @@
+{
+  "triage_id": "TRI-1785295643187-77c0",
+  "created_at": 1785295643187,
+  "request_summary": "Fix all FQN violations across src/main/java (~109 files) — replace com.hanghai.kchtg.* and org.springframework.data.domain.* FQNs with imports",
+  "change_class": "C1",
+  "handling": "inline_declared_scope",
+  "evidence": {
+    "edit_target_files": [
+      "src/main/java/com/hanghai/kchtg/dashboard/service/KchtAssetCountService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/BerthService.java",
+      "src/main/java/com/hanghai/kchtg/user/controller/RoleController.java",
+      "src/main/java/com/hanghai/kchtg/user/service/UserService.java"
+    ],
+    "impact_files": [
+      "src/main/java/com/hanghai/kchtg/dashboard/service/KchtAssetCountService.java",
+      "src/main/java/com/hanghai/kchtg/port/service/BerthService.java",
+      "src/main/java/com/hanghai/kchtg/user/controller/RoleController.java",
+      "src/main/java/com/hanghai/kchtg/user/service/UserService.java"
+    ],
+    "packages": [],
+    "shape": "scaffolded",
+    "write_scope_clusters": 1,
+    "brownfield_extend": false,
+    "one_way_door_hits": []
+  },
+  "rationale": "C1: 4 edit-target files in one package, no one-way door — pre-declared write scope required (4 edit-target files / 0 packages / 1 write-scope clusters / shape=scaffolded)",
+  "entry_point": "All CRUD services and controllers across the application",
+  "blast_radius": 4,
+  "done_oracle": "mvn compile -q passes with zero errors",
+  "declared_write_scope": [
+    "src/main/java/com/hanghai/kchtg/dashboard/service/KchtAssetCountService.java",
+    "src/main/java/com/hanghai/kchtg/port/service/BerthService.java",
+    "src/main/java/com/hanghai/kchtg/user/controller/RoleController.java",
+    "src/main/java/com/hanghai/kchtg/user/service/UserService.java"
+  ],
+  "escalated_from": {
+    "triage_id": "TRI-1785295312853-1743",
+    "breach_kind": "loc_budget"
+  },
+  "source_snapshot": {
+    "vcs": "git",
+    "head": "6fe6ce775d74b79ae610c6fbd9159b4eda3b389d",
+    "dirty": true,
+    "captured_at": 1785295643335
+  },
+  "budget": {
+    "wall_clock_ms": 1800000,
+    "turns": 80
+  }
+}

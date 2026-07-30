@@ -1,12 +1,6 @@
 package com.hanghai.kchtg.station.dto.cospas;
 
-import java.util.UUID;
-
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import lombok.*;
-
 import com.hanghai.kchtg.station.entity.StationApprovalStatus;
 import com.hanghai.kchtg.station.entity.StationStatus;
 import lombok.AllArgsConstructor;

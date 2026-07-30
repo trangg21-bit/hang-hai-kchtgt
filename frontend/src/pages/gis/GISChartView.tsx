@@ -1285,11 +1285,11 @@ export default function GISChartView() {
         '/ship-repair-facility',
         '/beacon-lights',
         '/buoys',
-        '/Port',
-        '/Berth',
-        '/Pier',
-        '/DryPort',
-        '/WaterZone'
+        '/port',
+        '/berth',
+        '/pier',
+        '/dry-port',
+        '/water-zone'
       ].includes(pathname);
 
       if (isListPage) {
@@ -1334,13 +1334,13 @@ export default function GISChartView() {
       } else if (label.includes('phao tiêu') || label.includes('phao tieu') || label.includes('phao, tiêu')) {
         path = `/buoys/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('cảng biển') || label.includes('cang bien')) {
-        path = `/Port?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+        path = `/port?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('bến cảng') || label.includes('ben cang')) {
-        path = `/Berth?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+        path = `/berth?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('cầu cảng') || label.includes('cau cang')) {
-        path = `/Pier?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+        path = `/pier?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('cảng cạn') || label.includes('cang can')) {
-        path = `/DryPort?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+        path = `/dry-port?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (
         label.includes('vùng nước') || label.includes('vung nuoc') ||
         label.includes('khu neo đậu') || label.includes('khu neo dau') ||
@@ -1348,7 +1348,7 @@ export default function GISChartView() {
         label.includes('tránh, trú bão') || label.includes('tránh trú bão') || label.includes('tranh tru bao') ||
         label.includes('bến phao') || label.includes('ben phao')
       ) {
-        path = `/WaterZone?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
+        path = `/water-zone?action=${action === 'edit' ? 'edit' : 'detail'}&id=${id}`;
       } else if (label.includes('luồng hàng hải') || label.includes('luong hang hai')) {
         path = `/navigation-channel/${id}${action === 'edit' ? '?mode=edit' : ''}`;
       } else if (label.includes('đê') || label.includes('kè') || label.includes('de') || label.includes('ke')) {

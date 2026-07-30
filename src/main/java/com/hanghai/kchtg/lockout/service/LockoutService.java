@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.lockout.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.lockout.dto.enums.LockoutStatus;
 import com.hanghai.kchtg.lockout.entity.LockoutPolicy;
 import com.hanghai.kchtg.lockout.repository.LockoutPolicyRepository;
@@ -9,6 +7,7 @@ import com.hanghai.kchtg.user.entity.LoginAttemptResult;
 import com.hanghai.kchtg.user.entity.LoginAttemptType;
 import com.hanghai.kchtg.user.entity.LoginAuditLog;
 import com.hanghai.kchtg.user.entity.User;
+import com.hanghai.kchtg.user.entity.UserStatus;
 import com.hanghai.kchtg.user.repository.LoginAuditLogRepository;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -68,6 +67,10 @@ public class LockoutService implements CommandLineRunner {
         if (user.getAccountLockedUntil() != null && user.getAccountLockedUntil().isBefore(LocalDateTime.now())) {
             user.setAccountLockedUntil(null);
             user.setFailedLoginCount(0);
+            user.setFailedTotpCount(0);
+            if (user.getStatus() == UserStatus.LOCKED) {
+                user.setStatus(UserStatus.ACTIVE);
+            }
             userRepo.save(user);
             return LockoutStatus.UNRESTRICTED;
         }
@@ -86,6 +89,7 @@ public class LockoutService implements CommandLineRunner {
         if (user.getFailedLoginCount() >= policy.getMaxFailedAttempts()) {
             LocalDateTime lockedUntil = LocalDateTime.now().plusMinutes(policy.getLockoutDurationMinutes());
             user.setAccountLockedUntil(lockedUntil);
+            user.setStatus(UserStatus.LOCKED);
             // BR-013: invalidate all active JWT sessions by bumping password hash version
             user.setPasswordHashVersion(user.getPasswordHashVersion() != null ? user.getPasswordHashVersion() + 1 : 1);
             userRepo.save(user);
@@ -100,6 +104,7 @@ public class LockoutService implements CommandLineRunner {
             return LockoutStatus.LOCKED;
         }
 
+        userRepo.save(user);
         String failureReason = user.getAccountLockedUntil() != null
                 ? "Tài khoản đã bị khóa"
                 : (reason != null ? reason : "Invalid credentials");
@@ -120,6 +125,7 @@ public class LockoutService implements CommandLineRunner {
     @Transactional
     public void recordSuccess(User user, HttpServletRequest httpRequest) {
         user.setFailedLoginCount(0);
+        user.setFailedTotpCount(0);
         user.setAccountLockedUntil(null);
         userRepo.save(user);
         saveAuditLog(user, LoginAttemptResult.SUCCESS, null, httpRequest);

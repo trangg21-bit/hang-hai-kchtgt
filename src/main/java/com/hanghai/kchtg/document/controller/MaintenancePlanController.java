@@ -1,11 +1,12 @@
 package com.hanghai.kchtg.document.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.document.dto.*;
-import com.hanghai.kchtg.document.entity.MaintenanceType;
+import com.hanghai.kchtg.document.dto.MaintenancePlanCreateRequest;
+import com.hanghai.kchtg.document.dto.MaintenancePlanResponse;
+import com.hanghai.kchtg.document.dto.MaintenanceResultRequest;
+import com.hanghai.kchtg.document.dto.MaintenanceResultResponse;
 import com.hanghai.kchtg.document.entity.MaintenanceStatus;
+import com.hanghai.kchtg.document.entity.MaintenanceType;
 import com.hanghai.kchtg.document.service.MaintenancePlanService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * REST controller for F-130 Quản lý thông tin bảo trì.

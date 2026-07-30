@@ -1,21 +1,25 @@
 package com.hanghai.kchtg.port.service;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.port.dto.pier.*;
+import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.port.dto.pier.CreatePierRequest;
+import com.hanghai.kchtg.port.dto.pier.PierResponse;
+import com.hanghai.kchtg.port.dto.pier.UpdatePierRequest;
 import com.hanghai.kchtg.port.entity.Berth;
 import com.hanghai.kchtg.port.entity.Pier;
 import com.hanghai.kchtg.port.entity.PierType;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
 import com.hanghai.kchtg.port.repository.BerthRepository;
 import com.hanghai.kchtg.port.repository.PierRepository;
 import com.hanghai.kchtg.port.service.shared.ChangeHistoryService;
 import com.hanghai.kchtg.port.service.shared.UserResolverService;
-import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +31,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
 
 @Slf4j
 @Service
@@ -39,8 +42,8 @@ public class PierService {
     private final ChangeHistoryService changeHistoryService;
     private final GisSpatialObjectService gisSpatialObjectService;
     private final UserResolverService userResolverService;
-    private final com.hanghai.kchtg.user.repository.UserRepository userRepository;
-    private final com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository gisSpatialObjectRepository;
+    private final UserRepository userRepository;
+    private final GisSpatialObjectRepository gisSpatialObjectRepository;
 
     @Transactional
     public PierResponse create(CreatePierRequest request) {
@@ -51,7 +54,7 @@ public class PierService {
         Berth parent = berthRepository.findById(request.getBerthId())
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Bến cảng không tồn tại: " + request.getBerthId()));
-        if (parent.getOperationalStatus() != OperationalStatus.HIEN_HANH) {
+        if (parent.getOperationalStatus() != OperationalStatus.OPERATIONAL) {
             throw new IllegalArgumentException(
                     "Không thể tạo cầu cảng: bến cảng cha phải ở trạng thái hoạt động (HIEN_HANH)");
         }
@@ -119,7 +122,7 @@ public class PierService {
         OperationalStatus statusEnum = status != null ? OperationalStatus.fromString(status) : null;
         ApprovalStatus approvalEnum = approvalStatus != null ? ApprovalStatus.fromString(approvalStatus) : null;
         Page<Pier> pageResult = pierRepository.searchPiers(orgUnitId, search, berthId, pierType, statusEnum, approvalEnum, pageable);
-        
+
         java.util.List<UUID> parentIds = pageResult.getContent().stream()
                 .map(Pier::getBerthId)
                 .filter(java.util.Objects::nonNull)
@@ -166,7 +169,7 @@ public class PierService {
             });
         }
 
-        return pageResult.map(e -> toResponse(e, 
+        return pageResult.map(e -> toResponse(e,
                 parentNameMap.get(e.getBerthId()),
                 userNamesMap.get(e.getCreatedBy()),
                 userNamesMap.get(e.getUpdatedBy()),
@@ -272,7 +275,7 @@ public class PierService {
     public void softDelete(UUID id) {
         Pier entity = pierRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Không tìm thấy cầu cảng với id: " + id));
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
         }
@@ -296,12 +299,12 @@ public class PierService {
     private PierResponse toResponse(Pier e, String preResolvedBerthName, String preResolvedCreatorName, String preResolvedUpdaterName, GisSpatialObject preResolvedSpatial) {
         GisGeometryType geomType = null;
         String coords = null;
-        
+
         GisSpatialObject spatial = preResolvedSpatial;
         if (spatial == null && e.getSpatialId() != null) {
             spatial = gisSpatialObjectRepository.findById(e.getSpatialId()).orElse(null);
         }
-        
+
         if (spatial != null) {
             geomType = spatial.getGeometryType();
             coords = spatial.getCoordinates();

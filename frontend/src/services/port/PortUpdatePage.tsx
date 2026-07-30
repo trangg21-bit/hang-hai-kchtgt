@@ -42,7 +42,7 @@ export default function PortUpdatePage() {
       } catch (err) {
         console.error('Failed to fetch Port:', err);
         toast.error('Không thể tải thông tin cảng biển');
-        navigate('/Port');
+        navigate('/port');
       }
     })();
   }, [id, navigate, form]);
@@ -69,7 +69,7 @@ export default function PortUpdatePage() {
       };
       await updateCangBien(payload);
       toast.success('Cập nhật thành công');
-      navigate(`/Port/${String(id)}`);
+      navigate(`/port/${String(id)}`);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Cập nhật thất bại');
     } finally {
@@ -85,7 +85,7 @@ export default function PortUpdatePage() {
     <>
       <Card style={{ marginBottom: 16 }}>
         <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/Port/${id}`)}>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(`/port/${id}`)}>
             Quay lại
           </Button>
           <Typography.Title level={5} style={{ margin: 0 }}>
@@ -208,7 +208,7 @@ export default function PortUpdatePage() {
               <Button type="primary" htmlType="submit" loading={submitting}>
                 Cập nhật
               </Button>
-              <Button onClick={() => navigate(`/Port/${id}`)}>Hủy</Button>
+              <Button onClick={() => navigate(`/port/${id}`)}>Hủy</Button>
             </Space>
           </Form.Item>
         </Form>

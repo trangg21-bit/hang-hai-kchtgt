@@ -1,12 +1,15 @@
 package com.hanghai.kchtg.dataconnection;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.dataconnection.controller.DataConnectionController;
-import com.hanghai.kchtg.dataconnection.dto.*;
+import com.hanghai.kchtg.dataconnection.dto.ConnectionResponse;
+import com.hanghai.kchtg.dataconnection.dto.CreateConnectionRequest;
+import com.hanghai.kchtg.dataconnection.dto.UpdateConnectionRequest;
 import com.hanghai.kchtg.dataconnection.entity.ConnectionHealth;
 import com.hanghai.kchtg.dataconnection.entity.SyncLog;
-import com.hanghai.kchtg.dataconnection.enums.*;
+import com.hanghai.kchtg.dataconnection.enums.AuthType;
+import com.hanghai.kchtg.dataconnection.enums.ConnectionStatus;
+import com.hanghai.kchtg.dataconnection.enums.ConnectionType;
+import com.hanghai.kchtg.dataconnection.enums.SyncFrequency;
 import com.hanghai.kchtg.dataconnection.repository.SyncLogRepository;
 import com.hanghai.kchtg.dataconnection.service.ConnectionService;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,19 +19,20 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
-
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)

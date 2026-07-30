@@ -1,14 +1,11 @@
 package com.hanghai.kchtg.user.dto;
 
-import java.util.UUID;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.entity.UserStatus;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,8 +14,7 @@ import java.util.UUID;
 /**
  * DTO trả về thông tin người dùng (không chứa mật khẩu).
  */
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)

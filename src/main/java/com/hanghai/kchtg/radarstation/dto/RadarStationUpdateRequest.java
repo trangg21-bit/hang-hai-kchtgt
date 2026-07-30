@@ -1,10 +1,13 @@
 package com.hanghai.kchtg.radarstation.dto;
 
-import java.util.UUID;
-
-import lombok.*;
-import java.math.BigDecimal;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+import java.util.UUID;
 
 @Data
 @Builder

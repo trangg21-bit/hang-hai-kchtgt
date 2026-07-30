@@ -16,12 +16,12 @@ import com.hanghai.kchtg.gis.search.dto.SearchResponse.SearchResultItem;
 import com.hanghai.kchtg.gis.search.entity.SearchQuery;
 import com.hanghai.kchtg.gis.search.repository.SearchQueryRepository;
 import lombok.RequiredArgsConstructor;
-import javax.sql.DataSource;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
 import java.util.ArrayList;
 import java.util.List;
 

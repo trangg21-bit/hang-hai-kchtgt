@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.backup.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.backup.entity.DatabaseBackup;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

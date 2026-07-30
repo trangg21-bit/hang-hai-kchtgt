@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.document.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.document.entity.OperationStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,6 +10,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Response DTO for OperationPlan.

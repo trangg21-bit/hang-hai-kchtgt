@@ -1,15 +1,14 @@
 package com.hanghai.kchtg.document.repository;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.document.entity.MaintenanceType;
-import com.hanghai.kchtg.document.entity.MaintenanceStatus;
 import com.hanghai.kchtg.document.entity.MaintenancePlan;
+import com.hanghai.kchtg.document.entity.MaintenanceStatus;
+import com.hanghai.kchtg.document.entity.MaintenanceType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @Repository
 public interface MaintenancePlanRepository extends JpaRepository<MaintenancePlan, UUID> {

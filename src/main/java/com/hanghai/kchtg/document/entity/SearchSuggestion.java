@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.document.entity;
 
-import java.util.UUID;
-
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Gợi ý tìm kiếm — search suggestion records.

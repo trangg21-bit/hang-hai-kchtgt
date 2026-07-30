@@ -1,8 +1,8 @@
-// ── GiayTo types ──────────────────────────────────────────────────────
+// ── Document types ──────────────────────────────────────────────────────
 
-export type GiayToEntityType = 'port' | 'berth' | 'pier' | 'dry-port' | 'water-zone';
+export type DocumentEntityType = 'port' | 'berth' | 'pier' | 'dry-port' | 'water-zone';
 
-export const GIAYTO_ENTITY_TYPES: { value: GiayToEntityType; label: string }[] = [
+export const DOCUMENT_ENTITY_TYPES: { value: DocumentEntityType; label: string }[] = [
   { value: 'port', label: 'Cảng biển' },
   { value: 'berth', label: 'Bến cảng' },
   { value: 'pier', label: 'Cầu cảng' },
@@ -10,9 +10,9 @@ export const GIAYTO_ENTITY_TYPES: { value: GiayToEntityType; label: string }[] =
   { value: 'water-zone', label: 'Vùng nước' },
 ];
 
-export interface GiayTo {
+export interface Document {
   id: string;
-  entityType: GiayToEntityType;
+  entityType: DocumentEntityType;
   entityId: string; // String (NOT UUID)
   fileName: string;
   fileSize: number; // Long in bytes
@@ -22,9 +22,9 @@ export interface GiayTo {
   createdAt: string;
 }
 
-export interface GiayToUploadResponse {
+export interface DocumentUploadResponse {
   id: string;
-  entityType: GiayToEntityType;
+  entityType: DocumentEntityType;
   entityId: string;
   fileName: string;
   fileSize: number;
@@ -34,7 +34,7 @@ export interface GiayToUploadResponse {
   createdAt: string;
 }
 
-export interface GiayToFilters {
+export interface DocumentFilters {
   page: number;
   size: number;
 }

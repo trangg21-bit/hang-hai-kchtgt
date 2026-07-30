@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.integration.service;
 
-import java.util.UUID;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanghai.kchtg.dataconnection.entity.DataConnection;

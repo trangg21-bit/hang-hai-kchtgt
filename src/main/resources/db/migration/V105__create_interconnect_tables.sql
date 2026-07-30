@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS public.integration_transactions (
     created_by          UUID,
     updated_by          UUID
 );
-CREATE INDEX IF NOT EXISTS public.idx_it_connection_id ON public.integration_transactions(connection_id);
+CREATE INDEX IF NOT EXISTS idx_it_connection_id ON public.integration_transactions(connection_id);
 
 -- 3. data_sharing_logs: nhật ký chia sẻ dữ liệu giữa các hệ thống
 CREATE TABLE IF NOT EXISTS public.data_sharing_logs (

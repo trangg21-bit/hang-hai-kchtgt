@@ -1,12 +1,6 @@
 package com.hanghai.kchtg.port.entity;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.common.entity.BaseEntity;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
-import com.hanghai.kchtg.common.entity.OperationalStatusConverter;
-import com.hanghai.kchtg.common.entity.ApprovalStatus;
-import com.hanghai.kchtg.common.entity.ApprovalStatusConverter;
+import com.hanghai.kchtg.common.entity.*;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -31,6 +25,9 @@ import java.util.UUID;
 @AllArgsConstructor
 @SuperBuilder
 public class Pier extends BaseEntity {
+    @Column(name = "province_id")
+    private Integer provinceId;
+
 
     @Column(name = "pier_code", nullable = false, unique = true, length = 50)
     private String pierCode;

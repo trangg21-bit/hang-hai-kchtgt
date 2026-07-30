@@ -1,7 +1,10 @@
 package com.hanghai.kchtg.port.dto.document;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Yêu cầu tạo mới giấy tờ / tài liệu đính kèm.

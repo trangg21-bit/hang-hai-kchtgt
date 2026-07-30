@@ -1,9 +1,10 @@
 package com.hanghai.kchtg.accesslog.dto;
 
-import java.time.LocalDateTime;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import lombok.Getter;
-import lombok.Setter;
+import java.time.LocalDateTime;
 
 /**
  * Request DTO for filtering access-log entries in the list endpoint.
@@ -12,7 +13,9 @@ import lombok.Setter;
  * F-005 adds {@code type}, {@code severity}, and {@code keyword} filters.
  * </p>
  */
-@Getter @Setter
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class AccessLogFilterRequest {
 
     private Long userId;

@@ -104,6 +104,7 @@ export const translateFieldName = (fieldName: string): string => {
 
 export default function WaterZoneListPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [search, setSearch] = useState('');
   const [filterMaVung, setFilterMaVung] = useState('');
@@ -111,7 +112,9 @@ export default function WaterZoneListPage() {
   const [filterHoatDong, setFilterHoatDong] = useState<VungNuocTrangThaiHoatDong | undefined>();
   const [filterPheDuyet, setFilterPheDuyet] = useState<VungNuocTrangThaiPheDuyet | undefined>();
   const [cangBienIdFilter, setCangBienIdFilter] = useState<string | undefined>();
-  const [filterLoaiVungNuoc, setFilterLoaiVungNuoc] = useState<LoaiVungNuoc | undefined>();
+  const [filterLoaiVungNuoc, setFilterLoaiVungNuoc] = useState<LoaiVungNuoc | undefined>(
+    (searchParams.get('type') as LoaiVungNuoc) || undefined
+  );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [dataSource, setDataSource] = useState<WaterZone[]>([]);
@@ -160,7 +163,6 @@ export default function WaterZoneListPage() {
     }
   }, []);
 
-  const [searchParams] = useSearchParams();
   const isIframeModal = (window.self !== window.top) && searchParams.has('action');
 
   const action = searchParams.get('action');

@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.mapicon.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.mapicon.entity.MapSymbol;
 import com.hanghai.kchtg.mapicon.entity.MapSymbolStatus;
 import org.springframework.data.domain.Page;
@@ -10,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.Optional;
+import java.util.UUID;
 
 public interface MapSymbolRepository extends JpaRepository<MapSymbol, UUID> {
 

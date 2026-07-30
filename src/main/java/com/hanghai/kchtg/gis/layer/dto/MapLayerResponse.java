@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.gis.layer.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.gis.layer.entity.MapLayer.LayerType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

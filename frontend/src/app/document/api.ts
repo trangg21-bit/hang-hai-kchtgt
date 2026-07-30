@@ -2,7 +2,7 @@
 // Upload & list attachments for entities
 
 import api from '../../services/api';
-import type { GiayTo, GiayToUploadResponse, GiayToEntityType, GiayToFilters } from './types';
+import type { Document, DocumentUploadResponse, DocumentEntityType, DocumentFilters } from './types';
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
 
@@ -41,7 +41,7 @@ export const documentApi = {
     const res = await api.post(`/v1/documents/upload/${entityType}/${entityId}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return res.data.data as GiayToUploadResponse;
+    return res.data.data as DocumentUploadResponse;
   },
 
   /**
@@ -49,13 +49,13 @@ export const documentApi = {
    * @param entityType  e.g. "vung-nuoc"
    * @param entityId    string ID
    */
-  async listByEntity(entityType: GiayToEntityType, entityId: string, params?: Partial<GiayToFilters>) {
+  async listByEntity(entityType: DocumentEntityType, entityId: string, params?: Partial<DocumentFilters>) {
     const sp = buildSearchParams({
       page: (params?.page ?? 1) - 1,
       size: params?.size,
     });
     const res = await api.get(`/v1/documents/entity/${entityType}/${entityId}?${sp}`);
-    return parsePage<GiayTo>(res);
+    return parsePage<Document>(res);
   },
 
   /**
@@ -63,7 +63,7 @@ export const documentApi = {
    */
   async findById(id: string) {
     const res = await api.get(`/v1/documents/${id}`);
-    return res.data.data as GiayTo;
+    return res.data.data as Document;
   },
 
   /**

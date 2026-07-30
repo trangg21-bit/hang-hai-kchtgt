@@ -1,17 +1,16 @@
 package com.hanghai.kchtg.station.service;
 
-import com.hanghai.kchtg.security.AdminAutoApproval;
-import java.util.UUID;
-
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import lombok.*;
-
-import com.hanghai.kchtg.station.dto.haiphong.*;
-import com.hanghai.kchtg.station.entity.StationStatus;
+import com.hanghai.kchtg.security.AdminAutoApproval;
+import com.hanghai.kchtg.security.SecurityUtils;
+import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongHistoryResponse;
+import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongRequest;
+import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongResponse;
+import com.hanghai.kchtg.station.dto.haiphong.CoastalStationHaiphongUpdateRequest;
+import com.hanghai.kchtg.station.entity.CoastalStationHaiphong;
 import com.hanghai.kchtg.station.entity.StationApprovalStatus;
-import com.hanghai.kchtg.station.entity.*;
+import com.hanghai.kchtg.station.entity.StationHistoryActionType;
+import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.CoastalStationHaiphongRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -102,7 +101,7 @@ public class CoastalStationHaiphongService {
                 .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Haiphong station not found with id: " + id));
 
         String stationCode = entity.getCode();
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         repository.save(entity);
 
         historyService.recordHistory(

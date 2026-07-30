@@ -94,7 +94,7 @@ export default function PortDetailPage() {
     return (
       <Card>
         <p>Không tìm thấy cảng biển với ID {id}.</p>
-        <Button onClick={() => navigate('/Port')}>Quay lại danh sách</Button>
+        <Button onClick={() => navigate('/port')}>Quay lại danh sách</Button>
       </Card>
     );
   }
@@ -105,7 +105,7 @@ export default function PortDetailPage() {
     <>
       <Card style={{ marginBottom: 16 }}>
         <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/Port')}>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/port')}>
             Quay lại
           </Button>
           <Typography.Title level={5} style={{ margin: 0 }}>
@@ -272,14 +272,14 @@ export default function PortDetailPage() {
                   showHeader={false}
                   columns={[
                     { dataIndex: 'berthCode', width: 120, render: (v: string) => <span style={{ fontFamily: 'monospace', fontSize: fontSizeSm, color: textSecondary }}>{v}</span> },
-                    { dataIndex: 'berthName', ellipsis: true, render: (v: string, r: Berth) => <Link to={`/Berth/${r.id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, textDecoration: 'none' }}>{v}</Link> },
+                    { dataIndex: 'berthName', ellipsis: true, render: (v: string, r: Berth) => <Link to={`/berth/${r.id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, textDecoration: 'none' }}>{v}</Link> },
                     { dataIndex: 'berthType', width: 140, render: (v: string) => v ? <span style={{ fontSize: fontSizeSm, color: textSecondary, padding: `2px ${spaceSm}px`, borderRadius: radiusPill, background: 'rgba(11,46,79,0.04)' }}>{v}</span> : <span style={{ color: textTertiary, fontSize: fontSizeSm }}>—</span> },
                     { dataIndex: 'operationalStatus', width: 120, render: (v: string) => v === 'HIEN_HANH' ? <span style={{ fontSize: fontSizeSm, color: statusOperational, fontWeight: fontWeightMedium }}>● Hoạt động</span> : <span style={{ fontSize: fontSizeSm, color: statusAttention, fontWeight: fontWeightMedium }}>● Tạm ngừng</span> },
                   ]}
                 />
                 {totalBenCangs > 5 && (
                   <div style={{ textAlign: 'right', marginTop: spaceSm }}>
-                    <Link to={`/Berth?portId=${id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeSm, textDecoration: 'none' }}>Xem tất cả {totalBenCangs} bến cảng →</Link>
+                    <Link to={`/berth?portId=${id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeSm, textDecoration: 'none' }}>Xem tất cả {totalBenCangs} bến cảng →</Link>
                   </div>
                 )}
               </>
@@ -312,14 +312,14 @@ export default function PortDetailPage() {
                   showHeader={false}
                   columns={[
                     { dataIndex: 'waterZoneCode', width: 120, render: (v: string) => <span style={{ fontFamily: 'monospace', fontSize: fontSizeSm, color: textSecondary }}>{v}</span> },
-                    { dataIndex: 'waterZoneName', ellipsis: true, render: (v: string, r: WaterZone) => <Link to={`/WaterZone/${r.id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, textDecoration: 'none' }}>{v}</Link> },
+                    { dataIndex: 'waterZoneName', ellipsis: true, render: (v: string, r: WaterZone) => <Link to={`/water-zone/${r.id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, textDecoration: 'none' }}>{v}</Link> },
                     { dataIndex: 'loaiVungNuoc', width: 160, render: (v: string) => { const label = VUNGNUOOC_LOAI_MAP[v as keyof typeof VUNGNUOOC_LOAI_MAP]?.label || v; return <span style={{ fontSize: fontSizeSm, color: textSecondary, padding: `2px ${spaceSm}px`, borderRadius: radiusPill, background: 'rgba(11,46,79,0.04)' }}>{label}</span>; } },
                     { dataIndex: 'area', width: 100, render: (v: number) => v != null ? <span style={{ fontSize: fontSizeSm, color: textSecondary }}>{v.toLocaleString('vi-VN')} m²</span> : <span style={{ color: textTertiary, fontSize: fontSizeSm }}>—</span> },
                   ]}
                 />
                 {totalVungNuocs > 5 && (
                   <div style={{ textAlign: 'right', marginTop: spaceSm }}>
-                    <Link to={`/WaterZone?portId=${id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeSm, textDecoration: 'none' }}>Xem tất cả {totalVungNuocs} vùng nước →</Link>
+                    <Link to={`/water-zone?portId=${id}`} style={{ color: actionPrimary, fontWeight: fontWeightMedium, fontSize: fontSizeSm, textDecoration: 'none' }}>Xem tất cả {totalVungNuocs} vùng nước →</Link>
                   </div>
                 )}
               </>
@@ -334,7 +334,7 @@ export default function PortDetailPage() {
               <Button icon={<UploadOutlined />} onClick={() => navigate(`/document/upload/port/${data.id}`)}>
                 Upload Giấy tờ
               </Button>
-              <Button icon={<EditOutlined />} onClick={() => navigate(`/Port/${data.id}/edit`)}>
+              <Button icon={<EditOutlined />} onClick={() => navigate(`/port/${data.id}/edit`)}>
                 Chỉnh sửa
               </Button>
               <Popconfirm
@@ -347,7 +347,7 @@ export default function PortDetailPage() {
                   try {
                     await deleteCangBien(data.id);
                     toast.success('Xóa thành công');
-                    navigate('/Port');
+                    navigate('/port');
                   } catch (err: unknown) {
                     toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
                   }
@@ -396,7 +396,7 @@ export default function PortDetailPage() {
                   </Popconfirm>
                 </>
               )}
-              <Button icon={<HistoryOutlined />} onClick={() => navigate(`/Port/${data.id}/history`)}>
+              <Button icon={<HistoryOutlined />} onClick={() => navigate(`/port/${data.id}/history`)}>
                 Lịch sử
               </Button>
             </Space>

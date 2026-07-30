@@ -10,12 +10,12 @@ export const createCangCanSchema = z
     latitude: z.coerce.number().min(-90, 'Vĩ độ phải từ -90 đến 90').max(90, 'Vĩ độ phải từ -90 đến 90').optional(),
     longitude: z.coerce.number().min(-180, 'Kinh độ phải từ -180 đến 180').max(180, 'Kinh độ phải từ -180 đến 180').optional(),
     area: z.coerce.number().positive('Diện tích phải lớn hơn 0'),
-    congSuatTEU: z.coerce.number().optional(),
+    teuCapacity: z.coerce.number().optional(),
     operationalStatus: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
     approvalStatus: z.enum(['CHO_PHE_DUYET', 'DUOC_PHE_DUYET', 'TU_CHOI']).optional().default('CHO_PHE_DUYET'),
-    bieuTuongId: z.string().uuid().optional().or(z.literal('')),
-    loaiHinhHoc: z.string().optional(),
-    toaDo: z.string().optional(),
+    symbolId: z.string().uuid().optional().or(z.literal('')),
+    geometryType: z.string().optional(),
+    coordinates: z.string().optional(),
   })
   .refine(
     (data) => (data.latitude === undefined) === (data.longitude === undefined),
@@ -36,11 +36,11 @@ export const updateCangCanSchema = z
     latitude: z.coerce.number().min(-90, 'Vĩ độ phải từ -90 đến 90').max(90, 'Vĩ độ phải từ -90 đến 90').optional(),
     longitude: z.coerce.number().min(-180, 'Kinh độ phải từ -180 đến 180').max(180, 'Kinh độ phải từ -180 đến 180').optional(),
     area: z.coerce.number().positive('Diện tích phải lớn hơn 0').optional(),
-    congSuatTEU: z.coerce.number().optional(),
+    teuCapacity: z.coerce.number().optional(),
     operationalStatus: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
-    bieuTuongId: z.string().uuid().optional().nullable(),
-    loaiHinhHoc: z.string().optional(),
-    toaDo: z.string().optional(),
+    symbolId: z.string().uuid().optional().nullable(),
+    geometryType: z.string().optional(),
+    coordinates: z.string().optional(),
   })
   .refine(
     (data: any) => (data.latitude === undefined || data.latitude === null) === (data.longitude === undefined || data.longitude === null),

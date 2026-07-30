@@ -1,13 +1,12 @@
 package com.hanghai.kchtg.mapicon.dto;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.mapicon.entity.MapSymbol;
 import com.hanghai.kchtg.mapicon.entity.MapSymbolStatus;
 import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Builder

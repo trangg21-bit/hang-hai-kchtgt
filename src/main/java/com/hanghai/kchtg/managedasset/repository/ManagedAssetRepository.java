@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.managedasset.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.managedasset.entity.ManagedAsset;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

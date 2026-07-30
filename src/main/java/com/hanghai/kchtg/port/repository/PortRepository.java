@@ -1,10 +1,8 @@
 package com.hanghai.kchtg.port.repository;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.port.entity.Port;
-import com.hanghai.kchtg.common.entity.OperationalStatus;
 import com.hanghai.kchtg.common.entity.ApprovalStatus;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.port.entity.Port;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -36,7 +34,7 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
             "AND (:orgUnitId IS NULL OR p.orgUnitId = :orgUnitId) " +
             "AND (CAST(:portCode AS string) IS NULL OR LOWER(p.portCode) LIKE LOWER(CONCAT('%', CAST(:portCode AS string), '%'))) " +
             "AND (CAST(:portName AS string) IS NULL OR LOWER(p.portName) LIKE LOWER(CONCAT('%', CAST(:portName AS string), '%'))) " +
-            "AND (CAST(:province AS string) IS NULL OR LOWER(p.province) LIKE LOWER(CONCAT('%', CAST(:province AS string), '%'))) " +
+            "AND (:provinceId IS NULL OR p.provinceId = :provinceId) " +
             "AND (:operationalStatus IS NULL OR p.operationalStatus = :operationalStatus) " +
             "AND (:approvalStatus IS NULL OR p.approvalStatus = :approvalStatus) " +
             "AND (CAST(:search AS string) IS NULL OR (LOWER(p.portCode) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(p.portName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))))")
@@ -44,7 +42,7 @@ public interface PortRepository extends JpaRepository<Port, UUID> {
             @Param("orgUnitId") UUID orgUnitId,
             @Param("portCode") String portCode,
             @Param("portName") String portName,
-            @Param("province") String province,
+            @Param("provinceId") Integer provinceId,
             @Param("operationalStatus") OperationalStatus operationalStatus,
             @Param("approvalStatus") ApprovalStatus approvalStatus,
             @Param("search") String search,

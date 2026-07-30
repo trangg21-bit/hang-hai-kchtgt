@@ -1,6 +1,7 @@
 package com.hanghai.kchtg.integration.controller;
 
 import com.hanghai.kchtg.common.dto.ApiResponse;
+import com.hanghai.kchtg.dashboard.service.KchtAssetCountService;
 import com.hanghai.kchtg.dataconnection.entity.DataConnection;
 import com.hanghai.kchtg.dataconnection.entity.SyncLog;
 import com.hanghai.kchtg.dataconnection.repository.DataConnectionRepository;
@@ -18,7 +19,6 @@ import com.hanghai.kchtg.integration.dto.MaintenanceInfoDto;
 import com.hanghai.kchtg.integration.entity.CargoAggregate;
 import com.hanghai.kchtg.integration.entity.PortStatus;
 import com.hanghai.kchtg.integration.repository.CargoAggregateRepository;
-import com.hanghai.kchtg.dashboard.service.KchtAssetCountService;
 import com.hanghai.kchtg.integration.repository.PortStatusRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -35,7 +35,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Controller for sharing port status and cargo aggregation statistics.
@@ -69,43 +68,42 @@ public class PortCargoShareController {
      * GET /assets/status (F-216) -> Returns summary counts from KCHT entity tables.
      */
     @GetMapping("/assets/status")
-    public ResponseEntity<ApiResponse<AssetStatusDto>> getAssetStatus() {
-        // KCHT counts from entity tables (cached, count 19 tables)
-        long kchtTotal = kchtAssetCountService.countTotal();
-        long kchtOperating = kchtAssetCountService.countOperating();
+    public ResponseEntity<ApiResponse<AssetStatusDto>> getAssetStatus(
+            @RequestParam(required = false) Integer year,
+            @RequestParam(value = "province", required = false) Integer provinceId,
+            @RequestParam(required = false) String infraType) {
 
-        // GIS breakdown for points/lines/polygons by type (for radar chart)
-        List<PointObject> points = pointRepository.findAll();
-        List<LineObject> lines = lineRepository.findAll();
-        List<PolygonObject> polygons = polygonRepository.findAll();
-
-        Map<String, Long> pointsByType = points.stream()
-                .collect(Collectors.groupingBy(p -> p.getObjectType().name(), Collectors.counting()));
-        Map<String, Long> linesByType = lines.stream()
-                .collect(Collectors.groupingBy(l -> l.getObjectType().name(), Collectors.counting()));
-        Map<String, Long> polygonsByType = polygons.stream()
-                .collect(Collectors.groupingBy(p -> p.getObjectType().name(), Collectors.counting()));
-
-        // All assets = KCHT entities + GIS objects without entity records (approx)
-        long totalAssets = kchtTotal + points.size() + lines.size() + polygons.size();
-
+        List<Map<String, Object>> breakdown =
+                kchtAssetCountService.getInfraTableData(year, provinceId, infraType);
+        boolean filterByInfraType = infraType != null && !infraType.isBlank();
+        long totalAssets = filterByInfraType
+                ? sumBreakdown(breakdown, "total")
+                : kchtAssetCountService.countTotal(year, provinceId);
+        long operatingAssets = filterByInfraType
+                ? sumBreakdown(breakdown, "operating")
+                : kchtAssetCountService.countOperating(year, provinceId);
         Map<String, Long> assetsByStatus = new LinkedHashMap<>();
-        assetsByStatus.put("PUBLISHED", kchtOperating);
-        assetsByStatus.put("TOTAL", kchtTotal);
+        assetsByStatus.put("PUBLISHED", operatingAssets);
+        assetsByStatus.put("TOTAL", totalAssets);
 
+        // Một response phục vụ cả khối vận hành, phê duyệt và bảng KCHT.
         AssetStatusDto dto = AssetStatusDto.builder()
-                .totalPoints(points.size())
-                .totalLines(lines.size())
-                .totalPolygons(polygons.size())
                 .totalAssets(totalAssets)
-                .pointsByType(pointsByType)
-                .linesByType(linesByType)
-                .polygonsByType(polygonsByType)
                 .assetsByStatus(assetsByStatus)
-                .breakdown(kchtAssetCountService.getInfraTableData())
+                .approvalStats(kchtAssetCountService.getApprovalStats(year, provinceId, infraType))
+                .breakdown(breakdown)
                 .build();
 
         return ResponseEntity.ok(ApiResponse.success(dto));
+    }
+
+    private long sumBreakdown(List<Map<String, Object>> breakdown, String field) {
+        return breakdown.stream()
+                .map(row -> row.get(field))
+                .filter(Number.class::isInstance)
+                .map(Number.class::cast)
+                .mapToLong(Number::longValue)
+                .sum();
     }
 
     /**
@@ -203,8 +201,11 @@ public class PortCargoShareController {
      */
     @GetMapping("/ports/cargo-total")
     public ResponseEntity<ApiResponse<Page<CargoAggregate>>> getPortCargoTotal(
+            @RequestParam(required = false) Integer province,
             @PageableDefault(size = 20, sort = "periodStart", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<CargoAggregate> page = cargoAggregateRepository.findByPeriodType("ANNUAL", pageable);
+        Page<CargoAggregate> page = province == null
+                ? cargoAggregateRepository.findByPeriodType("ANNUAL", pageable)
+                : cargoAggregateRepository.findByPeriodTypeAndProvinceId("ANNUAL", province, pageable);
         return ResponseEntity.ok(ApiResponse.success(page));
     }
 
@@ -225,6 +226,7 @@ public class PortCargoShareController {
     public ResponseEntity<ApiResponse<Page<CargoAggregate>>> getCargoSummary(
             @RequestParam(required = false) String portCode,
             @RequestParam(required = false) String periodType,
+            @RequestParam(required = false) Integer province,
             @PageableDefault(size = 20, sort = "periodStart", direction = Sort.Direction.DESC) Pageable pageable) {
 
         Page<CargoAggregate> page;
@@ -232,8 +234,12 @@ public class PortCargoShareController {
             page = cargoAggregateRepository.findByPortCodeAndPeriodType(portCode, periodType, pageable);
         } else if (portCode != null && !portCode.isBlank()) {
             page = cargoAggregateRepository.findByPortCode(portCode, pageable);
+        } else if (periodType != null && !periodType.isBlank() && province != null) {
+            page = cargoAggregateRepository.findByPeriodTypeAndProvinceId(periodType, province, pageable);
         } else if (periodType != null && !periodType.isBlank()) {
             page = cargoAggregateRepository.findByPeriodType(periodType, pageable);
+        } else if (province != null) {
+            page = cargoAggregateRepository.findByProvinceId(province, pageable);
         } else {
             page = cargoAggregateRepository.findAll(pageable);
         }

@@ -54,6 +54,9 @@ export function useUpdateUser() {
       message.success('Đã cập nhật người dùng');
       qc.invalidateQueries({ queryKey: ['users'] });
     },
+    onError: (error: Error) => {
+      message.error(error.message || 'Không thể cập nhật người dùng');
+    },
   });
 }
 
@@ -65,6 +68,9 @@ export function useDeleteUser() {
     onSuccess: () => {
       message.success('Đã xóa người dùng');
       qc.invalidateQueries({ queryKey: ['users'] });
+    },
+    onError: (error: Error) => {
+      message.error(error.message || 'Không thể xóa người dùng');
     },
   });
 }
@@ -96,9 +102,19 @@ export function useChangeStatusUser() {
 
 export function useResetPassword() {
   return useMutation({
-    mutationFn: (id: string) => userService.resetPassword(id),
-    onSuccess: (res) => {
-      message.success(`Mật khẩu mới: ${res.data.newPassword}`);
+    mutationFn: ({ id, newPassword }: { id: string; newPassword: string }) =>
+      userService.resetPassword(id, newPassword),
+    onSuccess: () => {
+      message.success('Đặt lại mật khẩu thành công');
+    },
+  });
+}
+
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: (email: string) => userService.forgotPassword(email),
+    onSuccess: () => {
+      message.success('Đã gửi liên kết đặt lại mật khẩu tới email người dùng');
     },
   });
 }

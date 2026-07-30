@@ -2,13 +2,10 @@ package com.hanghai.kchtg.port.service.shared;
 
 import com.hanghai.kchtg.common.entity.AuditLog;
 import com.hanghai.kchtg.common.entity.AuditLogRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
 
 /**
  * Audit log service — writes records to the audit_log table within

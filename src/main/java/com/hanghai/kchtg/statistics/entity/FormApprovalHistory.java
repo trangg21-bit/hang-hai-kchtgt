@@ -1,11 +1,11 @@
 package com.hanghai.kchtg.statistics.entity;
 
-import java.util.UUID;
-
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+
 import java.time.Instant;
+import java.util.UUID;
 
 /**
  * Audit trail for form approval lifecycle (submit, approve, reject, draft).

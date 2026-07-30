@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.station.entity;
 
-import java.util.UUID;
-
 import jakarta.persistence.*;
 import lombok.*;
 

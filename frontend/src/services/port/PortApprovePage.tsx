@@ -40,7 +40,7 @@ export default function PortApprovePage() {
       } catch (err) {
         console.error('Failed to fetch Port:', err);
         toast.error('Không thể tải thông tin cảng biển');
-        navigate('/Port');
+        navigate('/port');
       } finally {
         setIsLoading(false);
       }
@@ -81,7 +81,7 @@ export default function PortApprovePage() {
         await rejectCangBien(data.id, rejectReason);
         toast.success('Từ chối thành công');
       }
-      navigate(`/Port/${data.id}`);
+      navigate(`/port/${data.id}`);
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : tab === 'approve' ? 'Phê duyệt thất bại' : 'Từ chối thất bại');
     } finally {
@@ -93,7 +93,7 @@ export default function PortApprovePage() {
     <>
       <Card style={{ marginBottom: 16 }}>
         <Space>
-          <Button onClick={() => navigate(`/Port/${data.id}`)}>Quay lại</Button>
+          <Button onClick={() => navigate(`/port/${data.id}`)}>Quay lại</Button>
           <Typography.Title level={5} style={{ margin: 0 }}>
             Phê duyệt — {data.portCode} — {data.portName}
           </Typography.Title>
@@ -199,7 +199,7 @@ export default function PortApprovePage() {
         {/* Footer */}
         <div style={{ borderTop: `1px solid ${borderDefault}`, paddingTop: 16, marginTop: 8 }}>
           <Space>
-            <Button onClick={() => navigate(`/Port/${data.id}`)}>Hủy</Button>
+            <Button onClick={() => navigate(`/port/${data.id}`)}>Hủy</Button>
             <Button
               type="primary"
               danger={tab === 'reject'}

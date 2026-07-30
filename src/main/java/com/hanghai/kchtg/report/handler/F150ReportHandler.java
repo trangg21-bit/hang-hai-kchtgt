@@ -1,11 +1,10 @@
 package com.hanghai.kchtg.report.handler;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.port.entity.Pier;
+import com.hanghai.kchtg.port.entity.PierType;
+import com.hanghai.kchtg.port.repository.PierRepository;
 import com.hanghai.kchtg.report.dto.ReportPreviewRequest;
 import com.hanghai.kchtg.report.dto.ReportResponse;
-import com.hanghai.kchtg.port.entity.Pier;
-import com.hanghai.kchtg.port.repository.PierRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -356,7 +355,7 @@ public class F150ReportHandler extends BaseReportHandler {
         return list;
     }
 
-    private String classifyPier(com.hanghai.kchtg.port.entity.PierType pierType, String operationalFunction) {
+    private String classifyPier(PierType pierType, String operationalFunction) {
         if (pierType == null) return "KHAC";
         switch (pierType) {
             case CONTAINER:

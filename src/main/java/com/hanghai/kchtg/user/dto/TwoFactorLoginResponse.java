@@ -1,18 +1,14 @@
 package com.hanghai.kchtg.user.dto;
 
-import java.util.UUID;
+import lombok.*;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import java.util.UUID;
 
 /**
  * DTO tra ve sau khi xac thuc 2-pha thanh cong.
  * Chua access_token, refresh_token va thong tin user.
  */
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class TwoFactorLoginResponse {

@@ -1,16 +1,12 @@
 package com.hanghai.kchtg.assetmovement.repository;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.assetmovement.entity.InfraAssetType;
 import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
 import com.hanghai.kchtg.assetmovement.entity.InfraAsset;
-import com.hanghai.kchtg.assetmovement.entity.AssetStatus;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
+import com.hanghai.kchtg.assetmovement.entity.InfraAssetType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;

@@ -1,16 +1,17 @@
 package com.hanghai.kchtg.gis.polygon.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.gis.polygon.dto.CreatePolygonObjectRequest;
 import com.hanghai.kchtg.gis.polygon.dto.PolygonObjectResponse;
 import com.hanghai.kchtg.gis.polygon.dto.UpdatePolygonObjectRequest;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonHistory;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject;
+import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ApprovalStatus;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ObjectType;
 import com.hanghai.kchtg.gis.polygon.entity.PolygonObject.Status;
 import com.hanghai.kchtg.gis.polygon.repository.PolygonHistoryRepository;
 import com.hanghai.kchtg.gis.polygon.repository.PolygonObjectRepository;
+import com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository;
+import com.hanghai.kchtg.security.SecurityUtils;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,7 @@ public class PolygonObjectService {
 
     private final PolygonObjectRepository repository;
     private final PolygonHistoryRepository historyRepository;
-    private final com.hanghai.kchtg.gis.spatial.repository.GisSpatialObjectRepository spatialRepository;
+    private final GisSpatialObjectRepository spatialRepository;
 
     public List<PolygonObjectResponse> findAll() {
         return repository.findAll().stream()
@@ -124,7 +125,7 @@ public class PolygonObjectService {
         PolygonObject entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("PolygonObject not found with id: " + id));
         entity.setStatus(Status.DELETED);
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         repository.save(entity);
     }
 
@@ -133,7 +134,7 @@ public class PolygonObjectService {
         PolygonObject entity = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("PolygonObject not found with id: " + id));
         entity.setStatus(Status.PENDING_APPROVAL);
-        entity.setApprovalStatus(com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ApprovalStatus.PENDING);
+        entity.setApprovalStatus(ApprovalStatus.PENDING);
         repository.save(entity);
     }
 
@@ -148,7 +149,7 @@ public class PolygonObjectService {
         }
 
         entity.setStatus(Status.APPROVED_L1);
-        entity.setApprovalStatus(com.hanghai.kchtg.gis.polygon.entity.PolygonObject.ApprovalStatus.APPROVED);
+        entity.setApprovalStatus(ApprovalStatus.APPROVED);
         entity.setApprovedBy(approverId);
         entity.setApprovedDate(java.time.LocalDateTime.now());
         entity = repository.save(entity);

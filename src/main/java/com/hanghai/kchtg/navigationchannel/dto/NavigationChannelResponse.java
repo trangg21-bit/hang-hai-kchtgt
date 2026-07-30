@@ -1,13 +1,16 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelApprovalStatus;
-import lombok.*;
-import java.time.*;
-import java.util.List;
-
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.navigationchannel.entity.NavigationChannelApprovalStatus;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class NavigationChannelResponse {
@@ -52,7 +55,7 @@ public class NavigationChannelResponse {
     private UUID spatialId;
     private GisGeometryType geometryType;
     private String coordinates;
-    private UUID bieuTuongId;
+    private UUID symbolId;
 
     // New fields
     private String registeredArea;

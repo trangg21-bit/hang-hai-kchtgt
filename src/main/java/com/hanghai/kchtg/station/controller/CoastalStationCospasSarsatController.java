@@ -1,8 +1,5 @@
 package com.hanghai.kchtg.station.controller;
 
-import java.util.UUID;
-import lombok.*;
-
 import com.hanghai.kchtg.station.dto.cospas.*;
 import com.hanghai.kchtg.station.entity.CoastalStationCospasSarsat;
 import com.hanghai.kchtg.station.service.CoastalStationCospasSarsatService;

@@ -1,7 +1,9 @@
 package com.hanghai.kchtg.interconnect.entity;
 
 import com.hanghai.kchtg.common.entity.BaseEntity;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

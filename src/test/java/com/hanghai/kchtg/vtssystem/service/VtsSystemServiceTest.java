@@ -1,7 +1,8 @@
 package com.hanghai.kchtg.vtssystem.service;
 
 import com.hanghai.kchtg.vtssystem.dto.*;
-import com.hanghai.kchtg.vtssystem.entity.*;
+import com.hanghai.kchtg.vtssystem.entity.ApprovalHistory;
+import com.hanghai.kchtg.vtssystem.entity.VtsSystem;
 import com.hanghai.kchtg.vtssystem.repository.ApprovalHistoryRepository;
 import com.hanghai.kchtg.vtssystem.repository.VtsSystemRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,10 +18,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.data.domain.Pageable;
-
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)

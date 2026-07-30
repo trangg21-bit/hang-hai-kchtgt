@@ -5,9 +5,9 @@ import com.hanghai.kchtg.dikerevetment.dto.*;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentApprovalStatus;
 import com.hanghai.kchtg.dikerevetment.entity.DikeRevetmentType;
 import com.hanghai.kchtg.dikerevetment.service.DikeRevetmentService;
+import com.hanghai.kchtg.user.entity.User;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -30,7 +30,7 @@ public class DikeRevetmentController {
     public ResponseEntity<ApiResponse<DikeRevetmentResponse>> create(
             @RequestBody @Valid DikeRevetmentCreateRequest req,
             Authentication authentication) {
-        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
         return ResponseEntity.ok(ApiResponse.success("Tạo đê kè thành công", service.create(req, userId)));
     }
 
@@ -54,7 +54,7 @@ public class DikeRevetmentController {
             @PathVariable java.util.UUID id,
             @RequestBody @Valid DikeRevetmentUpdateRequest req,
             Authentication authentication) {
-        java.util.UUID userId2 = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        java.util.UUID userId2 = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
         return ResponseEntity.ok(ApiResponse.success("Cập nhật đê kè thành công", service.update(id, req, userId2)));
     }
 
@@ -71,7 +71,7 @@ public class DikeRevetmentController {
             @PathVariable java.util.UUID id,
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
-        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt C1 thành công", service.approveC1(id, req, userId)));
     }
 
@@ -81,7 +81,7 @@ public class DikeRevetmentController {
             @PathVariable java.util.UUID id,
             @RequestBody @Valid ApprovalRequest req,
             Authentication authentication) {
-        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof com.hanghai.kchtg.user.entity.User ? ((com.hanghai.kchtg.user.entity.User) authentication.getPrincipal()).getId() : null;
+        java.util.UUID userId = authentication != null && authentication.getPrincipal() instanceof User ? ((User) authentication.getPrincipal()).getId() : null;
         return ResponseEntity.ok(ApiResponse.success("Phê duyệt C2 thành công", service.approveC2(id, req, userId)));
     }
 

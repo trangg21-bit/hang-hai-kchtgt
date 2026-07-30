@@ -1,16 +1,18 @@
 package com.hanghai.kchtg.navigationchannel.dto;
 
-import java.util.UUID;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import lombok.*;
 import java.time.LocalDate;
-import java.util.List;
+import java.util.UUID;
 
 /**
  * Create request for NavigationChannel (F-038).
  */
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import jakarta.validation.constraints.NotBlank;
 
 @Data @NoArgsConstructor @AllArgsConstructor @Builder
 public class NavigationChannelCreateRequest {
@@ -35,5 +37,5 @@ public class NavigationChannelCreateRequest {
     private UUID orgUnitId;
     private GisGeometryType geometryType;
     private String coordinates;
-    private UUID bieuTuongId;
+    private UUID symbolId;
 }

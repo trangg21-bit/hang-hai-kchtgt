@@ -1,11 +1,10 @@
 package com.hanghai.kchtg.user.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.user.entity.Permission;
 import com.hanghai.kchtg.user.repository.PermissionRepository;
 import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -92,6 +91,7 @@ public class PermissionController {
     /**
      * Request body cho POST /create.
      */
+    @Data
     public static class CreatePermissionRequest {
         @NotBlank(message = "Code không được để trống")
         private String code;
@@ -107,15 +107,5 @@ public class PermissionController {
         @NotBlank(message = "Action không được để trống")
         private String action;
 
-        public String getCode() { return code; }
-        public void setCode(String code) { this.code = code; }
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
-        public String getDescription() { return description; }
-        public void setDescription(String description) { this.description = description; }
-        public String getResource() { return resource; }
-        public void setResource(String resource) { this.resource = resource; }
-        public String getAction() { return action; }
-        public void setAction(String action) { this.action = action; }
     }
 }

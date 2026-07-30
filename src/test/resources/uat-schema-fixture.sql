@@ -10,10 +10,12 @@ CREATE TABLE buoy_station (
     id              UUID PRIMARY KEY,
     latitude        DOUBLE PRECISION,
     longitude       DOUBLE PRECISION,
+    operational_status VARCHAR(50),
     status          VARCHAR(50) DEFAULT 'DRAFT'
                     CHECK (status IN ('DRAFT','PENDING_APPROVAL','APPROVED_L1','APPROVED_L2','PUBLISHED','DELETED')),
     approval_status VARCHAR(50) DEFAULT 'PENDING'
                     CHECK (approval_status IN ('PENDING','APPROVED_L1','APPROVED_L2','REJECTED')),
+    deleted_at      TIMESTAMP,
     created_by      VARCHAR(100),
     updated_by      VARCHAR(100),
     deleted_by      VARCHAR(100)
@@ -25,10 +27,12 @@ CREATE TABLE lighthouse_station (
     id              UUID PRIMARY KEY,
     latitude        DOUBLE PRECISION,
     longitude       DOUBLE PRECISION,
+    operational_status VARCHAR(50),
     status          VARCHAR(50) DEFAULT 'DRAFT'
                     CHECK (status IN ('DRAFT','PENDING_APPROVAL','APPROVED_L1','APPROVED_L2','PUBLISHED','DELETED')),
     approval_status VARCHAR(50) DEFAULT 'PENDING'
                     CHECK (approval_status IN ('PENDING','APPROVED_L1','APPROVED_L2','REJECTED')),
+    deleted_at      TIMESTAMP,
     created_by      VARCHAR(100),
     updated_by      VARCHAR(100),
     deleted_by      VARCHAR(100)
@@ -40,10 +44,12 @@ CREATE TABLE coastal_station_vts (
     id              UUID PRIMARY KEY,
     latitude        DOUBLE PRECISION,
     longitude       DOUBLE PRECISION,
+    operational_status VARCHAR(50),
     status          VARCHAR(50) DEFAULT 'DRAFT'
                     CHECK (status IN ('DRAFT','PENDING_APPROVAL','APPROVED_L1','APPROVED_L2','PUBLISHED','DELETED')),
     approval_status VARCHAR(50) DEFAULT 'PENDING'
                     CHECK (approval_status IN ('PENDING','APPROVED_L1','APPROVED_L2','REJECTED')),
+    deleted_at      TIMESTAMP,
     created_by      VARCHAR(100),
     updated_by      VARCHAR(100),
     deleted_by      VARCHAR(100)
@@ -55,10 +61,12 @@ CREATE TABLE coastal_station_lrit (
     id              UUID PRIMARY KEY,
     latitude        DOUBLE PRECISION,
     longitude       DOUBLE PRECISION,
+    operational_status VARCHAR(50),
     status          VARCHAR(50) DEFAULT 'DRAFT'
                     CHECK (status IN ('DRAFT','PENDING_APPROVAL','APPROVED_L1','APPROVED_L2','PUBLISHED','DELETED')),
     approval_status VARCHAR(50) DEFAULT 'PENDING'
                     CHECK (approval_status IN ('PENDING','APPROVED_L1','APPROVED_L2','REJECTED')),
+    deleted_at      TIMESTAMP,
     created_by      VARCHAR(100),
     updated_by      VARCHAR(100),
     deleted_by      VARCHAR(100)
@@ -70,10 +78,12 @@ CREATE TABLE coastal_station_inmarsat (
     id              UUID PRIMARY KEY,
     latitude        DOUBLE PRECISION,
     longitude       DOUBLE PRECISION,
+    operational_status VARCHAR(50),
     status          VARCHAR(50) DEFAULT 'DRAFT'
                     CHECK (status IN ('DRAFT','PENDING_APPROVAL','APPROVED_L1','APPROVED_L2','PUBLISHED','DELETED')),
     approval_status VARCHAR(50) DEFAULT 'PENDING'
                     CHECK (approval_status IN ('PENDING','APPROVED_L1','APPROVED_L2','REJECTED')),
+    deleted_at      TIMESTAMP,
     created_by      VARCHAR(100),
     updated_by      VARCHAR(100),
     deleted_by      VARCHAR(100)
@@ -85,10 +95,12 @@ CREATE TABLE coastal_station_haiphong (
     id              UUID PRIMARY KEY,
     latitude        DOUBLE PRECISION,
     longitude       DOUBLE PRECISION,
+    operational_status VARCHAR(50),
     status          VARCHAR(50) DEFAULT 'DRAFT'
                     CHECK (status IN ('DRAFT','PENDING_APPROVAL','APPROVED_L1','APPROVED_L2','PUBLISHED','DELETED')),
     approval_status VARCHAR(50) DEFAULT 'PENDING'
                     CHECK (approval_status IN ('PENDING','APPROVED_L1','APPROVED_L2','REJECTED')),
+    deleted_at      TIMESTAMP,
     created_by      VARCHAR(100),
     updated_by      VARCHAR(100),
     deleted_by      VARCHAR(100)
@@ -100,10 +112,12 @@ CREATE TABLE coastal_station_cospas_sarsat (
     id              UUID PRIMARY KEY,
     latitude        DOUBLE PRECISION,
     longitude       DOUBLE PRECISION,
+    operational_status VARCHAR(50),
     status          VARCHAR(50) DEFAULT 'DRAFT'
                     CHECK (status IN ('DRAFT','PENDING_APPROVAL','APPROVED_L1','APPROVED_L2','PUBLISHED','DELETED')),
     approval_status VARCHAR(50) DEFAULT 'PENDING'
                     CHECK (approval_status IN ('PENDING','APPROVED_L1','APPROVED_L2','REJECTED')),
+    deleted_at      TIMESTAMP,
     created_by      VARCHAR(100),
     updated_by      VARCHAR(100),
     deleted_by      VARCHAR(100)
@@ -114,18 +128,32 @@ VALUES (gen_random_uuid(), 20.5, 106.7, 'PUBLISHED', 'APPROVED_L2',
 
 -- === Beacon tables ===
 CREATE TABLE beacon_light (
-    id         UUID PRIMARY KEY,
-    latitude   DOUBLE PRECISION,
-    longitude  DOUBLE PRECISION,
-    created_by VARCHAR(100),
-    updated_by VARCHAR(100)
+    id              UUID PRIMARY KEY,
+    latitude        DOUBLE PRECISION,
+    longitude       DOUBLE PRECISION,
+    operational_status VARCHAR(50),
+    status          VARCHAR(50) DEFAULT 'DRAFT'
+                    CHECK (status IN ('DRAFT','PENDING_APPROVAL','APPROVED_L1','APPROVED_L2','PUBLISHED','DELETED')),
+    approval_status VARCHAR(50) DEFAULT 'PENDING'
+                    CHECK (approval_status IN ('PENDING','APPROVED_L1','APPROVED_L2','REJECTED')),
+    deleted_at      TIMESTAMP,
+    created_by      VARCHAR(100),
+    updated_by      VARCHAR(100),
+    deleted_by      VARCHAR(100)
 );
 CREATE TABLE buoy (
-    id         UUID PRIMARY KEY,
-    latitude   DOUBLE PRECISION,
-    longitude  DOUBLE PRECISION,
-    created_by VARCHAR(100),
-    updated_by VARCHAR(100)
+    id              UUID PRIMARY KEY,
+    latitude        DOUBLE PRECISION,
+    longitude       DOUBLE PRECISION,
+    operational_status VARCHAR(50),
+    status          VARCHAR(50) DEFAULT 'DRAFT'
+                    CHECK (status IN ('DRAFT','PENDING_APPROVAL','APPROVED_L1','APPROVED_L2','PUBLISHED','DELETED')),
+    approval_status VARCHAR(50) DEFAULT 'PENDING'
+                    CHECK (approval_status IN ('PENDING','APPROVED_L1','APPROVED_L2','REJECTED')),
+    deleted_at      TIMESTAMP,
+    created_by      VARCHAR(100),
+    updated_by      VARCHAR(100),
+    deleted_by      VARCHAR(100)
 );
 
 -- === Document module tables, still carrying their Vietnamese column names ===
@@ -399,5 +427,120 @@ CREATE TABLE public.org_units (
     status VARCHAR(50),
     unit_type VARCHAR(50),
     type VARCHAR(50)
+);
+
+-- === Tables needed by V106 dashboard indexes (non-duplicate tables only) ===
+CREATE TABLE ports (
+    id UUID PRIMARY KEY,
+    port_code VARCHAR(50) NOT NULL UNIQUE,
+    port_name VARCHAR(255),
+    province INT,
+    province_id INT,
+    area NUMERIC(15,2),
+    operational_status VARCHAR(50),
+    approval_status VARCHAR(50),
+    org_unit_id UUID,
+    deleted_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE berths (
+    id UUID PRIMARY KEY,
+    code VARCHAR(50),
+    name VARCHAR(255),
+    operational_status VARCHAR(50),
+    approval_status VARCHAR(50),
+    deleted_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE piers (
+    id UUID PRIMARY KEY,
+    code VARCHAR(50),
+    name VARCHAR(255),
+    operational_status VARCHAR(50),
+    approval_status VARCHAR(50),
+    deleted_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE dry_ports (
+    id UUID PRIMARY KEY,
+    dry_port_code VARCHAR(50),
+    dry_port_name VARCHAR(255),
+    province INT,
+    operational_status VARCHAR(50),
+    approval_status VARCHAR(50),
+    deleted_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE navigation_channel (
+    id UUID PRIMARY KEY,
+    ma_luong VARCHAR(50),
+    ten_luong VARCHAR(255),
+    operational_status VARCHAR(50),
+    approval_status VARCHAR(50),
+    deleted_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE dike_revetment (
+    id UUID PRIMARY KEY,
+    ma_de_ke VARCHAR(50),
+    ten_de_ke VARCHAR(255),
+    operational_status VARCHAR(50),
+    approval_status VARCHAR(50),
+    deleted_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE radar_station (
+    id UUID PRIMARY KEY,
+    ma_tram VARCHAR(50),
+    ten_tram VARCHAR(255),
+    operational_status VARCHAR(50),
+    approval_status VARCHAR(50),
+    deleted_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE vts_system (
+    id UUID PRIMARY KEY,
+    ma_he_thong VARCHAR(50),
+    system_name VARCHAR(255),
+    operational_status VARCHAR(50),
+    approval_status VARCHAR(50),
+    deleted_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE ship_repair_facility (
+    id UUID PRIMARY KEY,
+    facility_name VARCHAR(255),
+    province INT,
+    operational_status VARCHAR(50),
+    approval_status VARCHAR(50),
+    deleted_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE water_zones (
+    id UUID PRIMARY KEY,
+    water_zone_code VARCHAR(50),
+    water_zone_name VARCHAR(255),
+    water_zone_type VARCHAR(50),
+    deleted_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
 );
 

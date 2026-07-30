@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.managedasset.entity;
 
-import java.util.UUID;
-
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;

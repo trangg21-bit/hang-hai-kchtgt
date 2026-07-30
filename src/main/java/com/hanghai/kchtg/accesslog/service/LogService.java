@@ -3,10 +3,11 @@ package com.hanghai.kchtg.accesslog.service;
 import com.hanghai.kchtg.accesslog.dto.AccessLogFilterRequest;
 import com.hanghai.kchtg.accesslog.dto.AccessLogResponse;
 import com.hanghai.kchtg.accesslog.dto.LogAggregateResponse;
-import com.hanghai.kchtg.accesslog.entity.AccessLog;
 import com.hanghai.kchtg.accesslog.entity.AccessLogStatus;
 import com.hanghai.kchtg.accesslog.entity.LogAggregate;
 import com.hanghai.kchtg.accesslog.entity.LogRetentionPolicy;
+import com.hanghai.kchtg.accesslog.enums.LogSeverity;
+import com.hanghai.kchtg.accesslog.enums.LogType;
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import com.hanghai.kchtg.accesslog.repository.LogAggregateRepository;
 import com.hanghai.kchtg.accesslog.repository.LogRetentionPolicyRepository;
@@ -14,12 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
@@ -176,8 +174,8 @@ public class LogService {
     public int alertOnFailures() {
         LocalDateTime window = LocalDateTime.now().minusHours(ALERT_WINDOW_HOURS);
         long failureCount = repository.countByTypeAndSeverityAndCreatedAtAfter(
-                com.hanghai.kchtg.accesslog.enums.LogType.LOGIN,
-                com.hanghai.kchtg.accesslog.enums.LogSeverity.WARNING,
+                LogType.LOGIN,
+                LogSeverity.WARNING,
                 window);
 
         if (failureCount >= ALERT_THRESHOLD) {

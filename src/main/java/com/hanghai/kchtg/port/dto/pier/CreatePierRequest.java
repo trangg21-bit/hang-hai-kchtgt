@@ -1,7 +1,8 @@
 package com.hanghai.kchtg.port.dto.pier;
 
-import java.util.UUID;
-
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.port.entity.PierType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -9,8 +10,6 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.util.UUID;
-
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 @Data
 public class CreatePierRequest {
@@ -28,9 +27,9 @@ public class CreatePierRequest {
 
     private BigDecimal length;
     private BigDecimal designLoad;
-    private com.hanghai.kchtg.port.entity.PierType pierType;
+    private PierType pierType;
     private String operationalFunction;
-    private com.hanghai.kchtg.common.entity.OperationalStatus operationalStatus;
+    private OperationalStatus operationalStatus;
     private GisGeometryType geometryType;
     private String coordinates;
     private UUID mapSymbolId;

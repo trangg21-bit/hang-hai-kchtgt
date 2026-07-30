@@ -45,8 +45,10 @@ public class KchtCacheInvalidationAspect {
     private void transactionalMethod() {}
 
     @Pointcut("execution(* *.create*(..)) || execution(* *.update*(..)) || " +
-              "execution(* *.delete*(..)) || execution(* *.softDelete(..)) || " +
-              "execution(* *.save(..)) || execution(* *.approve*(..))")
+              "execution(* *.delete*(..)) || execution(* *.softDelete*(..)) || " +
+              "execution(* *.save*(..)) || execution(* *.approve*(..)) || " +
+              "execution(* *.change*(..)) || execution(* *.toggle*(..)) || " +
+              "execution(* *.publish*(..)) || execution(* *.activate*(..))")
     private void mutationMethod() {}
 
     @After("kchtServiceMethod() && transactionalMethod() && mutationMethod()")

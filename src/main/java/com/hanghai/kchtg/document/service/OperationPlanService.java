@@ -1,10 +1,12 @@
 package com.hanghai.kchtg.document.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.document.dto.*;
-import com.hanghai.kchtg.document.entity.*;
-import com.hanghai.kchtg.document.repository.*;
+import com.hanghai.kchtg.document.entity.OperationPlan;
+import com.hanghai.kchtg.document.entity.OperationReport;
+import com.hanghai.kchtg.document.entity.OperationStatus;
+import com.hanghai.kchtg.document.repository.OperationDetailRepository;
+import com.hanghai.kchtg.document.repository.OperationPlanRepository;
+import com.hanghai.kchtg.document.repository.OperationReportRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -18,6 +20,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service

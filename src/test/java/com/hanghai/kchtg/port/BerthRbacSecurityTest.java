@@ -2,6 +2,7 @@ package com.hanghai.kchtg.port;
 
 import com.hanghai.kchtg.accesslog.repository.AccessLogRepository;
 import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
+import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import com.hanghai.kchtg.port.controller.BerthController;
 import com.hanghai.kchtg.port.service.BerthApprovalService;
 import com.hanghai.kchtg.port.service.BerthService;
@@ -11,7 +12,6 @@ import com.hanghai.kchtg.security.service.JwtSessionService;
 import com.hanghai.kchtg.security.service.TokenService;
 import com.hanghai.kchtg.security.service.TokenValidationService;
 import com.hanghai.kchtg.user.repository.UserRepository;
-import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,17 +21,15 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.util.UUID;
-
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;

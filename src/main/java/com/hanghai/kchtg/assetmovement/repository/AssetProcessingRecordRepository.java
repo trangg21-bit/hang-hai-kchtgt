@@ -1,10 +1,8 @@
 package com.hanghai.kchtg.assetmovement.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.assetmovement.entity.AssetProcessingRecord;
-import com.hanghai.kchtg.assetmovement.entity.ProcessingType;
 import com.hanghai.kchtg.assetmovement.entity.ProcessingRecordStatus;
+import com.hanghai.kchtg.assetmovement.entity.ProcessingType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.group.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.group.entity.GroupStatus;
 import com.hanghai.kchtg.group.entity.GroupType;
 import com.hanghai.kchtg.group.entity.UserGroup;
@@ -103,7 +101,7 @@ public interface GroupRepository extends JpaRepository<UserGroup, UUID> {
           + "WHERE g.deletedAt IS NULL "
           + "AND (:userId IS NULL OR EXISTS ("
           + "  SELECT 1 FROM GroupMember gm WHERE gm.userGroup.id = g.id "
-          + "  AND gm.user.id = :userId AND gm.status = com.hanghai.kchtg.group.entity.GroupMemberStatus.ACTIVE)) "
+          + "  AND gm.user.id = :userId AND gm.status = GroupMemberStatus.ACTIVE)) "
           + "AND (:groupType IS NULL OR cast(g.groupType as integer) = :groupType) "
           + "AND (:search IS NULL OR g.name LIKE %:search%)")
     Page<UserGroup> searchAndFilterMyGroups(@Param("search") String search,

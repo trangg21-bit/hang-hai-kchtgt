@@ -1,9 +1,15 @@
 package com.hanghai.kchtg.datasharingaggregation.dto;
 
+import com.hanghai.kchtg.datasharingaggregation.enums.SharingStatus;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.util.UUID;
 
-import com.hanghai.kchtg.datasharingaggregation.enums.SharingStatus;
-
+@NoArgsConstructor
+@AllArgsConstructor
+@Data
 public class UpdateDataSharingAggregationRequest {
 
     private String targetSystem;
@@ -17,52 +23,4 @@ public class UpdateDataSharingAggregationRequest {
     private String errorMessage;
 
     private UUID updatedBy;
-
-    public String getTargetSystem() {
-        return targetSystem;
-    }
-
-    public void setTargetSystem(String targetSystem) {
-        this.targetSystem = targetSystem;
-    }
-
-    public String getSharePeriod() {
-        return sharePeriod;
-    }
-
-    public void setSharePeriod(String sharePeriod) {
-        this.sharePeriod = sharePeriod;
-    }
-
-    public String getDataPayload() {
-        return dataPayload;
-    }
-
-    public void setDataPayload(String dataPayload) {
-        this.dataPayload = dataPayload;
-    }
-
-    public SharingStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(SharingStatus status) {
-        this.status = status;
-    }
-
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-
-    public void setErrorMessage(String errorMessage) {
-        this.errorMessage = errorMessage;
-    }
-
-    public UUID getUpdatedBy() {
-        return updatedBy;
-    }
-
-    public void setUpdatedBy(UUID updatedBy) {
-        this.updatedBy = updatedBy;
-    }
 }

@@ -1,13 +1,10 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
-import java.util.UUID;
-
-import java.util.UUID;
-
 import com.hanghai.kchtg.assetmovement.entity.InfraAssetType;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 /**
  * Request DTO cho Tai San KCHT (create/update).

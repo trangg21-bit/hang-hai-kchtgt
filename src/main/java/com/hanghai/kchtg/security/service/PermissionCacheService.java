@@ -1,13 +1,13 @@
 package com.hanghai.kchtg.security.service;
 
-import java.util.UUID;
-
-import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class PermissionCacheService {
 
+    private static final Logger log = LoggerFactory.getLogger(PermissionCacheService.class);
     private static final String CACHE_KEY_PREFIX = "user_perms:";
     private static final long CACHE_TTL_MINUTES = 10;
 
@@ -34,9 +35,13 @@ public class PermissionCacheService {
      * @param permissions Tập hợp các permission codes
      */
     public void cachePermissions(UUID userId, Set<String> permissions) {
-        String key = CACHE_KEY_PREFIX + userId;
-        redisTemplate.opsForSet().add(key, permissions.toArray(new String[0]));
-        redisTemplate.expire(key, CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+        try {
+            String key = CACHE_KEY_PREFIX + userId;
+            redisTemplate.opsForSet().add(key, permissions.toArray(new String[0]));
+            redisTemplate.expire(key, CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+        } catch (RuntimeException e) {
+            log.warn("Redis unavailable, skipping cache save for user {}: {}", userId, e.getMessage());
+        }
     }
 
     /**
@@ -45,8 +50,13 @@ public class PermissionCacheService {
      * @return Tập hợp các permission codes, hoặc null nếu không có trong cache.
      */
     public Set<String> getPermissionsFromCache(UUID userId) {
-        String key = CACHE_KEY_PREFIX + userId;
-        return redisTemplate.opsForSet().members(key);
+        try {
+            String key = CACHE_KEY_PREFIX + userId;
+            return redisTemplate.opsForSet().members(key);
+        } catch (RuntimeException e) {
+            log.warn("Redis unavailable, skipping cache lookup for user {}: {}", userId, e.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -54,8 +64,12 @@ public class PermissionCacheService {
      * @param userId ID của user (UUID)
      */
     public void invalidateCache(UUID userId) {
-        String key = CACHE_KEY_PREFIX + userId;
-        redisTemplate.delete(key);
+        try {
+            String key = CACHE_KEY_PREFIX + userId;
+            redisTemplate.delete(key);
+        } catch (RuntimeException e) {
+            log.warn("Redis unavailable, skipping cache invalidation for user {}: {}", userId, e.getMessage());
+        }
     }
 
     /**

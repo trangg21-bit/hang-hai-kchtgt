@@ -1,18 +1,14 @@
 package com.hanghai.kchtg.user.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
 import com.hanghai.kchtg.user.dto.ApprovalDecisionRequest;
 import com.hanghai.kchtg.user.dto.PendingApprovalResponse;
-import com.hanghai.kchtg.user.dto.PendingApprovalRequest;
 import com.hanghai.kchtg.user.service.ApprovalService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;

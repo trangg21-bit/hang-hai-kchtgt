@@ -8,6 +8,7 @@ import com.hanghai.kchtg.accesslog.enums.LogType;
 import com.hanghai.kchtg.accesslog.service.AsyncLogAppender;
 import com.hanghai.kchtg.admin.entity.AdminAuditLog;
 import com.hanghai.kchtg.admin.repository.AdminAuditLogRepository;
+import com.hanghai.kchtg.common.util.IpUtils;
 import com.hanghai.kchtg.user.entity.User;
 import com.hanghai.kchtg.user.repository.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -474,7 +475,7 @@ public class AccessLogInterceptor implements HandlerInterceptor {
 
     /** Extract client IP from headers or remote address. */
     private String extractClientIp(HttpServletRequest request) {
-        return com.hanghai.kchtg.common.util.IpUtils.getClientIp(request);
+        return IpUtils.getClientIp(request);
     }
 
     /** Resolve userId from username by querying UserRepository. */

@@ -1,9 +1,10 @@
 package com.hanghai.kchtg.document.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.document.dto.*;
+import com.hanghai.kchtg.document.dto.AdjustmentApprovalRequest;
+import com.hanghai.kchtg.document.dto.AdjustmentApprovalResponse;
+import com.hanghai.kchtg.document.dto.PlanningAdjustmentCreateRequest;
+import com.hanghai.kchtg.document.dto.PlanningAdjustmentResponse;
 import com.hanghai.kchtg.document.entity.AdjustmentStatus;
 import com.hanghai.kchtg.document.service.PlanningAdjustmentService;
 import jakarta.validation.Valid;
@@ -13,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * REST controller for F-134 Cập nhật quy hoạch bến cảng.

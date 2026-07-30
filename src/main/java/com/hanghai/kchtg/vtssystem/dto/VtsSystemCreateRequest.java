@@ -1,10 +1,13 @@
 package com.hanghai.kchtg.vtssystem.dto;
 
-import java.util.UUID;
-
-import jakarta.validation.constraints.NotBlank;
-import lombok.*;
 import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.UUID;
 
 @Data
 @Builder

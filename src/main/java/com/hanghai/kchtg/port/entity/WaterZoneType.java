@@ -7,13 +7,13 @@ import lombok.Getter;
  */
 @Getter
 public enum WaterZoneType {
-    NEO_DAU(1),
-    KIEM_DICH(2),
-    DON_TRA_HOA_TIEU(3),
-    QUAY_TRO_TAU(4),
-    BEN_PHAO(5),
-    CHUYEN_TAI(6),
-    TRANH_BAO(7);
+    ANCHORAGE(1),
+    QUARANTINE(2),
+    PILOT_BOARDING(3),
+    TURNING_BASIN(4),
+    MOORING_BUOY(5),
+    TRANSSHIPMENT(6),
+    STORM_SHELTER(7);
 
     private final int value;
 

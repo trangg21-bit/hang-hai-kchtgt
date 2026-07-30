@@ -1,8 +1,7 @@
 package com.hanghai.kchtg.port.dto.dryport;
 
-import java.util.UUID;
-
-import jakarta.validation.constraints.AssertTrue;
+import com.hanghai.kchtg.common.entity.OperationalStatus;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -10,7 +9,6 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.util.UUID;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
 
 @Data
 public class UpdateDryPortRequest {
@@ -19,7 +17,7 @@ public class UpdateDryPortRequest {
     private UUID id;
 
     private String dryPortName;
-    private String province;
+    private Integer provinceId;
 
     @DecimalMin(value = "-90", message = "Vĩ độ phải từ -90 đến 90")
     @DecimalMax(value = "90", message = "Vĩ độ phải từ -90 đến 90")
@@ -33,7 +31,7 @@ public class UpdateDryPortRequest {
     private BigDecimal area;
 
     private BigDecimal teuCapacity;
-    private com.hanghai.kchtg.common.entity.OperationalStatus operationalStatus;
+    private OperationalStatus operationalStatus;
     private UUID mapSymbolId;
     private GisGeometryType geometryType;
     private String coordinates;

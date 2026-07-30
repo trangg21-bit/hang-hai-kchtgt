@@ -46,7 +46,7 @@ export default function PortCreatePage() {
       };
       await createCangBien(payload);
       toast.success('Tạo mới thành công — chờ phê duyệt');
-      navigate('/Port');
+      navigate('/port');
     } catch (err: unknown) {
       if (err instanceof Error) {
         const msg = err.message;
@@ -67,7 +67,7 @@ export default function PortCreatePage() {
     <>
       <Card style={{ marginBottom: 16 }}>
         <Space>
-          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/Port')}>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/port')}>
             Quay lại
           </Button>
           <Typography.Title level={5} style={{ margin: 0 }}>Tạo mới Cảng biển</Typography.Title>
@@ -174,7 +174,7 @@ export default function PortCreatePage() {
           <Form.Item style={{ marginTop: 24 }}>
             <Space>
               <Button type="primary" htmlType="submit" loading={submitting}>Tạo cảng biển</Button>
-              <Button onClick={() => navigate('/Port')}>Hủy</Button>
+              <Button onClick={() => navigate('/port')}>Hủy</Button>
             </Space>
           </Form.Item>
         </Form>

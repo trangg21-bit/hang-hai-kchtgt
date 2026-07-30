@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.port.repository;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.port.entity.ChangeLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

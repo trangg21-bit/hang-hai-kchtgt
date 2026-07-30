@@ -1,7 +1,8 @@
 package com.hanghai.kchtg.integration.dto;
 
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 import java.util.Map;
@@ -9,20 +10,19 @@ import java.util.Map;
 /**
  * Summary statistics of GIS assets grouped by object type and status.
  */
-@Data
+@Getter
+@Setter
 @Builder
 public class AssetStatusDto {
 
-    private long totalPoints;
-    private long totalLines;
-    private long totalPolygons;
+    /** Total KCHT entities in the selected dashboard scope. */
     private long totalAssets;
 
-    private Map<String, Long> pointsByType;
-    private Map<String, Long> linesByType;
-    private Map<String, Long> polygonsByType;
-
+    /** Operating summary used by the KCHT KPI and ring chart. */
     private Map<String, Long> assetsByStatus;
+
+    /** Approval summary dùng chung payload với số liệu vận hành KCHT. */
+    private Map<String, Long> approvalStats;
 
     /** Per-entity 4-column breakdown (type, total, pending, operating, suspended). */
     private List<Map<String, Object>> breakdown;

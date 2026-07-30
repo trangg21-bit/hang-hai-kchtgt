@@ -2,18 +2,20 @@ package com.hanghai.kchtg.station.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hanghai.kchtg.common.enums.ApprovalLevel;
+import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
+import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
+import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
+import com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService;
+import com.hanghai.kchtg.security.SecurityUtils;
 import com.hanghai.kchtg.station.dto.buoy.BuoyStationResponse;
 import com.hanghai.kchtg.station.dto.buoy.CreateBuoyStationRequest;
 import com.hanghai.kchtg.station.dto.buoy.UpdateBuoyStationRequest;
 import com.hanghai.kchtg.station.entity.BuoyStation;
-import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.entity.StationApprovalStatus;
-import com.hanghai.kchtg.common.enums.ApprovalLevel;
-import com.hanghai.kchtg.gis.search.dto.InfrastructureType;
-import com.hanghai.kchtg.gis.spatial.entity.GisGeometryType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObjectType;
-import com.hanghai.kchtg.gis.spatial.entity.GisSpatialObject;
 import com.hanghai.kchtg.station.entity.StationHistory;
+import com.hanghai.kchtg.station.entity.StationStatus;
 import com.hanghai.kchtg.station.repository.BuoyStationRepository;
 import com.hanghai.kchtg.station.repository.LighthouseStationRepository;
 import com.hanghai.kchtg.station.repository.StationHistoryRepository;
@@ -40,7 +42,7 @@ public class BuoyStationService {
     private final PointObjectSyncService pointObjectSyncService;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
-    private final com.hanghai.kchtg.gis.spatial.service.GisSpatialObjectService gisSpatialObjectService;
+    private final GisSpatialObjectService gisSpatialObjectService;
 
     // -- READ --
 
@@ -97,13 +99,13 @@ public class BuoyStationService {
         }
 
         if ("submit".equals(request.getAction())) {
-            entity.setStatus(com.hanghai.kchtg.station.entity.StationStatus.PENDING_APPROVAL);
-            entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
+            entity.setStatus(StationStatus.PENDING_APPROVAL);
+            entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
         }
 
         entity = phaoRepo.save(entity);
 
-        String coordinates = request.getToaDo();
+        String coordinates = request.getCoordinates();
         if ((coordinates == null || coordinates.trim().isEmpty()) && request.getLongitude() != null && request.getLatitude() != null) {
             coordinates = "POINT(" + request.getLongitude() + " " + request.getLatitude() + ")";
         }
@@ -242,7 +244,7 @@ public class BuoyStationService {
         }
 
         entity.setStatus(StationStatus.DELETED);
-        entity.softDelete(com.hanghai.kchtg.security.SecurityUtils.getCurrentUserId());
+        entity.softDelete(SecurityUtils.getCurrentUserId());
         phaoRepo.save(entity);
         if (entity.getSpatialId() != null) {
             gisSpatialObjectService.delete(entity.getSpatialId());
@@ -266,9 +268,9 @@ public class BuoyStationService {
                     "Chỉ có thể gửi phê duyệt khi status = DRAFT");
         }
 
-        entity.setStatus(com.hanghai.kchtg.station.entity.StationStatus.PENDING_APPROVAL);
-        entity.setApprovalStatus(com.hanghai.kchtg.station.entity.StationApprovalStatus.PENDING);
-        entity.setApprovalLevel(com.hanghai.kchtg.common.enums.ApprovalLevel.LEVEL_1);
+        entity.setStatus(StationStatus.PENDING_APPROVAL);
+        entity.setApprovalStatus(StationApprovalStatus.PENDING);
+        entity.setApprovalLevel(ApprovalLevel.LEVEL_1);
         phaoRepo.save(entity);
 
         notificationService.sendApprovalNotificationPhao(entity);
@@ -280,7 +282,7 @@ public class BuoyStationService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
 
-        if (entity.getStatus() != com.hanghai.kchtg.station.entity.StationStatus.PENDING_APPROVAL) {
+        if (entity.getStatus() != StationStatus.PENDING_APPROVAL) {
             throw new IllegalStateException(
                     "Không ở trạng thái chờ phê duyệt L1");
         }
@@ -291,8 +293,8 @@ public class BuoyStationService {
                     "Bạn không thể phê duyệt bản do chính mình gửi");
         }
 
-        entity.setStatus(com.hanghai.kchtg.station.entity.StationStatus.APPROVED_L1);
-        entity.setApprovalStatus(com.hanghai.kchtg.station.entity.StationApprovalStatus.APPROVED_L1);
+        entity.setStatus(StationStatus.APPROVED_L1);
+        entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
         entity.setApprovedBy(approverId != null ? approverId.toString() : null);
         entity.setApprovedDate(LocalDateTime.now());
         phaoRepo.save(entity);
@@ -309,13 +311,13 @@ public class BuoyStationService {
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Nhà trạm phao không tìm thấy: " + id));
 
-        if (entity.getStatus() != com.hanghai.kchtg.station.entity.StationStatus.APPROVED_L1) {
+        if (entity.getStatus() != StationStatus.APPROVED_L1) {
             throw new IllegalStateException(
                     "Không ở trạng thái chờ phê duyệt L2");
         }
 
-        entity.setStatus(com.hanghai.kchtg.station.entity.StationStatus.PUBLISHED);
-        entity.setApprovalStatus(com.hanghai.kchtg.station.entity.StationApprovalStatus.APPROVED_L1);
+        entity.setStatus(StationStatus.PUBLISHED);
+        entity.setApprovalStatus(StationApprovalStatus.APPROVED_L1);
         entity.setApprovedBy(approverId != null ? approverId.toString() : null);
         entity.setApprovedDate(LocalDateTime.now());
         phaoRepo.save(entity);
@@ -338,8 +340,8 @@ public class BuoyStationService {
                     "Lý do từ chối phải có ít nhất 10 ký tự");
         }
 
-        entity.setStatus(com.hanghai.kchtg.station.entity.StationStatus.DRAFT);
-        entity.setApprovalStatus(com.hanghai.kchtg.station.entity.StationApprovalStatus.REJECTED);
+        entity.setStatus(StationStatus.DRAFT);
+        entity.setApprovalStatus(StationApprovalStatus.REJECTED);
         entity.setRejectionReason(rejectReason);
         phaoRepo.save(entity);
 
@@ -421,7 +423,7 @@ public class BuoyStationService {
             gisSpatialObjectService.findById(entity.getSpatialId()).ifPresent(spatialObj -> {
                 builder.geometryType(spatialObj.getGeometryType());
                 builder.coordinates(spatialObj.getCoordinates());
-                
+
                 String coords = spatialObj.getCoordinates();
                 if (coords != null && coords.startsWith("POINT(")) {
                     try {

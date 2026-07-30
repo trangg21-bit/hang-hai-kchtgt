@@ -1,7 +1,5 @@
 package com.hanghai.kchtg.mapicon.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.mapicon.dto.CreateMapSymbolRequest;
 import com.hanghai.kchtg.mapicon.dto.MapSymbolResponse;
 import com.hanghai.kchtg.mapicon.dto.UpdateMapSymbolRequest;
@@ -15,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor

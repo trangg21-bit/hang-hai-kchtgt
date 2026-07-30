@@ -1,9 +1,8 @@
 package com.hanghai.kchtg.assetmovement.dto;
 
-import java.util.UUID;
+import lombok.Data;
 
 import java.util.UUID;
-import lombok.Data;
 
 /**
  * Request DTO cho Yeu Cau Tang Tai San (create/update).

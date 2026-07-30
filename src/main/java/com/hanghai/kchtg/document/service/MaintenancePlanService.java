@@ -1,10 +1,10 @@
 package com.hanghai.kchtg.document.service;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.document.dto.*;
 import com.hanghai.kchtg.document.entity.*;
-import com.hanghai.kchtg.document.repository.*;
+import com.hanghai.kchtg.document.repository.MaintenancePlanRepository;
+import com.hanghai.kchtg.document.repository.MaintenanceReportRepository;
+import com.hanghai.kchtg.document.repository.MaintenanceResultRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service

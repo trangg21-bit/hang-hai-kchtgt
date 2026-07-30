@@ -1,9 +1,9 @@
 package com.hanghai.kchtg.port.controller;
 
-import java.util.UUID;
-
 import com.hanghai.kchtg.common.dto.ApiResponse;
-import com.hanghai.kchtg.port.dto.port.*;
+import com.hanghai.kchtg.port.dto.port.CreatePortRequest;
+import com.hanghai.kchtg.port.dto.port.PortResponse;
+import com.hanghai.kchtg.port.dto.port.UpdatePortRequest;
 import com.hanghai.kchtg.port.service.PortApprovalService;
 import com.hanghai.kchtg.port.service.PortService;
 import jakarta.validation.Valid;
@@ -12,10 +12,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import org.springframework.security.core.Authentication;
 import java.util.UUID;
 
 @RestController
@@ -54,13 +54,13 @@ public class PortController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String portCode,
             @RequestParam(required = false) String portName,
-            @RequestParam(required = false) String province,
+            @RequestParam(required = false) Integer provinceId,
             @RequestParam(required = false) String operationalStatus,
             @RequestParam(required = false) String approvalStatus) {
-        log.info("Listing Ports: page={}, size={}, orgUnitId={}, search={}, portCode={}, portName={}, province={}, status={}, approvalStatus={}",
-                page, size, orgUnitId, search, portCode, portName, province, operationalStatus, approvalStatus);
+        log.info("Listing Ports: page={}, size={}, orgUnitId={}, search={}, portCode={}, portName={}, provinceId={}, status={}, approvalStatus={}",
+                page, size, orgUnitId, search, portCode, portName, provinceId, operationalStatus, approvalStatus);
         Page<PortResponse> result = portService.findAll(
-                page, size, orgUnitId, portCode, portName, province, operationalStatus, approvalStatus, search);
+                page, size, orgUnitId, portCode, portName, provinceId, operationalStatus, approvalStatus, search);
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách cảng biển thành công", result));
     }
 
