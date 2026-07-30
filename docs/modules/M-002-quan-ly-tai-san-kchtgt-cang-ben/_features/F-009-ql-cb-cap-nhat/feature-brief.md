@@ -15,7 +15,7 @@ consumed_by_modules: []
 
 ## Description
 
-Tính năng cho phép người dùng có thẩm quyền cập nhật thông tin của một Cảng biển đã tồn tại trong hệ thống, bao gồm thay đổi tên cảng, vị trí địa lý, diện tích, khả năng tiếp nhận tàu và các thuộc tính kỹ thuật khác, với cơ chế kiểm tra trùng lặp và ghi nhật ký thay đổi đầy đủ. Giao diện CangBienEditPage cung cấp form pre-fill từ API với React Hook Form + Zod validation inline, maCang readonly, tự động reset trạng thái phê duyệt về CHỜ_PHÊ_DUYỆT và tạo LichSuThayDoi sau mỗi lần cập nhật.
+Tính năng cho phép người dùng có thẩm quyền cập nhật thông tin của một Cảng biển đã tồn tại trong hệ thống, bao gồm thay đổi tên cảng, vị trí địa lý, diện tích, khả năng tiếp nhận tàu và các thuộc tính kỹ thuật khác, với cơ chế kiểm tra trùng lặp và ghi nhật ký thay đổi đầy đủ. Giao diện PortEditPage cung cấp form pre-fill từ API với React Hook Form + Zod validation inline, port_code readonly, tự động reset trạng thái phê duyệt về CHỜ_PHÊ_DUYỆT và tạo change_log sau mỗi lần cập nhật.
 
 ## Business Intent
 
@@ -27,7 +27,7 @@ Thông tin Cảng biển thay đổi theo thời gian do quá trình mở rộng
 Người dùng chọn Cảng biển cần cập nhật từ danh sách. Hệ thống hiển thị biểu mẫu với thông tin hiện tại được điền sẵn. Người dùng chỉnh sửa các trường cần thay đổi, hệ thống kiểm tra tính hợp lệ. Sau khi lưu, hệ thống ghi nhận nhật ký thay đổi.
 
 ### UI Flow
-Người dùng nhấp "Chỉnh sửa" từ danh sách (F-068) hoặc trang chi tiết (F-069), hệ thống gọi GET /api/v1/cang-bien/:id để lấy dữ liệu hiện tại và pre-fill form. Form hiển thị 7 trường với maCang readonly. GPS fields (viDo/kinhDo) phải được cung cấp cùng nhau (BE validates @AssertTrue isGpsPaired()). Submit gọi PUT /api/v1/cang-bien/:id, server trả về bản ghi đã cập nhật với trangThaiPheDuyet = CHỜ_PHÊ_DUYỆT và tạo LichSuThayDoi. Toast "Cập nhật thành công — chờ phê duyệt lại", điều hướng về danh sách.
+Người dùng nhấp "Chỉnh sửa" từ danh sách (F-068) hoặc trang chi tiết (F-069), hệ thống gọi GET /api/v1/ports/:id để lấy dữ liệu hiện tại và pre-fill form. Form hiển thị 7 trường với port_code readonly. GPS fields (latitude/longitude) phải được cung cấp cùng nhau (BE validates @AssertTrue isGpsPaired()). Submit gọi PUT /api/v1/ports/:id, server trả về bản ghi đã cập nhật với approval_status = CHỜ_PHÊ_DUYỆT và tạo change_log. Toast "Cập nhật thành công — chờ phê duyệt lại", điều hướng về danh sách.
 
 ## Acceptance Criteria
 
@@ -35,9 +35,9 @@ Người dùng nhấp "Chỉnh sửa" từ danh sách (F-068) hoặc trang chi t
 2. Các trường không thể thay đổi: mã cảng; tất cả các trường khác đều có thể chỉnh sửa.
 3. Hệ thống hiển thị cảnh báo khi Cảng biển đang trong quá trình phê duyệt hoặc đã bị xóa mềm.
 4. Mỗi lần cập nhật thành công, hệ thống tự động ghi nhận nhật ký thay đổi.
-5. [UI] Form pre-fill từ GET /api/v1/cang-bien/:id, maCang readonly, validation React Hook Form + Zod.
-6. [UI] Submit PUT /api/v1/cang-bien/:id → reset trangThaiPheDuyet = CHỜ_PHÊ_DUYỆT → tạo LichSuThayDoi → toast → về danh sách.
-7. [UI] Nếu maCang trùng, API trả HTTP 409 → toast lỗi.
+5. [UI] Form pre-fill từ GET /api/v1/ports/:id, port_code readonly, validation React Hook Form + Zod.
+6. [UI] Submit PUT /api/v1/ports/:id → reset approval_status = CHỜ_PHÊ_DUYỆT → tạo change_log → toast → về danh sách.
+7. [UI] Nếu port_code trùng, API trả HTTP 409 → toast lỗi.
 
 ## In Scope
 
@@ -46,9 +46,9 @@ Người dùng nhấp "Chỉnh sửa" từ danh sách (F-068) hoặc trang chi t
 - Kiểm tra xung đột dữ liệu trước khi lưu
 - Ghi nhật ký thay đổi
 - Form cập nhật với pre-fill (React Hook Form + Zod)
-- maCang readonly
-- Reset trangThaiPheDuyet = CHỜ_PHÊ_DUYỆT sau update
-- Tự động tạo LichSuThayDoi record
+- port_code readonly
+- Reset approval_status = CHỜ_PHÊ_DUYỆT sau update
+- Tự động tạo change_log record
 
 ## Out of Scope
 
@@ -71,28 +71,28 @@ Người dùng nhấp "Chỉnh sửa" từ danh sách (F-068) hoặc trang chi t
 
 ## Entities
 
-- **CangBien**: id (UUID), maCang (string, unique, read-only), tenCang (string), tinhThanhPho (string), viDo (BigDecimal, range -90..90), kinhDo (BigDecimal, range -180..180), dienTich (BigDecimal, >0), khaNangTiepNhan (BigDecimal), trangThaiHoatDong (string), trangThaiPheDuyet (string: CHỜ_PHÊ_DUYỆT/ĐƯỢC_PHÊ_DUYỆT/TỪ_CHỐI), orgUnitId (UUID), createdBy (string), updatedBy (string), createdAt, updatedAt, deletedAt (nullable)
-- **LichSuThayDoi**: id (UUID), cangBienId (UUID), loaiThayDoi (CẬP_NHẬT), field (string), oldValue, newValue, thayDoiBoi (UUID), changedAt
+- **port**: id (UUID), port_code (string, unique, read-only), port_name (string), province_city (string), latitude (BigDecimal, range -90..90), longitude (BigDecimal, range -180..180), area (BigDecimal, >0), max_vessel_capacity (BigDecimal), operational_status (string), approval_status (string: CHỜ_PHÊ_DUYỆT/ĐƯỢC_PHÊ_DUYỆT/TỪ_CHỐI), managing_unit (UUID), created_by (string), updated_by (string), created_at, updated_at, deleted_at (nullable)
+- **change_log**: id (UUID), port_id (UUID), change_type (CẬP_NHẬT), changed_field (string), old_value, new_value, changed_by (UUID), changed_at
 
 ## Business Rules
 
 | ID | Rule | Applies-to | Source |
 |---|---|---|---|
-| BR-001 | maCang không thể thay đổi sau khi tạo (readonly) | maCang | Entity spec, F-009, F-071 |
-| BR-002 | viDo [-90, 90], kinhDo [-180, 180], dienTich [0, 5000] | GPS + Diện tích | Entity spec |
-| BR-003 | trangThaiPheDuyet tự động reset về CHỜ_PHÊ_DUYỆT sau cập nhật | Cập nhật | F-009, F-071 |
-| BR-004 | LichSuThayDoi được tạo tự động khi cập nhật | Lịch sử | F-009, F-071, INT-003 |
+| BR-001 | port_code không thể thay đổi sau khi tạo (readonly) | port_code | Entity spec, F-009, F-071 |
+| BR-002 | latitude [-90, 90], longitude [-180, 180], area [0, 5000] | GPS + Diện tích | Entity spec |
+| BR-003 | approval_status tự động reset về CHỜ_PHÊ_DUYỆT sau cập nhật | Cập nhật | F-009, F-071 |
+| BR-004 | change_log được tạo tự động khi cập nhật | Lịch sử | F-009, F-071, INT-003 |
 
 ## UI Scope
 
-- **Component:** `CangBienEditPage` — React Hook Form + Zod, pre-fill từ `GET /api/v1/cang-bien/:id`
-- **API endpoint:** `PUT /api/v1/cang-bien/:id`
-- **Fields:** maCang (string, readonly), tenCang (string, required), tinhThanhPho (string, required), viDo (BigDecimal [-90,90]), kinhDo (BigDecimal [-180,180]), dienTich (BigDecimal [0,5000]), khaNangTiepNhan (BigDecimal)
+- **Component:** `PortEditPage` — React Hook Form + Zod, pre-fill từ `GET /api/v1/ports/:id`
+- **API endpoint:** `PUT /api/v1/ports/:id`
+- **Fields:** port_code (string, readonly), port_name (string, required), province_city (string, required), latitude (BigDecimal [-90,90]), longitude (BigDecimal [-180,180]), area (BigDecimal [0,5000]), max_vessel_capacity (BigDecimal)
 - **Validation inline:** React Hook Form + Zod, cùng schema như tạo mới
-- **Pre-fill:** GET /api/v1/cang-bien/:id để lấy dữ liệu hiện tại
-- **maCang readonly:** Trường maCang luôn ở chế độ disabled
-- **Submit flow:** PUT /api/v1/cang-bien/:id → reset `trangThaiPheDuyet = CHỜ_PHÊ_DUYỆT` → tạo `LichSuThayDoi` → toast "Cập nhật thành công — chờ phê duyệt lại" → về danh sách (F-068)
-- **RBAC:** Chỉ role có `cangbien:update` (Admin, Lãnh đạo, Chuyên viên Cục/Cảng vụ, Doanh nghiệp cảng)
+- **Pre-fill:** GET /api/v1/ports/:id để lấy dữ liệu hiện tại
+- **port_code readonly:** Trường port_code luôn ở chế độ disabled
+- **Submit flow:** PUT /api/v1/ports/:id → reset `approval_status = CHỜ_PHÊ_DUYỆT` → tạo `change_log` → toast "Cập nhật thành công — chờ phê duyệt lại" → về danh sách (F-068)
+- **RBAC:** Chỉ role có `port:update` (Admin, Lãnh đạo, Chuyên viên Cục/Cảng vụ, Doanh nghiệp cảng)
 - **Navigation:** Từ danh sách (F-068) hoặc chi tiết (F-069) → nút "Chỉnh sửa"
 
 ## Testing Strategy
@@ -101,7 +101,7 @@ Người dùng nhấp "Chỉnh sửa" từ danh sách (F-068) hoặc trang chi t
 Kiểm thử đơn vị cho các quy tắc validation; kiểm thử tích hợp cho luồng cập nhật qua API; kiểm thử nhật ký thay đổi.
 
 ### UI Testing
-React Testing Library: pre-fill form, validation inline, xử lý lỗi 409. Cypress E2E: chi tiết → click Chỉnh sửa → pre-fill OK → thay đổi fields → submit → toast "Cập nhật thành công — chờ phê duyệt lại" → về danh sách → xác nhận LichSuThayDoi. Negative: maCang readonly; viDo = -100 → range error.
+React Testing Library: pre-fill form, validation inline, xử lý lỗi 409. Cypress E2E: chi tiết → click Chỉnh sửa → pre-fill OK → thay đổi fields → submit → toast "Cập nhật thành công — chờ phê duyệt lại" → về danh sách → xác nhận change_log. Negative: port_code readonly; latitude = -100 → range error.
 
 ## Consolidation Note
 

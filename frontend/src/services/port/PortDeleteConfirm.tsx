@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Card, Button, Space, Typography, Tag, Row, Col } from 'antd';
+import { Card, Button, Input, Space, Typography, Tag, Row, Col } from 'antd';
 import toast from '../../components/ToastNotification';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -23,7 +23,7 @@ export default function PortDeleteConfirm() {
   const [data, setData] = useState<CangBienResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [confirmChecked, setConfirmChecked] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -32,6 +32,19 @@ export default function PortDeleteConfirm() {
       try {
         const res = await fetchCangBienById(id);
         setData(res);
+
+        // Check child guard
+        try {
+          const childRes = await fetch(`/api/v1/ports/${id}/children`);
+          const json = await childRes.json();
+          if (json.data?.hasChildren) {
+            toast.error(`Không thể xóa: Cảng có ${json.data.berthCount} bến cảng và ${json.data.waterZoneCount} vùng nước liên kết`);
+            navigate('/Port');
+            return;
+          }
+        } catch (e) {
+          // Nếu API chưa có (mới thêm), bỏ qua
+        }
       } catch (err) {
         console.error('Failed to fetch Port:', err);
         navigate('/port');
@@ -41,17 +54,22 @@ export default function PortDeleteConfirm() {
     })();
   }, [id, navigate]);
 
+  const isConfirmValid = (): boolean => {
+    const trimmed = confirmText.trim();
+    return trimmed === data?.portName || trimmed === 'XÓA';
+  };
+
   const handleDelete = async () => {
-    if (!confirmChecked) {
-      toast.error('Bạn cần xác nhận để xóa');
+    if (!isConfirmValid()) {
+      toast.error('Vui lòng nhập đúng tên cảng hoặc gõ "XÓA" để xác nhận');
       return;
     }
     if (!id) return;
     setSubmitting(true);
     try {
       await deleteCangBien(id);
-      toast.success('Xóa thành công');
-      navigate('/port');
+      toast.success('Đã xóa thành công');
+      navigate('/Port');
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Xóa thất bại');
     } finally {
@@ -113,17 +131,17 @@ export default function PortDeleteConfirm() {
           </Typography.Text>
         </Card>
 
-        {/* Confirm */}
+        {/* Confirm — type port name or "XÓA" */}
         <div style={{ marginBottom: 16 }}>
-          <Space>
-            <input
-              type="checkbox"
-              checked={confirmChecked}
-              onChange={(e) => setConfirmChecked(e.target.checked)}
-              aria-label="Tôi xác nhận muốn xóa cảng biển này"
-            />
-            <Typography.Text>Tôi xác nhận muốn xóa cảng biển này</Typography.Text>
-          </Space>
+          <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
+            Nhập tên cảng hoặc gõ "XÓA" để xác nhận:
+          </Typography.Text>
+          <Input
+            placeholder="Nhập tên cảng hoặc XÓA"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            style={{ borderRadius: 999, height: 40 }}
+          />
         </div>
 
         {/* Footer */}
@@ -135,7 +153,7 @@ export default function PortDeleteConfirm() {
               danger
               onClick={handleDelete}
               loading={submitting}
-              disabled={!confirmChecked}
+              disabled={!isConfirmValid()}
             >
               Xóa
             </Button>

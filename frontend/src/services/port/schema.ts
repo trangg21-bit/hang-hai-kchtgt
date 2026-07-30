@@ -44,7 +44,7 @@ export const createSchema = z.object({
   province: z.string().max(100, 'Tỉnh/thành phố tối đa 100 ký tự').optional().or(z.literal('')),
   latitude: z.coerce.number().min(-90, 'Vĩ độ phải từ -90 đến 90').max(90, 'Vĩ độ phải từ -90 đến 90').optional().or(z.nan()),
   longitude: z.coerce.number().min(-180, 'Kinh độ phải từ -180 đến 180').max(180, 'Kinh độ phải từ -180 đến 180').optional().or(z.nan()),
-  area: z.coerce.number().positive('Diện tích phải lớn hơn 0'),
+  area: z.coerce.number().optional(),
   khaNangTiepNhan: z.coerce.number().optional().or(z.nan()),
   operationalStatus: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
   approvalStatus: z.enum(['CHO_PHE_DUYET', 'DUOC_PHE_DUYET', 'TU_CHOI']).default('CHO_PHE_DUYET'),
@@ -94,7 +94,7 @@ export const updateSchema = z.object({
   province: z.string().max(100, 'Tỉnh/thành phố tối đa 100 ký tự').optional().or(z.literal('')),
   latitude: z.coerce.number().min(-90, 'Vĩ độ phải từ -90 đến 90').max(90, 'Vĩ độ phải từ -90 đến 90').optional().or(z.nan()),
   longitude: z.coerce.number().min(-180, 'Kinh độ phải từ -180 đến 180').max(180, 'Kinh độ phải từ -180 đến 180').optional().or(z.nan()),
-  area: z.coerce.number().positive('Diện tích phải lớn hơn 0').optional().or(z.nan()),
+  area: z.coerce.number().optional().or(z.nan()),
   khaNangTiepNhan: z.coerce.number().optional().or(z.nan()),
   operationalStatus: z.enum(['HIEN_HANH', 'TAM_NGUNG']).optional(),
   orgUnitId: z.string().uuid().optional().nullable(),
@@ -205,6 +205,9 @@ export const trangThaiPheDuyetBadge = (status: string): { color: string; label: 
     norm === 'TỪ_CHỐI'.normalize('NFC').toUpperCase()
   ) {
     return { color: 'red', label: 'Từ chối' };
+  }
+  if (norm === 'DRAFT') {
+    return { color: 'default', label: 'Nháp' };
   }
   return { color: 'default', label: status };
 };
