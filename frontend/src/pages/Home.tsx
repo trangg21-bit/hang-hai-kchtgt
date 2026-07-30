@@ -581,7 +581,11 @@ function HomeDashboard() {
         <Col xs={24} md={8}>
           <div style={{ ...CARD_BASE, height: '100%' }}>
             <h4 style={CHART_TITLE_STYLE}>Tỷ lệ vận hành KCHT theo loại<MockBadge show={blockStates.radarCoverage?.isMockFallback} /></h4>
-            <ReactECharts option={radarOption} style={{ height: 380 }} notMerge />
+            {radarData.length > 0 ? (
+              <ReactECharts option={radarOption} style={{ height: 380 }} notMerge />
+            ) : (
+              <div style={{ height: 380, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ink2 }}>Không có dữ liệu</div>
+            )}
           </div>
         </Col>
       </Row>
